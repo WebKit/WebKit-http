@@ -37,6 +37,8 @@
     BOOL _isRotating;
     BOOL _readyToPresentAfterRotation;
 
+    WKActionSheetPresentationStyle _currentPresentationStyle;
+    RetainPtr<UIViewController> _currentPresentingViewController;
     RetainPtr<UIViewController> _presentedViewControllerWhileRotating;
     RetainPtr<id <UIPopoverPresentationControllerDelegate>> _popoverPresentationControllerDelegateWhileRotating;
 }
@@ -69,16 +71,17 @@
 
 #pragma mark - Sheet presentation code
 
-- (BOOL)presentSheet
+- (BOOL)presentSheet:(WKActionSheetPresentationStyle)style
 {
     // Calculate the presentation rect just before showing.
     CGRect presentationRect = CGRectZero;
     if (UI_USER_INTERFACE_IDIOM() != UIUserInterfaceIdiomPhone) {
-        presentationRect = [_sheetDelegate initialPresentationRectInHostViewForSheet];
+        presentationRect = style == WKActionSheetPresentAtElementRect ? [_sheetDelegate presentationRectForIndicatedElement] : [_sheetDelegate initialPresentationRectInHostViewForSheet];
         if (CGRectIsEmpty(presentationRect))
             return NO;
     }
 
+    _currentPresentationStyle = style;
     return [self presentSheetFromRect:presentationRect];
 }
 
@@ -99,16 +102,21 @@
     if (_popoverPresentationControllerDelegateWhileRotating)
         presentationController.delegate = _popoverPresentationControllerDelegateWhileRotating.get();
 
-    UIViewController *presentingViewController = [UIViewController _viewControllerForFullScreenPresentationFromView:view];
-    [presentingViewController presentViewController:presentedViewController animated:YES completion:NULL];
+    _currentPresentingViewController = [UIViewController _viewControllerForFullScreenPresentationFromView:view];
+    [_currentPresentingViewController presentViewController:presentedViewController animated:YES completion:nil];
 
     return YES;
 }
 
 - (void)doneWithSheet
 {
+    if (_currentPresentingViewController)
+        [_currentPresentingViewController dismissViewControllerAnimated:YES completion:nil];
+
+    _currentPresentingViewController = nil;
     _presentedViewControllerWhileRotating = nil;
     _popoverPresentationControllerDelegateWhileRotating = nil;
+    _currentPresentationStyle = WKActionSheetPresentAtTouchLocation;
 
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(_didRotateAndLayout) object:nil];
 }
@@ -188,7 +196,7 @@
     if (_isRotating || !_readyToPresentAfterRotation || isBeingPresented)
         return;
 
-    CGRect presentationRect = [_sheetDelegate initialPresentationRectInHostViewForSheet];
+    CGRect presentationRect = _currentPresentationStyle == WKActionSheetPresentAtElementRect ? [_sheetDelegate presentationRectForIndicatedElement] : [_sheetDelegate initialPresentationRectInHostViewForSheet];
     BOOL wasPresentedViewControllerModal = [_presentedViewControllerWhileRotating isModalInPopover];
 
     if (!CGRectIsEmpty(presentationRect) || wasPresentedViewControllerModal) {
@@ -199,7 +207,7 @@
         if (!CGRectIsEmpty(intersection))
             [self presentSheetFromRect:intersection];
         else if (wasPresentedViewControllerModal)
-            [self presentSheet];
+            [self presentSheet:_currentPresentationStyle];
 
         _presentedViewControllerWhileRotating = nil;
         _popoverPresentationControllerDelegateWhileRotating = nil;

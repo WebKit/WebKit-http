@@ -101,7 +101,7 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
         throwNotSupportedError(state, scope, ASCIILiteral("Cannot define a custom element while defining another custom element"));
         return jsUndefined();
     }
-    TemporaryChange<bool> change(registry.elementDefinitionIsRunning(), true);
+    SetForScope<bool> change(registry.elementDefinitionIsRunning(), true);
 
     if (registry.findInterface(localName)) {
         throwNotSupportedError(state, scope, ASCIILiteral("Cannot define multiple custom elements with the same tag name"));
@@ -122,15 +122,18 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
     QualifiedName name(nullAtom, localName, HTMLNames::xhtmlNamespaceURI);
     auto elementInterface = JSCustomElementInterface::create(name, constructor, globalObject());
 
-    if (auto* connectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "connectedCallback")))
+    auto* connectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "connectedCallback"));
+    if (connectedCallback)
         elementInterface->setConnectedCallback(connectedCallback);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
-    if (auto* disconnectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "disconnectedCallback")))
+    auto* disconnectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "disconnectedCallback"));
+    if (disconnectedCallback)
         elementInterface->setDisconnectedCallback(disconnectedCallback);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
-    if (auto* adoptedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "adoptedCallback")))
+    auto* adoptedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "adoptedCallback"));
+    if (adoptedCallback)
         elementInterface->setAdoptedCallback(adoptedCallback);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
@@ -146,8 +149,18 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
         }
     }
 
-    PrivateName uniquePrivateName;
-    globalObject()->putDirect(vm, uniquePrivateName, constructor);
+    auto addToGlobalObjectWithPrivateName = [&] (JSObject* objectToAdd) {
+        if (objectToAdd) {
+            PrivateName uniquePrivateName;
+            globalObject()->putDirect(vm, uniquePrivateName, objectToAdd);
+        }
+    };
+
+    addToGlobalObjectWithPrivateName(constructor);
+    addToGlobalObjectWithPrivateName(connectedCallback);
+    addToGlobalObjectWithPrivateName(disconnectedCallback);
+    addToGlobalObjectWithPrivateName(adoptedCallback);
+    addToGlobalObjectWithPrivateName(attributeChangedCallback);
 
     registry.addElementDefinition(WTFMove(elementInterface));
 
@@ -171,7 +184,7 @@ static JSValue whenDefinedPromise(ExecState& state, JSDOMGlobalObject& globalObj
     }
 
     if (registry.findInterface(localName)) {
-        DeferredPromise::create(globalObject, promiseDeferred)->resolve(nullptr);
+        DeferredPromise::create(globalObject, promiseDeferred)->resolve();
         return promiseDeferred.promise();
     }
 

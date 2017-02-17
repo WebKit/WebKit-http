@@ -1,3 +1,135 @@
+2017-02-03  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Include cstdlib before using ::malloc and posix_memalign
+        https://bugs.webkit.org/show_bug.cgi?id=167800
+
+        Reviewed by Geoffrey Garen.
+
+        * bmalloc/DebugHeap.cpp:
+
+2017-02-01  Andreas Kling  <akling@apple.com>
+
+        Implement the alwaysRunsAtBackgroundPriority WK2 setting using thread QoS.
+        <https://webkit.org/b/167387>
+        <rdar://problem/29711409>
+
+        Reviewed by Antti Koivisto.
+
+        Support changing the QoS level of the scavenger thread asynchronously through
+        a request variable. This is not the most elegant thing in the world, but since
+        threads are only allowed to change their own QoS class, our options are limited.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::concurrentScavenge):
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::takeRequestedScavengerThreadQOSClass):
+        (bmalloc::Heap::setScavengerThreadQOSClass):
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::setScavengerThreadQOSClass):
+
+2017-01-13  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Use a separate zone when using system malloc
+        https://bugs.webkit.org/show_bug.cgi?id=167014
+
+        Reviewed by Filip Pizlo.
+
+        Harris asked for this so he could separate Safari and WebKit memory use
+        when doing memory analysis.
+
+        This patch adds an explicit DebugHeap class that contains all our
+        code for specialized allocation with debugging.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::Allocator):
+        (bmalloc::Allocator::tryAllocate):
+        (bmalloc::Allocator::allocateImpl):
+        (bmalloc::Allocator::reallocate):
+        (bmalloc::Allocator::allocateSlowCase):
+        * bmalloc/Allocator.h: Forward to DebugHeap instead of inlining all the
+        code. This is required for our new interface, and it is also a nice
+        simplification that moves some not-very-important code out of the way.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::Deallocator):
+        (bmalloc::Deallocator::scavenge):
+        (bmalloc::Deallocator::deallocateSlowCase):
+        * bmalloc/Deallocator.h: Ditto.
+
+        * bmalloc/DebugHeap.cpp: Added.
+        (bmalloc::DebugHeap::DebugHeap):
+        (bmalloc::DebugHeap::malloc):
+        (bmalloc::DebugHeap::memalign):
+        (bmalloc::DebugHeap::realloc):
+        (bmalloc::DebugHeap::free):
+        * bmalloc/DebugHeap.h: Added. New class for overriding normal heap
+        behavior. Right now, it just adds a malloc zone and then forwards to
+        system malloc -- but we can add lots more kinds of debug heaps in the
+        future if we find them useful.
+
+        * bmalloc/Environment.cpp:
+        (bmalloc::Environment::Environment):
+        (bmalloc::Environment::computeIsDebugHeapEnabled):
+        (bmalloc::Environment::computeIsBmallocEnabled): Deleted.
+        * bmalloc/Environment.h:
+        (bmalloc::Environment::isDebugHeapEnabled):
+        (bmalloc::Environment::isBmallocEnabled): Deleted. Renamed everything to
+        reflect our new use of DebugHeap.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::debugHeap): Updated to use DebugHeap.
+        (bmalloc::Heap::environment): Deleted. 
+
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::isEnabled): Updated to use DebugHeap.
+
+2016-12-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=165937
+
+        Reviewed by Simon Fraser.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+
+2016-12-08  David Kilzer  <ddkilzer@apple.com>
+
+        Always check the return value of pthread_key_create()
+        <https://webkit.org/b/165274>
+
+        Reviewed by Darin Adler.
+
+        * bmalloc/PerThread.h:
+        (bmalloc::PerThreadStorage::init): Call BCRASH() if
+        pthread_key_create() returns an error.  The error code will be
+        stored in a register available in a crash log, so no need to log
+        the value explicitly.
+
+2016-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Correct SDKROOT values in xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=165487
+        rdar://problem/29539209
+
+        Reviewed by Dan Bernstein.
+
+        Fix suggested by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2016-11-29  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Enable two clang warnings recommended by Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=164498
+
+        Reviewed by Mark Lam.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_INFINITE_RECURSION and CLANG_WARN_SUSPICIOUS_MOVE.
+
 2016-11-10  Geoffrey Garen  <ggaren@apple.com>
 
         bmalloc threads should have a non-default QoS

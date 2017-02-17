@@ -31,6 +31,8 @@
 #include "NetworkDataTaskBlob.h"
 #include "NetworkLoadParameters.h"
 #include "NetworkSession.h"
+#include <WebCore/ResourceError.h>
+#include <WebCore/ResourceResponse.h>
 #include <wtf/MainThread.h>
 
 #if PLATFORM(COCOA)
@@ -61,6 +63,7 @@ NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient&
     : m_failureTimer(*this, &NetworkDataTask::failureTimerFired)
     , m_session(session)
     , m_client(&client)
+    , m_partition(requestWithCredentials.cachePartition())
     , m_storedCredentials(storedCredentials)
     , m_lastHTTPMethod(requestWithCredentials.httpMethod())
     , m_firstRequest(requestWithCredentials)
@@ -90,6 +93,21 @@ void NetworkDataTask::scheduleFailure(FailureType type)
     ASSERT(type != NoFailure);
     m_scheduledFailureType = type;
     m_failureTimer.startOneShot(0);
+}
+
+void NetworkDataTask::didReceiveResponse(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
+{
+    ASSERT(m_client);
+    if (response.isHTTP09()) {
+        auto url = response.url();
+        std::optional<uint16_t> port = url.port();
+        if (port && !isDefaultPortForProtocol(port.value(), url.protocol())) {
+            cancel();
+            m_client->didCompleteWithError({ String(), 0, url, "Cancelled load from '" + url.stringCenterEllipsizedToLength() + "' because it is using HTTP/0.9." });
+            return;
+        }
+    }
+    m_client->didReceiveResponseNetworkSession(WTFMove(response), WTFMove(completionHandler));
 }
 
 void NetworkDataTask::failureTimerFired()

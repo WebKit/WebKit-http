@@ -24,7 +24,7 @@ AtomicString
 CEReactions
 CachedAttribute
 CallbackNeedsOperatorEqual
-CallWith=Document|ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow|CallerDocument|CallerWindow
+CallWith=Document|ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|GlobalObject|ActiveWindow|FirstWindow|CallerDocument|CallerWindow
 CheckSecurity
 CheckSecurityForNode
 Clamp
@@ -51,6 +51,7 @@ CustomPutFunction
 CustomSetPrototype
 CustomSetter
 CustomToJSObject
+CustomToStringName
 DOMJIT=|ReadDOM|Getter
 DoNotCheckConstants
 DoNotCheckSecurity
@@ -59,6 +60,7 @@ DoNotCheckSecurityOnSetter
 DocumentEventHandler
 EnabledAtRuntime=*
 EnabledBySetting=*
+EnabledForWorld=*
 EnforceRange
 ExportMacro=WEBCORE_EXPORT|WEBCORE_TESTSUPPORT_EXPORT
 ExportToWrappedFunction
@@ -70,9 +72,10 @@ Global=*
 Immutable
 ImplementedAs=*
 ImplementationLacksVTable
-ImplementationReturnType=*
 ImplicitThis
 InterfaceName=*
+IsImmutablePrototypeExoticObject
+IsImmutablePrototypeExoticObjectOnPrototype
 IsWeakCallback
 JSBuiltin
 JSBuiltinConstructor
@@ -88,6 +91,7 @@ JSCustomToNativeObject
 JSGenerateToJSObject
 JSGenerateToNativeObject
 JSLegacyParent=*
+LegacyUnenumerableNamedProperties
 LenientThis
 MasqueradesAsUndefined
 MayThrowException
@@ -95,9 +99,9 @@ NamedConstructor=*
 NewImpurePropertyFiresWatchpoints
 NewObject
 NoInterfaceObject
-Nondeterministic
 NotEnumerable
 OverrideBuiltins
+OverrideIDLType=*
 PassContext
 PrimaryGlobal
 PrivateIdentifier
@@ -108,7 +112,7 @@ Replaceable
 ReportExtraMemoryCost
 ReportExternalMemoryCost
 RequiresExistingAtomicString
-SetterCallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow
+SetterCallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|GlobalObject|ActiveWindow|FirstWindow
 SetterMayThrowException
 SkipVTableValidation
 SuppressToJSObject

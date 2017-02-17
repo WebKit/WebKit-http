@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2007, 2011, 2014-2015 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -284,6 +284,21 @@ bool WebEditorClient::shouldDeleteRange(Range* range)
     return shouldDelete;
 }
 
+static WebViewInsertAction kit(EditorInsertAction action)
+{
+    switch (action) {
+    case EditorInsertAction::Typed:
+        return WebViewInsertActionTyped;
+    case EditorInsertAction::Pasted:
+        return WebViewInsertActionPasted;
+    case EditorInsertAction::Dropped:
+        return WebViewInsertActionDropped;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WebViewInsertActionTyped;
+}
+
 bool WebEditorClient::shouldInsertNode(Node* node, Range* insertingRange, EditorInsertAction givenAction)
 { 
     COMPtr<IWebEditingDelegate> editingDelegate;
@@ -301,7 +316,7 @@ bool WebEditorClient::shouldInsertNode(Node* node, Range* insertingRange, Editor
     BOOL shouldInsert = FALSE;
     COMPtr<IWebEditingDelegate2> editingDelegate2(Query, editingDelegate);
     if (editingDelegate2) {
-        if (FAILED(editingDelegate2->shouldInsertNode(m_webView, insertDOMNode.get(), insertingDOMRange.get(), static_cast<WebViewInsertAction>(givenAction), &shouldInsert)))
+        if (FAILED(editingDelegate2->shouldInsertNode(m_webView, insertDOMNode.get(), insertingDOMRange.get(), kit(givenAction), &shouldInsert)))
             return true;
     }
 
@@ -320,7 +335,7 @@ bool WebEditorClient::shouldInsertText(const String& str, Range* insertingRange,
 
     BString text(str);
     BOOL shouldInsert = FALSE;
-    if (FAILED(editingDelegate->shouldInsertText(m_webView, text, insertingDOMRange.get(), static_cast<WebViewInsertAction>(givenAction), &shouldInsert)))
+    if (FAILED(editingDelegate->shouldInsertText(m_webView, text, insertingDOMRange.get(), kit(givenAction), &shouldInsert)))
         return true;
 
     return shouldInsert;
@@ -357,22 +372,6 @@ bool WebEditorClient::shouldMoveRangeAfterDelete(Range*, Range*)
 {
     notImplemented();
     return true;
-}
-
-bool WebEditorClient::shouldChangeTypingStyle(StyleProperties*, StyleProperties*)
-{
-    notImplemented();
-    return false;
-}
-
-void WebEditorClient::webViewDidChangeTypingStyle(WebNotification* /*notification*/)
-{
-    notImplemented();
-}
-
-void WebEditorClient::webViewDidChangeSelection(WebNotification* /*notification*/)
-{
-    notImplemented();
 }
 
 bool WebEditorClient::smartInsertDeleteEnabled(void)
@@ -506,7 +505,7 @@ void WebEditorClient::textDidChangeInTextArea(Element* e)
 class WebEditorUndoCommand : public IWebUndoCommand
 {
 public:
-    WebEditorUndoCommand(PassRefPtr<UndoStep>, bool isUndo);
+    WebEditorUndoCommand(UndoStep&, bool isUndo);
     void execute();
 
     // IUnknown
@@ -516,11 +515,11 @@ public:
 
 private:
     ULONG m_refCount;
-    RefPtr<UndoStep> m_step;
+    Ref<UndoStep> m_step;
     bool m_isUndo;
 };
 
-WebEditorUndoCommand::WebEditorUndoCommand(PassRefPtr<UndoStep> step, bool isUndo)
+WebEditorUndoCommand::WebEditorUndoCommand(UndoStep& step, bool isUndo)
     : m_step(step)
     , m_isUndo(isUndo) 
     , m_refCount(1)
@@ -625,11 +624,11 @@ static String undoNameForEditAction(EditAction editAction)
     return String();
 }
 
-void WebEditorClient::registerUndoStep(PassRefPtr<UndoStep> step)
+void WebEditorClient::registerUndoStep(UndoStep& step)
 {
     IWebUIDelegate* uiDelegate = 0;
     if (SUCCEEDED(m_webView->uiDelegate(&uiDelegate))) {
-        String actionName = undoNameForEditAction(step->editingAction());
+        String actionName = undoNameForEditAction(step.editingAction());
         WebEditorUndoCommand* undoCommand = new WebEditorUndoCommand(step, true);
         if (!undoCommand)
             return;
@@ -641,7 +640,7 @@ void WebEditorClient::registerUndoStep(PassRefPtr<UndoStep> step)
     }
 }
 
-void WebEditorClient::registerRedoStep(PassRefPtr<UndoStep> step)
+void WebEditorClient::registerRedoStep(UndoStep& step)
 {
     IWebUIDelegate* uiDelegate = 0;
     if (SUCCEEDED(m_webView->uiDelegate(&uiDelegate))) {

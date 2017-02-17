@@ -29,6 +29,7 @@
 #include "IntRect.h"
 #include "LayoutRect.h"
 #include "PlatformWheelEvent.h"
+#include "ScrollSnapOffsetsInfo.h"
 #include "ScrollTypes.h"
 #include <wtf/Forward.h>
 #include <wtf/ThreadSafeRefCounted.h>
@@ -66,9 +67,10 @@ class ViewportConstraints;
 class ScrollingTree;
 #endif
 
-enum SetOrSyncScrollingLayerPosition {
-    SetScrollingLayerPosition,
-    SyncScrollingLayerPosition
+enum class ScrollingLayerPositionAction {
+    Set,
+    SetApproximate,
+    Sync
 };
 
 struct ScrollableAreaParameters {
@@ -118,8 +120,8 @@ public:
     // Should be called whenever the given frame view has been laid out.
     virtual void frameViewLayoutUpdated(FrameView&) { }
 
-    using LayoutViewportOriginOrOverrideRect = WTF::Variant<Optional<FloatPoint>, Optional<FloatRect>>;
-    virtual void reconcileScrollingState(FrameView&, const FloatPoint&, const LayoutViewportOriginOrOverrideRect&, bool /* programmaticScroll */, SetOrSyncScrollingLayerPosition) { }
+    using LayoutViewportOriginOrOverrideRect = WTF::Variant<std::optional<FloatPoint>, std::optional<FloatRect>>;
+    virtual void reconcileScrollingState(FrameView&, const FloatPoint&, const LayoutViewportOriginOrOverrideRect&, bool /* programmaticScroll */, bool /* inStableState*/, ScrollingLayerPositionAction) { }
 
     // Should be called whenever the slow repaint objects counter changes between zero and one.
     void frameViewHasSlowRepaintObjectsDidChange(FrameView&);
@@ -169,6 +171,8 @@ public:
 #if ENABLE(CSS_SCROLL_SNAP)
         Vector<LayoutUnit> horizontalSnapOffsets;
         Vector<LayoutUnit> verticalSnapOffsets;
+        Vector<ScrollOffsetRange<LayoutUnit>> horizontalSnapOffsetRanges;
+        Vector<ScrollOffsetRange<LayoutUnit>> verticalSnapOffsetRanges;
         unsigned currentHorizontalSnapPointIndex;
         unsigned currentVerticalSnapPointIndex;
 #endif
@@ -176,7 +180,7 @@ public:
 
     virtual void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, GraphicsLayer* /*counterScrollingLayer*/, GraphicsLayer* /*insetClipLayer*/, const ScrollingGeometry* = nullptr) { }
     virtual void updateOverflowScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, const ScrollingGeometry* = nullptr) { }
-    virtual void syncViewportConstrainedLayerPositions(const LayoutRect&) { }
+    virtual void reconcileViewportConstrainedLayerPositions(const LayoutRect&, ScrollingLayerPositionAction) { }
     virtual String scrollingStateTreeAsText() const;
     virtual bool isRubberBandInProgress() const { return false; }
     virtual bool isScrollSnapInProgress() const { return false; }
@@ -205,6 +209,7 @@ public:
     String synchronousScrollingReasonsAsText() const;
 
     EventTrackingRegions absoluteEventTrackingRegions() const;
+    virtual void updateExpectsWheelEventTestTriggerWithFrameView(const FrameView&) { }
 
 protected:
     explicit ScrollingCoordinator(Page*);
@@ -235,6 +240,7 @@ private:
 };
 
 WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollingNodeType);
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollingLayerPositionAction);
 
 } // namespace WebCore
 

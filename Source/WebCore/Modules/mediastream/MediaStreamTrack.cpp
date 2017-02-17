@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
  * Copyright (C) 2011, 2015 Ericsson AB. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,15 +30,12 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "Dictionary.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "JSOverconstrainedError.h"
 #include "MediaConstraintsImpl.h"
-#include "MediaSourceSettings.h"
 #include "MediaStream.h"
 #include "MediaStreamPrivate.h"
-#include "MediaTrackConstraints.h"
 #include "NotImplemented.h"
 #include "OverconstrainedError.h"
 #include "ScriptExecutionContext.h"
@@ -150,66 +147,156 @@ void MediaStreamTrack::stopProducingData()
     m_private->endTrack();
 }
 
-RefPtr<MediaTrackConstraints> MediaStreamTrack::getConstraints() const
+MediaStreamTrack::TrackSettings MediaStreamTrack::getSettings() const
 {
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=122428
-    notImplemented();
-    return 0;
+    auto& settings = m_private->settings();
+    TrackSettings result;
+    if (settings.supportsWidth())
+        result.width = settings.width();
+    if (settings.supportsHeight())
+        result.height = settings.height();
+    if (settings.supportsAspectRatio() && settings.aspectRatio()) // FIXME: Why the check for zero here?
+        result.aspectRatio = settings.aspectRatio();
+    if (settings.supportsFrameRate())
+        result.frameRate = settings.frameRate();
+    if (settings.supportsFacingMode())
+        result.facingMode = RealtimeMediaSourceSettings::facingMode(settings.facingMode());
+    if (settings.supportsVolume())
+        result.volume = settings.volume();
+    if (settings.supportsSampleRate())
+        result.sampleRate = settings.sampleRate();
+    if (settings.supportsSampleSize())
+        result.sampleSize = settings.sampleSize();
+    if (settings.supportsEchoCancellation())
+        result.echoCancellation = settings.echoCancellation();
+    if (settings.supportsDeviceId())
+        result.deviceId = settings.deviceId();
+    if (settings.supportsGroupId())
+        result.groupId = settings.groupId();
+    return result;
 }
 
-RefPtr<MediaSourceSettings> MediaStreamTrack::getSettings() const
+static DoubleRange capabilityDoubleRange(const CapabilityValueOrRange& value)
 {
-    return MediaSourceSettings::create(m_private->settings());
-}
-
-RefPtr<RealtimeMediaSourceCapabilities> MediaStreamTrack::getCapabilities() const
-{
-    return m_private->capabilities();
-}
-
-void MediaStreamTrack::applyConstraints(Ref<MediaConstraints>&& constraints, DOMPromise<void>&& promise)
-{
-    if (!constraints->isValid()) {
-        promise.reject(TypeError);
-        return;
+    DoubleRange range;
+    switch (value.type()) {
+    case CapabilityValueOrRange::Double:
+        range.min = value.value().asDouble;
+        range.max = range.min;
+        break;
+    case CapabilityValueOrRange::DoubleRange:
+        range.min = value.rangeMin().asDouble;
+        range.max = value.rangeMax().asDouble;
+        break;
+    case CapabilityValueOrRange::Undefined:
+    case CapabilityValueOrRange::ULong:
+    case CapabilityValueOrRange::ULongRange:
+        ASSERT_NOT_REACHED();
     }
+    return range;
+}
 
-    m_constraints = WTFMove(constraints);
+static LongRange capabilityIntRange(const CapabilityValueOrRange& value)
+{
+    LongRange range;
+    switch (value.type()) {
+    case CapabilityValueOrRange::ULong:
+        range.min = value.value().asInt;
+        range.max = range.min;
+        break;
+    case CapabilityValueOrRange::ULongRange:
+        range.min = value.rangeMin().asInt;
+        range.max = value.rangeMax().asInt;
+        break;
+    case CapabilityValueOrRange::Undefined:
+    case CapabilityValueOrRange::Double:
+    case CapabilityValueOrRange::DoubleRange:
+        ASSERT_NOT_REACHED();
+    }
+    return range;
+}
+
+static Vector<String> capabilityStringVector(const Vector<RealtimeMediaSourceSettings::VideoFacingMode>& modes)
+{
+    Vector<String> result;
+    result.reserveCapacity(modes.size());
+    for (auto& mode : modes)
+        result.uncheckedAppend(RealtimeMediaSourceSettings::facingMode(mode));
+    return result;
+}
+
+static Vector<bool> capabilityBooleanVector(RealtimeMediaSourceCapabilities::EchoCancellation cancellation)
+{
+    Vector<bool> result;
+    result.reserveCapacity(2);
+    result.uncheckedAppend(true);
+    result.uncheckedAppend(cancellation == RealtimeMediaSourceCapabilities::EchoCancellation::ReadWrite);
+    return result;
+}
+
+MediaStreamTrack::TrackCapabilities MediaStreamTrack::getCapabilities() const
+{
+    auto capabilities = m_private->capabilities();
+    TrackCapabilities result;
+    if (capabilities->supportsWidth())
+        result.width = capabilityIntRange(capabilities->width());
+    if (capabilities->supportsHeight())
+        result.height = capabilityIntRange(capabilities->height());
+    if (capabilities->supportsAspectRatio())
+        result.aspectRatio = capabilityDoubleRange(capabilities->aspectRatio());
+    if (capabilities->supportsFrameRate())
+        result.frameRate = capabilityDoubleRange(capabilities->frameRate());
+    if (capabilities->supportsFacingMode())
+        result.facingMode = capabilityStringVector(capabilities->facingMode());
+    if (capabilities->supportsVolume())
+        result.volume = capabilityDoubleRange(capabilities->volume());
+    if (capabilities->supportsSampleRate())
+        result.sampleRate = capabilityIntRange(capabilities->sampleRate());
+    if (capabilities->supportsSampleSize())
+        result.sampleSize = capabilityIntRange(capabilities->sampleSize());
+    if (capabilities->supportsEchoCancellation())
+        result.echoCancellation = capabilityBooleanVector(capabilities->echoCancellation());
+    if (capabilities->supportsDeviceId())
+        result.deviceId = capabilities->deviceId();
+    if (capabilities->supportsGroupId())
+        result.groupId = capabilities->groupId();
+    return result;
+}
+
+static Ref<MediaConstraintsImpl> createMediaConstraintsImpl(const std::optional<MediaTrackConstraints>& constraints)
+{
+    if (!constraints)
+        return MediaConstraintsImpl::create({ }, { }, true);
+    return createMediaConstraintsImpl(constraints.value());
+}
+
+void MediaStreamTrack::applyConstraints(const std::optional<MediaTrackConstraints>& constraints, DOMPromise<void>&& promise)
+{
     m_promise = WTFMove(promise);
 
-    applyConstraints(*m_constraints);
-}
-
-void MediaStreamTrack::applyConstraints(const MediaConstraints& constraints)
-{
     auto weakThis = createWeakPtr();
-    std::function<void(const String&, const String&)> failureHandler = [weakThis](const String& failedConstraint, const String& message) {
+    auto failureHandler = [weakThis] (const String& failedConstraint, const String& message) {
         if (!weakThis || !weakThis->m_promise)
             return;
-
-        weakThis->m_promise->reject(OverconstrainedError::create(failedConstraint, message).get());
+        weakThis->m_promise->rejectType<IDLInterface<OverconstrainedError>>(OverconstrainedError::create(failedConstraint, message).get());
     };
-
-    std::function<void()> successHandler = [weakThis]() {
+    auto successHandler = [weakThis, constraints] () {
         if (!weakThis || !weakThis->m_promise)
             return;
-
         weakThis->m_promise->resolve();
+        weakThis->m_constraints = constraints.value_or(MediaTrackConstraints { });
     };
-
-    m_private->applyConstraints(constraints, successHandler, failureHandler);
+    m_private->applyConstraints(createMediaConstraintsImpl(constraints), successHandler, failureHandler);
 }
 
-void MediaStreamTrack::addObserver(MediaStreamTrack::Observer* observer)
+void MediaStreamTrack::addObserver(Observer& observer)
 {
-    m_observers.append(observer);
+    m_observers.append(&observer);
 }
 
-void MediaStreamTrack::removeObserver(MediaStreamTrack::Observer* observer)
+void MediaStreamTrack::removeObserver(Observer& observer)
 {
-    size_t pos = m_observers.find(observer);
-    if (pos != notFound)
-        m_observers.remove(pos);
+    m_observers.removeFirst(&observer);
 }
 
 void MediaStreamTrack::trackEnded(MediaStreamTrackPrivate&)

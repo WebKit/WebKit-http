@@ -31,7 +31,6 @@
 #include "Document.h"
 #include "Editor.h"
 #include "Element.h"
-#include "EventNames.h"
 #include "Frame.h"
 #include "HTMLInputElement.h"
 #include "HTMLTextAreaElement.h"
@@ -110,6 +109,8 @@ String inputTypeNameForEditingAction(EditAction action)
         return ASCIILiteral("formatIndent");
     case EditActionOutdent:
         return ASCIILiteral("formatOutdent");
+    case EditActionSetWritingDirection:
+        return ASCIILiteral("formatSetInlineTextDirection");
     default:
         return emptyString();
     }

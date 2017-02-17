@@ -28,26 +28,24 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "JSDOMBinding.h"
+#include "JSDOMConvertBufferSource.h"
+#include <heap/HeapInlines.h>
 
 using namespace JSC;
 
 namespace WebCore {
 
-bool cryptoOperationDataFromJSValue(ExecState* exec, JSValue value, CryptoOperationData& result)
+CryptoOperationData cryptoOperationDataFromJSValue(ExecState& state, ThrowScope& scope, JSValue value)
 {
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
+    VM& vm = state.vm();
+    if (auto* buffer = toUnsharedArrayBuffer(vm, value))
+        return { static_cast<uint8_t*>(buffer->data()), buffer->byteLength() };
 
-    if (ArrayBuffer* buffer = toUnsharedArrayBuffer(value))
-        result = std::make_pair(static_cast<uint8_t*>(buffer->data()), buffer->byteLength());
-    else if (RefPtr<ArrayBufferView> bufferView = toUnsharedArrayBufferView(value))
-        result = std::make_pair(static_cast<uint8_t*>(bufferView->baseAddress()), bufferView->byteLength());
-    else {
-        throwTypeError(exec, scope, ASCIILiteral("Only ArrayBuffer and ArrayBufferView objects can be passed as CryptoOperationData"));
-        return false;
-    }
-    return true;
+    if (auto bufferView = toUnsharedArrayBufferView(vm, value))
+        return { static_cast<uint8_t*>(bufferView->baseAddress()), bufferView->byteLength() };
+
+    throwTypeError(&state, scope, ASCIILiteral("Only ArrayBuffer and ArrayBufferView objects can be passed as CryptoOperationData"));
+    return { };
 }
 
 } // namespace WebCore

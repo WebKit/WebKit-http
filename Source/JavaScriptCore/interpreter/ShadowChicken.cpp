@@ -84,7 +84,7 @@ void ShadowChicken::log(VM& vm, ExecState* exec, const Packet& packet)
     *m_logCursor++ = packet;
 }
 
-void ShadowChicken::update(VM&, ExecState* exec)
+void ShadowChicken::update(VM& vm, ExecState* exec)
 {
     if (verbose) {
         dataLog("Running update on: ", *this, "\n");
@@ -155,8 +155,16 @@ void ShadowChicken::update(VM&, ExecState* exec)
             exec, [&] (StackVisitor& visitor) -> StackVisitor::Status {
                 if (visitor->isInlinedFrame())
                     return StackVisitor::Continue;
+                if (visitor->isWasmFrame()) {
+                    // FIXME: Make shadow chicken work with Wasm.
+                    // https://bugs.webkit.org/show_bug.cgi?id=165441
+                    return StackVisitor::Continue;
+                }
+
                 bool isTailDeleted = false;
-                stackRightNow.append(Frame(visitor->callee(), visitor->callFrame(), isTailDeleted));
+                // FIXME: Make shadow chicken work with Wasm.
+                // https://bugs.webkit.org/show_bug.cgi?id=165441
+                stackRightNow.append(Frame(jsCast<JSObject*>(visitor->callee()), visitor->callFrame(), isTailDeleted));
                 return StackVisitor::Continue;
             });
         stackRightNow.reverse();
@@ -272,6 +280,11 @@ void ShadowChicken::update(VM&, ExecState* exec)
                 return StackVisitor::Continue;
             }
 
+            if (visitor->isWasmFrame()) {
+                // FIXME: Make shadow chicken work with Wasm.
+                return StackVisitor::Continue;
+            }
+
             CallFrame* callFrame = visitor->callFrame();
             if (verbose)
                 dataLog("    Examining ", RawPointer(callFrame), "\n");
@@ -281,19 +294,19 @@ void ShadowChicken::update(VM&, ExecState* exec)
                 return StackVisitor::Done;
             }
 
-            bool foundFrame = advanceIndexInLogTo(callFrame, callFrame->callee(), callFrame->callerFrame());
+            bool foundFrame = advanceIndexInLogTo(callFrame, callFrame->jsCallee(), callFrame->callerFrame());
             bool isTailDeleted = false;
             JSScope* scope = nullptr;
             CodeBlock* codeBlock = callFrame->codeBlock();
             if (codeBlock && codeBlock->wasCompiledWithDebuggingOpcodes() && codeBlock->scopeRegister().isValid()) {
                 scope = callFrame->scope(codeBlock->scopeRegister().offset());
-                RELEASE_ASSERT(scope->inherits(JSScope::info()));
+                RELEASE_ASSERT(scope->inherits(vm, JSScope::info()));
             } else if (foundFrame) {
                 scope = m_log[indexInLog].scope;
                 if (scope)
-                    RELEASE_ASSERT(scope->inherits(JSScope::info()));
+                    RELEASE_ASSERT(scope->inherits(vm, JSScope::info()));
             }
-            toPush.append(Frame(visitor->callee(), callFrame, isTailDeleted, callFrame->thisValue(), scope, codeBlock, callFrame->callSiteIndex()));
+            toPush.append(Frame(jsCast<JSObject*>(visitor->callee()), callFrame, isTailDeleted, callFrame->thisValue(), scope, codeBlock, callFrame->callSiteIndex()));
 
             if (indexInLog < logCursorIndex
                 // This condition protects us from the case where advanceIndexInLogTo didn't find
@@ -336,7 +349,7 @@ void ShadowChicken::update(VM&, ExecState* exec)
                     }
                     Packet packet = m_log[indexInLog];
                     bool isTailDeleted = true;
-                    RELEASE_ASSERT(tailPacket.scope->inherits(JSScope::info()));
+                    RELEASE_ASSERT(tailPacket.scope->inherits(vm, JSScope::info()));
                     toPush.append(Frame(packet.callee, packet.frame, isTailDeleted, tailPacket.thisValue, tailPacket.scope, tailPacket.codeBlock, tailPacket.callSiteIndex));
                 }
             }
@@ -395,23 +408,23 @@ void ShadowChicken::visitChildren(SlotVisitor& visitor)
     for (unsigned i = m_logCursor - m_log; i--;) {
         JSObject* callee = m_log[i].callee;
         if (callee != Packet::tailMarker() && callee != Packet::throwMarker())
-            visitor.appendUnbarrieredReadOnlyPointer(callee);
+            visitor.appendUnbarriered(callee);
         if (callee != Packet::throwMarker())
-            visitor.appendUnbarrieredReadOnlyPointer(m_log[i].scope);
+            visitor.appendUnbarriered(m_log[i].scope);
         if (callee == Packet::tailMarker()) {
-            visitor.appendUnbarrieredValue(&m_log[i].thisValue);
-            visitor.appendUnbarrieredReadOnlyPointer(m_log[i].codeBlock);
+            visitor.appendUnbarriered(m_log[i].thisValue);
+            visitor.appendUnbarriered(m_log[i].codeBlock);
         }
     }
     
     for (unsigned i = m_stack.size(); i--; ) {
         Frame& frame = m_stack[i];
-        visitor.appendUnbarrieredValue(&frame.thisValue);
-        visitor.appendUnbarrieredReadOnlyPointer(frame.callee);
+        visitor.appendUnbarriered(frame.thisValue);
+        visitor.appendUnbarriered(frame.callee);
         if (frame.scope)
-            visitor.appendUnbarrieredReadOnlyPointer(frame.scope);
+            visitor.appendUnbarriered(frame.scope);
         if (frame.codeBlock)
-            visitor.appendUnbarrieredReadOnlyPointer(frame.codeBlock);
+            visitor.appendUnbarriered(frame.codeBlock);
     }
 }
 
@@ -444,6 +457,7 @@ JSArray* ShadowChicken::functionsOnStack(ExecState* exec)
         vm, exec,
         [&] (const Frame& frame) -> bool {
             result->push(exec, frame.callee);
+            RELEASE_ASSERT(!scope.exception()); // This function is only called from tests.
             return true;
         });
     

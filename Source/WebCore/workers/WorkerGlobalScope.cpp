@@ -33,6 +33,7 @@
 #include "ExceptionCode.h"
 #include "IDBConnectionProxy.h"
 #include "InspectorInstrumentation.h"
+#include "Performance.h"
 #include "ScheduledAction.h"
 #include "ScriptSourceCode.h"
 #include "SecurityOrigin.h"
@@ -52,7 +53,7 @@ using namespace Inspector;
 
 namespace WebCore {
 
-WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, RefPtr<SecurityOrigin>&& topOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
+WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
     : m_url(url)
     , m_identifier(identifier)
     , m_userAgent(userAgent)
@@ -61,12 +62,15 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, c
     , m_inspectorController(std::make_unique<WorkerInspectorController>(*this))
     , m_shouldBypassMainWorldContentSecurityPolicy(shouldBypassMainWorldContentSecurityPolicy)
     , m_eventQueue(*this)
-    , m_topOrigin(topOrigin)
+    , m_topOrigin(WTFMove(topOrigin))
 #if ENABLE(INDEXED_DATABASE)
     , m_connectionProxy(connectionProxy)
 #endif
 #if ENABLE(WEB_SOCKETS)
     , m_socketProvider(socketProvider)
+#endif
+#if ENABLE(WEB_TIMING)
+    , m_performance(Performance::create(*this, timeOrigin))
 #endif
 {
 #if !ENABLE(INDEXED_DATABASE)
@@ -74,6 +78,9 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, c
 #endif
 #if !ENABLE(WEB_SOCKETS)
     UNUSED_PARAM(socketProvider);
+#endif
+#if !ENABLE(WEB_TIMING)
+    UNUSED_PARAM(timeOrigin);
 #endif
 
     auto origin = SecurityOrigin::create(url);
@@ -346,5 +353,14 @@ Crypto& WorkerGlobalScope::crypto()
         m_crypto = Crypto::create(*this);
     return *m_crypto;
 }
+
+#if ENABLE(WEB_TIMING)
+
+Performance& WorkerGlobalScope::performance() const
+{
+    return m_performance;
+}
+
+#endif
 
 } // namespace WebCore

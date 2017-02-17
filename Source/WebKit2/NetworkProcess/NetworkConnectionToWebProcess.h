@@ -29,6 +29,8 @@
 #include "Connection.h"
 #include "DownloadID.h"
 #include "NetworkConnectionToWebProcessMessages.h"
+#include "NetworkRTCProvider.h"
+
 #include <WebCore/ResourceLoadPriority.h>
 #include <wtf/RefCounted.h>
 
@@ -43,6 +45,10 @@ class NetworkConnectionToWebProcess;
 class NetworkResourceLoader;
 class SyncNetworkResourceLoader;
 typedef uint64_t ResourceLoadIdentifier;
+
+namespace NetworkCache {
+struct DataKey;
+}
 
 class NetworkConnectionToWebProcess : public RefCounted<NetworkConnectionToWebProcess>, IPC::Connection::Client {
 public:
@@ -67,9 +73,9 @@ private:
     // Message handlers.
     void didReceiveNetworkConnectionToWebProcessMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveSyncNetworkConnectionToWebProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
-    
+
     void scheduleResourceLoad(const NetworkResourceLoadParameters&);
-    void performSynchronousLoad(const NetworkResourceLoadParameters&, RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&&);
+    void performSynchronousLoad(const NetworkResourceLoadParameters&, Ref<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&&);
     void loadPing(const NetworkResourceLoadParameters&);
     void prefetchDNS(const String&);
 
@@ -88,7 +94,7 @@ private:
     void addCookie(WebCore::SessionID, const WebCore::URL&, const WebCore::Cookie&);
 
     void registerFileBlobURL(const WebCore::URL&, const String& path, const SandboxExtension::Handle&, const String& contentType);
-    void registerBlobURL(const WebCore::URL&, Vector<WebCore::BlobPart>, const String& contentType);
+    void registerBlobURL(const WebCore::URL&, Vector<WebCore::BlobPart>&&, const String& contentType);
     void registerBlobURLFromURL(const WebCore::URL&, const WebCore::URL& srcURL);
     void preregisterSandboxExtensionsForOptionallyFileBackedBlob(const Vector<String>& fileBackedPath, const SandboxExtension::HandleArray&);
     void registerBlobURLOptionallyFileBacked(const WebCore::URL&, const WebCore::URL& srcURL, const String& fileBackedPath, const String& contentType);
@@ -97,12 +103,24 @@ private:
     void unregisterBlobURL(const WebCore::URL&);
     void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, uint64_t requestIdentifier);
 
+#if ENABLE(NETWORK_CACHE)
+    void storeDerivedDataToCache(const WebKit::NetworkCache::DataKey&, const IPC::DataReference&);
+#endif
+
     void ensureLegacyPrivateBrowsingSession();
 
+#if USE(LIBWEBRTC)
+    NetworkRTCProvider& rtcProvider();
+#endif
+    
     Ref<IPC::Connection> m_connection;
 
     HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader>> m_networkResourceLoaders;
     HashMap<String, RefPtr<WebCore::BlobDataFileReference>> m_blobDataFileReferences;
+
+#if USE(LIBWEBRTC)
+    RefPtr<NetworkRTCProvider> m_rtcProvider;
+#endif
 };
 
 } // namespace WebKit

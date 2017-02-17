@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -70,6 +70,7 @@
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/AuthenticationChallenge.h>
+#include <WebCore/CommonVM.h>
 #include <WebCore/CrossOriginPreflightResultCache.h>
 #include <WebCore/DNS.h>
 #include <WebCore/DatabaseManager.h>
@@ -99,7 +100,6 @@
 #include <WebCore/ResourceLoadStatistics.h>
 #include <WebCore/ResourceLoadStatisticsStore.h>
 #include <WebCore/RuntimeApplicationChecks.h>
-#include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/Settings.h>
@@ -157,28 +157,18 @@ WebProcess::WebProcess()
 #if PLATFORM(IOS)
     , m_viewUpdateDispatcher(ViewUpdateDispatcher::create())
 #endif
-    , m_inDidClose(false)
-    , m_hasSetCacheModel(false)
-    , m_cacheModel(CacheModelDocumentViewer)
-    , m_fullKeyboardAccessEnabled(false)
-    , m_textCheckerState()
-    , m_iconDatabaseProxy(*new WebIconDatabaseProxy(this))
+    , m_iconDatabaseProxy(*new WebIconDatabaseProxy(*this))
     , m_webLoaderStrategy(*new WebLoaderStrategy)
     , m_dnsPrefetchHystereris([this](HysteresisState state) { if (state == HysteresisState::Stopped) m_dnsPrefetchedHosts.clear(); })
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
-#endif
-#if ENABLE(SERVICE_CONTROLS)
-    , m_hasImageServices(false)
-    , m_hasSelectionServices(false)
-    , m_hasRichContentServices(false)
 #endif
     , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
     , m_statisticsChangedTimer(*this, &WebProcess::statisticsChangedTimerFired)
 #if PLATFORM(IOS)
     , m_webSQLiteDatabaseTracker(*this)
 #endif
-    , m_resourceLoadStatisticsStorage(WebCore::ResourceLoadStatisticsStore::create())
+    , m_resourceLoadStatisticsStore(WebCore::ResourceLoadStatisticsStore::create())
 {
     // Initialize our platform strategies.
     WebPlatformStrategies::initialize();
@@ -193,24 +183,17 @@ WebProcess::WebProcess()
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     addSupplement<WebNotificationManager>();
 #endif
+
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     addSupplement<WebMediaKeyStorageManager>();
 #endif
+
     m_plugInAutoStartOriginHashes.add(SessionID::defaultSessionID(), HashMap<unsigned, double>());
 
-#if ENABLE(INDEXED_DATABASE)
-    RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
-#endif
-
-#if PLATFORM(IOS) || PLATFORM(GTK)
-    PageCache::singleton().setShouldClearBackingStores(true);
-#endif
-
-    ResourceLoadObserver::sharedObserver().setStatisticsStore(m_resourceLoadStatisticsStorage.copyRef());
-    m_resourceLoadStatisticsStorage->setNotificationCallback([this] {
+    ResourceLoadObserver::sharedObserver().setStatisticsStore(m_resourceLoadStatisticsStore.copyRef());
+    m_resourceLoadStatisticsStore->setNotificationCallback([this] {
         if (m_statisticsChangedTimer.isActive())
             return;
-        
         m_statisticsChangedTimer.startOneShot(std::chrono::seconds(5));
     });
 }
@@ -278,6 +261,15 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
         memoryPressureHandler.setLowMemoryHandler([] (Critical critical, Synchronous synchronous) {
             WebCore::releaseMemory(critical, synchronous);
         });
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200
+        memoryPressureHandler.setShouldUsePeriodicMemoryMonitor(true);
+        memoryPressureHandler.setMemoryKillCallback([] () {
+            WebCore::didExceedMemoryLimitAndFailedToRecover();
+        });
+        memoryPressureHandler.setProcessIsEligibleForMemoryKillCallback([] () {
+            return WebCore::processIsEligibleForMemoryKill();
+        });
+#endif
         memoryPressureHandler.install();
     }
 
@@ -345,10 +337,8 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     for (auto& scheme : parameters.urlSchemesRegisteredAsAlwaysRevalidated)
         registerURLSchemeAsAlwaysRevalidated(scheme);
 
-#if ENABLE(CACHE_PARTITIONING)
     for (auto& scheme : parameters.urlSchemesRegisteredAsCachePartitioned)
         registerURLSchemeAsCachePartitioned(scheme);
-#endif
 
     setDefaultRequestTimeoutInterval(parameters.defaultRequestTimeoutInterval);
 
@@ -380,7 +370,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     setEnabledServices(parameters.hasImageServices, parameters.hasSelectionServices, parameters.hasRichContentServices);
 #endif
 
-#if ENABLE(REMOTE_INSPECTOR)
+#if ENABLE(REMOTE_INSPECTOR) && PLATFORM(COCOA)
     audit_token_t auditToken;
     if (parentProcessConnection()->getAuditToken(auditToken)) {
         RetainPtr<CFDataRef> auditData = adoptCF(CFDataCreate(nullptr, (const UInt8*)&auditToken, sizeof(auditToken)));
@@ -470,12 +460,10 @@ void WebProcess::registerURLSchemeAsAlwaysRevalidated(const String& urlScheme) c
     SchemeRegistry::registerURLSchemeAsAlwaysRevalidated(urlScheme);
 }
 
-#if ENABLE(CACHE_PARTITIONING)
 void WebProcess::registerURLSchemeAsCachePartitioned(const String& urlScheme) const
 {
     SchemeRegistry::registerURLSchemeAsCachePartitioned(urlScheme);
 }
-#endif
 
 void WebProcess::setDefaultRequestTimeoutInterval(double timeoutInterval)
 {
@@ -572,19 +560,19 @@ WebPage* WebProcess::webPage(uint64_t pageID) const
     return m_pageMap.get(pageID);
 }
 
-void WebProcess::createWebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
+void WebProcess::createWebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 {
     // It is necessary to check for page existence here since during a window.open() (or targeted
     // link) the WebPage gets created both in the synchronous handler and through the normal way. 
     HashMap<uint64_t, RefPtr<WebPage>>::AddResult result = m_pageMap.add(pageID, nullptr);
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
-        result.iterator->value = WebPage::create(pageID, parameters);
+        result.iterator->value = WebPage::create(pageID, WTFMove(parameters));
 
         // Balanced by an enableTermination in removeWebPage.
         disableTermination();
     } else
-        result.iterator->value->reinitializeWebPage(parameters);
+        result.iterator->value->reinitializeWebPage(WTFMove(parameters));
 
     ASSERT(result.iterator->value);
 }
@@ -657,8 +645,6 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& de
 void WebProcess::didClose(IPC::Connection&)
 {
 #ifndef NDEBUG
-    m_inDidClose = true;
-
     // Close all the live pages.
     Vector<RefPtr<WebPage>> pages;
     copyValuesToVector(m_pageMap, pages);
@@ -679,12 +665,6 @@ void WebProcess::didClose(IPC::Connection&)
 
     // The UI process closed this connection, shut down.
     stopRunLoop();
-}
-
-void WebProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
-{
-    // We received an invalid message, but since this is from the UI process (which we trust),
-    // we'll let it slide.
 }
 
 WebFrame* WebProcess::webFrame(uint64_t frameID) const
@@ -921,6 +901,13 @@ void WebProcess::clearPluginClientPolicies()
 #endif
 }
 
+void WebProcess::refreshPlugins()
+{
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    WebPluginInfoProvider::singleton().refresh(false);
+#endif
+}
+
 static void fromCountedSetToHashMap(TypeCountSet* countedSet, HashMap<String, uint64_t>& map)
 {
     TypeCountSet::const_iterator end = countedSet->end();
@@ -972,21 +959,21 @@ void WebProcess::getWebCoreStatistics(uint64_t callbackID)
     
     // Gather JavaScript statistics.
     {
-        JSLockHolder lock(JSDOMWindow::commonVM());
-        data.statisticsNumbers.set(ASCIILiteral("JavaScriptObjectsCount"), JSDOMWindow::commonVM().heap.objectCount());
-        data.statisticsNumbers.set(ASCIILiteral("JavaScriptGlobalObjectsCount"), JSDOMWindow::commonVM().heap.globalObjectCount());
-        data.statisticsNumbers.set(ASCIILiteral("JavaScriptProtectedObjectsCount"), JSDOMWindow::commonVM().heap.protectedObjectCount());
-        data.statisticsNumbers.set(ASCIILiteral("JavaScriptProtectedGlobalObjectsCount"), JSDOMWindow::commonVM().heap.protectedGlobalObjectCount());
+        JSLockHolder lock(commonVM());
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptObjectsCount"), commonVM().heap.objectCount());
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptGlobalObjectsCount"), commonVM().heap.globalObjectCount());
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptProtectedObjectsCount"), commonVM().heap.protectedObjectCount());
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptProtectedGlobalObjectsCount"), commonVM().heap.protectedGlobalObjectCount());
         
-        std::unique_ptr<TypeCountSet> protectedObjectTypeCounts(JSDOMWindow::commonVM().heap.protectedObjectTypeCounts());
+        std::unique_ptr<TypeCountSet> protectedObjectTypeCounts(commonVM().heap.protectedObjectTypeCounts());
         fromCountedSetToHashMap(protectedObjectTypeCounts.get(), data.javaScriptProtectedObjectTypeCounts);
         
-        std::unique_ptr<TypeCountSet> objectTypeCounts(JSDOMWindow::commonVM().heap.objectTypeCounts());
+        std::unique_ptr<TypeCountSet> objectTypeCounts(commonVM().heap.objectTypeCounts());
         fromCountedSetToHashMap(objectTypeCounts.get(), data.javaScriptObjectTypeCounts);
         
-        uint64_t javaScriptHeapSize = JSDOMWindow::commonVM().heap.size();
+        uint64_t javaScriptHeapSize = commonVM().heap.size();
         data.statisticsNumbers.set(ASCIILiteral("JavaScriptHeapSize"), javaScriptHeapSize);
-        data.statisticsNumbers.set(ASCIILiteral("JavaScriptFreeSize"), JSDOMWindow::commonVM().heap.capacity() - javaScriptHeapSize);
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptFreeSize"), commonVM().heap.capacity() - javaScriptHeapSize);
     }
 
     WTF::FastMallocStatistics fastMallocStatistics = WTF::fastMallocStatistics();
@@ -1217,7 +1204,7 @@ void WebProcess::fetchWebsiteData(WebCore::SessionID sessionID, OptionSet<Websit
 {
     if (websiteDataTypes.contains(WebsiteDataType::MemoryCache)) {
         for (auto& origin : MemoryCache::singleton().originsWithCache(sessionID))
-            websiteData.entries.append(WebsiteData::Entry { origin, WebsiteDataType::MemoryCache, 0 });
+            websiteData.entries.append(WebsiteData::Entry { SecurityOriginData::fromSecurityOrigin(*origin), WebsiteDataType::MemoryCache, 0 });
     }
 }
 
@@ -1285,6 +1272,10 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
         MemoryPressureHandler::singleton().releaseMemory(Critical::Yes, Synchronous::Yes);
 
     setAllLayerTreeStatesFrozen(true);
+    
+#if PLATFORM(COCOA)
+    destroyRenderingResources();
+#endif
 
     markAllLayersVolatile([this, shouldAcknowledgeWhenReadyToSuspend] {
         RELEASE_LOG(ProcessSuspension, "%p - WebProcess::markAllLayersVolatile() Successfuly marked all layers as volatile", this);
@@ -1402,10 +1393,10 @@ void WebProcess::nonVisibleProcessCleanupTimerFired()
 
 void WebProcess::statisticsChangedTimerFired()
 {
-    if (m_resourceLoadStatisticsStorage->isEmpty())
+    if (m_resourceLoadStatisticsStore->isEmpty())
         return;
 
-    parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::ResourceLoadStatisticsUpdated(m_resourceLoadStatisticsStorage->takeStatistics()), 0);
+    parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::ResourceLoadStatisticsUpdated(m_resourceLoadStatisticsStore->takeStatistics()), 0);
 }
 
 void WebProcess::setResourceLoadStatisticsEnabled(bool enabled)
@@ -1555,5 +1546,14 @@ void WebProcess::prefetchDNS(const String& hostname)
     // some time of no DNS requests.
     m_dnsPrefetchHystereris.impulse();
 }
+
+#if USE(LIBWEBRTC)
+LibWebRTCNetwork& WebProcess::libWebRTCNetwork()
+{
+    if (!m_libWebRTCNetwork)
+        m_libWebRTCNetwork = std::make_unique<LibWebRTCNetwork>();
+    return *m_libWebRTCNetwork;
+}
+#endif
 
 } // namespace WebKit

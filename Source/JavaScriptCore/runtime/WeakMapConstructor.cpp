@@ -40,7 +40,7 @@ const ClassInfo WeakMapConstructor::s_info = { "Function", &Base::s_info, 0, CRE
 
 void WeakMapConstructor::finishCreation(VM& vm, WeakMapPrototype* prototype)
 {
-    Base::finishCreation(vm, prototype->classInfo()->className);
+    Base::finishCreation(vm, prototype->classInfo(vm)->className);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontEnum | ReadOnly);
 }
@@ -57,7 +57,7 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
+    JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
     Structure* weakMapStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->weakMapStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSWeakMap* weakMap = JSWeakMap::create(exec, weakMapStructure);
@@ -65,7 +65,7 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
     if (iterable.isUndefinedOrNull())
         return JSValue::encode(weakMap);
 
-    JSValue adderFunction = weakMap->JSObject::get(exec, exec->propertyNames().set);
+    JSValue adderFunction = weakMap->JSObject::get(exec, vm.propertyNames->set);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     CallData adderFunctionCallData;
@@ -73,6 +73,7 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
     if (adderFunctionCallType == CallType::None)
         return JSValue::encode(throwTypeError(exec, scope));
 
+    scope.release();
     forEachInIterable(exec, iterable, [&](VM& vm, ExecState* exec, JSValue nextItem) {
         auto scope = DECLARE_THROW_SCOPE(vm);
         if (!nextItem.isObject()) {
@@ -89,6 +90,7 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
         MarkedArgumentBuffer arguments;
         arguments.append(key);
         arguments.append(value);
+        scope.release();
         call(exec, adderFunction, adderFunctionCallType, adderFunctionCallData, weakMap, arguments);
     });
 

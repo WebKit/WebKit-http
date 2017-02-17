@@ -28,14 +28,15 @@
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
-#import "CDM.h"
-#import "CDMSession.h"
+#import "LegacyCDM.h"
+#import "LegacyCDMSession.h"
 #import "MediaPlayer.h"
 #import "MediaPlayerPrivateAVFoundationObjC.h"
 #import "SoftLinking.h"
 #import "UUID.h"
 #import "WebCoreNSErrorExtras.h"
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVAsset.h>
+#import <AVFoundation/AVAssetResourceLoader.h>
 #import <objc/objc-runtime.h>
 #import <wtf/MainThread.h>
 

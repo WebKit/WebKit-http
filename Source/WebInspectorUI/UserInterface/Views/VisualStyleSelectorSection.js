@@ -25,7 +25,7 @@
 
 WebInspector.VisualStyleSelectorSection = class VisualStyleSelectorSection extends WebInspector.DetailsSection
 {
-    constructor(delegate)
+    constructor()
     {
         let selectorSection = {element: document.createElement("div")};
         selectorSection.element.classList.add("selectors");
@@ -35,7 +35,6 @@ WebInspector.VisualStyleSelectorSection = class VisualStyleSelectorSection exten
 
         super("visual-style-selector-section", WebInspector.UIString("Style Rules"), [selectorSection], controlElement);
 
-        this._delegate = delegate || null;
         this._nodeStyles = null;
 
         this._currentSelectorElement = document.createElement("div");
@@ -60,7 +59,7 @@ WebInspector.VisualStyleSelectorSection = class VisualStyleSelectorSection exten
 
         this._newInspectorRuleSelector = null;
 
-        let addGlyphElement = useSVGSymbol("Images/Plus13.svg", "visual-style-selector-section-add-rule", WebInspector.UIString("Click to add a new rule."));
+        let addGlyphElement = useSVGSymbol("Images/Plus13.svg", "visual-style-selector-section-add-rule", WebInspector.UIString("Add new rule"));
         addGlyphElement.addEventListener("click", this._addNewRule.bind(this));
         controlElement.appendChild(addGlyphElement);
 

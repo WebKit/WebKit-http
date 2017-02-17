@@ -50,13 +50,13 @@ static CSSParserContext parserContextForElement(const Element& element)
     // User agent shadow trees can't contain document-relative URLs. Use blank URL as base allowing cross-document sharing.
     auto& baseURL = shadowRoot && shadowRoot->mode() == ShadowRootMode::UserAgent ? blankURL() : element.document().baseURL();
 
-    CSSParserContext result = CSSParserContext { element.document(), baseURL, element.document().encoding() };
+    CSSParserContext result = CSSParserContext { element.document(), baseURL, element.document().characterSetWithUTF8Fallback() };
     if (shadowRoot && shadowRoot->mode() == ShadowRootMode::UserAgent)
         result.mode = UASheetMode;
     return result;
 }
 
-static Optional<InlineStyleSheetCacheKey> makeInlineStyleSheetCacheKey(const String& text, const Element& element)
+static std::optional<InlineStyleSheetCacheKey> makeInlineStyleSheetCacheKey(const String& text, const Element& element)
 {
     // Only cache for shadow trees. Main document inline stylesheets are generally unique and can't be shared between documents.
     // FIXME: This could be relaxed when a stylesheet does not contain document-relative URLs (or #urls).
@@ -116,14 +116,14 @@ void InlineStyleSheetOwner::childrenChanged(Element& element)
 {
     if (m_isParsingChildren)
         return;
-    if (!element.inDocument())
+    if (!element.isConnected())
         return;
     createSheetFromTextContents(element);
 }
 
 void InlineStyleSheetOwner::finishParsingChildren(Element& element)
 {
-    if (element.inDocument())
+    if (element.isConnected())
         createSheetFromTextContents(element);
     m_isParsingChildren = false;
 }
@@ -153,7 +153,7 @@ inline bool isValidCSSContentType(Element& element, const AtomicString& type)
 
 void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
 {
-    ASSERT(element.inDocument());
+    ASSERT(element.isConnected());
     Document& document = element.document();
     if (m_sheet) {
         if (m_sheet->isLoading() && m_styleScope)
@@ -170,11 +170,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
     if (!contentSecurityPolicy.allowInlineStyle(document.url(), m_startTextPosition.m_line, text, hasKnownNonce))
         return;
 
-    RefPtr<MediaQuerySet> mediaQueries;
-    if (element.isHTMLElement())
-        mediaQueries = MediaQuerySet::createAllowingDescriptionSyntax(m_media);
-    else
-        mediaQueries = MediaQuerySet::create(m_media);
+    RefPtr<MediaQuerySet> mediaQueries = MediaQuerySet::create(m_media);
 
     MediaQueryEvaluator screenEval(ASCIILiteral("screen"), true);
     MediaQueryEvaluator printEval(ASCIILiteral("print"), true);
@@ -206,7 +202,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
     m_sheet->setMediaQueries(mediaQueries.releaseNonNull());
     m_sheet->setTitle(element.title());
 
-    contents->parseStringAtPosition(text, m_startTextPosition, m_isParsingChildren);
+    contents->parseString(text);
 
     m_loading = false;
 

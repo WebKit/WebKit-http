@@ -40,6 +40,7 @@
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
 #include <cairo.h>
+#include <wtf/NeverDestroyed.h>
 
 #if PLATFORM(WIN)
 #include <GLSLANG/ShaderLang.h>
@@ -54,9 +55,20 @@
 #include "OpenGLShims.h"
 #endif
 
+#if USE(TEXTURE_MAPPER)
+#include "TextureMapperGC3DPlatformLayer.h"
+#endif
+
 namespace WebCore {
 
-RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attributes attributes, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
+static const int MaxActiveContexts = 16;
+static Vector<GraphicsContext3D*>& activeContexts()
+{
+    static NeverDestroyed<Vector<GraphicsContext3D*>> s_activeContexts;
+    return s_activeContexts;
+}
+
+RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes attributes, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
 {
     // This implementation doesn't currently support rendering directly to the HostWindow.
     if (renderStyle == RenderDirectlyToHostWindow)
@@ -73,13 +85,23 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attribute
     if (!success)
         return 0;
 
-    return adoptRef(new GraphicsContext3D(attributes, hostWindow, renderStyle));
+    auto& contexts = activeContexts();
+    if (contexts.size() >= MaxActiveContexts)
+        contexts.at(0)->recycleContext();
+
+    // Calling recycleContext() above should have lead to the graphics context being
+    // destroyed and thus removed from the active contexts list.
+    if (contexts.size() >= MaxActiveContexts)
+        return nullptr;
+
+    auto context = adoptRef(new GraphicsContext3D(attributes, hostWindow, renderStyle));
+    contexts.append(context.get());
+    return context;
 }
 
-GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle)
+GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle)
     : m_currentWidth(0)
     , m_currentHeight(0)
-    , m_compiler(isGLES2Compliant() ? SH_ESSL_OUTPUT : SH_GLSL_COMPATIBILITY_OUTPUT)
     , m_attrs(attributes)
     , m_texture(0)
     , m_compositorTexture(0)
@@ -92,8 +114,13 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
-    , m_private(std::make_unique<GraphicsContext3DPrivate>(this, renderStyle))
 {
+#if USE(TEXTURE_MAPPER)
+    m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle);
+#else
+    m_private = std::make_unique<GraphicsContext3DPrivate>(this, renderStyle);
+#endif
+
     makeContextCurrent();
 
     validateAttributes();
@@ -151,6 +178,36 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
         }
     }
 
+#if !USE(OPENGL_ES_2)
+    ::glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+
+    if (GLContext::current()->version() >= 320) {
+        m_usingCoreProfile = true;
+
+        // From version 3.2 on we use the OpenGL Core profile, so request that ouput to the shader compiler.
+        // OpenGL version 3.2 uses GLSL version 1.50.
+        m_compiler = ANGLEWebKitBridge(SH_GLSL_150_CORE_OUTPUT);
+
+        // From version 3.2 on we use the OpenGL Core profile, and we need a VAO for rendering.
+        // A VAO could be created and bound by each component using GL rendering (TextureMapper, WebGL, etc). This is
+        // a simpler solution: the first GraphicsContext3D created on a GLContext will create and bind a VAO for that context.
+        GC3Dint currentVAO = 0;
+        getIntegerv(GraphicsContext3D::VERTEX_ARRAY_BINDING, &currentVAO);
+        if (!currentVAO) {
+            m_vao = createVertexArray();
+            bindVertexArray(m_vao);
+        }
+    } else {
+        // For lower versions request the compatibility output to the shader compiler.
+        m_compiler = ANGLEWebKitBridge(SH_GLSL_COMPATIBILITY_OUTPUT);
+
+        // GL_POINT_SPRITE is needed in lower versions.
+        ::glEnable(GL_POINT_SPRITE);
+    }
+#else
+    m_compiler = ANGLEWebKitBridge(SH_ESSL_OUTPUT);
+#endif
+
     // ANGLE initialization.
     ShBuiltInResources ANGLEResources;
     ShInitBuiltInResources(&ANGLEResources);
@@ -172,18 +229,18 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
 
     m_compiler.setResources(ANGLEResources);
 
-#if !USE(OPENGL_ES_2)
-    ::glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    ::glEnable(GL_POINT_SPRITE);
-#endif
-
     ::glClearColor(0, 0, 0, 0);
 }
 
 GraphicsContext3D::~GraphicsContext3D()
 {
+#if USE(TEXTURE_MAPPER)
+    if (m_texmapLayer->renderStyle() == RenderToCurrentGLContext)
+        return;
+#else
     if (m_private->renderStyle() == RenderToCurrentGLContext)
         return;
+#endif
 
     makeContextCurrent();
     if (m_texture)
@@ -210,6 +267,12 @@ GraphicsContext3D::~GraphicsContext3D()
 #if USE(COORDINATED_GRAPHICS_THREADED)
     ::glDeleteTextures(1, &m_intermediateTexture);
 #endif
+
+    if (m_vao)
+        deleteVertexArray(m_vao);
+
+    ASSERT(activeContexts().contains(this));
+    activeContexts().removeFirst(this);
 }
 
 GraphicsContext3D::ImageExtractor::~ImageExtractor()
@@ -323,9 +386,14 @@ void GraphicsContext3D::setErrorMessageCallback(std::unique_ptr<ErrorMessageCall
 
 bool GraphicsContext3D::makeContextCurrent()
 {
-    if (!m_private)
-        return false;
-    return m_private->makeContextCurrent();
+#if USE(TEXTURE_MAPPER)
+    if (m_texmapLayer)
+        return m_texmapLayer->makeContextCurrent();
+#else
+    if (m_private)
+        return m_private->makeContextCurrent();
+#endif
+    return false;
 }
 
 void GraphicsContext3D::checkGPUStatusIfNecessary()
@@ -334,7 +402,11 @@ void GraphicsContext3D::checkGPUStatusIfNecessary()
 
 PlatformGraphicsContext3D GraphicsContext3D::platformGraphicsContext3D()
 {
+#if USE(TEXTURE_MAPPER)
+    return m_texmapLayer->platformContext();
+#else
     return m_private->platformContext();
+#endif
 }
 
 Platform3DObject GraphicsContext3D::platformTexture() const
@@ -353,8 +425,28 @@ bool GraphicsContext3D::isGLES2Compliant() const
 
 PlatformLayer* GraphicsContext3D::platformLayer() const
 {
+#if USE(TEXTURE_MAPPER)
+    return m_texmapLayer.get();
+#else
     return m_private.get();
+#endif
 }
+
+#if PLATFORM(GTK)
+Extensions3D& GraphicsContext3D::getExtensions()
+{
+    if (!m_extensions) {
+#if USE(OPENGL_ES_2)
+        // glGetStringi is not available on GLES2.
+        m_extensions = std::make_unique<Extensions3DOpenGLES>(this,  false);
+#else
+        // From OpenGL 3.2 on we use the Core profile, and there we must use glGetStringi.
+        m_extensions = std::make_unique<Extensions3DOpenGL>(this, GLContext::current()->version() >= 320);
+#endif
+    }
+    return *m_extensions;
+}
+#endif
 
 } // namespace WebCore
 

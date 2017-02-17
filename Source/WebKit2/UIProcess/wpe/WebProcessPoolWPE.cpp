@@ -35,7 +35,6 @@
 #include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
-#include "WebSoupCustomProtocolRequestManager.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
@@ -147,6 +146,10 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
     GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "cache", nullptr));
     return WebCore::stringFromFileSystemRepresentation(diskCacheDirectory.get());
+}
+
+void WebProcessPool::platformResolvePathsForSandboxExtensions()
+{
 }
 
 } // namespace WebKit

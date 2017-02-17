@@ -31,6 +31,7 @@
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
 #include "WPEViewClient.h"
+#include <WebCore/ActivityState.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 

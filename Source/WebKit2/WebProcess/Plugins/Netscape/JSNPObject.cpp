@@ -38,6 +38,7 @@
 #include <JavaScriptCore/JSGlobalObject.h>
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/ObjectPrototype.h>
+#include <WebCore/CommonVM.h>
 #include <WebCore/IdentifierRep.h>
 #include <WebCore/JSDOMWindowBase.h>
 #include <wtf/Assertions.h>
@@ -69,8 +70,9 @@ JSNPObject::JSNPObject(JSGlobalObject* globalObject, Structure* structure, NPRun
 
 void JSNPObject::finishCreation(JSGlobalObject* globalObject)
 {
-    Base::finishCreation(globalObject->vm());
-    ASSERT(inherits(info()));
+    VM& vm = globalObject->vm();
+    Base::finishCreation(vm);
+    ASSERT(inherits(vm, info()));
 
     // We should never have an NPJSObject inside a JSNPObject.
     ASSERT(!NPJSObject::isNPJSObject(m_npObject));
@@ -136,7 +138,7 @@ JSValue JSNPObject::callMethod(ExecState* exec, NPIdentifier methodName)
     VOID_TO_NPVARIANT(result);
     
     {
-        JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSLock::DropAllLocks dropAllLocks(commonVM());
         returnValue = m_npObject->_class->invoke(m_npObject, methodName, arguments.data(), argumentCount, &result);
         NPRuntimeObjectMap::moveGlobalExceptionToExecState(exec);
     }
@@ -179,7 +181,7 @@ JSC::JSValue JSNPObject::callObject(JSC::ExecState* exec)
     VOID_TO_NPVARIANT(result);
 
     {
-        JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSLock::DropAllLocks dropAllLocks(commonVM());
         returnValue = m_npObject->_class->invokeDefault(m_npObject, arguments.data(), argumentCount, &result);
         NPRuntimeObjectMap::moveGlobalExceptionToExecState(exec);
     }
@@ -222,7 +224,7 @@ JSValue JSNPObject::callConstructor(ExecState* exec)
     VOID_TO_NPVARIANT(result);
     
     {
-        JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSLock::DropAllLocks dropAllLocks(commonVM());
         returnValue = m_npObject->_class->construct(m_npObject, arguments.data(), argumentCount, &result);
         NPRuntimeObjectMap::moveGlobalExceptionToExecState(exec);
     }
@@ -237,8 +239,8 @@ JSValue JSNPObject::callConstructor(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL callNPJSObject(ExecState* exec)
 {
-    JSObject* object = exec->callee();
-    ASSERT(object->inherits(JSNPObject::info()));
+    JSObject* object = exec->jsCallee();
+    ASSERT(object->inherits(exec->vm(), JSNPObject::info()));
 
     return JSValue::encode(jsCast<JSNPObject*>(object)->callObject(exec));
 }
@@ -256,8 +258,8 @@ JSC::CallType JSNPObject::getCallData(JSC::JSCell* cell, JSC::CallData& callData
 
 static EncodedJSValue JSC_HOST_CALL constructWithConstructor(ExecState* exec)
 {
-    JSObject* constructor = exec->callee();
-    ASSERT(constructor->inherits(JSNPObject::info()));
+    JSObject* constructor = exec->jsCallee();
+    ASSERT(constructor->inherits(exec->vm(), JSNPObject::info()));
 
     return JSValue::encode(jsCast<JSNPObject*>(constructor)->callConstructor(exec));
 }
@@ -345,7 +347,7 @@ bool JSNPObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, J
 
     bool result = false;
     {
-        JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSLock::DropAllLocks dropAllLocks(commonVM());
         result = thisObject->m_npObject->_class->setProperty(thisObject->m_npObject, npIdentifier, &variant);
 
         NPRuntimeObjectMap::moveGlobalExceptionToExecState(exec);
@@ -394,7 +396,7 @@ bool JSNPObject::deleteProperty(ExecState* exec, NPIdentifier propertyName)
     NPRuntimeObjectMap::PluginProtector protector(m_objectMap);
 
     {
-        JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSLock::DropAllLocks dropAllLocks(commonVM());
 
         // FIXME: Should we throw an exception if removeProperty returns false?
         if (!m_npObject->_class->removeProperty(m_npObject, propertyName))
@@ -430,7 +432,7 @@ void JSNPObject::getOwnPropertyNames(JSObject* object, ExecState* exec, Property
     NPRuntimeObjectMap::PluginProtector protector(thisObject->m_objectMap);
     
     {
-        JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSLock::DropAllLocks dropAllLocks(commonVM());
 
         // FIXME: Should we throw an exception if enumerate returns false?
         if (!thisObject->m_npObject->_class->enumerate(thisObject->m_npObject, &identifiers, &identifierCount))
@@ -481,7 +483,7 @@ EncodedJSValue JSNPObject::propertyGetter(ExecState* exec, EncodedJSValue thisVa
     
     bool returnValue;
     {
-        JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSLock::DropAllLocks dropAllLocks(commonVM());
         NPIdentifier npIdentifier = npIdentifierFromIdentifier(propertyName);
         // If the propertyName is symbol.
         if (!npIdentifier)

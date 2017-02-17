@@ -5,45 +5,8 @@ add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Fram
 link_directories(../../WebKitLibraries)
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
-    "${DERIVED_SOURCES_DIR}"
-    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
-    "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${DERIVED_SOURCES_WEBKITLEGACY_DIR}"
-    "${JAVASCRIPTCORE_DIR}"
-    "${JAVASCRIPTCORE_DIR}/dfg"
-    "${WEBCORE_DIR}/accessibility/mac"
-    "${WEBCORE_DIR}/bridge"
-    "${WEBCORE_DIR}/bridge/jsc"
-    "${WEBCORE_DIR}/bridge/objc"
-    "${WEBCORE_DIR}/ForwardingHeaders/inspector"
-    "${WEBCORE_DIR}/html/track"
-    "${WEBCORE_DIR}/loader/archive/cf"
-    "${WEBCORE_DIR}/loader/cf"
-    "${WEBCORE_DIR}/loader/mac"
-    "${WEBCORE_DIR}/page/cocoa"
-    "${WEBCORE_DIR}/page/mac"
-    "${WEBCORE_DIR}/platform"
-    "${WEBCORE_DIR}/platform/cf"
-    "${WEBCORE_DIR}/platform/cocoa"
-    "${WEBCORE_DIR}/platform/graphics/avfoundation"
-    "${WEBCORE_DIR}/platform/graphics/avfoundation/cf"
-    "${WEBCORE_DIR}/platform/graphics/avfoundation/objc"
-    "${WEBCORE_DIR}/platform/graphics/ca"
-    "${WEBCORE_DIR}/platform/graphics/ca/mac"
-    "${WEBCORE_DIR}/platform/graphics/cocoa"
-    "${WEBCORE_DIR}/platform/graphics/cg"
-    "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/mac"
-    "${WEBCORE_DIR}/platform/mac"
-    "${WEBCORE_DIR}/platform/network/cocoa"
-    "${WEBCORE_DIR}/platform/network/cf"
-    "${WEBCORE_DIR}/platform/network/mac"
-    "${WEBCORE_DIR}/platform/text/cf"
-    "${WEBCORE_DIR}/platform/text/mac"
-    "${WEBCORE_DIR}/plugins/mac"
-    "${WEBCORE_DIR}/rendering/shapes"
-    "${WTF_DIR}"
-    ../../WebKitLibraries
+    "${CMAKE_SOURCE_DIR}/WebKitLibraries"
 )
 
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
@@ -97,8 +60,6 @@ list(APPEND WebKit_SOURCES
     mac/DOM/DOMCSSValue.mm
     mac/DOM/DOMCSSValueList.mm
     mac/DOM/DOMCustomXPathNSResolver.mm
-    mac/DOM/DOMDOMImplementation.mm
-    mac/DOM/DOMDOMTokenList.mm
     mac/DOM/DOMDocument.mm
     mac/DOM/DOMDocumentFragment.mm
     mac/DOM/DOMDocumentType.mm
@@ -170,6 +131,7 @@ list(APPEND WebKit_SOURCES
     mac/DOM/DOMHTMLUListElement.mm
     mac/DOM/DOMHTMLVideoElement.mm
     mac/DOM/DOMInternal.mm
+    mac/DOM/DOMImplementation.mm
     mac/DOM/DOMKeyboardEvent.mm
     mac/DOM/DOMMediaError.mm
     mac/DOM/DOMMediaList.mm
@@ -191,6 +153,7 @@ list(APPEND WebKit_SOURCES
     mac/DOM/DOMText.mm
     mac/DOM/DOMTextEvent.mm
     mac/DOM/DOMTimeRanges.mm
+    mac/DOM/DOMTokenList.mm
     mac/DOM/DOMTreeWalker.mm
     mac/DOM/DOMUIEvent.mm
     mac/DOM/DOMUIKitExtensions.mm
@@ -312,6 +275,7 @@ list(APPEND WebKit_SOURCES
     mac/WebCoreSupport/WebSelectionServiceController.mm
     mac/WebCoreSupport/WebSystemInterface.mm
     mac/WebCoreSupport/WebUserMediaClient.mm
+    mac/WebCoreSupport/WebValidationMessageClient.mm
     mac/WebCoreSupport/WebVisitedLinkStore.mm
 
     mac/WebInspector/WebInspector.mm

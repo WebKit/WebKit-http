@@ -41,6 +41,7 @@ namespace WebCore {
 
 class FloatRect;
 class GraphicsContext;
+class AVVideoSourcePreview;
 
 class AVVideoCaptureSource : public AVMediaCaptureSource {
 public:
@@ -58,13 +59,13 @@ private:
 
     void updateSettings(RealtimeMediaSourceSettings&) final;
 
-    void applySizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>) final;
+    void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
     bool applySize(const IntSize&) final;
     bool applyFrameRate(double) final;
     bool setPreset(NSString*);
 
-    NSString *bestSessionPresetForVideoDimensions(Optional<int> width, Optional<int> height) const;
-    bool supportsSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>) final;
+    NSString *bestSessionPresetForVideoDimensions(std::optional<int> width, std::optional<int> height) const;
+    bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
 
     void initializeCapabilities(RealtimeMediaSourceCapabilities&) final;
     void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) final;
@@ -77,7 +78,6 @@ private:
     void processNewFrame(RetainPtr<CMSampleBufferRef>);
 
     void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) final;
-    PlatformLayer* platformLayer() const final;
 
     RetainPtr<CGImageRef> currentFrameCGImage();
     RefPtr<Image> currentFrameImage() final;
@@ -85,8 +85,9 @@ private:
     RetainPtr<NSString> m_pendingPreset;
     RetainPtr<CMSampleBufferRef> m_buffer;
     RetainPtr<CGImageRef> m_lastImage;
+    RetainPtr<AVCaptureVideoDataOutput> m_videoOutput;
+
     Vector<Float64> m_videoFrameTimeStamps;
-    mutable RetainPtr<PlatformLayer> m_videoPreviewLayer;
     Float64 m_frameRate { 0 };
     int32_t m_width { 0 };
     int32_t m_height { 0 };

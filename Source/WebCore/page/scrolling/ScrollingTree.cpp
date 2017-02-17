@@ -37,7 +37,7 @@
 #include "ScrollingTreeOverflowScrollingNode.h"
 #include "ScrollingTreeScrollingNode.h"
 #include "TextStream.h"
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 
 namespace WebCore {
 
@@ -112,7 +112,7 @@ void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID n
     downcast<ScrollingTreeOverflowScrollingNode>(*node).updateLayersAfterDelegatedScroll(scrollPosition);
 
     // Update GraphicsLayers and scroll state.
-    scrollingTreeNodeDidScroll(nodeID, scrollPosition, Nullopt, inUserInteration ? SyncScrollingLayerPosition : SetScrollingLayerPosition);
+    scrollingTreeNodeDidScroll(nodeID, scrollPosition, std::nullopt, inUserInteration ? ScrollingLayerPositionAction::Sync : ScrollingLayerPositionAction::Set);
 }
 
 void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollingStateTree)
@@ -138,7 +138,7 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
     }
     
     bool scrollRequestIsProgammatic = rootNode ? rootNode->requestedScrollPositionRepresentsProgrammaticScroll() : false;
-    TemporaryChange<bool> changeHandlingProgrammaticScroll(m_isHandlingProgrammaticScroll, scrollRequestIsProgammatic);
+    SetForScope<bool> changeHandlingProgrammaticScroll(m_isHandlingProgrammaticScroll, scrollRequestIsProgammatic);
 
     removeDestroyedNodes(*scrollingStateTree);
 
@@ -179,7 +179,7 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
         if (parentIt != m_nodeMap.end()) {
             ScrollingTreeNode* parent = parentIt->value;
             node->setParent(parent);
-            parent->appendChild(node);
+            parent->appendChild(*node);
         }
     }
 
@@ -189,7 +189,7 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
     if (auto nodeChildren = node->children()) {
         for (auto& childScrollingNode : *nodeChildren) {
             childScrollingNode->setParent(nullptr);
-            orphanNodes.add(childScrollingNode->scrollingNodeID(), childScrollingNode);
+            orphanNodes.add(childScrollingNode->scrollingNodeID(), childScrollingNode.get());
         }
         nodeChildren->clear();
     }

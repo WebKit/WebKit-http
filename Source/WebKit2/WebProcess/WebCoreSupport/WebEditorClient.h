@@ -71,8 +71,8 @@ private:
     void didWriteSelectionToPasteboard() final;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final;
     
-    void registerUndoStep(PassRefPtr<WebCore::UndoStep>) final;
-    void registerRedoStep(PassRefPtr<WebCore::UndoStep>) final;
+    void registerUndoStep(WebCore::UndoStep&) final;
+    void registerRedoStep(WebCore::UndoStep&) final;
     void clearUndoRedoOperations() final;
 
     bool canCopyCut(WebCore::Frame*, bool defaultValue) const final;
@@ -149,7 +149,7 @@ private:
     void getGuessesForWord(const String& word, const String& context, const WebCore::VisibleSelection& currentSelection, Vector<String>& guesses) final;
     void willSetInputMethodState() final;
     void setInputMethodState(bool enabled) final;
-    void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>, const WebCore::VisibleSelection& currentSelection) final;
+    void requestCheckingOfString(WebCore::TextCheckingRequest&, const WebCore::VisibleSelection& currentSelection) final;
 
 #if PLATFORM(GTK)
     bool shouldShowUnicodeMenu() final;

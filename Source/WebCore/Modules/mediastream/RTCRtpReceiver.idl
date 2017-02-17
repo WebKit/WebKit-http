@@ -29,7 +29,8 @@
  */
 
 [
-    Conditional=WEB_RTC
+    Conditional=WEB_RTC,
+    EnabledAtRuntime=PeerConnection,
 ] interface RTCRtpReceiver {
     readonly attribute MediaStreamTrack track;
 };

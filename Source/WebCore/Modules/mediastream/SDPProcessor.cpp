@@ -34,6 +34,7 @@
 #if ENABLE(WEB_RTC)
 #include "SDPProcessor.h"
 
+#include "CommonVM.h"
 #include "Document.h"
 #include "Frame.h"
 #include "SDPProcessorScriptResource.h"
@@ -327,15 +328,15 @@ static RefPtr<MediaEndpointSessionConfiguration> configurationFromJSON(const Str
     return configuration;
 }
 
-static Optional<IceCandidate> iceCandidateFromJSON(const String& json)
+static std::optional<IceCandidate> iceCandidateFromJSON(const String& json)
 {
     RefPtr<InspectorValue> value;
     if (!InspectorValue::parseJSON(json, value))
-        return Nullopt;
+        return std::nullopt;
 
     RefPtr<InspectorObject> candidateObject;
     if (!value->asObject(candidateObject))
-        return Nullopt;
+        return std::nullopt;
 
     return createCandidate(*candidateObject);
 }
@@ -495,7 +496,7 @@ bool SDPProcessor::callScript(const String& functionName, const String& argument
         return false;
 
     if (!m_isolatedWorld)
-        m_isolatedWorld = DOMWrapperWorld::create(JSDOMWindow::commonVM());
+        m_isolatedWorld = DOMWrapperWorld::create(commonVM());
 
     ScriptController& scriptController = document->frame()->script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(*m_isolatedWorld));
@@ -537,7 +538,7 @@ bool SDPProcessor::callScript(const String& functionName, const String& argument
     if (!result.isString())
         return false;
 
-    outResult = result.getString(exec);
+    outResult = asString(result)->value(exec);
     return true;
 }
 

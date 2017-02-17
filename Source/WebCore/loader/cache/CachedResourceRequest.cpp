@@ -39,7 +39,7 @@
 
 namespace WebCore {
 
-CachedResourceRequest::CachedResourceRequest(ResourceRequest&& resourceRequest, const ResourceLoaderOptions& options, Optional<ResourceLoadPriority> priority, String&& charset)
+CachedResourceRequest::CachedResourceRequest(ResourceRequest&& resourceRequest, const ResourceLoaderOptions& options, std::optional<ResourceLoadPriority> priority, String&& charset)
     : m_resourceRequest(WTFMove(resourceRequest))
     , m_charset(WTFMove(charset))
     , m_options(options)
@@ -59,15 +59,17 @@ String CachedResourceRequest::splitFragmentIdentifierFromRequestURL(ResourceRequ
     return fragmentIdentifier;
 }
 
-void CachedResourceRequest::setInitiator(PassRefPtr<Element> element)
+void CachedResourceRequest::setInitiator(Element& element)
 {
-    ASSERT(!m_initiatorElement && m_initiatorName.isEmpty());
-    m_initiatorElement = element;
+    ASSERT(!m_initiatorElement);
+    ASSERT(m_initiatorName.isEmpty());
+    m_initiatorElement = &element;
 }
 
 void CachedResourceRequest::setInitiator(const AtomicString& name)
 {
-    ASSERT(!m_initiatorElement && m_initiatorName.isEmpty());
+    ASSERT(!m_initiatorElement);
+    ASSERT(m_initiatorName.isEmpty());
     m_initiatorName = name;
 }
 
@@ -85,25 +87,27 @@ const AtomicString& CachedResourceRequest::initiatorName() const
 void CachedResourceRequest::setAsPotentiallyCrossOrigin(const String& mode, Document& document)
 {
     ASSERT(m_options.mode == FetchOptions::Mode::NoCors);
-    ASSERT(document.securityOrigin());
 
-    m_origin = document.securityOrigin();
+    m_origin = &document.securityOrigin();
 
     if (mode.isNull())
         return;
-    m_options.mode = FetchOptions::Mode::Cors;
-    m_options.credentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
-    m_options.allowCredentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? AllowStoredCredentials : DoNotAllowStoredCredentials;
 
-    WebCore::updateRequestForAccessControl(m_resourceRequest, *document.securityOrigin(), m_options.allowCredentials);
+    m_options.mode = FetchOptions::Mode::Cors;
+
+    FetchOptions::Credentials credentials = equalLettersIgnoringASCIICase(mode, "omit")
+        ? FetchOptions::Credentials::Omit : equalLettersIgnoringASCIICase(mode, "use-credentials")
+        ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
+    m_options.credentials = credentials;
+    m_options.allowCredentials = credentials == FetchOptions::Credentials::Include ? AllowStoredCredentials : DoNotAllowStoredCredentials;
+    WebCore::updateRequestForAccessControl(m_resourceRequest, document.securityOrigin(), m_options.allowCredentials);
 }
 
 void CachedResourceRequest::updateForAccessControl(Document& document)
 {
     ASSERT(m_options.mode == FetchOptions::Mode::Cors);
-    ASSERT(document.securityOrigin());
 
-    m_origin = document.securityOrigin();
+    m_origin = &document.securityOrigin();
     WebCore::updateRequestForAccessControl(m_resourceRequest, *m_origin, m_options.allowCredentials);
 }
 
@@ -125,13 +129,10 @@ void CachedResourceRequest::upgradeInsecureRequestIfNeeded(Document& document)
     upgradeInsecureResourceRequestIfNeeded(m_resourceRequest, document);
 }
 
-#if ENABLE(CACHE_PARTITIONING)
 void CachedResourceRequest::setDomainForCachePartition(Document& document)
 {
-    ASSERT(document.topOrigin());
-    m_resourceRequest.setDomainForCachePartition(document.topOrigin()->domainForCachePartition());
+    m_resourceRequest.setDomainForCachePartition(document.topOrigin().domainForCachePartition());
 }
-#endif
 
 static inline String acceptHeaderValueFromType(CachedResource::Type type)
 {
@@ -205,10 +206,12 @@ void CachedResourceRequest::removeFragmentIdentifierIfNeeded()
 }
 
 #if ENABLE(CONTENT_EXTENSIONS)
+
 void CachedResourceRequest::applyBlockedStatus(const ContentExtensions::BlockedStatus& blockedStatus)
 {
     ContentExtensions::applyBlockedStatusToRequest(blockedStatus, m_resourceRequest);
 }
+
 #endif
 
 void CachedResourceRequest::updateReferrerOriginAndUserAgentHeaders(FrameLoader& frameLoader, ReferrerPolicy defaultPolicy)

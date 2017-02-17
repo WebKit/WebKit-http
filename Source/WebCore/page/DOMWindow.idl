@@ -33,13 +33,17 @@
     CustomPreventExtensions,
     CustomProxyToJSObject,
     CustomPutFunction,
+    CustomToStringName,
     ExportMacro=WEBCORE_EXPORT,
     ImplicitThis,
     InterfaceName=Window,
+    IsImmutablePrototypeExoticObject,
+    IsImmutablePrototypeExoticObjectOnPrototype,
     JSCustomDefineOwnProperty,
     JSCustomMarkFunction,
     JSCustomToNativeObject,
     JSLegacyParent=JSDOMWindowBase,
+    LegacyUnenumerableNamedProperties,
     PrimaryGlobal,
 ] interface DOMWindow : EventTarget {
     [Replaceable] readonly attribute Screen screen;
@@ -133,9 +137,6 @@
 
     [NewObject] CSSStyleDeclaration getComputedStyle(Element element, optional DOMString? pseudoElement = null);
 
-    // FIXME: Drop the following overload of getComputedStyle once <rdar://problem/28020681> has been fixed.
-    [NewObject, MayThrowException] CSSStyleDeclaration? getComputedStyle(Document document, optional DOMString? pseudoElement = null);
-
     CSSRuleList getMatchedCSSRules(optional Element? element = null, optional DOMString? pseudoElement = null);
 
     [Replaceable] readonly attribute unrestricted double devicePixelRatio;
@@ -152,26 +153,28 @@
     // 0 when straight up; -90 when rotated 90 degrees clockwise; 90 counter clockwise.
     [Conditional=ORIENTATION_EVENTS] readonly attribute long orientation;
 
-    [DoNotCheckSecurity, Custom, MayThrowException, ForwardDeclareInHeader] void postMessage(SerializedScriptValue message, USVString targetOrigin, optional Array messagePorts);
+    [CallWith=ScriptState&CallerWindow, DoNotCheckSecurity, ForwardDeclareInHeader, MayThrowException] void postMessage(any message, USVString targetOrigin, optional sequence<object> transfer = []);
 
-    [Conditional=WEB_TIMING, Replaceable] readonly attribute Performance performance;
-
-    [Conditional=REQUEST_ANIMATION_FRAME] long requestAnimationFrame(RequestAnimationFrameCallback callback);
-    [Conditional=REQUEST_ANIMATION_FRAME] void cancelAnimationFrame(long id);
-    [Conditional=REQUEST_ANIMATION_FRAME] long webkitRequestAnimationFrame(RequestAnimationFrameCallback callback);
-    [Conditional=REQUEST_ANIMATION_FRAME, ImplementedAs=cancelAnimationFrame] void webkitCancelAnimationFrame(long id);
-    [Conditional=REQUEST_ANIMATION_FRAME, ImplementedAs=cancelAnimationFrame] void webkitCancelRequestAnimationFrame(long id); // This is a deprecated alias for webkitCancelAnimationFrame(). Remove this when removing vendor prefix.
+    long requestAnimationFrame(RequestAnimationFrameCallback callback);
+    void cancelAnimationFrame(long id);
+    long webkitRequestAnimationFrame(RequestAnimationFrameCallback callback);
+    [ImplementedAs=cancelAnimationFrame] void webkitCancelAnimationFrame(long id);
+    [ImplementedAs=cancelAnimationFrame] void webkitCancelRequestAnimationFrame(long id); // This is a deprecated alias for webkitCancelAnimationFrame(). Remove this when removing vendor prefix.
 
     void captureEvents(); // Not implemented. Also not in modern standards. Empty function may help compatibility with legacy content.
     void releaseEvents(); // Not implemented. Also not in modern standards. Empty function may help compatibility with legacy content.
 
-    [CustomGetter, CustomConstructor] attribute HTMLImageElementNamedConstructor Image;
     attribute XMLDocumentConstructor SVGDocument;
 
     attribute DOMURLConstructor webkitURL; // FIXME: Deprecate this.
     attribute MutationObserverConstructor WebKitMutationObserver; // FIXME: Remove once we prove it is not needed for compatibility with legacy content.
 
     [EnabledAtRuntime=CustomElements, ImplementedAs=ensureCustomElementRegistry] readonly attribute CustomElementRegistry customElements;
+
+    [MayThrowException, EnabledForWorld=shadowRootIsAlwaysOpen]
+    NodeList collectMatchingElementsInFlatTree(Node scope, DOMString selectors);
+    [MayThrowException, EnabledForWorld=shadowRootIsAlwaysOpen]
+    Element? matchingElementInFlatTree(Node scope, DOMString selectors);
 
     // Event handlers unique to Element and DOMWindow.
     // FIXME: Should these be exposed on Document as well (and therefore moved to GlobalEventHandlers.idl)?
@@ -195,5 +198,6 @@
 
 DOMWindow implements GlobalCrypto;
 DOMWindow implements GlobalEventHandlers;
+DOMWindow implements GlobalPerformance;
 DOMWindow implements WindowEventHandlers;
 DOMWindow implements WindowOrWorkerGlobalScope;

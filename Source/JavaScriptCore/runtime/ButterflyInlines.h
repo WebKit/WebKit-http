@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,21 +59,32 @@ ALWAYS_INLINE unsigned Butterfly::optimalContiguousVectorLength(Structure* struc
     return optimalContiguousVectorLength(structure ? structure->outOfLineCapacity() : 0, vectorLength);
 }
 
-inline Butterfly* Butterfly::createUninitialized(VM& vm, JSCell* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes)
+inline Butterfly* Butterfly::createUninitialized(VM& vm, JSCell*, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes)
 {
     size_t size = totalSize(preCapacity, propertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes);
-    void* base = vm.heap.allocateAuxiliary(intendedOwner, size);
+    void* base = vm.auxiliarySpace.allocate(size);
     Butterfly* result = fromBase(base, preCapacity, propertyCapacity);
+    return result;
+}
+
+inline Butterfly* Butterfly::tryCreate(VM& vm, JSCell*, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader& indexingHeader, size_t indexingPayloadSizeInBytes)
+{
+    size_t size = totalSize(preCapacity, propertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes);
+    void* base = vm.auxiliarySpace.tryAllocate(size);
+    if (!base)
+        return nullptr;
+    Butterfly* result = fromBase(base, preCapacity, propertyCapacity);
+    if (hasIndexingHeader)
+        *result->indexingHeader() = indexingHeader;
+    memset(result->propertyStorage() - propertyCapacity, 0, propertyCapacity * sizeof(EncodedJSValue));
     return result;
 }
 
 inline Butterfly* Butterfly::create(VM& vm, JSCell* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader& indexingHeader, size_t indexingPayloadSizeInBytes)
 {
-    Butterfly* result = createUninitialized(
-        vm, intendedOwner, preCapacity, propertyCapacity, hasIndexingHeader,
-        indexingPayloadSizeInBytes);
-    if (hasIndexingHeader)
-        *result->indexingHeader() = indexingHeader;
+    Butterfly* result = tryCreate(vm, intendedOwner, preCapacity, propertyCapacity, hasIndexingHeader, indexingHeader, indexingPayloadSizeInBytes);
+
+    RELEASE_ASSERT(result);
     return result;
 }
 
@@ -105,6 +116,10 @@ inline Butterfly* Butterfly::createOrGrowPropertyStorage(
         result->propertyStorage() - oldPropertyCapacity,
         oldButterfly->propertyStorage() - oldPropertyCapacity,
         totalSize(0, oldPropertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes));
+    memset(
+        result->propertyStorage() - newPropertyCapacity,
+        0,
+        (newPropertyCapacity - oldPropertyCapacity) * sizeof(EncodedJSValue));
     return result;
 }
 
@@ -129,14 +144,16 @@ inline Butterfly* Butterfly::growArrayRight(
     size_t newIndexingPayloadSizeInBytes)
 {
     ASSERT_UNUSED(oldStructure, !indexingHeader()->preCapacity(oldStructure));
-    ASSERT_UNUSED(oldStructure, hadIndexingHeader == oldStructure->hasIndexingHeader(intendedOwner));
+    ASSERT_UNUSED(intendedOwner, hadIndexingHeader == oldStructure->hasIndexingHeader(intendedOwner));
     void* theBase = base(0, propertyCapacity);
     size_t oldSize = totalSize(0, propertyCapacity, hadIndexingHeader, oldIndexingPayloadSizeInBytes);
     size_t newSize = totalSize(0, propertyCapacity, true, newIndexingPayloadSizeInBytes);
-    theBase = vm.heap.tryReallocateAuxiliary(intendedOwner, theBase, oldSize, newSize);
-    if (!theBase)
-        return 0;
-    return fromBase(theBase, 0, propertyCapacity);
+    void* newBase = vm.auxiliarySpace.tryAllocate(newSize);
+    if (!newBase)
+        return nullptr;
+    // FIXME: This probably shouldn't be a memcpy.
+    memcpy(newBase, theBase, oldSize);
+    return fromBase(newBase, 0, propertyCapacity);
 }
 
 inline Butterfly* Butterfly::growArrayRight(

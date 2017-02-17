@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "JSDOMBinding.h"
+#include "JSDOMConvert.h"
 #include <runtime/IteratorPrototype.h>
 #include <runtime/JSDestructibleObject.h>
 #include <type_traits>
@@ -119,7 +119,7 @@ private:
 
     static void destroy(JSC::JSCell*);
 
-    Optional<typename DOMWrapped::Iterator> m_iterator;
+    std::optional<typename DOMWrapped::Iterator> m_iterator;
     IterationKind m_kind;
 };
 
@@ -225,7 +225,7 @@ template<typename JSIterator> JSC::JSValue iteratorForEach(JSC::ExecState& state
 template<typename JSWrapper, typename IteratorTraits>
 void JSDOMIterator<JSWrapper, IteratorTraits>::destroy(JSCell* cell)
 {
-    JSDOMIterator<JSWrapper, IteratorTraits>* thisObject = JSC::jsCast<JSDOMIterator<JSWrapper, IteratorTraits>*>(cell);
+    JSDOMIterator<JSWrapper, IteratorTraits>* thisObject = static_cast<JSDOMIterator<JSWrapper, IteratorTraits>*>(cell);
     thisObject->JSDOMIterator<JSWrapper, IteratorTraits>::~JSDOMIterator();
 }
 
@@ -236,7 +236,7 @@ JSC::JSValue JSDOMIterator<JSWrapper, IteratorTraits>::next(JSC::ExecState& stat
         auto iteratorValue = m_iterator->next();
         if (iteratorValue)
             return createIteratorResultObject(&state, asJS(state, iteratorValue), false);
-        m_iterator = Nullopt;
+        m_iterator = std::nullopt;
     }
     return createIteratorResultObject(&state, JSC::jsUndefined(), true);
 }
@@ -247,7 +247,7 @@ JSC::EncodedJSValue JSC_HOST_CALL JSDOMIteratorPrototype<JSWrapper, IteratorTrai
     JSC::VM& vm = state->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto iterator = jsDynamicDowncast<JSDOMIterator<JSWrapper, IteratorTraits>*>(state->thisValue());
+    auto iterator = jsDynamicDowncast<JSDOMIterator<JSWrapper, IteratorTraits>*>(vm, state->thisValue());
     if (!iterator)
         return JSC::JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Cannot call next() on a non-Iterator object")));
 
@@ -258,7 +258,7 @@ template<typename JSWrapper, typename IteratorTraits>
 void JSDOMIteratorPrototype<JSWrapper, IteratorTraits>::finishCreation(JSC::VM& vm, JSC::JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, next, 0, 0, JSC::NoIntrinsic);
 }

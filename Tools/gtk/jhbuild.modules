@@ -48,6 +48,8 @@
   <!-- Please use http/https to access repositories to be friendly to users stuck behind firewalls. -->
   <repository type="git" name="github.com"
       href="https://github.com"/>
+  <repository type="tarball" name="github-tarball"
+      href="https://github.com/"/>
   <repository type="tarball" name="sourceware.org-mirror"
       href="http://mirrors.kernel.org/sources.redhat.com/"/>
   <repository type="tarball" name="ftp.gnome.org"
@@ -99,8 +101,12 @@
   <!-- FIXME: Pixman 0.32.6 isn't buildable with Clang, but disable-mmx option fixes
               the build. This workaround can be removed once the original bug is fixed.
               Details can be found here: https://bugs.webkit.org/show_bug.cgi?id=151441 -->
+  <!-- FIXME: Pixman 0.32.6 ARM iwMMXt fast path isn't buildable with GCC 4.9 and
+              ARM traditional instruction set. It causes a build failure on Raspbian.
+              This workaround can be removed once we raise the minimum GCC version
+              for WebKitGTK+ above 4.9 -->
   <autotools id="pixman" autogen-sh="configure"
-             autogenargs="--enable-gtk=no --disable-mmx">
+             autogenargs="--enable-gtk=no --disable-mmx --disable-arm-iwmmxt">
     <branch module="releases/pixman-0.32.6.tar.gz" version="0.32.6"
             repo="cairographics.org"
             hash="sha256:3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904"
@@ -194,7 +200,9 @@
     </dependencies>
     <branch module="/pub/GNOME/sources/gtk+/3.16/gtk+-3.16.4.tar.xz" version="3.16.4"
             repo="ftp.gnome.org"
-            hash="sha256:1ee5dbd7a4cb81a91eaa1b7ae64ba5a3eab6a3c0a764155583ab96524590fc8e"/>
+            hash="sha256:1ee5dbd7a4cb81a91eaa1b7ae64ba5a3eab6a3c0a764155583ab96524590fc8e">
+      <patch file="gtk+-configure-fix-detecting-CUPS-2.x.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="glib"
@@ -232,9 +240,9 @@
     <dependencies>
       <dep package="glib-networking"/>
     </dependencies>
-    <branch module="libsoup" version="2.49.91.1"
+    <branch module="libsoup" version="2.57.1"
             repo="git.gnome.org"
-            tag="f7292448160128b3cb4b7cd06c2447f81fd8c6c9"/>
+            tag="6acdbacc107c99fe6f05b78b81f4a40fb3fde9e9"/>
   </autotools>
 
   <autotools id="fontconfig" 
@@ -343,7 +351,7 @@
             md5sum="af1bf3dab9e69f3c36f389285e2a12a1"/>
   </autotools>
 
-  <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
+  <autotools id="gstreamer" autogen-sh="configure" autogenargs="--disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
     </if>
@@ -353,11 +361,13 @@
     <branch module="gstreamer/gstreamer-${version}.tar.xz" version="1.8.0"
             repo="gstreamer"
             hash="sha256:947a314a212b5d94985d89b43440dbe66b696e12bbdf9a2f78967b98d74abedc"
-            md5sum="6846d7289ec323c38c49b818171e955a"/>
+            md5sum="6846d7289ec323c38c49b818171e955a">
+      <patch file="gstreamer-0001-protection-added-function-to-filter-system-ids.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="gst-plugins-base"
-             autogen-sh="autogen.sh"
+             autogen-sh="configure"
              autogenargs="--disable-examples --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
@@ -371,12 +381,13 @@
             md5sum="20cc8231609318310f2a55f64c86cbb4"/>
   </autotools>
 
-  <autotools id="gst-plugins-good" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
+  <autotools id="gst-plugins-good" autogen-sh="configure" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
     </if>
     <dependencies>
       <dep package="gst-plugins-base"/>
+      <dep package="libvpx"/>
     </dependencies>
 
     <branch module="gst-plugins-good/gst-plugins-good-${version}.tar.xz" version="1.8.0"
@@ -385,23 +396,31 @@
             md5sum="91ed4649c7c2e43a61f731d144f6f6d0">
       <patch file="gst-plugins-good-use-the-tfdt-decode-time.patch" strip="1"/>
       <patch file="gst-plugins-good-Revert-qtdemux-expose-streams-with-first-moof-for-fr.patch" strip="1"/>
+      <patch file="gst-plugins-good-0001-rtpbin-pipeline-gets-an-EOS-when-any-rtpsources-byes.patch" strip="1"/>
+      <patch file="gst-plugins-good-0002-rtpbin-avoid-generating-errors-when-rtcp-messages-ar.patch" strip="1"/>
+      <patch file="gst-plugins-good-0003-rtpbin-receive-bundle-support.patch" strip="1"/>
+      <patch file="gst-plugins-good-0004-qtdemux-add-context-for-a-preferred-protection.patch" strip="1"/>
     </branch>
   </autotools>
 
-  <autotools id="gst-plugins-bad" autogenargs="--disable-examples --disable-gtk-doc">
+  <autotools id="gst-plugins-bad" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
     </if>
     <dependencies>
       <dep package="gst-plugins-base"/>
+      <dep package="openh264"/>
     </dependencies>
     <branch module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" version="1.8.0"
             repo="gstreamer"
             hash="sha256:116376dd1085082422e0b21b0ecd3d1cb345c469c58e32463167d4675f4ca90e"
-            md5sum="1c2d797bb96a81e9ef570c7a0a37203e"/>
+            md5sum="1c2d797bb96a81e9ef570c7a0a37203e">
+      <patch file="gst-plugins-bad-0001-dtls-port-to-OpenSSL-1.1.0.patch" strip="1"/>
+      <patch file="gst-plugins-bad-0002-dtlscertificate-Fix-error-checking-in-RSA_generate_k.patch" strip="1"/>
+    </branch>
   </autotools>
 
-  <autotools id="gst-libav" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
+  <autotools id="gst-libav" autogen-sh="configure" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
@@ -478,7 +497,7 @@
     autogenargs="--disable-dri3 --enable-dri --enable-glx --enable-egl --with-egl-platforms=x11,wayland --with-dri-drivers=swrast --with-gallium-drivers=swrast">
     <!--- WARNING: At jhbuildrc, when we define the path to the Gallium llvmpipe software rasterizer (needed by XvfbDriver),
           we assume that the directory is named "Mesa". So, don't change the checkoutdir name even if you update the version.  -->
-    <branch module="/~brianp/mesa/11.0.6/mesa-11.0.6.tar.xz" version="11.0.6"
+    <branch module="/~brianp/mesa/older-versions/11.x/11.0.6/mesa-11.0.6.tar.xz" version="11.0.6"
             checkoutdir="Mesa"
             repo="people.freedesktop.org"
             hash="sha256:8340e64cdc91999840404c211496f3de38e7b4cb38db34e2f72f1642c5134760">
@@ -492,21 +511,38 @@
 
   <autotools id="libusrsctp" supports-non-srcdir-builds="no" autogen-sh="./bootstrap; ./configure --disable-warnings-as-errors">
     <branch repo="github.com" module="sctplab/usrsctp.git" checkoutdir="usrsctp" tag="078ff3252f73327e0ac11d6fd5eff62011f6646e"/>
-   </autotools>
+  </autotools>
+
+  <autotools id="openh264" supports-non-srcdir-builds="no" autogen-sh="pseudo-configure">
+    <branch module="cisco/openh264/archive/v${version}.tar.gz" version="1.5.0"
+            checkoutdir="openh264-${version}" repo="github-tarball">
+      <patch file="openh264-configure.patch" strip="0"/>
+    </branch>
+  </autotools>
+
+  <autotools id="libvpx"
+    autogen-template="%(srcdir)s/configure --prefix=%(prefix)s --enable-pic --as=yasm --disable-unit-tests --size-limit=16384x16384 --enable-postproc --enable-multi-res-encoding --enable-temporal-denoising --enable-vp9-temporal-denoising --enable-vp9-postproc --enable-shared">
+    <branch repo="github.com" module="webmproject/libvpx.git" version="1.6.0" checkoutdir="libvpx-1.6.0">
+    </branch>
+  </autotools>
 
    <autotools id="gst-plugins-openwebrtc" supports-parallel-builds="no" supports-non-srcdir-builds="no" autogen-sh="./autogen.sh; ./configure">
      <dependencies>
        <dep package="gst-plugins-base"/>
        <dep package="libusrsctp"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc-gst-plugins.git" checkoutdir="gst-plugins-openwebrtc" tag="f40f3302007da00f0bfb82065d705b62c2ea1afd"/>
+    <branch repo="github.com" module="Igalia/openwebrtc-gst-plugins.git" checkoutdir="gst-plugins-openwebrtc" tag="9b2199ea970369dbf1d9ca2f8e61c95f21db2b6e"/>
    </autotools>
 
-   <autotools id="libnice" supports-non-srcdir-builds="no">
+  <autotools id="libnice" supports-non-srcdir-builds="no">
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch repo="freedesktop-git" module="libnice/libnice.git" tag="0.1.13" checkoutdir="libnice"/>
+    <branch module="libnice/libnice/archive/${version}.tar.gz" version="2803a0b4b70af9684e05ef5ed3f0c2fbca4b6c93"
+            checkoutdir="libnice-${version}" repo="github-tarball">
+      <patch file="libnice-0001-nicesrc-spin-the-agent-mainloop-in-a-separate-thread.patch" strip="1"/>
+      <patch file="libnice-0001-TURN-allow-REALM-to-be-empty.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="openwebrtc" autogenargs="--enable-bridge=no --enable-owr-gst=yes">
@@ -515,7 +551,7 @@
       <dep package="gst-plugins-bad"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="0b28b080d61af3adb1f779e693fc029f9c1ad499"/>
+    <branch repo="github.com" module="Igalia/openwebrtc.git" checkoutdir="openwebrtc" tag="7f3d23e034818893db198f4b56e41609abd8847b"/>
   </autotools>
 
   <autotools id="llvm"

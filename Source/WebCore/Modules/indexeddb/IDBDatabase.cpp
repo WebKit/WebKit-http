@@ -43,6 +43,7 @@
 #include "IDBVersionChangeEvent.h"
 #include "Logging.h"
 #include "ScriptExecutionContext.h"
+#include <heap/HeapInlines.h>
 
 namespace WebCore {
 
@@ -202,6 +203,8 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(StringOrVectorOfString
     }
 
     auto info = IDBTransactionInfo::clientTransaction(m_connectionProxy.get(), objectStores, mode);
+
+    LOG(IndexedDBOperations, "IDB creating transaction: %s", info.loggingString().utf8().data());
     auto transaction = IDBTransaction::create(*this, info);
 
     LOG(IndexedDB, "IDBDatabase::transaction - Added active transaction %s", info.identifier().loggingString().utf8().data());

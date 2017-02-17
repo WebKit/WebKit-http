@@ -97,6 +97,7 @@ class HTMLMediaElement;
 class UserInputBridge;
 class InspectorClient;
 class InspectorController;
+class LibWebRTCProvider;
 class MainFrame;
 class MediaCanStartListener;
 class MediaPlaybackTarget;
@@ -104,6 +105,7 @@ class PageConfiguration;
 class PageConsoleClient;
 class PageDebuggable;
 class PageGroup;
+class PerformanceMonitor;
 class PlugInClient;
 class PluginData;
 class PluginInfoProvider;
@@ -127,10 +129,19 @@ class UserContentProvider;
 class ValidationMessageClient;
 class ActivityStateChangeObserver;
 class VisitedLinkStore;
+class WebGLStateTracker;
 
 typedef uint64_t LinkHash;
 
-enum FindDirection { FindDirectionForward, FindDirectionBackward };
+enum FindDirection {
+    FindDirectionForward,
+    FindDirectionBackward
+};
+
+enum class EventThrottlingBehavior {
+    Responsive,
+    Unresponsive
+};
 
 class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
@@ -154,6 +165,7 @@ public:
 
     static void refreshPlugins(bool reload);
     WEBCORE_EXPORT PluginData& pluginData();
+    void clearPluginData();
 
     WEBCORE_EXPORT void setCanStartMedia(bool);
     bool canStartMedia() const { return m_canStartMedia; }
@@ -180,6 +192,11 @@ public:
     void decrementSubframeCount() { ASSERT(m_subframeCount); --m_subframeCount; }
     int subframeCount() const { checkSubframeCountConsistency(); return m_subframeCount; }
 
+    void incrementNestedRunLoopCount();
+    void decrementNestedRunLoopCount();
+    bool insideNestedRunLoop() const { return m_nestedRunLoopCount > 0; }
+    WEBCORE_EXPORT void whenUnnested(std::function<void()>);
+
 #if ENABLE(REMOTE_INSPECTOR)
     WEBCORE_EXPORT bool remoteInspectionAllowed() const;
     WEBCORE_EXPORT void setRemoteInspectionAllowed(bool);
@@ -205,7 +222,10 @@ public:
 #if ENABLE(POINTER_LOCK)
     PointerLockController& pointerLockController() const { return *m_pointerLockController; }
 #endif
+    LibWebRTCProvider& libWebRTCProvider() { return m_libWebRTCProvider.get(); }
+
     ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient.get(); }
+    void updateValidationBubbleStateIfNeeded();
 
     WEBCORE_EXPORT ScrollingCoordinator* scrollingCoordinator();
 
@@ -281,6 +301,9 @@ public:
     UserInterfaceLayoutDirection userInterfaceLayoutDirection() const { return m_userInterfaceLayoutDirection; }
     WEBCORE_EXPORT void setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection);
 
+    void didStartProvisionalLoad();
+    void didFinishLoad(); // Called when the load has been committed in the main frame.
+
     // The view scale factor is multiplied into the page scale factor by all
     // callers of setPageScaleFactor.
     WEBCORE_EXPORT void setViewScaleFactor(float);
@@ -317,7 +340,9 @@ public:
 
     WEBCORE_EXPORT void setHorizontalScrollElasticity(ScrollElasticity);
     ScrollElasticity horizontalScrollElasticity() const { return static_cast<ScrollElasticity>(m_horizontalScrollElasticity); }
-    
+
+    WEBCORE_EXPORT void accessibilitySettingsDidChange();
+
     // Page and FrameView both store a Pagination value. Page::pagination() is set only by API,
     // and FrameView::pagination() is set only by CSS. Page::pagination() will affect all
     // FrameViews in the page cache, but FrameView::pagination() only affects the current
@@ -333,6 +358,9 @@ public:
 
     // Notifications when the Page starts and stops being presented via a native window.
     WEBCORE_EXPORT void setActivityState(ActivityState::Flags);
+    ActivityState::Flags activityState() const { return m_activityState; }
+
+    bool isWindowActive() const;
     bool isVisibleAndActive() const;
     WEBCORE_EXPORT void setIsVisible(bool);
     WEBCORE_EXPORT void setIsPrerender();
@@ -361,6 +389,9 @@ public:
 #if ENABLE(RESOURCE_USAGE)
     void setResourceUsageOverlayVisible(bool);
 #endif
+
+    void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
+    bool isRunningUserScripts() const { return m_isRunningUserScripts; }
 
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
@@ -531,6 +562,18 @@ public:
     bool isResourceCachingDisabled() const { return m_resourceCachingDisabled; }
     void setResourceCachingDisabled(bool disabled) { m_resourceCachingDisabled = disabled; }
 
+    std::optional<EventThrottlingBehavior> eventThrottlingBehaviorOverride() const { return m_eventThrottlingBehaviorOverride; }
+    void setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior> throttling) { m_eventThrottlingBehaviorOverride = throttling; }
+
+    WebGLStateTracker* webGLStateTracker() const { return m_webGLStateTracker.get(); }
+
+    bool isOnlyNonUtilityPage() const;
+    bool isUtilityPage() const { return m_isUtilityPage; }
+
+#if ENABLE(DATA_INTERACTION)
+    WEBCORE_EXPORT bool hasDataInteractionAtPosition(const FloatPoint&) const;
+#endif
+
 private:
     WEBCORE_EXPORT void initGroup();
 
@@ -549,7 +592,7 @@ private:
 
     unsigned findMatchesForText(const String&, FindOptions, unsigned maxMatchCount, ShouldHighlightMatches, ShouldMarkMatches);
 
-    Optional<std::pair<MediaCanStartListener&, Document&>> takeAnyMediaCanStartListener();
+    std::optional<std::pair<MediaCanStartListener&, Document&>> takeAnyMediaCanStartListener();
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
@@ -594,8 +637,14 @@ private:
     PlugInClient* m_plugInClient;
     std::unique_ptr<ValidationMessageClient> m_validationMessageClient;
     std::unique_ptr<DiagnosticLoggingClient> m_diagnosticLoggingClient;
+    std::unique_ptr<WebGLStateTracker> m_webGLStateTracker;
 
-    int m_subframeCount;
+    UniqueRef<LibWebRTCProvider> m_libWebRTCProvider;
+
+    int m_nestedRunLoopCount { 0 };
+    std::function<void()> m_unnestCallback;
+
+    int m_subframeCount { 0 };
     String m_groupName;
     bool m_openedByDOM;
 
@@ -721,7 +770,15 @@ private:
     bool m_showAllPlugins { false };
     bool m_controlledByAutomation { false };
     bool m_resourceCachingDisabled { false };
+    bool m_isUtilityPage;
     UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { UserInterfaceLayoutDirection::LTR };
+    
+    // For testing.
+    std::optional<EventThrottlingBehavior> m_eventThrottlingBehaviorOverride;
+
+    std::unique_ptr<PerformanceMonitor> m_performanceMonitor;
+
+    bool m_isRunningUserScripts { false };
 };
 
 inline PageGroup& Page::group()

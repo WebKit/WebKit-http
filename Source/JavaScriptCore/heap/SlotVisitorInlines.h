@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,87 +31,67 @@
 
 namespace JSC {
 
-template<typename T>
-inline void SlotVisitor::appendUnbarrieredPointer(T** slot)
+inline void SlotVisitor::appendUnbarriered(JSValue* slot, size_t count)
 {
-    ASSERT(slot);
-    append(*slot);
+    for (size_t i = count; i--;)
+        appendUnbarriered(slot[i]);
+}
+
+inline void SlotVisitor::appendUnbarriered(JSCell* cell)
+{
+    appendUnbarriered(JSValue(cell));
 }
 
 template<typename T>
-inline void SlotVisitor::appendUnbarrieredReadOnlyPointer(T* cell)
+inline void SlotVisitor::append(const Weak<T>& weak)
 {
-    append(cell);
-}
-
-inline void SlotVisitor::appendUnbarrieredValue(JSValue* slot)
-{
-    ASSERT(slot);
-    append(*slot);
-}
-
-inline void SlotVisitor::appendUnbarrieredReadOnlyValue(JSValue value)
-{
-    append(value);
+    appendUnbarriered(weak.get());
 }
 
 template<typename T>
-inline void SlotVisitor::appendUnbarrieredWeak(Weak<T>* weak)
+inline void SlotVisitor::append(const WriteBarrierBase<T>& slot)
 {
-    ASSERT(weak);
-    append(weak->get());
+    appendUnbarriered(slot.get());
 }
 
 template<typename T>
-inline void SlotVisitor::append(WriteBarrierBase<T>* slot)
+inline void SlotVisitor::appendHidden(const WriteBarrierBase<T>& slot)
 {
-    append(slot->get());
-}
-
-template<typename T>
-inline void SlotVisitor::appendHidden(WriteBarrierBase<T>* slot)
-{
-    appendHidden(slot->get());
+    appendHidden(slot.get());
 }
 
 template<typename Iterator>
 inline void SlotVisitor::append(Iterator begin, Iterator end)
 {
     for (auto it = begin; it != end; ++it)
-        append(&*it);
+        append(*it);
 }
 
-inline void SlotVisitor::appendValues(WriteBarrierBase<Unknown>* barriers, size_t count)
+inline void SlotVisitor::appendValues(const WriteBarrierBase<Unknown>* barriers, size_t count)
 {
     for (size_t i = 0; i < count; ++i)
-        append(&barriers[i]);
+        append(barriers[i]);
 }
 
-inline void SlotVisitor::appendValuesHidden(WriteBarrierBase<Unknown>* barriers, size_t count)
+inline void SlotVisitor::appendValuesHidden(const WriteBarrierBase<Unknown>* barriers, size_t count)
 {
     for (size_t i = 0; i < count; ++i)
-        appendHidden(&barriers[i]);
-}
-
-inline void SlotVisitor::addWeakReferenceHarvester(WeakReferenceHarvester* weakReferenceHarvester)
-{
-    m_heap.m_weakReferenceHarvesters.addThreadSafe(weakReferenceHarvester);
-}
-
-inline void SlotVisitor::addUnconditionalFinalizer(UnconditionalFinalizer* unconditionalFinalizer)
-{
-    m_heap.m_unconditionalFinalizers.addThreadSafe(unconditionalFinalizer);
+        appendHidden(barriers[i]);
 }
 
 inline void SlotVisitor::reportExtraMemoryVisited(size_t size)
 {
-    heap()->reportExtraMemoryVisited(m_oldCellState, size);
+    if (m_isFirstVisit) {
+        heap()->reportExtraMemoryVisited(size);
+        m_nonCellVisitCount += size;
+    }
 }
 
 #if ENABLE(RESOURCE_USAGE)
 inline void SlotVisitor::reportExternalMemoryVisited(size_t size)
 {
-    heap()->reportExternalMemoryVisited(m_oldCellState, size);
+    if (m_isFirstVisit)
+        heap()->reportExternalMemoryVisited(size);
 }
 #endif
 
@@ -128,6 +108,16 @@ inline VM& SlotVisitor::vm()
 inline const VM& SlotVisitor::vm() const
 {
     return *m_heap.m_vm;
+}
+
+template<typename Func>
+IterationStatus SlotVisitor::forEachMarkStack(const Func& func)
+{
+    if (func(m_collectorStack) == IterationStatus::Done)
+        return IterationStatus::Done;
+    if (func(m_mutatorStack) == IterationStatus::Done)
+        return IterationStatus::Done;
+    return IterationStatus::Continue;
 }
 
 } // namespace JSC

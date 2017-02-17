@@ -41,7 +41,7 @@ Ref<StyleRuleImport> StyleRuleImport::create(const String& href, Ref<MediaQueryS
 }
 
 StyleRuleImport::StyleRuleImport(const String& href, Ref<MediaQuerySet>&& media)
-    : StyleRuleBase(Import, 0)
+    : StyleRuleBase(Import)
     , m_parentStyleSheet(0)
     , m_styleSheetClient(this)
     , m_strHref(href)
@@ -73,7 +73,7 @@ void StyleRuleImport::setCSSStyleSheet(const String& href, const URL& baseURL, c
 
     Document* document = m_parentStyleSheet ? m_parentStyleSheet->singleOwnerDocument() : nullptr;
     m_styleSheet = StyleSheetContents::create(this, href, context);
-    m_styleSheet->parseAuthorStyleSheet(cachedStyleSheet, document ? document->securityOrigin() : nullptr);
+    m_styleSheet->parseAuthorStyleSheet(cachedStyleSheet, document ? &document->securityOrigin() : nullptr);
 
     m_loading = false;
 
@@ -115,7 +115,7 @@ void StyleRuleImport::requestStyleSheet()
 
     // FIXME: Skip Content Security Policy check when stylesheet is in a user agent shadow tree.
     // See <https://bugs.webkit.org/show_bug.cgi?id=146663>.
-    CachedResourceRequest request(absURL, CachedResourceLoader::defaultCachedResourceOptions(), Nullopt, String(m_parentStyleSheet->charset()));
+    CachedResourceRequest request(absURL, CachedResourceLoader::defaultCachedResourceOptions(), std::nullopt, String(m_parentStyleSheet->charset()));
     request.setInitiator(cachedResourceRequestInitiators().css);
     if (m_cachedSheet)
         m_cachedSheet->removeClient(m_styleSheetClient);

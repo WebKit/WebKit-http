@@ -1,3 +1,3045 @@
+2017-02-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement (Shared)ArrayBuffer.prototype.byteLength
+        https://bugs.webkit.org/show_bug.cgi?id=166476
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore/test/typedarray/arraybufferType.baseline-jsc:
+        * stress/array-buffer-byte-length.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (Symbol):
+        * stress/reflect-set.js:
+
+2017-02-10  Saam Barati  <sbarati@apple.com>
+
+        Object allocation sinking phase doesn't properly handle control flow when emitting a PutHint of a materialized object into a PromotedHeapLocation of a still sunken object
+        https://bugs.webkit.org/show_bug.cgi?id=168140
+        <rdar://problem/30205880>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/allocation-sinking-puthint-control-flow.js: Added.
+        (e):
+        (bar):
+        (let.y):
+        (else.let.y):
+        (baz):
+        (foo):
+        (catch):
+
+2017-02-09  Mark Lam  <mark.lam@apple.com>
+
+        B3::Procedure::deleteOrphans() should neutralize upsilons with dead phis.
+        https://bugs.webkit.org/show_bug.cgi?id=167437
+        <rdar://problem/30198083>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/b3-delete-orphans-should-neutralize-upsilons-with-dead-phis.js: Added.
+
+2017-02-09  Saam Barati  <sbarati@apple.com>
+
+        Sloppy mode: We don't properly hoist functions names "arguments" when we have a non-simple parameter list
+        https://bugs.webkit.org/show_bug.cgi?id=167319
+        <rdar://problem/30149432>
+
+        Reviewed by Mark Lam.
+
+        * stress/sloppy-mode-hoist-arguments-function-non-simple-parameter-list.js: Added.
+        (assert):
+        (assert.arguments):
+        (assert.b):
+        (x.arguments):
+        (x.b):
+        (x):
+
+2017-02-09  Mark Lam  <mark.lam@apple.com>
+
+        Fix max length check in ArrayPrototype.js' concatSlowPath().
+        https://bugs.webkit.org/show_bug.cgi?id=167270
+        <rdar://problem/30128133>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-prototype-concat-of-long-spliced-arrays.js: Added.
+        * stress/array-prototype-concat-of-long-spliced-arrays2.js: Added.
+
+2017-02-09  Keith Miller  <keith_miller@apple.com>
+
+        We should not allow Function.caller to be used on native functions
+        https://bugs.webkit.org/show_bug.cgi?id=165628
+
+        Reviewed by Mark Lam.
+
+        * stress/caller-native-code.js: Added.
+        (f):
+
+2017-02-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add operationToInt32SensibleSlow to optimize kraken pbkdf2 and sha256
+        https://bugs.webkit.org/show_bug.cgi?id=167736
+
+        Reviewed by Saam Barati.
+
+        * stress/to-int32-sensible.js: Added.
+        (shouldBe):
+        (toInt32):
+        (test):
+
+2017-02-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, remove loop
+        https://bugs.webkit.org/show_bug.cgi?id=167694
+
+        It causes timeout.
+        Original bug can be tested even without this loop.
+
+        * stress/arity-fixup-should-not-touch-stack-area-below-sp.js:
+
+2017-02-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ArityFixup should adjust SP first
+        https://bugs.webkit.org/show_bug.cgi?id=167239
+
+        Reviewed by Michael Saboff.
+
+        Significantly large arity fixup reliably causes this crash.
+
+        * stress/arity-fixup-should-not-touch-stack-area-below-sp.js: Added.
+
+2017-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Move slow-running microbenchmarks out of JSTests/microbenchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=167676
+
+        Reviewed by Saam Barati.
+        
+        The microbenchmarks directory is profitable when it's cheap to run. This change moves very slow
+        tests (>=200ms running time on my machine) and puts them in JSTests/slowMicrobenchmarks instead.
+        That directory is run only through `slow!; defaultQuickRun` and is not run by run-jsc-benchmarks.
+        This is a big progression in test running time. But because it frontloads more slow tests, the
+        tests will seem to run more slowly when you first start the test runner.
+
+        * microbenchmarks/default-derived-constructor.js: Removed.
+        * microbenchmarks/dense-set.js: Removed.
+        * microbenchmarks/ftl-polymorphic-div.js: Removed.
+        * microbenchmarks/ftl-polymorphic-mul.js: Removed.
+        * microbenchmarks/function-bind-inlining.js: Removed.
+        * microbenchmarks/function-bind-no-inlining.js: Removed.
+        * microbenchmarks/large-map-iteration-with-additions.js: Removed.
+        * microbenchmarks/large-map-iteration-with-mutation.js: Removed.
+        * microbenchmarks/map-get-get-cse.js: Removed.
+        * microbenchmarks/misc-bugs-847389-jpeg2000.js: Removed.
+        * microbenchmarks/spread-small-array.js: Removed.
+        * microbenchmarks/v8-raytrace-with-try-catch-high-frequency-throws.js: Removed.
+        * slowMicrobenchmarks: Added.
+        * slowMicrobenchmarks.yaml: Added.
+        * slowMicrobenchmarks/README: Added.
+        * slowMicrobenchmarks/default-derived-constructor.js: Copied from JSTests/microbenchmarks/default-derived-constructor.js.
+        * slowMicrobenchmarks/dense-set.js: Copied from JSTests/microbenchmarks/dense-set.js.
+        * slowMicrobenchmarks/ftl-polymorphic-div.js: Copied from JSTests/microbenchmarks/ftl-polymorphic-div.js.
+        * slowMicrobenchmarks/ftl-polymorphic-mul.js: Copied from JSTests/microbenchmarks/ftl-polymorphic-mul.js.
+        * slowMicrobenchmarks/function-bind-inlining.js: Copied from JSTests/microbenchmarks/function-bind-inlining.js.
+        * slowMicrobenchmarks/function-bind-no-inlining.js: Copied from JSTests/microbenchmarks/function-bind-no-inlining.js.
+        * slowMicrobenchmarks/large-map-iteration-with-additions.js: Copied from JSTests/microbenchmarks/large-map-iteration-with-additions.js.
+        * slowMicrobenchmarks/large-map-iteration-with-mutation.js: Copied from JSTests/microbenchmarks/large-map-iteration-with-mutation.js.
+        * slowMicrobenchmarks/map-get-get-cse.js: Copied from JSTests/microbenchmarks/map-get-get-cse.js.
+        * slowMicrobenchmarks/misc-bugs-847389-jpeg2000.js: Copied from JSTests/microbenchmarks/misc-bugs-847389-jpeg2000.js.
+        * slowMicrobenchmarks/spread-small-array.js: Copied from JSTests/microbenchmarks/spread-small-array.js.
+        * slowMicrobenchmarks/v8-raytrace-with-try-catch-high-frequency-throws.js: Copied from JSTests/microbenchmarks/v8-raytrace-with-try-catch-high-frequency-throws.js.
+
+2017-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Do not reject WebAssembly.compile() with Exception
+        https://bugs.webkit.org/show_bug.cgi?id=167585
+
+        Reviewed by Mark Lam.
+
+        * wasm/js-api/Module-compile.js:
+        (async.testPromiseAPI):
+
+2017-01-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Lift template escape sequence restrictions in tagged templates
+        https://bugs.webkit.org/show_bug.cgi?id=166871
+
+        Reviewed by Saam Barati.
+
+        Update the error messages and add new tests.
+
+        * ChakraCore/test/es6/unicode_6_identifier_Blue524737.baseline-jsc:
+        * stress/lift-template-literal.js: Added.
+        (dump):
+        (testTag.return.tag):
+        (testTag):
+        * stress/template-literal-syntax.js:
+
+2017-01-26  Mark Lam  <mark.lam@apple.com>
+
+        Fix missing exception check in genericTypedArrayViewProtoFuncSet().
+        https://bugs.webkit.org/show_bug.cgi?id=166812
+        <rdar://problem/29916672>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-166812.js: Added.
+
+2017-01-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211224.
+        https://bugs.webkit.org/show_bug.cgi?id=167479
+
+        "It was a Kraken performance regression" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "OSR entry: delay outer-loop compilation when at inner-loop"
+        https://bugs.webkit.org/show_bug.cgi?id=167149
+        http://trac.webkit.org/changeset/211224
+
+2017-01-26  JF Bastien  <jfbastien@apple.com>
+
+        OSR entry: delay outer-loop compilation when at inner-loop
+        https://bugs.webkit.org/show_bug.cgi?id=167149
+
+        Reviewed by Filip Pizlo.
+
+        Try to be mean to OSR entry by using nested loops, and having
+        non-int32 types or truly varying types.
+
+        Mandelbrot currently never tiers up to FTL because it exits too
+        many times before this. That shouldn't happen because it's just
+        numbers and int32s. I'll file a bug to fix this.
+
+        * microbenchmarks/mandelbrot.js: Added.
+        (mandelbrot):
+        (printable):
+        * microbenchmarks/nonude.js: Added.
+        (Array.prototype.remove):
+        (const.u):
+        (const.load):
+        (const.scan):
+        (const.main):
+
+2017-01-25  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly JS API: coerce return values from imports
+        https://bugs.webkit.org/show_bug.cgi?id=165480
+        <rdar://problem/29760318>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/function-tests/function-import-return-value.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.const.tests.x.assert.eq):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.const.tests.Math.fround):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.let.type.of.Reflect.ownKeys):
+        (test.1):
+        (assert.truthy):
+        (assert.throws):
+
+2017-01-25  Filip Pizlo  <fpizlo@apple.com>
+
+        jsc.cpp should have the $.agent stuff for testing SAB
+        https://bugs.webkit.org/show_bug.cgi?id=167431
+
+        Reviewed by Saam Barati.
+        
+        Add a very basic test of Atomics using $.agent. This is based on
+        LayoutTests/workers/sab/simple.html.
+
+        * stress/lars-sab-workers.js: Added.
+        (startWorker):
+        (resources):
+        (wake):
+        (else):
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.store should return the int-converted value according to toInteger
+        https://bugs.webkit.org/show_bug.cgi?id=167399
+
+        Reviewed by Saam Barati.
+
+        * stress/atomics-add-uint32.js: Added.
+        * stress/atomics-store-return.js: Fix the test to match what the spec wants.
+
+2017-01-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Number#toString with Int52
+        https://bugs.webkit.org/show_bug.cgi?id=167303
+
+        Reviewed by Sam Weinig.
+
+        * stress/to-string-with-int52.js: Added.
+        (shouldBe):
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.store should return the int-converted value, not the value that it stored
+        https://bugs.webkit.org/show_bug.cgi?id=167395
+
+        Reviewed by Saam Barati.
+
+        * stress/atomics-store-return.js: Added.
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        -0 is a valid array index and AtomicsObject should know this
+        https://bugs.webkit.org/show_bug.cgi?id=167386
+
+        Reviewed by Mark Lam.
+
+        * stress/atomics-neg-zero.js: Added.
+
+2017-01-23  Saam Barati  <sbarati@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=167247
+        JSC: operationSpreadGeneric uses the wrong global object for the builtin function and slow_path_spread consults the wrong global object to prove if the iterator protocol is unobservable
+        <rdar://problem/30121809>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/spread-consults-correct-global-object.js: Added.
+        (assert):
+        (spread):
+        * stress/spread-correct-global-object-on-exception.js: Added.
+        (assert):
+        (spread):
+        (const.objectText.let.o.Symbol.iterator):
+        (catch):
+
+2017-01-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        dynamic import is ambiguous with import declaration at module code
+        https://bugs.webkit.org/show_bug.cgi?id=167098
+
+        Reviewed by Darin Adler.
+
+        * modules/import-call.js: Added.
+        (from.string_appeared_here.import.string_appeared_here.then):
+        * modules/import-call/main.js: Added.
+        * stress/import-syntax.js:
+        (async):
+
+2017-01-19  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        "this" missing after await in async arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=166919
+
+        Reviewed by Saam Barati.
+
+        * stress/async-arrow-functions-lexical-binding-in-class.js:
+        (ChildClass.prototype.asyncThisPropWithAwaitBody):
+        (ChildClass.prototype.asyncThisPropInEvalWithAwaitBody):
+        (ChildClass.prototype.asyncThisValueBodyWithAwait):
+        (ChildClass.prototype.asyncThisValueInEvalWithAwaitBody):
+        (ChildClass):
+        (ChildClass3):
+        (ChildClass3.prototype.classValue):
+        (ChildClass3.prototype.get classProperty):
+        * stress/async-arrow-functions-lexical-new.target-binding.js:
+        (C2WithAwait):
+
+2017-01-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Make opaque root scanning truly constraint-based
+        https://bugs.webkit.org/show_bug.cgi?id=165760
+
+        Reviewed by Geoffrey Garen.
+        
+        Added this test, which demonstrates the benefit of having a dedicated string subspace.
+
+        * microbenchmarks/stringalloc.js: Added.
+
+2017-01-17  Michael Saboff  <msaboff@apple.com>
+
+        Nested parenthesized regular expressions with non-zero minimum counts appear to hang and use lots of memory
+        https://bugs.webkit.org/show_bug.cgi?id=167125
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/regexp-nested-nonzero-min-counted-parens.js: Added.
+        New test with limits that run slow and take a reasonable amount of memory
+        before the change and run fast, using little memory with the change.
+
+2017-01-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Annotate large string tests with largeHeap
+        https://bugs.webkit.org/show_bug.cgi?id=167054
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/dense-set.js:
+        * microbenchmarks/lots-of-fields.js:
+        * stress/joined-strings-should-not-exceed-max-string-length.js:
+        * stress/make-large-string-jit-strcat.js:
+        * stress/make-large-string-jit.js:
+        * stress/make-large-string-strcat.js:
+        * stress/make-large-string.js:
+        * stress/string-joining-long-strings-should-not-crash.js:
+        * stress/string-prototype-replace-should-throw-out-of-memory-error-when-using-too-much-memory.js:
+
+2017-01-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Reserve capacity for StringBuilder in unescape
+        https://bugs.webkit.org/show_bug.cgi?id=167008
+
+        Reviewed by Sam Weinig.
+
+        * stress/unescape.js: Added.
+        (shouldBe):
+
+2017-01-12  Saam Barati  <sbarati@apple.com>
+
+        Add a slice intrinsic to the DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=166707
+        <rdar://problem/29913445>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-slice-intrinsic.js: Added.
+        (assert):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        * stress/array-slice-jettison-on-constructor-change.js: Added.
+        (assert):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+        * stress/array-slice-osr-exit-2.js: Added.
+        (assert):
+        (Foo):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+        * stress/array-slice-osr-exit.js: Added.
+        (assert):
+        (Foo):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+
+2017-01-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark es6/typed_arrays_correct_prototype_chains.js as failing after r210570.
+        https://bugs.webkit.org/show_bug.cgi?id=166931i
+
+        Unreviewed test gardening.
+
+        * es6.yaml:
+
+2017-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210052.
+        https://bugs.webkit.org/show_bug.cgi?id=166915
+
+        "breaks web compatability" (Requested by keith_miller on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add support for global"
+        https://bugs.webkit.org/show_bug.cgi?id=165171
+        http://trac.webkit.org/changeset/210052
+
+2017-01-10  Mark Lam  <mark.lam@apple.com>
+
+        Property setters should not be called for bound arguments list entries.
+        https://bugs.webkit.org/show_bug.cgi?id=165631
+
+        Reviewed by Filip Pizlo.
+
+        * stress/property-setters-should-not-be-called-for-bound-arguments-list-entries.js: Added.
+
+2017-01-10  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Calling async arrow function which is in a class's member function will cause error
+        https://bugs.webkit.org/show_bug.cgi?id=166879
+
+        Reviewed by Saam Barati.
+
+        * stress/async-arrow-functions-lexical-binding-in-class.js: Added.
+        (shouldBe):
+        (shouldBeAsync):
+        (BaseClass.prototype.baseClassValue):
+        (BaseClass.prototype.get property):
+        (BaseClass):
+        (runSomething):
+        (ChildClass.prototype.classValue):
+        (ChildClass.prototype.get classProperty):
+        (ChildClass.prototype.asyncValueExp):
+        (ChildClass.prototype.asyncValueBody):
+        (ChildClass.prototype.asyncThisPropExp):
+        (ChildClass.prototype.asyncThisPropBody):
+        (ChildClass.prototype.asyncThisPropInEvalExp):
+        (ChildClass.prototype.asyncThisPropInEvalBody):
+        (ChildClass.prototype.asyncThisValueExp):
+        (ChildClass.prototype.asyncThisValueBody):
+        (ChildClass.prototype.asyncThisValueInEvalExp):
+        (ChildClass.prototype.asyncThisValueInEvalBody):
+        (ChildClass):
+        (ChildClass2):
+        (ChildClass2.prototype.classValue):
+        (ChildClass2.prototype.get classProperty):
+        * stress/async-arrow-functions-lexical-super-binding.js:
+
+2017-01-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Prototype dynamic-import
+        https://bugs.webkit.org/show_bug.cgi?id=165724
+
+        Reviewed by Saam Barati.
+
+        * stress/import-basic.js: Added.
+        (async.async.load):
+        (async):
+        (catch):
+        * stress/import-from-eval.js: Added.
+        (async):
+        (catch):
+        * stress/import-syntax.js: Added.
+        (testSyntaxError):
+        * stress/import-tests/cocoa.js: Added.
+        (export.Cocoa):
+        (export.hello):
+        * stress/import-tests/multiple.js: Added.
+        (export.result):
+        * stress/import-tests/multiple2.js: Added.
+        (export.ok):
+        * stress/import-tests/should.js: Added.
+        (export.shouldBe):
+        (export.shouldThrow):
+        * stress/modules-syntax-error.js:
+
+2017-01-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210476.
+        https://bugs.webkit.org/show_bug.cgi?id=166859
+
+        "4% JSBench regression" (Requested by keith_mi_ on #webkit).
+
+        Reverted changeset:
+
+        "Add a slice intrinsic to the DFG/FTL"
+        https://bugs.webkit.org/show_bug.cgi?id=166707
+        http://trac.webkit.org/changeset/210476
+
+2017-01-06  Saam Barati  <sbarati@apple.com>
+
+        Add a slice intrinsic to the DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=166707
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-slice-intrinsic.js: Added.
+        (assert):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        * stress/array-slice-jettison-on-constructor-change.js: Added.
+        (assert):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+        * stress/array-slice-osr-exit-2.js: Added.
+        (assert):
+        (Foo):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+        * stress/array-slice-osr-exit.js: Added.
+        (assert):
+        (Foo):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+
+2017-01-06  Michael Saboff  <msaboff@apple.com>
+
+        @putByValDirect in Array.of and Array.from overwrites non-writable/configurable properties
+        https://bugs.webkit.org/show_bug.cgi?id=153486
+
+        Reviewed by Saam Barati.
+
+        New regression test.
+
+        * stress/regress-153486.js: Added.
+        (shouldEqual):
+        (makeUnwriteableUnconfigurableObject):
+        (testArrayOf):
+        (testArrayFrom):
+        (runTest):
+
+2016-12-30  Filip Pizlo  <fpizlo@apple.com>
+
+        DeferGC::~DeferGC should be super cheap
+        https://bugs.webkit.org/show_bug.cgi?id=166626
+
+        Reviewed by Saam Barati.
+
+        * stress/slow-path-generator-updating-current-node-dfg.js:
+        * stress/unshift-array-storage.js:
+
+2017-01-04  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: sections with the same name are allowed
+        https://bugs.webkit.org/show_bug.cgi?id=166708
+
+        Reviewed by Saam Barati.
+
+        * wasm/self-test/test_BuilderJSON.js:
+        (SectionsWithSameCustomName):
+
+2017-01-04  Saam Barati  <sbarati@apple.com>
+
+        stress/spread-calling.js timing out on the bots
+        https://bugs.webkit.org/show_bug.cgi?id=166689
+        <rdar://problem/29779182>
+
+        Reviewed by Mark Lam.
+
+        * stress/spread-calling.js:
+
+2017-01-04  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: add Module.sections
+        https://bugs.webkit.org/show_bug.cgi?id=165159
+        <rdar://problem/29760326>
+
+        Reviewed by Mark Lam.
+
+        As described here: https://github.com/WebAssembly/design/blob/master/JS.md#webassemblymodulecustomsections
+
+        * wasm/Builder.js: allow custom sections to be duplicated
+        * wasm/js-api/Module.customSection.js: Added.
+        (assert.throws.WebAssembly.Module.prototype.customSections):
+        (assert.eq):
+
+2017-01-04  Saam Barati  <sbarati@apple.com>
+
+        We don't properly handle exceptions inside the nativeCallTrampoline macro in the LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=163720
+
+        Reviewed by Mark Lam.
+
+        * stress/bound-function-tail-call-with-exception.js: Added.
+        (bar):
+        (foo):
+        (catch):
+
+2017-01-03  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: check and test in-call / out-call values
+        https://bugs.webkit.org/show_bug.cgi?id=164876
+        <rdar://problem/29844107>
+
+        Reviewed by Saam Barati.
+
+        * wasm.yaml:
+        * wasm/assert.js: add an assert for NaN comparison
+        * wasm/fuzz/export-function.js: Added. Generate random wasm export
+        signatures, and call them with random parameters.
+        (const.paramExporter):
+        (const.setBuffer):
+        (const.types.generate):
+        (generate):
+        * wasm/js-api/export-arity.js: Added.
+        (const.paramExporter): Test that mismatched arities when JS calls
+        wasm follow the defined semantics: i32 is 0, f32 / f64 are NaN.
+        https://github.com/WebAssembly/design/blob/master/JS.md#exported-function-exotic-objects
+        * wasm/js-api/export-void-is-undef.js: Added. Test that "void"
+        wasm functions return "undefined" in JS.
+
+2017-01-02  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: handle and optimize wasm export → wasm import calls
+        https://bugs.webkit.org/show_bug.cgi?id=165282
+
+        Reviewed by Saam Barati.
+
+        * wasm/Builder.js: Add a Proxy to Builder.js, which intercepts
+        unknown property lookups. This creates way better error messages
+        on typos than 'undefined is not a function', which happens
+        semi-frequently as I typo opcode names (and which one is a typo is
+        hard to find because we chain builders).
+        (const._isValidValue):
+        (get target):
+        (const._importFunctionContinuation):
+        (const._importMemoryContinuation):
+        (const._importTableContinuation):
+        (const._exportFunctionContinuation):
+        (export.default.Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.case.string_appeared_here.this.section):
+        (export.default.Builder.prototype._registerSectionBuilders.this.Unknown):
+        * wasm/LowLevelBinary.js: Add limited support for var{u}int64 (only the 32-bit values)
+        (export.default.LowLevelBinary.prototype.varint32):
+        (export.default.LowLevelBinary.prototype.varuint64):
+        (export.default.LowLevelBinary.prototype.varint64):
+        * wasm/function-tests/exceptions.js: update error message
+        * wasm/function-tests/trap-load.js: update error message
+        * wasm/function-tests/trap-store.js: update error message
+        * wasm/js-api/wasm-to-wasm-bad-signature.js: Added. Test a bunch of bad wasm->wasm import signatures
+        (const.makeImportee.signature.switch):
+        (BadSignatureDropStartParams):
+        * wasm/js-api/wasm-to-wasm.js: Added. Test 64-bit wasm->wasm import calls
+        (const.callerModule):
+        (const.calleeModule):
+        (WasmToWasm):
+
+2017-01-02  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Some loads don't take into account the offset
+        https://bugs.webkit.org/show_bug.cgi?id=166616
+        <rdar://problem/29841541>
+
+        Reviewed by Keith Miller.
+
+        * wasm/function-tests/load-offset.js: Added.
+
+2016-12-29  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Rebase spec-tests now that wabt has been updated to produce certain kinds of invalid modules
+        https://bugs.webkit.org/show_bug.cgi?id=166491
+        <rdar://problem/29814999>
+
+        Reviewed by Yusuke Suzuki.
+
+        Based off these revisions:
+        - spec: b055d01ea1dfdd7a5231ae779095435f836de97f
+        - wabt: d0d44702c753f851b094615298a2f4d4e3c21035
+
+        The reason for the rebase is that wabt was updated to stop
+        silently rejecting invalid modules. This was needed because
+        some of the spec tests check to make sure that the module
+        is invalid, but wabt was silently ignoring the errors and
+        generating valid modules:
+        https://github.com/WebAssembly/wabt/issues/256
+
+        * wasm.yaml:
+        * wasm/spec-tests/address.wast.js:
+        * wasm/spec-tests/binary.wast.js:
+        * wasm/spec-tests/block.wast.js:
+        * wasm/spec-tests/br.wast.js:
+        * wasm/spec-tests/br_if.wast.js:
+        * wasm/spec-tests/br_table.wast.js:
+        * wasm/spec-tests/break-drop.wast.js:
+        * wasm/spec-tests/call.wast.js:
+        * wasm/spec-tests/call_indirect.wast.js:
+        * wasm/spec-tests/comments.wast.js:
+        * wasm/spec-tests/conversions.wast.js:
+        * wasm/spec-tests/custom_section.wast.js:
+        * wasm/spec-tests/endianness.wast.js:
+        * wasm/spec-tests/exports.wast.js:
+        * wasm/spec-tests/f32.wast.js:
+        * wasm/spec-tests/f32_cmp.wast.js:
+        * wasm/spec-tests/f64.wast.js:
+        * wasm/spec-tests/f64_cmp.wast.js:
+        * wasm/spec-tests/fac.wast.js:
+        * wasm/spec-tests/float_exprs.wast.js:
+        * wasm/spec-tests/float_literals.wast.js:
+        * wasm/spec-tests/float_memory.wast.js:
+        * wasm/spec-tests/float_misc.wast.js:
+        * wasm/spec-tests/forward.wast.js:
+        * wasm/spec-tests/func.wast.js:
+        * wasm/spec-tests/func_ptrs.wast.js:
+        * wasm/spec-tests/get_local.wast.js:
+        * wasm/spec-tests/globals.wast.js:
+        * wasm/spec-tests/i32.wast.js:
+        * wasm/spec-tests/i64.wast.js:
+        * wasm/spec-tests/imports.wast.js:
+        * wasm/spec-tests/int_exprs.wast.js:
+        * wasm/spec-tests/int_literals.wast.js:
+        * wasm/spec-tests/left-to-right.wast.js:
+        * wasm/spec-tests/linking.wast.js:
+        * wasm/spec-tests/loop.wast.js:
+        * wasm/spec-tests/memory.wast.js:
+        * wasm/spec-tests/memory_redundancy.wast.js:
+        * wasm/spec-tests/memory_trap.wast.js:
+        * wasm/spec-tests/names.wast.js:
+        * wasm/spec-tests/nop.wast.js:
+        * wasm/spec-tests/resizing.wast.js:
+        * wasm/spec-tests/return.wast.js:
+        * wasm/spec-tests/select.wast.js:
+        * wasm/spec-tests/set_local.wast.js:
+        * wasm/spec-tests/skip-stack-guard-page.wast.js:
+        * wasm/spec-tests/stack.wast.js:
+        * wasm/spec-tests/start.wast.js:
+        * wasm/spec-tests/store_retval.wast.js:
+        * wasm/spec-tests/switch.wast.js:
+        * wasm/spec-tests/tee_local.wast.js:
+        * wasm/spec-tests/traps.wast.js:
+        * wasm/spec-tests/typecheck.wast.js:
+        * wasm/spec-tests/unreachable.wast.js:
+        * wasm/spec-tests/unwind.wast.js:
+
+2016-12-28  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Don't allow duplicate export names
+        https://bugs.webkit.org/show_bug.cgi?id=166490
+        <rdar://problem/29815000>
+
+        Reviewed by Keith Miller.
+
+        * wasm.yaml:
+        * wasm/function-tests/invalid-duplicate-export.js: Added.
+
+2016-12-28  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Implement grow_memory and current_memory
+        https://bugs.webkit.org/show_bug.cgi?id=166448
+        <rdar://problem/29803676>
+
+        Reviewed by Keith Miller.
+
+        I rewrote some of the testWasmModuleFunctions that used Memory to use
+        the JS API since the jsc.cpp version can no longer use memory.
+
+        * wasm.yaml:
+        * wasm/function-tests/add-12.js:
+        (testWasmModuleFunctions):
+        * wasm/function-tests/br-if-loop-less-than.js:
+        (testWasmModuleFunctions):
+        * wasm/function-tests/brTableAsIf.js:
+        (testWasmModuleFunctions):
+        * wasm/function-tests/brTableManyValues.js:
+        (testWasmModuleFunctions):
+        * wasm/function-tests/brTableWithLoop.js:
+        (testWasmModuleFunctions):
+        * wasm/function-tests/dumb-eq-if-then-else.js:
+        * wasm/function-tests/eqz.js:
+        * wasm/function-tests/grow-memory-2.js: Added.
+        (const.func):
+        (assert.eq.instance.exports.foo):
+        * wasm/function-tests/grow-memory-3.js: Added.
+        * wasm/function-tests/grow-memory-4.js: Added.
+        (const.func):
+        * wasm/function-tests/grow-memory.js: Added.
+        (binaryShouldNotParse):
+        (assert.truthy):
+        (assert.eq):
+        (memory.grow):
+        * wasm/function-tests/i32-load.js:
+        (testWasmModuleFunctions):
+        * wasm/function-tests/i32-load8-s.js:
+        * wasm/function-tests/max.js:
+        * wasm/function-tests/min.js:
+        * wasm/js-api/memory-grow.js: Added.
+        (i.i):
+        (assertEq):
+        * wasm/js-api/test_memory.js:
+        * wasm/wasm.json:
+
+2016-12-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Propagate the source origin as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=166348
+
+        Reviewed by Darin Adler.
+
+        * stress/source-origin.js: Added.
+        (shouldBe):
+
+2016-12-24  Caio Lima  <ticaiolima@gmail.com>
+
+        [test262] Fixing mapped arguments object property test case
+        https://bugs.webkit.org/show_bug.cgi?id=159398
+
+        Reviewed by Saam Barati.
+
+        * stress/arguments-bizarre-behaviour-disable-enumerability.js:
+        * stress/arguments-define-property.js: Added.
+        (assert):
+        (testProperties):
+        * stress/arguments-non-configurable.js: Added.
+        (assert):
+        (tryChangeNonConfigurableDescriptor):
+        (set tryChangeNonConfigurableDescriptor):
+        (tryChangeWritableOfNonConfigurableDescriptor):
+        * test262.yaml:
+
+016-12-20  Caio Lima  <ticaiolima@gmail.com>
+
+        [test262] Fixing mapped arguments object property test case
+        https://bugs.webkit.org/show_bug.cgi?id=159398
+
+        Reviewed by .
+
+        * stress/arguments-bizarre-behaviour-disable-enumerability.js:
+        * stress/arguments-define-property.js: Added.
+        (assert):
+        (testProperties):
+        * stress/arguments-non-configurable.js: Added.
+        (assert):
+        (tryChangeNonConfigurableDescriptor):
+        (set tryChangeNonConfigurableDescriptor):
+        (tryChangeWritableOfNonConfigurableDescriptor):
+        * test262.yaml:
+
+2016-12-23  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: trap on bad division.
+        https://bugs.webkit.org/show_bug.cgi?id=164786
+
+        Reviewed by Mark Lam.
+
+        Also, mark conversions as passing.
+
+        * wasm.yaml:
+        * wasm/wasm.json:
+
+2016-12-22  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Make spec-tests/f32.wast.js and spec-tests/f64.wast.js pass
+        https://bugs.webkit.org/show_bug.cgi?id=166447
+
+        Reviewed by Saam Barati.
+
+        * wasm.yaml:
+        * wasm/wasm.json:
+
+2016-12-22  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Make calling Wasm functions that returns or takes an i64 as a parameter an early exception
+        https://bugs.webkit.org/show_bug.cgi?id=166437
+        <rdar://problem/29793949>
+
+        Reviewed by Keith Miller.
+
+        * wasm.yaml:
+        * wasm/function-tests/i64-from-js-exceptions.js: Added.
+        (const.imp.import.sideEffects):
+        (assert.throws.instance.exports.foo.valueOf):
+
+2016-12-22  Mark Lam  <mark.lam@apple.com>
+
+        De-duplicate finally blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=160168
+
+        Reviewed by Saam Barati.
+
+        Re-landing r209952 with a few new tests added in test-finally.js.
+
+        * stress/deeply-nested-finallys.js: Copied from JSTests/stress/deeply-nested-finallys.js.
+        - Tests many levels of finally nesting.  This causes the old code to hang (and
+          crashes eventually) while trying to generate bytecode for the exponentially
+          duplicated finally blocks.  The new code completes this test almost instantly.
+
+        * stress/test-finally.js: Copied from JSTests/stress/test-finally.js.
+        - Tests control flow through various permutations of finally blocks.
+
+2016-12-22  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Make the spec-tests/address.wast.js test pass
+        https://bugs.webkit.org/show_bug.cgi?id=166429
+        <rdar://problem/29793220>
+
+        Reviewed by Keith Miller.
+
+        * wasm.yaml:
+
+2016-12-22  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: The validator should not allow unused stack entries at the end of a block
+        https://bugs.webkit.org/show_bug.cgi?id=166411
+
+        Reviewed by Saam Barati.
+
+        Test cleanup and enable new passing tests.
+
+        * wasm.yaml:
+        * wasm/function-tests/br-if-as-return.js:
+
+2016-12-22  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Make the spec-tests/start.wast.js test pass
+        https://bugs.webkit.org/show_bug.cgi?id=166416
+        <rdar://problem/29784532>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm.yaml:
+
+2016-12-21  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Fix decode floating point constants in unreachable code
+        https://bugs.webkit.org/show_bug.cgi?id=166400
+
+        Reviewed by Saam Barati.
+
+        * wasm.yaml:
+
+2016-12-21  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Allow br, br_if, and br_table to act as a return
+        https://bugs.webkit.org/show_bug.cgi?id=166393
+
+        Reviewed by Saam Barati.
+
+        Add tests for breaks acting as returns and fix tests that
+        validate error messages.
+
+        * wasm/function-tests/br-as-return.js: Added.
+        * wasm/function-tests/br-if-as-return.js: Added.
+        * wasm/function-tests/br-table-as-return.js: Added.
+        * wasm/function-tests/if-no-else-non-void.js:
+        * wasm/function-tests/struct.js: Added.
+        * wasm/js-api/global-error.js:
+        (assert.throws):
+        * wasm/js-api/table.js:
+        (assert.throws):
+
+2016-12-21  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Import spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=166395
+
+        Rubber stamped by Keith Miller.
+
+        This patch implements the Wasm spec's tests found here:
+        https://github.com/WebAssembly/spec/tree/master/interpreter/test
+        
+        These tests are in .wast s-epxression format. To convert
+        them to JS, I use a script from the wabt library, found here:
+        https://github.com/WebAssembly/wabt/blob/master/test/run-gen-spec-js.py
+        
+        I also added a script that automatically imports the tests as
+        JS files. The inputs to the script is the path to the Wasm spec
+        git repo and the path to the wabt git repo. This will make importing
+        new tests easy in the future.
+
+        The wasm spec imported is at commit: b055d01ea1dfdd7a5231ae779095435f836de97f
+        The wabt used to do the import is at commit: 622b42dced6d793e9d49e9b1fd1d1524defd1387
+
+        * wasm.yaml:
+        * wasm/import-spec-tests.rb: Added.
+        * wasm/spec-tests: Added.
+        * wasm/spec-tests/address.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/binary.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/block.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/br.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/br_if.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/br_table.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/break-drop.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/call.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/call_indirect.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/comments.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/conversions.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/custom_section.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/endianness.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/exports.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/f32.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/f32_cmp.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/f64.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/f64_cmp.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/fac.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/float_exprs.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/float_literals.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/float_memory.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/float_misc.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/forward.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/func.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/func_ptrs.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/get_local.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/globals.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/i32.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/i64.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/imports.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/int_exprs.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/int_literals.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/left-to-right.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/linking.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/loop.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/memory.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/memory_redundancy.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/memory_trap.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/names.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/nop.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/resizing.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/return.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/select.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/set_local.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/skip-stack-guard-page.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/stack.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/start.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/store_retval.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/switch.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/tee_local.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/traps.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/typecheck.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/unreachable.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-tests/unwind.wast.js: Added.
+        (register):
+        (module):
+        (instance):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (assert_return):
+        (assert_return_nan):
+
+2016-12-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for global
+        https://bugs.webkit.org/show_bug.cgi?id=165171
+
+        Reviewed by Filip Pizlo.
+
+        * stress/global.js: Added.
+
+2016-12-20  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: implement WebAssembly.LinkError
+        https://bugs.webkit.org/show_bug.cgi?id=165805
+        <rdar://problem/29747874>
+
+        Reviewed by Mark lam.
+
+        Update all exception sites which now throw WebAssembly.LinkError.
+
+        * wasm/js-api/element-data.js:
+        * wasm/js-api/element.js:
+        (assert.throws):
+        * wasm/js-api/global-error.js:
+        (new.Number):
+        * wasm/js-api/table.js:
+        (assert.throws):
+        (new.WebAssembly.Table):
+        * wasm/js-api/test_Data.js:
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+        * wasm/js-api/test_memory.js:
+        (test):
+        (test.testMemImportError): Deleted.
+
+2016-12-20  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: unique function signatures
+        https://bugs.webkit.org/show_bug.cgi?id=165957
+        <rdar://problem/29735737>
+
+        Reviewed by Saam Barati.
+
+        * wasm/function-tests/table-basic.js: FIXME is now addressed,
+        though instance to instance calls still need work which bug
+        #165282 will address
+        (i.assert.eq.foo):
+        * wasm/js-api/unique-signature.js: Added.
+        (CallIndirectWithDuplicateSignatures):
+
+2016-12-19  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r209974 and r209952. They break some websites in mysterious ways. Step 2: Rollout r209952.
+        https://bugs.webkit.org/show_bug.cgi?id=166049
+
+        Not reviewed.
+
+        * stress/deeply-nested-finallys.js: Removed.
+        * stress/test-finally.js: Removed.
+
+2016-12-19  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Make running Wasm tests take less time by reducing some tests' iteration count and by splitting some tests into different files
+        https://bugs.webkit.org/show_bug.cgi?id=166017
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/function-tests/trap-load-2.js: Added.
+        (assert):
+        (wasmFrameCountFromError):
+        (continuation):
+        (i.catch):
+        * wasm/function-tests/trap-load.js:
+        (assert.continuation): Deleted.
+        * wasm/function-tests/trap-store-2.js: Added.
+        (import.Builder.from.string_appeared_here.assert):
+        (continuation):
+        (i.catch):
+        * wasm/function-tests/trap-store.js:
+        (assert.continuation): Deleted.
+        (assert): Deleted.
+        * wasm/js-api/test_memory.js:
+        (test):
+
+2016-12-18  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Implement the WebAssembly.compile and WebAssembly.validate
+        https://bugs.webkit.org/show_bug.cgi?id=165936
+
+        Reviewed by Mark Lam.
+
+        * wasm/js-api/Module-compile.js: Added.
+        (async.testPromiseAPI):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+        * wasm/js-api/validate.js: Added.
+        (assert.truthy.WebAssembly.validate.builder.WebAssembly):
+
+2016-12-16  Mark Lam  <mark.lam@apple.com>
+
+        De-duplicate finally blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=160168
+
+        Reviewed by Keith Miller.
+
+        * stress/deeply-nested-finallys.js: Added.
+        - Tests many levels of finally nesting.  This causes the old code to hang (and
+          crashes eventually) while trying to generate bytecode for the exponentially
+          duplicated finally blocks.  The new code completes this test almost instantly.
+
+        * stress/test-finally.js: Added.
+        - Tests control flow through various permutations of finally blocks.
+
+2016-12-16  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: WasmB3IRGenerator should throw exceptions instead of crash
+        https://bugs.webkit.org/show_bug.cgi?id=165834
+
+        Reviewed by Keith Miller.
+
+        * wasm/function-tests/exceptions.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        * wasm/function-tests/table-basic.js:
+        (i.i.42.throw.new.Error):
+
+2016-12-16  Keith Miller  <keith_miller@apple.com>
+
+        i64.eqz should use an Int64 zero
+        https://bugs.webkit.org/show_bug.cgi?id=165942
+
+        Reviewed by Mark Lam.
+
+        * wasm/wasm.json:
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Fix validation of non-void if blocks with no else
+        https://bugs.webkit.org/show_bug.cgi?id=165938
+
+        Reviewed by Saam Barati.
+
+        Add a new failing test and a fix an existing one.
+
+        * wasm/function-tests/dead-call.js:
+        * wasm/function-tests/if-no-else-non-void.js: Added.
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should not create empty unlinked callsites
+        https://bugs.webkit.org/show_bug.cgi?id=165933
+
+        Reviewed by Mark Lam.
+
+        * wasm/function-tests/dead-call.js: Added.
+
+2016-12-15  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: improve compilation error messages
+        https://bugs.webkit.org/show_bug.cgi?id=163919
+
+        Reviewed by Saam Barati.
+
+        Update error messages in these tests.
+        Use the assert.throws facility in many of them which weren't already.
+
+        * wasm/js-api/element.js:
+        (assert.throws.new.WebAssembly.Module.builder.WebAssembly):
+        (assert.throws):
+        * wasm/js-api/global-error.js:
+        (assert.throws.new.WebAssembly.Module.bin):
+        (assert.throws):
+        (new.Number):
+        * wasm/js-api/table.js:
+        (assert.throws.new.WebAssembly.Module.builder.WebAssembly):
+        (assert.throws):
+        (assertBadTableImport):
+        * wasm/js-api/test_Data.js:
+        (DataSectionWithoutMemory):
+        * wasm/js-api/test_Start.js:
+        (InvalidStartFunctionIndex):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2016-12-15  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: improve data section errors
+        https://bugs.webkit.org/show_bug.cgi?id=165733
+
+        Reviewed by Keith Miller.
+
+        * wasm/js-api/element-data.js: Added.
+        (ElementBeforeData.set const):
+        (ElementBeforeData): check the order of initialization, which is observable on failure
+        * wasm/js-api/test_Data.js:
+        (DataSectionWithoutMemory):
+        (DataSectionOffTheEnd): Deleted.
+        (DataSectionPartlyOffTheEnd): Deleted.
+        (DataSectionEmptyOffTheEnd): Deleted.
+        (DataSectionSeenByStart): Deleted.
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Fix 64-bit shift family Wasm opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=165902
+
+        Reviewed by Geoffrey Garen.
+
+        Add tests for shift family of instructions. Since
+        we can't generate i64 values to pass to wasm we only compile
+        the code for those functions. Attempting to generate any i64
+        code using these instructions would have been enough to cause
+        the B3 Validation error anyway.
+
+        * wasm/assert.js:
+        * wasm/function-tests/rotl.js: Added.
+        * wasm/function-tests/rotr.js: Added.
+        * wasm/function-tests/shl.js: Added.
+        * wasm/function-tests/shr-s.js: Added.
+        * wasm/function-tests/shr-u.js: Added.
+        * wasm/wasm.json:
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: test_BuilderJSON.js is broken
+        https://bugs.webkit.org/show_bug.cgi?id=165893
+
+        Reviewed by Michael Saboff.
+
+        * wasm/Builder.js:
+        (const._isValidValue):
+        * wasm/self-test/test_BuilderJSON.js:
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix test.
+
+        * wasm/function-tests/i32-const.js:
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should decode constants correctly
+        https://bugs.webkit.org/show_bug.cgi?id=165886
+
+        Reviewed by Saam Barati.
+
+        * wasm/Builder.js:
+        (const._isValidValue):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.putOp):
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.float):
+        (export.default.LowLevelBinary.prototype.double):
+        * wasm/function-tests/f32-const.js: Added.
+        * wasm/function-tests/f64-const.js: Added.
+        * wasm/function-tests/i32-const.js: Added.
+        * wasm/wasm.json:
+
+2016-12-14  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Add various low hanging fruit that will allow us to run the LLVM torture tests in Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=165883
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Export):
+        * wasm/js-api/table.js:
+        (assertBadBinary):
+        (assertBadTable):
+        (assert.truthy):
+        * wasm/js-api/test_memory.js:
+        (binaryShouldNotParse):
+        (test):
+        (test.testMemImportError):
+        (assert.truthy):
+        (assert): Deleted.
+
+2016-12-14  Filip Pizlo  <fpizlo@apple.com>
+
+        DirectTailCall implementation needs to tell the shuffler what to put into the ArgumentCount explicitly
+        https://bugs.webkit.org/show_bug.cgi?id=165882
+
+        Reviewed by Mark Lam.
+
+        * stress/direct-tail-call-arity-mismatch-count-args.js: Added.
+        (foo):
+        (bar):
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly JS API: implement Global
+        https://bugs.webkit.org/show_bug.cgi?id=164133
+
+        Reviewed by Saam Barati.
+
+        * wasm/Builder.js:
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.valueType.WASM.description.type.i32.type.const.putGlobalType):
+        (const.putOp):
+        (const.putInitExpr):
+        (const.emitters.Import):
+        (const.emitters.Global):
+        (const.emitters.Export):
+        (const.emitters.Code):
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.varuint32):
+        (export.default.LowLevelBinary.prototype.varint32):
+        * wasm/js-api/global-error.js: Added.
+        (catch):
+        (assert.truthy):
+        * wasm/js-api/global-external-init-from-import.js: Added.
+        * wasm/js-api/global-internal-init-from-import.js: Added.
+        * wasm/js-api/global-mutate.js: Added.
+        (createInternalGlobalModule):
+        * wasm/js-api/globals-export.js: Added.
+        * wasm/js-api/globals-import.js: Added.
+        * wasm/wasm.json:
+
+2016-12-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: implement the elements section
+        https://bugs.webkit.org/show_bug.cgi?id=165715
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        (export.default.Builder.prototype._registerSectionBuilders.switch):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Element):
+        * wasm/function-tests/basic-element.js: Added.
+        * wasm/js-api/element.js: Added.
+        (assertBadBinary):
+        (assertBadBinary.badInstantiation):
+
+2016-12-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: implement the table section and table import
+        https://bugs.webkit.org/show_bug.cgi?id=165716
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (const._importMemoryContinuation):
+        (const._importTableContinuation):
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        (const._importMemoryContinuation.section): Deleted.
+        (const): Deleted.
+        (const._importMemoryContinuation.assert): Deleted.
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.putResizableLimits):
+        (const.putTable):
+        (const.emitters.Import):
+        (const.emitters.Table):
+        * wasm/function-tests/call-indirect-params.js:
+        * wasm/function-tests/call-indirect.js:
+        * wasm/function-tests/table-basic-2.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        (func):
+        * wasm/function-tests/table-basic.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        * wasm/js-api/call-indirect-results.js:
+        (const.wasmModuleWhichImportJS): Deleted.
+        (MonomorphicImport): Deleted.
+        * wasm/js-api/call-indirect.js:
+        (const.wasmModuleWhichImportJS):
+        (const.makeTable):
+        (Polyphic2Import):
+        (VirtualImport):
+        (MonomorphicImport): Deleted.
+        * wasm/js-api/table.js: Added.
+        (assertBadBinary):
+        (assert.truthy):
+        (assertBadTable):
+        (assertBadTableImport):
+        (assertBadBinary.assertBadTableInstance):
+        (assertBadTableInstance):
+        (new.WebAssembly.Table):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2016-12-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209725.
+        https://bugs.webkit.org/show_bug.cgi?id=165811
+
+        "Broke ARMv7 builds" (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r209653): speedometer crashes making virtual slow
+        path tailcalls"
+        https://bugs.webkit.org/show_bug.cgi?id=165748
+        http://trac.webkit.org/changeset/209725
+
+2016-12-12  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r209653): speedometer crashes making virtual slow path tailcalls
+        https://bugs.webkit.org/show_bug.cgi?id=165748
+
+        Reviewed by Filip Pizlo.
+
+        New regression test.
+
+        * stress/regress-165748.js: Added.
+        (sum1):
+        (sum2):
+        (sum3):
+        (sum4):
+        (sum5):
+        (sum6):
+        (tailCaller):
+        (test):
+
+2016-12-12  Mark Lam  <mark.lam@apple.com>
+
+        Debug JSC test timeout: stress/string-prototype-replace-should-throw-out-of-memory-error-when-using-too-much-memory.js.ftl-no-cjit.
+        https://bugs.webkit.org/show_bug.cgi?id=164630
+
+        Reviewed by Keith Miller.
+
+        Speculative fix for timeout issue.  It looks like this test just runs a bit
+        slower on debug builds.  So, we'll give it a little more time to run.
+
+        * stress/string-prototype-replace-should-throw-out-of-memory-error-when-using-too-much-memory.js:
+
+2016-12-11  Saam Barati  <sbarati@apple.com>
+
+        We should be able to throw exceptions from Wasm code and when Wasm frames are on the stack
+        https://bugs.webkit.org/show_bug.cgi?id=165429
+
+        Reviewed by Keith Miller.
+
+        * wasm/function-tests/trap-load.js: Added.
+        (assert):
+        (wasmFrameCountFromError):
+        (i.catch):
+        (assert.continuation):
+        * wasm/function-tests/trap-store.js: Added.
+        (import.Builder.from.string_appeared_here.assert):
+        (i.catch):
+        (assert.continuation):
+        (assert):
+        * wasm/js-api/test_memory_constructor.js:
+        (assert):
+
+2016-12-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209653, r209654, r209663, and
+        r209673.
+        https://bugs.webkit.org/show_bug.cgi?id=165739
+
+        speedometer crashes (Requested by pizlo on #webkit).
+
+        Reverted changesets:
+
+        "JSVALUE64: Pass arguments in platform argument registers when
+        making JavaScript calls"
+        https://bugs.webkit.org/show_bug.cgi?id=160355
+        http://trac.webkit.org/changeset/209653
+
+        "Unreviewed build fix for 32 bit builds."
+        http://trac.webkit.org/changeset/209654
+
+        "Unreviewed build fix for the CLOOP after r209653"
+        http://trac.webkit.org/changeset/209663
+
+        "REGRESSION(r209653) Crash in CallFrameShuffler::snapshot()"
+        https://bugs.webkit.org/show_bug.cgi?id=165728
+        http://trac.webkit.org/changeset/209673
+
+2016-12-10  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r209653) Crash in CallFrameShuffler::snapshot()
+        https://bugs.webkit.org/show_bug.cgi?id=165728
+
+        Reviewed by Filip Pizlo.
+
+        New regression test.
+
+        * stress/regress-165728.js: Added.
+        (sum1):
+        (sum2):
+        (tailCaller):
+        (test):
+
+2016-12-10  Keith Miller  <keith_miller@apple.com>
+
+        Fix indirect_call if the result type is used.
+        https://bugs.webkit.org/show_bug.cgi?id=165727
+
+        Reviewed by Michael Saboff.
+
+        * wasm/js-api/call-indirect-results.js: Added.
+        (const.wasmModuleWhichImportJS):
+        (MonomorphicImport):
+
+2016-12-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Module namespace object behaves like immutable prototype exotic object
+        https://bugs.webkit.org/show_bug.cgi?id=165598
+
+        Reviewed by Mark Lam.
+
+        * modules/namespace-prototype-assignment.js: Added.
+        (else):
+        (reportError):
+        (shouldEqual):
+        (shouldThrow):
+        (stringify):
+        (makeTestID):
+        (doInternalSetPrototypeOf):
+        (ordinarySetPrototypeOf):
+        (setImmutablePrototype):
+        (windowProxySetPrototypeOf):
+        (initSetterExpectation):
+        (throwIfNoExceptionPending):
+        (objectSetPrototypeOf):
+        (setUnderscoreProto):
+        (reflectSetPrototypeOf):
+        (setPrototypeOf):
+        (newObjectProto.toString):
+        (Symbol):
+        (test):
+        (runTests):
+        * modules/namespace-set-prototype-of.js: Added.
+        (shouldThrow):
+        (TypeError.Cannot.set prototype):
+
+2016-12-09  Michael Saboff  <msaboff@apple.com>
+
+        JSVALUE64: Pass arguments in platform argument registers when making JavaScript calls
+        https://bugs.webkit.org/show_bug.cgi?id=160355
+
+        Reviewed by Filip Pizlo.
+
+        New microbenchmarks to measure call type performance.
+
+        * microbenchmarks/calling-computed-args.js: Added.
+        * microbenchmarks/calling-many-callees.js: Added.
+        * microbenchmarks/calling-one-callee-fixed.js: Added.
+        * microbenchmarks/calling-one-callee.js: Added.
+        * microbenchmarks/calling-poly-callees.js: Added.
+        * microbenchmarks/calling-poly-extra-arity-callees.js: Added.
+        * microbenchmarks/calling-tailcall.js: Added.
+        * microbenchmarks/calling-virtual-arity-fixup-callees.js: Added.
+        * microbenchmarks/calling-virtual-arity-fixup-stackargs.js: Added.
+        * microbenchmarks/calling-virtual-callees.js: Added.
+        * microbenchmarks/calling-virtual-extra-arity-callees.js: Added.
+
+2016-12-09  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should support call_indirect
+        https://bugs.webkit.org/show_bug.cgi?id=165718
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/Builder.js:
+        * wasm/function-tests/call-indirect-params.js: Added.
+        * wasm/function-tests/call-indirect.js: Added.
+        * wasm/js-api/call-indirect.js: Added.
+        (const.wasmModuleWhichImportJS):
+        (MonomorphicImport):
+        (Polyphic2Import):
+        (VirtualImport):
+        * wasm/wasm.json:
+
+2016-12-09  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: implement data section
+        https://bugs.webkit.org/show_bug.cgi?id=165696
+
+        Reviewed by Keith Miller.
+
+        As specified in https://github.com/WebAssembly/design/blob/master/BinaryEncoding.md#data-section
+        Note that some of the interesting corner cases are ill-defined by the spec: https://github.com/WebAssembly/design/issues/897
+
+        * wasm/Builder.js: create a data section from JavaScript
+        * wasm/Builder_WebAssemblyBinary.js: assemble the data section into the proper binary encoding
+        (const.emitters.Data):
+        * wasm/js-api/test_Data.js: Added.
+        (DataSection):
+        (DataSectionOffTheEnd):
+        (DataSectionPartlyOffTheEnd):
+        (DataSectionEmptyOffTheEnd):
+        (DataSectionSeenByStart):
+        * wasm/self-test/test_BuilderJSON.js: make sure the JSON structure is fine (this sanity checks before going to binary)
+
+2016-12-09  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement start function
+        https://bugs.webkit.org/show_bug.cgi?id=165150
+
+        Reviewed by Saam Barati.
+
+        * wasm/Builder.js: allow building a .Start()
+        * wasm/Builder_WebAssemblyBinary.js:
+        * wasm/js-api/test_Start.js: Added.
+        (const.emitters.Start): serialize a start section
+        * wasm/self-test/test_BuilderJSON.js: validate the start section's content
+
+2016-12-09  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly JS API: implement importing and defining Memory
+        https://bugs.webkit.org/show_bug.cgi?id=164134
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (const._importMemoryContinuation.section):
+        (const._importMemoryContinuation.assert):
+        (const._importMemoryContinuation):
+        (const._exportFunctionContinuation.const): Deleted.
+        (const._exportFunctionContinuation): Deleted.
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Import):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+        * wasm/js-api/test_memory.js: Added.
+        (assert):
+        (binaryShouldNotParse):
+        (test):
+        (test.testMemImportError):
+        * wasm/js-api/test_memory_constructor.js: Added.
+        (assert):
+        (throw.new.Error):
+        (testInvalidSize):
+        (assert.testInvalidInitial):
+        (testInvalidInitial.testInvalidMaximum):
+        (testInvalidInitial):
+        (testInvalidMaximum):
+        * wasm/self-test/test_BuilderJSON.js:
+
+2016-12-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: JSC::link* shouldn't need a CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=165591
+
+        Reviewed by Keith Miller.
+
+        test that wasm -> JS works, including the IC
+
+        * wasm/js-api/test_Instance.js:
+        (const.wasmModuleWhichImportJS):
+        (MonomorphicImport):
+        (Polyphic2Import):
+        (Polyphic3Import):
+        (VirtualImport):
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Green the cloop bot by raising this threshold.
+
+        * mozilla/js1_5/Array/regress-101964.js:
+
+2016-12-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: wire up Instance imports
+        https://bugs.webkit.org/show_bug.cgi?id=165118
+
+        Reviewed by Saam Barati.
+
+        * wasm/js-api/test_Instance.js: add the test, disabled for now
+
+2016-12-07  Keith Miller  <keith_miller@apple.com>
+
+        Add more missing trivial wasm ops.
+        https://bugs.webkit.org/show_bug.cgi?id=165564
+
+        Add tests for drop and tee_local.
+
+        Reviewed by Geoffrey Garen.
+
+        * wasm/function-tests/drop.js: Added.
+        * wasm/function-tests/nop.js: Added.
+        * wasm/function-tests/tee-local.js: Added.
+
+2016-12-06  Keith Miller  <keith_miller@apple.com>
+
+        Add support for truncation operators
+        https://bugs.webkit.org/show_bug.cgi?id=165519
+
+        Reviewed by Geoffrey Garen.
+
+        * wasm/function-tests/i32-trunc-s-f32.js: Added.
+        * wasm/function-tests/i32-trunc-s-f64.js: Added.
+        * wasm/function-tests/i32-trunc-u-f32.js: Added.
+        * wasm/function-tests/i32-trunc-u-f64.js: Added.
+        * wasm/function-tests/i64-trunc-s-f32.js: Added.
+        * wasm/function-tests/i64-trunc-s-f64.js: Added.
+        * wasm/function-tests/i64-trunc-u-f32.js: Added.
+        * wasm/function-tests/i64-trunc-u-f64.js: Added.
+
+2016-12-06  Mark Lam  <mark.lam@apple.com>
+
+        Introduce the concept of Immutable Prototype Exotic Objects to comply with the spec.
+        https://bugs.webkit.org/show_bug.cgi?id=165227
+        <rdar://problem/29442665>
+
+        Reviewed by Saam Barati.
+
+        * stress/get-from-scope-dynamic-onto-proxy.js:
+        - Updated error message.
+
+        * stress/proxy-dont-infinite-loop.js: Removed.
+        * stress/proxy-json-path.js: Removed.
+        * stress/rest-parameter-allocation-elimination-watchpoints-6.js: Removed.
+        - Removed these tests because the issue they are testing relies on being able to
+          set Object.prototype.__proto__ to something else (which is now not possible).
+
+2016-12-05  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] report unexpected token when "async" is followed by identifier 
+        https://bugs.webkit.org/show_bug.cgi?id=165091
+
+        Reviewed by Mark Lam.
+
+        * stress/bug-165091.js:
+
+2016-12-05  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm i64 to i32 conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=165378
+
+        Reviewed by Filip Pizlo.
+
+        It turns out the wrap operation is just B3's Trunc.
+
+        * wasm/wasm.json:
+
+2016-12-04  Keith Miller  <keith_miller@apple.com>
+
+        Add support for Wasm ctz and popcnt
+        https://bugs.webkit.org/show_bug.cgi?id=165369
+
+        Reviewed by Saam Barati.
+
+        * wasm/function-tests/ctz.js: Added.
+        * wasm/function-tests/popcnt.js: Added.
+
+2016-12-03  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: update binary format to 0xD version
+        https://bugs.webkit.org/show_bug.cgi?id=165345
+
+        Reviewed by Keith Miller.
+
+        As described in the following PR: https://github.com/WebAssembly/design/pull/836
+        Originally committed in r209175, reverted in r209242, and fixed in r209284.
+
+        * wasm/Builder.js:
+        (const._normalizeFunctionSignature):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Type):
+        (const.emitters.Code):
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.block_type):
+        (export.default.LowLevelBinary.prototype.inline_signature_type): Deleted.
+        * wasm/WASM.js:
+        * wasm/js-api/test_basic_api.js:
+        * wasm/self-test/test_BuilderWebAssembly.js:
+        (EmptyModule):
+        (CustomSection):
+        * wasm/self-test/test_WASM.js:
+        * wasm/wasm.json:
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm copysign
+        https://bugs.webkit.org/show_bug.cgi?id=165355
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/function-tests/copysign.js: Added.
+
+2016-12-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209298.
+        https://bugs.webkit.org/show_bug.cgi?id=165359
+
+        broke the build (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Add Wasm copysign"
+        https://bugs.webkit.org/show_bug.cgi?id=165355
+        http://trac.webkit.org/changeset/209298
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm copysign
+        https://bugs.webkit.org/show_bug.cgi?id=165355
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/function-tests/copysign.js: Added.
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix git having a breakdown over trying to reland a rollout.
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm floating point nearest and trunc
+        https://bugs.webkit.org/show_bug.cgi?id=165339
+
+        Reviewed by Saam Barati.
+
+        * wasm/function-tests/nearest.js: Added.
+        * wasm/function-tests/trunc.js: Added.
+
+2016-12-02  Caitlin Potter  <caitp@igalia.com>
+
+[JSC] add additional bit to JSTokenType bitfield
+        https://bugs.webkit.org/show_bug.cgi?id=165091
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/bug-165091.js: Added.
+        (shouldThrowSyntaxError):
+
+2016-12-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209275 and r209276.
+        https://bugs.webkit.org/show_bug.cgi?id=165348
+
+        "broke the arm build" (Requested by keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Add Wasm floating point nearest and trunc"
+        https://bugs.webkit.org/show_bug.cgi?id=165339
+        http://trac.webkit.org/changeset/209275
+
+        "Unreviewed, forgot to change instruction after renaming."
+        http://trac.webkit.org/changeset/209276
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm floating point nearest and trunc
+        https://bugs.webkit.org/show_bug.cgi?id=165339
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/function-tests/nearest.js: Added.
+        * wasm/function-tests/trunc.js: Added.
+
+2016-12-02  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: revert patch causing odd breakage
+        https://bugs.webkit.org/show_bug.cgi?id=165308
+
+        Unreviewed.
+
+        Bug #164724 seems to cause build issues which I haven't tracked down yet. WasmOps.h can't be found:
+        ./Source/JavaScriptCore/wasm/WasmFormat.h:34:10: fatal error: 'WasmOps.h' file not found
+
+        It's weird since the file is auto-generated and has been for a while. #164724 merely includes it in WasmFormat.h.
+
+        * wasm/Builder.js:
+        (const._normalizeFunctionSignature):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Type):
+        (const.emitters.Code):
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.inline_signature_type):
+        (export.default.LowLevelBinary.prototype.block_type): Deleted.
+        * wasm/WASM.js:
+        * wasm/js-api/test_basic_api.js:
+        * wasm/self-test/test_BuilderWebAssembly.js:
+        (EmptyModule):
+        (CustomSection):
+        * wasm/self-test/test_WASM.js:
+        * wasm/wasm.json:
+
+2016-12-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip flaky test ChakraCore/test/fieldopts/objtypespec-newobj-invalidation.1.js
+        https://bugs.webkit.org/show_bug.cgi?id=162567
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore.yaml:
+
+2016-12-01  Keith Miller  <keith_miller@apple.com>
+
+        Add wasm int to floating point opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=165252
+
+        Reviewed by Geoffrey Garen.
+
+        Add tests for Wasm integral to floating point conversion opcodes.
+
+        * wasm/function-tests/int-to-floating-point.js: Added.
+        * wasm/wasm.json:
+
+2016-12-01  Geoffrey Garen  <ggaren@apple.com>
+
+        Land a test case for <rdar://problem/27889416>
+        https://bugs.webkit.org/show_bug.cgi?id=165272
+
+        Reviewed by Saam Barati.
+
+        * stress/marked-argument-buffer.js: Added.
+        (allocate):
+        (test.o.toString):
+        (test):
+
+2016-11-29  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Skip failing JSC tests.
+        https://bugs.webkit.org/show_bug.cgi?id=165140
+
+        Reviewed by Mark Lam.
+
+        * ChakraCore.yaml:
+        * microbenchmarks/tan.js:
+
+2016-11-30  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly builder: don't throw when checker not implemented
+        https://bugs.webkit.org/show_bug.cgi?id=165219
+
+        Reviewed by Mark Lam.
+
+        We should perform whichever checks we've implemented, and assume the rest are OK until bug #163421 is fixed.
+
+        * wasm/Builder.js:
+        * wasm/README.md:
+        * wasm/function-tests/add-12.js:
+        * wasm/function-tests/br-if-loop-less-than.js:
+        * wasm/function-tests/brTableAsIf.js:
+        * wasm/function-tests/brTableManyValues.js:
+        * wasm/function-tests/brTableWithLoop.js:
+        * wasm/function-tests/dumb-eq-if-then-else.js:
+        * wasm/function-tests/dumb-less-than-fallthrough.js:
+        * wasm/function-tests/dumb-less-than-ite.js:
+        * wasm/function-tests/eqz.js:
+        * wasm/function-tests/factorial.js:
+        * wasm/function-tests/float-sub.js:
+        * wasm/function-tests/i32-load.js:
+        * wasm/function-tests/i32-load8-s.js:
+        * wasm/function-tests/if-then-else-fallthrough.js:
+        * wasm/function-tests/if-then-fallthrough.js:
+        * wasm/function-tests/loop-mult.js:
+        * wasm/function-tests/loop-sum.js:
+        * wasm/function-tests/max.js:
+        * wasm/function-tests/min.js:
+        * wasm/function-tests/ret5.js:
+        * wasm/function-tests/select.js:
+        * wasm/self-test/test_BuilderJSON.js:
+
+2016-11-29  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: improve Instance
+        https://bugs.webkit.org/show_bug.cgi?id=164757
+
+        Reviewed by Keith Miller.
+
+        An Instance's `exports` property wasn't populated with exports.
+
+        A follow-up patch will do imports.
+
+        A few things of note:
+
+         - LowLevelBinary: support 3-byte integers.
+         - LowLevelBinary: support proper UTF-8 2003 code points (instead of UTF-16).
+
+        * wasm/Builder.js:
+        * wasm/Builder_WebAssemblyBinary.js: wire up exports, stub other things out some more
+        (const.emitters.Export):
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.uint24): add, used for UTF-8
+        (export.default.LowLevelBinary.prototype.string): support UTF-8
+        (export.default.LowLevelBinary.prototype.getUint24): add, used for UTF-8
+        (export.default.LowLevelBinary.prototype.getVaruint1): was missing
+        (export.default.LowLevelBinary.prototype.getString): support UTF-8
+        (export.default.LowLevelBinary):
+        * wasm/js-api/test_Instance.js: instance.exports.answer() // <-- this is where the magic of this entire patch is
+        (ExportedAnswerI32):
+        * wasm/js-api/test_basic_api.js: punt test to later
+        (const.c.in.constructorProperties.switch):
+        * wasm/self-test/test_BuilderWebAssembly.js: UTF-8
+        (CustomSection):
+        * wasm/self-test/test_LowLevelBinary_string.js: UTF-8 now works
+        * wasm/self-test/test_LowLevelBinary_uint16.js: was missing one value
+        * wasm/self-test/test_LowLevelBinary_uint24.js: Copied from JSTests/wasm/self-test/test_LowLevelBinary_uint8.js.
+        * wasm/self-test/test_LowLevelBinary_uint8.js: was missing one value
+        * wasm/self-test/test_LowLevelBinary_varuint1.js: Added.
+        * wasm/utilities.js: this `dump` thing was useful
+        (const._dump):
+
+2016-11-29  Saam Barati  <sbarati@apple.com>
+
+        We should be able optimize the pattern where we spread a function's rest parameter to another call
+        https://bugs.webkit.org/show_bug.cgi?id=163865
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/default-derived-constructor.js: Added.
+        (createClassHierarchy.let.currentClass):
+        (createClassHierarchy):
+        * stress/call-varargs-spread.js: Added.
+        (assert):
+        (bar):
+        (foo):
+        * stress/load-varargs-on-new-array-with-spread-convert-to-static-loads.js: Added.
+        (assert):
+        (baz):
+        (bar):
+        (foo):
+        * stress/new-array-with-spread-with-normal-spread-and-phantom-spread.js: Added.
+        (assert):
+        (foo):
+        (escape):
+        (bar):
+        * stress/phantom-new-array-with-spread-osr-exit.js: Added.
+        (assert):
+        (baz):
+        (bar):
+        (effects):
+        (foo):
+        * stress/phantom-spread-forward-varargs.js: Added.
+        (assert):
+        (test1.bar):
+        (test1.foo):
+        (test1):
+        (test2.bar):
+        (test2.foo):
+        (test3.baz):
+        (test3.bar):
+        (test3.foo):
+        (test4.baz):
+        (test4.bar):
+        (test4.foo):
+        (test5.baz):
+        (test5.bar):
+        (test5.foo):
+        * stress/phantom-spread-osr-exit.js: Added.
+        (assert):
+        (baz):
+        (bar):
+        (effects):
+        (foo):
+        * stress/spread-call-convert-to-static-call.js: Added.
+        (assert):
+        (baz):
+        (bar):
+        (foo):
+        * stress/spread-forward-call-varargs-stack-overflow.js: Added.
+        (assert):
+        (identity):
+        (bar):
+        (foo):
+        * stress/spread-forward-varargs-rest-parameter-change-iterator-protocol-2.js: Added.
+        (assert):
+        (baz.Array.prototype.Symbol.iterator):
+        (baz):
+        (bar):
+        (foo):
+        (test):
+        * stress/spread-forward-varargs-rest-parameter-change-iterator-protocol.js: Added.
+        (assert):
+        (baz.Array.prototype.Symbol.iterator):
+        (baz):
+        (bar):
+        (foo):
+        * stress/spread-forward-varargs-stack-overflow.js: Added.
+        (assert):
+        (bar):
+        (foo):
+
+2016-11-29  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] always wrap AwaitExpression operand in a new Promise
+        https://bugs.webkit.org/show_bug.cgi?id=165181
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-await-basic.js:
+        (async.awaitedPromisesAreWrapped):
+
+2016-11-29  Keith Miller  <keith_miller@apple.com>
+
+        Add simple way to implement Wasm ops that require more than one B3 opcode
+        https://bugs.webkit.org/show_bug.cgi?id=165129
+
+        Reviewed by Geoffrey Garen.
+
+        * wasm/function-tests/eqz.js: Added.
+        * wasm/function-tests/max.js: Added.
+        * wasm/function-tests/min.js: Added.
+        * wasm/wasm.json:
+
+2016-11-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Crash in com.apple.JavaScriptCore: WTF::ThreadSpecific<WTF::WTFThreadData, + 142
+        https://bugs.webkit.org/show_bug.cgi?id=164898
+
+        Reviewed by Darin Adler.
+
+        * stress/tagged-template-registry-key-collect.js: Added.
+        (shouldBe):
+        (tag):
+        (i.eval):
+        * stress/tagged-template-registry-key.js: Added.
+        (shouldBe):
+        (tag):
+        (a):
+        (b):
+
+2016-11-20  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] speed up parsing of async functions
+        https://bugs.webkit.org/show_bug.cgi?id=164808
+
+        Reviewed by Yusuke Suzuki.
+
+        Add tests for line terminator following "async" keyword in async
+        function syntax.
+
+        * stress/async-await-syntax.js:
+        (shouldBe):
+
+2016-11-19  Mark Lam  <mark.lam@apple.com>
+
+        op_mod-* JSC tests needs a longer timeout too.
+        https://bugs.webkit.org/show_bug.cgi?id=164994
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/op_mod-ConstVar.js:
+        * stress/op_mod-VarConst.js:
+        * stress/op_mod-VarVar.js:
+
+2016-11-19  Mark Lam  <mark.lam@apple.com>
+
+        Add --timeoutMultiplier option to allow some tests more time to run.
+        https://bugs.webkit.org/show_bug.cgi?id=164951
+
+        Reviewed by Yusuke Suzuki.
+
+        Extended the timeout for these tests by 50% more because they run quite slow on
+        low-end machines.
+
+        * stress/op_div-ConstVar.js:
+        * stress/op_div-VarConst.js:
+        * stress/op_div-VarVar.js:
+
+2016-11-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r208867): JSC test failure: ChakraCore.yaml/ChakraCore/test/strict/05.arguments_sm.js.default
+        https://bugs.webkit.org/show_bug.cgi?id=164929
+
+        Reviewed by Mark Lam.
+
+        ES2017 drops arguments.caller and JavaScriptCore is updated to meet the spec.
+        This patch rebaselines the result of ChakraCore test for JSC.
+
+        * ChakraCore/test/strict/05.arguments_sm.baseline-jsc:
+
+2016-11-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Generator functions should have a displayable name when shown in stack traces
+        https://bugs.webkit.org/show_bug.cgi?id=164844
+        <rdar://problem/29300697>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/generator-function-name.js:
+        Add another test now that we name the inner generator function
+        that we do not break the lexical resolution of names.
+
+2016-11-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop arguments.caller
+        https://bugs.webkit.org/show_bug.cgi?id=164859
+
+        Reviewed by Saam Barati.
+
+        * stress/strict-mode-arguments-caller.js: Added.
+        (strictArguments):
+        (shouldBe):
+
+2016-11-17  Keith Miller  <keith_miller@apple.com>
+
+        Add rotate to Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=164871
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/wasm.json:
+
+2016-11-17  Keith Miller  <keith_miller@apple.com>
+
+        Add sqrt to Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=164877
+
+        Reviewed by Mark Lam.
+
+        B3 already has a Sqrt opcode we just need to map Wasm to it.
+
+        * wasm/wasm.json:
+
+2016-11-17  Saam Barati  <sbarati@apple.com>
+
+        Remove async/await compile time flag and enable tests
+        https://bugs.webkit.org/show_bug.cgi?id=164828
+        <rdar://problem/28639334>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-arrow-functions-lexical-arguments-binding.js:
+        * stress/async-arrow-functions-lexical-new.target-binding.js:
+        * stress/async-arrow-functions-lexical-super-binding.js:
+        * stress/async-arrow-functions-lexical-this-binding.js:
+        * stress/async-await-basic.js:
+        * stress/async-await-long-loop.js:
+        * stress/async-await-module-reserved-word.js:
+        * stress/async-await-mozilla.js:
+        (mozSyntaxErrors):
+        * stress/async-await-reserved-word.js:
+        * stress/async-await-syntax.js:
+        * stress/async-await-throw-loop.js:
+        * stress/async-function-create-nobaseline.js:
+        * stress/async-function-create-optimized.js:
+        * stress/async-function-declaration-sinking-no-double-allocate.js:
+        * stress/async-function-declaration-sinking-osrexit.js:
+        * stress/async-function-declaration-sinking-put.js:
+        * stress/async-function-expression-sinking-no-double-allocate.js:
+        * stress/async-function-expression-sinking-osrexit.js:
+        * stress/async-function-expression-sinking-put.js:
+        * test262.yaml:
+
+2016-11-15  Mark Lam  <mark.lam@apple.com>
+
+        Make JSC test functions more robust.
+        https://bugs.webkit.org/show_bug.cgi?id=164807
+
+        Reviewed by Keith Miller.
+
+        * stress/jsc-test-functions-should-be-more-robust.js: Added.
+
+2016-11-15  Keith Miller  <keith_miller@apple.com>
+
+        B3 should support UDiv/UMod
+        https://bugs.webkit.org/show_bug.cgi?id=164811
+
+        Reviewed by Filip Pizlo.
+
+        Link new instructions to wasm.
+
+        * wasm/wasm.json:
+
+2016-11-15  Saam Barati  <sbarati@apple.com>
+
+        Debug JSC test timeout: stress/has-own-property-name-cache-symbols-and-strings.js.ftl-no-cjit-small-pool
+        https://bugs.webkit.org/show_bug.cgi?id=163012
+
+        Unreviewed. This patch makes a test run for less time because it's timing out on the bots.
+
+        * stress/has-own-property-name-cache-symbols-and-strings.js:
+
+2016-11-15  Mark Lam  <mark.lam@apple.com>
+
+        The jsc shell's setImpureGetterDelegate() should ensure that the set value is an ImpureGetter.
+        https://bugs.webkit.org/show_bug.cgi?id=164781
+        <rdar://problem/28418590>
+
+        Reviewed by Geoffrey Garen and Michael Saboff.
+
+        * stress/jsc-setImpureGetterDelegate-on-bad-type.js: Added.
+
+2016-11-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Allow using macro assembler scratches in FTL CheckDOM
+        https://bugs.webkit.org/show_bug.cgi?id=164727
+
+        Reviewed by Filip Pizlo.
+
+        * stress/check-dom-with-signature.js: Added.
+        (shouldBe):
+        (calling):
+        (i.array.forEach):
+
+2016-11-14  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] do not reference AwaitExpression Promises in async function Promise chain
+        https://bugs.webkit.org/show_bug.cgi?id=164753
+
+        Reviewed by Yusuke Suzuki.
+
+        * asyncFunctionTests.yaml:
+        * stress/async-await-long-loop.js: Added.
+        (shouldBe):
+        (async.longLoop):
+        * stress/async-await-throw-loop.js: Added.
+        (shouldBe):
+        (async.thrower):
+        (async.throwLoop):
+
+2016-11-14  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm select
+        https://bugs.webkit.org/show_bug.cgi?id=164743
+
+        Reviewed by Saam Barati.
+
+        * wasm/function-tests/select.js: Added.
+
+2016-11-14  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Handle new_async_func / new_async_func_exp in DFG / FTL
+        https://bugs.webkit.org/show_bug.cgi?id=164037
+
+        Reviewed by Yusuke Suzuki.
+
+        Add tests based on tests from https://trac.webkit.org/changeset/194216.
+
+        * asyncFunctionTests.yaml:
+        * stress/async-function-create-nobaseline.js: Added.
+        * stress/async-function-create-optimized.js: Added.
+        * stress/async-function-declaration-sinking-no-double-allocate.js: Added.
+        * stress/async-function-declaration-sinking-osrexit.js: Added.
+        * stress/async-function-declaration-sinking-put.js: Added.
+        * stress/async-function-expression-sinking-no-double-allocate.js: Added.
+        * stress/async-function-expression-sinking-osrexit.js: Added.
+        * stress/async-function-expression-sinking-put.js: Added.
+
+2016-11-14  Mark Lam  <mark.lam@apple.com>
+
+        Some of JSStringView::SafeView methods are not idiomatically safe for JSString to StringView conversions.
+        https://bugs.webkit.org/show_bug.cgi?id=164701
+        <rdar://problem/27462104>
+
+        Reviewed by Darin Adler.
+
+        * stress/string-prototype-charCodeAt-on-too-long-rope.js: Added.
+
+2016-11-14  Mark Lam  <mark.lam@apple.com>
+
+        RegExpObject::exec/match should handle errors gracefully.
+        https://bugs.webkit.org/show_bug.cgi?id=155145
+        <rdar://problem/27435934>
+
+        Reviewed by Keith Miller.
+
+        * stress/regexp-prototype-exec-on-too-long-rope.js: Added.
+        * stress/regexp-prototype-match-on-too-long-rope.js: Added.
+        * stress/regexp-prototype-test-on-too-long-rope.js: Added.
+
 2016-11-14  Mark Lam  <mark.lam@apple.com>
 
         Enhance run-jsc-stress-test script to allow optional test specific options to be added for all test run configurations.

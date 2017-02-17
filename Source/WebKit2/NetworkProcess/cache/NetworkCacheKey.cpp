@@ -31,17 +31,13 @@
 #include "NetworkCacheCoders.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/persistence/Decoder.h>
+#include <wtf/persistence/Encoder.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebKit {
 namespace NetworkCache {
-
-static const String& noPartitionString()
-{
-    static NeverDestroyed<String> noPartition(ASCIILiteral("No partition"));
-    return noPartition;
-}
 
 Key::Key(const Key& o)
     : m_partition(o.m_partition.isolatedCopy())
@@ -49,15 +45,17 @@ Key::Key(const Key& o)
     , m_identifier(o.m_identifier.isolatedCopy())
     , m_range(o.m_range.isolatedCopy())
     , m_hash(o.m_hash)
+    , m_partitionHash(o.m_partitionHash)
 {
 }
 
-Key::Key(const String& partition, const String& type, const String& range, const String& identifier)
-    : m_partition(partition.isEmpty() ? noPartitionString() : partition)
+Key::Key(const String& partition, const String& type, const String& range, const String& identifier, const Salt& salt)
+    : m_partition(partition)
     , m_type(type)
     , m_identifier(identifier)
     , m_range(range)
-    , m_hash(computeHash())
+    , m_hash(computeHash(salt))
+    , m_partitionHash(computePartitionHash(salt))
 {
 }
 
@@ -66,9 +64,13 @@ Key::Key(WTF::HashTableDeletedValueType)
 {
 }
 
-bool Key::hasPartition() const
+Key::Key(const DataKey& dataKey, const Salt& salt)
+    : m_partition(dataKey.partition)
+    , m_type(dataKey.type)
+    , m_identifier(hashAsString(dataKey.identifier))
+    , m_hash(computeHash(salt))
+    , m_partitionHash(computePartitionHash(salt))
 {
-    return m_partition != noPartitionString();
 }
 
 Key& Key::operator=(const Key& other)
@@ -78,6 +80,7 @@ Key& Key::operator=(const Key& other)
     m_identifier = other.m_identifier.isolatedCopy();
     m_range = other.m_range.isolatedCopy();
     m_hash = other.m_hash;
+    m_partitionHash = other.m_partitionHash;
     return *this;
 }
 
@@ -97,25 +100,40 @@ static void hashString(SHA1& sha1, const String& string)
     sha1.addBytes(reinterpret_cast<const uint8_t*>(cString.data()), cString.length() + 1);
 }
 
-Key::HashType Key::computeHash() const
+Key::HashType Key::computeHash(const Salt& salt) const
 {
     // We don't really need a cryptographic hash. The key is always verified against the entry header.
     // SHA1 just happens to be suitably sized, fast and available.
     SHA1 sha1;
+    sha1.addBytes(salt.data(), salt.size());
+
     hashString(sha1, m_partition);
     hashString(sha1, m_type);
     hashString(sha1, m_identifier);
     hashString(sha1, m_range);
+
     SHA1::Digest hash;
     sha1.computeHash(hash);
     return hash;
 }
 
-String Key::hashAsString() const
+Key::HashType Key::computePartitionHash(const Salt& salt) const
+{
+    SHA1 sha1;
+    sha1.addBytes(salt.data(), salt.size());
+
+    hashString(sha1, m_partition);
+
+    SHA1::Digest hash;
+    sha1.computeHash(hash);
+    return hash;
+}
+
+String Key::hashAsString(const HashType& hash)
 {
     StringBuilder builder;
     builder.reserveCapacity(hashStringLength());
-    for (auto byte : m_hash) {
+    for (auto byte : hash) {
         builder.append(upperNibbleToASCIIHexDigit(byte));
         builder.append(lowerNibbleToASCIIHexDigit(byte));
     }
@@ -148,18 +166,19 @@ bool Key::operator==(const Key& other) const
     return m_hash == other.m_hash && m_partition == other.m_partition && m_type == other.m_type && m_identifier == other.m_identifier && m_range == other.m_range;
 }
 
-void Key::encode(Encoder& encoder) const
+void Key::encode(WTF::Persistence::Encoder& encoder) const
 {
     encoder << m_partition;
     encoder << m_type;
     encoder << m_identifier;
     encoder << m_range;
     encoder << m_hash;
+    encoder << m_partitionHash;
 }
 
-bool Key::decode(Decoder& decoder, Key& key)
+bool Key::decode(WTF::Persistence::Decoder& decoder, Key& key)
 {
-    return decoder.decode(key.m_partition) && decoder.decode(key.m_type) && decoder.decode(key.m_identifier) && decoder.decode(key.m_range) && decoder.decode(key.m_hash);
+    return decoder.decode(key.m_partition) && decoder.decode(key.m_type) && decoder.decode(key.m_identifier) && decoder.decode(key.m_range) && decoder.decode(key.m_hash) && decoder.decode(key.m_partitionHash);
 }
 
 }

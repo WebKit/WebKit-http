@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InteractionInformationAtPosition_h
-#define InteractionInformationAtPosition_h
+#pragma once
 
 #if PLATFORM(IOS)
 
 #include "ArgumentCoders.h"
+#include "InteractionInformationRequest.h"
 #include "ShareableBitmap.h"
 #include <WebCore/IntPoint.h>
 #include <WebCore/SelectionRect.h>
@@ -38,8 +38,12 @@
 namespace WebKit {
 
 struct InteractionInformationAtPosition {
-    WebCore::IntPoint point;
+    InteractionInformationRequest request;
+
     bool nodeAtPositionIsAssistedNode { false };
+#if ENABLE(DATA_INTERACTION)
+    bool hasDataInteractionAtPosition { false };
+#endif
     bool isSelectable { false };
     bool isNearMarkedText { false };
     bool touchCalloutEnabled { true };
@@ -66,6 +70,11 @@ struct InteractionInformationAtPosition {
     RetainPtr<NSArray> dataDetectorResults;
 #endif
 
+    // Copy compatible optional bits forward (for example, if we have a InteractionInformationAtPosition
+    // with snapshots in it, and perform another request for the same point without requesting the snapshots,
+    // we can fetch the cheap information and copy the snapshots into the new response).
+    void mergeCompatibleOptionalInformation(const InteractionInformationAtPosition& oldInformation);
+
     void encode(IPC::Encoder&) const;
     static bool decode(IPC::Decoder&, InteractionInformationAtPosition&);
 };
@@ -73,5 +82,3 @@ struct InteractionInformationAtPosition {
 }
 
 #endif // PLATFORM(IOS)
-
-#endif // InteractionInformationAtPosition_h

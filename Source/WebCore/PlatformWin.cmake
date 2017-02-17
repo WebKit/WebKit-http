@@ -61,7 +61,6 @@ list(APPEND WebCore_SOURCES
     platform/KillRingNone.cpp
     platform/LocalizedStrings.cpp
     platform/StaticPasteboard.cpp
-    platform/VNodeTracker.cpp
 
     platform/audio/PlatformMediaSessionManager.cpp
 
@@ -73,8 +72,6 @@ list(APPEND WebCore_SOURCES
     platform/cf/URLCF.cpp
 
     platform/cf/win/CertificateCFWin.cpp
-
-    platform/crypto/win/CryptoDigestWin.cpp
 
     platform/graphics/GraphicsContext3DPrivate.cpp
 
@@ -89,6 +86,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opentype/OpenTypeUtilities.cpp
 
     platform/graphics/win/ColorDirect2D.cpp
+    platform/graphics/win/ComplexTextControllerDirectWrite.cpp
     platform/graphics/win/DIBPixelData.cpp
     platform/graphics/win/FloatPointDirect2D.cpp
     platform/graphics/win/FloatRectDirect2D.cpp
@@ -201,7 +199,6 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     accessibility/win
 
-    bindings/generic
     bindings/js
 
     bridge/c
@@ -246,6 +243,8 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     platform/graphics/texmap
     platform/graphics/transforms
     platform/graphics/win
+
+    platform/mediastream/libwebrtc
 
     platform/text/transcoder
 

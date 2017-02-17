@@ -29,8 +29,6 @@
 #include "HTMLSelectElement.h"
 
 #include "AXObjectCache.h"
-#include "Chrome.h"
-#include "ChromeClient.h"
 #include "ElementTraversal.h"
 #include "EventHandler.h"
 #include "EventNames.h"
@@ -218,7 +216,7 @@ int HTMLSelectElement::activeSelectionEndListIndex() const
     return lastSelectedListIndex();
 }
 
-ExceptionOr<void> HTMLSelectElement::add(const OptionOrOptGroupElement& element, const Optional<HTMLElementOrInt>& before)
+ExceptionOr<void> HTMLSelectElement::add(const OptionOrOptGroupElement& element, const std::optional<HTMLElementOrInt>& before)
 {
     HTMLElement* beforeElement = nullptr;
     if (before) {
@@ -425,11 +423,18 @@ HTMLOptionElement* HTMLSelectElement::item(unsigned index)
     return options()->item(index);
 }
 
-ExceptionOr<void> HTMLSelectElement::setOption(unsigned index, HTMLOptionElement& option)
+ExceptionOr<void> HTMLSelectElement::setItem(unsigned index, HTMLOptionElement* option)
 {
+    if (!option) {
+        remove(index);
+        return { };
+    }
+
     if (index > maxSelectItems - 1)
         index = maxSelectItems - 1;
+
     int diff = index - length();
+    
     RefPtr<HTMLOptionElement> before;
     // Out of array bounds? First insert empty dummies.
     if (diff > 0) {
@@ -441,24 +446,30 @@ ExceptionOr<void> HTMLSelectElement::setOption(unsigned index, HTMLOptionElement
         before = item(index + 1);
         remove(index);
     }
+
     // Finally add the new element.
-    auto result = add(&option, HTMLElementOrInt { before.get() });
+    auto result = add(option, HTMLElementOrInt { before.get() });
     if (result.hasException())
         return result;
-    if (diff >= 0 && option.selected())
-        optionSelectionStateChanged(option, true);
+
+    if (diff >= 0 && option->selected())
+        optionSelectionStateChanged(*option, true);
+
     return { };
 }
 
 ExceptionOr<void> HTMLSelectElement::setLength(unsigned newLength)
 {
-    if (newLength > maxSelectItems)
-        newLength = maxSelectItems;
+    if (newLength > length() && newLength > maxSelectItems) {
+        document().addConsoleMessage(MessageSource::Other, MessageLevel::Warning, String::format("Blocked attempt to expand the option list to %u items. The maximum number of items allowed is %u.", newLength, maxSelectItems));
+        return { };
+    }
+
     int diff = length() - newLength;
 
     if (diff < 0) { // Add dummy elements.
         do {
-            auto result = add(HTMLOptionElement::create(document()).ptr(), Nullopt);
+            auto result = add(HTMLOptionElement::create(document()).ptr(), std::nullopt);
             if (result.hasException())
                 return result;
         } while (++diff);
@@ -748,11 +759,11 @@ void HTMLSelectElement::setRecalcListItems()
     m_activeSelectionAnchorIndex = -1;
     setOptionsChangedOnRenderer();
     invalidateStyleForSubtree();
-    if (!inDocument()) {
+    if (!isConnected()) {
         if (HTMLCollection* collection = cachedHTMLCollection(SelectOptions))
             collection->invalidateCache(document());
     }
-    if (!inDocument())
+    if (!isConnected())
         invalidateSelectedItems();
     if (auto* cache = document().existingAXObjectCache())
         cache->childrenChanged(this);
@@ -1141,8 +1152,7 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event& event)
 
         // When using caret browsing, we want to be able to move the focus
         // out of the select element when user hits a left or right arrow key.
-        const Frame* frame = document().frame();
-        if (frame && frame->settings().caretBrowsingEnabled()) {
+        if (document().settings().caretBrowsingEnabled()) {
             if (keyIdentifier == "Left" || keyIdentifier == "Right")
                 return;
         }

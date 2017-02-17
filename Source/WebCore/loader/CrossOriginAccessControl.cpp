@@ -45,32 +45,13 @@ bool isOnAccessControlSimpleRequestMethodWhitelist(const String& method)
     return method == "GET" || method == "HEAD" || method == "POST";
 }
 
-bool isOnAccessControlSimpleRequestHeaderWhitelist(HTTPHeaderName name, const String& value)
-{
-    switch (name) {
-    case HTTPHeaderName::Accept:
-    case HTTPHeaderName::AcceptLanguage:
-    case HTTPHeaderName::ContentLanguage:
-        return true;
-    case HTTPHeaderName::ContentType: {
-        // Preflight is required for MIME types that can not be sent via form submission.
-        String mimeType = extractMIMETypeFromMediaType(value);
-        return equalIgnoringASCIICase(mimeType, "application/x-www-form-urlencoded")
-            || equalIgnoringASCIICase(mimeType, "multipart/form-data")
-            || equalIgnoringASCIICase(mimeType, "text/plain");
-    }
-    default:
-        return false;
-    }
-}
-
 bool isSimpleCrossOriginAccessRequest(const String& method, const HTTPHeaderMap& headerMap)
 {
     if (!isOnAccessControlSimpleRequestMethodWhitelist(method))
         return false;
 
     for (const auto& header : headerMap) {
-        if (!header.keyAsHTTPHeaderName || !isOnAccessControlSimpleRequestHeaderWhitelist(header.keyAsHTTPHeaderName.value(), header.value))
+        if (!header.keyAsHTTPHeaderName || !isCrossOriginSafeRequestHeader(header.keyAsHTTPHeaderName.value(), header.value))
             return false;
     }
 
@@ -106,6 +87,8 @@ void updateRequestForAccessControl(ResourceRequest& request, SecurityOrigin& sec
 ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& request, SecurityOrigin& securityOrigin, const String& referrer)
 {
     ResourceRequest preflightRequest(request.url());
+    static const double platformDefaultTimeout = 0;
+    preflightRequest.setTimeoutInterval(platformDefaultTimeout);
     updateRequestForAccessControl(preflightRequest, securityOrigin, DoNotAllowStoredCredentials);
     preflightRequest.setHTTPMethod("OPTIONS");
     preflightRequest.setHTTPHeaderField(HTTPHeaderName::AccessControlRequestMethod, request.httpMethod());

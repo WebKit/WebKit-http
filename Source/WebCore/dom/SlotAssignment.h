@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "RenderTreeUpdater.h"
 #include "ShadowRoot.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -51,8 +52,7 @@ public:
     void addSlotElementByName(const AtomicString&, HTMLSlotElement&, ShadowRoot&);
     void removeSlotElementByName(const AtomicString&, HTMLSlotElement&, ShadowRoot&);
 
-    enum class ChangeType { DirectChild, InnerSlot };
-    void didChangeSlot(const AtomicString&, ChangeType, ShadowRoot&);
+    void didChangeSlot(const AtomicString&, ShadowRoot&);
     void enqueueSlotChangeEvent(const AtomicString&, ShadowRoot&);
 
     const Vector<Node*>* assignedNodesForSlot(const HTMLSlotElement&, ShadowRoot&);
@@ -99,13 +99,13 @@ private:
 inline void ShadowRoot::didRemoveAllChildrenOfShadowHost()
 {
     if (m_slotAssignment) // FIXME: This is incorrect when there were no elements or text nodes removed.
-        m_slotAssignment->didChangeSlot(nullAtom, SlotAssignment::ChangeType::DirectChild, *this);
+        m_slotAssignment->didChangeSlot(nullAtom, *this);
 }
 
 inline void ShadowRoot::didChangeDefaultSlot()
 {
     if (m_slotAssignment)
-        m_slotAssignment->didChangeSlot(nullAtom, SlotAssignment::ChangeType::DirectChild, *this);
+        m_slotAssignment->didChangeSlot(nullAtom, *this);
 }
 
 inline void ShadowRoot::hostChildElementDidChange(const Element& childElement)
@@ -114,18 +114,13 @@ inline void ShadowRoot::hostChildElementDidChange(const Element& childElement)
         m_slotAssignment->hostChildElementDidChange(childElement, *this);
 }
 
-inline void ShadowRoot::hostChildElementDidChangeSlotAttribute(const AtomicString& oldValue, const AtomicString& newValue)
+inline void ShadowRoot::hostChildElementDidChangeSlotAttribute(Element& element, const AtomicString& oldValue, const AtomicString& newValue)
 {
-    if (m_slotAssignment) {
-        m_slotAssignment->didChangeSlot(oldValue, SlotAssignment::ChangeType::DirectChild, *this);
-        m_slotAssignment->didChangeSlot(newValue, SlotAssignment::ChangeType::DirectChild, *this);
-    }
-}
-
-inline void ShadowRoot::innerSlotDidChange(const AtomicString& name)
-{
-    if (m_slotAssignment)
-        m_slotAssignment->didChangeSlot(name, SlotAssignment::ChangeType::InnerSlot, *this);
+    if (!m_slotAssignment)
+        return;
+    m_slotAssignment->didChangeSlot(oldValue, *this);
+    m_slotAssignment->didChangeSlot(newValue, *this);
+    RenderTreeUpdater::tearDownRenderers(element);
 }
 
 } // namespace WebCore

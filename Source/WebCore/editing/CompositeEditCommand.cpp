@@ -239,7 +239,7 @@ void EditCommandComposition::unapply()
     for (size_t i = size; i; --i)
         m_commands[i - 1]->doUnapply();
 
-    frame->editor().unappliedEditing(this);
+    frame->editor().unappliedEditing(*this);
 
     if (AXObjectCache::accessibilityEnabled())
         m_replacedText.postTextStateChangeNotificationForUnapply(m_document->existingAXObjectCache());
@@ -265,7 +265,7 @@ void EditCommandComposition::reapply()
     for (auto& command : m_commands)
         command->doReapply();
 
-    frame->editor().reappliedEditing(this);
+    frame->editor().reappliedEditing(*this);
 
     if (AXObjectCache::accessibilityEnabled())
         m_replacedText.postTextStateChangeNotificationForReapply(m_document->existingAXObjectCache());
@@ -416,14 +416,14 @@ EditCommandComposition* CompositeEditCommand::composition() const
     return nullptr;
 }
 
-EditCommandComposition* CompositeEditCommand::ensureComposition()
+EditCommandComposition& CompositeEditCommand::ensureComposition()
 {
-    CompositeEditCommand* command = this;
-    while (command && command->parent())
-        command = command->parent();
+    auto* command = this;
+    while (auto* parent = command->parent())
+        command = parent;
     if (!command->m_composition)
         command->m_composition = EditCommandComposition::create(document(), startingSelection(), endingSelection(), editingAction());
-    return command->m_composition.get();
+    return *command->m_composition;
 }
 
 bool CompositeEditCommand::isCreateLinkCommand() const
@@ -465,7 +465,7 @@ void CompositeEditCommand::applyCommandToComposite(PassRefPtr<EditCommand> prpCo
     command->doApply();
     if (command->isSimpleEditCommand()) {
         command->setParent(nullptr);
-        ensureComposition()->append(toSimpleEditCommand(command.get()));
+        ensureComposition().append(toSimpleEditCommand(command.get()));
     }
     m_commands.append(WTFMove(command));
 }
@@ -572,7 +572,7 @@ void CompositeEditCommand::insertNodeAt(PassRefPtr<Node> insertChild, const Posi
         splitTextNode(downcast<Text>(refChild), offset);
 
         // Mutation events (bug 22634) from the text node insertion may have removed the refChild
-        if (!refChild->inDocument())
+        if (!refChild->isConnected())
             return;
         insertNodeBefore(insertChild, refChild);
     } else
@@ -648,7 +648,7 @@ HTMLElement* CompositeEditCommand::replaceElementWithSpanPreservingChildrenAndAt
     // Returning a raw pointer here is OK because the command is retained by
     // applyCommandToComposite (thus retaining the span), and the span is also
     // in the DOM tree, and thus alive whie it has a parent.
-    ASSERT(command->spanElement()->inDocument());
+    ASSERT(command->spanElement()->isConnected());
     return command->spanElement();
 }
 
@@ -760,7 +760,7 @@ Position CompositeEditCommand::replaceSelectedTextInNode(const String& text)
     RefPtr<Text> textNode = start.containerText();
     replaceTextInNode(textNode, start.offsetInContainerNode(), end.offsetInContainerNode() - start.offsetInContainerNode(), text);
 
-    return Position(WTFMove(textNode), start.offsetInContainerNode() + text.length());
+    return Position(textNode.get(), start.offsetInContainerNode() + text.length());
 }
 
 static Vector<RenderedDocumentMarker> copyMarkers(const Vector<RenderedDocumentMarker*>& markerPointers)
@@ -933,8 +933,8 @@ void CompositeEditCommand::rebalanceWhitespaceOnTextSubstring(PassRefPtr<Text> p
     if (!length)
         return;
 
-    VisiblePosition visibleUpstreamPos(Position(textNode, upstream));
-    VisiblePosition visibleDownstreamPos(Position(textNode, downstream));
+    VisiblePosition visibleUpstreamPos(Position(textNode.get(), upstream));
+    VisiblePosition visibleDownstreamPos(Position(textNode.get(), downstream));
     
     String string = text.substring(upstream, length);
     String rebalancedString = stringWithRebalancedWhitespace(string,
@@ -1238,7 +1238,7 @@ void CompositeEditCommand::pushAnchorElementDown(Element& anchorElement)
     setEndingSelection(VisibleSelection::selectionFromContentsOfNode(&anchorElement));
     applyStyledElement(&anchorElement);
     // Clones of anchorElement have been pushed down, now remove it.
-    if (anchorElement.inDocument())
+    if (anchorElement.isConnected())
         removeNodePreservingChildren(&anchorElement);
 }
 
@@ -1301,7 +1301,7 @@ void CompositeEditCommand::cloneParagraphUnderNewElement(const Position& start, 
             auto clonedNode = node->cloneNode(true);
             insertNodeAfter(clonedNode.ptr(), lastNode);
             lastNode = WTFMove(clonedNode);
-            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(node.get()))
+            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(*node))
                 break;
         }
     }
@@ -1485,9 +1485,9 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     frame().editor().clearMisspellingsAndBadGrammar(endingSelection());
     deleteSelection(false, false, false, false);
 
-    ASSERT(destination.deepEquivalent().anchorNode()->inDocument());
+    ASSERT(destination.deepEquivalent().anchorNode()->isConnected());
     cleanupAfterDeletion(destination);
-    ASSERT(destination.deepEquivalent().anchorNode()->inDocument());
+    ASSERT(destination.deepEquivalent().anchorNode()->isConnected());
 
     // Add a br if pruning an empty block level element caused a collapse. For example:
     // foo^
@@ -1535,11 +1535,11 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     }
 }
 
-Optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem() const
+std::optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem() const
 {
     auto emptyListItem = enclosingEmptyListItem(endingSelection().visibleStart());
     if (!emptyListItem)
-        return Nullopt;
+        return std::nullopt;
 
     auto listNode = emptyListItem->parentNode();
     // FIXME: Can't we do something better when the immediate parent wasn't a list node?
@@ -1547,7 +1547,7 @@ Optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem()
         || (!listNode->hasTagName(ulTag) && !listNode->hasTagName(olTag))
         || !listNode->hasEditableStyle()
         || listNode == emptyListItem->rootEditableElement())
-        return Nullopt;
+        return std::nullopt;
 
     return VisibleSelection(endingSelection().start().previous(BackwardDeletion), endingSelection().end());
 }

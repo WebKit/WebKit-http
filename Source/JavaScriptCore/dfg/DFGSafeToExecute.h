@@ -303,6 +303,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PutToArguments:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
     case Jump:
     case Branch:
     case Switch:
@@ -351,6 +352,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PutHint:
     case CheckStructureImmediate:
@@ -358,6 +360,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case MaterializeCreateActivation:
     case PhantomDirectArguments:
     case PhantomCreateRest:
+    case PhantomSpread:
+    case PhantomNewArrayWithSpread:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
@@ -378,6 +382,13 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case IsNonEmptyMapBucket:
         return true;
 
+    case ArraySlice: {
+        // You could plausibly move this code around as long as you proved the
+        // incoming array base structure is an original array at the hoisted location.
+        // Instead of doing that extra work, we just conservatively return false.
+        return false;
+    }
+
     case BottomValue:
         // If in doubt, assume that this isn't safe to execute, just because we have no way of
         // compiling this node.
@@ -385,6 +396,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
 
     case StoreBarrier:
     case FencedStoreBarrier:
+    case PutStructure:
+    case NukeStructureAndSetButterfly:
         // We conservatively assume that these cannot be put anywhere, which forces the compiler to
         // keep them exactly where they were. This is sort of overkill since the clobberize effects
         // already force these things to be ordered precisely. I'm just not confident enough in my
@@ -409,11 +422,10 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
         return node->arrayMode().modeForPut().alreadyChecked(
             graph, node, state.forNode(graph.varArgChild(node, 0)));
 
-    case PutStructure:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
         return state.forNode(node->child1()).m_structure.isSubsetOf(
-            StructureSet(node->transition()->previous));
+            RegisteredStructureSet(node->transition()->previous));
         
     case GetByOffset:
     case GetGetterSetterByOffset:
@@ -421,7 +433,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
         PropertyOffset offset = node->storageAccessData().offset;
 
         if (state.structureClobberState() == StructuresAreWatched) {
-            if (JSObject* knownBase = node->child1()->dynamicCastConstant<JSObject*>()) {
+            if (JSObject* knownBase = node->child1()->dynamicCastConstant<JSObject*>(graph.m_vm)) {
                 if (graph.isSafeToLoad(knownBase, offset))
                     return true;
             }

@@ -1,6 +1,6 @@
 /*
 
-Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
+Copyright (C) 2014-2017 Apple Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "StringView.h"
 
 #include <mutex>
+#include <unicode/ubrk.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
@@ -93,9 +94,31 @@ size_t StringView::find(StringView matchString, unsigned start) const
     return findCommon(*this, matchString, start);
 }
 
+void StringView::SplitResult::Iterator::findNextSubstring()
+{
+    for (size_t separatorPosition; (separatorPosition = m_result.m_string.find(m_result.m_separator, m_position)) != notFound; ++m_position) {
+        if (separatorPosition > m_position) {
+            m_length = separatorPosition - m_position;
+            return;
+        }
+    }
+    m_length = m_result.m_string.length() - m_position;
+}
+
+auto StringView::SplitResult::Iterator::operator++() -> Iterator&
+{
+    ASSERT(m_position < m_result.m_string.length());
+    m_position += m_length;
+    if (m_position < m_result.m_string.length()) {
+        ++m_position;
+        findNextSubstring();
+    }
+    return *this;
+}
+
 class StringView::GraphemeClusters::Iterator::Impl {
 public:
-    Impl(const StringView& stringView, Optional<NonSharedCharacterBreakIterator>&& iterator, unsigned index)
+    Impl(const StringView& stringView, std::optional<NonSharedCharacterBreakIterator>&& iterator, unsigned index)
         : m_stringView(stringView)
         , m_iterator(WTFMove(iterator))
         , m_index(index)
@@ -131,33 +154,18 @@ public:
             return 0;
         if (m_index == m_stringView.length())
             return m_index;
-        return textBreakFollowing(m_iterator.value(), m_index);
+        return ubrk_following(m_iterator.value(), m_index);
     }
 
 private:
     const StringView& m_stringView;
-    Optional<NonSharedCharacterBreakIterator> m_iterator;
+    std::optional<NonSharedCharacterBreakIterator> m_iterator;
     unsigned m_index;
     unsigned m_indexEnd;
 };
 
-Vector<StringView> StringView::split(UChar separator)
-{
-    Vector<StringView> result;
-    unsigned startPos = 0;
-    size_t endPos;
-    while ((endPos = find(separator, startPos)) != notFound) {
-        if (startPos != endPos)
-            result.append(substring(startPos, endPos - startPos));
-        startPos = endPos + 1;
-    }
-    if (startPos != length())
-        result.append(substring(startPos));
-    return result;
-}
-
 StringView::GraphemeClusters::Iterator::Iterator(const StringView& stringView, unsigned index)
-    : m_impl(std::make_unique<Impl>(stringView, stringView.isNull() ? Nullopt : Optional<NonSharedCharacterBreakIterator>(NonSharedCharacterBreakIterator(stringView)), index))
+    : m_impl(std::make_unique<Impl>(stringView, stringView.isNull() ? std::nullopt : std::optional<NonSharedCharacterBreakIterator>(NonSharedCharacterBreakIterator(stringView)), index))
 {
 }
 

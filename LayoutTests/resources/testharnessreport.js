@@ -87,9 +87,4 @@ if (self.testRunner) {
             testRunner.notifyDone();
         }, 0);
     });
-
-    if (window.internals) {
-        internals.setResourceTimingSupport(true);
-        internals.settings.setIntersectionObserverEnabled(true);
-    }
 }

@@ -27,13 +27,13 @@
 
 #include "InspectorWebAgentBase.h"
 #include "InstrumentingAgents.h"
-#include <inspector/agents/InspectorHeapAgent.h>
+#include "WebHeapAgent.h"
 
 namespace WebCore {
 
 typedef String ErrorString;
 
-class PageHeapAgent final : public Inspector::InspectorHeapAgent {
+class PageHeapAgent final : public WebHeapAgent {
     WTF_MAKE_NONCOPYABLE(PageHeapAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:

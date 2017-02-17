@@ -151,6 +151,7 @@ void RenderMultiColumnFlowThread::populate()
     // now. At this point there's obviously nothing after the flow thread, but renderers (column
     // sets and spanners) will be inserted there as we insert elements into the flow thread.
     LayoutStateDisabler layoutStateDisabler(view());
+    RenderTreeInternalMutationScope reparentingIsOn(view());
     multicolContainer->moveChildrenTo(this, multicolContainer->firstChild(), this, true);
 }
 
@@ -168,6 +169,7 @@ void RenderMultiColumnFlowThread::evacuateAndDestroy()
     // container, we need to unregister the flow thread, so that they aren't just re-added again to
     // the flow thread that we're trying to empty.
     multicolContainer->setMultiColumnFlowThread(nullptr);
+    RenderTreeInternalMutationScope reparentingIsOn(view());
     moveAllChildrenTo(multicolContainer, true);
 
     // Move spanners back to their original DOM position in the tree, and destroy the placeholders.
@@ -214,6 +216,9 @@ void RenderMultiColumnFlowThread::willBeRemovedFromTree()
 
 RenderObject* RenderMultiColumnFlowThread::resolveMovedChild(RenderObject* child) const
 {
+    if (!child)
+        return nullptr;
+
     if (child->style().columnSpan() != ColumnSpanAll || !is<RenderBox>(*child)) {
         // We only need to resolve for column spanners.
         return child;
@@ -238,31 +243,41 @@ static bool isValidColumnSpanner(const RenderMultiColumnFlowThread& flowThread, 
 {
     // We assume that we're inside the flow thread. This function is not to be called otherwise.
     ASSERT(descendant.isDescendantOf(&flowThread));
-
     // First make sure that the renderer itself has the right properties for becoming a spanner.
-    auto& style = descendant.style();
-    if (style.columnSpan() != ColumnSpanAll || !is<RenderBox>(descendant) || descendant.isFloatingOrOutOfFlowPositioned())
+    if (!is<RenderBox>(descendant))
         return false;
 
-    RenderElement* container = descendant.parent();
-    if (!is<RenderBlockFlow>(*container) || container->childrenInline()) {
+    auto& descendantBox = downcast<RenderBox>(descendant);
+    if (descendantBox.isFloatingOrOutOfFlowPositioned())
+        return false;
+
+    if (descendantBox.style().columnSpan() != ColumnSpanAll)
+        return false;
+
+    auto* parent = descendantBox.parent();
+    if (!is<RenderBlockFlow>(*parent) || parent->childrenInline()) {
         // Needs to be block-level.
         return false;
     }
     
     // We need to have the flow thread as the containing block. A spanner cannot break out of the flow thread.
-    RenderFlowThread* enclosingFlowThread = descendant.flowThreadContainingBlock();
+    auto* enclosingFlowThread = descendantBox.flowThreadContainingBlock();
     if (enclosingFlowThread != &flowThread)
         return false;
 
     // This looks like a spanner, but if we're inside something unbreakable, it's not to be treated as one.
-    for (auto* ancestor = downcast<RenderBox>(descendant).containingBlock(); ancestor && !is<RenderView>(*ancestor); ancestor = ancestor->containingBlock()) {
-        if (ancestor->isRenderFlowThread()) {
+    for (auto* ancestor = descendantBox.containingBlock(); ancestor; ancestor = ancestor->containingBlock()) {
+        if (is<RenderView>(*ancestor))
+            return false;
+        if (is<RenderFlowThread>(*ancestor)) {
             // Don't allow any intervening non-multicol fragmentation contexts. The spec doesn't say
             // anything about disallowing this, but it's just going to be too complicated to
             // implement (not to mention specify behavior).
             return ancestor == &flowThread;
         }
+        // This ancestor (descendent of the flowThread) will create columns later. The spanner belongs to it.
+        if (is<RenderBlockFlow>(*ancestor) && downcast<RenderBlockFlow>(*ancestor).willCreateColumns())
+            return false;
         ASSERT(ancestor->style().columnSpan() != ColumnSpanAll || !isValidColumnSpanner(flowThread, *ancestor));
         if (ancestor->isUnsplittableForPagination())
             return false;
@@ -487,11 +502,10 @@ void RenderMultiColumnFlowThread::flowThreadDescendantBoxLaidOut(RenderBox* desc
     }
 }
 
-void RenderMultiColumnFlowThread::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderMultiColumnFlowThread::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const
 {
     // We simply remain at our intrinsic height.
-    computedValues.m_extent = logicalHeight;
-    computedValues.m_position = logicalTop;
+    return { logicalHeight, logicalTop, ComputedMarginValues() };
 }
 
 LayoutUnit RenderMultiColumnFlowThread::initialLogicalWidth() const

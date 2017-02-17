@@ -167,7 +167,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSurfacelessContext(PlatformDis
     return std::unique_ptr<GLContextEGL>(new GLContextEGL(platformDisplay, context, EGL_NO_SURFACE, Surfaceless));
 }
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay, std::unique_ptr<GLContext::Data>&& contextData)
+std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay)
 {
     if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
         return nullptr;
@@ -192,12 +192,10 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType win
     if (!context)
         context = createPbufferContext(platformDisplay, eglSharingContext);
 
-    if (context)
-        context->m_contextData = WTFMove(contextData);
     return context;
 }
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay& platformDisplay, std::unique_ptr<GLContext::Data>&& contextData)
+std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay& platformDisplay)
 {
     if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
         return nullptr;
@@ -219,8 +217,6 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay
     if (!context)
         context = createPbufferContext(platformDisplay);
 
-    if (context)
-        context->m_contextData = WTFMove(contextData);
     return context;
 }
 
@@ -310,7 +306,7 @@ cairo_device_t* GLContextEGL::cairoDevice()
         return m_cairoDevice;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-    m_cairoDevice = cairo_egl_device_create_for_egl_surface(m_display.eglDisplay(), m_context, m_surface);
+    m_cairoDevice = cairo_egl_device_create(m_display.eglDisplay(), m_context);
 #endif
 
     return m_cairoDevice;

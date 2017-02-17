@@ -414,6 +414,10 @@ void InjectedBundlePage::prepare()
     WKBundleFrameClearOpener(WKBundlePageGetMainFrame(m_page));
     
     WKBundlePageSetTracksRepaints(m_page, false);
+    
+    // Force consistent "responsive" behavior for WebPage::eventThrottlingDelay() for testing. Tests can override via internals.
+    WKEventThrottlingBehavior behavior = kWKEventThrottlingBehaviorResponsive;
+    WKBundlePageSetEventThrottlingBehaviorOverride(m_page, &behavior);
 }
 
 void InjectedBundlePage::resetAfterTest()
@@ -699,7 +703,7 @@ void InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame(WKBundleFrameRe
         dumpLoadEvent(frame, "didFailProvisionalLoadWithError");
         auto code = WKErrorGetErrorCode(error);
         if (code == kWKErrorCodeCannotShowURL)
-            dumpLoadEvent(frame, "(kWKErrorCodeCannotShowURL)");
+            dumpLoadEvent(frame, "(ErrorCodeCannotShowURL)");
         else if (code == kWKErrorCodeFrameLoadBlockedByContentBlocker)
             dumpLoadEvent(frame, "(kWKErrorCodeFrameLoadBlockedByContentBlocker)");
     }
@@ -842,7 +846,7 @@ void InjectedBundlePage::dumpDOMAsWebArchive(WKBundleFrameRef frame, StringBuild
 #if USE(CF)
     WKRetainPtr<WKDataRef> wkData = adoptWK(WKBundleFrameCopyWebArchive(frame));
     RetainPtr<CFDataRef> cfData = adoptCF(CFDataCreate(0, WKDataGetBytes(wkData.get()), WKDataGetSize(wkData.get())));
-    RetainPtr<CFStringRef> cfString = adoptCF(createXMLStringFromWebArchiveData(cfData.get()));
+    RetainPtr<CFStringRef> cfString = adoptCF(WebCoreTestSupport::createXMLStringFromWebArchiveData(cfData.get()));
     stringBuilder.append(cfString.get());
 #endif
 }
@@ -1459,7 +1463,11 @@ void InjectedBundlePage::willAddMessageToConsole(WKStringRef message, uint32_t l
     }
     stringBuilder.append(messageString);
     stringBuilder.append('\n');
-    injectedBundle.outputText(stringBuilder.toString());
+
+    if (injectedBundle.dumpJSConsoleLogInStdErr())
+        injectedBundle.dumpToStdErr(stringBuilder.toString());
+    else
+        injectedBundle.outputText(stringBuilder.toString());
 }
 
 void InjectedBundlePage::willSetStatusbarText(WKStringRef statusbarText)

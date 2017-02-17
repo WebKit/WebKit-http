@@ -47,6 +47,18 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
         this._headerElement = document.createElement("div");
         this._headerElement.classList.add("header");
 
+        if (!style.editable) {
+            let lockedIconElement = this._headerElement.createChild("img", "locked-icon");
+
+            let styleLabel;
+            if (style.ownerRule && style.ownerRule.type === WebInspector.CSSStyleSheet.Type.UserAgent)
+                styleLabel = WebInspector.UIString("User Agent Stylesheet");
+            else
+                styleLabel = WebInspector.UIString("Style rule");
+
+            lockedIconElement.title = WebInspector.UIString("%s cannot be modified").format(styleLabel);
+        }
+
         this._iconElement = this._headerElement.createChild("img", "icon");
 
         if (this.selectorEditable) {
@@ -690,7 +702,7 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
         this._element.classList.toggle("invalid-selector", !!this._hasInvalidSelector);
         if (this._hasInvalidSelector) {
             this._iconElement.title = WebInspector.UIString("The selector “%s” is invalid.\nClick to revert to the previous selector.").format(this._selectorElement.textContent.trim());
-            this._selectorInput.title = WebInspector.UIString("Using the previous selector “%s”.").format(this._style.ownerRule.selectorText);
+            this._selectorInput.title = WebInspector.UIString("Using previous selector “%s”").format(this._style.ownerRule.selectorText);
             return;
         }
 

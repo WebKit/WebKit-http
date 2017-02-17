@@ -52,7 +52,8 @@ Ref<DatabaseProcessProxy> DatabaseProcessProxy::create(WebProcessPool* processPo
 }
 
 DatabaseProcessProxy::DatabaseProcessProxy(WebProcessPool* processPool)
-    : m_processPool(processPool)
+    : ChildProcessProxy(processPool->alwaysRunsAtBackgroundPriority())
+    , m_processPool(processPool)
     , m_numPendingConnectionRequests(0)
 {
     connect();
@@ -112,9 +113,9 @@ void DatabaseProcessProxy::deleteWebsiteDataForOrigins(SessionID sessionID, Opti
     send(Messages::DatabaseProcess::DeleteWebsiteDataForOrigins(sessionID, dataTypes, origins, callbackID), 0);
 }
 
-void DatabaseProcessProxy::getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply> reply)
+void DatabaseProcessProxy::getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&& reply)
 {
-    m_pendingConnectionReplies.append(reply);
+    m_pendingConnectionReplies.append(WTFMove(reply));
 
     if (state() == State::Launching) {
         m_numPendingConnectionRequests++;

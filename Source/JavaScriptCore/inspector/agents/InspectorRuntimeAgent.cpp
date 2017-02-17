@@ -89,7 +89,7 @@ void InspectorRuntimeAgent::parse(ErrorString&, const String& expression, Inspec
     JSLockHolder lock(m_vm);
 
     ParserError error;
-    checkSyntax(m_vm, JSC::makeSource(expression), error);
+    checkSyntax(m_vm, JSC::makeSource(expression, { }), error);
 
     switch (error.syntaxErrorType()) {
     case ParserError::SyntaxErrorNone:
@@ -336,7 +336,7 @@ void InspectorRuntimeAgent::setTypeProfilerEnabledState(bool isTypeProfilingEnab
     vm.whenIdle([&vm, isTypeProfilingEnabled] () {
         bool shouldRecompileFromTypeProfiler = (isTypeProfilingEnabled ? vm.enableTypeProfiler() : vm.disableTypeProfiler());
         if (shouldRecompileFromTypeProfiler)
-            vm.deleteAllCode();
+            vm.deleteAllCode(PreventCollectionAndDeleteAllCode);
     });
 }
 
@@ -351,7 +351,7 @@ void InspectorRuntimeAgent::setControlFlowProfilerEnabledState(bool isControlFlo
         bool shouldRecompileFromControlFlowProfiler = (isControlFlowProfilingEnabled ? vm.enableControlFlowProfiler() : vm.disableControlFlowProfiler());
 
         if (shouldRecompileFromControlFlowProfiler)
-            vm.deleteAllCode();
+            vm.deleteAllCode(PreventCollectionAndDeleteAllCode);
     });
 }
 

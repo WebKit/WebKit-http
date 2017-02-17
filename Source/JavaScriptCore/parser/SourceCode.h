@@ -28,99 +28,60 @@
 
 #pragma once
 
-#include "SourceProvider.h"
-#include <wtf/RefPtr.h>
+#include "UnlinkedSourceCode.h"
 
 namespace JSC {
 
-    class SourceCode {
+    class SourceCode : public UnlinkedSourceCode {
     public:
         SourceCode()
-            : m_provider(0)
-            , m_startChar(0)
-            , m_endChar(0)
-            , m_firstLine(0)
-            , m_startColumn(0)
-        {
-        }
-
-        SourceCode(WTF::HashTableDeletedValueType)
-            : m_provider(WTF::HashTableDeletedValue)
+            : UnlinkedSourceCode()
+            , m_firstLine(OrdinalNumber::beforeFirst())
+            , m_startColumn(OrdinalNumber::beforeFirst())
         {
         }
 
         SourceCode(PassRefPtr<SourceProvider> provider)
-            : m_provider(provider)
-            , m_startChar(0)
-            , m_endChar(m_provider->source().length())
-            , m_firstLine(1)
-            , m_startColumn(1)
+            : UnlinkedSourceCode(provider)
         {
         }
 
         SourceCode(PassRefPtr<SourceProvider> provider, int firstLine, int startColumn)
-            : m_provider(provider)
-            , m_startChar(0)
-            , m_endChar(m_provider->source().length())
-            , m_firstLine(std::max(firstLine, 1))
-            , m_startColumn(std::max(startColumn, 1))
+            : UnlinkedSourceCode(provider)
+            , m_firstLine(OrdinalNumber::fromOneBasedInt(std::max(firstLine, 1)))
+            , m_startColumn(OrdinalNumber::fromOneBasedInt(std::max(startColumn, 1)))
         {
         }
 
-        SourceCode(PassRefPtr<SourceProvider> provider, int start, int end, int firstLine, int startColumn)
-            : m_provider(provider)
-            , m_startChar(start)
-            , m_endChar(end)
-            , m_firstLine(std::max(firstLine, 1))
-            , m_startColumn(std::max(startColumn, 1))
+        SourceCode(PassRefPtr<SourceProvider> provider, int startOffset, int endOffset, int firstLine, int startColumn)
+            : UnlinkedSourceCode(provider, startOffset, endOffset)
+            , m_firstLine(OrdinalNumber::fromOneBasedInt(std::max(firstLine, 1)))
+            , m_startColumn(OrdinalNumber::fromOneBasedInt(std::max(startColumn, 1)))
         {
         }
 
-        bool isHashTableDeletedValue() const { return m_provider.isHashTableDeletedValue(); }
+        OrdinalNumber firstLine() const { return m_firstLine; }
+        OrdinalNumber startColumn() const { return m_startColumn; }
 
-        unsigned hash() const
-        {
-            ASSERT(m_provider);
-            return m_provider->hash();
-        }
-
-        StringView view() const
-        {
-            if (!m_provider)
-                return StringView();
-            return m_provider->getRange(m_startChar, m_endChar);
-        }
-        
-        CString toUTF8() const;
-        
         intptr_t providerID() const
         {
             if (!m_provider)
                 return SourceProvider::nullID;
             return m_provider->asID();
         }
-        
-        bool isNull() const { return !m_provider; }
+
         SourceProvider* provider() const { return m_provider.get(); }
-        int firstLine() const { return m_firstLine; }
-        int startColumn() const { return m_startColumn; }
-        int startOffset() const { return m_startChar; }
-        int endOffset() const { return m_endChar; }
-        int length() const { return m_endChar - m_startChar; }
-        
+
         SourceCode subExpression(unsigned openBrace, unsigned closeBrace, int firstLine, int startColumn);
 
     private:
-        RefPtr<SourceProvider> m_provider;
-        int m_startChar;
-        int m_endChar;
-        int m_firstLine;
-        int m_startColumn;
+        OrdinalNumber m_firstLine;
+        OrdinalNumber m_startColumn;
     };
 
-    inline SourceCode makeSource(const String& source, const String& url = String(), const TextPosition& startPosition = TextPosition::minimumPosition(), SourceProviderSourceType sourceType = SourceProviderSourceType::Program)
+    inline SourceCode makeSource(const String& source, const SourceOrigin& sourceOrigin, const String& url = String(), const TextPosition& startPosition = TextPosition(), SourceProviderSourceType sourceType = SourceProviderSourceType::Program)
     {
-        return SourceCode(StringSourceProvider::create(source, url, startPosition, sourceType), startPosition.m_line.oneBasedInt(), startPosition.m_column.oneBasedInt());
+        return SourceCode(StringSourceProvider::create(source, sourceOrigin, url, startPosition, sourceType), startPosition.m_line.oneBasedInt(), startPosition.m_column.oneBasedInt());
     }
     
     inline SourceCode SourceCode::subExpression(unsigned openBrace, unsigned closeBrace, int firstLine, int startColumn)

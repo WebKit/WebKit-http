@@ -92,15 +92,14 @@ public:
     HistoricalVelocityData()
         : m_historySize(0)
         , m_latestDataIndex(0)
-        , m_lastAppendTimestamp(0)
     {
     }
 
-    VelocityData velocityForNewData(CGPoint newPosition, double scale, double timestamp)
+    VelocityData velocityForNewData(CGPoint newPosition, double scale, MonotonicTime timestamp)
     {
         // Due to all the source of rect update, the input is very noisy. To smooth the output, we accumulate all changes
         // within 1 frame as a single update. No speed computation is ever done on data within the same frame.
-        const double filteringThreshold = 1 / 60.;
+        const Seconds filteringThreshold(1.0 / 60);
 
         VelocityData velocityData;
         if (m_historySize > 0) {
@@ -111,14 +110,14 @@ public:
             else
                 oldestDataIndex = m_historySize - (distanceToLastHistoricalData - m_latestDataIndex);
 
-            double timeDelta = timestamp - m_history[oldestDataIndex].timestamp;
+            Seconds timeDelta = timestamp - m_history[oldestDataIndex].timestamp;
             if (timeDelta > filteringThreshold) {
                 Data& oldestData = m_history[oldestDataIndex];
-                velocityData = VelocityData((newPosition.x - oldestData.position.x) / timeDelta, (newPosition.y - oldestData.position.y) / timeDelta, (scale - oldestData.scale) / timeDelta);
+                velocityData = VelocityData((newPosition.x - oldestData.position.x) / timeDelta.seconds(), (newPosition.y - oldestData.position.y) / timeDelta.seconds(), (scale - oldestData.scale) / timeDelta.seconds());
             }
         }
 
-        double timeSinceLastAppend = timestamp - m_lastAppendTimestamp;
+        Seconds timeSinceLastAppend = timestamp - m_lastAppendTimestamp;
         if (timeSinceLastAppend > filteringThreshold)
             append(newPosition, scale, timestamp);
         else
@@ -129,7 +128,7 @@ public:
     void clear() { m_historySize = 0; }
 
 private:
-    void append(CGPoint newPosition, double scale, double timestamp)
+    void append(CGPoint newPosition, double scale, MonotonicTime timestamp)
     {
         m_latestDataIndex = (m_latestDataIndex + 1) % maxHistoryDepth;
         m_history[m_latestDataIndex] = { timestamp, newPosition, scale };
@@ -146,10 +145,10 @@ private:
 
     unsigned m_historySize;
     unsigned m_latestDataIndex;
-    double m_lastAppendTimestamp;
+    MonotonicTime m_lastAppendTimestamp;
 
     struct Data {
-        double timestamp;
+        MonotonicTime timestamp;
         CGPoint position;
         double scale;
     } m_history[maxHistoryDepth];
@@ -204,15 +203,14 @@ private:
     WebProcessPool::statistics().wkViewCount++;
 
     _rootContentView = adoptNS([[UIView alloc] init]);
+    [_rootContentView layer].name = @"RootContent";
     [_rootContentView layer].masksToBounds = NO;
     [_rootContentView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
 
     _fixedClippingView = adoptNS([[UIView alloc] init]);
+    [_fixedClippingView layer].name = @"FixedClipping";
     [_fixedClippingView layer].masksToBounds = YES;
     [_fixedClippingView layer].anchorPoint = CGPointZero;
-#ifndef NDEBUG
-    [[_fixedClippingView layer] setName:@"Fixed clipping"];
-#endif
 
     [self addSubview:_fixedClippingView.get()];
     [_fixedClippingView addSubview:_rootContentView.get()];
@@ -363,32 +361,59 @@ private:
     [_fixedClippingView setBounds:clippingBounds];
 }
 
-- (void)didUpdateVisibleRect:(CGRect)visibleRect unobscuredRect:(CGRect)unobscuredRect unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
-    obscuredInset:(CGSize)obscuredInset scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale inStableState:(BOOL)isStableState isChangingObscuredInsetsInteractively:(BOOL)isChangingObscuredInsetsInteractively enclosedInScrollableAncestorView:(BOOL)enclosedInScrollableAncestorView
+- (void)_didExitStableState
+{
+    _needsDeferredEndScrollingSelectionUpdate = self.shouldHideSelectionWhenScrolling;
+    if (!_needsDeferredEndScrollingSelectionUpdate)
+        return;
+
+    [_textSelectionAssistant deactivateSelection];
+    [[_webSelectionAssistant selectionView] setHidden:YES];
+}
+
+- (CGRect)_computeUnobscuredContentRectRespectingInputViewBounds:(CGRect)visibleContentRect unobscuredContentRect:(CGRect)unobscuredContentRect inputViewBounds:(CGRect)inputViewBounds scale:(CGFloat)scale
+{
+    if (inputViewBounds.size.height)
+        unobscuredContentRect.size.height = std::min<float>(unobscuredContentRect.size.height, visibleContentRect.origin.y + (inputViewBounds.origin.y / scale) - unobscuredContentRect.origin.y);
+    return unobscuredContentRect;
+}
+
+- (void)didUpdateVisibleRect:(CGRect)visibleContentRect
+    unobscuredRect:(CGRect)unobscuredContentRect
+    unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
+    obscuredInset:(CGSize)obscuredInset
+    inputViewBounds:(CGRect)inputViewBounds
+    scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale
+    inStableState:(BOOL)isStableState
+    isChangingObscuredInsetsInteractively:(BOOL)isChangingObscuredInsetsInteractively
+    enclosedInScrollableAncestorView:(BOOL)enclosedInScrollableAncestorView
 {
     auto drawingArea = _page->drawingArea();
     if (!drawingArea)
         return;
 
-    double timestamp = monotonicallyIncreasingTime();
+    MonotonicTime timestamp = MonotonicTime::now();
     HistoricalVelocityData::VelocityData velocityData;
     if (!isStableState)
-        velocityData = _historicalKinematicData.velocityForNewData(visibleRect.origin, zoomScale, timestamp);
+        velocityData = _historicalKinematicData.velocityForNewData(visibleContentRect.origin, zoomScale, timestamp);
     else
         _historicalKinematicData.clear();
 
-    FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredRect, zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect);
+    RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
 
-    LOG_WITH_STREAM(VisibleRects, stream << "didUpdateVisibleRect: visibleRect:" << visibleRect << " unobscuredRect:" << unobscuredRect << " fixedPositionRectForLayout:" << fixedPositionRectForLayout);
+    CGRect unobscuredContentRectRespectingInputViewBounds = [self _computeUnobscuredContentRectRespectingInputViewBounds:visibleContentRect unobscuredContentRect:unobscuredContentRect inputViewBounds:inputViewBounds scale:zoomScale];
+    FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredContentRect, unobscuredContentRectRespectingInputViewBounds, _page->customFixedPositionRect(), zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect, scrollingCoordinator->visualViewportEnabled());
 
     VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(
-        visibleRect,
-        unobscuredRect,
+        visibleContentRect,
+        unobscuredContentRect,
         unobscuredRectInScrollViewCoordinates,
+        unobscuredContentRectRespectingInputViewBounds,
         fixedPositionRectForLayout,
         WebCore::FloatSize(obscuredInset),
         zoomScale,
         isStableState,
+        _sizeChangedSinceLastVisibleContentRectUpdate,
         isChangingObscuredInsetsInteractively,
         _webView._allowsViewportShrinkToFit,
         enclosedInScrollableAncestorView,
@@ -398,15 +423,22 @@ private:
         velocityData.scaleChangeRate,
         downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea).lastCommittedLayerTreeTransactionID());
 
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKContentView didUpdateVisibleRect]" << visibleContentRectUpdateInfo.dump());
+
+    bool wasStableState = _page->inStableState();
     _page->updateVisibleContentRects(visibleContentRectUpdateInfo);
 
-    RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
-    FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), zoomScale);
+    _sizeChangedSinceLastVisibleContentRectUpdate = NO;
+
+    FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), zoomScale, WebPageProxy::UnobscuredRectConstraint::Unconstrained, scrollingCoordinator->visualViewportEnabled());
     scrollingCoordinator->viewportChangedViaDelegatedScrolling(scrollingCoordinator->rootScrollingNodeID(), fixedPositionRect, zoomScale);
 
     drawingArea->updateDebugIndicator();
     
     [self updateFixedClippingView:fixedPositionRect];
+
+    if (wasStableState && !isStableState)
+        [self _didExitStableState];
 }
 
 - (void)didFinishScrolling
@@ -536,7 +568,8 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     }
     
     if (boundsChanged) {
-        FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), [[_webView scrollView] zoomScale]);
+        // FIXME: factor computeCustomFixedPositionRect() into something that gives us this rect.
+        FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), [[_webView scrollView] zoomScale]);
         [self updateFixedClippingView:fixedPositionRect];
 
         // We need to push the new content bounds to the webview to update fixed position rects.
@@ -568,10 +601,11 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     return [_webView _scrollToRect:targetRect origin:origin minimumScrollDistance:minimumScrollDistance];
 }
 
-- (void)_zoomToFocusRect:(CGRect)rectToFocus selectionRect:(CGRect)selectionRect fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll
+- (void)_zoomToFocusRect:(CGRect)rectToFocus selectionRect:(CGRect)selectionRect insideFixed:(BOOL)insideFixed fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll
 {
     [_webView _zoomToFocusRect:rectToFocus
                  selectionRect:selectionRect
+                   insideFixed:insideFixed
                       fontSize:fontSize
                   minimumScale:minimumScale
                   maximumScale:maximumScale

@@ -3504,13 +3504,13 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EPointerEvents e)
         m_value.valueID = CSSValueVisible;
         break;
     case PE_VISIBLE_STROKE:
-        m_value.valueID = CSSValueVisiblestroke;
+        m_value.valueID = CSSValueVisibleStroke;
         break;
     case PE_VISIBLE_FILL:
-        m_value.valueID = CSSValueVisiblefill;
+        m_value.valueID = CSSValueVisibleFill;
         break;
     case PE_VISIBLE_PAINTED:
-        m_value.valueID = CSSValueVisiblepainted;
+        m_value.valueID = CSSValueVisiblePainted;
         break;
     case PE_AUTO:
         m_value.valueID = CSSValueAuto;
@@ -3532,11 +3532,11 @@ template<> inline CSSPrimitiveValue::operator EPointerEvents() const
         return PE_AUTO;
     case CSSValueNone:
         return PE_NONE;
-    case CSSValueVisiblepainted:
+    case CSSValueVisiblePainted:
         return PE_VISIBLE_PAINTED;
-    case CSSValueVisiblefill:
+    case CSSValueVisibleFill:
         return PE_VISIBLE_FILL;
-    case CSSValueVisiblestroke:
+    case CSSValueVisibleStroke:
         return PE_VISIBLE_STROKE;
     case CSSValueVisible:
         return PE_VISIBLE;
@@ -3831,13 +3831,13 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(TextRenderingMode e)
         m_value.valueID = CSSValueAuto;
         break;
     case OptimizeSpeed:
-        m_value.valueID = CSSValueOptimizespeed;
+        m_value.valueID = CSSValueOptimizeSpeed;
         break;
     case OptimizeLegibility:
-        m_value.valueID = CSSValueOptimizelegibility;
+        m_value.valueID = CSSValueOptimizeLegibility;
         break;
     case GeometricPrecision:
-        m_value.valueID = CSSValueGeometricprecision;
+        m_value.valueID = CSSValueGeometricPrecision;
         break;
     }
 }
@@ -3849,11 +3849,11 @@ template<> inline CSSPrimitiveValue::operator TextRenderingMode() const
     switch (m_value.valueID) {
     case CSSValueAuto:
         return AutoTextRendering;
-    case CSSValueOptimizespeed:
+    case CSSValueOptimizeSpeed:
         return OptimizeSpeed;
-    case CSSValueOptimizelegibility:
+    case CSSValueOptimizeLegibility:
         return OptimizeLegibility;
-    case CSSValueGeometricprecision:
+    case CSSValueGeometricPrecision:
         return GeometricPrecision;
     default:
         break;
@@ -4453,10 +4453,10 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EImageRendering imageRend
         m_value.valueID = CSSValuePixelated;
         break;
     case ImageRenderingOptimizeSpeed:
-        m_value.valueID = CSSValueOptimizespeed;
+        m_value.valueID = CSSValueOptimizeSpeed;
         break;
     case ImageRenderingOptimizeQuality:
-        m_value.valueID = CSSValueOptimizequality;
+        m_value.valueID = CSSValueOptimizeQuality;
         break;
     }
 }
@@ -4474,9 +4474,9 @@ template<> inline CSSPrimitiveValue::operator EImageRendering() const
         return ImageRenderingCrispEdges;
     case CSSValuePixelated:
         return ImageRenderingPixelated;
-    case CSSValueOptimizespeed:
+    case CSSValueOptimizeSpeed:
         return ImageRenderingOptimizeSpeed;
-    case CSSValueOptimizequality:
+    case CSSValueOptimizeQuality:
         return ImageRenderingOptimizeQuality;
     default:
         break;
@@ -4669,10 +4669,10 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EColorInterpolation e)
         m_value.valueID = CSSValueAuto;
         break;
     case CI_SRGB:
-        m_value.valueID = CSSValueSrgb;
+        m_value.valueID = CSSValueSRGB;
         break;
     case CI_LINEARRGB:
-        m_value.valueID = CSSValueLinearrgb;
+        m_value.valueID = CSSValueLinearRGB;
         break;
     }
 }
@@ -4682,9 +4682,9 @@ template<> inline CSSPrimitiveValue::operator EColorInterpolation() const
     ASSERT(isValueID());
 
     switch (m_value.valueID) {
-    case CSSValueSrgb:
+    case CSSValueSRGB:
         return CI_SRGB;
-    case CSSValueLinearrgb:
+    case CSSValueLinearRGB:
         return CI_LINEARRGB;
     case CSSValueAuto:
         return CI_AUTO;
@@ -4705,10 +4705,10 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EColorRendering e)
         m_value.valueID = CSSValueAuto;
         break;
     case CR_OPTIMIZESPEED:
-        m_value.valueID = CSSValueOptimizespeed;
+        m_value.valueID = CSSValueOptimizeSpeed;
         break;
     case CR_OPTIMIZEQUALITY:
-        m_value.valueID = CSSValueOptimizequality;
+        m_value.valueID = CSSValueOptimizeQuality;
         break;
     }
 }
@@ -4718,9 +4718,9 @@ template<> inline CSSPrimitiveValue::operator EColorRendering() const
     ASSERT(isValueID());
 
     switch (m_value.valueID) {
-    case CSSValueOptimizespeed:
+    case CSSValueOptimizeSpeed:
         return CR_OPTIMIZESPEED;
-    case CSSValueOptimizequality:
+    case CSSValueOptimizeQuality:
         return CR_OPTIMIZEQUALITY;
     case CSSValueAuto:
         return CR_AUTO;
@@ -4822,13 +4822,13 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EShapeRendering e)
         m_value.valueID = CSSValueAuto;
         break;
     case SR_OPTIMIZESPEED:
-        m_value.valueID = CSSValueOptimizespeed;
+        m_value.valueID = CSSValueOptimizeSpeed;
         break;
     case SR_CRISPEDGES:
         m_value.valueID = CSSValueCrispedges;
         break;
     case SR_GEOMETRICPRECISION:
-        m_value.valueID = CSSValueGeometricprecision;
+        m_value.valueID = CSSValueGeometricPrecision;
         break;
     }
 }
@@ -4840,11 +4840,11 @@ template<> inline CSSPrimitiveValue::operator EShapeRendering() const
     switch (m_value.valueID) {
     case CSSValueAuto:
         return SR_AUTO;
-    case CSSValueOptimizespeed:
+    case CSSValueOptimizeSpeed:
         return SR_OPTIMIZESPEED;
     case CSSValueCrispedges:
         return SR_CRISPEDGES;
-    case CSSValueGeometricprecision:
+    case CSSValueGeometricPrecision:
         return SR_GEOMETRICPRECISION;
     default:
         break;
@@ -5367,39 +5367,121 @@ template<> inline CSSPrimitiveValue::operator TouchAction() const
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
-template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ScrollSnapType e)
+
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ScrollSnapStrictness strictness)
     : CSSValue(PrimitiveClass)
 {
     m_primitiveUnitType = CSS_VALUE_ID;
-    switch (e) {
-    case ScrollSnapType::None:
+    switch (strictness) {
+    case ScrollSnapStrictness::None:
         m_value.valueID = CSSValueNone;
         break;
-    case ScrollSnapType::Proximity:
+    case ScrollSnapStrictness::Proximity:
         m_value.valueID = CSSValueProximity;
         break;
-    case ScrollSnapType::Mandatory:
+    case ScrollSnapStrictness::Mandatory:
         m_value.valueID = CSSValueMandatory;
         break;
     }
 }
 
-template<> inline CSSPrimitiveValue::operator ScrollSnapType() const
+template<> inline CSSPrimitiveValue::operator ScrollSnapStrictness() const
 {
     ASSERT(isValueID());
     switch (m_value.valueID) {
     case CSSValueNone:
-        return ScrollSnapType::None;
+        return ScrollSnapStrictness::None;
     case CSSValueProximity:
-        return ScrollSnapType::Proximity;
+        return ScrollSnapStrictness::Proximity;
     case CSSValueMandatory:
-        return ScrollSnapType::Mandatory;
+        return ScrollSnapStrictness::Mandatory;
     default:
+        ASSERT_NOT_REACHED();
+        return ScrollSnapStrictness::None;
+    }
+}
+
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ScrollSnapAxis axis)
+    : CSSValue(PrimitiveClass)
+{
+    m_primitiveUnitType = CSS_VALUE_ID;
+    switch (axis) {
+    case ScrollSnapAxis::XAxis:
+        m_value.valueID = CSSValueX;
+        break;
+    case ScrollSnapAxis::YAxis:
+        m_value.valueID = CSSValueY;
+        break;
+    case ScrollSnapAxis::Block:
+        m_value.valueID = CSSValueBlock;
+        break;
+    case ScrollSnapAxis::Inline:
+        m_value.valueID = CSSValueInline;
+        break;
+    case ScrollSnapAxis::Both:
+        m_value.valueID = CSSValueBoth;
         break;
     }
-    ASSERT_NOT_REACHED();
-    return ScrollSnapType::None;
 }
+
+template<> inline CSSPrimitiveValue::operator ScrollSnapAxis() const
+{
+    ASSERT(isValueID());
+    switch (m_value.valueID) {
+    case CSSValueX:
+        return ScrollSnapAxis::XAxis;
+    case CSSValueY:
+        return ScrollSnapAxis::YAxis;
+    case CSSValueBlock:
+        return ScrollSnapAxis::Block;
+    case CSSValueInline:
+        return ScrollSnapAxis::Inline;
+    case CSSValueBoth:
+        return ScrollSnapAxis::Both;
+    default:
+        ASSERT_NOT_REACHED();
+        return ScrollSnapAxis::Both;
+    }
+}
+
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ScrollSnapAxisAlignType type)
+    : CSSValue(PrimitiveClass)
+{
+    m_primitiveUnitType = CSS_VALUE_ID;
+    switch (type) {
+    case ScrollSnapAxisAlignType::None:
+        m_value.valueID = CSSValueNone;
+        break;
+    case ScrollSnapAxisAlignType::Start:
+        m_value.valueID = CSSValueStart;
+        break;
+    case ScrollSnapAxisAlignType::Center:
+        m_value.valueID = CSSValueCenter;
+        break;
+    case ScrollSnapAxisAlignType::End:
+        m_value.valueID = CSSValueEnd;
+        break;
+    }
+}
+
+template<> inline CSSPrimitiveValue::operator ScrollSnapAxisAlignType() const
+{
+    ASSERT(isValueID());
+    switch (m_value.valueID) {
+    case CSSValueNone:
+        return ScrollSnapAxisAlignType::None;
+    case CSSValueStart:
+        return ScrollSnapAxisAlignType::Start;
+    case CSSValueCenter:
+        return ScrollSnapAxisAlignType::Center;
+    case CSSValueEnd:
+        return ScrollSnapAxisAlignType::End;
+    default:
+        ASSERT_NOT_REACHED();
+        return ScrollSnapAxisAlignType::None;
+    }
+}
+
 #endif
 
 #if ENABLE(CSS_TRAILING_WORD)
@@ -5488,8 +5570,8 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ApplePayButtonType e)
     case ApplePayButtonType::SetUp:
         m_value.valueID = CSSValueSetUp;
         break;
-    case ApplePayButtonType::Other:
-        m_value.valueID = CSSValueOther;
+    case ApplePayButtonType::Donate:
+        m_value.valueID = CSSValueDonate;
         break;
 
     default:
@@ -5508,8 +5590,8 @@ template<> inline CSSPrimitiveValue::operator ApplePayButtonType() const
         return ApplePayButtonType::Buy;
     case CSSValueSetUp:
         return ApplePayButtonType::SetUp;
-    case CSSValueOther:
-        return ApplePayButtonType::Other;
+    case CSSValueDonate:
+        return ApplePayButtonType::Donate;
     default:
         break;
     }

@@ -49,7 +49,7 @@ static Node* selectionShadowAncestor(Frame& frame)
     if (!node->isInShadowTree())
         return nullptr;
     // FIXME: Unclear on why this needs to be the possibly null frame.document() instead of the never null node->document().
-    return frame.document()->ancestorInThisScope(node);
+    return frame.document()->ancestorNodeInThisScope(node);
 }
 
 DOMSelection::DOMSelection(Frame& frame)
@@ -371,7 +371,7 @@ void DOMSelection::deleteFromDocument()
         return;
 
     auto selectedRange = selection.selection().toNormalizedRange();
-    if (!selectedRange)
+    if (!selectedRange || selectedRange->shadowRoot())
         return;
 
     Ref<Frame> protector(*m_frame);
@@ -392,7 +392,7 @@ bool DOMSelection::containsNode(Node& node, bool allowPartial) const
     auto selectedRange = selection.selection().toNormalizedRange();
 
     ContainerNode* parentNode = node.parentNode();
-    if (!parentNode || !parentNode->inDocument())
+    if (!parentNode || !parentNode->isConnected())
         return false;
     unsigned nodeIndex = node.computeNodeIndex();
 
@@ -436,7 +436,7 @@ Node* DOMSelection::shadowAdjustedNode(const Position& position) const
         return nullptr;
 
     auto* containerNode = position.containerNode();
-    auto* adjustedNode = m_frame->document()->ancestorInThisScope(containerNode);
+    auto* adjustedNode = m_frame->document()->ancestorNodeInThisScope(containerNode);
     if (!adjustedNode)
         return nullptr;
 
@@ -452,7 +452,7 @@ unsigned DOMSelection::shadowAdjustedOffset(const Position& position) const
         return 0;
 
     auto* containerNode = position.containerNode();
-    auto* adjustedNode = m_frame->document()->ancestorInThisScope(containerNode);
+    auto* adjustedNode = m_frame->document()->ancestorNodeInThisScope(containerNode);
     if (!adjustedNode)
         return 0;
 

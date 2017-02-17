@@ -29,6 +29,7 @@
 #include "APIObject.h"
 #include "ImageOptions.h"
 #include <JavaScriptCore/JSBase.h>
+#include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
@@ -39,6 +40,7 @@ class Range;
 
 namespace WebKit {
 
+class InjectedBundleNodeHandle;
 class InjectedBundleScriptWorld;
 class WebImage;
 
@@ -49,8 +51,11 @@ public:
 
     virtual ~InjectedBundleRangeHandle();
 
+    Ref<InjectedBundleNodeHandle> document();
+
     WebCore::IntRect boundingRectInWindowCoordinates() const;
     PassRefPtr<WebImage> renderedImage(SnapshotOptions);
+    String text() const;
 
     WebCore::Range* coreRange() const;
 

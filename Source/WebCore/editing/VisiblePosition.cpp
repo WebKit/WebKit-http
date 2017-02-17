@@ -466,7 +466,7 @@ VisiblePosition VisiblePosition::honorEditingBoundaryAtOrBefore(const VisiblePos
     auto* highestRoot = highestEditableRoot(deepEquivalent());
     
     // Return empty position if pos is not somewhere inside the editable region containing this position
-    if (highestRoot && !position.deepEquivalent().deprecatedNode()->isDescendantOf(highestRoot)) {
+    if (highestRoot && !position.deepEquivalent().deprecatedNode()->isDescendantOf(*highestRoot)) {
         if (reachedBoundary)
             *reachedBoundary = true;
         return VisiblePosition();
@@ -503,7 +503,7 @@ VisiblePosition VisiblePosition::honorEditingBoundaryAtOrAfter(const VisiblePosi
     auto* highestRoot = highestEditableRoot(deepEquivalent());
     
     // Return empty position if pos is not somewhere inside the editable region containing this position
-    if (highestRoot && !pos.deepEquivalent().deprecatedNode()->isDescendantOf(highestRoot)) {
+    if (highestRoot && !pos.deepEquivalent().deprecatedNode()->isDescendantOf(*highestRoot)) {
         if (reachedBoundary)
             *reachedBoundary = true;
         return VisiblePosition();
@@ -660,11 +660,11 @@ LayoutRect VisiblePosition::localCaretRect(RenderObject*& renderer) const
     return renderer->localCaretRect(inlineBox, caretOffset);
 }
 
-IntRect VisiblePosition::absoluteCaretBounds() const
+IntRect VisiblePosition::absoluteCaretBounds(bool* insideFixed) const
 {
     RenderBlock* renderer = nullptr;
     LayoutRect localRect = localCaretRectInRendererForCaretPainting(*this, renderer);
-    return absoluteBoundsForLocalCaretRect(renderer, localRect);
+    return absoluteBoundsForLocalCaretRect(renderer, localRect, insideFixed);
 }
 
 int VisiblePosition::lineDirectionPointForBlockDirectionNavigation() const

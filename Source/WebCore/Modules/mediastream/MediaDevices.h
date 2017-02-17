@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Ericsson AB. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,15 +33,17 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "ExceptionOr.h"
 #include "JSDOMPromise.h"
-#include "MediaDeviceInfo.h"
+#include "MediaTrackConstraints.h"
 
 namespace WebCore {
 
 class Document;
-class MediaConstraintsImpl;
+class MediaDeviceInfo;
 class MediaStream;
-class MediaTrackSupportedConstraints;
+
+struct MediaTrackSupportedConstraints;
 
 class MediaDevices : public ScriptWrappable, public RefCounted<MediaDevices>, public ContextDestructionObserver {
 public:
@@ -48,12 +51,16 @@ public:
 
     Document* document() const;
 
-    using Promise = DOMPromise<MediaStream>;
-    using EnumerateDevicesPromise = DOMPromise<MediaDeviceInfoVector>;
+    using Promise = DOMPromise<IDLInterface<MediaStream>>;
+    using EnumerateDevicesPromise = DOMPromise<IDLSequence<IDLInterface<MediaDeviceInfo>>>;
 
-    ExceptionOr<void> getUserMedia(Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, Promise&&) const;
+    struct StreamConstraints {
+        Variant<bool, MediaTrackConstraints> video;
+        Variant<bool, MediaTrackConstraints> audio;
+    };
+    ExceptionOr<void> getUserMedia(const StreamConstraints&, Promise&&) const;
     void enumerateDevices(EnumerateDevicesPromise&&) const;
-    RefPtr<MediaTrackSupportedConstraints> getSupportedConstraints();
+    MediaTrackSupportedConstraints getSupportedConstraints();
 
 private:
     explicit MediaDevices(Document&);

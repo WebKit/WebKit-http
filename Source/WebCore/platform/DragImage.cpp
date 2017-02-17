@@ -120,11 +120,15 @@ DragImageRef createDragImageForNode(Frame& frame, Node& node)
     return createDragImageFromSnapshot(snapshotNode(frame, node), &node);
 }
 
+#if !ENABLE(DATA_INTERACTION)
+
 DragImageRef createDragImageForSelection(Frame& frame, bool forceBlackText)
 {
     SnapshotOptions options = forceBlackText ? SnapshotOptionsForceBlackText : SnapshotOptionsNone;
     return createDragImageFromSnapshot(snapshotSelection(frame, options), nullptr);
 }
+
+#endif
 
 struct ScopedFrameSelectionState {
     ScopedFrameSelectionState(Frame& frame)
@@ -143,8 +147,8 @@ struct ScopedFrameSelectionState {
     const Frame& frame;
     RenderObject* startRenderer;
     RenderObject* endRenderer;
-    Optional<unsigned> startOffset;
-    Optional<unsigned> endOffset;
+    std::optional<unsigned> startOffset;
+    std::optional<unsigned> endOffset;
 };
 
 DragImageRef createDragImageForRange(Frame& frame, Range& range, bool forceBlackText)
@@ -212,6 +216,37 @@ DragImageRef createDragImageForLink(URL&, const String&, FontRenderingMode)
     return nullptr;
 }
 #endif
+
+DragImage::DragImage()
+    : m_dragImageRef { nullptr }
+{
+}
+
+DragImage::DragImage(DragImageRef dragImageRef)
+    : m_dragImageRef { dragImageRef }
+{
+}
+
+DragImage::DragImage(DragImage&& other)
+    : m_dragImageRef { std::exchange(other.m_dragImageRef, nullptr) }
+{
+}
+
+DragImage& DragImage::operator=(DragImage&& other)
+{
+    if (m_dragImageRef)
+        deleteDragImage(m_dragImageRef);
+
+    m_dragImageRef = std::exchange(other.m_dragImageRef, nullptr);
+
+    return *this;
+}
+
+DragImage::~DragImage()
+{
+    if (m_dragImageRef)
+        deleteDragImage(m_dragImageRef);
+}
 
 } // namespace WebCore
 

@@ -86,7 +86,7 @@ static EncodedJSValue JSC_HOST_CALL constructArrayBuffer(ExecState* exec)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSArrayBufferConstructor* constructor =
-        jsCast<JSArrayBufferConstructor*>(exec->callee());
+        jsCast<JSArrayBufferConstructor*>(exec->jsCallee());
     
     unsigned length;
     if (exec->argumentCount()) {
@@ -140,7 +140,7 @@ CallType JSArrayBufferConstructor::getCallData(JSCell*, CallData& callData)
 // ECMA 24.1.3.1
 EncodedJSValue JSC_HOST_CALL arrayBufferFuncIsView(ExecState* exec)
 {
-    return JSValue::encode(jsBoolean(jsDynamicCast<JSArrayBufferView*>(exec->argument(0))));
+    return JSValue::encode(jsBoolean(jsDynamicCast<JSArrayBufferView*>(exec->vm(), exec->argument(0))));
 }
     
 

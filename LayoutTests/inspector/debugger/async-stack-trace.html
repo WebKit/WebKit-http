@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+<script src="../../http/tests/inspector/resources/inspector-test.js"></script>
+<script src="resources/log-active-stack-trace.js"></script>
+<script>
+const timerDelay = 20;
+
+function pauseThenFinishTest() {
+    debugger;
+    TestPage.dispatchEventToFrontend("AfterTestFunction");
+}
+
+function testRequestAnimationFrame() {
+    requestAnimationFrame(pauseThenFinishTest);
+}
+
+function testSetTimeout() {
+    setTimeout(pauseThenFinishTest, timerDelay);
+}
+
+function testChainedRequestAnimationFrame() {
+    requestAnimationFrame(testRequestAnimationFrame);
+}
+
+function testSetInterval(repeatCount) {
+    let pauses = 0;
+    let timerIdentifier = setInterval(function intervalFired() {
+        debugger;
+        if (++pauses === repeatCount) {
+            clearInterval(timerIdentifier);
+            TestPage.dispatchEventToFrontend("AfterTestFunction");
+        }
+    }, timerDelay);
+}
+
+function testReferenceCounting() {
+    let interval = setInterval(function intervalFired() {
+        clearInterval(interval);
+        setTimeout(pauseThenFinishTest, timerDelay * 2);
+    }, timerDelay);
+}
+
+function recursiveCallThenTest(testFunction, depth) {
+    if (depth) {
+        recursiveCallThenTest(testFunction, depth - 1);
+        return;
+    }
+    testFunction();
+}
+
+function repeatingRequestAnimationFrame(repeatCount) {
+    let count = 0;
+    function repeat() {
+        if (count++ === repeatCount) {
+            pauseThenFinishTest();
+            return;
+        }
+        requestAnimationFrame(repeat);
+    }
+    requestAnimationFrame(repeat);
+}
+
+function test()
+{
+    let suite = InspectorTest.createAsyncSuite("AsyncStackTrace");
+
+    function addSimpleTestCase(name, expression) {
+        suite.addTestCase({
+            name: `CheckAsyncStackTrace.${name}`,
+            test(resolve, reject) {
+                let pauseCount = 0;
+                function handlePaused() {
+                    InspectorTest.log(`PAUSE #${++pauseCount}`);
+                    logActiveStackTrace();
+                    WebInspector.debuggerManager.resume();
+                }
+
+                WebInspector.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.Paused, handlePaused);
+
+                InspectorTest.singleFireEventListener("AfterTestFunction", () => {
+                    WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.Paused, handlePaused);
+                    resolve();
+                });
+
+                InspectorTest.evaluateInPage(expression);
+            }
+        });
+    }
+
+    addSimpleTestCase("RequestAnimationFrame", "testRequestAnimationFrame()");
+    addSimpleTestCase("SetTimeout", "testSetTimeout()");
+    addSimpleTestCase("SetInterval", "testSetInterval(3)");
+    addSimpleTestCase("ChainedRequestAnimationFrame", "testChainedRequestAnimationFrame()");
+    addSimpleTestCase("ReferenceCounting", "testReferenceCounting()");
+
+    function setup(resolve) {
+        InspectorTest.log("Save DebuggerManager.asyncStackTraceDepth");
+        this.savedCallStackDepth = WebInspector.debuggerManager.asyncStackTraceDepth;
+        resolve();
+    }
+
+    function teardown(resolve) {
+        InspectorTest.log("Restore DebuggerManager.asyncStackTraceDepth");
+        WebInspector.debuggerManager.asyncStackTraceDepth = this.savedCallStackDepth;
+        resolve();
+    }
+
+    suite.addTestCase({
+        name: "AsyncStackTrace.DisableStackTrace",
+        setup,
+        teardown,
+        test(resolve, reject) {
+            WebInspector.debuggerManager.awaitEvent(WebInspector.DebuggerManager.Event.Paused)
+            .then((event) => {
+                let stackTrace = getActiveStackTrace();
+                let asyncStackTrace = stackTrace.parentStackTrace;
+                InspectorTest.expectNull(asyncStackTrace, "Async stack trace should be null.");
+                WebInspector.debuggerManager.resume().then(resolve, reject);
+            });
+
+            WebInspector.debuggerManager.asyncStackTraceDepth = 0;
+            InspectorTest.evaluateInPage("testRequestAnimationFrame()");
+        }
+    });
+
+    function addTruncateTestCase(name, asyncStackTraceDepth) {
+        suite.addTestCase({
+            name: `AsyncStackTrace.${name}`,
+            setup,
+            teardown,
+            test(resolve, reject) {
+                // When repeatingRequestAnimationFrame calls rAF, the backend will store a call stack with length 2:
+                // one frame for the caller and one for the asynchronous boundary. As a result, the parity of
+                // Debugger.asyncStackTraceDepth determines whether the trace is truncated on a call stack boundary
+                // (even) or call frame boundary (odd). Since truncation doesn't remove individual call frames,
+                // the depth of the resulting stack trace may exceed the depth setting:
+                //     S = { s𝟶, s𝟷, …, s𝑘 }
+                //     T = truncate(S)
+                //     depth(T) ≤ d + depth(t𝑘)
+                const framesPerCallStack = 2;
+                const expectedStackTraceDepth = asyncStackTraceDepth + (asyncStackTraceDepth % framesPerCallStack);
+
+                WebInspector.debuggerManager.awaitEvent(WebInspector.DebuggerManager.Event.Paused)
+                .then((event) => {
+                    let stackTrace = getActiveStackTrace();
+                    InspectorTest.assert(stackTrace && stackTrace.callFrames);
+                    if (!stackTrace || !stackTrace.callFrames)
+                        reject();
+
+                    let stackTraceDepth = 0;
+                    while (stackTrace.parentStackTrace) {
+                        InspectorTest.expectFalse(stackTrace.truncated, "Non-root StackTrace should not be truncated.");
+                        stackTrace = stackTrace.parentStackTrace;
+                        stackTraceDepth += stackTrace.callFrames.length;
+                    }
+
+                    InspectorTest.expectThat(stackTrace.truncated, "StackTrace root should be truncated.");
+                    InspectorTest.expectEqual(stackTraceDepth, expectedStackTraceDepth, "StackTrace should be truncated to the nearest call stack.");
+
+                    logActiveStackTrace();
+                    WebInspector.debuggerManager.resume().then(resolve, reject);
+                });
+
+                InspectorTest.log(`Set Debugger.asyncStackTraceDepth equal to ${asyncStackTraceDepth}`);
+                WebInspector.debuggerManager.asyncStackTraceDepth = asyncStackTraceDepth;
+
+                let repeatCount = Math.floor(asyncStackTraceDepth / framesPerCallStack) + 1;
+                InspectorTest.evaluateInPage(`repeatingRequestAnimationFrame(${repeatCount})`);
+            }
+        });
+    }
+
+    addTruncateTestCase("ForceTruncationOnCallStackBoundary", 4);
+    addTruncateTestCase("ForceTruncationWithinCallStack", 5);
+
+    suite.runTestCasesAndFinish();
+}
+</script>
+</head>
+<body onload="runTest()">
+<p>Tests for async stack traces.</p>
+</body>
+</html>

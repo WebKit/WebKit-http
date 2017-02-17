@@ -29,6 +29,7 @@
 #include "Frame.h"
 #include "HTMLDocument.h"
 #include "JSDOMBinding.h"
+#include "JSDOMBindingSecurity.h"
 #include "JSDOMWindowBase.h"
 #include "JSElement.h"
 #include "JSHTMLCollection.h"
@@ -49,6 +50,9 @@ static bool jsDOMWindowPropertiesGetOwnPropertySlotNamedItemGetter(JSDOMWindowPr
         slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, toJS(exec, scopedChild->document()->domWindow()));
         return true;
     }
+
+    if (!BindingSecurity::shouldAllowAccessToFrame(exec, &frame, ThrowSecurityError))
+        return false;
 
     // FIXME: Search the whole frame hierarchy somewhere around here.
     // We need to test the correct priority order.

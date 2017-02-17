@@ -35,7 +35,6 @@
 #include "Element.h"
 #include "ElementIterator.h"
 #include "Event.h"
-#include "EventHandler.h"
 #include "EventNames.h"
 #include "FloatQuad.h"
 #include "FocusController.h"
@@ -112,6 +111,7 @@ FrameSelection::FrameSelection(Frame* frame)
     , m_xPosForVerticalArrowNavigation(NoXPosForVerticalArrowNavigation())
     , m_granularity(CharacterGranularity)
     , m_caretBlinkTimer(*this, &FrameSelection::caretBlinkTimerFired)
+    , m_caretInsidePositionFixed(false)
     , m_absCaretBoundsDirty(true)
     , m_caretPaint(true)
     , m_isCaretBlinkingSuspended(false)
@@ -419,7 +419,7 @@ static bool removingNodeRemovesPosition(Node& node, const Position& position)
 
 void DragCaretController::nodeWillBeRemoved(Node& node)
 {
-    if (!hasCaret() || !node.inDocument())
+    if (!hasCaret() || !node.isConnected())
         return;
 
     if (!removingNodeRemovesPosition(node, m_position.deepEquivalent()))
@@ -435,7 +435,7 @@ void FrameSelection::nodeWillBeRemoved(Node& node)
 {
     // There can't be a selection inside a fragment, so if a fragment's node is being removed,
     // the selection in the document that created the fragment needs no adjustment.
-    if (isNone() || !node.inDocument())
+    if (isNone() || !node.isConnected())
         return;
 
     respondToNodeModification(node, removingNodeRemovesPosition(node, m_selection.base()), removingNodeRemovesPosition(node, m_selection.extent()),
@@ -524,7 +524,7 @@ static void updatePositionAfterAdoptingTextReplacement(Position& position, Chara
 void FrameSelection::textWasReplaced(CharacterData* node, unsigned offset, unsigned oldLength, unsigned newLength)
 {
     // The fragment check is a performance optimization. See http://trac.webkit.org/changeset/30062.
-    if (isNone() || !node || !node->inDocument())
+    if (isNone() || !node || !node->isConnected())
         return;
 
     Position base = m_selection.base();
@@ -1577,12 +1577,14 @@ static bool isNonOrphanedCaret(const VisibleSelection& selection)
     return selection.isCaret() && !selection.start().isOrphan() && !selection.end().isOrphan();
 }
 
-IntRect FrameSelection::absoluteCaretBounds()
+IntRect FrameSelection::absoluteCaretBounds(bool* insideFixed)
 {
     if (!m_frame)
         return IntRect();
     updateSelectionByUpdatingLayoutOrStyle(*m_frame);
     recomputeCaretRect();
+    if (insideFixed)
+        *insideFixed = m_caretInsidePositionFixed;
     return m_absCaretBounds;
 }
 
@@ -1624,7 +1626,9 @@ bool FrameSelection::recomputeCaretRect()
         return false;
 
     IntRect oldAbsCaretBounds = m_absCaretBounds;
-    m_absCaretBounds = absoluteBoundsForLocalCaretRect(rendererForCaretPainting(caretNode.get()), newRect);
+    bool isInsideFixed;
+    m_absCaretBounds = absoluteBoundsForLocalCaretRect(rendererForCaretPainting(caretNode.get()), newRect, &isInsideFixed);
+    m_caretInsidePositionFixed = isInsideFixed;
 
     if (m_absCaretBoundsDirty && m_selection.isCaret()) // We should be able to always assert this condition.
         ASSERT(m_absCaretBounds == m_selection.visibleStart().absoluteCaretBounds());
@@ -1939,7 +1943,7 @@ void FrameSelection::selectAll()
     }
 }
 
-bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool closeTyping)
+bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool closeTyping, EUserTriggered userTriggered)
 {
     if (!range)
         return false;
@@ -1952,6 +1956,14 @@ bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool clo
     if (newSelection.isNone())
         return false;
 #endif
+
+    if (userTriggered == UserTriggered) {
+        FrameSelection trialFrameSelection;
+        trialFrameSelection.setSelection(newSelection, ClearTypingStyle | (closeTyping ? CloseTyping : 0));
+
+        if (!shouldChangeSelection(trialFrameSelection.selection()))
+            return false;
+    }
 
     setSelection(newSelection, ClearTypingStyle | (closeTyping ? CloseTyping : 0));
     return true;
@@ -2152,7 +2164,7 @@ void FrameSelection::setFocusedElementIfNeeded()
     bool caretBrowsing = m_frame->settings().caretBrowsingEnabled();
     if (caretBrowsing) {
         if (Element* anchor = enclosingAnchorElement(m_selection.base())) {
-            m_frame->page()->focusController().setFocusedElement(anchor, m_frame);
+            m_frame->page()->focusController().setFocusedElement(anchor, *m_frame);
             return;
         }
     }
@@ -2164,16 +2176,16 @@ void FrameSelection::setFocusedElementIfNeeded()
             // so add the !isFrameElement check here. There's probably a better way to make this
             // work in the long term, but this is the safest fix at this time.
             if (target->isMouseFocusable() && !isFrameElement(target)) {
-                m_frame->page()->focusController().setFocusedElement(target, m_frame);
+                m_frame->page()->focusController().setFocusedElement(target, *m_frame);
                 return;
             }
             target = target->parentOrShadowHostElement();
         }
-        m_frame->document()->setFocusedElement(0);
+        m_frame->document()->setFocusedElement(nullptr);
     }
 
     if (caretBrowsing)
-        m_frame->page()->focusController().setFocusedElement(0, m_frame);
+        m_frame->page()->focusController().setFocusedElement(nullptr, *m_frame);
 }
 
 void DragCaretController::paintDragCaret(Frame* frame, GraphicsContext& p, const LayoutPoint& paintOffset, const LayoutRect& clipRect) const
@@ -2300,12 +2312,12 @@ void FrameSelection::revealSelection(SelectionRevealMode revealMode, const Scrol
         return;
 
     LayoutRect rect;
-
+    bool insideFixed = false;
     switch (m_selection.selectionType()) {
     case VisibleSelection::NoSelection:
         return;
     case VisibleSelection::CaretSelection:
-        rect = absoluteCaretBounds();
+        rect = absoluteCaretBounds(&insideFixed);
         break;
     case VisibleSelection::RangeSelection:
         rect = revealExtentOption == RevealExtent ? VisiblePosition(m_selection.extent()).absoluteCaretBounds() : enclosingIntRect(selectionBounds(false));
@@ -2319,18 +2331,18 @@ void FrameSelection::revealSelection(SelectionRevealMode revealMode, const Scrol
         if (RenderLayer* layer = start.deprecatedNode()->renderer()->enclosingLayer()) {
             if (!m_scrollingSuppressCount) {
                 layer->setAdjustForIOSCaretWhenScrolling(true);
-                layer->scrollRectToVisible(revealMode, rect, alignment, alignment);
+                layer->scrollRectToVisible(revealMode, rect, insideFixed, alignment, alignment);
                 layer->setAdjustForIOSCaretWhenScrolling(false);
                 updateAppearance();
                 if (m_frame->page())
-                    m_frame->page()->chrome().client().notifyRevealedSelectionByScrollingFrame(m_frame);
+                    m_frame->page()->chrome().client().notifyRevealedSelectionByScrollingFrame(*m_frame);
             }
         }
 #else
         // FIXME: This code only handles scrolling the startContainer's layer, but
         // the selection rect could intersect more than just that.
         // See <rdar://problem/4799899>.
-        if (start.deprecatedNode()->renderer()->scrollRectToVisible(revealMode, rect, alignment, alignment))
+        if (start.deprecatedNode()->renderer()->scrollRectToVisible(revealMode, rect, insideFixed, alignment, alignment))
             updateAppearance();
 #endif
     }

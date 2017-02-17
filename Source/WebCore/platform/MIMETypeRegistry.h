@@ -54,8 +54,9 @@ public:
     // Check to see if a MIME type is suitable for being encoded.
     static bool isSupportedImageMIMETypeForEncoding(const String& mimeType);
 
-    // Check to see if a MIME type is suitable for being loaded as a JavaScript resource.
-    static bool isSupportedJavaScriptMIMEType(const String& mimeType);    
+    // Check to see if a MIME type is suitable for being loaded as a JavaScript or JSON resource.
+    static bool isSupportedJavaScriptMIMEType(const String& mimeType);
+    static bool isSupportedJSONMIMEType(const String& mimeType);
 
     // Check to see if a non-image MIME type is suitable for being loaded as a
     // document in a frame. Includes supported JavaScript MIME types.
@@ -103,6 +104,8 @@ public:
     // FIXME: WebKit coding style says we should not have the word "get" in the name of this function.
     // FIXME: Unclear what the concept of a normalized MIME type is; currently it's a platform-specific notion.
     static String getNormalizedMIMEType(const String&);
+
+    WEBCORE_EXPORT static String appendFileExtensionIfNecessary(const String& filename, const String& mimeType);
 
 private:
     // Check to see if the MIME type is not suitable for being loaded as a text

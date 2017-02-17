@@ -124,11 +124,17 @@ private:
 #endif
     BOOL _initialCapitalizationEnabled;
     BOOL _waitsForPaintAfterViewDidMoveToWindow;
+    BOOL _controlledByAutomation;
+#if ENABLE(MEDIA_STREAM)
+    BOOL _mediaStreamEnabled;
+#endif
 
 #if ENABLE(APPLE_PAY)
     BOOL _applePayEnabled;
 #endif
     BOOL _needsStorageAccessFromFileURLsQuirk;
+
+    NSString *_overrideContentSecurityPolicy;
 }
 
 - (instancetype)init
@@ -142,7 +148,7 @@ private:
     _inlineMediaPlaybackRequiresPlaysInlineAttribute = !_allowsInlineMediaPlayback;
     _allowsInlineMediaPlaybackAfterFullscreen = !_allowsInlineMediaPlayback;
     _mediaDataLoadsAutomatically = NO;
-    if (linkedOnOrAfter(WebKit::LibraryVersion::FirstWithMediaTypesRequiringUserActionForPlayback))
+    if (WebKit::linkedOnOrAfter(WebKit::SDKVersion::FirstWithMediaTypesRequiringUserActionForPlayback))
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAudio;
     else
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAll;
@@ -289,6 +295,10 @@ private:
     configuration->_mainContentUserGestureOverrideEnabled = self->_mainContentUserGestureOverrideEnabled;
     configuration->_initialCapitalizationEnabled = self->_initialCapitalizationEnabled;
     configuration->_waitsForPaintAfterViewDidMoveToWindow = self->_waitsForPaintAfterViewDidMoveToWindow;
+    configuration->_controlledByAutomation = self->_controlledByAutomation;
+#if ENABLE(MEDIA_STREAM)
+    configuration->_mediaStreamEnabled = self->_mediaStreamEnabled;
+#endif
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
@@ -316,6 +326,7 @@ private:
     configuration->_applePayEnabled = self->_applePayEnabled;
 #endif
     configuration->_needsStorageAccessFromFileURLsQuirk = self->_needsStorageAccessFromFileURLsQuirk;
+    configuration->_overrideContentSecurityPolicy = self->_overrideContentSecurityPolicy;
 
     return configuration;
 }
@@ -671,6 +682,32 @@ static NSString *defaultApplicationNameForUserAgent()
     _waitsForPaintAfterViewDidMoveToWindow = shouldSynchronize;
 }
 
+- (BOOL)_isControlledByAutomation
+{
+    return _controlledByAutomation;
+}
+
+- (void)_setControlledByAutomation:(BOOL)controlledByAutomation
+{
+    _controlledByAutomation = controlledByAutomation;
+}
+
+- (BOOL)_mediaStreamEnabled
+{
+#if ENABLE(MEDIA_STREAM)
+    return _mediaStreamEnabled;
+#else
+    return NO;
+#endif
+}
+
+- (void)_setMediaStreamEnabled:(BOOL)enabled
+{
+#if ENABLE(MEDIA_STREAM)
+    _mediaStreamEnabled = enabled;
+#endif
+}
+
 #if PLATFORM(MAC)
 - (BOOL)_showsURLsInToolTips
 {
@@ -738,6 +775,16 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setNeedsStorageAccessFromFileURLsQuirk:(BOOL)needsLocalStorageQuirk
 {
     _needsStorageAccessFromFileURLsQuirk = needsLocalStorageQuirk;
+}
+
+- (NSString *)_overrideContentSecurityPolicy
+{
+    return _overrideContentSecurityPolicy;
+}
+
+- (void)_setOverrideContentSecurityPolicy:(NSString *)overrideContentSecurityPolicy
+{
+    _overrideContentSecurityPolicy = overrideContentSecurityPolicy;
 }
 
 @end

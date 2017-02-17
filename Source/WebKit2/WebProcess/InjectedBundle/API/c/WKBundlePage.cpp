@@ -33,6 +33,7 @@
 #include "APIURLRequest.h"
 #include "InjectedBundleBackForwardList.h"
 #include "InjectedBundleNodeHandle.h"
+#include "InjectedBundlePageEditorClient.h"
 #include "InjectedBundlePageFormClient.h"
 #include "InjectedBundlePageUIClient.h"
 #include "PageBanner.h"
@@ -83,7 +84,7 @@ void WKBundlePageSetContextMenuClient(WKBundlePageRef pageRef, WKBundlePageConte
 
 void WKBundlePageSetEditorClient(WKBundlePageRef pageRef, WKBundlePageEditorClientBase* wkClient)
 {
-    toImpl(pageRef)->initializeInjectedBundleEditorClient(wkClient);
+    toImpl(pageRef)->setInjectedBundleEditorClient(wkClient ? std::make_unique<InjectedBundlePageEditorClient>(*wkClient) : std::make_unique<API::InjectedBundle::EditorClient>());
 }
 
 void WKBundlePageSetFormClient(WKBundlePageRef pageRef, WKBundlePageFormClientBase* wkClient)
@@ -155,11 +156,6 @@ void WKBundlePageDidExitFullScreen(WKBundlePageRef pageRef)
 #else
     UNUSED_PARAM(pageRef);
 #endif
-}
-
-void WKBundlePageSetDiagnosticLoggingClient(WKBundlePageRef pageRef, WKBundlePageDiagnosticLoggingClientBase* client)
-{
-    toImpl(pageRef)->initializeInjectedBundleDiagnosticLoggingClient(client);
 }
 
 WKBundlePageGroupRef WKBundlePageGetPageGroup(WKBundlePageRef pageRef)
@@ -369,22 +365,22 @@ WKBundleBackForwardListRef WKBundlePageGetBackForwardList(WKBundlePageRef pageRe
 
 void WKBundlePageInstallPageOverlay(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->mainFrame()->pageOverlayController().installPageOverlay(toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::DoNotFade);
+    toImpl(pageRef)->mainFrame()->pageOverlayController().installPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::DoNotFade);
 }
 
 void WKBundlePageUninstallPageOverlay(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->mainFrame()->pageOverlayController().uninstallPageOverlay(toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::DoNotFade);
+    toImpl(pageRef)->mainFrame()->pageOverlayController().uninstallPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::DoNotFade);
 }
 
 void WKBundlePageInstallPageOverlayWithAnimation(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->mainFrame()->pageOverlayController().installPageOverlay(toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::Fade);
+    toImpl(pageRef)->mainFrame()->pageOverlayController().installPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::Fade);
 }
 
 void WKBundlePageUninstallPageOverlayWithAnimation(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->mainFrame()->pageOverlayController().uninstallPageOverlay(toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::Fade);
+    toImpl(pageRef)->mainFrame()->pageOverlayController().uninstallPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::Fade);
 }
 
 void WKBundlePageSetTopOverhangImage(WKBundlePageRef pageRef, WKImageRef imageRef)
@@ -692,4 +688,21 @@ WKArrayRef WKBundlePageCopyOriginsWithApplicationCache(WKBundlePageRef page)
         originIdentifiers.uncheckedAppend(API::String::create(WebCore::SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier()));
 
     return toAPI(&API::Array::create(WTFMove(originIdentifiers)).leakRef());
+}
+
+void WKBundlePageSetEventThrottlingBehaviorOverride(WKBundlePageRef page, WKEventThrottlingBehavior* behavior)
+{
+    std::optional<WebCore::EventThrottlingBehavior> behaviorValue;
+    if (behavior) {
+        switch (*behavior) {
+        case kWKEventThrottlingBehaviorResponsive:
+            behaviorValue = WebCore::EventThrottlingBehavior::Responsive;
+            break;
+        case kWKEventThrottlingBehaviorUnresponsive:
+            behaviorValue = WebCore::EventThrottlingBehavior::Unresponsive;
+            break;
+        }
+    }
+
+    toImpl(page)->corePage()->setEventThrottlingBehaviorOverride(behaviorValue);
 }

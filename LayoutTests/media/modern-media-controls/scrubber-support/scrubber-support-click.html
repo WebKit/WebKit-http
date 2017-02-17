@@ -1,5 +1,6 @@
 <script src="../../../resources/js-test-pre.js"></script>
 <script src="../resources/media-controls-loader.js" type="text/javascript"></script>
+<script src="../resources/media-controls-utils.js" type="text/javascript"></script>
 <body>
 <style type="text/css" media="screen">
     
@@ -15,7 +16,7 @@
     }
     
 </style>
-<video src="../../content/test.mp4"></video>
+<video src="../../content/test.mp4" controls autoplay></video>
 <div id="host"></div>
 <script type="text/javascript">
 
@@ -29,24 +30,26 @@ const mediaController = createControls(container, media, null);
 
 mediaController.controls.showsStartButton = false;
 
-media.addEventListener("canplaythrough", () => {
+scheduler.frameDidFire = function() {
+    if (media.paused)
+        return;
+
+    const scrubber = mediaController.controls.timeControl.scrubber.children[1].element;
+    if (scrubber.getBoundingClientRect().width === 0)
+        return;
+
+    media.pause();
 
     media.addEventListener("timeupdate", () => {
-        shouldBe("media.currentTime", "3.1872");
+        shouldBeCloseTo("media.currentTime", 3.1872, 0.2);
         container.remove();
         media.remove();
         finishJSTest();
     });
-
-    const input = mediaController.controls.timeControl.scrubber.children[1].element;
-    const bounds = input.getBoundingClientRect();
-    const centerX = bounds.left + bounds.width / 2;
-    const centerY = bounds.top + bounds.height / 2;
-
-    eventSender.mouseMoveTo(centerX, centerY);
-    eventSender.mouseDown();
-    eventSender.mouseUp();
-});
+    
+    scheduler.frameDidFire = null;
+    pressOnElement(scrubber);
+};
 
 </script>
 <script src="../../../resources/js-test-post.js"></script>

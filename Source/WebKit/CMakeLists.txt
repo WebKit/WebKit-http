@@ -17,13 +17,9 @@ set(WebKit_SOURCES
 )
 
 set(WebKit_INCLUDE_DIRECTORIES
-    Storage
-    WebCoreSupport
-
     "${CMAKE_BINARY_DIR}"
-    "${CMAKE_SOURCE_DIR}/Source"
-    "${DERIVED_SOURCES_DIR}"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
+    "${WEBKIT_DIR}/Storage"
+    "${WEBKIT_DIR}/WebCoreSupport"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy"
@@ -36,6 +32,7 @@ set(WebKit_SYSTEM_INCLUDE_DIRECTORIES
 set(WebKit_LIBRARIES
     PRIVATE JavaScriptCore${DEBUG_SUFFIX}
     PRIVATE WebCore${DEBUG_SUFFIX}
+    PRIVATE PAL${DEBUG_SUFFIX}
 )
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()

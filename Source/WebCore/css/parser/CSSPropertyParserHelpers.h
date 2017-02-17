@@ -30,9 +30,12 @@
 #pragma once
 
 #include "CSSCustomIdentValue.h"
+#include "CSSFunctionValue.h"
 #include "CSSParserMode.h"
 #include "CSSParserTokenRange.h"
 #include "CSSPrimitiveValue.h"
+#include "CSSShadowValue.h"
+#include "CSSValuePool.h"
 #include "Length.h" // For ValueRange
 
 namespace WebCore {
@@ -55,6 +58,7 @@ enum class UnitlessQuirk {
 };
 
 RefPtr<CSSPrimitiveValue> consumeInteger(CSSParserTokenRange&, double minimumValue = -std::numeric_limits<double>::max());
+bool consumePositiveIntegerRaw(CSSParserTokenRange&, int& result);
 RefPtr<CSSPrimitiveValue> consumePositiveInteger(CSSParserTokenRange&);
 bool consumeNumberRaw(CSSParserTokenRange&, double& result);
 RefPtr<CSSPrimitiveValue> consumeNumber(CSSParserTokenRange&, ValueRange);
@@ -88,6 +92,10 @@ enum class ConsumeGeneratedImage {
 RefPtr<CSSValue> consumeImage(CSSParserTokenRange&, CSSParserContext, ConsumeGeneratedImage = ConsumeGeneratedImage::Allow);
 RefPtr<CSSValue> consumeImageOrNone(CSSParserTokenRange&, CSSParserContext);
 
+RefPtr<CSSValue> consumeFilter(CSSParserTokenRange&, const CSSParserContext&);
+RefPtr<CSSFunctionValue> consumeFilterFunction(CSSParserTokenRange&, const CSSParserContext&);
+RefPtr<CSSShadowValue> consumeSingleShadow(CSSParserTokenRange&, CSSParserMode, bool allowInset, bool allowSpread);
+
 // Template implementations are at the bottom of the file for readability.
 
 template<typename... emptyBaseCase> inline bool identMatches(CSSValueID) { return false; }
@@ -101,7 +109,7 @@ template<CSSValueID... names> RefPtr<CSSPrimitiveValue> consumeIdent(CSSParserTo
 {
     if (range.peek().type() != IdentToken || !identMatches<names...>(range.peek().id()))
         return nullptr;
-    return CSSPrimitiveValue::createIdentifier(range.consumeIncludingWhitespace().id());
+    return CSSValuePool::singleton().createIdentifierValue(range.consumeIncludingWhitespace().id());
 }
 
 static inline bool isCSSWideKeyword(const CSSValueID& id)

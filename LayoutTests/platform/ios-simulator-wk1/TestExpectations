@@ -2,20 +2,6 @@
 #
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 
-# FIXME: uiController.singleTapAtPoint() is not implemented in DumpRenderTree. And
-# we cannot write these tests in terms of EventSender without identifying which
-# test tool is being used to run the test, which is not straightforward at the time
-# of writing (10/07/2016).
-http/tests/quicklook/at-import-stylesheet-blocked.html
-http/tests/quicklook/base-url-blocked.html
-http/tests/quicklook/cross-origin-iframe-blocked.html
-http/tests/quicklook/document-domain-is-empty-string.html
-http/tests/quicklook/external-stylesheet-blocked.html
-http/tests/quicklook/hide-referer-on-navigation.html
-http/tests/quicklook/resources/fail.html
-http/tests/quicklook/submit-form-blocked.html
-http/tests/quicklook/top-navigation-blocked.html
-
 # Selectively re-enable viewport tests that work
 fast/viewport/ios/ipad/width-is-device-width.html [ Pass ]
 
@@ -104,6 +90,9 @@ editing/unsupported-content/table-type-before.html
 
 # Zooming works differently in iOS DRT
 fast/zooming/uiscript-zooming.html [ Failure ]
+
+# Not supported on WK1
+accessibility/ios-simulator/speak-selection-content.html [ Skip ]
 
 # FIXME: Tests that fail due to lack of textInputController <rdar://problem/5106287>
 editing/inserting/insert-composition-whitespace.html [ Failure ]
@@ -684,7 +673,6 @@ css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add.html
 css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection.html [ ImageOnlyFailure ]
 css3/filters/backdrop/backdrop-filter-with-clip-path.html [ ImageOnlyFailure ]
 css3/flexbox/content-height-with-scrollbars.html [ ImageOnlyFailure ]
-css3/line-break/line-break-auto-centered-2.html [ ImageOnlyFailure ]
 css3/masking/mask-repeat-space-border.html [ ImageOnlyFailure ]
 
 # CSS tests that pass:
@@ -1021,6 +1009,10 @@ crypto/webkitSubtle/rsa-indexeddb-private.html
 crypto/webkitSubtle/rsa-indexeddb.html
 fast/history/page-cache-indexed-closed-db.html
 fast/history/page-cache-indexed-opened-db.html
+crypto/subtle/rsa-indexeddb-non-exportable-private.html
+crypto/subtle/rsa-indexeddb-non-exportable.html
+crypto/subtle/rsa-indexeddb-private.html
+crypto/subtle/rsa-indexeddb.html
 
 # ShouldOpenExternalURLs not yet supported in WK1
 loader/navigation-policy [ Skip ]
@@ -1881,3 +1873,7 @@ imported/blink/imported/csswg-test/css-writing-modes-3/bidi-unset-007.html [ Pas
 imported/blink/imported/csswg-test/css-writing-modes-3/block-embed-001.html [ Pass ImageOnlyFailure ]
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Crash Pass ]
 imported/mozilla/svg/text/clipPath-content.svg [ Pass ImageOnlyFailure ]
+
+# Hover test does not apply
+fast/css/deferred-parsing/hover-test.html [ Skip ]
+

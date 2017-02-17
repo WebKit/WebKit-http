@@ -38,11 +38,12 @@
 #include "CodeOrigin.h"
 #include "CodeType.h"
 #include "CompactJITCodeMap.h"
-#include "ConcurrentJITLock.h"
+#include "ConcurrentJSLock.h"
 #include "DFGCommon.h"
 #include "DFGExitProfile.h"
 #include "DeferredCompilationCallback.h"
-#include "EvalCodeCache.h"
+#include "DirectEvalCodeCache.h"
+#include "EvalExecutable.h"
 #include "ExecutionCounter.h"
 #include "ExpressionRangeInfo.h"
 #include "FunctionExecutable.h"
@@ -118,15 +119,9 @@ public:
 protected:
     CodeBlock(VM*, Structure*, CopyParsedBlockTag, CodeBlock& other);
     CodeBlock(VM*, Structure*, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock*, JSScope*, PassRefPtr<SourceProvider>, unsigned sourceOffset, unsigned firstLineColumnOffset);
-#if ENABLE(WEBASSEMBLY)
-    CodeBlock(VM*, Structure*, WebAssemblyExecutable* ownerExecutable, JSGlobalObject*);
-#endif
 
     void finishCreation(VM&, CopyParsedBlockTag, CodeBlock& other);
     void finishCreation(VM&, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock*, JSScope*);
-#if ENABLE(WEBASSEMBLY)
-    void finishCreation(VM&, WebAssemblyExecutable* ownerExecutable, JSGlobalObject*);
-#endif
 
     WriteBarrier<JSGlobalObject> m_globalObject;
 
@@ -232,15 +227,15 @@ public:
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
         int& startOffset, int& endOffset, unsigned& line, unsigned& column) const;
 
-    Optional<unsigned> bytecodeOffsetFromCallSiteIndex(CallSiteIndex);
+    std::optional<unsigned> bytecodeOffsetFromCallSiteIndex(CallSiteIndex);
 
-    void getStubInfoMap(const ConcurrentJITLocker&, StubInfoMap& result);
+    void getStubInfoMap(const ConcurrentJSLocker&, StubInfoMap& result);
     void getStubInfoMap(StubInfoMap& result);
     
-    void getCallLinkInfoMap(const ConcurrentJITLocker&, CallLinkInfoMap& result);
+    void getCallLinkInfoMap(const ConcurrentJSLocker&, CallLinkInfoMap& result);
     void getCallLinkInfoMap(CallLinkInfoMap& result);
 
-    void getByValInfoMap(const ConcurrentJITLocker&, ByValInfoMap& result);
+    void getByValInfoMap(const ConcurrentJSLocker&, ByValInfoMap& result);
     void getByValInfoMap(ByValInfoMap& result);
     
 #if ENABLE(JIT)
@@ -321,7 +316,7 @@ public:
     {
         ASSERT(heap()->isDeferred());
         heap()->reportExtraMemoryAllocated(code->size());
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         WTF::storeStoreFence(); // This is probably not needed because the lock will also do something similar, but it's good to be paranoid.
         m_jitCode = code;
     }
@@ -412,7 +407,7 @@ public:
     unsigned numberOfValueProfiles() { return m_valueProfiles.size(); }
     ValueProfile* valueProfile(int index) { return &m_valueProfiles[index]; }
     ValueProfile* valueProfileForBytecodeOffset(int bytecodeOffset);
-    SpeculatedType valueProfilePredictionForBytecodeOffset(const ConcurrentJITLocker& locker, int bytecodeOffset)
+    SpeculatedType valueProfilePredictionForBytecodeOffset(const ConcurrentJSLocker& locker, int bytecodeOffset)
     {
         if (ValueProfile* valueProfile = valueProfileForBytecodeOffset(bytecodeOffset))
             return valueProfile->computeUpdatedPrediction(locker);
@@ -458,11 +453,11 @@ public:
 
     unsigned numberOfArrayProfiles() const { return m_arrayProfiles.size(); }
     const ArrayProfileVector& arrayProfiles() { return m_arrayProfiles; }
-    ArrayProfile* addArrayProfile(const ConcurrentJITLocker&, unsigned bytecodeOffset);
+    ArrayProfile* addArrayProfile(const ConcurrentJSLocker&, unsigned bytecodeOffset);
     ArrayProfile* addArrayProfile(unsigned bytecodeOffset);
-    ArrayProfile* getArrayProfile(const ConcurrentJITLocker&, unsigned bytecodeOffset);
+    ArrayProfile* getArrayProfile(const ConcurrentJSLocker&, unsigned bytecodeOffset);
     ArrayProfile* getArrayProfile(unsigned bytecodeOffset);
-    ArrayProfile* getOrAddArrayProfile(const ConcurrentJITLocker&, unsigned bytecodeOffset);
+    ArrayProfile* getOrAddArrayProfile(const ConcurrentJSLocker&, unsigned bytecodeOffset);
     ArrayProfile* getOrAddArrayProfile(unsigned bytecodeOffset);
 
     // Exception handling support
@@ -496,17 +491,17 @@ public:
     bool addFrequentExitSite(const DFG::FrequentExitSite& site)
     {
         ASSERT(JITCode::isBaselineCode(jitType()));
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         return m_exitProfile.add(locker, this, site);
     }
 
-    bool hasExitSite(const ConcurrentJITLocker& locker, const DFG::FrequentExitSite& site) const
+    bool hasExitSite(const ConcurrentJSLocker& locker, const DFG::FrequentExitSite& site) const
     {
         return m_exitProfile.hasExitSite(locker, site);
     }
     bool hasExitSite(const DFG::FrequentExitSite& site) const
     {
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         return hasExitSite(locker, site);
     }
 
@@ -590,7 +585,7 @@ public:
     BytecodeLivenessAnalysis& livenessAnalysis()
     {
         {
-            ConcurrentJITLocker locker(m_lock);
+            ConcurrentJSLocker locker(m_lock);
             if (!!m_livenessAnalysis)
                 return *m_livenessAnalysis;
         }
@@ -615,7 +610,7 @@ public:
     StringJumpTable& addStringSwitchJumpTable() { createRareDataIfNecessary(); m_rareData->m_stringSwitchJumpTables.append(StringJumpTable()); return m_rareData->m_stringSwitchJumpTables.last(); }
     StringJumpTable& stringSwitchJumpTable(int tableIndex) { RELEASE_ASSERT(m_rareData); return m_rareData->m_stringSwitchJumpTables[tableIndex]; }
 
-    EvalCodeCache& evalCodeCache() { createRareDataIfNecessary(); return m_rareData->m_evalCodeCache; }
+    DirectEvalCodeCache& directEvalCodeCache() { createRareDataIfNecessary(); return m_rareData->m_directEvalCodeCache; }
 
     enum ShrinkMode {
         // Shrink prior to generating machine code that may point directly into vectors.
@@ -833,9 +828,9 @@ public:
     // Another exception to the rules is that the GC can do whatever it wants
     // without holding any locks, because the GC is guaranteed to wait until any
     // concurrent compilation threads finish what they're doing.
-    mutable ConcurrentJITLock m_lock;
+    mutable ConcurrentJSLock m_lock;
 
-    Atomic<bool> m_visitWeaklyHasBeenCalled;
+    bool m_visitWeaklyHasBeenCalled;
 
     bool m_shouldAlwaysBeInlined; // Not a bitfield because the JIT wants to store to it.
 
@@ -869,7 +864,7 @@ public:
         Vector<SimpleJumpTable> m_switchJumpTables;
         Vector<StringJumpTable> m_stringSwitchJumpTables;
 
-        EvalCodeCache m_evalCodeCache;
+        DirectEvalCodeCache m_directEvalCodeCache;
     };
 
     void clearExceptionHandlers()
@@ -888,7 +883,7 @@ public:
 
 #if ENABLE(JIT)
     void setPCToCodeOriginMap(std::unique_ptr<PCToCodeOriginMap>&&);
-    Optional<CodeOrigin> findPC(void* pc);
+    std::optional<CodeOrigin> findPC(void* pc);
 #endif
 
 protected:
@@ -946,16 +941,16 @@ private:
     void dumpRareCaseProfile(PrintStream&, const char* name, RareCaseProfile*, bool& hasPrintedProfiling);
     void dumpArithProfile(PrintStream&, ArithProfile*, bool& hasPrintedProfiling);
 
-    bool shouldVisitStrongly();
+    bool shouldVisitStrongly(const ConcurrentJSLocker&);
     bool shouldJettisonDueToWeakReference();
-    bool shouldJettisonDueToOldAge();
+    bool shouldJettisonDueToOldAge(const ConcurrentJSLocker&);
     
-    void propagateTransitions(SlotVisitor&);
-    void determineLiveness(SlotVisitor&);
+    void propagateTransitions(const ConcurrentJSLocker&, SlotVisitor&);
+    void determineLiveness(const ConcurrentJSLocker&, SlotVisitor&);
         
-    void stronglyVisitStrongReferences(SlotVisitor&);
-    void stronglyVisitWeakReferences(SlotVisitor&);
-    void visitOSRExitTargets(SlotVisitor&);
+    void stronglyVisitStrongReferences(const ConcurrentJSLocker&, SlotVisitor&);
+    void stronglyVisitWeakReferences(const ConcurrentJSLocker&, SlotVisitor&);
+    void visitOSRExitTargets(const ConcurrentJSLocker&, SlotVisitor&);
 
     std::chrono::milliseconds timeSinceCreation()
     {
@@ -1078,7 +1073,7 @@ inline Register& ExecState::uncheckedR(VirtualRegister reg)
 
 inline void CodeBlock::clearVisitWeaklyHasBeenCalled()
 {
-    m_visitWeaklyHasBeenCalled.store(false, std::memory_order_relaxed);
+    m_visitWeaklyHasBeenCalled = false;
 }
 
 template <typename ExecutableType>

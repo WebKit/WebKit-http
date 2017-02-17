@@ -44,6 +44,8 @@
     _webView = [[WebView alloc] initWithFrame:[containerView bounds] frameName:nil groupName:@"MiniBrowser"];
     [_webView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
 
+    _webView.editable = self.isEditable;
+
     [_webView setFrameLoadDelegate:self];
     [_webView setUIDelegate:self];
     [_webView setResourceLoadDelegate:self];
@@ -79,29 +81,16 @@
     [self fetch:nil];
 }
 
+- (void)loadHTMLString:(NSString *)HTMLString
+{
+    [_webView.mainFrame loadHTMLString:HTMLString baseURL:nil];
+}
+
 - (IBAction)fetch:(id)sender
 {
     [urlText setStringValue:[self addProtocolIfNecessary:[urlText stringValue]]];
     NSURL *url = [NSURL _webkit_URLWithUserTypedString:urlText.stringValue];
     [[_webView mainFrame] loadRequest:[NSURLRequest requestWithURL:url]];
-}
-
-- (IBAction)showHideWebView:(id)sender
-{
-    BOOL hidden = ![_webView isHidden];
-    
-    [_webView setHidden:hidden];
-}
-
-- (IBAction)removeReinsertWebView:(id)sender
-{
-    if ([_webView window]) {
-        [_webView retain];
-        [_webView removeFromSuperview]; 
-    } else {
-        [containerView addSubview:_webView];
-        [_webView release];
-    }
 }
 
 - (IBAction)setPageScale:(id)sender
@@ -157,6 +146,8 @@ static BOOL areEssentiallyEqual(double a, double b)
         [menuItem setTitle:[_webView window] ? @"Remove Web View" : @"Insert Web View"];
     else if (action == @selector(toggleZoomMode:))
         [menuItem setState:_zoomTextOnly ? NSOnState : NSOffState];
+    else if (action == @selector(toggleEditable:))
+        [menuItem setState:self.isEditable ? NSOnState : NSOffState];
 
     if (action == @selector(setPageScale:))
         [menuItem setState:areEssentiallyEqual([_webView _viewScaleFactor], [self pageScaleForMenuItemTag:[menuItem tag]])];
@@ -191,10 +182,6 @@ static BOOL areEssentiallyEqual(double a, double b)
 {
     [(BrowserAppDelegate *)[[NSApplication sharedApplication] delegate] browserWindowWillClose:self.window];
     [self autorelease];
-}
-
-- (void)applicationTerminating
-{
 }
 
 - (double)currentZoomFactor
@@ -249,11 +236,6 @@ static BOOL areEssentiallyEqual(double a, double b)
 
 - (IBAction)toggleShrinkToFit:(id)sender
 {
-
-}
-
-- (IBAction)find:(id)sender
-{
 }
 
 - (IBAction)dumpSourceToConsole:(id)sender
@@ -270,19 +252,27 @@ static BOOL areEssentiallyEqual(double a, double b)
     return _webView;
 }
 
+- (void)setEditable:(BOOL)editable
+{
+    [super setEditable:editable];
+    _webView.editable = editable;
+}
+
 - (void)didChangeSettings
 {
     SettingsController *settings = [SettingsController shared];
 
     [[WebPreferences standardPreferences] setSubpixelCSSOMElementMetricsEnabled:settings.subPixelCSSOMMetricsEnabled];
     [[WebPreferences standardPreferences] setShowDebugBorders:settings.layerBordersVisible];
+    [[WebPreferences standardPreferences] setSimpleLineLayoutEnabled:settings.simpleLineLayoutEnabled];
     [[WebPreferences standardPreferences] setSimpleLineLayoutDebugBordersEnabled:settings.simpleLineLayoutDebugBordersEnabled];
     [[WebPreferences standardPreferences] setShowRepaintCounter:settings.layerBordersVisible];
     [[WebPreferences standardPreferences] setSuppressesIncrementalRendering:settings.incrementalRenderingSuppressed];
     [[WebPreferences standardPreferences] setAcceleratedDrawingEnabled:settings.acceleratedDrawingEnabled];
     [[WebPreferences standardPreferences] setResourceLoadStatisticsEnabled:settings.resourceLoadStatisticsEnabled];
     [[WebPreferences standardPreferences] setVisualViewportEnabled:settings.visualViewportEnabled];
-    [[WebPreferences standardPreferences] setAsyncImageDecodingEnabled:settings.asyncImageDecodingEnabled];
+    [[WebPreferences standardPreferences] setLargeImageAsyncDecodingEnabled:settings.largeImageAsyncDecodingEnabled];
+    [[WebPreferences standardPreferences] setAnimatedImageAsyncDecodingEnabled:settings.animatedImageAsyncDecodingEnabled];
 
     BOOL useTransparentWindows = settings.useTransparentWindows;
     if (useTransparentWindows != !self.window.isOpaque) {
@@ -339,8 +329,8 @@ static BOOL areEssentiallyEqual(double a, double b)
         NSURL *url = _webView.mainFrame.dataSource.request.URL;
         title = url.lastPathComponent ?: url._web_userVisibleString;
     }
-    
-    [self.window setTitle:[title stringByAppendingString:@" [WK1]"]];
+
+    [self.window setTitle:[title stringByAppendingFormat:@" [WK1]%@", _webView.editable ? @" [Editable]" : @""]];
 }
 
 - (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request
@@ -360,6 +350,15 @@ static BOOL areEssentiallyEqual(double a, double b)
     urlText.stringValue = committedURL._web_userVisibleString;
 
     [self updateTitle:nil];
+}
+
+- (void)webView:(WebView *)sender didChangeLocationWithinPageForFrame:(WebFrame *)frame
+{
+    if (frame != [sender mainFrame])
+        return;
+
+    NSURL *committedURL = [[[frame dataSource] request] URL];
+    urlText.stringValue = committedURL._web_userVisibleString;
 }
 
 - (void)webView:(WebView *)sender didReceiveTitle:(NSString *)title forFrame:(WebFrame *)frame

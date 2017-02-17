@@ -34,6 +34,7 @@
 #if ENABLE(SPELLCHECK)
 #include "TextCheckerClientEfl.h"
 #include "WebTextChecker.h"
+#include <unicode/ubrk.h>
 #include <wtf/text/TextBreakIterator.h>
 #endif
 
@@ -135,16 +136,16 @@ void TextChecker::closeSpellDocumentWithTag(int64_t tag)
 static unsigned nextWordOffset(StringView text, unsigned currentOffset)
 {
     // FIXME: avoid creating textIterator object here, it could be passed as a parameter.
-    //        isTextBreak() leaves the iterator pointing to the first boundary position at
+    //        ubrk_isBoundary() leaves the iterator pointing to the first boundary position at
     //        or after "offset" (ubrk_isBoundary side effect).
     //        For many word separators, the method doesn't properly determine the boundaries
     //        without resetting the iterator.
-    TextBreakIterator* textIterator = wordBreakIterator(text);
+    UBreakIterator* textIterator = wordBreakIterator(text);
     if (!textIterator)
         return currentOffset;
 
     unsigned wordOffset = currentOffset;
-    while (wordOffset < text.length() && isTextBreak(textIterator, wordOffset))
+    while (wordOffset < text.length() && ubrk_isBoundary(textIterator, wordOffset))
         ++wordOffset;
 
     // Do not treat the word's boundary as a separator.
@@ -167,7 +168,7 @@ Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocume
     Vector<TextCheckingResult> paragraphCheckingResult;
 #if ENABLE(SPELLCHECK)
     if (checkingTypes & TextCheckingTypeSpelling) {
-        TextBreakIterator* textIterator = wordBreakIterator(text);
+        UBreakIterator* textIterator = wordBreakIterator(text);
         if (!textIterator)
             return paragraphCheckingResult;
 
@@ -175,7 +176,7 @@ Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocume
         // involve the client to check spelling for them.
         unsigned offset = nextWordOffset(text, 0);
         unsigned lengthStrip = text.length();
-        while (lengthStrip > 0 && isTextBreak(textIterator, lengthStrip - 1))
+        while (lengthStrip > 0 && ubrk_isBoundary(textIterator, lengthStrip - 1))
             --lengthStrip;
 
         while (offset < lengthStrip) {
@@ -198,7 +199,7 @@ Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocume
 #else
     UNUSED_PARAM(spellDocumentTag);
     UNUSED_PARAM(text);
-    UNUSED_PARAM(length);
+    UNUSED_PARAM(insertionPoint);
     UNUSED_PARAM(checkingTypes);
 #endif
     return paragraphCheckingResult;
@@ -212,7 +213,6 @@ void TextChecker::checkSpellingOfString(int64_t spellDocumentTag, StringView tex
 #else
     UNUSED_PARAM(spellDocumentTag);
     UNUSED_PARAM(text);
-    UNUSED_PARAM(length);
     UNUSED_PARAM(misspellingLocation);
     UNUSED_PARAM(misspellingLength);
 #endif

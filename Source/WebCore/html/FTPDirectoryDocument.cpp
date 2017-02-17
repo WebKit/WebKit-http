@@ -276,11 +276,9 @@ void FTPDirectoryDocumentParser::parseAndAppendOneLine(const String& inputLine)
     appendEntry(filename, processFilesizeString(result.fileSize, result.type == FTPDirectoryEntry), processFileDateString(result.modifiedTime), result.type == FTPDirectoryEntry);
 }
 
-static inline RefPtr<SharedBuffer> createTemplateDocumentData(Settings* settings)
+static inline RefPtr<SharedBuffer> createTemplateDocumentData(const Settings& settings)
 {
-    RefPtr<SharedBuffer> buffer;
-    if (settings)
-        buffer = SharedBuffer::createWithContentsOfFile(settings->ftpDirectoryTemplatePath());
+    RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(settings.ftpDirectoryTemplatePath());
     if (buffer)
         LOG(FTP, "Loaded FTPDirectoryTemplate of length %i\n", buffer->size());
     return buffer;
@@ -344,8 +342,6 @@ void FTPDirectoryDocumentParser::createBasicDocument()
 
 void FTPDirectoryDocumentParser::append(RefPtr<StringImpl>&& inputSource)
 {
-    String source(WTFMove(inputSource));
-
     // Make sure we have the table element to append to by loading the template set in the pref, or
     // creating a very basic document with the appropriate table
     if (!m_tableElement) {
@@ -357,9 +353,9 @@ void FTPDirectoryDocumentParser::append(RefPtr<StringImpl>&& inputSource)
     bool foundNewLine = false;
 
     m_dest = m_buffer;
-    SegmentedString str = source;
-    while (!str.isEmpty()) {
-        UChar c = str.currentChar();
+    SegmentedString string { String { WTFMove(inputSource) } };
+    while (!string.isEmpty()) {
+        UChar c = string.currentCharacter();
 
         if (c == '\r') {
             *m_dest++ = '\n';
@@ -376,7 +372,7 @@ void FTPDirectoryDocumentParser::append(RefPtr<StringImpl>&& inputSource)
             m_skipLF = false;
         }
 
-        str.advance();
+        string.advance();
 
         // Maybe enlarge the buffer
         checkBuffer();

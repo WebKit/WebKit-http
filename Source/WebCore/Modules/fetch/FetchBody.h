@@ -46,9 +46,7 @@ class JSValue;
 
 namespace WebCore {
 
-class DOMFormData;
 class FetchBodyOwner;
-class FetchHeaders;
 class FetchResponseSource;
 class ScriptExecutionContext;
 
@@ -70,8 +68,9 @@ public:
     bool isArrayBufferView() const { return WTF::holds_alternative<Ref<const ArrayBufferView>>(m_data); }
     bool isURLSearchParams() const { return WTF::holds_alternative<Ref<const URLSearchParams>>(m_data); }
     bool isText() const { return WTF::holds_alternative<String>(m_data); }
+    bool isReadableStream() const { return m_isReadableStream; }
 
-    static Optional<FetchBody> extract(ScriptExecutionContext&, JSC::ExecState&, JSC::JSValue, String&);
+    static std::optional<FetchBody> extract(ScriptExecutionContext&, JSC::ExecState&, JSC::JSValue, String&);
     static FetchBody loadingBody() { return { }; }
 
     void loadingFailed();
@@ -116,6 +115,9 @@ private:
 
     FetchBodyConsumer m_consumer { FetchBodyConsumer::Type::None };
     RefPtr<DeferredPromise> m_consumePromise;
+
+    // FIXME: We probably want to keep the stream as a specific field in m_data when we will support stream data upload.
+    bool m_isReadableStream { false };
 };
 
 } // namespace WebCore

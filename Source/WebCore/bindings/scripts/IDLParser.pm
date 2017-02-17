@@ -383,6 +383,17 @@ sub identifierRemoveNullablePrefix
     return $type;
 }
 
+sub typeDescription
+{
+    my $type = shift;
+
+    if (scalar @{$type->subtypes}) {
+        return $type->name . '<' . join(', ', map { typeDescription($_) } @{$type->subtypes}) . '>' . ($type->isNullable ? "?" : "");
+    }
+
+    return $type->name . ($type->isNullable ? "?" : "");
+}
+
 sub makeSimpleType
 {
     my $typeName = shift;
@@ -528,7 +539,7 @@ sub typeByApplyingTypedefs
         my $clonedType = $self->cloneType($typedef->type);
         $clonedType->isNullable($clonedType->isNullable || $type->isNullable);
 
-        return $clonedType;
+        return $self->typeByApplyingTypedefs($clonedType);
     }
     
     return $type;
@@ -1225,28 +1236,30 @@ sub parseSerializationAttributes
 {
     my $self = shift;
     my $serializable = shift;
-    my $token = $self->getToken();
-
-    if ($token->value() eq "getter") {
-        $serializable->hasGetter(1);
-        die "Serializer getter keyword is not currently supported.";
-
-    }
-    if ($token->value() eq "inherit") {
-        $serializable->hasInherit(1);
-        die "Serializer inherit keyword is not currently supported.";
-    }
-
-    if ($token->value() eq "attribute") {
-        $serializable->hasAttribute(1);
-        # Attributes will be filled in via applyMemberList()
-        return;
-    }
 
     my @attributes = ();
-    $self->assertTokenType($token, IdentifierToken);
-    push(@attributes, $token->value());
-    push(@attributes, @{$self->parseIdentifiers()});
+    my @identifiers = $self->parseIdentifierList();
+
+    for my $identifier (@identifiers) {
+        if ($identifier eq "getter") {
+            $serializable->hasGetter(1);
+            die "Serializer getter keyword is not currently supported.";
+        }
+
+        if ($identifier eq "inherit") {
+            $serializable->hasInherit(1);
+            next;
+        }
+
+        if ($identifier eq "attribute") {
+            $serializable->hasAttribute(1);
+            # Attributes will be filled in via applyMemberList()
+            next;
+        }
+
+        push(@attributes, $identifier);
+    }
+
     $serializable->attributes(\@attributes);
 }
 
@@ -2005,10 +2018,6 @@ sub parseUnionType
         $self->assertTokenValue($self->getToken(), "(", __LINE__);
         
         push(@{$unionType->subtypes}, $self->parseUnionMemberType());
-        
-        $self->assertTokenValue($self->getToken(), "or", __LINE__);
-        
-        push(@{$unionType->subtypes}, $self->parseUnionMemberType());
         push(@{$unionType->subtypes}, $self->parseUnionMemberTypes());
         
         $self->assertTokenValue($self->getToken(), ")", __LINE__);
@@ -2101,7 +2110,6 @@ sub parseNonAnyType
         $self->assertTokenValue($self->getToken(), "<", __LINE__);
 
         my $subtype = $self->parseType();
-        my $subtypeName = $subtype->name;
 
         $self->assertTokenValue($self->getToken(), ">", __LINE__);
 
@@ -2115,7 +2123,6 @@ sub parseNonAnyType
         $self->assertTokenValue($self->getToken(), "<", __LINE__);
 
         my $subtype = $self->parseType();
-        my $subtypeName = $subtype->name;
 
         $self->assertTokenValue($self->getToken(), ">", __LINE__);
 
@@ -2129,12 +2136,30 @@ sub parseNonAnyType
         $self->assertTokenValue($self->getToken(), "<", __LINE__);
 
         my $subtype = $self->parseReturnType();
-        my $subtypeName = $subtype->name;
 
         $self->assertTokenValue($self->getToken(), ">", __LINE__);
 
         $type->name("Promise");
         push(@{$type->subtypes}, $subtype);
+
+        return $type;
+    }
+    if ($next->value() eq "record") {
+        $self->assertTokenValue($self->getToken(), "record", __LINE__);
+        $self->assertTokenValue($self->getToken(), "<", __LINE__);
+
+        my $keyType = IDLType->new();
+        $keyType->name($self->parseStringType());
+
+        $self->assertTokenValue($self->getToken(), ",", __LINE__);
+
+        my $valueType = $self->parseType();
+
+        $self->assertTokenValue($self->getToken(), ">", __LINE__);
+
+        $type->name("record");
+        push(@{$type->subtypes}, $keyType);
+        push(@{$type->subtypes}, $valueType);
 
         return $type;
     }
@@ -2350,17 +2375,6 @@ sub parseName
     $self->assertUnexpectedToken($next->value());
 }
 
-sub isSerializableAttribute
-{
-    my $attribute = shift;
-
-    # FIXME: Need to support more than primitive serializable types.
-    # This check may have to move to the code generator, if we don't have enough information
-    # here to determine serializability: https://heycam.github.io/webidl/#idl-serializers
-    my $serializable_types = '^(\(byte|octet|short|unsigned short|long|unsigned long|long long|unsigned long long|float|unrestricted float|double|unrestricted double|boolean|DOMString|ByteString|USVString)$';
-    return $attribute->type->name =~ /$serializable_types/;
-}
-
 sub applyMemberList
 {
     my $interface = shift;
@@ -2397,9 +2411,7 @@ sub applyMemberList
         my $numSerializerAttributes = @{$interface->serializable->attributes};
         if ($interface->serializable->hasAttribute) {
             foreach my $attribute (@{$interface->attributes}) {
-                if (isSerializableAttribute($attribute)) {
-                    push(@{$interface->serializable->attributes}, $attribute->name);
-                }
+                push(@{$interface->serializable->attributes}, $attribute->name);
             }
         } elsif ($numSerializerAttributes == 0) {
             foreach my $attribute (@{$interface->attributes}) {

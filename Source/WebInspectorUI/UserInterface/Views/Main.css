@@ -48,9 +48,7 @@ body {
     cursor: default;
 
     -webkit-font-smoothing: subpixel-antialiased;
-}
 
-body:not(.mavericks) {
     background-color: white;
 }
 
@@ -104,12 +102,14 @@ input[type=range] {
     -webkit-appearance: none;
 }
 
-input[type=range]::-webkit-slider-runnable-track::before {
-    content: "";
-    display: block;
-    background: var(--selected-background-color);
+input[type=range]::-webkit-slider-thumb {
+    margin-top: -7px;
+}
+
+input[type=range]::-webkit-slider-runnable-track {
     height: 1px;
-    margin: 8px 2px -8px 2px;
+    margin-top: 1px;
+    background-color: var(--selected-background-color);
 }
 
 #main {
@@ -156,6 +156,10 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
     cursor: row-resize;
 
     background-color: var(--panel-background-color);
+}
+
+#split-content-browser > .navigation-bar :matches(.find-banner, .find-banner + .divider) {
+    display: none;
 }
 
 #split-content-browser > .navigation-bar .item {

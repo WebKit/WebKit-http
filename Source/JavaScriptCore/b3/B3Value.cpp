@@ -298,7 +298,17 @@ Value* Value::divConstant(Procedure&, const Value*) const
     return nullptr;
 }
 
+Value* Value::uDivConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
 Value* Value::modConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::uModConstant(Procedure&, const Value*) const
 {
     return nullptr;
 }
@@ -329,6 +339,16 @@ Value* Value::sShrConstant(Procedure&, const Value*) const
 }
 
 Value* Value::zShrConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::rotRConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::rotLConstant(Procedure&, const Value*) const
 {
     return nullptr;
 }
@@ -437,7 +457,7 @@ Value* Value::invertedCompare(Procedure& proc) const
 {
     if (!numChildren())
         return nullptr;
-    if (Optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type())) {
+    if (std::optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type())) {
         ASSERT(!kind().hasExtraBits());
         return proc.add<Value>(*invertedOpcode, type(), origin(), children());
     }
@@ -540,6 +560,8 @@ Effects Value::effects() const
     case Shl:
     case SShr:
     case ZShr:
+    case RotR:
+    case RotL:
     case Clz:
     case Abs:
     case Ceil:
@@ -569,7 +591,9 @@ Effects Value::effects() const
     case Select:
         break;
     case Div:
+    case UDiv:
     case Mod:
+    case UMod:
         result.controlDependent = true;
         break;
     case Load8Z:
@@ -675,13 +699,17 @@ ValueKey Value::key() const
     case Sub:
     case Mul:
     case Div:
+    case UDiv:
     case Mod:
+    case UMod:
     case BitAnd:
     case BitOr:
     case BitXor:
     case Shl:
     case SShr:
     case ZShr:
+    case RotR:
+    case RotL:
     case Equal:
     case NotEqual:
     case LessThan:
@@ -753,7 +781,9 @@ Type Value::typeFor(Kind kind, Value* firstChild, Value* secondChild)
     case Sub:
     case Mul:
     case Div:
+    case UDiv:
     case Mod:
+    case UMod:
     case Neg:
     case BitAnd:
     case BitOr:
@@ -761,6 +791,8 @@ Type Value::typeFor(Kind kind, Value* firstChild, Value* secondChild)
     case Shl:
     case SShr:
     case ZShr:
+    case RotR:
+    case RotL:
     case Clz:
     case Abs:
     case Ceil:

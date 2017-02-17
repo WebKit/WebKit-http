@@ -44,10 +44,6 @@ bool isSupported()
 
 bool isSupportedForInlining(CodeBlock* codeBlock)
 {
-#if ENABLE(WEBASSEMBLY)
-    if (codeBlock->ownerExecutable()->isWebAssemblyExecutable())
-        return false;
-#endif
     return codeBlock->ownerScriptExecutable()->isInliningCandidate();
 }
 
@@ -239,6 +235,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_new_func_exp:
     case op_new_generator_func:
     case op_new_generator_func_exp:
+    case op_new_async_func:
+    case op_new_async_func_exp:
     case op_set_function_name:
     case op_create_lexical_environment:
     case op_get_parent_scope:

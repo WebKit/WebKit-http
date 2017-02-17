@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 namespace JSC {
 
 class Heap;
-class HeapRootVisitor;
+class SlotVisitor;
 
 class WeakBlock : public DoublyLinkedListNode<WeakBlock> {
 public:
@@ -63,7 +63,8 @@ public:
     void sweep();
     SweepResult takeSweepResult();
 
-    void visit(HeapRootVisitor&);
+    void visit(SlotVisitor&);
+
     void reap();
 
     void lastChanceToFinalize();
@@ -73,7 +74,7 @@ private:
     static FreeCell* asFreeCell(WeakImpl*);
     
     template<typename ContainerType>
-    void specializedVisit(ContainerType&, HeapRootVisitor&);
+    void specializedVisit(ContainerType&, SlotVisitor&);
 
     explicit WeakBlock(CellContainer);
     void finalize(WeakImpl*);

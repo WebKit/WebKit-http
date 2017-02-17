@@ -48,7 +48,7 @@ static JSAPIWrapperObjectHandleOwner* jsAPIWrapperObjectHandleOwner()
 
 void JSAPIWrapperObjectHandleOwner::finalize(JSC::Handle<JSC::Unknown> handle, void*)
 {
-    JSC::JSAPIWrapperObject* wrapperObject = JSC::jsCast<JSC::JSAPIWrapperObject*>(handle.get().asCell());
+    JSC::JSAPIWrapperObject* wrapperObject = static_cast<JSC::JSAPIWrapperObject*>(handle.get().asCell());
     if (!wrapperObject->wrappedObject())
         return;
 
@@ -101,8 +101,9 @@ void JSAPIWrapperObject::visitChildren(JSCell* cell, JSC::SlotVisitor& visitor)
     JSAPIWrapperObject* thisObject = JSC::jsCast<JSAPIWrapperObject*>(cell);
     Base::visitChildren(cell, visitor);
 
-    if (thisObject->wrappedObject())
-        scanExternalObjectGraph(cell->structure()->globalObject()->vm(), visitor, thisObject->wrappedObject());
+    void* wrappedObject = thisObject->wrappedObject();
+    if (wrappedObject)
+        scanExternalObjectGraph(visitor.vm(), visitor, wrappedObject);
 }
 
 } // namespace JSC

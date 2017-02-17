@@ -13,6 +13,18 @@ fast/events/cancelled-force-click-link-navigation.html [ Pass ]
 fast/events/force-click-link-selection-behavior.html [ Pass ]
 fast/events/force-click-on-link-navigation.html [ Pass ]
 fast/events/force-click-text-selection-behavior.html [ Failure ]
+fast/events/autoscroll-when-zoomed.html [ Pass ]
+fast/events/autoscroll-main-document.html [ Pass ]
+
+fast/media/mq-inverted-colors-live-update.html [ Pass ]
+fast/media/mq-inverted-colors-live-update-in-subframes.html [ Pass ]
+fast/media/mq-monochrome-live-update.html [ Pass ]
+fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
+
+[ Sierra+ ] http/tests/ssl/applepay/ [ Pass ]
+
+fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
+fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -31,7 +43,7 @@ fast/events/force-click-text-selection-behavior.html [ Failure ]
 ########################################
 ### START OF (1) Classified failures with bug reports
 
-# WebKitTestRunner needs an implementation of eventSender
+# WebKitTestRunner needs a more complete implementation of eventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=42194>
 editing/pasteboard/4947130.html
 editing/pasteboard/cleanup-on-move.html
@@ -162,6 +174,7 @@ webkit.org/b/105616 editing/mac/spelling/move-cursor-to-autocorrected-word.html 
 webkit.org/b/105616 editing/mac/spelling/move-cursor-to-beginning-of-autocorrected-word.html [ Failure ]
 webkit.org/b/105616 editing/mac/spelling/removing-underline-after-accepting-autocorrection-using-punctuation.html [ Failure ]
 webkit.org/b/105616 editing/mac/spelling/accept-candidate-allows-autocorrect-on-next-word.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/accept-unseen-candidate-records-acceptance.html [ Failure ]
 
 # [WK2] [Mac] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=68552>
@@ -258,20 +271,12 @@ webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.htm
 webkit.org/b/136554 tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html [ Pass Failure ]
 webkit.org/b/139901 tiled-drawing/scrolling/frames/frameset-frame-scrollability.html [ Pass Failure ]
 
-webkit.org/b/162505 tiled-drawing/scrolling/latched-div-with-scroll-snap.html [ Pass Failure ]
-
-webkit.org/b/148405 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-2d-overflow.html [ Pass Failure ]
-
-webkit.org/b/148407 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-horizontal.html [ Pass Failure ]
+webkit.org/b/167661 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-horizontal.html [ Pass Failure ]
 webkit.org/b/148407 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-horizontal.html [ Pass Failure ]
 webkit.org/b/148407 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-vertical.html [ Pass Failure ]
-webkit.org/b/148407 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical.html [ Pass Failure ]
+webkit.org/b/165196 tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html [ Pass Failure ]
+webkit.org/b/167321 tiled-drawing/scrolling/scroll-snap/scroll-snap-proximity-mainframe.html [ Pass Failure ]
 
-webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders.html [ Pass Failure ]
-webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow.html [ Pass Failure ]
-webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated.html [ Pass Failure ]
-webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding.html [ Pass Failure ]
-webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html [ Pass Failure ]
 webkit.org/b/148408 tiled-drawing/scrolling/root-overflow-with-mousewheel.html [ Pass Failure Timeout ]
 
 webkit.org/b/139820 fast/frames/lots-of-objects.html [ Timeout ]
@@ -315,6 +320,9 @@ webkit.org/b/155151 [ Debug ElCapitan ] media/track/track-cues-pause-on-exit.htm
 webkit.org/b/155312 inspector/heap/getPreview.html [ Pass Timeout ]
 
 webkit.org/b/156077 inspector/heap/getRemoteObject.html [ Pass Failure ]
+
+# Video fullscreen is not implemented for mac wk2 in webkittestrunner
+media/media-fullscreen-loop-inline.html [ Skip ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -454,7 +462,9 @@ webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout
 # Content Extensions tests must be enabled explicitly on mac-wk2.
 http/tests/contentextensions [ Pass Failure ]
 http/tests/websocket/tests/hybi/contentextensions [ Pass Failure ]
+webkit.org/b/168081 http/tests/contentextensions/async-xhr-onerror.html [ Pass Timeout ]
 webkit.org/b/146400 http/tests/contentextensions/character-set-basic-support.html [ Pass Failure ]
+webkit.org/b/168082 [ Sierra ] http/tests/contentextensions/invalid-selector.html [ Pass ImageOnlyFailure ]
 
 # WebKit1-only failure.
 webkit.org/b/103857 fast/events/mouse-cursor-change.html [ Pass ]
@@ -539,11 +549,10 @@ webkit.org/b/162638 [ Sierra+ ] fast/scrolling/rtl-scrollbars-alternate-iframe-b
 webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure ]
 webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-main-frame.html [ Failure ]
 
-webkit.org/b/163932 inspector/css/pseudo-element-matches.html [ Pass Failure ]
-
 webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
-webkit.org/b/161774 inspector/debugger/breakpoint-columns.html [ Pass Failure ]
 webkit.org/b/159447 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-entry.html [ Pass Failure ]
+
+webkit.org/b/167607 [ Debug ] http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts.html [ Pass Timeout ]
 
 webkit.org/b/159430 [ Debug Sierra+ ] media/restore-from-page-cache.html [ Pass Crash ]
 
@@ -558,6 +567,7 @@ webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html
 webkit.org/b/160309 fast/dom/Window/child-window-focus.html [ Pass Failure ]
 
 webkit.org/b/161148 gamepad/gamepad-timestamp.html [ Pass Failure ]
+webkit.org/b/167517 gamepad/gamepad-visibility-1.html [ Pass Failure ]
 
 webkit.org/b/161633 [ Debug ] storage/indexeddb/objectstore-cursor.html [ Pass Timeout ]
 
@@ -577,8 +587,6 @@ webkit.org/b/160017 js/regress-139548.html [ Pass Timeout ]
 webkit.org/b/161659 [ Yosemite Debug ] media/media-controls-drag-timeline-set-controls-property.html [ Pass Timeout ]
 
 webkit.org/b/162524 [ Sierra Release ] http/tests/cache/disk-cache/disk-cache-redirect.html [ Pass Timeout ]
-
-webkit.org/b/162510 [ Debug ] fast/images/animated-gif-restored-from-bfcache.html [ Pass Failure ]
 
 webkit.org/b/161745 http/tests/security/anchor-download-allow-data.html [ Pass Failure ]
 
@@ -600,5 +608,24 @@ webkit.org/b/163453 [ Sierra Release ] http/tests/security/contentSecurityPolicy
 
 webkit.org/b/163702 platform/mac-wk2/plugins/muted-state.html [ Failure ]
 
-webkit.org/b/164572 [ ElCapitan ] swipe/main-frame-pinning-requirement.html [ Failure ]
-webkit.org/b/164572 [ ElCapitan ] swipe/pushState-cached-back-swipe.html [ Failure ]
+webkit.org/b/164870 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Pass Failure ]
+
+webkit.org/b/165352 fast/dom/Window/window-resize-contents.html [ Pass Timeout ]
+
+webkit.org/b/165392 [ ElCapitan Release ] imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1.html [ Pass Failure ]
+
+webkit.org/b/161887 [ ElCapitan ] swipe/main-frame-pinning-requirement.html [ Pass Timeout ]
+
+webkit.org/b/167653 http/tests/contentextensions/block-everything-unless-domain.html [ Pass Timeout ]
+
+webkit.org/b/167206 [ Sierra Release ] mathml/opentype/large-operators-displaystyle-dynamic.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/168065 inspector/unit-tests/heap-snapshot.html [ Pass Failure Timeout ]
+
+webkit.org/b/167538 [ Sierra ] fast/css-grid-layout/grid-simplified-layout-positioned.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/167965 pointer-lock/mouse-event-delivery.html [ Pass Failure ]
+
+webkit.org/b/168235 [ Debug ] imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Pass Failure ]
+
+webkit.org/b/168085 tiled-drawing/scrolling/latched-to-deleted-node.html [ Pass Failure ]

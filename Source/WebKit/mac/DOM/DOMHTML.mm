@@ -42,7 +42,6 @@
 #import <WebCore/HTMLParserIdioms.h>
 #import <WebCore/HTMLSelectElement.h>
 #import <WebCore/HTMLTextAreaElement.h>
-#import <WebCore/Page.h>
 #import <WebCore/Range.h>
 #import <WebCore/RenderTextControl.h>
 #import <WebCore/Settings.h>
@@ -182,22 +181,6 @@ using namespace WebCore;
 {
     return core(self)->isTextField();
 }
-
-#if PLATFORM(IOS)
-
-- (BOOL)_isAutofilled
-{
-    return core(self)->isAutoFilled();
-}
-
-- (void)_setAutofilled:(BOOL)filled
-{
-    // This notifies the input element that the content has been autofilled
-    // This allows WebKit to obey the -webkit-autofill pseudo style, which
-    // changes the background color.
-    core(self)->setAutoFilled(filled);
-}
-#endif // PLATFORM(IOS)
 
 @end
 

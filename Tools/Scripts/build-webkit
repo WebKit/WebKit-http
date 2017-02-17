@@ -52,6 +52,7 @@ chdirWebKit();
 
 my $showHelp = 0;
 my $clean = 0;
+my $defaultCMakeFeatures = 0;
 my $minimal = 0;
 my $installHeaders;
 my $installLibs;
@@ -105,6 +106,7 @@ Usage: $programName [options] [options to pass to build system]
   --cmakeargs=<arguments>           One or more optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
 
   --minimal                         No optional features, unless explicitly enabled
+  --default-cmake-features          Use the default CMake features enabled for the port (CMake based ports)
 
   --only-webkit                     Build only the WebKit project
 
@@ -122,6 +124,7 @@ my %options = (
     'only-webkit' => \$onlyWebKitProject,
     'coverage' => \$coverageSupport,
     'analyze' => \$shouldRunStaticAnalyzer,
+    'default-cmake-features' => \$defaultCMakeFeatures,
 );
 
 # Build usage text and options list from features
@@ -149,7 +152,7 @@ my @projects = ("Source/JavaScriptCore", "Source/WebCore", "Source/WebKit");
 # Build WTF as a separate static library on ports which support it.
 splice @projects, 0, 0, "Source/WTF" if isAppleWebKit() or isWinCairo();
 
-splice @projects, 0, 0, "Source/bmalloc" if isAppleMacWebKit();
+splice @projects, 0, 0, "Source/bmalloc" if isAppleCocoaWebKit();
 
 # Ports using CMake will check if directories exist in the CMake configuration.
 if (!isCMakeBuild()) {
@@ -166,7 +169,7 @@ if ((isAppleWebKit() || isWinCairo()) && !-d "WebKitLibraries") {
 
 my @options = ();
 
-if (isAppleMacWebKit()) {
+if (isAppleCocoaWebKit()) {
     push @options, XcodeOptions();
     sub option($$$)
     {
@@ -180,8 +183,8 @@ if (isAppleMacWebKit()) {
         push @options, $option unless $option eq "";
     }
 
-    # ANGLE must come before WebCore
-    splice @projects, 0, 0, "Source/ThirdParty/ANGLE";
+    # ANGLE and libwebrtc must come before WebCore
+    splice @projects, 0, 0, ("Source/ThirdParty/ANGLE");
 
     push @projects, ("Source/WebKit2");
 
@@ -201,10 +204,6 @@ if (isAppleMacWebKit()) {
         push @copyLibrariesArgs, productDir();
         print(join(" ", @copyLibrariesArgs) . "\n");
         (system(@copyLibrariesArgs) == 0) or die;
-
-        if (willUseIOSSimulatorSDK()) {
-            (system("perl", "Tools/Scripts/build-layouttestrelay", argumentsForConfiguration()) == 0) or die;
-        }
     }
 
     # Build Tools needed for Apple ports
@@ -270,7 +269,7 @@ if (isAppleWinWebKit() || isWinCairo()) {
         }
         exit exitStatus($result);
     }
-} elsif (isAppleMacWebKit() && !isCMakeBuild()) {
+} elsif (isAppleCocoaWebKit() && !isCMakeBuild()) {
     # Build, and abort if the build fails.
     for my $dir (@projects) {
         chdir $dir or die;
@@ -311,11 +310,13 @@ exit 0;
 sub cMakeArgsFromFeatures()
 {
     my @args;
-    foreach (@features) {
-        my $featureName = $_->{define};
-        if ($featureName) {
-            my $featureEnabled = ${$_->{value}} ? "ON" : "OFF";
-            push @args, "-D$featureName=$featureEnabled";
+    if (!$defaultCMakeFeatures) {
+        foreach (@features) {
+            my $featureName = $_->{define};
+            if ($featureName) {
+                my $featureEnabled = ${$_->{value}} ? "ON" : "OFF";
+                push @args, "-D$featureName=$featureEnabled";
+            }
         }
     }
     return @args;

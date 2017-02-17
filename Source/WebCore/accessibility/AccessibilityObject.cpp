@@ -444,9 +444,9 @@ bool AccessibilityObject::hasMisspelling() const
     return isMisspelled;
 }
 
-int AccessibilityObject::blockquoteLevel() const
+unsigned AccessibilityObject::blockquoteLevel() const
 {
-    int level = 0;
+    unsigned level = 0;
     for (Node* elementNode = node(); elementNode; elementNode = elementNode->parentNode()) {
         if (elementNode->hasTagName(blockquoteTag))
             ++level;
@@ -509,6 +509,13 @@ AccessibilityObject* AccessibilityObject::firstAccessibleObjectFromNode(const No
     }
 
     return accessibleObject;
+}
+
+bool AccessibilityObject::isDescendantOfRole(AccessibilityRole role) const
+{
+    return AccessibilityObject::matchedParent(*this, false, [&role] (const AccessibilityObject& object) {
+        return object.roleValue() == role;
+    }) != nullptr;
 }
 
 static void appendAccessibilityObject(AccessibilityObject* object, AccessibilityObject::AccessibilityChildrenVector& results)
@@ -911,11 +918,12 @@ bool AccessibilityObject::press()
     
     // Prefer the actionElement instead of this node, if the actionElement is inside this node.
     Element* pressElement = this->element();
-    if (!pressElement || actionElem->isDescendantOf(pressElement))
+    if (!pressElement || actionElem->isDescendantOf(*pressElement))
         pressElement = actionElem;
     
+    ASSERT(pressElement);
     // Prefer the hit test element, if it is inside the target element.
-    if (hitTestElement && hitTestElement->isDescendantOf(pressElement))
+    if (hitTestElement && hitTestElement->isDescendantOf(*pressElement))
         pressElement = hitTestElement;
     
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, document);

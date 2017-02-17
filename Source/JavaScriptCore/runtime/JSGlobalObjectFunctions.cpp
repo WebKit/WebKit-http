@@ -27,9 +27,14 @@
 
 #include "CallFrame.h"
 #include "EvalExecutable.h"
+#include "Exception.h"
+#include "IndirectEvalExecutable.h"
 #include "Interpreter.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
+#include "JSInternalPromise.h"
+#include "JSModuleLoader.h"
+#include "JSPromiseDeferred.h"
 #include "JSString.h"
 #include "JSStringBuilder.h"
 #include "Lexer.h"
@@ -57,13 +62,16 @@ namespace JSC {
 static const char* const ObjectProtoCalledOnNullOrUndefinedError = "Object.prototype.__proto__ called on null or undefined";
 
 template<typename CallbackWhenNoException>
-static ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(JSString::SafeView&)>::type toSafeView(ExecState* exec, JSValue value, CallbackWhenNoException callback)
+static ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(StringView)>::type toStringView(ExecState* exec, JSValue value, CallbackWhenNoException callback)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSString* string = value.toStringOrNull(exec);
     if (UNLIKELY(!string))
         return { };
-    JSString::SafeView view = string->view(exec);
-    return callback(view);
+    auto viewWithString = string->viewWithUnderlyingString(*exec);
+    RETURN_IF_EXCEPTION(scope, { });
+    return callback(viewWithString.view);
 }
 
 template<unsigned charactersCount>
@@ -158,7 +166,7 @@ static JSValue encode(ExecState* exec, const Bitmap<256>& doNotEscape, const Cha
 
 static JSValue encode(ExecState* exec, const Bitmap<256>& doNotEscape)
 {
-    return toSafeView(exec, exec->argument(0), [&] (JSString::SafeView& view) {
+    return toStringView(exec, exec->argument(0), [&] (StringView view) {
         if (view.is8Bit())
             return encode(exec, doNotEscape, view.characters8(), view.length());
         return encode(exec, doNotEscape, view.characters16(), view.length());
@@ -236,7 +244,7 @@ static JSValue decode(ExecState* exec, const CharType* characters, int length, c
 
 static JSValue decode(ExecState* exec, const Bitmap<256>& doNotUnescape, bool strict)
 {
-    return toSafeView(exec, exec->argument(0), [&] (JSString::SafeView& view) {
+    return toStringView(exec, exec->argument(0), [&] (StringView view) {
         if (view.is8Bit())
             return decode(exec, view.characters8(), view.length(), doNotUnescape, strict);
         return decode(exec, view.characters16(), view.length(), doNotUnescape, strict);
@@ -268,11 +276,11 @@ static int parseDigit(unsigned short c, int radix)
 {
     int digit = -1;
 
-    if (c >= '0' && c <= '9')
+    if (isASCIIDigit(c))
         digit = c - '0';
-    else if (c >= 'A' && c <= 'Z')
+    else if (isASCIIUpper(c))
         digit = c - 'A' + 10;
-    else if (c >= 'a' && c <= 'z')
+    else if (isASCIILower(c))
         digit = c - 'a' + 10;
 
     if (digit >= radix)
@@ -662,7 +670,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEval(ExecState* exec)
         return JSValue::encode(jsUndefined());
     }
 
-    String s = x.toString(exec)->value(exec);
+    String s = asString(x)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     if (s.is8Bit()) {
@@ -675,9 +683,9 @@ EncodedJSValue JSC_HOST_CALL globalFuncEval(ExecState* exec)
             return JSValue::encode(parsedObject);        
     }
 
-    JSGlobalObject* calleeGlobalObject = exec->callee()->globalObject();
-    VariableEnvironment emptyTDZVariables; // Indirect eval does not have access to the lexical scope.
-    EvalExecutable* eval = EvalExecutable::create(exec, makeSource(s), false, DerivedContextType::None, false, EvalContextType::None, &emptyTDZVariables);
+    SourceOrigin sourceOrigin = exec->callerSourceOrigin();
+    JSGlobalObject* calleeGlobalObject = exec->jsCallee()->globalObject();
+    EvalExecutable* eval = IndirectEvalExecutable::create(exec, makeSource(s, sourceOrigin), false, DerivedContextType::None, false, EvalContextType::None);
     if (!eval)
         return JSValue::encode(jsUndefined());
 
@@ -707,14 +715,15 @@ EncodedJSValue JSC_HOST_CALL globalFuncParseInt(ExecState* exec)
     }
 
     // If ToString throws, we shouldn't call ToInt32.
-    return toSafeView(exec, value, [&] (JSString::SafeView& view) {
-        return JSValue::encode(jsNumber(parseInt(view.get(), radixValue.toInt32(exec))));
+    return toStringView(exec, value, [&] (StringView view) {
+        return JSValue::encode(jsNumber(parseInt(view, radixValue.toInt32(exec))));
     });
 }
 
 EncodedJSValue JSC_HOST_CALL globalFuncParseFloat(ExecState* exec)
 {
-    return JSValue::encode(jsNumber(parseFloat(exec->argument(0).toString(exec)->view(exec).get())));
+    auto viewWithString = exec->argument(0).toString(exec)->viewWithUnderlyingString(*exec);
+    return JSValue::encode(jsNumber(parseFloat(viewWithString.view)));
 }
 
 EncodedJSValue JSC_HOST_CALL globalFuncDecodeURI(ExecState* exec)
@@ -765,7 +774,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEscape(ExecState* exec)
         "*+-./@_"
     );
 
-    return JSValue::encode(toSafeView(exec, exec->argument(0), [&] (JSString::SafeView& view) {
+    return JSValue::encode(toStringView(exec, exec->argument(0), [&] (StringView view) {
         JSStringBuilder builder;
         if (view.is8Bit()) {
             const LChar* c = view.characters8();
@@ -804,23 +813,27 @@ EncodedJSValue JSC_HOST_CALL globalFuncEscape(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL globalFuncUnescape(ExecState* exec)
 {
-    return JSValue::encode(toSafeView(exec, exec->argument(0), [&] (JSString::SafeView& view) {
-        StringBuilder builder;
+    return JSValue::encode(toStringView(exec, exec->argument(0), [&] (StringView view) {
+        // We use int for k and length intentionally since we would like to evaluate
+        // the condition `k <= length -6` even if length is less than 6.
         int k = 0;
-        int len = view.length();
+        int length = view.length();
+
+        StringBuilder builder;
+        builder.reserveCapacity(length);
 
         if (view.is8Bit()) {
             const LChar* characters = view.characters8();
             LChar convertedLChar;
-            while (k < len) {
+            while (k < length) {
                 const LChar* c = characters + k;
-                if (c[0] == '%' && k <= len - 6 && c[1] == 'u') {
+                if (c[0] == '%' && k <= length - 6 && c[1] == 'u') {
                     if (isASCIIHexDigit(c[2]) && isASCIIHexDigit(c[3]) && isASCIIHexDigit(c[4]) && isASCIIHexDigit(c[5])) {
                         builder.append(Lexer<UChar>::convertUnicode(c[2], c[3], c[4], c[5]));
                         k += 6;
                         continue;
                     }
-                } else if (c[0] == '%' && k <= len - 3 && isASCIIHexDigit(c[1]) && isASCIIHexDigit(c[2])) {
+                } else if (c[0] == '%' && k <= length - 3 && isASCIIHexDigit(c[1]) && isASCIIHexDigit(c[2])) {
                     convertedLChar = LChar(Lexer<LChar>::convertHex(c[1], c[2]));
                     c = &convertedLChar;
                     k += 2;
@@ -831,16 +844,16 @@ EncodedJSValue JSC_HOST_CALL globalFuncUnescape(ExecState* exec)
         } else {
             const UChar* characters = view.characters16();
 
-            while (k < len) {
+            while (k < length) {
                 const UChar* c = characters + k;
                 UChar convertedUChar;
-                if (c[0] == '%' && k <= len - 6 && c[1] == 'u') {
+                if (c[0] == '%' && k <= length - 6 && c[1] == 'u') {
                     if (isASCIIHexDigit(c[2]) && isASCIIHexDigit(c[3]) && isASCIIHexDigit(c[4]) && isASCIIHexDigit(c[5])) {
                         convertedUChar = Lexer<UChar>::convertUnicode(c[2], c[3], c[4], c[5]);
                         c = &convertedUChar;
                         k += 5;
                     }
-                } else if (c[0] == '%' && k <= len - 3 && isASCIIHexDigit(c[1]) && isASCIIHexDigit(c[2])) {
+                } else if (c[0] == '%' && k <= length - 3 && isASCIIHexDigit(c[1]) && isASCIIHexDigit(c[2])) {
                     convertedUChar = UChar(Lexer<UChar>::convertHex(c[1], c[2]));
                     c = &convertedUChar;
                     k += 2;
@@ -877,7 +890,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState* exec)
     if (thisValue.isUndefinedOrNull())
         return throwVMTypeError(exec, scope, ASCIILiteral(ObjectProtoCalledOnNullOrUndefinedError));
 
-    JSObject* thisObject = jsDynamicCast<JSObject*>(thisValue);
+    JSObject* thisObject = jsDynamicCast<JSObject*>(vm, thisValue);
     if (!thisObject) {
         JSObject* prototype = exec->thisValue().synthesizePrototype(exec);
         if (UNLIKELY(!prototype))
@@ -899,7 +912,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState* exec)
 
     JSValue value = exec->argument(0);
 
-    JSObject* thisObject = jsDynamicCast<JSObject*>(thisValue);
+    JSObject* thisObject = jsDynamicCast<JSObject*>(vm, thisValue);
 
     // Setting __proto__ of a primitive should have no effect.
     if (!thisObject)
@@ -918,6 +931,41 @@ EncodedJSValue JSC_HOST_CALL globalFuncBuiltinLog(ExecState* exec)
 {
     dataLog(exec->argument(0).toWTFString(exec), "\n");
     return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto catchScope = DECLARE_CATCH_SCOPE(vm);
+
+    auto* globalObject = exec->lexicalGlobalObject();
+
+    auto* promise = JSPromiseDeferred::create(exec, globalObject);
+    RETURN_IF_EXCEPTION(catchScope, { });
+
+    auto sourceOrigin = exec->callerSourceOrigin();
+    if (sourceOrigin.isNull()) {
+        promise->reject(exec, createError(exec, ASCIILiteral("Could not resolve the module specifier.")));
+        return JSValue::encode(promise->promise());
+    }
+
+    RELEASE_ASSERT(exec->argumentCount() == 1);
+    auto* specifier = exec->uncheckedArgument(0).toString(exec);
+    if (Exception* exception = catchScope.exception()) {
+        catchScope.clearException();
+        promise->reject(exec, exception);
+        return JSValue::encode(promise->promise());
+    }
+
+    auto* internalPromise = globalObject->moduleLoader()->importModule(exec, specifier, sourceOrigin);
+    if (Exception* exception = catchScope.exception()) {
+        catchScope.clearException();
+        promise->reject(exec, exception);
+        return JSValue::encode(promise->promise());
+    }
+    promise->resolve(exec, internalPromise);
+
+    return JSValue::encode(promise->promise());
 }
 
 } // namespace JSC

@@ -29,6 +29,7 @@
 
 #include "JIT.h"
 
+#include "BytecodeGraph.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
 #include "DFGCapabilities.h"
@@ -42,11 +43,13 @@
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "PCToCodeOriginMap.h"
 #include "ProfilerDatabase.h"
+#include "ProgramCodeBlock.h"
 #include "ResultType.h"
 #include "SlowPathCall.h"
 #include "StackAlignment.h"
 #include "TypeProfilerLog.h"
 #include <wtf/CryptographicallyRandomNumber.h>
+#include <wtf/GraphNodeWorklist.h>
 #include <wtf/SimpleStats.h>
 
 using namespace std;
@@ -74,7 +77,7 @@ JIT::CodeRef JIT::compileCTINativeCall(VM* vm, NativeFunction func)
     return jit.privateCompileCTINativeCall(vm, func);
 }
 
-JIT::JIT(VM* vm, CodeBlock* codeBlock)
+JIT::JIT(VM* vm, CodeBlock* codeBlock, unsigned loopOSREntryBytecodeOffset)
     : JSInterfaceJIT(vm, codeBlock)
     , m_interpreter(vm->interpreter)
     , m_labels(codeBlock ? codeBlock->numberOfInstructions() : 0)
@@ -87,6 +90,7 @@ JIT::JIT(VM* vm, CodeBlock* codeBlock)
     , m_pcToCodeOriginMapBuilder(*vm)
     , m_canBeOptimized(false)
     , m_shouldEmitProfiling(false)
+    , m_loopOSREntryBytecodeOffset(loopOSREntryBytecodeOffset)
 {
 }
 
@@ -147,14 +151,18 @@ void JIT::assertStackPointerOffset()
 
 #define DEFINE_SLOW_OP(name) \
     case op_##name: { \
-        JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
-        slowPathCall.call(); \
+        if (m_bytecodeOffset >= startBytecodeOffset) { \
+            JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
+            slowPathCall.call(); \
+        } \
         NEXT_OPCODE(op_##name); \
     }
 
 #define DEFINE_OP(name) \
     case name: { \
-        emit_##name(currentInstruction); \
+        if (m_bytecodeOffset >= startBytecodeOffset) { \
+            emit_##name(currentInstruction); \
+        } \
         NEXT_OPCODE(name); \
     }
 
@@ -177,7 +185,42 @@ void JIT::privateCompileMainPass()
 
     m_callLinkInfoIndex = 0;
 
+    unsigned startBytecodeOffset = 0;
+    if (m_loopOSREntryBytecodeOffset && m_codeBlock->inherits(*m_codeBlock->vm(), ProgramCodeBlock::info())) {
+        // We can only do this optimization because we execute ProgramCodeBlock's exactly once.
+        // This optimization would be invalid otherwise. When the LLInt determines it wants to
+        // do OSR entry into the baseline JIT in a loop, it will pass in the bytecode offset it
+        // was executing at when it kicked off our compilation. We only need to compile code for
+        // anything reachable from that bytecode offset.
+
+        // We only bother building the bytecode graph if it could save time and executable
+        // memory. We pick an arbitrary offset where we deem this is profitable.
+        if (m_loopOSREntryBytecodeOffset >= 200) {
+            // As a simplification, we don't find all bytecode ranges that are unreachable.
+            // Instead, we just find the minimum bytecode offset that is reachable, and
+            // compile code from that bytecode offset onwards.
+
+            BytecodeGraph<CodeBlock> graph(m_codeBlock, m_instructions);
+            BytecodeBasicBlock* block = graph.findBasicBlockForBytecodeOffset(m_loopOSREntryBytecodeOffset);
+            RELEASE_ASSERT(block);
+
+            GraphNodeWorklist<BytecodeBasicBlock*> worklist;
+            startBytecodeOffset = UINT_MAX;
+            worklist.push(block);
+            while (BytecodeBasicBlock* block = worklist.pop()) {
+                startBytecodeOffset = std::min(startBytecodeOffset, block->leaderOffset());
+                worklist.pushAll(block->successors());
+            }
+        }
+    }
+
     for (m_bytecodeOffset = 0; m_bytecodeOffset < instructionCount; ) {
+        if (m_bytecodeOffset == startBytecodeOffset && startBytecodeOffset > 0) {
+            // We've proven all bytecode instructions up until here are unreachable.
+            // Let's ensure that by crashing if it's ever hit.
+            breakpoint();
+        }
+
         if (m_disassembler)
             m_disassembler->setForBytecodeMainPath(m_bytecodeOffset, label());
         Instruction* currentInstruction = instructionsBegin + m_bytecodeOffset;
@@ -525,7 +568,7 @@ void JIT::compileWithoutLinking(JITCompilationEffort effort)
         before = monotonicallyIncreasingTimeMS();
     
     {
-        ConcurrentJITLocker locker(m_codeBlock->m_lock);
+        ConcurrentJSLocker locker(m_codeBlock->m_lock);
         m_instructions = m_codeBlock->instructions().clone();
     }
 
@@ -693,8 +736,7 @@ CompilationResult JIT::link()
         return CompilationFailed;
 
     // Translate vPC offsets into addresses in JIT generated code, for switch tables.
-    for (unsigned i = 0; i < m_switches.size(); ++i) {
-        SwitchRecord record = m_switches[i];
+    for (auto& record : m_switches) {
         unsigned bytecodeOffset = record.bytecodeOffset;
 
         if (record.type != SwitchRecord::String) {
@@ -712,10 +754,9 @@ CompilationResult JIT::link()
 
             record.jumpTable.stringJumpTable->ctiDefault = patchBuffer.locationOf(m_labels[bytecodeOffset + record.defaultOffset]);
 
-            StringJumpTable::StringOffsetTable::iterator end = record.jumpTable.stringJumpTable->offsetTable.end();            
-            for (StringJumpTable::StringOffsetTable::iterator it = record.jumpTable.stringJumpTable->offsetTable.begin(); it != end; ++it) {
-                unsigned offset = it->value.branchOffset;
-                it->value.ctiOffset = offset ? patchBuffer.locationOf(m_labels[bytecodeOffset + offset]) : record.jumpTable.stringJumpTable->ctiDefault;
+            for (auto& location : record.jumpTable.stringJumpTable->offsetTable.values()) {
+                unsigned offset = location.branchOffset;
+                location.ctiOffset = offset ? patchBuffer.locationOf(m_labels[bytecodeOffset + offset]) : record.jumpTable.stringJumpTable->ctiDefault;
             }
         }
     }
@@ -725,9 +766,9 @@ CompilationResult JIT::link()
         handler.nativeCode = patchBuffer.locationOf(m_labels[handler.target]);
     }
 
-    for (Vector<CallRecord>::iterator iter = m_calls.begin(); iter != m_calls.end(); ++iter) {
-        if (iter->to)
-            patchBuffer.link(iter->from, FunctionPtr(iter->to));
+    for (auto& record : m_calls) {
+        if (record.to)
+            patchBuffer.link(record.from, FunctionPtr(record.to));
     }
 
     for (unsigned i = m_getByIds.size(); i--;)
@@ -762,8 +803,7 @@ CompilationResult JIT::link()
         }
     }
 
-    for (unsigned i = 0; i < m_callCompilationInfo.size(); ++i) {
-        CallCompilationInfo& compilationInfo = m_callCompilationInfo[i];
+    for (auto& compilationInfo : m_callCompilationInfo) {
         CallLinkInfo& info = *compilationInfo.callLinkInfo;
         info.setCallLocations(
             CodeLocationLabel(patchBuffer.locationOfNearCall(compilationInfo.callReturnLocation)),

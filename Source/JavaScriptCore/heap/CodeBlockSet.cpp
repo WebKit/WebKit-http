@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +32,6 @@
 
 namespace JSC {
 
-static const bool verbose = false;
-
 CodeBlockSet::CodeBlockSet()
 {
 }
@@ -61,41 +59,48 @@ void CodeBlockSet::clearMarksForFullCollection()
     LockHolder locker(&m_lock);
     for (CodeBlock* codeBlock : m_oldCodeBlocks)
         codeBlock->clearVisitWeaklyHasBeenCalled();
-
-    // We promote after we clear marks on the old generation CodeBlocks because
-    // none of the young generations CodeBlocks need to be cleared.
-    promoteYoungCodeBlocks(locker);
 }
 
-void CodeBlockSet::lastChanceToFinalize()
+void CodeBlockSet::lastChanceToFinalize(VM& vm)
 {
     LockHolder locker(&m_lock);
     for (CodeBlock* codeBlock : m_newCodeBlocks)
-        codeBlock->classInfo()->methodTable.destroy(codeBlock);
+        codeBlock->structure(vm)->classInfo()->methodTable.destroy(codeBlock);
 
     for (CodeBlock* codeBlock : m_oldCodeBlocks)
-        codeBlock->classInfo()->methodTable.destroy(codeBlock);
+        codeBlock->structure(vm)->classInfo()->methodTable.destroy(codeBlock);
 }
 
-void CodeBlockSet::deleteUnmarkedAndUnreferenced(CollectionScope scope)
+void CodeBlockSet::deleteUnmarkedAndUnreferenced(VM& vm, CollectionScope scope)
 {
     LockHolder locker(&m_lock);
-    HashSet<CodeBlock*>& set = scope == CollectionScope::Eden ? m_newCodeBlocks : m_oldCodeBlocks;
     Vector<CodeBlock*> unmarked;
-    for (CodeBlock* codeBlock : set) {
-        if (Heap::isMarked(codeBlock))
-            continue;
-        unmarked.append(codeBlock);
-    }
+    
+    auto consider = [&] (HashSet<CodeBlock*>& set) {
+        for (CodeBlock* codeBlock : set) {
+            if (Heap::isMarked(codeBlock))
+                continue;;
+            unmarked.append(codeBlock);
+        }
+        for (CodeBlock* codeBlock : unmarked) {
+            codeBlock->structure(vm)->classInfo()->methodTable.destroy(codeBlock);
+            set.remove(codeBlock);
+        }
+        unmarked.resize(0);
+    };
 
-    for (CodeBlock* codeBlock : unmarked) {
-        codeBlock->classInfo()->methodTable.destroy(codeBlock);
-        set.remove(codeBlock);
+    switch (scope) {
+    case CollectionScope::Eden:
+        consider(m_newCodeBlocks);
+        break;
+    case CollectionScope::Full:
+        consider(m_oldCodeBlocks);
+        consider(m_newCodeBlocks);
+        break;
     }
 
     // Any remaining young CodeBlocks are live and need to be promoted to the set of old CodeBlocks.
-    if (scope == CollectionScope::Eden)
-        promoteYoungCodeBlocks(locker);
+    promoteYoungCodeBlocks(locker);
 }
 
 bool CodeBlockSet::contains(const LockHolder&, void* candidateCodeBlock)
@@ -105,15 +110,6 @@ bool CodeBlockSet::contains(const LockHolder&, void* candidateCodeBlock)
     if (!HashSet<CodeBlock*>::isValidValue(codeBlock))
         return false;
     return m_oldCodeBlocks.contains(codeBlock) || m_newCodeBlocks.contains(codeBlock) || m_currentlyExecuting.contains(codeBlock);
-}
-
-void CodeBlockSet::writeBarrierCurrentlyExecuting(Heap* heap)
-{
-    LockHolder locker(&m_lock);
-    if (verbose)
-        dataLog("Remembering ", m_currentlyExecuting.size(), " code blocks.\n");
-    for (CodeBlock* codeBlock : m_currentlyExecuting)
-        heap->writeBarrier(codeBlock);
 }
 
 void CodeBlockSet::clearCurrentlyExecuting()

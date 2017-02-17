@@ -96,7 +96,7 @@ static NSString *databasesDirectoryPath();
     auto coreOrigins = DatabaseTracker::singleton().origins();
     NSMutableArray *webOrigins = [[NSMutableArray alloc] initWithCapacity:coreOrigins.size()];
     for (auto& coreOrigin : coreOrigins) {
-        WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:coreOrigin.ptr()];
+        WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:coreOrigin.securityOrigin().ptr()];
         [webOrigins addObject:webOrigin];
         [webOrigin release];
     }
@@ -107,7 +107,7 @@ static NSString *databasesDirectoryPath();
 {
     if (!origin)
         return nil;
-    Vector<String> nameVector = DatabaseTracker::singleton().databaseNames(*[origin _core]);
+    Vector<String> nameVector = DatabaseTracker::singleton().databaseNames(SecurityOriginData::fromSecurityOrigin(*[origin _core]));
     NSMutableArray *names = [[NSMutableArray alloc] initWithCapacity:nameVector.size()];
     for (auto& name : nameVector)
         [names addObject:(NSString *)name];
@@ -143,12 +143,12 @@ static NSString *databasesDirectoryPath();
 
 - (BOOL)deleteOrigin:(WebSecurityOrigin *)origin
 {
-    return origin && DatabaseTracker::singleton().deleteOrigin(*[origin _core]);
+    return origin && DatabaseTracker::singleton().deleteOrigin(SecurityOriginData::fromSecurityOrigin(*[origin _core]));
 }
 
 - (BOOL)deleteDatabase:(NSString *)databaseIdentifier withOrigin:(WebSecurityOrigin *)origin
 {
-    return origin && DatabaseTracker::singleton().deleteDatabase(*[origin _core], databaseIdentifier);
+    return origin && DatabaseTracker::singleton().deleteDatabase(SecurityOriginData::fromSecurityOrigin(*[origin _core]), databaseIdentifier);
 }
 
 // For DumpRenderTree support only
@@ -233,77 +233,6 @@ static bool isFileHidden(NSString *file)
 #endif // PLATFORM(IOS)
 
 @end
-
-#if PLATFORM(IOS)
-
-@implementation WebDatabaseManager (WebDatabaseManagerInternal)
-
-static Lock& transactionBackgroundTaskIdentifierLock()
-{
-    static NeverDestroyed<Lock> mutex;
-    return mutex;
-}
-
-static WebBackgroundTaskIdentifier transactionBackgroundTaskIdentifier;
-
-static void setTransactionBackgroundTaskIdentifier(WebBackgroundTaskIdentifier identifier)
-{
-    transactionBackgroundTaskIdentifier = identifier;
-}
-
-static WebBackgroundTaskIdentifier getTransactionBackgroundTaskIdentifier()
-{
-    static dispatch_once_t pred;
-    dispatch_once(&pred, ^{
-        setTransactionBackgroundTaskIdentifier(invalidWebBackgroundTaskIdentifier());
-    });
-    
-    return transactionBackgroundTaskIdentifier;
-}
-
-+ (void)willBeginFirstTransaction
-{
-    [self startBackgroundTask];
-}
-
-+ (void)didFinishLastTransaction
-{
-    [self endBackgroundTask];
-}
-
-+ (void)startBackgroundTask
-{
-    LockHolder lock(transactionBackgroundTaskIdentifierLock());
-
-    // If there's already an existing background task going on, there's no need to start a new one.
-    if (getTransactionBackgroundTaskIdentifier() != invalidWebBackgroundTaskIdentifier())
-        return;
-    
-    setTransactionBackgroundTaskIdentifier(startBackgroundTask(^ {
-        DatabaseTracker::singleton().closeAllDatabases(CurrentQueryBehavior::Interrupt);
-        [WebDatabaseManager endBackgroundTask];
-    }));
-}
-
-+ (void)endBackgroundTask
-{
-    LockHolder lock(transactionBackgroundTaskIdentifierLock());
-
-    // It is possible that we were unable to start the background task when the first transaction began.
-    // Don't try to end the task in that case.
-    // It is also possible we finally finish the last transaction right when the background task expires
-    // and this will end up being called twice for the same background task.  transactionBackgroundTaskIdentifier
-    // will be invalid for the second caller.
-    if (getTransactionBackgroundTaskIdentifier() == invalidWebBackgroundTaskIdentifier())
-        return;
-        
-    endBackgroundTask(getTransactionBackgroundTaskIdentifier());
-    setTransactionBackgroundTaskIdentifier(invalidWebBackgroundTaskIdentifier());
-}
-
-@end
-
-#endif // PLATFORM(IOS)
 
 static NSString *databasesDirectoryPath()
 {

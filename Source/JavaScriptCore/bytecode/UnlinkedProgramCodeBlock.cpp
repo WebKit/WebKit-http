@@ -26,6 +26,9 @@
 #include "config.h"
 #include "UnlinkedProgramCodeBlock.h"
 
+#include "HeapInlines.h"
+#include "JSCellInlines.h"
+
 namespace JSC {
 
 const ClassInfo UnlinkedProgramCodeBlock::s_info = { "UnlinkedProgramCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedProgramCodeBlock) };
@@ -39,7 +42,7 @@ void UnlinkedProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 void UnlinkedProgramCodeBlock::destroy(JSCell* cell)
 {
-    jsCast<UnlinkedProgramCodeBlock*>(cell)->~UnlinkedProgramCodeBlock();
+    static_cast<UnlinkedProgramCodeBlock*>(cell)->~UnlinkedProgramCodeBlock();
 }
 
 }

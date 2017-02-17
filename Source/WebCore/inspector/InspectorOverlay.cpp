@@ -30,12 +30,14 @@
 #include "InspectorOverlay.h"
 
 #include "DocumentLoader.h"
+#include "EditorClient.h"
 #include "Element.h"
 #include "EmptyClients.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "InspectorClient.h"
 #include "InspectorOverlayPage.h"
+#include "LibWebRTCProvider.h"
 #include "MainFrame.h"
 #include "Node.h"
 #include "Page.h"
@@ -54,6 +56,7 @@
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "Settings.h"
+#include "SocketProvider.h"
 #include "StyledElement.h"
 #include <inspector/InspectorProtocolObjects.h>
 #include <inspector/InspectorValues.h>
@@ -857,7 +860,11 @@ Page* InspectorOverlay::overlayPage()
     if (m_overlayPage)
         return m_overlayPage.get();
 
-    PageConfiguration pageConfiguration(makeUniqueRef<EmptyEditorClient>(), SocketProvider::create());
+    PageConfiguration pageConfiguration(
+        createEmptyEditorClient(),
+        SocketProvider::create(),
+        makeUniqueRef<LibWebRTCProvider>()
+    );
     fillWithEmptyClients(pageConfiguration);
     m_overlayPage = std::make_unique<Page>(WTFMove(pageConfiguration));
     m_overlayPage->setDeviceScaleFactor(m_page.deviceScaleFactor());

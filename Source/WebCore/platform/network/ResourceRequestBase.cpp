@@ -27,12 +27,13 @@
 #include "ResourceRequestBase.h"
 
 #include "HTTPHeaderNames.h"
+#include "PublicSuffix.h"
 #include "ResourceRequest.h"
 #include <wtf/PointerComparison.h>
 
 namespace WebCore {
 
-#if !USE(SOUP) && (!PLATFORM(COCOA) || USE(CFURLCONNECTION))
+#if !USE(SOUP) && (!PLATFORM(MAC) || USE(CFURLCONNECTION))
 double ResourceRequestBase::s_defaultTimeoutInterval = INT_MAX;
 #else
 // Will use NSURLRequest default timeout unless set to a non-zero value with setDefaultTimeoutInterval().
@@ -66,6 +67,7 @@ void ResourceRequestBase::setAsIsolatedCopy(const ResourceRequest& other)
     setPriority(other.priority());
     setRequester(other.requester());
     setInitiatorIdentifier(other.initiatorIdentifier().isolatedCopy());
+    setCachePartition(other.cachePartition());
 
     updateResourceRequest();
     m_httpHeaderFields = other.httpHeaderFields().isolatedCopy();
@@ -86,8 +88,6 @@ void ResourceRequestBase::setAsIsolatedCopy(const ResourceRequest& other)
     if (other.m_httpBody)
         setHTTPBody(other.m_httpBody->isolatedCopy());
     setAllowCookies(other.m_allowCookies);
-
-    const_cast<ResourceRequest&>(asResourceRequest()).doPlatformSetAsIsolatedCopy(other);
 }
 
 bool ResourceRequestBase::isEmpty() const
@@ -639,5 +639,33 @@ bool ResourceRequestBase::defaultAllowCookies()
     return s_defaultAllowCookies;
 }
 #endif
+
+void ResourceRequestBase::setCachePartition(const String& cachePartition)
+{
+#if ENABLE(CACHE_PARTITIONING)
+    ASSERT(!cachePartition.isNull());
+    ASSERT(cachePartition == partitionName(cachePartition));
+    m_cachePartition = cachePartition;
+#else
+    UNUSED_PARAM(cachePartition);
+#endif
+}
+
+String ResourceRequestBase::partitionName(const String& domain)
+{
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    if (domain.isNull())
+        return emptyString();
+    String highLevel = topPrivatelyControlledDomain(domain);
+    if (highLevel.isNull())
+        return emptyString();
+    return highLevel;
+#else
+#if ENABLE(CACHE_PARTITIONING)
+#error Cache partitioning requires PUBLIC_SUFFIX_LIST
+#endif
+    return emptyString();
+#endif
+}
 
 }

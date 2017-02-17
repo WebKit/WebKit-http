@@ -1,3 +1,139 @@
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * PlatformMac.cmake:
+
+2017-02-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Don't migrate WebKit DOM headers in MigrateHeaders.make
+        https://bugs.webkit.org/show_bug.cgi?id=167608
+
+        Reviewed by Darin Adler.
+
+        Stop migrating DOM headers that are now in WebKit.
+
+        * WebKit.xcodeproj/project.pbxproj: Marked DOM headers as private, so that Xcode
+        takes care of making them available as SPI.
+
+2017-02-02  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        In iOS, we should take background assertion when accessing localstorage databases.
+        https://bugs.webkit.org/show_bug.cgi?id=165478
+
+        Reviewed by Brady Eidson.
+
+        * WebKit.xcodeproj/project.pbxproj: Moved WebSQLiteDatabaseTrackerClient to WebCore.
+
+2017-01-17  Antti Koivisto  <antti@apple.com>
+
+        Persist derived data
+        https://bugs.webkit.org/show_bug.cgi?id=167136
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2017-01-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Compile error.
+        https://bugs.webkit.org/show_bug.cgi?id=166726
+
+        Add include folder.
+
+        * CMakeLists.txt:
+
+2016-12-22  Andy Estes  <aestes@apple.com>
+
+        Reduce QuickLook.h include overhead
+        https://bugs.webkit.org/show_bug.cgi?id=166454
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp: Stopped including QuickLook.h.
+
+2016-12-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=165937
+
+        Reviewed by Simon Fraser.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-12-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed attempt to fix cmake build of Mac port after r209665.
+
+        * PlatformMac.cmake: Avoid using relative path in
+        WebKit_INCLUDE_DIRECTORIES.
+
+2016-12-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Include WTF, JSC, and WebCore headers automatically to targers using them
+        https://bugs.webkit.org/show_bug.cgi?id=165686
+
+        Reviewed by Michael Catanzaro.
+
+        This change reduces duplication of include path lists between modules,
+        and reduces future need for fixes like r209605 (broken build because of
+        WebCore header suddenly becoming used in WebKit2).
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+
+2016-12-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed cmake buildfix after r209252.
+
+        * PlatformMac.cmake:
+
+2016-12-02  Chris Dumez  <cdumez@apple.com>
+
+        [Mac][WK1] Implement new HTML interactive form validation user interface
+        https://bugs.webkit.org/show_bug.cgi?id=164483
+
+        Reviewed by Simon Fraser.
+
+        Add new files to xcode project.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-11-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] WTF::TemporaryChange with WTF::SetForScope
+        https://bugs.webkit.org/show_bug.cgi?id=164761
+
+        Reviewed by Saam Barati.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+
+2016-11-14  Alex Christensen  <achristensen@webkit.org>
+
+        Move SecurityOrigin::createFromDatabaseIdentifier to SecurityOriginData
+        https://bugs.webkit.org/show_bug.cgi?id=164720
+
+        Reviewed by Brady Eidson.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::StorageAreaImpl):
+        (WebKit::StorageAreaImpl::create):
+        (WebKit::StorageAreaImpl::dispatchStorageEvent):
+        * Storage/StorageAreaImpl.h:
+        * Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::storageArea):
+        (WebKit::StorageNamespaceImpl::clearOriginForDeletion):
+        * Storage/StorageNamespaceImpl.h:
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::origins):
+        (WebKit::StorageTracker::deleteOriginWithIdentifier):
+        (WebKit::StorageTracker::deleteOrigin):
+        * Storage/StorageTracker.h:
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebKit::WebStorageNamespaceProvider::clearLocalStorageForOrigin):
+        * Storage/WebStorageNamespaceProvider.h:
+
 2016-11-11  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [WK2] autocorrect and autocapitalize attributes do not work in contenteditable elements

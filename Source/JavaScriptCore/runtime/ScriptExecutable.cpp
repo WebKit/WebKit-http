@@ -57,9 +57,7 @@ ScriptExecutable::ScriptExecutable(Structure* structure, VM& vm, const SourceCod
     , m_derivedContextType(static_cast<unsigned>(derivedContextType))
     , m_evalContextType(static_cast<unsigned>(evalContextType))
     , m_overrideLineNumber(-1)
-    , m_firstLine(-1)
     , m_lastLine(-1)
-    , m_startColumn(UINT_MAX)
     , m_endColumn(UINT_MAX)
     , m_typeProfilingStartOffset(UINT_MAX)
     , m_typeProfilingEndOffset(UINT_MAX)
@@ -79,8 +77,6 @@ void ScriptExecutable::installCode(CodeBlock* codeBlock)
 
 void ScriptExecutable::installCode(VM& vm, CodeBlock* genericCodeBlock, CodeType codeType, CodeSpecializationKind kind)
 {
-    ASSERT(vm.heap.isDeferred());
-    
     if (genericCodeBlock)
         CODEBLOCK_LOG_EVENT(genericCodeBlock, "installCode", ());
     
@@ -178,10 +174,9 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
     auto throwScope = DECLARE_THROW_SCOPE(*vm);
 
     ASSERT(vm->heap.isDeferred());
-    ASSERT(startColumn() != UINT_MAX);
     ASSERT(endColumn() != UINT_MAX);
 
-    if (classInfo() == EvalExecutable::info()) {
+    if (classInfo(*vm) == EvalExecutable::info()) {
         EvalExecutable* executable = jsCast<EvalExecutable*>(this);
         RELEASE_ASSERT(kind == CodeForCall);
         RELEASE_ASSERT(!executable->m_evalCodeBlock);
@@ -191,27 +186,27 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
             executable->source().provider());
     }
     
-    if (classInfo() == ProgramExecutable::info()) {
+    if (classInfo(*vm) == ProgramExecutable::info()) {
         ProgramExecutable* executable = jsCast<ProgramExecutable*>(this);
         RELEASE_ASSERT(kind == CodeForCall);
         RELEASE_ASSERT(!executable->m_programCodeBlock);
         RELEASE_ASSERT(!function);
         return ProgramCodeBlock::create(vm,
             executable, executable->m_unlinkedProgramCodeBlock.get(), scope,
-            executable->source().provider(), executable->source().startColumn());
+            executable->source().provider(), startColumn());
     }
 
-    if (classInfo() == ModuleProgramExecutable::info()) {
+    if (classInfo(*vm) == ModuleProgramExecutable::info()) {
         ModuleProgramExecutable* executable = jsCast<ModuleProgramExecutable*>(this);
         RELEASE_ASSERT(kind == CodeForCall);
         RELEASE_ASSERT(!executable->m_moduleProgramCodeBlock);
         RELEASE_ASSERT(!function);
         return ModuleProgramCodeBlock::create(vm,
             executable, executable->m_unlinkedModuleProgramCodeBlock.get(), scope,
-            executable->source().provider(), executable->source().startColumn());
+            executable->source().provider(), startColumn());
     }
 
-    RELEASE_ASSERT(classInfo() == FunctionExecutable::info());
+    RELEASE_ASSERT(classInfo(*vm) == FunctionExecutable::info());
     RELEASE_ASSERT(function);
     FunctionExecutable* executable = jsCast<FunctionExecutable*>(this);
     RELEASE_ASSERT(!executable->codeBlockFor(kind));
@@ -224,8 +219,8 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
             executable->parseMode());
     recordParse(
         executable->m_unlinkedExecutable->features(), 
-        executable->m_unlinkedExecutable->hasCapturedVariables(), firstLine(), 
-        lastLine(), startColumn(), endColumn()); 
+        executable->m_unlinkedExecutable->hasCapturedVariables(),
+        lastLine(), endColumn()); 
     if (!unlinkedCodeBlock) {
         exception = throwException(
             globalObject->globalExec(), throwScope,
@@ -233,57 +228,54 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
         return nullptr;
     }
 
-    SourceProvider* provider = executable->source().provider();
-    unsigned sourceOffset = executable->source().startOffset();
-    unsigned startColumn = executable->source().startColumn();
-
-    return FunctionCodeBlock::create(vm,
-        executable, unlinkedCodeBlock, scope, provider, sourceOffset, startColumn);
+    return FunctionCodeBlock::create(vm, executable, unlinkedCodeBlock, scope, 
+        source().provider(), source().startOffset(), startColumn());
 }
 
 CodeBlock* ScriptExecutable::newReplacementCodeBlockFor(
     CodeSpecializationKind kind)
 {
-    if (classInfo() == EvalExecutable::info()) {
+    VM& vm = *this->vm();
+    if (classInfo(vm) == EvalExecutable::info()) {
         RELEASE_ASSERT(kind == CodeForCall);
         EvalExecutable* executable = jsCast<EvalExecutable*>(this);
         EvalCodeBlock* baseline = static_cast<EvalCodeBlock*>(
             executable->m_evalCodeBlock->baselineVersion());
-        EvalCodeBlock* result = EvalCodeBlock::create(vm(),
+        EvalCodeBlock* result = EvalCodeBlock::create(&vm,
             CodeBlock::CopyParsedBlock, *baseline);
-        result->setAlternative(*vm(), baseline);
+        result->setAlternative(vm, baseline);
         return result;
     }
     
-    if (classInfo() == ProgramExecutable::info()) {
+    if (classInfo(vm) == ProgramExecutable::info()) {
         RELEASE_ASSERT(kind == CodeForCall);
         ProgramExecutable* executable = jsCast<ProgramExecutable*>(this);
         ProgramCodeBlock* baseline = static_cast<ProgramCodeBlock*>(
             executable->m_programCodeBlock->baselineVersion());
-        ProgramCodeBlock* result = ProgramCodeBlock::create(vm(),
+        ProgramCodeBlock* result = ProgramCodeBlock::create(&vm,
             CodeBlock::CopyParsedBlock, *baseline);
-        result->setAlternative(*vm(), baseline);
+        result->setAlternative(vm, baseline);
         return result;
     }
 
-    if (classInfo() == ModuleProgramExecutable::info()) {
+    if (classInfo(vm) == ModuleProgramExecutable::info()) {
         RELEASE_ASSERT(kind == CodeForCall);
         ModuleProgramExecutable* executable = jsCast<ModuleProgramExecutable*>(this);
         ModuleProgramCodeBlock* baseline = static_cast<ModuleProgramCodeBlock*>(
             executable->m_moduleProgramCodeBlock->baselineVersion());
-        ModuleProgramCodeBlock* result = ModuleProgramCodeBlock::create(vm(),
+        ModuleProgramCodeBlock* result = ModuleProgramCodeBlock::create(&vm,
             CodeBlock::CopyParsedBlock, *baseline);
-        result->setAlternative(*vm(), baseline);
+        result->setAlternative(vm, baseline);
         return result;
     }
 
-    RELEASE_ASSERT(classInfo() == FunctionExecutable::info());
+    RELEASE_ASSERT(classInfo(vm) == FunctionExecutable::info());
     FunctionExecutable* executable = jsCast<FunctionExecutable*>(this);
     FunctionCodeBlock* baseline = static_cast<FunctionCodeBlock*>(
         executable->codeBlockFor(kind)->baselineVersion());
-    FunctionCodeBlock* result = FunctionCodeBlock::create(vm(),
+    FunctionCodeBlock* result = FunctionCodeBlock::create(&vm,
         CodeBlock::CopyParsedBlock, *baseline);
-    result->setAlternative(*vm(), baseline);
+    result->setAlternative(vm, baseline);
     return result;
 }
 
@@ -307,18 +299,20 @@ static void setupJIT(VM& vm, CodeBlock* codeBlock)
 JSObject* ScriptExecutable::prepareForExecutionImpl(
     VM& vm, JSFunction* function, JSScope* scope, CodeSpecializationKind kind, CodeBlock*& resultCodeBlock)
 {
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     DeferGCForAWhile deferGC(vm.heap);
 
-    if (vm.getAndClearFailNextNewCodeBlock())
-        return createError(scope->globalObject()->globalExec(), ASCIILiteral("Forced Failure"));
+    if (vm.getAndClearFailNextNewCodeBlock()) {
+        auto& state = *scope->globalObject()->globalExec();
+        return throwException(&state, throwScope, createError(&state, ASCIILiteral("Forced Failure")));
+    }
 
-    JSObject* exception = 0;
+    JSObject* exception = nullptr;
     CodeBlock* codeBlock = newCodeBlockFor(kind, function, scope, exception);
     resultCodeBlock = codeBlock;
-    if (!codeBlock) {
-        RELEASE_ASSERT(exception);
+    ASSERT(!!throwScope.exception() == !codeBlock);
+    if (UNLIKELY(!codeBlock))
         return exception;
-    }
     
     if (Options::validateBytecode())
         codeBlock->validate();

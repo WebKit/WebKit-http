@@ -1,6 +1,6 @@
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 
-configure_file(wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit.pc @ONLY)
+configure_file(wpe/wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit.pc @ONLY)
 
 add_definitions(-DWEBKIT2_COMPILATION)
 
@@ -41,7 +41,6 @@ list(APPEND DatabaseProcess_SOURCES
 list(APPEND WebKit2_SOURCES
     DatabaseProcess/wpe/DatabaseProcessMainWPE.cpp
 
-    NetworkProcess/CustomProtocols/soup/CustomProtocolManagerImpl.cpp
     NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
 
     NetworkProcess/Downloads/wpe/DownloadSoupErrorsWPE.cpp
@@ -79,7 +78,7 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/SimpleViewportController.cpp
 
     Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp
-    Shared/CoordinatedGraphics/threadedcompositor/DisplayRefreshMonitor.cpp
+    Shared/CoordinatedGraphics/threadedcompositor/TCDisplayRefreshMonitor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
 
@@ -101,10 +100,11 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/WebEventFactory.cpp
     Shared/wpe/WebKit2InitializeWPE.cpp
 
+    UIProcess/API/C/WKResourceLoadStatisticsManager.cpp
+
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
 
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
-    UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
 
     UIProcess/API/C/wpe/WKView.cpp
     UIProcess/API/C/wpe/WKWebAutomation.cpp
@@ -120,6 +120,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/LegacySessionStateCodingNone.cpp
+    UIProcess/WebResourceLoadStatisticsManager.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
     UIProcess/WebTextChecker.cpp
     UIProcess/WebTextCheckerClient.cpp
@@ -131,8 +132,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp
 
     UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
-    UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
-    UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
 
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
@@ -369,9 +368,14 @@ list(APPEND WPEWebInspectorResources_LIBRARIES
     ${GLIB_GIO_LIBRARIES}
 )
 
+list(APPEND WPEWebInspectorResources_INCLUDE_DIRECTORIES
+    ${GLIB_INCLUDE_DIRS}
+)
+
 add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_SOURCES})
 add_dependencies(WPEWebInspectorResources WebKit2)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
+target_include_directories(WPEWebInspectorResources PUBLIC ${WPEWebInspectorResources_INCLUDE_DIRECTORIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
 
 file(WRITE ${CMAKE_BINARY_DIR}/test_atomic.cpp
@@ -427,7 +431,6 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePage.h
     ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageBanner.h
     ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageContextMenuClient.h
-    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageDiagnosticLoggingClient.h
     ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageEditorClient.h
     ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageFormClient.h
     ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageFullScreenClient.h

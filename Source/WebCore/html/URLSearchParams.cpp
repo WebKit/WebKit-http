@@ -26,6 +26,7 @@
 #include "URLSearchParams.h"
 
 #include "DOMURL.h"
+#include "ExceptionCode.h"
 #include "URLParser.h"
 
 namespace WebCore {
@@ -36,16 +37,34 @@ URLSearchParams::URLSearchParams(const String& init, DOMURL* associatedURL)
 {
 }
 
-URLSearchParams::URLSearchParams(const Vector<std::pair<String, String>>& pairs)
+URLSearchParams::URLSearchParams(const Vector<WTF::KeyValuePair<String, String>>& pairs)
     : m_pairs(pairs)
 {
+}
+
+ExceptionOr<Ref<URLSearchParams>> URLSearchParams::create(Variant<Vector<Vector<String>>, Vector<WTF::KeyValuePair<String, String>>, String>&& variant)
+{
+    auto visitor = WTF::makeVisitor([&](const Vector<Vector<String>>& vector) -> ExceptionOr<Ref<URLSearchParams>> {
+        Vector<WTF::KeyValuePair<String, String>> pairs;
+        for (const auto& pair : vector) {
+            if (pair.size() != 2)
+                return Exception { TypeError };
+            pairs.append({pair[0], pair[1]});
+        }
+        return adoptRef(*new URLSearchParams(WTFMove(pairs)));
+    }, [&](const Vector<WTF::KeyValuePair<String, String>>& pairs) {
+        return adoptRef(*new URLSearchParams(pairs));
+    }, [&](const String& string) {
+        return adoptRef(*new URLSearchParams(string, nullptr));
+    });
+    return WTF::visit(visitor, variant);
 }
 
 String URLSearchParams::get(const String& name) const
 {
     for (const auto& pair : m_pairs) {
-        if (pair.first == name)
-            return pair.second;
+        if (pair.key == name)
+            return pair.value;
     }
     return String();
 }
@@ -53,23 +72,30 @@ String URLSearchParams::get(const String& name) const
 bool URLSearchParams::has(const String& name) const
 {
     for (const auto& pair : m_pairs) {
-        if (pair.first == name)
+        if (pair.key == name)
             return true;
     }
     return false;
 }
 
+void URLSearchParams::sort()
+{
+    std::stable_sort(m_pairs.begin(), m_pairs.end(), [] (const auto& a, const auto& b) {
+        return WTF::codePointCompareLessThan(a.key, b.key);
+    });
+    updateURL();
+}
+
 void URLSearchParams::set(const String& name, const String& value)
 {
     for (auto& pair : m_pairs) {
-        if (pair.first != name)
+        if (pair.key != name)
             continue;
-        if (pair.second != value)
-            pair.second = value;
+        if (pair.value != value)
+            pair.value = value;
         bool skippedFirstMatch = false;
         m_pairs.removeAllMatching([&] (const auto& pair) {
-            bool nameMatches = pair.first == name;
-            if (nameMatches) {
+            if (pair.key == name) {
                 if (skippedFirstMatch)
                     return true;
                 skippedFirstMatch = true;
@@ -94,15 +120,15 @@ Vector<String> URLSearchParams::getAll(const String& name) const
     Vector<String> values;
     values.reserveInitialCapacity(m_pairs.size());
     for (const auto& pair : m_pairs) {
-        if (pair.first == name)
-            values.uncheckedAppend(pair.second);
+        if (pair.key == name)
+            values.uncheckedAppend(pair.value);
     }
     return values;
 }
 
 void URLSearchParams::remove(const String& name)
 {
-    if (m_pairs.removeAllMatching([&] (const auto& pair) { return pair.first == name; }))
+    if (m_pairs.removeAllMatching([&] (const auto& pair) { return pair.key == name; }))
         updateURL();
 }
 
@@ -122,6 +148,21 @@ void URLSearchParams::updateFromAssociatedURL()
     ASSERT(m_associatedURL);
     String search = m_associatedURL->search();
     m_pairs = search.startsWith('?') ? URLParser::parseURLEncodedForm(StringView(search).substring(1)) : URLParser::parseURLEncodedForm(search);
+}
+
+std::optional<WTF::KeyValuePair<String, String>> URLSearchParams::Iterator::next()
+{
+    auto& pairs = m_target->pairs();
+    if (m_index >= pairs.size())
+        return std::nullopt;
+
+    auto& pair = pairs[m_index++];
+    return WTF::KeyValuePair<String, String> { pair.key, pair.value };
+}
+
+URLSearchParams::Iterator::Iterator(URLSearchParams& params)
+    : m_target(params)
+{
 }
     
 }

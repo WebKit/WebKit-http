@@ -147,10 +147,8 @@ void DataTransfer::setData(const String& type, const String& data)
 
 Vector<String> DataTransfer::types() const
 {
-    // FIXME: Per HTML5, types should be a live array, and the DOM attribute should always return the same object.
-
     if (!canReadTypes())
-        return Vector<String>();
+        return { };
 
     return m_pasteboard->types();
 }
@@ -258,7 +256,7 @@ void DataTransfer::setDragImage(Element* element, int x, int y)
         return;
 
     CachedImage* image = nullptr;
-    if (is<HTMLImageElement>(element) && !element->inDocument())
+    if (is<HTMLImageElement>(element) && !element->isConnected())
         image = downcast<HTMLImageElement>(*element).cachedImage();
 
     m_dragLocation = IntPoint(x, y);
@@ -285,14 +283,14 @@ void DataTransfer::updateDragImage()
         return;
 
     IntPoint computedHotSpot;
-    DragImageRef computedImage = createDragImage(computedHotSpot);
+    auto computedImage = DragImage { createDragImage(computedHotSpot) };
     if (!computedImage)
         return;
 
-    m_pasteboard->setDragImage(computedImage, computedHotSpot);
+    m_pasteboard->setDragImage(WTFMove(computedImage), computedHotSpot);
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(MAC)
 
 DragImageRef DataTransfer::createDragImage(IntPoint& location) const
 {

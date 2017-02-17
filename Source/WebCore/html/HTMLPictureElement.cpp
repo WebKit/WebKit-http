@@ -28,7 +28,6 @@
 
 #include "ElementChildIterator.h"
 #include "HTMLImageElement.h"
-#include "HTMLNames.h"
 
 namespace WebCore {
 
@@ -42,10 +41,9 @@ HTMLPictureElement::~HTMLPictureElement()
     document().removeViewportDependentPicture(*this);
 }
 
-void HTMLPictureElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLPictureElement::didMoveToNewDocument(Document& oldDocument)
 {
-    if (oldDocument)
-        oldDocument->removeViewportDependentPicture(*this);
+    oldDocument.removeViewportDependentPicture(*this);
     HTMLElement::didMoveToNewDocument(oldDocument);
     sourcesChanged();
 }

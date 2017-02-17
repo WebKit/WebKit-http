@@ -130,17 +130,13 @@ Node* FocusNavigationScope::lastChildInScope(const Node& node) const
 
 Node* FocusNavigationScope::parentInScope(const Node& node) const
 {
-    if (is<Element>(node) && isFocusScopeOwner(downcast<Element>(node)))
+    if (m_rootTreeScope && &m_rootTreeScope->rootNode() == &node)
         return nullptr;
 
     if (UNLIKELY(m_slotElement && m_slotElement == node.assignedSlot()))
         return nullptr;
 
-    ContainerNode* parent = node.parentNode();
-    if (parent && is<Element>(parent) && isFocusScopeOwner(downcast<Element>(*parent)))
-        return nullptr;
-
-    return parent;
+    return node.parentNode();
 }
 
 Node* FocusNavigationScope::nextSiblingInScope(const Node& node) const
@@ -320,7 +316,7 @@ FocusController::FocusController(Page& page, ActivityState::Flags activityState)
 {
 }
 
-void FocusController::setFocusedFrame(PassRefPtr<Frame> frame)
+void FocusController::setFocusedFrame(Frame* frame)
 {
     ASSERT(!frame || frame->page() == &m_page);
     if (m_focusedFrame == frame || m_isChangingFocusedFrame)
@@ -769,8 +765,9 @@ static void clearSelectionIfNeeded(Frame* oldFocusedFrame, Frame* newFocusedFram
     oldFocusedFrame->selection().clear();
 }
 
-bool FocusController::setFocusedElement(Element* element, PassRefPtr<Frame> newFocusedFrame, FocusDirection direction)
+bool FocusController::setFocusedElement(Element* element, Frame& newFocusedFrame, FocusDirection direction)
 {
+    Ref<Frame> protectedNewFocusedFrame = newFocusedFrame;
     RefPtr<Frame> oldFocusedFrame = focusedFrame();
     RefPtr<Document> oldDocument = oldFocusedFrame ? oldFocusedFrame->document() : nullptr;
     
@@ -784,7 +781,7 @@ bool FocusController::setFocusedElement(Element* element, PassRefPtr<Frame> newF
 
     m_page.editorClient().willSetInputMethodState();
 
-    clearSelectionIfNeeded(oldFocusedFrame.get(), newFocusedFrame.get(), element);
+    clearSelectionIfNeeded(oldFocusedFrame.get(), &newFocusedFrame, element);
 
     if (!element) {
         if (oldDocument)
@@ -803,11 +800,11 @@ bool FocusController::setFocusedElement(Element* element, PassRefPtr<Frame> newF
     if (oldDocument && oldDocument != newDocument.ptr())
         oldDocument->setFocusedElement(nullptr);
 
-    if (newFocusedFrame && !newFocusedFrame->page()) {
+    if (!newFocusedFrame.page()) {
         setFocusedFrame(nullptr);
         return false;
     }
-    setFocusedFrame(newFocusedFrame);
+    setFocusedFrame(&newFocusedFrame);
 
     Ref<Element> protect(*element);
 

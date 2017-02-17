@@ -94,6 +94,51 @@ static void testWebViewWebContextLifetime(WebViewTest* test, gconstpointer)
     g_object_unref(webContext2);
 }
 
+static void ephemeralViewloadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent, WebViewTest* test)
+{
+    if (loadEvent != WEBKIT_LOAD_FINISHED)
+        return;
+    g_signal_handlers_disconnect_by_func(webView, reinterpret_cast<void*>(ephemeralViewloadChanged), test);
+    test->quitMainLoop();
+}
+
+static void testWebViewEphemeral(WebViewTest* test, gconstpointer)
+{
+    g_assert(!webkit_web_view_is_ephemeral(test->m_webView));
+    g_assert(!webkit_web_context_is_ephemeral(webkit_web_view_get_context(test->m_webView)));
+    auto* manager = webkit_web_context_get_website_data_manager(test->m_webContext.get());
+    g_assert(!webkit_website_data_manager_is_ephemeral(manager));
+    webkit_website_data_manager_clear(manager, WEBKIT_WEBSITE_DATA_DISK_CACHE, 0, nullptr, [](GObject* manager, GAsyncResult* result, gpointer userData) {
+        webkit_website_data_manager_clear_finish(WEBKIT_WEBSITE_DATA_MANAGER(manager), result, nullptr);
+        static_cast<WebViewTest*>(userData)->quitMainLoop();
+    }, test);
+    g_main_loop_run(test->m_mainLoop);
+
+    // A WebView on a non ephemeral context can be ephemeral.
+    GRefPtr<WebKitWebView> webView = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+        "web-context", webkit_web_view_get_context(test->m_webView),
+        "is-ephemeral", TRUE,
+        nullptr));
+    g_assert(webkit_web_view_is_ephemeral(webView.get()));
+    g_assert(!webkit_web_context_is_ephemeral(webkit_web_view_get_context(webView.get())));
+
+    g_signal_connect(webView.get(), "load-changed", G_CALLBACK(ephemeralViewloadChanged), test);
+    webkit_web_view_load_uri(webView.get(), gServer->getURIForPath("/").data());
+    g_main_loop_run(test->m_mainLoop);
+
+    // Disk cache delays the storing of initial resources for 1 second to avoid
+    // affecting early page load. So, wait 1 second here to make sure resources
+    // have already been stored.
+    test->wait(1);
+
+    webkit_website_data_manager_fetch(manager, WEBKIT_WEBSITE_DATA_DISK_CACHE, nullptr, [](GObject* manager, GAsyncResult* result, gpointer userData) {
+        auto* test = static_cast<WebViewTest*>(userData);
+        g_assert(!webkit_website_data_manager_fetch_finish(WEBKIT_WEBSITE_DATA_MANAGER(manager), result, nullptr));
+        test->quitMainLoop();
+    }, test);
+    g_main_loop_run(test->m_mainLoop);
+}
+
 static void testWebViewCustomCharset(WebViewTest* test, gconstpointer)
 {
     test->loadURI(gServer->getURIForPath("/").data());
@@ -632,7 +677,17 @@ static void testWebViewSnapshot(SnapshotWebViewTest* test, gconstpointer)
 
 class NotificationWebViewTest: public WebViewTest {
 public:
-    MAKE_GLIB_TEST_FIXTURE(NotificationWebViewTest);
+    MAKE_GLIB_TEST_FIXTURE_WITH_SETUP_TEARDOWN(NotificationWebViewTest, setup, teardown);
+
+    static void setup()
+    {
+        WebViewTest::shouldInitializeWebViewInConstructor = false;
+    }
+
+    static void teardown()
+    {
+        WebViewTest::shouldInitializeWebViewInConstructor = true;
+    }
 
     enum NotificationEvent {
         None,
@@ -647,6 +702,7 @@ public:
     static gboolean permissionRequestCallback(WebKitWebView*, WebKitPermissionRequest *request, NotificationWebViewTest* test)
     {
         g_assert(WEBKIT_IS_NOTIFICATION_PERMISSION_REQUEST(request));
+        g_assert(test->m_isExpectingPermissionRequest);
         test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(request));
 
         test->m_event = Permission;
@@ -677,6 +733,7 @@ public:
 
     static gboolean showNotificationCallback(WebKitWebView*, WebKitNotification* notification, NotificationWebViewTest* test)
     {
+        g_assert(!test->m_notification);
         test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(notification));
         test->m_notification = notification;
         g_signal_connect(notification, "closed", G_CALLBACK(notificationClosedCallback), test);
@@ -698,10 +755,9 @@ public:
         g_main_loop_quit(test->m_mainLoop);
     }
 
-    NotificationWebViewTest()
-        : m_notification(nullptr)
-        , m_event(None)
+    void initialize()
     {
+        initializeWebView();
         g_signal_connect(m_webView, "permission-request", G_CALLBACK(permissionRequestCallback), this);
         g_signal_connect(m_webView, "show-notification", G_CALLBACK(showNotificationCallback), this);
         webkit_user_content_manager_register_script_message_handler(m_userContentManager.get(), "notifications");
@@ -715,9 +771,18 @@ public:
         webkit_user_content_manager_unregister_script_message_handler(m_userContentManager.get(), "notifications");
     }
 
+    bool hasPermission()
+    {
+        auto* result = runJavaScriptAndWaitUntilFinished("Notification.permission;", nullptr);
+        g_assert(result);
+        GUniquePtr<char> value(javascriptResultToCString(result));
+        return !g_strcmp0(value.get(), "granted");
+    }
+
    void requestPermissionAndWaitUntilGiven()
     {
         m_event = None;
+        m_isExpectingPermissionRequest = true;
         webkit_web_view_run_javascript(m_webView, "Notification.requestPermission();", nullptr, nullptr, nullptr);
         g_main_loop_run(m_mainLoop);
     }
@@ -727,6 +792,16 @@ public:
         m_event = None;
 
         GUniquePtr<char> jscode(g_strdup_printf("n = new Notification('%s', { body: '%s'});", title, body));
+        webkit_web_view_run_javascript(m_webView, jscode.get(), nullptr, nullptr, nullptr);
+
+        g_main_loop_run(m_mainLoop);
+    }
+
+    void requestNotificationAndWaitUntilShown(const char* title, const char* body, const char* tag)
+    {
+        m_event = None;
+
+        GUniquePtr<char> jscode(g_strdup_printf("n = new Notification('%s', { body: '%s', tag: '%s'});", title, body, tag));
         webkit_web_view_run_javascript(m_webView, jscode.get(), nullptr, nullptr, nullptr);
 
         g_main_loop_run(m_mainLoop);
@@ -758,27 +833,35 @@ public:
         g_main_loop_run(m_mainLoop);
     }
 
-    NotificationEvent m_event;
-    WebKitNotification* m_notification;
+    NotificationEvent m_event { None };
+    WebKitNotification* m_notification { nullptr };
+    bool m_isExpectingPermissionRequest { false };
+    bool m_hasPermission { false };
 };
 
 static void testWebViewNotification(NotificationWebViewTest* test, gconstpointer)
 {
+    test->initialize();
+
     // Notifications don't work with local or special schemes.
     test->loadURI(gServer->getURIForPath("/").data());
     test->waitUntilLoadFinished();
+    g_assert(!test->hasPermission());
 
     test->requestPermissionAndWaitUntilGiven();
     g_assert(test->m_event == NotificationWebViewTest::Permission);
+    g_assert(test->hasPermission());
 
     static const char* title = "This is a notification";
     static const char* body = "This is the body.";
-    test->requestNotificationAndWaitUntilShown(title, body);
+    static const char* tag = "This is the tag.";
+    test->requestNotificationAndWaitUntilShown(title, body, tag);
 
     g_assert(test->m_event == NotificationWebViewTest::Shown);
     g_assert(test->m_notification);
     g_assert_cmpstr(webkit_notification_get_title(test->m_notification), ==, title);
     g_assert_cmpstr(webkit_notification_get_body(test->m_notification), ==, body);
+    g_assert_cmpstr(webkit_notification_get_tag(test->m_notification), ==, tag);
 
     test->clickNotificationAndWaitUntilClicked();
     g_assert(test->m_event == NotificationWebViewTest::OnClicked);
@@ -788,16 +871,60 @@ static void testWebViewNotification(NotificationWebViewTest* test, gconstpointer
 
     test->requestNotificationAndWaitUntilShown(title, body);
     g_assert(test->m_event == NotificationWebViewTest::Shown);
+    g_assert_cmpstr(webkit_notification_get_tag(test->m_notification), ==, nullptr);
 
     test->closeNotificationAndWaitUntilOnClosed();
     g_assert(test->m_event == NotificationWebViewTest::OnClosed);
 
-    test->requestNotificationAndWaitUntilShown(title, body);
+    // The first notification should be closed automatically because the tag is
+    // the same. It will crash in showNotificationCallback on failure.
+    test->requestNotificationAndWaitUntilShown(title, body, tag);
+    test->requestNotificationAndWaitUntilShown(title, body, tag);
     g_assert(test->m_event == NotificationWebViewTest::Shown);
 
+    // Notification should be closed when navigating to a different webpage.
     test->loadURI(gServer->getURIForPath("/").data());
     test->waitUntilLoadFinished();
     g_assert(test->m_event == NotificationWebViewTest::Closed);
+}
+
+static void setInitialNotificationPermissionsAllowedCallback(WebKitWebContext* context, NotificationWebViewTest* test)
+{
+    GUniquePtr<char> baseURI(soup_uri_to_string(gServer->baseURI(), FALSE));
+    GList* allowedOrigins = g_list_prepend(nullptr, webkit_security_origin_new_for_uri(baseURI.get()));
+    webkit_web_context_initialize_notification_permissions(test->m_webContext.get(), allowedOrigins, nullptr);
+    g_list_free_full(allowedOrigins, reinterpret_cast<GDestroyNotify>(webkit_security_origin_unref));
+}
+
+static void setInitialNotificationPermissionsDisallowedCallback(WebKitWebContext* context, NotificationWebViewTest* test)
+{
+    GUniquePtr<char> baseURI(soup_uri_to_string(gServer->baseURI(), FALSE));
+    GList* disallowedOrigins = g_list_prepend(nullptr, webkit_security_origin_new_for_uri(baseURI.get()));
+    webkit_web_context_initialize_notification_permissions(test->m_webContext.get(), nullptr, disallowedOrigins);
+    g_list_free_full(disallowedOrigins, reinterpret_cast<GDestroyNotify>(webkit_security_origin_unref));
+}
+
+static void testWebViewNotificationInitialPermissionAllowed(NotificationWebViewTest* test, gconstpointer)
+{
+    g_signal_connect(test->m_webContext.get(), "initialize-notification-permissions", G_CALLBACK(setInitialNotificationPermissionsAllowedCallback), test);
+    test->initialize();
+
+    test->loadURI(gServer->getURIForPath("/").data());
+    test->waitUntilLoadFinished();
+    g_assert(test->hasPermission());
+
+    test->requestNotificationAndWaitUntilShown("This is a notification", "This is the body.");
+    g_assert(test->m_event == NotificationWebViewTest::Shown);
+}
+
+static void testWebViewNotificationInitialPermissionDisallowed(NotificationWebViewTest* test, gconstpointer)
+{
+    g_signal_connect(test->m_webContext.get(), "initialize-notification-permissions", G_CALLBACK(setInitialNotificationPermissionsDisallowedCallback), test);
+    test->initialize();
+
+    test->loadURI(gServer->getURIForPath("/").data());
+    test->waitUntilLoadFinished();
+    g_assert(!test->hasPermission());
 }
 
 static void testWebViewIsPlayingAudio(IsPlayingAudioWebViewTest* test, gconstpointer)
@@ -865,6 +992,52 @@ static void testWebViewPreferredSize(WebViewTest* test, gconstpointer)
     g_assert_cmpint(naturalSize.height, ==, 615);
 }
 
+class WebViewTitleTest: public WebViewTest {
+public:
+    MAKE_GLIB_TEST_FIXTURE(WebViewTitleTest);
+
+    static void titleChangedCallback(WebKitWebView* view, GParamSpec*, WebViewTitleTest* test)
+    {
+        test->m_webViewTitles.append(webkit_web_view_get_title(view));
+    }
+
+    WebViewTitleTest()
+    {
+        g_signal_connect(m_webView, "notify::title", G_CALLBACK(titleChangedCallback), this);
+    }
+
+    Vector<CString> m_webViewTitles;
+};
+
+static void testWebViewTitleChange(WebViewTitleTest* test, gconstpointer)
+{
+    g_assert_cmpint(test->m_webViewTitles.size(), ==, 0);
+
+    test->loadHtml("<head><title>Page Title</title></head>", nullptr);
+    test->waitUntilLoadFinished();
+    g_assert_cmpint(test->m_webViewTitles.size(), ==, 1);
+    g_assert_cmpstr(test->m_webViewTitles[0].data(), ==, "Page Title");
+
+    test->loadHtml("<head><title>Another Page Title</title></head>", nullptr);
+    test->waitUntilLoadFinished();
+    g_assert_cmpint(test->m_webViewTitles.size(), ==, 3);
+    /* Page title should be immediately unset when loading a new page. */
+    g_assert_cmpstr(test->m_webViewTitles[1].data(), ==, "");
+    g_assert_cmpstr(test->m_webViewTitles[2].data(), ==, "Another Page Title");
+
+    test->loadHtml("<p>This page has no title!</p>", nullptr);
+    test->waitUntilLoadFinished();
+    g_assert_cmpint(test->m_webViewTitles.size(), ==, 4);
+    g_assert_cmpstr(test->m_webViewTitles[3].data(), ==, "");
+
+    test->loadHtml("<script>document.title = 'one'; document.title = 'two'; document.title = 'three';</script>", nullptr);
+    test->waitUntilLoadFinished();
+    g_assert_cmpint(test->m_webViewTitles.size(), ==, 7);
+    g_assert_cmpstr(test->m_webViewTitles[4].data(), ==, "one");
+    g_assert_cmpstr(test->m_webViewTitles[5].data(), ==, "two");
+    g_assert_cmpstr(test->m_webViewTitles[6].data(), ==, "three");
+}
+
 static void serverCallback(SoupServer* server, SoupMessage* message, const char* path, GHashTable*, SoupClientContext*, gpointer)
 {
     if (message->method != SOUP_METHOD_GET) {
@@ -886,6 +1059,7 @@ void beforeAll()
 
     WebViewTest::add("WebKitWebView", "web-context", testWebViewWebContext);
     WebViewTest::add("WebKitWebView", "web-context-lifetime", testWebViewWebContextLifetime);
+    WebViewTest::add("WebKitWebView", "ephemeral", testWebViewEphemeral);
     WebViewTest::add("WebKitWebView", "custom-charset", testWebViewCustomCharset);
     WebViewTest::add("WebKitWebView", "settings", testWebViewSettings);
     WebViewTest::add("WebKitWebView", "zoom-level", testWebViewZoomLevel);
@@ -897,9 +1071,12 @@ void beforeAll()
     SnapshotWebViewTest::add("WebKitWebView", "snapshot", testWebViewSnapshot);
     WebViewTest::add("WebKitWebView", "page-visibility", testWebViewPageVisibility);
     NotificationWebViewTest::add("WebKitWebView", "notification", testWebViewNotification);
+    NotificationWebViewTest::add("WebKitWebView", "notification-initial-permission-allowed", testWebViewNotificationInitialPermissionAllowed);
+    NotificationWebViewTest::add("WebKitWebView", "notification-initial-permission-disallowed", testWebViewNotificationInitialPermissionDisallowed);
     IsPlayingAudioWebViewTest::add("WebKitWebView", "is-playing-audio", testWebViewIsPlayingAudio);
     WebViewTest::add("WebKitWebView", "background-color", testWebViewBackgroundColor);
     WebViewTest::add("WebKitWebView", "preferred-size", testWebViewPreferredSize);
+    WebViewTitleTest::add("WebKitWebView", "title-change", testWebViewTitleChange);
 }
 
 void afterAll()

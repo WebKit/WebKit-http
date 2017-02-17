@@ -63,6 +63,8 @@ static inline WebEvent::Modifiers modifiersForEvent(const GdkEvent* event)
         modifiers |= WebEvent::AltKey;
     if (state & GDK_META_MASK)
         modifiers |= WebEvent::MetaKey;
+    if (PlatformKeyboardEvent::modifiersContainCapsLock(state))
+        modifiers |= WebEvent::CapsLockKey;
 
     return static_cast<WebEvent::Modifiers>(modifiers);
 }
@@ -193,6 +195,8 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(const GdkEvent* event, 
     return WebKeyboardEvent(
         event->type == GDK_KEY_RELEASE ? WebEvent::KeyUp : WebEvent::KeyDown,
         compositionResults.simpleString.length() ? compositionResults.simpleString : PlatformKeyboardEvent::singleCharacterString(event->key.keyval),
+        PlatformKeyboardEvent::keyValueForGdkKeyCode(event->key.keyval),
+        PlatformKeyboardEvent::keyCodeForHardwareKeyCode(event->key.hardware_keycode),
         PlatformKeyboardEvent::keyIdentifierForGdkKeyCode(event->key.keyval),
         PlatformKeyboardEvent::windowsKeyCodeForGdkKeyCode(event->key.keyval),
         static_cast<int>(event->key.keyval),

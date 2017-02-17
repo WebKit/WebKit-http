@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Collabora Ltd. All rights reserved.
  * Copyright (C) 2010 Girish Ramakrishnan <girish@forwardbias.in>
  *
@@ -31,8 +31,10 @@
 #include "PluginDatabase.h"
 #include "PluginDebug.h"
 #include "PluginPackage.h"
+#include "WebFrameLoaderClient.h"
 #include <WebCore/BridgeJSC.h>
 #include <WebCore/Chrome.h>
+#include <WebCore/CommonVM.h>
 #include <WebCore/CookieJar.h>
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
@@ -236,7 +238,7 @@ bool PluginView::start()
     NPError npErr;
     {
         PluginView::setCurrentPluginView(this);
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         setCallingPlugin(true);
         npErr = m_plugin->pluginFuncs()->newp((NPMIMEType)m_mimeType.utf8().data(), m_instance, m_mode, m_paramCount, m_paramNames, m_paramValues, NULL);
         setCallingPlugin(false);
@@ -274,7 +276,7 @@ void PluginView::mediaCanStart(Document&)
 {
     ASSERT(!m_isStarted);
     if (!start())
-        parentFrame()->loader().client().dispatchDidFailToStartPlugin(this);
+        static_cast<WebFrameLoaderClient&>(parentFrame()->loader().client()).dispatchDidFailToStartPlugin(this);
 }
 
 PluginView::~PluginView()
@@ -325,7 +327,7 @@ void PluginView::stop()
 
     m_isStarted = false;
 
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+    JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     // Unsubclass the window
@@ -406,7 +408,7 @@ void PluginView::performRequest(PluginRequest* request)
     URL requestURL = request->frameLoadRequest().resourceRequest().url();
     String jsString = scriptStringIfJavaScriptURL(requestURL);
 
-    UserGestureIndicator gestureIndicator(request->shouldAllowPopups() ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
+    UserGestureIndicator gestureIndicator(request->shouldAllowPopups() ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
 
     if (jsString.isNull()) {
         // if this is not a targeted request, create a stream for it. otherwise,
@@ -428,7 +430,7 @@ void PluginView::performRequest(PluginRequest* request)
             // FIXME: <rdar://problem/4807469> This should be sent when the document has finished loading
             if (request->sendNotification()) {
                 PluginView::setCurrentPluginView(this);
-                JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+                JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
                 setCallingPlugin(true);
                 m_plugin->pluginFuncs()->urlnotify(m_instance, requestURL.string().utf8().data(), NPRES_DONE, request->notifyData());
                 setCallingPlugin(false);
@@ -511,7 +513,7 @@ NPError PluginView::load(const FrameLoadRequest& frameLoadRequest, bool sendNoti
         // For security reasons, only allow JS requests to be made on the frame that contains the plug-in.
         if (!targetFrameName.isNull() && m_parentFrame->tree().find(targetFrameName) != m_parentFrame)
             return NPERR_INVALID_PARAM;
-    } else if (!m_parentFrame->document()->securityOrigin()->canDisplay(url))
+    } else if (!m_parentFrame->document()->securityOrigin().canDisplay(url))
         return NPERR_GENERIC_ERROR;
 
     scheduleRequest(std::make_unique<PluginRequest>(frameLoadRequest, sendNotification, notifyData, arePopupsAllowed()));
@@ -591,7 +593,7 @@ NPError PluginView::destroyStream(NPStream* stream, NPReason reason)
 void PluginView::status(const char* message)
 {
     if (Page* page = m_parentFrame->page())
-        page->chrome().setStatusbarText(m_parentFrame.get(), String::fromUTF8(message));
+        page->chrome().setStatusbarText(*m_parentFrame, String::fromUTF8(message));
 }
 
 NPError PluginView::setValue(NPPVariable variable, void* value)
@@ -665,7 +667,7 @@ NPObject* PluginView::npObject()
     NPError npErr;
     {
         PluginView::setCurrentPluginView(this);
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         setCallingPlugin(true);
         npErr = m_plugin->pluginFuncs()->getvalue(m_instance, NPPVpluginScriptableNPObject, &object);
         setCallingPlugin(false);
@@ -791,7 +793,7 @@ PluginView::PluginView(Frame* parentFrame, const IntSize& size, PluginPackage* p
 void PluginView::focusPluginElement()
 {
     if (Page* page = m_parentFrame->page())
-        page->focusController().setFocusedElement(m_element, m_parentFrame);
+        page->focusController().setFocusedElement(m_element, *m_parentFrame);
     else
         m_parentFrame->document()->setFocusedElement(m_element);
 }
@@ -1382,7 +1384,7 @@ void PluginView::privateBrowsingStateChanged(bool privateBrowsingEnabled)
         return;
 
     PluginView::setCurrentPluginView(this);
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+    JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
     setCallingPlugin(true);
     NPBool value = privateBrowsingEnabled;
     setValue(m_instance, NPNVprivateModeBool, &value);

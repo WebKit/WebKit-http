@@ -29,9 +29,12 @@
 #include "APIArray.h"
 #include "SessionState.h"
 #include "WebPageProxy.h"
+#include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/DiagnosticLoggingKeys.h>
 
 namespace WebKit {
+
+using namespace WebCore;
 
 // FIXME: Make this static once WebBackForwardListCF.cpp is no longer using it.
 uint64_t generateWebBackForwardItemID();
@@ -179,7 +182,7 @@ void WebBackForwardList::goToItem(WebBackForwardListItem* item)
     if (targetIndex < m_currentIndex) {
         unsigned delta = m_entries.size() - targetIndex - 1;
         String deltaValue = delta > 10 ? ASCIILiteral("over10") : String::number(delta);
-        m_page->logDiagnosticMessageWithValue(WebCore::DiagnosticLoggingKeys::backNavigationKey(), WebCore::DiagnosticLoggingKeys::deltaKey(), deltaValue, false /* shouldSample */);
+        m_page->logDiagnosticMessage(WebCore::DiagnosticLoggingKeys::backNavigationDeltaKey(), deltaValue, ShouldSample::No);
     }
 
     // If we're going to an item different from the current item, ask the client if the current
@@ -415,7 +418,7 @@ BackForwardListState WebBackForwardList::backForwardListState(const std::functio
     }
 
     if (backForwardListState.items.isEmpty())
-        backForwardListState.currentIndex = Nullopt;
+        backForwardListState.currentIndex = std::nullopt;
     else if (backForwardListState.items.size() <= backForwardListState.currentIndex.value())
         backForwardListState.currentIndex = backForwardListState.items.size() - 1;
 
@@ -432,7 +435,7 @@ void WebBackForwardList::restoreFromState(BackForwardListState backForwardListSt
         items.uncheckedAppend(WebBackForwardListItem::create(WTFMove(backForwardListItemState), m_page->pageID()));
     }
     m_hasCurrentIndex = !!backForwardListState.currentIndex;
-    m_currentIndex = backForwardListState.currentIndex.valueOr(0);
+    m_currentIndex = backForwardListState.currentIndex.value_or(0);
     m_entries = WTFMove(items);
 }
 

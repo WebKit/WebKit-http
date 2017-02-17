@@ -27,6 +27,7 @@
 
 #include "Node.h"
 #include <wtf/FastMalloc.h>
+#include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Variant.h>
 #include <wtf/Vector.h>
@@ -98,6 +99,15 @@ public:
     void setTestString(const String& string) { m_string = string; }
     const String& testUSVString() const { return m_usvstring; }
     void setTestUSVString(const String& usvstring) { m_usvstring = usvstring; }
+    const String& testByteString() const { return m_byteString; }
+    void setTestByteString(const String& byteString) { m_byteString = byteString; }
+
+    const Vector<WTF::KeyValuePair<String, int>>& testLongRecord() const { return m_longRecord; }
+    void setTestLongRecord(const Vector<WTF::KeyValuePair<String, int>>& value) { m_longRecord = value; }
+    const Vector<WTF::KeyValuePair<String, RefPtr<Node>>>& testNodeRecord() const { return m_nodeRecord; }
+    void setTestNodeRecord(const Vector<WTF::KeyValuePair<String, RefPtr<Node>>>& value) { m_nodeRecord = value; }
+    const Vector<WTF::KeyValuePair<String, Vector<String>>>& testSequenceRecord() const { return m_sequenceRecord; }
+    void setTestSequenceRecord(const Vector<WTF::KeyValuePair<String, Vector<String>>>& value) { m_sequenceRecord = value; }
 
     using TestUnion = Variant<String, int, bool, RefPtr<Node>, Vector<int>>;
     const TestUnion& testUnion() const { return m_union; }
@@ -139,6 +149,10 @@ private:
     uint16_t m_UnsignedShort { 0 };
     String m_string;
     String m_usvstring;
+    String m_byteString;
+    Vector<WTF::KeyValuePair<String, int>> m_longRecord;
+    Vector<WTF::KeyValuePair<String, RefPtr<Node>>> m_nodeRecord;
+    Vector<WTF::KeyValuePair<String, Vector<String>>> m_sequenceRecord;
     TestUnion m_union;
     
     int m_typeConversionsDictionaryLongValue { 0 };

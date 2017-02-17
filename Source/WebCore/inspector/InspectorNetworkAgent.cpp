@@ -35,6 +35,7 @@
 #include "CachedRawResource.h"
 #include "CachedResource.h"
 #include "CachedResourceLoader.h"
+#include "CachedResourceRequestInitiators.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "DocumentThreadableLoader.h"
@@ -128,12 +129,6 @@ public:
         dispose();
     }
 
-    void didFailLoaderCreation()
-    {
-        m_callback->sendFailure(ASCIILiteral("Could not create a loader"));
-        dispose();
-    }
-
     void setLoader(RefPtr<ThreadableLoader>&& loader)
     {
         m_loader = WTFMove(loader);
@@ -186,8 +181,8 @@ static Ref<InspectorObject> buildObjectForHeaders(const HTTPHeaderMap& headers)
 
 Ref<Inspector::Protocol::Network::ResourceTiming> InspectorNetworkAgent::buildObjectForTiming(const NetworkLoadTiming& timing, ResourceLoader& resourceLoader)
 {
-    double monotonicTime = resourceLoader.loadTiming().startTime();
-    double startTimeInInspector = m_environment.executionStopwatch()->elapsedTimeSinceMonotonicTime(monotonicTime);
+    MonotonicTime startTime = resourceLoader.loadTiming().startTime();
+    double startTimeInInspector = m_environment.executionStopwatch()->elapsedTimeSince(startTime);
 
     return Inspector::Protocol::Network::ResourceTiming::create()
         .setStartTime(startTimeInInspector)
@@ -396,7 +391,7 @@ void InspectorNetworkAgent::didFinishLoading(unsigned long identifier, DocumentL
 
     m_resourcesData->maybeDecodeDataToContent(requestId);
 
-    double elapsedFinishTime = finishTime ? m_environment.executionStopwatch()->elapsedTimeSinceMonotonicTime(finishTime) : timestamp();
+    double elapsedFinishTime = finishTime ? m_environment.executionStopwatch()->elapsedTimeSince(MonotonicTime::fromRawSeconds(finishTime)) : timestamp();
 
     String sourceMappingURL;
     NetworkResourcesData::ResourceData const* resourceData = m_resourcesData->data(requestId);
@@ -450,14 +445,18 @@ void InspectorNetworkAgent::didReceiveScriptResponse(unsigned long identifier)
     m_resourcesData->setResourceType(IdentifiersFactory::requestId(identifier), InspectorPageAgent::ScriptResource);
 }
 
-void InspectorNetworkAgent::didFinishXHRLoading(ThreadableLoaderClient*, unsigned long identifier, const String& decodedText)
+void InspectorNetworkAgent::didReceiveThreadableLoaderResponse(unsigned long identifier, DocumentThreadableLoader& documentThreadableLoader)
 {
-    m_resourcesData->setResourceContent(IdentifiersFactory::requestId(identifier), decodedText);
+    String initiator = documentThreadableLoader.options().initiator;
+    if (initiator == cachedResourceRequestInitiators().fetch)
+        m_resourcesData->setResourceType(IdentifiersFactory::requestId(identifier), InspectorPageAgent::FetchResource);
+    else if (initiator == cachedResourceRequestInitiators().xmlhttprequest)
+        m_resourcesData->setResourceType(IdentifiersFactory::requestId(identifier), InspectorPageAgent::XHRResource);
 }
 
-void InspectorNetworkAgent::didReceiveXHRResponse(unsigned long identifier)
+void InspectorNetworkAgent::didFinishXHRLoading(unsigned long identifier, const String& decodedText)
 {
-    m_resourcesData->setResourceType(IdentifiersFactory::requestId(identifier), InspectorPageAgent::XHRResource);
+    m_resourcesData->setResourceContent(IdentifiersFactory::requestId(identifier), decodedText);
 }
 
 void InspectorNetworkAgent::willLoadXHRSynchronously()
@@ -678,14 +677,11 @@ void InspectorNetworkAgent::loadResource(ErrorString& errorString, const String&
     options.credentials = FetchOptions::Credentials::SameOrigin;
     options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
 
-    // InspectorThreadableLoaderClient deletes itself when the load completes.
+    // InspectorThreadableLoaderClient deletes itself when the load completes or fails.
     InspectorThreadableLoaderClient* inspectorThreadableLoaderClient = new InspectorThreadableLoaderClient(callback.copyRef());
-
     auto loader = DocumentThreadableLoader::create(*document, *inspectorThreadableLoaderClient, WTFMove(request), options);
-    if (!loader) {
-        inspectorThreadableLoaderClient->didFailLoaderCreation();
+    if (!loader)
         return;
-    }
 
     // If the load already completed, inspectorThreadableLoaderClient will have been deleted and we will have already called the callback.
     if (!callback->isActive())

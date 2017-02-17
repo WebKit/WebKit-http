@@ -36,15 +36,11 @@
 #include <WebCore/SubresourceLoader.h>
 #include <WebCore/URL.h>
 #include <wtf/MainThread.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/text/CString.h>
 
 #if PLATFORM(IOS)
 #include <WebCore/RuntimeApplicationChecks.h>
-#endif
-
-#if USE(QUICK_LOOK)
-#include <WebCore/QuickLook.h>
 #endif
 
 // Match the parallel connection count used by the networking layer.

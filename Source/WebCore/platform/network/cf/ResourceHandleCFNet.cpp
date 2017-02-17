@@ -137,18 +137,20 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
         firstRequest().setURL(urlWithCredentials);
     }
 
+    String partition = firstRequest().cachePartition();
+
     // <rdar://problem/7174050> - For URLs that match the paths of those previously challenged for HTTP Basic authentication,
     // try and reuse the credential preemptively, as allowed by RFC 2617.
     if (shouldUseCredentialStorage && firstRequest().url().protocolIsInHTTPFamily()) {
         if (d->m_user.isEmpty() && d->m_pass.isEmpty()) {
             // <rdar://problem/7174050> - For URLs that match the paths of those previously challenged for HTTP Basic authentication, 
             // try and reuse the credential preemptively, as allowed by RFC 2617.
-            d->m_initialCredential = d->m_context->storageSession().credentialStorage().get(firstRequest().url());
+            d->m_initialCredential = d->m_context->storageSession().credentialStorage().get(partition, firstRequest().url());
         } else {
             // If there is already a protection space known for the URL, update stored credentials before sending a request.
             // This makes it possible to implement logout by sending an XMLHttpRequest with known incorrect credentials, and aborting it immediately
             // (so that an authentication dialog doesn't pop up).
-            d->m_context->storageSession().credentialStorage().set(Credential(d->m_user, d->m_pass, CredentialPersistenceNone), firstRequest().url());
+            d->m_context->storageSession().credentialStorage().set(partition, Credential(d->m_user, d->m_pass, CredentialPersistenceNone), firstRequest().url());
         }
     }
         
@@ -171,9 +173,12 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
 #else
     if (allowsAnyHTTPSCertificateHosts().contains(firstRequest().url().host())) {
         sslProps = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         CFDictionaryAddValue(sslProps.get(), kCFStreamSSLAllowsAnyRoot, kCFBooleanTrue);
         CFDictionaryAddValue(sslProps.get(), kCFStreamSSLAllowsExpiredRoots, kCFBooleanTrue);
         CFDictionaryAddValue(sslProps.get(), kCFStreamSSLAllowsExpiredCertificates, kCFBooleanTrue);
+#pragma clang diagnostic pop
         CFDictionaryAddValue(sslProps.get(), kCFStreamSSLValidatesCertificateChain, kCFBooleanFalse);
     }
 
@@ -218,6 +223,7 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
         propertiesDictionary = adoptCF(CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, clientProperties));
     else
         propertiesDictionary = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+
 #if HAVE(TIMINGDATAOPTIONS)
     int64_t value = static_cast<int64_t>(_TimingDataOptionsEnableW3CNavigationTiming);
     auto enableW3CNavigationTiming = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt64Type, &value));
@@ -296,6 +302,8 @@ ResourceRequest ResourceHandle::willSendRequest(ResourceRequest&& request, Resou
     d->m_lastHTTPMethod = request.httpMethod();
     request.removeCredentials();
 
+    String partition = firstRequest().cachePartition();
+
     if (!protocolHostAndPortAreEqual(request.url(), redirectResponse.url())) {
         // The network layer might carry over some headers from the original request that
         // we want to strip here because the redirect is cross-origin.
@@ -305,7 +313,7 @@ ResourceRequest ResourceHandle::willSendRequest(ResourceRequest&& request, Resou
         // Only consider applying authentication credentials if this is actually a redirect and the redirect
         // URL didn't include credentials of its own.
         if (d->m_user.isEmpty() && d->m_pass.isEmpty() && !redirectResponse.isNull()) {
-            Credential credential = d->m_context->storageSession().credentialStorage().get(request.url());
+            Credential credential = d->m_context->storageSession().credentialStorage().get(partition, request.url());
             if (!credential.isEmpty()) {
                 d->m_initialCredential = credential;
                 
@@ -379,6 +387,8 @@ bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationCh
     if (!challenge.protectionSpace().isPasswordBased())
         return false;
 
+    String partition = firstRequest().cachePartition();
+
     if (!d->m_user.isNull() && !d->m_pass.isNull()) {
         RetainPtr<CFURLCredentialRef> cfCredential = adoptCF(CFURLCredentialCreate(kCFAllocatorDefault, d->m_user.createCFString().get(), d->m_pass.createCFString().get(), 0, kCFURLCredentialPersistenceNone));
 #if PLATFORM(COCOA)
@@ -390,7 +400,7 @@ bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationCh
         URL urlToStore;
         if (challenge.failureResponse().httpStatusCode() == 401)
             urlToStore = challenge.failureResponse().url();
-        d->m_context->storageSession().credentialStorage().set(credential, challenge.protectionSpace(), urlToStore);
+        d->m_context->storageSession().credentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
         
         CFURLConnectionUseCredential(d->m_connection.get(), cfCredential.get(), challenge.cfURLAuthChallengeRef());
         d->m_user = String();
@@ -404,16 +414,16 @@ bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationCh
             // The stored credential wasn't accepted, stop using it.
             // There is a race condition here, since a different credential might have already been stored by another ResourceHandle,
             // but the observable effect should be very minor, if any.
-            d->m_context->storageSession().credentialStorage().remove(challenge.protectionSpace());
+            d->m_context->storageSession().credentialStorage().remove(partition, challenge.protectionSpace());
         }
 
         if (!challenge.previousFailureCount()) {
-            Credential credential = d->m_context->storageSession().credentialStorage().get(challenge.protectionSpace());
+            Credential credential = d->m_context->storageSession().credentialStorage().get(partition, challenge.protectionSpace());
             if (!credential.isEmpty() && credential != d->m_initialCredential) {
                 ASSERT(credential.persistence() == CredentialPersistenceNone);
                 if (challenge.failureResponse().httpStatusCode() == 401) {
                     // Store the credential back, possibly adding it as a default for this directory.
-                    d->m_context->storageSession().credentialStorage().set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
+                    d->m_context->storageSession().credentialStorage().set(partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
                 }
 #if PLATFORM(COCOA)
                 CFURLConnectionUseCredential(d->m_connection.get(), credential.cfCredential(), challenge.cfURLAuthChallengeRef());
@@ -466,8 +476,9 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
 
         URL urlToStore;
         if (challenge.failureResponse().httpStatusCode() == 401)
-            urlToStore = challenge.failureResponse().url();      
-        d->m_context->storageSession().credentialStorage().set(webCredential, challenge.protectionSpace(), urlToStore);
+            urlToStore = challenge.failureResponse().url(); 
+
+        d->m_context->storageSession().credentialStorage().set(firstRequest().cachePartition(), webCredential, challenge.protectionSpace(), urlToStore);
 
         if (d->m_connection) {
 #if PLATFORM(COCOA)

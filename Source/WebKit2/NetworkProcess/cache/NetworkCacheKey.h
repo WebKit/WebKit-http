@@ -28,14 +28,29 @@
 
 #if ENABLE(NETWORK_CACHE)
 
+#include "NetworkCacheData.h"
 #include <wtf/SHA1.h>
+#include <wtf/persistence/Coder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {
 namespace NetworkCache {
 
-class Encoder;
-class Decoder;
+struct DataKey {
+    String partition;
+    String type;
+    SHA1::Digest identifier;
+
+    template <class Encoder> void encode(Encoder& encoder) const
+    {
+        encoder << partition << type << identifier;
+    }
+
+    template <class Decoder> static bool decode(Decoder& decoder, DataKey& dataKey)
+    {
+        return decoder.decode(dataKey.partition) && decoder.decode(dataKey.type) && decoder.decode(dataKey.identifier);
+    }
+};
 
 class Key {
 public:
@@ -44,7 +59,8 @@ public:
     Key() { }
     Key(const Key&);
     Key(Key&&) = default;
-    Key(const String& partition, const String& type, const String& range, const String& identifier);
+    Key(const String& partition, const String& type, const String& range, const String& identifier, const Salt&);
+    Key(const DataKey&, const Salt&);
 
     Key& operator=(const Key&);
     Key& operator=(Key&&) = default;
@@ -54,33 +70,37 @@ public:
 
     bool isNull() const { return m_identifier.isNull(); }
 
-    bool hasPartition() const;
     const String& partition() const { return m_partition; }
     const String& identifier() const { return m_identifier; }
     const String& type() const { return m_type; }
     const String& range() const { return m_range; }
 
-    HashType hash() const { return m_hash; }
+    const HashType& hash() const { return m_hash; }
+    const HashType& partitionHash() const { return m_partitionHash; }
 
     static bool stringToHash(const String&, HashType&);
 
     static size_t hashStringLength() { return 2 * sizeof(m_hash); }
-    String hashAsString() const;
+    String hashAsString() const { return hashAsString(m_hash); }
+    String partitionHashAsString() const { return hashAsString(m_partitionHash); }
 
-    void encode(Encoder&) const;
-    static bool decode(Decoder&, Key&);
+    void encode(WTF::Persistence::Encoder&) const;
+    static bool decode(WTF::Persistence::Decoder&, Key&);
 
     bool operator==(const Key&) const;
     bool operator!=(const Key& other) const { return !(*this == other); }
 
 private:
-    HashType computeHash() const;
+    static String hashAsString(const HashType&);
+    HashType computeHash(const Salt&) const;
+    HashType computePartitionHash(const Salt&) const;
 
     String m_partition;
     String m_type;
     String m_identifier;
     String m_range;
     HashType m_hash;
+    HashType m_partitionHash;
 };
 
 }

@@ -33,7 +33,6 @@
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
-#include "MemoryCache.h"
 #include "RuntimeApplicationChecks.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
@@ -125,7 +124,8 @@ void CachedScript::setBodyDataFrom(const CachedResource& resource)
     ASSERT(resource.type() == type());
     auto& script = static_cast<const CachedScript&>(resource);
 
-    m_data = script.m_data;
+    CachedResource::setBodyDataFrom(resource);
+
     m_script = script.m_script;
     m_scriptHash = script.m_scriptHash;
     m_decodingState = script.m_decodingState;

@@ -199,6 +199,24 @@ bool MediaStreamPrivate::hasAudio() const
     return false;
 }
 
+bool MediaStreamPrivate::hasLocalVideoSource() const
+{
+    for (auto& track : m_trackSet.values()) {
+        if (track->type() == RealtimeMediaSource::Type::Video && !track->remote())
+            return true;
+    }
+    return false;
+}
+
+bool MediaStreamPrivate::hasLocalAudioSource() const
+{
+    for (auto& track : m_trackSet.values()) {
+        if (track->type() == RealtimeMediaSource::Type::Audio && !track->remote())
+            return true;
+    }
+    return false;
+}
+
 bool MediaStreamPrivate::muted() const
 {
     for (auto& track : m_trackSet.values()) {
@@ -219,14 +237,6 @@ FloatSize MediaStreamPrivate::intrinsicSize() const
     }
 
     return size;
-}
-
-PlatformLayer* MediaStreamPrivate::platformLayer() const
-{
-    if (!m_activeVideoTrack)
-        return nullptr;
-
-    return m_activeVideoTrack->source().platformLayer();
 }
 
 void MediaStreamPrivate::paintCurrentFrameInContext(GraphicsContext& context, const FloatRect& rect)

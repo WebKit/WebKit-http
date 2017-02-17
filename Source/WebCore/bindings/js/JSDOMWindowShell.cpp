@@ -29,6 +29,7 @@
 #include "config.h"
 #include "JSDOMWindowShell.h"
 
+#include "CommonVM.h"
 #include "Frame.h"
 #include "GCController.h"
 #include "JSDOMWindow.h"
@@ -53,7 +54,7 @@ JSDOMWindowShell::JSDOMWindowShell(VM& vm, Structure* structure, DOMWrapperWorld
 void JSDOMWindowShell::finishCreation(VM& vm, RefPtr<DOMWindow>&& window)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     setWindow(WTFMove(window));
 }
 
@@ -79,7 +80,7 @@ void JSDOMWindowShell::setWindow(RefPtr<DOMWindow>&& domWindow)
     // when we allocate the global object. (Once the global object is fully
     // constructed, it can mark its own prototype.)
     
-    VM& vm = JSDOMWindow::commonVM();
+    VM& vm = commonVM();
     Structure* prototypeStructure = JSDOMWindowPrototype::createStructure(vm, 0, jsNull());
     Strong<JSDOMWindowPrototype> prototype(vm, JSDOMWindowPrototype::create(vm, 0, prototypeStructure));
 
@@ -105,9 +106,9 @@ DOMWindow& JSDOMWindowShell::wrapped() const
     return window()->wrapped();
 }
 
-DOMWindow* JSDOMWindowShell::toWrapped(JSObject* value)
+DOMWindow* JSDOMWindowShell::toWrapped(VM& vm, JSObject* value)
 {
-    auto* wrapper = jsDynamicDowncast<JSDOMWindowShell*>(value);
+    auto* wrapper = jsDynamicDowncast<JSDOMWindowShell*>(vm, value);
     if (!wrapper)
         return nullptr;
     return &wrapper->window()->wrapped();

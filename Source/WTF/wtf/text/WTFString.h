@@ -26,6 +26,7 @@
 // on systems without case-sensitive file systems.
 
 #include <wtf/text/ASCIIFastPath.h>
+#include <wtf/text/IntegerToStringConversion.h>
 #include <wtf/text/StringImpl.h>
 
 #ifdef __OBJC__
@@ -469,6 +470,14 @@ public:
         return (*m_impl)[index];
     }
 
+    // Turns this String empty if the StringImpl is not referenced by anyone else.
+    // This is useful for clearing String-based caches.
+    void clearImplIfNotShared()
+    {
+        if (m_impl && m_impl->hasOneRef())
+            m_impl = nullptr;
+    }
+
 private:
     template <typename CharacterType>
     void removeInternal(const CharacterType*, unsigned, int);
@@ -704,6 +713,12 @@ template<unsigned length> inline bool startsWithLettersIgnoringASCIICase(const S
 {
     return startsWithLettersIgnoringASCIICase(string.impl(), lowercaseLetters);
 }
+
+template<> struct IntegerToStringConversionTrait<String> {
+    using ReturnType = String;
+    using AdditionalArgumentType = void;
+    static String flush(LChar* characters, unsigned length, void*) { return { characters, length }; }
+};
 
 }
 

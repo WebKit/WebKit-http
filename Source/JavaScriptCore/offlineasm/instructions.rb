@@ -292,23 +292,6 @@ MIPS_INSTRUCTIONS =
     "pichdr"
     ]
 
-SH4_INSTRUCTIONS =
-    [
-    "flushcp",
-    "alignformova",
-    "mova",
-    "shllx",
-    "shlrx",
-    "shld",
-    "shad",
-    "bdnan",
-    "loaddReversedAndIncrementAddress",
-    "storedReversedAndDecrementAddress",
-    "ldspr",
-    "stspr",
-    "setargs"
-    ]
-
 CXX_INSTRUCTIONS =
     [
      "cloopCrash",              # no operands
@@ -326,7 +309,7 @@ CXX_INSTRUCTIONS =
      "cloopDo",              # no operands
     ]
 
-INSTRUCTIONS = MACRO_INSTRUCTIONS + X86_INSTRUCTIONS + ARM_INSTRUCTIONS + ARM64_INSTRUCTIONS + RISC_INSTRUCTIONS + MIPS_INSTRUCTIONS + SH4_INSTRUCTIONS + CXX_INSTRUCTIONS
+INSTRUCTIONS = MACRO_INSTRUCTIONS + X86_INSTRUCTIONS + ARM_INSTRUCTIONS + ARM64_INSTRUCTIONS + RISC_INSTRUCTIONS + MIPS_INSTRUCTIONS + CXX_INSTRUCTIONS
 
 INSTRUCTION_SET = INSTRUCTIONS.to_set
 

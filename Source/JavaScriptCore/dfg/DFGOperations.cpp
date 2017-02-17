@@ -47,6 +47,7 @@
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITExceptions.h"
+#include "JSArrayInlines.h"
 #include "JSCInlines.h"
 #include "JSFixedArray.h"
 #include "JSGenericTypedArrayViewConstructorInlines.h"
@@ -110,6 +111,7 @@ ALWAYS_INLINE static void JIT_OPERATION operationPutByValInternal(ExecState* exe
     if (LIKELY(property.isUInt32())) {
         // Despite its name, JSValue::isUInt32 will return true only for positive boxed int32_t; all those values are valid array indices.
         ASSERT(isIndex(property.asUInt32()));
+        scope.release();
         putByVal<strict, direct>(exec, baseValue, property.asUInt32(), value);
         return;
     }
@@ -118,6 +120,7 @@ ALWAYS_INLINE static void JIT_OPERATION operationPutByValInternal(ExecState* exe
         double propertyAsDouble = property.asDouble();
         uint32_t propertyAsUInt32 = static_cast<uint32_t>(propertyAsDouble);
         if (propertyAsDouble == propertyAsUInt32 && isIndex(propertyAsUInt32)) {
+            scope.release();
             putByVal<strict, direct>(exec, baseValue, propertyAsUInt32, value);
             return;
         }
@@ -130,12 +133,16 @@ ALWAYS_INLINE static void JIT_OPERATION operationPutByValInternal(ExecState* exe
     PutPropertySlot slot(baseValue, strict);
     if (direct) {
         RELEASE_ASSERT(baseValue.isObject());
-        if (Optional<uint32_t> index = parseIndex(propertyName))
+        if (std::optional<uint32_t> index = parseIndex(propertyName)) {
+            scope.release();
             asObject(baseValue)->putDirectIndex(exec, index.value(), value, 0, strict ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow);
-        else
-            asObject(baseValue)->putDirect(*vm, propertyName, value, slot);
-    } else
-        baseValue.put(exec, propertyName, value, slot);
+            return;
+        }
+        asObject(baseValue)->putDirect(*vm, propertyName, value, slot);
+        return;
+    }
+    scope.release();
+    baseValue.put(exec, propertyName, value, slot);
 }
 
 template<typename ViewClass>
@@ -152,7 +159,8 @@ char* newTypedArrayWithSize(ExecState* exec, Structure* structure, int32_t size,
     
     if (vector)
         return bitwise_cast<char*>(ViewClass::createWithFastVector(exec, structure, size, vector));
-    
+
+    scope.release();
     return bitwise_cast<char*>(ViewClass::create(exec, structure, size));
 }
 
@@ -189,8 +197,11 @@ JSCell* JIT_OPERATION operationCreateThis(ExecState* exec, JSObject* constructor
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
     auto scope = DECLARE_THROW_SCOPE(vm);
-    if (constructor->type() == JSFunctionType)
-        return constructEmptyObject(exec, jsCast<JSFunction*>(constructor)->rareData(exec, inlineCapacity)->objectAllocationProfile()->structure());
+    if (constructor->type() == JSFunctionType) {
+        auto rareData = jsCast<JSFunction*>(constructor)->rareData(exec, inlineCapacity);
+        RETURN_IF_EXCEPTION(scope, nullptr);
+        return constructEmptyObject(exec, rareData->objectAllocationProfile()->structure());
+    }
 
     JSValue proto = constructor->get(exec, exec->propertyNames().prototype);
     RETURN_IF_EXCEPTION(scope, nullptr);
@@ -223,6 +234,7 @@ EncodedJSValue JIT_OPERATION operationValueBitAnd(ExecState* exec, EncodedJSValu
 
     int32_t a = op1.toInt32(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     int32_t b = op2.toInt32(exec);
     return JSValue::encode(jsNumber(a & b));
 }
@@ -238,6 +250,7 @@ EncodedJSValue JIT_OPERATION operationValueBitOr(ExecState* exec, EncodedJSValue
 
     int32_t a = op1.toInt32(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     int32_t b = op2.toInt32(exec);
     return JSValue::encode(jsNumber(a | b));
 }
@@ -253,6 +266,7 @@ EncodedJSValue JIT_OPERATION operationValueBitXor(ExecState* exec, EncodedJSValu
 
     int32_t a = op1.toInt32(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     int32_t b = op2.toInt32(exec);
     return JSValue::encode(jsNumber(a ^ b));
 }
@@ -268,6 +282,7 @@ EncodedJSValue JIT_OPERATION operationValueBitLShift(ExecState* exec, EncodedJSV
 
     int32_t a = op1.toInt32(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     uint32_t b = op2.toUInt32(exec);
     return JSValue::encode(jsNumber(a << (b & 0x1f)));
 }
@@ -283,6 +298,7 @@ EncodedJSValue JIT_OPERATION operationValueBitRShift(ExecState* exec, EncodedJSV
 
     int32_t a = op1.toInt32(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     uint32_t b = op2.toUInt32(exec);
     return JSValue::encode(jsNumber(a >> (b & 0x1f)));
 }
@@ -298,6 +314,7 @@ EncodedJSValue JIT_OPERATION operationValueBitURShift(ExecState* exec, EncodedJS
 
     uint32_t a = op1.toUInt32(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     uint32_t b = op2.toUInt32(exec);
     return JSValue::encode(jsNumber(static_cast<int32_t>(a >> (b & 0x1f))));
 }
@@ -329,6 +346,7 @@ EncodedJSValue JIT_OPERATION operationValueDiv(ExecState* exec, EncodedJSValue e
 
     double a = op1.toNumber(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     double b = op2.toNumber(exec);
     return JSValue::encode(jsNumber(a / b));
 }
@@ -507,12 +525,16 @@ EncodedJSValue JIT_OPERATION operationGetByVal(ExecState* exec, EncodedJSValue e
         JSCell* base = baseValue.asCell();
 
         if (property.isUInt32()) {
+            scope.release();
             return getByVal(exec, base, property.asUInt32());
-        } else if (property.isDouble()) {
+        }
+        if (property.isDouble()) {
             double propertyAsDouble = property.asDouble();
             uint32_t propertyAsUInt32 = static_cast<uint32_t>(propertyAsDouble);
-            if (propertyAsUInt32 == propertyAsDouble && isIndex(propertyAsUInt32))
+            if (propertyAsUInt32 == propertyAsDouble && isIndex(propertyAsUInt32)) {
+                scope.release();
                 return getByVal(exec, base, propertyAsUInt32);
+            }
         } else if (property.isString()) {
             Structure& structure = *base->structure(vm);
             if (JSCell::canUseFastGetOwnProperty(structure)) {
@@ -528,6 +550,7 @@ EncodedJSValue JIT_OPERATION operationGetByVal(ExecState* exec, EncodedJSValue e
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     auto propertyName = property.toPropertyKey(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(baseValue.get(exec, propertyName));
 }
 
@@ -792,12 +815,15 @@ EncodedJSValue JIT_OPERATION operationRegExpExec(ExecState* exec, JSGlobalObject
     
     VM& vm = globalObject->vm();
     NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
     
     JSValue argument = JSValue::decode(encodedArgument);
 
     JSString* input = argument.toStringOrNull(exec);
+    ASSERT(!!scope.exception() == !input);
     if (!input)
-        return JSValue::encode(jsUndefined());
+        return encodedJSValue();
+    scope.release();
     return JSValue::encode(regExpObject->execInline(exec, globalObject, input));
 }
         
@@ -812,12 +838,14 @@ EncodedJSValue JIT_OPERATION operationRegExpExecGeneric(ExecState* exec, JSGloba
     JSValue base = JSValue::decode(encodedBase);
     JSValue argument = JSValue::decode(encodedArgument);
     
-    if (!base.inherits(RegExpObject::info()))
+    if (!base.inherits(vm, RegExpObject::info()))
         return throwVMTypeError(exec, scope);
 
     JSString* input = argument.toStringOrNull(exec);
+    ASSERT(!!scope.exception() == !input);
     if (!input)
         return JSValue::encode(jsUndefined());
+    scope.release();
     return JSValue::encode(asRegExpObject(base)->exec(exec, globalObject, input));
 }
         
@@ -857,14 +885,16 @@ size_t JIT_OPERATION operationRegExpTestGeneric(ExecState* exec, JSGlobalObject*
     JSValue base = JSValue::decode(encodedBase);
     JSValue argument = JSValue::decode(encodedArgument);
 
-    if (!base.inherits(RegExpObject::info())) {
+    if (!base.inherits(vm, RegExpObject::info())) {
         throwTypeError(exec, scope);
         return false;
     }
 
     JSString* input = argument.toStringOrNull(exec);
+    ASSERT(!!scope.exception() == !input);
     if (!input)
         return false;
+    scope.release();
     return asRegExpObject(base)->test(exec, globalObject, input);
 }
 
@@ -947,6 +977,7 @@ EncodedJSValue JIT_OPERATION operationGetByValWithThis(ExecState* exec, EncodedJ
         if (isJSString(baseValue) && asString(baseValue)->canGetIndex(i))
             return JSValue::encode(asString(baseValue)->getIndex(exec, i));
         
+        scope.release();
         return JSValue::encode(baseValue.get(exec, i, slot));
     }
 
@@ -955,6 +986,7 @@ EncodedJSValue JIT_OPERATION operationGetByValWithThis(ExecState* exec, EncodedJ
 
     auto property = subscript.toPropertyKey(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(baseValue.get(exec, property, slot));
 }
 
@@ -982,6 +1014,7 @@ void JIT_OPERATION operationPutByValWithThisStrict(ExecState* exec, EncodedJSVal
 
     Identifier property = JSValue::decode(encodedSubscript).toPropertyKey(exec);
     RETURN_IF_EXCEPTION(scope, void());
+    scope.release();
     putWithThis<true>(exec, encodedBase, encodedThis, encodedValue, property);
 }
 
@@ -993,6 +1026,7 @@ void JIT_OPERATION operationPutByValWithThis(ExecState* exec, EncodedJSValue enc
 
     Identifier property = JSValue::decode(encodedSubscript).toPropertyKey(exec);
     RETURN_IF_EXCEPTION(scope, void());
+    scope.release();
     putWithThis<false>(exec, encodedBase, encodedThis, encodedValue, property);
 }
 
@@ -1014,6 +1048,7 @@ void JIT_OPERATION operationDefineDataProperty(ExecState* exec, JSObject* base, 
 
     Identifier propertyName = JSValue::decode(encodedProperty).toPropertyKey(exec);
     RETURN_IF_EXCEPTION(scope, void());
+    scope.release();
     defineDataProperty(exec, vm, base, propertyName, JSValue::decode(encodedValue), attributes);
 }
 
@@ -1025,6 +1060,7 @@ void JIT_OPERATION operationDefineDataPropertyString(ExecState* exec, JSObject* 
 
     Identifier propertyName = property->toIdentifier(exec);
     RETURN_IF_EXCEPTION(scope, void());
+    scope.release();
     defineDataProperty(exec, vm, base, propertyName, JSValue::decode(encodedValue), attributes);
 }
 
@@ -1139,7 +1175,7 @@ char* JIT_OPERATION operationNewInt8ArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSInt8Array>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSInt8Array>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 char* JIT_OPERATION operationNewInt16ArrayWithSize(
@@ -1153,7 +1189,7 @@ char* JIT_OPERATION operationNewInt16ArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSInt16Array>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSInt16Array>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 char* JIT_OPERATION operationNewInt32ArrayWithSize(
@@ -1167,7 +1203,7 @@ char* JIT_OPERATION operationNewInt32ArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSInt32Array>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSInt32Array>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 char* JIT_OPERATION operationNewUint8ArrayWithSize(
@@ -1181,7 +1217,7 @@ char* JIT_OPERATION operationNewUint8ArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSUint8Array>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSUint8Array>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 char* JIT_OPERATION operationNewUint8ClampedArrayWithSize(
@@ -1195,7 +1231,7 @@ char* JIT_OPERATION operationNewUint8ClampedArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSUint8ClampedArray>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSUint8ClampedArray>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 char* JIT_OPERATION operationNewUint16ArrayWithSize(
@@ -1209,7 +1245,7 @@ char* JIT_OPERATION operationNewUint16ArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSUint16Array>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSUint16Array>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 char* JIT_OPERATION operationNewUint32ArrayWithSize(
@@ -1223,7 +1259,7 @@ char* JIT_OPERATION operationNewUint32ArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSUint32Array>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSUint32Array>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 char* JIT_OPERATION operationNewFloat32ArrayWithSize(
@@ -1237,7 +1273,7 @@ char* JIT_OPERATION operationNewFloat32ArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSFloat32Array>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSFloat32Array>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 char* JIT_OPERATION operationNewFloat64ArrayWithSize(
@@ -1251,7 +1287,7 @@ char* JIT_OPERATION operationNewFloat64ArrayWithOneArgument(
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSFloat64Array>(exec, structure, encodedValue, 0, Nullopt));
+    return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSFloat64Array>(exec, structure, encodedValue, 0, std::nullopt));
 }
 
 JSCell* JIT_OPERATION operationCreateActivationDirect(ExecState* exec, Structure* structure, JSScope* scope, SymbolTable* table, EncodedJSValue initialValueEncoded)
@@ -1370,7 +1406,7 @@ size_t JIT_OPERATION operationObjectIsObject(ExecState* exec, JSGlobalObject* gl
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(jsDynamicCast<JSObject*>(object));
+    ASSERT(jsDynamicCast<JSObject*>(vm, object));
     
     if (object->structure(vm)->masqueradesAsUndefined(globalObject))
         return false;
@@ -1390,7 +1426,7 @@ size_t JIT_OPERATION operationObjectIsFunction(ExecState* exec, JSGlobalObject* 
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(jsDynamicCast<JSObject*>(object));
+    ASSERT(jsDynamicCast<JSObject*>(vm, object));
     
     if (object->structure(vm)->masqueradesAsUndefined(globalObject))
         return false;
@@ -1410,7 +1446,7 @@ JSCell* JIT_OPERATION operationTypeOfObject(ExecState* exec, JSGlobalObject* glo
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(jsDynamicCast<JSObject*>(object));
+    ASSERT(jsDynamicCast<JSObject*>(vm, object));
     
     if (object->structure(vm)->masqueradesAsUndefined(globalObject))
         return vm.smallStrings.undefinedString();
@@ -1430,7 +1466,7 @@ int32_t JIT_OPERATION operationTypeOfObjectAsTypeofType(ExecState* exec, JSGloba
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(jsDynamicCast<JSObject*>(object));
+    ASSERT(jsDynamicCast<JSObject*>(vm, object));
     
     if (object->structure(vm)->masqueradesAsUndefined(globalObject))
         return static_cast<int32_t>(TypeofType::Undefined);
@@ -1445,7 +1481,7 @@ int32_t JIT_OPERATION operationTypeOfObjectAsTypeofType(ExecState* exec, JSGloba
     return static_cast<int32_t>(TypeofType::Object);
 }
 
-char* JIT_OPERATION operationAllocatePropertyStorageWithInitialCapacity(ExecState* exec)
+char* JIT_OPERATION operationAllocateSimplePropertyStorageWithInitialCapacity(ExecState* exec)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
@@ -1454,13 +1490,32 @@ char* JIT_OPERATION operationAllocatePropertyStorageWithInitialCapacity(ExecStat
         Butterfly::createUninitialized(vm, 0, 0, initialOutOfLineCapacity, false, 0));
 }
 
-char* JIT_OPERATION operationAllocatePropertyStorage(ExecState* exec, size_t newSize)
+char* JIT_OPERATION operationAllocateSimplePropertyStorage(ExecState* exec, size_t newSize)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
     return reinterpret_cast<char*>(
         Butterfly::createUninitialized(vm, 0, 0, newSize, false, 0));
+}
+
+char* JIT_OPERATION operationAllocateComplexPropertyStorageWithInitialCapacity(ExecState* exec, JSObject* object)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    ASSERT(!object->structure()->outOfLineCapacity());
+    return reinterpret_cast<char*>(
+        object->allocateMoreOutOfLineStorage(vm, 0, initialOutOfLineCapacity));
+}
+
+char* JIT_OPERATION operationAllocateComplexPropertyStorage(ExecState* exec, JSObject* object, size_t newSize)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    return reinterpret_cast<char*>(
+        object->allocateMoreOutOfLineStorage(vm, object->structure()->outOfLineCapacity(), newSize));
 }
 
 char* JIT_OPERATION operationEnsureInt32(ExecState* exec, JSCell* cell)
@@ -1891,7 +1946,7 @@ JSCell* JIT_OPERATION operationNewArrayWithSpreadSlow(ExecState* exec, void* buf
     unsigned length = 0;
     for (unsigned i = 0; i < numItems; i++) {
         JSValue value = JSValue::decode(values[i]);
-        if (JSFixedArray* array = jsDynamicCast<JSFixedArray*>(value))
+        if (JSFixedArray* array = jsDynamicCast<JSFixedArray*>(vm, value))
             length += array->size();
         else
             ++length;
@@ -1901,13 +1956,13 @@ JSCell* JIT_OPERATION operationNewArrayWithSpreadSlow(ExecState* exec, void* buf
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
 
-    JSArray* result = JSArray::tryCreateUninitialized(vm, structure, length);
+    JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, structure, length);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     unsigned index = 0;
     for (unsigned i = 0; i < numItems; i++) {
         JSValue value = JSValue::decode(values[i]);
-        if (JSFixedArray* array = jsDynamicCast<JSFixedArray*>(value)) {
+        if (JSFixedArray* array = jsDynamicCast<JSFixedArray*>(vm, value)) {
             // We are spreading.
             for (unsigned i = 0; i < array->size(); i++) {
                 result->initializeIndex(vm, index, array->get(i));
@@ -1930,18 +1985,18 @@ JSCell* JIT_OPERATION operationSpreadGeneric(ExecState* exec, JSCell* iterable)
 
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
-    JSGlobalObject* globalObject = iterable->structure(vm)->globalObject();
-    if (!globalObject)
-        globalObject = exec->lexicalGlobalObject();
-
-    if (isJSArray(iterable) && globalObject->isArrayIteratorProtocolFastAndNonObservable()) {
+    if (isJSArray(iterable)) {
         JSArray* array = jsCast<JSArray*>(iterable);
-        return JSFixedArray::createFromArray(exec, vm, array);
+        if (array->isIteratorProtocolFastAndNonObservable()) {
+            throwScope.release();
+            return JSFixedArray::createFromArray(exec, vm, array);
+        }
     }
 
     // FIXME: we can probably make this path faster by having our caller JS code call directly into
     // the iteration protocol builtin: https://bugs.webkit.org/show_bug.cgi?id=164520
 
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     JSArray* array;
     {
         JSFunction* iterationFunction = globalObject->iteratorProtocolFunction();
@@ -1956,6 +2011,7 @@ JSCell* JIT_OPERATION operationSpreadGeneric(ExecState* exec, JSCell* iterable)
         array = jsCast<JSArray*>(arrayResult);
     }
 
+    throwScope.release();
     return JSFixedArray::createFromArray(exec, vm, array);
 }
 
@@ -1966,7 +2022,7 @@ JSCell* JIT_OPERATION operationSpreadFastArray(ExecState* exec, JSCell* cell)
 
     ASSERT(isJSArray(cell));
     JSArray* array = jsCast<JSArray*>(cell);
-    ASSERT(array->globalObject()->isArrayIteratorProtocolFastAndNonObservable());
+    ASSERT(array->isIteratorProtocolFastAndNonObservable());
 
     return JSFixedArray::createFromArray(exec, vm, array);
 }
@@ -2033,6 +2089,7 @@ EncodedJSValue JIT_OPERATION operationGetDynamicVar(ExecState* exec, JSObject* s
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
     Identifier ident = Identifier::fromUid(exec, impl);
+    throwScope.release();
     return JSValue::encode(scope->getPropertySlot(exec, ident, [&] (bool found, PropertySlot& slot) -> JSValue {
         if (!found) {
             GetPutInfo getPutInfo(getPutInfoBits);
@@ -2064,6 +2121,7 @@ void JIT_OPERATION operationPutDynamicVar(ExecState* exec, JSObject* scope, Enco
     const Identifier& ident = Identifier::fromUid(exec, impl);
     GetPutInfo getPutInfo(getPutInfoBits);
     bool hasProperty = scope->hasProperty(exec, ident);
+    RETURN_IF_EXCEPTION(throwScope, void());
     if (hasProperty
         && scope->isGlobalLexicalEnvironment()
         && !isInitialization(getPutInfo.initializationMode())) {
@@ -2088,6 +2146,7 @@ void JIT_OPERATION operationPutDynamicVar(ExecState* exec, JSObject* scope, Enco
     else
         strictMode = exec->codeBlock()->isStrictMode();
     PutPropertySlot slot(scope, strictMode, PutPropertySlot::UnknownContext, isInitialization(getPutInfo.initializationMode()));
+    throwScope.release();
     scope->methodTable()->put(scope, exec, ident, JSValue::decode(value), slot);
 }
 
@@ -2292,6 +2351,37 @@ static char* tierUpCommon(ExecState* exec, unsigned originBytecodeIndex, unsigne
         worklistState = Worklist::NotKnown;
 
     JITCode* jitCode = codeBlock->jitCode()->dfg();
+
+    // The following is only true for triggerTierUpNowInLoop, which can never
+    // be an OSR entry.
+    bool canOSRFromHere = originBytecodeIndex == osrEntryBytecodeIndex;
+
+    bool triggeredSlowPathToStartCompilation = false;
+    auto tierUpEntryTriggers = jitCode->tierUpEntryTriggers.find(originBytecodeIndex);
+    if (tierUpEntryTriggers != jitCode->tierUpEntryTriggers.end()) {
+        switch (tierUpEntryTriggers->value) {
+        case JITCode::TriggerReason::DontTrigger:
+            // The trigger isn't set, we entered because the counter reached its
+            // threshold.
+            break;
+
+        case JITCode::TriggerReason::CompilationDone:
+            // The trigger was set because compilation completed. Don't unset it
+            // so that further DFG executions OSR enters as well.
+            RELEASE_ASSERT(canOSRFromHere);
+            break;
+
+        case JITCode::TriggerReason::StartCompilation:
+            // We were asked to enter as soon as possible and start compiling an
+            // entry for the current bytecode location. Unset this trigger so we
+            // don't continually enter.
+            RELEASE_ASSERT(canOSRFromHere);
+            tierUpEntryTriggers->value = JITCode::TriggerReason::DontTrigger;
+            triggeredSlowPathToStartCompilation = true;
+            break;
+        }
+    }
+
     if (worklistState == Worklist::Compiling) {
         CODEBLOCK_LOG_EVENT(codeBlock, "delayFTLCompile", ("still compiling"));
         jitCode->setOptimizationThresholdBasedOnCompilationResult(
@@ -2308,7 +2398,7 @@ static char* tierUpCommon(ExecState* exec, unsigned originBytecodeIndex, unsigne
     }
 
     // If we can OSR Enter, do it right away.
-    if (originBytecodeIndex == osrEntryBytecodeIndex) {
+    if (canOSRFromHere) {
         unsigned streamIndex = jitCode->bytecodeIndexToStreamIndex.get(originBytecodeIndex);
         if (CodeBlock* entryBlock = jitCode->osrEntryBlock()) {
             if (void* address = FTL::prepareOSREntry(exec, codeBlock, entryBlock, originBytecodeIndex, streamIndex)) {
@@ -2322,10 +2412,10 @@ static char* tierUpCommon(ExecState* exec, unsigned originBytecodeIndex, unsigne
     // - If we do have an FTL code block, then try to enter for a while.
     // - If we couldn't enter for a while, then trigger OSR entry.
 
-    if (!shouldTriggerFTLCompile(codeBlock, jitCode))
+    if (!shouldTriggerFTLCompile(codeBlock, jitCode) && !triggeredSlowPathToStartCompilation)
         return nullptr;
 
-    if (!jitCode->neverExecutedEntry) {
+    if (!jitCode->neverExecutedEntry && !triggeredSlowPathToStartCompilation) {
         triggerFTLReplacementCompile(vm, codeBlock, jitCode);
 
         if (!codeBlock->hasOptimizedReplacement())
@@ -2365,19 +2455,36 @@ static char* tierUpCommon(ExecState* exec, unsigned originBytecodeIndex, unsigne
         unsigned osrEntryBytecode = entryBlock->jitCode()->ftlForOSREntry()->bytecodeIndex();
         jitCode->clearOSREntryBlock();
         jitCode->osrEntryRetry = 0;
-        jitCode->tierUpEntryTriggers.set(osrEntryBytecode, 0);
+        jitCode->tierUpEntryTriggers.set(osrEntryBytecode, JITCode::TriggerReason::DontTrigger);
         jitCode->setOptimizationThresholdBasedOnCompilationResult(
             codeBlock, CompilationDeferred);
         return nullptr;
     }
 
+    if (!canOSRFromHere) {
+        // We can't OSR from here, or even start a compilation because doing so
+        // calls jitCode->reconstruct which would get the wrong state.
+        if (Options::verboseOSR())
+            dataLog("Non-OSR-able bc#", originBytecodeIndex, " in ", *codeBlock, " setting parent loop bc#", osrEntryBytecodeIndex, "'s trigger and backing off.\n");
+        jitCode->tierUpEntryTriggers.set(osrEntryBytecodeIndex, JITCode::TriggerReason::StartCompilation);
+        jitCode->setOptimizationThresholdBasedOnCompilationResult(codeBlock, CompilationDeferred);
+        return nullptr;
+    }
+
     unsigned streamIndex = jitCode->bytecodeIndexToStreamIndex.get(osrEntryBytecodeIndex);
-    auto tierUpHierarchyEntry = jitCode->tierUpInLoopHierarchy.find(osrEntryBytecodeIndex);
-    if (tierUpHierarchyEntry != jitCode->tierUpInLoopHierarchy.end()) {
-        for (unsigned osrEntryCandidate : tierUpHierarchyEntry->value) {
-            if (jitCode->tierUpEntrySeen.contains(osrEntryCandidate)) {
-                osrEntryBytecodeIndex = osrEntryCandidate;
-                streamIndex = jitCode->bytecodeIndexToStreamIndex.get(osrEntryBytecodeIndex);
+
+    if (!triggeredSlowPathToStartCompilation) {
+        auto tierUpHierarchyEntry = jitCode->tierUpInLoopHierarchy.find(osrEntryBytecodeIndex);
+        if (tierUpHierarchyEntry != jitCode->tierUpInLoopHierarchy.end()) {
+            for (unsigned osrEntryCandidate : tierUpHierarchyEntry->value) {
+                if (jitCode->tierUpEntrySeen.contains(osrEntryCandidate)) {
+                    // Ask an enclosing loop to compile, instead of doing so here.
+                    if (Options::verboseOSR())
+                        dataLog("Inner-loop bc#", originBytecodeIndex, " in ", *codeBlock, " setting parent loop bc#", osrEntryCandidate, "'s trigger and backing off.\n");
+                    jitCode->tierUpEntryTriggers.set(osrEntryCandidate, JITCode::TriggerReason::StartCompilation);
+                    jitCode->setOptimizationThresholdBasedOnCompilationResult(codeBlock, CompilationDeferred);
+                    return nullptr;
+                }
             }
         }
     }
@@ -2386,7 +2493,7 @@ static char* tierUpCommon(ExecState* exec, unsigned originBytecodeIndex, unsigne
     // something.
     auto triggerIterator = jitCode->tierUpEntryTriggers.find(osrEntryBytecodeIndex);
     RELEASE_ASSERT(triggerIterator != jitCode->tierUpEntryTriggers.end());
-    uint8_t* triggerAddress = &(triggerIterator->value);
+    JITCode::TriggerReason* triggerAddress = &(triggerIterator->value);
 
     Operands<JSValue> mustHandleValues;
     jitCode->reconstruct(

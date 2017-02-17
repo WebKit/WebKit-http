@@ -27,7 +27,8 @@
 
 #if PLATFORM(IOS)
 
-#import "AnimationController.h"
+#import "CSSAnimationController.h"
+#import "CommonVM.h"
 #import "DOMWindow.h"
 #import "Document.h"
 #import "DocumentMarkerController.h"
@@ -46,7 +47,6 @@
 #import "HTMLObjectElement.h"
 #import "HitTestRequest.h"
 #import "HitTestResult.h"
-#import "JSDOMWindowBase.h"
 #import "MainFrame.h"
 #import "NodeRenderStyle.h"
 #import "NodeTraversal.h"
@@ -59,6 +59,7 @@
 #import "RenderTextControl.h"
 #import "RenderView.h"
 #import "RenderedDocumentMarker.h"
+#import "ShadowRoot.h"
 #import "TextBoundaries.h"
 #import "TextIterator.h"
 #import "VisiblePosition.h"
@@ -258,9 +259,7 @@ static Node* ancestorRespondingToClickEvents(const HitTestResult& hitTestResult,
         *nodeBounds = IntRect();
 
     Node* pointerCursorNode = nullptr;
-    for (Node* node = hitTestResult.innerNode(); node && node != terminationNode; node = node->parentNode()) {
-        ASSERT(!node->isInShadowTree());
-
+    for (Node* node = hitTestResult.innerNode(); node && node != terminationNode; node = node->parentInComposedTree()) {
         // We only accept pointer nodes before reaching the body tag.
         if (node->hasTagName(HTMLNames::bodyTag)) {
 #if USE(UIKIT_EDITING)
@@ -283,7 +282,7 @@ static Node* ancestorRespondingToClickEvents(const HitTestResult& hitTestResult,
         else if (pointerCursorNode)
             pointerCursorStillValid = false;
 
-        if (node->willRespondToMouseClickEvents() || node->willRespondToMouseMoveEvents()) {
+        if (node->willRespondToMouseClickEvents() || node->willRespondToMouseMoveEvents() || (is<Element>(*node) && downcast<Element>(*node).isMouseFocusable())) {
             // If we're at the body or higher, use the pointer cursor node (which may be null).
             if (bodyHasBeenReached)
                 node = pointerCursorNode;
@@ -405,7 +404,7 @@ Node* Frame::qualifyingNodeAtViewportLocation(const FloatPoint& viewportLocation
         Node* failedNode = candidate;
 
         while (candidate && !candidate->isElementNode())
-            candidate = candidate->parentNode();
+            candidate = candidate->parentInComposedTree();
 
         if (candidate)
             failedNode = candidate;
@@ -544,7 +543,7 @@ void Frame::setTimersPaused(bool paused)
 {
     if (!m_page)
         return;
-    JSLockHolder lock(JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
     if (paused)
         m_page->suspendActiveDOMObjectsAndAnimations();
     else

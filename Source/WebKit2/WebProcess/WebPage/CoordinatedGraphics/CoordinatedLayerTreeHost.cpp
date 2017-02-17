@@ -168,7 +168,7 @@ void CoordinatedLayerTreeHost::didFlushRootLayer(const FloatRect& visibleContent
 {
     // Because our view-relative overlay root layer is not attached to the FrameView's GraphicsLayer tree, we need to flush it manually.
     if (m_viewOverlayRootLayer)
-        m_viewOverlayRootLayer->flushCompositingState(visibleContentRect,  m_webPage.mainFrame()->view()->viewportIsStable());
+        m_viewOverlayRootLayer->flushCompositingState(visibleContentRect);
 }
 
 void CoordinatedLayerTreeHost::layerFlushTimerFired()
@@ -234,7 +234,6 @@ GraphicsLayerFactory* CoordinatedLayerTreeHost::graphicsLayerFactory()
     return &m_coordinator;
 }
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
 void CoordinatedLayerTreeHost::scheduleAnimation()
 {
     if (m_isWaitingForRenderer)
@@ -246,7 +245,6 @@ void CoordinatedLayerTreeHost::scheduleAnimation()
     scheduleLayerFlush();
     m_layerFlushTimer.startOneShot(m_coordinator.nextAnimationServiceTime());
 }
-#endif
 
 void CoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset)
 {

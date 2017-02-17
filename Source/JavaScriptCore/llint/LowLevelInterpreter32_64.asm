@@ -49,7 +49,7 @@ macro dispatchAfterCall()
 end
 
 macro cCall2(function)
-    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
+    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
         call function
     elsif X86 or X86_WIN
         subp 8, sp
@@ -73,7 +73,7 @@ macro cCall2Void(function)
 end
 
 macro cCall4(function)
-    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
+    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
         call function
     elsif X86 or X86_WIN
         push a3
@@ -613,6 +613,10 @@ macro functionArityCheck(doneLabel, slowPath)
     // Move frame up t1 slots
     negi t1
     move cfr, t3
+    move t1, t0
+    lshiftp 3, t0
+    addp t0, cfr
+    addp t0, sp
 .copyLoop:
     loadi PayloadOffset[t3], t0
     storei t0, PayloadOffset[t3, t1, 8]
@@ -631,9 +635,6 @@ macro functionArityCheck(doneLabel, slowPath)
     addp 8, t3
     baddinz 1, t2, .fillLoop
 
-    lshiftp 3, t1
-    addp t1, cfr
-    addp t1, sp
 .continue:
     # Reload CodeBlock and PC, since the slow_path clobbered it.
     loadp CodeBlock[cfr], t1
@@ -2045,7 +2046,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         andp MarkedBlockMask, t3
         loadp MarkedBlock::m_vm[t3], t3
         addp 8, sp
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or C_LOOP or MIPS or SH4
+    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or C_LOOP or MIPS
         subp 8, sp # align stack pointer
         # t1 already contains the Callee.
         andp MarkedBlockMask, t1
@@ -2068,13 +2069,13 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         error
     end
     
-    functionEpilogue()
     btinz VM::m_exception[t3], .handleException
+
+    functionEpilogue()
     ret
 
 .handleException:
     storep cfr, VM::topCallFrame[t3]
-    restoreStackPointerAfterCall()
     jmp _llint_throw_from_slow_path_trampoline
 end
 

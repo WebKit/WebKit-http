@@ -130,7 +130,7 @@ RootInlineBox* RenderBlockFlow::createAndAppendRootInlineBox()
 
     if (UNLIKELY(AXObjectCache::accessibilityEnabled()) && firstRootBox() == rootBox) {
         if (AXObjectCache* cache = document().existingAXObjectCache())
-            cache->recomputeIsIgnored(this);
+            cache->recomputeDeferredIsIgnored(*this);
     }
 
     return rootBox;
@@ -486,9 +486,9 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
     
     // Since we don't cache glyph overflows, we need to re-measure the run if
     // the style is linebox-contain: glyph.
-    
     if (!lineBox->fitsToGlyphs() && canUseSimpleFontCodePath) {
         unsigned lastEndOffset = run->m_start;
+        bool atFirstWordMeasurement = true;
         for (size_t i = 0, size = wordMeasurements.size(); i < size && lastEndOffset < run->m_stop; ++i) {
             WordMeasurement& wordMeasurement = wordMeasurements[i];
             if (wordMeasurement.width <= 0 || wordMeasurement.startOffset == wordMeasurement.endOffset)
@@ -503,10 +503,13 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
                 measuredWidth += renderer.width(wordMeasurement.startOffset, wordLength, xPos + measuredWidth, lineInfo.isFirstLine(),
                     &wordMeasurement.fallbackFonts, &overflow);
                 UChar c = renderer.characterAt(wordMeasurement.startOffset);
-                if (i > 0 && wordLength == 1 && (c == ' ' || c == '\t'))
+                // renderer.width() omits word-spacing value for leading whitespace, so let's just add it back here.
+                if (!atFirstWordMeasurement && (c == ' ' || c == '\t'))
                     measuredWidth += renderer.style().fontCascade().wordSpacing();
             } else
                 measuredWidth += wordMeasurement.width;
+            atFirstWordMeasurement = false;
+
             if (!wordMeasurement.fallbackFonts.isEmpty()) {
                 HashSet<const Font*>::const_iterator end = wordMeasurement.fallbackFonts.end();
                 for (HashSet<const Font*>::const_iterator it = wordMeasurement.fallbackFonts.begin(); it != end; ++it)
@@ -894,8 +897,9 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
             if (unsigned length = renderText.textLength()) {
                 if (!run->m_start && needsWordSpacing && isSpaceOrNewline(renderText.characterAt(run->m_start)))
                     totalLogicalWidth += lineStyle(*renderText.parent(), lineInfo).fontCascade().wordSpacing();
-                ASSERT(run->m_stop > 0);
-                needsWordSpacing = !isSpaceOrNewline(renderText.characterAt(run->m_stop - 1)) && run->m_stop == length;
+                // run->m_start == run->m_stop should only be true iff the run is a replaced run for bidi: isolate.
+                ASSERT(run->m_stop > 0 || run->m_start == run->m_stop);
+                needsWordSpacing = run->m_stop == length && !isSpaceOrNewline(renderText.characterAt(run->m_stop - 1));
             }
 
             setLogicalWidthForTextRun(lineBox, run, renderText, totalLogicalWidth, lineInfo, textBoxDataMap, verticalPositionCache, wordMeasurements);
@@ -2259,7 +2263,7 @@ LayoutUnit RenderBlockFlow::startAlignedOffsetForLine(LayoutUnit position, Inden
     // https://bugs.webkit.org/show_bug.cgi?id=124522
     // This quirk is for legacy content that doesn't work properly with the center positioning scheme
     // being honored (e.g., epubs).
-    if (shouldApplyIndentText || document().settings()->useLegacyTextAlignPositionedElementBehavior()) // FIXME: Handle TAEND here
+    if (shouldApplyIndentText || settings().useLegacyTextAlignPositionedElementBehavior()) // FIXME: Handle TAEND here
         return startOffsetForLine(position, shouldIndentText);
 
     // updateLogicalWidthForAlignment() handles the direction of the block so no need to consider it here

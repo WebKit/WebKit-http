@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2015 Canon Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -151,17 +151,12 @@ String decodeFromFilename(const String& inputString)
             return { };
 
         if (inputString[i+1] != '+') {
-            char value;
-            if (!hexDigitValue(inputString[i + 1], value))
+            if (!isASCIIHexDigit(inputString[i + 1]))
                 return { };
-            LChar character = value << 4;
-
-            if (!hexDigitValue(inputString[i + 2], value))
+            if (!isASCIIHexDigit(inputString[i + 2]))
                 return { };
-
-            result.append(character | value);
+            result.append(toASCIIHexValue(inputString[i + 1], inputString[i + 2]));
             i += 2;
-
             continue;
         }
 
@@ -170,23 +165,16 @@ String decodeFromFilename(const String& inputString)
         if (i + 5 >= length)
             return { };
 
-        char value;
-        if (!hexDigitValue(inputString[i + 2], value))
+        if (!isASCIIHexDigit(inputString[i + 2]))
             return { };
-        UChar character = value << 12;
-
-        if (!hexDigitValue(inputString[i + 3], value))
+        if (!isASCIIHexDigit(inputString[i + 3]))
             return { };
-        character = character | (value << 8);
-
-        if (!hexDigitValue(inputString[i + 4], value))
+        if (!isASCIIHexDigit(inputString[i + 4]))
             return { };
-        character = character | (value << 4);
-
-        if (!hexDigitValue(inputString[i + 5], value))
+        if (!isASCIIHexDigit(inputString[i + 5]))
             return { };
 
-        result.append(character | value);
+        result.append(toASCIIHexValue(inputString[i + 2], inputString[i + 3]) << 8 | toASCIIHexValue(inputString[i + 4], inputString[i + 5]));
         i += 5;
     }
 
@@ -243,6 +231,26 @@ bool appendFileContentsToFileHandle(const String& path, PlatformFileHandle& targ
     } while (true);
 
     ASSERT_NOT_REACHED();
+}
+
+    
+bool filesHaveSameVolume(const String& fileA, const String& fileB)
+{
+    auto fsRepFileA = fileSystemRepresentation(fileA);
+    auto fsRepFileB = fileSystemRepresentation(fileB);
+    
+    if (fsRepFileA.isNull() || fsRepFileB.isNull())
+        return false;
+
+    bool result = false;
+
+    auto fileADev = getFileDeviceId(fsRepFileA);
+    auto fileBDev = getFileDeviceId(fsRepFileB);
+
+    if (fileADev && fileBDev)
+        result = (fileADev == fileBDev);
+    
+    return result;
 }
 
 #if !PLATFORM(MAC)

@@ -839,8 +839,8 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         let indentString = WebInspector.indentString();
         const includeSourceMapData = true;
 
-        // FIXME: Properly pass if this is a module or script.
-        const isModule = false;
+        let sourceType = this._delegate.textEditorScriptSourceType(this);
+        const isModule = sourceType === WebInspector.Script.SourceType.Module;
 
         let workerProxy = WebInspector.FormatterWorkerProxy.singleton();
         workerProxy.formatJavaScript(sourceText, isModule, indentString, includeSourceMapData, ({formattedText, sourceMapData}) => {
@@ -1086,6 +1086,13 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         this._bouncyHighlightElement.style.left = coordinates.left + "px";
         this.element.appendChild(this._bouncyHighlightElement);
 
+        let scrollHandler = () => {
+            if (this._bouncyHighlightElement)
+                this._bouncyHighlightElement.remove();
+        };
+
+        this.addScrollHandler(scrollHandler);
+
         function animationEnded()
         {
             if (!this._bouncyHighlightElement)
@@ -1093,6 +1100,8 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
             this._bouncyHighlightElement.remove();
             delete this._bouncyHighlightElement;
+
+            this.removeScrollHandler(scrollHandler);
         }
 
         // Listen for the end of the animation so we can remove the element.

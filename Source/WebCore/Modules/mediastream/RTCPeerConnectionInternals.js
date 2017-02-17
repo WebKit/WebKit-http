@@ -71,7 +71,18 @@ function objectAndCallbacksOverload(args, functionName, objectInfo, promiseMode,
         argsCount = 1;
     } else {
         const hasMatchingType = objectArg instanceof objectInfo.constructor;
-        objectArgOk = objectInfo.defaultsToNull ? (objectArg === null || typeof objectArg === "undefined" || hasMatchingType) : hasMatchingType;
+        if (hasMatchingType)
+            objectArgOk = true;
+        else if (objectInfo.defaultsToNull)
+            objectArgOk = objectArg === null || typeof objectArg === "undefined";
+        else if (objectInfo.maybeDictionary) {
+            try {
+                objectArg = new objectInfo.constructor(objectArg);
+                objectArgOk = true;
+            } catch (e) {
+                objectArgOk = false;
+            }
+        }
     }
 
     if (!objectArgOk)
@@ -104,7 +115,7 @@ function callbacksAndDictionaryOverload(args, functionName, promiseMode, legacyM
         // Zero or one arguments: Promise mode
         const options = args[0];
         if (args.length && !@isDictionary(options))
-            return @Promise.@reject(new @TypeError(`Argument 1 ('options') to RTCPeerConnection.${functionName} must be a Dictionary`));
+            return @Promise.@reject(new @TypeError(`Argument 1 ('options') to RTCPeerConnection.${functionName} must be a dictionary`));
 
         return promiseMode(options);
     }
@@ -121,7 +132,7 @@ function callbacksAndDictionaryOverload(args, functionName, promiseMode, legacyM
         return @Promise.@reject(new @TypeError(`Argument 2 ('errorCallback') to RTCPeerConnection.${functionName} must be a function`));
 
     if (args.length > 2 && !@isDictionary(options))
-        return @Promise.@reject(new @TypeError(`Argument 3 ('options') to RTCPeerConnection.${functionName} must be a Dictionary`));
+        return @Promise.@reject(new @TypeError(`Argument 3 ('options') to RTCPeerConnection.${functionName} must be a dictionary`));
 
     return legacyMode(successCallback, errorCallback, args[2]);
 }

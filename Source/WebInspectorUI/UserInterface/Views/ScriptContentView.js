@@ -124,6 +124,7 @@ WebInspector.ScriptContentView = class ScriptContentView extends WebInspector.Co
         super.closed();
 
         WebInspector.showJavaScriptTypeInformationSetting.removeEventListener(null, null, this);
+        WebInspector.enableControlFlowProfilerSetting.removeEventListener(null, null, this);
 
         this._textEditor.close();
     }
@@ -233,7 +234,7 @@ WebInspector.ScriptContentView = class ScriptContentView extends WebInspector.Co
         this._showTypesButtonNavigationItem.enabled = false;
         this._textEditor.toggleTypeAnnotations().then(() => {
             this._showTypesButtonNavigationItem.enabled = true;
-        })
+        });
     }
 
     _toggleUnexecutedCodeHighlights(event)

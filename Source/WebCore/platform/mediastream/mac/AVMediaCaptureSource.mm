@@ -30,15 +30,18 @@
 
 #import "AVCaptureDeviceManager.h"
 #import "AudioSourceProvider.h"
-#import "CoreMediaSoftLink.h"
 #import "Logging.h"
 #import "MediaConstraints.h"
 #import "RealtimeMediaSourceSettings.h"
-#import "SoftLinking.h"
 #import "UUID.h"
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVCaptureDevice.h>
+#import <AVFoundation/AVCaptureInput.h>
+#import <AVFoundation/AVCaptureOutput.h>
+#import <AVFoundation/AVCaptureSession.h>
 #import <objc/runtime.h>
 #import <wtf/MainThread.h>
+
+#import "CoreMediaSoftLink.h"
 
 typedef AVCaptureConnection AVCaptureConnectionType;
 typedef AVCaptureDevice AVCaptureDeviceTypedef;
@@ -123,11 +126,10 @@ static dispatch_queue_t globaVideoCaptureSerialQueue()
 }
 
 AVMediaCaptureSource::AVMediaCaptureSource(AVCaptureDeviceTypedef* device, const AtomicString& id, RealtimeMediaSource::Type type)
-    : RealtimeMediaSource(id, type, emptyString())
+    : RealtimeMediaSource(id, type, device.localizedName)
     , m_objcObserver(adoptNS([[WebCoreAVMediaCaptureSourceObserver alloc] initWithCallback:this]))
     , m_device(device)
 {
-    setName(device.localizedName);
     setPersistentID(device.uniqueID);
     setMuted(true);
 }
@@ -235,6 +237,7 @@ void AVMediaCaptureSource::reset()
     m_isRunning = false;
     for (NSString *keyName in sessionKVOProperties())
         [m_session removeObserver:m_objcObserver.get() forKeyPath:keyName];
+
     shutdownCaptureSession();
     m_session = nullptr;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -196,6 +196,14 @@ float InspectorFrontendHost::zoomFactor()
     return 1.0;
 }
 
+String InspectorFrontendHost::userInterfaceLayoutDirection()
+{
+    if (m_client && m_client->userInterfaceLayoutDirection() == UserInterfaceLayoutDirection::RTL)
+        return ASCIILiteral("rtl");
+
+    return ASCIILiteral("ltr");
+}
+
 void InspectorFrontendHost::setAttachedWindowHeight(unsigned height)
 {
     if (m_client)
@@ -339,8 +347,8 @@ void InspectorFrontendHost::showContextMenu(Event* event, const Vector<ContextMe
         return;
     }
     auto menuProvider = FrontendMenuProvider::create(this, { &state, frontendApiObject }, items);
-    m_frontendPage->contextMenuController().showContextMenu(event, menuProvider.ptr());
     m_menuProvider = menuProvider.ptr();
+    m_frontendPage->contextMenuController().showContextMenu(*event, menuProvider);
 }
 
 #endif
@@ -355,7 +363,7 @@ void InspectorFrontendHost::dispatchEventAsContextMenuEvent(Event* event)
     MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
     IntPoint mousePoint = IntPoint(mouseEvent.clientX(), mouseEvent.clientY());
 
-    m_frontendPage->contextMenuController().showContextMenuAt(frame, mousePoint);
+    m_frontendPage->contextMenuController().showContextMenuAt(*frame, mousePoint);
 #else
     UNUSED_PARAM(event);
 #endif

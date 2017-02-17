@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "ConcurrentJITLock.h"
+#include "ConcurrentJSLock.h"
 #include "YarrPattern.h"
 
 namespace WTF {
@@ -87,7 +87,8 @@ struct ByteTerm {
                 unsigned parenthesesWidth;
             };
             QuantifierType quantityType;
-            unsigned quantityCount;
+            unsigned quantityMinCount;
+            unsigned quantityMaxCount;
         } atom;
         struct {
             int next;
@@ -110,6 +111,12 @@ struct ByteTerm {
         , m_capture(false)
         , m_invert(false)
     {
+        atom.patternCharacter = ch;
+        atom.quantityType = quantityType;
+        atom.quantityMinCount = quantityCount.unsafeGet();
+        atom.quantityMaxCount = quantityCount.unsafeGet();
+        inputPosition = inputPos;
+
         switch (quantityType) {
         case QuantifierFixedCount:
             type = (quantityCount == 1) ? ByteTerm::TypePatternCharacterOnce : ByteTerm::TypePatternCharacterFixed;
@@ -121,11 +128,6 @@ struct ByteTerm {
             type = ByteTerm::TypePatternCharacterNonGreedy;
             break;
         }
-
-        atom.patternCharacter = ch;
-        atom.quantityType = quantityType;
-        atom.quantityCount = quantityCount.unsafeGet();
-        inputPosition = inputPos;
     }
 
     ByteTerm(UChar32 lo, UChar32 hi, unsigned inputPos, unsigned frameLocation, Checked<unsigned> quantityCount, QuantifierType quantityType)
@@ -148,7 +150,8 @@ struct ByteTerm {
         atom.casedCharacter.lo = lo;
         atom.casedCharacter.hi = hi;
         atom.quantityType = quantityType;
-        atom.quantityCount = quantityCount.unsafeGet();
+        atom.quantityMinCount = quantityCount.unsafeGet();
+        atom.quantityMaxCount = quantityCount.unsafeGet();
         inputPosition = inputPos;
     }
 
@@ -159,7 +162,8 @@ struct ByteTerm {
     {
         atom.characterClass = characterClass;
         atom.quantityType = QuantifierFixedCount;
-        atom.quantityCount = 1;
+        atom.quantityMinCount = 1;
+        atom.quantityMaxCount = 1;
         inputPosition = inputPos;
     }
 
@@ -171,7 +175,8 @@ struct ByteTerm {
         atom.subpatternId = subpatternId;
         atom.parenthesesDisjunction = parenthesesInfo;
         atom.quantityType = QuantifierFixedCount;
-        atom.quantityCount = 1;
+        atom.quantityMinCount = 1;
+        atom.quantityMaxCount = 1;
         inputPosition = inputPos;
     }
     
@@ -181,7 +186,8 @@ struct ByteTerm {
         , m_invert(invert)
     {
         atom.quantityType = QuantifierFixedCount;
-        atom.quantityCount = 1;
+        atom.quantityMinCount = 1;
+        atom.quantityMaxCount = 1;
     }
 
     ByteTerm(Type type, unsigned subpatternId, bool capture, bool invert, unsigned inputPos)
@@ -191,7 +197,8 @@ struct ByteTerm {
     {
         atom.subpatternId = subpatternId;
         atom.quantityType = QuantifierFixedCount;
-        atom.quantityCount = 1;
+        atom.quantityMinCount = 1;
+        atom.quantityMaxCount = 1;
         inputPosition = inputPos;
     }
 
@@ -337,7 +344,7 @@ public:
 struct BytecodePattern {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    BytecodePattern(std::unique_ptr<ByteDisjunction> body, Vector<std::unique_ptr<ByteDisjunction>>& parenthesesInfoToAdopt, YarrPattern& pattern, BumpPointerAllocator* allocator, ConcurrentJITLock* lock)
+    BytecodePattern(std::unique_ptr<ByteDisjunction> body, Vector<std::unique_ptr<ByteDisjunction>>& parenthesesInfoToAdopt, YarrPattern& pattern, BumpPointerAllocator* allocator, ConcurrentJSLock* lock)
         : m_body(WTFMove(body))
         , m_flags(pattern.m_flags)
         , m_allocator(allocator)
@@ -370,7 +377,7 @@ public:
     // Each BytecodePattern is associated with a RegExp, each RegExp is associated
     // with a VM.  Cache a pointer to out VM's m_regExpAllocator.
     BumpPointerAllocator* m_allocator;
-    ConcurrentJITLock* m_lock;
+    ConcurrentJSLock* m_lock;
 
     CharacterClass* newlineCharacterClass;
     CharacterClass* wordcharCharacterClass;
@@ -380,7 +387,7 @@ private:
     Vector<std::unique_ptr<CharacterClass>> m_userCharacterClasses;
 };
 
-JS_EXPORT_PRIVATE std::unique_ptr<BytecodePattern> byteCompile(YarrPattern&, BumpPointerAllocator*, ConcurrentJITLock* = nullptr);
+JS_EXPORT_PRIVATE std::unique_ptr<BytecodePattern> byteCompile(YarrPattern&, BumpPointerAllocator*, ConcurrentJSLock* = nullptr);
 JS_EXPORT_PRIVATE unsigned interpret(BytecodePattern*, const String& input, unsigned start, unsigned* output);
 unsigned interpret(BytecodePattern*, const LChar* input, unsigned length, unsigned start, unsigned* output);
 unsigned interpret(BytecodePattern*, const UChar* input, unsigned length, unsigned start, unsigned* output);

@@ -55,6 +55,11 @@
 #include "UserContentController.h"
 #endif
 
+#if USE(QUICK_LOOK)
+#include "PreviewConverter.h"
+#include "QuickLook.h"
+#endif
+
 namespace WebCore {
 
 ResourceLoader::ResourceLoader(Frame& frame, ResourceLoaderOptions options)
@@ -128,7 +133,7 @@ bool ResourceLoader::init(const ResourceRequest& r)
     
     m_defersLoading = m_options.defersLoadingPolicy == DefersLoadingPolicy::AllowDefersLoading && m_frame->page()->defersLoading();
 
-    if (m_options.securityCheck == DoSecurityCheck && !m_frame->document()->securityOrigin()->canDisplay(clientRequest.url())) {
+    if (m_options.securityCheck == DoSecurityCheck && !m_frame->document()->securityOrigin().canDisplay(clientRequest.url())) {
         FrameLoader::reportLocalLoadFailed(m_frame.get(), clientRequest.url().string());
         releaseResources();
         return false;
@@ -191,7 +196,7 @@ void ResourceLoader::start()
         return;
 #endif
 
-    if (m_documentLoader->applicationCacheHost()->maybeLoadResource(*this, m_request, m_request.url()))
+    if (m_documentLoader->applicationCacheHost().maybeLoadResource(*this, m_request, m_request.url()))
         return;
 
     if (m_defersLoading) {
@@ -371,6 +376,11 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest& request, const Res
     else
         InspectorInstrumentation::willSendRequest(m_frame.get(), m_identifier, m_frame->loader().documentLoader(), request, redirectResponse);
 
+#if USE(QUICK_LOOK)
+    if (auto previewConverter = m_documentLoader->previewConverter())
+        request = previewConverter->safeRequest(request);
+#endif
+
     bool isRedirect = !redirectResponse.isNull();
     if (isRedirect)
         platformStrategies()->loaderStrategy()->crossOriginRedirectReceived(this, request.url());
@@ -422,7 +432,7 @@ static void logResourceResponseSource(Frame* frame, ResourceResponse::Source sou
         return;
     }
 
-    frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceResponseKey(), DiagnosticLoggingKeys::sourceKey(), sourceKey, ShouldSample::Yes);
+    frame->page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceResponseSourceKey(), sourceKey, ShouldSample::Yes);
 }
 
 void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
@@ -436,27 +446,6 @@ void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
     logResourceResponseSource(m_frame.get(), r.source());
 
     m_response = r;
-
-    if (m_response.isHttpVersion0_9()) {
-        auto url = m_response.url();
-        // Non-HTTP responses are interpreted as HTTP/0.9 which may allow exfiltration of data
-        // from non-HTTP services. Therefore cancel if the document was loaded with different
-        // HTTP version or if the resource request was to a non-default port.
-        if (!m_documentLoader->response().isHttpVersion0_9()) {
-            String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 and the document was loaded with a different HTTP version.";
-            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
-            ResourceError error(emptyString(), 0, url, message);
-            didFail(error);
-            return;
-        }
-        if (url.port() && !isDefaultPortForProtocol(url.port().value(), url.protocol())) {
-            String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 on a non-default port.";
-            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
-            ResourceError error(emptyString(), 0, url, message);
-            didFail(error);
-            return;
-        }
-    }
 
     if (FormData* data = m_request.httpBody())
         data->removeGeneratedFilesIfNeeded();
@@ -628,7 +617,7 @@ ResourceError ResourceLoader::cannotShowURLError()
 
 ResourceRequest ResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest&& request, ResourceResponse&& redirectResponse)
 {
-    if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(this, request, redirectResponse))
+    if (documentLoader()->applicationCacheHost().maybeLoadFallbackForRedirect(this, request, redirectResponse))
         return WTFMove(request);
     willSendRequestInternal(request, redirectResponse);
     return WTFMove(request);
@@ -641,7 +630,7 @@ void ResourceLoader::didSendData(ResourceHandle*, unsigned long long bytesSent, 
 
 void ResourceLoader::didReceiveResponse(ResourceHandle*, ResourceResponse&& response)
 {
-    if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForResponse(this, response))
+    if (documentLoader()->applicationCacheHost().maybeLoadFallbackForResponse(this, response))
         return;
     didReceiveResponse(response);
 }
@@ -663,7 +652,7 @@ void ResourceLoader::didFinishLoading(ResourceHandle*, double finishTime)
 
 void ResourceLoader::didFail(ResourceHandle*, const ResourceError& error)
 {
-    if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForError(this, error))
+    if (documentLoader()->applicationCacheHost().maybeLoadFallbackForError(this, error))
         return;
     didFail(error);
 }
@@ -691,7 +680,7 @@ bool ResourceLoader::isAllowedToAskUserForCredentials() const
 {
     if (m_options.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials)
         return false;
-    return m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_frame->document()->securityOrigin()->canRequest(originalRequest().url()));
+    return m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_frame->document()->securityOrigin().canRequest(originalRequest().url()));
 }
 
 void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
@@ -753,16 +742,19 @@ void ResourceLoader::unschedule(SchedulePair& pair)
 #endif
 
 #if USE(QUICK_LOOK)
-void ResourceLoader::didCreateQuickLookHandle(QuickLookHandle& handle)
+bool ResourceLoader::isQuickLookResource() const
 {
-    m_isQuickLookResource = true;
-    frameLoader()->client().didCreateQuickLookHandle(handle);
+    return !!m_quickLookHandle;
 }
 #endif
 
 bool ResourceLoader::isAlwaysOnLoggingAllowed() const
 {
     return frameLoader() && frameLoader()->isAlwaysOnLoggingAllowed();
+}
+
+void ResourceLoader::didRetrieveDerivedDataFromCache(const String&, SharedBuffer&)
+{
 }
 
 }

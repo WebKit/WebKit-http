@@ -62,6 +62,7 @@
 #import "RenderStyle.h"
 #import "RenderThemeIOS.h"
 #import "RenderView.h"
+#import "RuntimeEnabledFeatures.h"
 #import "SoftLinking.h"
 #import "UIKitSPI.h"
 #import "UTIUtilities.h"
@@ -356,10 +357,9 @@ void RenderThemeIOS::adjustCheckboxStyle(StyleResolver&, RenderStyle& style, con
     if (!style.width().isIntrinsicOrAuto() && !style.height().isAuto())
         return;
 
-    Length length = Length(static_cast<int>(ceilf(std::max(style.fontSize(), 10))), Fixed);
-    
-    style.setWidth(length);
-    style.setHeight(length);
+    int size = std::max(style.fontSize(), 10);
+    style.setWidth({ size, Fixed });
+    style.setHeight({ size, Fixed });
 }
 
 static CGPoint shortened(CGPoint start, CGPoint end, float width)
@@ -447,10 +447,10 @@ bool RenderThemeIOS::isControlStyled(const RenderStyle& style, const BorderData&
 {
     // Buttons and MenulistButtons are styled if they contain a background image.
     if (style.appearance() == PushButtonPart || style.appearance() == MenulistButtonPart)
-        return !style.visitedDependentColor(CSSPropertyBackgroundColor).alpha() || style.backgroundLayers()->hasImage();
+        return !style.visitedDependentColor(CSSPropertyBackgroundColor).isVisible() || style.backgroundLayers().hasImage();
 
     if (style.appearance() == TextFieldPart || style.appearance() == TextAreaPart)
-        return *style.backgroundLayers() != background;
+        return style.backgroundLayers() != background;
 
     return RenderTheme::isControlStyled(style, border, background, backgroundColor);
 }
@@ -460,10 +460,10 @@ void RenderThemeIOS::adjustRadioStyle(StyleResolver&, RenderStyle& style, const 
     if (!style.width().isIntrinsicOrAuto() && !style.height().isAuto())
         return;
 
-    Length length = Length(static_cast<int>(ceilf(std::max(style.fontSize(), 10))), Fixed);
-    style.setWidth(length);
-    style.setHeight(length);
-    style.setBorderRadius(IntSize(length.value() / 2.0f, length.value() / 2.0f));
+    int size = std::max(style.fontSize(), 10);
+    style.setWidth({ size, Fixed });
+    style.setHeight({ size, Fixed });
+    style.setBorderRadius({ size / 2, size / 2 });
 }
 
 bool RenderThemeIOS::paintRadioDecorations(const RenderObject& box, const PaintInfo& paintInfo, const IntRect& rect)
@@ -537,13 +537,11 @@ LengthBox RenderThemeIOS::popupInternalPaddingBox(const RenderStyle& style) cons
 
 void RenderThemeIOS::adjustRoundBorderRadius(RenderStyle& style, RenderBox& box)
 {
-    if (style.appearance() == NoControlPart || style.backgroundLayers()->hasImage())
+    if (style.appearance() == NoControlPart || style.backgroundLayers().hasImage())
         return;
 
-    // FIXME: We should not be relying on border radius for the appearance of our controls <rdar://problem/7675493>
-    Length radiusWidth(static_cast<int>(std::min(box.width(), box.height()) / 2.0), Fixed);
-    Length radiusHeight(static_cast<int>(box.height() / 2.0), Fixed);
-    style.setBorderRadius(LengthSize(radiusWidth, radiusHeight));
+    // FIXME: We should not be relying on border radius for the appearance of our controls <rdar://problem/7675493>.
+    style.setBorderRadius({ { std::min(box.width(), box.height()) / 2, Fixed }, { box.height() / 2, Fixed } });
 }
 
 static void applyCommonButtonPaddingToStyle(RenderStyle& style, const Element& element)
@@ -654,11 +652,11 @@ bool RenderThemeIOS::paintMenuListButtonDecorations(const RenderBox& box, const 
         FloatSize bottomRightRadius;
 
         if (isRTL) {
-            topRightRadius = FloatSize(valueForLength(style.borderTopRightRadius().width(), rect.width()) - style.borderRightWidth(), valueForLength(style.borderTopRightRadius().height(), rect.height()) - style.borderTopWidth());
-            bottomRightRadius = FloatSize(valueForLength(style.borderBottomRightRadius().width(), rect.width()) - style.borderRightWidth(), valueForLength(style.borderBottomRightRadius().height(), rect.height()) - style.borderBottomWidth());
+            topRightRadius = FloatSize(valueForLength(style.borderTopRightRadius().width, rect.width()) - style.borderRightWidth(), valueForLength(style.borderTopRightRadius().height, rect.height()) - style.borderTopWidth());
+            bottomRightRadius = FloatSize(valueForLength(style.borderBottomRightRadius().width, rect.width()) - style.borderRightWidth(), valueForLength(style.borderBottomRightRadius().height, rect.height()) - style.borderBottomWidth());
         } else {
-            topLeftRadius = FloatSize(valueForLength(style.borderTopLeftRadius().width(), rect.width()) - style.borderLeftWidth(), valueForLength(style.borderTopLeftRadius().height(), rect.height()) - style.borderTopWidth());
-            bottomLeftRadius = FloatSize(valueForLength(style.borderBottomLeftRadius().width(), rect.width()) - style.borderLeftWidth(), valueForLength(style.borderBottomLeftRadius().height(), rect.height()) - style.borderBottomWidth());
+            topLeftRadius = FloatSize(valueForLength(style.borderTopLeftRadius().width, rect.width()) - style.borderLeftWidth(), valueForLength(style.borderTopLeftRadius().height, rect.height()) - style.borderTopWidth());
+            bottomLeftRadius = FloatSize(valueForLength(style.borderBottomLeftRadius().width, rect.width()) - style.borderLeftWidth(), valueForLength(style.borderBottomLeftRadius().height, rect.height()) - style.borderBottomWidth());
         }
 
         paintInfo.context().clipRoundedRect(FloatRoundedRect(titleClip,
@@ -691,11 +689,11 @@ bool RenderThemeIOS::paintMenuListButtonDecorations(const RenderBox& box, const 
         FloatSize bottomRightRadius;
 
         if (isRTL) {
-            topLeftRadius = FloatSize(valueForLength(style.borderTopLeftRadius().width(), rect.width()) - style.borderLeftWidth(), valueForLength(style.borderTopLeftRadius().height(), rect.height()) - style.borderTopWidth());
-            bottomLeftRadius = FloatSize(valueForLength(style.borderBottomLeftRadius().width(), rect.width()) - style.borderLeftWidth(), valueForLength(style.borderBottomLeftRadius().height(), rect.height()) - style.borderBottomWidth());
+            topLeftRadius = FloatSize(valueForLength(style.borderTopLeftRadius().width, rect.width()) - style.borderLeftWidth(), valueForLength(style.borderTopLeftRadius().height, rect.height()) - style.borderTopWidth());
+            bottomLeftRadius = FloatSize(valueForLength(style.borderBottomLeftRadius().width, rect.width()) - style.borderLeftWidth(), valueForLength(style.borderBottomLeftRadius().height, rect.height()) - style.borderBottomWidth());
         } else {
-            topRightRadius = FloatSize(valueForLength(style.borderTopRightRadius().width(), rect.width()) - style.borderRightWidth(), valueForLength(style.borderTopRightRadius().height(), rect.height()) - style.borderTopWidth());
-            bottomRightRadius = FloatSize(valueForLength(style.borderBottomRightRadius().width(), rect.width()) - style.borderRightWidth(), valueForLength(style.borderBottomRightRadius().height(), rect.height()) - style.borderBottomWidth());
+            topRightRadius = FloatSize(valueForLength(style.borderTopRightRadius().width, rect.width()) - style.borderRightWidth(), valueForLength(style.borderTopRightRadius().height, rect.height()) - style.borderTopWidth());
+            bottomRightRadius = FloatSize(valueForLength(style.borderBottomRightRadius().width, rect.width()) - style.borderRightWidth(), valueForLength(style.borderBottomRightRadius().height, rect.height()) - style.borderBottomWidth());
         }
 
         paintInfo.context().clipRoundedRect(FloatRoundedRect(buttonClip,
@@ -757,10 +755,9 @@ void RenderThemeIOS::adjustSliderTrackStyle(StyleResolver& selector, RenderStyle
 {
     RenderTheme::adjustSliderTrackStyle(selector, style, element);
 
-    // FIXME: We should not be relying on border radius for the appearance of our controls <rdar://problem/7675493>
-    Length radiusWidth(static_cast<int>(kTrackRadius), Fixed);
-    Length radiusHeight(static_cast<int>(kTrackRadius), Fixed);
-    style.setBorderRadius(LengthSize(radiusWidth, radiusHeight));
+    // FIXME: We should not be relying on border radius for the appearance of our controls <rdar://problem/7675493>.
+    int radius = static_cast<int>(kTrackRadius);
+    style.setBorderRadius({ { radius, Fixed }, { radius, Fixed } });
 }
 
 bool RenderThemeIOS::paintSliderTrack(const RenderObject& box, const PaintInfo& paintInfo, const IntRect& rect)
@@ -847,14 +844,12 @@ void RenderThemeIOS::adjustSliderThumbSize(RenderStyle& style, const Element*) c
         return;
 
     // Enforce "border-radius: 50%".
-    Length length(50.0f, Percent);
-    style.setBorderRadius(LengthSize(length, length));
+    style.setBorderRadius({ { 50, Percent }, { 50, Percent } });
 
     // Enforce a 16x16 size if no size is provided.
     if (style.width().isIntrinsicOrAuto() || style.height().isAuto()) {
-        Length length = Length(kDefaultSliderThumbSize, Fixed);
-        style.setWidth(length);
-        style.setHeight(length);
+        style.setWidth({ kDefaultSliderThumbSize, Fixed });
+        style.setHeight({ kDefaultSliderThumbSize, Fixed });
     }
 }
 
@@ -1290,30 +1285,81 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontC
 String RenderThemeIOS::mediaControlsStyleSheet()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_mediaControlsStyleSheet.isEmpty())
-        m_mediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsiOS" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
-    return m_mediaControlsStyleSheet;
+    if (m_legacyMediaControlsStyleSheet.isEmpty())
+        m_legacyMediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsiOS" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
+    return m_legacyMediaControlsStyleSheet;
 #else
     return emptyString();
 #endif
 }
 
-String RenderThemeIOS::mediaControlsScript()
+String RenderThemeIOS::modernMediaControlsStyleSheet()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_mediaControlsScript.isEmpty()) {
-        StringBuilder scriptBuilder;
-        NSBundle* bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
-        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsiOS" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-        m_mediaControlsScript = scriptBuilder.toString();
+    if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
+        if (m_mediaControlsStyleSheet.isEmpty())
+            m_mediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"modern-media-controls" ofType:@"css" inDirectory:@"modern-media-controls"] encoding:NSUTF8StringEncoding error:nil];
+        return m_mediaControlsStyleSheet;
     }
-    return m_mediaControlsScript;
+    return emptyString();
 #else
     return emptyString();
 #endif
 }
+
+void RenderThemeIOS::purgeCaches()
+{
+    m_legacyMediaControlsScript.clearImplIfNotShared();
+    m_mediaControlsScript.clearImplIfNotShared();
+    m_legacyMediaControlsStyleSheet.clearImplIfNotShared();
+    m_mediaControlsStyleSheet.clearImplIfNotShared();
+}
+
+String RenderThemeIOS::mediaControlsScript()
+{
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
+        if (m_mediaControlsScript.isEmpty()) {
+            NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+
+            StringBuilder scriptBuilder;
+            scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"modern-media-controls-localized-strings.js" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+            scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"modern-media-controls" ofType:@"js" inDirectory:@"modern-media-controls"] encoding:NSUTF8StringEncoding error:nil]);
+            m_mediaControlsScript = scriptBuilder.toString();
+        }
+        return m_mediaControlsScript;
+    }
+
+    if (m_legacyMediaControlsScript.isEmpty()) {
+        NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+
+        StringBuilder scriptBuilder;
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsiOS" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+
+        m_legacyMediaControlsScript = scriptBuilder.toString();
+    }
+    return m_legacyMediaControlsScript;
+#else
+    return emptyString();
+#endif
+}
+
+String RenderThemeIOS::mediaControlsBase64StringForIconAndPlatform(const String& iconName, const String& platform)
+{
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
+        return emptyString();
+
+    String directory = "modern-media-controls/images/" + platform;
+    NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+    return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:@"png" inDirectory:directory]] base64EncodedStringWithOptions:0];
+#else
+    return emptyString();
+#endif
+}
+
 #endif // ENABLE(VIDEO)
 
 Color RenderThemeIOS::systemColor(CSSValueID cssValueID) const

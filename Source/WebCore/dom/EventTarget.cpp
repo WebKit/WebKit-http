@@ -42,8 +42,8 @@
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Ref.h>
+#include <wtf/SetForScope.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/TemporaryChange.h>
 #include <wtf/Vector.h>
 
 using namespace WTF;
@@ -187,14 +187,14 @@ static const AtomicString& legacyType(const Event& event)
 
 bool EventTarget::fireEventListeners(Event& event)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
     ASSERT(event.isInitialized());
 
     auto* data = eventTargetData();
     if (!data)
         return true;
 
-    TemporaryChange<bool> firingEventListenersScope(data->isFiringEventListeners, true);
+    SetForScope<bool> firingEventListenersScope(data->isFiringEventListeners, true);
 
     if (auto* listenersVector = data->eventListenerMap.find(event.type())) {
         fireEventListeners(event, *listenersVector);
@@ -247,9 +247,8 @@ void EventTarget::fireEventListeners(Event& event, EventListenerVector listeners
         if (registeredListener->isPassive())
             event.setInPassiveListener(true);
 
-        auto cookie = InspectorInstrumentation::willHandleEvent(context, event);
+        InspectorInstrumentation::willHandleEvent(context, event);
         registeredListener->callback().handleEvent(context, &event);
-        InspectorInstrumentation::didHandleEvent(cookie);
 
         if (registeredListener->isPassive())
             event.setInPassiveListener(false);
@@ -273,6 +272,18 @@ void EventTarget::removeAllEventListeners()
     if (!data)
         return;
     data->eventListenerMap.clear();
+}
+
+void EventTarget::visitJSEventListeners(JSC::SlotVisitor& visitor)
+{
+    EventTargetData* data = eventTargetDataConcurrently();
+    if (!data)
+        return;
+    
+    auto locker = holdLock(data->eventListenerMap.lock());
+    EventListenerIterator iterator(&data->eventListenerMap);
+    while (auto* listener = iterator.nextListener())
+        listener->visitJSFunction(visitor);
 }
 
 } // namespace WebCore

@@ -28,7 +28,6 @@ set(WebKit2_USE_PREFIX_HEADER ON)
 list(APPEND WebKit2_SOURCES
     DatabaseProcess/gtk/DatabaseProcessMainGtk.cpp
 
-    NetworkProcess/CustomProtocols/soup/CustomProtocolManagerImpl.cpp
     NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
 
     NetworkProcess/Downloads/gtk/DownloadSoupErrorsGtk.cpp
@@ -89,9 +88,12 @@ list(APPEND WebKit2_SOURCES
     UIProcess/DefaultUndoController.cpp
     UIProcess/DrawingAreaProxyImpl.cpp
     UIProcess/LegacySessionStateCodingNone.cpp
+    UIProcess/WebResourceLoadStatisticsManager.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
     UIProcess/WebTextChecker.cpp
     UIProcess/WebTextCheckerClient.cpp
+
+    UIProcess/API/C/WKResourceLoadStatisticsManager.cpp
 
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
 
@@ -101,7 +103,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/gtk/WKView.cpp
 
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
-    UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
 
     UIProcess/API/gtk/APIWebsiteDataStoreGtk.cpp
     UIProcess/API/gtk/PageClientImpl.cpp
@@ -134,6 +135,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitCookieManagerPrivate.h
     UIProcess/API/gtk/WebKitCredential.cpp
     UIProcess/API/gtk/WebKitCredential.h
+    UIProcess/API/gtk/WebKitCustomProtocolManagerClient.cpp
+    UIProcess/API/gtk/WebKitCustomProtocolManagerClient.h
     UIProcess/API/gtk/WebKitDefines.h
     UIProcess/API/gtk/WebKitDownload.cpp
     UIProcess/API/gtk/WebKitDownload.h
@@ -187,6 +190,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitNavigationPolicyDecision.cpp
     UIProcess/API/gtk/WebKitNavigationPolicyDecision.h
     UIProcess/API/gtk/WebKitNavigationPolicyDecisionPrivate.h
+    UIProcess/API/gtk/WebKitNetworkProxySettings.cpp
+    UIProcess/API/gtk/WebKitNetworkProxySettings.h
+    UIProcess/API/gtk/WebKitNetworkProxySettingsPrivate.h
     UIProcess/API/gtk/WebKitNotification.cpp
     UIProcess/API/gtk/WebKitNotification.h
     UIProcess/API/gtk/WebKitNotificationPermissionRequest.cpp
@@ -205,13 +211,14 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitPolicyDecision.cpp
     UIProcess/API/gtk/WebKitPolicyDecision.h
     UIProcess/API/gtk/WebKitPolicyDecisionPrivate.h
+    UIProcess/API/gtk/WebKitPrintCustomWidget.cpp
+    UIProcess/API/gtk/WebKitPrintCustomWidget.h
+    UIProcess/API/gtk/WebKitPrintCustomWidgetPrivate.h
     UIProcess/API/gtk/WebKitPrintOperation.cpp
     UIProcess/API/gtk/WebKitPrintOperation.h
     UIProcess/API/gtk/WebKitPrintOperationPrivate.h
     UIProcess/API/gtk/WebKitPrivate.cpp
     UIProcess/API/gtk/WebKitPrivate.h
-    UIProcess/API/gtk/WebKitRequestManagerClient.cpp
-    UIProcess/API/gtk/WebKitRequestManagerClient.h
     UIProcess/API/gtk/WebKitResponsePolicyDecision.cpp
     UIProcess/API/gtk/WebKitResponsePolicyDecision.h
     UIProcess/API/gtk/WebKitResponsePolicyDecisionPrivate.h
@@ -221,6 +228,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitSecurityManager.cpp
     UIProcess/API/gtk/WebKitSecurityManager.h
     UIProcess/API/gtk/WebKitSecurityManagerPrivate.h
+    UIProcess/API/gtk/WebKitSecurityOrigin.cpp
+    UIProcess/API/gtk/WebKitSecurityOrigin.h
+    UIProcess/API/gtk/WebKitSecurityOriginPrivate.h
     UIProcess/API/gtk/WebKitSettings.cpp
     UIProcess/API/gtk/WebKitSettings.h
     UIProcess/API/gtk/WebKitSettingsPrivate.h
@@ -266,6 +276,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitWebViewSessionState.cpp
     UIProcess/API/gtk/WebKitWebViewSessionState.h
     UIProcess/API/gtk/WebKitWebViewSessionStatePrivate.h
+    UIProcess/API/gtk/WebKitWebsiteData.cpp
+    UIProcess/API/gtk/WebKitWebsiteData.h
+    UIProcess/API/gtk/WebKitWebsiteDataPrivate.h
     UIProcess/API/gtk/WebKitWebsiteDataManager.cpp
     UIProcess/API/gtk/WebKitWebsiteDataManager.h
     UIProcess/API/gtk/WebKitWebsiteDataManagerPrivate.h
@@ -283,8 +296,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/linux/MemoryPressureMonitor.cpp
 
     UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
-    UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
-    UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
 
     UIProcess/Plugins/gtk/PluginInfoCache.cpp
 
@@ -304,8 +315,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gtk/AcceleratedBackingStoreWayland.cpp
     UIProcess/gtk/AcceleratedBackingStoreX11.cpp
     UIProcess/gtk/DragAndDropHandler.cpp
-    UIProcess/gtk/ExperimentalFeatures.cpp
     UIProcess/gtk/GestureController.cpp
+    UIProcess/gtk/HardwareAccelerationManager.cpp
     UIProcess/gtk/InputMethodFilter.cpp
     UIProcess/gtk/KeyBindingTranslator.cpp
     UIProcess/gtk/TextCheckerGtk.cpp
@@ -527,15 +538,18 @@ set(WebKit2GTK_INSTALLED_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitMimeInfo.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNavigationAction.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNavigationPolicyDecision.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNetworkProxySettings.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNotificationPermissionRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNotification.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitPermissionRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitPlugin.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitPolicyDecision.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitPrintCustomWidget.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitPrintOperation.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitResponsePolicyDecision.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitScriptDialog.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitSecurityManager.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitSecurityOrigin.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitSettings.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitURIRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitURIResponse.h
@@ -549,6 +563,7 @@ set(WebKit2GTK_INSTALLED_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebView.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebViewBase.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebViewSessionState.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebsiteData.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebsiteDataManager.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWindowProperties.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/webkit2.h
@@ -830,14 +845,6 @@ list(INSERT WebKit2_INCLUDE_DIRECTORIES 0
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/PluginProcess/unix"
-    "${WEBCORE_DIR}/platform/cairo"
-    "${WEBCORE_DIR}/platform/gtk"
-    "${WEBCORE_DIR}/platform/graphics/cairo"
-    "${WEBCORE_DIR}/platform/graphics/freetype"
-    "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/x11"
-    "${WEBCORE_DIR}/platform/network/soup"
-    "${WEBCORE_DIR}/platform/text/enchant"
     "${WEBKIT2_DIR}/DatabaseProcess/unix"
     "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols/soup"
     "${WEBKIT2_DIR}/NetworkProcess/Downloads/soup"
@@ -874,9 +881,6 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/soup"
     "${WEBKIT2_DIR}/WebProcess/WebPage/atk"
     "${WEBKIT2_DIR}/WebProcess/WebPage/gtk"
-    "${WTF_DIR}/wtf/gtk"
-    "${WTF_DIR}/wtf/glib"
-    "${WTF_DIR}"
 )
 
 list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
@@ -1195,7 +1199,6 @@ if (ENABLE_THREADED_COMPOSITOR)
         WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp
     )
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
         "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
         "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
         "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
@@ -1214,7 +1217,6 @@ include_directories(
     "${WEBKIT2_DIR}/UIProcess/API/C"
     "${WEBKIT2_DIR}/WebProcess/InjectedBundle"
     "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c"
-    "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_DIR}/InjectedBundle"
     "${FORWARDING_HEADERS_DIR}"
     "${FORWARDING_HEADERS_WEBKIT2GTK_DIR}"

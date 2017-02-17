@@ -39,7 +39,7 @@ static EncodedJSValue JSC_HOST_CALL MapIteratorPrototypeFuncNext(ExecState*);
 void MapIteratorPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     vm.prototypeMap.addPrototype(this);
 
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, MapIteratorPrototypeFuncNext, DontEnum, 0);
@@ -51,13 +51,16 @@ EncodedJSValue JSC_HOST_CALL MapIteratorPrototypeFuncNext(CallFrame* callFrame)
     VM& vm = callFrame->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSMapIterator* iterator = jsDynamicCast<JSMapIterator*>(callFrame->thisValue());
+    JSMapIterator* iterator = jsDynamicCast<JSMapIterator*>(vm, callFrame->thisValue());
     if (!iterator)
         return JSValue::encode(throwTypeError(callFrame, scope, ASCIILiteral("Cannot call MapIterator.next() on a non-MapIterator object")));
 
     JSValue result;
-    if (iterator->next(callFrame, result))
+    if (iterator->next(callFrame, result)) {
+        scope.release();
         return JSValue::encode(createIteratorResultObject(callFrame, result, false));
+    }
+    scope.release();
     return JSValue::encode(createIteratorResultObject(callFrame, jsUndefined(), true));
 }
 

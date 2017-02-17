@@ -67,16 +67,16 @@ void RealtimeMediaSource::reset()
     m_remote = false;
 }
 
-void RealtimeMediaSource::addObserver(RealtimeMediaSource::Observer* observer)
+void RealtimeMediaSource::addObserver(RealtimeMediaSource::Observer& observer)
 {
-    m_observers.append(observer);
+    m_observers.append(&observer);
 }
 
-void RealtimeMediaSource::removeObserver(RealtimeMediaSource::Observer* observer)
+void RealtimeMediaSource::removeObserver(RealtimeMediaSource::Observer& observer)
 {
-    size_t pos = m_observers.find(observer);
-    if (pos != notFound)
-        m_observers.remove(pos);
+    m_observers.removeFirstMatching([&observer](auto* anObserver) {
+        return anObserver == &observer;
+    });
 
     if (!m_observers.size())
         stop();
@@ -112,10 +112,17 @@ void RealtimeMediaSource::settingsDidChange()
     });
 }
 
-void RealtimeMediaSource::mediaDataUpdated(MediaSample& mediaSample)
+void RealtimeMediaSource::videoSampleAvailable(MediaSample& mediaSample)
 {
-    for (auto& observer : m_observers)
-        observer->sourceHasMoreMediaData(mediaSample);
+    ASSERT(isMainThread());
+    for (const auto& observer : m_observers)
+        observer->videoSampleAvailable(mediaSample);
+}
+
+void RealtimeMediaSource::audioSamplesAvailable(const MediaTime& time, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t numberOfFrames)
+{
+    for (const auto& observer : m_observers)
+        observer->audioSamplesAvailable(time, audioData, description, numberOfFrames);
 }
 
 bool RealtimeMediaSource::readonly() const
@@ -130,7 +137,7 @@ void RealtimeMediaSource::stop(Observer* callingObserver)
 
     m_stopped = true;
 
-    for (auto* observer : m_observers) {
+    for (const auto& observer : m_observers) {
         if (observer != callingObserver)
             observer->sourceStopped();
     }
@@ -143,20 +150,20 @@ void RealtimeMediaSource::requestStop(Observer* callingObserver)
     if (stopped())
         return;
 
-    for (auto* observer : m_observers) {
+    for (const auto& observer : m_observers) {
         if (observer->preventSourceFromStopping())
             return;
     }
     stop(callingObserver);
 }
 
-bool RealtimeMediaSource::supportsSizeAndFrameRate(Optional<int>, Optional<int>, Optional<double>)
+bool RealtimeMediaSource::supportsSizeAndFrameRate(std::optional<int>, std::optional<int>, std::optional<double>)
 {
     // The size and frame rate are within the capability limits, so they are supported.
     return true;
 }
 
-bool RealtimeMediaSource::supportsSizeAndFrameRate(Optional<IntConstraint> widthConstraint, Optional<IntConstraint> heightConstraint, Optional<DoubleConstraint> frameRateConstraint, String& badConstraint)
+bool RealtimeMediaSource::supportsSizeAndFrameRate(std::optional<IntConstraint> widthConstraint, std::optional<IntConstraint> heightConstraint, std::optional<DoubleConstraint> frameRateConstraint, String& badConstraint)
 {
     if (!widthConstraint && !heightConstraint && !frameRateConstraint)
         return true;
@@ -164,7 +171,7 @@ bool RealtimeMediaSource::supportsSizeAndFrameRate(Optional<IntConstraint> width
     ASSERT(this->capabilities());
     RealtimeMediaSourceCapabilities& capabilities = *this->capabilities();
 
-    Optional<int> width;
+    std::optional<int> width;
     if (widthConstraint && capabilities.supportsWidth()) {
         if (std::isinf(fitnessDistance(*widthConstraint))) {
             badConstraint = widthConstraint->name();
@@ -175,7 +182,7 @@ bool RealtimeMediaSource::supportsSizeAndFrameRate(Optional<IntConstraint> width
         width = widthConstraint->valueForCapabilityRange(size().width(), range.rangeMin().asInt, range.rangeMax().asInt);
     }
 
-    Optional<int> height;
+    std::optional<int> height;
     if (heightConstraint && capabilities.supportsHeight()) {
         if (std::isinf(fitnessDistance(*heightConstraint))) {
             badConstraint = heightConstraint->name();
@@ -186,7 +193,7 @@ bool RealtimeMediaSource::supportsSizeAndFrameRate(Optional<IntConstraint> width
         height = heightConstraint->valueForCapabilityRange(size().height(), range.rangeMin().asInt, range.rangeMax().asInt);
     }
 
-    Optional<double> frameRate;
+    std::optional<double> frameRate;
     if (frameRateConstraint && capabilities.supportsFrameRate()) {
         if (std::isinf(fitnessDistance(*frameRateConstraint))) {
             badConstraint = frameRateConstraint->name();
@@ -296,7 +303,7 @@ double RealtimeMediaSource::fitnessDistance(const MediaConstraint& constraint)
         Vector<String> supportedModes;
         supportedModes.reserveInitialCapacity(modes.size());
         for (auto& mode : modes)
-            supportedModes.append(RealtimeMediaSourceSettings::facingMode(mode));
+            supportedModes.uncheckedAppend(RealtimeMediaSourceSettings::facingMode(mode));
         return downcast<StringConstraint>(constraint).fitnessDistance(supportedModes);
         break;
     }
@@ -345,7 +352,7 @@ static void applyNumericConstraint(const NumericConstraint<ValueType>& constrain
         (source->*applier)(value);
 }
 
-void RealtimeMediaSource::applySizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double> frameRate)
+void RealtimeMediaSource::applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double> frameRate)
 {
     if (width)
         setWidth(width.value());
@@ -554,7 +561,7 @@ bool RealtimeMediaSource::selectSettings(const MediaConstraints& constraints, Fl
     // 6. Select one settings dictionary from candidates, and return it as the result of the SelectSettings() algorithm.
     //    The UA should use the one with the smallest fitness distance, as calculated in step 3.
     if (!std::isinf(minimumDistance)) {
-        supportedConstraints.removeAllMatching([&](std::pair<double, MediaTrackConstraintSetMap> pair) -> bool {
+        supportedConstraints.removeAllMatching([&](const std::pair<double, MediaTrackConstraintSetMap>& pair) -> bool {
             return pair.first > minimumDistance;
         });
 
@@ -589,7 +596,7 @@ void RealtimeMediaSource::applyConstraints(const FlattenedConstraint& constraint
 
     RealtimeMediaSourceCapabilities& capabilities = *this->capabilities();
 
-    Optional<int> width;
+    std::optional<int> width;
     if (const MediaConstraint* constraint = constraints.find(MediaConstraintType::Width)) {
         ASSERT(constraint->isInt());
         if (capabilities.supportsWidth()) {
@@ -598,7 +605,7 @@ void RealtimeMediaSource::applyConstraints(const FlattenedConstraint& constraint
         }
     }
 
-    Optional<int> height;
+    std::optional<int> height;
     if (const MediaConstraint* constraint = constraints.find(MediaConstraintType::Height)) {
         ASSERT(constraint->isInt());
         if (capabilities.supportsHeight()) {
@@ -607,7 +614,7 @@ void RealtimeMediaSource::applyConstraints(const FlattenedConstraint& constraint
         }
     }
 
-    Optional<double> frameRate;
+    std::optional<double> frameRate;
     if (const MediaConstraint* constraint = constraints.find(MediaConstraintType::FrameRate)) {
         ASSERT(constraint->isDouble());
         if (capabilities.supportsFrameRate()) {
@@ -628,7 +635,7 @@ void RealtimeMediaSource::applyConstraints(const FlattenedConstraint& constraint
     commitConfiguration();
 }
 
-Optional<std::pair<String, String>> RealtimeMediaSource::applyConstraints(const MediaConstraints& constraints)
+std::optional<std::pair<String, String>> RealtimeMediaSource::applyConstraints(const MediaConstraints& constraints)
 {
     ASSERT(constraints.isValid());
 
@@ -638,7 +645,7 @@ Optional<std::pair<String, String>> RealtimeMediaSource::applyConstraints(const 
         return { { failedConstraint, ASCIILiteral("Constraint not supported") } };
 
     applyConstraints(candidates);
-    return Nullopt;
+    return std::nullopt;
 }
 
 void RealtimeMediaSource::applyConstraints(const MediaConstraints& constraints, SuccessHandler successHandler, FailureHandler failureHandler)

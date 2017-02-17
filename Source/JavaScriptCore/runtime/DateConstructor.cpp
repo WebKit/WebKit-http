@@ -109,15 +109,14 @@ void DateConstructor::finishCreation(VM& vm, DatePrototype* datePrototype)
 
 static double millisecondsFromComponents(ExecState* exec, const ArgList& args, WTF::TimeType timeType)
 {
-    double doubleArguments[] = {
-        args.at(0).toNumber(exec), 
-        args.at(1).toNumber(exec), 
-        args.at(2).toNumber(exec), 
-        args.at(3).toNumber(exec), 
-        args.at(4).toNumber(exec), 
-        args.at(5).toNumber(exec), 
-        args.at(6).toNumber(exec)
-    };
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    double doubleArguments[7];
+    for (int i = 0; i < 7; i++) {
+        doubleArguments[i] = args.at(i).toNumber(exec);
+        RETURN_IF_EXCEPTION(scope, 0);
+    }
 
     int numArgs = args.size();
 
@@ -140,7 +139,7 @@ static double millisecondsFromComponents(ExecState* exec, const ArgList& args, W
     t.setSecond(JSC::toInt32(doubleArguments[5]));
     t.setIsDST(-1);
     double ms = (numArgs >= 7) ? doubleArguments[6] : 0;
-    return gregorianDateTimeToMS(exec->vm(), t, ms, timeType);
+    return gregorianDateTimeToMS(vm, t, ms, timeType);
 }
 
 // ECMA 15.9.3
@@ -155,17 +154,19 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, JSValue n
     if (numArgs == 0) // new Date() ECMA 15.9.3.3
         value = NORMAL_OR_DETERMINISTIC_FUNCTION(jsCurrentTime(), deterministicCurrentTime(globalObject));
     else if (numArgs == 1) {
-        if (args.at(0).inherits(DateInstance::info()))
+        if (args.at(0).inherits(vm, DateInstance::info()))
             value = asDateInstance(args.at(0))->internalNumber();
         else {
             JSValue primitive = args.at(0).toPrimitive(exec);
+            RETURN_IF_EXCEPTION(scope, nullptr);
             if (primitive.isString())
-                value = parseDate(vm, primitive.getString(exec));
+                value = parseDate(vm, asString(primitive)->value(exec));
             else
                 value = primitive.toNumber(exec);
         }
     } else
         value = millisecondsFromComponents(exec, args, WTF::LocalTime);
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     Structure* dateStructure = InternalFunction::createSubclassStructure(exec, newTarget, globalObject->dateStructure());
     RETURN_IF_EXCEPTION(scope, nullptr);
@@ -176,7 +177,7 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, JSValue n
 static EncodedJSValue JSC_HOST_CALL constructWithDateConstructor(ExecState* exec)
 {
     ArgList args(exec);
-    return JSValue::encode(constructDate(exec, asInternalFunction(exec->callee())->globalObject(), exec->newTarget(), args));
+    return JSValue::encode(constructDate(exec, asInternalFunction(exec->jsCallee())->globalObject(), exec->newTarget(), args));
 }
 
 ConstructType DateConstructor::getConstructData(JSCell*, ConstructData& constructData)
@@ -204,7 +205,7 @@ EncodedJSValue JSC_HOST_CALL dateParse(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    String dateStr = exec->argument(0).toString(exec)->value(exec);
+    String dateStr = exec->argument(0).toWTFString(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(jsNumber(parseDate(vm, dateStr)));
 }

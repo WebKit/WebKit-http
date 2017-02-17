@@ -23,7 +23,7 @@ class LayoutNode
         this._width = 0;
         this._height = 0;
         this._visible = true;
-    
+
         this._needsLayout = false;
         this._dirtyProperties = new Set;
 
@@ -37,6 +37,9 @@ class LayoutNode
 
     set x(x)
     {
+        if (x === this._x)
+            return;
+
         this._x = x;
         this.markDirtyProperty("x");
     }
@@ -48,6 +51,9 @@ class LayoutNode
 
     set y(y)
     {
+        if (y === this._y)
+            return;
+
         this._y = y;
         this.markDirtyProperty("y");
     }
@@ -59,6 +65,9 @@ class LayoutNode
 
     set width(width)
     {
+        if (width === this._width)
+            return;
+
         this._width = width;
         this.markDirtyProperty("width");
     }
@@ -70,6 +79,9 @@ class LayoutNode
 
     set height(height)
     {
+        if (height === this._height)
+            return;
+
         this._height = height;
         this.markDirtyProperty("height");
     }
@@ -81,6 +93,9 @@ class LayoutNode
 
     set visible(flag)
     {
+        if (flag === this._visible)
+            return;
+
         this._visible = flag;
         this.markDirtyProperty("visible");
     }
@@ -113,9 +128,19 @@ class LayoutNode
     {
         while (this._children.length)
             this.removeChild(this._children[0]);
-        
+
         for (let child of children)
             this.addChild(child);
+    }
+
+    parentOfType(type)
+    {
+        let node = this;
+        while (node = node._parent) {
+            if (node instanceof type)
+                return node;
+        }
+        return null;
     }
 
     addChild(child, index)
@@ -243,7 +268,7 @@ class LayoutNode
         for (let i = this.children.length - 1; i >= 0; --i) {
             let child = this.children[i];
             let childElement = child.element;
-        
+
             if (child._pendingDOMManipulation === LayoutNode.DOMManipulation.Addition) {
                 element.insertBefore(childElement, nextChildElement);
                 child._pendingDOMManipulation = LayoutNode.DOMManipulation.None;
@@ -263,12 +288,12 @@ LayoutNode.DOMManipulation = {
 
 function performScheduledLayout()
 {
-    dirtyNodes.forEach(node => {
-        node.needsLayout = false;
-        node.layout()
-    });
+    const previousDirtyNodes = Array.from(dirtyNodes);
     dirtyNodes.clear();
-    scheduler.unscheduleLayout(performScheduledLayout);
+    previousDirtyNodes.forEach(node => {
+        node._needsLayout = false;
+        node.layout();
+    });
 
     nodesRequiringChildrenUpdate.forEach(node => node._updateChildren());
     nodesRequiringChildrenUpdate.clear();

@@ -28,12 +28,16 @@
 import json
 import re
 
-
 class Wasm:
     def __init__(self, scriptName, jsonPath):
         wasmFile = open(jsonPath, "r")
         wasm = json.load(open(jsonPath, "r"))
         wasmFile.close()
+        for pre in wasm["preamble"]:
+            if pre["name"] == "version":
+                self.expectedVersionNumber = str(pre["value"])
+        self.preamble = wasm["preamble"]
+        self.types = wasm["type"]
         self.opcodes = wasm["opcode"]
         self.header = """/*
  * Copyright (C) 2016 Apple Inc. All rights reserved.
@@ -86,3 +90,7 @@ def isUnary(op):
 
 def isBinary(op):
     return isNormal(op) and len(op["parameter"]) == 2
+
+
+def isSimple(op):
+    return "b3op" in op

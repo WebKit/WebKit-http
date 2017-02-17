@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2010, 2011, 2012, 2013 Google Inc. All rights reserved.
@@ -26,15 +26,19 @@
 #include "config.h"
 #include "EventDispatcher.h"
 
+#include "CompositionEvent.h"
 #include "EventContext.h"
-#include "EventNames.h"
 #include "EventPath.h"
+#include "Frame.h"
 #include "FrameView.h"
 #include "HTMLInputElement.h"
+#include "InputEvent.h"
+#include "KeyboardEvent.h"
 #include "MouseEvent.h"
 #include "NoEventDispatchAssertion.h"
 #include "ScopedEventQueue.h"
 #include "ShadowRoot.h"
+#include "TextEvent.h"
 #include "TouchEvent.h"
 
 namespace WebCore {
@@ -92,7 +96,7 @@ static void dispatchEventInDOM(Event& event, const EventPath& path)
         const EventContext& eventContext = path.contextAt(i);
         if (eventContext.currentTargetSameAsTarget())
             event.setEventPhase(Event::AT_TARGET);
-        else if (event.bubbles() && !event.cancelBubble())
+        else if (event.bubbles())
             event.setEventPhase(Event::BUBBLING_PHASE);
         else
             continue;
@@ -102,16 +106,35 @@ static void dispatchEventInDOM(Event& event, const EventPath& path)
     }
 }
 
-bool EventDispatcher::dispatchEvent(Node* origin, Event& event)
+static bool shouldSuppressEventDispatchInDOM(Node& node, Event& event)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
-    ASSERT(origin);
-    RefPtr<Node> node(origin);
-    RefPtr<FrameView> view = node->document().view();
-    EventPath eventPath(*node, event);
+    if (!event.isTrusted())
+        return false;
+
+    auto frame = node.document().frame();
+    if (!frame)
+        return false;
+
+    if (!frame->loader().shouldSuppressKeyboardInput())
+        return false;
+
+    if (is<TextEvent>(event)) {
+        auto& textEvent = downcast<TextEvent>(event);
+        return textEvent.isKeyboard() || textEvent.isComposition();
+    }
+
+    return is<CompositionEvent>(event) || is<InputEvent>(event) || is<KeyboardEvent>(event);
+}
+
+bool EventDispatcher::dispatchEvent(Node& node, Event& event)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
+    Ref<Node> protectedNode(node);
+    RefPtr<FrameView> view = node.document().view();
+    EventPath eventPath(node, event);
 
     if (EventTarget* relatedTarget = event.relatedTarget())
-        eventPath.setRelatedTarget(*node, *relatedTarget);
+        eventPath.setRelatedTarget(node, *relatedTarget);
 #if ENABLE(TOUCH_EVENTS)
     if (is<TouchEvent>(event))
         eventPath.retargetTouchLists(downcast<TouchEvent>(event));
@@ -119,16 +142,19 @@ bool EventDispatcher::dispatchEvent(Node* origin, Event& event)
 
     ChildNodesLazySnapshot::takeChildNodesLazySnapshot();
 
-    EventTarget* target = EventPath::eventTargetRespectingTargetRules(*node);
+    EventTarget* target = EventPath::eventTargetRespectingTargetRules(node);
     event.setTarget(target);
     if (!event.target())
         return true;
 
-    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
 
     InputElementClickState clickHandlingState;
-    if (is<HTMLInputElement>(*node))
-        downcast<HTMLInputElement>(*node).willDispatchEvent(event, clickHandlingState);
+    if (is<HTMLInputElement>(node))
+        downcast<HTMLInputElement>(node).willDispatchEvent(event, clickHandlingState);
+
+    if (shouldSuppressEventDispatchInDOM(node, event))
+        event.stopPropagation();
 
     if (!event.propagationStopped() && !eventPath.isEmpty()) {
         event.setEventPath(eventPath);
@@ -137,13 +163,13 @@ bool EventDispatcher::dispatchEvent(Node* origin, Event& event)
     }
 
     auto* finalTarget = event.target();
-    event.setTarget(EventPath::eventTargetRespectingTargetRules(*node));
+    event.setTarget(EventPath::eventTargetRespectingTargetRules(node));
     event.setCurrentTarget(nullptr);
     event.resetPropagationFlags();
     event.setEventPhase(Event::NONE);
 
     if (clickHandlingState.stateful)
-        downcast<HTMLInputElement>(*node).didDispatchClickEvent(event, clickHandlingState);
+        downcast<HTMLInputElement>(node).didDispatchClickEvent(event, clickHandlingState);
 
     // Call default event handlers. While the DOM does have a concept of preventing
     // default handling, the detail of which handlers are called is an internal

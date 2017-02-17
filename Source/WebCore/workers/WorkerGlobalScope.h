@@ -39,6 +39,7 @@ namespace WebCore {
 
 class ContentSecurityPolicyResponseHeaders;
 class Crypto;
+class Performance;
 class ScheduledAction;
 class WorkerInspectorController;
 class WorkerLocation;
@@ -99,8 +100,12 @@ public:
 
     Crypto& crypto();
 
+#if ENABLE(WEB_TIMING)
+    Performance& performance() const;
+#endif
+
 protected:
-    WorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, RefPtr<SecurityOrigin>&& topOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*);
+    WorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*);
 
     void applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders&);
 
@@ -131,7 +136,7 @@ private:
 
     bool shouldBypassMainWorldContentSecurityPolicy() const final { return m_shouldBypassMainWorldContentSecurityPolicy; }
     bool isJSExecutionForbidden() const final;
-    SecurityOrigin* topOrigin() const final { return m_topOrigin.get(); }
+    SecurityOrigin& topOrigin() const final { return m_topOrigin.get(); }
 
 #if ENABLE(SUBTLE_CRYPTO)
     // The following two functions are side effects of providing extra protection to serialized
@@ -161,7 +166,7 @@ private:
 
     mutable WorkerEventQueue m_eventQueue;
 
-    RefPtr<SecurityOrigin> m_topOrigin;
+    Ref<SecurityOrigin> m_topOrigin;
 
 #if ENABLE(INDEXED_DATABASE)
     RefPtr<IDBClient::IDBConnectionProxy> m_connectionProxy;
@@ -169,6 +174,10 @@ private:
 
 #if ENABLE(WEB_SOCKETS)
     RefPtr<SocketProvider> m_socketProvider;
+#endif
+
+#if ENABLE(WEB_TIMING)
+    Ref<Performance> m_performance;
 #endif
 
     mutable RefPtr<Crypto> m_crypto;

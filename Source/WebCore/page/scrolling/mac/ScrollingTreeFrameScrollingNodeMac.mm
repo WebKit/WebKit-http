@@ -37,7 +37,6 @@
 #import "ScrollingCoordinator.h"
 #import "ScrollingTree.h"
 #import "ScrollingStateTree.h"
-#import "Settings.h"
 #import "TextStream.h"
 #import "TileController.h"
 #import "WebLayer.h"
@@ -86,9 +85,19 @@ static inline Vector<LayoutUnit> convertToLayoutUnits(const Vector<float>& snapO
     Vector<LayoutUnit> snapOffsets;
     snapOffsets.reserveInitialCapacity(snapOffsetsAsFloat.size());
     for (auto offset : snapOffsetsAsFloat)
-        snapOffsets.append(offset);
+        snapOffsets.uncheckedAppend(offset);
 
     return snapOffsets;
+}
+
+static inline Vector<ScrollOffsetRange<LayoutUnit>> convertToLayoutUnits(const Vector<ScrollOffsetRange<float>>& snapOffsetRangesAsFloat)
+{
+    Vector<ScrollOffsetRange<LayoutUnit>> snapOffsetRanges;
+    snapOffsetRanges.reserveInitialCapacity(snapOffsetRangesAsFloat.size());
+    for (auto range : snapOffsetRangesAsFloat)
+        snapOffsetRanges.uncheckedAppend({ range.start, range.end });
+
+    return snapOffsetRanges;
 }
 #endif
 
@@ -146,11 +155,11 @@ void ScrollingTreeFrameScrollingNodeMac::commitStateBeforeChildren(const Scrolli
     }
 
 #if ENABLE(CSS_SCROLL_SNAP)
-    if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::HorizontalSnapOffsets))
-        m_scrollController.updateScrollSnapPoints(ScrollEventAxis::Horizontal, convertToLayoutUnits(scrollingStateNode.horizontalSnapOffsets()));
+    if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::HorizontalSnapOffsets) || scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::HorizontalSnapOffsetRanges))
+        m_scrollController.updateScrollSnapPoints(ScrollEventAxis::Horizontal, convertToLayoutUnits(scrollingStateNode.horizontalSnapOffsets()), convertToLayoutUnits(scrollingStateNode.horizontalSnapOffsetRanges()));
 
-    if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::VerticalSnapOffsets))
-        m_scrollController.updateScrollSnapPoints(ScrollEventAxis::Vertical, convertToLayoutUnits(scrollingStateNode.verticalSnapOffsets()));
+    if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::VerticalSnapOffsets) || scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::VerticalSnapOffsetRanges))
+        m_scrollController.updateScrollSnapPoints(ScrollEventAxis::Vertical, convertToLayoutUnits(scrollingStateNode.verticalSnapOffsets()), convertToLayoutUnits(scrollingStateNode.verticalSnapOffsetRanges()));
 
     if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::CurrentHorizontalSnapOffsetIndex))
         m_scrollController.setActiveScrollSnapIndexForAxis(ScrollEventAxis::Horizontal, scrollingStateNode.currentHorizontalSnapPointIndex());
@@ -388,23 +397,21 @@ void ScrollingTreeFrameScrollingNodeMac::setScrollPositionWithoutContentEdgeCons
 {
     updateMainFramePinState(scrollPosition);
 
-    FloatRect layoutViewport;
-    Optional<FloatPoint> layoutViewportOrigin;
+    std::optional<FloatPoint> layoutViewportOrigin;
     if (scrollingTree().visualViewportEnabled()) {
         FloatPoint visibleContentOrigin = scrollPosition;
-        float counterScale = 1 / frameScaleFactor();
-        visibleContentOrigin.scale(counterScale, counterScale);
-        layoutViewport = layoutViewportForScrollPosition(visibleContentOrigin, frameScaleFactor());
-        layoutViewportOrigin = layoutViewport.location();
+        FloatRect newLayoutViewport = layoutViewportForScrollPosition(visibleContentOrigin, frameScaleFactor());
+        setLayoutViewport(newLayoutViewport);
+        layoutViewportOrigin = newLayoutViewport.location();
     }
 
     if (shouldUpdateScrollLayerPositionSynchronously()) {
         m_probableMainThreadScrollPosition = scrollPosition;
-        scrollingTree().scrollingTreeNodeDidScroll(scrollingNodeID(), scrollPosition, layoutViewportOrigin, SetScrollingLayerPosition);
+        scrollingTree().scrollingTreeNodeDidScroll(scrollingNodeID(), scrollPosition, layoutViewportOrigin, ScrollingLayerPositionAction::Set);
         return;
     }
 
-    setScrollLayerPosition(scrollPosition, layoutViewport);
+    setScrollLayerPosition(scrollPosition, layoutViewport());
     scrollingTree().scrollingTreeNodeDidScroll(scrollingNodeID(), scrollPosition, layoutViewportOrigin);
 }
 
@@ -581,10 +588,9 @@ static void logThreadedScrollingMode(unsigned synchronousScrollingReasons)
 }
 
 #if ENABLE(CSS_SCROLL_SNAP)
-LayoutUnit ScrollingTreeFrameScrollingNodeMac::scrollOffsetOnAxis(ScrollEventAxis axis) const
+FloatPoint ScrollingTreeFrameScrollingNodeMac::scrollOffset() const
 {
-    const FloatPoint& currentPosition = scrollPosition();
-    return axis == ScrollEventAxis::Horizontal ? currentPosition.x() : currentPosition.y();
+    return scrollPosition();
 }
 
 void ScrollingTreeFrameScrollingNodeMac::immediateScrollOnAxis(ScrollEventAxis axis, float delta)
@@ -618,6 +624,12 @@ LayoutSize ScrollingTreeFrameScrollingNodeMac::scrollExtent() const
 {
     return LayoutSize(totalContentsSize());
 }
+
+FloatSize ScrollingTreeFrameScrollingNodeMac::viewportSize() const
+{
+    return scrollableAreaSize();
+}
+
 #endif
 
 void ScrollingTreeFrameScrollingNodeMac::deferTestsForReason(WheelEventTestTrigger::ScrollableAreaIdentifier identifier, WheelEventTestTrigger::DeferTestTriggerReason reason) const

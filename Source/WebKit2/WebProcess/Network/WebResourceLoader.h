@@ -32,10 +32,6 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
-#if USE(QUICK_LOOK)
-#include <WebCore/QuickLook.h>
-#endif
-
 namespace IPC {
 class DataReference;
 }
@@ -82,6 +78,7 @@ private:
     void didSendData(uint64_t bytesSent, uint64_t totalBytesToBeSent);
     void didReceiveResponse(const WebCore::ResourceResponse&, bool needsContinueDidReceiveResponseMessage);
     void didReceiveData(const IPC::DataReference&, int64_t encodedDataLength);
+    void didRetrieveDerivedData(const String& type, const IPC::DataReference&);
     void didFinishResourceLoad(double finishTime);
     void didFailResourceLoad(const WebCore::ResourceError&);
 #if ENABLE(SHAREABLE_RESOURCE)

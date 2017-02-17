@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
  * This library is free software; you can redistribute it and/or
@@ -89,7 +89,7 @@ void HTMLFormControlElement::setFormEnctype(const String& value)
 
 String HTMLFormControlElement::formMethod() const
 {
-    const AtomicString& formMethodAttr = attributeWithoutSynchronization(formmethodAttr);
+    auto& formMethodAttr = attributeWithoutSynchronization(formmethodAttr);
     if (formMethodAttr.isNull())
         return emptyString();
     return FormSubmission::Attributes::methodString(FormSubmission::Attributes::parseMethodType(formMethodAttr));
@@ -199,7 +199,7 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
         return false;
     if (!element->hasAttributeWithoutSynchronization(autofocusAttr))
         return false;
-    if (!element->inDocument() || !element->document().renderView())
+    if (!element->isConnected() || !element->document().renderView())
         return false;
     if (element->document().isSandboxed(SandboxAutomaticFeatures)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
@@ -250,7 +250,7 @@ void HTMLFormControlElement::didAttachRenderers()
     }
 }
 
-void HTMLFormControlElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLFormControlElement::didMoveToNewDocument(Document& oldDocument)
 {
     FormAssociatedElement::didMoveToNewDocument(oldDocument);
     HTMLElement::didMoveToNewDocument(oldDocument);
@@ -370,10 +370,9 @@ bool HTMLFormControlElement::isFocusable() const
 
 bool HTMLFormControlElement::isKeyboardFocusable(KeyboardEvent& event) const
 {
-    if (isFocusable())
-        if (document().frame())
-            return document().frame()->eventHandler().tabsToAllFormControls(&event);
-    return false;
+    return isFocusable()
+        && document().frame()
+        && document().frame()->eventHandler().tabsToAllFormControls(event);
 }
 
 bool HTMLFormControlElement::isMouseFocusable() const
@@ -484,7 +483,7 @@ bool HTMLFormControlElement::checkValidity(Vector<RefPtr<HTMLFormControlElement>
     Ref<HTMLFormControlElement> protectedThis(*this);
     Ref<Document> originalDocument(document());
     bool needsDefaultAction = dispatchEvent(Event::create(eventNames().invalidEvent, false, true));
-    if (needsDefaultAction && unhandledInvalidControls && inDocument() && originalDocument.ptr() == &document())
+    if (needsDefaultAction && unhandledInvalidControls && isConnected() && originalDocument.ptr() == &document())
         unhandledInvalidControls->append(this);
     return false;
 }
@@ -502,7 +501,7 @@ bool HTMLFormControlElement::reportValidity()
     // has !renderer()->needsLayout() assertion.
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (inDocument() && isFocusable()) {
+    if (isConnected() && isFocusable()) {
         focusAndShowValidationMessage();
         return false;
     }
@@ -591,11 +590,6 @@ void HTMLFormControlElement::dispatchBlurEvent(RefPtr<Element>&& newFocusedEleme
 {
     HTMLElement::dispatchBlurEvent(WTFMove(newFocusedElement));
     hideVisibleValidationMessage();
-}
-
-HTMLFormElement* HTMLFormControlElement::virtualForm() const
-{
-    return FormAssociatedElement::form();
 }
 
 #if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)

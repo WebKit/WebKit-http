@@ -38,40 +38,42 @@
 namespace WebKit {
 
 #if ENABLE(IOS_TOUCH_EVENTS)
+
 void WebChromeClient::didPreventDefaultForEvent()
 {
     notImplemented();
 }
+
 #endif
 
-void WebChromeClient::elementDidRefocus(const WebCore::Node* node)
+void WebChromeClient::elementDidRefocus(WebCore::Element& element)
 {
-    elementDidFocus(node);
+    elementDidFocus(element);
 }
 
 void WebChromeClient::didReceiveMobileDocType(bool isMobileDoctype)
 {
-    m_page->didReceiveMobileDocType(isMobileDoctype);
+    m_page.didReceiveMobileDocType(isMobileDoctype);
 }
 
-void WebChromeClient::setNeedsScrollNotifications(WebCore::Frame*, bool)
+void WebChromeClient::setNeedsScrollNotifications(WebCore::Frame&, bool)
 {
     notImplemented();
 }
 
-void WebChromeClient::observedContentChange(WebCore::Frame*)
+void WebChromeClient::observedContentChange(WebCore::Frame&)
 {
-    m_page->completePendingSyntheticClickForContentChangeObserver();
+    m_page.completePendingSyntheticClickForContentChangeObserver();
 }
 
-void WebChromeClient::clearContentChangeObservers(WebCore::Frame*)
+void WebChromeClient::clearContentChangeObservers(WebCore::Frame&)
 {
     notImplemented();
 }
 
-void WebChromeClient::notifyRevealedSelectionByScrollingFrame(WebCore::Frame*)
+void WebChromeClient::notifyRevealedSelectionByScrollingFrame(WebCore::Frame&)
 {
-    m_page->didChangeSelection();
+    m_page.didChangeSelection();
 }
 
 bool WebChromeClient::isStopping()
@@ -83,22 +85,22 @@ bool WebChromeClient::isStopping()
 void WebChromeClient::didLayout(LayoutType type)
 {
     if (type == Scroll)
-        m_page->didChangeSelection();
+        m_page.didChangeSelection();
 }
 
 void WebChromeClient::didStartOverflowScroll()
 {
-    m_page->send(Messages::WebPageProxy::OverflowScrollWillStartScroll());
+    m_page.send(Messages::WebPageProxy::OverflowScrollWillStartScroll());
 }
 
 void WebChromeClient::didEndOverflowScroll()
 {
-    m_page->send(Messages::WebPageProxy::OverflowScrollDidEndScroll());
+    m_page.send(Messages::WebPageProxy::OverflowScrollDidEndScroll());
 }
 
 bool WebChromeClient::hasStablePageScaleFactor() const
 {
-    return m_page->hasStablePageScaleFactor();
+    return m_page.hasStablePageScaleFactor();
 }
 
 void WebChromeClient::suppressFormNotifications()
@@ -128,17 +130,17 @@ void WebChromeClient::webAppOrientationsUpdated()
 
 void WebChromeClient::showPlaybackTargetPicker(bool hasVideo)
 {
-    m_page->send(Messages::WebPageProxy::ShowPlaybackTargetPicker(hasVideo, m_page->rectForElementAtInteractionLocation()));
+    m_page.send(Messages::WebPageProxy::ShowPlaybackTargetPicker(hasVideo, m_page.rectForElementAtInteractionLocation()));
 }
 
-std::chrono::milliseconds WebChromeClient::eventThrottlingDelay()
+Seconds WebChromeClient::eventThrottlingDelay()
 {
-    return m_page->eventThrottlingDelay();
+    return m_page.eventThrottlingDelay();
 }
 
 int WebChromeClient::deviceOrientation() const
 {
-    return m_page->deviceOrientation();
+    return m_page.deviceOrientation();
 }
 
 } // namespace WebKit

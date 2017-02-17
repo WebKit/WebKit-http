@@ -120,7 +120,7 @@ bool InsertTextCommand::performOverwrite(const String& text, bool selectInserted
 
     replaceTextInNode(textNode, start.offsetInContainerNode(), count, text);
 
-    Position endPosition = Position(WTFMove(textNode), start.offsetInContainerNode() + text.length());
+    Position endPosition = Position(textNode.get(), start.offsetInContainerNode() + text.length());
     setEndingSelectionWithoutValidation(start, endPosition);
     if (!selectInsertedText)
         setEndingSelection(VisibleSelection(endingSelection().visibleEnd(), endingSelection().isDirectional()));
@@ -176,7 +176,7 @@ void InsertTextCommand::doApply()
     // and so deleteInsignificantText could remove it.  Save the position before the node in case that happens.
     Position positionBeforeStartNode(positionInParentBeforeNode(startPosition.containerNode()));
     deleteInsignificantText(startPosition.upstream(), startPosition.downstream());
-    if (!startPosition.anchorNode()->inDocument())
+    if (!startPosition.anchorNode()->isConnected())
         startPosition = positionBeforeStartNode;
     if (!startPosition.isCandidate())
         startPosition = startPosition.downstream();
@@ -202,7 +202,7 @@ void InsertTextCommand::doApply()
         const unsigned offset = startPosition.offsetInContainerNode();
 
         insertTextIntoNode(textNode, offset, m_text);
-        endPosition = Position(textNode, offset + m_text.length());
+        endPosition = Position(textNode.get(), offset + m_text.length());
         if (m_markerSupplier)
             m_markerSupplier->addMarkersToTextNode(textNode.get(), offset, m_text);
 
@@ -245,7 +245,7 @@ Position InsertTextCommand::insertTab(const Position& pos)
     if (isTabSpanTextNode(node)) {
         RefPtr<Text> textNode = downcast<Text>(node);
         insertTextIntoNode(textNode, offset, "\t");
-        return Position(WTFMove(textNode), offset + 1);
+        return Position(textNode.get(), offset + 1);
     }
     
     // create new tab span

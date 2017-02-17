@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,6 @@
 #include "config.h"
 #include "DFGWorklist.h"
 
-#if ENABLE(DFG_JIT)
-
 #include "CodeBlock.h"
 #include "DFGLongLivedState.h"
 #include "DFGSafepoint.h"
@@ -37,6 +35,8 @@
 #include <mutex>
 
 namespace JSC { namespace DFG {
+
+#if ENABLE(DFG_JIT)
 
 class Worklist::ThreadBody : public AutomaticThread {
 public:
@@ -150,8 +150,10 @@ protected:
         m_longLivedState = std::make_unique<LongLivedState>();
     }
     
-    void threadWillStop() override
+    void threadIsStopping(const LockHolder&) override
     {
+        // We're holding the Worklist::m_lock, so we should be careful not to deadlock.
+        
         if (Options::verboseCompilationQueue())
             dataLog(m_worklist, ": Thread will stop\n");
         
@@ -349,17 +351,6 @@ void Worklist::completeAllPlansForVM(VM& vm)
     completeAllReadyPlansForVM(vm);
 }
 
-void Worklist::rememberCodeBlocks(VM& vm)
-{
-    LockHolder locker(*m_lock);
-    for (PlanMap::iterator iter = m_plans.begin(); iter != m_plans.end(); ++iter) {
-        Plan* plan = iter->value.get();
-        if (plan->vm != &vm)
-            continue;
-        plan->rememberCodeBlocks();
-    }
-}
-
 void Worklist::suspendAllThreads()
 {
     m_suspensionLock.lock();
@@ -553,15 +544,18 @@ void completeAllPlansForVM(VM& vm)
     }
 }
 
-void rememberCodeBlocks(VM& vm)
+#else // ENABLE(DFG_JIT)
+
+void completeAllPlansForVM(VM&)
 {
-    for (unsigned i = DFG::numberOfWorklists(); i--;) {
-        if (DFG::Worklist* worklist = DFG::existingWorklistForIndexOrNull(i))
-            worklist->rememberCodeBlocks(vm);
-    }
 }
+
+void markCodeBlocks(VM&, SlotVisitor&)
+{
+}
+
+#endif // ENABLE(DFG_JIT)
 
 } } // namespace JSC::DFG
 
-#endif // ENABLE(DFG_JIT)
 

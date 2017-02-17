@@ -29,8 +29,10 @@
 #if PLATFORM(MAC)
 
 #import "APIHitTestResult.h"
+#import "APIIconLoadingClient.h"
 #import "APIPageConfiguration.h"
 #import "WKBrowsingContextGroupPrivate.h"
+#import "WKNSData.h"
 #import "WKProcessGroupPrivate.h"
 #import "WebBackForwardListItem.h"
 #import "WebKit2Initialize.h"
@@ -38,6 +40,8 @@
 #import "WebPreferencesKeys.h"
 #import "WebProcessPool.h"
 #import "WebViewImpl.h"
+#import "_WKLinkIconParametersInternal.h"
+#import <wtf/BlockPtr.h>
 
 using namespace WebKit;
 using namespace WebCore;
@@ -78,6 +82,7 @@ using namespace WebCore;
 
 - (void)dealloc
 {
+    _data->_impl->page().setIconLoadingClient(nullptr);
     _data->_impl = nullptr;
 
     [_data release];
@@ -848,7 +853,49 @@ Some other editing-related methods still unimplemented:
     return _data->_impl->namesOfPromisedFilesDroppedAtDestination(dropDestination);
 }
 
-- (instancetype)initWithFrame:(NSRect)frame processPool:(WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration webView:(WKWebView *)webView
+- (void)maybeInstallIconLoadingClient
+{
+#if WK_API_ENABLED
+    class IconLoadingClient : public API::IconLoadingClient {
+    public:
+        explicit IconLoadingClient(WKView *wkView)
+            : m_wkView(wkView)
+        {
+        }
+
+        static SEL delegateSelector()
+        {
+            return sel_registerName("_shouldLoadIconWithParameters:completionHandler:");
+        }
+
+    private:
+        typedef void (^IconLoadCompletionHandler)(NSData*);
+
+        void getLoadDecisionForIcon(const WebCore::LinkIcon& linkIcon, std::function<void (std::function<void (API::Data*, WebKit::CallbackBase::Error)>)> completionHandler) override {
+            RetainPtr<_WKLinkIconParameters> parameters = adoptNS([[_WKLinkIconParameters alloc] _initWithLinkIcon:linkIcon]);
+
+            [m_wkView performSelector:delegateSelector() withObject:parameters.get() withObject:[completionHandler = WTFMove(completionHandler)](IconLoadCompletionHandler loadCompletionHandler) {
+                if (loadCompletionHandler) {
+                    completionHandler([loadCompletionHandler = BlockPtr<void (NSData *)>(loadCompletionHandler)](API::Data* data, WebKit::CallbackBase::Error error) {
+                        if (error != CallbackBase::Error::None || !data)
+                            loadCompletionHandler(nil);
+                        else
+                            loadCompletionHandler(wrapper(*data));
+                    });
+                } else
+                    completionHandler(nullptr);
+            }];
+        }
+
+        WKView *m_wkView;
+    };
+
+    if ([self respondsToSelector:IconLoadingClient::delegateSelector()])
+        _data->_impl->page().setIconLoadingClient(std::make_unique<IconLoadingClient>(self));
+#endif // WK_API_ENABLED
+}
+
+- (instancetype)initWithFrame:(NSRect)frame processPool:(WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration
 {
     self = [super initWithFrame:frame];
     if (!self)
@@ -857,7 +904,9 @@ Some other editing-related methods still unimplemented:
     InitializeWebKit2();
 
     _data = [[WKViewData alloc] init];
-    _data->_impl = std::make_unique<WebViewImpl>(self, webView, processPool, WTFMove(configuration));
+    _data->_impl = std::make_unique<WebViewImpl>(self, nullptr, processPool, WTFMove(configuration));
+
+    [self maybeInstallIconLoadingClient];
 
     return self;
 }
@@ -1050,7 +1099,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
     configuration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(toUserInterfaceLayoutDirection(self.userInterfaceLayoutDirection))));
 #endif
 
-    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTFMove(configuration) webView:nil];
+    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTFMove(configuration)];
 }
 
 - (id)initWithFrame:(NSRect)frame configurationRef:(WKPageConfigurationRef)configurationRef
@@ -1058,7 +1107,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
     Ref<API::PageConfiguration> configuration = toImpl(configurationRef)->copy();
     auto& processPool = *configuration->processPool();
 
-    return [self initWithFrame:frame processPool:processPool configuration:WTFMove(configuration) webView:nil];
+    return [self initWithFrame:frame processPool:processPool configuration:WTFMove(configuration)];
 }
 
 - (BOOL)wantsUpdateLayer
@@ -1329,7 +1378,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
     return _data->_impl->totalHeightOfBanners();
 }
 
-static WTF::Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayScrollbarStyle scrollbarStyle)
+static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayScrollbarStyle scrollbarStyle)
 {
     switch (scrollbarStyle) {
     case _WKOverlayScrollbarStyleDark:
@@ -1343,10 +1392,10 @@ static WTF::Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
         break;
     }
 
-    return Nullopt;
+    return std::nullopt;
 }
 
-static _WKOverlayScrollbarStyle toAPIScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle)
+static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle)
 {
     if (!coreScrollbarStyle)
         return _WKOverlayScrollbarStyleAutomatic;

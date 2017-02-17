@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,35 +31,27 @@ namespace WebCore {
 
 class WebGLRenderingContext final : public WebGLRenderingContextBase {
 public:
-    WebGLRenderingContext(HTMLCanvasElement&, GraphicsContext3D::Attributes);
-    WebGLRenderingContext(HTMLCanvasElement&, PassRefPtr<GraphicsContext3D>, GraphicsContext3D::Attributes);
+    WebGLRenderingContext(HTMLCanvasElement&, GraphicsContext3DAttributes);
+    WebGLRenderingContext(HTMLCanvasElement&, Ref<GraphicsContext3D>&&, GraphicsContext3DAttributes);
 
 private:
     bool isWebGL1() const final { return true; }
 
     WebGLExtension* getExtension(const String&) final;
-    WebGLGetInfo getParameter(GC3Denum pname) final;
-    Vector<String> getSupportedExtensions() final;
+    WebGLAny getParameter(GC3Denum pname) final;
+    std::optional<Vector<String>> getSupportedExtensions() final;
 
-    WebGLGetInfo getFramebufferAttachmentParameter(GC3Denum target, GC3Denum attachment, GC3Denum pname) final;
+    WebGLAny getFramebufferAttachmentParameter(GC3Denum target, GC3Denum attachment, GC3Denum pname) final;
     void renderbufferStorage(GC3Denum target, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height) final;
     bool validateFramebufferFuncParameters(const char* functionName, GC3Denum target, GC3Denum attachment) final;
     void hint(GC3Denum target, GC3Denum mode) final;
     void clear(GC3Dbitfield mask) final;
-    void copyTexImage2D(GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsizei height, GC3Dint border) final;
-    void texSubImage2DBase(GC3Denum target, GC3Dint level, GC3Dint xoffset, GC3Dint yoffset, GC3Dsizei width, GC3Dsizei height, GC3Denum internalformat, GC3Denum format, GC3Denum type, const void* pixels) final;
-    void texSubImage2DImpl(GC3Denum target, GC3Dint level, GC3Dint xoffset, GC3Dint yoffset, GC3Denum format, GC3Denum type, Image*, GraphicsContext3D::ImageHtmlDomSource, bool flipY, bool premultiplyAlpha) final;
-    void texSubImage2D(GC3Denum target, GC3Dint level, GC3Dint xoffset, GC3Dint yoffset, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, RefPtr<ArrayBufferView>&&) final;
-    ExceptionOr<void> texSubImage2D(GC3Denum target, GC3Dint level, GC3Dint xoffset, GC3Dint yoffset, GC3Denum format, GC3Denum type, Optional<TexImageSource>&&) final;
 
     GC3Dint getMaxDrawBuffers() final;
     GC3Dint getMaxColorAttachments() final;
     void initializeVertexArrayObjects() final;
     bool validateIndexArrayConservative(GC3Denum type, unsigned& numElementsRequired) final;
     bool validateBlendEquation(const char* functionName, GC3Denum mode) final;
-    bool validateTexFuncParameters(const char* functionName, TexFuncValidationFunctionType, GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height, GC3Dint border, GC3Denum format, GC3Denum type) final;
-    bool validateTexFuncFormatAndType(const char* functionName, GC3Denum internalformat, GC3Denum format, GC3Denum type, GC3Dint level) final;
-    bool validateTexFuncData(const char* functionName, GC3Dint level, GC3Dsizei width, GC3Dsizei height, GC3Denum internalformat, GC3Denum format, GC3Denum type, ArrayBufferView* pixels, NullDisposition) final;
     bool validateCapability(const char* functionName, GC3Denum cap) final;
 };
     

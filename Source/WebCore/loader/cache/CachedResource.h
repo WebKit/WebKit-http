@@ -114,14 +114,12 @@ public:
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
     ResourceRequest& resourceRequest() { return m_resourceRequest; }
     const URL& url() const { return m_resourceRequest.url();}
-#if ENABLE(CACHE_PARTITIONING)
     const String& cachePartition() const { return m_resourceRequest.cachePartition(); }
-#endif
     SessionID sessionID() const { return m_sessionID; }
     Type type() const { return m_type; }
 
     ResourceLoadPriority loadPriority() const { return m_loadPriority; }
-    void setLoadPriority(const Optional<ResourceLoadPriority>&);
+    void setLoadPriority(const std::optional<ResourceLoadPriority>&);
 
     WEBCORE_EXPORT void addClient(CachedResourceClient&);
     WEBCORE_EXPORT void removeClient(CachedResourceClient&);
@@ -232,6 +230,8 @@ public:
     bool isPreloaded() const { return m_preloadCount; }
     void increasePreloadCount() { ++m_preloadCount; }
     void decreasePreloadCount() { ASSERT(m_preloadCount); --m_preloadCount; }
+    bool isLinkPreload() { return m_isLinkPreload; }
+    void setLinkPreload() { m_isLinkPreload = true; }
 
     void registerHandle(CachedResourceHandleBase*);
     WEBCORE_EXPORT void unregisterHandle(CachedResourceHandleBase*);
@@ -257,6 +257,8 @@ public:
     bool validationCompleting() const { return m_proxyResource && m_proxyResource->m_switchingClientsToRevalidatedResource; }
 
     virtual void didSendData(unsigned long long /* bytesSent */, unsigned long long /* totalBytesToBeSent */) { }
+
+    virtual void didRetrieveDerivedDataFromCache(const String& /* type */, SharedBuffer&) { }
 
     void setLoadFinishTime(double finishTime) { m_loadFinishTime = finishTime; }
     double loadFinishTime() const { return m_loadFinishTime; }
@@ -334,6 +336,7 @@ private:
 
     bool m_inCache { false };
     bool m_loading { false };
+    bool m_isLinkPreload { false };
 
     bool m_switchingClientsToRevalidatedResource { false };
 

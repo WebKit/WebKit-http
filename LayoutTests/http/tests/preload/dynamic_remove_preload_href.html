@@ -1,19 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script>
-    if (window.internals) {
-        window.internals.setLinkPreloadSupport(true);
-        window.internals.setResourceTimingSupport(true);
-    }
-</script>
 <script src="/js-test-resources/js-test.js"></script>
 <body>
 <script>
     var link = document.createElement("link");
     link.as = "image";
     link.rel = "preload";
-    link.href = "../resources/slow-image.php";
+    // Cache-busting is needed for slow resources.
+    link.href = "../resources/slow-image.php?rand=" + Math.random();
     var downloadedImage = false;
     document.body.appendChild(link);
     link.href = "";
@@ -24,10 +19,6 @@
                 downloadedImage = true;
         }
         shouldBeFalse("downloadedImage");
-        if (window.internals) {
-            window.internals.setLinkPreloadSupport(false);
-            window.internals.setResourceTimingSupport(false);
-        }
     });
 </script>
 </body>

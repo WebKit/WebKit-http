@@ -40,6 +40,8 @@ static void setDefaultsToConsistentValuesForTesting()
         @"NSFakeForceTouchDevice" : @YES,
         @"AppleEnableSwipeNavigateWithScrolls": @YES,
         @"com.apple.swipescrolldirection": @1,
+        @"com.apple.trackpad.forceClick": @1,
+        @"WebKitLinkedOnOrAfterEverything": @YES,
     };
 
     [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];

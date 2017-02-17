@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,6 +51,8 @@ void ResourceLoadStatistics::encode(KeyedEncoder& encoder) const
     
     // User interaction
     encoder.encodeBool("hadUserInteraction", hadUserInteraction);
+    encoder.encodeDouble("mostRecentUserInteraction", mostRecentUserInteraction);
+    encoder.encodeBool("grandfathered", grandfathered);
     
     // Top frame stats
     encoder.encodeBool("topFrameHasBeenNavigatedToBefore", topFrameHasBeenNavigatedToBefore);
@@ -81,6 +83,7 @@ void ResourceLoadStatistics::encode(KeyedEncoder& encoder) const
     // Prevalent Resource
     encodeHashCountedSet(encoder, "redirectedToOtherPrevalentResourceOrigins", redirectedToOtherPrevalentResourceOrigins);
     encoder.encodeBool("isPrevalentResource", isPrevalentResource);
+    encoder.encodeUInt32("dataRecordsRemoved", dataRecordsRemoved);
 }
 
 static void decodeHashCountedSet(KeyedDecoder& decoder, const String& label, HashCountedSet<String>& hashCountedSet)
@@ -99,7 +102,7 @@ static void decodeHashCountedSet(KeyedDecoder& decoder, const String& label, Has
     });
 }
 
-bool ResourceLoadStatistics::decode(KeyedDecoder& decoder)
+bool ResourceLoadStatistics::decode(KeyedDecoder& decoder, unsigned version)
 {
     if (!decoder.decodeString("PrevalentResourceOrigin", highLevelDomain))
         return false;
@@ -170,7 +173,22 @@ bool ResourceLoadStatistics::decode(KeyedDecoder& decoder)
     
     if (!decoder.decodeBool("isPrevalentResource", isPrevalentResource))
         return false;
-    
+
+    if (version < 2)
+        return true;
+
+    if (!decoder.decodeUInt32("dataRecordsRemoved", dataRecordsRemoved))
+        return false;
+
+    if (version < 3)
+        return true;
+
+    if (!decoder.decodeDouble("mostRecentUserInteraction", mostRecentUserInteraction))
+        return false;
+
+    if (!decoder.decodeBool("grandfathered", grandfathered))
+        return false;
+
     return true;
 }
 
@@ -198,7 +216,6 @@ static void appendHashCountedSet(StringBuilder& builder, const String& label, co
         builder.appendNumber(entry.value);
         builder.append('\n');
     }
-    
 }
 
 String ResourceLoadStatistics::toString() const
@@ -207,6 +224,11 @@ String ResourceLoadStatistics::toString() const
     
     // User interaction
     appendBoolean(builder, "hadUserInteraction", hadUserInteraction);
+    builder.append('\n');
+    builder.appendLiteral("    mostRecentUserInteraction: ");
+    builder.appendNumber(mostRecentUserInteraction);
+    builder.append('\n');
+    appendBoolean(builder, "    grandfathered", grandfathered);
     builder.append('\n');
     
     // Top frame stats
@@ -268,6 +290,10 @@ String ResourceLoadStatistics::toString() const
     // Prevalent Resource
     appendHashCountedSet(builder, "redirectedToOtherPrevalentResourceOrigins", redirectedToOtherPrevalentResourceOrigins);
     appendBoolean(builder, "isPrevalentResource", isPrevalentResource);
+    builder.appendLiteral("    dataRecordsRemoved: ");
+    builder.appendNumber(dataRecordsRemoved);
+    builder.append('\n');
+
     builder.append('\n');
 
     return builder.toString();
@@ -284,7 +310,19 @@ void ResourceLoadStatistics::merge(const ResourceLoadStatistics& other)
 {
     ASSERT(other.highLevelDomain == highLevelDomain);
 
-    hadUserInteraction |= other.hadUserInteraction;
+    if (!other.hadUserInteraction) {
+        // If user interaction has been reset do so here too.
+        // Else, do nothing.
+        if (!other.mostRecentUserInteraction) {
+            hadUserInteraction = false;
+            mostRecentUserInteraction = 0;
+        }
+    } else {
+        hadUserInteraction = true;
+        if (mostRecentUserInteraction < other.mostRecentUserInteraction)
+            mostRecentUserInteraction = other.mostRecentUserInteraction;
+    }
+    grandfathered |= other.grandfathered;
     
     // Top frame stats
     topFrameHasBeenRedirectedTo += other.topFrameHasBeenRedirectedTo;
@@ -314,6 +352,7 @@ void ResourceLoadStatistics::merge(const ResourceLoadStatistics& other)
     // Prevalent resource stats
     mergeHashCountedSet(redirectedToOtherPrevalentResourceOrigins, other.redirectedToOtherPrevalentResourceOrigins);
     isPrevalentResource |= other.isPrevalentResource;
+    dataRecordsRemoved += other.dataRecordsRemoved;
 }
 
 }

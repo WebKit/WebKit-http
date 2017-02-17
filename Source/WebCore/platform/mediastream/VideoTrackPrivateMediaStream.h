@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef VideoTrackPrivateMediaStream_h
-#define VideoTrackPrivateMediaStream_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
 
@@ -36,40 +35,40 @@ namespace WebCore {
 class VideoTrackPrivateMediaStream final : public VideoTrackPrivate {
     WTF_MAKE_NONCOPYABLE(VideoTrackPrivateMediaStream)
 public:
-
     static RefPtr<VideoTrackPrivateMediaStream> create(MediaStreamTrackPrivate& streamTrack)
     {
         return adoptRef(*new VideoTrackPrivateMediaStream(streamTrack));
     }
 
-    virtual ~VideoTrackPrivateMediaStream() { }
-
-    Kind kind() const override { return Kind::Main; }
-    AtomicString id() const override { return m_id; }
-    AtomicString label() const override { return m_label; }
-    AtomicString language() const override { return emptyAtom; }
-    int trackIndex() const override { return m_index; }
-
     void setTrackIndex(int index) { m_index = index; }
 
-    MediaStreamTrackPrivate* streamTrack() const { return m_streamTrack.get(); }
+    MediaStreamTrackPrivate& streamTrack() { return m_streamTrack.get(); }
+
+    MediaTime timelineOffset() const { return m_timelineOffset; }
+    void setTimelineOffset(const MediaTime& offset) { m_timelineOffset = offset; }
 
 private:
     VideoTrackPrivateMediaStream(MediaStreamTrackPrivate& track)
-        : m_streamTrack(&track)
+        : m_streamTrack(track)
         , m_id(track.id())
         , m_label(track.label())
+        , m_timelineOffset(MediaTime::invalidTime())
     {
     }
 
-    RefPtr<MediaStreamTrackPrivate> m_streamTrack;
+    Kind kind() const final { return Kind::Main; }
+    AtomicString id() const final { return m_id; }
+    AtomicString label() const final { return m_label; }
+    AtomicString language() const final { return emptyAtom; }
+    int trackIndex() const final { return m_index; }
+
+    Ref<MediaStreamTrackPrivate> m_streamTrack;
     AtomicString m_id;
     AtomicString m_label;
     int m_index { 0 };
+    MediaTime m_timelineOffset;
 };
 
 }
 
 #endif // ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
-
-#endif // VideoTrackPrivateMediaStream_h

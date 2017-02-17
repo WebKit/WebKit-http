@@ -230,7 +230,6 @@ RegisterSet RegisterSet::llintBaselineCalleeSaveRegisters()
     result.set(GPRInfo::regCS8);
     result.set(GPRInfo::regCS9);
 #elif CPU(MIPS)
-#elif CPU(SH4)
 #else
     UNREACHABLE_FOR_PLATFORM();
 #endif
@@ -266,7 +265,6 @@ RegisterSet RegisterSet::dfgCalleeSaveRegisters()
     result.set(GPRInfo::regCS8);
     result.set(GPRInfo::regCS9);
 #elif CPU(MIPS)
-#elif CPU(SH4)
 #else
     UNREACHABLE_FOR_PLATFORM();
 #endif
@@ -313,39 +311,6 @@ RegisterSet RegisterSet::ftlCalleeSaveRegisters()
 #endif
     return result;
 }
-
-#if ENABLE(WEBASSEMBLY)
-RegisterSet RegisterSet::webAssemblyCalleeSaveRegisters()
-{
-    RegisterSet result;
-#if CPU(X86)
-#elif CPU(X86_64)
-#if !OS(WINDOWS)
-    ASSERT(GPRInfo::regCS3 == GPRInfo::tagTypeNumberRegister);
-    ASSERT(GPRInfo::regCS4 == GPRInfo::tagMaskRegister);
-    result.set(GPRInfo::regCS3);
-    result.set(GPRInfo::regCS4);
-#else
-    ASSERT(GPRInfo::regCS5 == GPRInfo::tagTypeNumberRegister);
-    ASSERT(GPRInfo::regCS6 == GPRInfo::tagMaskRegister);
-    result.set(GPRInfo::regCS5);
-    result.set(GPRInfo::regCS6);
-#endif
-#elif CPU(ARM_THUMB2)
-#elif CPU(ARM_TRADITIONAL)
-#elif CPU(ARM64)
-    ASSERT(GPRInfo::regCS8 == GPRInfo::tagTypeNumberRegister);
-    ASSERT(GPRInfo::regCS9 == GPRInfo::tagMaskRegister);
-    result.set(GPRInfo::regCS8);
-    result.set(GPRInfo::regCS9);
-#elif CPU(MIPS)
-#elif CPU(SH4)
-#else
-    UNREACHABLE_FOR_PLATFORM();
-#endif
-    return result;
-}
-#endif
 
 RegisterSet RegisterSet::argumentGPRS()
 {

@@ -17,6 +17,7 @@
 # the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 
+import logging
 import subprocess
 import os
 import sys
@@ -71,12 +72,9 @@ class TestRunner:
         SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/usermedia-permission-requests", "Test times out", 158257),
         SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/audio-usermedia-permission-request", "Test times out", 158257),
         SkippedTest("WebKit2Gtk/TestCookieManager", "/webkit2/WebKitCookieManager/persistent-storage", "Test is flaky", 134580),
+        SkippedTest("WebKit2Gtk/TestPrinting", "/webkit2/WebKitPrintOperation/custom-widget", "Test is flaky", 168196),
         SkippedTest("WebKit2Gtk/TestWebViewEditor", "/webkit2/WebKitWebView/editable/editable", "Test hits an assertion in Debug builds", 151654, "Debug"),
-        SkippedTest("WebKit2Gtk/TestWebViewEditor", "/webkit2/WebKitWebView/editable/editable", "Same test, hits release assertion too", 161608),
-        SkippedTest("WebKit2Gtk/TestWebViewEditor", "/webkit2/WebKitWebView/cut-copy-paste/non-editable", "Test hits assertion", 161608),
-        SkippedTest("WebKit2Gtk/TestWebViewEditor", "/webkit2/WebKitWebView/cut-copy-paste/editable", "Test hits assertion", 161608),
-        SkippedTest("WebKit2Gtk/TestWebViewEditor", "/webkit2/WebKitWebView/select-all/non-editable", "Test hits assertion", 161608),
-        SkippedTest("WebKit2Gtk/TestWebViewEditor", "/webkit2/WebKitWebView/select-all/editable", "Test hits assertion", 161608),
+        SkippedTest("WebKit2Gtk/TestWebExtensions", "/webkit2/WebKitWebExtension/form-controls-associated-signal", "Test is flaky", 168194),
         SkippedTest("WebKit2Gtk/TestWebExtensions", "/webkit2/WebKitWebView/install-missing-plugins-permission-request", "Test times out", 147822),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.MouseMoveAfterCrash", "Test is flaky", 85066),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.NewFirstVisuallyNonEmptyLayoutForImages", "Test is flaky", 85066),
@@ -209,10 +207,7 @@ class TestRunner:
         return True
 
     def _create_driver(self, port_options=[]):
-        if self._options.use_wayland:
-            self._port._wayland = True
-        else:
-            self._port._nativexorg = not self._options.use_xvfb
+        self._port._display_server = self._options.display_server
         driver = self._port.create_driver(worker_number=0, no_timeout=True)._make_driver(pixel_tests=False)
         if not driver.check_driver(self._port):
             raise RuntimeError("Failed to check driver %s" %driver.__class__.__name__)
@@ -486,11 +481,12 @@ if __name__ == "__main__":
     option_parser.add_option('-t', '--timeout',
                              action='store', type='int', dest='timeout', default=10,
                              help='Time in seconds until a test times out')
-    option_parser.add_option('--no-xvfb', action='store_false', dest='use_xvfb', default=True,
-                             help='Do not run tests under Xvfb')
-    option_parser.add_option('--wayland', action='store_true', dest='use_wayland', default=False,
-                             help='Run the layout tests inside a (virtualized) weston')
+    option_parser.add_option('--display-server', choices=['xvfb', 'xorg', 'weston', 'wayland'], default='xvfb',
+                             help='"xvfb": Use a virtualized X11 server. "xorg": Use the current X11 session. '
+                                  '"weston": Use a virtualized Weston server. "wayland": Use the current wayland session.'),
     options, args = option_parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     runner = TestRunner(options, args)
     sys.exit(runner.run_tests())

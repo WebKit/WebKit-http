@@ -70,7 +70,7 @@ SecurityOrigin* MediaDevicesEnumerationRequest::topLevelDocumentOrigin() const
             return nullptr;
     }
 
-    return scriptExecutionContext()->topOrigin();
+    return &scriptExecutionContext()->topOrigin();
 }
 
 void MediaDevicesEnumerationRequest::contextDestroyed()
@@ -88,6 +88,7 @@ void MediaDevicesEnumerationRequest::start()
     if (!controller)
         return;
 
+    Ref<MediaDevicesEnumerationRequest> protectedThis(*this);
     controller->enumerateMediaDevices(*this);
 }
 

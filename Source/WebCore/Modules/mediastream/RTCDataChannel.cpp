@@ -23,18 +23,16 @@
  */
 
 #include "config.h"
+#include "RTCDataChannel.h"
 
 #if ENABLE(WEB_RTC)
 
-#include "RTCDataChannel.h"
-
 #include "Blob.h"
-#include "Dictionary.h"
 #include "Event.h"
 #include "EventNames.h"
+#include "ExceptionCode.h"
 #include "MessageEvent.h"
 #include "RTCDataChannelHandler.h"
-#include "RTCPeerConnectionHandler.h"
 #include "ScriptExecutionContext.h"
 #include <runtime/ArrayBuffer.h>
 #include <runtime/ArrayBufferView.h>
@@ -57,7 +55,9 @@ static const AtomicString& arraybufferKeyword()
 Ref<RTCDataChannel> RTCDataChannel::create(ScriptExecutionContext& context, std::unique_ptr<RTCDataChannelHandler>&& handler, String&& label, RTCDataChannelInit&& options)
 {
     ASSERT(handler);
-    return adoptRef(*new RTCDataChannel(context, WTFMove(handler), WTFMove(label), WTFMove(options)));
+    auto channel = adoptRef(*new RTCDataChannel(context, WTFMove(handler), WTFMove(label), WTFMove(options)));
+    channel->m_handler->setClient(&channel.get());
+    return channel;
 }
 
 RTCDataChannel::RTCDataChannel(ScriptExecutionContext& context, std::unique_ptr<RTCDataChannelHandler>&& handler, String&& label, RTCDataChannelInit&& options)
@@ -67,7 +67,6 @@ RTCDataChannel::RTCDataChannel(ScriptExecutionContext& context, std::unique_ptr<
     , m_label(WTFMove(label))
     , m_options(WTFMove(options))
 {
-    m_handler->setClient(this);
 }
 
 const AtomicString& RTCDataChannel::readyState() const
@@ -92,9 +91,9 @@ const AtomicString& RTCDataChannel::readyState() const
     return emptyAtom;
 }
 
-unsigned RTCDataChannel::bufferedAmount() const
+size_t RTCDataChannel::bufferedAmount() const
 {
-    return 0;
+    return m_handler->bufferedAmount();
 }
 
 const AtomicString& RTCDataChannel::binaryType() const
@@ -222,6 +221,15 @@ void RTCDataChannel::didDetectError()
         return;
 
     scheduleDispatchEvent(Event::create(eventNames().errorEvent, false, false));
+}
+
+void RTCDataChannel::bufferedAmountIsDecreasing()
+{
+    if (m_stopped)
+        return;
+
+    if (bufferedAmount() <= m_bufferedAmountLowThreshold)
+        scheduleDispatchEvent(Event::create(eventNames().bufferedAmountLowThresholdEvent, false, false));
 }
 
 void RTCDataChannel::stop()

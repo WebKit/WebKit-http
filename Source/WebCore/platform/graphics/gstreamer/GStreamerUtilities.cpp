@@ -120,17 +120,17 @@ char* getGstBufferDataPointer(GstBuffer* buffer)
     return reinterpret_cast<char*>(mapInfo->data);
 }
 
-void mapGstBuffer(GstBuffer* buffer)
+void mapGstBuffer(GstBuffer* buffer, uint32_t flags)
 {
     GstMapInfo* mapInfo = static_cast<GstMapInfo*>(fastMalloc(sizeof(GstMapInfo)));
-    if (!gst_buffer_map(buffer, mapInfo, GST_MAP_WRITE)) {
+    if (!gst_buffer_map(buffer, mapInfo, static_cast<GstMapFlags>(flags))) {
         fastFree(mapInfo);
         gst_buffer_unref(buffer);
         return;
     }
 
     GstMiniObject* miniObject = reinterpret_cast<GstMiniObject*>(buffer);
-    gst_mini_object_set_qdata(miniObject, g_quark_from_static_string(webkitGstMapInfoQuarkString), mapInfo, 0);
+    gst_mini_object_set_qdata(miniObject, g_quark_from_static_string(webkitGstMapInfoQuarkString), mapInfo, nullptr);
 }
 
 void unmapGstBuffer(GstBuffer* buffer)
@@ -197,7 +197,7 @@ bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* caps
     return result;
 }
 
-#if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
+#if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA))
 GstElement* createGstDecryptor(const gchar* protectionSystem)
 {
     GstElement* decryptor = nullptr;

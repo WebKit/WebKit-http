@@ -85,11 +85,10 @@ void TextureMapperLayer::paint()
 
 static Color blendWithOpacity(const Color& color, float opacity)
 {
-    RGBA32 rgba = color.rgb();
-    // See Color::getRGBA() to know how to extract alpha from color.
-    float alpha = alphaChannel(rgba) / 255.;
-    float effectiveAlpha = alpha * opacity;
-    return Color(colorWithOverrideAlpha(rgba, effectiveAlpha));
+    if (color.isOpaque() && opacity == 1.)
+        return color;
+
+    return color.colorWithAlphaMultipliedBy(opacity);
 }
 
 void TextureMapperLayer::computePatternTransformIfNeeded()
@@ -114,7 +113,7 @@ void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
     transform.multiply(options.transform);
     transform.multiply(m_currentTransform.combined());
 
-    if (m_state.solidColor.isValid() && !m_state.contentsRect.isEmpty() && m_state.solidColor.alpha()) {
+    if (m_state.solidColor.isValid() && !m_state.contentsRect.isEmpty() && m_state.solidColor.isVisible()) {
         options.textureMapper.drawSolidColor(m_state.contentsRect, transform, blendWithOpacity(m_state.solidColor, options.opacity));
         if (m_state.showDebugBorders)
             options.textureMapper.drawBorder(m_state.debugBorderColor, m_state.debugBorderWidth, layerRect(), transform);
@@ -210,7 +209,7 @@ void TextureMapperLayer::paintSelfAndChildrenWithReplica(const TextureMapperPain
         TextureMapperPaintOptions replicaOptions(options);
         replicaOptions.transform
             .multiply(m_state.replicaLayer->m_currentTransform.combined())
-            .multiply(m_currentTransform.combined().inverse().valueOr(TransformationMatrix()));
+            .multiply(m_currentTransform.combined().inverse().value_or(TransformationMatrix()));
         paintSelfAndChildren(replicaOptions);
     }
 
@@ -229,7 +228,7 @@ void TextureMapperLayer::setAnimatedOpacity(float opacity)
 
 TransformationMatrix TextureMapperLayer::replicaTransform()
 {
-    return TransformationMatrix(m_state.replicaLayer->m_currentTransform.combined()).multiply(m_currentTransform.combined().inverse().valueOr(TransformationMatrix()));
+    return TransformationMatrix(m_state.replicaLayer->m_currentTransform.combined()).multiply(m_currentTransform.combined().inverse().value_or(TransformationMatrix()));
 }
 
 void TextureMapperLayer::setAnimatedFilters(const FilterOperations& filters)
@@ -255,7 +254,7 @@ void TextureMapperLayer::computeOverlapRegions(Region& overlapRegion, Region& no
     FloatRect boundingRect;
     if (m_backingStore || m_state.masksToBounds || m_state.maskLayer || hasFilters())
         boundingRect = layerRect();
-    else if (m_contentsLayer || m_state.solidColor.alpha())
+    else if (m_contentsLayer || m_state.solidColor.isVisible())
         boundingRect = m_state.contentsRect;
 
     if (m_currentFilters.hasOutsets()) {
@@ -730,7 +729,7 @@ TextureMapperLayer* TextureMapperLayer::findScrollableContentsLayerAt(const Floa
 FloatSize TextureMapperLayer::mapScrollOffset(const FloatSize& offset)
 {
     double zeroX, zeroY, offsetX, offsetY;
-    TransformationMatrix transform = m_currentTransform.combined().inverse().valueOr(TransformationMatrix());
+    TransformationMatrix transform = m_currentTransform.combined().inverse().value_or(TransformationMatrix());
     transform.map(0, 0, zeroX, zeroY);
     transform.map(offset.width(), offset.height(), offsetX, offsetY);
     return FloatSize(offsetX - zeroX, offsetY - zeroY);

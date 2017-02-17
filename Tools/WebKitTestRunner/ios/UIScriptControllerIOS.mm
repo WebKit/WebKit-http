@@ -44,6 +44,22 @@
 
 namespace WTR {
 
+static NSDictionary *toNSDictionary(CGRect rect)
+{
+    return @{
+        @"left": @(rect.origin.x),
+        @"top": @(rect.origin.y),
+        @"width": @(rect.size.width),
+        @"height": @(rect.size.height)
+    };
+}
+    
+void UIScriptController::checkForOutstandingCallbacks()
+{
+    if (![[HIDEventGenerator sharedHIDEventGenerator] checkForOutstandingCallbacks])
+        [NSException raise:@"WebKitTestRunnerTestProblem" format:@"The test completed before all synthesized events had been handled. Perhaps you're calling notifyDone() too early?"];
+}
+
 void UIScriptController::doAsyncTask(JSValueRef callback)
 {
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
@@ -55,6 +71,29 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
     });
 }
 
+void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    [webView _doAfterNextPresentationUpdate:^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
+void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    [webView _doAfterNextStablePresentationUpdate:^() {
+        if (m_context)
+            m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
 void UIScriptController::zoomToScale(double scale, JSValueRef callback)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -62,6 +101,40 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
 
     [webView zoomToScale:scale animated:YES completionHandler:^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
+void UIScriptController::retrieveSpeakSelectionContent(JSValueRef callback)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    
+    [webView accessibilityRetrieveSpeakSelectionContentWithCompletionHandler:^() {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::accessibilitySpeakSelectionContent() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    return JSStringCreateWithCFString((CFStringRef)webView.accessibilitySpeakSelectionContent);
+}
+
+void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef callback)
+{
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* webView = TestController::singleton().mainWebView()->platformView();
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    [center postNotificationName:UIAccessibilityInvertColorsStatusDidChangeNotification object:webView];
+
+    [webView _doAfterNextPresentationUpdate: ^{
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
@@ -176,13 +249,39 @@ void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, fl
         m_context->asyncTaskComplete(callbackID);
     }];
 }
+    
+void convertCoordinates(NSMutableDictionary *event)
+{
+    if (event[HIDEventTouchesKey]) {
+        for (NSMutableDictionary *touch in event[HIDEventTouchesKey]) {
+            auto location = globalToContentCoordinates(TestController::singleton().mainWebView()->platformView(), (long)[touch[HIDEventXKey] doubleValue], (long)[touch[HIDEventYKey]doubleValue]);
+            touch[HIDEventXKey] = @(location.x);
+            touch[HIDEventYKey] = @(location.y);
+        }
+    }
+}
 
 void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef callback)
 {
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
 
     String jsonString = eventsJSON->string();
-    auto eventInfo = dynamic_objc_cast<NSDictionary>([NSJSONSerialization JSONObjectWithData:[(NSString *)jsonString dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil]);
+    auto eventInfo = dynamic_objc_cast<NSDictionary>([NSJSONSerialization JSONObjectWithData:[(NSString *)jsonString dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingMutableContainers | NSJSONReadingMutableLeaves error:nil]);
+    
+    for (NSMutableDictionary *event in eventInfo[TopLevelEventInfoKey]) {
+        if (![event[HIDEventCoordinateSpaceKey] isEqualToString:HIDEventCoordinateSpaceTypeContent])
+            continue;
+        
+        if (event[HIDEventStartEventKey])
+            convertCoordinates(event[HIDEventStartEventKey]);
+        
+        if (event[HIDEventEndEventKey])
+            convertCoordinates(event[HIDEventEndEventKey]);
+        
+        if (event[HIDEventTouchesKey])
+            convertCoordinates(event);
+    }
+    
     if (!eventInfo || ![eventInfo isKindOfClass:[NSDictionary class]]) {
         WTFLogAlways("JSON is not convertible to a dictionary");
         return;
@@ -342,6 +441,18 @@ void UIScriptController::scrollToOffset(long x, long y)
     [webView.scrollView setContentOffset:contentOffsetBoundedInValidRange(webView.scrollView, CGPointMake(x, y)) animated:YES];
 }
 
+void UIScriptController::immediateScrollToOffset(long x, long y)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView.scrollView setContentOffset:contentOffsetBoundedInValidRange(webView.scrollView, CGPointMake(x, y)) animated:NO];
+}
+
+void UIScriptController::immediateZoomToScale(double scale)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView.scrollView setZoomScale:scale animated:NO];
+}
+
 void UIScriptController::keyboardAccessoryBarNext()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -366,6 +477,24 @@ double UIScriptController::maximumZoomScale() const
     return webView.scrollView.maximumZoomScale;
 }
 
+std::optional<bool> UIScriptController::stableStateOverride() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    if (webView._stableStateOverride)
+        return webView._stableStateOverride.boolValue;
+
+    return std::nullopt;
+}
+
+void UIScriptController::setStableStateOverride(std::optional<bool> overrideValue)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    if (overrideValue)
+        webView._stableStateOverride = @(overrideValue.value());
+    else
+        webView._stableStateOverride = nil;
+}
+
 JSObjectRef UIScriptController::contentVisibleRect() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -379,19 +508,21 @@ JSObjectRef UIScriptController::contentVisibleRect() const
 JSObjectRef UIScriptController::selectionRangeViewRects() const
 {
     NSMutableArray *selectionRects = [[NSMutableArray alloc] init];
-    for (UIView *rectView in TestController::singleton().mainWebView()->platformView()._uiTextSelectionRectViews) {
-        if (rectView.hidden)
-            continue;
+    NSArray *rects = TestController::singleton().mainWebView()->platformView()._uiTextSelectionRects;
+    for (NSValue *rect in rects)
+        [selectionRects addObject:toNSDictionary([rect CGRectValue])];
 
-        CGRect frame = rectView.frame;
-        [selectionRects addObject:@{
-            @"left": @(frame.origin.x),
-            @"top": @(frame.origin.y),
-            @"width": @(frame.size.width),
-            @"height": @(frame.size.height),
-        }];
-    }
     return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:selectionRects inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+}
+
+JSObjectRef UIScriptController::textSelectionCaretRect() const
+{
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:toNSDictionary(TestController::singleton().mainWebView()->platformView()._uiTextCaretRect) inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+}
+
+JSObjectRef UIScriptController::inputViewBounds() const
+{
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:toNSDictionary(TestController::singleton().mainWebView()->platformView()._inputViewBounds) inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 }
 
 void UIScriptController::removeAllDynamicDictionaries()
@@ -403,6 +534,16 @@ JSRetainPtr<JSStringRef> UIScriptController::scrollingTreeAsText() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     return JSStringCreateWithCFString((CFStringRef)[webView _scrollingTreeAsText]);
+}
+
+void UIScriptController::removeViewFromWindow(JSValueRef callback)
+{
+    TestController::singleton().mainWebView()->removeFromWindow();
+}
+
+void UIScriptController::addViewToWindow(JSValueRef callback)
+{
+    TestController::singleton().mainWebView()->addToWindow();
 }
 
 void UIScriptController::platformSetDidStartFormControlInteractionCallback()
@@ -498,6 +639,11 @@ void UIScriptController::platformSetDidEndScrollingCallback()
 void UIScriptController::platformClearAllCallbacks()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    
+    webView.didStartFormControlInteractionCallback = nil;
+    webView.didEndFormControlInteractionCallback = nil;
+    webView.didShowForcePressPreviewCallback = nil;
+    webView.didDismissForcePressPreviewCallback = nil;
     webView.didEndZoomingCallback = nil;
     webView.willBeginZoomingCallback = nil;
     webView.didHideKeyboardCallback = nil;

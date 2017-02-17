@@ -34,6 +34,9 @@
 #if ENABLE(READABLE_STREAM_API)
 
 #include "WebCoreJSClientData.h"
+#include <heap/HeapInlines.h>
+#include <runtime/IdentifierInlines.h>
+#include <runtime/JSObjectInlines.h>
 
 namespace WebCore {
 

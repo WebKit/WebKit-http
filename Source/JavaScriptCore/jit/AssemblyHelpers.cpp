@@ -354,6 +354,11 @@ void AssemblyHelpers::callExceptionFuzz()
     }
 }
 
+AssemblyHelpers::Jump AssemblyHelpers::emitJumpIfException()
+{
+    return emitExceptionCheck(NormalExceptionCheck);
+}
+
 AssemblyHelpers::Jump AssemblyHelpers::emitExceptionCheck(ExceptionCheckKind kind, ExceptionJumpWidth width)
 {
     callExceptionFuzz();
@@ -401,7 +406,7 @@ void AssemblyHelpers::emitStoreStructureWithTypeInfo(AssemblyHelpers& jit, Trust
         jit.abortWithReason(AHStructureIDIsValid);
         correctStructure.link(&jit);
 
-        Jump correctIndexingType = jit.branch8(Equal, MacroAssembler::Address(dest, JSCell::indexingTypeOffset()), TrustedImm32(structurePtr->indexingType()));
+        Jump correctIndexingType = jit.branch8(Equal, MacroAssembler::Address(dest, JSCell::indexingTypeAndMiscOffset()), TrustedImm32(structurePtr->indexingTypeIncludingHistory()));
         jit.abortWithReason(AHIndexingTypeIsValid);
         correctIndexingType.link(&jit);
 
@@ -415,7 +420,7 @@ void AssemblyHelpers::emitStoreStructureWithTypeInfo(AssemblyHelpers& jit, Trust
     }
 #else
     // Do a 32-bit wide store to initialize the cell's fields.
-    jit.store32(TrustedImm32(structurePtr->objectInitializationBlob()), MacroAssembler::Address(dest, JSCell::indexingTypeOffset()));
+    jit.store32(TrustedImm32(structurePtr->objectInitializationBlob()), MacroAssembler::Address(dest, JSCell::indexingTypeAndMiscOffset()));
     jit.storePtr(structure, MacroAssembler::Address(dest, JSCell::structureIDOffset()));
 #endif
 }
@@ -447,6 +452,7 @@ void AssemblyHelpers::loadProperty(GPRReg object, GPRReg offset, JSValueRegs res
 void AssemblyHelpers::emitLoadStructure(RegisterID source, RegisterID dest, RegisterID scratch)
 {
 #if USE(JSVALUE64)
+    ASSERT(dest != scratch);
     load32(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
     loadPtr(vm()->heap.structureIDTable().base(), scratch);
     loadPtr(MacroAssembler::BaseIndex(scratch, dest, MacroAssembler::TimesEight), dest);

@@ -77,7 +77,7 @@ enum StyleDifferenceContextSensitiveProperty {
 // Static pseudo styles. Dynamic ones are produced on the fly.
 enum PseudoId : unsigned char {
     // The order must be NOP ID, public IDs, and then internal IDs.
-    NOPSEUDO, FIRST_LINE, FIRST_LETTER, BEFORE, AFTER, SELECTION, FIRST_LINE_INHERITED, SCROLLBAR,
+    NOPSEUDO, FIRST_LINE, FIRST_LETTER, BEFORE, AFTER, SELECTION, SCROLLBAR,
     // Internal IDs follow:
     SCROLLBAR_THUMB, SCROLLBAR_BUTTON, SCROLLBAR_TRACK, SCROLLBAR_TRACK_PIECE, SCROLLBAR_CORNER, RESIZER,
     AFTER_LAST_INTERNAL_PSEUDOID,
@@ -681,10 +681,25 @@ enum class TouchAction {
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
-enum class ScrollSnapType {
+enum class ScrollSnapStrictness {
     None,
     Proximity,
     Mandatory
+};
+
+enum class ScrollSnapAxis {
+    XAxis,
+    YAxis,
+    Block,
+    Inline,
+    Both
+};
+
+enum class ScrollSnapAxisAlignType {
+    None,
+    Start,
+    Center,
+    End
 };
 #endif
 
@@ -706,7 +721,7 @@ enum class ApplePayButtonType {
     Plain,
     Buy,
     SetUp,
-    Other,
+    Donate,
 };
 #endif
 

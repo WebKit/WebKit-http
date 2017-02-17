@@ -61,7 +61,6 @@ class RenderStyle;
 class SVGQualifiedName;
 class ShadowRoot;
 class TouchEvent;
-class UIRequestEvent;
 
 using NodeOrString = Variant<RefPtr<Node>, String>;
 
@@ -241,7 +240,7 @@ public:
     WEBCORE_EXPORT Node* deprecatedShadowAncestorNode() const;
     ShadowRoot* containingShadowRoot() const;
     ShadowRoot* shadowRoot() const;
-    bool isUnclosedNode(const Node&) const;
+    bool isClosedShadowHidden(const Node&) const;
 
     HTMLSlotElement* assignedSlot() const;
     HTMLSlotElement* assignedSlotForBindings() const;
@@ -257,6 +256,7 @@ public:
     // Node's parent or shadow tree host.
     ContainerNode* parentOrShadowHostNode() const;
     ContainerNode* parentInComposedTree() const;
+    Element* parentElementInComposedTree() const;
     Element* parentOrShadowHostElement() const;
     void setParentNode(ContainerNode*);
     Node& rootNode() const;
@@ -266,6 +266,8 @@ public:
         bool composed;
     };
     Node& getRootNode(const GetRootNodeOptions&) const;
+    
+    void* opaqueRoot() const;
 
     // Use when it's guaranteed to that shadowHost is null.
     ContainerNode* parentNodeGuaranteedHostFree() const;
@@ -370,14 +372,14 @@ public:
     static ptrdiff_t treeScopeMemoryOffset() { return OBJECT_OFFSETOF(Node, m_treeScope); }
 
     // Returns true if this node is associated with a document and is in its associated document's
-    // node tree, false otherwise.
-    bool inDocument() const 
+    // node tree, false otherwise (https://dom.spec.whatwg.org/#connected).
+    bool isConnected() const
     { 
-        return getFlag(InDocumentFlag);
+        return getFlag(IsConnectedFlag);
     }
     bool isInUserAgentShadowTree() const;
     bool isInShadowTree() const { return getFlag(IsInShadowTreeFlag); }
-    bool isInTreeScope() const { return getFlag(static_cast<NodeFlags>(InDocumentFlag | IsInShadowTreeFlag)); }
+    bool isInTreeScope() const { return getFlag(static_cast<NodeFlags>(IsConnectedFlag | IsInShadowTreeFlag)); }
 
     bool isDocumentTypeNode() const { return nodeType() == DOCUMENT_TYPE_NODE; }
     virtual bool childTypeAllowed(NodeType) const { return false; }
@@ -386,7 +388,9 @@ public:
 
     ExceptionOr<void> checkSetPrefix(const AtomicString& prefix);
 
-    WEBCORE_EXPORT bool isDescendantOf(const Node*) const;
+    WEBCORE_EXPORT bool isDescendantOf(const Node&) const;
+    bool isDescendantOf(const Node* other) const { return other && isDescendantOf(*other); }
+
     bool isDescendantOrShadowDescendantOf(const Node*) const;
     WEBCORE_EXPORT bool contains(const Node*) const;
     bool containsIncludingShadowDOM(const Node*) const;
@@ -438,7 +442,7 @@ public:
     // dispatching.
     //
     // WebKit notifies this callback regardless if the subtree of the node is a document tree or a floating subtree.
-    // Implementation can determine the type of subtree by seeing insertionPoint->inDocument().
+    // Implementation can determine the type of subtree by seeing insertionPoint->isConnected().
     // For a performance reason, notifications are delivered only to ContainerNode subclasses if the insertionPoint is out of document.
     //
     // There is another callback named finishedInsertingSubtree(), which is called after all descendants are notified.
@@ -505,10 +509,6 @@ public:
 #if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
     bool dispatchTouchEvent(TouchEvent&);
 #endif
-#if ENABLE(INDIE_UI)
-    bool dispatchUIRequestEvent(UIRequestEvent&);
-#endif
-
     bool dispatchBeforeLoadEvent(const String& sourceURL);
 
     void dispatchInputEvent();
@@ -528,13 +528,14 @@ public:
 #endif
 
     EventTargetData* eventTargetData() final;
+    EventTargetData* eventTargetDataConcurrently() final;
     EventTargetData& ensureEventTargetData() final;
 
-    void getRegisteredMutationObserversOfType(HashMap<MutationObserver*, MutationRecordDeliveryOptions>&, MutationObserver::MutationType, const QualifiedName* attributeName);
-    void registerMutationObserver(MutationObserver*, MutationObserverOptions, const HashSet<AtomicString>& attributeFilter);
-    void unregisterMutationObserver(MutationObserverRegistration*);
-    void registerTransientMutationObserver(MutationObserverRegistration*);
-    void unregisterTransientMutationObserver(MutationObserverRegistration*);
+    HashMap<MutationObserver*, MutationRecordDeliveryOptions> registeredMutationObservers(MutationObserver::MutationType, const QualifiedName* attributeName);
+    void registerMutationObserver(MutationObserver&, MutationObserverOptions, const HashSet<AtomicString>& attributeFilter);
+    void unregisterMutationObserver(MutationObserverRegistration&);
+    void registerTransientMutationObserver(MutationObserverRegistration&);
+    void unregisterTransientMutationObserver(MutationObserverRegistration&);
     void notifyMutationObserversNodeWillDetach();
 
     WEBCORE_EXPORT void textRects(Vector<IntRect>&) const;
@@ -572,7 +573,7 @@ protected:
         IsHTMLFlag = 1 << 4,
         IsSVGFlag = 1 << 5,
         ChildNeedsStyleRecalcFlag = 1 << 7,
-        InDocumentFlag = 1 << 8,
+        IsConnectedFlag = 1 << 8,
         IsLinkFlag = 1 << 9,
         IsUserActionElement = 1 << 10,
         HasRareDataFlag = 1 << 11,
@@ -616,19 +617,19 @@ protected:
         CreateText = DefaultNodeFlags | IsTextFlag,
         CreateContainer = DefaultNodeFlags | IsContainerFlag, 
         CreateElement = CreateContainer | IsElementFlag, 
-        CreatePseudoElement =  CreateElement | InDocumentFlag,
+        CreatePseudoElement =  CreateElement | IsConnectedFlag,
         CreateShadowRoot = CreateContainer | IsDocumentFragmentFlag | IsInShadowTreeFlag,
         CreateDocumentFragment = CreateContainer | IsDocumentFragmentFlag,
         CreateStyledElement = CreateElement | IsStyledElementFlag, 
         CreateHTMLElement = CreateStyledElement | IsHTMLFlag,
         CreateSVGElement = CreateStyledElement | IsSVGFlag | HasCustomStyleResolveCallbacksFlag,
-        CreateDocument = CreateContainer | InDocumentFlag,
+        CreateDocument = CreateContainer | IsConnectedFlag,
         CreateEditingText = CreateText | IsEditingTextOrUndefinedCustomElementFlag,
         CreateMathMLElement = CreateStyledElement | IsMathMLFlag
     };
     Node(Document&, ConstructionType);
 
-    virtual void didMoveToNewDocument(Document* oldDocument);
+    virtual void didMoveToNewDocument(Document& oldDocument);
     
     virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const { }
 
@@ -668,6 +669,8 @@ private:
     HashSet<MutationObserverRegistration*>* transientMutationObserverRegistry();
 
     void adjustStyleValidity(Style::Validity, Style::InvalidationMode);
+    
+    void* opaqueRootSlow() const;
 
     int m_refCount;
     mutable uint32_t m_nodeFlags;
@@ -754,6 +757,15 @@ inline ContainerNode* Node::parentNode() const
     return m_parentNode;
 }
 
+inline void* Node::opaqueRoot() const
+{
+    // FIXME: Possible race?
+    // https://bugs.webkit.org/show_bug.cgi?id=165713
+    if (isConnected())
+        return &document();
+    return opaqueRootSlow();
+}
+
 inline ContainerNode* Node::parentNodeGuaranteedHostFree() const
 {
     ASSERT(!isShadowRoot());
@@ -779,7 +791,7 @@ inline void Node::setHasValidStyle()
 } // namespace WebCore
 
 #if ENABLE(TREE_DEBUGGING)
-// Outside the WebCore namespace for ease of invocation from gdb.
+// Outside the WebCore namespace for ease of invocation from the debugger.
 void showTree(const WebCore::Node*);
 void showNodePath(const WebCore::Node*);
 #endif

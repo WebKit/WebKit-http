@@ -258,10 +258,10 @@ LayoutUnit RenderListBox::listHeight() const
     return itemHeight() * numItems() - rowSpacing;
 }
 
-void RenderListBox::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderListBox::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop) const
 {
     LayoutUnit height = itemHeight() * size() - rowSpacing + verticalBorderAndPaddingExtent();
-    RenderBox::computeLogicalHeight(height, logicalTop, computedValues);
+    return RenderBox::computeLogicalHeight(height, logicalTop);
 }
 
 int RenderListBox::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode lineDirection, LinePositionMode linePositionMode) const
@@ -281,7 +281,7 @@ LayoutRect RenderListBox::itemBoundingBoxRect(const LayoutPoint& additionalOffse
 void RenderListBox::paintItem(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintFunction paintFunction)
 {
     int listItemsSize = numItems();
-    int firstVisibleItem = m_indexOfFirstVisibleItemInsidePaddingTopArea.valueOr(m_indexOffset);
+    int firstVisibleItem = m_indexOfFirstVisibleItemInsidePaddingTopArea.value_or(m_indexOffset);
     int endIndex = firstVisibleItem + numVisibleItems(ConsiderPadding::Yes);
     for (int i = firstVisibleItem; i < listItemsSize && i < endIndex; ++i)
         paintFunction(paintInfo, paintOffset, i);
@@ -597,7 +597,7 @@ bool RenderListBox::scrollToRevealElementAtListIndex(int index)
 
 bool RenderListBox::listIndexIsVisible(int index)
 {
-    int firstIndex = m_indexOfFirstVisibleItemInsidePaddingTopArea.valueOr(m_indexOffset);
+    int firstIndex = m_indexOfFirstVisibleItemInsidePaddingTopArea.value_or(m_indexOffset);
     int endIndex = m_indexOfFirstVisibleItemInsidePaddingBottomArea
         ? m_indexOfFirstVisibleItemInsidePaddingBottomArea.value() + numberOfVisibleItemsInPaddingBottom()
         : m_indexOffset + numVisibleItems();
@@ -669,8 +669,8 @@ int RenderListBox::numberOfVisibleItemsInPaddingBottom() const
 
 void RenderListBox::computeFirstIndexesVisibleInPaddingTopBottomAreas()
 {
-    m_indexOfFirstVisibleItemInsidePaddingTopArea = Nullopt;
-    m_indexOfFirstVisibleItemInsidePaddingBottomArea = Nullopt;
+    m_indexOfFirstVisibleItemInsidePaddingTopArea = std::nullopt;
+    m_indexOfFirstVisibleItemInsidePaddingBottomArea = std::nullopt;
 
     int maximumNumberOfItemsThatFitInPaddingTopArea = paddingTop() / itemHeight();
     if (maximumNumberOfItemsThatFitInPaddingTopArea) {
@@ -734,16 +734,12 @@ int RenderListBox::scrollTop() const
     return m_indexOffset * itemHeight();
 }
 
-static void setupWheelEventTestTrigger(RenderListBox& renderer, Frame* frame)
+static void setupWheelEventTestTrigger(RenderListBox& renderer)
 {
-    if (!frame)
+    if (!renderer.page().expectsWheelEventTriggers())
         return;
 
-    Page* page = frame->page();
-    if (!page || !page->expectsWheelEventTriggers())
-        return;
-
-    renderer.scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
+    renderer.scrollAnimator().setWheelEventTestTrigger(renderer.page().testTrigger());
 }
 
 void RenderListBox::setScrollTop(int newTop)
@@ -752,7 +748,7 @@ void RenderListBox::setScrollTop(int newTop)
     int index = newTop / itemHeight();
     if (index < 0 || index >= numItems() || index == m_indexOffset)
         return;
-    setupWheelEventTestTrigger(*this, document().frame());
+    setupWheelEventTestTrigger(*this);
     scrollToOffsetWithoutAnimation(VerticalScrollbar, index);
 }
 
@@ -792,8 +788,7 @@ LayoutRect RenderListBox::controlClipRect(const LayoutPoint& additionalOffset) c
 
 bool RenderListBox::isActive() const
 {
-    Page* page = frame().page();
-    return page && page->focusController().isActive();
+    return page().focusController().isActive();
 }
 
 void RenderListBox::invalidateScrollbarRect(Scrollbar& scrollbar, const IntRect& rect)
@@ -861,8 +856,7 @@ bool RenderListBox::shouldSuspendScrollAnimations() const
 
 bool RenderListBox::forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const
 {
-    Page* page = frame().page();
-    return page && page->settings().forceUpdateScrollbarsOnMainThreadForPerformanceTesting();
+    return settings().forceUpdateScrollbarsOnMainThreadForPerformanceTesting();
 }
 
 ScrollableArea* RenderListBox::enclosingScrollableArea() const
@@ -905,12 +899,10 @@ Ref<Scrollbar> RenderListBox::createScrollbar()
     else {
         widget = Scrollbar::createNativeScrollbar(*this, VerticalScrollbar, theme().scrollbarControlSizeForPart(ListboxPart));
         didAddScrollbar(widget.get(), VerticalScrollbar);
-        if (Page* page = frame().page()) {
-            if (page->expectsWheelEventTriggers())
-                scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
-        }
+        if (page().expectsWheelEventTriggers())
+            scrollAnimator().setWheelEventTestTrigger(page().testTrigger());
     }
-    view().frameView().addChild(widget.get());
+    view().frameView().addChild(*widget);
     return widget.releaseNonNull();
 }
 

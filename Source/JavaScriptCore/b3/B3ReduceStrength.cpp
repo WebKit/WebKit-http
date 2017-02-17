@@ -772,6 +772,35 @@ private:
             }
             break;
 
+        case UDiv:
+            // Turn this: UDiv(constant1, constant2)
+            // Into this: constant1 / constant2
+            if (replaceWithNewValue(m_value->child(0)->uDivConstant(m_proc, m_value->child(1))))
+                break;
+
+            if (m_value->child(1)->hasInt()) {
+                switch (m_value->child(1)->asInt()) {
+                case 0:
+                    // Turn this: UDiv(value, 0)
+                    // Into this: 0
+                    // We can do whatever we want here so we might as well do the chill thing,
+                    // in case we add chill versions of UDiv in the future.
+                    replaceWithIdentity(m_value->child(1));
+                    break;
+
+                case 1:
+                    // Turn this: UDiv(value, 1)
+                    // Into this: value
+                    replaceWithIdentity(m_value->child(0));
+                    break;
+                default:
+                    // FIXME: We should do comprehensive strength reduction for unsigned numbers. Likely,
+                    // we will just want copy what llvm does. https://bugs.webkit.org/show_bug.cgi?id=164809
+                    break;
+                }
+            }
+            break;
+
         case Mod:
             // Turn this: Mod(constant1, constant2)
             // Into this: constant1 / constant2
@@ -827,6 +856,14 @@ private:
                 break;
             }
             
+            break;
+
+        case UMod:
+            // Turn this: UMod(constant1, constant2)
+            // Into this: constant1 / constant2
+            replaceWithNewValue(m_value->child(0)->uModConstant(m_proc, m_value->child(1)));
+            // FIXME: We should do what we do for Mod since the same principle applies here.
+            // https://bugs.webkit.org/show_bug.cgi?id=164809
             break;
 
         case BitAnd:
@@ -1032,9 +1069,7 @@ private:
                 break;
             }
 
-            if (handleShiftAmount())
-                break;
-
+            handleShiftAmount();
             break;
 
         case SShr:
@@ -1094,9 +1129,7 @@ private:
                     break;
             }
 
-            if (handleShiftAmount())
-                break;
-
+            handleShiftAmount();
             break;
 
         case ZShr:
@@ -1107,9 +1140,29 @@ private:
                 break;
             }
 
-            if (handleShiftAmount())
-                break;
+            handleShiftAmount();
+            break;
 
+        case RotR:
+            // Turn this: RotR(constant1, constant2)
+            // Into this: (constant1 >> constant2) | (constant1 << sizeof(constant1) * 8 - constant2)
+            if (Value* constant = m_value->child(0)->rotRConstant(m_proc, m_value->child(1))) {
+                replaceWithNewValue(constant);
+                break;
+            }
+
+            handleShiftAmount();
+            break;
+
+        case RotL:
+            // Turn this: RotL(constant1, constant2)
+            // Into this: (constant1 << constant2) | (constant1 >> sizeof(constant1) * 8 - constant2)
+            if (Value* constant = m_value->child(0)->rotLConstant(m_proc, m_value->child(1))) {
+                replaceWithNewValue(constant);
+                break;
+            }
+
+            handleShiftAmount();
             break;
 
         case Abs:
@@ -2147,12 +2200,12 @@ private:
         m_changed = true;
     }
 
-    bool handleShiftAmount()
+    void handleShiftAmount()
     {
         // Shift anything by zero is identity.
         if (m_value->child(1)->isInt32(0)) {
             replaceWithIdentity(m_value->child(0));
-            return true;
+            return;
         }
 
         // The shift already masks its shift amount. If the shift amount is being masked by a
@@ -2165,11 +2218,7 @@ private:
             && (m_value->child(1)->child(1)->asInt32() & mask) == mask) {
             m_value->child(1) = m_value->child(1)->child(0);
             m_changed = true;
-            // Don't need to return true, since we're still the same shift, and we can still cascade
-            // through other optimizations.
         }
-        
-        return false;
     }
 
     void replaceIfRedundant()

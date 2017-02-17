@@ -148,7 +148,7 @@ void ImageBufferData::swapBuffersIfNeeded()
     if (!m_compositorTexture) {
         createCompositorBuffer();
         LockHolder holder(m_platformLayerProxy->lock());
-        m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, TextureMapperGL::ShouldBlend, GL_RGBA));
+        m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, TextureMapperGL::ShouldBlend, GraphicsContext3D::RGBA));
     }
 
     // It would be great if we could just swap the buffers here as we do with webgl, but that breaks the cases
@@ -232,7 +232,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
 #if USE(COORDINATED_GRAPHICS_THREADED)
         else {
             LockHolder locker(m_data.m_platformLayerProxy->lock());
-            m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend, GL_RGBA));
+            m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend, GraphicsContext3D::RGBA));
         }
 #endif
     }
@@ -241,10 +241,13 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     ASSERT(m_data.m_renderingMode != Accelerated);
 #endif
     {
+        static cairo_user_data_key_t s_surfaceDataKey;
+
         int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, m_size.width());
-        m_data.m_surfaceData = MallocPtr<unsigned char>::malloc(m_size.height() * stride);
-        memset(m_data.m_surfaceData.get(), 0, m_size.height() * stride);
-        m_data.m_surface = adoptRef(cairo_image_surface_create_for_data(m_data.m_surfaceData.get(), CAIRO_FORMAT_ARGB32, m_size.width(), m_size.height(), stride));
+        auto* surfaceData = fastZeroedMalloc(m_size.height() * stride);
+
+        m_data.m_surface = adoptRef(cairo_image_surface_create_for_data(static_cast<unsigned char*>(surfaceData), CAIRO_FORMAT_ARGB32, m_size.width(), m_size.height(), stride));
+        cairo_surface_set_user_data(m_data.m_surface.get(), &s_surfaceDataKey, surfaceData, [](void* data) { fastFree(data); });
     }
 
     if (cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
@@ -564,7 +567,7 @@ static cairo_status_t writeFunction(void* output, const unsigned char* data, uns
     return CAIRO_STATUS_SUCCESS;
 }
 
-static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<char>* output, Optional<double> quality)
+static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<char>* output, optional<double> quality)
 {
     ASSERT_UNUSED(mimeType, mimeType == "image/png" || mimeType == "image/jpeg"); // Only PNG  and JPEG output are supported for now.
 
@@ -581,7 +584,7 @@ static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<c
     return false;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, CoordinateSystem) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 

@@ -88,7 +88,7 @@ BitmapTextureGL::BitmapTextureGL(RefPtr<GraphicsContext3D>&& context3D, GC3Dint 
         m_internalFormat = GraphicsContext3D::RGBA;
         m_format = GraphicsContext3D::BGRA;
         if (m_context3D->isGLES2Compliant()) {
-            if (m_context3D->getExtensions()->supports("GL_EXT_texture_format_BGRA8888"))
+            if (m_context3D->getExtensions().supports("GL_EXT_texture_format_BGRA8888"))
                 m_internalFormat = GraphicsContext3D::BGRA;
             else
                 m_format = GraphicsContext3D::RGBA;
@@ -109,7 +109,7 @@ static void swizzleBGRAToRGBA(uint32_t* data, const IntRect& rect, int stride = 
 static bool driverSupportsSubImage(GraphicsContext3D* context)
 {
     if (context->isGLES2Compliant()) {
-        static bool supportsSubImage = context->getExtensions()->supports("GL_EXT_unpack_subimage");
+        static bool supportsSubImage = context->getExtensions().supports("GL_EXT_unpack_subimage");
         return supportsSubImage;
     }
 
@@ -361,7 +361,6 @@ IntSize BitmapTextureGL::size() const
 {
     return m_textureSize;
 }
-
 
 void BitmapTextureGL::copyFromExternalTexture(Platform3DObject sourceTextureID)
 {

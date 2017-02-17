@@ -1,3 +1,626 @@
+2017-01-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Modernize editable-text component and add tests
+        https://bugs.webkit.org/show_bug.cgi?id=167398
+
+        Reviewed by Yusuke Suzuki.
+
+        Modernized EditableText component to use the action feature added in r210938.
+
+        * browser-tests/editable-text-tests.js: Added. Added tests for EditableText component.
+        (.waitToRender):
+        * browser-tests/index.html:
+        * public/v3/components/base.js:
+        (ComponentBase.prototype.dispatchAction): Return the result from the callback.
+        * public/v3/components/editable-text.js:
+        (EditableText): Removed a bunch of instance variables that are no longer needed.
+        (EditableText.prototype.didConstructShadowTree): Added. Add event listeners on the Edit/Save button and the host.
+        (EditableText.prototype.editedText): Return the text field's value directly.
+        (EditableText.prototype.text): Added.
+        (EditableText.prototype.setText): Call enqueueToRender automatically instead of relying on the parent component
+        to do so in _startedEditingCallback, which has been removed.
+        (EditableText.prototype.render): Modernized the code.
+        (EditableText.prototype._didClick): No longer prevents the default action manually since that's automatically done
+        in createEventHandler. Handle the case where the update action is not handled.
+        (EditableText.prototype._endEditingMode): Renamed from _didUpdate.
+        (EditableText.htmlTemplate): Added ids on various elements in the shadow tree.
+        (EditableText.cssTemplate): Updated the CSS selectors per above change.
+        * public/v3/main.js:
+        (main): Fixed a typo.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage): Use the action listener instead of manually setting callbacks.
+        (AnalysisTaskPage.prototype._createTestGroupListItem): Ditto.
+        (AnalysisTaskPage.prototype._didStartEditingTaskName): Deleted.
+
+2017-01-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r210783. Didn't mean to require custom elements API.
+
+        * public/v3/main.js:
+        (main):
+
+2017-01-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make sync-commits.py robust against missing Subversion authors and missing parent Git commits
+        https://bugs.webkit.org/show_bug.cgi?id=167231
+
+        Reviewed by Antti Koivisto.
+
+        Fixed a bug that a subversion commit that's missing author name (anonymous commit) results in an out of bound
+        exception, and a bug that syncing a git repository starts failing once there was a merge commit which pulled
+        in a commit data earlier than that of the last reported commit.
+
+        For the latter fix, added --max-ancestor-fetch-count to specify the number of maximum commits to look back.
+
+        * tools/sync-commits.py:
+        (main): Added --max-ancestor-fetch-count.
+        (Repository.fetch_commits_and_submit): If submit_commits fails with FailedToFindParentCommit, fetch the parent
+        commit's information until we've resolved them all.
+        (Repository.fetch_next_commit): Renamed from fetch_commit.
+        (SVNRepository.fetch_next_commit): Renamed from fetch_commit. Don't try to get the author name if it's missing
+        due to an anonymous commit. It's important to never include the "author" field in the JSON submitted to
+        a dashboard since it rejects when "author" field is not an array (e.g. null). 
+        (GitRepository.fetch_next_commit): Renamed from fetch_commit.
+        (GitRepository.fetch_commit): Added. Fetches the commit information for a given git hash. Used to retrieve
+        missing parent commits.
+        (GitRepository._revision_from_tokens): Extracted from fetch_commit.
+
+        * tools/util.py:
+        (submit_commits): Optionally takes status_to_accept to avoid throwing in the case of FailedToFindParentCommit
+        and returns the response JSON.
+
+2017-01-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r198234): /api/commits/%revision% always fails
+        https://bugs.webkit.org/show_bug.cgi?id=167235
+
+        Reviewed by Antti Koivisto.
+
+        The bug was caused by a typo in CommitLogFetcher::fetch_revision, which was calling commit_for_revision on
+        $this->db instead of $this. This had been monkey-patched in the internal dashboard so it was working there.
+
+        Also fixed a bug that /latest wasn't doing what it claimed to do, and a bug that /oldest /latest,
+        and /last-reported would return a commit with all values set to null instead of an empty list.
+
+        Finally, added server API tests for /api/commits.
+
+        * public/api/commits.php:
+        (main): Add a comment for APIs that only exist for v2 UI.
+
+        * public/include/commit-log-fetcher.php:
+        (CommitLogFetcher::fetch_latest): Fixed the bug that this function was returning the oldest commit, not the
+        the latest commit as desired.
+        (CommitLogFetcher::fetch_revision): Fixed the bug that this function would always encounter an exception
+        because commit_for_revision is defined on $this, not $this->db.
+        (CommitLogFetcher::format_single_commit): Return an empty list instead of an array with a single commit with
+        all values set to null.
+
+        * server-tests/api-commits.js: Added. Added tests for the JSON API at /api/commits.
+        (.assertCommitIsSameAsOneSubmitted): Added. A helper function to compare a commit returned by /api/commits
+        to one sent to /api/report-commits.
+
+2017-01-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        measurement-sets API can incorrectly order points with OS version without commit time
+        https://bugs.webkit.org/show_bug.cgi?id=167227
+
+        Reviewed by Chris Dumez.
+
+        Ignore revision_order for the purpose of ordering data points in /api/measurement-sets.
+
+        These orderings are used in some UI (e.g A/B testing) to order OS build numbers which do not have a timestamp
+        associated with each "revision".
+
+        The baseline measurements made in our internal dashboard were using these ordering numbers before ordering
+        results with build time. Because those data points don't have an associated Webkit revisions, all data points
+        were ordered first by macOS's revision_order, then build time. Because v3 UI completely ignores revision_order
+        for the purpose of plotting data points, this resulted in some data points being plotted in a wrong order
+        with some lines going backwards in time.
+
+        This patch addresses this discrepancy by stop ordering data points with revision_order in the JSON API.
+
+        * public/api/measurement-set.php:
+        (MeasurementSetFetcher::execute_query): Fixed the bug.
+        * server-tests/api-measurement-set-tests.js: Added a test.
+
+2017-01-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r210626. We need to clear Triggerable's static map in each iteration.
+
+        * tools/sync-buildbot.js:
+        (syncLoop):
+
+2017-01-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a mechanism to dispatch and listen to an action
+        https://bugs.webkit.org/show_bug.cgi?id=167191
+
+        Reviewed by Antti Koivisto.
+
+        Added the notion of an action to components. Like DOM events, it can be dispatched or listen to.
+
+        Also added ComponentBase.prototype.part which finds a sub-component inside a component's shadow tree,
+        and made ComponentBase.prototype.content take an id to find an element that matches it.
+
+        * browser-tests/close-button-tests.js: Added. Tests for CloseButton.
+        * browser-tests/component-base-tests.js: Added tests for ComponentBase's part(~), content(id), dispatchEvent.
+        * browser-tests/index.html:
+        * public/v3/components/base.js:
+        (ComponentBase): Added this._actionCallbacks, which is a map of an action name to a callback to be invoked.
+        (ComponentBase.prototype.content): Return an element of the given id if one is specified.
+        (ComponentBase.prototype.part): Find a component whose element has the matching id.
+        (ComponentBase.prototype.dispatchAction): Added.
+        (ComponentBase.prototype.listenToAction): Added.
+        (ComponentBase.prototype._ensureShadowTree): Call didConstructShadowTree.
+        (ComponentBase.prototype.didConstructShadowTree): Added.
+        (ComponentBase.prototype._recursivelyReplaceUnknownElementsByComponents): Copy attributes when instantiating
+        an element for a component when the browser doesn't support custom elements API.
+        (ComponentBase.createLink):
+        (ComponentBase.prototype.createEventHandler): Added.
+        (ComponentBase.createEventHandler): Renamed from createActionHandler.
+        * public/v3/components/button-base.js:
+        (ButtonBase.prototype.didConstructShadowTree): Added. Dispatch "activate" action when the button is clicked.
+        (ButtonBase.prototype.setCallback): Deleted.
+        (ButtonBase.htmlTemplate): Use id instead of class so that this.content() can find it.
+        (ButtonBase.cssTemplate): Updated style rules.
+        * public/v3/pages/chart-pane.js:
+        (ChartPane):
+        (ChartPane.prototype.didConstructShadowTree): Added. Listen to "activate" action on the close button.
+        (ChartPane.prototype.render): Fixed a bug that we were never calling enqueueToRender on the close button.
+        (ChartPane.htmlTemplate): Add the id on the close button.
+
+2017-01-18  Dewei Zhu  <dewei_zhu@apple.com>
+
+        'buildbot-syncer.js' should be able to determine force build argument from a list of possible repositories.
+        https://bugs.webkit.org/show_bug.cgi?id=167152
+
+        Reviewed by Ryosuke Niwa.
+
+        Add 'rootOptions' key which maps to a list of possible repositories.
+        For a build request, only one of the repositories in the list is valid.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype._propertiesForBuildRequest):
+        (BuildbotSyncer._validateAndMergeProperties):
+        (BuildbotSyncer):
+        * unit-tests/buildbot-syncer-tests.js:
+        (sampleiOSConfig):
+        (sampleiOSConfigWithExpansions):
+        (createSampleBuildRequest):
+        (Promise.resolve.then):
+        * unit-tests/resources/mock-v3-models.js:
+        (MockModels.inject):
+
+2017-01-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make calls to render() functions async
+        https://bugs.webkit.org/show_bug.cgi?id=167151
+
+        Reviewed by Andreas Kling.
+
+        Make calls to render() async by coalescing calls inside enqueueToRender(), which has been renamed from
+        updateRendering(). We now queue up all the components and wait until the next animation frame to invoke
+        render() on all those components.
+
+        This reduces render() calls in the summary page of our internal dashboard by 15x from ~9400 to ~600 by
+        eliminating pathological O(n^2) behavior between render() calls.
+
+        Consolidated TimeSeriesChart's enqueueRender into this newly added feature of ComponentBase along with
+        the support to call render() on a resize event. New implementation makes use of connectedCallback and
+        disconnectedCallback to avoid the work when the component is not in a document tree.
+
+        The rest of the patch concerns with renaming updateRendering to enqueueToRender and fixing a few minor bugs
+        that I encountered while working on this patch.
+
+        * browser-tests/component-base-tests.js: Added tests for ComponentBase.enqueueToRender().
+        * browser-tests/index.html:
+        (BrowserContext.prototype.importScripts): Renamed from importScript; Now supports loading multiple scripts.
+        (BrowserContext.prototype.importScript): Added.
+        (BrowserContext): Removed the unused createWithScripts.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.prototype._expandBetween):
+        * public/v3/components/bar-graph-group.js:
+        (BarGraphGroup.prototype.updateGroupRendering):
+
+        * public/v3/components/base.js:
+        (ComponentBase): When the browser doesn't support custom elements and 
+        (ComponentBase.prototype.enqueueToRender): Renamed from updateRendering. Queues up the component to call
+        render() instead of immediately invoking it.
+        (ComponentBase.renderingTimerDidFire): Call render(). Since render() function often calls enqueueToRender
+        on child components, go ahead and invoke render() on any components enqueued during render() calls.
+        (ComponentBase._connectedComponentToRenderOnResize): Added.
+        (ComponentBase._disconnectedComponentToRenderOnResize): Added.
+        (ComponentBase.defineElement.elementClass.prototype.connectedCallback): Added. This is an optimization to
+        avoid the work when the component is not in the document; e.g. because the entire page component has been
+        detached from the document. The old implementation in TimeSeriesChart was not doing this.
+        (ComponentBase.defineElement.elementClass.prototype.disconnectedCallback): Added.
+        (ComponentBase): Replaced unused static variables with _componentsToRender and _componentsToRenderOnResize.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype.fetchAnalysisTasks):
+        (ChartPaneBase.prototype.didUpdateAnnotations): Added. Addresses the bug that the annotation bars in the
+        charts shown an an analysis task doesn't update its color when the state is updated in the UI. 
+        (ChartPaneBase.prototype._mainSelectionDidZoom):
+        (ChartPaneBase.prototype._updateStatus):
+        (ChartPaneBase.prototype._requestOpeningCommitViewer):
+        (ChartPaneBase.prototype._keyup):
+        (ChartPaneBase.prototype.render):
+        * public/v3/components/commit-log-viewer.js:
+        * public/v3/components/customizable-test-group-form.js:
+        (CustomizableTestGroupForm):
+        (CustomizableTestGroupForm.prototype._customize):
+        * public/v3/components/editable-text.js:
+        (EditableText.prototype._didUpdate):
+        * public/v3/components/interactive-time-series-chart.js:
+        * public/v3/components/pane-selector.js:
+        (PaneSelector.prototype._selectedItem):
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart): Removed the logic to update upon resize. See _connectedComponentToRenderOnResize above.
+        (TimeSeriesChart.prototype.get enqueueToRenderOnResize): Added. Returns true.
+        (TimeSeriesChart.prototype.enqueueToRender): Deleted.
+        (TimeSeriesChart._renderEnqueuedCharts): Deleted.
+        (TimeSeriesChart): Call ComponentBase.defineElement to make this a proper component so that the logic in
+        connectedCallback to update upon resize event would work.
+        * public/v3/instrumentation.js:
+        (Instrumentation.dumpStatistics): Sort results by the key names.
+        * public/v3/models/time-series.js:
+        (TimeSeries.prototype.values): Added. This method was never ported to v3 in r198462, and broke the feature
+        to show moving averages, etc... on the charts page.
+        * public/v3/pages/analysis-category-page.js:
+        (AnalysisCategoryPage.prototype.open):
+        (AnalysisCategoryPage.prototype.updateFromSerializedState):
+        (AnalysisCategoryPage.prototype.filterDidChange):
+        (AnalysisCategoryPage.prototype.render):
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskChartPane.prototype._updateStatus):
+        (AnalysisTaskPage.prototype.updateFromSerializedState):
+        (AnalysisTaskPage.prototype._didFetchTask):
+        (AnalysisTaskPage.prototype._didFetchRelatedAnalysisTasks):
+        (AnalysisTaskPage.prototype._didFetchMeasurement):
+        (AnalysisTaskPage.prototype._didFetchTestGroups):
+        (AnalysisTaskPage.prototype._showAllTestGroups):
+        (AnalysisTaskPage.prototype._didFetchAnalysisResults):
+        (AnalysisTaskPage.prototype.render):
+        (AnalysisTaskPage.prototype._renderTestGroupList.):
+        (AnalysisTaskPage.prototype._renderTestGroupList):
+        (AnalysisTaskPage.prototype._createTestGroupListItem):
+        (AnalysisTaskPage.prototype._showTestGroup):
+        (AnalysisTaskPage.prototype._didStartEditingTaskName):
+        (AnalysisTaskPage.prototype._updateTaskName):
+        (AnalysisTaskPage.prototype._updateTestGroupName):
+        (AnalysisTaskPage.prototype._hideCurrentTestGroup):
+        (AnalysisTaskPage.prototype._updateChangeType): Fixed the bug that we were never updating annotation bars
+        in the main chart by calling didUpdateAnnotations.
+        (AnalysisTaskPage.prototype._associateBug):
+        (AnalysisTaskPage.prototype._dissociateBug):
+        (AnalysisTaskPage.prototype._associateCommit):
+        (AnalysisTaskPage.prototype._dissociateCommit):
+        (AnalysisTaskPage.prototype._chartSelectionDidChange):
+        (AnalysisTaskPage.prototype._selectedRowInAnalysisResultsViewer):
+        * public/v3/pages/build-request-queue-page.js:
+        (BuildRequestQueuePage.prototype.open.):
+        (BuildRequestQueuePage.prototype.open):
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype.setOpenRepository):
+        (ChartPane.prototype._renderTrendLinePopover): Fixed a race condition. Insert a select element as needed
+        before trying to assign the current value on it.
+        (ChartPane.prototype._trendLineTypeDidChange):
+        (ChartPane.prototype._updateTrendLine):
+        * public/v3/pages/charts-page.js:
+        (ChartsPage.prototype.updateFromSerializedState):
+        (ChartsPage.prototype._updateDomainsFromSerializedState):
+        (ChartsPage.prototype.setNumberOfDaysFromToolbar):
+        (ChartsPage.prototype._didMutatePaneList):
+        (ChartsPage.prototype.render):
+        * public/v3/pages/charts-toolbar.js:
+        (ChartsToolbar.prototype.render):
+        * public/v3/pages/create-analysis-task-page.js:
+        (CreateAnalysisTaskPage.prototype.updateFromSerializedState):
+        * public/v3/pages/dashboard-page.js:
+        (DashboardPage.prototype.updateFromSerializedState):
+        (DashboardPage.prototype._fetchedData):
+        * public/v3/pages/heading.js:
+        (Heading.prototype.render):
+        * public/v3/pages/page-with-heading.js:
+        (PageWithHeading.prototype.render):
+        * public/v3/pages/page.js:
+        (Page.prototype.open):
+        * public/v3/pages/summary-page.js:
+        (SummaryPage.prototype.open):
+        (SummaryPage.prototype.this._renderQueue.push):
+        (SummaryPage):
+        (SummaryPage.prototype._renderCell):
+
+2017-01-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the build fix for browsers that don't yet support custom elements SPI.
+        It was supposedly to be a part of the previous commit.
+
+        * public/v3/components/base.js:
+        (ComponentBase.defineElement):
+
+2017-01-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Adopt custom elements API in perf dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=167045
+
+        Reviewed by Darin Adler.
+
+        Adopt custom elements API in ComponentBase, and create the shadow tree lazily in content() and render()
+        instead of eagerly creating it inside the constructor.
+
+        For now, create a separate element class for each component in ComponentBase.defineElement instead of
+        making ComponentBase inherit from HTMLElement to preserve the semantics we have as well as to test
+        the boundaries of what custom elements API allows for framework authors.
+
+        In order to ensure one-to-one correspondence between elements and their components, we use a static map,
+        ComponentBase._currentlyConstructedByInterface, to remember which element or component is being created
+        and use that in custom element's constructor to update element.component() and this._element.
+
+        Also dropped the support for not having attachShadow as we've shipped this feature in Safari 10.
+
+        Finally, added tests to be ran inside a browser to test the front end code in browser-tests.
+
+        * browser-tests/component-base-tests.js: Added. Basic tests for ComponentBase.
+        * browser-tests/index.html: Added.
+
+        * public/v3/components/base.js:
+        (ComponentBase): Don't create the shadow tree. Use the currently constructed element as this._element if
+        there is one (the custom element's constructor is getting called). Otherwise create a new element but
+        store this component in the map to avoid creating a new component in the custom element's constructor.
+        (ComponentBase.prototype.content): Lazily create the shadow tree now.
+        (ComponentBase.prototype.render): Ditto.
+        (ComponentBase.prototype._ensureShadowTree): Renamed from _constructShadowTree. Dropped the support for
+        not having shadow DOM API. This is now required. Also use importNode instead of cloneNode in cloning
+        the template content since the latter would not get upgraded.
+        (ComponentBase.prototype._recursivelyReplaceUnknownElementsByComponents): Modernized the code. Don't
+        re-create a component if its element had already been upgraded by its custom element constructor.
+        (ComponentBase.defineElement): Add this component to the static maps. _componentByName is used by
+        _recursivelyReplaceUnknownElementsByComponents to instantiate new components in the browsers that don't
+        support custom elements API and _componentByClass is used by ComponentBase's constructor to lookup the
+        element name. The latter should go away once all components fully adopt ComponentBase.defineElement.
+        (ComponentBase.defineElement.elementClass): A class to define a custom element for the component.
+        We need to reconfigure the property since class's name is not writable but configurable.
+
+        * public/v3/components/button-base.js:
+        (ButtonBase.htmlTemplate): Added. Extracted the common code from CloseButton and WarningIcon.
+        (ButtonBase.buttonContent): Added. An abstract method overridden by CloseButton and WarningIcon.
+        (ButtonBase.sizeFactor): Added. Overridden by WarningIcon.
+        (ButtonBase.cssTemplate): Updated to use :host.
+        * public/v3/components/close-button.js:
+        (CloseButton.buttonContent): Renamed from htmlTemplate.
+        * public/v3/components/spinner-icon.js:
+        (SpinnerIcon.cssTemplate): Removed webkit prefixed properties, and updated it to animate stroke instead
+        of opacity to reduce the power usage.
+        (SpinnerIcon.htmlTemplate): Factored stroke, stroke-width, and stroke-linecap into cssTemplate.
+        * public/v3/components/warning-icon.js:
+        (WarningIcon.cssTemplate): Deleted.
+        (WarningIcon.sizeFactor): Added.
+        (WarningIcon.buttonContent): Renamed from htmlTemplate.
+        * public/v3/pages/summary-page.js:
+        (SummaryPage._constructRatioGraph): Fixed a bug that we were not never calling spinner.updateRendering().
+        (SummaryPage.prototype._renderCell):
+
+2017-01-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Instrument calls to render()
+        https://bugs.webkit.org/show_bug.cgi?id=167037
+
+        Reviewed by Sam Weinig.
+
+        Wrap every call to render() by newly added ComponentBase.updateRendering() to instrument it.
+        Also, use arrow functions instead of this.render.bind or regular closures for simplicity.
+
+        Currently, we're making 5100 calls to render() while opening the summary page, and that's way too high.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.prototype._expandBetween):
+        * public/v3/components/bar-graph-group.js:
+        (BarGraphGroup.prototype.updateGroupRendering): Renamed form render() as BarGraphGroup is not a component.
+        * public/v3/components/base.js:
+        (ComponentBase.prototype.updateRendering): Added. Instruments render() call.
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype.fetchAnalysisTasks):
+        (ChartPaneBase.prototype._mainSelectionDidZoom):
+        (ChartPaneBase.prototype._updateStatus):
+        (ChartPaneBase.prototype._requestOpeningCommitViewer):
+        (ChartPaneBase.prototype._keyup):
+        (ChartPaneBase.prototype.render):
+        * public/v3/components/commit-log-viewer.js:
+        * public/v3/components/customizable-test-group-form.js:
+        (CustomizableTestGroupForm):
+        (CustomizableTestGroupForm.prototype._customize):
+        * public/v3/components/editable-text.js:
+        (EditableText.prototype._didUpdate):
+        * public/v3/components/pane-selector.js:
+        (PaneSelector.prototype._selectedItem):
+        * public/v3/components/results-table.js:
+        (ResultsTable.prototype.render):
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart._renderEnqueuedCharts):
+        * public/v3/pages/analysis-category-page.js:
+        (AnalysisCategoryPage.prototype.open):
+        (AnalysisCategoryPage.prototype.updateFromSerializedState):
+        (AnalysisCategoryPage.prototype.filterDidChange):
+        (AnalysisCategoryPage.prototype.render):
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskChartPane.prototype._updateStatus):
+        (AnalysisTaskPage.prototype.updateFromSerializedState):
+        (AnalysisTaskPage.prototype._didFetchTask):
+        (AnalysisTaskPage.prototype._didFetchRelatedAnalysisTasks):
+        (AnalysisTaskPage.prototype._didFetchMeasurement):
+        (AnalysisTaskPage.prototype._didFetchTestGroups):
+        (AnalysisTaskPage.prototype._showAllTestGroups):
+        (AnalysisTaskPage.prototype._didFetchAnalysisResults):
+        (AnalysisTaskPage.prototype.render):
+        (AnalysisTaskPage.prototype._renderTestGroupList.):
+        (AnalysisTaskPage.prototype._renderTestGroupList):
+        (AnalysisTaskPage.prototype._createTestGroupListItem):
+        (AnalysisTaskPage.prototype._showTestGroup):
+        (AnalysisTaskPage.prototype._didStartEditingTaskName):
+        (AnalysisTaskPage.prototype._updateTaskName):
+        (AnalysisTaskPage.prototype._updateTestGroupName):
+        (AnalysisTaskPage.prototype._hideCurrentTestGroup):
+        (AnalysisTaskPage.prototype._updateChangeType):
+        (AnalysisTaskPage.prototype._associateBug):
+        (AnalysisTaskPage.prototype._dissociateBug):
+        (AnalysisTaskPage.prototype._associateCommit):
+        (AnalysisTaskPage.prototype._dissociateCommit):
+        (AnalysisTaskPage.prototype._chartSelectionDidChange):
+        (AnalysisTaskPage.prototype._selectedRowInAnalysisResultsViewer):
+        * public/v3/pages/build-request-queue-page.js:
+        (BuildRequestQueuePage.prototype.open.):
+        (BuildRequestQueuePage.prototype.open):
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype.setOpenRepository):
+        (ChartPane.prototype._trendLineTypeDidChange):
+        (ChartPane.prototype._updateTrendLine):
+        * public/v3/pages/charts-page.js:
+        (ChartsPage.prototype.updateFromSerializedState):
+        (ChartsPage.prototype._updateDomainsFromSerializedState):
+        (ChartsPage.prototype.setNumberOfDaysFromToolbar):
+        (ChartsPage.prototype._didMutatePaneList):
+        (ChartsPage.prototype.render):
+        * public/v3/pages/charts-toolbar.js:
+        (ChartsToolbar.prototype.render):
+        * public/v3/pages/create-analysis-task-page.js:
+        (CreateAnalysisTaskPage.prototype.updateFromSerializedState):
+        * public/v3/pages/dashboard-page.js:
+        (DashboardPage.prototype.updateFromSerializedState):
+        (DashboardPage.prototype._fetchedData):
+        * public/v3/pages/heading.js:
+        (Heading.prototype.render):
+        * public/v3/pages/page-with-heading.js:
+        (PageWithHeading.prototype.render):
+        * public/v3/pages/page.js:
+        (Page.prototype.open):
+        * public/v3/pages/summary-page.js:
+        (SummaryPage.prototype.open):
+        (SummaryPage.prototype.this._renderQueue.push):
+        (SummaryPage):
+        (SummaryPage.prototype._renderCell):
+
+2017-01-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Outliers are not hidden in v3 UI
+        https://bugs.webkit.org/show_bug.cgi?id=166966
+
+        Reviewed by Andreas Kling.
+
+        Fixed the typo in addToSeries. An outlier has markedOutlier set to true, not isOutlier.
+
+        Also fixed a bug unveiled by new tests in MeasurementRootSet.ensureSingleton. It was was creating
+        a new MeasurementRootSet each time it was called instead of finding an existing instance. Fixed the bug
+        by merging the static maps of MeasurementRootSet and RootSet.
+
+        * public/v3/models/measurement-cluster.js:
+        (MeasurementCluster.prototype.addToSeries): Fixed the bug.
+        * public/v3/models/root-set.js:
+        (MeasurementRootSet.prototype.namedStaticMap): Added.
+        (MeasurementRootSet.prototype.ensureNamedStaticMap): Added.
+        (MeasurementRootSet.namedStaticMap): Added.
+        (MeasurementRootSet.ensureNamedStaticMap): Added.
+        * unit-tests/measurement-set-tests.js: Added tests for adopting time series data from a cluster.
+
+2017-01-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Hide the UI to trigger an A/B testing when there are no triggerables
+        https://bugs.webkit.org/show_bug.cgi?id=166964
+
+        Reviewed by Yusuke Suzuki.
+
+        Hide the "Start A/B Testing" button on analysis task pages instead of showing it and failing later
+        when the user tries to create one it with a TriggerableNotFound error.
+
+        Added the list of triggerables to the manifest JSON so that we can determine this condition without
+        having to fetch /api/triggerable for each analysis task as done in v2 UI.
+
+        * public/admin/reprocess-report.php:
+        * public/api/manifest.php:
+        * public/api/report.php:
+        * public/include/admin-header.php:
+        * public/include/manifest-generator.php: Moved from public/include/manifest.php.
+        (ManifestGenerator::generate):
+        (ManifestGenerator::triggerables): Added. Include the list of repositories this triggerable accepts
+        as well as the list of (test, platform) pairs on which this triggerable is available.
+        Use [testId, platformId] instead of a dictionary to reduce the file size.
+        * public/v3/components/customizable-test-group-form.js:
+        (CustomizableTestGroupForm): Removed this._disabled. This variable was used in TestGroupFrom to
+        disable the "Start A/B Testing" button when no range is selected but this ended up racy. Compute
+        the visibility of the button in render() function instead.
+        (CustomizableTestGroupForm.prototype.setRootSetMap):
+        (CustomizableTestGroupForm.prototype._submitted):
+        (CustomizableTestGroupForm.prototype.render): Hide the customize link and the button as needed.
+        The "Start A/B Testing" button must be hidden when either no range is selected or no title is typed.
+        "Customize" button must be hidden when no range is selected.
+        * public/v3/components/test-group-form.js:
+        (TestGroupForm): Removed _disabled since it's no longer used.
+        (TestGroupForm.prototype.setDisabled): Ditto.
+        (TestGroupForm.prototype.render): Ditto.
+        * public/v3/index.html: Include triggerable.js.
+        * public/v3/models/manifest.js:
+        (Manifest._didFetchManifest): Modernized. Create Triggerable objects from the manifest JSON.
+        * public/v3/models/triggerable.js: Added.
+        (Triggerable): Add this triggerable object to the static map of (test id, platform id) pair.
+        (Triggerable.prototype.acceptedRepositories): Added.
+        (Triggerable.findByTestConfiguration): Added. Finds a triggerable in the aforementioned static map.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskChartPane.prototype._updateStatus): Added. Re-render the page since time series data
+        points that were previously not available may have become available. The lack of this update was
+        causing a race condition in which the "Start A/B Testing" button for the charts is disabled even
+        after a group name had been specified because setRootSetMap was never called with a valid set.
+        (AnalysisTaskPage): Added this._triggerable.
+        (AnalysisTaskPage.prototype._didFetchTask): Find the triggerable now that we've fetched the task.
+        (AnalysisTaskPage.prototype.render): Hide the group view (the table of A/B testing results) entirely
+        when there are no groups to show. Also hide the forms to start A/B testing when there are no matching
+        triggerable, which is the main feature of this patch.
+        * server-tests/api-manifest.js: Added a test for including a list of triggerables in the manifest JSON.
+        * server-tests/resources/mock-data.js:
+        (MockData.resetV3Models): Reset Triggerable's static map.
+        * server-tests/tools-buildbot-triggerable-tests.js: Assert that Triggerable objects are  constructed
+        with appropriate list of repositories and (test, platform) associations.
+        * tools/js/database.js:
+        (tableToPrefixMap): Added triggerable_repositories's prefix.
+        * tools/js/remote.js:
+        (RemoteAPI.prototype.getJSON): Log the entire response to stderr when JSON.parse fails to aid debugging.
+        * tools/js/v3-models.js: Import triggerable.js.
+
+2017-01-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        fetch-from-remote doesn’t work with some websites
+        https://bugs.webkit.org/show_bug.cgi?id=166963
+
+        Reviewed by Yusuke Suzuki.
+
+        Apparently file_get_contents is not compatible with some SSL/TLS connections.
+        Use curl_* functions to access remote servers instead.
+
+        * public/admin/fetch-from-remote.php:
+        (fetch_remote):
+
+2017-01-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another build fix. Always use UTC when expressing commit times in UNIX-epoch timestamps.
+
+        * public/api/measurement-set.php:
+
+2017-01-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix a typo in the previous commit.
+
+        * public/api/measurement-set.php:
+
+2017-01-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fixes for older versions of Postgres.
+
+        Also redirect / and /# to /v3/ as intended in r200820.
+
+        * public/api/measurement-set.php:
+        * public/api/runs.php:
+        * public/index.html:
+
 2016-10-18  Dewei Zhu  <dewei_zhu@apple.com>
 
         Update test cases for change r206465.

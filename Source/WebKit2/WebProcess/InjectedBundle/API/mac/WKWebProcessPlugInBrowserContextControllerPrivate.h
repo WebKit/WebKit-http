@@ -31,6 +31,7 @@
 
 @class WKBrowsingContextHandle;
 @class _WKRemoteObjectRegistry;
+@protocol WKWebProcessPlugInEditingDelegate;
 @protocol WKWebProcessPlugInFormDelegatePrivate;
 
 @interface WKWebProcessPlugInBrowserContextController (WKPrivate)
@@ -42,6 +43,7 @@
 @property (nonatomic, readonly) _WKRemoteObjectRegistry *_remoteObjectRegistry;
 
 @property (weak, setter=_setFormDelegate:) id <WKWebProcessPlugInFormDelegatePrivate> _formDelegate;
+@property (weak, setter=_setEditingDelegate:) id <WKWebProcessPlugInEditingDelegate> _editingDelegate WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic, setter=_setDefersLoading:) BOOL _defersLoading;
 

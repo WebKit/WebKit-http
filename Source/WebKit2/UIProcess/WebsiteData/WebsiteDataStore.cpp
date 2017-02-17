@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -179,7 +179,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
             --pendingCallbacks;
 
             for (auto& entry : websiteData.entries) {
-                auto displayName = WebsiteDataRecord::displayNameForOrigin(WebCore::SecurityOriginData::fromSecurityOrigin(*entry.origin));
+                auto displayName = WebsiteDataRecord::displayNameForOrigin(entry.origin);
                 if (!displayName)
                     continue;
 
@@ -187,7 +187,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
                 if (!record.displayName)
                     record.displayName = WTFMove(displayName);
 
-                record.add(entry.type, WebCore::SecurityOriginData::fromSecurityOrigin(*entry.origin));
+                record.add(entry.type, entry.origin);
 
                 if (fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes)) {
                     if (!record.size)
@@ -258,11 +258,12 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
     if (dataTypes.contains(WebsiteDataType::DiskCache)) {
         callbackAggregator->addPendingCallback();
         m_queue->dispatch([fetchOptions, mediaCacheDirectory = m_configuration.mediaCacheDirectory.isolatedCopy(), callbackAggregator] {
+            // FIXME: Make HTMLMediaElement::originsInMediaCache return a collection of SecurityOriginDatas.
             HashSet<RefPtr<WebCore::SecurityOrigin>> origins = WebCore::HTMLMediaElement::originsInMediaCache(mediaCacheDirectory);
             WebsiteData websiteData;
             
             for (auto& origin : origins) {
-                WebsiteData::Entry entry { origin, WebsiteDataType::DiskCache, 0 };
+                WebsiteData::Entry entry { WebCore::SecurityOriginData::fromSecurityOrigin(*origin), WebsiteDataType::DiskCache, 0 };
                 websiteData.entries.append(WTFMove(entry));
             }
             
@@ -329,7 +330,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
             WebsiteData websiteData;
 
             while (!origins.isEmpty())
-                websiteData.entries.append(WebsiteData::Entry { origins.takeAny().securityOrigin(), WebsiteDataType::SessionStorage, 0 });
+                websiteData.entries.append(WebsiteData::Entry { origins.takeAny(), WebsiteDataType::SessionStorage, 0 });
 
             callbackAggregator->removePendingCallback(WTFMove(websiteData));
         });
@@ -342,7 +343,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
             WebsiteData websiteData;
 
             while (!origins.isEmpty())
-                websiteData.entries.append(WebsiteData::Entry { origins.takeAny().securityOrigin(), WebsiteDataType::LocalStorage, 0 });
+                websiteData.entries.append(WebsiteData::Entry { origins.takeAny(), WebsiteDataType::LocalStorage, 0 });
 
             callbackAggregator->removePendingCallback(WTFMove(websiteData));
         });
@@ -357,11 +358,12 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
             WebsiteData websiteData;
 
             HashSet<RefPtr<WebCore::SecurityOrigin>> origins;
+            // FIXME: getOriginsWithCache should return a collection of SecurityOriginDatas.
             storage->getOriginsWithCache(origins);
 
             for (auto& origin : origins) {
                 uint64_t size = fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes) ? storage->diskUsageForOrigin(*origin) : 0;
-                WebsiteData::Entry entry { origin, WebsiteDataType::OfflineWebApplicationCache, size };
+                WebsiteData::Entry entry { WebCore::SecurityOriginData::fromSecurityOrigin(*origin), WebsiteDataType::OfflineWebApplicationCache, size };
 
                 websiteData.entries.append(WTFMove(entry));
             }
@@ -408,7 +410,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
             RunLoop::main().dispatch([callbackAggregator, origins = WTFMove(origins)]() mutable {
                 WebsiteData websiteData;
                 for (auto& origin : origins)
-                    websiteData.entries.append(WebsiteData::Entry { origin.securityOrigin().ptr(), WebsiteDataType::MediaKeys, 0 });
+                    websiteData.entries.append(WebsiteData::Entry { origin, WebsiteDataType::MediaKeys, 0 });
 
                 callbackAggregator->removePendingCallback(WTFMove(websiteData));
             });
@@ -471,6 +473,35 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
     callbackAggregator->callIfNeeded();
 }
 
+void WebsiteDataStore::fetchDataForTopPrivatelyOwnedDomains(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, const Vector<String>& topPrivatelyOwnedDomains, std::function<void(Vector<WebsiteDataRecord>)> completionHandler)
+{
+    fetchData(dataTypes, fetchOptions, [topPrivatelyOwnedDomains, completionHandler, this](auto existingDataRecords) {
+        Vector<WebsiteDataRecord> matchingDataRecords;
+        Vector<String> domainsWithDataRecords;
+        for (auto& dataRecord : existingDataRecords) {
+            bool dataRecordAdded;
+            for (auto& dataRecordOriginData : dataRecord.origins) {
+                dataRecordAdded = false;
+                String dataRecordHost = dataRecordOriginData.securityOrigin().get().host();
+                for (auto& topPrivatelyOwnedDomain : topPrivatelyOwnedDomains) {
+                    if (dataRecordHost.endsWithIgnoringASCIICase(topPrivatelyOwnedDomain)) {
+                        auto suffixStart = dataRecordHost.length() - topPrivatelyOwnedDomain.length();
+                        if (!suffixStart || dataRecordHost[suffixStart - 1] == '.') {
+                            matchingDataRecords.append(dataRecord);
+                            domainsWithDataRecords.append(topPrivatelyOwnedDomain);
+                            dataRecordAdded = true;
+                            break;
+                        }
+                    }
+                }
+                if (dataRecordAdded)
+                    break;
+            }
+        }
+        completionHandler(matchingDataRecords);
+    });
+}
+    
 static ProcessAccessType computeNetworkProcessAccessTypeForDataRemoval(OptionSet<WebsiteDataType> dataTypes, bool isNonPersistentStore)
 {
     ProcessAccessType processAccessType = ProcessAccessType::None;
@@ -898,7 +929,7 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
         m_queue->dispatch([origins = WTFMove(origins), callbackAggregator, webSQLDatabaseDirectory = m_configuration.webSQLDatabaseDirectory.isolatedCopy()] {
             auto databaseTracker = WebCore::DatabaseTracker::trackerWithDatabasePath(webSQLDatabaseDirectory);
             for (auto& origin : origins)
-                databaseTracker->deleteOrigin(origin.securityOrigin());
+                databaseTracker->deleteOrigin(origin);
             RunLoop::main().dispatch([callbackAggregator] {
                 callbackAggregator->removePendingCallback();
             });
@@ -994,6 +1025,15 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
 
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
+}
+
+void WebsiteDataStore::removeDataForTopPrivatelyOwnedDomains(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, const Vector<String>& topPrivatelyOwnedDomains, std::function<void()> completionHandler)
+{
+    fetchDataForTopPrivatelyOwnedDomains(dataTypes, fetchOptions, topPrivatelyOwnedDomains, [dataTypes, completionHandler, this](auto websiteDataRecords) {
+        this->removeData(dataTypes, websiteDataRecords, [completionHandler]() {
+            completionHandler();
+        });
+    });
 }
 
 void WebsiteDataStore::webPageWasAdded(WebPageProxy& webPageProxy)
@@ -1096,8 +1136,8 @@ Vector<WebCore::SecurityOriginData> WebsiteDataStore::mediaKeyOrigins(const Stri
 
         auto mediaKeyIdentifier = WebCore::pathGetFileName(originPath);
 
-        if (auto securityOrigin = WebCore::SecurityOrigin::maybeCreateFromDatabaseIdentifier(mediaKeyIdentifier))
-            origins.append(WebCore::SecurityOriginData::fromSecurityOrigin(*securityOrigin));
+        if (auto securityOrigin = WebCore::SecurityOriginData::fromDatabaseIdentifier(mediaKeyIdentifier))
+            origins.append(*securityOrigin);
     }
 
     return origins;
@@ -1154,6 +1194,14 @@ void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
         processPool->setResourceLoadStatisticsEnabled(enabled);
         processPool->sendToAllProcesses(Messages::WebProcess::SetResourceLoadStatisticsEnabled(enabled));
     }
+}
+
+void WebsiteDataStore::registerSharedResourceLoadObserver()
+{
+    if (!m_resourceLoadStatistics)
+        return;
+
+    m_resourceLoadStatistics->registerSharedResourceLoadObserver();
 }
 
 }

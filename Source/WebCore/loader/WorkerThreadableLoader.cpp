@@ -52,7 +52,7 @@ static const char loadResourceSynchronouslyMode[] = "loadResourceSynchronouslyMo
 
 WorkerThreadableLoader::WorkerThreadableLoader(WorkerGlobalScope& workerGlobalScope, ThreadableLoaderClient& client, const String& taskMode, ResourceRequest&& request, const ThreadableLoaderOptions& options, const String& referrer)
     : m_workerGlobalScope(workerGlobalScope)
-    , m_workerClientWrapper(ThreadableLoaderClientWrapper::create(client))
+    , m_workerClientWrapper(ThreadableLoaderClientWrapper::create(client, options.initiator))
     , m_bridge(*new MainThreadBridge(m_workerClientWrapper.get(), workerGlobalScope.thread().workerLoaderProxy(), taskMode, WTFMove(request), options, referrer.isEmpty() ? workerGlobalScope.url().strippedForUseAsReferrer() : referrer, workerGlobalScope.securityOrigin(), workerGlobalScope.contentSecurityPolicy()))
 {
 }
@@ -92,7 +92,7 @@ struct LoaderTaskOptions {
 };
 
 LoaderTaskOptions::LoaderTaskOptions(const ThreadableLoaderOptions& options, const String& referrer, Ref<SecurityOrigin>&& origin)
-    : options(options, options.preflightPolicy, options.contentSecurityPolicyEnforcement, options.initiator.isolatedCopy(), options.opaqueResponse)
+    : options(options, options.preflightPolicy, options.contentSecurityPolicyEnforcement, options.initiator.isolatedCopy(), options.filteringPolicy)
     , referrer(referrer.isolatedCopy())
     , origin(WTFMove(origin))
 {
@@ -111,6 +111,7 @@ WorkerThreadableLoader::MainThreadBridge::MainThreadBridge(ThreadableLoaderClien
     auto securityOriginCopy = securityOrigin->isolatedCopy();
     auto contentSecurityPolicyCopy = std::make_unique<ContentSecurityPolicy>(securityOriginCopy);
     contentSecurityPolicyCopy->copyStateFrom(contentSecurityPolicy);
+    contentSecurityPolicyCopy->copyUpgradeInsecureRequestStateFrom(*contentSecurityPolicy);
 
     auto optionsCopy = std::make_unique<LoaderTaskOptions>(options, request.httpReferrer().isNull() ? outgoingReferrer : request.httpReferrer(), WTFMove(securityOriginCopy));
 
@@ -121,7 +122,7 @@ WorkerThreadableLoader::MainThreadBridge::MainThreadBridge(ThreadableLoaderClien
 
         // FIXME: If the site requests a local resource, then this will return a non-zero value but the sync path will return a 0 value.
         // Either this should return 0 or the other code path should call a failure callback.
-        m_mainThreadLoader = DocumentThreadableLoader::create(document, *this, WTFMove(request), options->options, WTFMove(options->origin), WTFMove(contentSecurityPolicyCopy), WTFMove(options->referrer));
+        m_mainThreadLoader = DocumentThreadableLoader::create(document, *this, WTFMove(request), options->options, WTFMove(options->origin), WTFMove(contentSecurityPolicyCopy), WTFMove(options->referrer), DocumentThreadableLoader::ShouldLogError::No);
         ASSERT(m_mainThreadLoader || m_loadingFinished);
     });
 }
@@ -211,7 +212,10 @@ void WorkerThreadableLoader::MainThreadBridge::didFail(const ResourceError& erro
 {
     m_loadingFinished = true;
     m_loaderProxy.postTaskForModeToWorkerGlobalScope([workerClientWrapper = Ref<ThreadableLoaderClientWrapper>(*m_workerClientWrapper), error = error.isolatedCopy()] (ScriptExecutionContext& context) mutable {
-        ASSERT_UNUSED(context, context.isWorkerGlobalScope());
+        ASSERT(context.isWorkerGlobalScope());
+
+        ThreadableLoader::logError(context, error, workerClientWrapper->initiator());
+
         workerClientWrapper->didFail(error);
     }, m_taskMode);
 }

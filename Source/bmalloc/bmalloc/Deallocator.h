@@ -31,6 +31,7 @@
 
 namespace bmalloc {
 
+class DebugHeap;
 class Heap;
 class StaticMutex;
 
@@ -52,7 +53,7 @@ private:
     void deallocateSlowCase(void*);
 
     FixedVector<void*, deallocatorLogCapacity> m_objectLog;
-    bool m_isBmallocEnabled;
+    DebugHeap* m_debugHeap;
 };
 
 inline bool Deallocator::deallocateFastCase(void* object)

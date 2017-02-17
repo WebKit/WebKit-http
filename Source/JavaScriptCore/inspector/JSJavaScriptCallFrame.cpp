@@ -48,7 +48,7 @@ JSJavaScriptCallFrame::JSJavaScriptCallFrame(VM& vm, Structure* structure, PassR
 void JSJavaScriptCallFrame::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 }
 
 JSObject* JSJavaScriptCallFrame::createPrototype(VM& vm, JSGlobalObject* globalObject)
@@ -82,7 +82,7 @@ JSValue JSJavaScriptCallFrame::evaluateWithScopeExtension(ExecState* exec)
     if (!scriptValue.isString())
         return throwTypeError(exec, scope, ASCIILiteral("JSJavaScriptCallFrame.evaluateWithScopeExtension first argument must be a string."));
 
-    String script = scriptValue.toString(exec)->value(exec);
+    String script = asString(scriptValue)->value(exec);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     NakedPtr<Exception> exception;
@@ -128,6 +128,9 @@ static JSValue valueForScopeLocation(ExecState* exec, const DebuggerLocation& lo
 
 JSValue JSJavaScriptCallFrame::scopeDescriptions(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
     DebuggerScope* scopeChain = impl().scopeChain();
     if (!scopeChain)
         return jsUndefined();
@@ -143,6 +146,7 @@ JSValue JSJavaScriptCallFrame::scopeDescriptions(ExecState* exec)
         description->putDirect(exec->vm(), Identifier::fromString(exec, "name"), jsString(exec, scope->name()));
         description->putDirect(exec->vm(), Identifier::fromString(exec, "location"), valueForScopeLocation(exec, scope->location()));
         array->putDirectIndex(exec, index++, description);
+        RETURN_IF_EXCEPTION(throwScope, JSValue());
     }
 
     return array;
@@ -227,11 +231,6 @@ JSValue toJS(ExecState* exec, JSGlobalObject* globalObject, JavaScriptCallFrame*
     JSJavaScriptCallFrame* javaScriptCallFrame = JSJavaScriptCallFrame::create(exec->vm(), structure, impl);
 
     return javaScriptCallFrame;
-}
-
-JSJavaScriptCallFrame* toJSJavaScriptCallFrame(JSValue value)
-{
-    return value.inherits(JSJavaScriptCallFrame::info()) ? jsCast<JSJavaScriptCallFrame*>(value) : nullptr;
 }
 
 } // namespace Inspector

@@ -16,6 +16,12 @@ class AnalysisTaskChartPane extends ChartPaneBase {
             this._page._chartSelectionDidChange();
     }
 
+    _updateStatus()
+    {
+        super._updateStatus();
+        this._page.enqueueToRender();
+    }
+
     selectedPoints()
     {
         var selection = this._mainChart ? this._mainChart.currentSelection() : null;
@@ -33,6 +39,7 @@ class AnalysisTaskPage extends PageWithHeading {
     {
         super('Analysis Task');
         this._task = null;
+        this._triggerable = null;
         this._relatedTasks = null;
         this._testGroups = null;
         this._renderedTestGroups = null;
@@ -55,9 +62,9 @@ class AnalysisTaskPage extends PageWithHeading {
         this._analysisResultsViewer.setRangeSelectorLabels(['A', 'B']);
         this._analysisResultsViewer.setRangeSelectorCallback(this._selectedRowInAnalysisResultsViewer.bind(this));
         this._testGroupResultsTable = this.content().querySelector('test-group-results-table').component();
+
         this._taskNameLabel = this.content().querySelector('.analysis-task-name editable-text').component();
-        this._taskNameLabel.setStartedEditingCallback(this._didStartEditingTaskName.bind(this));
-        this._taskNameLabel.setUpdateCallback(this._updateTaskName.bind(this));
+        this._taskNameLabel.listenToAction('update', () => this._updateTaskName());
 
         this.content().querySelector('.change-type-form').onsubmit = this._updateChangeType.bind(this);
         this._taskStatusControl = this.content().querySelector('.change-type-form select');
@@ -94,7 +101,7 @@ class AnalysisTaskPage extends PageWithHeading {
             var taskId = parseInt(state.remainingRoute);
             AnalysisTask.fetchById(taskId).then(this._didFetchTask.bind(this), function (error) {
                 self._errorMessage = `Failed to fetch the analysis task ${state.remainingRoute}: ${error}`;
-                self.render();
+                self.enqueueToRender();
             });
             this._fetchRelatedInfoForTaskId(taskId);
         } else if (state.buildRequest) {
@@ -103,7 +110,7 @@ class AnalysisTaskPage extends PageWithHeading {
                 self._fetchRelatedInfoForTaskId(task.id());
             }, function (error) {
                 self._errorMessage = `Failed to fetch the analysis task for the build request ${buildRequestId}: ${error}`;
-                self.render();
+                self.enqueueToRender();
             });
         }
     }
@@ -120,24 +127,26 @@ class AnalysisTaskPage extends PageWithHeading {
         console.assert(!this._task);
 
         this._task = task;
-        var platform = task.platform();
-        var metric = task.metric();
-        var lastModified = platform.lastModified(metric);
+        const platform = task.platform();
+        const metric = task.metric();
+        const lastModified = platform.lastModified(metric);
+
+        this._triggerable = Triggerable.findByTestConfiguration(metric.test(), platform);
 
         this._measurementSet = MeasurementSet.findSet(platform.id(), metric.id(), lastModified);
         this._measurementSet.fetchBetween(task.startTime(), task.endTime(), this._didFetchMeasurement.bind(this));
 
-        var formatter = metric.makeFormatter(4);
+        const formatter = metric.makeFormatter(4);
         this._analysisResultsViewer.setValueFormatter(formatter);
         this._testGroupResultsTable.setValueFormatter(formatter);
 
         this._chartPane.configure(platform.id(), metric.id());
 
-        var domain = ChartsPage.createDomainForAnalysisTask(task);
+        const domain = ChartsPage.createDomainForAnalysisTask(task);
         this._chartPane.setOverviewDomain(domain[0], domain[1]);
         this._chartPane.setMainDomain(domain[0], domain[1]);
 
-        this.render();
+        this.enqueueToRender();
 
         return task;
     }
@@ -145,7 +154,7 @@ class AnalysisTaskPage extends PageWithHeading {
     _didFetchRelatedAnalysisTasks(relatedTasks)
     {
         this._relatedTasks = relatedTasks;
-        this.render();
+        this.enqueueToRender();
     }
 
     _didFetchMeasurement()
@@ -162,7 +171,7 @@ class AnalysisTaskPage extends PageWithHeading {
 
         this._startPoint = startPoint;
         this._endPoint = endPoint;
-        this.render();
+        this.enqueueToRender();
     }
 
     _didFetchTestGroups(testGroups)
@@ -170,14 +179,14 @@ class AnalysisTaskPage extends PageWithHeading {
         this._testGroups = testGroups.sort(function (a, b) { return +a.createdAt() - b.createdAt(); });
         this._didUpdateTestGroupHiddenState();
         this._assignTestResultsIfPossible();
-        this.render();
+        this.enqueueToRender();
     }
 
     _showAllTestGroups()
     {
         this._showHiddenTestGroups = true;
         this._didUpdateTestGroupHiddenState();
-        this.render();
+        this.enqueueToRender();
     }
 
     _didUpdateTestGroupHiddenState()
@@ -197,7 +206,7 @@ class AnalysisTaskPage extends PageWithHeading {
     {
         this._analysisResults = results;
         if (this._assignTestResultsIfPossible())
-            this.render();
+            this.enqueueToRender();
     }
 
     _assignTestResultsIfPossible()
@@ -224,7 +233,7 @@ class AnalysisTaskPage extends PageWithHeading {
 
         this.content().querySelector('.error-message').textContent = this._errorMessage || '';
 
-        this._chartPane.render();
+        this._chartPane.enqueueToRender();
 
         var element = ComponentBase.createElement;
         var link = ComponentBase.createLink;
@@ -255,18 +264,18 @@ class AnalysisTaskPage extends PageWithHeading {
         } else
             repositoryList = Repository.sortByNamePreferringOnesWithURL(Repository.all());
 
-        this._bugList.render();
+        this._bugList.enqueueToRender();
 
         this._causeList.setKindList(repositoryList);
-        this._causeList.render();
+        this._causeList.enqueueToRender();
 
         this._fixList.setKindList(repositoryList);
-        this._fixList.render();
+        this._fixList.enqueueToRender();
 
         this.content().querySelector('.analysis-task-status').style.display = this._task ? null : 'none';
         this.content().querySelector('.overview-chart').style.display = this._task ? null : 'none';
-        this.content().querySelector('.test-group-view').style.display = this._task ? null : 'none';
-        this._taskNameLabel.render();
+        this.content().querySelector('.test-group-view').style.display = this._task && this._testGroups && this._testGroups.length ? null : 'none';
+        this._taskNameLabel.enqueueToRender();
 
         if (this._relatedTasks && this._task) {
             var router = this.router();
@@ -287,7 +296,8 @@ class AnalysisTaskPage extends PageWithHeading {
         var a = selectedRange['A'];
         var b = selectedRange['B'];
         this._newTestGroupFormForViewer.setRootSetMap(a && b ? {'A': a.rootSet(), 'B': b.rootSet()} : null);
-        this._newTestGroupFormForViewer.render();
+        this._newTestGroupFormForViewer.enqueueToRender();
+        this._newTestGroupFormForViewer.element().style.display = this._triggerable ? null : 'none';
 
         this._renderTestGroupList();
         this._renderTestGroupDetails();
@@ -298,12 +308,13 @@ class AnalysisTaskPage extends PageWithHeading {
         var points = this._chartPane.selectedPoints();
         this._newTestGroupFormForChart.setRootSetMap(points && points.length >= 2 ?
                 {'A': points[0].rootSet(), 'B': points[points.length - 1].rootSet()} : null);
-        this._newTestGroupFormForChart.render();
+        this._newTestGroupFormForChart.enqueueToRender();
+        this._newTestGroupFormForChart.element().style.display = this._triggerable ? null : 'none';
 
         this._analysisResultsViewer.setCurrentTestGroup(this._currentTestGroup);
-        this._analysisResultsViewer.render();
+        this._analysisResultsViewer.enqueueToRender();
 
-        this._testGroupResultsTable.render();
+        this._testGroupResultsTable.enqueueToRender();
 
         Instrumentation.endMeasuringTime('AnalysisTaskPage', 'render');
     }
@@ -345,7 +356,7 @@ class AnalysisTaskPage extends PageWithHeading {
             for (var testGroup of this._filteredTestGroups) {
                 var label = this._testGroupLabelMap.get(testGroup);
                 label.setText(testGroup.label());
-                label.render();
+                label.enqueueToRender();
             }
         }
     }
@@ -353,8 +364,7 @@ class AnalysisTaskPage extends PageWithHeading {
     _createTestGroupListItem(group)
     {
         var text = new EditableText(group.label());
-        text.setStartedEditingCallback(function () { return text.render(); });
-        text.setUpdateCallback(this._updateTestGroupName.bind(this, group));
+        text.listenToAction('update', () => this._updateTestGroupName(group));
 
         this._testGroupLabelMap.set(group, text);
         return ComponentBase.createElement('li', {class: 'test-group-list-' + group.id()},
@@ -397,31 +407,25 @@ class AnalysisTaskPage extends PageWithHeading {
 
             this._renderedCurrentTestGroup = this._currentTestGroup;
         }
-        this._retryForm.render();
+        this._retryForm.enqueueToRender();
     }
 
     _showTestGroup(testGroup)
     {
         this._currentTestGroup = testGroup;        
         this._testGroupResultsTable.setTestGroup(this._currentTestGroup);
-        this.render();
-    }
-
-    _didStartEditingTaskName()
-    {
-        this._taskNameLabel.render();
+        this.enqueueToRender();
     }
 
     _updateTaskName()
     {
         console.assert(this._task);
-        this._taskNameLabel.render();
+        this._taskNameLabel.enqueueToRender();
 
-        var self = this;
-        return self._task.updateName(self._taskNameLabel.editedText()).then(function () {
-            self.render();
-        }, function (error) {
-            self.render();
+        return this._task.updateName(this._taskNameLabel.editedText()).then(() => {
+            this.enqueueToRender();
+        }, (error) => {
+            this.enqueueToRender();
             alert('Failed to update the name: ' + error);
         });
     }
@@ -429,27 +433,25 @@ class AnalysisTaskPage extends PageWithHeading {
     _updateTestGroupName(testGroup)
     {
         var label = this._testGroupLabelMap.get(testGroup);
-        label.render();
+        label.enqueueToRender();
 
-        var self = this;
-        return testGroup.updateName(label.editedText()).then(function () {
-            self.render();
-        }, function (error) {
-            self.render();
+        return testGroup.updateName(label.editedText()).then(() => {
+            this.enqueueToRender();
+        }, (error) => {
+            this.enqueueToRender();
             alert('Failed to hide the test name: ' + error);
         });
     }
 
     _hideCurrentTestGroup()
     {
-        var self = this;
         console.assert(this._currentTestGroup);
-        return this._currentTestGroup.updateHiddenFlag(!this._currentTestGroup.isHidden()).then(function () {
-            self._didUpdateTestGroupHiddenState();
-            self.render();
+        return this._currentTestGroup.updateHiddenFlag(!this._currentTestGroup.isHidden()).then(() => {
+            this._didUpdateTestGroupHiddenState();
+            this.enqueueToRender();
         }, function (error) {
-            self._mayHaveMutatedTestGroupHiddenState();
-            self.render();
+            this._mayHaveMutatedTestGroupHiddenState();
+            this.enqueueToRender();
             alert('Failed to update the group: ' + error);
         });
     }
@@ -463,9 +465,12 @@ class AnalysisTaskPage extends PageWithHeading {
         if (newChangeType == 'unconfirmed')
             newChangeType = null;
 
-        var render = this.render.bind(this);
-        return this._task.updateChangeType(newChangeType).then(render, function (error) {
-            render();
+        const updateRendering = () => {
+            this._chartPane.didUpdateAnnotations();
+            this.enqueueToRender();
+        };
+        return this._task.updateChangeType(newChangeType).then(updateRendering, (error) => {
+            updateRendering();
             alert('Failed to update the status: ' + error);
         });
     }
@@ -475,27 +480,27 @@ class AnalysisTaskPage extends PageWithHeading {
         console.assert(tracker instanceof BugTracker);
         bugNumber = parseInt(bugNumber);
 
-        var render = this.render.bind(this);
-        return this._task.associateBug(tracker, bugNumber).then(render, function (error) {
-            render();
+        const updateRendering = () => { this.enqueueToRender(); };
+        return this._task.associateBug(tracker, bugNumber).then(updateRendering, (error) => {
+            updateRendering();
             alert('Failed to associate the bug: ' + error);
         });
     }
 
     _dissociateBug(bug)
     {
-        var render = this.render.bind(this);
-        return this._task.dissociateBug(bug).then(render, function (error) {
-            render();
+        const updateRendering = () => { this.enqueueToRender(); };
+        return this._task.dissociateBug(bug).then(updateRendering, (error) => {
+            updateRendering();
             alert('Failed to dissociate the bug: ' + error);
         });
     }
 
     _associateCommit(kind, repository, revision)
     {
-        var render = this.render.bind(this);
-        return this._task.associateCommit(kind, repository, revision).then(render, function (error) {
-            render();
+        const updateRendering = () => { this.enqueueToRender(); };
+        return this._task.associateCommit(kind, repository, revision).then(updateRendering, (error) => {
+            updateRendering();
             if (error == 'AmbiguousRevision')
                 alert('There are multiple revisions that match the specified string: ' + revision);
             else if (error == 'CommitNotFound')
@@ -507,9 +512,9 @@ class AnalysisTaskPage extends PageWithHeading {
 
     _dissociateCommit(commit)
     {
-        var render = this.render.bind(this);
-        return this._task.dissociateCommit(commit).then(render, function (error) {
-            render();
+        const updateRendering = () => { this.enqueueToRender(); };
+        return this._task.dissociateCommit(commit).then(updateRendering, (error) => {
+            updateRendering();
             alert('Failed to dissociate the commit: ' + error);
         });
     }
@@ -531,7 +536,7 @@ class AnalysisTaskPage extends PageWithHeading {
     _chartSelectionDidChange()
     {
         this._selectionWasModifiedByUser = true;
-        this.render();
+        this.enqueueToRender();
     }
 
     _createNewTestGroupFromChart(name, repetitionCount, rootSetMap)
@@ -541,7 +546,7 @@ class AnalysisTaskPage extends PageWithHeading {
 
     _selectedRowInAnalysisResultsViewer()
     {
-        this.render();
+        this.enqueueToRender();
     }
 
     _createNewTestGroupFromViewer(name, repetitionCount, rootSetMap)

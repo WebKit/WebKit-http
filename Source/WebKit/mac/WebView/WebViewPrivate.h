@@ -440,7 +440,6 @@ Could be worth adding to the API.
 - (DOMCSSStyleDeclaration *)styleAtSelectionStart;
 
 - (NSUInteger)_renderTreeSize;
-- (NSSize)_contentsSizeRespectingOverflow;
 
 /*!
  * @method _handleMemoryWarning
@@ -463,6 +462,7 @@ Could be worth adding to the API.
 #endif // PLATFORM(IOS)
 
 #if TARGET_OS_IPHONE
+// Deprecated. Use -[WebDataSource _quickLookContent] instead.
 - (NSDictionary *)quickLookContentForURL:(NSURL *)url;
 #endif
 
@@ -485,6 +485,8 @@ Could be worth adding to the API.
 
 // SPI for DumpRenderTree
 - (void)_updateActiveState;
+
+- (void)_didScrollDocumentInFrameView:(WebFrameView *)frameView;
 
 /*!
     @method _registerViewClass:representationClass:forURLScheme:
@@ -742,6 +744,7 @@ Could be worth adding to the API.
 - (void)setInteractiveFormValidationEnabled:(BOOL)enabled;
 - (int)validationMessageTimerMagnification;
 - (void)setValidationMessageTimerMagnification:(int)newValue;
+- (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem;
 
 // Returns YES if NSView -displayRectIgnoringOpacity:inContext: will produce a faithful representation of the content.
 - (BOOL)_isSoftwareRenderable;

@@ -27,15 +27,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FontCache_h
-#define FontCache_h
+#pragma once
 
 #include "FontDescription.h"
 #include "Timer.h"
 #include <array>
 #include <limits.h>
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -121,8 +119,8 @@ private:
     static std::array<unsigned, 2> makeFlagsKey(const FontDescription& description)
     {
         static_assert(USCRIPT_CODE_LIMIT < 0x1000, "Script code must fit in an unsigned along with the other flags");
-        unsigned first = static_cast<unsigned>(description.script()) << 10
-            | static_cast<unsigned>(description.textRenderingMode()) << 8
+        unsigned first = static_cast<unsigned>(description.script()) << 11
+            | static_cast<unsigned>(description.textRenderingMode()) << 9
             | static_cast<unsigned>(description.fontSynthesis()) << 6
             | static_cast<unsigned>(description.widthVariant()) << 4
             | static_cast<unsigned>(description.nonCJKGlyphOrientation()) << 3
@@ -278,7 +276,6 @@ void platformInvalidateFontCache();
 SynthesisPair computeNecessarySynthesis(CTFontRef, const FontDescription&, bool isPlatformFont = false);
 RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontWeight, CTFontSymbolicTraits, float size);
 RetainPtr<CTFontRef> platformFontWithFamily(const AtomicString& family, CTFontSymbolicTraits, FontWeight, TextRenderingMode, float size);
-RetainPtr<CTFontRef> platformLookupFallbackFont(CTFontRef, FontWeight, const AtomicString& locale, const UChar* characters, unsigned length);
 bool requiresCustomFallbackFont(UChar32 character);
 
 #else
@@ -290,5 +287,3 @@ inline void FontCache::platformPurgeInactiveFontData()
 #endif
 
 }
-
-#endif

@@ -46,7 +46,7 @@ RuntimeArray::RuntimeArray(ExecState* exec, Structure* structure)
 void RuntimeArray::finishCreation(VM& vm, Bindings::Array* array)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     m_array = array;
 }
 
@@ -65,7 +65,7 @@ EncodedJSValue RuntimeArray::lengthGetter(ExecState* exec, EncodedJSValue thisVa
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    RuntimeArray* thisObject = jsDynamicDowncast<RuntimeArray*>(JSValue::decode(thisValue));
+    RuntimeArray* thisObject = jsDynamicDowncast<RuntimeArray*>(vm, JSValue::decode(thisValue));
     if (!thisObject)
         return throwVMTypeError(exec, scope);
     return JSValue::encode(jsNumber(thisObject->getLength()));
@@ -92,7 +92,7 @@ bool RuntimeArray::getOwnPropertySlot(JSObject* object, ExecState* exec, Propert
         return true;
     }
     
-    Optional<uint32_t> index = parseIndex(propertyName);
+    std::optional<uint32_t> index = parseIndex(propertyName);
     if (index && index.value() < thisObject->getLength()) {
         slot.setValue(thisObject, DontDelete | DontEnum,
             thisObject->getConcreteArray()->valueAt(exec, index.value()));
@@ -125,9 +125,10 @@ bool RuntimeArray::put(JSCell* cell, ExecState* exec, PropertyName propertyName,
         return false;
     }
     
-    if (Optional<uint32_t> index = parseIndex(propertyName))
+    if (std::optional<uint32_t> index = parseIndex(propertyName))
         return thisObject->getConcreteArray()->setValueAt(exec, index.value(), value);
-    
+
+    scope.release();
     return JSObject::put(thisObject, exec, propertyName, value, slot);
 }
 

@@ -1161,21 +1161,6 @@ WebInspector.NativePrototypeFunctionParameters = {
         __proto__: null,
     },
 
-    Navigator: {
-        webkitGetUserMedia: "options, successCallback, errorCallback",
-        __proto__: null,
-    },
-
-    NavigatorUserMediaErrorCallback: {
-        handleEvent: "error",
-        __proto__: null,
-    },
-
-    NavigatorUserMediaSuccessCallback: {
-        handleEvent: "stream",
-        __proto__: null,
-    },
-
     NodeFilter: {
         acceptNode: "[n]",
         __proto__: null,
@@ -1228,6 +1213,27 @@ WebInspector.NativePrototypeFunctionParameters = {
         moveTo: "[x], [y]",
         quadraticCurveTo: "[cpx], [cpy], [x], [y]",
         rect: "[x], [y], [width], [height]",
+        __proto__: null,
+    },
+
+    Performance: {
+        clearMarks: "[name]",
+        clearMeasures: "name",
+        getEntriesByName: "name, [type]",
+        getEntriesByType: "type",
+        mark: "name",
+        measure: "name, [startMark], [endMark]",
+        __proto__: null,
+    },
+
+    PerformanceObserver: {
+        observe: "options",
+        __proto__: null,
+    },
+
+    PerformanceObserverEntryList: {
+        getEntriesByName: "name, [type]",
+        getEntriesByType: "type",
         __proto__: null,
     },
 

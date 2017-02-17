@@ -15,7 +15,7 @@
     }
     
 </style>
-<video src="../../content/test.mp4"></video>
+<video src="../../content/test.mp4" controls autoplay></video>
 <div id="host"></div>
 <script type="text/javascript">
 
@@ -29,12 +29,16 @@ const mediaController = createControls(container, media, null);
 
 let numberOfFrames = 0;
 scheduler.frameDidFire = function() {
+    const muteButtonElement = mediaController.controls.muteButton.element;
+    const muteButtonBounds = muteButtonElement.getBoundingClientRect();
+
+    if (media.paused || muteButtonBounds.width === 0)
+        return;
+
     numberOfFrames++;
 
     if (numberOfFrames == 1) {
         // Controls are now visible, let's hover over the mute button to make the volume control visible.
-        const muteButtonElement = mediaController.controls.muteButton.element;
-        const muteButtonBounds = muteButtonElement.getBoundingClientRect();
         eventSender.mouseMoveTo(muteButtonBounds.left + muteButtonBounds.width / 2, muteButtonBounds.top + muteButtonBounds.height / 2);
     } else if (numberOfFrames == 2) {
         // Volume slider is visible, let's click in the middle of it.
@@ -42,6 +46,8 @@ scheduler.frameDidFire = function() {
         eventSender.mouseMoveTo(volumeSliderBounds.left + volumeSliderBounds.width / 2, volumeSliderBounds.top + volumeSliderBounds.height / 2);
         eventSender.mouseDown();
         eventSender.mouseUp();
+
+        scheduler.frameDidFire = null;
     }
 };
 
@@ -49,7 +55,7 @@ scheduler.frameDidFire = function() {
 mediaController.controls.showsStartButton = false;
 
 media.addEventListener("volumechange", () => {
-    shouldBe("media.volume", "0.51");
+    shouldBe("media.volume", "0.5");
     container.remove();
     media.remove();
     finishJSTest();

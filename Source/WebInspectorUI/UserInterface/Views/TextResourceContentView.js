@@ -121,6 +121,7 @@ WebInspector.TextResourceContentView = class TextResourceContentView extends Web
         this.resource.removeEventListener(null, null, this);
         WebInspector.probeManager.removeEventListener(null, null, this);
         WebInspector.showJavaScriptTypeInformationSetting.removeEventListener(null, null, this);
+        WebInspector.enableControlFlowProfilerSetting.removeEventListener(null, null, this);
 
         this._textEditor.close();
     }
@@ -221,7 +222,7 @@ WebInspector.TextResourceContentView = class TextResourceContentView extends Web
         this._showTypesButtonNavigationItem.enabled = false;
         this._textEditor.toggleTypeAnnotations().then(() => {
             this._showTypesButtonNavigationItem.enabled = true;
-        })
+        });
     }
 
     _toggleUnexecutedCodeHighlights(event)

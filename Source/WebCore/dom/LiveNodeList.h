@@ -47,7 +47,7 @@ public:
     virtual bool isRootedAtDocument() const = 0;
 
     ALWAYS_INLINE NodeListInvalidationType invalidationType() const { return static_cast<NodeListInvalidationType>(m_invalidationType); }
-    ContainerNode& ownerNode() const { return const_cast<ContainerNode&>(m_ownerNode.get()); }
+    ContainerNode& ownerNode() const { return m_ownerNode; }
     ALWAYS_INLINE void invalidateCacheForAttribute(const QualifiedName* attrName) const
     {
         if (!attrName || shouldInvalidateTypeOnAttributeChange(invalidationType(), *attrName))
@@ -145,7 +145,7 @@ CachedLiveNodeList<NodeListType>::~CachedLiveNodeList()
 template <class NodeListType>
 inline ContainerNode& CachedLiveNodeList<NodeListType>::rootNode() const
 {
-    if (nodeList().isRootedAtDocument() && ownerNode().inDocument())
+    if (nodeList().isRootedAtDocument() && ownerNode().isConnected())
         return ownerNode().document();
 
     return ownerNode();

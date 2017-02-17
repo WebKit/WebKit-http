@@ -21,8 +21,6 @@
 #include "config.h"
 #include "HTMLDetailsElement.h"
 
-#if ENABLE(DETAILS_ELEMENT)
-
 #include "AXObjectCache.h"
 #include "ElementIterator.h"
 #include "EventNames.h"
@@ -64,9 +62,9 @@ void DetailsSlotAssignment::hostChildElementDidChange(const Element& childElemen
     if (is<HTMLSummaryElement>(childElement)) {
         // Don't check whether this is the first summary element
         // since we don't know the answer when this function is called inside Element::removedFrom.
-        didChangeSlot(summarySlotName(), ChangeType::DirectChild, shadowRoot);
+        didChangeSlot(summarySlotName(), shadowRoot);
     } else
-        didChangeSlot(SlotAssignment::defaultSlotName(), ChangeType::DirectChild, shadowRoot);
+        didChangeSlot(SlotAssignment::defaultSlotName(), shadowRoot);
 }
 
 const AtomicString& DetailsSlotAssignment::slotNameForHostChild(const Node& child) const
@@ -175,5 +173,3 @@ void HTMLDetailsElement::toggleOpen()
 }
 
 }
-
-#endif

@@ -27,7 +27,6 @@
 #include "EventListener.h"
 #include "Frame.h"
 #include "FrameLoader.h"
-#include "Page.h"
 #include "SMILTimeContainer.h"
 #include "SVGElement.h"
 #include "SVGResourcesCache.h"
@@ -103,12 +102,14 @@ void SVGDocumentExtensions::pauseAnimations()
 {
     for (auto& container : m_timeContainers)
         container->pauseAnimations();
+    m_areAnimationsPaused = true;
 }
 
 void SVGDocumentExtensions::unpauseAnimations()
 {
     for (auto& container : m_timeContainers)
         container->unpauseAnimations();
+    m_areAnimationsPaused = false;
 }
 
 void SVGDocumentExtensions::dispatchSVGLoadEventToOutermostSVGElements()

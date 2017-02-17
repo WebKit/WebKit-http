@@ -206,7 +206,7 @@ public:
     bool isOverflowScrollingNode() const { return m_nodeType == OverflowScrollingNode; }
 
     virtual Ref<ScrollingStateNode> clone(ScrollingStateTree& adoptiveTree) = 0;
-    PassRefPtr<ScrollingStateNode> cloneAndReset(ScrollingStateTree& adoptiveTree);
+    Ref<ScrollingStateNode> cloneAndReset(ScrollingStateTree& adoptiveTree);
     void cloneAndResetChildren(ScrollingStateNode&, ScrollingStateTree& adoptiveTree);
 
     enum {
@@ -223,7 +223,7 @@ public:
     ChangedProperties changedProperties() const { return m_changedProperties; }
     void setChangedProperties(ChangedProperties changedProperties) { m_changedProperties = changedProperties; }
     
-    virtual void syncLayerPositionForViewportRect(const LayoutRect& /*viewportRect*/) { }
+    virtual void reconcileLayerPositionForViewportRect(const LayoutRect& /*viewportRect*/, ScrollingLayerPositionAction) { }
 
     const LayerRepresentation& layer() const { return m_layer; }
     WEBCORE_EXPORT void setLayer(const LayerRepresentation&);
@@ -238,7 +238,7 @@ public:
 
     Vector<RefPtr<ScrollingStateNode>>* children() const { return m_children.get(); }
 
-    void appendChild(PassRefPtr<ScrollingStateNode>);
+    void appendChild(Ref<ScrollingStateNode>&&);
 
     String scrollingStateTreeAsText() const;
 

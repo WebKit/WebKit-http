@@ -45,16 +45,16 @@ public:
 private:
     WebPluginInfoProvider();
 
-    void refreshPlugins() override;
     void getPluginInfo(WebCore::Page&, Vector<WebCore::PluginInfo>&) override;
     void getWebVisiblePluginInfo(WebCore::Page&, Vector<WebCore::PluginInfo>&) override;
+    void refreshPlugins() override;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void populatePluginCache(const WebCore::Page&);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if PLATFORM(MAC)
-    Optional<WebCore::PluginLoadClientPolicy> pluginLoadClientPolicyForHost(const String&, const WebCore::PluginInfo&) const;
+    std::optional<WebCore::PluginLoadClientPolicy> pluginLoadClientPolicyForHost(const String&, const WebCore::PluginInfo&) const;
     String longestMatchedWildcardHostForHost(const String& host) const;
     bool replaceHostWithMatchedWildcardHost(String& host, const String& identifier) const;
 

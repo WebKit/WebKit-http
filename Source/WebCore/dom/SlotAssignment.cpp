@@ -127,46 +127,31 @@ void SlotAssignment::removeSlotElementByName(const AtomicString& name, HTMLSlotE
     ASSERT(slotInfo.element || m_needsToResolveSlotElements);
 }
 
-static void recursivelyFireSlotChangeEvent(HTMLSlotElement& slotElement)
-{
-    slotElement.enqueueSlotChangeEvent();
-
-    auto* slotParent = slotElement.parentElement();
-    if (!slotParent)
-        return;
-
-    auto* shadowRootOfSlotParent = slotParent->shadowRoot();
-    if (!shadowRootOfSlotParent)
-        return;
-
-    shadowRootOfSlotParent->innerSlotDidChange(slotElement.attributeWithoutSynchronization(slotAttr));
-}
-
-void SlotAssignment::didChangeSlot(const AtomicString& slotAttrValue, ChangeType changeType, ShadowRoot& shadowRoot)
+void SlotAssignment::didChangeSlot(const AtomicString& slotAttrValue, ShadowRoot& shadowRoot)
 {
     auto& slotName = slotNameFromAttributeValue(slotAttrValue);
     auto it = m_slots.find(slotName);
     if (it == m_slots.end())
         return;
+    
+    it->value->assignedNodes.clear();
+    m_slotAssignmentsIsValid = false;
 
     HTMLSlotElement* slotElement = findFirstSlotElement(*it->value, shadowRoot);
     if (!slotElement)
         return;
 
-    if (changeType == ChangeType::DirectChild) {
-        shadowRoot.host()->invalidateStyleAndRenderersForSubtree();
-        m_slotAssignmentsIsValid = false;
-    }
+    shadowRoot.host()->invalidateStyleAndRenderersForSubtree();
 
     if (shadowRoot.mode() == ShadowRootMode::UserAgent)
         return;
 
-    recursivelyFireSlotChangeEvent(*slotElement);
+    slotElement->enqueueSlotChangeEvent();
 }
 
 void SlotAssignment::hostChildElementDidChange(const Element& childElement, ShadowRoot& shadowRoot)
 {
-    didChangeSlot(childElement.attributeWithoutSynchronization(slotAttr), ChangeType::DirectChild, shadowRoot);
+    didChangeSlot(childElement.attributeWithoutSynchronization(slotAttr), shadowRoot);
 }
 
 const Vector<Node*>* SlotAssignment::assignedNodesForSlot(const HTMLSlotElement& slotElement, ShadowRoot& shadowRoot)

@@ -85,6 +85,20 @@ Object.defineProperty(Object, "shallowEqual",
     }
 });
 
+Object.defineProperty(Object, "shallowMerge",
+{
+    value(a, b)
+    {
+        let result = Object.shallowCopy(a);
+        let keys = Object.keys(b);
+        for (let i = 0; i < keys.length; ++i) {
+            console.assert(!result.hasOwnProperty(keys[i]) || result[keys[i]] === b[keys[i]], keys[i]);
+            result[keys[i]] = b[keys[i]];
+        }
+        return result;
+    }
+});
+
 Object.defineProperty(Object.prototype, "valueForCaseInsensitiveKey",
 {
     value: function(key)
@@ -447,8 +461,11 @@ Object.defineProperty(Array, "shallowEqual",
         if (length !== b.length)
             return false;
 
-        for (var i = 0; i < length; ++i) {
-            if (a[i] !== b[i])
+        for (let i = 0; i < length; ++i) {
+            if (a[i] === b[i])
+                continue;
+
+            if (!Object.shallowEqual(a[i], b[i]))
                 return false;
         }
 

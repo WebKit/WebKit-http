@@ -328,7 +328,7 @@ void StorageAreaMap::dispatchSessionStorageEvent(uint64_t sourceStorageAreaID, c
     Page* page = webPage->corePage();
     for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
         Document* document = frame->document();
-        if (!document->securityOrigin()->equal(m_securityOrigin.ptr()))
+        if (!document->securityOrigin().equal(m_securityOrigin.ptr()))
             continue;
 
         Storage* storage = document->domWindow()->optionalSessionStorage();
@@ -344,7 +344,7 @@ void StorageAreaMap::dispatchSessionStorageEvent(uint64_t sourceStorageAreaID, c
         frames.append(frame);
     }
 
-    StorageEventDispatcher::dispatchSessionStorageEventsToFrames(*page, frames, key, oldValue, newValue, urlString, m_securityOrigin.ptr());
+    StorageEventDispatcher::dispatchSessionStorageEventsToFrames(*page, frames, key, oldValue, newValue, urlString, SecurityOriginData::fromSecurityOrigin(m_securityOrigin));
 }
 
 void StorageAreaMap::dispatchLocalStorageEvent(uint64_t sourceStorageAreaID, const String& key, const String& oldValue, const String& newValue, const String& urlString)
@@ -358,7 +358,7 @@ void StorageAreaMap::dispatchLocalStorageEvent(uint64_t sourceStorageAreaID, con
     for (HashSet<Page*>::const_iterator it = pages.begin(), end = pages.end(); it != end; ++it) {
         for (Frame* frame = &(*it)->mainFrame(); frame; frame = frame->tree().traverseNext()) {
             Document* document = frame->document();
-            if (!document->securityOrigin()->equal(m_securityOrigin.ptr()))
+            if (!document->securityOrigin().equal(m_securityOrigin.ptr()))
                 continue;
 
             Storage* storage = document->domWindow()->optionalLocalStorage();
@@ -375,7 +375,7 @@ void StorageAreaMap::dispatchLocalStorageEvent(uint64_t sourceStorageAreaID, con
         }
     }
 
-    StorageEventDispatcher::dispatchLocalStorageEventsToFrames(pageGroup, frames, key, oldValue, newValue, urlString, m_securityOrigin.ptr());
+    StorageEventDispatcher::dispatchLocalStorageEventsToFrames(pageGroup, frames, key, oldValue, newValue, urlString, SecurityOriginData::fromSecurityOrigin(m_securityOrigin));
 }
 
 } // namespace WebKit

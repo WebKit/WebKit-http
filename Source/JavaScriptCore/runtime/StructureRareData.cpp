@@ -67,9 +67,9 @@ void StructureRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
     JSCell::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_previous);
-    visitor.append(&thisObject->m_objectToStringValue);
-    visitor.append(&thisObject->m_cachedPropertyNameEnumerator);
+    visitor.append(thisObject->m_previous);
+    visitor.append(thisObject->m_objectToStringValue);
+    visitor.append(thisObject->m_cachedPropertyNameEnumerator);
 }
 
 JSPropertyNameEnumerator* StructureRareData::cachedPropertyNameEnumerator() const
@@ -142,7 +142,7 @@ void StructureRareData::setObjectToStringValue(ExecState* exec, VM& vm, Structur
         if (condition.condition().kind() == PropertyCondition::Presence) {
             ASSERT(isValidOffset(condition.offset()));
             condition.object()->structure(vm)->startWatchingPropertyForReplacements(vm, condition.offset());
-            equivCondition = condition.attemptToMakeEquivalenceWithoutBarrier();
+            equivCondition = condition.attemptToMakeEquivalenceWithoutBarrier(vm);
 
             // The equivalence condition won't be watchable if we have already seen a replacement.
             if (!equivCondition.isWatchable()) {

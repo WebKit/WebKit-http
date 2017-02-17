@@ -114,6 +114,8 @@ public:
     unsigned audioDecodedByteCount() const override;
     unsigned videoDecodedByteCount() const override;
 
+    void acceleratedRenderingStateChanged() override;
+
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
 #if PLATFORM(WIN_CAIRO)
@@ -139,8 +141,11 @@ public:
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void needKey(RefPtr<Uint8Array>);
-    void setCDMSession(CDMSession*);
-    void keyAdded();
+    void setCDMSession(CDMSession*) override;
+    void keyAdded() override;
+    virtual void dispatchDecryptionKey(GstBuffer*);
+    void handleProtectionEvent(GstEvent*);
+    void receivedGenerateKeyRequest(const String&);
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -247,6 +252,7 @@ protected:
     unsigned long m_drainHandler;
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
+    bool m_renderingCanBeAccelerated { false };
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     void updateTexture(BitmapTextureGL&, GstVideoInfo&);
 #endif
@@ -280,8 +286,12 @@ private:
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
+    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*) override;
     CDMSession* m_cdmSession;
+    Lock m_protectionMutex;
+    Condition m_protectionCondition;
+    String m_lastGenerateKeyRequestKeySystemUuid;
+    HashSet<uint32_t> m_handledProtectionEvents;
 #endif
     ImageOrientation m_videoSourceOrientation;
 #if USE(GSTREAMER_GL)

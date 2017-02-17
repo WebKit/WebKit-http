@@ -74,7 +74,7 @@ public:
     size_t frameCount() const { return m_source.frameCount(); }
     RepetitionCount repetitionCount() const { return m_source.repetitionCount(); }
     String filenameExtension() const override { return m_source.filenameExtension(); }
-    Optional<IntPoint> hotSpot() const override { return m_source.hotSpot(); }
+    std::optional<IntPoint> hotSpot() const override { return m_source.hotSpot(); }
 
     // FloatSize due to override.
     FloatSize size() const override { return m_source.size(); }
@@ -134,7 +134,8 @@ protected:
     NativeImagePtr frameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* = nullptr);
 
     bool allowSubsampling() const { return imageObserver() && imageObserver()->allowSubsampling(); }
-    bool allowAsyncImageDecoding() const { return imageObserver() && imageObserver()->allowAsyncImageDecoding(); }
+    bool allowLargeImageAsyncDecoding() const { return imageObserver() && imageObserver()->allowLargeImageAsyncDecoding(); }
+    bool allowAnimatedImageAsyncDecoding() const { return imageObserver() && imageObserver()->allowAnimatedImageAsyncDecoding(); }
     bool showDebugBackground() const { return imageObserver() && imageObserver()->showDebugBackground(); }
 
     // Called to invalidate cached data. When |destroyAll| is true, we wipe out
@@ -188,6 +189,13 @@ private:
     void startTimer(double delay);
     bool isBitmapImage() const override { return true; }
     void dump(TextStream&) const override;
+
+    // Animated images over a certain size are considered large enough that we'll only hang on to one frame at a time.
+#if !PLATFORM(IOS)
+    static const unsigned LargeAnimationCutoff = 5242880;
+#else
+    static const unsigned LargeAnimationCutoff = 2097152;
+#endif
 
     mutable ImageSource m_source;
 

@@ -427,12 +427,12 @@ private:
         return true;
     }
     
-    Optional<unsigned> scaleForShl(Value* shl, int32_t offset, Optional<Arg::Width> width = Nullopt)
+    std::optional<unsigned> scaleForShl(Value* shl, int32_t offset, std::optional<Arg::Width> width = std::nullopt)
     {
         if (shl->opcode() != Shl)
-            return Nullopt;
+            return std::nullopt;
         if (!shl->child(1)->hasInt32())
-            return Nullopt;
+            return std::nullopt;
         unsigned logScale = shl->child(1)->asInt32();
         if (shl->type() == Int32)
             logScale &= 31;
@@ -442,10 +442,10 @@ private:
         // to signed since that's what all of our APIs want.
         int64_t bigScale = static_cast<uint64_t>(1) << static_cast<uint64_t>(logScale);
         if (!isRepresentableAs<int32_t>(bigScale))
-            return Nullopt;
+            return std::nullopt;
         unsigned scale = static_cast<int32_t>(bigScale);
         if (!Arg::isValidIndexForm(scale, offset, width))
-            return Nullopt;
+            return std::nullopt;
         return scale;
     }
 
@@ -470,7 +470,7 @@ private:
             Value* right = address->child(1);
 
             auto tryIndex = [&] (Value* index, Value* base) -> Arg {
-                Optional<unsigned> scale = scaleForShl(index, offset, width);
+                std::optional<unsigned> scale = scaleForShl(index, offset, width);
                 if (!scale)
                     return Arg();
                 if (m_locked.contains(index->child(0)) || m_locked.contains(base))
@@ -1929,12 +1929,12 @@ private:
             && canBeInternal(value->child(0))
             && value->child(0)->opcode() == Add) {
             innerAdd = value->child(0);
-            offset = value->child(1)->asInt32();
+            offset = static_cast<int32_t>(value->child(1)->asInt());
             value = value->child(0);
         }
         
         auto tryShl = [&] (Value* shl, Value* other) -> bool {
-            Optional<unsigned> scale = scaleForShl(shl, offset);
+            std::optional<unsigned> scale = scaleForShl(shl, offset);
             if (!scale)
                 return false;
             if (!canBeInternal(shl))
@@ -2095,26 +2095,39 @@ private:
         case Div: {
             if (m_value->isChill())
                 RELEASE_ASSERT(isARM64());
-#if CPU(X86) || CPU(X86_64)
-            if (isInt(m_value->type())) {
-                lowerX86Div();
-                append(Move, Tmp(X86Registers::eax), tmp(m_value));
+            if (isInt(m_value->type()) && isX86()) {
+                lowerX86Div(Div);
                 return;
             }
-#endif
             ASSERT(!isX86() || isFloat(m_value->type()));
 
             appendBinOp<Div32, Div64, DivDouble, DivFloat>(m_value->child(0), m_value->child(1));
             return;
         }
 
+        case UDiv: {
+            if (isInt(m_value->type()) && isX86()) {
+                lowerX86UDiv(UDiv);
+                return;
+            }
+
+            ASSERT(!isX86() && !isFloat(m_value->type()));
+
+            appendBinOp<UDiv32, UDiv64, Air::Oops, Air::Oops>(m_value->child(0), m_value->child(1));
+            return;
+
+        }
+
         case Mod: {
             RELEASE_ASSERT(isX86());
             RELEASE_ASSERT(!m_value->isChill());
-#if CPU(X86) || CPU(X86_64)
-            lowerX86Div();
-            append(Move, Tmp(X86Registers::edx), tmp(m_value));
-#endif
+            lowerX86Div(Mod);
+            return;
+        }
+
+        case UMod: {
+            RELEASE_ASSERT(isX86());
+            lowerX86UDiv(UMod);
             return;
         }
 
@@ -2140,7 +2153,7 @@ private:
         }
 
         case BitOr: {
-            appendBinOp<Or32, Or64, Commutative>(
+            appendBinOp<Or32, Or64, OrDouble, OrFloat, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
@@ -2175,6 +2188,16 @@ private:
 
         case ZShr: {
             appendShift<Urshift32, Urshift64>(m_value->child(0), m_value->child(1));
+            return;
+        }
+
+        case RotR: {
+            appendShift<RotateRight32, RotateRight64>(m_value->child(0), m_value->child(1));
+            return;
+        }
+
+        case RotL: {
+            appendShift<RotateLeft32, RotateLeft64>(m_value->child(0), m_value->child(1));
             return;
         }
 
@@ -2774,9 +2797,9 @@ private:
         RELEASE_ASSERT_NOT_REACHED();
     }
 
-#if CPU(X86) || CPU(X86_64)
-    void lowerX86Div()
+    void lowerX86Div(B3::Opcode op)
     {
+#if CPU(X86) || CPU(X86_64)
         Tmp eax = Tmp(X86Registers::eax);
         Tmp edx = Tmp(X86Registers::edx);
 
@@ -2795,12 +2818,41 @@ private:
             RELEASE_ASSERT_NOT_REACHED();
             return;
         }
-        
+
+        ASSERT(op == Div || op == Mod);
+        X86Registers::RegisterID result = op == Div ? X86Registers::eax : X86Registers::edx;
+
         append(Move, tmp(m_value->child(0)), eax);
         append(convertToDoubleWord, eax, edx);
         append(div, eax, edx, tmp(m_value->child(1)));
-    }
+        append(Move, Tmp(result), tmp(m_value));
+
+#else
+        UNUSED_PARAM(op);
+        UNREACHABLE_FOR_PLATFORM();
 #endif
+    }
+
+    void lowerX86UDiv(B3::Opcode op)
+    {
+#if CPU(X86) || CPU(X86_64)
+        Tmp eax = Tmp(X86Registers::eax);
+        Tmp edx = Tmp(X86Registers::edx);
+
+        Air::Opcode div = m_value->type() == Int32 ? X86UDiv32 : X86UDiv64;
+
+        ASSERT(op == UDiv || op == UMod);
+        X86Registers::RegisterID result = op == UDiv ? X86Registers::eax : X86Registers::edx;
+
+        append(Move, tmp(m_value->child(0)), eax);
+        append(Xor64, edx, edx);
+        append(div, eax, edx, tmp(m_value->child(1)));
+        append(Move, Tmp(result), tmp(m_value));
+#else
+        UNUSED_PARAM(op);
+        UNREACHABLE_FOR_PLATFORM();
+#endif
+    }
 
     IndexSet<Value> m_locked; // These are values that will have no Tmp in Air.
     IndexMap<Value, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".

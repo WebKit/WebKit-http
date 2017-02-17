@@ -47,6 +47,7 @@ namespace WebCore {
 class CachedResource;
 class Document;
 class DocumentLoader;
+class DocumentThreadableLoader;
 class InspectorPageAgent;
 class NetworkLoadTiming;
 class NetworkResourcesData;
@@ -54,7 +55,6 @@ class ResourceError;
 class ResourceLoader;
 class ResourceRequest;
 class ResourceResponse;
-class ThreadableLoaderClient;
 class URL;
 
 #if ENABLE(WEB_SOCKETS)
@@ -72,7 +72,7 @@ public:
     void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
-    // InspectorInstrumentation callbacks.
+    // InspectorInstrumentation
     void willRecalculateStyle();
     void didRecalculateStyle();
     void willSendRequest(unsigned long identifier, DocumentLoader&, ResourceRequest&, const ResourceResponse& redirectResponse);
@@ -82,8 +82,8 @@ public:
     void didFinishLoading(unsigned long identifier, DocumentLoader&, double finishTime);
     void didFailLoading(unsigned long identifier, DocumentLoader&, const ResourceError&);
     void didLoadResourceFromMemoryCache(DocumentLoader&, CachedResource&);
-    void didFinishXHRLoading(ThreadableLoaderClient*, unsigned long identifier, const String& decodedText);
-    void didReceiveXHRResponse(unsigned long identifier);
+    void didReceiveThreadableLoaderResponse(unsigned long identifier, DocumentThreadableLoader&);
+    void didFinishXHRLoading(unsigned long identifier, const String& decodedText);
     void willLoadXHRSynchronously();
     void didLoadXHRSynchronously();
     void didReceiveScriptResponse(unsigned long identifier);

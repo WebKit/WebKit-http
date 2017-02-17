@@ -29,7 +29,7 @@
 #include "config.h"
 #include "KeyframeAnimation.h"
 
-#include "AnimationControllerPrivate.h"
+#include "CSSAnimationControllerPrivate.h"
 #include "CSSPropertyAnimation.h"
 #include "CSSPropertyNames.h"
 #include "CompositeAnimation.h"
@@ -39,6 +39,7 @@
 #include "RenderStyle.h"
 #include "StylePendingResources.h"
 #include "StyleResolver.h"
+#include "StyleScope.h"
 #include "WillChangeData.h"
 
 namespace WebCore {
@@ -326,7 +327,7 @@ bool KeyframeAnimation::sendAnimationEvent(const AtomicString& eventType, double
             return false;
 
         // Schedule event handling
-        m_compositeAnimation->animationController().addEventToDispatch(element, eventType, m_keyframes.animationName(), elapsedTime);
+        m_compositeAnimation->animationController().addEventToDispatch(*element, eventType, m_keyframes.animationName(), elapsedTime);
 
         // Restore the original (unanimated) style
         if ((eventType == eventNames().webkitAnimationEndEvent || eventType == eventNames().animationendEvent) && element->renderer())
@@ -363,7 +364,8 @@ void KeyframeAnimation::resolveKeyframeStyles()
         return;
     auto& element = *m_object->element();
 
-    element.styleResolver().keyframeStylesForAnimation(*m_object->element(), m_unanimatedStyle.get(), m_keyframes);
+    if (auto* styleScope = Style::Scope::forOrdinal(element, m_animation->nameStyleScopeOrdinal()))
+        styleScope->resolver().keyframeStylesForAnimation(*m_object->element(), m_unanimatedStyle.get(), m_keyframes);
 
     // Ensure resource loads for all the frames.
     for (auto& keyframe : m_keyframes.keyframes()) {

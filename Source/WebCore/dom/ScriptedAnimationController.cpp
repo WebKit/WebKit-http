@@ -26,8 +26,6 @@
 #include "config.h"
 #include "ScriptedAnimationController.h"
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
-
 #include "DOMWindow.h"
 #include "DisplayRefreshMonitor.h"
 #include "DisplayRefreshMonitorManager.h"
@@ -69,7 +67,7 @@ ScriptedAnimationController::~ScriptedAnimationController()
 
 bool ScriptedAnimationController::requestAnimationFrameEnabled() const
 {
-    return m_document && (!m_document->settings() || m_document->settings()->requestAnimationFrameEnabled());
+    return m_document && m_document->settings().requestAnimationFrameEnabled();
 }
 
 void ScriptedAnimationController::suspend()
@@ -115,12 +113,12 @@ bool ScriptedAnimationController::isThrottled() const
 #endif
 }
 
-ScriptedAnimationController::CallbackId ScriptedAnimationController::registerCallback(PassRefPtr<RequestAnimationFrameCallback> callback)
+ScriptedAnimationController::CallbackId ScriptedAnimationController::registerCallback(Ref<RequestAnimationFrameCallback>&& callback)
 {
     ScriptedAnimationController::CallbackId id = ++m_nextCallbackId;
     callback->m_firedOrCancelled = false;
     callback->m_id = id;
-    m_callbacks.append(callback);
+    m_callbacks.append(WTFMove(callback));
 
     InspectorInstrumentation::didRequestAnimationFrame(m_document, id);
 
@@ -149,7 +147,7 @@ void ScriptedAnimationController::serviceScriptedAnimations(double timestamp)
     TraceScope tracingScope(RAFCallbackStart, RAFCallbackEnd);
 
     double highResNowMs = 1000 * timestamp;
-    double legacyHighResNowMs = 1000 * (timestamp + m_document->loader()->timing().referenceWallTime());
+    double legacyHighResNowMs = 1000 * (timestamp + m_document->loader()->timing().referenceWallTime().secondsSinceEpoch().seconds());
 
     // First, generate a list of callbacks to consider.  Callbacks registered from this point
     // on are considered only for the "next" frame, not this one.
@@ -253,7 +251,4 @@ RefPtr<DisplayRefreshMonitor> ScriptedAnimationController::createDisplayRefreshM
 }
 #endif
 
-
 }
-
-#endif

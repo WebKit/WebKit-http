@@ -30,6 +30,8 @@
 #include "SVGNames.h"
 #include "SVGPathElement.h"
 #include "SVGPathUtilities.h"
+#include "SVGPoint.h"
+#include "SVGPointList.h"
 #include "SVGPolygonElement.h"
 #include "SVGPolylineElement.h"
 #include "SVGRectElement.h"
@@ -88,7 +90,7 @@ static void updatePathFromPathElement(SVGElement* element, Path& path)
 
 static void updatePathFromPolygonElement(SVGElement* element, Path& path)
 {
-    SVGPointList& points = downcast<SVGPolygonElement>(element)->animatedPoints()->values();
+    auto& points = downcast<SVGPolygonElement>(element)->animatedPoints()->values();
     if (points.isEmpty())
         return;
 
@@ -103,7 +105,7 @@ static void updatePathFromPolygonElement(SVGElement* element, Path& path)
 
 static void updatePathFromPolylineElement(SVGElement* element, Path& path)
 {
-    SVGPointList& points = downcast<SVGPolylineElement>(element)->animatedPoints()->values();
+    auto& points = downcast<SVGPolylineElement>(element)->animatedPoints()->values();
     if (points.isEmpty())
         return;
 

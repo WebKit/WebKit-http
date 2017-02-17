@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,6 +55,7 @@
 #include <WebKit/WKPluginInformation.h>
 #include <WebKit/WKPreferencesRefPrivate.h>
 #include <WebKit/WKProtectionSpace.h>
+#include <WebKit/WKResourceLoadStatisticsManager.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKSecurityOriginRef.h>
 #include <WebKit/WKTextChecker.h>
@@ -72,7 +73,7 @@
 #include <wtf/MainThread.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RunLoop.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -197,6 +198,11 @@ static void checkUserMediaPermissionForOrigin(WKPageRef, WKFrameRef frame, WKSec
     TestController::singleton().handleCheckOfUserMediaPermissionForOrigin(frame, userMediaDocumentOrigin, topLevelDocumentOrigin, checkRequest);
 }
 
+static void requestPointerLock(WKPageRef page, const void*)
+{
+    WKPageDidAllowPointerLock(page);
+}
+
 WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfigurationRef configuration, WKNavigationActionRef navigationAction, WKWindowFeaturesRef windowFeatures, const void *clientInfo)
 {
     PlatformWebView* parentView = static_cast<PlatformWebView*>(const_cast<void*>(clientInfo));
@@ -206,8 +212,8 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfiguration
 
     view->resizeTo(800, 600);
 
-    WKPageUIClientV6 otherPageUIClient = {
-        { 6, view },
+    WKPageUIClientV8 otherPageUIClient = {
+        { 8, view },
         0, // createNewPage_deprecatedForUseWithV0
         0, // showPage
         closeOtherPage,
@@ -270,6 +276,10 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfiguration
         0, // runJavaScriptConfirm
         0, // runJavaScriptPrompt
         checkUserMediaPermissionForOrigin,
+        0, // runBeforeUnloadConfirmPanel
+        0, // fullscreenMayReturnToInline
+        requestPointerLock,
+        0,
     };
     WKPageSetPageUIClient(newPage, &otherPageUIClient.base);
     
@@ -474,8 +484,8 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
     resetPreferencesToConsistentValues(options);
 
     platformCreateWebView(configuration.get(), options);
-    WKPageUIClientV6 pageUIClient = {
-        { 6, m_mainWebView.get() },
+    WKPageUIClientV8 pageUIClient = {
+        { 8, m_mainWebView.get() },
         0, // createNewPage_deprecatedForUseWithV0
         0, // showPage
         0, // close
@@ -538,6 +548,10 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
         0, // runJavaScriptConfirm
         0, // runJavaScriptPrompt
         checkUserMediaPermissionForOrigin,
+        0, // runBeforeUnloadConfirmPanel
+        0, // fullscreenMayReturnToInline
+        requestPointerLock,
+        0,
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient.base);
 
@@ -647,8 +661,11 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetArtificialPluginInitializationDelayEnabled(preferences, false);
     WKPreferencesSetTabToLinksEnabled(preferences, false);
     WKPreferencesSetInteractiveFormValidationEnabled(preferences, true);
+
     WKPreferencesSetMockScrollbarsEnabled(preferences, options.useMockScrollbars);
     WKPreferencesSetNeedsSiteSpecificQuirks(preferences, options.needsSiteSpecificQuirks);
+    WKPreferencesSetIntersectionObserverEnabled(preferences, options.enableIntersectionObserver);
+    WKPreferencesSetModernMediaControlsEnabled(preferences, options.enableModernMediaControls);
 
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
     WKPreferencesSetDefaultTextEncodingName(preferences, defaultTextEncoding);
@@ -680,6 +697,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     // FIXME: We should be testing the default.
     WKPreferencesSetStorageBlockingPolicy(preferences, kWKAllowAllStorage);
 
+    WKPreferencesSetResourceTimingEnabled(preferences, true);
+
     WKPreferencesSetMediaPlaybackAllowsInline(preferences, true);
     WKPreferencesSetInlineMediaPlaybackRequiresPlaysInlineAttribute(preferences, false);
 
@@ -692,7 +711,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
 
 bool TestController::resetStateToConsistentValues(const TestOptions& options)
 {
-    TemporaryChange<State> changeState(m_state, Resetting);
+    SetForScope<State> changeState(m_state, Resetting);
     m_beforeUnloadReturnValue = true;
 
     // This setting differs between the antique and modern Mac WebKit2 API.
@@ -736,6 +755,9 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
 #endif
 
+    // Make sure the view is in the window (a test can unparent it).
+    m_mainWebView->addToWindow();
+
     // In the case that a test using the chrome input field failed, be sure to clean up for the next test.
     m_mainWebView->removeChromeInputField();
     m_mainWebView->focus();
@@ -746,13 +768,15 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     WKPageClearWheelEventTestTrigger(m_mainWebView->page());
 
 #if PLATFORM(EFL)
-    // EFL use a real window while other ports such as Qt don't.
+    // EFL uses a real window while other ports such as Qt don't.
     // In EFL, we need to resize the window to the original size after calls to window.resizeTo.
     WKRect rect = m_mainWebView->windowFrame();
     m_mainWebView->setWindowFrame(WKRectMake(rect.origin.x, rect.origin.y, TestController::viewWidth, TestController::viewHeight));
 #endif
 
     WKPageSetMuted(m_mainWebView->page(), true);
+
+    WKPageClearUserMediaState(m_mainWebView->page());
 
     // Reset notification permissions
     m_webNotificationProvider.reset();
@@ -764,7 +788,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
 
     // Reset UserMedia permissions.
     m_userMediaPermissionRequests.clear();
-    m_cahcedUserMediaPermissions.clear();
+    m_cachedUserMediaPermissions.clear();
     m_isUserMediaPermissionSet = false;
     m_isUserMediaPermissionAllowed = false;
 
@@ -902,11 +926,15 @@ static bool parseBooleanTestHeaderValue(const std::string& value)
     return false;
 }
 
-static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std::string& pathOrURL)
+static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std::string& pathOrURL, const std::string& absolutePath)
 {
-    // Gross. Need to reduce conversions between all the string types and URLs.
-    WKRetainPtr<WKURLRef> wkURL(AdoptWK, createTestURL(pathOrURL.c_str()));
-    std::string filename = testPath(wkURL.get());
+    std::string filename = absolutePath;
+    if (filename.empty()) {
+        // Gross. Need to reduce conversions between all the string types and URLs.
+        WKRetainPtr<WKURLRef> wkURL(AdoptWK, createTestURL(pathOrURL.c_str()));
+        filename = testPath(wkURL.get());
+    }
+
     if (filename.empty())
         return;
 
@@ -954,19 +982,25 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.ignoresViewportScaleLimits = parseBooleanTestHeaderValue(value);
         if (key == "useCharacterSelectionGranularity")
             testOptions.useCharacterSelectionGranularity = parseBooleanTestHeaderValue(value);
+        if (key == "enableIntersectionObserver")
+            testOptions.enableIntersectionObserver = parseBooleanTestHeaderValue(value);
+        if (key == "enableModernMediaControls")
+            testOptions.enableModernMediaControls = parseBooleanTestHeaderValue(value);
+        if (key == "enablePointerLock")
+            testOptions.enablePointerLock = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
 
-TestOptions TestController::testOptionsForTest(const std::string& pathOrURL) const
+TestOptions TestController::testOptionsForTest(const TestCommand& command) const
 {
-    TestOptions options(pathOrURL);
+    TestOptions options(command.pathOrURL);
 
     options.useRemoteLayerTree = m_shouldUseRemoteLayerTree;
     options.shouldShowWebView = m_shouldShowWebView;
 
-    updatePlatformSpecificTestOptionsForTest(options, pathOrURL);
-    updateTestOptionsFromTestHeader(options, pathOrURL);
+    updatePlatformSpecificTestOptionsForTest(options, command.pathOrURL);
+    updateTestOptionsFromTestHeader(options, command.pathOrURL, command.absolutePath);
 
     return options;
 }
@@ -996,15 +1030,6 @@ void TestController::configureViewForTest(const TestInvocation& test)
 
     platformConfigureViewForTest(test);
 }
-
-struct TestCommand {
-    TestCommand() : shouldDumpPixels(false), timeout(0) { }
-
-    std::string pathOrURL;
-    bool shouldDumpPixels;
-    std::string expectedPixelHash;
-    int timeout;
-};
 
 class CommandTokenizer {
 public:
@@ -1076,7 +1101,11 @@ TestCommand parseInputLine(const std::string& inputLine)
             result.shouldDumpPixels = true;
             if (tokenizer.hasNext())
                 result.expectedPixelHash = tokenizer.next();
-        } else
+        } else if (arg == std::string("--dump-jsconsolelog-in-stderr"))
+            result.dumpJSConsoleLogInStdErr = true;
+        else if (arg == std::string("--absolutePath"))
+            result.absolutePath = tokenizer.next();
+        else
             die(inputLine);
     }
     return result;
@@ -1089,7 +1118,7 @@ bool TestController::runTest(const char* inputLine)
 
     m_state = RunningTest;
     
-    TestOptions options = testOptionsForTest(command.pathOrURL);
+    TestOptions options = testOptionsForTest(command);
 
     WKRetainPtr<WKURLRef> wkURL(AdoptWK, createTestURL(command.pathOrURL.c_str()));
     m_currentInvocation = std::make_unique<TestInvocation>(wkURL.get(), options);
@@ -1098,6 +1127,7 @@ bool TestController::runTest(const char* inputLine)
         m_currentInvocation->setIsPixelTest(command.expectedPixelHash);
     if (command.timeout > 0)
         m_currentInvocation->setCustomTimeout(command.timeout);
+    m_currentInvocation->setDumpJSConsoleLogInStdErr(command.dumpJSConsoleLogInStdErr);
 
     platformWillRunTest(*m_currentInvocation);
 
@@ -1882,34 +1912,34 @@ public:
 
     HashMap<uint64_t, String>& ephemeralSalts() { return m_ephemeralSalts; }
 
+    void incrementRequestCount() { ++m_requestCount; }
+    void resetRequestCount() { m_requestCount = 0; }
+    unsigned requestCount() const { return m_requestCount; }
+
 private:
     HashMap<uint64_t, String> m_ephemeralSalts;
     String m_persistentSalt;
+    unsigned m_requestCount { 0 };
     bool m_persistentPermission { false };
 };
 
 String TestController::saltForOrigin(WKFrameRef frame, String originHash)
 {
-    RefPtr<OriginSettings> settings = m_cahcedUserMediaPermissions.get(originHash);
-    if (!settings) {
-        settings = adoptRef(*new OriginSettings());
-        m_cahcedUserMediaPermissions.add(originHash, settings);
-    }
-
-    auto& ephemeralSalts = settings->ephemeralSalts();
+    auto& settings = settingsForOrigin(originHash);
+    auto& ephemeralSalts = settings.ephemeralSalts();
     auto frameInfo = adoptWK(WKFrameCreateFrameInfo(frame));
     auto frameHandle = WKFrameInfoGetFrameHandleRef(frameInfo.get());
     uint64_t frameIdentifier = WKFrameHandleGetFrameID(frameHandle);
     String frameSalt = ephemeralSalts.get(frameIdentifier);
 
-    if (settings->persistentPermission()) {
+    if (settings.persistentPermission()) {
         if (frameSalt.length())
             return frameSalt;
 
-        if (!settings->persistentSalt().length())
-            settings->setPersistentSalt(createCanonicalUUIDString());
+        if (!settings.persistentSalt().length())
+            settings.setPersistentSalt(createCanonicalUUIDString());
 
-        return settings->persistentSalt();
+        return settings.persistentSalt();
     }
 
     if (!frameSalt.length()) {
@@ -1920,24 +1950,20 @@ String TestController::saltForOrigin(WKFrameRef frame, String originHash)
     return frameSalt;
 }
 
-void TestController::setUserMediaPermissionForOrigin(bool permission, WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString)
+void TestController::setUserMediaPersistentPermissionForOrigin(bool permission, WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString)
 {
     auto originHash = userMediaOriginHash(userMediaDocumentOriginString, topLevelDocumentOriginString);
-    RefPtr<OriginSettings> settings = m_cahcedUserMediaPermissions.get(originHash);
-    if (!settings) {
-        settings = adoptRef(*new OriginSettings());
-        m_cahcedUserMediaPermissions.add(originHash, settings);
-    }
-
-    settings->setPersistentPermission(permission);
+    auto& settings = settingsForOrigin(originHash);
+    settings.setPersistentPermission(permission);
 }
 
 void TestController::handleCheckOfUserMediaPermissionForOrigin(WKFrameRef frame, WKSecurityOriginRef userMediaDocumentOrigin, WKSecurityOriginRef topLevelDocumentOrigin, const WKUserMediaPermissionCheckRef& checkRequest)
 {
     auto originHash = userMediaOriginHash(userMediaDocumentOrigin, topLevelDocumentOrigin);
     auto salt = saltForOrigin(frame, originHash);
+    WKRetainPtr<WKStringRef> saltString = adoptWK(WKStringCreateWithUTF8CString(salt.utf8().data()));
 
-    WKUserMediaPermissionCheckSetUserMediaAccessInfo(checkRequest, WKStringCreateWithUTF8CString(salt.utf8().data()), m_cahcedUserMediaPermissions.get(originHash)->persistentPermission());
+    WKUserMediaPermissionCheckSetUserMediaAccessInfo(checkRequest, saltString.get(), settingsForOrigin(originHash).persistentPermission());
 }
 
 void TestController::handleUserMediaPermissionRequest(WKFrameRef frame, WKSecurityOriginRef userMediaDocumentOrigin, WKSecurityOriginRef topLevelDocumentOrigin, WKUserMediaPermissionRequestRef request)
@@ -1945,6 +1971,29 @@ void TestController::handleUserMediaPermissionRequest(WKFrameRef frame, WKSecuri
     auto originHash = userMediaOriginHash(userMediaDocumentOrigin, topLevelDocumentOrigin);
     m_userMediaPermissionRequests.append(std::make_pair(originHash, request));
     decidePolicyForUserMediaPermissionRequestIfPossible();
+}
+
+OriginSettings& TestController::settingsForOrigin(const String& originHash)
+{
+    RefPtr<OriginSettings> settings = m_cachedUserMediaPermissions.get(originHash);
+    if (!settings) {
+        settings = adoptRef(*new OriginSettings());
+        m_cachedUserMediaPermissions.add(originHash, settings);
+    }
+
+    return *settings;
+}
+
+unsigned TestController::userMediaPermissionRequestCountForOrigin(WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString)
+{
+    auto originHash = userMediaOriginHash(userMediaDocumentOriginString, topLevelDocumentOriginString);
+    return settingsForOrigin(originHash).requestCount();
+}
+
+void TestController::resetUserMediaPermissionRequestCountForOrigin(WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString)
+{
+    auto originHash = userMediaOriginHash(userMediaDocumentOriginString, topLevelDocumentOriginString);
+    settingsForOrigin(originHash).resetRequestCount();
 }
 
 void TestController::decidePolicyForUserMediaPermissionRequestIfPossible()
@@ -1956,18 +2005,16 @@ void TestController::decidePolicyForUserMediaPermissionRequestIfPossible()
         auto originHash = pair.first;
         auto request = pair.second.get();
 
-        bool persistentPermission = false;
-        RefPtr<OriginSettings> settings = m_cahcedUserMediaPermissions.get(originHash);
-        if (settings)
-            persistentPermission = settings->persistentPermission();
+        auto& settings = settingsForOrigin(originHash);
+        settings.incrementRequestCount();
 
-        if (!m_isUserMediaPermissionAllowed && !persistentPermission) {
+        if (!m_isUserMediaPermissionAllowed && !settings.persistentPermission()) {
             WKUserMediaPermissionRequestDeny(request, kWKPermissionDenied);
             continue;
         }
 
-        WKRetainPtr<WKArrayRef> audioDeviceUIDs = WKUserMediaPermissionRequestAudioDeviceUIDs(request);
-        WKRetainPtr<WKArrayRef> videoDeviceUIDs = WKUserMediaPermissionRequestVideoDeviceUIDs(request);
+        WKRetainPtr<WKArrayRef> audioDeviceUIDs = adoptWK(WKUserMediaPermissionRequestAudioDeviceUIDs(request));
+        WKRetainPtr<WKArrayRef> videoDeviceUIDs = adoptWK(WKUserMediaPermissionRequestVideoDeviceUIDs(request));
 
         if (!WKArrayGetSize(videoDeviceUIDs.get()) && !WKArrayGetSize(audioDeviceUIDs.get())) {
             WKUserMediaPermissionRequestDeny(request, kWKNoConstraints);
@@ -1978,13 +2025,13 @@ void TestController::decidePolicyForUserMediaPermissionRequestIfPossible()
         if (WKArrayGetSize(videoDeviceUIDs.get()))
             videoDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(videoDeviceUIDs.get(), 0));
         else
-            videoDeviceUID = WKStringCreateWithUTF8CString("");
+            videoDeviceUID = adoptWK(WKStringCreateWithUTF8CString(""));
 
         WKRetainPtr<WKStringRef> audioDeviceUID;
         if (WKArrayGetSize(audioDeviceUIDs.get()))
             audioDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(audioDeviceUIDs.get(), 0));
         else
-            audioDeviceUID = WKStringCreateWithUTF8CString("");
+            audioDeviceUID = adoptWK(WKStringCreateWithUTF8CString(""));
 
         WKUserMediaPermissionRequestAllow(request, audioDeviceUID.get(), videoDeviceUID.get());
     }
@@ -2161,6 +2208,55 @@ void TestController::setIgnoresViewportScaleLimits(bool ignoresViewportScaleLimi
     WKPageSetIgnoresViewportScaleLimits(m_mainWebView->page(), ignoresViewportScaleLimits);
 }
 
+void TestController::setStatisticsPrevalentResource(WKStringRef hostName, bool value)
+{
+    WKResourceLoadStatisticsManagerSetPrevalentResource(hostName, value);
+}
+
+bool TestController::isStatisticsPrevalentResource(WKStringRef hostName)
+{
+    return WKResourceLoadStatisticsManagerIsPrevalentResource(hostName);
+}
+
+void TestController::setStatisticsHasHadUserInteraction(WKStringRef hostName, bool value)
+{
+    WKResourceLoadStatisticsManagerSetHasHadUserInteraction(hostName, value);
+}
+
+bool TestController::isStatisticsHasHadUserInteraction(WKStringRef hostName)
+{
+    return WKResourceLoadStatisticsManagerIsHasHadUserInteraction(hostName);
+}
+
+void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)
+{
+    WKResourceLoadStatisticsManagerSetTimeToLiveUserInteraction(seconds);
+}
+
+void TestController::statisticsFireDataModificationHandler()
+{
+    WKResourceLoadStatisticsManagerFireDataModificationHandler();
+}
+    
+void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
+{
+    WKResourceLoadStatisticsManagerSetNotifyPagesWhenDataRecordsWereScanned(value);
+}
+    
+void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool value)
+{
+    WKResourceLoadStatisticsManagerSetShouldClassifyResourcesBeforeDataRecordsRemoval(value);
+}
+
+void TestController::setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double seconds)
+{
+    WKResourceLoadStatisticsManagerSetMinimumTimeBetweeenDataRecordsRemoval(seconds);
+}
+void TestController::statisticsResetToConsistentState()
+{
+    WKResourceLoadStatisticsManagerResetToConsistentState();
+}
+    
 #if !PLATFORM(COCOA)
 void TestController::platformWillRunTest(const TestInvocation&)
 {

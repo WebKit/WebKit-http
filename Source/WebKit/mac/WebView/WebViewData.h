@@ -48,6 +48,7 @@ class AlternativeTextUIController;
 class HistoryItem;
 class Page;
 class TextIndicatorWindow;
+class ValidationBubble;
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 class WebPlaybackSessionInterfaceMac;
 class WebPlaybackSessionModelMediaElement;
@@ -184,10 +185,11 @@ private:
     RetainPtr<NSTouchBar> _currentTouchBar;
     RetainPtr<NSTouchBar> _plainTextTouchBar;
     RetainPtr<NSTouchBar> _richTextTouchBar;
+    RetainPtr<NSTouchBar> _passwordTextTouchBar;
     RetainPtr<WebTextTouchBarItemController> _textTouchBarItemController;
     RetainPtr<NSCandidateListTouchBarItem> _richTextCandidateListTouchBarItem;
     RetainPtr<NSCandidateListTouchBarItem> _plainTextCandidateListTouchBarItem;
-    RetainPtr<NSArray> _emptyCandidatesArray;
+    RetainPtr<NSCandidateListTouchBarItem> _passwordTextCandidateListTouchBarItem;
     RetainPtr<AVFunctionBarPlaybackControlsProvider> mediaTouchBarProvider;
     RetainPtr<AVFunctionBarScrubber> mediaPlaybackControlsView;
 
@@ -204,6 +206,8 @@ private:
     RetainPtr<WebWindowVisibilityObserver> windowVisibilityObserver;
     RetainPtr<NSEvent> pressureEvent;
 #endif // PLATFORM(MAC)
+
+    RefPtr<WebCore::ValidationBubble> formValidationBubble;
 
     BOOL shouldMaintainInactiveSelection;
 

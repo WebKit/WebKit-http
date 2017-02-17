@@ -114,7 +114,6 @@ Position previousVisuallyDistinctCandidate(const Position&);
 
 Position positionBeforeContainingSpecialElement(const Position&, HTMLElement** containingSpecialElement = nullptr);
 Position positionAfterContainingSpecialElement(const Position&, HTMLElement** containingSpecialElement = nullptr);
-Position positionOutsideContainingSpecialElement(const Position&, HTMLElement** containingSpecialElement = nullptr);
 
 Position firstPositionInOrBeforeNode(Node*);
 Position lastPositionInOrAfterNode(Node*);
@@ -145,9 +144,9 @@ bool lineBreakExistsAtVisiblePosition(const VisiblePosition&);
 
 int comparePositions(const VisiblePosition&, const VisiblePosition&);
 
-int indexForVisiblePosition(const VisiblePosition&, RefPtr<ContainerNode>& scope);
+WEBCORE_EXPORT int indexForVisiblePosition(const VisiblePosition&, RefPtr<ContainerNode>& scope);
 int indexForVisiblePosition(Node&, const VisiblePosition&, bool forSelectionPreservation);
-VisiblePosition visiblePositionForIndex(int index, ContainerNode* scope);
+WEBCORE_EXPORT VisiblePosition visiblePositionForIndex(int index, ContainerNode* scope);
 VisiblePosition visiblePositionForIndexUsingCharacterIterator(Node&, int index); // FIXME: Why do we need this version?
 
 // -------------------------------------------------------------------------
@@ -200,7 +199,7 @@ const String& nonBreakingSpaceString();
 RenderBlock* rendererForCaretPainting(Node*);
 LayoutRect localCaretRectInRendererForCaretPainting(const VisiblePosition&, RenderBlock*&);
 LayoutRect localCaretRectInRendererForRect(LayoutRect&, Node*, RenderObject*, RenderBlock*&);
-IntRect absoluteBoundsForLocalCaretRect(RenderBlock* rendererForCaretPainting, const LayoutRect&);
+IntRect absoluteBoundsForLocalCaretRect(RenderBlock* rendererForCaretPainting, const LayoutRect&, bool* insideFixed = nullptr);
 
 // -------------------------------------------------------------------------
 

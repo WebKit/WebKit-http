@@ -22,15 +22,15 @@
 
 #if ENABLE(READABLE_STREAM_API)
 
-#include "JSDOMBinding.h"
-#include "JSDOMConstructor.h"
+#include "JSDOMBuiltinConstructor.h"
 #include "JSReadableByteStreamController.h"
 #include "JSReadableStream.h"
 #include "JSReadableStreamDefaultController.h"
 #include "JSReadableStreamDefaultReader.h"
 #include "ReadableByteStreamInternalsBuiltins.h"
 #include "ReadableStreamInternalsBuiltins.h"
-#include <runtime/CallData.h>
+#include "WebCoreJSClientData.h"
+#include <runtime/JSCInlines.h>
 
 using namespace JSC;
 
@@ -57,26 +57,25 @@ EncodedJSValue JSC_HOST_CALL constructJSReadableByteStreamController(ExecState& 
 EncodedJSValue JSC_HOST_CALL constructJSReadableStreamDefaultReader(ExecState& exec)
 {
     VM& vm = exec.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);
+    JSDOMGlobalObject& globalObject = *static_cast<JSDOMGlobalObject*>(exec.lexicalGlobalObject());
 
-    JSReadableStream* stream = jsDynamicDowncast<JSReadableStream*>(exec.argument(0));
-    if (!stream)
-        return throwArgumentTypeError(exec, scope, 0, "stream", "ReadableStreamReader", nullptr, "ReadableStream");
+    JSC::JSObject* constructor = JSC::asObject(globalObject.get(&exec, clientData.builtinNames().ReadableStreamDefaultReaderPrivateName()));
+    ConstructData constructData;
+    ConstructType constructType = constructor->methodTable(vm)->getConstructData(constructor, constructData);
+    ASSERT(constructType != ConstructType::None);
 
-    JSValue jsFunction = stream->get(&exec, Identifier::fromString(&exec, "getReader"));
-
-    CallData callData;
-    CallType callType = getCallData(jsFunction, callData);
-    MarkedArgumentBuffer noArguments;
-    return JSValue::encode(call(&exec, jsFunction, callType, callData, stream, noArguments));
+    MarkedArgumentBuffer args;
+    args.append(exec.argument(0));
+    return JSValue::encode(JSC::construct(&exec, constructor, constructType, constructData, args));
 }
 
 // Private JS ReadableStreamDefaultReader and ReadableStreamDefaultController constructors.
-using JSBuiltinReadableStreamDefaultReaderPrivateConstructor = JSBuiltinConstructor<JSReadableStreamDefaultReader>;
-using JSBuiltinReadableStreamDefaultControllerPrivateConstructor =  JSBuiltinConstructor<JSReadableStreamDefaultController>;
+using JSBuiltinReadableStreamDefaultReaderPrivateConstructor = JSDOMBuiltinConstructor<JSReadableStreamDefaultReader>;
+using JSBuiltinReadableStreamDefaultControllerPrivateConstructor = JSDOMBuiltinConstructor<JSReadableStreamDefaultController>;
 #if ENABLE(READABLE_BYTE_STREAM_API)
 // Private JS ReadableByteStreamController constructor.
-using JSBuiltinReadableByteStreamControllerPrivateConstructor = JSBuiltinConstructor<JSReadableByteStreamController>;
+using JSBuiltinReadableByteStreamControllerPrivateConstructor = JSDOMBuiltinConstructor<JSReadableByteStreamController>;
 #endif
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSBuiltinReadableStreamDefaultReaderPrivateConstructor);

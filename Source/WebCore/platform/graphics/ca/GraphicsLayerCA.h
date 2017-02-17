@@ -153,17 +153,11 @@ public:
         int treeDepth { 0 };
         bool ancestorHasTransformAnimation { false };
         bool ancestorIsViewportConstrained { false };
-        bool viewportIsStable { true };
-        
-        CommitState(bool stableViewport)
-            : viewportIsStable(stableViewport)
-        {
-        }
     };
     void recursiveCommitChanges(const CommitState&, const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
 
-    WEBCORE_EXPORT void flushCompositingState(const FloatRect&, bool viewportIsStable) override;
-    WEBCORE_EXPORT void flushCompositingStateForThisLayerOnly(bool viewportIsStable) override;
+    WEBCORE_EXPORT void flushCompositingState(const FloatRect&) override;
+    WEBCORE_EXPORT void flushCompositingStateForThisLayerOnly() override;
 
     WEBCORE_EXPORT bool visibleRectChangeRequiresFlush(const FloatRect& visibleRect) const override;
 
@@ -245,7 +239,7 @@ private:
     RefPtr<PlatformCAAnimation> createSpringAnimation(const Animation*, const String&, bool additive);
     void setupAnimation(PlatformCAAnimation*, const Animation*, bool additive);
     
-    const TimingFunction* timingFunctionForAnimationValue(const AnimationValue&, const Animation&);
+    const TimingFunction& timingFunctionForAnimationValue(const AnimationValue&, const Animation&);
     
     bool setAnimationEndpoints(const KeyframeValueList&, const Animation*, PlatformCAAnimation*);
     bool setAnimationKeyframes(const KeyframeValueList&, const Animation*, PlatformCAAnimation*);
@@ -310,7 +304,7 @@ private:
     const FloatRect& visibleRect() const { return m_visibleRect; }
     const FloatRect& coverageRect() const { return m_coverageRect; }
 
-    void setVisibleAndCoverageRects(const VisibleAndCoverageRects&, bool isViewportConstrained, bool viewportIsStable);
+    void setVisibleAndCoverageRects(const VisibleAndCoverageRects&, bool isViewportConstrained);
     
     static FloatRect adjustTiledLayerVisibleRect(TiledBacking*, const FloatRect& oldVisibleRect, const FloatRect& newVisibleRect, const FloatSize& oldSize, const FloatSize& newSize);
 
@@ -593,7 +587,7 @@ private:
 
     FloatSize m_pixelAlignmentOffset;
 
-    LayerChangeFlags m_uncommittedChanges { 0 };
+    LayerChangeFlags m_uncommittedChanges { CoverageRectChanged };
     bool m_isCommittingChanges { false };
 };
 

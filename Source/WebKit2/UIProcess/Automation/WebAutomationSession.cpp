@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #include "APIAutomationSessionClient.h"
 #include "AutomationProtocolObjects.h"
+#include "WebAutomationSessionMacros.h"
 #include "WebAutomationSessionMessages.h"
 #include "WebAutomationSessionProxyMessages.h"
 #include "WebCookieManagerProxy.h"
@@ -43,32 +44,6 @@
 #include <wtf/text/StringConcatenate.h>
 
 using namespace Inspector;
-
-static const char* const errorNameAndDetailsSeparator = ";";
-
-// Make sure the predefined error name is valid, otherwise use InternalError.
-#define VALIDATED_ERROR_MESSAGE(errorString) Inspector::Protocol::AutomationHelpers::parseEnumValueFromString<Inspector::Protocol::Automation::ErrorMessage>(errorString).valueOr(Inspector::Protocol::Automation::ErrorMessage::InternalError)
-
-// If the error name is incorrect for these macros, it will be a compile-time error.
-#define STRING_FOR_PREDEFINED_ERROR_NAME(errorName) Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::errorName)
-#define STRING_FOR_PREDEFINED_ERROR_NAME_AND_DETAILS(errorName, detailsString) makeString(Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::errorName), errorNameAndDetailsSeparator, detailsString)
-
-// If the error message is not a predefined error, InternalError will be used instead.
-#define STRING_FOR_PREDEFINED_ERROR_MESSAGE(errorMessage) Inspector::Protocol::AutomationHelpers::getEnumConstantValue(VALIDATED_ERROR_MESSAGE(errorMessage))
-#define STRING_FOR_PREDEFINED_ERROR_MESSAGE_AND_DETAILS(errorMessage, detailsString) makeString(Inspector::Protocol::AutomationHelpers::getEnumConstantValue(VALIDATED_ERROR_MESSAGE(errorMessage)), errorNameAndDetailsSeparator, detailsString)
-
-// Convenience macros for filling in the error string of synchronous commands in bailout branches.
-#define FAIL_WITH_PREDEFINED_ERROR(errorName) \
-do { \
-    errorString = STRING_FOR_PREDEFINED_ERROR_NAME(errorName); \
-    return; \
-} while (false)
-
-#define FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(errorName, detailsString) \
-do { \
-    errorString = STRING_FOR_PREDEFINED_ERROR_NAME_AND_DETAILS(errorName, detailsString); \
-    return; \
-} while (false)
 
 namespace WebKit {
 
@@ -173,14 +148,14 @@ String WebAutomationSession::handleForWebPageProxy(const WebPageProxy& webPagePr
     return handle;
 }
 
-Optional<uint64_t> WebAutomationSession::webFrameIDForHandle(const String& handle)
+std::optional<uint64_t> WebAutomationSession::webFrameIDForHandle(const String& handle)
 {
     if (handle.isEmpty())
         return 0;
 
     auto iter = m_handleWebFrameMap.find(handle);
     if (iter == m_handleWebFrameMap.end())
-        return Nullopt;
+        return std::nullopt;
 
     return iter->value;
 }
@@ -244,6 +219,8 @@ RefPtr<Inspector::Protocol::Automation::BrowsingContext> WebAutomationSession::b
         .release();
 }
 
+// Platform-independent Commands.
+
 void WebAutomationSession::getBrowsingContexts(Inspector::ErrorString& errorString, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Automation::BrowsingContext>>& contexts)
 {
     contexts = Inspector::Protocol::Array<Inspector::Protocol::Automation::BrowsingContext>::create();
@@ -299,7 +276,7 @@ void WebAutomationSession::switchToBrowsingContext(Inspector::ErrorString& error
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    Optional<uint64_t> frameID = webFrameIDForHandle(optionalFrameHandle ? *optionalFrameHandle : emptyString());
+    std::optional<uint64_t> frameID = webFrameIDForHandle(optionalFrameHandle ? *optionalFrameHandle : emptyString());
     if (!frameID)
         FAIL_WITH_PREDEFINED_ERROR(FrameNotFound);
 
@@ -308,80 +285,6 @@ void WebAutomationSession::switchToBrowsingContext(Inspector::ErrorString& error
 
     page->setFocus(true);
     page->process().send(Messages::WebAutomationSessionProxy::FocusFrame(page->pageID(), frameID.value()), 0);
-}
-
-void WebAutomationSession::resizeWindowOfBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const Inspector::InspectorObject& sizeObject)
-{
-    float width;
-    if (!sizeObject.getDouble(WTF::ASCIILiteral("width"), width))
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The 'width' parameter was not found or invalid.");
-
-    float height;
-    if (!sizeObject.getDouble(WTF::ASCIILiteral("height"), height))
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The 'height' parameter was not found or invalid.");
-
-    if (width < 0)
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InvalidParameter, "The 'width' parameter had an invalid value.");
-
-    if (height < 0)
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InvalidParameter, "The 'height' parameter had an invalid value.");
-
-    WebPageProxy* page = webPageProxyForHandle(handle);
-    if (!page)
-        FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
-
-    WebCore::FloatRect originalFrame;
-    page->getWindowFrame(originalFrame);
-
-    WebCore::FloatRect newFrame = WebCore::FloatRect(originalFrame.location(), WebCore::FloatSize(width, height));
-    if (newFrame == originalFrame)
-        return;
-
-    page->setWindowFrame(newFrame);
-
-    // If nothing changed at all, it's probably fair to report that something went wrong.
-    // (We can't assume that the requested frame size will be honored exactly, however.)
-    WebCore::FloatRect updatedFrame;
-    page->getWindowFrame(updatedFrame);
-    if (originalFrame == updatedFrame)
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InternalError, "The window size was expected to have changed, but did not.");
-}
-
-void WebAutomationSession::moveWindowOfBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const Inspector::InspectorObject& positionObject)
-{
-    float x;
-    if (!positionObject.getDouble(WTF::ASCIILiteral("x"), x))
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The 'x' parameter was not found or invalid.");
-
-    float y;
-    if (!positionObject.getDouble(WTF::ASCIILiteral("y"), y))
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The 'y' parameter was not found or invalid.");
-
-    if (x < 0)
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InvalidParameter, "The 'x' parameter had an invalid value.");
-
-    if (y < 0)
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InvalidParameter, "The 'y' parameter had an invalid value.");
-
-    WebPageProxy* page = webPageProxyForHandle(handle);
-    if (!page)
-        FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
-
-    WebCore::FloatRect originalFrame;
-    page->getWindowFrame(originalFrame);
-
-    WebCore::FloatRect newFrame = WebCore::FloatRect(WebCore::FloatPoint(x, y), originalFrame.size());
-    if (newFrame == originalFrame)
-        return;
-
-    page->setWindowFrame(newFrame);
-
-    // If nothing changed at all, it's probably fair to report that something went wrong.
-    // (We can't assume that the requested frame size will be honored exactly, however.)
-    WebCore::FloatRect updatedFrame;
-    page->getWindowFrame(updatedFrame);
-    if (originalFrame == updatedFrame)
-        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InternalError, "The window position was expected to have changed, but did not.");
 }
 
 void WebAutomationSession::navigateBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const String& url, Ref<NavigateBrowsingContextCallback>&& callback)
@@ -434,29 +337,7 @@ void WebAutomationSession::reloadBrowsingContext(Inspector::ErrorString& errorSt
     m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
 
     const bool reloadFromOrigin = false;
-    const bool contentBlockersEnabled = true;
-    page->reload(reloadFromOrigin, contentBlockersEnabled);
-}
-
-void WebAutomationSession::inspectBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const bool* optionalEnableAutoCapturing, Ref<InspectBrowsingContextCallback>&& callback)
-{
-    WebPageProxy* page = webPageProxyForHandle(handle);
-    if (!page)
-        FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
-
-    if (auto callback = m_pendingInspectorCallbacksPerPage.take(page->pageID()))
-        callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
-    m_pendingInspectorCallbacksPerPage.set(page->pageID(), WTFMove(callback));
-
-    // Don't bring the inspector to front since this may be done automatically.
-    // We just want it loaded so it can pause if a breakpoint is hit during a command.
-    if (page->inspector()) {
-        page->inspector()->connect();
-
-        // Start collecting profile information immediately so the entire session is captured.
-        if (optionalEnableAutoCapturing && *optionalEnableAutoCapturing)
-            page->inspector()->togglePageProfiling();
-    }
+    page->reload(reloadFromOrigin, { });
 }
 
 void WebAutomationSession::navigationOccurredForPage(const WebPageProxy& page)
@@ -483,7 +364,7 @@ void WebAutomationSession::evaluateJavaScriptFunction(Inspector::ErrorString& er
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    Optional<uint64_t> frameID = webFrameIDForHandle(optionalFrameHandle ? *optionalFrameHandle : emptyString());
+    std::optional<uint64_t> frameID = webFrameIDForHandle(optionalFrameHandle ? *optionalFrameHandle : emptyString());
     if (!frameID)
         FAIL_WITH_PREDEFINED_ERROR(FrameNotFound);
 
@@ -526,7 +407,7 @@ void WebAutomationSession::resolveChildFrameHandle(Inspector::ErrorString& error
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    Optional<uint64_t> frameID = webFrameIDForHandle(optionalFrameHandle ? *optionalFrameHandle : emptyString());
+    std::optional<uint64_t> frameID = webFrameIDForHandle(optionalFrameHandle ? *optionalFrameHandle : emptyString());
     if (!frameID)
         FAIL_WITH_PREDEFINED_ERROR(FrameNotFound);
 
@@ -569,7 +450,7 @@ void WebAutomationSession::resolveParentFrameHandle(Inspector::ErrorString& erro
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    Optional<uint64_t> frameID = webFrameIDForHandle(frameHandle);
+    std::optional<uint64_t> frameID = webFrameIDForHandle(frameHandle);
     if (!frameID)
         FAIL_WITH_PREDEFINED_ERROR(FrameNotFound);
 
@@ -597,7 +478,7 @@ void WebAutomationSession::computeElementLayout(Inspector::ErrorString& errorStr
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    Optional<uint64_t> frameID = webFrameIDForHandle(frameHandle);
+    std::optional<uint64_t> frameID = webFrameIDForHandle(frameHandle);
     if (!frameID)
         FAIL_WITH_PREDEFINED_ERROR(FrameNotFound);
 
@@ -845,7 +726,7 @@ void WebAutomationSession::addSingleCookie(ErrorString& errorString, const Strin
         FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The parameter 'httpOnly' was not found.");
 
     WebCookieManagerProxy* cookieManager = m_processPool->supplement<WebCookieManagerProxy>();
-    cookieManager->addCookie(cookie, activeURL.host());
+    cookieManager->addCookie(WebCore::SessionID::defaultSessionID(), cookie, activeURL.host());
 
     callback->sendSuccess();
 }
@@ -860,7 +741,7 @@ void WebAutomationSession::deleteAllCookies(ErrorString& errorString, const Stri
     ASSERT(activeURL.isValid());
 
     WebCookieManagerProxy* cookieManager = m_processPool->supplement<WebCookieManagerProxy>();
-    cookieManager->deleteCookiesForHostname(activeURL.host());
+    cookieManager->deleteCookiesForHostname(WebCore::SessionID::defaultSessionID(), activeURL.host());
 }
 
 #if USE(APPKIT)
@@ -1034,16 +915,18 @@ void WebAutomationSession::didTakeScreenshot(uint64_t callbackID, const Shareabl
         return;
     }
 
-    String base64EncodedData = platformGetBase64EncodedPNGData(imageDataHandle);
-    if (base64EncodedData.isEmpty()) {
+    std::optional<String> base64EncodedData = platformGetBase64EncodedPNGData(imageDataHandle);
+    if (!base64EncodedData) {
         callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(InternalError));
         return;
     }
 
-    callback->sendSuccess(base64EncodedData);
+    callback->sendSuccess(base64EncodedData.value());
 }
 
-#if !USE(APPKIT)
+// Platform-dependent Implementation Stubs.
+
+#if !PLATFORM(MAC)
 void WebAutomationSession::platformSimulateMouseInteraction(WebKit::WebPageProxy&, const WebCore::IntPoint&, Inspector::Protocol::Automation::MouseInteraction, Inspector::Protocol::Automation::MouseButton, WebEvent::Modifiers)
 {
 }
@@ -1055,11 +938,13 @@ void WebAutomationSession::platformSimulateKeyStroke(WebPageProxy&, Inspector::P
 void WebAutomationSession::platformSimulateKeySequence(WebPageProxy&, const String&)
 {
 }
+#endif // !PLATFORM(MAC)
 
-String WebAutomationSession::platformGetBase64EncodedPNGData(const ShareableBitmap::Handle&)
+#if !PLATFORM(COCOA)
+std::optional<String> WebAutomationSession::platformGetBase64EncodedPNGData(const ShareableBitmap::Handle&)
 {
     return String();
 }
-#endif // !USE(APPKIT)
+#endif // !PLATFORM(COCOA)
 
 } // namespace WebKit

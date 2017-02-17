@@ -32,11 +32,9 @@
 #include "ExceptionCode.h"
 #include "ExtensionStyleSheets.h"
 #include "HTMLLinkElement.h"
-#include "HTMLNames.h"
 #include "HTMLStyleElement.h"
 #include "MediaList.h"
 #include "Node.h"
-#include "SVGNames.h"
 #include "SVGStyleElement.h"
 #include "SecurityOrigin.h"
 #include "ShadowRoot.h"
@@ -44,7 +42,6 @@
 #include "StyleRule.h"
 #include "StyleScope.h"
 #include "StyleSheetContents.h"
-
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -83,9 +80,9 @@ Ref<CSSStyleSheet> CSSStyleSheet::create(Ref<StyleSheetContents>&& sheet, CSSImp
     return adoptRef(*new CSSStyleSheet(WTFMove(sheet), ownerRule));
 }
 
-Ref<CSSStyleSheet> CSSStyleSheet::create(Ref<StyleSheetContents>&& sheet, Node& ownerNode, const Optional<bool>& isCleanOrigin)
+Ref<CSSStyleSheet> CSSStyleSheet::create(Ref<StyleSheetContents>&& sheet, Node& ownerNode, const std::optional<bool>& isCleanOrigin)
 {
-    return adoptRef(*new CSSStyleSheet(WTFMove(sheet), ownerNode, TextPosition::minimumPosition(), false, isCleanOrigin));
+    return adoptRef(*new CSSStyleSheet(WTFMove(sheet), ownerNode, TextPosition(), false, isCleanOrigin));
 }
 
 Ref<CSSStyleSheet> CSSStyleSheet::createInline(Ref<StyleSheetContents>&& sheet, Element& owner, const TextPosition& startPosition)
@@ -105,7 +102,7 @@ CSSStyleSheet::CSSStyleSheet(Ref<StyleSheetContents>&& contents, CSSImportRule* 
     m_contents->registerClient(this);
 }
 
-CSSStyleSheet::CSSStyleSheet(Ref<StyleSheetContents>&& contents, Node& ownerNode, const TextPosition& startPosition, bool isInlineStylesheet, const Optional<bool>& isOriginClean)
+CSSStyleSheet::CSSStyleSheet(Ref<StyleSheetContents>&& contents, Node& ownerNode, const TextPosition& startPosition, bool isInlineStylesheet, const std::optional<bool>& isOriginClean)
     : m_contents(WTFMove(contents))
     , m_isInlineStylesheet(isInlineStylesheet)
     , m_isDisabled(false)
@@ -260,7 +257,7 @@ bool CSSStyleSheet::canAccessRules() const
     Document* document = ownerDocument();
     if (!document)
         return true;
-    return document->securityOrigin()->canRequest(baseURL);
+    return document->securityOrigin().canRequest(baseURL);
 }
 
 RefPtr<CSSRuleList> CSSStyleSheet::rules()
@@ -289,8 +286,7 @@ ExceptionOr<unsigned> CSSStyleSheet::insertRule(const String& ruleString, unsign
 
     if (index > length())
         return Exception { INDEX_SIZE_ERR };
-    CSSParser p(m_contents.get().parserContext());
-    RefPtr<StyleRuleBase> rule = p.parseRule(m_contents.ptr(), ruleString);
+    RefPtr<StyleRuleBase> rule = CSSParser::parseRule(m_contents.get().parserContext(), m_contents.ptr(), ruleString);
 
     if (!rule)
         return Exception { SYNTAX_ERR };
@@ -325,7 +321,7 @@ ExceptionOr<void> CSSStyleSheet::deleteRule(unsigned index)
     return { };
 }
 
-ExceptionOr<int> CSSStyleSheet::addRule(const String& selector, const String& style, Optional<unsigned> index)
+ExceptionOr<int> CSSStyleSheet::addRule(const String& selector, const String& style, std::optional<unsigned> index)
 {
     StringBuilder text;
     text.append(selector);
@@ -334,7 +330,7 @@ ExceptionOr<int> CSSStyleSheet::addRule(const String& selector, const String& st
     if (!style.isEmpty())
         text.append(' ');
     text.append('}');
-    auto insertRuleResult = insertRule(text.toString(), index.valueOr(length()));
+    auto insertRuleResult = insertRule(text.toString(), index.value_or(length()));
     if (insertRuleResult.hasException())
         return insertRuleResult.releaseException();
     

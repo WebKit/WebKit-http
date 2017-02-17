@@ -501,18 +501,18 @@ static void webkit_web_page_class_init(WebKitWebPageClass* klass)
     /**
      * WebKitWebPage::form-controls-associated:
      * @web_page: the #WebKitWebPage on which the signal is emitted
-     * @elements: (element-type WebKit.DOMElement) (transfer none): a #GPtrArray of
+     * @elements: (element-type WebKitDOMElement) (transfer none): a #GPtrArray of
      *     #WebKitDOMElement with the list of forms in the page
      *
      * Emitted after form elements (or form associated elements) are associated to a particular web
-     * page. Useful to implement form autofilling with web pages where form fields are dynamically
-     * added (as many JS frameworks do). This might be emitted multiple times for the same web page.
+     * page. This is useful to implement form autofilling for web pages where form fields are added
+     * dynamically. This signal might be emitted multiple times for the same web page.
      *
      * Note that this signal could be also emitted when form controls are moved between forms. In
-     * those cases the @elements array carries the list of those elements which have moved.
+     * that case, the @elements array carries the list of those elements which have moved.
      *
-     * In any case the members of the @elements array will be alive during signal emission so
-     * clients should take a reference to keep them alive.
+     * Clients should take a reference to the members of the @elements array if it is desired to
+     * keep them alive after the signal handler returns.
      *
      * Since: 2.16
      */

@@ -75,14 +75,14 @@ static UnlinkedFunctionCodeBlock* generateUnlinkedFunctionCodeBlock(
     return result;
 }
 
-UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& source, RefPtr<SourceProvider>&& sourceOverride, FunctionMetadataNode* node, UnlinkedFunctionKind kind, ConstructAbility constructAbility, JSParserScriptMode scriptMode, VariableEnvironment& parentScopeTDZVariables, DerivedContextType derivedContextType)
+UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& parentSource, SourceCode&& parentSourceOverride, FunctionMetadataNode* node, UnlinkedFunctionKind kind, ConstructAbility constructAbility, JSParserScriptMode scriptMode, VariableEnvironment& parentScopeTDZVariables, DerivedContextType derivedContextType)
     : Base(*vm, structure)
-    , m_firstLineOffset(node->firstLine() - source.firstLine())
+    , m_firstLineOffset(node->firstLine() - parentSource.firstLine().oneBasedInt())
     , m_lineCount(node->lastLine() - node->firstLine())
-    , m_unlinkedFunctionNameStart(node->functionNameStart() - source.startOffset())
+    , m_unlinkedFunctionNameStart(node->functionNameStart() - parentSource.startOffset())
     , m_unlinkedBodyStartColumn(node->startColumn())
     , m_unlinkedBodyEndColumn(m_lineCount ? node->endColumn() : node->endColumn() - node->startColumn())
-    , m_startOffset(node->source().startOffset() - source.startOffset())
+    , m_startOffset(node->source().startOffset() - parentSource.startOffset())
     , m_sourceLength(node->source().length())
     , m_parametersStartOffset(node->parametersStart())
     , m_typeProfilingStartOffset(node->functionKeywordStart())
@@ -103,7 +103,7 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     , m_name(node->ident())
     , m_ecmaName(node->ecmaName())
     , m_inferredName(node->inferredName())
-    , m_sourceOverride(WTFMove(sourceOverride))
+    , m_parentSourceOverride(WTFMove(parentSourceOverride))
     , m_classSource(node->classSource())
 {
     // Make sure these bitfields are adequately wide.
@@ -119,7 +119,7 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
 
 void UnlinkedFunctionExecutable::destroy(JSCell* cell)
 {
-    jsCast<UnlinkedFunctionExecutable*>(cell)->~UnlinkedFunctionExecutable();
+    static_cast<UnlinkedFunctionExecutable*>(cell)->~UnlinkedFunctionExecutable();
 }
 
 void UnlinkedFunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -127,39 +127,36 @@ void UnlinkedFunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visito
     UnlinkedFunctionExecutable* thisObject = jsCast<UnlinkedFunctionExecutable*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_unlinkedCodeBlockForCall);
-    visitor.append(&thisObject->m_unlinkedCodeBlockForConstruct);
+    visitor.append(thisObject->m_unlinkedCodeBlockForCall);
+    visitor.append(thisObject->m_unlinkedCodeBlockForConstruct);
 }
 
-FunctionExecutable* UnlinkedFunctionExecutable::link(VM& vm, const SourceCode& ownerSource, Optional<int> overrideLineNumber, Intrinsic intrinsic)
+FunctionExecutable* UnlinkedFunctionExecutable::link(VM& vm, const SourceCode& passedParentSource, std::optional<int> overrideLineNumber, Intrinsic intrinsic)
 {
-    SourceCode source = m_sourceOverride ? SourceCode(m_sourceOverride) : ownerSource;
-    unsigned firstLine = source.firstLine() + m_firstLineOffset;
-    unsigned startOffset = source.startOffset() + m_startOffset;
+    const SourceCode& parentSource = m_parentSourceOverride.isNull() ? passedParentSource : m_parentSourceOverride;
+    unsigned firstLine = parentSource.firstLine().oneBasedInt() + m_firstLineOffset;
+    unsigned startOffset = parentSource.startOffset() + m_startOffset;
     unsigned lineCount = m_lineCount;
 
-    // Adjust to one-based indexing.
-    bool startColumnIsOnFirstSourceLine = !m_firstLineOffset;
-    unsigned startColumn = m_unlinkedBodyStartColumn + (startColumnIsOnFirstSourceLine ? source.startColumn() : 1);
-    bool endColumnIsOnStartLine = !lineCount;
-    unsigned endColumn = m_unlinkedBodyEndColumn + (endColumnIsOnStartLine ? startColumn : 1);
+    unsigned startColumn = linkedStartColumn(parentSource.startColumn().oneBasedInt());
+    unsigned endColumn = linkedEndColumn(startColumn);
 
-    SourceCode code(source.provider(), startOffset, startOffset + m_sourceLength, firstLine, startColumn);
+    SourceCode source(parentSource.provider(), startOffset, startOffset + m_sourceLength, firstLine, startColumn);
     FunctionOverrides::OverrideInfo overrideInfo;
     bool hasFunctionOverride = false;
 
     if (UNLIKELY(Options::functionOverrides())) {
-        hasFunctionOverride = FunctionOverrides::initializeOverrideFor(code, overrideInfo);
+        hasFunctionOverride = FunctionOverrides::initializeOverrideFor(source, overrideInfo);
         if (UNLIKELY(hasFunctionOverride)) {
             firstLine = overrideInfo.firstLine;
             lineCount = overrideInfo.lineCount;
             startColumn = overrideInfo.startColumn;
             endColumn = overrideInfo.endColumn;
-            code = overrideInfo.sourceCode;
+            source = overrideInfo.sourceCode;
         }
     }
 
-    FunctionExecutable* result = FunctionExecutable::create(vm, code, this, firstLine, firstLine + lineCount, startColumn, endColumn, intrinsic);
+    FunctionExecutable* result = FunctionExecutable::create(vm, source, this, firstLine + lineCount, endColumn, intrinsic);
     if (overrideLineNumber)
         result->setOverrideLineNumber(*overrideLineNumber);
 
@@ -179,10 +176,11 @@ UnlinkedFunctionExecutable* UnlinkedFunctionExecutable::fromGlobalCode(
 {
     ParserError error;
     VM& vm = exec.vm();
-    CodeCache* codeCache = vm.codeCache();
-    UnlinkedFunctionExecutable* executable = codeCache->getFunctionExecutableFromGlobalCode(vm, name, source, error);
-
     auto& globalObject = *exec.lexicalGlobalObject();
+    CodeCache* codeCache = vm.codeCache();
+    DebuggerMode debuggerMode = globalObject.hasInteractiveDebugger() ? DebuggerOn : DebuggerOff;
+    UnlinkedFunctionExecutable* executable = codeCache->getUnlinkedGlobalFunctionExecutable(vm, name, source, debuggerMode, error);
+
     if (globalObject.hasDebugger())
         globalObject.debugger()->sourceParsed(&exec, source.provider(), error.line(), error.message());
 

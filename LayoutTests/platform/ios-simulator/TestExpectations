@@ -10,6 +10,8 @@ accessibility/ios-simulator [ Pass ]
 displaylists [ Pass ]
 http/tests/quicklook [ Pass ]
 media/controls/ipad [ Pass ]
+media/ios [ Pass ]
+quicklook [ Pass ]
 
 fast/text-autosizing/ios [ Pass ]
 fast/zooming/ios [ Pass ]
@@ -123,10 +125,14 @@ http/tests/security/contentSecurityPolicy/object-src-param-src-blocked.html
 http/tests/security/contentSecurityPolicy/object-src-param-url-blocked.html
 http/tests/security/contentSecurityPolicy/object-with-no-url-allowed-by-default-src-star.html
 http/tests/security/contentSecurityPolicy/object-with-no-url-allowed-by-star.html
+http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-iframe.html
+http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-main-frame.html
 
 # Pointer-lock not supported on iOS
 pointer-lock
 http/tests/pointer-lock
+fast/shadow-dom/pointerlockelement-in-shadow-tree.html
+fast/shadow-dom/pointerlockelement-in-slot.html
 
 # FIXME: Media tests not supported on iOS
 http/tests/media
@@ -135,15 +141,18 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
 # No touch events
 fast/events/touch [ Skip ]
 fast/shadow-dom/touch-event-ios.html [ Skip ]
+fast/shadow-dom/touch-event-on-text-assigned-to-slot.html [ Skip ]
 http/tests/quicklook/at-import-stylesheet-blocked.html [ Skip ]
 http/tests/quicklook/base-url-blocked.html [ Skip ]
 http/tests/quicklook/cross-origin-iframe-blocked.html [ Skip ]
 http/tests/quicklook/document-domain-is-empty-string.html [ Skip ]
 http/tests/quicklook/external-stylesheet-blocked.html [ Skip ]
+http/tests/quicklook/rtf-document-domain-is-empty-string.html [ Skip ]
 http/tests/quicklook/submit-form-blocked.html [ Skip ]
 http/tests/quicklook/top-navigation-blocked.html [ Skip ]
 http/tests/quicklook/hide-referer-on-navigation.html [ Skip ]
 imported/w3c/web-platform-tests/touch-events [ Skip ]
+media/modern-media-controls/media-controller/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-container-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-touches.html [ Skip ]
@@ -290,16 +299,22 @@ fast/events/mouse-force-changed.html [ Skip ]
 fast/events/mouse-force-down.html [ Skip ]
 fast/events/mouse-force-up.html [ Skip ]
 
+# testRunner.setPageVisibility is not implemented for iOS
+webkit.org/b/165799 fast/events/page-visibility-onvisibilitychange.html [ Skip ]
+webkit.org/b/165799 svg/animations/animations-paused-page-non-visible.html [ Skip ]
+
 # AutoFill button is not supported
 fast/forms/auto-fill-button/mouse-down-input-mouse-release-auto-fill-button.html
 
 # Mouse events are not supported on iOS
+fast/forms/search-cancel-button-change-input.html [ Skip ]
 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Skip ]
 fast/scrolling/overflow-scroll-past-max.html [ Skip ]
 pageoverlay/overlay-small-frame-mouse-events.html [ Skip ]
 loader/stateobjects/pushstate-size.html [ Skip ]
 loader/stateobjects/pushstate-size-iframe.html [ Skip ]
 fast/scrolling/scroll-animator-basic-events.html [ Skip ]
+fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 fast/scrolling/scroll-animator-select-list-events.html [ Skip ]
 fast/events/prevent-default-prevents-interaction-with-scrollbars.html [ Skip ]
@@ -327,8 +342,9 @@ webkit.org/b/148695 fast/shadow-dom [ Pass ]
 fast/shadow-dom/focus-on-iframe.html [ Failure ]
 webkit.org/b/116046 fast/events/sequential-focus-navigation-starting-point.html [ Skip ]
 webkit.org/b/159240 fast/events/remove-focus-navigation-starting-point-crash.html [ Skip ]
-
-webkit.org/b/150225 fast/custom-elements [ Pass ]
+webkit.org/b/164888 fast/shadow-dom/focus-navigation-out-of-slot.html [ Skip ]
+webkit.org/b/164888 fast/shadow-dom/focus-navigation-passes-shadow-host.html [ Skip ]
+webkit.org/b/164888 fast/shadow-dom/focus-navigation-passes-svg-use-element.html [ Skip ]
 
 # This test needs to be rewritten to use runUIScript to work on iOS
 webkit.org/b/152993 http/tests/contentdispositionattachmentsandbox/form-submission-disabled.html [ Skip ]
@@ -338,13 +354,20 @@ fast/text/complex-small-caps-non-bmp-capitalize.html [ Skip ]
 fast/text/all-small-caps-whitespace.html [ Skip ]
 
 # This test relies on EventSender.keydown(), which is not supported on iOS
+editing/caret/emoji.html [ Skip ]
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
+fast/forms/validation-bubble-escape-key-dismiss.html [ Skip ]
+fast/forms/validation-message-maxLength.html [ Skip ]
 fast/shadow-dom/shadow-host-removal-crash.html [ Skip ]
 fast/shadow-dom/input-element-in-shadow.html [ Skip ]
 fast/shadow-dom/activate-over-slotted-content.html [ Skip ]
+fast/shadow-dom/clear-active-state-in-shadow.html [ Skip ]
+fast/shadow-dom/hover-over-nested-slotted-content.html [ Skip ]
 fast/shadow-dom/hover-over-slotted-content.html [ Skip ]
 fast/events/keyboardevent-key.html [ Skip ]
 fast/events/keyboardevent-code.html [ Skip ]
+http/tests/navigation/keyboard-events-during-provisional-navigation.html [ Skip ]
+media/audio-dealloc-crash.html [ Skip ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
@@ -357,6 +380,9 @@ fast/scrolling/rtl-scrollbars-position-absolute.html [ Skip ]
 fast/scrolling/rtl-scrollbars-position-fixed.html [ Skip ]
 fast/scrolling/rtl-scrollbars-text-selection-scrolled.html [ Skip ]
 fast/scrolling/rtl-scrollbars-text-selection.html [ Skip ]
+
+# This is specific to extensions on macOS
+webkit.org/b/167795 http/tests/security/bypassing-cors-checks-for-extension-urls.html [ Skip ]
 
 ###
 # Known failures
@@ -992,7 +1018,6 @@ scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ Failur
 userscripts/user-script-plugin-document.html [ Failure ]
 
 # Webarchive tests that fail:
-webarchive/loading/video-in-webarchive.html [ Failure ]
 webarchive/test-css-url-resources-in-stylesheets.html [ Failure ]
 webarchive/test-css-url-resources-inline-styles.html [ Failure ]
 webarchive/test-link-rel-icon.html [ Failure ]
@@ -1216,6 +1241,7 @@ fast/events/input-events-ime-composition.html [ Failure ]
 fast/events/input-events-paste-rich-datatransfer.html [ Failure ]
 fast/events/input-events-spell-checking-datatransfer.html [ Failure ]
 fast/events/input-events-selection-forecolor-data.html [ Failure ]
+fast/events/input-events-insert-newlines-after-mutation.html [ Failure ]
 fast/events/before-input-events-prevent-default.html [ Failure ]
 fast/events/before-input-events-prevent-default-in-textfield.html [ Failure ]
 fast/events/before-input-events-different-start-end-elements.html [ Failure ]
@@ -1281,6 +1307,12 @@ fast/events/shadow-event-path.html [ Failure ]
 fast/events/show-modal-dialog-onblur-onfocus.html [ Failure ]
 fast/events/tab-focus-link-in-canvas.html [ Failure ]
 fast/events/tabindex-focus-blur-all.html [ Failure ]
+
+# Tests that depend on mouse input
+fast/events/autoscroll-main-document.html [ Skip ]
+fast/events/autoscroll-when-zoomed.html [ Skip ]
+fast/events/drag-select-when-zoomed-with-header.html [ Skip ]
+fast/events/drag-select-when-zoomed.html [ Skip ]
 
 # Ref-test imported from W3C that is failing because type=image input elements have rounded corners on iOS.
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/image01.html [ ImageOnlyFailure ]
@@ -1445,7 +1477,6 @@ fast/images/gray-scale-jpeg-with-color-profile.html [ Failure ]
 fast/images/icon-decoding.html [ Failure ]
 fast/images/image-in-map.html [ Failure ]
 fast/images/imagemap-focus-ring-zoom.html [ Failure ]
-fast/images/pdf-as-image-with-annotations.html [ ImageOnlyFailure ]
 fast/images/repaint-subrect-grid.html [ Failure ]
 fast/images/support-broken-image-delegate.html [ Failure ]
 fast/images/webp-image-decoding.html [ Failure ]
@@ -2222,7 +2253,6 @@ compositing/fixed-with-fixed-layout.html [ Failure ]
 compositing/geometry/ancestor-overflow-change.html [ Failure ]
 compositing/layer-creation/will-change-layer-creation.html [ Failure ]
 css3/scroll-snap/nested-elements.html [ Failure ]
-css3/scroll-snap/scroll-snap-coordinate.html [ Failure ]
 fast/block/lineboxcontain/block-with-ideographs.xhtml [ Failure ]
 fast/css/text-overflow-ellipsis-text-align-center.html [ Failure ]
 fast/css/text-overflow-ellipsis-text-align-left.html [ Failure ]
@@ -2238,9 +2268,6 @@ fast/parser/xml-declaration-missing-ending-mark.html [ Failure ]
 platform/ios-simulator/ios/accessibility/set-value.html [ Failure ]
 platform/ios-simulator/ios/fast/css/webkit-overflow-scrolling-parsing.html [ Failure ]
 svg/custom/bug78807.svg [ Failure ]
-
-webkit.org/b/163127 http/tests/quicklook/secure-document-with-subresources.html [ Skip ]
-webkit.org/b/163127 accessibility/text-marker/character-offset-visible-position-conversion-hang.html [ Skip ]
 
 fast/filter-image/background-filter-image.html [ ImageOnlyFailure ]
 fast/text/combining-mark-paint.html [ ImageOnlyFailure ]
@@ -2307,13 +2334,6 @@ webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-rule-stacking-001.x
 webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-shorthand-001.xht [ ImageOnlyFailure ]
 webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-span-all-block-sibling-003.xht [ ImageOnlyFailure ]
 webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht [ ImageOnlyFailure ]
-
-# Flaky tests ( these tests were affected by https://bugs.webkit.org/show_bug.cgi?id=149320 )
-
-css3/line-break/line-break-loose-centered.html [ ImageOnlyFailure Pass ]
-css3/line-break/line-break-loose-postfixes.html [ ImageOnlyFailure Pass ]
-css3/line-break/line-break-loose-sound-marks.html [ ImageOnlyFailure Pass ]
-css3/line-break/line-break-normal-sound-marks.html [ ImageOnlyFailure Pass ]
 
 # Enable "aria-current" test for iOS
 webkit.org/b/149297 accessibility/aria-current.html [ Pass ]
@@ -2679,9 +2699,6 @@ webkit.org/b/161143 imported/w3c/web-platform-tests/html/browsers/browsing-the-w
 
 webkit.org/b/161395 svg/animations/reinserting-svg-into-document.html [ Pass Failure ]
 
-# rdar://problem/26477735
-quicklook
-
 # rdar://problem/27954577
 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-main-frame.html [ Failure ]
 
@@ -2705,18 +2722,10 @@ fast/text/letterpress-different.html [ Pass ]
 
 webkit.org/b/162739 fast/images/gif-loop-count.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/163009 media/modern-media-controls/icon-button/icon-button-active-state.html [ Failure ]
-webkit.org/b/163357 media/modern-media-controls/volume-slider/volume-slider-value.html [ Skip ]
-webkit.org/b/163669 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
-webkit.org/b/164088 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
-webkit.org/b/164088 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Skip ]
-webkit.org/b/164160 media/modern-media-controls/volume-support/volume-support-click.html [ Skip ]
-webkit.org/b/164160 media/modern-media-controls/volume-support/volume-support-drag.html [ Skip ]
-webkit.org/b/164250 media/modern-media-controls/volume-support/volume-support-media-api.html [ Skip ]
-webkit.org/b/164314 media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Skip ]
-
 # This variation font test requires Skia which isn't available on iOS.
 webkit.org/b/163093 fast/text/variations/advances.html [ Failure ]
+webkit.org/b/163093 fast/text/variations/outofbounds.html [ ImageOnlyFailure ]
+webkit.org/b/163093 fast/text/variations/default-value.html [ ImageOnlyFailure ]
 
 webkit.org/b/162647 http/tests/xmlhttprequest/onabort-response-getters.html [ Pass Failure ]
 
@@ -2727,11 +2736,6 @@ webkit.org/b/163291 media/video-controls-visible-audio-only.html [ Failure ]
 webkit.org/b/163291 media/video-fullscreeen-only-playback.html [ Failure ]
 webkit.org/b/163291 media/video-play-audio-require-user-gesture.html [ Failure ]
 webkit.org/b/163291 media/video-play-require-user-gesture.html
-
-webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size-iframe.html [ Skip ]
-webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size.html [ Skip ]
-webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size-iframe.html [ Skip ]
-webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size.html [ Skip ]
 
 webkit.org/b/163755 imported/w3c/csswg-test/css-shapes-1 [ Skip ]
 
@@ -2747,12 +2751,115 @@ webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
 # Only Mac has implemented DictionaryLookup
 fast/layers/prevent-hit-test-during-layout.html [ Skip ]
 
-# Internal APIs to test PiP and AirPlay are not available on iOS.
-media/modern-media-controls/airplay-support/airplay-support.html [ Skip ]
-media/modern-media-controls/pip-support [ Skip ]
-media/modern-media-controls/placard-support [ Skip ]
-
-# This test is Mac-specific since it checks that we have custom controls in fullscreen.
-media/modern-media-controls/media-controller/media-controller-fullscreen-change.html [ Skip ]
-
 webkit.org/b/164594 http/tests/cache/disk-cache/disk-cache-request-headers.html [ Pass Timeout ]
+
+webkit.org/b/163046 js/regress-141098.html [ Pass Failure ]
+
+# Test relies on window.scrollTo
+fast/zooming/client-rect-in-fixed-zoomed.html [ Skip ]
+fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed.html [ Skip ]
+fast/visual-viewport/zoomed-scroll-into-view-fixed.html [ Skip ]
+fast/scrolling/scroll-to-anchor-zoomed-header.html [ Skip ]
+
+# This test relies on Arial being used to draw Arabic. However, on iOS,
+# we explicitly disallow this because this font is too slow.
+fast/text/initial-advance-in-intermediate-run-complex.html [ ImageOnlyFailure ]
+
+# On iOS we do not visually highlight a programmatic selection
+fast/selectors/040.html
+
+webkit.org/b/165691 http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame.html [ Pass Failure ]
+
+fast/css/deferred-parsing/hover-test.html [ Skip ]
+
+# iOS-specific test
+media/modern-media-controls/media-controller/media-controller-scale-factor.html [ Pass ]
+
+# The tracks menu is never used in media controls on iOS
+media/modern-media-controls/tracks-panel [ Skip ]
+media/modern-media-controls/tracks-support [ Skip ]
+
+# There is no mute button or volume scrubber on iOS
+media/modern-media-controls/mute-button [ Skip ]
+media/modern-media-controls/mute-support [ Skip ]
+media/modern-media-controls/volume-slider [ Skip ]
+media/modern-media-controls/volume-support [ Skip ]
+
+# Fullscreen is handled natively on iOS, so no need to test fullscreen or controls only shown in fullscreen
+media/modern-media-controls/macos-fullscreen-media-controls [ Skip ]
+media/modern-media-controls/media-controller/media-controller-fade-controls-when-entering-fullscreen.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-fullscreen-change.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-inline.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Skip ]
+media/modern-media-controls/seek-backward-support [ Skip ]
+media/modern-media-controls/seek-forward-support [ Skip ]
+media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
+media/modern-media-controls/volume-down-support [ Skip ]
+media/modern-media-controls/volume-up-support [ Skip ]
+
+# These tests are mouse-specific
+media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Skip ]
+media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
+media/modern-media-controls/media-documents/click-on-video-should-not-pause.html [ Skip ]
+
+# Tests designed for macOS that have iOS equivalents in "ipad" directories
+media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Skip ]
+media/modern-media-controls/pip-support/pip-support-click.html [ Skip ]
+media/modern-media-controls/pip-support/pip-support-enabled.html [ Skip ]
+media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
+media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Skip ]
+media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
+
+# These tests use uiController and need to be skipped in open-source
+media/modern-media-controls/placard-support/ipad/placard-support-pip.html [ Skip ]
+media/modern-media-controls/icon-button/icon-button-active-state.html [ Skip ]
+media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
+media/modern-media-controls/playback-support/playback-support-button-click.html [ Skip ]
+media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap.html [ Skip ]
+media/modern-media-controls/start-support/start-support-click-to-start.html [ Skip ]
+media/modern-media-controls/button/button.html [ Skip ]
+
+# AirPlay cannot be tested on iOS
+webkit.org/b/166062 media/modern-media-controls/airplay-placard/airplay-placard-text-section.html [ Skip ]
+webkit.org/b/166062 media/modern-media-controls/airplay-support/airplay-support.html [ Skip ]
+webkit.org/b/166062 media/modern-media-controls/placard-support/placard-support-airplay.html [ Skip ]
+webkit.org/b/166062 media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
+
+# There is no compact, reduced padding or tight padding mode on iOS.
+media/modern-media-controls/icon-button/icon-button-change-layout-traits.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact-buttons-styles.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact-controls-bar-styles.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-reduced-padding.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-tight-padding.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-compact.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-reduced-padding.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-tight-padding.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-toggle-compact-mode.html [ Skip ]
+
+# New Encrypted Media API not enabled on iOS
+media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
+
+webkit.org/b/166736 fast/scrolling/page-cache-back-overflow-scroll-restore.html [ Skip ]
+
+# editing/caret/ios/emoji.html is used instead.
+editing/caret/emoji.html [ Failure ]
+
+# Requires changes to QuickLook.framework tracked by rdar://problem/28544527
+quicklook/password-protected.html [ Skip ]
+
+webkit.org/b/167376 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ Pass Failure ]
+webkit.org/b/167211 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-weird.html [ Pass Failure ]
+
+webkit.org/b/167619 css3/filters/backdrop/dynamic-with-clip-path.html [ ImageOnlyFailure ]
+
+webkit.org/b/167967 http/tests/security/credentials-iframes.html [ Failure ]
+
+webkit.org/b/168054 compositing/masks/solid-color-masked.html [ ImageOnlyFailure ]
+
+webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
+webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]

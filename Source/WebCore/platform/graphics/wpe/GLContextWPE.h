@@ -29,7 +29,12 @@ namespace WebCore {
 
 class GLContextWPE final : public GLContext {
 public:
-    static std::unique_ptr<GLContextWPE> createContext(PlatformDisplay&, EGLNativeWindowType, bool, std::unique_ptr<GLContext::Data>&& = nullptr);
+    class Data {
+    public:
+        virtual ~Data() = default;
+    };
+
+    static std::unique_ptr<GLContextWPE> createContext(PlatformDisplay&, EGLNativeWindowType, bool, std::unique_ptr<GLContextWPE::Data>&& = nullptr);
     static std::unique_ptr<GLContextWPE> createOffscreenContext(PlatformDisplay&);
     static std::unique_ptr<GLContextWPE> createSharingContext(PlatformDisplay&);
     virtual ~GLContextWPE();
@@ -67,6 +72,8 @@ private:
 #if USE(CAIRO)
     cairo_device_t* m_cairoDevice { nullptr };
 #endif
+
+    std::unique_ptr<Data> m_contextData;
 };
 
 } // namespace WebCore

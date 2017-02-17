@@ -50,10 +50,9 @@ public:
 
 private:
     void updateLogicalWidth() override;
-    void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
 
     const char* renderName() const override { return "RenderImageControlsButton"; }
-    bool requiresForcedStyleRecalcPropagation() const override { return true; }
 };
 
 RenderImageControlsButton::RenderImageControlsButton(HTMLElement& element, RenderStyle&& style)
@@ -73,12 +72,12 @@ void RenderImageControlsButton::updateLogicalWidth()
     setLogicalWidth(isHorizontalWritingMode() ? frameSize.width() : frameSize.height());
 }
 
-void RenderImageControlsButton::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderImageControlsButton::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const
 {
-    RenderBox::computeLogicalHeight(logicalHeight, logicalTop, computedValues);
-
+    auto computedValues = RenderBox::computeLogicalHeight(logicalHeight, logicalTop);
     IntSize frameSize = theme().imageControlsButtonSize(*this);
     computedValues.m_extent = isHorizontalWritingMode() ? frameSize.height() : frameSize.width();
+    return computedValues;
 }
 
 ImageControlsButtonElementMac::ImageControlsButtonElementMac(Document& document)
@@ -118,7 +117,7 @@ void ImageControlsButtonElementMac::defaultEventHandler(Event& event)
         if (!page)
             return;
 
-        page->contextMenuController().showImageControlsMenu(&event);
+        page->contextMenuController().showImageControlsMenu(event);
         event.setDefaultHandled();
         return;
     }

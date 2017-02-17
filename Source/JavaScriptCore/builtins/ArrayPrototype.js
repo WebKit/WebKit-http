@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,7 @@ function values()
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.values requires that |this| not be null or undefined");
 
     return new @createArrayIterator(@Object(this), "value", @arrayIteratorValueNext);
@@ -49,7 +49,7 @@ function keys()
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.keys requires that |this| not be null or undefined");
 
     return new @createArrayIterator(@Object(this), "key", @arrayIteratorKeyNext);
@@ -59,7 +59,7 @@ function entries()
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.entries requires that |this| not be null or undefined");
 
     return new @createArrayIterator(@Object(this), "key+value", @arrayIteratorKeyValueNext);
@@ -69,7 +69,7 @@ function reduce(callback /*, initialValue */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.reduce requires that |this| not be null or undefined");
 
     var array = @Object(this);
@@ -105,7 +105,7 @@ function reduceRight(callback /*, initialValue */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.reduceRight requires that |this| not be null or undefined");
 
     var array = @Object(this);
@@ -141,7 +141,7 @@ function every(callback /*, thisArg */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.every requires that |this| not be null or undefined");
     
     var array = @Object(this);
@@ -166,7 +166,7 @@ function forEach(callback /*, thisArg */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.forEach requires that |this| not be null or undefined");
     
     var array = @Object(this);
@@ -187,7 +187,7 @@ function filter(callback /*, thisArg */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.filter requires that |this| not be null or undefined");
     
     var array = @Object(this);
@@ -236,7 +236,7 @@ function map(callback /*, thisArg */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.map requires that |this| not be null or undefined");
     
     var array = @Object(this);
@@ -282,7 +282,7 @@ function some(callback /*, thisArg */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.some requires that |this| not be null or undefined");
     
     var array = @Object(this);
@@ -305,7 +305,7 @@ function fill(value /* [, start [, end]] */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.fill requires that |this| not be null or undefined");
 
     var array = @Object(this);
@@ -345,7 +345,7 @@ function find(callback /*, thisArg */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.find requires that |this| not be null or undefined");
     
     var array = @Object(this);
@@ -367,7 +367,7 @@ function findIndex(callback /*, thisArg */)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.findIndex requires that |this| not be null or undefined");
     
     var array = @Object(this);
@@ -388,7 +388,7 @@ function includes(searchElement /*, fromIndex*/)
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.includes requires that |this| not be null or undefined");
 
     var array = @Object(this);
@@ -625,7 +625,7 @@ function sort(comparator)
         bucketSort(array, 0, strings, 0);
     }
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.sort requires that |this| not be null or undefined");
 
     var array = @Object(this);
@@ -651,7 +651,7 @@ function concatSlowPath()
 {
     "use strict";
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.prototype.concat requires that |this| not be null or undefined");
 
     var currentElement = @Object(this);
@@ -686,12 +686,12 @@ function concatSlowPath()
         let spreadable = @isObject(currentElement) && currentElement.@isConcatSpreadableSymbol;
         if ((spreadable === @undefined && @isArray(currentElement)) || spreadable) {
             let length = @toLength(currentElement.length);
+            if (length + resultIndex > @MAX_ARRAY_INDEX)
+                @throwRangeError("Length exceeded the maximum array length");
             if (resultIsArray && @isJSArray(currentElement)) {
                 @appendMemcpy(result, currentElement, resultIndex);
                 resultIndex += length;
             } else {
-                if (length + resultIndex > @MAX_SAFE_INTEGER)
-                    @throwTypeError("length exceeded the maximum safe integer");
                 for (var i = 0; i < length; i++) {
                     if (i in currentElement)
                         @putByValDirect(result, resultIndex, currentElement[i]);
@@ -699,8 +699,8 @@ function concatSlowPath()
                 }
             }
         } else {
-            if (resultIndex >= @MAX_SAFE_INTEGER)
-                @throwTypeError("length exceeded the maximum safe integer");
+            if (resultIndex >= @MAX_ARRAY_INDEX)
+                @throwRangeError("Length exceeded the maximum array length");
             @putByValDirect(result, resultIndex++, currentElement);
         }
         currentElement = arguments[argIndex];
@@ -741,7 +741,7 @@ function copyWithin(target, start /*, end */)
         return (maybeNegativeZero < positive) ? maybeNegativeZero : positive;
     }
 
-    if (this == null)
+    if (this === null || this === @undefined)
         @throwTypeError("Array.copyWithin requires that |this| not be null or undefined");
 
     var array = @Object(this);

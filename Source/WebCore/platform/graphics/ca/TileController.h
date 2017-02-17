@@ -82,7 +82,9 @@ public:
 
     FloatRect visibleRect() const override { return m_visibleRect; }
     FloatRect coverageRect() const override { return m_coverageRect; }
-    Optional<FloatRect> layoutViewportRect() const { return m_layoutViewportRect; }
+    std::optional<FloatRect> layoutViewportRect() const { return m_layoutViewportRect; }
+
+    void setTileSizeUpdateDelayDisabledForTesting(bool) final;
 
     unsigned blankPixelCount() const;
     static unsigned blankPixelCountForTiles(const PlatformLayerList&, const FloatRect&, const IntPoint&);
@@ -113,7 +115,6 @@ public:
     int rightMarginWidth() const override;
     TileCoverage tileCoverage() const override { return m_tileCoverage; }
     void adjustTileCoverageRect(FloatRect& coverageRect, const FloatSize& newSize, const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect, float contentsScale) const override;
-    bool unparentsOffscreenTiles() const override { return m_unparentsOffscreenTiles; }
     bool scrollingPerformanceLoggingEnabled() const override { return m_scrollingPerformanceLoggingEnabled; }
 
     IntRect boundsAtLastRevalidate() const { return m_boundsAtLastRevalidate; }
@@ -136,12 +137,11 @@ private:
 
     void scheduleTileRevalidation(double interval);
 
-    bool isInWindow() const { return m_isInWindow; }
     float topContentInset() const { return m_topContentInset; }
 
     // TiledBacking member functions.
     void setVisibleRect(const FloatRect&) override;
-    void setLayoutViewportRect(Optional<FloatRect>) override;
+    void setLayoutViewportRect(std::optional<FloatRect>) override;
     void setCoverageRect(const FloatRect&) override;
     bool tilesWouldChangeForCoverageRect(const FloatRect&) const override;
     void setTiledScrollingIndicatorPosition(const FloatPoint&) override;
@@ -150,12 +150,12 @@ private:
     void setScrollability(Scrollability) override;
     void prepopulateRect(const FloatRect&) override;
     void setIsInWindow(bool) override;
+    bool isInWindow() const override { return m_isInWindow; }
     void setTileCoverage(TileCoverage) override;
     void revalidateTiles() override;
     void forceRepaint() override;
     IntRect tileGridExtent() const override;
     void setScrollingPerformanceLoggingEnabled(bool flag) override { m_scrollingPerformanceLoggingEnabled = flag; }
-    void setUnparentsOffscreenTiles(bool flag) override { m_unparentsOffscreenTiles = flag; }
     double retainedTileBackingStoreMemory() const override;
     IntRect tileCoverageRect() const override;
 #if USE(CA)
@@ -192,7 +192,7 @@ private:
     std::unique_ptr<TileGrid> m_zoomedOutTileGrid;
 
     FloatRect m_visibleRect; // Only used for scroll performance logging.
-    Optional<FloatRect> m_layoutViewportRect; // Only used by the tiled scrolling indicator.
+    std::optional<FloatRect> m_layoutViewportRect; // Only used by the tiled scrolling indicator.
     FloatRect m_coverageRect;
     IntRect m_boundsAtLastRevalidate;
 
@@ -216,12 +216,12 @@ private:
     
     bool m_isInWindow { false };
     bool m_scrollingPerformanceLoggingEnabled { false };
-    bool m_unparentsOffscreenTiles { false };
     bool m_acceleratesDrawing { false };
     bool m_tilesAreOpaque { false };
     bool m_hasTilesWithTemporaryScaleFactor { false }; // Used to make low-res tiles when zooming.
     bool m_inLiveResize { false };
     mutable bool m_tileSizeLocked { false };
+    bool m_isTileSizeUpdateDelayDisabledForTesting { false };
 
     Color m_tileDebugBorderColor;
     float m_tileDebugBorderWidth { 0 };

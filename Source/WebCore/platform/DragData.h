@@ -80,6 +80,9 @@ public:
     // clientPosition is taken to be the position of the drag event within the target window, with (0,0) at the top left
     WEBCORE_EXPORT DragData(DragDataRef, const IntPoint& clientPosition, const IntPoint& globalPosition, DragOperation, DragApplicationFlags = DragApplicationNone);
     WEBCORE_EXPORT DragData(const String& dragStorageName, const IntPoint& clientPosition, const IntPoint& globalPosition, DragOperation, DragApplicationFlags = DragApplicationNone);
+    // This constructor should used only by WebKit2 IPC because DragData
+    // is initialized by the decoder and not in the constructor.
+    DragData() { }
 #if PLATFORM(WIN)
     WEBCORE_EXPORT DragData(const DragDataMap&, const IntPoint& clientPosition, const IntPoint& globalPosition, DragOperation sourceOperationMask, DragApplicationFlags = DragApplicationNone);
     const DragDataMap& dragDataMap();
@@ -102,14 +105,14 @@ public:
     bool containsColor() const;
     bool containsFiles() const;
     unsigned numberOfFiles() const;
-#if PLATFORM(MAC)
+    void setFileNames(Vector<String>& fileNames) { m_fileNames = WTFMove(fileNames); }
+    const Vector<String>& fileNames() const { return m_fileNames; }
+#if PLATFORM(COCOA)
     const String& pasteboardName() const { return m_pasteboardName; }
+    bool containsPromise() const;
 #endif
 
 #if PLATFORM(GTK)
-    // This constructor should used only by WebKit2 IPC because DragData
-    // is initialized by the decoder and not in the constructor.
-    DragData() { }
 
     DragData& operator =(const DragData& data)
     {
@@ -128,7 +131,8 @@ private:
     DragDataRef m_platformDragData;
     DragOperation m_draggingSourceOperationMask;
     DragApplicationFlags m_applicationFlags;
-#if PLATFORM(MAC)
+    Vector<String> m_fileNames;
+#if PLATFORM(COCOA)
     String m_pasteboardName;
 #endif
 #if PLATFORM(WIN)

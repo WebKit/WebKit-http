@@ -42,6 +42,8 @@
 #include "DFGNodeType.h"
 #include "DFGObjectMaterializationData.h"
 #include "DFGOpInfo.h"
+#include "DFGRegisteredStructure.h"
+#include "DFGRegisteredStructureSet.h"
 #include "DFGTransition.h"
 #include "DFGUseKind.h"
 #include "DFGVariableAccessData.h"
@@ -410,10 +412,10 @@ public:
 
     void remove();
 
-    void convertToCheckStructure(StructureSet* set)
+    void convertToCheckStructure(RegisteredStructureSet* set)
     {
         setOpAndDefaultFlags(CheckStructure);
-        m_opInfo = set; 
+        m_opInfo = set;
     }
 
     void convertToCheckStructureImmediate(Node* structure)
@@ -459,7 +461,6 @@ public:
             
         case PhantomDirectArguments:
         case PhantomClonedArguments:
-        case PhantomCreateRest:
             // These pretend to be the empty value constant for the benefit of the DFG backend, which
             // otherwise wouldn't take kindly to a node that doesn't compute a value.
             return true;
@@ -473,7 +474,7 @@ public:
     {
         ASSERT(hasConstant());
         
-        if (op() == PhantomDirectArguments || op() == PhantomClonedArguments || op() == PhantomCreateRest) {
+        if (op() == PhantomDirectArguments || op() == PhantomClonedArguments) {
             // These pretend to be the empty value constant for the benefit of the DFG backend, which
             // otherwise wouldn't take kindly to a node that doesn't compute a value.
             return FrozenValue::emptySingleton();
@@ -587,7 +588,7 @@ public:
 
     void convertToPhantomNewFunction()
     {
-        ASSERT(m_op == NewFunction || m_op == NewGeneratorFunction);
+        ASSERT(m_op == NewFunction || m_op == NewGeneratorFunction || m_op == NewAsyncFunction);
         m_op = PhantomNewFunction;
         m_flags |= NodeMustGenerate;
         m_opInfo = OpInfoWrapper();
@@ -599,6 +600,16 @@ public:
     {
         ASSERT(m_op == NewGeneratorFunction);
         m_op = PhantomNewGeneratorFunction;
+        m_flags |= NodeMustGenerate;
+        m_opInfo = OpInfoWrapper();
+        m_opInfo2 = OpInfoWrapper();
+        children = AdjacencyList();
+    }
+
+    void convertToPhantomNewAsyncFunction()
+    {
+        ASSERT(m_op == NewAsyncFunction);
+        m_op = PhantomNewAsyncFunction;
         m_flags |= NodeMustGenerate;
         m_opInfo = OpInfoWrapper();
         m_opInfo2 = OpInfoWrapper();
@@ -727,17 +738,17 @@ public:
     }
      
     template<typename T>
-    T dynamicCastConstant()
+    T dynamicCastConstant(VM& vm)
     {
         if (!isCellConstant())
             return nullptr;
-        return jsDynamicCast<T>(asCell());
+        return jsDynamicCast<T>(vm, asCell());
     }
     
     template<typename T>
-    T castConstant()
+    T castConstant(VM& vm)
     {
-        T result = dynamicCastConstant<T>();
+        T result = dynamicCastConstant<T>(vm);
         RELEASE_ASSERT(result);
         return result;
     }
@@ -1063,7 +1074,7 @@ public:
 
     BitVector* bitVector()
     {
-        ASSERT(op() == NewArrayWithSpread);
+        ASSERT(op() == NewArrayWithSpread || op() == PhantomNewArrayWithSpread);
         return m_opInfo.as<BitVector*>();
     }
 
@@ -1498,6 +1509,7 @@ public:
         case OverridesHasInstance:
         case NewFunction:
         case NewGeneratorFunction:
+        case NewAsyncFunction:
         case CreateActivation:
         case MaterializeCreateActivation:
         case NewRegexp:
@@ -1604,10 +1616,10 @@ public:
         }
     }
     
-    StructureSet& structureSet()
+    const RegisteredStructureSet& structureSet()
     {
         ASSERT(hasStructureSet());
-        return *m_opInfo.as<StructureSet*>();
+        return *m_opInfo.as<RegisteredStructureSet*>();
     }
     
     bool hasStructure()
@@ -1622,10 +1634,10 @@ public:
         }
     }
     
-    Structure* structure()
+    RegisteredStructure structure()
     {
         ASSERT(hasStructure());
-        return m_opInfo.as<Structure*>();
+        return m_opInfo.asRegisteredStructure();
     }
     
     bool hasStorageAccessData()
@@ -1733,6 +1745,7 @@ public:
         switch (op()) {
         case NewFunction:
         case NewGeneratorFunction:
+        case NewAsyncFunction:
             return true;
         default:
             return false;
@@ -1744,6 +1757,7 @@ public:
         switch (op()) {
         case PhantomNewFunction:
         case PhantomNewGeneratorFunction:
+        case PhantomNewAsyncFunction:
             return true;
         default:
             return false;
@@ -1756,9 +1770,12 @@ public:
         case PhantomNewObject:
         case PhantomDirectArguments:
         case PhantomCreateRest:
+        case PhantomSpread:
+        case PhantomNewArrayWithSpread:
         case PhantomClonedArguments:
         case PhantomNewFunction:
         case PhantomNewGeneratorFunction:
+        case PhantomNewAsyncFunction:
         case PhantomCreateActivation:
             return true;
         default:
@@ -1771,6 +1788,7 @@ public:
         switch (op()) {
         case GetIndexedPropertyStorage:
         case GetArrayLength:
+        case In:
         case PutByValDirect:
         case PutByVal:
         case PutByValAlias:
@@ -2404,6 +2422,23 @@ public:
         return m_opInfo.as<const DOMJIT::Signature*>();
     }
 
+    bool hasInternalMethodType() const
+    {
+        return op() == HasIndexedProperty;
+    }
+
+    PropertySlot::InternalMethodType internalMethodType() const
+    {
+        ASSERT(hasInternalMethodType());
+        return static_cast<PropertySlot::InternalMethodType>(m_opInfo2.as<uint32_t>());
+    }
+
+    void setInternalMethodType(PropertySlot::InternalMethodType type)
+    {
+        ASSERT(hasInternalMethodType());
+        m_opInfo2 = static_cast<uint32_t>(type);
+    }
+
     Node* replacement() const
     {
         return m_misc.replacement;
@@ -2498,6 +2533,11 @@ private:
             u.int64 = 0;
             u.constPointer = constPointer;
         }
+        OpInfoWrapper(RegisteredStructure structure)
+        {
+            u.int64 = 0;
+            u.pointer = bitwise_cast<void*>(structure);
+        }
         OpInfoWrapper& operator=(uint32_t int32)
         {
             u.int64 = 0;
@@ -2527,6 +2567,12 @@ private:
             u.constPointer = constPointer;
             return *this;
         }
+        OpInfoWrapper& operator=(RegisteredStructure structure)
+        {
+            u.int64 = 0;
+            u.pointer = bitwise_cast<void*>(structure);
+            return *this;
+        }
         template <typename T>
         ALWAYS_INLINE auto as() const -> typename std::enable_if<std::is_pointer<T>::value && !std::is_const<typename std::remove_pointer<T>::type>::value, T>::type
         {
@@ -2547,6 +2593,11 @@ private:
         {
             return u.int64;
         }
+        ALWAYS_INLINE RegisteredStructure asRegisteredStructure() const
+        {
+            return bitwise_cast<RegisteredStructure>(u.pointer);
+        }
+
         union {
             uint32_t int32;
             uint64_t int64;

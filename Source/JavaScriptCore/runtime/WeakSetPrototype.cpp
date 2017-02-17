@@ -41,7 +41,7 @@ static EncodedJSValue JSC_HOST_CALL protoFuncWeakSetAdd(ExecState*);
 void WeakSetPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     vm.prototypeMap.addPrototype(this);
 
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->deleteKeyword, protoFuncWeakSetDelete, DontEnum, 1);
@@ -61,7 +61,7 @@ static WeakMapData* getWeakMapData(CallFrame* callFrame, JSValue value)
         return nullptr;
     }
 
-    if (JSWeakSet* weakSet = jsDynamicCast<JSWeakSet*>(value))
+    if (JSWeakSet* weakSet = jsDynamicCast<JSWeakSet*>(vm, value))
         return weakSet->weakMapData();
 
     throwTypeError(callFrame, scope, WTF::ASCIILiteral("Called WeakSet function on a non-WeakSet object"));
@@ -92,6 +92,7 @@ EncodedJSValue JSC_HOST_CALL protoFuncWeakSetAdd(CallFrame* callFrame)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     WeakMapData* map = getWeakMapData(callFrame, callFrame->thisValue());
+    ASSERT(!!scope.exception() == !map);
     if (!map)
         return JSValue::encode(jsUndefined());
     JSValue key = callFrame->argument(0);

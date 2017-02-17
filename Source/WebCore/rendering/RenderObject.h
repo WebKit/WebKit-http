@@ -30,6 +30,7 @@
 #include "FloatQuad.h"
 #include "Frame.h"
 #include "LayoutRect.h"
+#include "Page.h"
 #include "PaintPhase.h"
 #include "RenderObjectEnums.h"
 #include "RenderStyle.h"
@@ -40,7 +41,7 @@
 namespace WebCore {
 
 class AffineTransform;
-class AnimationController;
+class CSSAnimationController;
 class Color;
 class Cursor;
 class Document;
@@ -154,7 +155,7 @@ public:
     WEBCORE_EXPORT RenderLayer* enclosingLayer() const;
 
     // Scrolling is a RenderBox concept, however some code just cares about recursively scrolling our enclosing ScrollableArea(s).
-    WEBCORE_EXPORT bool scrollRectToVisible(SelectionRevealMode, const LayoutRect&, const ScrollAlignment& alignX = ScrollAlignment::alignCenterIfNeeded, const ScrollAlignment& alignY = ScrollAlignment::alignCenterIfNeeded);
+    WEBCORE_EXPORT bool scrollRectToVisible(SelectionRevealMode, const LayoutRect& absoluteRect, bool insideFixed, const ScrollAlignment& alignX = ScrollAlignment::alignCenterIfNeeded, const ScrollAlignment& alignY = ScrollAlignment::alignCenterIfNeeded);
 
     // Convenience function for getting to the nearest enclosing box of a RenderObject.
     WEBCORE_EXPORT RenderBox& enclosingBox() const;
@@ -223,9 +224,7 @@ public:
     virtual bool isCounter() const { return false; }
     virtual bool isQuote() const { return false; }
 
-#if ENABLE(DETAILS_ELEMENT)
     virtual bool isDetailsMarker() const { return false; }
-#endif
     virtual bool isEmbeddedObject() const { return false; }
     virtual bool isFieldset() const { return false; }
     virtual bool isFileUploadControl() const { return false; }
@@ -243,7 +242,6 @@ public:
 #endif
     virtual bool isSnapshottedPlugIn() const { return false; }
     virtual bool isProgress() const { return false; }
-    virtual bool isRenderSVGBlock() const { return false; };
     virtual bool isRenderButton() const { return false; }
     virtual bool isRenderIFrame() const { return false; }
     virtual bool isRenderImage() const { return false; }
@@ -327,8 +325,6 @@ public:
     FlowThreadState flowThreadState() const { return m_bitfields.flowThreadState(); }
     void setFlowThreadState(FlowThreadState state) { m_bitfields.setFlowThreadState(state); }
 
-    virtual bool requiresForcedStyleRecalcPropagation() const { return false; }
-
 #if ENABLE(MATHML)
     virtual bool isRenderMathMLBlock() const { return false; }
     virtual bool isRenderMathMLTable() const { return false; }
@@ -351,6 +347,7 @@ public:
     // FIXME: Until all SVG renders can be subclasses of RenderSVGModelObject we have
     // to add SVG renderer methods to RenderObject with an ASSERT_NOT_REACHED() default implementation.
     virtual bool isRenderSVGModelObject() const { return false; }
+    virtual bool isRenderSVGBlock() const { return false; };
     virtual bool isSVGRoot() const { return false; }
     virtual bool isSVGContainer() const { return false; }
     virtual bool isSVGTransformableContainer() const { return false; }
@@ -412,7 +409,7 @@ public:
         // RenderBlock::createAnonymousBlock(). This includes creating an anonymous
         // RenderBlock having a BLOCK or BOX display. Other classes such as RenderTextFragment
         // are not RenderBlocks and will return false. See https://bugs.webkit.org/show_bug.cgi?id=56709. 
-        return isAnonymous() && (style().display() == BLOCK || style().display() == BOX) && style().styleType() == NOPSEUDO && isRenderBlock() && !isListMarker() && !isRenderFlowThread() && !isRenderMultiColumnSet() && !isRenderView()
+        return isAnonymous() && (style().display() == BLOCK || style().display() == BOX) && style().styleType() == NOPSEUDO && isRenderBlock() && !isListMarker() && !isRenderFlowThread() && !isRenderNamedFlowFragment() && !isRenderMultiColumnSet() && !isRenderView()
 #if ENABLE(FULLSCREEN_API)
             && !isRenderFullScreen()
             && !isRenderFullScreenPlaceholder()
@@ -517,6 +514,8 @@ public:
 
     Document& document() const { return m_node.document(); }
     Frame& frame() const;
+    Page& page() const;
+    Settings& settings() const { return page().settings(); }
 
     // Returns the object containing this one. Can be different from parent for positioned elements.
     // If repaintContainer and repaintContainerSkipped are not null, on return *repaintContainerSkipped
@@ -772,7 +771,7 @@ public:
     
     void removeFromParent();
 
-    AnimationController& animation() const;
+    CSSAnimationController& animation() const;
 
     // Map points and quads through elements, potentially via 3d transforms. You should never need to call these directly; use
     // localToAbsolute/absoluteToLocal methods instead.
@@ -970,6 +969,7 @@ private:
 
     RenderObjectBitfields m_bitfields;
 
+    // FIXME: This should be RenderElementRareData.
     class RenderObjectRareData {
     public:
         RenderObjectRareData()
@@ -989,17 +989,16 @@ private:
         // From RenderElement
         ADD_BOOLEAN_BITFIELD(isRegisteredForVisibleInViewportCallback, IsRegisteredForVisibleInViewportCallback);
         ADD_ENUM_BITFIELD(visibleInViewportState, VisibleInViewportState, VisibleInViewportState, 2);
-
+        std::unique_ptr<RenderStyle> cachedFirstLineStyle;
     };
     
-    RenderObjectRareData rareData() const;
+    const RenderObject::RenderObjectRareData& rareData() const;
     RenderObjectRareData& ensureRareData();
     void removeRareData();
     
-    // Note: RenderObjectRareData is stored by value.
-    typedef HashMap<const RenderObject*, RenderObjectRareData> RareDataHash;
+    typedef HashMap<const RenderObject*, std::unique_ptr<RenderObjectRareData>> RareDataMap;
 
-    static RareDataHash& rareDataMap();
+    static RareDataMap& rareDataMap();
 
 #undef ADD_BOOLEAN_BITFIELD
 };
@@ -1009,7 +1008,15 @@ inline Frame& RenderObject::frame() const
     return *document().frame();
 }
 
-inline AnimationController& RenderObject::animation() const
+inline Page& RenderObject::page() const
+{
+    // The render tree will always be torn down before Frame is disconnected from Page,
+    // so it's safe to assume Frame::page() is non-null as long as there are live RenderObjects.
+    ASSERT(frame().page());
+    return *frame().page();
+}
+
+inline CSSAnimationController& RenderObject::animation() const
 {
     return frame().animation();
 }
@@ -1112,7 +1119,7 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
 SPECIALIZE_TYPE_TRAITS_END()
 
 #if ENABLE(TREE_DEBUGGING)
-// Outside the WebCore namespace for ease of invocation from gdb.
+// Outside the WebCore namespace for ease of invocation from the debugger.
 void showNodeTree(const WebCore::RenderObject*);
 void showLineTree(const WebCore::RenderObject*);
 void showRenderTree(const WebCore::RenderObject*);

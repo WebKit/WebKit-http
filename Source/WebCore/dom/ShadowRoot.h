@@ -77,8 +77,7 @@ public:
     void didRemoveAllChildrenOfShadowHost();
     void didChangeDefaultSlot();
     void hostChildElementDidChange(const Element&);
-    void hostChildElementDidChangeSlotAttribute(const AtomicString& oldValue, const AtomicString& newValue);
-    void innerSlotDidChange(const AtomicString&);
+    void hostChildElementDidChangeSlotAttribute(Element&, const AtomicString& oldValue, const AtomicString& newValue);
 
     const Vector<Node*>* assignedNodesForSlot(const HTMLSlotElement&);
 
@@ -97,6 +96,7 @@ private:
 
     Node::InsertionNotificationRequest insertedInto(ContainerNode& insertionPoint) override;
     void removedFrom(ContainerNode& insertionPoint) override;
+    void didMoveToNewDocument(Document& oldDocument) override;
 
     bool m_resetStyleInheritance { false };
     ShadowRootMode m_type { ShadowRootMode::UserAgent };
@@ -110,7 +110,7 @@ private:
 
 inline Element* ShadowRoot::activeElement() const
 {
-    return treeScope().focusedElement();
+    return treeScope().focusedElementInScope();
 }
 
 inline ShadowRoot* Node::shadowRoot() const

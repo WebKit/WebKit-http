@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple, Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@ static EncodedJSValue JSC_HOST_CALL SetIteratorPrototypeFuncNext(ExecState*);
 void SetIteratorPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     vm.prototypeMap.addPrototype(this);
 
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, SetIteratorPrototypeFuncNext, DontEnum, 0);
@@ -52,12 +52,15 @@ EncodedJSValue JSC_HOST_CALL SetIteratorPrototypeFuncNext(CallFrame* callFrame)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSValue result;
-    JSSetIterator* iterator = jsDynamicCast<JSSetIterator*>(callFrame->thisValue());
+    JSSetIterator* iterator = jsDynamicCast<JSSetIterator*>(vm, callFrame->thisValue());
     if (!iterator)
         return JSValue::encode(throwTypeError(callFrame, scope, ASCIILiteral("Cannot call SetIterator.next() on a non-SetIterator object")));
 
-    if (iterator->next(callFrame, result))
+    if (iterator->next(callFrame, result)) {
+        scope.release();
         return JSValue::encode(createIteratorResultObject(callFrame, result, false));
+    }
+    scope.release();
     return JSValue::encode(createIteratorResultObject(callFrame, jsUndefined(), true));
 }
 

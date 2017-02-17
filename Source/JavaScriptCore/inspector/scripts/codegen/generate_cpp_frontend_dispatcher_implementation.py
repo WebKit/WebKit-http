@@ -38,14 +38,14 @@ log = logging.getLogger('global')
 
 
 class CppFrontendDispatcherImplementationGenerator(CppGenerator):
-    def __init__(self, model, input_filepath):
-        CppGenerator.__init__(self, model, input_filepath)
+    def __init__(self, *args, **kwargs):
+        CppGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
         return "%sFrontendDispatchers.cpp" % self.protocol_name()
 
     def domains_to_generate(self):
-        return filter(lambda domain: len(domain.events) > 0, Generator.domains_to_generate(self))
+        return filter(lambda domain: len(self.events_for_domain(domain)) > 0, Generator.domains_to_generate(self))
 
     def generate_output(self):
         secondary_headers = [
@@ -69,7 +69,8 @@ class CppFrontendDispatcherImplementationGenerator(CppGenerator):
 
     def _generate_dispatcher_implementations_for_domain(self, domain):
         implementations = []
-        for event in domain.events:
+        events = self.events_for_domain(domain)
+        for event in events:
             implementations.append(self._generate_dispatcher_implementation_for_event(event, domain))
 
         return self.wrap_with_guard_for_domain(domain, '\n\n'.join(implementations))

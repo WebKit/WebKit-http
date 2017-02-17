@@ -185,8 +185,11 @@ Register* CallFrame::topOfFrameInternal()
 
 JSGlobalObject* CallFrame::vmEntryGlobalObject()
 {
-    if (this == lexicalGlobalObject()->globalExec())
-        return lexicalGlobalObject();
+    if (callee()->isObject()) { 
+        if (this == lexicalGlobalObject()->globalExec())
+            return lexicalGlobalObject();
+    }
+    // If we're not an object, we're wasm, and therefore we're executing code and the below is safe.
 
     // For any ExecState that's not a globalExec, the 
     // dynamic global object must be set since code is running
@@ -214,6 +217,48 @@ SUPPRESS_ASAN CallFrame* CallFrame::unsafeCallerFrame(VMEntryFrame*& currVMEntry
     return static_cast<CallFrame*>(unsafeCallerFrameOrVMEntryFrame());
 }
 
+SourceOrigin CallFrame::callerSourceOrigin()
+{
+    SourceOrigin sourceOrigin;
+    bool haveSkippedFirstFrame = false;
+    StackVisitor::visit(this, [&](StackVisitor& visitor) {
+        if (!std::exchange(haveSkippedFirstFrame, true))
+            return StackVisitor::Status::Continue;
+
+        switch (visitor->codeType()) {
+        case StackVisitor::Frame::CodeType::Function:
+            // Skip the builtin functions since they should not pass the source origin to the dynamic code generation calls.
+            // Consider the following code.
+            //
+            // [ "42 + 44" ].forEach(eval);
+            //
+            // In the above case, the eval function will be interpreted as the indirect call to eval inside forEach function.
+            // At that time, the generated eval code should have the source origin to the original caller of the forEach function
+            // instead of the source origin of the forEach function.
+            if (static_cast<FunctionExecutable*>(visitor->codeBlock()->ownerScriptExecutable())->isBuiltinFunction())
+                return StackVisitor::Status::Continue;
+            FALLTHROUGH;
+
+        case StackVisitor::Frame::CodeType::Eval:
+        case StackVisitor::Frame::CodeType::Module:
+        case StackVisitor::Frame::CodeType::Global:
+            sourceOrigin = visitor->codeBlock()->ownerScriptExecutable()->sourceOrigin();
+            return StackVisitor::Status::Done;
+
+        case StackVisitor::Frame::CodeType::Native:
+            return StackVisitor::Status::Continue;
+
+        case StackVisitor::Frame::CodeType::Wasm:
+            // FIXME: Should return the source origin for WASM.
+            return StackVisitor::Status::Done;
+        }
+
+        RELEASE_ASSERT_NOT_REACHED();
+        return StackVisitor::Status::Done;
+    });
+    return sourceOrigin;
+}
+
 String CallFrame::friendlyFunctionName()
 {
     CodeBlock* codeBlock = this->codeBlock();
@@ -228,8 +273,8 @@ String CallFrame::friendlyFunctionName()
     case GlobalCode:
         return ASCIILiteral("global code");
     case FunctionCode:
-        if (callee())
-            return getCalculatedDisplayName(vm(), callee());
+        if (jsCallee())
+            return getCalculatedDisplayName(vm(), jsCallee());
         return emptyString();
     }
 

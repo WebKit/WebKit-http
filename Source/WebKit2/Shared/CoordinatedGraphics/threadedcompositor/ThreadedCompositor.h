@@ -79,7 +79,7 @@ public:
 
     enum class ShouldDoFrameSync { No, Yes };
 
-    static Ref<ThreadedCompositor> create(Client&, WebPage&, uint64_t nativeSurfaceHandle = 0, ShouldDoFrameSync = ShouldDoFrameSync::Yes, WebCore::TextureMapper::PaintFlags = 0);
+    static Ref<ThreadedCompositor> create(Client&, WebPage&, const WebCore::IntSize&, float scaleFactor, uint64_t nativeSurfaceHandle = 0, ShouldDoFrameSync = ShouldDoFrameSync::Yes, WebCore::TextureMapper::PaintFlags = 0);
     virtual ~ThreadedCompositor();
 
     void setNativeSurfaceHandleForCompositing(uint64_t);
@@ -99,7 +99,7 @@ public:
 #endif
 
 private:
-    ThreadedCompositor(Client&, WebPage&, uint64_t nativeSurfaceHandle, ShouldDoFrameSync, WebCore::TextureMapper::PaintFlags);
+    ThreadedCompositor(Client&, WebPage&, const WebCore::IntSize&, float scaleFactor, uint64_t nativeSurfaceHandle, ShouldDoFrameSync, WebCore::TextureMapper::PaintFlags);
 
     // CoordinatedGraphicsSceneClient
     void renderNextFrame() override;
@@ -114,7 +114,7 @@ private:
     void renderLayerTree();
     void scheduleDisplayImmediately();
 
-    bool makeContextCurrent();
+    void createGLContext();
 
     Client& m_client;
     RefPtr<CoordinatedGraphicsScene> m_scene;

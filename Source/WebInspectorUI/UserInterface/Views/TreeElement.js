@@ -310,6 +310,9 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         if (element.treeElement.isEventWithinDisclosureTriangle(event))
             return;
 
+        if (element.treeElement.dispatchEventToListeners(WebInspector.TreeElement.Event.DoubleClick))
+            return;
+
         if (element.treeElement.ondblclick)
             element.treeElement.ondblclick.call(element.treeElement, event);
         else if (element.treeElement.hasChildren && !element.treeElement.expanded)
@@ -508,6 +511,12 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         }
 
         treeOutline.processingSelectionChange = false;
+
+        let treeOutlineGroup = WebInspector.TreeOutlineGroup.groupForTreeOutline(treeOutline);
+        if (!treeOutlineGroup)
+            return;
+
+        treeOutlineGroup.didSelectTreeElement(this);
     }
 
     revealAndSelect(omitFocus, selectedByUser, suppressOnSelect, suppressOnDeselect)
@@ -609,4 +618,18 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         var left = this._listItemNode.totalOffsetLeft + computedLeftPadding;
         return event.pageX >= left && event.pageX <= left + this.arrowToggleWidth && this.hasChildren;
     }
+
+    populateContextMenu(contextMenu, event)
+    {
+        if (this.children.some((child) => child.hasChildren) || (this.hasChildren && !this.children.length)) {
+            contextMenu.appendSeparator();
+
+            contextMenu.appendItem(WebInspector.UIString("Expand All"), this.expandRecursively.bind(this));
+            contextMenu.appendItem(WebInspector.UIString("Collapse All"), this.collapseRecursively.bind(this));
+        }
+    }
+};
+
+WebInspector.TreeElement.Event = {
+    DoubleClick: "tree-element-double-click",
 };

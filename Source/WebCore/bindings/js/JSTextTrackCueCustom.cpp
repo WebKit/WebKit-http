@@ -48,10 +48,6 @@ bool JSTextTrackCueOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> h
     if (textTrackCue.isFiringEventListeners())
         return true;
 
-    // If the cue has no event listeners and has no custom properties, it is not reachable.
-    if (!textTrackCue.hasEventListeners() && !jsTextTrackCue->hasCustomProperties())
-        return false;
-
     // If the cue is not associated with a track, it is not reachable.
     if (!textTrackCue.track())
         return false;
@@ -61,7 +57,6 @@ bool JSTextTrackCueOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> h
 
 JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<TextTrackCue>&& cue)
 {
-    // This switch will make more sense once we support DataCue
     switch (cue->cueType()) {
     case TextTrackCue::Data:
         return createWrapper<DataCue>(globalObject, WTFMove(cue));

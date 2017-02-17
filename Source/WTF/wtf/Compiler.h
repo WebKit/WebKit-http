@@ -119,11 +119,14 @@
 /* COMPILER(MSVC) - Microsoft Visual C++ */
 
 #if defined(_MSC_VER)
+
 #define WTF_COMPILER_MSVC 1
+#define WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS 1
+
+#if _MSC_VER < 1900
+#error "Please use a newer version of Visual Studio. WebKit requires VS2015 or newer to compile."
 #endif
 
-#if defined(_MSC_VER) && _MSC_VER < 1800
-#error "Please use a newer version of Visual Studio. WebKit requires VS2013 or newer to compile."
 #endif
 
 /* COMPILER(SUNCC) */
@@ -238,6 +241,15 @@
 
 #if !defined(NO_RETURN)
 #define NO_RETURN
+#endif
+
+/* RETURNS_NONNULL */
+#if !defined(RETURNS_NONNULL) && COMPILER(GCC_OR_CLANG)
+#define RETURNS_NONNULL __attribute__((returns_nonnull))
+#endif
+
+#if !defined(RETURNS_NONNULL)
+#define RETURNS_NONNULL
 #endif
 
 /* NO_RETURN_WITH_VALUE */

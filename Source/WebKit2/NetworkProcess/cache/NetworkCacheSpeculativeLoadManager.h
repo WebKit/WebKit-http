@@ -51,16 +51,18 @@ public:
 
     void registerLoad(const GlobalFrameID&, const WebCore::ResourceRequest&, const Key& resourceKey);
 
-    typedef std::function<void (std::unique_ptr<Entry>)> RetrieveCompletionHandler;
-    bool retrieve(const GlobalFrameID&, const Key& storageKey, const WebCore::ResourceRequest&, RetrieveCompletionHandler&&);
+    typedef Function<void (std::unique_ptr<Entry>)> RetrieveCompletionHandler;
+
+    bool canRetrieve(const Key& storageKey, const WebCore::ResourceRequest&, const GlobalFrameID&) const;
+    void retrieve(const Key& storageKey, RetrieveCompletionHandler&&);
 
 private:
     class PreloadedEntry;
 
-    void addPreloadedEntry(std::unique_ptr<Entry>, const GlobalFrameID&, Optional<WebCore::ResourceRequest>&& revalidationRequest = Nullopt);
+    void addPreloadedEntry(std::unique_ptr<Entry>, const GlobalFrameID&, std::optional<WebCore::ResourceRequest>&& revalidationRequest = std::nullopt);
     void preloadEntry(const Key&, const SubresourceInfo&, const GlobalFrameID&);
-    void retrieveEntryFromStorage(const Key&, RetrieveCompletionHandler&&);
-    void revalidateEntry(std::unique_ptr<Entry>, const SubresourceInfo&, const GlobalFrameID&);
+    void retrieveEntryFromStorage(const SubresourceInfo&, RetrieveCompletionHandler&&);
+    void revalidateSubresource(const SubresourceInfo&, std::unique_ptr<Entry>, const GlobalFrameID&);
     bool satisfyPendingRequests(const Key&, Entry*);
     void retrieveSubresourcesEntry(const Key& storageKey, std::function<void (std::unique_ptr<SubresourcesEntry>)>&&);
     void startSpeculativeRevalidation(const GlobalFrameID&, SubresourcesEntry&);

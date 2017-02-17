@@ -48,6 +48,7 @@
 #import "WebUIDelegate.h"
 #import "WebViewInternal.h"
 #import <Foundation/NSURLRequest.h>
+#import <WebCore/CommonVM.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoadRequest.h>
@@ -67,7 +68,6 @@
 #import <WebCore/AudioSession.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/GraphicsLayer.h>
-#import <WebCore/Page.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/WebCoreThreadRun.h>
@@ -132,16 +132,16 @@ static void initializeAudioSession()
 #if PLATFORM(IOS)
     {
         WebView *webView = [_documentView _webView];
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         view = [[webView _UIKitDelegateForwarder] webView:webView plugInViewWithArguments:arguments fromPlugInPackage:pluginPackage];
     }
 #else
     Class viewFactory = [pluginPackage viewFactory];
     if ([viewFactory respondsToSelector:@selector(plugInViewWithArguments:)]) {
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         view = [viewFactory plugInViewWithArguments:arguments];
     } else if ([viewFactory respondsToSelector:@selector(pluginViewWithArguments:)]) {
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         view = [viewFactory pluginViewWithArguments:arguments];
     }
 #endif
@@ -224,10 +224,10 @@ static void initializeAudioSession()
 - (void)stopOnePlugin:(NSView *)view
 {
     if ([view respondsToSelector:@selector(webPlugInStop)]) {
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         [view webPlugInStop];
     } else if ([view respondsToSelector:@selector(pluginStop)]) {
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         [view pluginStop];
     }
 }
@@ -236,7 +236,7 @@ static void initializeAudioSession()
 - (void)stopOnePluginForPageCache:(NSView *)view
 {
     if ([view respondsToSelector:@selector(webPlugInStopForPageCache)]) {
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         [view webPlugInStopForPageCache];
     } else
         [self stopOnePlugin:view];
@@ -246,10 +246,10 @@ static void initializeAudioSession()
 - (void)destroyOnePlugin:(NSView *)view
 {
     if ([view respondsToSelector:@selector(webPlugInDestroy)]) {
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         [view webPlugInDestroy];
     } else if ([view respondsToSelector:@selector(pluginDestroy)]) {
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+        JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
         [view pluginDestroy];
     }
 }
@@ -266,10 +266,10 @@ static void initializeAudioSession()
     for (int i = 0; i < count; i++) {
         id aView = [_views objectAtIndex:i];
         if ([aView respondsToSelector:@selector(webPlugInStart)]) {
-            JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+            JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
             [aView webPlugInStart];
         } else if ([aView respondsToSelector:@selector(pluginStart)]) {
-            JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+            JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
             [aView pluginStart];
         }
     }
@@ -345,10 +345,10 @@ static void initializeAudioSession()
 
         LOG(Plugins, "initializing plug-in %@", view);
         if ([view respondsToSelector:@selector(webPlugInInitialize)]) {
-            JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+            JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
             [view webPlugInInitialize];
         } else if ([view respondsToSelector:@selector(pluginInitialize)]) {
-            JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+            JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
             [view pluginInitialize];
         }
 
@@ -360,15 +360,15 @@ static void initializeAudioSession()
         if (_started) {
             LOG(Plugins, "starting plug-in %@", view);
             if ([view respondsToSelector:@selector(webPlugInStart)]) {
-                JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+                JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
                 [view webPlugInStart];
             } else if ([view respondsToSelector:@selector(pluginStart)]) {
-                JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+                JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
                 [view pluginStart];
             }
             
             if ([view respondsToSelector:@selector(setContainingWindow:)]) {
-                JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
+                JSC::JSLock::DropAllLocks dropAllLocks(commonVM());
                 [view setContainingWindow:[_documentView window]];
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,9 +29,10 @@
 #pragma once
 
 #include "CallData.h"
-#include "ConcurrentJITLock.h"
+#include "ConcurrentJSLock.h"
 #include "ControlFlowProfiler.h"
 #include "DateInstanceCache.h"
+#include "DeleteAllCodeEffort.h"
 #include "ExceptionEventLocation.h"
 #include "ExecutableAllocator.h"
 #include "FunctionHasExecutedCache.h"
@@ -39,7 +40,10 @@
 #include "Intrinsic.h"
 #include "JITThunks.h"
 #include "JSCJSValue.h"
+#include "JSDestructibleObjectSubspace.h"
 #include "JSLock.h"
+#include "JSSegmentedVariableObjectSubspace.h"
+#include "JSStringSubspace.h"
 #include "MacroAssemblerCodeRef.h"
 #include "Microtask.h"
 #include "NumericStrings.h"
@@ -48,6 +52,8 @@
 #include "SmallStrings.h"
 #include "SourceCode.h"
 #include "Strong.h"
+#include "Subspace.h"
+#include "TemplateRegistryKeyTable.h"
 #include "ThunkGenerators.h"
 #include "VMEntryRecord.h"
 #include "Watchpoint.h"
@@ -55,6 +61,7 @@
 #include <wtf/BumpPointerAllocator.h>
 #include <wtf/DateMath.h>
 #include <wtf/Deque.h>
+#include <wtf/DoublyLinkedList.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -95,6 +102,7 @@ class Interpreter;
 class JSCustomGetterSetterFunction;
 class JSGlobalObject;
 class JSObject;
+class JSWebAssemblyInstance;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
 class RegExpCache;
@@ -107,7 +115,7 @@ class ShadowChicken;
 class ScriptExecutable;
 class SourceProvider;
 class SourceProviderCache;
-struct StackFrame;
+class StackFrame;
 class Structure;
 #if ENABLE(REGEXP_TRACING)
 class RegExp;
@@ -144,6 +152,11 @@ class Database;
 namespace DOMJIT {
 class Signature;
 }
+#if ENABLE(WEBASSEMBLY)
+namespace Wasm {
+class SignatureInformation;
+}
+#endif
 
 struct HashTable;
 struct Instruction;
@@ -229,7 +242,7 @@ struct ScratchBuffer {
 #pragma warning(pop)
 #endif
 
-class VM : public ThreadSafeRefCounted<VM> {
+class VM : public ThreadSafeRefCounted<VM>, public DoublyLinkedListNode<VM> {
 public:
     // WebCore has a one-to-one mapping of threads to VMs;
     // either create() or createLeaked() should only be called once
@@ -279,6 +292,15 @@ public:
     // The heap should be just after executableAllocator and before other members to ensure that it's
     // destructed after all the objects that reference it.
     Heap heap;
+    
+    Subspace auxiliarySpace;
+    
+    // Whenever possible, use subspaceFor<CellType>(vm) to get one of these subspaces.
+    Subspace cellSpace;
+    Subspace destructibleCellSpace;
+    JSStringSubspace stringSpace;
+    JSDestructibleObjectSubspace destructibleObjectSpace;
+    JSSegmentedVariableObjectSubspace segmentedVariableObjectSpace;
 
 #if ENABLE(DFG_JIT)
     std::unique_ptr<DFG::LongLivedState> dfgState;
@@ -291,7 +313,8 @@ public:
     // topVMEntryFrame.
     // FIXME: This should be a void*, because it might not point to a CallFrame.
     // https://bugs.webkit.org/show_bug.cgi?id=160441
-    ExecState* topCallFrame; 
+    ExecState* topCallFrame;
+    JSWebAssemblyInstance* topJSWebAssemblyInstance;
     Strong<Structure> structureStructure;
     Strong<Structure> structureRareDataStructure;
     Strong<Structure> terminatedExecutionErrorStructure;
@@ -308,13 +331,17 @@ public:
     Strong<Structure> programExecutableStructure;
     Strong<Structure> functionExecutableStructure;
 #if ENABLE(WEBASSEMBLY)
-    Strong<Structure> webAssemblyExecutableStructure;
+    Strong<Structure> webAssemblyCalleeStructure;
+    Strong<Structure> webAssemblyToJSCalleeStructure;
+    Strong<JSCell> webAssemblyToJSCallee;
 #endif
     Strong<Structure> moduleProgramExecutableStructure;
     Strong<Structure> regExpStructure;
     Strong<Structure> symbolStructure;
     Strong<Structure> symbolTableStructure;
     Strong<Structure> fixedArrayStructure;
+    Strong<Structure> sourceCodeStructure;
+    Strong<Structure> scriptFetcherStructure;
     Strong<Structure> structureChainStructure;
     Strong<Structure> sparseArrayValueMapStructure;
     Strong<Structure> templateRegistryKeyStructure;
@@ -338,7 +365,6 @@ public:
     Strong<Structure> moduleProgramCodeBlockStructure;
     Strong<Structure> evalCodeBlockStructure;
     Strong<Structure> functionCodeBlockStructure;
-    Strong<Structure> webAssemblyCodeBlockStructure;
     Strong<Structure> hashMapBucketSetStructure;
     Strong<Structure> hashMapBucketMapStructure;
     Strong<Structure> hashMapImplSetStructure;
@@ -347,8 +373,17 @@ public:
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
 
+#if ENABLE(WEBASSEMBLY)
+    std::once_flag m_wasmSignatureInformationOnceFlag;
+    std::unique_ptr<Wasm::SignatureInformation> m_wasmSignatureInformation;
+#endif
+    
+    JSCell* currentlyDestructingCallbackObject;
+    const ClassInfo* currentlyDestructingCallbackObjectClassInfo;
+
     AtomicStringTable* m_atomicStringTable;
     WTF::SymbolRegistry m_symbolRegistry;
+    TemplateRegistryKeyTable m_templateRegistryKeytable;
     CommonIdentifiers* propertyNames;
     const MarkedArgumentBuffer* emptyList; // Lists are supposed to be allocated on the stack to have their elements properly marked, which is not the case here - but this list has nothing to mark.
     SmallStrings smallStrings;
@@ -361,6 +396,8 @@ public:
 
     AtomicStringTable* atomicStringTable() const { return m_atomicStringTable; }
     WTF::SymbolRegistry& symbolRegistry() { return m_symbolRegistry; }
+
+    TemplateRegistryKeyTable& templateRegistryKeyTable() { return m_templateRegistryKeytable; }
 
     WeakGCMap<SymbolImpl*, Symbol, PtrHash<SymbolImpl*>> symbolImplToSymbolMap;
 
@@ -469,12 +506,17 @@ public:
         return result;
     }
     
+    ALWAYS_INLINE Structure* getStructure(StructureID id)
+    {
+        return heap.structureIDTable().get(decontaminate(id));
+    }
+    
     void* stackPointerAtVMEntry() const { return m_stackPointerAtVMEntry; }
     void setStackPointerAtVMEntry(void*);
 
     size_t softReservedZoneSize() const { return m_currentSoftReservedZoneSize; }
     size_t updateSoftReservedZoneSize(size_t softReservedZoneSize);
-
+    
     static size_t committedStackByteCount();
     inline bool ensureStackCapacityFor(Register* newTopOfStack);
 
@@ -557,7 +599,7 @@ public:
     RefPtr<TypedArrayController> m_typedArrayController;
     RegExpCache* m_regExpCache;
     BumpPointerAllocator m_regExpAllocator;
-    ConcurrentJITLock m_regExpAllocatorLock;
+    ConcurrentJSLock m_regExpAllocatorLock;
 
     std::unique_ptr<HasOwnPropertyCache> m_hasOwnPropertyCache;
     ALWAYS_INLINE HasOwnPropertyCache* hasOwnPropertyCache() { return m_hasOwnPropertyCache.get(); }
@@ -594,8 +636,8 @@ public:
 
     JS_EXPORT_PRIVATE void whenIdle(std::function<void()>);
 
-    JS_EXPORT_PRIVATE void deleteAllCode();
-    JS_EXPORT_PRIVATE void deleteAllLinkedCode();
+    JS_EXPORT_PRIVATE void deleteAllCode(DeleteAllCodeEffort);
+    JS_EXPORT_PRIVATE void deleteAllLinkedCode(DeleteAllCodeEffort);
 
     WatchpointSet* ensureWatchpointSetForImpureProperty(const Identifier&);
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
@@ -737,11 +779,15 @@ private:
     std::unique_ptr<ShadowChicken> m_shadowChicken;
     std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
 
+    VM* m_prev; // Required by DoublyLinkedListNode.
+    VM* m_next; // Required by DoublyLinkedListNode.
+
     // Friends for exception checking purpose only.
     friend class Heap;
     friend class CatchScope;
     friend class ExceptionScope;
     friend class ThrowScope;
+    friend class WTF::DoublyLinkedListNode<VM>;
 };
 
 #if ENABLE(GC_VALIDATION)

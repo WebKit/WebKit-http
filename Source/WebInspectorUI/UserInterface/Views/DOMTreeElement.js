@@ -960,7 +960,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
     {
         this._editing = false;
 
-        if (newText === oldText)
+        if (!moveDirection && newText === oldText)
             return;
 
         var treeOutline = this.treeOutline;
@@ -1509,7 +1509,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                         return;
 
                     let location = response.location;
-                    let sourceCode = WebInspector.debuggerManager.scriptForIdentifier(location.scriptId);
+                    let sourceCode = WebInspector.debuggerManager.scriptForIdentifier(location.scriptId, WebInspector.mainTarget);
                     if (!sourceCode)
                         return;
 

@@ -42,6 +42,7 @@ JS_EXPORT_PRIVATE JSObject* createIteratorResultObject(ExecState*, JSValue, bool
 
 Structure* createIteratorResultObjectStructure(VM&, JSGlobalObject&);
 
+JS_EXPORT_PRIVATE bool hasIteratorMethod(ExecState&, JSValue);
 JS_EXPORT_PRIVATE JSValue iteratorForIterable(ExecState*, JSValue iterable);
 
 template <typename CallBackType>
@@ -54,7 +55,7 @@ void forEachInIterable(ExecState* exec, JSValue iterable, const CallBackType& ca
     RETURN_IF_EXCEPTION(scope, void());
     while (true) {
         JSValue next = iteratorStep(exec, iterator);
-        if (next.isFalse() || UNLIKELY(scope.exception()))
+        if (UNLIKELY(scope.exception()) || next.isFalse())
             return;
 
         JSValue nextValue = iteratorValue(exec, next);
@@ -62,6 +63,7 @@ void forEachInIterable(ExecState* exec, JSValue iterable, const CallBackType& ca
 
         callback(vm, exec, nextValue);
         if (UNLIKELY(scope.exception())) {
+            scope.release();
             iteratorClose(exec, iterator);
             return;
         }

@@ -28,6 +28,8 @@
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 #import "WebVideoFullscreenModelVideoElement.h"
 
+#import "DOMWindow.h"
+#import "History.h"
 #import "Logging.h"
 #import "MediaControlsHost.h"
 #import "WebPlaybackSessionModelMediaElement.h"
@@ -39,7 +41,6 @@
 #import <WebCore/HTMLElement.h>
 #import <WebCore/HTMLVideoElement.h>
 #import <WebCore/Page.h>
-#import <WebCore/PageGroup.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextTrackList.h>
 #import <WebCore/TimeRanges.h>
@@ -134,10 +135,19 @@ void WebVideoFullscreenModelVideoElement::waitForPreparedForInlineThen(std::func
     m_videoElement->waitForPreparedForInlineThen(completionHandler);
 }
 
-void WebVideoFullscreenModelVideoElement::requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
+void WebVideoFullscreenModelVideoElement::requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode mode, bool finishedWithMedia)
 {
     if (m_videoElement && m_videoElement->fullscreenMode() != mode)
         m_videoElement->setFullscreenMode(mode);
+
+    if (m_videoElement && finishedWithMedia && mode == MediaPlayerEnums::VideoFullscreenModeNone) {
+        if (m_videoElement->document().isMediaDocument()) {
+            if (DOMWindow* window = m_videoElement->document().domWindow()) {
+                if (History* history = window->history())
+                    history->back();
+            }
+        }
+    }
 }
 
 void WebVideoFullscreenModelVideoElement::setVideoLayerFrame(FloatRect rect)

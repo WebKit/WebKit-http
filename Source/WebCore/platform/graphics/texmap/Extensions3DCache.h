@@ -27,8 +27,6 @@
 #ifndef Extensions3DCache_h
 #define Extensions3DCache_h
 
-#include "config.h"
-
 #include <mutex>
 #include <wtf/NeverDestroyed.h>
 

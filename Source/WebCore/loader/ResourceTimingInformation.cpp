@@ -24,11 +24,11 @@
  */
 
 #include "config.h"
-#if ENABLE(WEB_TIMING)
 #include "ResourceTimingInformation.h"
 
+#if ENABLE(WEB_TIMING)
+
 #include "CachedResource.h"
-#include "CachedResourceRequest.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "Frame.h"
@@ -49,11 +49,14 @@ void ResourceTimingInformation::addResourceTiming(CachedResource* resource, Docu
             Document* initiatorDocument = &document;
             if (resource->type() == CachedResource::MainResource)
                 initiatorDocument = document.parentDocument();
-            ASSERT(initiatorDocument);
-            ASSERT(initiatorDocument->domWindow());
-            ASSERT(initiatorDocument->domWindow()->performance());
+            if (!initiatorDocument)
+                return;
+            if (!initiatorDocument->domWindow())
+                return;
+            if (!initiatorDocument->domWindow()->performance())
+                return;
             const InitiatorInfo& info = initiatorIt->value;
-            initiatorDocument->domWindow()->performance()->addResourceTiming(info.name, initiatorDocument, resource->resourceRequest().url(), resource->response(), loadTiming);
+            initiatorDocument->domWindow()->performance()->addResourceTiming(info.name, resource->resourceRequest().url(), resource->response(), loadTiming);
             initiatorIt->value.added = Added;
         }
     }

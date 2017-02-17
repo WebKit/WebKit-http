@@ -55,6 +55,13 @@ typedef CF_ENUM(int64_t, _TimingDataOptions)
     _TimingDataOptionsEnableW3CNavigationTiming = (1 << 0)
 };
 
+enum CFURLCacheStoragePolicy {
+    kCFURLCacheStorageAllowed = 0,
+    kCFURLCacheStorageAllowedInMemoryOnly = 1,
+    kCFURLCacheStorageNotAllowed = 2
+};
+typedef enum CFURLCacheStoragePolicy CFURLCacheStoragePolicy;
+
 typedef const struct _CFCachedURLResponse* CFCachedURLResponseRef;
 typedef const struct _CFURLCache* CFURLCacheRef;
 typedef const struct _CFURLCredential* CFURLCredentialRef;
@@ -76,6 +83,11 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 #endif
 
 #if defined(__OBJC__)
+@interface NSURLCache ()
+-(instancetype)_initWithMemoryCapacity:(NSUInteger)memoryCapacity diskCapacity:(NSUInteger)diskCapacity relativePath:(NSString *)path;
+- (CFURLCacheRef)_CFURLCache;
+@end
+
 @interface NSURLRequest ()
 + (NSArray *)allowsSpecificHTTPSCertificateForHost:(NSString *)host;
 + (void)setAllowsSpecificHTTPSCertificate:(NSArray *)allow forHost:(NSString *)host;
@@ -148,11 +160,9 @@ void _CFCachedURLResponseSetBecameFileBackedCallBackBlock(CFCachedURLResponseRef
 #endif
 #endif // PLATFORM(COCOA)
 
-void CFURLConnectionInvalidateConnectionCache();
-
 extern CFStringRef const kCFHTTPCookieLocalFileDomain;
+extern const CFStringRef kCFHTTPVersion1_1;
 extern const CFStringRef kCFURLRequestAllowAllPOSTCaching;
-
 extern const CFStringRef _kCFURLConnectionPropertyShouldSniff;
 
 CFHTTPCookieStorageRef _CFHTTPCookieStorageGetDefault(CFAllocatorRef);
@@ -174,18 +184,16 @@ CFURLRef CFURLResponseGetURL(CFURLResponseRef);
 void CFURLResponseSetMIMEType(CFURLResponseRef, CFStringRef);
 CFHTTPCookieStorageRef _CFURLStorageSessionCopyCookieStorage(CFAllocatorRef, CFURLStorageSessionRef);
 CFArrayRef _CFHTTPCookieStorageCopyCookiesForURLWithMainDocumentURL(CFHTTPCookieStorageRef inCookieStorage, CFURLRef inURL, CFURLRef inMainDocumentURL, Boolean sendSecureCookies);
+CFStringRef CFURLResponseGetTextEncodingName(CFURLResponseRef);
+SInt64 CFURLResponseGetExpectedContentLength(CFURLResponseRef);
+CFTypeID CFURLResponseGetTypeID();
+CFURLResponseRef CFURLResponseCreate(CFAllocatorRef, CFURLRef, CFStringRef mimeType, SInt64 expectedContentLength, CFStringRef textEncodingName, CFURLCacheStoragePolicy);
+void CFURLResponseSetExpectedContentLength(CFURLResponseRef, SInt64 length);
+CFURLResponseRef CFURLResponseCreateWithHTTPResponse(CFAllocatorRef, CFURLRef, CFHTTPMessageRef, CFURLCacheStoragePolicy);
+
 #endif // !PLATFORM(WIN)
 
 WTF_EXTERN_C_END
-
-// FIXME: We should only forward declare this SPI when building for iOS without the Apple Internal SDK.
-// As a workaround for <rdar://problem/19025016>, we must forward declare this SPI regardless of whether
-// we are building with the Apple Internal SDK.
-#if defined(__OBJC__) && PLATFORM(IOS)
-@interface NSURLCache ()
--(id)_initWithMemoryCapacity:(NSUInteger)memoryCapacity diskCapacity:(NSUInteger)diskCapacity relativePath:(NSString *)path;
-@end
-#endif
 
 #if defined(__OBJC__) && !USE(APPLE_INTERNAL_SDK)
 enum : NSUInteger {

@@ -1,3 +1,149 @@
+2017-02-06  Jon Davis  <jond@apple.com>
+
+        Add a survey to learn how people use WebKit Nightly builds
+        https://bugs.webkit.org/show_bug.cgi?id=167748
+
+        Reviewed by Joseph Pecoraro.
+
+        * wp-content/themes/webkit/functions.php:
+        * wp-content/themes/webkit/nightly-start.php:
+        * wp-content/themes/webkit/nightly-survey.php: Added.
+        * wp-content/themes/webkit/survey.json: Added.
+
+2017-01-28  Yoav Weiss  <yoav@yoav.ws>
+
+        Add Link Preload as an off-by-default experimental feature menu item.
+        https://bugs.webkit.org/show_bug.cgi?id=167201
+
+        Reviewed by Ryosuke Niwa.
+
+        * experimental-features.html: Added Link Preload.
+
+2017-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add User Timing Experimental Feature
+        https://bugs.webkit.org/show_bug.cgi?id=167542
+        <rdar://problem/22746307>
+
+        Reviewed by Ryosuke Niwa.
+
+        * experimental-features.html:
+
+2017-01-27  Dean Jackson  <dino@apple.com>
+
+        Add a simple demo for Touch stylus events
+        https://bugs.webkit.org/show_bug.cgi?id=167534
+
+        Reviewed by Simon Fraser.
+
+        * demos/touch/stylus.html: Added.
+
+2017-01-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, update scroll snapping demos to use current Module 1 spec
+
+        * demos/scroll-snap/index.html:
+
+        Adopt the new CSS properties scroll-snap-type and scroll-snap-align.
+
+2017-01-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, add a demo page for an input events blog post
+
+        * demos/input-events/index.html: Added.
+
+2017-01-20  Antoine Quint  <graouts@apple.com>
+
+        Web Animations should be off by default and enabled as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=167115
+        <rdar://problem/30048963>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a test for Web Animations feature detection.
+
+        * experimental-features.html:
+
+2017-01-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Include SubtleCrypto test on experimental-features test page
+        https://bugs.webkit.org/show_bug.cgi?id=167226
+
+        Reviewed by Yusuke Suzuki.
+
+        * experimental-features.html:
+        Add a test for SubtleCrypto and make the test resilient against exceptions.
+
+2017-01-19  Timothy Hatcher  <timothy@hatcher.name>
+
+        Add Tesla to the domain associations on the team page
+        https://bugs.webkit.org/show_bug.cgi?id=167202
+
+        Reviewed by Brian Burg.
+
+        * wp-content/themes/webkit/team.php:
+
+2016-12-22  Keith Miller  <keith_miller@apple.com>
+
+        Add BitOr for floating points to B3
+        https://bugs.webkit.org/show_bug.cgi?id=166446
+
+        Reviewed by Saam Barati.
+
+        Update docs to indicate it's cool to use bit ops with floating point.
+
+        * docs/b3/intermediate-representation.html:
+
+2016-12-07  Dean Jackson  <dino@apple.com>
+
+        Remove runtime toggle for pointer-lock
+        https://bugs.webkit.org/show_bug.cgi?id=165577
+        <rdar://problems/29566996>
+
+        Reviewed by Jon Lee.
+
+        No need to have pointer-lock tested.
+
+        * experimental-features.html: Also sort the list alphabetically.
+
+2016-12-05  Dean Jackson  <dino@apple.com>
+
+        pointer lock needs to be feature detectable
+        https://bugs.webkit.org/show_bug.cgi?id=165426
+        <rdar://problem/29486715>
+
+        Reviewed by Antoine Quint.
+
+        We can now accurately detect pointer-lock.
+
+        * experimental-features.html:
+
+2016-12-02  Dean Jackson  <dino@apple.com>
+
+        Make a public facing page to check for WebKit features
+        https://bugs.webkit.org/show_bug.cgi?id=165331
+        <rdar://problem/29488535>
+
+        Reviewed by Antoine Quint.
+
+        Add a web page to webkit.org that allows us to live
+        detect our experimental features. This is mostly for
+        internal debugging, but also provides simple examples
+        of how real content would do such detection.
+
+        * experimental-features.html: Added.
+
+2016-11-17  Keith Miller  <keith_miller@apple.com>
+
+        Add rotate to Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=164871
+
+        Reviewed by Filip Pizlo.
+
+        Update docs for new rotate instructions.
+
+        * docs/b3/intermediate-representation.html:
+
 2016-10-21  Keith Miller  <keith_miller@apple.com>
 
         Expand Trunc in B3 to support Double to Float

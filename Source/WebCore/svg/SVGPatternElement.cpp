@@ -35,6 +35,7 @@
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGRenderSupport.h"
+#include "SVGStringList.h"
 #include "SVGTransformable.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -123,7 +124,7 @@ void SVGPatternElement::parseAttribute(const QualifiedName& name, const AtomicSt
         return;
     }
     if (name == SVGNames::patternTransformAttr) {
-        SVGTransformList newList;
+        SVGTransformListValues newList;
         newList.parse(value);
         detachAnimatedPatternTransformListWrappers(newList.size());
         setPatternTransformBaseValue(newList);
@@ -133,13 +134,13 @@ void SVGPatternElement::parseAttribute(const QualifiedName& name, const AtomicSt
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::xAttr)
-        setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setXBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        setYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setYBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::widthAttr)
-        setWidthBaseValue(SVGLength::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths));
+        setWidthBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths));
     else if (name == SVGNames::heightAttr)
-        setHeightBaseValue(SVGLength::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths));
+        setHeightBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths));
 
     reportAttributeParsingError(parseError, name, value);
 
@@ -228,6 +229,21 @@ AffineTransform SVGPatternElement::localCoordinateSpaceTransform(SVGLocatable::C
     AffineTransform matrix;
     patternTransform().concatenate(matrix);
     return matrix;
+}
+
+Ref<SVGStringList> SVGPatternElement::requiredFeatures()
+{
+    return SVGTests::requiredFeatures(*this);
+}
+
+Ref<SVGStringList> SVGPatternElement::requiredExtensions()
+{ 
+    return SVGTests::requiredExtensions(*this);
+}
+
+Ref<SVGStringList> SVGPatternElement::systemLanguage()
+{
+    return SVGTests::systemLanguage(*this);
 }
 
 }

@@ -410,7 +410,7 @@ Node* StyledMarkupAccumulator::traverseNodesForSerialization(Node* startNode, No
         if (!n->renderer() && !enclosingElementWithTag(firstPositionInOrBeforeNode(n), selectTag)) {
             next = NodeTraversal::nextSkippingChildren(*n);
             // Don't skip over pastEnd.
-            if (pastEnd && pastEnd->isDescendantOf(n))
+            if (pastEnd && pastEnd->isDescendantOf(*n))
                 next = pastEnd;
         } else {
             // Add the node to the markup if we're not skipping the descendants
@@ -452,7 +452,7 @@ Node* StyledMarkupAccumulator::traverseNodesForSerialization(Node* startNode, No
                     if (!parent->renderer())
                         continue;
                     // or b) ancestors that we never encountered during a pre-order traversal starting at startNode:
-                    ASSERT(startNode->isDescendantOf(parent));
+                    ASSERT(startNode->isDescendantOf(*parent));
                     if (shouldEmit)
                         wrapWithNode(*parent);
                     lastClosed = parent;
@@ -598,7 +598,7 @@ static String createMarkupInternal(Document& document, const Range& range, Vecto
     Node* specialCommonAncestor = highestAncestorToWrapMarkup(&range, shouldAnnotate);
 
     bool needsPositionStyleConversion = body && fullySelectedRoot == body
-        && document.settings() && document.settings()->shouldConvertPositionStyleOnCopy();
+        && document.settings().shouldConvertPositionStyleOnCopy();
     StyledMarkupAccumulator accumulator(nodes, shouldResolveURLs, shouldAnnotate, &range, needsPositionStyleConversion, specialCommonAncestor);
     Node* pastEnd = range.pastLastNode();
 
@@ -949,13 +949,6 @@ static void removeElementFromFragmentPreservingChildren(DocumentFragment& fragme
 
 ExceptionOr<Ref<DocumentFragment>> createContextualFragment(Element& element, const String& markup, ParserContentPolicy parserContentPolicy)
 {
-    if (element.ieForbidsInsertHTML())
-        return Exception { NOT_SUPPORTED_ERR };
-
-    if (element.hasTagName(colTag) || element.hasTagName(colgroupTag) || element.hasTagName(framesetTag)
-        || element.hasTagName(headTag) || element.hasTagName(styleTag) || element.hasTagName(titleTag))
-        return Exception { NOT_SUPPORTED_ERR };
-
     auto result = createFragmentForInnerOuterHTML(element, markup, parserContentPolicy);
     if (result.hasException())
         return result.releaseException();
@@ -1022,25 +1015,6 @@ ExceptionOr<void> replaceChildrenWithFragment(ContainerNode& container, Ref<Docu
 
     containerNode->removeChildren();
     return containerNode->appendChild(fragment);
-}
-
-ExceptionOr<void> replaceChildrenWithText(ContainerNode& container, const String& text)
-{
-    Ref<ContainerNode> containerNode(container);
-    ChildListMutationScope mutation(containerNode);
-
-    if (hasOneTextChild(containerNode)) {
-        downcast<Text>(*containerNode->firstChild()).setData(text);
-        return { };
-    }
-
-    auto textNode = Text::create(containerNode->document(), text);
-
-    if (hasOneChild(containerNode))
-        return containerNode->replaceChild(textNode, *containerNode->firstChild());
-
-    containerNode->removeChildren();
-    return containerNode->appendChild(textNode);
 }
 
 }

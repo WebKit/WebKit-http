@@ -79,11 +79,6 @@
 #define WTF_CONCAT(a, b) WTF_CONCAT_INTERNAL_DONT_USE(a, b)
 
 
-// Make "PRId64" format specifier work for Visual C++ on Windows.
-#if OS(WINDOWS) && !defined(PRId64)
-#define PRId64 "lld"
-#endif
-
 /*
  * The reinterpret_cast<Type1*>([pointer to Type2]) expressions - where
  * sizeof(Type1) > sizeof(Type2) - cause the following warning on ARM with GCC:
@@ -186,18 +181,27 @@ template<typename T> char (&ArrayLengthHelperFunction(T (&)[0]))[0];
 #endif
 #define WTF_ARRAY_LENGTH(array) sizeof(::WTF::ArrayLengthHelperFunction(array))
 
+ALWAYS_INLINE constexpr size_t roundUpToMultipleOfImpl0(size_t remainderMask, size_t x)
+{
+    return (x + remainderMask) & ~remainderMask;
+}
+
+ALWAYS_INLINE constexpr size_t roundUpToMultipleOfImpl(size_t divisor, size_t x)
+{
+    return roundUpToMultipleOfImpl0(divisor - 1, x);
+}
+
 // Efficient implementation that takes advantage of powers of two.
 inline size_t roundUpToMultipleOf(size_t divisor, size_t x)
 {
     ASSERT(divisor && !(divisor & (divisor - 1)));
-    size_t remainderMask = divisor - 1;
-    return (x + remainderMask) & ~remainderMask;
+    return roundUpToMultipleOfImpl(divisor, x);
 }
 
-template<size_t divisor> inline size_t roundUpToMultipleOf(size_t x)
+template<size_t divisor> inline constexpr size_t roundUpToMultipleOf(size_t x)
 {
     static_assert(divisor && !(divisor & (divisor - 1)), "divisor must be a power of two!");
-    return roundUpToMultipleOf(divisor, x);
+    return roundUpToMultipleOfImpl(divisor, x);
 }
 
 enum BinarySearchMode {
@@ -473,6 +477,7 @@ ALWAYS_INLINE constexpr typename remove_reference<T>::type&& move(T&& value)
 
 using WTF::KB;
 using WTF::MB;
+using WTF::GB;
 using WTF::approximateBinarySearch;
 using WTF::binarySearch;
 using WTF::bitwise_cast;
@@ -484,6 +489,7 @@ using WTF::isCompilationThread;
 using WTF::isPointerAligned;
 using WTF::isStatelessLambda;
 using WTF::is8ByteAligned;
+using WTF::roundUpToMultipleOf;
 using WTF::safeCast;
 using WTF::tryBinarySearch;
 

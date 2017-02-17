@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@ ClonedArguments* ClonedArguments::createEmpty(
         butterfly->arrayStorage()->m_numValuesInVector = vectorLength;
 
     } else {
-        void* temp = vm.heap.tryAllocateAuxiliary(nullptr, Butterfly::totalSize(0, structure->outOfLineCapacity(), true, vectorLength * sizeof(EncodedJSValue)));
+        void* temp = vm.auxiliarySpace.tryAllocate(Butterfly::totalSize(0, structure->outOfLineCapacity(), true, vectorLength * sizeof(EncodedJSValue)));
         if (!temp)
             return 0;
         butterfly = Butterfly::fromBase(temp, 0, structure->outOfLineCapacity());
@@ -94,7 +94,7 @@ ClonedArguments* ClonedArguments::createWithInlineFrame(ExecState* myFrame, Exec
     if (inlineCallFrame)
         callee = jsCast<JSFunction*>(inlineCallFrame->calleeRecovery.recover(targetFrame));
     else
-        callee = jsCast<JSFunction*>(targetFrame->callee());
+        callee = jsCast<JSFunction*>(targetFrame->jsCallee());
 
     ClonedArguments* result = nullptr;
     
@@ -180,17 +180,11 @@ bool ClonedArguments::getOwnPropertySlot(JSObject* object, ExecState* exec, Prop
         FunctionExecutable* executable = jsCast<FunctionExecutable*>(thisObject->m_callee->executable());
         bool isStrictMode = executable->isStrictMode();
 
-        if (isStrictMode) {
-            if (ident == vm.propertyNames->callee) {
+        if (ident == vm.propertyNames->callee) {
+            if (isStrictMode) {
                 slot.setGetterSlot(thisObject, DontDelete | DontEnum | Accessor, thisObject->globalObject()->throwTypeErrorArgumentsCalleeAndCallerGetterSetter());
                 return true;
             }
-            if (ident == vm.propertyNames->caller) {
-                slot.setGetterSlot(thisObject, DontDelete | DontEnum | Accessor, thisObject->globalObject()->throwTypeErrorArgumentsCalleeAndCallerGetterSetter());
-                return true;
-            }
-
-        } else if (ident == vm.propertyNames->callee) {
             slot.setValue(thisObject, 0, thisObject->m_callee.get());
             return true;
         }
@@ -217,7 +211,6 @@ bool ClonedArguments::put(JSCell* cell, ExecState* exec, PropertyName ident, JSV
     VM& vm = exec->vm();
     
     if (ident == vm.propertyNames->callee
-        || ident == vm.propertyNames->caller
         || ident == vm.propertyNames->iteratorSymbol) {
         thisObject->materializeSpecialsIfNecessary(exec);
         PutPropertySlot dummy = slot; // Shadow the given PutPropertySlot to prevent caching.
@@ -233,7 +226,6 @@ bool ClonedArguments::deleteProperty(JSCell* cell, ExecState* exec, PropertyName
     VM& vm = exec->vm();
     
     if (ident == vm.propertyNames->callee
-        || ident == vm.propertyNames->caller
         || ident == vm.propertyNames->iteratorSymbol)
         thisObject->materializeSpecialsIfNecessary(exec);
     
@@ -246,7 +238,6 @@ bool ClonedArguments::defineOwnProperty(JSObject* object, ExecState* exec, Prope
     VM& vm = exec->vm();
     
     if (ident == vm.propertyNames->callee
-        || ident == vm.propertyNames->caller
         || ident == vm.propertyNames->iteratorSymbol)
         thisObject->materializeSpecialsIfNecessary(exec);
     
@@ -261,10 +252,9 @@ void ClonedArguments::materializeSpecials(ExecState* exec)
     FunctionExecutable* executable = jsCast<FunctionExecutable*>(m_callee->executable());
     bool isStrictMode = executable->isStrictMode();
     
-    if (isStrictMode) {
+    if (isStrictMode)
         putDirectAccessor(exec, vm.propertyNames->callee, globalObject()->throwTypeErrorArgumentsCalleeAndCallerGetterSetter(), DontDelete | DontEnum | Accessor);
-        putDirectAccessor(exec, vm.propertyNames->caller, globalObject()->throwTypeErrorArgumentsCalleeAndCallerGetterSetter(), DontDelete | DontEnum | Accessor);
-    } else
+    else
         putDirect(vm, vm.propertyNames->callee, JSValue(m_callee.get()));
 
     putDirect(vm, vm.propertyNames->iteratorSymbol, globalObject()->arrayProtoValuesFunction(), DontEnum);
@@ -283,7 +273,7 @@ void ClonedArguments::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ClonedArguments* thisObject = jsCast<ClonedArguments*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_callee);
+    visitor.append(thisObject->m_callee);
 }
 
 } // namespace JSC

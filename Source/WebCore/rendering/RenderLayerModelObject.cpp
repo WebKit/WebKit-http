@@ -29,6 +29,7 @@
 #include "RenderLayerCompositor.h"
 #include "RenderView.h"
 #include "Settings.h"
+#include "StyleScrollSnapPoints.h"
 
 namespace WebCore {
 
@@ -129,10 +130,7 @@ void RenderLayerModelObject::styleWillChange(StyleDifference diff, const RenderS
 #if ENABLE(CSS_SCROLL_SNAP)
 static bool scrollSnapContainerRequiresUpdateForStyleUpdate(const RenderStyle& oldStyle, const RenderStyle& newStyle)
 {
-    return !(oldStyle.scrollSnapType() == newStyle.scrollSnapType()
-        && oldStyle.scrollSnapPointsX() == newStyle.scrollSnapPointsX()
-        && oldStyle.scrollSnapPointsY() == newStyle.scrollSnapPointsY()
-        && oldStyle.scrollSnapDestination() == newStyle.scrollSnapDestination());
+    return oldStyle.scrollSnapPort() != newStyle.scrollSnapPort();
 }
 #endif
 
@@ -198,11 +196,11 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
             frameView.updateScrollingCoordinatorScrollSnapProperties();
         }
     }
-    if (oldStyle && oldStyle->scrollSnapCoordinates() != newStyle.scrollSnapCoordinates()) {
+    if (oldStyle && oldStyle->scrollSnapArea() != newStyle.scrollSnapArea()) {
         const RenderBox* scrollSnapBox = enclosingBox().findEnclosingScrollableContainer();
         if (scrollSnapBox && scrollSnapBox->layer()) {
             const RenderStyle& style = scrollSnapBox->style();
-            if (style.scrollSnapType() != ScrollSnapType::None) {
+            if (style.scrollSnapType().strictness != ScrollSnapStrictness::None) {
                 scrollSnapBox->layer()->updateSnapOffsets();
                 scrollSnapBox->layer()->updateScrollSnapState();
                 if (scrollSnapBox->isBody() || scrollSnapBox->isDocumentElementRenderer())
@@ -219,11 +217,11 @@ bool RenderLayerModelObject::shouldPlaceBlockDirectionScrollbarOnLeft() const
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
     return false;
 #else
-    switch (frame().settings().userInterfaceDirectionPolicy()) {
+    switch (settings().userInterfaceDirectionPolicy()) {
     case UserInterfaceDirectionPolicy::Content:
         return style().shouldPlaceBlockDirectionScrollbarOnLeft();
     case UserInterfaceDirectionPolicy::System:
-        return frame().settings().systemLayoutDirection() == RTL;
+        return settings().systemLayoutDirection() == RTL;
     }
     ASSERT_NOT_REACHED();
     return style().shouldPlaceBlockDirectionScrollbarOnLeft();

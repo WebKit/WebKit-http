@@ -33,42 +33,44 @@
 
 namespace WebCore {
 
-Ref<LoadableClassicScript> LoadableClassicScript::create(CachedResourceHandle<CachedScript>&& cachedScript)
+Ref<LoadableClassicScript> LoadableClassicScript::create(const String& nonce, const String& crossOriginMode, const String& charset, const AtomicString& initiatorName, bool isInUserAgentShadowTree)
 {
-    ASSERT(cachedScript);
-    auto script = adoptRef(*new LoadableClassicScript(WTFMove(cachedScript)));
-    cachedScript->addClient(script.get());
-    return script;
+    return adoptRef(*new LoadableClassicScript(nonce, crossOriginMode, charset, initiatorName, isInUserAgentShadowTree));
 }
 
 LoadableClassicScript::~LoadableClassicScript()
 {
-    m_cachedScript->removeClient(*this);
+    if (m_cachedScript)
+        m_cachedScript->removeClient(*this);
 }
 
 bool LoadableClassicScript::isLoaded() const
 {
+    ASSERT(m_cachedScript);
     return m_cachedScript->isLoaded();
 }
 
-Optional<LoadableScript::Error> LoadableClassicScript::wasErrored() const
+std::optional<LoadableScript::Error> LoadableClassicScript::error() const
 {
+    ASSERT(m_cachedScript);
     if (m_error)
         return m_error;
 
     if (m_cachedScript->errorOccurred())
-        return Error { ErrorType::CachedScript, Nullopt };
+        return Error { ErrorType::CachedScript, std::nullopt };
 
-    return Nullopt;
+    return std::nullopt;
 }
 
 bool LoadableClassicScript::wasCanceled() const
 {
+    ASSERT(m_cachedScript);
     return m_cachedScript->wasCanceled();
 }
 
 void LoadableClassicScript::notifyFinished(CachedResource& resource)
 {
+    ASSERT(m_cachedScript);
     if (resource.resourceError().isAccessControl()) {
         static NeverDestroyed<String> consoleMessage(ASCIILiteral("Cross-origin script load denied by Cross-Origin Resource Sharing policy."));
         m_error = Error {
@@ -101,8 +103,18 @@ void LoadableClassicScript::notifyFinished(CachedResource& resource)
 
 void LoadableClassicScript::execute(ScriptElement& scriptElement)
 {
-    ASSERT(!wasErrored());
-    scriptElement.executeScript(ScriptSourceCode(m_cachedScript.get()));
+    ASSERT(!error());
+    scriptElement.executeClassicScript(ScriptSourceCode(m_cachedScript.get(), JSC::SourceProviderSourceType::Program, *this));
+}
+
+bool LoadableClassicScript::load(Document& document, const URL& sourceURL)
+{
+    ASSERT(!m_cachedScript);
+    m_cachedScript = requestScriptWithCache(document, sourceURL, crossOriginMode());
+    if (!m_cachedScript)
+        return false;
+    m_cachedScript->addClient(*this);
+    return true;
 }
 
 }

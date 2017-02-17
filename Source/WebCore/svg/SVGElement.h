@@ -36,7 +36,7 @@ namespace WebCore {
 
 class AffineTransform;
 class CSSStyleDeclaration;
-class CSSValue;
+class DeprecatedCSSOMValue;
 class Document;
 class SVGAttributeToPropertyMap;
 class SVGDocumentExtensions;
@@ -57,7 +57,7 @@ public:
     static bool isAnimatableCSSProperty(const QualifiedName&);
     bool isPresentationAttributeWithSVGDOM(const QualifiedName&);
     bool isKnownAttribute(const QualifiedName&);
-    RefPtr<CSSValue> getPresentationAttribute(const String& name);
+    RefPtr<DeprecatedCSSOMValue> getPresentationAttribute(const String& name);
     virtual bool supportsMarkers() const { return false; }
     bool hasRelativeLengths() const { return !m_elementsWithRelativeLengths.isEmpty(); }
     virtual bool needsPendingResourceHandling() const { return true; }
@@ -106,7 +106,7 @@ public:
     void synchronizeAnimatedSVGAttribute(const QualifiedName&) const;
     static void synchronizeAllAnimatedSVGAttribute(SVGElement*);
  
-    Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
+    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
 
     static void synchronizeRequiredFeatures(SVGElement* contextElement);
     static void synchronizeRequiredExtensions(SVGElement* contextElement);
@@ -170,7 +170,7 @@ protected:
     void updateRelativeLengthsInformation() { updateRelativeLengthsInformation(selfHasRelativeLengths(), this); }
     void updateRelativeLengthsInformation(bool hasRelativeLengths, SVGElement*);
 
-    bool willRecalcStyle(Style::Change) override;
+    void willRecalcStyle(Style::Change) override;
 
     class InstanceInvalidationGuard;
 

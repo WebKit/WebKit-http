@@ -23,6 +23,7 @@
 #include "GraphicsContext3D.h"
 #include "OpenGLShims.h"
 #include "PlatformDisplayX11.h"
+#include "XErrorTrapper.h"
 #include <GL/glx.h>
 #include <cairo.h>
 
@@ -35,8 +36,12 @@ namespace WebCore {
 #if !defined(PFNGLXSWAPINTERVALSGIPROC)
 typedef int (*PFNGLXSWAPINTERVALSGIPROC) (int);
 #endif
+#if !defined(PFNGLXCREATECONTEXTATTRIBSARBPROC)
+typedef GLXContext (*PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display *dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int *attrib_list);
+#endif
 
 static PFNGLXSWAPINTERVALSGIPROC glXSwapIntervalSGI;
+static PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB;
 
 static bool hasSGISwapControlExtension(Display* display)
 {
@@ -52,6 +57,63 @@ static bool hasSGISwapControlExtension(Display* display)
     return !!glXSwapIntervalSGI;
 }
 
+static bool hasGLXARBCreateContextExtension(Display* display)
+{
+    static bool initialized = false;
+    if (initialized)
+        return !!glXCreateContextAttribsARB;
+
+    initialized = true;
+    if (!GLContext::isExtensionSupported(glXQueryExtensionsString(display, 0), "GLX_ARB_create_context"))
+        return false;
+
+    glXCreateContextAttribsARB = reinterpret_cast<PFNGLXCREATECONTEXTATTRIBSARBPROC>(glXGetProcAddress(reinterpret_cast<const unsigned char*>("glXCreateContextAttribsARB")));
+    return !!glXCreateContextAttribsARB;
+}
+
+static GLXContext createGLXARBContext(Display* display, GLXFBConfig config, GLXContext sharingContext)
+{
+    // We want to create a context with version >= 3.2 core profile, cause that ensures that the i965 driver won't
+    // use the software renderer. If that doesn't work, we will use whatever version available. Unfortunately,
+    // there's no way to know whether glXCreateContextAttribsARB can provide an OpenGL version >= 3.2 until
+    // we actually call it and check the return value. To make things more fun, if a version >= 3.2 cannot be
+    // provided, glXCreateContextAttribsARB will throw a GLXBadFBConfig X error, causing the app to crash.
+    // So, the first time a context is requested, we set a X error trap to disable crashes with GLXBadFBConfig
+    // and then check whether the return value is a context or not.
+
+    static bool canCreate320Context = false;
+    static bool canCreate320ContextInitialized = false;
+
+    static const int contextAttributes[] = {
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 2,
+        0
+    };
+
+    if (!canCreate320ContextInitialized) {
+        canCreate320ContextInitialized = true;
+
+        {
+            // Set an X error trapper that ignores errors to avoid crashing on GLXBadFBConfig. Use a scope
+            // here to limit the error trap to just this context creation call.
+            XErrorTrapper trapper(display, XErrorTrapper::Policy::Ignore);
+            GLXContext context = glXCreateContextAttribsARB(display, config, sharingContext, GL_TRUE, contextAttributes);
+            if (context) {
+                canCreate320Context = true;
+                return context;
+            }
+        }
+
+        // Creating the 3.2 context failed, so use whatever is available.
+        return glXCreateContextAttribsARB(display, config, sharingContext, GL_TRUE, nullptr);
+    }
+
+    if (canCreate320Context)
+        return glXCreateContextAttribsARB(display, config, sharingContext, GL_TRUE, contextAttributes);
+
+    return glXCreateContextAttribsARB(display, config, sharingContext, GL_TRUE, nullptr);
+}
+
 std::unique_ptr<GLContextGLX> GLContextGLX::createWindowContext(GLNativeWindowType window, PlatformDisplay& platformDisplay, GLXContext sharingContext)
 {
     Display* display = downcast<PlatformDisplayX11>(platformDisplay).native();
@@ -62,10 +124,30 @@ std::unique_ptr<GLContextGLX> GLContextGLX::createWindowContext(GLNativeWindowTy
     XVisualInfo visualInfo;
     visualInfo.visualid = XVisualIDFromVisual(attributes.visual);
 
-    int numReturned = 0;
-    XUniquePtr<XVisualInfo> visualInfoList(XGetVisualInfo(display, VisualIDMask, &visualInfo, &numReturned));
+    int numConfigs = 0;
+    GLXFBConfig config = nullptr;
+    XUniquePtr<GLXFBConfig> configs(glXGetFBConfigs(display, DefaultScreen(display), &numConfigs));
+    for (int i = 0; i < numConfigs; i++) {
+        XUniquePtr<XVisualInfo> glxVisualInfo(glXGetVisualFromFBConfig(display, configs.get()[i]));
+        if (!glxVisualInfo)
+            continue;
 
-    XUniqueGLXContext context(glXCreateContext(display, visualInfoList.get(), sharingContext, True));
+        if (glxVisualInfo.get()->visualid == visualInfo.visualid) {
+            config = configs.get()[i];
+            break;
+        }
+    }
+    ASSERT(config);
+
+    XUniqueGLXContext context;
+    if (hasGLXARBCreateContextExtension(display))
+        context.reset(createGLXARBContext(display, config, sharingContext));
+    else {
+        // Legacy OpenGL version.
+        XUniquePtr<XVisualInfo> visualInfoList(glXGetVisualFromFBConfig(display, config));
+        context.reset(glXCreateContext(display, visualInfoList.get(), sharingContext, True));
+    }
+
     if (!context)
         return nullptr;
 
@@ -97,7 +179,14 @@ std::unique_ptr<GLContextGLX> GLContextGLX::createPbufferContext(PlatformDisplay
     if (!pbuffer)
         return nullptr;
 
-    XUniqueGLXContext context(glXCreateNewContext(display, configs.get()[0], GLX_RGBA_TYPE, sharingContext, GL_TRUE));
+    XUniqueGLXContext context;
+    if (hasGLXARBCreateContextExtension(display))
+        context.reset(createGLXARBContext(display, configs.get()[0], sharingContext));
+    else {
+        // Legacy OpenGL version.
+        context.reset(glXCreateNewContext(display, configs.get()[0], GLX_RGBA_TYPE, sharingContext, GL_TRUE));
+    }
+
     if (!context)
         return nullptr;
 

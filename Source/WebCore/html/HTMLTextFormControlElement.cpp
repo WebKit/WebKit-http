@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
  * This library is free software; you can redistribute it and/or
@@ -40,6 +40,7 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "Logging.h"
+#include "NoEventDispatchAssertion.h"
 #include "NodeTraversal.h"
 #include "Page.h"
 #include "RenderTextControlSingleLine.h"
@@ -82,7 +83,7 @@ bool HTMLTextFormControlElement::childShouldCreateRenderer(const Node& child) co
 Node::InsertionNotificationRequest HTMLTextFormControlElement::insertedInto(ContainerNode& insertionPoint)
 {
     InsertionNotificationRequest insertionNotificationRequest = HTMLFormControlElementWithState::insertedInto(insertionPoint);
-    if (!insertionPoint.inDocument())
+    if (!insertionPoint.isConnected())
         return insertionNotificationRequest;
     String initialValue = value();
     setTextAsOfLastFormControlChangeEvent(initialValue.isNull() ? emptyString() : initialValue);
@@ -296,7 +297,12 @@ void HTMLTextFormControlElement::setSelectionRange(int start, int end, TextField
     if (!hasFocus && innerText) {
         // FIXME: Removing this synchronous layout requires fixing <https://webkit.org/b/128797>
         document().updateLayoutIgnorePendingStylesheets();
-        if (RenderElement* rendererTextControl = renderer()) {
+
+        // Double-check the state of innerTextElement after the layout.
+        innerText = innerTextElement();
+        auto* rendererTextControl = renderer();
+
+        if (innerText && rendererTextControl) {
             if (rendererTextControl->style().visibility() == HIDDEN || !innerText->renderBox()->height()) {
                 cacheSelection(start, end, direction);
                 return;
@@ -427,7 +433,7 @@ static inline void setContainerAndOffsetForRange(Node* node, int offset, Node*& 
     }
 }
 
-PassRefPtr<Range> HTMLTextFormControlElement::selection() const
+RefPtr<Range> HTMLTextFormControlElement::selection() const
 {
     if (!renderer() || !isTextFormControl() || !hasCachedSelection())
         return nullptr;
@@ -557,10 +563,16 @@ void HTMLTextFormControlElement::setInnerTextValue(const String& value)
                 cache->postNotification(this, AXObjectCache::AXValueChanged, TargetObservableParent);
         }
 #endif
-        innerText->setInnerText(value);
 
-        if (value.endsWith('\n') || value.endsWith('\r'))
-            innerText->appendChild(HTMLBRElement::create(document()));
+        {
+            // Events dispatched on the inner text element cannot execute arbitrary author scripts.
+            NoEventDispatchAssertion::EventAllowedScope allowedScope(*userAgentShadowRoot());
+
+            innerText->setInnerText(value);
+
+            if (value.endsWith('\n') || value.endsWith('\r'))
+                innerText->appendChild(HTMLBRElement::create(document()));
+        }
 
 #if HAVE(ACCESSIBILITY) && PLATFORM(COCOA)
         if (textIsChanged && renderer()) {

@@ -22,9 +22,12 @@
 #include "JSTestSerialization.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMConstructor.h"
+#include "JSDOMBindingCaller.h"
+#include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
-#include "JSTestNode.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMWrapperCache.h"
+#include "JSTestException.h"
 #include <runtime/FunctionPrototype.h>
 #include <runtime/ObjectConstructor.h>
 #include <wtf/GetPtr.h>
@@ -49,6 +52,8 @@ JSC::EncodedJSValue jsTestSerializationFourthUnrestrictedDoubleAttribute(JSC::Ex
 bool setJSTestSerializationFourthUnrestrictedDoubleAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestSerializationFifthLongAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestSerializationFifthLongAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestSerializationSixthTypedefAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestSerializationSixthTypedefAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestSerializationConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestSerializationConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
@@ -104,6 +109,7 @@ static const HashTableValue JSTestSerializationPrototypeTableValues[] =
     { "thirdUnserializableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationThirdUnserializableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationThirdUnserializableAttribute) } },
     { "fourthUnrestrictedDoubleAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationFourthUnrestrictedDoubleAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationFourthUnrestrictedDoubleAttribute) } },
     { "fifthLongAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationFifthLongAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationFifthLongAttribute) } },
+    { "sixthTypedefAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationSixthTypedefAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationSixthTypedefAttribute) } },
     { "toJSON", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestSerializationPrototypeFunctionToJSON), (intptr_t) (0) } },
 };
 
@@ -125,7 +131,7 @@ JSTestSerialization::JSTestSerialization(Structure* structure, JSDOMGlobalObject
 void JSTestSerialization::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
 }
 
@@ -145,14 +151,14 @@ void JSTestSerialization::destroy(JSC::JSCell* cell)
     thisObject->JSTestSerialization::~JSTestSerialization();
 }
 
-template<> inline JSTestSerialization* BindingCaller<JSTestSerialization>::castForAttribute(ExecState&, EncodedJSValue thisValue)
+template<> inline JSTestSerialization* BindingCaller<JSTestSerialization>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
 {
-    return jsDynamicDowncast<JSTestSerialization*>(JSValue::decode(thisValue));
+    return jsDynamicDowncast<JSTestSerialization*>(state.vm(), JSValue::decode(thisValue));
 }
 
 template<> inline JSTestSerialization* BindingCaller<JSTestSerialization>::castForOperation(ExecState& state)
 {
-    return jsDynamicDowncast<JSTestSerialization*>(state.thisValue());
+    return jsDynamicDowncast<JSTestSerialization*>(state.vm(), state.thisValue());
 }
 
 static inline JSValue jsTestSerializationFirstStringAttributeGetter(ExecState&, JSTestSerialization&, ThrowScope& throwScope);
@@ -199,7 +205,7 @@ static inline JSValue jsTestSerializationThirdUnserializableAttributeGetter(Exec
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = toJS<IDLInterface<TestNode>>(state, *thisObject.globalObject(), impl.thirdUnserializableAttribute());
+    JSValue result = toJS<IDLInterface<TestException>>(state, *thisObject.globalObject(), impl.thirdUnserializableAttribute());
     return result;
 }
 
@@ -235,11 +241,27 @@ static inline JSValue jsTestSerializationFifthLongAttributeGetter(ExecState& sta
     return result;
 }
 
+static inline JSValue jsTestSerializationSixthTypedefAttributeGetter(ExecState&, JSTestSerialization&, ThrowScope& throwScope);
+
+EncodedJSValue jsTestSerializationSixthTypedefAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return BindingCaller<JSTestSerialization>::attribute<jsTestSerializationSixthTypedefAttributeGetter>(state, thisValue, "sixthTypedefAttribute");
+}
+
+static inline JSValue jsTestSerializationSixthTypedefAttributeGetter(ExecState& state, JSTestSerialization& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDouble>(impl.sixthTypedefAttribute());
+    return result;
+}
+
 EncodedJSValue jsTestSerializationConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestSerializationPrototype* domObject = jsDynamicDowncast<JSTestSerializationPrototype*>(JSValue::decode(thisValue));
+    JSTestSerializationPrototype* domObject = jsDynamicDowncast<JSTestSerializationPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestSerialization::getConstructor(state->vm(), domObject->globalObject()));
@@ -250,7 +272,7 @@ bool setJSTestSerializationConstructor(ExecState* state, EncodedJSValue thisValu
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestSerializationPrototype* domObject = jsDynamicDowncast<JSTestSerializationPrototype*>(JSValue::decode(thisValue));
+    JSTestSerializationPrototype* domObject = jsDynamicDowncast<JSTestSerializationPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -309,7 +331,7 @@ static inline bool setJSTestSerializationThirdUnserializableAttributeFunction(Ex
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = convert<IDLInterface<TestNode>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestSerialization", "thirdUnserializableAttribute", "TestNode"); });
+    auto nativeValue = convert<IDLInterface<TestException>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestSerialization", "thirdUnserializableAttribute", "TestException"); });
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setThirdUnserializableAttribute(*nativeValue);
     return true;
@@ -354,6 +376,25 @@ static inline bool setJSTestSerializationFifthLongAttributeFunction(ExecState& s
 }
 
 
+static inline bool setJSTestSerializationSixthTypedefAttributeFunction(ExecState&, JSTestSerialization&, JSValue, ThrowScope&);
+
+bool setJSTestSerializationSixthTypedefAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return BindingCaller<JSTestSerialization>::setAttribute<setJSTestSerializationSixthTypedefAttributeFunction>(state, thisValue, encodedValue, "sixthTypedefAttribute");
+}
+
+static inline bool setJSTestSerializationSixthTypedefAttributeFunction(ExecState& state, JSTestSerialization& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDouble>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setSixthTypedefAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+
 JSValue JSTestSerialization::getConstructor(VM& vm, const JSGlobalObject* globalObject)
 {
     return getDOMConstructor<JSTestSerializationConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
@@ -380,6 +421,10 @@ static inline EncodedJSValue jsTestSerializationPrototypeFunctionToJSONCaller(Ex
     ASSERT(!throwScope.exception());
     result->putDirect(vm, Identifier::fromString(&vm, "fifthLongAttribute"), fifthLongAttributeValue);
 
+    auto sixthTypedefAttributeValue = jsTestSerializationSixthTypedefAttributeGetter(*state, *thisObject, throwScope);
+    ASSERT(!throwScope.exception());
+    result->putDirect(vm, Identifier::fromString(&vm, "sixthTypedefAttribute"), sixthTypedefAttributeValue);
+
     return JSValue::encode(result);
 }
 
@@ -397,7 +442,7 @@ bool JSTestSerializationOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unkno
 
 void JSTestSerializationOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    auto* jsTestSerialization = jsCast<JSTestSerialization*>(handle.slot()->asCell());
+    auto* jsTestSerialization = static_cast<JSTestSerialization*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestSerialization->wrapped(), jsTestSerialization);
 }
@@ -440,9 +485,9 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestSe
     return wrap(state, globalObject, impl);
 }
 
-TestSerialization* JSTestSerialization::toWrapped(JSC::JSValue value)
+TestSerialization* JSTestSerialization::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestSerialization*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestSerialization*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

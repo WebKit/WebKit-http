@@ -577,12 +577,7 @@ interface CSSStyleSheet : StyleSheet {
 typedef sequence<StyleSheet> StyleSheetList;
 
 partial interface Document {
-  readonly attribute StyleSheetList styleSheets;
-           attribute DOMString? selectedStyleSheetSet;
-  readonly attribute DOMString? lastStyleSheetSet;
-  readonly attribute DOMString? preferredStyleSheetSet;
-  readonly attribute DOMStringList styleSheetSets;
-  void enableStyleSheetsForSet(DOMString? name);
+  [SameObject] readonly attribute StyleSheetList styleSheets;
 };
 
 [NoInterfaceObject] interface LinkStyle {
@@ -726,7 +721,6 @@ interface CSSStyleDeclaration {
            attribute DOMString marginRight;
            attribute DOMString marginBottom;
            attribute DOMString marginLeft;
-           attribute DOMString markerOffset;
            attribute DOMString marks;
            attribute DOMString maxHeight;
            attribute DOMString maxWidth;
@@ -883,7 +877,7 @@ interface HTMLAllCollection {
 
 interface HTMLFormControlsCollection : HTMLCollection {
   // inherits length and item()
-  legacycaller getter (RadioNodeList or Element)? namedItem(DOMString name); // shadows inherited namedItem()
+  getter (RadioNodeList or Element)? namedItem(DOMString name); // shadows inherited namedItem()
 };
 
 interface RadioNodeList : NodeList {
@@ -891,13 +885,12 @@ interface RadioNodeList : NodeList {
 };
 
 interface HTMLOptionsCollection : HTMLCollection {
-  // inherits item()
-           attribute unsigned long length; // shadows inherited length
-  legacycaller HTMLOptionElement? (DOMString name);
-  setter creator void (unsigned long index, HTMLOptionElement? option);
-  void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
-  void remove(long index);
-           attribute long selectedIndex;
+  // inherits item(), namedItem()
+  attribute unsigned long length; // shadows inherited length
+  [CEReactions] setter void (unsigned long index, HTMLOptionElement? option);
+  [CEReactions] void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
+  [CEReactions] void remove(long index);
+  attribute long selectedIndex;
 };
 
 typedef sequence<any> PropertyValueArray;
@@ -1019,15 +1012,20 @@ interface HTMLBaseElement : HTMLElement {
            attribute DOMString target;
 };
 
+[HTMLConstructor]
 interface HTMLLinkElement : HTMLElement {
-           attribute DOMString href;
-           attribute DOMString? crossOrigin;
-           attribute DOMString rel;
-  [PutForwards=value] readonly attribute DOMTokenList relList;
-           attribute DOMString media;
-           attribute DOMString hreflang;
-           attribute DOMString type;
-  [PutForwards=value] readonly attribute DOMTokenList sizes;
+  [CEReactions] attribute USVString href;
+  [CEReactions] attribute DOMString? crossOrigin;
+  [CEReactions] attribute DOMString rel;
+  // [CEReactions] attribute RequestDestination as; // (default "") XXX TODO
+  [CEReactions, SameObject, PutForwards=value] readonly attribute DOMTokenList relList;
+  [CEReactions] attribute DOMString media;
+  [CEReactions] attribute DOMString nonce;
+  [CEReactions] attribute DOMString integrity;
+  [CEReactions] attribute DOMString hreflang;
+  [CEReactions] attribute DOMString type;
+  [CEReactions, SameObject, PutForwards=value] readonly attribute DOMTokenList sizes;
+  [CEReactions] attribute DOMString referrerPolicy;
 
   // also has obsolete members
 };
@@ -1100,16 +1098,21 @@ interface HTMLDivElement : HTMLElement {
   // also has obsolete members
 };
 
+[HTMLConstructor]
 interface HTMLAnchorElement : HTMLElement {
-  attribute DOMString target;
-  attribute DOMString download;
+  [CEReactions] attribute DOMString target;
+  [CEReactions] attribute DOMString download;
   [CEReactions] attribute USVString ping;
-  attribute DOMString rel;
-  [PutForwards=value] readonly attribute DOMTokenList relList;
-  attribute DOMString hreflang;
-  attribute DOMString type;
+  [CEReactions] attribute DOMString rel;
+  [CEReactions, SameObject, PutForwards=value] readonly attribute DOMTokenList relList;
+  [CEReactions] attribute DOMString hreflang;
+  [CEReactions] attribute DOMString type;
 
-  attribute DOMString text;
+  [CEReactions] attribute DOMString text;
+
+  [CEReactions] attribute DOMString referrerPolicy;
+
+  // also has obsolete members
 };
 HTMLAnchorElement implements HTMLHyperlinkElementUtils;
 
@@ -1140,37 +1143,41 @@ partial interface HTMLSourceElement {
            attribute DOMString media;
 };
 
-[NamedConstructor=Image(optional unsigned long width, optional unsigned long height)]
+[HTMLConstructor, NamedConstructor=Image(optional unsigned long width, optional unsigned long height)]
 interface HTMLImageElement : HTMLElement {
-           attribute DOMString alt;
-           attribute DOMString src;
-           attribute DOMString srcset;
-           attribute DOMString sizes;
-           attribute DOMString? crossOrigin;
-           attribute DOMString useMap;
-           attribute boolean isMap;
-           attribute unsigned long width;
-           attribute unsigned long height;
+  [CEReactions] attribute DOMString alt;
+  [CEReactions] attribute USVString src;
+  [CEReactions] attribute USVString srcset;
+  [CEReactions] attribute DOMString sizes;
+  [CEReactions] attribute DOMString? crossOrigin;
+  [CEReactions] attribute DOMString useMap;
+  [CEReactions] attribute boolean isMap;
+  [CEReactions] attribute unsigned long width;
+  [CEReactions] attribute unsigned long height;
   readonly attribute unsigned long naturalWidth;
   readonly attribute unsigned long naturalHeight;
   readonly attribute boolean complete;
-  readonly attribute DOMString currentSrc;
+  readonly attribute USVString currentSrc;
+  [CEReactions] attribute DOMString referrerPolicy;
 
   // also has obsolete members
 };
 
+[HTMLConstructor]
 interface HTMLIFrameElement : HTMLElement {
-           attribute DOMString src;
-           attribute DOMString srcdoc;
-           attribute DOMString name;
-  [PutForwards=value] readonly attribute DOMTokenList sandbox;
-           attribute boolean allowFullscreen;
-           attribute DOMString width;
-           attribute DOMString height;
+  [CEReactions] attribute USVString src;
+  [CEReactions] attribute DOMString srcdoc;
+  [CEReactions] attribute DOMString name;
+  [CEReactions, SameObject, PutForwards=value] readonly attribute DOMTokenList sandbox;
+  [CEReactions] attribute boolean allowFullscreen;
+  [CEReactions] attribute boolean allowUserMedia;
+  [CEReactions] attribute boolean allowPaymentRequest;
+  [CEReactions] attribute DOMString width;
+  [CEReactions] attribute DOMString height;
+  [CEReactions] attribute DOMString referrerPolicy;
   readonly attribute Document? contentDocument;
   readonly attribute WindowProxy? contentWindow;
-
-  // also has obsolete members
+  Document? getSVGDocument();
 };
 
 interface HTMLEmbedElement : HTMLElement {
@@ -1179,7 +1186,6 @@ interface HTMLEmbedElement : HTMLElement {
            attribute DOMString width;
            attribute DOMString height;
   Document getSVGDocument();
-  legacycaller any (any... arguments);
 
   // also has obsolete members
 };
@@ -1202,8 +1208,6 @@ interface HTMLObjectElement : HTMLElement {
   boolean checkValidity();
   boolean reportValidity();
   void setCustomValidity(DOMString error);
-
-  legacycaller any (any... arguments);
 
   // also has obsolete members
 };
@@ -1313,6 +1317,7 @@ interface MediaError {
   const unsigned short MEDIA_ERR_DECODE = 3;
   const unsigned short MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
   readonly attribute unsigned short code;
+  readonly attribute DOMString message;
 };
 
 interface AudioTrackList : EventTarget {
@@ -1421,16 +1426,19 @@ interface HTMLMapElement : HTMLElement {
   readonly attribute HTMLCollection areas;
 };
 
+[HTMLConstructor]
 interface HTMLAreaElement : HTMLElement {
-  attribute DOMString alt;
-  attribute DOMString coords;
-  attribute DOMString shape;
-  attribute DOMString target;
-  attribute DOMString download;
+  [CEReactions] attribute DOMString alt;
+  [CEReactions] attribute DOMString coords;
+  [CEReactions] attribute DOMString shape;
+  [CEReactions] attribute DOMString target;
+  [CEReactions] attribute DOMString download;
   [CEReactions] attribute USVString ping;
-  attribute DOMString rel;
-  [PutForwards=value] readonly attribute DOMTokenList relList;
-  // hreflang and type are not reflected
+  [CEReactions] attribute DOMString rel;
+  [CEReactions, SameObject, PutForwards=value] readonly attribute DOMTokenList relList;
+  [CEReactions] attribute DOMString referrerPolicy;
+
+  // also has obsolete members
 };
 HTMLAreaElement implements HTMLHyperlinkElementUtils;
 
@@ -1597,7 +1605,6 @@ interface HTMLButtonElement : HTMLElement {
            attribute DOMString name;
            attribute DOMString type;
            attribute DOMString value;
-           attribute HTMLMenuElement? menu;
 
   readonly attribute boolean willValidate;
   readonly attribute ValidityState validity;
@@ -1704,26 +1711,6 @@ interface HTMLTextAreaElement : HTMLElement {
   void setRangeText(DOMString replacement);
   void setRangeText(DOMString replacement, unsigned long start, unsigned long end, optional SelectionMode selectionMode = "preserve");
   void setSelectionRange(unsigned long start, unsigned long end, optional DOMString direction);
-};
-
-interface HTMLKeygenElement : HTMLElement {
-           attribute boolean autofocus;
-           attribute DOMString challenge;
-           attribute boolean disabled;
-  readonly attribute HTMLFormElement? form;
-           attribute DOMString keytype;
-           attribute DOMString name;
-
-  readonly attribute DOMString type;
-
-  readonly attribute boolean willValidate;
-  readonly attribute ValidityState validity;
-  readonly attribute DOMString validationMessage;
-  boolean checkValidity();
-  boolean reportValidity();
-  void setCustomValidity(DOMString error);
-
-  readonly attribute NodeList labels;
 };
 
 interface HTMLOutputElement : HTMLElement {
@@ -1840,19 +1827,24 @@ dictionary RelatedEventInit : EventInit {
 interface HTMLDialogElement : HTMLElement {
            attribute boolean open;
            attribute DOMString returnValue;
-  void show(optional (MouseEvent or Element) anchor);
-  void showModal(optional (MouseEvent or Element) anchor);
+  void show();
+  void showModal();
   void close(optional DOMString returnValue);
 };
 
+[HTMLConstructor]
 interface HTMLScriptElement : HTMLElement {
-           attribute DOMString src;
-           attribute DOMString type;
-           attribute DOMString charset;
-           attribute boolean async;
-           attribute boolean defer;
-           attribute DOMString? crossOrigin;
-           attribute DOMString text;
+  [CEReactions] attribute USVString src;
+  [CEReactions] attribute DOMString type;
+  [CEReactions] attribute boolean noModule;
+  [CEReactions] attribute DOMString charset;
+  [CEReactions] attribute boolean async;
+  [CEReactions] attribute boolean defer;
+  [CEReactions] attribute DOMString? crossOrigin;
+  [CEReactions] attribute DOMString text;
+  [CEReactions] attribute DOMString nonce;
+  [CEReactions] attribute DOMString integrity;
+
 
   // also has obsolete members
 };
@@ -2400,6 +2392,7 @@ typedef OnBeforeUnloadEventHandlerNonNull? OnBeforeUnloadEventHandler;
 [NoInterfaceObject]
 interface GlobalEventHandlers {
            attribute EventHandler onabort;
+           attribute EventHandler onauxclick;
            attribute EventHandler onblur;
            attribute EventHandler oncancel;
            attribute EventHandler oncanplay;
@@ -2628,9 +2621,9 @@ interface MessageEvent : Event {
   readonly attribute DOMString origin;
   readonly attribute DOMString lastEventId;
   readonly attribute (WindowProxy or MessagePort)? source;
-  readonly attribute MessagePort[]? ports;
+  readonly attribute FrozenArray<MessagePort> ports;
 
-  void initMessageEvent(DOMString typeArg, boolean canBubbleArg, boolean cancelableArg, any dataArg, DOMString originArg, DOMString lastEventIdArg, (WindowProxy or MessagePort) sourceArg, MessagePort[]? portsArg);
+  void initMessageEvent(DOMString type, boolean bubbles, boolean cancelable, any data, DOMString origin, DOMString lastEventId, (WindowProxy or MessagePort) source, sequence<MessagePort> ports);
 };
 
 dictionary MessageEventInit : EventInit {
@@ -2974,24 +2967,24 @@ partial interface HTMLHtmlElement {
 };
 
 partial interface HTMLIFrameElement {
-           attribute DOMString align;
-           attribute DOMString scrolling;
-           attribute DOMString frameBorder;
-           attribute DOMString longDesc;
+  [CEReactions] attribute DOMString align;
+  [CEReactions] attribute DOMString scrolling;
+  [CEReactions] attribute DOMString frameBorder;
+  [CEReactions] attribute USVString longDesc;
 
-  [TreatNullAs=EmptyString] attribute DOMString marginHeight;
-  [TreatNullAs=EmptyString] attribute DOMString marginWidth;
+  [CEReactions, TreatNullAs=EmptyString] attribute DOMString marginHeight;
+  [CEReactions, TreatNullAs=EmptyString] attribute DOMString marginWidth;
 };
 
 partial interface HTMLImageElement {
-           attribute DOMString name;
-           attribute DOMString lowsrc;
-           attribute DOMString align;
-           attribute unsigned long hspace;
-           attribute unsigned long vspace;
-           attribute DOMString longDesc;
+  [CEReactions] attribute DOMString name;
+  [CEReactions] attribute USVString lowsrc;
+  [CEReactions] attribute DOMString align;
+  [CEReactions] attribute unsigned long hspace;
+  [CEReactions] attribute unsigned long vspace;
+  [CEReactions] attribute USVString longDesc;
 
-  [TreatNullAs=EmptyString] attribute DOMString border;
+  [CEReactions, TreatNullAs=EmptyString] attribute DOMString border;
 };
 
 partial interface HTMLInputElement {
@@ -3008,9 +3001,9 @@ partial interface HTMLLIElement {
 };
 
 partial interface HTMLLinkElement {
-           attribute DOMString charset;
-           attribute DOMString rev;
-           attribute DOMString target;
+  [CEReactions] attribute DOMString charset;
+  [CEReactions] attribute DOMString rev;
+  [CEReactions] attribute DOMString target;
 };
 
 partial interface HTMLMenuElement {
@@ -3288,7 +3281,6 @@ window.onload = function() {
     HTMLOptGroupElement: ['document.createElement("optgroup")'],
     HTMLOptionElement: ['document.createElement("option")', 'new Option()'],
     HTMLTextAreaElement: ['document.createElement("textarea")'],
-    HTMLKeygenElement: ['document.createElement("keygen")'],
     HTMLOutputElement: ['document.createElement("output")'],
     HTMLProgressElement: ['document.createElement("progress")'],
     HTMLMeterElement: ['document.createElement("meter")'],
@@ -3319,8 +3311,7 @@ window.onload = function() {
     PeerConnection: [],
     MediaStreamEvent: [],
     ErrorEvent: [],
-// WEBKIT Hack: we disable this WebSocket test to limit flakiness. We should remove that hack asap. See https://bugs.webkit.org/show_bug.cgi?id=161142.
-//    WebSocket: ['new WebSocket("ws://foo")'],
+    WebSocket: ['new WebSocket("ws://foo")'],
     CloseEvent: ['new CloseEvent("close")'],
     AbstractWorker: [],
     Worker: [],

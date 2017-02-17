@@ -36,7 +36,6 @@
 #include "InlineElementBox.h"
 #include "Node.h"
 #include "PODIntervalTree.h"
-#include "PaintInfo.h"
 #include "RenderBoxRegionInfo.h"
 #include "RenderInline.h"
 #include "RenderLayer.h"
@@ -71,7 +70,7 @@ RenderFlowThread::RenderFlowThread(Document& document, RenderStyle&& style)
 RenderStyle RenderFlowThread::createFlowThreadStyle(const RenderStyle* parentStyle)
 {
     auto newStyle = RenderStyle::create();
-    newStyle.inheritFrom(parentStyle);
+    newStyle.inheritFrom(*parentStyle);
     newStyle.setDisplay(BLOCK);
     newStyle.setPosition(AbsolutePosition);
     newStyle.setZIndex(0);
@@ -344,8 +343,9 @@ void RenderFlowThread::updateLogicalWidth()
     }
 }
 
-void RenderFlowThread::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderFlowThread::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop) const
 {
+    LogicalExtentComputedValues computedValues;
     computedValues.m_position = logicalTop;
     computedValues.m_extent = 0;
 
@@ -358,8 +358,9 @@ void RenderFlowThread::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, L
 
         // If we reached the maximum size there's no point in going further.
         if (computedValues.m_extent == maxFlowSize)
-            return;
+            return computedValues;
     }
+    return computedValues;
 }
 
 bool RenderFlowThread::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
@@ -1087,7 +1088,7 @@ bool RenderFlowThread::addForcedRegionBreak(const RenderBlock* block, LayoutUnit
         hasComputedAutoHeight = true;
 
         // Compute the region height pretending that the offsetBreakInCurrentRegion is the logicalHeight for the auto-height region.
-        LayoutUnit regionComputedAutoHeight = namedFlowFragment.constrainContentBoxLogicalHeightByMinMax(offsetBreakInCurrentRegion, Nullopt);
+        LayoutUnit regionComputedAutoHeight = namedFlowFragment.constrainContentBoxLogicalHeightByMinMax(offsetBreakInCurrentRegion, std::nullopt);
 
         // The new height of this region needs to be smaller than the initial value, the max height. A forced break is the only way to change the initial
         // height of an auto-height region besides content ending.

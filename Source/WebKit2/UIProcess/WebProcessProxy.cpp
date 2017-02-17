@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +29,6 @@
 #include "APIFrameHandle.h"
 #include "APIPageGroupHandle.h"
 #include "APIPageHandle.h"
-#include "CustomProtocolManagerProxyMessages.h"
 #include "DataReference.h"
 #include "DownloadProxyMap.h"
 #include "Logging.h"
@@ -95,10 +94,10 @@ Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool)
 }
 
 WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
-    : m_responsivenessTimer(*this)
+    : ChildProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
+    , m_responsivenessTimer(*this)
     , m_processPool(processPool)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
-    , m_customProtocolManagerProxy(this, processPool)
     , m_numberOfTimesSuddenTerminationWasDisabled(0)
     , m_throttler(*this)
     , m_isResponsive(NoOrMaybe::Maybe)
@@ -111,6 +110,8 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
 WebProcessProxy::~WebProcessProxy()
 {
     ASSERT(m_pageURLRetainCountMap.isEmpty());
+    
+    WebPasteboardProxy::singleton().removeWebProcessProxy(*this);
 
     if (m_webConnection)
         m_webConnection->invalidate();
@@ -197,6 +198,53 @@ void WebProcessProxy::shutDown()
 WebPageProxy* WebProcessProxy::webPage(uint64_t pageID)
 {
     return globalPageMap().get(pageID);
+}
+
+void WebProcessProxy::deleteWebsiteDataForTopPrivatelyOwnedDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType> dataTypes, Vector<String>& topPrivatelyOwnedDomains, bool shouldNotifyPage, std::function<void()> completionHandler)
+{
+    struct CallbackAggregator : ThreadSafeRefCounted<CallbackAggregator> {
+        explicit CallbackAggregator(std::function<void()> completionHandler)
+            : completionHandler(WTFMove(completionHandler))
+        {
+        }
+        
+        void addPendingCallback()
+        {
+            ++pendingCallbacks;
+        }
+        
+        void removePendingCallback()
+        {
+            ASSERT(pendingCallbacks);
+            --pendingCallbacks;
+            
+            callIfNeeded();
+        }
+        
+        void callIfNeeded()
+        {
+            if (!pendingCallbacks)
+                completionHandler();
+        }
+        
+        unsigned pendingCallbacks = 0;
+        std::function<void()> completionHandler;
+    };
+    
+    RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator(WTFMove(completionHandler)));
+
+    for (auto& page : globalPageMap()) {
+        if (!page.value->websiteDataStore().isPersistent())
+            continue;
+        callbackAggregator->addPendingCallback();
+        page.value->websiteDataStore().removeDataForTopPrivatelyOwnedDomains(dataTypes, { }, topPrivatelyOwnedDomains, [callbackAggregator, shouldNotifyPage, page]() {
+            if (shouldNotifyPage)
+                page.value->postMessageToInjectedBundle("WebsiteDataDeletionForTopPrivatelyOwnedDomainsFinished", nullptr);
+            WTF::RunLoop::main().dispatch([callbackAggregator] {
+                callbackAggregator->removePendingCallback();
+            });
+        });
+    }
 }
 
 Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API::PageConfiguration>&& pageConfiguration)
@@ -407,21 +455,21 @@ void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins, Vect
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-void WebProcessProxy::getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
+void WebProcessProxy::getPluginProcessConnection(uint64_t pluginProcessToken, Ref<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>&& reply)
 {
-    PluginProcessManager::singleton().getPluginProcessConnection(pluginProcessToken, reply);
+    PluginProcessManager::singleton().getPluginProcessConnection(pluginProcessToken, WTFMove(reply));
 }
 #endif
 
-void WebProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
+void WebProcessProxy::getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&& reply)
 {
-    m_processPool->getNetworkProcessConnection(reply);
+    m_processPool->getNetworkProcessConnection(WTFMove(reply));
 }
 
 #if ENABLE(DATABASE_PROCESS)
-void WebProcessProxy::getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply> reply)
+void WebProcessProxy::getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&& reply)
 {
-    m_processPool->getDatabaseProcessConnection(reply);
+    m_processPool->getDatabaseProcessConnection(WTFMove(reply));
 }
 #endif // ENABLE(DATABASE_PROCESS)
 
@@ -902,7 +950,7 @@ void WebProcessProxy::sendProcessWillSuspendImminently()
         return;
 
     bool handled = false;
-    sendSync(Messages::WebProcess::ProcessWillSuspendImminently(), Messages::WebProcess::ProcessWillSuspendImminently::Reply(handled), 0, Seconds(1));
+    sendSync(Messages::WebProcess::ProcessWillSuspendImminently(), Messages::WebProcess::ProcessWillSuspendImminently::Reply(handled), 0, 1_s);
 }
 
 void WebProcessProxy::sendPrepareToSuspend()
@@ -921,11 +969,6 @@ void WebProcessProxy::sendProcessDidResume()
 {
     if (canSendMessage())
         send(Messages::WebProcess::ProcessDidResume(), 0);
-}
-
-bool WebProcessProxy::alwaysRunsAtBackgroundPriority()
-{
-    return m_processPool->alwaysRunsAtBackgroundPriority();
 }
 
 void WebProcessProxy::processReadyToSuspend()

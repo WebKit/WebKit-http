@@ -29,8 +29,22 @@ function enqueue(chunk)
 {
     "use strict";
 
-    //FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableByteStreamController enqueue() is not implemented");
+    if (!@isReadableByteStreamController(this))
+        throw @makeThisTypeError("ReadableByteStreamController", "enqueue");
+
+    if (this.@closeRequested)
+        @throwTypeError("ReadableByteStreamController is requested to close");
+
+    if (this.@controlledReadableStream.@state !== @streamReadable)
+        @throwTypeError("ReadableStream is not readable");
+
+    if (!@isObject(chunk))
+        @throwTypeError("Provided chunk is not an object");
+
+    if (!@ArrayBuffer.@isView(chunk))
+        @throwTypeError("Provided chunk is not an ArrayBuffer view");
+
+    return @readableByteStreamControllerEnqueue(this, chunk);
 }
 
 function error(error)
@@ -50,8 +64,16 @@ function close()
 {
     "use strict";
 
-    //FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableByteStreamController close() is not implemented");
+    if (!@isReadableByteStreamController(this))
+        throw @makeThisTypeError("ReadableByteStreamController", "close");
+
+    if (this.@closeRequested)
+        @throwTypeError("Close has already been requested");
+
+    if (this.@controlledReadableStream.@state !== @streamReadable)
+        @throwTypeError("ReadableStream is not readable");
+
+    @readableByteStreamControllerClose(this);
 }
 
 function byobRequest()
@@ -66,7 +88,8 @@ function desiredSize()
 {
     "use strict";
 
-    //FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableByteStreamController desiredSize is not implemented");
-}
+    if (!@isReadableByteStreamController(this))
+        throw @makeGetterTypeError("ReadableByteStreamController", "desiredSize");
 
+    return @readableByteStreamControllerGetDesiredSize(this);
+}

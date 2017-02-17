@@ -611,6 +611,9 @@ void CoordinatedGraphicsScene::commitPendingBackingStoreOperations()
 
 void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& state)
 {
+    if (!m_client)
+        return;
+
     m_renderedContentsScrollPosition = state.scrollPosition;
 
     createLayers(state.layersToCreate);
@@ -686,6 +689,8 @@ void CoordinatedGraphicsScene::purgeGLResources()
     m_surfaceBackingStores.clear();
 #endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
+    for (auto& proxy : m_platformLayerProxies.values())
+        proxy->invalidate();
     m_platformLayerProxies.clear();
 #endif
     m_surfaces.clear();
@@ -720,9 +725,10 @@ void CoordinatedGraphicsScene::setLayerAnimationsIfNeeded(TextureMapperLayer* la
 void CoordinatedGraphicsScene::detach()
 {
     ASSERT(isMainThread());
-    m_renderQueue.clear();
     m_isActive = false;
     m_client = nullptr;
+    LockHolder locker(m_renderQueueMutex);
+    m_renderQueue.clear();
 }
 
 void CoordinatedGraphicsScene::appendUpdate(std::function<void()>&& function)

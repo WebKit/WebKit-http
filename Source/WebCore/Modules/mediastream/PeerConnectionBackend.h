@@ -34,38 +34,33 @@
 
 #include "JSDOMPromise.h"
 #include "PeerConnectionStates.h"
-#include "RTCDataChannel.h"
 
 namespace WebCore {
 
-class DOMError;
-class Event;
 class MediaStream;
 class MediaStreamTrack;
 class PeerConnectionBackend;
-class RTCConfiguration;
 class RTCDataChannelHandler;
 class RTCIceCandidate;
 class RTCPeerConnection;
 class RTCRtpReceiver;
 class RTCRtpSender;
-class RTCRtpSenderClient;
-class RTCRtpTransceiver;
 class RTCSessionDescription;
 class RTCStatsResponse;
-class ScriptExecutionContext;
 
+struct MediaEndpointConfiguration;
 struct RTCAnswerOptions;
+struct RTCDataChannelInit;
 struct RTCOfferOptions;
 
 namespace PeerConnection {
-typedef DOMPromise<RTCSessionDescription> SessionDescriptionPromise;
-typedef DOMPromise<void> VoidPromise;
-typedef DOMPromise<RTCStatsResponse> StatsPromise;
+using SessionDescriptionPromise = DOMPromise<IDLInterface<RTCSessionDescription>>;
+using StatsPromise = DOMPromise<IDLInterface<RTCStatsResponse>>;
 }
 
-typedef std::unique_ptr<PeerConnectionBackend> (*CreatePeerConnectionBackend)(RTCPeerConnection&);
+using CreatePeerConnectionBackend = std::unique_ptr<PeerConnectionBackend> (*)(RTCPeerConnection&);
 
+// FIXME: What is the value of this abstract class? There is only one concrete class derived from it.
 class PeerConnectionBackend {
 public:
     WEBCORE_EXPORT static CreatePeerConnectionBackend create;
@@ -75,9 +70,9 @@ public:
 
     void createOffer(RTCOfferOptions&&, PeerConnection::SessionDescriptionPromise&&);
     void createAnswer(RTCAnswerOptions&&, PeerConnection::SessionDescriptionPromise&&);
-    void setLocalDescription(RTCSessionDescription&, PeerConnection::VoidPromise&&);
-    void setRemoteDescription(RTCSessionDescription&, PeerConnection::VoidPromise&&);
-    void addIceCandidate(RTCIceCandidate&, PeerConnection::VoidPromise&&);
+    void setLocalDescription(RTCSessionDescription&, DOMPromise<void>&&);
+    void setRemoteDescription(RTCSessionDescription&, DOMPromise<void>&&);
+    void addIceCandidate(RTCIceCandidate&, DOMPromise<void>&&);
 
     virtual std::unique_ptr<RTCDataChannelHandler> createDataChannelHandler(const String&, const RTCDataChannelInit&) = 0;
 
@@ -91,14 +86,14 @@ public:
     virtual RefPtr<RTCSessionDescription> currentRemoteDescription() const = 0;
     virtual RefPtr<RTCSessionDescription> pendingRemoteDescription() const = 0;
 
-    virtual void setConfiguration(RTCConfiguration&) = 0;
+    virtual void setConfiguration(MediaEndpointConfiguration&&) = 0;
 
-    virtual void getStats(MediaStreamTrack*, PeerConnection::StatsPromise&&) = 0;
+    virtual void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&) = 0;
 
     virtual Vector<RefPtr<MediaStream>> getRemoteStreams() const = 0;
 
     virtual Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) = 0;
-    virtual void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, PeerConnection::VoidPromise&&) = 0;
+    virtual void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromise<void>&&) = 0;
 
     virtual bool isNegotiationNeeded() const = 0;
     virtual void markAsNeedingNegotiation() = 0;
@@ -109,6 +104,8 @@ public:
 protected:
     void fireICECandidateEvent(RefPtr<RTCIceCandidate>&&);
     void doneGatheringCandidates();
+
+    void updateSignalingState(PeerConnectionStates::SignalingState);
 
     void createOfferSucceeded(String&&);
     void createOfferFailed(Exception&&);
@@ -137,9 +134,9 @@ protected:
     RTCPeerConnection& m_peerConnection;
 
 private:
-    Optional<PeerConnection::SessionDescriptionPromise> m_offerAnswerPromise;
-    Optional<PeerConnection::VoidPromise> m_setDescriptionPromise;
-    Optional<PeerConnection::VoidPromise> m_addIceCandidatePromise;
+    std::optional<PeerConnection::SessionDescriptionPromise> m_offerAnswerPromise;
+    std::optional<DOMPromise<void>> m_setDescriptionPromise;
+    std::optional<DOMPromise<void>> m_addIceCandidatePromise;
 };
 
 } // namespace WebCore

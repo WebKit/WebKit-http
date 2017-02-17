@@ -50,10 +50,15 @@ public:
 
     MixedContentChecker(Frame&);
 
-    bool canDisplayInsecureContent(SecurityOrigin*, ContentType, const URL&) const;
-    bool canRunInsecureContent(SecurityOrigin*, const URL&) const;
-    void checkFormForMixedContent(SecurityOrigin*, const URL&) const;
-    static bool isMixedContent(SecurityOrigin*, const URL&);
+    enum class AlwaysDisplayInNonStrictMode {
+        No,
+        Yes,
+    };
+
+    bool canDisplayInsecureContent(SecurityOrigin&, ContentType, const URL&, AlwaysDisplayInNonStrictMode = AlwaysDisplayInNonStrictMode::No) const;
+    bool canRunInsecureContent(SecurityOrigin&, const URL&) const;
+    void checkFormForMixedContent(SecurityOrigin&, const URL&) const;
+    static bool isMixedContent(SecurityOrigin&, const URL&);
 
 private:
     // FIXME: This should probably have a separate client from FrameLoader.

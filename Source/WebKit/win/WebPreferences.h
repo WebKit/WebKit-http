@@ -234,8 +234,6 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setShowTiledScrollingIndicator(BOOL);
     virtual HRESULT STDMETHODCALLTYPE fetchAPIEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setFetchAPIEnabled(BOOL);
-    virtual HRESULT STDMETHODCALLTYPE domIteratorEnabled(_Out_ BOOL*);
-    virtual HRESULT STDMETHODCALLTYPE setDOMIteratorEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE shadowDOMEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setShadowDOMEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE customElementsEnabled(_Out_ BOOL*);
@@ -245,6 +243,14 @@ public:
 
     // IWebPreferencesPrivate4
     virtual HRESULT STDMETHODCALLTYPE setApplicationId(BSTR);
+    virtual HRESULT STDMETHODCALLTYPE webAnimationsEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setWebAnimationsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE userTimingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setUserTimingEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE resourceTimingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setResourceTimingEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE linkPreloadEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setLinkPreloadEnabled(BOOL);
 
     // WebPreferences
 

@@ -30,6 +30,7 @@ const Icons = {
     EnterPiP        : "pip-in",
     ExitFullscreen  : "exit-fullscreen",
     Forward         : "forward",
+    InvalidPlacard  : "invalid-placard",
     Pause           : "pause",
     PiPPlacard      : "pip-placard",
     Play            : "play",
@@ -40,10 +41,13 @@ const Icons = {
     Start           : "start",
     Tracks          : "media-selection",
     Volume          : "volume",
-    VolumeMuted     : "volume-mute"
+    VolumeDown      : "volume-down",
+    VolumeMuted     : "volume-mute",
+    VolumeUp        : "volume-up"
 };
 
-const IconsWithFullscreenVariants = [Icons.Airplay, Icons.Tracks, Icons.Pause, Icons.Play];
+const IconsWithFullscreenVariants = [Icons.Airplay, Icons.Tracks, Icons.Pause, Icons.EnterPiP, Icons.Play, Icons.VolumeDown, Icons.VolumeUp];
+const IconsWithCompactVariants = [Icons.Play, Icons.Pause, Icons.SkipBack, Icons.Volume, Icons.VolumeMuted, Icons.EnterFullscreen];
 
 const iconService = new class IconService {
 
@@ -87,6 +91,8 @@ const iconService = new class IconService {
 
         if (layoutTraits & LayoutTraits.Fullscreen && IconsWithFullscreenVariants.includes(iconName))
             iconName += "-fullscreen";
+        else if (layoutTraits & LayoutTraits.Compact && IconsWithCompactVariants.includes(iconName))
+            iconName += "-compact";
 
         const fileName = `${iconName}@${window.devicePixelRatio}x`;
 

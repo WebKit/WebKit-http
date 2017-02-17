@@ -166,13 +166,17 @@ public:
     virtual Value* checkMulConstant(Procedure&, const Value* other) const;
     virtual Value* checkNegConstant(Procedure&) const;
     virtual Value* divConstant(Procedure&, const Value* other) const; // This chooses Div<Chill> semantics for integers.
+    virtual Value* uDivConstant(Procedure&, const Value* other) const;
     virtual Value* modConstant(Procedure&, const Value* other) const; // This chooses Mod<Chill> semantics.
+    virtual Value* uModConstant(Procedure&, const Value* other) const;
     virtual Value* bitAndConstant(Procedure&, const Value* other) const;
     virtual Value* bitOrConstant(Procedure&, const Value* other) const;
     virtual Value* bitXorConstant(Procedure&, const Value* other) const;
     virtual Value* shlConstant(Procedure&, const Value* other) const;
     virtual Value* sShrConstant(Procedure&, const Value* other) const;
     virtual Value* zShrConstant(Procedure&, const Value* other) const;
+    virtual Value* rotRConstant(Procedure&, const Value* other) const;
+    virtual Value* rotLConstant(Procedure&, const Value* other) const;
     virtual Value* bitwiseCastConstant(Procedure&) const;
     virtual Value* iToDConstant(Procedure&) const;
     virtual Value* iToFConstant(Procedure&) const;
@@ -322,13 +326,17 @@ private:
         case Sub:
         case Mul:
         case Div:
+        case UDiv:
         case Mod:
+        case UMod:
         case BitAnd:
         case BitOr:
         case BitXor:
         case Shl:
         case SShr:
         case ZShr:
+        case RotR:
+        case RotL:
         case Equal:
         case NotEqual:
         case LessThan:

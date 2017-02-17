@@ -355,7 +355,6 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
         ts << " [r=" << c.rowIndex() << " c=" << c.col() << " rs=" << c.rowSpan() << " cs=" << c.colSpan() << "]";
     }
 
-#if ENABLE(DETAILS_ELEMENT)
     if (is<RenderDetailsMarker>(o)) {
         ts << ": ";
         switch (downcast<RenderDetailsMarker>(o).orientation()) {
@@ -373,7 +372,6 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
             break;
         }
     }
-#endif
 
     if (is<RenderListMarker>(o)) {
         String text = downcast<RenderListMarker>(o).text();
@@ -495,18 +493,20 @@ static void writeTextRun(TextStream& ts, const RenderText& o, const InlineTextBo
     ts << "\n";
 }
 
-static void writeSimpleLine(TextStream& ts, const RenderText& o, const FloatRect& rect, StringView text)
+static void writeSimpleLine(TextStream& ts, const RenderText& renderText, const SimpleLineLayout::RunResolver::Run& run)
 {
+    auto rect = run.rect();
     int x = rect.x();
     int y = rect.y();
     int logicalWidth = ceilf(rect.x() + rect.width()) - x;
 
-    if (is<RenderTableCell>(*o.containingBlock()))
-        y -= floorToInt(downcast<RenderTableCell>(*o.containingBlock()).intrinsicPaddingBefore());
-        
+    if (is<RenderTableCell>(*renderText.containingBlock()))
+        y -= floorToInt(downcast<RenderTableCell>(*renderText.containingBlock()).intrinsicPaddingBefore());
+
     ts << "text run at (" << x << "," << y << ") width " << logicalWidth;
-    ts << ": "
-        << quoteAndEscapeNonPrintables(text);
+    ts << ": " << quoteAndEscapeNonPrintables(run.text());
+    if (run.hasHyphen())
+        ts << " + hyphen string " << quoteAndEscapeNonPrintables(renderText.style().hyphenString().string());
     ts << "\n";
 }
 
@@ -557,7 +557,7 @@ void write(TextStream& ts, const RenderObject& o, int indent, RenderAsTextBehavi
             auto resolver = runResolver(downcast<RenderBlockFlow>(*text.parent()), *layout);
             for (const auto& run : resolver.rangeForRenderer(text)) {
                 writeIndent(ts, indent + 1);
-                writeSimpleLine(ts, text, run.rect(), run.text());
+                writeSimpleLine(ts, text, run);
             }
         } else {
             for (auto* box = text.firstTextBox(); box; box = box->nextTextBox()) {

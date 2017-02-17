@@ -37,7 +37,6 @@
 #import "DOMCSSStyleDeclarationInternal.h"
 #import "DOMCommentInternal.h"
 #import "DOMCustomXPathNSResolver.h"
-#import "DOMDOMImplementationInternal.h"
 #import "DOMDocumentFragmentInternal.h"
 #import "DOMDocumentTypeInternal.h"
 #import "DOMElementInternal.h"
@@ -46,6 +45,7 @@
 #import "DOMHTMLElementInternal.h"
 #import "DOMHTMLHeadElementInternal.h"
 #import "DOMHTMLScriptElementInternal.h"
+#import "DOMImplementationInternal.h"
 #import "DOMInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMNodeIteratorInternal.h"
@@ -361,7 +361,7 @@
 - (DOMElement *)webkitCurrentFullScreenElement
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->webkitCurrentFullScreenElement()));
+    return kit(WTF::getPtr(IMPL->webkitCurrentFullScreenElementForBindings()));
 }
 
 - (BOOL)webkitFullscreenEnabled
@@ -373,17 +373,7 @@
 - (DOMElement *)webkitFullscreenElement
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->webkitFullscreenElement()));
-}
-
-#endif
-
-#if ENABLE(POINTER_LOCK)
-
-- (DOMElement *)pointerLockElement
-{
-    WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->pointerLockElement()));
+    return kit(WTF::getPtr(IMPL->webkitFullscreenElementForBindings()));
 }
 
 #endif
@@ -391,7 +381,14 @@
 - (NSString *)visibilityState
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->visibilityState();
+    switch (IMPL->visibilityState()) {
+    case WebCore::Document::VisibilityState::Hidden:
+        return @"hidden";
+    case WebCore::Document::VisibilityState::Visible:
+        return @"visible";
+    case WebCore::Document::VisibilityState::Prerender:
+        return @"prerender";
+    }
 }
 
 - (BOOL)hidden
@@ -721,16 +718,6 @@ static RefPtr<WebCore::XPathNSResolver> wrap(id <DOMXPathNSResolver> resolver)
 {
     WebCore::JSMainThreadNullState state;
     IMPL->webkitExitFullscreen();
-}
-
-#endif
-
-#if ENABLE(POINTER_LOCK)
-
-- (void)exitPointerLock
-{
-    WebCore::JSMainThreadNullState state;
-    IMPL->exitPointerLock();
 }
 
 #endif

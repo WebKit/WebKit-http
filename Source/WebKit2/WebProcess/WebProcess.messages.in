@@ -36,9 +36,7 @@ messages -> WebProcess LegacyReceiver {
     RegisterURLSchemeAsNoAccess(String scheme)
     RegisterURLSchemeAsDisplayIsolated(String scheme)
     RegisterURLSchemeAsCORSEnabled(String scheme)
-#if ENABLE(CACHE_PARTITIONING)
     RegisterURLSchemeAsCachePartitioned(String scheme)
-#endif
     SetDefaultRequestTimeoutInterval(double timeoutInterval)
     SetAlwaysUsesComplexTextCodePath(bool alwaysUseComplexText)
     SetShouldUseFontSmoothing(bool useFontSmoothing)
@@ -58,6 +56,7 @@ messages -> WebProcess LegacyReceiver {
     ResetPlugInAutoStartOriginHashes(HashMap<WebCore::SessionID, HashMap<uint32_t,double>> hashes)
     SetPluginLoadClientPolicy(uint8_t policy, String host, String bundleIdentifier, String versionString)
     ClearPluginClientPolicies()
+    RefreshPlugins()
 
     void StartMemorySampler(WebKit::SandboxExtension::Handle sampleLogFileHandle, String sampleLogFilePath, double interval);
     void StopMemorySampler();
@@ -106,5 +105,9 @@ messages -> WebProcess LegacyReceiver {
     SetInitialGamepads(Vector<WebKit::GamepadData> gamepadDatas)
     GamepadConnected(WebKit::GamepadData gamepadData)
     GamepadDisconnected(unsigned index)
+#endif
+
+#if USE(SOUP)
+    SetNetworkProxySettings(struct WebCore::SoupNetworkProxySettings settings)
 #endif
 }

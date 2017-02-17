@@ -24,8 +24,6 @@
 #include "CSSPropertyNames.h"
 #include "Document.h"
 #include "Event.h"
-#include "EventHandler.h"
-#include "EventNames.h"
 #include "Frame.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"

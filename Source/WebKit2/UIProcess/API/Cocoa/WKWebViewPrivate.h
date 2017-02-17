@@ -56,15 +56,19 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @class WKBrowsingContextHandle;
 @class _WKFrameHandle;
 @class _WKHitTestResult;
+@class _WKIconLoadingDelegate;
 @class _WKRemoteObjectRegistry;
 @class _WKSessionState;
+@class _WKWebsitePolicies;
 @class _WKWebViewPrintFormatter;
 
 @protocol WKHistoryDelegatePrivate;
 @protocol _WKDiagnosticLoggingDelegate;
 @protocol _WKFindDelegate;
+@protocol _WKIconLoadingDelegate;
 @protocol _WKInputDelegate;
 @protocol _WKFullscreenDelegate;
+@protocol _WKTestingDelegate;
 
 @interface WKWebView (WKPrivate)
 
@@ -75,6 +79,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, setter=_setObservedRenderingProgressEvents:) _WKRenderingProgressEvents _observedRenderingProgressEvents;
 
 @property (nonatomic, weak, setter=_setHistoryDelegate:) id <WKHistoryDelegatePrivate> _historyDelegate;
+@property (nonatomic, weak, setter=_setIconLoadingDelegate:) id <_WKIconLoadingDelegate> _iconLoadingDelegate;
 
 @property (nonatomic, readonly) NSURL *_unreachableURL;
 
@@ -113,6 +118,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, readonly, getter=_isShowingNavigationGestureSnapshot) BOOL _showingNavigationGestureSnapshot;
 
 - (void)_close;
+
+- (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies;
 
 @property (nonatomic, setter=_setLayoutMode:) _WKLayoutMode _layoutMode;
 // For use with _layoutMode = _WKLayoutModeFixedSize:
@@ -177,6 +184,9 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 - (id)_snapshotLayerContentsForBackForwardListItem:(WKBackForwardListItem *)item WK_API_AVAILABLE(ios(9_0));
 - (NSArray *)_dataDetectionResults;
+
+- (void)_accessibilityRetrieveSpeakSelectionContent;
+- (void)_accessibilityDidGetSpeakSelectionContent:(NSString *)content;
 
 #else
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
@@ -255,6 +265,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, setter=_setFullscreenDelegate:) id<_WKFullscreenDelegate> _fullscreenDelegate WK_API_AVAILABLE(macosx(10.13));
 @property (nonatomic, readonly) BOOL _isInFullscreen WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
+- (void)_stopMediaCapture;
+
 @end
 
 #if !TARGET_OS_IPHONE
@@ -265,6 +277,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @interface WKWebView (WKTesting)
 
 - (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic, weak, setter=_setTestingDelegate:) id<_WKTestingDelegate> _testingDelegate WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 #if TARGET_OS_IPHONE
 
@@ -282,12 +295,27 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 - (void)_didShowForcePressPreview WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_didDismissForcePressPreview WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_doAfterNextStablePresentationUpdate:(dispatch_block_t)updateBlock WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
-@property (nonatomic, readonly) NSArray<UIView *> *_uiTextSelectionRectViews WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, readonly) NSArray<NSValue *> *_uiTextSelectionRects WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, readonly) CGRect _uiTextCaretRect WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, readonly) CGRect _inputViewBounds WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 @property (nonatomic, readonly) NSString *_scrollingTreeAsText WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
-#endif
+@property (nonatomic, readonly) NSNumber *_stableStateOverride WK_API_AVAILABLE(ios(WK_IOS_TBA));
+
+- (void)_simulateDataInteractionGestureRecognized WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionEntered:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionUpdated:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionPerformOperation:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionEnded:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionSessionDidEnd:(id)session withOperation:(NSUInteger)operation WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateFailedDataInteractionWithIndex:(NSInteger)sourceIndex WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateWillBeginDataInteractionWithIndex:(NSInteger)sourceIndex withSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (NSArray *)_simulatedItemsForDataInteractionWithIndex:(NSInteger)sourceIndex WK_API_AVAILABLE(ios(WK_IOS_TBA));
+
+#endif // TARGET_OS_IPHONE
 
 #if !TARGET_OS_IPHONE
 @property (nonatomic, readonly) BOOL _hasActiveVideoForControlsManager WK_API_AVAILABLE(macosx(10.12));
@@ -298,16 +326,20 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_forceRequestCandidates WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (void)_didUpdateCandidateListVisibility:(BOOL)visible WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 @property (nonatomic, readonly) BOOL _shouldRequestCandidates WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-- (void)_requestActiveNowPlayingSessionInfo WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-- (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-
 - (void)_insertText:(id)string replacementRange:(NSRange)replacementRange WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+
+- (void)_setHeaderBannerHeight:(int)height WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_setFooterBannerHeight:(int)height WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 #endif
+
+- (void)_requestActiveNowPlayingSessionInfo WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 - (void)_setPageScale:(CGFloat)scale withOrigin:(CGPoint)origin WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (CGFloat)_pageScale WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 - (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+- (void)_doAfterNextPresentationUpdateWithoutWaitingForPainting:(void (^)(void))updateBlock WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 - (void)_disableBackForwardSnapshotVolatilityForTesting WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 

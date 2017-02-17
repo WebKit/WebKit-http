@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -87,7 +87,7 @@ void WebResourceLoader::willSendRequest(ResourceRequest&& proposedRequest, Resou
 
     RefPtr<WebResourceLoader> protectedThis(this);
 
-    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(m_coreLoader.get(), proposedRequest, redirectResponse))
+    if (m_coreLoader->documentLoader()->applicationCacheHost().maybeLoadFallbackForRedirect(m_coreLoader.get(), proposedRequest, redirectResponse))
         return;
 
     m_coreLoader->willSendRequest(WTFMove(proposedRequest), redirectResponse, [protectedThis](ResourceRequest&& request) {
@@ -110,22 +110,10 @@ void WebResourceLoader::didReceiveResponse(const ResourceResponse& response, boo
 
     Ref<WebResourceLoader> protect(*this);
 
-    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForResponse(m_coreLoader.get(), response))
+    if (m_coreLoader->documentLoader()->applicationCacheHost().maybeLoadFallbackForResponse(m_coreLoader.get(), response))
         return;
 
-    bool shoudCallCoreLoaderDidReceiveResponse = true;
-#if USE(QUICK_LOOK)
-    // Refrain from calling didReceiveResponse if QuickLook will convert this response, since the MIME type of the
-    // converted resource isn't yet known. WebResourceLoaderQuickLookDelegate will later call didReceiveResponse upon
-    // receiving the converted data.
-    bool isMainLoad = m_coreLoader->documentLoader()->mainResourceLoader() == m_coreLoader;
-    if (isMainLoad && QuickLookHandle::shouldCreateForMIMEType(response.mimeType())) {
-        m_coreLoader->documentLoader()->setQuickLookHandle(QuickLookHandle::create(*m_coreLoader, response));
-        shoudCallCoreLoaderDidReceiveResponse = false;
-    }
-#endif
-    if (shoudCallCoreLoaderDidReceiveResponse)
-        m_coreLoader->didReceiveResponse(response);
+    m_coreLoader->didReceiveResponse(response);
 
     // If m_coreLoader becomes null as a result of the didReceiveResponse callback, we can't use the send function(). 
     if (!m_coreLoader)
@@ -144,13 +132,15 @@ void WebResourceLoader::didReceiveData(const IPC::DataReference& data, int64_t e
         m_hasReceivedData = true;
     }
 
-#if USE(QUICK_LOOK)
-    if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle()) {
-        if (quickLookHandle->didReceiveData(adoptCF(CFDataCreate(kCFAllocatorDefault, data.data(), data.size())).get()))
-            return;
-    }
-#endif
     m_coreLoader->didReceiveData(reinterpret_cast<const char*>(data.data()), data.size(), encodedDataLength, DataPayloadBytes);
+}
+
+void WebResourceLoader::didRetrieveDerivedData(const String& type, const IPC::DataReference& data)
+{
+    LOG(Network, "(WebProcess) WebResourceLoader::didRetrieveDerivedData of size %lu for '%s'", data.size(), m_coreLoader->url().string().latin1().data());
+
+    auto buffer = SharedBuffer::create(data.data(), data.size());
+    m_coreLoader->didRetrieveDerivedDataFromCache(type, buffer.get());
 }
 
 void WebResourceLoader::didFinishResourceLoad(double finishTime)
@@ -158,12 +148,6 @@ void WebResourceLoader::didFinishResourceLoad(double finishTime)
     LOG(Network, "(WebProcess) WebResourceLoader::didFinishResourceLoad for '%s'", m_coreLoader->url().string().latin1().data());
     RELEASE_LOG_IF_ALLOWED("didFinishResourceLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
 
-#if USE(QUICK_LOOK)
-    if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle()) {
-        if (quickLookHandle->didFinishLoading())
-            return;
-    }
-#endif
     m_coreLoader->didFinishLoading(finishTime);
 }
 
@@ -172,11 +156,7 @@ void WebResourceLoader::didFailResourceLoad(const ResourceError& error)
     LOG(Network, "(WebProcess) WebResourceLoader::didFailResourceLoad for '%s'", m_coreLoader->url().string().latin1().data());
     RELEASE_LOG_IF_ALLOWED("didFailResourceLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
 
-#if USE(QUICK_LOOK)
-    if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle())
-        quickLookHandle->didFail();
-#endif
-    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForError(m_coreLoader.get(), error))
+    if (m_coreLoader->documentLoader()->applicationCacheHost().maybeLoadFallbackForError(m_coreLoader.get(), error))
         return;
     m_coreLoader->didFail(error);
 }
@@ -188,18 +168,6 @@ void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& hand
     RELEASE_LOG_IF_ALLOWED("didReceiveResource: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
 
     RefPtr<SharedBuffer> buffer = handle.tryWrapInSharedBuffer();
-
-#if USE(QUICK_LOOK)
-    if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle()) {
-        if (buffer) {
-            if (quickLookHandle->didReceiveData(buffer->existingCFData())) {
-                quickLookHandle->didFinishLoading();
-                return;
-            }
-        } else
-            quickLookHandle->didFail();
-    }
-#endif
 
     if (!buffer) {
         LOG_ERROR("Unable to create buffer from ShareableResource sent from the network process.");

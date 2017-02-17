@@ -50,14 +50,14 @@ class SocketStreamHandleClient;
 
 class SocketStreamHandleImpl : public SocketStreamHandle {
 public:
-    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID, const String&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
 
     virtual ~SocketStreamHandleImpl();
 
 private:
     SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
 
-    Optional<size_t> platformSend(const char* data, size_t length) final;
+    std::optional<size_t> platformSend(const char* data, size_t length) final;
     void platformClose() final;
 
     bool readData(CURL*);

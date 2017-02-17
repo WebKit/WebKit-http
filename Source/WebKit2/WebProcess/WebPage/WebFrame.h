@@ -66,8 +66,8 @@ struct FrameInfoData;
 
 class WebFrame : public API::ObjectImpl<API::Object::Type::BundleFrame> {
 public:
-    static PassRefPtr<WebFrame> createWithCoreMainFrame(WebPage*, WebCore::Frame*);
-    static PassRefPtr<WebFrame> createSubframe(WebPage*, const String& frameName, WebCore::HTMLFrameOwnerElement*);
+    static Ref<WebFrame> createWithCoreMainFrame(WebPage*, WebCore::Frame*);
+    static Ref<WebFrame> createSubframe(WebPage*, const String& frameName, WebCore::HTMLFrameOwnerElement*);
     ~WebFrame();
 
     // Called when the FrameLoaderClient (and therefore the WebCore::Frame) is being torn down.
@@ -166,22 +166,22 @@ public:
 #endif
 
 private:
-    static PassRefPtr<WebFrame> create(std::unique_ptr<WebFrameLoaderClient>);
-    WebFrame(std::unique_ptr<WebFrameLoaderClient>);
+    static Ref<WebFrame> create(std::unique_ptr<WebFrameLoaderClient>);
+    explicit WebFrame(std::unique_ptr<WebFrameLoaderClient>);
 
-    WebCore::Frame* m_coreFrame;
+    WebCore::Frame* m_coreFrame { nullptr };
 
-    uint64_t m_policyListenerID;
-    WebCore::FramePolicyFunction m_policyFunction;
-    DownloadID m_policyDownloadID;
+    uint64_t m_policyListenerID { 0 };
+    WebCore::FramePolicyFunction m_policyFunction { nullptr };
+    DownloadID m_policyDownloadID { 0 };
 
     std::unique_ptr<WebFrameLoaderClient> m_frameLoaderClient;
-    LoadListener* m_loadListener;
+    LoadListener* m_loadListener { nullptr };
     
-    uint64_t m_frameID;
+    uint64_t m_frameID { 0 };
 
 #if PLATFORM(IOS)
-    uint64_t m_firstLayerTreeTransactionIDAfterDidCommitLoad;
+    uint64_t m_firstLayerTreeTransactionIDAfterDidCommitLoad { 0 };
 #endif
 };
 

@@ -128,6 +128,22 @@ ALWAYS_INLINE static bool isIdentifierOrKeyword(const JSToken& token)
 {
     return token.m_type == IDENT || token.m_type & KeywordTokenFlag;
 }
+// _Any_ContextualKeyword includes keywords such as "let" or "yield", which have a specific meaning depending on the current parse mode
+// or strict mode. These helpers allow to treat all contextual keywords as identifiers as required.
+ALWAYS_INLINE static bool isAnyContextualKeyword(const JSToken& token)
+{
+    return token.m_type >= FirstContextualKeywordToken && token.m_type <= LastContextualKeywordToken;
+}
+ALWAYS_INLINE static bool isIdentifierOrAnyContextualKeyword(const JSToken& token)
+{
+    return token.m_type == IDENT || isAnyContextualKeyword(token);
+}
+// _Safe_ContextualKeyword includes only contextual keywords which can be treated as identifiers independently from parse mode. The exeption
+// to this rule is `await`, but matchSpecIdentifier() always treats it as an identifier regardless.
+ALWAYS_INLINE static bool isSafeContextualKeyword(const JSToken& token)
+{
+    return token.m_type >= FirstSafeContextualKeywordToken && token.m_type <= LastSafeContextualKeywordToken;
+}
 
 struct Scope {
     WTF_MAKE_NONCOPYABLE(Scope);
@@ -298,6 +314,7 @@ public:
         m_allowsLexicalDeclarations = true;
     }
     bool isLexicalScope() { return m_isLexicalScope; }
+    bool usesEval() { return m_usesEval; }
 
     const HashSet<UniquedStringImpl*>& closedVariableCandidates() const { return m_closedVariableCandidates; }
     VariableEnvironment& declaredVariables() { return m_declaredVariables; }
@@ -667,6 +684,7 @@ public:
         parameters.strictMode = m_strictMode;
         parameters.needsFullActivation = m_needsFullActivation;
         parameters.innerArrowFunctionFeatures = m_innerArrowFunctionFeatures;
+        parameters.needsSuperBinding = m_needsSuperBinding;
         for (const UniquedStringImplPtrSet& set : m_usedVariables)
             copyCapturedVariablesToVector(set, parameters.usedVariables);
 
@@ -690,6 +708,7 @@ public:
         m_strictMode = info->strictMode;
         m_innerArrowFunctionFeatures = info->innerArrowFunctionFeatures;
         m_needsFullActivation = info->needsFullActivation;
+        m_needsSuperBinding = info->needsSuperBinding;
         UniquedStringImplPtrSet& destSet = m_usedVariables.last();
         for (unsigned i = 0; i < info->usedVariablesCount; ++i)
             destSet.add(info->usedVariables()[i]);
@@ -1365,13 +1384,8 @@ private:
     }
     
     NEVER_INLINE void logError(bool);
-    template <typename A> NEVER_INLINE void logError(bool, const A&);
-    template <typename A, typename B> NEVER_INLINE void logError(bool, const A&, const B&);
-    template <typename A, typename B, typename C> NEVER_INLINE void logError(bool, const A&, const B&, const C&);
-    template <typename A, typename B, typename C, typename D> NEVER_INLINE void logError(bool, const A&, const B&, const C&, const D&);
-    template <typename A, typename B, typename C, typename D, typename E> NEVER_INLINE void logError(bool, const A&, const B&, const C&, const D&, const E&);
-    template <typename A, typename B, typename C, typename D, typename E, typename F> NEVER_INLINE void logError(bool, const A&, const B&, const C&, const D&, const E&, const F&);
-    template <typename A, typename B, typename C, typename D, typename E, typename F, typename G> NEVER_INLINE void logError(bool, const A&, const B&, const C&, const D&, const E&, const F&, const G&);
+    template <typename... Args>
+    NEVER_INLINE void logError(bool, Args&&...);
     
     NEVER_INLINE void updateErrorWithNameAndMessage(const char* beforeMessage, const String& name, const char* afterMessage)
     {
@@ -1459,16 +1473,16 @@ private:
     // http://ecma-international.org/ecma-262/6.0/#sec-generator-function-definitions-static-semantics-early-errors
     ALWAYS_INLINE bool matchSpecIdentifier(bool inGenerator)
     {
-        return match(IDENT) || match(AWAIT) || isLETMaskedAsIDENT() || isYIELDMaskedAsIDENT(inGenerator);
+        return match(IDENT) || isLETMaskedAsIDENT() || isYIELDMaskedAsIDENT(inGenerator) || isSafeContextualKeyword(m_token);
     }
 
     ALWAYS_INLINE bool matchSpecIdentifier()
     {
-        return match(IDENT) || match(AWAIT) || isLETMaskedAsIDENT() || isYIELDMaskedAsIDENT(currentScope()->isGenerator());
+        return match(IDENT) || isLETMaskedAsIDENT() || isYIELDMaskedAsIDENT(currentScope()->isGenerator()) || isSafeContextualKeyword(m_token);
     }
 
     template <class TreeBuilder> TreeSourceElements parseSourceElements(TreeBuilder&, SourceElementsMode);
-    template <class TreeBuilder> TreeSourceElements parseGeneratorFunctionSourceElements(TreeBuilder&, SourceElementsMode);
+    template <class TreeBuilder> TreeSourceElements parseGeneratorFunctionSourceElements(TreeBuilder&, const Identifier& name, SourceElementsMode);
     template <class TreeBuilder> TreeSourceElements parseAsyncFunctionSourceElements(TreeBuilder&, SourceParseMode, bool isArrowFunctionBodyExpression, SourceElementsMode);
     template <class TreeBuilder> TreeStatement parseStatementListItem(TreeBuilder&, const Identifier*& directive, unsigned* directiveLiteralLength);
     template <class TreeBuilder> TreeStatement parseStatement(TreeBuilder&, const Identifier*& directive, unsigned* directiveLiteralLength = 0);
@@ -1539,6 +1553,8 @@ private:
     template <class TreeBuilder> typename TreeBuilder::ExportSpecifier parseExportSpecifier(TreeBuilder& context, Vector<std::pair<const Identifier*, const Identifier*>>& maybeExportedLocalNames, bool& hasKeywordForLocalBindings);
     template <class TreeBuilder> TreeStatement parseExportDeclaration(TreeBuilder&);
 
+    template <class TreeBuilder> ALWAYS_INLINE TreeExpression createResolveAndUseVariable(TreeBuilder&, const Identifier*, bool isEval, const JSTextPosition&, const JSTokenLocation&);
+
     enum class FunctionDefinitionType { Expression, Declaration, Method };
     template <class TreeBuilder> NEVER_INLINE bool parseFunctionInfo(TreeBuilder&, FunctionNameRequirements, SourceParseMode, bool nameIsInContainingScope, ConstructorKind, SuperBinding, int functionKeywordStart, ParserFunctionInfo<TreeBuilder>&, FunctionDefinitionType);
     
@@ -1584,6 +1600,23 @@ private:
     bool isDisallowedIdentifierAwait(const JSToken& token)
     {
         return token.m_type == AWAIT && (!m_parserState.allowAwait || currentScope()->isAsyncFunctionBoundary() || m_scriptMode == JSParserScriptMode::Module);
+    }
+    
+    ALWAYS_INLINE SuperBinding adjustSuperBindingForBaseConstructor(ConstructorKind constructorKind, SuperBinding superBinding, ScopeRef functionScope)
+    {
+        return adjustSuperBindingForBaseConstructor(constructorKind, superBinding, functionScope->needsSuperBinding(), functionScope->usesEval(), functionScope->innerArrowFunctionFeatures());
+    }
+    
+    ALWAYS_INLINE SuperBinding adjustSuperBindingForBaseConstructor(ConstructorKind constructorKind, SuperBinding superBinding, bool scopeNeedsSuperBinding, bool currentScopeUsesEval, InnerArrowFunctionCodeFeatures innerArrowFunctionFeatures)
+    {
+        SuperBinding methodSuperBinding = superBinding;
+        
+        if (constructorKind == ConstructorKind::Base) {
+            bool isSuperUsedInInnerArrowFunction = innerArrowFunctionFeatures & SuperPropertyInnerArrowFunctionFeature;
+            methodSuperBinding = (scopeNeedsSuperBinding || isSuperUsedInInnerArrowFunction || currentScopeUsesEval) ? SuperBinding::Needed : SuperBinding::NotNeeded;
+        }
+        
+        return methodSuperBinding;
     }
 
     const char* disallowedIdentifierAwaitReason()
@@ -1772,8 +1805,8 @@ std::unique_ptr<ParsedNode> Parser<LexerType>::parse(ParserError& error, const I
     errMsg = String();
 
     JSTokenLocation startLocation(tokenLocation());
-    ASSERT(m_source->startColumn() > 0);
-    unsigned startColumn = m_source->startColumn() - 1;
+    ASSERT(m_source->startColumn() > OrdinalNumber::beforeFirst());
+    unsigned startColumn = m_source->startColumn().zeroBasedInt();
 
     String parseError = parseInner(calleeName, parseMode);
 
@@ -1812,7 +1845,7 @@ std::unique_ptr<ParsedNode> Parser<LexerType>::parse(ParserError& error, const I
                                     currentScope()->innerArrowFunctionFeatures(),
                                     m_numConstants,
                                     WTFMove(m_moduleScopeData));
-        result->setLoc(m_source->firstLine(), m_lexer->lineNumber(), m_lexer->currentOffset(), m_lexer->currentLineStartOffset());
+        result->setLoc(m_source->firstLine().oneBasedInt(), m_lexer->lineNumber(), m_lexer->currentOffset(), m_lexer->currentLineStartOffset());
         result->setEndOffset(m_lexer->currentOffset());
 
         if (!isFunctionParseMode(parseMode)) {

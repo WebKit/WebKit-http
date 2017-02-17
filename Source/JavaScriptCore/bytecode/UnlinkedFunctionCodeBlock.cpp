@@ -26,13 +26,15 @@
 #include "config.h"
 #include "UnlinkedFunctionCodeBlock.h"
 
+#include "JSCellInlines.h"
+
 namespace JSC {
 
 const ClassInfo UnlinkedFunctionCodeBlock::s_info = { "UnlinkedFunctionCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedFunctionCodeBlock) };
 
 void UnlinkedFunctionCodeBlock::destroy(JSCell* cell)
 {
-    jsCast<UnlinkedFunctionCodeBlock*>(cell)->~UnlinkedFunctionCodeBlock();
+    static_cast<UnlinkedFunctionCodeBlock*>(cell)->~UnlinkedFunctionCodeBlock();
 }
 
 }

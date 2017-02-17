@@ -30,7 +30,7 @@
 #include "GraphicsTypes3D.h"
 
 #include "AudioTrackPrivate.h"
-#include "CDMSession.h"
+#include "LegacyCDMSession.h"
 #include "InbandTextTrackPrivate.h"
 #include "IntRect.h"
 #include "URL.h"
@@ -48,6 +48,8 @@
 #include <wtf/HashSet.h>
 #include <wtf/MediaTime.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
 #include <wtf/text/StringHash.h>
 
 #if ENABLE(AVF_CAPTIONS)
@@ -290,11 +292,13 @@ public:
     virtual String mediaPlayerDocumentHost() const { return String(); }
 };
 
-class MediaPlayer : public MediaPlayerEnums {
+class MediaPlayer : public MediaPlayerEnums, public RefCounted<MediaPlayer> {
     WTF_MAKE_NONCOPYABLE(MediaPlayer); WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit MediaPlayer(MediaPlayerClient&);
+    static Ref<MediaPlayer> create(MediaPlayerClient&);
     virtual ~MediaPlayer();
+
+    void invalidate();
 
     // Media engine support.
     enum SupportsType { IsNotSupported, IsSupported, MayBeSupported };
@@ -404,7 +408,7 @@ public:
 
     double volume() const;
     void setVolume(double);
-    bool platformVolumeConfigurationRequired() const { return m_client.mediaPlayerPlatformVolumeConfigurationRequired(); }
+    bool platformVolumeConfigurationRequired() const { return client().mediaPlayerPlatformVolumeConfigurationRequired(); }
 
     bool muted() const;
     void setMuted(bool);
@@ -462,7 +466,7 @@ public:
 
     void repaint();
 
-    MediaPlayerClient& client() const { return m_client; }
+    MediaPlayerClient& client() const { return *m_client; }
 
     bool hasAvailableVideoFrame() const;
     void prepareForRendering();
@@ -607,13 +611,15 @@ public:
     bool shouldDisableSleep() const;
 
 private:
+    MediaPlayer(MediaPlayerClient&);
+
     const MediaPlayerFactory* nextBestMediaEngine(const MediaPlayerFactory*) const;
     void loadWithNextMediaEngine(const MediaPlayerFactory*);
     void reloadTimerFired();
 
     static void initializeMediaEngines();
 
-    MediaPlayerClient& m_client;
+    MediaPlayerClient* m_client;
     Timer m_reloadTimer;
     std::unique_ptr<MediaPlayerPrivateInterface> m_private;
     const MediaPlayerFactory* m_currentMediaEngine;

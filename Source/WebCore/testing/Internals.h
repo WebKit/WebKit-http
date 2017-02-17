@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,6 +58,7 @@ class InternalSettings;
 class MallocStatistics;
 class MediaSession;
 class MemoryInfo;
+class MockCDMFactory;
 class MockContentFilterSettings;
 class MockPageOverlay;
 class NodeList;
@@ -67,6 +68,7 @@ class RenderedDocumentMarker;
 class RTCPeerConnection;
 class SerializedScriptValue;
 class SourceBuffer;
+class StyleSheet;
 class TimeRanges;
 class TypeConversions;
 class XMLHttpRequest;
@@ -104,11 +106,14 @@ public:
 
     unsigned imageFrameIndex(HTMLImageElement&);
     void setImageFrameDecodingDuration(HTMLImageElement&, float duration);
+    void resetImageAnimation(HTMLImageElement&);
 
     void clearPageCache();
     unsigned pageCacheSize() const;
 
-    RefPtr<CSSComputedStyleDeclaration> computedStyleIncludingVisitedInfo(Element&) const;
+    void disableTileSizeUpdateDelay();
+
+    Ref<CSSComputedStyleDeclaration> computedStyleIncludingVisitedInfo(Element&) const;
 
     Node* ensureUserAgentShadowRoot(Element& host);
     Node* shadowRoot(Element& host);
@@ -116,10 +121,19 @@ public:
     String shadowPseudoId(Element&);
     void setShadowPseudoId(Element&, const String&);
 
+    // CSS Deferred Parsing Testing
+    unsigned deferredStyleRulesCount(StyleSheet&);
+    unsigned deferredGroupRulesCount(StyleSheet&);
+    unsigned deferredKeyframesRulesCount(StyleSheet&);
+
     // DOMTimers throttling testing.
     ExceptionOr<bool> isTimerThrottled(int timeoutId);
     bool isRequestAnimationFrameThrottled() const;
     bool areTimersThrottled() const;
+
+    enum EventThrottlingBehavior { Responsive, Unresponsive };
+    void setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior>);
+    std::optional<EventThrottlingBehavior> eventThrottlingBehaviorOverride() const;
 
     // Spatial Navigation testing.
     ExceptionOr<unsigned> lastSpatialNavigationCandidateCount() const;
@@ -187,8 +201,9 @@ public:
     unsigned locationFromRange(Element& scope, const Range&);
     unsigned lengthFromRange(Element& scope, const Range&);
     String rangeAsText(const Range&);
-    RefPtr<Range> subrange(Range&, int rangeLocation, int rangeLength);
+    Ref<Range> subrange(Range&, int rangeLocation, int rangeLength);
     ExceptionOr<RefPtr<Range>> rangeForDictionaryLookupAtLocation(int x, int y);
+    RefPtr<Range> rangeOfStringNearLocation(const Range&, const String&, unsigned);
 
     ExceptionOr<void> setDelegatesScrolling(bool enabled);
 
@@ -225,8 +240,9 @@ public:
     bool isOverwriteModeEnabled();
     void toggleOverwriteModeEnabled();
 
-    unsigned countMatchesForText(const String&, unsigned findOptions, const String& markMatches);
-    unsigned countFindMatches(const String&, unsigned findOptions);
+    ExceptionOr<RefPtr<Range>> rangeOfString(const String&, RefPtr<Range>&&, const Vector<String>& findOptions);
+    ExceptionOr<unsigned> countMatchesForText(const String&, const Vector<String>& findOptions, const String& markMatches);
+    ExceptionOr<unsigned> countFindMatches(const String&, const Vector<String>& findOptions);
 
     unsigned numberOfScrollableAreas();
 
@@ -236,6 +252,7 @@ public:
 
     InternalSettings* settings() const;
     unsigned workerThreadCount() const;
+    bool areSVGAnimationsPaused() const;
 
     ExceptionOr<void> setDeviceProximity(const String& eventType, double value, double min, double max);
 
@@ -245,7 +262,8 @@ public:
         LAYER_TREE_INCLUDES_TILE_CACHES = 2,
         LAYER_TREE_INCLUDES_REPAINT_RECTS = 4,
         LAYER_TREE_INCLUDES_PAINTING_PHASES = 8,
-        LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16
+        LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16,
+        LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32,
     };
     ExceptionOr<String> layerTreeAsText(Document&, unsigned short flags) const;
     ExceptionOr<String> repaintRectsAsText() const;
@@ -339,8 +357,8 @@ public:
     ExceptionOr<void> updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node*);
     unsigned layoutCount() const;
 
-    RefPtr<ArrayBuffer> serializeObject(PassRefPtr<SerializedScriptValue>) const;
-    RefPtr<SerializedScriptValue> deserializeBuffer(ArrayBuffer&) const;
+    Ref<ArrayBuffer> serializeObject(const RefPtr<SerializedScriptValue>&) const;
+    Ref<SerializedScriptValue> deserializeBuffer(ArrayBuffer&) const;
 
     bool isFromCurrentWorld(JSC::JSValue) const;
 
@@ -361,6 +379,10 @@ public:
     void initializeMockCDM();
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    Ref<MockCDMFactory> registerMockCDM();
+#endif
+
 #if ENABLE(SPEECH_SYNTHESIS)
     void enableMockSpeechSynthesizer();
 #endif
@@ -373,6 +395,7 @@ public:
     void enableMockMediaEndpoint();
     void enableMockRTCPeerConnectionHandler();
     void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
+    void useMockRTCPeerConnectionFactory(const String&);
 #endif
 
     String getImageSourceURL(Element&);
@@ -416,6 +439,7 @@ public:
     void applicationDidEnterForeground() const;
     void applicationWillEnterBackground() const;
     ExceptionOr<void> setMediaSessionRestrictions(const String& mediaType, const String& restrictions);
+    ExceptionOr<String> mediaSessionRestrictions(const String& mediaType) const;
     void setMediaElementRestrictions(HTMLMediaElement&, const String& restrictions);
     ExceptionOr<void> postRemoteControlCommand(const String&, float argument);
     bool elementIsBlockingDisplaySleep(HTMLMediaElement&) const;
@@ -444,7 +468,7 @@ public:
 
     enum class PageOverlayType { View, Document };
     ExceptionOr<Ref<MockPageOverlay>> installMockPageOverlay(PageOverlayType);
-    ExceptionOr<String> pageOverlayLayerTreeAsText() const;
+    ExceptionOr<String> pageOverlayLayerTreeAsText(unsigned short flags) const;
 
     void setPageMuted(const String&);
     String pageMediaState();
@@ -461,6 +485,7 @@ public:
 
 #if ENABLE(CSS_SCROLL_SNAP)
     ExceptionOr<String> scrollSnapOffsets(Element&);
+    void setPlatformMomentumScrollingPredictionEnabled(bool);
 #endif
 
     ExceptionOr<String> pathStringWithShrinkWrappedRects(const Vector<double>& rectComponents, double radius);
@@ -479,18 +504,6 @@ public:
 
     String composedTreeAsText(Node&);
     
-    void setLinkPreloadSupport(bool);
-    void setResourceTimingSupport(bool);
-
-#if ENABLE(CSS_GRID_LAYOUT)
-    void setCSSGridLayoutEnabled(bool);
-#endif
-
-#if ENABLE(WEBGL2)
-    bool webGL2Enabled() const;
-    void setWebGL2Enabled(bool);
-#endif
-
     bool isProcessingUserGesture();
 
     RefPtr<GCObservation> observeGC(JSC::JSValue);
@@ -501,6 +514,22 @@ public:
     bool userPrefersReducedMotion() const;
     
     void reportBacktrace();
+
+    enum class BaseWritingDirection { Natural, Ltr, Rtl };
+    void setBaseWritingDirection(BaseWritingDirection);
+
+#if ENABLE(POINTER_LOCK)
+    bool pageHasPendingPointerLock() const;
+    bool pageHasPointerLock() const;
+#endif
+
+    Vector<String> accessKeyModifiers() const;
+
+#if PLATFORM(IOS)
+    void setQuickLookPassword(const String&);
+#endif
+
+    void setAsRunningUserScripts(Document&);
 
 private:
     explicit Internals(Document&);

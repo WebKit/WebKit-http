@@ -895,6 +895,18 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
                 let swatch = new WebInspector.InlineSwatch(WebInspector.InlineSwatch.Type.Spring, spring, this._codeMirror.getOption("readOnly"));
                 createSwatch.call(this, swatch, marker, spring, springString);
             });
+
+            // Look for CSS variables and add swatches in front of them.
+            createCodeMirrorVariableTextMarkers(this._codeMirror, range, (marker, variable, variableString) => {
+                const dontCreateIfMissing = true;
+                let variableProperty = this._style.nodeStyles.computedStyle.propertyForName(variableString, dontCreateIfMissing);
+                if (!variableProperty)
+                    return;
+
+                let trimmedValue = variableProperty.value.trim();
+                let swatch = new WebInspector.InlineSwatch(WebInspector.InlineSwatch.Type.Variable, trimmedValue, this._codeMirror.getOption("readOnly"));
+                createSwatch.call(this, swatch, marker, variableProperty, trimmedValue);
+            });
         }
 
         if (nonatomic)
@@ -1143,7 +1155,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
                 // The property name is so vague or nonsensical that there are more than 3 other properties that have the same Levenshtein value.
                 invalidMarkerInfo = {
                     position: from,
-                    title: WebInspector.UIString("The property “%s” is not supported.").format(property.name),
+                    title: WebInspector.UIString("Unsupported property “%s”").format(property.name),
                     correction: false,
                     autocomplete: false
                 };
@@ -1330,8 +1342,6 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     _inlineSwatchValueChanged(event)
     {
-        console.assert(this._hasActiveInlineSwatchEditor);
-
         let swatch = event && event.target;
         console.assert(swatch);
         if (!swatch)
@@ -1379,7 +1389,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
     _inlineSwatchDeactivated()
     {
         this._hasActiveInlineSwatchEditor = false;
-    }    
+    }
 
     _propertyOverriddenStatusChanged(event)
     {

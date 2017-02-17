@@ -37,7 +37,6 @@
 #include "JSObject.h"
 #include "Opcode.h"
 #include "StackAlignment.h"
-#include "StackFrame.h"
 #include <wtf/HashMap.h>
 
 #if !ENABLE(JIT)
@@ -60,6 +59,7 @@ namespace JSC {
     class ModuleProgramExecutable;
     class Register;
     class JSScope;
+    class StackFrame;
     struct CallFrameClosure;
     struct HandlerInfo;
     struct Instruction;
@@ -129,7 +129,7 @@ namespace JSC {
 
         bool isOpcode(Opcode);
 
-        JSValue execute(ProgramExecutable*, CallFrame*, JSObject* thisObj);
+        JSValue executeProgram(const SourceCode&, CallFrame*, JSObject* thisObj);
         JSValue executeCall(CallFrame*, JSObject* function, CallType, const CallData&, JSValue thisValue, const ArgList&);
         JSObject* executeConstruct(CallFrame*, JSObject* function, ConstructType, const ConstructData&, const ArgList&, JSValue newTarget);
         JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, JSScope*);
@@ -168,7 +168,6 @@ namespace JSC {
 #if !ENABLE(JIT)
         CLoopStack m_cloopStack;
 #endif
-        int m_errorHandlingModeReentry;
         
 #if ENABLE(COMPUTED_GOTO_OPCODES)
         Opcode* m_opcodeTable; // Maps OpcodeID => Opcode for compiling

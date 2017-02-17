@@ -27,52 +27,17 @@
 #include "config.h"
 #include "WebPreferences.h"
 
-#include "WaylandCompositor.h"
+#include "HardwareAccelerationManager.h"
 #include <WebCore/NotImplemented.h>
-#include <WebCore/PlatformDisplay.h>
-
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-#include <WebCore/PlatformDisplayX11.h>
-#endif
-
-using namespace WebCore;
 
 namespace WebKit {
 
 void WebPreferences::platformInitializeStore()
 {
-#if !ENABLE(OPENGL)
-    setAcceleratedCompositingEnabled(false);
-#else
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    setForceCompositingMode(true);
-#else
-    if (getenv("WEBKIT_FORCE_COMPOSITING_MODE"))
-        setForceCompositingMode(true);
-#endif
-
-    if (getenv("WEBKIT_DISABLE_COMPOSITING_MODE")) {
+    if (!HardwareAccelerationManager::singleton().canUseHardwareAcceleration())
         setAcceleratedCompositingEnabled(false);
-        return;
-    }
-
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::X11) {
-        auto& display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay());
-        Optional<int> damageBase;
-        if (!display.supportsXComposite() || !display.supportsXDamage(damageBase))
-            setAcceleratedCompositingEnabled(false);
-    }
-#endif
-
-#if PLATFORM(WAYLAND)
-    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland) {
-        if (!WaylandCompositor::singleton().isRunning())
-            setAcceleratedCompositingEnabled(false);
-    }
-#endif
-
-#endif // ENABLE(OPENGL)
+    else if (HardwareAccelerationManager::singleton().forceHardwareAcceleration())
+        setForceCompositingMode(true);
 }
 
 void WebPreferences::platformUpdateStringValueForKey(const String&, const String&)

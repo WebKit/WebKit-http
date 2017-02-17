@@ -22,10 +22,10 @@
 
 #include "ActivityStateChangeObserver.h"
 #include "AlternativeTextClient.h"
-#include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "BackForwardClient.h"
 #include "BackForwardController.h"
+#include "CSSAnimationController.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "ClientRectList.h"
@@ -33,6 +33,7 @@
 #include "ContextMenuController.h"
 #include "DatabaseProvider.h"
 #include "DiagnosticLoggingClient.h"
+#include "DiagnosticLoggingKeys.h"
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
 #include "DragController.h"
@@ -54,6 +55,7 @@
 #include "HistoryItem.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
+#include "LibWebRTCProvider.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MediaCanStartListener.h"
@@ -65,6 +67,7 @@
 #include "PageDebuggable.h"
 #include "PageGroup.h"
 #include "PageOverlayController.h"
+#include "PerformanceMonitor.h"
 #include "PlatformMediaSessionManager.h"
 #include "PlugInClient.h"
 #include "PluginData.h"
@@ -78,11 +81,13 @@
 #include "RenderWidget.h"
 #include "ResourceUsageOverlay.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SVGDocumentExtensions.h"
 #include "SchemeRegistry.h"
 #include "ScriptController.h"
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
 #include "SharedBuffer.h"
+#include "SocketProvider.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
 #include "StorageNamespaceProvider.h"
@@ -96,7 +101,9 @@
 #include "VisitedLinkState.h"
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
+#include "WebGLStateTracker.h"
 #include "Widget.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/Base64.h>
@@ -121,9 +128,19 @@
 #include "InProcessIDBServer.h"
 #endif
 
+#if ENABLE(DATA_INTERACTION)
+#include "SelectionRect.h"
+#endif
+
 namespace WebCore {
 
 static HashSet<Page*>* allPages;
+static unsigned nonUtilityPageCount { 0 };
+
+static inline bool isUtilityPageChromeClient(ChromeClient& chromeClient)
+{
+    return chromeClient.isEmptyChromeClient() || chromeClient.isSVGImageChromeClient();
+}
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, pageCounter, ("Page"));
 
@@ -133,6 +150,12 @@ void Page::forEachPage(std::function<void(Page&)> function)
         return;
     for (Page* page : *allPages)
         function(*page);
+}
+
+void Page::updateValidationBubbleStateIfNeeded()
+{
+    if (auto* client = validationMessageClient())
+        client->updateValidationBubbleStateIfNeeded();
 }
 
 static void networkStateChanged(bool isOnLine)
@@ -183,7 +206,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_plugInClient(pageConfiguration.plugInClient)
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
     , m_diagnosticLoggingClient(WTFMove(pageConfiguration.diagnosticLoggingClient))
-    , m_subframeCount(0)
+    , m_webGLStateTracker(WTFMove(pageConfiguration.webGLStateTracker))
+    , m_libWebRTCProvider(WTFMove(pageConfiguration.libWebRTCProvider))
     , m_openedByDOM(false)
     , m_tabKeyCyclesThroughElements(true)
     , m_defersLoading(false)
@@ -237,6 +261,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
     , m_isClosing(false)
+    , m_isUtilityPage(isUtilityPageChromeClient(chrome().client()))
+    , m_performanceMonitor(isUtilityPage() ? nullptr : std::make_unique<PerformanceMonitor>(*this))
 {
     updateTimerThrottlingState();
 
@@ -253,6 +279,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
 
     ASSERT(!allPages->contains(this));
     allPages->add(this);
+    if (!isUtilityPage())
+        ++nonUtilityPageCount;
 
 #ifndef NDEBUG
     pageCounter.increment();
@@ -269,11 +297,16 @@ Page::Page(PageConfiguration&& pageConfiguration)
 
 Page::~Page()
 {
+    ASSERT(!m_nestedRunLoopCount);
+    ASSERT(!m_unnestCallback);
+
     m_validationMessageClient = nullptr;
     m_diagnosticLoggingClient = nullptr;
     m_mainFrame->setView(nullptr);
     setGroupName(String());
     allPages->remove(this);
+    if (!isUtilityPage())
+        --nonUtilityPageCount;
     
     m_settings->pageDestroyed();
 
@@ -293,6 +326,7 @@ Page::~Page()
         m_scrollingCoordinator->pageDestroyed();
 
     backForward().close();
+    PageCache::singleton().removeAllItemsForPage(*this);
 
 #ifndef NDEBUG
     pageCounter.decrement();
@@ -337,7 +371,7 @@ ViewportArguments Page::viewportArguments() const
 ScrollingCoordinator* Page::scrollingCoordinator()
 {
     if (!m_scrollingCoordinator && m_settings->scrollingCoordinatorEnabled()) {
-        m_scrollingCoordinator = chrome().client().createScrollingCoordinator(this);
+        m_scrollingCoordinator = chrome().client().createScrollingCoordinator(*this);
         if (!m_scrollingCoordinator)
             m_scrollingCoordinator = ScrollingCoordinator::create(this);
     }
@@ -511,26 +545,11 @@ void Page::refreshPlugins(bool reload)
 
     HashSet<PluginInfoProvider*> pluginInfoProviders;
 
-    Vector<Ref<Frame>> framesNeedingReload;
-
-    for (auto& page : *allPages) {
+    for (auto& page : *allPages)
         pluginInfoProviders.add(&page->pluginInfoProvider());
-        page->m_pluginData = nullptr;
-
-        if (!reload)
-            continue;
-        
-        for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-            if (frame->loader().subframeLoader().containsPlugins())
-                framesNeedingReload.append(*frame);
-        }
-    }
 
     for (auto& pluginInfoProvider : pluginInfoProviders)
-        pluginInfoProvider->refreshPlugins();
-
-    for (auto& frame : framesNeedingReload)
-        frame->loader().reload();
+        pluginInfoProvider->refresh(reload);
 }
 
 PluginData& Page::pluginData()
@@ -540,20 +559,23 @@ PluginData& Page::pluginData()
     return *m_pluginData;
 }
 
+void Page::clearPluginData()
+{
+    m_pluginData = nullptr;
+}
+
 bool Page::showAllPlugins() const
 {
     if (m_showAllPlugins)
         return true;
 
-    if (Document* document = mainFrame().document()) {
-        if (SecurityOrigin* securityOrigin = document->securityOrigin())
-            return securityOrigin->isLocal();
-    }
+    if (Document* document = mainFrame().document())
+        return document->securityOrigin().isLocal();
 
     return false;
 }
 
-inline Optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMediaCanStartListener()
+inline std::optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMediaCanStartListener()
 {
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->document())
@@ -561,7 +583,7 @@ inline Optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMedi
         if (MediaCanStartListener* listener = frame->document()->takeAnyMediaCanStartListener())
             return { { *listener, *frame->document() } };
     }
-    return Nullopt;
+    return std::nullopt;
 }
 
 void Page::setCanStartMedia(bool canStartMedia)
@@ -768,10 +790,8 @@ void Page::setInLowQualityImageInterpolationMode(bool mode)
 
 DiagnosticLoggingClient& Page::diagnosticLoggingClient() const
 {
-    static NeverDestroyed<EmptyDiagnosticLoggingClient> dummyClient;
     if (!settings().diagnosticLoggingEnabled() || !m_diagnosticLoggingClient)
-        return dummyClient;
-
+        return emptyDiagnosticLoggingClient();
     return *m_diagnosticLoggingClient;
 }
 
@@ -913,6 +933,25 @@ void Page::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInte
         frame->document()->userInterfaceLayoutDirectionChanged();
     }
 #endif
+}
+
+void Page::didStartProvisionalLoad()
+{
+    if (m_performanceMonitor)
+        m_performanceMonitor->didStartProvisionalLoad();
+}
+
+void Page::didFinishLoad()
+{
+    resetRelevantPaintedObjectCounter();
+
+    if (m_performanceMonitor)
+        m_performanceMonitor->didFinishLoad();
+}
+
+bool Page::isOnlyNonUtilityPage() const
+{
+    return !isUtilityPage() && nonUtilityPageCount == 1;
 }
 
 void Page::setTopContentInset(float contentInset)
@@ -1328,18 +1367,15 @@ void Page::dnsPrefetchingStateChanged()
 Vector<Ref<PluginViewBase>> Page::pluginViews()
 {
     Vector<Ref<PluginViewBase>> views;
-
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        FrameView* view = frame->view();
+        auto* view = frame->view();
         if (!view)
             break;
-
         for (auto& widget : view->children()) {
-            if (is<PluginViewBase>(*widget))
-                views.append(downcast<PluginViewBase>(*widget));
+            if (is<PluginViewBase>(widget.get()))
+                views.append(downcast<PluginViewBase>(widget.get()));
         }
     }
-
     return views;
 }
 
@@ -1458,6 +1494,10 @@ void Page::setActivityState(ActivityState::Flags activityState)
         setIsInWindowInternal(activityState & ActivityState::IsInWindow);
     if (changed & ActivityState::IsVisuallyIdle)
         setIsVisuallyIdleInternal(activityState & ActivityState::IsVisuallyIdle);
+    if (changed & ActivityState::WindowIsActive) {
+        if (auto* view = m_mainFrame->view())
+            view->updateTiledBackingAdaptiveSizing();
+    }
 
     if (changed & (ActivityState::IsVisible | ActivityState::IsVisuallyIdle | ActivityState::IsAudible | ActivityState::IsLoading))
         updateTimerThrottlingState();
@@ -1467,11 +1507,19 @@ void Page::setActivityState(ActivityState::Flags activityState)
 
     if (wasVisibleAndActive != isVisibleAndActive())
         PlatformMediaSessionManager::updateNowPlayingInfoIfNecessary();
+
+    if (m_performanceMonitor)
+        m_performanceMonitor->activityStateChanged(oldActivityState, activityState);
 }
 
 bool Page::isVisibleAndActive() const
 {
     return (m_activityState & ActivityState::IsVisible) && (m_activityState & ActivityState::WindowIsActive);
+}
+
+bool Page::isWindowActive() const
+{
+    return m_activityState & ActivityState::WindowIsActive;
 }
 
 void Page::setIsVisible(bool isVisible)
@@ -1480,6 +1528,24 @@ void Page::setIsVisible(bool isVisible)
         setActivityState((m_activityState & ~ActivityState::IsVisuallyIdle) | ActivityState::IsVisible | ActivityState::IsVisibleOrOccluded);
     else
         setActivityState((m_activityState & ~(ActivityState::IsVisible | ActivityState::IsVisibleOrOccluded)) | ActivityState::IsVisuallyIdle);
+}
+
+enum class SVGAnimationsState { Paused, Resumed };
+static inline void setSVGAnimationsState(Page& page, SVGAnimationsState state)
+{
+    for (Frame* frame = &page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        auto* document = frame->document();
+        if (!document)
+            continue;
+
+        if (!document->svgExtensions())
+            continue;
+
+        if (state == SVGAnimationsState::Paused)
+            document->accessSVGExtensions().pauseAnimations();
+        else
+            document->accessSVGExtensions().unpauseAnimations();
+    }
 }
 
 void Page::setIsVisibleInternal(bool isVisible)
@@ -1501,6 +1567,8 @@ void Page::setIsVisibleInternal(bool isVisible)
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame().animation().resumeAnimations();
 
+        setSVGAnimationsState(*this, SVGAnimationsState::Resumed);
+
         resumeAnimatingImages();
     }
 
@@ -1514,6 +1582,8 @@ void Page::setIsVisibleInternal(bool isVisible)
     if (!isVisible) {
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame().animation().suspendAnimations();
+
+        setSVGAnimationsState(*this, SVGAnimationsState::Paused);
 
 #if PLATFORM(IOS)
         suspendDeviceMotionAndOrientationUpdates();
@@ -1534,10 +1604,10 @@ void Page::setIsPrerender()
 PageVisibilityState Page::visibilityState() const
 {
     if (isVisible())
-        return PageVisibilityStateVisible;
+        return PageVisibilityState::Visible;
     if (m_isPrerender)
-        return PageVisibilityStatePrerender;
-    return PageVisibilityStateHidden;
+        return PageVisibilityState::Prerender;
+    return PageVisibilityState::Hidden;
 }
 
 #if ENABLE(RUBBER_BANDING)
@@ -1573,6 +1643,41 @@ void Page::addFooterWithHeight(int footerHeight)
     renderView->compositor().updateLayerForFooter(m_footerHeight);
 }
 #endif
+
+void Page::incrementNestedRunLoopCount()
+{
+    m_nestedRunLoopCount++;
+}
+
+void Page::decrementNestedRunLoopCount()
+{
+    ASSERT(m_nestedRunLoopCount);
+    if (m_nestedRunLoopCount <= 0)
+        return;
+
+    m_nestedRunLoopCount--;
+
+    if (!m_nestedRunLoopCount && m_unnestCallback) {
+        callOnMainThread([this] {
+            if (insideNestedRunLoop())
+                return;
+
+            // This callback may destruct the Page.
+            if (m_unnestCallback) {
+                auto callback = m_unnestCallback;
+                m_unnestCallback = nullptr;
+                callback();
+            }
+        });
+    }
+}
+
+void Page::whenUnnested(std::function<void()> callback)
+{
+    ASSERT(!m_unnestCallback);
+
+    m_unnestCallback = callback;
+}
 
 #if ENABLE(REMOTE_INSPECTOR)
 bool Page::remoteInspectionAllowed() const
@@ -1993,8 +2098,14 @@ void Page::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
 
 WheelEventTestTrigger& Page::ensureTestTrigger()
 {
-    if (!m_testTrigger)
+    if (!m_testTrigger) {
         m_testTrigger = adoptRef(new WheelEventTestTrigger());
+        // We need to update the scrolling coordinator so that the mainframe scrolling node can expect wheel event test triggers.
+        if (auto* frameView = mainFrame().view()) {
+            if (m_scrollingCoordinator)
+                m_scrollingCoordinator->updateExpectsWheelEventTestTriggerWithFrameView(*frameView);
+        }
+    }
 
     return *m_testTrigger;
 }
@@ -2033,7 +2144,7 @@ void Page::setResourceUsageOverlayVisible(bool visible)
         return;
     }
 
-    if (!m_resourceUsageOverlay)
+    if (!m_resourceUsageOverlay && m_settings->acceleratedCompositingEnabled())
         m_resourceUsageOverlay = std::make_unique<ResourceUsageOverlay>(*this);
 }
 #endif
@@ -2057,5 +2168,47 @@ void Page::setCaptionUserPreferencesStyleSheet(const String& styleSheet)
     
     invalidateInjectedStyleSheetCacheInAllFrames();
 }
+
+void Page::accessibilitySettingsDidChange()
+{
+    bool neededRecalc = false;
+
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (Document* document = frame->document()) {
+            auto* styleResolver = document->styleScope().resolverIfExists();
+            if (styleResolver && styleResolver->hasMediaQueriesAffectedByAccessibilitySettingsChange()) {
+                document->styleScope().didChangeStyleSheetEnvironment();
+                neededRecalc = true;
+                // FIXME: This instrumentation event is not strictly accurate since cached media query results do not persist across StyleResolver rebuilds.
+                InspectorInstrumentation::mediaQueryResultChanged(*document);
+            }
+        }
+    }
+
+    if (neededRecalc)
+        LOG(Layout, "hasMediaQueriesAffectedByAccessibilitySettingsChange, enqueueing style recalc");
+}
+
+#if ENABLE(DATA_INTERACTION)
+
+bool Page::hasDataInteractionAtPosition(const FloatPoint& position) const
+{
+    auto currentSelection = m_mainFrame->selection().selection();
+    if (!currentSelection.isRange())
+        return false;
+
+    if (auto selectedRange = currentSelection.toNormalizedRange()) {
+        Vector<SelectionRect> selectionRects;
+        selectedRange->collectSelectionRects(selectionRects);
+        for (auto selectionRect : selectionRects) {
+            if (FloatRect(selectionRect.rect()).contains(position))
+                return true;
+        }
+    }
+
+    return false;
+}
+
+#endif
 
 } // namespace WebCore

@@ -44,14 +44,14 @@ public:
     virtual ~TextureMapperGL();
 
     enum Flag {
-        ShouldBlend = 1 << 0,
-        ShouldFlipTexture = 1 << 1,
-        ShouldUseARBTextureRect = 1 << 2,
-        ShouldAntialias = 1 << 3,
-        ShouldRotateTexture90 = 1 << 4,
-        ShouldRotateTexture180 = 1 << 5,
-        ShouldRotateTexture270 = 1 << 6,
-        ShouldOverwriteRect = 1 << 7
+        ShouldBlend = 0x01,
+        ShouldFlipTexture = 0x02,
+        ShouldUseARBTextureRect = 0x04,
+        ShouldAntialias = 0x08,
+        ShouldRotateTexture90 = 0x10,
+        ShouldRotateTexture180 = 0x20,
+        ShouldRotateTexture270 = 0x40,
+        ShouldOverwriteRect = 0x80
     };
 
     typedef int Flags;

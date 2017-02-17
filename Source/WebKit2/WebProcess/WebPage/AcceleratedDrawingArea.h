@@ -73,11 +73,21 @@ protected:
 
     void layerHostDidFlushLayers() override;
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    void didChangeViewportAttributes(WebCore::ViewportAttributes&&) override;
+#endif
+
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+    void deviceOrPageScaleFactorChanged() override;
+#endif
+
     // IPC message handlers.
     void updateBackingStoreState(uint64_t backingStoreStateID, bool respondImmediately, float deviceScaleFactor, const WebCore::IntSize&, const WebCore::IntSize& scrollOffset) override;
 
     void exitAcceleratedCompositingModeSoon();
     bool exitAcceleratedCompositingModePending() const { return m_exitCompositingTimer.isActive(); }
+    void exitAcceleratedCompositingModeNow();
+    void discardPreviousLayerTreeHost();
 
     virtual void suspendPainting();
     virtual void resumePainting();
@@ -119,6 +129,9 @@ protected:
 
     // The layer tree host that handles accelerated compositing.
     RefPtr<LayerTreeHost> m_layerTreeHost;
+
+    RefPtr<LayerTreeHost> m_previousLayerTreeHost;
+    RunLoop::Timer<AcceleratedDrawingArea> m_discardPreviousLayerTreeHostTimer;
 };
 
 } // namespace WebKit

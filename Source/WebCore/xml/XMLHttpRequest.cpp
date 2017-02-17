@@ -54,6 +54,7 @@
 #include "XMLHttpRequestProgressEvent.h"
 #include "XMLHttpRequestUpload.h"
 #include "markup.h"
+#include <interpreter/StackVisitor.h>
 #include <mutex>
 #include <runtime/ArrayBuffer.h>
 #include <runtime/ArrayBufferView.h>
@@ -145,8 +146,7 @@ bool XMLHttpRequest::usesDashboardBackwardCompatibilityMode() const
 {
     if (scriptExecutionContext()->isWorkerGlobalScope())
         return false;
-    Settings* settings = document()->settings();
-    return settings && settings->usesDashboardBackwardCompatibilityMode();
+    return document()->settings().usesDashboardBackwardCompatibilityMode();
 }
 
 #endif
@@ -424,11 +424,6 @@ ExceptionOr<void> XMLHttpRequest::open(const String& method, const URL& url, boo
         return Exception { SECURITY_ERR };
 
     if (!async && scriptExecutionContext()->isDocument()) {
-        if (document()->settings() && !document()->settings()->syncXHRInDocumentsEnabled()) {
-            logConsoleError(scriptExecutionContext(), "Synchronous XMLHttpRequests are disabled for this page.");
-            return Exception { INVALID_ACCESS_ERR };
-        }
-
         // Newer functionality is not available to synchronous requests in window contexts, as a spec-mandated
         // attempt to discourage synchronous XHR use. responseType is one such piece of functionality.
         // We'll only disable this functionality for HTTP(S) requests since sync requests for local protocols
@@ -476,10 +471,10 @@ ExceptionOr<void> XMLHttpRequest::open(const String& method, const String& url, 
     return open(method, urlWithCredentials, async);
 }
 
-Optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
+std::optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
 {
-    // A return value other than Nullopt means we should not try to send, and we should return that value to the caller.
-    // Nullopt means we are ready to send and should continue with the send algorithm.
+    // A return value other than std::nullopt means we should not try to send, and we should return that value to the caller.
+    // std::nullopt means we are ready to send and should continue with the send algorithm.
 
     if (!scriptExecutionContext())
         return ExceptionOr<void> { };
@@ -501,7 +496,73 @@ Optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
     }
 
     m_error = false;
-    return Nullopt;
+    return std::nullopt;
+}
+
+namespace {
+
+// FIXME: This should be abstracted out, so that any IDL function can be passed the line/column/url tuple.
+
+// FIXME: This should probably use ShadowChicken so that we get the right frame even when it did a tail call.
+// https://bugs.webkit.org/show_bug.cgi?id=155688
+
+class SendFunctor {
+public:
+    SendFunctor() = default;
+
+    unsigned line() const { return m_line; }
+    unsigned column() const { return m_column; }
+    String url() const { return m_url; }
+
+    JSC::StackVisitor::Status operator()(JSC::StackVisitor& visitor) const
+    {
+        if (!m_hasSkippedFirstFrame) {
+            m_hasSkippedFirstFrame = true;
+            return JSC::StackVisitor::Continue;
+        }
+
+        unsigned line = 0;
+        unsigned column = 0;
+        visitor->computeLineAndColumn(line, column);
+        m_line = line;
+        m_column = column;
+        m_url = visitor->sourceURL();
+        return JSC::StackVisitor::Done;
+    }
+
+private:
+    mutable bool m_hasSkippedFirstFrame { false };
+    mutable unsigned m_line { 0 };
+    mutable unsigned m_column { 0 };
+    mutable String m_url;
+};
+
+}
+
+ExceptionOr<void> XMLHttpRequest::send(JSC::ExecState& state, std::optional<SendTypes>&& sendType)
+{
+    InspectorInstrumentation::willSendXMLHttpRequest(scriptExecutionContext(), url());
+
+    ExceptionOr<void> result;
+    if (!sendType)
+        result = send();
+    else {
+        result = WTF::switchOn(sendType.value(),
+            [this] (const RefPtr<Document>& document) -> ExceptionOr<void> { return send(*document); },
+            [this] (const RefPtr<Blob>& blob) -> ExceptionOr<void> { return send(*blob); },
+            [this] (const RefPtr<JSC::ArrayBufferView>& arrayBufferView) -> ExceptionOr<void> { return send(*arrayBufferView); },
+            [this] (const RefPtr<JSC::ArrayBuffer>& arrayBuffer) -> ExceptionOr<void> { return send(*arrayBuffer); },
+            [this] (const RefPtr<DOMFormData>& formData) -> ExceptionOr<void> { return send(*formData); },
+            [this] (const String& string) -> ExceptionOr<void> { return send(string); }
+        );
+    }
+
+    SendFunctor functor;
+    state.iterate(functor);
+    setLastSendLineAndColumnNumber(functor.line(), functor.column());
+    setLastSendURL(functor.url());
+
+    return result;
 }
 
 ExceptionOr<void> XMLHttpRequest::send(Document& document)
@@ -669,6 +730,7 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
     options.sameOriginDataURLFlag = SameOriginDataURLFlag::Set;
+    options.filteringPolicy = ResponseFilteringPolicy::Enable;
 
     if (m_responseType == ResponseType::Arraybuffer || getenv("WPE_DISABLE_XHR_RESPONSE_CACHING"))
         options.dataBufferingPolicy = DoNotBufferData;
@@ -997,10 +1059,10 @@ void XMLHttpRequest::didFinishLoading(unsigned long identifier, double)
 
     reportExtraMemoryCost();
 
-    Optional<String> decodedText;
+    std::optional<String> decodedText;
     if (!m_binaryResponseBuilder)
         decodedText = m_responseBuilder.toStringPreserveCapacity();
-    InspectorInstrumentation::didFinishXHRLoading(scriptExecutionContext(), this, identifier, decodedText, m_url, m_lastSendURL, m_lastSendLineNumber, m_lastSendColumnNumber);
+    InspectorInstrumentation::didFinishXHRLoading(scriptExecutionContext(), identifier, decodedText, m_url, m_lastSendURL, m_lastSendLineNumber, m_lastSendColumnNumber);
 
     bool hadLoader = m_loader;
     m_loader = nullptr;
@@ -1032,10 +1094,8 @@ void XMLHttpRequest::didSendData(unsigned long long bytesSent, unsigned long lon
     }
 }
 
-void XMLHttpRequest::didReceiveResponse(unsigned long identifier, const ResourceResponse& response)
+void XMLHttpRequest::didReceiveResponse(unsigned long, const ResourceResponse& response)
 {
-    InspectorInstrumentation::didReceiveXHRResponse(scriptExecutionContext(), identifier);
-
     m_response = response;
     if (!m_mimeTypeOverride.isEmpty())
         m_response.setHTTPHeaderField(HTTPHeaderName::ContentType, m_mimeTypeOverride);

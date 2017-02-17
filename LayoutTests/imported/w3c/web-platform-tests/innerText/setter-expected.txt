@@ -1,0 +1,59 @@
+abc
+
+PASS Simplest possible test 
+PASS Newlines convert to <br> in non-white-space:pre elements 
+PASS Newlines convert to <br> in <pre> element 
+PASS Newlines convert to <br> in white-space:pre element 
+PASS CRs convert to <br> in non-white-space:pre elements 
+PASS CRs convert to <br> in <pre> element 
+PASS Newline/CR pair converts to <br> in non-white-space:pre element 
+PASS Newline/newline pair converts to two <br>s in non-white-space:pre element 
+PASS CR/CR pair converts to two <br>s in non-white-space:pre element 
+PASS CRs convert to <br> in white-space:pre element 
+PASS < preserved 
+PASS > preserved 
+PASS & preserved 
+PASS " preserved 
+PASS ' preserved 
+PASS innerText not supported on SVG elements 
+PASS innerText not supported on MathML elements 
+PASS Null characters preserved 
+PASS Tabs preserved 
+PASS Leading whitespace preserved 
+PASS Trailing whitespace preserved 
+PASS Whitespace not compressed 
+PASS Existing text deleted 
+PASS Existing <br> deleted 
+PASS Assigning the empty string 
+PASS Assigning null 
+PASS Assigning undefined 
+PASS innerText on <area> element 
+PASS innerText on <base> element 
+PASS innerText on <basefont> element 
+PASS innerText on <bgsound> element 
+PASS innerText on <br> element 
+PASS innerText on <col> element 
+PASS innerText on <embed> element 
+PASS innerText on <frame> element 
+PASS innerText on <hr> element 
+PASS innerText on <image> element 
+PASS innerText on <img> element 
+PASS innerText on <input> element 
+PASS innerText on <keygen> element 
+PASS innerText on <link> element 
+PASS innerText on <menuitem> element 
+PASS innerText on <meta> element 
+PASS innerText on <param> element 
+PASS innerText on <source> element 
+PASS innerText on <track> element 
+PASS innerText on <wbr> element 
+PASS innerText on <colgroup> element 
+PASS innerText on <frameset> element 
+PASS innerText on <head> element 
+PASS innerText on <html> element 
+PASS innerText on <table> element 
+PASS innerText on <tbody> element 
+PASS innerText on <tfoot> element 
+PASS innerText on <thead> element 
+PASS innerText on <tr> element 
+

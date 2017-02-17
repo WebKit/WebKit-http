@@ -51,7 +51,17 @@ enum UnionType { "node", "sequence", "dictionary" };
     [EnforceRange] attribute unsigned short testEnforceRangeUnsignedShort;
 
     attribute DOMString testString;
+    attribute ByteString testByteString;
     attribute USVString testUSVString;
+
+    void setTestLongRecord(record<DOMString, long> record);
+    record<DOMString, long> testLongRecord();
+
+    void setTestNodeRecord(record<USVString, Node> record);
+    record<USVString, Node> testNodeRecord();
+
+    void setTestSequenceRecord(record<ByteString, sequence<DOMString>> record);
+    record<ByteString, sequence<DOMString>> testSequenceRecord();
 
     attribute (DOMString or long or boolean or Node or sequence<long>) testUnion;
     

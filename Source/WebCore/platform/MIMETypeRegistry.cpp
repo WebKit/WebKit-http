@@ -517,6 +517,24 @@ bool MIMETypeRegistry::isSupportedJavaScriptMIMEType(const String& mimeType)
     return supportedJavaScriptMIMETypes->contains(mimeType);
 }
 
+bool MIMETypeRegistry::isSupportedJSONMIMEType(const String& mimeType)
+{
+    if (mimeType.isEmpty())
+        return false;
+
+    if (equalLettersIgnoringASCIICase(mimeType, "application/json"))
+        return true;
+
+    // When detecting +json ensure there is a non-empty type / subtype preceeding the suffix.
+    if (mimeType.endsWith("+json", false) && mimeType.length() >= 8) {
+        size_t slashPosition = mimeType.find('/');
+        if (slashPosition != notFound && slashPosition > 0 && slashPosition <= mimeType.length() - 6)
+            return true;
+    }
+
+    return false;
+}
+
 bool MIMETypeRegistry::isSupportedNonImageMIMEType(const String& mimeType)
 {
     if (mimeType.isEmpty())
@@ -547,7 +565,7 @@ bool MIMETypeRegistry::isUnsupportedTextMIMEType(const String& mimeType)
 bool MIMETypeRegistry::isTextMIMEType(const String& mimeType)
 {
     return isSupportedJavaScriptMIMEType(mimeType)
-        || equalLettersIgnoringASCIICase(mimeType, "application/json") // Render JSON as text/plain.
+        || isSupportedJSONMIMEType(mimeType) // Render JSON as text/plain.
         || (mimeType.startsWith("text/", false)
             && !equalLettersIgnoringASCIICase(mimeType, "text/html")
             && !equalLettersIgnoringASCIICase(mimeType, "text/xml")
@@ -770,5 +788,20 @@ String MIMETypeRegistry::getNormalizedMIMEType(const String& mimeType)
 }
 
 #endif
+
+String MIMETypeRegistry::appendFileExtensionIfNecessary(const String& filename, const String& mimeType)
+{
+    if (filename.isEmpty())
+        return emptyString();
+
+    if (filename.reverseFind('.') != notFound)
+        return filename;
+
+    String preferredExtension = getPreferredExtensionForMIMEType(mimeType);
+    if (preferredExtension.isEmpty())
+        return filename;
+
+    return filename + "." + preferredExtension;
+}
 
 } // namespace WebCore

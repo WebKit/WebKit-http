@@ -45,9 +45,10 @@ class UnexpectedType {
 public:
     UnexpectedType() = delete;
     constexpr explicit UnexpectedType(const E& e) : val(e) { }
-    constexpr explicit UnexpectedType(E&& e) : val(WTFMove(e)) { }
-    constexpr const E& value() const { return val; }
-    RELAXED_CONSTEXPR E& value() { return val; }
+    constexpr explicit UnexpectedType(E&& e) : val(std::forward<E>(e)) { }
+    constexpr const E& value() const& { return val; }
+    RELAXED_CONSTEXPR E& value() & { return val; }
+    RELAXED_CONSTEXPR E&& value() && { return WTFMove(val); }
 
 private:
     E val;
@@ -70,12 +71,12 @@ constexpr UnexpectTag Unexpect { };
 namespace ExpectedDetail {
 
 // Invoked where std::Expected would instead throw.
-NO_RETURN_DUE_TO_CRASH void Throw() { RELEASE_ASSERT_NOT_REACHED(); }
+inline NO_RETURN_DUE_TO_CRASH void Throw() { RELEASE_ASSERT_NOT_REACHED(); }
 
 static constexpr enum class ValueTagType { } ValueTag { };
 static constexpr enum class ErrorTagType { } ErrorTag { };
 
-template<class T, std::enable_if_t<std::is_trivially_destructible<T>::value>* = nullptr> void destroy(T& t) { }
+template<class T, std::enable_if_t<std::is_trivially_destructible<T>::value>* = nullptr> void destroy(T&) { }
 template<class T, std::enable_if_t<!std::is_trivially_destructible<T>::value && (std::is_class<T>::value || std::is_union<T>::value)>* = nullptr> void destroy(T& t) { t.~T(); }
 
 template <class T, class E>
@@ -104,7 +105,9 @@ union Storage {
     constexpr Storage(ValueTagType) : val() { }
     constexpr Storage(ErrorTagType) : err() { }
     constexpr Storage(ValueTagType, const ValueType& val) : val(val) { }
+    constexpr Storage(ValueTagType, ValueType&& val) : val(std::forward<ValueType>(val)) { }
     constexpr Storage(ErrorTagType, const ErrorType& err) : err(err) { }
+    constexpr Storage(ErrorTagType, ErrorType&& err) : err(std::forward<ErrorType>(err)) { }
     ~Storage() { }
 };
 
@@ -131,6 +134,7 @@ union Storage<void, E> {
     constexpr Storage(ValueTagType) : dummy() { }
     constexpr Storage(ErrorTagType) : err() { }
     constexpr Storage(ErrorTagType, const ErrorType& err) : err(err) { }
+    constexpr Storage(ErrorTagType, ErrorType&& err) : err(std::forward<ErrorType>(err)) { }
     ~Storage() { }
 };
 
@@ -158,7 +162,9 @@ struct Base {
     constexpr Base(ValueTagType tag) : s(tag), has(true) { }
     constexpr Base(ErrorTagType tag) : s(tag), has(false) { }
     constexpr Base(ValueTagType tag, const ValueType& val) : s(tag, val), has(true) { }
+    constexpr Base(ValueTagType tag, ValueType&& val) : s(tag, std::forward<ValueType>(val)), has(true) { }
     constexpr Base(ErrorTagType tag, const ErrorType& err) : s(tag, err), has(false) { }
+    constexpr Base(ErrorTagType tag, ErrorType&& err) : s(tag, std::forward<ErrorType>(err)), has(false) { }
     Base(const Base& o)
         : has(o.has)
     {
@@ -194,6 +200,7 @@ struct ConstexprBase<void, E> {
     constexpr ConstexprBase(ValueTagType tag) : s(tag), has(true) { }
     constexpr ConstexprBase(ErrorTagType tag) : s(tag), has(false) { }
     constexpr ConstexprBase(ErrorTagType tag, const ErrorType& err) : s(tag, err), has(false) { }
+    constexpr ConstexprBase(ErrorTagType tag, ErrorType&& err) : s(tag, std::forward<ErrorType>(err)), has(false) { }
     ~ConstexprBase() = default;
 };
 
@@ -207,6 +214,7 @@ struct Base<void, E> {
     constexpr Base(ValueTagType tag) : s(tag), has(true) { }
     constexpr Base(ErrorTagType tag) : s(tag), has(false) { }
     constexpr Base(ErrorTagType tag, const ErrorType& err) : s(tag, err), has(false) { }
+    constexpr Base(ErrorTagType tag, ErrorType&& err) : s(tag, std::forward<ErrorType>(err)), has(false) { }
     Base(const Base& o)
         : has(o.has)
     {
@@ -254,10 +262,11 @@ public:
     Expected(const Expected&) = default;
     Expected(Expected&&) = default;
     constexpr Expected(const ValueType& e) : base(ExpectedDetail::ValueTag, e) { }
-    constexpr Expected(ValueType&& e) : base(ExpectedDetail::ValueTag, WTFMove(e)) { }
+    constexpr Expected(ValueType&& e) : base(ExpectedDetail::ValueTag, std::forward<ValueType>(e)) { }
     // template <class... Args> constexpr explicit Expected(in_place_t, Args&&...);
     // template <class U, class... Args> constexpr explicit Expected(in_place_t, std::initializer_list<U>, Args&&...);
     constexpr Expected(UnexpectedType<ErrorType> const& u) : base(ExpectedDetail::ErrorTag, u.value()) { }
+    constexpr Expected(UnexpectedType<ErrorType>&& u) : base(ExpectedDetail::ErrorTag, std::forward<UnexpectedType<E>>(u).value()) { }
     template <class Err> constexpr Expected(UnexpectedType<Err> const& u) : base(ExpectedDetail::ErrorTag, u.value()) { }
     // template <class... Args> constexpr explicit Expected(UnexpectTag, Args&&...);
     // template <class U, class... Args> constexpr explicit Expected(UnexpectTag, std::initializer_list<U>, Args&&...);
@@ -279,13 +288,17 @@ public:
             swap(base::s.val, o.s.val);
         else if (base::has && !o.has) {
             ErrorType e(WTFMove(o.s.err));
+            ExpectedDetail::destroy(o.s.err);
             ::new (&o.s.val) ValueType(WTFMove(base::s.val));
-            ::new (&base::s.err) ErrorType(e);
+            ExpectedDetail::destroy(base::s.val);
+            ::new (&base::s.err) ErrorType(WTFMove(e));
             swap(base::has, o.has);
         } else if (!base::has && o.has) {
             ValueType v(WTFMove(o.s.val));
+            ExpectedDetail::destroy(o.s.val);
             ::new (&o.s.err) ErrorType(WTFMove(base::s.err));
-            ::new (&base::s.val) ValueType(v);
+            ExpectedDetail::destroy(base::s.err);
+            ::new (&base::s.val) ValueType(WTFMove(v));
             swap(base::has, o.has);
         } else
             swap(base::s.err, o.s.err);
@@ -302,7 +315,7 @@ public:
     constexpr const ValueType& value() const & { return base::has ? base::s.val : (ExpectedDetail::Throw(), base::s.val); }
     RELAXED_CONSTEXPR ValueType& value() & { return base::has ? base::s.val : (ExpectedDetail::Throw(), base::s.val); }
     constexpr const ValueType&& value() const && { return base::has ? base::s.val : (ExpectedDetail::Throw(), base::s.val); }
-    RELAXED_CONSTEXPR ValueType&& value() && { return base::has ? base::s.val : (ExpectedDetail::Throw(), base::s.val); }
+    RELAXED_CONSTEXPR ValueType&& value() && { return WTFMove(base::has ? base::s.val : (ExpectedDetail::Throw(), base::s.val)); }
     constexpr const ErrorType& error() const & { return !base::has ? base::s.err : (ExpectedDetail::Throw(), base::s.err); }
     ErrorType& error() & { return !base::has ? base::s.err : (ExpectedDetail::Throw(), base::s.err); }
     RELAXED_CONSTEXPR ErrorType&& error() && { return !base::has ? base::s.err : (ExpectedDetail::Throw(), base::s.err); }
@@ -331,6 +344,7 @@ public:
     Expected(Expected&&) = default;
     // constexpr explicit Expected(in_place_t);
     constexpr Expected(UnexpectedType<E> const& u) : base(ExpectedDetail::ErrorTag, u.value()) { }
+    constexpr Expected(UnexpectedType<E>&& u) : base(ExpectedDetail::ErrorTag, std::forward<UnexpectedType<E>>(u).value()) { }
     template <class Err> constexpr Expected(UnexpectedType<Err> const& u) : base(ExpectedDetail::ErrorTag, u.value()) { }
 
     ~Expected() = default;
@@ -406,15 +420,15 @@ template <class T, class E> constexpr bool operator>=(const UnexpectedType<E>& x
 
 template <typename T, typename E> void swap(Expected<T, E>& x, Expected<T, E>& y) { x.swap(y); }
 
-template <class T, class E = WTF::NulloptTag> constexpr Expected<std::decay_t<T>, E> makeExpected(T&& v)
+template <class T, class E = std::nullopt_t> constexpr Expected<std::decay_t<T>, E> makeExpected(T&& v)
 {
     return Expected<typename std::decay<T>::type, E>(std::forward<T>(v));
 }
 template <class T, class E> constexpr Expected<T, std::decay_t<E>> makeExpectedFromError(E&& e) { return Expected<T, std::decay_t<E>>(makeUnexpected(e)); }
 template <class T, class E, class U> constexpr Expected<T, E> makeExpectedFromError(U&& u) { return Expected<T, E>(makeUnexpected(E { std::forward<U>(u) } )); }
-// template <class F, class E = WTF::NulloptTag> constexpr Expected<typename std::result_of<F>::type, E> makeExpected_from_call(F f);
+// template <class F, class E = std::nullopt_t> constexpr Expected<typename std::result_of<F>::type, E> makeExpected_from_call(F f);
 
-Expected<void, WTF::NulloptTag> makeExpected() { return Expected<void, WTF::NulloptTag>(); }
+inline Expected<void, std::nullopt_t> makeExpected() { return Expected<void, std::nullopt_t>(); }
 
 } // namespace WTF
 

@@ -28,6 +28,7 @@
 
 #include "JSWrappable.h"
 #include <JavaScriptCore/JSRetainPtr.h>
+#include <wtf/Optional.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -46,11 +47,17 @@ public:
     }
 
     void contextDestroyed();
+    void checkForOutstandingCallbacks();
 
     void makeWindowObject(JSContextRef, JSObjectRef windowObject, JSValueRef* exception);
     
     void doAsyncTask(JSValueRef callback);
+    void doAfterPresentationUpdate(JSValueRef callback);
+    void doAfterNextStablePresentationUpdate(JSValueRef callback);
+
     void zoomToScale(double scale, JSValueRef callback);
+
+    void simulateAccessibilitySettingsChangeNotification(JSValueRef callback);
 
     void touchDownAtPoint(long x, long y, long touchCount, JSValueRef callback);
     void liftUpAtPoint(long x, long y, long touchCount, JSValueRef callback);
@@ -83,6 +90,9 @@ public:
     
     void scrollToOffset(long x, long y);
 
+    void immediateScrollToOffset(long x, long y);
+    void immediateZoomToScale(double scale);
+
     void setDidStartFormControlInteractionCallback(JSValueRef);
     JSValueRef didStartFormControlInteractionCallback() const;
 
@@ -113,10 +123,15 @@ public:
     double zoomScale() const;
     double minimumZoomScale() const;
     double maximumZoomScale() const;
+    
+    std::optional<bool> stableStateOverride() const;
+    void setStableStateOverride(std::optional<bool>);
 
     JSObjectRef contentVisibleRect() const;
     
     JSObjectRef selectionRangeViewRects() const;
+    JSObjectRef textSelectionCaretRect() const;
+    JSObjectRef inputViewBounds() const;
 
     void insertText(JSStringRef, int location, int length);
     void removeAllDynamicDictionaries();
@@ -124,6 +139,13 @@ public:
     JSRetainPtr<JSStringRef> scrollingTreeAsText() const;
 
     void uiScriptComplete(JSStringRef result);
+    
+    void retrieveSpeakSelectionContent(JSValueRef);
+    JSRetainPtr<JSStringRef> accessibilitySpeakSelectionContent() const;
+
+    // These use a callback to allow the client to know when view visibility state updates get to the web process.
+    void removeViewFromWindow(JSValueRef);
+    void addViewToWindow(JSValueRef);
 
 private:
     UIScriptController(UIScriptContext&);

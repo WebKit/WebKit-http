@@ -41,8 +41,12 @@ WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& 
     : WebEvent(type, modifiers, timestamp)
     , m_text(text)
     , m_unmodifiedText(unmodifiedText)
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
     , m_key(key)
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
     , m_code(code)
+#endif
     , m_keyIdentifier(keyIdentifier)
     , m_windowsVirtualKeyCode(windowsVirtualKeyCode)
     , m_nativeVirtualKeyCode(nativeVirtualKeyCode)
@@ -58,10 +62,12 @@ WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& 
 
 #elif PLATFORM(GTK)
 
-WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, bool handledByInputMethod, Vector<String>&& commands, bool isKeypad, Modifiers modifiers, double timestamp)
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, bool handledByInputMethod, Vector<String>&& commands, bool isKeypad, Modifiers modifiers, double timestamp)
     : WebEvent(type, modifiers, timestamp)
     , m_text(text)
     , m_unmodifiedText(text)
+    , m_key(key)
+    , m_code(code)
     , m_keyIdentifier(keyIdentifier)
     , m_windowsVirtualKeyCode(windowsVirtualKeyCode)
     , m_nativeVirtualKeyCode(nativeVirtualKeyCode)
@@ -71,6 +77,29 @@ WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& 
     , m_isAutoRepeat(false)
     , m_isKeypad(isKeypad)
     , m_isSystemKey(false)
+{
+    ASSERT(isKeyboardEventType(type));
+}
+
+#elif PLATFORM(IOS)
+
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, double timestamp)
+    : WebEvent(type, modifiers, timestamp)
+    , m_text(text)
+    , m_unmodifiedText(unmodifiedText)
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    , m_key(key)
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    , m_code(code)
+#endif
+    , m_keyIdentifier(keyIdentifier)
+    , m_windowsVirtualKeyCode(windowsVirtualKeyCode)
+    , m_nativeVirtualKeyCode(nativeVirtualKeyCode)
+    , m_macCharCode(macCharCode)
+    , m_isAutoRepeat(isAutoRepeat)
+    , m_isKeypad(isKeypad)
+    , m_isSystemKey(isSystemKey)
 {
     ASSERT(isKeyboardEventType(type));
 }

@@ -305,7 +305,6 @@ http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-sub-frame-2-leve
 
 # These tests use Flash, which is not a good idea, because it is not installed on all machines that run tests.
 # WebKitTestRunner detects attempts to use Flash, and raises an assertion.
-editing/pasteboard/paste-noplugin.html [ Skip ]
 fast/dom/beforeload/flash-before-load.html [ Skip ]
 fast/dom/beforeload/remove-flash-in-beforeload-listener.html [ Skip ]
 fast/loader/sandboxed-plugin-crash.html [ Skip ]
@@ -315,7 +314,8 @@ plugins/plugin-document-willSendRequest-null.html [ Skip ]
 plugins/plugin-remove-readystatechange.html [ Skip ]
 
 # This test checks that NPN_GetURL with a blank target will return an error if the window isn't opened. This behavior doesn't
-# match Firefox or Chrome. We should either fix the test, or get rid of it.
+# match Firefox or Chrome. We should either fix the test, or get rid of it. This test also depends on implementing
+# testRunner::setCanOpenWindows() such that opening windows are forbidden by default.
 plugins/get-url-with-blank-target.html
 
 # requires video.buffered to be able to return multiple timeranges
@@ -437,8 +437,6 @@ http/tests/security/frameNavigation/xss-DENIED-targeted-link-navigation.html
 http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-window-open.html
 http/tests/security/javascriptURL/xss-DENIED-from-javascript-url-in-foreign-domain-window-open.html
 http/tests/security/javascriptURL/xss-DENIED-to-javascript-url-in-foreign-domain-window-open.html
-http/tests/security/popup-blocked-from-fake-event.html
-http/tests/security/popup-blocked-from-window-open.html
 
 # Unexplained failures that were formerly in the "unsafe access" list.
 http/tests/security/cross-frame-access-enumeration.html
@@ -548,6 +546,17 @@ fast/preloader/document-write-2.html [ Pass Failure ]
 ########################################
 ### START OF (4) Features that are not supported in WebKit2 and likely never will be
 
+# Internals.registerDefaultPortForProtocol() does not affect NetworkProcess. We should
+# look to remove it and write these test to make use of an HTTP server running on port 80.
+http/tests/security/contentSecurityPolicy/script-src-parsing-implicit-and-explicit-port-number.html
+http/tests/security/http-0.9/default-port-plugin-blocked.html
+http/tests/security/http-0.9/default-port-script-blocked.html
+http/tests/security/http-0.9/image-default-port-allowed.html
+http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed-ref-test.html
+http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed.html
+http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked.html
+http/tests/security/http-0.9/sandbox-should-not-persist-on-navigation.html
+
 # WebKitTestRunner doesn't have appleScriptController
 platform/mac/fast/AppleScript/001.html
 platform/mac/fast/AppleScript/array.html
@@ -589,6 +598,7 @@ platform/mac/fast/events/objc-event-api.html
 # https://bugs.webkit.org/show_bug.cgi?id=64285
 editing/pasteboard/file-drag-to-editable.html
 editing/pasteboard/file-input-files-access.html
+fast/dom/FileList-iterator.html
 fast/dom/Window/window-postmessage-clone-frames.html
 fast/dom/Window/window-postmessage-clone.html
 fast/events/data-transfer-files-attribute-identity.html
@@ -687,6 +697,9 @@ http/tests/misc/will-send-request-with-client-provided-http-body.html [ Pass ]
 
 # bug 162281
 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Failure ]
+
+# Resource Load Statistics are only supported in WebKit2
+http/tests/loading/resourceLoadStatistics/ [ Pass ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################

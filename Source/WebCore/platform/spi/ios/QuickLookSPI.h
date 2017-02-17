@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,6 +47,19 @@
 @property (readonly, nonatomic) NSURLResponse *previewResponse;
 @end
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#define kQLReturnPasswordProtected 1 << 2
+#else
+#define kQLReturnMask 0xaf00
+#define kQLReturnPasswordProtected (kQLReturnMask | 20)
+#endif
+
+#endif
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+static_assert(kQLReturnPasswordProtected == 4, "kQLReturnPasswordProtected should equal 4.");
+#else
+static_assert(kQLReturnPasswordProtected == 44820, "kQLReturnPasswordProtected should equal 44820.");
 #endif
 
 WTF_EXTERN_C_BEGIN
@@ -57,4 +70,3 @@ NSString *QLTypeCopyBestMimeTypeForURLAndMimeType(NSURL *, NSString *mimeType);
 NSString *QLTypeCopyUTIForURLAndMimeType(NSURL *, NSString *mimeType);
 
 WTF_EXTERN_C_END
-

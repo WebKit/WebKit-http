@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008-2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2008 Eric Seidel <eric@webkit.org>
  *
  *  This library is free software; you can redistribute it and/or
@@ -37,13 +37,11 @@ OBJC_CLASS WebScriptObject;
 
 struct NPObject;
 
-namespace Deprecated {
-class ScriptValue;
-}
-
 namespace JSC {
-class JSGlobalObject;
 class ExecState;
+class JSGlobalObject;
+class JSInternalPromise;
+class JSModuleRecord;
 
 namespace Bindings {
 class Instance;
@@ -53,14 +51,18 @@ class RootObject;
 
 namespace WebCore {
 
+class CachedScriptFetcher;
 class Frame;
 class HTMLDocument;
 class HTMLPlugInElement;
+class LoadableModuleScript;
 class ScriptSourceCode;
 class SecurityOrigin;
+class URL;
 class Widget;
+struct ExceptionDetails;
 
-typedef HashMap<void*, RefPtr<JSC::Bindings::RootObject>> RootObjectMap;
+using RootObjectMap = HashMap<void*, RefPtr<JSC::Bindings::RootObject>>;
 
 enum ReasonForCallingCanExecuteScripts {
     AboutToExecuteScript,
@@ -114,6 +116,17 @@ public:
     JSC::JSValue evaluate(const ScriptSourceCode&, ExceptionDetails* = nullptr);
     JSC::JSValue evaluateInWorld(const ScriptSourceCode&, DOMWrapperWorld&, ExceptionDetails* = nullptr);
 
+    void loadModuleScriptInWorld(LoadableModuleScript&, const String& moduleName, DOMWrapperWorld&);
+    void loadModuleScript(LoadableModuleScript&, const String& moduleName);
+    void loadModuleScriptInWorld(LoadableModuleScript&, const ScriptSourceCode&, DOMWrapperWorld&);
+    void loadModuleScript(LoadableModuleScript&, const ScriptSourceCode&);
+
+    JSC::JSValue linkAndEvaluateModuleScriptInWorld(LoadableModuleScript& , DOMWrapperWorld&);
+    JSC::JSValue linkAndEvaluateModuleScript(LoadableModuleScript&);
+
+    JSC::JSValue evaluateModule(const URL&, JSC::JSModuleRecord&, DOMWrapperWorld&);
+    JSC::JSValue evaluateModule(const URL&, JSC::JSModuleRecord&);
+
     WTF::TextPosition eventHandlerPosition() const;
 
     void enableEval();
@@ -134,7 +147,8 @@ public:
 
     const String* sourceURL() const { return m_sourceURL; } // 0 if we are not evaluating any script
 
-    void clearWindowShell(DOMWindow* newDOMWindow, bool goingIntoPageCache);
+    void clearWindowShellsNotMatchingDOMWindow(DOMWindow*, bool goingIntoPageCache);
+    void setDOMWindowForWindowShell(DOMWindow*);
     void updateDocument();
 
     void namedItemAdded(HTMLDocument*, const AtomicString&) { }
@@ -166,6 +180,7 @@ public:
 
 private:
     WEBCORE_EXPORT JSDOMWindowShell* initScript(DOMWrapperWorld&);
+    void setupModuleScriptHandlers(LoadableModuleScript&, JSC::JSInternalPromise&, DOMWrapperWorld&);
 
     void disconnectPlatformScriptObjects();
 

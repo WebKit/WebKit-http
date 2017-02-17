@@ -44,7 +44,9 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
             return comparisonResult;
 
         // Compare async resource types by their first timestamp so they are in chronological order.
-        if (a.resource.type === WebInspector.Resource.Type.XHR || a.resource.type === WebInspector.Resource.Type.WebSocket)
+        if (a.resource.type === WebInspector.Resource.Type.XHR
+            || a.resource.type === WebInspector.Resource.Type.Fetch
+            || a.resource.type === WebInspector.Resource.Type.WebSocket)
             return a.resource.firstTimestamp - b.resource.firstTimestamp || 0;
 
         // Compare by subtitle when the types are the same. The subtitle is used to show the
@@ -85,13 +87,6 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
     {
         let urlComponents = this._resource.urlComponents;
         return {text: [urlComponents.lastPathComponent, urlComponents.path, this._resource.url]};
-    }
-
-    onattach()
-    {
-        super.onattach();
-
-        this.element.addEventListener("contextmenu", this._handleContextMenuEvent.bind(this));
     }
 
     ondblclick()
@@ -161,11 +156,11 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
             this.callFirstAncestorFunction("descendantResourceTreeElementMainTitleDidChange", [this, oldMainTitle]);
     }
 
-    _handleContextMenuEvent(event)
+    populateContextMenu(contextMenu, event)
     {
-        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
-
         WebInspector.appendContextMenuItemsForSourceCode(contextMenu, this._resource);
+
+        super.populateContextMenu(contextMenu, event);
     }
 
     // Private

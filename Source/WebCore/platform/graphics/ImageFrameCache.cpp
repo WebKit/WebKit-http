@@ -70,29 +70,19 @@ ImageFrameCache::~ImageFrameCache()
     ASSERT(!hasDecodingQueue());
 }
 
-void ImageFrameCache::destroyDecodedData(bool destroyAll, size_t count)
+void ImageFrameCache::destroyDecodedData(size_t frameCount, size_t excludeFrame)
 {
-    if (destroyAll)
-        count = m_frames.size();
-    
     unsigned decodedSize = 0;
-    for (size_t i = 0; i <  count; ++i)
-        decodedSize += m_frames[i].clearImage();
+
+    ASSERT(frameCount <= m_frames.size());
+
+    for (size_t index = 0; index < frameCount; ++index) {
+        if (index == excludeFrame)
+            continue;
+        decodedSize += m_frames[index++].clearImage();
+    }
 
     decodedSizeReset(decodedSize);
-}
-
-bool ImageFrameCache::destroyDecodedDataIfNecessary(bool destroyAll, size_t count)
-{
-    unsigned decodedSize = 0;
-    for (auto& frame : m_frames)
-        decodedSize += frame.frameBytes();
-    
-    if (decodedSize < LargeAnimationCutoff)
-        return false;
-    
-    destroyDecodedData(destroyAll, count);
-    return true;
 }
 
 void ImageFrameCache::destroyIncompleteDecodedData()
@@ -242,6 +232,9 @@ void ImageFrameCache::cacheFrameNativeImageAtIndex(NativeImagePtr&& nativeImage,
     if (!isDecoderAvailable())
         return;
 
+    ASSERT(index < m_frames.size());
+    ASSERT(m_frames[index].isBeingDecoded());
+
     // Clean the old native image and set a new one
     replaceFrameNativeImageAtIndex(WTFMove(nativeImage), index, subsamplingLevel);
 
@@ -263,6 +256,8 @@ void ImageFrameCache::startAsyncDecodingQueue()
     if (hasDecodingQueue() || !isDecoderAvailable())
         return;
 
+    m_frameRequestQueue.open();
+
     Ref<ImageFrameCache> protectedThis = Ref<ImageFrameCache>(*this);
     Ref<WorkQueue> protectedQueue = decodingQueue();
 
@@ -275,9 +270,9 @@ void ImageFrameCache::startAsyncDecodingQueue()
             NativeImagePtr nativeImage = m_decoder->createFrameImageAtIndex(frameRequest.index, frameRequest.subsamplingLevel, DecodingMode::Immediate);
 
             // Update the cached frames on the main thread to avoid updating the MemoryCache from a different thread.
-            callOnMainThread([this, nativeImage, frameRequest] () mutable {
+            callOnMainThread([this, protectedQueue = protectedQueue.copyRef(), nativeImage, frameRequest] () mutable {
                 // The queue may be closed if after we got the frame NativeImage, stopAsyncDecodingQueue() was called
-                if (hasDecodingQueue())
+                if (protectedQueue.ptr() == m_decodingQueue)
                     cacheFrameNativeImageAtIndex(WTFMove(nativeImage), frameRequest.index, frameRequest.subsamplingLevel);
             });
         }
@@ -294,13 +289,19 @@ bool ImageFrameCache::requestFrameAsyncDecodingAtIndex(size_t index, Subsampling
 
     ASSERT(index < m_frames.size());
     ImageFrame& frame = m_frames[index];
-    
+
+    // We need to coalesce multiple requests for decoding the same ImageFrame while it
+    // is still being decoded. This may happen if the image rectangle is repainted
+    // multiple times while the ImageFrame has not finished decoding.
+    if (frame.isBeingDecoded())
+        return true;
+
     if (subsamplingLevel == SubsamplingLevel::Undefinded)
         subsamplingLevel = frame.subsamplingLevel();
-    
+
     if (frame.hasValidNativeImage(subsamplingLevel))
         return false;
-    
+
     frame.setDecoding(ImageFrame::Decoding::BeingDecoded);
     m_frameRequestQueue.enqueue({ index, subsamplingLevel });
     return true;
@@ -313,6 +314,11 @@ void ImageFrameCache::stopAsyncDecodingQueue()
     
     m_frameRequestQueue.close();
     m_decodingQueue = nullptr;
+
+    for (ImageFrame& frame : m_frames) {
+        if (frame.isBeingDecoded())
+            frame.clear();
+    }
 }
 
 const ImageFrame& ImageFrameCache::frameAtIndex(size_t index, SubsamplingLevel subsamplingLevel, ImageFrame::Caching caching)
@@ -335,12 +341,12 @@ const ImageFrame& ImageFrameCache::frameAtIndex(size_t index, SubsamplingLevel s
 
 void ImageFrameCache::clearMetadata()
 {
-    m_frameCount = Nullopt;
-    m_singlePixelSolidColor = Nullopt;
+    m_frameCount = std::nullopt;
+    m_singlePixelSolidColor = std::nullopt;
 }
 
 template<typename T, T (ImageDecoder::*functor)() const>
-T ImageFrameCache::metadata(const T& defaultValue, Optional<T>* cachedValue)
+T ImageFrameCache::metadata(const T& defaultValue, std::optional<T>* cachedValue)
 {
     if (cachedValue && *cachedValue)
         return cachedValue->value();
@@ -357,7 +363,7 @@ T ImageFrameCache::metadata(const T& defaultValue, Optional<T>* cachedValue)
 }
 
 template<typename T, T (ImageFrame::*functor)() const>
-T ImageFrameCache::frameMetadataAtIndex(size_t index, SubsamplingLevel subsamplingLevel, ImageFrame::Caching caching, Optional<T>* cachedValue)
+T ImageFrameCache::frameMetadataAtIndex(size_t index, SubsamplingLevel subsamplingLevel, ImageFrame::Caching caching, std::optional<T>* cachedValue)
 {
     if (cachedValue && *cachedValue)
         return cachedValue->value();
@@ -400,9 +406,9 @@ String ImageFrameCache::filenameExtension()
     return metadata<String, (&ImageDecoder::filenameExtension)>(String(), &m_filenameExtension);
 }
 
-Optional<IntPoint> ImageFrameCache::hotSpot()
+std::optional<IntPoint> ImageFrameCache::hotSpot()
 {
-    return metadata<Optional<IntPoint>, (&ImageDecoder::hotSpot)>(Nullopt, &m_hotSpot);
+    return metadata<std::optional<IntPoint>, (&ImageDecoder::hotSpot)>(std::nullopt, &m_hotSpot);
 }
 
 IntSize ImageFrameCache::size()

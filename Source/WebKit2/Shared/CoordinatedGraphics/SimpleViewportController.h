@@ -37,11 +37,11 @@ namespace WebKit {
 class SimpleViewportController {
     WTF_MAKE_NONCOPYABLE(SimpleViewportController);
 public:
-    SimpleViewportController();
+    SimpleViewportController(const WebCore::IntSize&);
 
     void didChangeViewportSize(const WebCore::IntSize&);
     void didChangeContentsSize(const WebCore::IntSize&);
-    void didChangeViewportAttributes(const WebCore::ViewportAttributes&);
+    void didChangeViewportAttributes(WebCore::ViewportAttributes&&);
     void didScroll(const WebCore::IntPoint&);
 
     WebCore::FloatRect visibleContentsRect() const;

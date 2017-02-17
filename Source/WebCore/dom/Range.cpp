@@ -40,7 +40,6 @@
 #include "HTMLNames.h"
 #include "NodeTraversal.h"
 #include "NodeWithIndex.h"
-#include "Page.h"
 #include "ProcessingInstruction.h"
 #include "RenderBoxModelObject.h"
 #include "RenderText.h"
@@ -89,8 +88,7 @@ Ref<Range> Range::create(Document& ownerDocument)
     return adoptRef(*new Range(ownerDocument));
 }
 
-// FIXME: startContainer and endContainer should probably be Ref<Node>&&.
-inline Range::Range(Document& ownerDocument, PassRefPtr<Node> startContainer, int startOffset, PassRefPtr<Node> endContainer, int endOffset)
+inline Range::Range(Document& ownerDocument, Node* startContainer, int startOffset, Node* endContainer, int endOffset)
     : m_ownerDocument(ownerDocument)
     , m_start(&ownerDocument)
     , m_end(&ownerDocument)
@@ -109,9 +107,9 @@ inline Range::Range(Document& ownerDocument, PassRefPtr<Node> startContainer, in
         setEnd(*endContainer, endOffset);
 }
 
-Ref<Range> Range::create(Document& ownerDocument, PassRefPtr<Node> startContainer, int startOffset, PassRefPtr<Node> endContainer, int endOffset)
+Ref<Range> Range::create(Document& ownerDocument, RefPtr<Node>&& startContainer, int startOffset, RefPtr<Node>&& endContainer, int endOffset)
 {
-    return adoptRef(*new Range(ownerDocument, startContainer, startOffset, endContainer, endOffset));
+    return adoptRef(*new Range(ownerDocument, startContainer.get(), startOffset, endContainer.get(), endOffset));
 }
 
 Ref<Range> Range::create(Document& ownerDocument, const Position& start, const Position& end)
@@ -265,7 +263,7 @@ ExceptionOr<short> Range::comparePoint(Node& refNode, unsigned offset) const
     if (checkNodeResult.hasException()) {
         // DOM4 spec requires us to check whether refNode and start container have the same root first
         // but we do it in the reverse order to avoid O(n) operation here in common case.
-        if (!refNode.inDocument() && !commonAncestorContainer(&refNode, &startContainer()))
+        if (!refNode.isConnected() && !commonAncestorContainer(&refNode, &startContainer()))
             return Exception { WRONG_DOCUMENT_ERR };
         return checkNodeResult.releaseException();
     }
@@ -294,7 +292,7 @@ ExceptionOr<Range::CompareResults> Range::compareNode(Node& refNode) const
     // This method returns 0, 1, 2, or 3 based on if the node is before, after,
     // before and after(surrounds), or inside the range, respectively
 
-    if (!refNode.inDocument()) {
+    if (!refNode.isConnected()) {
         // Firefox doesn't throw an exception for this case; it returns 0.
         return NODE_BEFORE;
     }
@@ -475,7 +473,7 @@ ExceptionOr<void> Range::deleteContents()
 
 ExceptionOr<bool> Range::intersectsNode(Node& refNode) const
 {
-    if (!refNode.inDocument() || &refNode.document() != &ownerDocument())
+    if (!refNode.isConnected() || &refNode.document() != &ownerDocument())
         return false;
 
     ContainerNode* parentNode = refNode.parentNode();
@@ -1109,11 +1107,8 @@ ExceptionOr<void> Range::surroundContents(Node& newParent)
         return fragment.releaseException();
 
     // Step 4: If newParent has children, replace all with null within newParent.
-    while (auto* child = newParent.firstChild()) {
-        auto result = downcast<ContainerNode>(newParent).removeChild(*child);
-        if (result.hasException())
-            return result.releaseException();
-    }
+    if (newParent.hasChildNodes())
+        downcast<ContainerNode>(newParent).replaceAllChildren(nullptr);
 
     // Step 5: Insert newParent into context object.
     auto insertResult = insertNode(newParent);
@@ -1271,7 +1266,7 @@ static SelectionRect coalesceSelectionRects(const SelectionRect& original, const
 
 // This function is similar in spirit to addLineBoxRects, but annotates the returned rectangles
 // with additional state which helps iOS draw selections in its unique way.
-void Range::collectSelectionRects(Vector<SelectionRect>& rects)
+int Range::collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>& rects)
 {
     auto& startContainer = this->startContainer();
     auto& endContainer = this->endContainer();
@@ -1330,7 +1325,7 @@ void Range::collectSelectionRects(Vector<SelectionRect>& rects)
         VisiblePosition endPosition(createLegacyEditingPosition(&endContainer, endOffset), VP_DEFAULT_AFFINITY);
         VisiblePosition brPosition(createLegacyEditingPosition(stopNode, 0), VP_DEFAULT_AFFINITY);
         if (endPosition == brPosition)
-            rects.last().setIsLineBreak(true);    
+            rects.last().setIsLineBreak(true);
     }
 
     int lineTop = std::numeric_limits<int>::max();
@@ -1427,7 +1422,15 @@ void Range::collectSelectionRects(Vector<SelectionRect>& rects)
         } else if (selectionRect.direction() == LTR && selectionRect.isLastOnLine())
             selectionRect.setLogicalWidth(selectionRect.maxX() - selectionRect.logicalLeft());
     }
+    
+    return maxLineNumber;
+}
 
+void Range::collectSelectionRects(Vector<SelectionRect>& rects)
+{
+    int maxLineNumber = collectSelectionRectsWithoutUnionInteriorLines(rects);
+    const size_t numberOfRects = rects.size();
+    
     // Union all the rectangles on interior lines (i.e. not first or last).
     // On first and last lines, just avoid having overlaps by merging intersecting rectangles.
     Vector<SelectionRect> unionedRects;

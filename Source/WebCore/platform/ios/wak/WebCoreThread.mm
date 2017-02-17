@@ -28,20 +28,21 @@
 
 #if PLATFORM(IOS)
 
+#import "CommonVM.h"
 #import "FloatingPointEnvironment.h"
-#import "JSDOMWindowBase.h"
 #import "RuntimeApplicationChecks.h"
 #import "ThreadGlobalData.h"
+#import "WAKWindow.h"
 #import "WebCoreThreadInternal.h"
 #import "WebCoreThreadMessage.h"
 #import "WebCoreThreadRun.h"
-#import "WebCoreThreadSafe.h"
 #import "WKUtilities.h"
 
 #import <runtime/InitializeThreading.h>
 #import <runtime/JSLock.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
+#import <wtf/RunLoop.h>
 #import <wtf/Threading.h>
 #import <wtf/text/AtomicString.h>
 
@@ -139,6 +140,7 @@ WEBCORE_EXPORT volatile bool webThreadShouldYield;
 
 static pthread_mutex_t WebCoreReleaseLock;
 static void WebCoreObjCDeallocOnWebThreadImpl(id self, SEL _cmd);
+static void WebCoreObjCDeallocWithWebThreadLock(Class cls);
 static void WebCoreObjCDeallocWithWebThreadLockImpl(id self, SEL _cmd);
 
 static NSMutableArray *sAsyncDelegates = nil;
@@ -210,7 +212,7 @@ static void SendDelegateMessage(NSInvocation *invocation)
 
         {
             // Code block created to scope JSC::JSLock::DropAllLocks outside of WebThreadLock()
-            JSC::JSLock::DropAllLocks dropAllLocks(WebCore::JSDOMWindowBase::commonVM());
+            JSC::JSLock::DropAllLocks dropAllLocks(WebCore::commonVM());
             _WebThreadUnlock();
 
             CFRunLoopSourceSignal(delegateSource);
@@ -248,7 +250,7 @@ void WebThreadRunOnMainThread(void(^delegateBlock)())
         return;
     }
 
-    JSC::JSLock::DropAllLocks dropAllLocks(WebCore::JSDOMWindowBase::commonVM());
+    JSC::JSLock::DropAllLocks dropAllLocks(WebCore::commonVM());
     _WebThreadUnlock();
 
     void (^delegateBlockCopy)() = Block_copy(delegateBlock);
@@ -620,7 +622,9 @@ static void FreeThreadContext(void *threadContext)
 
 static void InitThreadContextKey()
 {
-    pthread_key_create(&threadContextKey, FreeThreadContext);
+    int error = pthread_key_create(&threadContextKey, FreeThreadContext);
+    if (error)
+        CRASH();
 }
 
 static WebThreadContext *CurrentThreadContext(void)
@@ -707,6 +711,8 @@ static void StartWebThread()
 
     // Initialize AtomicString on the main thread.
     WTF::AtomicString::init();
+
+    RunLoop::initializeMainRunLoop();
 
     // register class for WebThread deallocation
     WebCoreObjCDeallocOnWebThread([WAKWindow class]);
@@ -984,11 +990,6 @@ NSRunLoop* WebThreadNSRunLoop(void)
 WebThreadContext *WebThreadCurrentContext(void)
 {
     return CurrentThreadContext();
-}
-
-bool WebThreadContextIsCurrent(void)
-{   
-    return WebThreadCurrentContext() == webThreadContext;
 }
 
 void WebThreadSetDelegateSourceRunLoopMode(CFStringRef mode)

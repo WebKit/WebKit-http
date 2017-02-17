@@ -582,11 +582,12 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case HeadingRole:
         return ATK_ROLE_HEADING;
     case ListBoxRole:
-        return ATK_ROLE_LIST_BOX;
+        // https://rawgit.com/w3c/aria/master/core-aam/core-aam.html#role-map-listbox
+        return coreObject->isDescendantOfRole(ComboBoxRole) ? ATK_ROLE_MENU : ATK_ROLE_LIST_BOX;
     case ListItemRole:
         return coreObject->inheritsPresentationalRole() ? ATK_ROLE_SECTION : ATK_ROLE_LIST_ITEM;
     case ListBoxOptionRole:
-        return ATK_ROLE_LIST_ITEM;
+        return coreObject->isDescendantOfRole(ComboBoxRole) ? ATK_ROLE_MENU_ITEM : ATK_ROLE_LIST_ITEM;
     case ParagraphRole:
         return ATK_ROLE_PARAGRAPH;
     case LabelRole:
@@ -749,6 +750,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
     // Please keep the state list in alphabetical order
     if (isListBoxOption && coreObject->isSelectedOptionActive())
         atk_state_set_add_state(stateSet, ATK_STATE_ACTIVE);
+
+    if (coreObject->isBusy())
+        atk_state_set_add_state(stateSet, ATK_STATE_BUSY);
 
 #if ATK_CHECK_VERSION(2,11,2)
     if (coreObject->supportsChecked() && coreObject->canSetValueAttribute())
@@ -1082,7 +1086,7 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
     interfaceMask |= 1 << WAIAction;
 
     // Selection
-    if (coreObject->isListBox() || coreObject->isMenuList())
+    if (coreObject->canHaveSelectedChildren() || coreObject->isMenuList())
         interfaceMask |= 1 << WAISelection;
 
     // Get renderer if available.

@@ -23,63 +23,74 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LineBreakIteratorPoolICU_h
-#define LineBreakIteratorPoolICU_h
+#pragma once
 
 #include "TextBreakIterator.h"
-#include "TextBreakIteratorInternalICU.h"
-#include <unicode/ubrk.h>
-#include <wtf/Assertions.h>
+#include <unicode/uloc.h>
 #include <wtf/HashMap.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/ThreadSpecific.h>
 #include <wtf/text/AtomicString.h>
-#include <wtf/text/CString.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WTF {
 
 class LineBreakIteratorPool {
     WTF_MAKE_NONCOPYABLE(LineBreakIteratorPool);
 public:
-    LineBreakIteratorPool() { }
+    LineBreakIteratorPool() = default;
 
     static LineBreakIteratorPool& sharedPool()
     {
-        static WTF::ThreadSpecific<LineBreakIteratorPool>* pool = new WTF::ThreadSpecific<LineBreakIteratorPool>;
-        return **pool;
+        static NeverDestroyed<WTF::ThreadSpecific<LineBreakIteratorPool>> pool;
+        return *pool.get();
     }
 
-    static String makeLocaleWithBreakKeyword(const AtomicString& locale, LineBreakIteratorMode mode)
+    static AtomicString makeLocaleWithBreakKeyword(const AtomicString& locale, LineBreakIteratorMode mode)
     {
-        StringBuilder localeWithKeyword;
-        localeWithKeyword.append(locale);
-        localeWithKeyword.appendLiteral("@break=");
+        // The uloc functions model locales as char*, so we have to downconvert our AtomicString.
+        auto utf8Locale = locale.string().utf8();
+        if (!utf8Locale.length())
+            return locale;
+        Vector<char> scratchBuffer(utf8Locale.length() + 11, 0);
+        memcpy(scratchBuffer.data(), utf8Locale.data(), utf8Locale.length());
+
+        const char* keywordValue = nullptr;
         switch (mode) {
-        case LineBreakIteratorModeUAX14:
-            ASSERT_NOT_REACHED();
+        case LineBreakIteratorMode::Default:
+            // nullptr will cause any existing values to be removed.
             break;
-        case LineBreakIteratorModeUAX14Loose:
-            localeWithKeyword.appendLiteral("loose");
+        case LineBreakIteratorMode::Loose:
+            keywordValue = "loose";
             break;
-        case LineBreakIteratorModeUAX14Normal:
-            localeWithKeyword.appendLiteral("normal");
+        case LineBreakIteratorMode::Normal:
+            keywordValue = "normal";
             break;
-        case LineBreakIteratorModeUAX14Strict:
-            localeWithKeyword.appendLiteral("strict");
+        case LineBreakIteratorMode::Strict:
+            keywordValue = "strict";
             break;
         }
-        return localeWithKeyword.toString();
+
+        UErrorCode status = U_ZERO_ERROR;
+        int32_t lengthNeeded = uloc_setKeywordValue("lb", keywordValue, scratchBuffer.data(), scratchBuffer.size(), &status);
+        if (U_SUCCESS(status))
+            return AtomicString::fromUTF8(scratchBuffer.data(), lengthNeeded);
+        if (status == U_BUFFER_OVERFLOW_ERROR) {
+            scratchBuffer.grow(lengthNeeded + 1);
+            memset(scratchBuffer.data() + utf8Locale.length(), 0, scratchBuffer.size() - utf8Locale.length());
+            status = U_ZERO_ERROR;
+            int32_t lengthNeeded2 = uloc_setKeywordValue("lb", keywordValue, scratchBuffer.data(), scratchBuffer.size(), &status);
+            if (!U_SUCCESS(status) || lengthNeeded != lengthNeeded2)
+                return locale;
+            return AtomicString::fromUTF8(scratchBuffer.data(), lengthNeeded);
+        }
+        return locale;
     }
 
-    TextBreakIterator* take(const AtomicString& locale, LineBreakIteratorMode mode, bool isCJK)
+    UBreakIterator* take(const AtomicString& locale, LineBreakIteratorMode mode)
     {
-        AtomicString localeWithOptionalBreakKeyword;
-        if (mode == LineBreakIteratorModeUAX14)
-            localeWithOptionalBreakKeyword = locale;
-        else
-            localeWithOptionalBreakKeyword = makeLocaleWithBreakKeyword(locale, mode);
+        auto localeWithOptionalBreakKeyword = makeLocaleWithBreakKeyword(locale, mode);
 
-        TextBreakIterator* iterator = 0;
+        UBreakIterator* iterator = nullptr;
         for (size_t i = 0; i < m_pool.size(); ++i) {
             if (m_pool[i].first == localeWithOptionalBreakKeyword) {
                 iterator = m_pool[i].second;
@@ -89,39 +100,33 @@ public:
         }
 
         if (!iterator) {
-            iterator = openLineBreakIterator(localeWithOptionalBreakKeyword, mode, isCJK);
+            iterator = openLineBreakIterator(localeWithOptionalBreakKeyword);
             if (!iterator)
-                return 0;
+                return nullptr;
         }
 
         ASSERT(!m_vendedIterators.contains(iterator));
-        m_vendedIterators.set(iterator, localeWithOptionalBreakKeyword);
+        m_vendedIterators.add(iterator, localeWithOptionalBreakKeyword);
         return iterator;
     }
 
-    void put(TextBreakIterator* iterator)
+    void put(UBreakIterator* iterator)
     {
-        ASSERT_ARG(iterator, m_vendedIterators.contains(iterator));
-
+        ASSERT(m_vendedIterators.contains(iterator));
         if (m_pool.size() == capacity) {
             closeLineBreakIterator(m_pool[0].second);
             m_pool.remove(0);
         }
-
-        m_pool.append(Entry(m_vendedIterators.take(iterator), iterator));
+        m_pool.uncheckedAppend({ m_vendedIterators.take(iterator), iterator });
     }
 
 private:
-    static const size_t capacity = 4;
+    static constexpr size_t capacity = 4;
 
-    typedef std::pair<AtomicString, TextBreakIterator*> Entry;
-    typedef Vector<Entry, capacity> Pool;
-    Pool m_pool;
-    HashMap<TextBreakIterator*, AtomicString> m_vendedIterators;
+    Vector<std::pair<AtomicString, UBreakIterator*>, capacity> m_pool;
+    HashMap<UBreakIterator*, AtomicString> m_vendedIterators;
 
     friend WTF::ThreadSpecific<LineBreakIteratorPool>::operator LineBreakIteratorPool*();
 };
 
 }
-
-#endif

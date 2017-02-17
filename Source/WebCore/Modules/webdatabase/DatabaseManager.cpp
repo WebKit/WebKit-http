@@ -38,6 +38,7 @@
 #include "ScriptController.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginData.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -113,8 +114,7 @@ static inline void logOpenDatabaseError(ScriptExecutionContext&, const String&)
 
 static void logOpenDatabaseError(ScriptExecutionContext& context, const String& name)
 {
-    LOG(StorageAPI, "Database %s for origin %s not allowed to be established", name.utf8().data(),
-        context.securityOrigin()->toString().utf8().data());
+    LOG(StorageAPI, "Database %s for origin %s not allowed to be established", name.utf8().data(), context.securityOrigin()->toString().utf8().data());
 }
 
 #endif
@@ -126,10 +126,7 @@ ExceptionOr<Ref<Database>> DatabaseManager::openDatabaseBackend(ScriptExecutionC
     auto backend = tryToOpenDatabaseBackend(databaseContext, name, expectedVersion, displayName, estimatedSize, setVersionInNewDatabase, FirstTryToOpenDatabase);
 
     if (backend.hasException()) {
-        auto exception = backend.releaseException();
-        if (exception.code() != QUOTA_EXCEEDED_ERR)
-            backend = WTFMove(exception); // FIXME: Bad to have to move exception out and back in.
-        else {
+        if (backend.exception().code() == QUOTA_EXCEEDED_ERR) {
             // Notify the client that we've exceeded the database quota.
             // The client may want to increase the quota, and we'll give it
             // one more try after if that is the case.
@@ -143,12 +140,10 @@ ExceptionOr<Ref<Database>> DatabaseManager::openDatabaseBackend(ScriptExecutionC
     }
 
     if (backend.hasException()) {
-        auto exception = backend.releaseException();
-        if (exception.code() == INVALID_STATE_ERR)
-            logErrorMessage(context, exception.message());
+        if (backend.exception().code() == INVALID_STATE_ERR)
+            logErrorMessage(context, backend.exception().message());
         else
             logOpenDatabaseError(context, name);
-        backend = WTFMove(exception); // FIXME: Bad to have to move exception out and back in.
     }
 
     return backend;
@@ -176,7 +171,7 @@ ExceptionOr<Ref<Database>> DatabaseManager::tryToOpenDatabaseBackend(DatabaseCon
         return openResult.releaseException();
 
     // FIXME: What guarantees backendContext.securityOrigin() is non-null?
-    DatabaseTracker::singleton().setDatabaseDetails(*backendContext.securityOrigin(), name, displayName, estimatedSize);
+    DatabaseTracker::singleton().setDatabaseDetails(backendContext.securityOrigin(), name, displayName, estimatedSize);
     return WTFMove(database);
 }
 
@@ -243,7 +238,7 @@ String DatabaseManager::fullPathForDatabase(SecurityOrigin& origin, const String
                 return String();
         }
     }
-    return DatabaseTracker::singleton().fullPathForDatabase(origin, name, createIfDoesNotExist);
+    return DatabaseTracker::singleton().fullPathForDatabase(SecurityOriginData::fromSecurityOrigin(origin), name, createIfDoesNotExist);
 }
 
 DatabaseDetails DatabaseManager::detailsForNameAndOrigin(const String& name, SecurityOrigin& origin)
@@ -258,7 +253,7 @@ DatabaseDetails DatabaseManager::detailsForNameAndOrigin(const String& name, Sec
         }
     }
 
-    return DatabaseTracker::singleton().detailsForNameAndOrigin(name, origin);
+    return DatabaseTracker::singleton().detailsForNameAndOrigin(name, SecurityOriginData::fromSecurityOrigin(origin));
 }
 
 void DatabaseManager::logErrorMessage(ScriptExecutionContext& context, const String& message)

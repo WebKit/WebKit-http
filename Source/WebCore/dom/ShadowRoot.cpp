@@ -71,7 +71,7 @@ ShadowRoot::ShadowRoot(Document& document, std::unique_ptr<SlotAssignment>&& slo
 
 ShadowRoot::~ShadowRoot()
 {
-    if (inDocument())
+    if (isConnected())
         document().didRemoveInDocumentShadowRoot(*this);
 
     // We cannot let ContainerNode destructor call willBeDeletedFrom()
@@ -88,9 +88,9 @@ ShadowRoot::~ShadowRoot()
 
 Node::InsertionNotificationRequest ShadowRoot::insertedInto(ContainerNode& insertionPoint)
 {
-    bool wasInDocument = inDocument();
+    bool wasInDocument = isConnected();
     DocumentFragment::insertedInto(insertionPoint);
-    if (insertionPoint.inDocument() && !wasInDocument)
+    if (insertionPoint.isConnected() && !wasInDocument)
         document().didInsertInDocumentShadowRoot(*this);
     return InsertionDone;
 }
@@ -98,8 +98,19 @@ Node::InsertionNotificationRequest ShadowRoot::insertedInto(ContainerNode& inser
 void ShadowRoot::removedFrom(ContainerNode& insertionPoint)
 {
     DocumentFragment::removedFrom(insertionPoint);
-    if (insertionPoint.inDocument() && !inDocument())
+    if (insertionPoint.isConnected() && !isConnected())
         document().didRemoveInDocumentShadowRoot(*this);
+}
+
+void ShadowRoot::didMoveToNewDocument(Document& oldDocument)
+{
+    ASSERT(&document() != &oldDocument);
+    ASSERT(&m_styleScope->document() == &oldDocument);
+
+    // Style scopes are document specific.
+    m_styleScope = std::make_unique<Style::Scope>(*this);
+
+    DocumentFragment::didMoveToNewDocument(oldDocument);
 }
 
 Style::Scope& ShadowRoot::styleScope()

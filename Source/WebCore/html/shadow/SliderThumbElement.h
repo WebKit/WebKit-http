@@ -32,7 +32,6 @@
 #pragma once
 
 #include "HTMLDivElement.h"
-#include "HTMLNames.h"
 #include "RenderBlockFlow.h"
 #include <wtf/Forward.h>
 
@@ -77,7 +76,7 @@ private:
 #endif
     void willDetachRenderers() override;
 
-    Optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) override;
+    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) override;
     const AtomicString& shadowPseudoId() const override;
 
     void startDragging();
@@ -134,10 +133,16 @@ public:
 private:
     SliderContainerElement(Document&);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
-    Optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) override;
+    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) override;
     const AtomicString& shadowPseudoId() const override;
+    bool isSliderContainerElement() const override { return true; }
 
     AtomicString m_shadowPseudoId;
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SliderContainerElement)
+    static bool isType(const WebCore::Element& element) { return element.isSliderContainerElement(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::Element>(node) && isType(downcast<WebCore::Element>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()

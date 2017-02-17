@@ -52,6 +52,7 @@ class FrameView;
 class GraphicsLayer;
 class GraphicsLayerFactory;
 class MachSendRight;
+struct ViewportAttributes;
 }
 
 namespace WebKit {
@@ -88,8 +89,8 @@ public:
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) { }
 
 #if PLATFORM(COCOA)
-    virtual void setViewExposedRect(Optional<WebCore::FloatRect>) = 0;
-    virtual Optional<WebCore::FloatRect> viewExposedRect() const = 0;
+    virtual void setViewExposedRect(std::optional<WebCore::FloatRect>) = 0;
+    virtual std::optional<WebCore::FloatRect> viewExposedRect() const = 0;
 
     virtual void acceleratedAnimationDidStart(uint64_t /*layerID*/, const String& /*key*/, double /*startTime*/) { }
     virtual void acceleratedAnimationDidEnd(uint64_t /*layerID*/, const String& /*key*/) { }
@@ -139,6 +140,14 @@ public:
 #endif
 
     virtual void layerHostDidFlushLayers() { };
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    virtual void didChangeViewportAttributes(WebCore::ViewportAttributes&&) = 0;
+#endif
+
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+    virtual void deviceOrPageScaleFactorChanged() = 0;
+#endif
 
 protected:
     DrawingArea(DrawingAreaType, WebPage&);

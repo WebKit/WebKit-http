@@ -41,7 +41,6 @@ class ClientRect;
 class ClientRectList;
 class CustomElementReactionQueue;
 class DatasetDOMStringMap;
-class Dictionary;
 class DOMTokenList;
 class ElementRareData;
 class HTMLDocument;
@@ -314,8 +313,6 @@ public:
     WEBCORE_EXPORT ExceptionOr<void> insertAdjacentHTML(const String& where, const String& html);
     WEBCORE_EXPORT ExceptionOr<void> insertAdjacentText(const String& where, const String& text);
 
-    bool ieForbidsInsertHTML() const;
-
     const RenderStyle* computedStyle(PseudoId = NOPSEUDO) override;
 
     bool needsStyleInvalidation() const;
@@ -444,6 +441,8 @@ public:
     virtual bool isInRange() const { return false; }
     virtual bool isOutOfRange() const { return false; }
     virtual bool isFrameElementBase() const { return false; }
+    virtual bool isUploadButton() const { return false; }
+    virtual bool isSliderContainerElement() const { return false; }
 
     bool canContainRangeEndPoint() const override;
 
@@ -459,17 +458,9 @@ public:
     virtual void buildPendingResource() { };
 
 #if ENABLE(FULLSCREEN_API)
-    enum {
-        ALLOW_KEYBOARD_INPUT = 1 << 0,
-        LEGACY_MOZILLA_REQUEST = 1 << 1,
-    };
-    
-    WEBCORE_EXPORT void webkitRequestFullScreen(unsigned short flags);
     WEBCORE_EXPORT bool containsFullScreenElement() const;
     void setContainsFullScreenElement(bool);
     void setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(bool);
-
-    // W3C API
     WEBCORE_EXPORT void webkitRequestFullscreen();
 #endif
 
@@ -477,12 +468,7 @@ public:
     WEBCORE_EXPORT void requestPointerLock();
 #endif
 
-#if ENABLE(INDIE_UI)
-    void setUIActions(const AtomicString&);
-    const AtomicString& UIActions() const;
-#endif
-    
-    virtual bool isSpellCheckingEnabled() const;
+    bool isSpellCheckingEnabled() const;
 
     RenderNamedFlowFragment* renderNamedFlowFragment() const;
 
@@ -512,14 +498,14 @@ public:
 
     WEBCORE_EXPORT bool dispatchMouseForceWillBegin();
 
-    virtual bool willRecalcStyle(Style::Change);
+    virtual void willRecalcStyle(Style::Change);
     virtual void didRecalcStyle(Style::Change);
     virtual void willResetComputedStyle();
     virtual void willAttachRenderers();
     virtual void didAttachRenderers();
     virtual void willDetachRenderers();
     virtual void didDetachRenderers();
-    virtual Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle);
+    virtual std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle);
 
     LayoutRect absoluteEventHandlerBounds(bool& includesFixedPositionElements) override;
 
@@ -586,7 +572,7 @@ protected:
     void childrenChanged(const ChildChange&) override;
     void removeAllEventListeners() final;
     virtual void parserDidSetAttributes();
-    void didMoveToNewDocument(Document*) override;
+    void didMoveToNewDocument(Document&) override;
 
     void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(int);
@@ -715,7 +701,7 @@ inline Element* Node::parentElement() const
 
 inline const Element* Element::rootElement() const
 {
-    if (inDocument())
+    if (isConnected())
         return document().documentElement();
 
     const Element* highest = this;

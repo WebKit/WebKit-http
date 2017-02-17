@@ -34,6 +34,7 @@
 
 namespace JSC {
 
+class VM;
 class ArrayBuffer;
 class ArrayBufferView;
 class JSArrayBuffer;
@@ -63,6 +64,8 @@ public:
     JS_EXPORT_PRIVATE ~ArrayBufferContents();
     
     JS_EXPORT_PRIVATE void clear();
+    
+    explicit operator bool() { return !!m_data; }
     
     void* data() const { return m_data; }
     unsigned sizeInBytes() const { return m_sizeInBytes; }
@@ -129,7 +132,8 @@ public:
     inline void unpin();
     inline void pinAndLock();
 
-    JS_EXPORT_PRIVATE bool transferTo(ArrayBufferContents&);
+    JS_EXPORT_PRIVATE bool transferTo(VM&, ArrayBufferContents&);
+    JS_EXPORT_PRIVATE bool shareWith(ArrayBufferContents&);
     bool isNeutered() { return !m_contents.m_data; }
     
     static ptrdiff_t offsetOfData() { return OBJECT_OFFSETOF(ArrayBuffer, m_contents) + OBJECT_OFFSETOF(ArrayBufferContents, m_data); }

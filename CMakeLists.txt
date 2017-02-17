@@ -106,16 +106,16 @@ endif ()
 # -----------------------------------------------------------------------------
 # Default library types
 # -----------------------------------------------------------------------------
-option(SHARED_CORE "build JavaScriptCore and WebCore as shared libraries")
+option(SHARED_CORE "build WebCore as a shared library")
 
 if (SHARED_CORE)
-    set(JavaScriptCore_LIBRARY_TYPE SHARED)
     set(WebCore_LIBRARY_TYPE SHARED)
 else ()
-    set(JavaScriptCore_LIBRARY_TYPE SHARED)
     set(WebCore_LIBRARY_TYPE STATIC)
 endif ()
 
+set(JavaScriptCore_LIBRARY_TYPE SHARED)
+set(PAL_LIBRARY_TYPE STATIC)
 set(WebKit_LIBRARY_TYPE SHARED)
 set(WebKit2_LIBRARY_TYPE SHARED)
 set(WebCoreTestSupport_LIBRARY_TYPE STATIC)

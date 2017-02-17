@@ -38,13 +38,11 @@
 #import "FrameLoaderClient.h"
 #import "HitTestResult.h"
 #import "htmlediting.h"
-#import "HTMLNames.h"
 #import "Image.h"
 #import "URL.h"
 #import "LegacyWebArchive.h"
 #import "LoaderNSURLExtras.h"
 #import "MIMETypeRegistry.h"
-#import "Page.h"
 #import "PasteboardStrategy.h"
 #import "PlatformStrategies.h"
 #import "RenderImage.h"
@@ -120,7 +118,10 @@ Pasteboard::Pasteboard(const String& pasteboardName)
 
 std::unique_ptr<Pasteboard> Pasteboard::createForCopyAndPaste()
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     return std::make_unique<Pasteboard>(NSGeneralPboard);
+#pragma clang diagnostic pop
 }
 
 std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
@@ -131,7 +132,10 @@ std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
 #if ENABLE(DRAG_SUPPORT)
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop()
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     return std::make_unique<Pasteboard>(NSDragPboard);
+#pragma clang diagnostic pop
 }
 
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dragData)
@@ -410,6 +414,13 @@ void Pasteboard::read(PasteboardWebContentReader& reader)
         }
     }
 
+    if (types.contains(String(kUTTypeJPEG))) {
+        if (RefPtr<SharedBuffer> buffer = strategy.bufferForType(kUTTypeJPEG, m_pasteboardName)) {
+            if (reader.readImage(buffer.releaseNonNull(), ASCIILiteral("image/jpeg")))
+                return;
+        }
+    }
+
     if (types.contains(String(NSURLPboardType))) {
         URL url = strategy.url(m_pasteboardName);
         String title = strategy.stringForType(WebURLNamePboardType, m_pasteboardName);
@@ -419,6 +430,12 @@ void Pasteboard::read(PasteboardWebContentReader& reader)
 
     if (types.contains(String(NSStringPboardType))) {
         String string = strategy.stringForType(NSStringPboardType, m_pasteboardName);
+        if (!string.isNull() && reader.readPlainText(string))
+            return;
+    }
+
+    if (types.contains(String(kUTTypeUTF8PlainText))) {
+        String string = strategy.stringForType(kUTTypeUTF8PlainText, m_pasteboardName);
         if (!string.isNull() && reader.readPlainText(string))
             return;
     }
@@ -646,7 +663,7 @@ Vector<String> Pasteboard::readFilenames()
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void Pasteboard::setDragImage(DragImageRef image, const IntPoint& location)
+void Pasteboard::setDragImage(DragImage image, const IntPoint& location)
 {
     // Don't allow setting the drag image if someone kept a pasteboard and is trying to set the image too late.
     if (m_changeCount != platformStrategies()->pasteboardStrategy()->changeCount(m_pasteboardName))
@@ -654,7 +671,7 @@ void Pasteboard::setDragImage(DragImageRef image, const IntPoint& location)
 
     // Dashboard wants to be able to set the drag image during dragging, but Cocoa does not allow this.
     // Instead we must drop down to the CoreGraphics API.
-    wkSetDragImage(image.get(), location);
+    wkSetDragImage(image.get().get(), location);
 
     // Hack: We must post an event to wake up the NSDragManager, which is sitting in a nextEvent call
     // up the stack from us because the CoreFoundation drag manager does not use the run loop by itself.

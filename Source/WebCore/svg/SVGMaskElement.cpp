@@ -28,6 +28,7 @@
 #include "RenderSVGResourceMasker.h"
 #include "SVGNames.h"
 #include "SVGRenderSupport.h"
+#include "SVGStringList.h"
 #include "SVGUnitTypes.h"
 #include "StyleResolver.h"
 #include <wtf/NeverDestroyed.h>
@@ -110,13 +111,13 @@ void SVGMaskElement::parseAttribute(const QualifiedName& name, const AtomicStrin
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::xAttr)
-        setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setXBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        setYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setYBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::widthAttr)
-        setWidthBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setWidthBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::heightAttr)
-        setHeightBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setHeightBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
 
     reportAttributeParsingError(parseError, name, value);
 
@@ -160,6 +161,21 @@ void SVGMaskElement::childrenChanged(const ChildChange& change)
 RenderPtr<RenderElement> SVGMaskElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderSVGResourceMasker>(*this, WTFMove(style));
+}
+
+Ref<SVGStringList> SVGMaskElement::requiredFeatures()
+{
+    return SVGTests::requiredFeatures(*this);
+}
+
+Ref<SVGStringList> SVGMaskElement::requiredExtensions()
+{ 
+    return SVGTests::requiredExtensions(*this);
+}
+
+Ref<SVGStringList> SVGMaskElement::systemLanguage()
+{
+    return SVGTests::systemLanguage(*this);
 }
 
 }

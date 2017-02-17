@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000 Peter Kelly <pmk@post.com>
- * Copyright (C) 2005, 2006, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Alexey Proskuryakov <ap@webkit.org>
  * Copyright (C) 2007 Samuel Weinig <sam@webkit.org>
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
@@ -29,41 +29,29 @@
 #include "XMLDocumentParser.h"
 
 #include "CDATASection.h"
-#include "CachedScript.h"
 #include "Comment.h"
 #include "CachedResourceLoader.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "DocumentType.h"
 #include "Frame.h"
-#include "FrameLoader.h"
-#include "FrameView.h"
 #include "HTMLEntityParser.h"
 #include "HTMLHtmlElement.h"
-#include "HTMLLinkElement.h"
-#include "HTMLNames.h"
-#include "HTMLStyleElement.h"
 #include "HTMLTemplateElement.h"
-#include "LoadableClassicScript.h"
-#include "Page.h"
+#include "InlineClassicScript.h"
+#include "PendingScript.h"
 #include "ProcessingInstruction.h"
 #include "ResourceError.h"
-#include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "ScriptElement.h"
 #include "ScriptSourceCode.h"
-#include "SecurityOrigin.h"
 #include "Settings.h"
 #include "StyleScope.h"
-#include "TextResourceDecoder.h"
 #include "TransformSource.h"
 #include "XMLNSNames.h"
 #include "XMLDocumentParserScope.h"
 #include <libxml/parserInternals.h>
-#include <wtf/Ref.h>
 #include <wtf/StringExtras.h>
-#include <wtf/Threading.h>
-#include <wtf/Vector.h>
 #include <wtf/unicode/UTF8.h>
 
 #if ENABLE(XSLT)
@@ -74,32 +62,33 @@
 namespace WebCore {
 
 #if ENABLE(XSLT)
-static inline bool hasNoStyleInformation(Document* document)
+
+static inline bool shouldRenderInXMLTreeViewerMode(Document& document)
 {
-    if (document->sawElementsInKnownNamespaces())
+    if (document.sawElementsInKnownNamespaces())
         return false;
 
-    if (document->transformSourceDocument())
+    if (document.transformSourceDocument())
         return false;
 
-    if (!document->frame() || !document->frame()->page())
+    auto* frame = document.frame();
+    if (!frame)
         return false;
 
-    if (!document->frame()->page()->settings().developerExtrasEnabled())
+    if (!frame->settings().developerExtrasEnabled())
         return false;
 
-    if (document->frame()->tree().parent())
+    if (frame->tree().parent())
         return false; // This document is not in a top frame
 
     return true;
 }
+
 #endif
 
 class PendingCallbacks {
-    WTF_MAKE_NONCOPYABLE(PendingCallbacks); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    PendingCallbacks() = default;
-
     void appendStartElementNSCallback(const xmlChar* xmlLocalName, const xmlChar* xmlPrefix, const xmlChar* xmlURI, int numNamespaces, const xmlChar** namespaces, int numAttributes, int numDefaulted, const xmlChar** attributes)
     {
         auto callback = std::make_unique<PendingStartElementNSCallback>();
@@ -432,7 +421,7 @@ static bool shouldAllowExternalLoad(const URL& url)
     // retrieved content.  If we had more context, we could potentially allow
     // the parser to load a DTD.  As things stand, we take the conservative
     // route and allow same-origin requests only.
-    if (!XMLDocumentParserScope::currentCachedResourceLoader->document()->securityOrigin()->canRequest(url)) {
+    if (!XMLDocumentParserScope::currentCachedResourceLoader->document()->securityOrigin().canRequest(url)) {
         XMLDocumentParserScope::currentCachedResourceLoader->printAccessDeniedMessage(url);
         return false;
     }
@@ -575,42 +564,16 @@ bool XMLDocumentParser::supportsXMLVersion(const String& version)
 XMLDocumentParser::XMLDocumentParser(Document& document, FrameView* frameView)
     : ScriptableDocumentParser(document)
     , m_view(frameView)
-    , m_context(nullptr)
     , m_pendingCallbacks(std::make_unique<PendingCallbacks>())
-    , m_depthTriggeringEntityExpansion(-1)
-    , m_isParsingEntityDeclaration(false)
     , m_currentNode(&document)
-    , m_sawError(false)
-    , m_sawCSS(false)
-    , m_sawXSLTransform(false)
-    , m_sawFirstElement(false)
-    , m_isXHTMLDocument(false)
-    , m_parserPaused(false)
-    , m_requestingScript(false)
-    , m_finishCalled(false)
-    , m_pendingScript(nullptr)
     , m_scriptStartPosition(TextPosition::belowRangePosition())
-    , m_parsingFragment(false)
 {
 }
 
 XMLDocumentParser::XMLDocumentParser(DocumentFragment& fragment, Element* parentElement, ParserContentPolicy parserContentPolicy)
     : ScriptableDocumentParser(fragment.document(), parserContentPolicy)
-    , m_view(nullptr)
-    , m_context(nullptr)
     , m_pendingCallbacks(std::make_unique<PendingCallbacks>())
-    , m_depthTriggeringEntityExpansion(-1)
-    , m_isParsingEntityDeclaration(false)
     , m_currentNode(&fragment)
-    , m_sawError(false)
-    , m_sawCSS(false)
-    , m_sawXSLTransform(false)
-    , m_sawFirstElement(false)
-    , m_isXHTMLDocument(false)
-    , m_parserPaused(false)
-    , m_requestingScript(false)
-    , m_finishCalled(false)
-    , m_pendingScript(0)
     , m_scriptStartPosition(TextPosition::belowRangePosition())
     , m_parsingFragment(true)
 {
@@ -662,7 +625,7 @@ XMLDocumentParser::~XMLDocumentParser()
 
     // FIXME: m_pendingScript handling should be moved into XMLDocumentParser.cpp!
     if (m_pendingScript)
-        m_pendingScript->removeClient(*this);
+        m_pendingScript->clearClient();
 }
 
 void XMLDocumentParser::doWrite(const String& parseString)
@@ -836,8 +799,7 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
 
     newElement->beginParsingChildren();
 
-    ScriptElement* scriptElement = toScriptElementIfPossible(newElement.ptr());
-    if (scriptElement)
+    if (isScriptElement(newElement.get()))
         m_scriptStartPosition = textPosition();
 
     m_currentNode->parserAppendChild(newElement);
@@ -880,7 +842,7 @@ void XMLDocumentParser::endElementNs()
     if (hackAroundLibXMLEntityParsingBug() && context()->depth <= depthTriggeringEntityExpansion())
         setDepthTriggeringEntityExpansion(-1);
 
-    if (!scriptingContentIsAllowed(parserContentPolicy()) && is<Element>(*node) && toScriptElementIfPossible(downcast<Element>(node.get()))) {
+    if (!scriptingContentIsAllowed(parserContentPolicy()) && is<Element>(*node) && isScriptElement(downcast<Element>(*node))) {
         popCurrentNode();
         node->remove();
         return;
@@ -891,17 +853,16 @@ void XMLDocumentParser::endElementNs()
         return;
     }
 
-    Element& element = downcast<Element>(*node);
+    auto& element = downcast<Element>(*node);
 
     // The element's parent may have already been removed from document.
     // Parsing continues in this case, but scripts aren't executed.
-    if (!element.inDocument()) {
+    if (!element.isConnected()) {
         popCurrentNode();
         return;
     }
 
-    ScriptElement* scriptElement = toScriptElementIfPossible(&element);
-    if (!scriptElement) {
+    if (!isScriptElement(element)) {
         popCurrentNode();
         return;
     }
@@ -910,24 +871,21 @@ void XMLDocumentParser::endElementNs()
     ASSERT(!m_pendingScript);
     m_requestingScript = true;
 
-    if (scriptElement->prepareScript(m_scriptStartPosition, ScriptElement::AllowLegacyTypeInTypeAttribute)) {
+    auto& scriptElement = downcastScriptElement(element);
+    if (scriptElement.prepareScript(m_scriptStartPosition, ScriptElement::AllowLegacyTypeInTypeAttribute)) {
         // FIXME: Script execution should be shared between
         // the libxml2 and Qt XMLDocumentParser implementations.
 
-        if (scriptElement->readyToBeParserExecuted())
-            scriptElement->executeScript(ScriptSourceCode(scriptElement->scriptContent(), document()->url(), m_scriptStartPosition));
-        else if (scriptElement->willBeParserExecuted() && scriptElement->loadableScript() && is<LoadableClassicScript>(*scriptElement->loadableScript())) {
-            // FIXME: Allow "module" scripts for XML documents.
-            // https://bugs.webkit.org/show_bug.cgi?id=161651
-            m_pendingScript = &downcast<LoadableClassicScript>(*scriptElement->loadableScript()).cachedScript();
-            m_scriptElement = &element;
-            m_pendingScript->addClient(*this);
+        if (scriptElement.readyToBeParserExecuted())
+            scriptElement.executeClassicScript(ScriptSourceCode(scriptElement.scriptContent(), document()->url(), m_scriptStartPosition, JSC::SourceProviderSourceType::Program, InlineClassicScript::create(scriptElement)));
+        else if (scriptElement.willBeParserExecuted() && scriptElement.loadableScript()) {
+            m_pendingScript = PendingScript::create(scriptElement, *scriptElement.loadableScript());
+            m_pendingScript->setClient(*this);
 
-            // m_pendingScript will be 0 if script was already loaded and addClient() executed it.
+            // m_pendingScript will be nullptr if script was already loaded and setClient() executed it.
             if (m_pendingScript)
                 pauseParsing();
-        } else
-            m_scriptElement = nullptr;
+        }
 
         // JavaScript may have detached the parser
         if (isDetached())
@@ -937,19 +895,19 @@ void XMLDocumentParser::endElementNs()
     popCurrentNode();
 }
 
-void XMLDocumentParser::characters(const xmlChar* s, int len)
+void XMLDocumentParser::characters(const xmlChar* characters, int length)
 {
     if (isStopped())
         return;
 
     if (m_parserPaused) {
-        m_pendingCallbacks->appendCharactersCallback(s, len);
+        m_pendingCallbacks->appendCharactersCallback(characters, length);
         return;
     }
 
     if (!m_leafTextNode)
         createLeafTextNode();
-    m_bufferedText.append(s, len);
+    m_bufferedText.append(characters, length);
 }
 
 void XMLDocumentParser::error(XMLErrors::ErrorType type, const char* message, va_list args)
@@ -957,24 +915,19 @@ void XMLDocumentParser::error(XMLErrors::ErrorType type, const char* message, va
     if (isStopped())
         return;
 
-#if HAVE(VASPRINTF)
-    char* m;
-    if (vasprintf(&m, message, args) == -1)
-        return;
-#else
-    char m[1024];
-    vsnprintf(m, sizeof(m) - 1, message, args);
-#endif
+    va_list preflightArgs;
+    va_copy(preflightArgs, args);
+    size_t stringLength = vsnprintf(nullptr, 0, message, preflightArgs);
+    va_end(preflightArgs);
+
+    Vector<char, 1024> buffer(stringLength + 1);
+    vsnprintf(buffer.data(), stringLength + 1, message, args);
 
     TextPosition position = textPosition();
     if (m_parserPaused)
-        m_pendingCallbacks->appendErrorCallback(type, reinterpret_cast<const xmlChar*>(m), position.m_line, position.m_column);
+        m_pendingCallbacks->appendErrorCallback(type, reinterpret_cast<const xmlChar*>(buffer.data()), position.m_line, position.m_column);
     else
-        handleError(type, m, textPosition());
-
-#if HAVE(VASPRINTF)
-    free(m);
-#endif
+        handleError(type, buffer.data(), textPosition());
 }
 
 void XMLDocumentParser::processingInstruction(const xmlChar* target, const xmlChar* data)
@@ -1200,8 +1153,7 @@ static xmlEntityPtr sharedXHTMLEntity()
 static size_t convertUTF16EntityToUTF8(const UChar* utf16Entity, size_t numberOfCodeUnits, char* target, size_t targetSize)
 {
     const char* originalTarget = target;
-    WTF::Unicode::ConversionResult conversionResult = WTF::Unicode::convertUTF16ToUTF8(&utf16Entity,
-        utf16Entity + numberOfCodeUnits, &target, target + targetSize);
+    auto conversionResult = WTF::Unicode::convertUTF16ToUTF8(&utf16Entity, utf16Entity + numberOfCodeUnits, &target, target + targetSize);
     if (conversionResult != WTF::Unicode::conversionOK)
         return 0;
 
@@ -1370,7 +1322,7 @@ void XMLDocumentParser::doEnd()
     }
 
 #if ENABLE(XSLT)
-    bool xmlViewerMode = !m_sawError && !m_sawCSS && !m_sawXSLTransform && hasNoStyleInformation(document());
+    bool xmlViewerMode = !m_sawError && !m_sawCSS && !m_sawXSLTransform && shouldRenderInXMLTreeViewerMode(*document());
     if (xmlViewerMode) {
         XMLTreeViewer xmlTreeViewer(*document());
         xmlTreeViewer.transformDocumentToTreeView();
@@ -1423,7 +1375,7 @@ TextPosition XMLDocumentParser::textPosition() const
 {
     xmlParserCtxtPtr context = this->context();
     if (!context)
-        return TextPosition::minimumPosition();
+        return TextPosition();
     return TextPosition(OrdinalNumber::fromOneBasedInt(context->input->line),
                         OrdinalNumber::fromOneBasedInt(context->input->col));
 }
@@ -1456,13 +1408,12 @@ void XMLDocumentParser::resumeParsing()
             return;
     }
 
-    // Then, write any pending data
-    SegmentedString rest = m_pendingSrc;
-    m_pendingSrc.clear();
     // There is normally only one string left, so toString() shouldn't copy.
     // In any case, the XML parser runs on the main thread and it's OK if
     // the passed string has more than one reference.
-    append(rest.toString().impl());
+    auto rest = m_pendingSrc.toString();
+    m_pendingSrc.clear();
+    append(rest.impl());
 
     // Finally, if finish() has been called and write() didn't result
     // in any further callbacks being queued, call end()

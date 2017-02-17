@@ -21,11 +21,13 @@
 #include "config.h"
 #include "SVGGraphicsElement.h"
 
-#include "AffineTransform.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
+#include "SVGMatrix.h"
 #include "SVGNames.h"
 #include "SVGPathData.h"
+#include "SVGRect.h"
+#include "SVGStringList.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -50,9 +52,19 @@ SVGGraphicsElement::~SVGGraphicsElement()
 {
 }
 
+Ref<SVGMatrix> SVGGraphicsElement::getCTMForBindings()
+{
+    return SVGMatrix::create(getCTM());
+}
+
 AffineTransform SVGGraphicsElement::getCTM(StyleUpdateStrategy styleUpdateStrategy)
 {
     return SVGLocatable::computeCTM(this, SVGLocatable::NearestViewportScope, styleUpdateStrategy);
+}
+
+Ref<SVGMatrix> SVGGraphicsElement::getScreenCTMForBindings()
+{
+    return SVGMatrix::create(getScreenCTM());
 }
 
 AffineTransform SVGGraphicsElement::getScreenCTM(StyleUpdateStrategy styleUpdateStrategy)
@@ -110,7 +122,7 @@ bool SVGGraphicsElement::isSupportedAttribute(const QualifiedName& attrName)
 void SVGGraphicsElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == SVGNames::transformAttr) {
-        SVGTransformList newList;
+        SVGTransformListValues newList;
         newList.parse(value);
         detachAnimatedTransformListWrappers(newList.size());
         setTransformBaseValue(newList);
@@ -156,6 +168,11 @@ SVGElement* SVGGraphicsElement::farthestViewportElement() const
     return SVGTransformable::farthestViewportElement(this);
 }
 
+Ref<SVGRect> SVGGraphicsElement::getBBoxForBindings()
+{
+    return SVGRect::create(getBBox());
+}
+
 FloatRect SVGGraphicsElement::getBBox(StyleUpdateStrategy styleUpdateStrategy)
 {
     return SVGTransformable::getBBox(this, styleUpdateStrategy);
@@ -171,6 +188,21 @@ void SVGGraphicsElement::toClipPath(Path& path)
     updatePathFromGraphicsElement(this, path);
     // FIXME: How do we know the element has done a layout?
     path.transform(animatedLocalTransform());
+}
+
+Ref<SVGStringList> SVGGraphicsElement::requiredFeatures()
+{
+    return SVGTests::requiredFeatures(*this);
+}
+
+Ref<SVGStringList> SVGGraphicsElement::requiredExtensions()
+{ 
+    return SVGTests::requiredExtensions(*this);
+}
+
+Ref<SVGStringList> SVGGraphicsElement::systemLanguage()
+{
+    return SVGTests::systemLanguage(*this);
 }
 
 }

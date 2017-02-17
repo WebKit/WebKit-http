@@ -24,14 +24,15 @@
 
 #include "JSTestCallbackInterface.h"
 
-#include "JSDOMConstructor.h"
+#include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
+#include "JSDOMExceptionHandling.h"
 #include "JSDOMStringList.h"
 #include "JSTestNode.h"
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
+#include <runtime/FunctionPrototype.h>
 #include <runtime/JSLock.h>
-#include <runtime/ObjectPrototype.h>
 
 using namespace JSC;
 
@@ -40,7 +41,7 @@ namespace WebCore {
 JSTestCallbackInterface::JSTestCallbackInterface(JSObject* callback, JSDOMGlobalObject* globalObject)
     : TestCallbackInterface()
     , ActiveDOMCallback(globalObject->scriptExecutionContext())
-    , m_data(new JSCallbackDataStrong(callback, this))
+    , m_data(new JSCallbackDataStrong(callback, globalObject, this))
 {
 }
 
@@ -74,7 +75,7 @@ static_assert(TestCallbackInterface::CONSTANT2 == 2, "CONSTANT2 in TestCallbackI
 template<> JSValue JSTestCallbackInterfaceConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
 {
     UNUSED_PARAM(vm);
-    return globalObject.objectPrototype();
+    return globalObject.functionPrototype();
 }
 
 template<> void JSTestCallbackInterfaceConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
@@ -142,7 +143,7 @@ bool JSTestCallbackInterface::callbackWithSerializedScriptValueParam(RefPtr<Seri
 
     ExecState* state = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(srzParam ? srzParam->deserialize(*state, m_data->globalObject()) : jsNull());
+    args.append(toJS<IDLSerializedScriptValue<SerializedScriptValue>>(*state, *m_data->globalObject(), srzParam));
     args.append(toJS<IDLDOMString>(*state, strParam));
 
     NakedPtr<JSC::Exception> returnedException;
@@ -213,7 +214,7 @@ bool JSTestCallbackInterface::callbackRequiresThisToPass(int32_t longParam, Test
     return !returnedException;
 }
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestCallbackInterface& impl)
+JSC::JSValue toJS(TestCallbackInterface& impl)
 {
     if (!static_cast<JSTestCallbackInterface&>(impl).callbackData())
         return jsNull();

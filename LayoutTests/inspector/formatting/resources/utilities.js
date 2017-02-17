@@ -25,9 +25,9 @@ TestPage.registerInitializer(function() {
                         InspectorTest.log("-----------");
                         InspectorTest.log(testText);
                         InspectorTest.log("-----------");
-                        InspectorTest.log("Formatted Output: " + builder.formattedContent.length);
+                        InspectorTest.log("Formatted Output: " + formattedText.length);
                         InspectorTest.log("-----------");
-                        InspectorTest.log(builder.formattedContent);
+                        InspectorTest.log(formattedText);
                         InspectorTest.log("-----------");
                         InspectorTest.log("Expected Output: " + expectedText.length);
                         InspectorTest.log("-----------");
@@ -50,7 +50,7 @@ TestPage.registerInitializer(function() {
             let testURL = testPageResourcesURL + "/" + test;
             suite.addTestCase({
                 name: suite.name + "." + testName,
-                test: (resolve, reject) => {
+                test(resolve, reject) {
                     runFormattingTest(mode, testName, testURL).then(resolve).catch(reject);
                 }
             });

@@ -43,6 +43,7 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/mac/RemoteNetworkingContext.mm
 
     Platform/IPC/mac/ConnectionMac.mm
+    Platform/IPC/mac/MachMessage.cpp
 
     Platform/cf/ModuleCF.cpp
 
@@ -97,6 +98,7 @@ list(APPEND WebKit2_SOURCES
 
     Shared/Cocoa/APIDataCocoa.mm
     Shared/Cocoa/APIObject.mm
+    Shared/Cocoa/ChildProcessCocoa.mm
     Shared/Cocoa/CompletionHandlerCallChecker.mm
     Shared/Cocoa/DataDetectionResult.mm
     Shared/Cocoa/LoadParametersCocoa.mm
@@ -155,14 +157,23 @@ list(APPEND WebKit2_SOURCES
     Shared/mac/WebHitTestResultData.mm
     Shared/mac/WebMemorySampler.mac.mm
 
+    UIProcess/HighPerformanceGraphicsUsageSampler.cpp
+    UIProcess/PerActivityStateCPUUsageSampler.cpp
     UIProcess/WebContextMenuListenerProxy.cpp
+    UIProcess/WebResourceLoadStatisticsManager.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
 
     UIProcess/Automation/WebAutomationSession.cpp
 
+    UIProcess/Automation/cocoa/WebAutomationSessionCocoa.mm
+
+    UIProcess/Automation/mac/WebAutomationSessionMac.mm
+
     UIProcess/API/APIUserScript.cpp
     UIProcess/API/APIUserStyleSheet.cpp
     UIProcess/API/APIWebsiteDataRecord.cpp
+
+    UIProcess/API/C/WKResourceLoadStatisticsManager.cpp
 
     UIProcess/API/C/mac/WKContextPrivateMac.mm
     UIProcess/API/C/mac/WKPagePrivateMac.mm
@@ -208,6 +219,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/_WKElementAction.mm
     UIProcess/API/Cocoa/_WKErrorRecoveryAttempting.mm
     UIProcess/API/Cocoa/_WKExperimentalFeature.mm
+    UIProcess/API/Cocoa/_WKLinkIconParameters.mm
     UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm
     UIProcess/API/Cocoa/_WKRemoteWebInspectorViewController.mm
     UIProcess/API/Cocoa/_WKSessionState.mm
@@ -221,6 +233,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/_WKVisitedLinkStore.mm
     UIProcess/API/Cocoa/_WKWebsiteDataSize.mm
     UIProcess/API/Cocoa/_WKWebsiteDataStore.mm
+    UIProcess/API/Cocoa/_WKWebsitePolicies.mm
 
     UIProcess/API/mac/WKView.mm
 
@@ -230,6 +243,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/DownloadClient.mm
     UIProcess/Cocoa/FindClient.mm
     UIProcess/Cocoa/FullscreenClient.mm
+    UIProcess/Cocoa/IconLoadingDelegate.mm
     UIProcess/Cocoa/NavigationState.mm
     UIProcess/Cocoa/RemoteLayerTreeScrollingPerformanceData.mm
     UIProcess/Cocoa/SessionStateCoding.mm
@@ -238,7 +252,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/ViewGestureController.cpp
     UIProcess/Cocoa/WKReloadFrameErrorRecoveryAttempter.mm
     UIProcess/Cocoa/WKWebViewContentProviderRegistry.mm
-    UIProcess/Cocoa/WebAutomationSessionCocoa.mm
     UIProcess/Cocoa/WebPageProxyCocoa.mm
     UIProcess/Cocoa/WebPasteboardProxyCocoa.mm
     UIProcess/Cocoa/WebProcessPoolCocoa.mm
@@ -300,6 +313,7 @@ list(APPEND WebKit2_SOURCES
     WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInHitTestResult.mm
     WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm
     WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInPageGroup.mm
+    WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.mm
     WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInScriptWorld.mm
 
     WebProcess/InjectedBundle/API/mac/WKDOMDocument.mm
@@ -367,20 +381,6 @@ list(APPEND WebKit2_SOURCES
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/icu"
-    "${WEBCORE_DIR}/editing/cocoa"
-    "${WEBCORE_DIR}/editing/mac"
-    "${WEBCORE_DIR}/platform/cf"
-    "${WEBCORE_DIR}/platform/cocoa"
-    "${WEBCORE_DIR}/platform/graphics/cocoa"
-    "${WEBCORE_DIR}/platform/mac"
-    "${WEBCORE_DIR}/platform/network/cf"
-    "${WEBCORE_DIR}/platform/network/cocoa"
-    "${WEBCORE_DIR}/platform/spi/cocoa"
-    "${WEBCORE_DIR}/platform/spi/mac"
-    "${WEBCORE_DIR}/platform/graphics/ca"
-    "${WEBCORE_DIR}/platform/graphics/cg"
-    "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBKIT2_DIR}/NetworkProcess/cocoa"
     "${WEBKIT2_DIR}/NetworkProcess/mac"
     "${WEBKIT2_DIR}/PluginProcess/mac"
@@ -391,6 +391,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/Cocoa"
     "${WEBKIT2_DIR}/UIProcess/Launcher/mac"
     "${WEBKIT2_DIR}/UIProcess/Scrolling"
+    "${WEBKIT2_DIR}/UIProcess/ios"
     "${WEBKIT2_DIR}/Platform/cg"
     "${WEBKIT2_DIR}/Platform/mac"
     "${WEBKIT2_DIR}/Platform/unix"
@@ -418,17 +419,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebPage/Cocoa"
     "${WEBKIT2_DIR}/WebProcess/WebPage/mac"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/mac"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore"
-)
-
-# This is needed because of a naming conflict with DiagnosticLoggingClient.h.
-# FIXME: Rename one of the DiagnosticLoggingClient headers.
-list(REMOVE_ITEM WebKit2_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/page"
-)
-list(APPEND WebKit2_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/page"
+    "${DERIVED_SOURCES_WEBCORE_DIR}"
 )
 
 set(XPCService_SOURCES
@@ -504,6 +496,7 @@ set(WebKit2_FORWARDING_HEADERS_DIRECTORIES
 
     UIProcess/API/C
 
+    UIProcess/API/C/Cocoa
     UIProcess/API/C/mac
     UIProcess/API/cpp
 
@@ -728,6 +721,10 @@ set(ObjCForwardingHeaders
 foreach (_file ${ObjCForwardingHeaders})
     file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/${_file} "#import <WebKitLegacy/${_file}>")
 endforeach ()
+
+list(APPEND WebKit2_AUTOMATION_PROTOCOL_GENERATOR_EXTRA_FLAGS
+    --platform=macOS
+)
 
 # FIXME: These should not be necessary.
 file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/WKImageCG.h "#import <WebKit2/Shared/API/c/cg/WKImageCG.h>")

@@ -74,7 +74,7 @@ using namespace JSC;
 
     ExecState* exec = toJS(context);
     JSLockHolder lock(exec);
-    return kit(JSElement::toWrapped(toJS(exec, value)));
+    return kit(JSElement::toWrapped(exec->vm(), toJS(exec, value)));
 }
 
 @end
@@ -211,6 +211,11 @@ using namespace JSC;
 @end
 
 @implementation DOMHTMLInputElement (WebDOMHTMLInputElementOperationsPrivate)
+
+- (BOOL)_isAutofilled
+{
+    return downcast<HTMLInputElement>(core((DOMElement *)self))->isAutoFilled();
+}
 
 - (void)_setAutofilled:(BOOL)autofilled
 {

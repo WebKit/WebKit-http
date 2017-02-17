@@ -209,7 +209,7 @@ public:
         for (size_t i = 0; i < num32s; i++)
             *ptr++ = insn;
     }
-    
+
     void sync()
     {
         emitInst(0x0000000f);

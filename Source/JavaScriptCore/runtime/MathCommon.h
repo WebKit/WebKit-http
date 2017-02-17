@@ -33,6 +33,7 @@ namespace JSC {
 const int32_t maxExponentForIntegerMathPow = 1000;
 double JIT_OPERATION operationMathPow(double x, double y) WTF_INTERNAL;
 int32_t JIT_OPERATION operationToInt32(double) WTF_INTERNAL;
+int32_t JIT_OPERATION operationToInt32SensibleSlow(double) WTF_INTERNAL;
 
 inline constexpr double maxSafeInteger()
 {
@@ -118,15 +119,15 @@ inline uint32_t toUInt32(double number)
     return toInt32(number);
 }
 
-inline Optional<double> safeReciprocalForDivByConst(double constant)
+inline std::optional<double> safeReciprocalForDivByConst(double constant)
 {
     // No "weird" numbers (NaN, Denormal, etc).
     if (!constant || !std::isnormal(constant))
-        return Nullopt;
+        return std::nullopt;
 
     int exponent;
     if (std::frexp(constant, &exponent) != 0.5)
-        return Nullopt;
+        return std::nullopt;
 
     // Note that frexp() returns the value divided by two
     // so we to offset this exponent by one.
@@ -135,7 +136,7 @@ inline Optional<double> safeReciprocalForDivByConst(double constant)
     // A double exponent is between -1022 and 1023.
     // Nothing we can do to invert 1023.
     if (exponent == 1023)
-        return Nullopt;
+        return std::nullopt;
 
     double reciprocal = std::ldexp(1, -exponent);
     ASSERT(std::isnormal(reciprocal));

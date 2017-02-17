@@ -172,7 +172,7 @@ void AudioContext::constructCommon()
     m_listener = AudioListener::create();
 
 #if PLATFORM(IOS)
-    if (!document()->settings() || document()->settings()->audioPlaybackRequiresUserGesture())
+    if (document()->settings().audioPlaybackRequiresUserGesture())
         addBehaviorRestriction(RequireUserGestureForAudioStartRestriction);
     else
         m_restrictions = NoRestrictions;
@@ -181,8 +181,6 @@ void AudioContext::constructCommon()
 #if PLATFORM(COCOA)
     addBehaviorRestriction(RequirePageConsentForAudioStartRestriction);
 #endif
-
-    m_mediaSession->setCanProduceAudio(true);
 }
 
 AudioContext::~AudioContext()
@@ -1031,7 +1029,7 @@ void AudioContext::suspend(DOMPromise<void>&& promise)
     }
 
     if (m_state == State::Closed || m_state == State::Interrupted || !m_destinationNode) {
-        promise.reject(0);
+        promise.reject();
         return;
     }
 
@@ -1060,7 +1058,7 @@ void AudioContext::resume(DOMPromise<void>&& promise)
     }
 
     if (m_state == State::Closed || !m_destinationNode) {
-        promise.reject(0);
+        promise.reject();
         return;
     }
 

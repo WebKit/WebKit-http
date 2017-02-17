@@ -340,7 +340,10 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 
 - (void)writeItemsToPasteboard:(NSArray *)items withTypes:(NSArray *)types
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     _pdfPlugin->writeItemsToPasteboard(NSGeneralPboard, items, types);
+#pragma clang diagnostic pop
 }
 
 - (void)showDefinitionForAttributedString:(NSAttributedString *)string atPoint:(CGPoint)point
@@ -666,7 +669,7 @@ Ref<Scrollbar> PDFPlugin::createScrollbar(ScrollbarOrientation orientation)
                 scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
         }
     }
-    pluginView()->frame()->view()->addChild(widget.ptr());
+    pluginView()->frame()->view()->addChild(widget);
     return widget;
 }
 
@@ -860,7 +863,7 @@ JSValueRef PDFPlugin::jsPDFDocPrint(JSContextRef ctx, JSObjectRef function, JSOb
     if (!page)
         return JSValueMakeUndefined(ctx);
 
-    page->chrome().print(coreFrame);
+    page->chrome().print(*coreFrame);
 
     return JSValueMakeUndefined(ctx);
 }
@@ -1196,7 +1199,7 @@ IntPoint PDFPlugin::convertFromRootViewToPlugin(const IntPoint& point) const
 IntPoint PDFPlugin::convertFromPDFViewToRootView(const IntPoint& point) const
 {
     IntPoint pointInPluginCoordinates(point.x(), size().height() - point.y());
-    return m_rootViewToPluginTransform.inverse().valueOr(AffineTransform()).mapPoint(pointInPluginCoordinates);
+    return m_rootViewToPluginTransform.inverse().value_or(AffineTransform()).mapPoint(pointInPluginCoordinates);
 }
 
 FloatRect PDFPlugin::convertFromPDFViewToScreen(const FloatRect& rect) const
@@ -1207,7 +1210,7 @@ FloatRect PDFPlugin::convertFromPDFViewToScreen(const FloatRect& rect) const
         return FloatRect();
 
     FloatPoint originInPluginCoordinates(rect.x(), size().height() - rect.y() - rect.height());
-    FloatRect rectInRootViewCoordinates = m_rootViewToPluginTransform.inverse().valueOr(AffineTransform()).mapRect(FloatRect(originInPluginCoordinates, rect.size()));
+    FloatRect rectInRootViewCoordinates = m_rootViewToPluginTransform.inverse().value_or(AffineTransform()).mapRect(FloatRect(originInPluginCoordinates, rect.size()));
 
     return frameView->contentsToScreen(enclosingIntRect(rectInRootViewCoordinates));
 }
@@ -1220,7 +1223,7 @@ IntRect PDFPlugin::boundsOnScreen() const
         return IntRect();
 
     FloatRect bounds = FloatRect(FloatPoint(), size());
-    FloatRect rectInRootViewCoordinates = m_rootViewToPluginTransform.inverse().valueOr(AffineTransform()).mapRect(bounds);
+    FloatRect rectInRootViewCoordinates = m_rootViewToPluginTransform.inverse().value_or(AffineTransform()).mapRect(bounds);
     return frameView->contentsToScreen(enclosingIntRect(rectInRootViewCoordinates));
 }
 
@@ -1230,7 +1233,7 @@ void PDFPlugin::geometryDidChange(const IntSize& pluginSize, const IntRect&, con
         return;
 
     m_size = pluginSize;
-    m_rootViewToPluginTransform = pluginToRootViewTransform.inverse().valueOr(AffineTransform());
+    m_rootViewToPluginTransform = pluginToRootViewTransform.inverse().value_or(AffineTransform());
     [m_pdfLayerController setFrameSize:pluginSize];
 
     [CATransaction begin];
@@ -1531,8 +1534,11 @@ bool PDFPlugin::handleEditingCommand(const String& commandName, const String& ar
         [m_pdfLayerController selectAll];
     else if (commandName == "takeFindStringFromSelection") {
         NSString *string = [m_pdfLayerController currentSelection].string;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if (string.length)
             writeItemsToPasteboard(NSFindPboard, @[ [string dataUsingEncoding:NSUTF8StringEncoding] ], @[ NSPasteboardTypeString ]);
+#pragma clang diagnostic pop
     }
 
     return true;

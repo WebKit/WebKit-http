@@ -56,7 +56,7 @@
 #import <JavaScriptCore/JSContextInternal.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/AccessibilityObject.h>
-#import <WebCore/AnimationController.h>
+#import <WebCore/CSSAnimationController.h>
 #import <WebCore/CSSStyleDeclaration.h>
 #import <WebCore/CachedResourceLoader.h>
 #import <WebCore/Chrome.h>
@@ -302,14 +302,14 @@ WebView *getWebView(WebFrame *webFrame)
     WebView *webView = kit(page);
 
     WebFrame *frame = [[self alloc] _initWithWebFrameView:frameView webView:webView];
-    Ref<WebCore::Frame> coreFrame = Frame::create(page, ownerElement, new WebFrameLoaderClient(frame));
+    auto coreFrame = Frame::create(page, ownerElement, new WebFrameLoaderClient(frame));
     [frame release];
     frame->_private->coreFrame = coreFrame.ptr();
 
     coreFrame.get().tree().setName(name);
     if (ownerElement) {
         ASSERT(ownerElement->document().frame());
-        ownerElement->document().frame()->tree().appendChild(coreFrame.ptr());
+        ownerElement->document().frame()->tree().appendChild(coreFrame.get());
     }
 
     coreFrame.get().init();
@@ -711,17 +711,18 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (void)_scrollDOMRangeToVisible:(DOMRange *)range
 {
+    bool insideFixed = false; // FIXME: get via firstRectForRange().
     NSRect rangeRect = [self _firstRectForDOMRange:range];    
     Node *startNode = core([range startContainer]);
         
     if (startNode && startNode->renderer()) {
 #if !PLATFORM(IOS)
-        startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
+        startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
 #else
         RenderLayer* layer = startNode->renderer()->enclosingLayer();
         if (layer) {
             layer->setAdjustForIOSCaretWhenScrolling(true);
-            startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
+            startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
             layer->setAdjustForIOSCaretWhenScrolling(false);
             _private->coreFrame->selection().setCaretRectNeedsUpdate();
             _private->coreFrame->selection().updateAppearance();
@@ -733,6 +734,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 #if PLATFORM(IOS)
 - (void)_scrollDOMRangeToVisible:(DOMRange *)range withInset:(CGFloat)inset
 {
+    bool insideFixed = false; // FIXME: get via firstRectForRange().
     NSRect rangeRect = NSInsetRect([self _firstRectForDOMRange:range], inset, inset);
     Node *startNode = core([range startContainer]);
 
@@ -740,7 +742,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         RenderLayer* layer = startNode->renderer()->enclosingLayer();
         if (layer) {
             layer->setAdjustForIOSCaretWhenScrolling(true);
-            startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
+            startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
             layer->setAdjustForIOSCaretWhenScrolling(false);
 
             Frame *coreFrame = core(self);
@@ -931,7 +933,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     _private->coreFrame->editor().computeAndSetTypingStyle(properties.get(), undoAction);
 }
 
-#if ENABLE(DRAG_SUPPORT)
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 - (void)_dragSourceEndedAt:(NSPoint)windowLoc operation:(NSDragOperation)operation
 {
     if (!_private->coreFrame)
@@ -944,7 +946,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
                              LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), WebCore::ForceAtClick, WebCore::NoTap);
     _private->coreFrame->eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 }
-#endif
+#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 
 - (BOOL)_canProvideDocumentSource
 {
@@ -1277,11 +1279,6 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     });
 }
 
-- (void)sendOrientationChangeEvent:(int)newOrientation
-{
-    [self deviceOrientationChanged];
-}
-
 - (void)setNeedsLayout
 {
     WebCore::Frame *frame = core(self);
@@ -1597,9 +1594,9 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
         return;
 
     Node* node = core(element);
-    if (!node->inDocument())
+    if (!node->isConnected())
         return;
-        
+
     frame->selection().selectRangeOnElement(range.location, range.length, *node);
 }
 
@@ -2051,7 +2048,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 {
     if (!_private->coreFrame)
         return YES;
-    return _private->coreFrame->document()->securityOrigin()->canDisplay(URL);
+    return _private->coreFrame->document()->securityOrigin().canDisplay(URL);
 }
 
 - (NSString *)_stringByEvaluatingJavaScriptFromString:(NSString *)string withGlobalObject:(JSObjectRef)globalObjectRef inScriptWorld:(WebScriptWorld *)world
@@ -2067,7 +2064,8 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
     // The global object is probably a shell object? - if so, we know how to use this!
     JSC::JSObject* globalObjectObj = toJS(globalObjectRef);
-    if (!strcmp(globalObjectObj->classInfo()->className, "JSDOMWindowShell"))
+    JSC::VM& vm = *globalObjectObj->vm();
+    if (!strcmp(globalObjectObj->classInfo(vm)->className, "JSDOMWindowShell"))
         anyWorldGlobalObject = static_cast<JSDOMWindowShell*>(globalObjectObj)->window();
 
     // Get the frame frome the global object we've settled on.
@@ -2252,6 +2250,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 }
 
 #if PLATFORM(IOS)
+
 - (DOMDocumentFragment *)_documentFragmentForText:(NSString *)text
 {
     return kit(createFragmentFromText(*_private->coreFrame->selection().toNormalizedRange().get(), text).ptr());
@@ -2301,8 +2300,9 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return;
-    coreFrame->loader().client().dispatchDidReceiveTitle(StringWithDirection(title, LTR));
+    coreFrame->loader().client().dispatchDidReceiveTitle({ title, LTR });
 }
+
 #endif // PLATFORM(IOS)
 
 - (JSValueRef)jsWrapperForNode:(DOMNode *)node inScriptWorld:(WebScriptWorld *)world
@@ -2526,8 +2526,8 @@ static NSURL *createUniqueWebDataURL()
 
 - (void)loadArchive:(WebArchive *)archive
 {
-    if (LegacyWebArchive* coreArchive = [archive _coreLegacyWebArchive])
-        _private->coreFrame->loader().loadArchive(coreArchive);
+    if (auto* coreArchive = [archive _coreLegacyWebArchive])
+        _private->coreFrame->loader().loadArchive(*coreArchive);
 }
 
 - (void)stopLoading

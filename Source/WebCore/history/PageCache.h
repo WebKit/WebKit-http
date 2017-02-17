@@ -57,6 +57,8 @@ public:
     CachedPage* get(HistoryItem&, Page*);
     std::unique_ptr<CachedPage> take(HistoryItem&, Page*);
 
+    void removeAllItemsForPage(Page&);
+
     unsigned pageCount() const { return m_items.size(); }
     WEBCORE_EXPORT unsigned frameCount() const;
 
@@ -65,9 +67,6 @@ public:
 #if ENABLE(VIDEO_TRACK)
     void markPagesForCaptionPreferencesChanged();
 #endif
-
-    bool shouldClearBackingStores() const { return m_shouldClearBackingStores; }
-    void setShouldClearBackingStores(bool flag) { m_shouldClearBackingStores = flag; }
 
 private:
     PageCache() = default; // Use singleton() instead.
@@ -79,7 +78,6 @@ private:
 
     ListHashSet<RefPtr<HistoryItem>> m_items;
     unsigned m_maxSize {0};
-    bool m_shouldClearBackingStores {false};
 
     friend class WTF::NeverDestroyed<PageCache>;
 };

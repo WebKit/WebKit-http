@@ -55,16 +55,19 @@ namespace WebCore {
     M(IconDatabase) \
     M(Images) \
     M(IndexedDB) \
+    M(IndexedDBOperations) \
     M(Layers) \
     M(Layout) \
     M(Loading) \
     M(Media) \
     M(MediaSource) \
     M(MediaSourceSamples) \
+    M(MediaCaptureSamples) \
     M(MemoryPressure) \
     M(Network) \
     M(NotYetImplemented) \
     M(PageCache) \
+    M(PerformanceLogging) \
     M(PlatformLeaks) \
     M(Plugins) \
     M(PopupBlocking) \

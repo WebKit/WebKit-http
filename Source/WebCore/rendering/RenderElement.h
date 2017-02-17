@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "AnimationController.h"
+#include "CSSAnimationController.h"
 #include "LengthFunctions.h"
 #include "RenderObject.h"
 #include "StyleInheritedData.h"
@@ -56,7 +56,6 @@ public:
     // The pseudo element style can be cached or uncached.  Use the cached method if the pseudo element doesn't respect
     // any pseudo classes (and therefore has no concept of changing state).
     const RenderStyle* getCachedPseudoStyle(PseudoId, const RenderStyle* parentStyle = nullptr) const;
-    RenderStyle* getMutableCachedPseudoStyle(PseudoId, const RenderStyle* parentStyle = nullptr);
     std::unique_ptr<RenderStyle> getUncachedPseudoStyle(const PseudoStyleRequest&, const RenderStyle* parentStyle = nullptr, const RenderStyle* ownStyle = nullptr) const;
 
     // This is null for anonymous renderers.
@@ -129,13 +128,6 @@ public:
     /* This function performs a layout only if one is needed. */
     void layoutIfNeeded() { if (needsLayout()) layout(); }
 
-    // Return the renderer whose background style is used to paint the root background. Should only be called on the renderer for which isDocumentElementRenderer() is true.
-    RenderElement& rendererForRootBackground();
-
-    // Used only by Element::pseudoStyleCacheIsInvalid to get a first line style based off of a
-    // given new style, without accessing the cache.
-    std::unique_ptr<RenderStyle> uncachedFirstLineStyle(RenderStyle*) const;
-
     // Updates only the local style ptr of the object. Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
     void setStyleInternal(RenderStyle&& style) { m_style = WTFMove(style); }
@@ -169,7 +161,7 @@ public:
     // anchorRect() is conceptually similar to absoluteBoundingBoxRect(), but is intended for scrolling to an anchor.
     // For inline renderers, this gets the logical top left of the first leaf child and the logical bottom right of the
     // last leaf child, converts them to absolute coordinates, and makes a box out of them.
-    LayoutRect anchorRect() const;
+    LayoutRect absoluteAnchorRect(bool* insideFixed = nullptr) const;
 
     bool hasFilter() const { return style().hasFilter(); }
     bool hasBackdropFilter() const
@@ -302,17 +294,18 @@ private:
     bool shouldRepaintForStyleDifference(StyleDifference) const;
     bool hasImmediateNonWhitespaceTextChildOrBorderOrOutline() const;
 
-    void updateFillImages(const FillLayer*, const FillLayer*);
+    void updateFillImages(const FillLayer*, const FillLayer&);
     void updateImage(StyleImage*, StyleImage*);
     void updateShapeImage(const ShapeValue*, const ShapeValue*);
 
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
-    const RenderStyle* cachedFirstLineStyle() const;
+    std::unique_ptr<RenderStyle> computeFirstLineStyle() const;
+    void invalidateCachedFirstLineStyle();
 
     void newImageAnimationFrameAvailable(CachedImage&) final;
 
-    bool getLeadingCorner(FloatPoint& output) const;
-    bool getTrailingCorner(FloatPoint& output) const;
+    bool getLeadingCorner(FloatPoint& output, bool& insideFixed) const;
+    bool getTrailingCorner(FloatPoint& output, bool& insideFixed) const;
 
     void clearLayoutRootIfNeeded() const;
     
@@ -329,6 +322,7 @@ private:
     unsigned m_hasCounterNodeMap : 1;
     unsigned m_isCSSAnimating : 1;
     unsigned m_hasContinuation : 1;
+    mutable unsigned m_hasValidCachedFirstLineStyle : 1;
 
     unsigned m_renderBlockHasMarginBeforeQuirk : 1;
     unsigned m_renderBlockHasMarginAfterQuirk : 1;
@@ -345,6 +339,11 @@ private:
     // Store state between styleWillChange and styleDidChange
     static bool s_affectsParentBlock;
     static bool s_noLongerAffectsParentBlock;
+
+protected:
+#if !ASSERT_DISABLED
+    bool m_reparentingChild { false };
+#endif
 };
 
 inline void RenderElement::setAncestorLineBoxDirty(bool f)

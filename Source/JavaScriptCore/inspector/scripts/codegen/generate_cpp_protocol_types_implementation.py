@@ -39,8 +39,8 @@ log = logging.getLogger('global')
 
 
 class CppProtocolTypesImplementationGenerator(CppGenerator):
-    def __init__(self, model, input_filepath):
-        CppGenerator.__init__(self, model, input_filepath)
+    def __init__(self, *args, **kwargs):
+        CppGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
         return "%sProtocolObjects.cpp" % self.protocol_name()
@@ -97,7 +97,7 @@ class CppProtocolTypesImplementationGenerator(CppGenerator):
             body_lines = []
             body_lines.extend([
                 'template<>',
-                'Optional<%s> parseEnumValueFromString<%s>(const String& protocolString)' % (cpp_protocol_type, cpp_protocol_type),
+                'std::optional<%s> parseEnumValueFromString<%s>(const String& protocolString)' % (cpp_protocol_type, cpp_protocol_type),
                 '{',
                 '    static const size_t constantValues[] = {',
             ])
@@ -112,13 +112,14 @@ class CppProtocolTypesImplementationGenerator(CppGenerator):
                 '        if (protocolString == enum_constant_values[constantValues[i]])',
                 '            return (%s)constantValues[i];' % cpp_protocol_type,
                 '',
-                '    return Nullopt;',
+                '    return std::nullopt;',
                 '}',
                 '',
             ])
             return body_lines
 
-        declaration_types = [decl.type for decl in domain.type_declarations]
+        type_declarations = self.type_declarations_for_domain(domain)
+        declaration_types = [decl.type for decl in type_declarations]
         object_types = filter(lambda _type: isinstance(_type, ObjectType), declaration_types)
         enum_types = filter(lambda _type: isinstance(_type, EnumType), declaration_types)
         if len(object_types) + len(enum_types) == 0:
@@ -158,7 +159,8 @@ class CppProtocolTypesImplementationGenerator(CppGenerator):
     def _generate_open_field_names(self):
         lines = []
         for domain in self.domains_to_generate():
-            for type_declaration in filter(lambda decl: Generator.type_has_open_fields(decl.type), domain.type_declarations):
+            type_declarations = self.type_declarations_for_domain(domain)
+            for type_declaration in filter(lambda decl: Generator.type_has_open_fields(decl.type), type_declarations):
                 for type_member in sorted(type_declaration.type_members, key=lambda member: member.member_name):
                     field_name = '::'.join(['Inspector', 'Protocol', domain.domain_name, ucfirst(type_declaration.type_name), ucfirst(type_member.member_name)])
                     lines.append('const char* %s = "%s";' % (field_name, type_member.member_name))
@@ -167,7 +169,8 @@ class CppProtocolTypesImplementationGenerator(CppGenerator):
 
     def _generate_builders_for_domain(self, domain):
         sections = []
-        declarations_to_generate = filter(lambda decl: self.type_needs_shape_assertions(decl.type), domain.type_declarations)
+        type_declarations = self.type_declarations_for_domain(domain)
+        declarations_to_generate = filter(lambda decl: self.type_needs_shape_assertions(decl.type), type_declarations)
 
         for type_declaration in declarations_to_generate:
             for type_member in type_declaration.type_members:

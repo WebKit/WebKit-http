@@ -91,6 +91,7 @@ static JSArray* getJSListenerFunctions(ExecState& state, Document* document, con
         listenerEntry->putDirect(vm, Identifier::fromString(&state, "listener"), function);
         listenerEntry->putDirect(vm, Identifier::fromString(&state, "useCapture"), jsBoolean(listenerInfo.eventListenerVector[i]->useCapture()));
         result->putDirectIndex(&state, outputIndex++, JSValue(listenerEntry));
+        RETURN_IF_EXCEPTION(scope, nullptr);
     }
     return result;
 }
@@ -100,11 +101,12 @@ JSValue JSCommandLineAPIHost::getEventListeners(ExecState& state)
     if (state.argumentCount() < 1)
         return jsUndefined();
 
+    VM& vm = state.vm();
     JSValue value = state.uncheckedArgument(0);
     if (!value.isObject() || value.isNull())
         return jsUndefined();
 
-    Node* node = JSNode::toWrapped(value);
+    Node* node = JSNode::toWrapped(vm, value);
     if (!node)
         return jsUndefined();
 
@@ -137,7 +139,8 @@ JSValue JSCommandLineAPIHost::databaseId(ExecState& state)
     if (state.argumentCount() < 1)
         return jsUndefined();
 
-    Database* database = JSDatabase::toWrapped(state.uncheckedArgument(0));
+    VM& vm = state.vm();
+    Database* database = JSDatabase::toWrapped(vm, state.uncheckedArgument(0));
     if (database)
         return jsStringWithCache(&state, wrapped().databaseIdImpl(database));
 
@@ -149,7 +152,8 @@ JSValue JSCommandLineAPIHost::storageId(ExecState& state)
     if (state.argumentCount() < 1)
         return jsUndefined();
 
-    Storage* storage = JSStorage::toWrapped(state.uncheckedArgument(0));
+    VM& vm = state.vm();
+    Storage* storage = JSStorage::toWrapped(vm, state.uncheckedArgument(0));
     if (storage)
         return jsStringWithCache(&state, wrapped().storageIdImpl(storage));
 

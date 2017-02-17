@@ -52,9 +52,9 @@
 #include "WebScriptWorld.h"
 #include "WebURLResponse.h"
 #include "WebView.h"
-#include <WebCore/AnimationController.h>
 #include <WebCore/BString.h>
 #include <WebCore/COMPtr.h>
+#include <WebCore/CSSAnimationController.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
@@ -1253,7 +1253,7 @@ HRESULT WebFrame::allowsFollowingLink(_In_ BSTR url, _Out_ BOOL* result)
     if (!frame)
         return E_UNEXPECTED;
 
-    *result = frame->document()->securityOrigin()->canDisplay(MarshallingHelpers::BSTRToKURL(url));
+    *result = frame->document()->securityOrigin().canDisplay(MarshallingHelpers::BSTRToKURL(url));
     return S_OK;
 }
 
@@ -2002,7 +2002,7 @@ HRESULT WebFrame::stringByEvaluatingJavaScriptInScriptWorld(IWebScriptWorld* iWo
 
     // The global object is probably a shell object? - if so, we know how to use this!
     JSC::JSObject* globalObjectObj = toJS(globalObjectRef);
-    if (!strcmp(globalObjectObj->classInfo()->className, "JSDOMWindowShell"))
+    if (globalObjectObj->inherits(*globalObjectObj->vm(), JSDOMWindowShell::info()))
         anyWorldGlobalObject = static_cast<JSDOMWindowShell*>(globalObjectObj)->window();
 
     // Get the frame frome the global object we've settled on.

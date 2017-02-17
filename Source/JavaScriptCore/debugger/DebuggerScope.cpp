@@ -61,8 +61,8 @@ void DebuggerScope::visitChildren(JSCell* cell, SlotVisitor& visitor)
     DebuggerScope* thisObject = jsCast<DebuggerScope*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     JSObject::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_scope);
-    visitor.append(&thisObject->m_next);
+    visitor.append(thisObject->m_scope);
+    visitor.append(thisObject->m_next);
 }
 
 String DebuggerScope::className(const JSObject* object)
@@ -212,7 +212,7 @@ bool DebuggerScope::isNestedLexicalScope() const
 
 String DebuggerScope::name() const
 {
-    SymbolTable* symbolTable = m_scope->symbolTable();
+    SymbolTable* symbolTable = m_scope->symbolTable(*vm());
     if (!symbolTable)
         return String();
 
@@ -225,7 +225,7 @@ String DebuggerScope::name() const
 
 DebuggerLocation DebuggerScope::location() const
 {
-    SymbolTable* symbolTable = m_scope->symbolTable();
+    SymbolTable* symbolTable = m_scope->symbolTable(*vm());
     if (!symbolTable)
         return DebuggerLocation();
 

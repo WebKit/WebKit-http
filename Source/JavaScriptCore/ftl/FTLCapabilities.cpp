@@ -119,6 +119,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CreateActivation:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
     case GetClosureVar:
     case PutClosureVar:
     case CreateDirectArguments:
@@ -138,6 +139,7 @@ inline CapabilityLevel canCompile(Node* node)
     case StringFromCharCode:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
+    case NukeStructureAndSetButterfly:
     case GetTypedArrayByteOffset:
     case NotifyWrite:
     case StoreBarrier:
@@ -226,6 +228,7 @@ inline CapabilityLevel canCompile(Node* node)
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PutHint:
     case CheckStructureImmediate:
@@ -233,6 +236,8 @@ inline CapabilityLevel canCompile(Node* node)
     case MaterializeCreateActivation:
     case PhantomDirectArguments:
     case PhantomCreateRest:
+    case PhantomSpread:
+    case PhantomNewArrayWithSpread:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
@@ -277,6 +282,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckDOM:
     case CallDOM:
     case CallDOMGetter:
+    case ArraySlice:
         // These are OK.
         break;
 

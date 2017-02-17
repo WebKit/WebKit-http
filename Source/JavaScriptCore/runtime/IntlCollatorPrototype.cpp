@@ -98,7 +98,12 @@ static EncodedJSValue JSC_HOST_CALL IntlCollatorFuncCompare(ExecState* state)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // 9. Return CompareStrings(collator, X, Y).
-    return JSValue::encode(collator->compareStrings(*state, x->view(state).get(), y->view(state).get()));
+    auto xViewWithString = x->viewWithUnderlyingString(*state);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    auto yViewWithString = y->viewWithUnderlyingString(*state);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
+    return JSValue::encode(collator->compareStrings(*state, xViewWithString.view, yViewWithString.view));
 }
 
 EncodedJSValue JSC_HOST_CALL IntlCollatorPrototypeGetterCompare(ExecState* state)
@@ -108,7 +113,7 @@ EncodedJSValue JSC_HOST_CALL IntlCollatorPrototypeGetterCompare(ExecState* state
 
     // 10.3.3 Intl.Collator.prototype.compare (ECMA-402 2.0)
     // 1. Let collator be this Collator object.
-    IntlCollator* collator = jsDynamicCast<IntlCollator*>(state->thisValue());
+    IntlCollator* collator = jsDynamicCast<IntlCollator*>(vm, state->thisValue());
     if (!collator)
         return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.Collator.prototype.compare called on value that's not an object initialized as a Collator")));
 
@@ -136,10 +141,11 @@ EncodedJSValue JSC_HOST_CALL IntlCollatorPrototypeFuncResolvedOptions(ExecState*
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     // 10.3.5 Intl.Collator.prototype.resolvedOptions() (ECMA-402 2.0)
-    IntlCollator* collator = jsDynamicCast<IntlCollator*>(state->thisValue());
+    IntlCollator* collator = jsDynamicCast<IntlCollator*>(vm, state->thisValue());
     if (!collator)
         return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.Collator.prototype.resolvedOptions called on value that's not an object initialized as a Collator")));
 
+    scope.release();
     return JSValue::encode(collator->resolvedOptions(*state));
 }
 

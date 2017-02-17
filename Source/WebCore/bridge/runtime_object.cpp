@@ -46,7 +46,7 @@ RuntimeObject::RuntimeObject(VM& vm, Structure* structure, RefPtr<Instance>&& in
 void RuntimeObject::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 }
 
 void RuntimeObject::destroy(JSCell* cell)
@@ -224,8 +224,8 @@ JSValue RuntimeObject::defaultValue(const JSObject* object, ExecState* exec, Pre
 
 static EncodedJSValue JSC_HOST_CALL callRuntimeObject(ExecState* exec)
 {
-    ASSERT(exec->callee()->inherits(RuntimeObject::info()));
-    RefPtr<Instance> instance(static_cast<RuntimeObject*>(exec->callee())->getInternalInstance());
+    ASSERT(exec->jsCallee()->inherits(exec->vm(), RuntimeObject::info()));
+    RefPtr<Instance> instance(static_cast<RuntimeObject*>(exec->jsCallee())->getInternalInstance());
     instance->begin();
     JSValue result = instance->invokeDefaultMethod(exec);
     instance->end();
@@ -248,9 +248,9 @@ CallType RuntimeObject::getCallData(JSCell* cell, CallData& callData)
 
 static EncodedJSValue JSC_HOST_CALL callRuntimeConstructor(ExecState* exec)
 {
-    JSObject* constructor = exec->callee();
-    ASSERT(constructor->inherits(RuntimeObject::info()));
-    RefPtr<Instance> instance(static_cast<RuntimeObject*>(exec->callee())->getInternalInstance());
+    JSObject* constructor = exec->jsCallee();
+    ASSERT(constructor->inherits(exec->vm(), RuntimeObject::info()));
+    RefPtr<Instance> instance(static_cast<RuntimeObject*>(exec->jsCallee())->getInternalInstance());
     instance->begin();
     ArgList args(exec);
     JSValue result = instance->invokeConstruct(exec, args);

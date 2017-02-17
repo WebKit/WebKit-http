@@ -385,7 +385,7 @@ private:
         case ArithTrunc: {
             if (node->child1()->shouldSpeculateInt32OrBoolean() && m_graph.roundShouldSpeculateInt32(node, FixupPass)) {
                 fixIntOrBooleanEdge(node->child1());
-                insertCheck<Int32Use>(m_indexInBlock, node->child1().node());
+                insertCheck<Int32Use>(node->child1().node());
                 node->convertToIdentity();
                 break;
             }
@@ -931,6 +931,14 @@ private:
             fixEdge<KnownCellUse>(node->child1());
             break;
         }
+
+        case ArraySlice: {
+            fixEdge<KnownCellUse>(m_graph.varArgChild(node, 0));
+            fixEdge<Int32Use>(m_graph.varArgChild(node, 1));
+            if (node->numChildren() == 4)
+                fixEdge<Int32Use>(m_graph.varArgChild(node, 2));
+            break;
+        }
             
         case RegExpExec:
         case RegExpTest: {
@@ -1199,6 +1207,11 @@ private:
             fixEdge<KnownCellUse>(node->child1());
             break;
         }
+            
+        case NukeStructureAndSetButterfly: {
+            fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
 
         case TryGetById: {
             if (node->child1()->shouldSpeculateCell())
@@ -1325,8 +1338,9 @@ private:
             if (!node->child1()->hasStorageResult())
                 fixEdge<KnownCellUse>(node->child1());
             fixEdge<KnownCellUse>(node->child2());
+            unsigned index = indexForChecks();
             insertInferredTypeCheck(
-                m_insertionSet, m_indexInBlock, node->origin, node->child3().node(),
+                m_insertionSet, index, originForCheck(index), node->child3().node(),
                 node->storageAccessData().inferredType);
             speculateForBarrier(node->child3());
             break;
@@ -1334,7 +1348,6 @@ private:
             
         case MultiPutByOffset: {
             fixEdge<CellUse>(node->child1());
-            speculateForBarrier(node->child2());
             break;
         }
             
@@ -1350,10 +1363,12 @@ private:
             break;
 
         case In: {
-            // FIXME: We should at some point have array profiling on op_in, in which
-            // case we would be able to turn this into a kind of GetByVal.
-            
-            fixEdge<CellUse>(node->child2());
+            if (node->child2()->shouldSpeculateInt32()) {
+                convertToHasIndexedProperty(node);
+                break;
+            }
+
+            fixEdge<CellUse>(node->child1());
             break;
         }
 
@@ -1435,9 +1450,12 @@ private:
         case PhantomNewObject:
         case PhantomNewFunction:
         case PhantomNewGeneratorFunction:
+        case PhantomNewAsyncFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomCreateRest:
+        case PhantomSpread:
+        case PhantomNewArrayWithSpread:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
         case GetMyArgumentByValOutOfBounds:
@@ -1576,7 +1594,7 @@ private:
             } else if (typeSet->doesTypeConformTo(TypeObject)) {
                 StructureSet set;
                 {
-                    ConcurrentJITLocker locker(typeSet->m_lock);
+                    ConcurrentJSLocker locker(typeSet->m_lock);
                     set = typeSet->structureSet(locker);
                 }
                 if (!set.isEmpty()) {
@@ -1596,7 +1614,8 @@ private:
         case CreateScopedArguments:
         case CreateActivation:
         case NewFunction:
-        case NewGeneratorFunction: {
+        case NewGeneratorFunction:
+        case NewAsyncFunction: {
             fixEdge<CellUse>(node->child1());
             break;
         }
@@ -1930,7 +1949,7 @@ private:
             if (!edge)
                 break;
             edge.setUseKind(KnownStringUse);
-            JSString* string = edge->dynamicCastConstant<JSString*>();
+            JSString* string = edge->dynamicCastConstant<JSString*>(vm());
             if (!string)
                 continue;
             if (string->length())
@@ -2348,7 +2367,7 @@ private:
                 if (structure) {
                     m_insertionSet.insertNode(
                         m_indexInBlock, SpecNone, ArrayifyToStructure, origin,
-                        OpInfo(structure), OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
+                        OpInfo(m_graph.registerStructure(structure)), OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
                 } else {
                     m_insertionSet.insertNode(
                         m_indexInBlock, SpecNone, Arrayify, origin,
@@ -2491,6 +2510,19 @@ private:
         edge.setUseKind(useKind);
     }
     
+    unsigned indexForChecks()
+    {
+        unsigned index = m_indexInBlock;
+        while (!m_block->at(index)->origin.exitOK)
+            index--;
+        return index;
+    }
+    
+    NodeOrigin originForCheck(unsigned index)
+    {
+        return m_block->at(index)->origin.withSemantic(m_currentNode->origin.semantic);
+    }
+    
     void speculateForBarrier(Edge value)
     {
         // Currently, the DFG won't take advantage of this speculation. But, we want to do it in
@@ -2498,37 +2530,37 @@ private:
         // we do an expensive compile.
         
         if (value->shouldSpeculateInt32()) {
-            insertCheck<Int32Use>(m_indexInBlock, value.node());
+            insertCheck<Int32Use>(value.node());
             return;
         }
             
         if (value->shouldSpeculateBoolean()) {
-            insertCheck<BooleanUse>(m_indexInBlock, value.node());
+            insertCheck<BooleanUse>(value.node());
             return;
         }
             
         if (value->shouldSpeculateOther()) {
-            insertCheck<OtherUse>(m_indexInBlock, value.node());
+            insertCheck<OtherUse>(value.node());
             return;
         }
             
         if (value->shouldSpeculateNumber()) {
-            insertCheck<NumberUse>(m_indexInBlock, value.node());
+            insertCheck<NumberUse>(value.node());
             return;
         }
             
         if (value->shouldSpeculateNotCell()) {
-            insertCheck<NotCellUse>(m_indexInBlock, value.node());
+            insertCheck<NotCellUse>(value.node());
             return;
         }
     }
     
     template<UseKind useKind>
-    void insertCheck(unsigned indexInBlock, Node* node)
+    void insertCheck(Node* node)
     {
         observeUseKindOnNode<useKind>(node);
-        m_insertionSet.insertNode(
-            indexInBlock, SpecNone, Check, m_currentNode->origin, Edge(node, useKind));
+        unsigned index = indexForChecks();
+        m_insertionSet.insertNode(index, SpecNone, Check, originForCheck(index), Edge(node, useKind));
     }
 
     void fixIntConvertingEdge(Edge& edge)
@@ -2622,7 +2654,7 @@ private:
         else
             truncateConstantToInt32(node->child2());
     }
-    
+
     bool attemptToMakeIntegerAdd(Node* node)
     {
         AddSpeculationMode mode = m_graph.addSpeculationMode(node, FixupPass);
@@ -2657,7 +2689,7 @@ private:
             profiledBlock->getArrayProfile(node->origin.semantic.bytecodeIndex);
         ArrayMode arrayMode = ArrayMode(Array::SelectUsingPredictions);
         if (arrayProfile) {
-            ConcurrentJITLocker locker(profiledBlock->m_lock);
+            ConcurrentJSLocker locker(profiledBlock->m_lock);
             arrayProfile->computeUpdatedPrediction(locker, profiledBlock);
             arrayMode = ArrayMode::fromObserved(locker, arrayProfile, Array::Read, false);
             if (arrayMode.type() == Array::Unprofiled) {
@@ -2713,7 +2745,25 @@ private:
             m_indexInBlock, SpecInt32Only, GetArrayLength, origin,
             OpInfo(arrayMode.asWord()), Edge(child, KnownCellUse), Edge(storage));
     }
-    
+
+    void convertToHasIndexedProperty(Node* node)
+    {
+        node->setOp(HasIndexedProperty);
+        node->clearFlags(NodeMustGenerate);
+        node->setArrayMode(
+            node->arrayMode().refine(
+                m_graph, node,
+                node->child1()->prediction(),
+                node->child2()->prediction(),
+                SpecNone));
+        node->setInternalMethodType(PropertySlot::InternalMethodType::HasProperty);
+
+        blessArrayOperation(node->child1(), node->child2(), node->child3());
+
+        fixEdge<CellUse>(node->child1());
+        fixEdge<Int32Use>(node->child2());
+    }
+
     bool attemptToMakeCallDOM(Node* node)
     {
         if (m_graph.hasExitSite(node->origin.semantic, BadType))
@@ -2820,7 +2870,7 @@ private:
             }
 
             originForChecks = originForChecks.withSemantic(node->origin.semantic);
-
+            
             // First, try to relax the representational demands of each node, in order to have
             // fewer conversions.
             switch (node->op()) {

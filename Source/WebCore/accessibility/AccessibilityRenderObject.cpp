@@ -36,9 +36,7 @@
 #include "AccessibilitySpinButton.h"
 #include "AccessibilityTable.h"
 #include "CachedImage.h"
-#include "Chrome.h"
 #include "ElementIterator.h"
-#include "EventNames.h"
 #include "FloatRect.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -95,7 +93,6 @@
 #include "RenderedPosition.h"
 #include "SVGDocument.h"
 #include "SVGImage.h"
-#include "SVGNames.h"
 #include "SVGSVGElement.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
@@ -1421,11 +1418,7 @@ double AccessibilityRenderObject::estimatedLoadingProgress() const
     if (isLoaded())
         return 1.0;
     
-    Page* page = m_renderer->document().page();
-    if (!page)
-        return 0;
-    
-    return page->progress().estimatedProgress();
+    return m_renderer->page().progress().estimatedProgress();
 }
     
 int AccessibilityRenderObject::layoutCount() const
@@ -1620,6 +1613,10 @@ bool AccessibilityRenderObject::isSelected() const
     
     if (isTabItem() && isTabItemSelected())
         return true;
+
+    // Menu items are considered selectable by assistive technologies
+    if (isMenuItem())
+        return isFocused() || parentObjectUnignored()->activeDescendant() == this;
 
     return false;
 }
@@ -2787,6 +2784,10 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && node->hasTagName(footerTag) && !isDescendantOfElementType(articleTag) && !isDescendantOfElementType(sectionTag))
         return FooterRole;
     
+    // menu tags with toolbar type should have Toolbar role.
+    if (node && node->hasTagName(menuTag) && equalLettersIgnoringASCIICase(getAttribute(typeAttr), "toolbar"))
+        return ToolbarRole;
+    
     // If the element does not have role, but it has ARIA attributes, or accepts tab focus, accessibility should fallback to exposing it as a group.
     if (supportsARIAAttributes() || canSetFocusAttribute())
         return GroupRole;
@@ -2942,7 +2943,7 @@ void AccessibilityRenderObject::textChanged()
             continue;
         
         if (parent->supportsARIALiveRegion())
-            cache->postNotification(renderParent, AXObjectCache::AXLiveRegionChanged);
+            cache->postLiveRegionChangeNotification(parent);
 
         if (parent->isNonNativeTextControl())
             cache->postNotification(renderParent, AXObjectCache::AXValueChanged);
@@ -3270,9 +3271,29 @@ bool AccessibilityRenderObject::ariaLiveRegionAtomic() const
     }
 }
 
-bool AccessibilityRenderObject::ariaLiveRegionBusy() const
+bool AccessibilityRenderObject::isBusy() const
 {
     return elementAttributeValue(aria_busyAttr);    
+}
+
+bool AccessibilityRenderObject::canHaveSelectedChildren() const
+{
+    switch (roleValue()) {
+    // These roles are containers whose children support aria-selected:
+    case GridRole:
+    case ListBoxRole:
+    case TabListRole:
+    case TreeRole:
+    case TreeGridRole:
+    // These roles are containers whose children are treated as selected by assistive
+    // technologies. We can get the "selected" item via aria-activedescendant or the
+    // focused element.
+    case MenuRole:
+    case MenuBarRole:
+        return true;
+    default:
+        return false;
+    }
 }
     
 void AccessibilityRenderObject::ariaSelectedRows(AccessibilityChildrenVector& result)
@@ -3327,12 +3348,36 @@ void AccessibilityRenderObject::selectedChildren(AccessibilityChildrenVector& re
 {
     ASSERT(result.isEmpty());
 
-    // only listboxes should be asked for their selected children. 
-    AccessibilityRole role = roleValue();
-    if (role == ListBoxRole) // native list boxes would be AccessibilityListBoxes, so only check for aria list boxes
+    if (!canHaveSelectedChildren())
+        return;
+
+    switch (roleValue()) {
+    case ListBoxRole:
+        // native list boxes would be AccessibilityListBoxes, so only check for aria list boxes
         ariaListboxSelectedChildren(result);
-    else if (role == TreeRole || role == TreeGridRole || role == TableRole || role == GridRole)
+        return;
+    case GridRole:
+    case TreeRole:
         ariaSelectedRows(result);
+        return;
+    case TabListRole:
+        if (AccessibilityObject* selectedTab = selectedTabItem())
+            result.append(selectedTab);
+        return;
+    case MenuRole:
+    case MenuBarRole:
+        if (AccessibilityObject* descendant = activeDescendant()) {
+            result.append(descendant);
+            return;
+        }
+        if (AccessibilityObject* focusedElement = focusedUIElement()) {
+            result.append(focusedElement);
+            return;
+        }
+        return;
+    default:
+        ASSERT_NOT_REACHED();
+    }
 }
 
 void AccessibilityRenderObject::ariaListboxVisibleChildren(AccessibilityChildrenVector& result)      
@@ -3521,12 +3566,16 @@ String AccessibilityRenderObject::nameForMSAA() const
 
 static bool shouldReturnTagNameAsRoleForMSAA(const Element& element)
 {
-    // See "document structure",
-    // https://wiki.mozilla.org/Accessibility/AT-Windows-API
-    // FIXME: Add the other tag names that should be returned as the role.
-    return element.hasTagName(h1Tag) || element.hasTagName(h2Tag) 
+    return element.hasTagName(abbrTag) || element.hasTagName(acronymTag)
+        || element.hasTagName(blockquoteTag) || element.hasTagName(ddTag)
+        || element.hasTagName(dlTag) || element.hasTagName(dtTag)
+        || element.hasTagName(formTag) || element.hasTagName(frameTag)
+        || element.hasTagName(h1Tag) || element.hasTagName(h2Tag)
         || element.hasTagName(h3Tag) || element.hasTagName(h4Tag)
-        || element.hasTagName(h5Tag) || element.hasTagName(h6Tag);
+        || element.hasTagName(h5Tag) || element.hasTagName(h6Tag)
+        || element.hasTagName(iframeTag) || element.hasTagName(qTag)
+        || element.hasTagName(tbodyTag) || element.hasTagName(tfootTag)
+        || element.hasTagName(theadTag);
 }
 
 String AccessibilityRenderObject::stringRoleForMSAA() const

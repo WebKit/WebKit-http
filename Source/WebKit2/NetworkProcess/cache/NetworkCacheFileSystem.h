@@ -35,7 +35,7 @@ namespace WebKit {
 namespace NetworkCache {
 
 enum class DirectoryEntryType { Directory, File };
-void traverseDirectory(const String& path, const std::function<void (const String& fileName, DirectoryEntryType)>&);
+void traverseDirectory(const String& path, const Function<void (const String& fileName, DirectoryEntryType)>&);
 
 void deleteDirectoryRecursively(const String& path);
 
@@ -45,6 +45,8 @@ struct FileTimes {
 };
 FileTimes fileTimes(const String& path);
 void updateFileModificationTimeIfNeeded(const String& path);
+
+bool canUseSharedMemoryForPath(const String& path);
 
 }
 }

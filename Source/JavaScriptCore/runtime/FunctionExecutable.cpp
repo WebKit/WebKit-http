@@ -41,17 +41,14 @@ namespace JSC {
 
 const ClassInfo FunctionExecutable::s_info = { "FunctionExecutable", &ScriptExecutable::s_info, 0, CREATE_METHOD_TABLE(FunctionExecutable) };
 
-FunctionExecutable::FunctionExecutable(VM& vm, const SourceCode& source, UnlinkedFunctionExecutable* unlinkedExecutable, unsigned firstLine, unsigned lastLine, unsigned startColumn, unsigned endColumn, Intrinsic intrinsic)
+FunctionExecutable::FunctionExecutable(VM& vm, const SourceCode& source, UnlinkedFunctionExecutable* unlinkedExecutable, unsigned lastLine, unsigned endColumn, Intrinsic intrinsic)
     : ScriptExecutable(vm.functionExecutableStructure.get(), vm, source, unlinkedExecutable->isInStrictContext(), unlinkedExecutable->derivedContextType(), false, EvalContextType::None, intrinsic)
     , m_unlinkedExecutable(vm, this, unlinkedExecutable)
 {
     RELEASE_ASSERT(!source.isNull());
     ASSERT(source.length());
-    m_firstLine = firstLine;
     m_lastLine = lastLine;
-    ASSERT(startColumn != UINT_MAX);
     ASSERT(endColumn != UINT_MAX);
-    m_startColumn = startColumn;
     m_endColumn = endColumn;
     m_parametersStartOffset = unlinkedExecutable->parametersStartOffset();
     m_typeProfilingStartOffset = unlinkedExecutable->typeProfilingStartOffset();
@@ -88,12 +85,12 @@ void FunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
     FunctionExecutable* thisObject = jsCast<FunctionExecutable*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     ScriptExecutable::visitChildren(thisObject, visitor);
-    if (thisObject->m_codeBlockForCall)
-        thisObject->m_codeBlockForCall->visitWeakly(visitor);
-    if (thisObject->m_codeBlockForConstruct)
-        thisObject->m_codeBlockForConstruct->visitWeakly(visitor);
-    visitor.append(&thisObject->m_unlinkedExecutable);
-    visitor.append(&thisObject->m_singletonFunction);
+    if (FunctionCodeBlock* codeBlockForCall = thisObject->m_codeBlockForCall.get())
+        codeBlockForCall->visitWeakly(visitor);
+    if (FunctionCodeBlock* codeBlockForConstruct = thisObject->m_codeBlockForConstruct.get())
+        codeBlockForConstruct->visitWeakly(visitor);
+    visitor.append(thisObject->m_unlinkedExecutable);
+    visitor.append(thisObject->m_singletonFunction);
 }
 
 FunctionExecutable* FunctionExecutable::fromGlobalCode(

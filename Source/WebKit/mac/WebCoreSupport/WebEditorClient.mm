@@ -102,9 +102,16 @@ using namespace HTMLNames;
 - (DOMDocumentFragment *)_documentFromRange:(NSRange)range document:(DOMDocument *)document documentAttributes:(NSDictionary *)attributes subresources:(NSArray **)subresources;
 @end
 
-static WebViewInsertAction kit(EditorInsertAction coreAction)
+static WebViewInsertAction kit(EditorInsertAction action)
 {
-    return static_cast<WebViewInsertAction>(coreAction);
+    switch (action) {
+    case EditorInsertAction::Typed:
+        return WebViewInsertActionTyped;
+    case EditorInsertAction::Pasted:
+        return WebViewInsertActionPasted;
+    case EditorInsertAction::Dropped:
+        return WebViewInsertActionDropped;
+    }
 }
 
 @interface WebUndoStep : NSObject
@@ -112,8 +119,8 @@ static WebViewInsertAction kit(EditorInsertAction coreAction)
     RefPtr<UndoStep> m_step;   
 }
 
-+ (WebUndoStep *)stepWithUndoStep:(PassRefPtr<UndoStep>)step;
-- (UndoStep *)step;
++ (WebUndoStep *)stepWithUndoStep:(UndoStep&)step;
+- (UndoStep&)step;
 
 @end
 
@@ -128,13 +135,12 @@ static WebViewInsertAction kit(EditorInsertAction coreAction)
 #endif
 }
 
-- (id)initWithUndoStep:(PassRefPtr<UndoStep>)step
+- (id)initWithUndoStep:(UndoStep&)step
 {
-    ASSERT(step);
     self = [super init];
     if (!self)
         return nil;
-    m_step = step;
+    m_step = &step;
     return self;
 }
 
@@ -146,14 +152,14 @@ static WebViewInsertAction kit(EditorInsertAction coreAction)
     [super dealloc];
 }
 
-+ (WebUndoStep *)stepWithUndoStep:(PassRefPtr<UndoStep>)step
++ (WebUndoStep *)stepWithUndoStep:(UndoStep&)step
 {
     return [[[WebUndoStep alloc] initWithUndoStep:step] autorelease];
 }
 
-- (UndoStep *)step
+- (UndoStep&)step
 {
-    return m_step.get();
+    return *m_step;
 }
 
 @end
@@ -170,13 +176,13 @@ static WebViewInsertAction kit(EditorInsertAction coreAction)
 - (void)undoEditing:(id)arg
 {
     ASSERT([arg isKindOfClass:[WebUndoStep class]]);
-    [arg step]->unapply();
+    [arg step].unapply();
 }
 
 - (void)redoEditing:(id)arg
 {
     ASSERT([arg isKindOfClass:[WebUndoStep class]]);
-    [arg step]->reapply();
+    [arg step].reapply();
 }
 
 @end
@@ -635,10 +641,8 @@ static NSString* undoNameForEditAction(EditAction editAction)
     return nil;
 }
 
-void WebEditorClient::registerUndoOrRedoStep(PassRefPtr<UndoStep> step, bool isRedo)
+void WebEditorClient::registerUndoOrRedoStep(UndoStep& step, bool isRedo)
 {
-    ASSERT(step);
-    
     NSUndoManager *undoManager = [m_webView undoManager];
 
 #if PLATFORM(IOS)
@@ -649,7 +653,7 @@ void WebEditorClient::registerUndoOrRedoStep(PassRefPtr<UndoStep> step, bool isR
         return;
 #endif
 
-    NSString *actionName = undoNameForEditAction(step->editingAction());
+    NSString *actionName = undoNameForEditAction(step.editingAction());
     WebUndoStep *webEntry = [WebUndoStep stepWithUndoStep:step];
     [undoManager registerUndoWithTarget:m_undoTarget.get() selector:(isRedo ? @selector(redoEditing:) : @selector(undoEditing:)) object:webEntry];
     if (actionName)
@@ -677,12 +681,12 @@ void WebEditorClient::updateEditorStateAfterLayoutIfEditabilityChanged()
         [m_webView updateTouchBar];
 }
 
-void WebEditorClient::registerUndoStep(PassRefPtr<UndoStep> cmd)
+void WebEditorClient::registerUndoStep(UndoStep& cmd)
 {
     registerUndoOrRedoStep(cmd, false);
 }
 
-void WebEditorClient::registerRedoStep(PassRefPtr<UndoStep> cmd)
+void WebEditorClient::registerRedoStep(UndoStep& cmd)
 {
     registerUndoOrRedoStep(cmd, true);
 }
@@ -1248,7 +1252,6 @@ void WebEditorClient::handleRequestedCandidates(NSInteger sequenceNumber, NSArra
         rectForSelectionCandidates = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
 
     [m_webView showCandidates:candidates forString:m_paragraphContextForCandidateRequest.get() inRect:rectForSelectionCandidates forSelectedRange:m_rangeForCandidates view:m_webView completionHandler:nil];
-
 }
 
 void WebEditorClient::handleAcceptedCandidateWithSoftSpaces(TextCheckingResult acceptedCandidate)
@@ -1317,11 +1320,11 @@ void WebEditorClient::didCheckSucceed(int sequence, NSArray* results)
 
 #endif
 
-void WebEditorClient::requestCheckingOfString(PassRefPtr<WebCore::TextCheckingRequest> request, const VisibleSelection& currentSelection)
+void WebEditorClient::requestCheckingOfString(WebCore::TextCheckingRequest& request, const VisibleSelection& currentSelection)
 {
 #if !PLATFORM(IOS)
     ASSERT(!m_textCheckingRequest);
-    m_textCheckingRequest = request;
+    m_textCheckingRequest = &request;
 
     int sequence = m_textCheckingRequest->data().sequence();
     NSRange range = NSMakeRange(0, m_textCheckingRequest->data().text().length());

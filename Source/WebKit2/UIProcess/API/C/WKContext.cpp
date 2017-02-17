@@ -353,6 +353,15 @@ void WKContextSetAdditionalPluginsDirectory(WKContextRef contextRef, WKStringRef
 #endif
 }
 
+void WKContextRefreshPlugIns(WKContextRef context)
+{
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    toImpl(context)->refreshPlugins();
+#else
+    UNUSED_PARAM(context);
+#endif
+}
+
 void WKContextRegisterURLSchemeAsEmptyDocument(WKContextRef contextRef, WKStringRef urlScheme)
 {
     toImpl(contextRef)->registerURLSchemeAsEmptyDocument(toImpl(urlScheme)->string());
@@ -370,12 +379,7 @@ void WKContextRegisterURLSchemeAsBypassingContentSecurityPolicy(WKContextRef con
 
 void WKContextRegisterURLSchemeAsCachePartitioned(WKContextRef contextRef, WKStringRef urlScheme)
 {
-#if ENABLE(CACHE_PARTITIONING)
     toImpl(contextRef)->registerURLSchemeAsCachePartitioned(toImpl(urlScheme)->string());
-#else
-    UNUSED_PARAM(contextRef);
-    UNUSED_PARAM(urlScheme);
-#endif
 }
 
 void WKContextSetDomainRelaxationForbiddenForURLScheme(WKContextRef contextRef, WKStringRef urlScheme)

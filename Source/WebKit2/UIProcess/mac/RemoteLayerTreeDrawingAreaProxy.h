@@ -53,6 +53,10 @@ public:
     uint64_t lastCommittedLayerTreeTransactionID() const { return m_transactionIDForPendingCACommit; }
 
     void didRefreshDisplay();
+    
+    bool hasDebugIndicator() const { return !!m_debugIndicatorLayerTreeHost; }
+
+    bool isAlwaysOnLoggingAllowed() const;
 
 private:
     void sizeDidChange() override;
@@ -64,7 +68,7 @@ private:
     void dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)>) override;
 
 #if PLATFORM(MAC)
-    void setViewExposedRect(Optional<WebCore::FloatRect>) override;
+    void setViewExposedRect(std::optional<WebCore::FloatRect>) override;
 #endif
 
     float indicatorScale(WebCore::IntSize contentsSize) const;
@@ -77,6 +81,8 @@ private:
     void hideContentUntilPendingUpdate() override;
     void hideContentUntilAnyUpdate() override;
     bool hasVisibleContent() const override;
+
+    void prepareForAppSuspension() final;
     
     WebCore::FloatPoint indicatorLocation() const;
 

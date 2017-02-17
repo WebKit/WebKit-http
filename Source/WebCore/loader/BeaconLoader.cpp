@@ -67,8 +67,8 @@ public:
         ResourceRequest request(beaconURL);
         request.setHTTPMethod("POST");
         request.setHTTPHeaderField(HTTPHeaderName::CacheControl, "max-age=0");
-        SecurityOrigin* sourceOrigin = frame.document()->securityOrigin();
-        FrameLoader::addHTTPOriginIfNeeded(request, sourceOrigin->toString());
+        SecurityOrigin& sourceOrigin = frame.document()->securityOrigin();
+        FrameLoader::addHTTPOriginIfNeeded(request, sourceOrigin.toString());
         frame.loader().addExtraFieldsToSubresourceRequest(request);
 
         payloadLength = entitySize;

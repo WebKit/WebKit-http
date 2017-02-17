@@ -34,7 +34,7 @@
 #import "TimeRanges.h"
 #import "WebPlaybackControlsManager.h"
 #import "WebPlaybackSessionModel.h"
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVTime.h>
 
 #import "CoreMediaSoftLink.h"
 
@@ -64,6 +64,7 @@ WebPlaybackSessionInterfaceMac::~WebPlaybackSessionInterfaceMac()
 
 void WebPlaybackSessionInterfaceMac::durationChanged(double duration)
 {
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     WebPlaybackControlsManager* controlsManager = playBackControlsManager();
 
     controlsManager.contentDuration = duration;
@@ -71,25 +72,40 @@ void WebPlaybackSessionInterfaceMac::durationChanged(double duration)
     // FIXME: We take this as an indication that playback is ready, but that is not necessarily true.
     controlsManager.hasEnabledAudio = YES;
     controlsManager.hasEnabledVideo = YES;
+#else
+    UNUSED_PARAM(duration);
+#endif
 }
 
 void WebPlaybackSessionInterfaceMac::currentTimeChanged(double currentTime, double anchorTime)
 {
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     WebPlaybackControlsManager* controlsManager = playBackControlsManager();
     updatePlaybackControlsManagerTiming(currentTime, anchorTime, controlsManager.rate, controlsManager.playing);
+#else
+    UNUSED_PARAM(currentTime);
+    UNUSED_PARAM(anchorTime);
+#endif
 }
 
 void WebPlaybackSessionInterfaceMac::rateChanged(bool isPlaying, float playbackRate)
 {
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     WebPlaybackControlsManager* controlsManager = playBackControlsManager();
     [controlsManager setRate:isPlaying ? playbackRate : 0.];
     [controlsManager setPlaying:isPlaying];
     updatePlaybackControlsManagerTiming(m_playbackSessionModel ? m_playbackSessionModel->currentTime() : 0, [[NSProcessInfo processInfo] systemUptime], playbackRate, isPlaying);
+#else
+    UNUSED_PARAM(isPlaying);
+    UNUSED_PARAM(playbackRate);
+#endif
 }
 
 void WebPlaybackSessionInterfaceMac::beginScrubbing()
 {
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     updatePlaybackControlsManagerTiming(m_playbackSessionModel ? m_playbackSessionModel->currentTime() : 0, [[NSProcessInfo processInfo] systemUptime], 0, false);
+#endif
     webPlaybackSessionModel()->beginScrubbing();
 }
 
@@ -98,6 +114,7 @@ void WebPlaybackSessionInterfaceMac::endScrubbing()
     webPlaybackSessionModel()->endScrubbing();
 }
 
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 static RetainPtr<NSMutableArray> timeRangesToArray(const TimeRanges& timeRanges)
 {
     RetainPtr<NSMutableArray> rangeArray = adoptNS([[NSMutableArray alloc] init]);
@@ -110,20 +127,35 @@ static RetainPtr<NSMutableArray> timeRangesToArray(const TimeRanges& timeRanges)
 
     return rangeArray;
 }
+#endif
 
 void WebPlaybackSessionInterfaceMac::seekableRangesChanged(const TimeRanges& timeRanges)
 {
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     [playBackControlsManager() setSeekableTimeRanges:timeRangesToArray(timeRanges).get()];
+#else
+    UNUSED_PARAM(timeRanges);
+#endif
 }
 
 void WebPlaybackSessionInterfaceMac::audioMediaSelectionOptionsChanged(const Vector<WTF::String>& options, uint64_t selectedIndex)
 {
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     [playBackControlsManager() setAudioMediaSelectionOptions:options withSelectedIndex:static_cast<NSUInteger>(selectedIndex)];
+#else
+    UNUSED_PARAM(options);
+    UNUSED_PARAM(selectedIndex);
+#endif
 }
 
 void WebPlaybackSessionInterfaceMac::legibleMediaSelectionOptionsChanged(const Vector<WTF::String>& options, uint64_t selectedIndex)
 {
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     [playBackControlsManager() setLegibleMediaSelectionOptions:options withSelectedIndex:static_cast<NSUInteger>(selectedIndex)];
+#else
+    UNUSED_PARAM(options);
+    UNUSED_PARAM(selectedIndex);
+#endif
 }
 
 void WebPlaybackSessionInterfaceMac::invalidate()
@@ -137,16 +169,16 @@ void WebPlaybackSessionInterfaceMac::invalidate()
 
 void WebPlaybackSessionInterfaceMac::ensureControlsManager()
 {
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     playBackControlsManager();
+#endif
 }
+
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 
 WebPlaybackControlsManager *WebPlaybackSessionInterfaceMac::playBackControlsManager()
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     return m_playbackControlsManager;
-#else
-    return nil;
-#endif
 }
 
 void WebPlaybackSessionInterfaceMac::setPlayBackControlsManager(WebPlaybackControlsManager *manager)
@@ -190,6 +222,8 @@ void WebPlaybackSessionInterfaceMac::updatePlaybackControlsManagerTiming(double 
 
     manager.timing = [getAVValueTimingClass() valueTimingWithAnchorValue:currentTime anchorTimeStamp:effectiveAnchorTime rate:effectivePlaybackRate];
 }
+
+#endif // ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 
 }
 

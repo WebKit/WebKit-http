@@ -35,7 +35,6 @@
 #include "FrameLoaderTypes.h"
 #include "FrameView.h"
 #include "MemoryCache.h"
-#include "Page.h"
 #include "RenderElement.h"
 #include "SVGImage.h"
 #include "SecurityOrigin.h"
@@ -89,12 +88,6 @@ void CachedImage::load(CachedResourceLoader& loader)
         CachedResource::load(loader);
     else
         setLoading(false);
-
-    if (m_loader) {
-        m_allowSubsampling = m_loader->frameLoader()->frame().settings().imageSubsamplingEnabled();
-        m_allowAsyncImageDecoding = m_loader->frameLoader()->frame().settings().asyncImageDecodingEnabled();
-        m_showDebugBackground = m_loader->frameLoader()->frame().settings().showDebugBorders();
-    }
 }
 
 void CachedImage::setBodyDataFrom(const CachedResource& resource)
@@ -105,6 +98,9 @@ void CachedImage::setBodyDataFrom(const CachedResource& resource)
     CachedResource::setBodyDataFrom(resource);
 
     m_image = image.m_image;
+    m_imageObserver = image.m_imageObserver;
+    if (m_imageObserver)
+        m_imageObserver->add(*this);
 
     if (m_image && is<SVGImage>(*m_image))
         m_svgImageCache = std::make_unique<SVGImageCache>(&downcast<SVGImage>(*m_image));
@@ -323,16 +319,18 @@ inline void CachedImage::createImage()
     if (m_image)
         return;
 
-#if USE(CG) && !USE(WEBKIT_IMAGE_DECODERS)
-    else if (m_response.mimeType() == "application/pdf")
-        m_image = PDFDocumentImage::create(this);
-#endif
-    else if (m_response.mimeType() == "image/svg+xml") {
-        auto svgImage = SVGImage::create(*this, url());
+    m_imageObserver = CachedImageObserver::create(*this);
+
+    if (m_response.mimeType() == "image/svg+xml") {
+        auto svgImage = SVGImage::create(*m_imageObserver, url());
         m_svgImageCache = std::make_unique<SVGImageCache>(svgImage.ptr());
         m_image = WTFMove(svgImage);
+#if USE(CG) && !USE(WEBKIT_IMAGE_DECODERS)
+    } else if (m_response.mimeType() == "application/pdf") {
+        m_image = PDFDocumentImage::create(m_imageObserver.get());
+#endif
     } else
-        m_image = BitmapImage::create(this);
+        m_image = BitmapImage::create(m_imageObserver.get());
 
     if (m_image) {
         // Send queued container size requests.
@@ -344,12 +342,48 @@ inline void CachedImage::createImage()
     }
 }
 
+CachedImage::CachedImageObserver::CachedImageObserver(CachedImage& image)
+{
+    m_cachedImages.reserveInitialCapacity(1);
+    m_cachedImages.append(&image);
+    if (auto* loader = image.loader()) {
+        m_allowSubsampling = loader->frameLoader()->frame().settings().imageSubsamplingEnabled();
+        m_allowLargeImageAsyncDecoding = loader->frameLoader()->frame().settings().largeImageAsyncDecodingEnabled();
+        m_allowAnimatedImageAsyncDecoding = loader->frameLoader()->frame().settings().animatedImageAsyncDecodingEnabled();
+        m_showDebugBackground = loader->frameLoader()->frame().settings().showDebugBorders();
+    }
+}
+
+void CachedImage::CachedImageObserver::decodedSizeChanged(const Image* image, long long delta)
+{
+    for (auto cachedImage : m_cachedImages)
+        cachedImage->decodedSizeChanged(image, delta);
+}
+
+void CachedImage::CachedImageObserver::didDraw(const Image* image)
+{
+    for (auto cachedImage : m_cachedImages)
+        cachedImage->didDraw(image);
+}
+
+void CachedImage::CachedImageObserver::animationAdvanced(const Image* image)
+{
+    for (auto cachedImage : m_cachedImages)
+        cachedImage->animationAdvanced(image);
+}
+
+void CachedImage::CachedImageObserver::changedInRect(const Image* image, const IntRect* rect)
+{
+    for (auto cachedImage : m_cachedImages)
+        cachedImage->changedInRect(image, rect);
+}
+
 inline void CachedImage::clearImage()
 {
-    // If our Image has an observer, it's always us so we need to clear the back pointer
-    // before dropping our reference.
-    if (m_image)
-        m_image->setImageObserver(nullptr);
+    if (m_imageObserver) {
+        m_imageObserver->remove(*this);
+        m_imageObserver = nullptr;
+    }
     m_image = nullptr;
 }
 

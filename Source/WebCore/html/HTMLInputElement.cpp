@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2007 Samuel Weinig (sam@webkit.org)
  * Copyright (C) 2010 Google Inc. All rights reserved.
@@ -56,13 +56,12 @@
 #include "PlatformMouseEvent.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
-#include "RuntimeEnabledFeatures.h"
 #include "ScopedEventQueue.h"
 #include "SearchInputType.h"
+#include "Settings.h"
 #include "StyleResolver.h"
 #include <wtf/MathExtras.h>
 #include <wtf/Ref.h>
-#include <wtf/text/TextBreakIterator.h>
 
 #if ENABLE(TOUCH_EVENTS)
 #include "TouchEvent.h"
@@ -116,7 +115,7 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
 #if ENABLE(TOUCH_EVENTS)
     , m_hasTouchEventHandler(false)
 #endif
-    , m_isSpellCheckingEnabled(true)
+    , m_isSpellcheckDisabledExceptTextReplacement(false)
     // m_inputType is lazily created when constructed by the parser to avoid constructing unnecessarily a text inputType and
     // its shadow subtree, just to destroy them when the |type| attribute gets set by the parser to something else than 'text'.
     , m_inputType(createdByParser ? nullptr : InputType::createText(*this))
@@ -381,7 +380,7 @@ StepRange HTMLInputElement::createStepRange(AnyStepHandling anyStepHandling) con
 }
 
 #if ENABLE(DATALIST_ELEMENT)
-Optional<Decimal> HTMLInputElement::findClosestTickMarkValue(const Decimal& value)
+std::optional<Decimal> HTMLInputElement::findClosestTickMarkValue(const Decimal& value)
 {
     return m_inputType->findClosestTickMarkValue(value);
 }
@@ -462,11 +461,6 @@ void HTMLInputElement::endEditing()
 bool HTMLInputElement::shouldUseInputMethod()
 {
     return m_inputType->shouldUseInputMethod();
-}
-
-bool HTMLInputElement::isSpellCheckingEnabled() const
-{
-    return m_isSpellCheckingEnabled && HTMLTextFormControlElement::isSpellCheckingEnabled();
 }
 
 void HTMLInputElement::handleFocusEvent(Node* oldFocusedNode, FocusDirection direction)
@@ -929,7 +923,7 @@ void HTMLInputElement::setChecked(bool nowChecked, TextFieldEventBehavior eventB
     // unchecked to match other browsers. DOM is not a useful standard for this
     // because it says only to fire change events at "lose focus" time, which is
     // definitely wrong in practice for these types of elements.
-    if (eventBehavior != DispatchNoEvent && inDocument() && m_inputType->shouldSendChangeEventAfterCheckedChanged()) {
+    if (eventBehavior != DispatchNoEvent && isConnected() && m_inputType->shouldSendChangeEventAfterCheckedChanged()) {
         setTextAsOfLastFormControlChangeEvent(String());
         dispatchFormControlChangeEvent();
     }
@@ -1190,10 +1184,9 @@ void HTMLInputElement::defaultEventHandler(Event& event)
         if (wasChangedSinceLastFormControlChangeEvent())
             dispatchFormControlChangeEvent();
 
-        RefPtr<HTMLFormElement> formForSubmission = m_inputType->formForSubmission();
         // Form may never have been present, or may have been destroyed by code responding to the change event.
-        if (formForSubmission)
-            formForSubmission->submitImplicitly(event, canTriggerImplicitSubmission());
+        if (auto* formElement = form())
+            formElement->submitImplicitly(event, canTriggerImplicitSubmission());
 
         event.setDefaultHandled();
         return;
@@ -1348,9 +1341,9 @@ FileList* HTMLInputElement::files()
     return m_inputType->files();
 }
 
-void HTMLInputElement::setFiles(PassRefPtr<FileList> files)
+void HTMLInputElement::setFiles(RefPtr<FileList>&& files)
 {
-    m_inputType->setFiles(files);
+    m_inputType->setFiles(WTFMove(files));
 }
 
 #if ENABLE(DRAG_SUPPORT)
@@ -1459,9 +1452,13 @@ void HTMLInputElement::addSearchResult()
 
 void HTMLInputElement::onSearch()
 {
-    ASSERT(isSearchField());
+    // The type of the input element could have changed during event handling. If we are no longer
+    // a search field, don't try to do search things.
+    if (!isSearchField())
+        return;
+
     if (m_inputType)
-        static_cast<SearchInputType*>(m_inputType.get())->stopSearchEventTimer();
+        downcast<SearchInputType>(*m_inputType.get()).stopSearchEventTimer();
     dispatchEvent(Event::create(eventNames().searchEvent, true, false));
 }
 
@@ -1512,38 +1509,36 @@ Node::InsertionNotificationRequest HTMLInputElement::insertedInto(ContainerNode&
 void HTMLInputElement::finishedInsertingSubtree()
 {
     HTMLTextFormControlElement::finishedInsertingSubtree();
-    if (inDocument() && !form())
+    if (isConnected() && !form())
         addToRadioButtonGroup();
 }
 
 void HTMLInputElement::removedFrom(ContainerNode& insertionPoint)
 {
-    if (insertionPoint.inDocument() && !form())
+    if (insertionPoint.isConnected() && !form())
         removeFromRadioButtonGroup();
     HTMLTextFormControlElement::removedFrom(insertionPoint);
-    ASSERT(!inDocument());
+    ASSERT(!isConnected());
 #if ENABLE(DATALIST_ELEMENT)
     resetListAttributeTargetObserver();
 #endif
 }
 
-void HTMLInputElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLInputElement::didMoveToNewDocument(Document& oldDocument)
 {
     if (imageLoader())
         imageLoader()->elementDidMoveToNewDocument();
 
     bool needsSuspensionCallback = this->needsSuspensionCallback();
-    if (oldDocument) {
-        // Always unregister for cache callbacks when leaving a document, even if we would otherwise like to be registered
-        if (needsSuspensionCallback)
-            oldDocument->unregisterForDocumentSuspensionCallbacks(this);
-        if (isRadioButton())
-            oldDocument->formController().radioButtonGroups().removeButton(this);
+    // Always unregister for cache callbacks when leaving a document, even if we would otherwise like to be registered
+    if (needsSuspensionCallback)
+        oldDocument.unregisterForDocumentSuspensionCallbacks(this);
+    if (isRadioButton())
+        oldDocument.formController().radioButtonGroups().removeButton(this);
 #if ENABLE(TOUCH_EVENTS)
-        if (m_hasTouchEventHandler)
-            oldDocument->didRemoveEventTargetNode(*this);
+    if (m_hasTouchEventHandler)
+        oldDocument.didRemoveEventTargetNode(*this);
 #endif
-    }
 
     if (needsSuspensionCallback)
         document().registerForDocumentSuspensionCallbacks(this);
@@ -1609,7 +1604,7 @@ HTMLDataListElement* HTMLInputElement::dataList() const
 
 void HTMLInputElement::resetListAttributeTargetObserver()
 {
-    if (inDocument())
+    if (isConnected())
         m_listAttributeTargetObserver = std::make_unique<ListAttributeTargetObserver>(attributeWithoutSynchronization(listAttr), this);
     else
         m_listAttributeTargetObserver = nullptr;
@@ -1778,7 +1773,7 @@ bool HTMLInputElement::isEmptyValue() const
 void HTMLInputElement::maxLengthAttributeChanged(const AtomicString& newValue)
 {
     unsigned oldEffectiveMaxLength = effectiveMaxLength();
-    internalSetMaxLength(parseHTMLNonNegativeInteger(newValue).valueOr(-1));
+    internalSetMaxLength(parseHTMLNonNegativeInteger(newValue).value_or(-1));
     if (oldEffectiveMaxLength != effectiveMaxLength())
         updateValueIfNeeded();
 
@@ -1790,7 +1785,7 @@ void HTMLInputElement::maxLengthAttributeChanged(const AtomicString& newValue)
 void HTMLInputElement::minLengthAttributeChanged(const AtomicString& newValue)
 {
     int oldMinLength = minLength();
-    internalSetMinLength(parseHTMLNonNegativeInteger(newValue).valueOr(-1));
+    internalSetMinLength(parseHTMLNonNegativeInteger(newValue).value_or(-1));
     if (oldMinLength != minLength())
         updateValueIfNeeded();
 
@@ -1873,9 +1868,9 @@ RadioButtonGroups* HTMLInputElement::radioButtonGroups() const
 {
     if (!isRadioButton())
         return nullptr;
-    if (HTMLFormElement* formElement = form())
+    if (auto* formElement = form())
         return &formElement->radioButtonGroups();
-    if (inDocument())
+    if (isConnected())
         return &document().formController().radioButtonGroups();
     return nullptr;
 }
@@ -1948,10 +1943,70 @@ bool HTMLInputElement::shouldTruncateText(const RenderStyle& style) const
     return document().focusedElement() != this && style.textOverflow() == TextOverflowEllipsis;
 }
 
+ExceptionOr<int> HTMLInputElement::selectionStartForBindings() const
+{
+    if (!canHaveSelection())
+        return Exception { TypeError };
+
+    return selectionStart();
+}
+
+ExceptionOr<void> HTMLInputElement::setSelectionStartForBindings(int start)
+{
+    if (!canHaveSelection())
+        return Exception { TypeError };
+
+    setSelectionStart(start);
+    return { };
+}
+
+ExceptionOr<int> HTMLInputElement::selectionEndForBindings() const
+{
+    if (!canHaveSelection())
+        return Exception { TypeError };
+
+    return selectionEnd();
+}
+
+ExceptionOr<void> HTMLInputElement::setSelectionEndForBindings(int end)
+{
+    if (!canHaveSelection())
+        return Exception { TypeError };
+
+    setSelectionEnd(end);
+    return { };
+}
+
+ExceptionOr<String> HTMLInputElement::selectionDirectionForBindings() const
+{
+    if (!canHaveSelection())
+        return Exception { TypeError };
+
+    return String { selectionDirection() };
+}
+
+ExceptionOr<void> HTMLInputElement::setSelectionDirectionForBindings(const String& direction)
+{
+    if (!canHaveSelection())
+        return Exception { TypeError };
+
+    setSelectionDirection(direction);
+    return { };
+}
+
+ExceptionOr<void> HTMLInputElement::setSelectionRangeForBindings(int start, int end, const String& direction)
+{
+    if (!canHaveSelection())
+        return Exception { TypeError };
+    
+    setSelectionRange(start, end, direction);
+    return { };
+}
+
 RenderStyle HTMLInputElement::createInnerTextStyle(const RenderStyle& style) const
 {
     auto textBlockStyle = RenderStyle::create();
-    textBlockStyle.inheritFrom(&style);
+    textBlockStyle.inheritFrom(style);
     adjustInnerTextStyle(style, textBlockStyle);
 
     textBlockStyle.setWhiteSpace(PRE);
@@ -1979,7 +2034,8 @@ bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters&
     parameters.minimum = minimum();
     parameters.maximum = maximum();
     parameters.required = isRequired();
-    if (!RuntimeEnabledFeatures::sharedFeatures().langAttributeAwareFormControlUIEnabled())
+
+    if (!document().settings().langAttributeAwareFormControlUIEnabled())
         parameters.locale = defaultLanguage();
     else {
         AtomicString computedLocale = computeInheritedLanguage();

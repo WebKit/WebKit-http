@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TiledBacking_h
-#define TiledBacking_h
+#pragma once
 
+#include <wtf/MonotonicTime.h>
 #include <wtf/Optional.h>
 
 namespace WebCore {
@@ -51,9 +51,9 @@ struct VelocityData  {
     double horizontalVelocity;
     double verticalVelocity;
     double scaleChangeRate;
-    double lastUpdateTime;
+    MonotonicTime lastUpdateTime;
     
-    VelocityData(double horizontal = 0, double vertical = 0, double scaleChange = 0, double updateTime = 0)
+    VelocityData(double horizontal = 0, double vertical = 0, double scaleChange = 0, MonotonicTime updateTime = MonotonicTime())
         : horizontalVelocity(horizontal)
         , verticalVelocity(vertical)
         , scaleChangeRate(scaleChange)
@@ -75,7 +75,7 @@ public:
     virtual FloatRect visibleRect() const = 0;
 
     // Only used to update the tile coverage map. 
-    virtual void setLayoutViewportRect(Optional<FloatRect>) = 0;
+    virtual void setLayoutViewportRect(std::optional<FloatRect>) = 0;
 
     virtual void setCoverageRect(const FloatRect&) = 0;
     virtual FloatRect coverageRect() const = 0;
@@ -85,6 +85,8 @@ public:
     virtual void setTopContentInset(float) = 0;
 
     virtual void setVelocity(const VelocityData&) = 0;
+
+    virtual void setTileSizeUpdateDelayDisabledForTesting(bool) = 0;
     
     enum {
         NotScrollable           = 0,
@@ -97,6 +99,7 @@ public:
     virtual void prepopulateRect(const FloatRect&) = 0;
 
     virtual void setIsInWindow(bool) = 0;
+    virtual bool isInWindow() const = 0;
 
     enum {
         CoverageForVisibleArea = 0,
@@ -121,9 +124,6 @@ public:
 
     virtual void setScrollingPerformanceLoggingEnabled(bool) = 0;
     virtual bool scrollingPerformanceLoggingEnabled() const = 0;
-    
-    virtual void setUnparentsOffscreenTiles(bool) = 0;
-    virtual bool unparentsOffscreenTiles() const = 0;
     
     virtual double retainedTileBackingStoreMemory() const = 0;
 
@@ -156,5 +156,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif // TiledBacking_h

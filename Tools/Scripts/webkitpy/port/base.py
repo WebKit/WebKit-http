@@ -131,6 +131,7 @@ class Port(object):
         self._web_platform_test_server = None
         self._image_differ = None
         self._server_process_constructor = server_process.ServerProcess  # overridable for testing
+        self._test_runner_process_constructor = server_process.ServerProcess
 
         if not hasattr(options, 'configuration') or not options.configuration:
             self.set_option_default('configuration', self.default_configuration())
@@ -1160,8 +1161,18 @@ class Port(object):
         _log.error("Could not find apache. Not installed or unknown path.")
         return None
 
+    def _is_fedora_php_version_7(self):
+        if self._filesystem.exists("/etc/httpd/modules/libphp7.so"):
+            return True
+        return False
+
     def _is_debian_php_version_7(self):
         if self._filesystem.exists("/usr/lib/apache2/modules/libphp7.0.so"):
+            return True
+        return False
+
+    def _is_darwin_php_version_7(self):
+        if self._filesystem.exists("/usr/libexec/apache2/libphp7.so"):
             return True
         return False
 
@@ -1184,13 +1195,25 @@ class Port(object):
             return "-php7"
         return ""
 
+    def _darwin_php_version(self):
+        if self._is_darwin_php_version_7():
+            return "-php7"
+        return ""
+
+    def _fedora_php_version(self):
+        if self._is_fedora_php_version_7():
+            return "-php7"
+        return ""
+
     # We pass sys_platform into this method to make it easy to unit test.
     def _apache_config_file_name_for_platform(self, sys_platform):
         if sys_platform == 'cygwin' or sys_platform.startswith('win'):
             return 'apache' + self._apache_version() + '-httpd-win.conf'
+        if sys_platform == 'darwin':
+            return 'apache' + self._apache_version() + self._darwin_php_version() + '-httpd.conf'
         if sys_platform.startswith('linux'):
             if self._is_redhat_based():
-                return 'fedora-httpd-' + self._apache_version() + '.conf'
+                return 'fedora-httpd-' + self._apache_version() + self._fedora_php_version() + '.conf'
             if self._is_debian_based():
                 return 'debian-httpd-' + self._apache_version() + self._debian_php_version() + '.conf'
             if self._is_arch_based():

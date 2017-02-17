@@ -37,12 +37,28 @@
 (define (home-literal home-relative-literal)
     (literal (string-append (param "HOME_DIR") home-relative-literal)))
 
+(define (allow-read-write-directory-and-issue-read-write-extensions path)
+    (if path
+        (begin
+            (allow file-read* file-write* (subpath path))
+            (allow file-issue-extension (require-all (extension-class "com.apple.app-sandbox.read") (subpath path)))
+            (allow file-issue-extension (require-all (extension-class "com.apple.app-sandbox.read-write") (subpath path))))))
+
+;; IOKit user clients
+(allow iokit-open
+    (iokit-user-client-class "RootDomainUserClient"))
+
 ;; Security framework
 (allow mach-lookup
        (global-name "com.apple.SecurityServer"))
+(allow user-preference-read
+    (preference-domain
+        "com.apple.security"
+        "com.apple.security.revocation"))
 (allow file-read*
        (subpath "/private/var/db/mds")
        (literal "/private/var/db/DetachedSignatures")
+       ; The following are needed until <rdar://problem/11134688> is resolved.
        (literal "/Library/Preferences/com.apple.security.plist")
        (literal "/Library/Preferences/com.apple.security.revocation.plist")
        (home-literal "/Library/Preferences/com.apple.security.plist")
@@ -50,20 +66,18 @@
 (allow ipc-posix-shm-read* ipc-posix-shm-write-data
        (ipc-posix-name "com.apple.AppleDatabaseChanged"))
 (if (positive? (string-length (param "DARWIN_USER_CACHE_DIR")))
-    (allow file* (subpath (param "DARWIN_USER_CACHE_DIR"))))
+    (allow-read-write-directory-and-issue-read-write-extensions (param "DARWIN_USER_CACHE_DIR")))
 (if (positive? (string-length (param "DARWIN_USER_TEMP_DIR")))
-    (allow file* (subpath (param "DARWIN_USER_TEMP_DIR"))))
+    (allow-read-write-directory-and-issue-read-write-extensions (param "DARWIN_USER_TEMP_DIR")))
 
 ;; Read-only preferences and data
+(allow user-preference-read
+    (preference-domain
+        "kCFPreferencesAnyApplication"))
 (allow file-read*
     ;; Basic system paths
     (subpath "/Library/Frameworks")
     (subpath "/Library/Managed Preferences")
-
-    ;; System and user preferences
-    (literal "/Library/Preferences/.GlobalPreferences.plist")
-    (home-literal "/Library/Preferences/.GlobalPreferences.plist")
-    (home-regex #"/Library/Preferences/ByHost/\.GlobalPreferences\.")
 
     ;; On-disk WebKit2 framework location, to account for debug installations
     ;; outside of /System/Library/Frameworks

@@ -47,7 +47,7 @@ public:
 
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, CGColorSpaceRef, Format = Format::RGBA);
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, IntSize contextSize, CGColorSpaceRef, Format = Format::RGBA);
-    WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromSendRight(const MachSendRight&, CGColorSpaceRef);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromSendRight(const MachSendRight&&, CGColorSpaceRef);
     static std::unique_ptr<IOSurface> createFromSurface(IOSurfaceRef, CGColorSpaceRef);
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromImage(CGImageRef);
     
@@ -62,7 +62,7 @@ public:
     // Any images created from a surface need to be released before releasing
     // the surface, or an expensive GPU readback can result.
     WEBCORE_EXPORT RetainPtr<CGImageRef> createImage();
-    static RetainPtr<CGImageRef> sinkIntoImage(std::unique_ptr<IOSurface>);
+    WEBCORE_EXPORT static RetainPtr<CGImageRef> sinkIntoImage(std::unique_ptr<IOSurface>);
 
     id asLayerContents() const { return (id)(CFTypeRef)m_surface.get(); }
     IOSurfaceRef surface() const { return m_surface.get(); }

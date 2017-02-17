@@ -142,7 +142,7 @@ public:
         }
 
     private:
-        virtual void fired() { (m_object->*m_function)(); }
+        void fired() override { (m_object->*m_function)(); }
 
         TimerFiredClass* m_object;
         TimerFiredFunction m_function;
@@ -170,7 +170,6 @@ private:
     static void performWork(void*);
     RetainPtr<CFRunLoopRef> m_runLoop;
     RetainPtr<CFRunLoopSourceRef> m_runLoopSource;
-    int m_nestingLevel;
 #elif USE(EFL_EVENT_LOOP)
     Mutex m_pipeLock;
     EflUniquePtr<Ecore_Pipe> m_pipe;

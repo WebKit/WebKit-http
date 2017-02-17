@@ -37,6 +37,12 @@ UIScriptController::UIScriptController(UIScriptContext& context)
 {
 }
 
+#if !PLATFORM(IOS)
+void UIScriptController::checkForOutstandingCallbacks()
+{
+}
+#endif
+
 void UIScriptController::contextDestroyed()
 {
     m_context = nullptr;
@@ -54,6 +60,18 @@ JSClassRef UIScriptController::wrapperClass()
 
 #if !PLATFORM(COCOA)
 void UIScriptController::doAsyncTask(JSValueRef)
+{
+}
+
+void simulateAccessibilitySettingsChangeNotification(JSValueRef)
+{
+}
+
+void UIScriptController::doAfterPresentationUpdate(JSValueRef)
+{
+}
+
+void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef)
 {
 }
 #endif
@@ -162,6 +180,10 @@ void UIScriptController::zoomToScale(double, JSValueRef)
 {
 }
 
+void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
+{
+}
+
 JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
 {
     return nullptr;
@@ -245,6 +267,14 @@ void UIScriptController::scrollToOffset(long x, long y)
 {
 }
 
+void UIScriptController::immediateScrollToOffset(long x, long y)
+{
+}
+
+void UIScriptController::immediateZoomToScale(double scale)
+{
+}
+
 void UIScriptController::keyboardAccessoryBarNext()
 {
 }
@@ -268,12 +298,31 @@ double UIScriptController::maximumZoomScale() const
     return 1;
 }
 
+std::optional<bool> UIScriptController::stableStateOverride() const
+{
+    return std::nullopt;
+}
+
+void UIScriptController::setStableStateOverride(std::optional<bool>)
+{
+}
+
 JSObjectRef UIScriptController::contentVisibleRect() const
 {
     return nullptr;
 }
 
 JSObjectRef UIScriptController::selectionRangeViewRects() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::textSelectionCaretRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::inputViewBounds() const
 {
     return nullptr;
 }
@@ -326,7 +375,29 @@ void UIScriptController::platformSetDidHideKeyboardCallback()
 void UIScriptController::platformClearAllCallbacks()
 {
 }
+
+void UIScriptController::retrieveSpeakSelectionContent(JSValueRef)
+{
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::accessibilitySpeakSelectionContent() const
+{
+    return nullptr;
+}
+
 #endif
+
+#if !PLATFORM(COCOA)
+
+void UIScriptController::removeViewFromWindow(JSValueRef)
+{
+}
+
+void UIScriptController::addViewToWindow(JSValueRef)
+{
+}
+
+#endif // !PLATFORM(COCOA)
 
 #if !PLATFORM(MAC)
 

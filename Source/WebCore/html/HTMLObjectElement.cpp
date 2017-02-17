@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Stefan Schimanski (1Stein@gmx.de)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  *
  * This library is free software; you can redistribute it and/or
@@ -27,10 +27,7 @@
 #include "Attribute.h"
 #include "CSSValueKeywords.h"
 #include "CachedImage.h"
-#include "Chrome.h"
-#include "ChromeClient.h"
 #include "ElementIterator.h"
-#include "EventNames.h"
 #include "FormDataList.h"
 #include "Frame.h"
 #include "HTMLDocument.h"
@@ -130,7 +127,7 @@ void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicSt
     } else
         HTMLPlugInImageElement::parseAttribute(name, value);
 
-    if (!invalidateRenderer || !inDocument() || !renderer())
+    if (!invalidateRenderer || !isConnected() || !renderer())
         return;
 
     clearUseFallbackContent();
@@ -352,7 +349,7 @@ void HTMLObjectElement::removedFrom(ContainerNode& insertionPoint)
 void HTMLObjectElement::childrenChanged(const ChildChange& change)
 {
     updateDocNamedItem();
-    if (inDocument() && !useFallbackContent()) {
+    if (isConnected() && !useFallbackContent()) {
         setNeedsWidgetUpdate(true);
         invalidateStyleForSubtree();
     }
@@ -374,7 +371,7 @@ void HTMLObjectElement::renderFallbackContent()
     if (useFallbackContent())
         return;
     
-    if (!inDocument())
+    if (!isConnected())
         return;
 
     invalidateStyleAndRenderersForSubtree();
@@ -445,7 +442,7 @@ void HTMLObjectElement::updateDocNamedItem()
             isNamedItem = false;
         child = child->nextSibling();
     }
-    if (isNamedItem != wasNamedItem && inDocument() && is<HTMLDocument>(document())) {
+    if (isNamedItem != wasNamedItem && isConnected() && !isInShadowTree() && is<HTMLDocument>(document())) {
         HTMLDocument& document = downcast<HTMLDocument>(this->document());
 
         const AtomicString& id = getIdAttribute();
@@ -498,7 +495,7 @@ void HTMLObjectElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) cons
         addSubresourceURL(urls, document().completeURL(useMap));
 }
 
-void HTMLObjectElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLObjectElement::didMoveToNewDocument(Document& oldDocument)
 {
     FormAssociatedElement::didMoveToNewDocument(oldDocument);
     HTMLPlugInImageElement::didMoveToNewDocument(oldDocument);
@@ -509,7 +506,9 @@ bool HTMLObjectElement::appendFormData(FormDataList& encoding, bool)
     if (name().isEmpty())
         return false;
 
-    Widget* widget = pluginWidget();
+    // Use PluginLoadingPolicy::DoNotLoad here or it would fire JS events synchronously
+    // which would not be safe here.
+    auto* widget = pluginWidget(PluginLoadingPolicy::DoNotLoad);
     if (!is<PluginViewBase>(widget))
         return false;
     String value;
@@ -517,11 +516,6 @@ bool HTMLObjectElement::appendFormData(FormDataList& encoding, bool)
         return false;
     encoding.appendData(name(), value);
     return true;
-}
-
-HTMLFormElement* HTMLObjectElement::virtualForm() const
-{
-    return FormAssociatedElement::form();
 }
 
 bool HTMLObjectElement::canContainRangeEndPoint() const

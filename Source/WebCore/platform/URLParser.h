@@ -27,7 +27,10 @@
 
 #include "TextEncoding.h"
 #include "URL.h"
+#include <wtf/Expected.h>
 #include <wtf/Forward.h>
+
+struct UIDNA;
 
 namespace WebCore {
 
@@ -44,13 +47,15 @@ public:
     WEBCORE_EXPORT static bool enabled();
     WEBCORE_EXPORT static void setEnabled(bool);
     
-    typedef Vector<std::pair<String, String>> URLEncodedForm;
-    static URLEncodedForm parseURLEncodedForm(StringView);
+    typedef Vector<WTF::KeyValuePair<String, String>> URLEncodedForm;
+    WEBCORE_EXPORT static URLEncodedForm parseURLEncodedForm(StringView);
     static String serialize(const URLEncodedForm&);
 
+    static const UIDNA& internationalDomainNameTranscoder();
+
 private:
-    static Optional<uint16_t> defaultPortForProtocol(StringView);
-    friend Optional<uint16_t> defaultPortForProtocol(StringView);
+    static std::optional<uint16_t> defaultPortForProtocol(StringView);
+    friend std::optional<uint16_t> defaultPortForProtocol(StringView);
 
     URL m_url;
     Vector<LChar> m_asciiBuffer;
@@ -90,11 +95,11 @@ private:
     template<typename UnsignedIntegerType> void appendNumberToASCIIBuffer(UnsignedIntegerType);
     template<bool(*isInCodeSet)(UChar32), typename CharacterType> void utf8PercentEncode(const CodePointIterator<CharacterType>&);
     template<typename CharacterType> void utf8QueryEncode(const CodePointIterator<CharacterType>&);
-    template<typename CharacterType> Optional<Vector<LChar, defaultInlineBufferSize>> domainToASCII(const String&, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
+    template<typename CharacterType> std::optional<Vector<LChar, defaultInlineBufferSize>> domainToASCII(const String&, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
     template<typename CharacterType> Vector<LChar, defaultInlineBufferSize> percentDecode(const LChar*, size_t, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
     static Vector<LChar, defaultInlineBufferSize> percentDecode(const LChar*, size_t);
-    static Optional<String> formURLDecode(StringView input);
-    static bool hasInvalidDomainCharacter(const Vector<LChar, defaultInlineBufferSize>&);
+    static std::optional<String> formURLDecode(StringView input);
+    static bool hasForbiddenHostCodePoint(const Vector<LChar, defaultInlineBufferSize>&);
     void percentEncodeByte(uint8_t);
     void appendToASCIIBuffer(UChar32);
     void appendToASCIIBuffer(const char*, size_t);
@@ -102,15 +107,18 @@ private:
     template<typename CharacterType> void encodeQuery(const Vector<UChar>& source, const TextEncoding&, CodePointIterator<CharacterType>);
     void copyASCIIStringUntil(const String&, size_t length);
     StringView parsedDataView(size_t start, size_t length);
+    UChar parsedDataView(size_t position);
 
     using IPv4Address = uint32_t;
     void serializeIPv4(IPv4Address);
-    template<typename CharacterType> Optional<IPv4Address> parseIPv4Host(CodePointIterator<CharacterType>);
-    template<typename CharacterType> Optional<uint32_t> parseIPv4Piece(CodePointIterator<CharacterType>&, bool& syntaxViolation);
+    enum class IPv4ParsingError;
+    enum class IPv4PieceParsingError;
+    template<typename CharacterTypeForSyntaxViolation, typename CharacterType> Expected<IPv4Address, IPv4ParsingError> parseIPv4Host(const CodePointIterator<CharacterTypeForSyntaxViolation>&, CodePointIterator<CharacterType>);
+    template<typename CharacterType> Expected<uint32_t, URLParser::IPv4PieceParsingError> parseIPv4Piece(CodePointIterator<CharacterType>&, bool& syntaxViolation);
     using IPv6Address = std::array<uint16_t, 8>;
-    template<typename CharacterType> Optional<IPv6Address> parseIPv6Host(CodePointIterator<CharacterType>);
-    template<typename CharacterType> Optional<uint32_t> parseIPv4PieceInsideIPv6(CodePointIterator<CharacterType>&);
-    template<typename CharacterType> Optional<IPv4Address> parseIPv4AddressInsideIPv6(CodePointIterator<CharacterType>);
+    template<typename CharacterType> std::optional<IPv6Address> parseIPv6Host(CodePointIterator<CharacterType>);
+    template<typename CharacterType> std::optional<uint32_t> parseIPv4PieceInsideIPv6(CodePointIterator<CharacterType>&);
+    template<typename CharacterType> std::optional<IPv4Address> parseIPv4AddressInsideIPv6(CodePointIterator<CharacterType>);
     void serializeIPv6Piece(uint16_t piece);
     void serializeIPv6(IPv6Address);
 

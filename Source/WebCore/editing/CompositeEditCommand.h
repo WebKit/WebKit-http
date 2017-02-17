@@ -105,7 +105,7 @@ public:
     void apply();
     bool isFirstCommand(EditCommand* command) { return !m_commands.isEmpty() && m_commands.first() == command; }
     EditCommandComposition* composition() const;
-    EditCommandComposition* ensureComposition();
+    EditCommandComposition& ensureComposition();
 
     virtual bool isCreateLinkCommand() const;
     virtual bool isTypingCommand() const;
@@ -200,7 +200,7 @@ protected:
     void cloneParagraphUnderNewElement(const Position& start, const Position& end, Node* outerNode, Element* blockElement);
     void cleanupAfterDeletion(VisiblePosition destination = VisiblePosition());
     
-    Optional<VisibleSelection> shouldBreakOutOfEmptyListItem() const;
+    std::optional<VisibleSelection> shouldBreakOutOfEmptyListItem() const;
     bool breakOutOfEmptyListItem();
     bool breakOutOfEmptyMailBlockquotedParagraph();
     

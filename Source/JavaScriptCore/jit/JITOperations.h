@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -131,6 +131,7 @@ typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ECC)(ExecState*, JSCell*, 
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ECI)(ExecState*, JSCell*, UniquedStringImpl*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ECJ)(ExecState*, JSCell*, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ECZ)(ExecState*, JSCell*, int32_t);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ECZZ)(ExecState*, JSCell*, int32_t, int32_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EDA)(ExecState*, double, JSArray*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EE)(ExecState*, ExecState*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EGReoJ)(ExecState*, JSGlobalObject*, RegExpObject*, EncodedJSValue);
@@ -426,7 +427,6 @@ void JIT_OPERATION operationPutToScope(ExecState*, Instruction* bytecodePC) WTF_
 char* JIT_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitialCapacity(ExecState*, JSObject*) WTF_INTERNAL;
 char* JIT_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*, JSObject*, size_t newSize) WTF_INTERNAL;
 
-void JIT_OPERATION operationFlushWriteBarrierBuffer(ExecState*, JSCell*);
 void JIT_OPERATION operationWriteBarrierSlowPath(ExecState*, JSCell*);
 void JIT_OPERATION operationOSRWriteBarrier(ExecState*, JSCell*);
 
@@ -436,7 +436,7 @@ int32_t JIT_OPERATION operationCheckIfExceptionIsUncatchableAndNotifyProfiler(Ex
 int32_t JIT_OPERATION operationInstanceOfCustom(ExecState*, EncodedJSValue encodedValue, JSObject* constructor, EncodedJSValue encodedHasInstance) WTF_INTERNAL;
 
 EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState*, EncodedJSValue, JSCell*);
-EncodedJSValue JIT_OPERATION operationHasIndexedProperty(ExecState*, JSCell*, int32_t);
+EncodedJSValue JIT_OPERATION operationHasIndexedProperty(ExecState*, JSCell*, int32_t, int32_t);
 JSCell* JIT_OPERATION operationGetPropertyEnumerator(ExecState*, JSCell*);
 EncodedJSValue JIT_OPERATION operationNextEnumeratorPname(ExecState*, JSCell*, int32_t);
 JSCell* JIT_OPERATION operationToIndexString(ExecState*, int32_t);

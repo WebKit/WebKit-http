@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2014, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -85,9 +85,17 @@ public:
 
     static const bool needsDestruction = true;
     static void destroy(JSCell*);
-
+    
+    // We specialize the string subspace to get the fastest possible sweep. This wouldn't be
+    // necessary if JSString didn't have a destructor.
+    template<typename>
+    static Subspace* subspaceFor(VM& vm)
+    {
+        return &vm.stringSpace;
+    }
+    
     static const unsigned MaxLength = std::numeric_limits<int32_t>::max();
-
+    
 private:
     JSString(VM& vm, PassRefPtr<StringImpl> value)
         : JSCell(vm, vm.stringStructure.get())
@@ -150,8 +158,6 @@ public:
     AtomicString toAtomicString(ExecState*) const;
     RefPtr<AtomicStringImpl> toExistingAtomicString(ExecState*) const;
 
-    class SafeView;
-    SafeView view(ExecState*) const;
     StringViewWithUnderlyingString viewWithUnderlyingString(ExecState&) const;
 
     inline bool equal(ExecState*, JSString* other) const;
@@ -236,6 +242,8 @@ private:
     friend JSString* jsSubstring(ExecState*, JSString*, unsigned offset, unsigned length);
 };
 
+// NOTE: This class cannot override JSString's destructor. JSString's destructor is called directly
+// from JSStringSubspace::
 class JSRopeString final : public JSString {
     friend class JSString;
 
@@ -475,27 +483,6 @@ private:
     friend JSString* jsString(ExecState*, const String&, const String&, const String&);
 };
 
-class JSString::SafeView {
-public:
-    explicit SafeView(ExecState&, const JSString&);
-    StringView get() const;
-
-    bool is8Bit() const { return m_string->is8Bit(); }
-    unsigned length() const { return m_string->length(); }
-    const LChar* characters8() const { return get().characters8(); }
-    const UChar* characters16() const { return get().characters16(); }
-    UChar operator[](unsigned index) const { return get()[index]; }
-
-private:
-    ExecState& m_state;
-
-    // The following pointer is marked "volatile" to make the compiler leave it on the stack
-    // or in a register as long as this object is alive, even after the last use of the pointer.
-    // That's needed to prevent garbage collecting the string and possibly deleting the block
-    // with the characters in it, and then using the StringView after that.
-    const JSString* volatile m_string;
-};
-
 JS_EXPORT_PRIVATE JSString* jsStringWithCacheSlowCase(VM&, StringImpl&);
 
 inline const StringImpl* JSString::tryGetValueImpl() const
@@ -691,7 +678,7 @@ ALWAYS_INLINE bool JSString::getStringPropertySlot(ExecState* exec, PropertyName
         return true;
     }
 
-    Optional<uint32_t> index = parseIndex(propertyName);
+    std::optional<uint32_t> index = parseIndex(propertyName);
     if (index && index.value() < length()) {
         slot.setValue(this, DontDelete | ReadOnly, getIndex(exec, index.value()));
         return true;
@@ -762,22 +749,6 @@ inline bool JSString::isSubstring() const
     return isRope() && static_cast<const JSRopeString*>(this)->isSubstring();
 }
 
-inline JSString::SafeView::SafeView(ExecState& state, const JSString& string)
-    : m_state(state)
-    , m_string(&string)
-{
-}
-
-inline StringView JSString::SafeView::get() const
-{
-    return m_string->unsafeView(m_state);
-}
-
-ALWAYS_INLINE JSString::SafeView JSString::view(ExecState* exec) const
-{
-    return SafeView(*exec, *this);
-}
-
 // --- JSValue inlines ----------------------------
 
 inline bool JSValue::toBoolean(ExecState* exec) const
@@ -794,7 +765,7 @@ inline bool JSValue::toBoolean(ExecState* exec) const
 inline JSString* JSValue::toString(ExecState* exec) const
 {
     if (isString())
-        return jsCast<JSString*>(asCell());
+        return asString(asCell());
     bool returnEmptyStringOnError = true;
     return toStringSlowCase(exec, returnEmptyStringOnError);
 }
@@ -802,7 +773,7 @@ inline JSString* JSValue::toString(ExecState* exec) const
 inline JSString* JSValue::toStringOrNull(ExecState* exec) const
 {
     if (isString())
-        return jsCast<JSString*>(asCell());
+        return asString(asCell());
     bool returnEmptyStringOnError = false;
     return toStringSlowCase(exec, returnEmptyStringOnError);
 }

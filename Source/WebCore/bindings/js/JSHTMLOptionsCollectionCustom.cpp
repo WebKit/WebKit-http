@@ -22,48 +22,14 @@
 
 #include "CustomElementReactionQueue.h"
 #include "ExceptionCode.h"
-#include "HTMLNames.h"
-#include "HTMLOptionElement.h"
-#include "HTMLOptionsCollection.h"
-#include "HTMLSelectElement.h"
 #include "JSHTMLOptionElement.h"
 #include "JSHTMLSelectElement.h"
 #include "JSHTMLSelectElementCustom.h"
-#include "JSNodeList.h"
-#include "StaticNodeList.h"
-
 #include <wtf/MathExtras.h>
 
 using namespace JSC;
 
 namespace WebCore {
-
-bool JSHTMLOptionsCollection::nameGetter(ExecState* exec, PropertyName propertyName, JSValue& value)
-{
-    auto item = wrapped().namedItem(propertyNameToAtomicString(propertyName));
-    if (!item)
-        return false;
-
-    value = toJS(exec, globalObject(), *item);
-    return true;
-}
-
-void JSHTMLOptionsCollection::setLength(ExecState& state, JSValue value)
-{
-    CustomElementReactionStack customElementReactionStack;
-    VM& vm = state.vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    double number = value.toNumber(&state);
-    RETURN_IF_EXCEPTION(throwScope, void());
-    unsigned length;
-    if (!std::isfinite(number))
-        length = 0;
-    else if (number < 0)
-        return setDOMException(&state, throwScope, INDEX_SIZE_ERR);
-    else
-        length = static_cast<unsigned>(std::min<double>(number, UINT_MAX));
-    propagateException(state, throwScope, wrapped().setLength(length));
-}
 
 void JSHTMLOptionsCollection::indexSetter(ExecState* state, unsigned index, JSValue value)
 {

@@ -40,6 +40,22 @@
         "description": "Allows content to specify colors outside of the sRGB Color Space."
     },
     {
+        "name": "CSS Font Display",
+        "status": {
+            "status": "Under Consideration",
+            "enabled-by-default": false
+        },
+        "url": "https://tabatkins.github.io/specs/css-font-display/",
+        "keywords": ["css font display", "font display", "font-display", "css font rendering controls", "font rendering controls"],
+        "category": "css",
+        "description": "Allows content to specify what is shown during font loading.",
+        "contact": {
+            "name": "Myles C. Maxfield",
+            "twitter": "@Litherum",
+            "email": "mmaxfield@apple.com"
+        }
+    },
+    {
         "name": "CSS Fonts Level 4",
         "url": "https://drafts.csswg.org/css-fonts-4/",
         "keywords": ["css fonts", "fonts"],
@@ -112,6 +128,22 @@
         "category": "css"
     },
     {
+        "name": "CSS Rhythmic Sizing",
+        "status": {
+            "status": "Under Consideration",
+            "enabled-by-default": false
+        },
+        "url": "https://drafts.csswg.org/css-rhythm/",
+        "keywords": ["css rhythmic sizing", "rhythmic sizing", "step sizing"],
+        "category": "css",
+        "description": "Allows block content to set a simple grid to which lines will adhere.",
+        "contact": {
+            "name": "Myles C. Maxfield",
+            "twitter": "@Litherum",
+            "email": "mmaxfield@apple.com"
+        }
+    },
+    {
         "name": "CSS Scroll Snap Points Module Level 1",
         "status": {
             "status": "In Development",
@@ -135,6 +167,22 @@
             "name": "Benjamin Poulain",
             "twitter": "@awfulben",
             "email": "benjamin@webkit.org"
+        }
+    },
+    {
+        "name": "CSS Text Decoration Level 4",
+        "status": {
+            "status": "Under Consideration",
+            "enabled-by-default": false
+        },
+        "url": "https://drafts.csswg.org/css-text-decor-4/",
+        "keywords": ["css text decoration", "text decoration"],
+        "category": "css",
+        "description": "Allows content to specify properties of text decorations such as underlines.",
+        "contact": {
+            "name": "Myles C. Maxfield",
+            "twitter": "@Litherum",
+            "email": "mmaxfield@apple.com"
         }
     },
     {
@@ -203,6 +251,22 @@
         "category": "html"
     },
     {
+        "name": "Encoding",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "url": "https://encoding.spec.whatwg.org",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=163771",
+        "keywords": ["encoding", "TextEncoder", "TextDecoder", "request", "response", "header"],
+        "category": "webapps",
+        "description": "TextEncoder and TextDecoder APIs for converting text from different character sets.",
+        "contact": {
+            "name": "Alex Christensen",
+            "twitter": "@alexfchr",
+            "email": "achristensen@webkit.org"
+        }
+    },    {
         "name": "Fetch API",
         "status": {
             "status": "In Development"
@@ -281,6 +345,56 @@
         "description": "An API that can be used to understand the visibility and position of DOM elements relative to a containing element or to the top-level viewport."
     },
     {
+        "name": "Navigation Timing Level 1",
+        "status": {
+            "status": "Done"
+        },
+        "url": "https://www.w3.org/TR/navigation-timing/",
+        "keywords": ["performance", "navigation timing"],
+        "description": "An API that exposes page load measurements to the page."
+    },
+    {
+        "name": "Navigation Timing Level 2",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://w3c.github.io/navigation-timing/",
+        "keywords": ["performance", "navigation timing"],
+        "description": "An API that exposes page load measurements to the page and adds entries to the performance timeline.",
+        "contact": {
+            "name": "Joseph Pecoraro",
+            "email": "joepeck@webkit.org",
+            "twitter": "@JosephPecoraro"
+        }
+    },
+    {
+        "name": "Performance Observer",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://w3c.github.io/performance-timeline/",
+        "keywords": ["performance", "performance observer", "performance timeline"],
+        "description": "An API to observe performance timeline entries at idle times.",
+        "contact": {
+            "name": "Joseph Pecoraro",
+            "email": "joepeck@webkit.org",
+            "twitter": "@JosephPecoraro"
+        }
+    },
+    {
+        "name": "Pointer Lock",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://www.w3.org/TR/pointerlock/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=164652",
+        "keywords": ["pointer", "pointer lock"],
+        "description": "Provides scripted access to raw mouse movement data while locking the target of mouse events to a single element and removing the cursor from view."
+    },
+    {
         "name": "Preload",
         "status": {
             "status": "In Development",
@@ -297,19 +411,19 @@
         }
     },
     {
-        "name": "Resource Timing",
+        "name": "Resource Timing Level 2",
         "status": {
             "status": "In Development",
             "enabled-by-default": false
         },
-        "url": "http://www.w3.org/TR/resource-timing/",
+        "url": "https://w3c.github.io/resource-timing/",
         "webkit-url": "https://webkit.org/b/61138",
-        "keywords": ["resourcetiming","resource timing","rsrc"],
-        "description": "Provides detailed timing information to JavaScript for sub-resources loaded by the page.",
+        "keywords": ["performance", "resourcetiming", "resource timing", "rsrc"],
+        "description": "An API to that provides detailed timing information for resource loads.",
         "contact": {
-            "name": "Jonathan Davis",
-            "email": "web-evangelist@apple.com",
-            "twitter": "@jonathandavis"
+            "name": "Joseph Pecoraro",
+            "email": "joepeck@webkit.org",
+            "twitter": "@JosephPecoraro"
         }
     },
     {
@@ -334,13 +448,13 @@
         "category": "webapps"
     },
     {
-        "name": "User Timing",
+        "name": "User Timing Level 2",
         "status": {
             "status": "In Development",
             "enabled-by-default": false
         },
-        "url": "http://www.w3.org/TR/user-timing/",
-        "keywords": ["usertiming","user timing"],
+        "url": "https://w3c.github.io/user-timing/",
+        "keywords": ["performance", "usertiming", "user timing"],
         "description": "Provides high precision timestamp marking APIs.",
         "contact": {
             "name": "Jonathan Davis",
@@ -371,6 +485,23 @@
         "url": "https://www.w3.org/TR/web-animations-1/",
         "keywords": ["web animations"],
         "description": "An API to synchronize with the timing for presentation changes of a web page.",
+        "contact": {
+            "name": "Jonathan Davis",
+            "email": "web-evangelist@apple.com",
+            "twitter": "@jonathandavis"
+        }
+    },
+    {
+        "name": "Web App Manifest",
+        "status": {
+            "status": "Under Consideration",
+            "enabled-by-default": false
+        },
+        "url": "https://www.w3.org/TR/appmanifest/",
+        "webkit-url": "https://webkit.org/b/158205",
+        "keywords": ["web app","manifest", "webapp"],
+        "category": "webapps",
+        "description": "A JSON-format manifest file for developers to place metadata associated with a web application.",
         "contact": {
             "name": "Jonathan Davis",
             "email": "web-evangelist@apple.com",
@@ -864,6 +995,22 @@
         }
     },
     {
+        "name": "Strict Mixed Content Checking",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "url": "https://w3c.github.io/webappsec-mixed-content/#strict-checking",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=165438",
+        "keywords": ["csp", "content security policy", "blockable", "optionally-blockable", "block-all-mixed-content", "HTTPS"],
+        "category": "webapps",
+        "description": "Allows developers to opt into blocking display and running of all insecure content on an HTTPS page.",
+        "contact": {
+            "name": "Daniel Bates",
+            "email": "dbates@webkit.org"
+        }
+    },
+    {
         "name": "Subresource Integrity",
         "status": {
             "status": "Under Consideration"
@@ -889,6 +1036,18 @@
         "description": "Declares HTML fragments that can be cloned and inserted into the document by a script."
     },
     {
+        "name": "Upgrade Insecure Requests",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "url": "https://w3c.github.io/webappsec-upgrade-insecure-requests/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=143653",
+        "keywords": ["csp", "content security policy", "upgrade-insecure-requests", "HTTPS"],
+        "category": "webapps",
+        "description": "Allows developers to opt into automatic upgrading of insecure requests to secure requests."
+    },
+    {
         "name": "Variation Fonts",
         "status": {
             "status": "In Development",
@@ -908,6 +1067,15 @@
         "url": "https://github.com/WICG/ViewportAPI",
         "description": "A proposal to add explicit APIs to the Web for querying and setting the visual viewport.",
         "keywords": ["visual viewport", "viewport", "viewportapi"]
+    },
+    {
+        "name": "Web Bluetooth",
+        "status": {
+            "status": "Not Considering"
+        },
+        "url": "https://webbluetoothcg.github.io/web-bluetooth/",
+        "keywords": ["bluetooth"],
+        "description": "An API to discover and communicate with devices over the Bluetooth."
     },
     {
         "name": "requestIdleCallback",

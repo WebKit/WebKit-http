@@ -25,8 +25,11 @@
 #include "JSTestInterface.h"
 
 #include "JSDOMBinding.h"
+#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMWrapperCache.h"
 #include "JSTestObj.h"
 #include "TestSupplemental.h"
 #include <runtime/Error.h>
@@ -222,7 +225,7 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestInterfaceConstructor::construct(Ex
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto* castedThis = jsCast<JSTestInterfaceConstructor*>(state->callee());
+    auto* castedThis = jsCast<JSTestInterfaceConstructor*>(state->jsCallee());
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
@@ -234,7 +237,7 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestInterfaceConstructor::construct(Ex
     if (UNLIKELY(!context))
         return throwConstructorScriptExecutionContextUnavailableError(*state, throwScope, "TestInterface");
     auto object = TestInterface::create(*context, WTFMove(str1), WTFMove(str2));
-    return JSValue::encode(toJSNewlyCreated(*state, *castedThis->globalObject(), throwScope, WTFMove(object)));
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestInterface>>(*state, *castedThis->globalObject(), throwScope, WTFMove(object)));
 }
 
 template<> JSValue JSTestInterfaceConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
@@ -378,7 +381,7 @@ JSTestInterface::JSTestInterface(Structure* structure, JSDOMGlobalObject& global
 void JSTestInterface::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
 }
 
@@ -398,14 +401,36 @@ void JSTestInterface::destroy(JSC::JSCell* cell)
     thisObject->JSTestInterface::~JSTestInterface();
 }
 
-template<> inline JSTestInterface* BindingCaller<JSTestInterface>::castForAttribute(ExecState&, EncodedJSValue thisValue)
+bool JSTestInterface::put(JSCell* cell, ExecState* state, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    return jsDynamicDowncast<JSTestInterface*>(JSValue::decode(thisValue));
+    auto* thisObject = jsCast<JSTestInterface*>(cell);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    bool putResult = false;
+    if (thisObject->putDelegate(state, propertyName, value, slot, putResult))
+        return putResult;
+    return Base::put(thisObject, state, propertyName, value, slot);
+}
+
+bool JSTestInterface::putByIndex(JSCell* cell, ExecState* state, unsigned index, JSValue value, bool shouldThrow)
+{
+    auto* thisObject = jsCast<JSTestInterface*>(cell);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    Identifier propertyName = Identifier::from(state, index);
+    PutPropertySlot slot(thisObject, shouldThrow);
+    bool putResult = false;
+    if (thisObject->putDelegate(state, propertyName, value, slot, putResult))
+        return putResult;
+    return Base::putByIndex(cell, state, index, value, shouldThrow);
+}
+
+template<> inline JSTestInterface* BindingCaller<JSTestInterface>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
+{
+    return jsDynamicDowncast<JSTestInterface*>(state.vm(), JSValue::decode(thisValue));
 }
 
 template<> inline JSTestInterface* BindingCaller<JSTestInterface>::castForOperation(ExecState& state)
 {
-    return jsDynamicDowncast<JSTestInterface*>(state.thisValue());
+    return jsDynamicDowncast<JSTestInterface*>(state.vm(), state.thisValue());
 }
 
 #if ENABLE(Condition22) || ENABLE(Condition23)
@@ -632,7 +657,7 @@ EncodedJSValue jsTestInterfaceConstructor(ExecState* state, EncodedJSValue thisV
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestInterfacePrototype* domObject = jsDynamicDowncast<JSTestInterfacePrototype*>(JSValue::decode(thisValue));
+    JSTestInterfacePrototype* domObject = jsDynamicDowncast<JSTestInterfacePrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestInterface::getConstructor(state->vm(), domObject->globalObject()));
@@ -643,35 +668,13 @@ bool setJSTestInterfaceConstructor(ExecState* state, EncodedJSValue thisValue, E
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestInterfacePrototype* domObject = jsDynamicDowncast<JSTestInterfacePrototype*>(JSValue::decode(thisValue));
+    JSTestInterfacePrototype* domObject = jsDynamicDowncast<JSTestInterfacePrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
     return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
-}
-
-bool JSTestInterface::put(JSCell* cell, ExecState* state, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
-{
-    auto* thisObject = jsCast<JSTestInterface*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    bool putResult = false;
-    if (thisObject->putDelegate(state, propertyName, value, slot, putResult))
-        return putResult;
-    return Base::put(thisObject, state, propertyName, value, slot);
-}
-
-bool JSTestInterface::putByIndex(JSCell* cell, ExecState* state, unsigned index, JSValue value, bool shouldThrow)
-{
-    auto* thisObject = jsCast<JSTestInterface*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    Identifier propertyName = Identifier::from(state, index);
-    PutPropertySlot slot(thisObject, shouldThrow);
-    bool putResult = false;
-    if (thisObject->putDelegate(state, propertyName, value, slot, putResult))
-        return putResult;
-    return Base::putByIndex(cell, state, index, value, shouldThrow);
 }
 
 #if ENABLE(Condition22) || ENABLE(Condition23)
@@ -990,7 +993,7 @@ bool JSTestInterfaceOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> 
 
 void JSTestInterfaceOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    auto* jsTestInterface = jsCast<JSTestInterface*>(handle.slot()->asCell());
+    auto* jsTestInterface = static_cast<JSTestInterface*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestInterface->wrapped(), jsTestInterface);
 }
@@ -1012,9 +1015,9 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestIn
     return wrap(state, globalObject, impl);
 }
 
-TestInterface* JSTestInterface::toWrapped(JSC::JSValue value)
+TestInterface* JSTestInterface::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestInterface*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestInterface*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

@@ -28,7 +28,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import base64
-import copy
 import logging
 import re
 import shlex
@@ -38,22 +37,22 @@ import os
 
 from webkitpy.common.system import path
 from webkitpy.common.system.profiler import ProfilerFactory
-from webkitpy.layout_tests.servers.web_platform_test_server import WebPlatformTestServer
 
 
 _log = logging.getLogger(__name__)
 
 
 class DriverInput(object):
-    def __init__(self, test_name, timeout, image_hash, should_run_pixel_test, args=None):
+    def __init__(self, test_name, timeout, image_hash, should_run_pixel_test, should_dump_jsconsolelog_in_stderr=None, args=None):
         self.test_name = test_name
         self.timeout = timeout  # in ms
         self.image_hash = image_hash
         self.should_run_pixel_test = should_run_pixel_test
+        self.should_dump_jsconsolelog_in_stderr = should_dump_jsconsolelog_in_stderr
         self.args = args or []
 
     def __repr__(self):
-        return "DriverInput(test_name='{}', timeout={}, image_hash={}, should_run_pixel_test={}'".format(self.test_name, self.timeout, self.image_hash, self.should_run_pixel_test)
+        return "DriverInput(test_name='{}', timeout={}, image_hash={}, should_run_pixel_test={}, should_dump_jsconsolelog_in_stderr={}'".format(self.test_name, self.timeout, self.image_hash, self.should_run_pixel_test, self.should_dump_jsconsolelog_in_stderr)
 
 
 class DriverOutput(object):
@@ -139,7 +138,7 @@ class Driver(object):
         self._driver_user_directory_suffix = None
         self._driver_user_cache_directory = None
 
-        # WebKitTestRunner/LayoutTestRelay can report back subprocess crashes by printing
+        # WebKitTestRunner can report back subprocess crashes by printing
         # "#CRASHED - PROCESSNAME".  Since those can happen at any time and ServerProcess
         # won't be aware of them (since the actual tool didn't crash, just a subprocess)
         # we record the crashed subprocess name here.
@@ -328,7 +327,6 @@ class Driver(object):
 
     def _setup_environ_for_driver(self, environment):
         build_root_path = str(self._port._build_path())
-        # FIXME: DYLD_* variables should be Mac-only. Even iOS Simulator doesn't need them, as LayoutTestRelay is a host binary.
         self._append_environment_variable_path(environment, 'DYLD_LIBRARY_PATH', build_root_path)
         self._append_environment_variable_path(environment, '__XPC_DYLD_LIBRARY_PATH', build_root_path)
         self._append_environment_variable_path(environment, 'DYLD_FRAMEWORK_PATH', build_root_path)
@@ -370,7 +368,7 @@ class Driver(object):
         environment = self._setup_environ_for_test()
         self._crashed_process_name = None
         self._crashed_pid = None
-        self._server_process = self._port._server_process_constructor(self._port, self._server_name, self.cmd_line(pixel_tests, per_test_args), environment)
+        self._server_process = self._port._test_runner_process_constructor(self._port, self._server_name, self.cmd_line(pixel_tests, per_test_args), environment, worker_number=self._worker_number)
         self._server_process.start()
 
     def _run_post_start_tasks(self):
@@ -475,6 +473,8 @@ class Driver(object):
             command = driver_input.test_name
         elif self.is_web_platform_test(driver_input.test_name) or (self.is_http_test(driver_input.test_name) and (self._port.get_option('webkit_test_runner') or sys.platform == "cygwin")):
             command = self.test_to_uri(driver_input.test_name)
+            command += "'--absolutePath'"
+            command += self._port.abspath_for_test(driver_input.test_name)
         else:
             command = self._port.abspath_for_test(driver_input.test_name)
             if sys.platform == 'cygwin':
@@ -487,6 +487,8 @@ class Driver(object):
             command += "'--timeout'%s" % driver_input.timeout
         if driver_input.should_run_pixel_test:
             command += "'--pixel-test"
+        if driver_input.should_dump_jsconsolelog_in_stderr:
+            command += "'--dump-jsconsolelog-in-stderr"
         if driver_input.image_hash:
             command += "'" + driver_input.image_hash
         return command + "\n"
@@ -606,27 +608,6 @@ class Driver(object):
         # This checks if the required system dependencies for the driver are met.
         # Since this is the generic class implementation, just return True.
         return True
-
-
-# FIXME: this should be abstracted out via the Port subclass somehow.
-class IOSSimulatorDriver(Driver):
-    def cmd_line(self, pixel_tests, per_test_args):
-        cmd = super(IOSSimulatorDriver, self).cmd_line(pixel_tests, per_test_args)
-        relay_tool = self._port.relay_path
-        dump_tool = cmd[0]
-        dump_tool_args = cmd[1:]
-        product_dir = self._port._build_path()
-        relay_args = [
-            '-developerDir', self._port.developer_dir,
-            '-udid', self._port.device_id_for_worker_number(self._worker_number),
-            '-productDir', product_dir,
-            '-app', dump_tool,
-        ]
-        return [relay_tool] + relay_args + ['--'] + dump_tool_args
-
-    def _setup_environ_for_driver(self, environment):
-        environment['DEVELOPER_DIR'] = self._port.developer_dir
-        return super(IOSSimulatorDriver, self)._setup_environ_for_driver(environment)
 
 
 class ContentBlock(object):

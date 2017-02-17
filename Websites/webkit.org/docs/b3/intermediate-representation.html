@@ -257,13 +257,13 @@
         spec.</dd>
 
       <dt>T BitAnd(T, T)</dt>
-      <dd>Bitwise and.  Valid for Int32 and Int64.</dd>
+      <dd>Bitwise and.  Valid for any type except Void.</dd>
 
       <dt>T BitOr(T, T)</dt>
-      <dd>Bitwise or.  Valid for Int32 and Int64.</dd>
+      <dd>Bitwise or.  Valid for any type except Void.</dd>
 
       <dt>T BitXor(T, T)</dt>
-      <dd>Bitwise xor.  Valid for Int32 and Int64.</dd>
+      <dd>Bitwise xor.  Valid for any type except Void.</dd>
 
       <dt>T Shl(T, Int32)</dt>
       <dd>Shift left.  Valid for Int32 and Int64.  The shift amount is always Int32.  Only the
@@ -279,6 +279,16 @@
       <dd>Shift right with zero extension.  Valid for Int32 and Int64.  The shift amount is
         always Int32.  Only the low 31 bits of the shift amount are used for Int32.  Only the
         low 63 bits of the shift amount are used for Int64.</dd>
+
+      <dt>T RotR(T, Int32)</dt>
+      <dd>Rotate right. Valid for Int32 and Int64. The shift amount is always Int32. Only the
+        low 31 bits of the shift amount are used for Int32.  Only the low 63 bits of the shift
+        amount are used for Int64.</dd>
+
+      <dt>T RotL(T, Int32)</dt>
+      <dd>Rotate left. Valid for Int32 and Int64. The shift amount is always Int32. Only the
+        low 31 bits of the shift amount are used for Int32.  Only the low 63 bits of the shift
+        amount are used for Int64.</dd>
 
       <dt>T Clz(T)</dt>
       <dd>Count leading zeroes.  Valid for Int32 and Int64.</dd>

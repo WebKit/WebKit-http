@@ -218,7 +218,7 @@ static Vector<RefPtr<API::Object>> createExperimentalFeaturesVector()
     Vector<RefPtr<API::Object>> features;
 
 #define ADD_EXPERIMENTAL_PREFERENCE_DESCRIPTION(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
-    features.append(API::ExperimentalFeature::create(HumanReadableName, #KeyUpper, HumanReadableDescription)); \
+    features.append(API::ExperimentalFeature::create(HumanReadableName, #KeyUpper, HumanReadableDescription, DefaultValue)); \
 
     FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(ADD_EXPERIMENTAL_PREFERENCE_DESCRIPTION)
 
@@ -259,6 +259,12 @@ bool WebPreferences::isEnabledForFeature(const API::ExperimentalFeature& feature
     return false;
 }
 
+void WebPreferences::setPeerConnectionAndMediaStreamEnabled(bool value)
+{
+    setPeerConnectionEnabled(value);
+    setMediaStreamEnabled(value);
+}
+
 void WebPreferences::setEnabledForFeature(bool value, const API::ExperimentalFeature& feature)
 {
     struct FeatureSetterMapping {
@@ -279,7 +285,10 @@ void WebPreferences::setEnabledForFeature(bool value, const API::ExperimentalFea
     
     for (auto& setter : setters) {
         if (key == setter.name) {
-            (this->*setter.function)(value);
+            if (key == WebPreferencesKey::peerConnectionEnabledKey())
+                setPeerConnectionAndMediaStreamEnabled(value);
+            else
+                (this->*setter.function)(value);
             return;
         }
     }

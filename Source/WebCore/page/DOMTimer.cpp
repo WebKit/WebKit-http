@@ -47,6 +47,7 @@
 #include "ChromeClient.h"
 #include "Frame.h"
 #include "WKContentObservation.h"
+#include "WKContentObservationInternal.h"
 #endif
 
 namespace WebCore {
@@ -189,7 +190,7 @@ DOMTimer::DOMTimer(ScriptExecutionContext& context, std::unique_ptr<ScheduledAct
     // Keep asking for the next id until we're given one that we don't already have.
     do {
         m_timeoutId = context.circularSequentialID();
-    } while (!context.addTimeout(m_timeoutId, reference));
+    } while (!context.addTimeout(m_timeoutId, *this));
 
     if (singleShot)
         startOneShot(m_currentTimerInterval);
@@ -361,7 +362,7 @@ void DOMTimer::fired()
         if (WKObservedContentChange() == WKContentVisibilityChange || shouldReportLackOfChanges) {
             Document& document = downcast<Document>(context);
             if (Page* page = document.page())
-                page->chrome().client().observedContentChange(document.frame());
+                page->chrome().client().observedContentChange(*document.frame());
         }
     }
 #endif
@@ -426,11 +427,11 @@ std::chrono::milliseconds DOMTimer::intervalClampedToMinimum() const
     return interval;
 }
 
-Optional<std::chrono::milliseconds> DOMTimer::alignedFireTime(std::chrono::milliseconds fireTime) const
+std::optional<std::chrono::milliseconds> DOMTimer::alignedFireTime(std::chrono::milliseconds fireTime) const
 {
     auto alignmentInterval = scriptExecutionContext()->timerAlignmentInterval(m_nestingLevel >= maxTimerNestingLevel);
     if (alignmentInterval == 0ms)
-        return Nullopt;
+        return std::nullopt;
     
     static const double randomizedProportion = randomNumber();
 

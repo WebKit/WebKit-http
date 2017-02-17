@@ -40,12 +40,14 @@
 @property (nonatomic, copy) void (^didShowKeyboardCallback)(void);
 @property (nonatomic, copy) void (^didHideKeyboardCallback)(void);
 @property (nonatomic, copy) void (^didEndScrollingCallback)(void);
-
-- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration;
-- (void)dealloc;
+@property (nonatomic, copy) NSString *accessibilitySpeakSelectionContent;
 
 - (void)zoomToScale:(double)scale animated:(BOOL)animated completionHandler:(void (^)(void))completionHandler;
+- (void)accessibilityRetrieveSpeakSelectionContentWithCompletionHandler:(void (^)(void))completionHandler;
+
 #endif
+
+@property (nonatomic, retain, setter=_setStableStateOverride:) NSNumber *_stableStateOverride;
 
 @end
 

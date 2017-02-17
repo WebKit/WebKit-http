@@ -53,7 +53,7 @@ public:
 
     using OptionOrOptGroupElement = Variant<RefPtr<HTMLOptionElement>, RefPtr<HTMLOptGroupElement>>;
     using HTMLElementOrInt = Variant<RefPtr<HTMLElement>, int>;
-    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, const Optional<HTMLElementOrInt>& before);
+    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, const std::optional<HTMLElementOrInt>& before);
 
     using Node::remove;
     ExceptionOr<void> remove(HTMLOptionElement&);
@@ -80,7 +80,8 @@ public:
 
     WEBCORE_EXPORT void setSize(unsigned);
 
-    ExceptionOr<void> setOption(unsigned index, HTMLOptionElement&);
+    // Called by the bindings for the unnamed index-setter.
+    ExceptionOr<void> setItem(unsigned index, HTMLOptionElement*);
     ExceptionOr<void> setLength(unsigned);
 
     WEBCORE_EXPORT HTMLOptionElement* namedItem(const AtomicString& name);

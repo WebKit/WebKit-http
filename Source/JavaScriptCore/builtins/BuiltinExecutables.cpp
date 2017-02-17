@@ -36,7 +36,7 @@ namespace JSC {
 
 BuiltinExecutables::BuiltinExecutables(VM& vm)
     : m_vm(vm)
-#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(makeSource(StringImpl::createFromLiteral(s_##name, length)))
+#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(makeSource(StringImpl::createFromLiteral(s_##name, length), { }))
     JSC_FOREACH_BUILTIN_CODE(INITIALIZE_BUILTIN_SOURCE_MEMBERS)
 #undef EXPOSE_BUILTIN_STRINGS
 {
@@ -45,15 +45,15 @@ BuiltinExecutables::BuiltinExecutables(VM& vm)
 UnlinkedFunctionExecutable* BuiltinExecutables::createDefaultConstructor(ConstructorKind constructorKind, const Identifier& name)
 {
     static NeverDestroyed<const String> baseConstructorCode(ASCIILiteral("(function () { })"));
-    static NeverDestroyed<const String> derivedConstructorCode(ASCIILiteral("(function () { super(...arguments); })"));
+    static NeverDestroyed<const String> derivedConstructorCode(ASCIILiteral("(function (...args) { super(...args); })"));
 
     switch (constructorKind) {
     case ConstructorKind::None:
         break;
     case ConstructorKind::Base:
-        return createExecutable(m_vm, makeSource(baseConstructorCode), name, constructorKind, ConstructAbility::CanConstruct);
+        return createExecutable(m_vm, makeSource(baseConstructorCode, { }), name, constructorKind, ConstructAbility::CanConstruct);
     case ConstructorKind::Extends:
-        return createExecutable(m_vm, makeSource(derivedConstructorCode), name, constructorKind, ConstructAbility::CanConstruct);
+        return createExecutable(m_vm, makeSource(derivedConstructorCode, { }), name, constructorKind, ConstructAbility::CanConstruct);
     }
     ASSERT_NOT_REACHED();
     return nullptr;
@@ -76,7 +76,7 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutable(VM& vm, const S
     bool isParsingDefaultConstructor = constructorKind != ConstructorKind::None;
     JSParserBuiltinMode builtinMode = isParsingDefaultConstructor ? JSParserBuiltinMode::NotBuiltin : JSParserBuiltinMode::Builtin;
     UnlinkedFunctionKind kind = isParsingDefaultConstructor ? UnlinkedNormalFunction : UnlinkedBuiltinFunction;
-    RefPtr<SourceProvider> sourceOverride = isParsingDefaultConstructor ? source.provider() : nullptr;
+    SourceCode parentSourceOverride = isParsingDefaultConstructor ? source : SourceCode();
     std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
         &vm, source, Identifier(), builtinMode,
         JSParserStrictMode::NotStrict, JSParserScriptMode::Classic, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error,
@@ -105,7 +105,7 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutable(VM& vm, const S
     RELEASE_ASSERT(metadata);
     metadata->overrideName(name);
     VariableEnvironment dummyTDZVariables;
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, kind, constructAbility, JSParserScriptMode::Classic, dummyTDZVariables, DerivedContextType::None, WTFMove(sourceOverride));
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, kind, constructAbility, JSParserScriptMode::Classic, dummyTDZVariables, DerivedContextType::None, WTFMove(parentSourceOverride));
     return functionExecutable;
 }
 

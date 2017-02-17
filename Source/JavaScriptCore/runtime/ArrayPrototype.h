@@ -42,15 +42,14 @@ public:
 
     static ArrayPrototype* create(VM&, JSGlobalObject*, Structure*);
         
-    DECLARE_INFO;
+    DECLARE_EXPORT_INFO;
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
         return Structure::create(vm, globalObject, prototype, TypeInfo(DerivedArrayType, StructureFlags), info(), ArrayClass);
     }
 
-    SpeciesWatchpointStatus speciesWatchpointStatus() const { return m_speciesWatchpointStatus; }
-    SpeciesWatchpointStatus attemptToInitializeSpeciesWatchpoint(ExecState*);
+    void tryInitializeSpeciesWatchpoint(ExecState*);
 
     static const bool needsDestruction = false;
     // We don't need destruction since we use a finalizer.
@@ -64,7 +63,6 @@ private:
     friend ArrayPrototypeAdaptiveInferredPropertyWatchpoint;
     std::unique_ptr<ArrayPrototypeAdaptiveInferredPropertyWatchpoint> m_constructorWatchpoint;
     std::unique_ptr<ArrayPrototypeAdaptiveInferredPropertyWatchpoint> m_constructorSpeciesWatchpoint;
-    SpeciesWatchpointStatus m_speciesWatchpointStatus { SpeciesWatchpointStatus::Uninitialized };
 };
 
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState*);

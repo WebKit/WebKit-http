@@ -53,6 +53,8 @@ public:
 
     WEBCORE_EXPORT unsigned length() const;
     HTMLElement* item(unsigned index);
+    std::optional<Variant<RefPtr<RadioNodeList>, RefPtr<Element>>> namedItem(const AtomicString&);
+    Vector<AtomicString> supportedPropertyNames() const;
 
     String enctype() const { return m_attributes.encodingType(); }
     WEBCORE_EXPORT void setEnctype(const String&);
@@ -126,7 +128,7 @@ public:
     const Vector<FormAssociatedElement*>& associatedElements() const { return m_associatedElements; }
     const Vector<HTMLImageElement*>& imageElements() const { return m_imageElements; }
 
-    void getTextFieldValues(StringPairVector& fieldNamesAndValues) const;
+    StringPairVector textFieldValues() const;
 
     static HTMLFormElement* findClosestFormAncestor(const Element&);
 
@@ -145,7 +147,7 @@ private:
 
     void resumeFromDocumentSuspension() final;
 
-    void didMoveToNewDocument(Document* oldDocument) final;
+    void didMoveToNewDocument(Document& oldDocument) final;
 
     void copyNonAttributePropertiesFromElement(const Element&) final;
 
@@ -169,6 +171,8 @@ private:
     bool matchesValidPseudoClass() const final;
     bool matchesInvalidPseudoClass() const final;
 
+    void resetAssociatedFormControlElements();
+
     typedef HashMap<RefPtr<AtomicStringImpl>, FormNamedItem*> PastNamesMap;
 
     FormSubmission::Attributes m_attributes;
@@ -177,19 +181,19 @@ private:
     RadioButtonGroups m_radioButtonGroups;
     mutable HTMLFormControlElement* m_defaultButton { nullptr };
 
-    unsigned m_associatedElementsBeforeIndex;
-    unsigned m_associatedElementsAfterIndex;
+    unsigned m_associatedElementsBeforeIndex { 0 };
+    unsigned m_associatedElementsAfterIndex { 0 };
     Vector<FormAssociatedElement*> m_associatedElements;
     Vector<HTMLImageElement*> m_imageElements;
     HashSet<const HTMLFormControlElement*> m_invalidAssociatedFormControls;
 
-    bool m_wasUserSubmitted;
-    bool m_isSubmittingOrPreparingForSubmission;
-    bool m_shouldSubmit;
+    bool m_wasUserSubmitted { false };
+    bool m_isSubmittingOrPreparingForSubmission { false };
+    bool m_shouldSubmit { false };
 
-    bool m_isInResetFunction;
+    bool m_isInResetFunction { false };
 
-    bool m_wasDemoted;
+    bool m_wasDemoted { false };
 
 #if ENABLE(REQUEST_AUTOCOMPLETE)
     void requestAutocompleteTimerFired();

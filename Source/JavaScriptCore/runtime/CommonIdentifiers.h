@@ -40,7 +40,6 @@
     macro(Date) \
     macro(DateTimeFormat) \
     macro(DocumentTimeline) \
-    macro(DOMIterator) \
     macro(Error) \
     macro(EvalError) \
     macro(Function) \
@@ -64,19 +63,34 @@
     macro(IDBVersionChangeEvent) \
     macro(Infinity) \
     macro(InputEvent) \
+    macro(IntersectionObserver) \
+    macro(IntersectionObserverEntry) \
     macro(Intl) \
     macro(JSON) \
     macro(Loader) \
     macro(Map)\
     macro(MapIterator)\
     macro(Math) \
+    macro(MediaEncryptedEvent) \
+    macro(MediaKeyMessageEvent) \
+    macro(MediaKeySession) \
+    macro(MediaKeyStatusMap) \
+    macro(MediaKeySystemAccess) \
+    macro(MediaKeys) \
+    macro(MediaStreamEvent) \
     macro(ModernMediaControls) \
     macro(NaN) \
+    macro(NavigatorMediaDevices) \
+    macro(NavigatorUserMedia) \
     macro(Number) \
     macro(NumberFormat) \
     macro(Object) \
     macro(PerformanceEntry) \
     macro(PerformanceEntryList) \
+    macro(PerformanceMark) \
+    macro(PerformanceMeasure) \
+    macro(PerformanceObserver) \
+    macro(PerformanceObserverEntryList) \
     macro(PerformanceResourceTiming) \
     macro(Promise) \
     macro(Proxy) \
@@ -86,6 +100,14 @@
     macro(RegExp) \
     macro(Response) \
     macro(Request) \
+    macro(RTCDTMFToneChangeEvent) \
+    macro(RTCIceCandidate) \
+    macro(RTCPeerConnection) \
+    macro(RTCRtpReceiver) \
+    macro(RTCRtpSender) \
+    macro(RTCRtpTransceiver) \
+    macro(RTCSessionDescription) \
+    macro(RTCTrackEvent) \
     macro(Set)\
     macro(SetIterator)\
     macro(ShadowRoot) \
@@ -112,7 +134,6 @@
     macro(arguments) \
     macro(as) \
     macro(assign) \
-    macro(async) \
     macro(back) \
     macro(bind) \
     macro(blur) \
@@ -260,6 +281,8 @@
     macro(value) \
     macro(valueOf) \
     macro(webkit) \
+    macro(collectMatchingElementsInFlatTree) \
+    macro(matchingElementInFlatTree) \
     macro(webkitIDBCursor) \
     macro(webkitIDBDatabase) \
     macro(webkitIDBFactory) \
@@ -275,6 +298,7 @@
     macro(year)
 
 #define JSC_COMMON_IDENTIFIERS_EACH_KEYWORD(macro) \
+    macro(async) \
     macro(await) \
     macro(break) \
     macro(case) \

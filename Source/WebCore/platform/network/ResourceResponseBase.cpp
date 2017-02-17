@@ -278,7 +278,7 @@ void ResourceResponseBase::setHTTPVersion(const String& versionText)
     // FIXME: Should invalidate or update platform response if present.
 }
 
-bool ResourceResponseBase::isHttpVersion0_9() const
+bool ResourceResponseBase::isHTTP09() const
 {
     lazyInit(AllFields);
 
@@ -425,6 +425,13 @@ bool ResourceResponseBase::cacheControlContainsMustRevalidate() const
         parseCacheControlDirectives();
     return m_cacheControlDirectives.mustRevalidate;
 }
+    
+bool ResourceResponseBase::cacheControlContainsImmutable() const
+{
+    if (!m_haveParsedCacheControlHeader)
+        parseCacheControlDirectives();
+    return m_cacheControlDirectives.immutable;
+}
 
 bool ResourceResponseBase::hasCacheValidatorFields() const
 {
@@ -433,14 +440,14 @@ bool ResourceResponseBase::hasCacheValidatorFields() const
     return !m_httpHeaderFields.get(HTTPHeaderName::LastModified).isEmpty() || !m_httpHeaderFields.get(HTTPHeaderName::ETag).isEmpty();
 }
 
-Optional<std::chrono::microseconds> ResourceResponseBase::cacheControlMaxAge() const
+std::optional<std::chrono::microseconds> ResourceResponseBase::cacheControlMaxAge() const
 {
     if (!m_haveParsedCacheControlHeader)
         parseCacheControlDirectives();
     return m_cacheControlDirectives.maxAge;
 }
 
-static Optional<std::chrono::system_clock::time_point> parseDateValueInHeader(const HTTPHeaderMap& headers, HTTPHeaderName headerName)
+static std::optional<std::chrono::system_clock::time_point> parseDateValueInHeader(const HTTPHeaderMap& headers, HTTPHeaderName headerName)
 {
     String headerValue = headers.get(headerName);
     if (headerValue.isEmpty())
@@ -452,7 +459,7 @@ static Optional<std::chrono::system_clock::time_point> parseDateValueInHeader(co
     return parseHTTPDate(headerValue);
 }
 
-Optional<std::chrono::system_clock::time_point> ResourceResponseBase::date() const
+std::optional<std::chrono::system_clock::time_point> ResourceResponseBase::date() const
 {
     lazyInit(CommonFieldsOnly);
 
@@ -463,7 +470,7 @@ Optional<std::chrono::system_clock::time_point> ResourceResponseBase::date() con
     return m_date;
 }
 
-Optional<std::chrono::microseconds> ResourceResponseBase::age() const
+std::optional<std::chrono::microseconds> ResourceResponseBase::age() const
 {
     using namespace std::chrono;
 
@@ -480,7 +487,7 @@ Optional<std::chrono::microseconds> ResourceResponseBase::age() const
     return m_age;
 }
 
-Optional<std::chrono::system_clock::time_point> ResourceResponseBase::expires() const
+std::optional<std::chrono::system_clock::time_point> ResourceResponseBase::expires() const
 {
     lazyInit(CommonFieldsOnly);
 
@@ -491,7 +498,7 @@ Optional<std::chrono::system_clock::time_point> ResourceResponseBase::expires() 
     return m_expires;
 }
 
-Optional<std::chrono::system_clock::time_point> ResourceResponseBase::lastModified() const
+std::optional<std::chrono::system_clock::time_point> ResourceResponseBase::lastModified() const
 {
     lazyInit(CommonFieldsOnly);
 
@@ -502,7 +509,7 @@ Optional<std::chrono::system_clock::time_point> ResourceResponseBase::lastModifi
         // an invalid value (rdar://problem/22352838).
         const std::chrono::system_clock::time_point epoch;
         if (m_lastModified && m_lastModified.value() == epoch)
-            m_lastModified = Nullopt;
+            m_lastModified = std::nullopt;
 #endif
         m_haveParsedLastModifiedHeader = true;
     }

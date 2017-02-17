@@ -225,7 +225,8 @@ sub generateDiff($$)
     }
     
     my $patch = "";
-    if ($fileData->{modificationType} eq "additionWithHistory") {
+    my $isAdditionWithHistory = $fileData->{modificationType} eq "additionWithHistory";
+    if ($isAdditionWithHistory) {
         manufacturePatchForAdditionWithHistory($fileData);
     }
 
@@ -236,6 +237,7 @@ sub generateDiff($$)
         $patch .= $_;
     }
     close DIFF;
+    $patch = fixSVNPatchForAdditionWithHistory($patch) if $patch && $isAdditionWithHistory;
     if (basename($file) eq "ChangeLog") {
         my $changeLogHash = fixChangeLogPatch($patch);
         $patch = $changeLogHash->{patch};   
@@ -317,7 +319,7 @@ sub manufacturePatchForAdditionWithHistory($)
         print "svn:mime-type = ${mimeType}\n\n";
     } else {
         my $escapedSourceFile = escapeSubversionPath($sourceFile);
-        print `svn cat ${escapedSourceFile} | diff -u $devNull - | tail -n +3`;
+        print `svn diff -r 0:${sourceRevision} ${escapedSourceFile} | tail -n +5`;
     }
 }
 

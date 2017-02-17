@@ -44,12 +44,14 @@
 #import "WKRetainPtr.h"
 #import "WKStringCF.h"
 #import "WKURLRequestNS.h"
+#import "WKWebProcessPlugInEditingDelegate.h"
 #import "WKWebProcessPlugInFrameInternal.h"
 #import "WKWebProcessPlugInInternal.h"
 #import "WKWebProcessPlugInFormDelegatePrivate.h"
 #import "WKWebProcessPlugInLoadDelegate.h"
 #import "WKWebProcessPlugInNodeHandleInternal.h"
 #import "WKWebProcessPlugInPageGroupInternal.h"
+#import "WKWebProcessPlugInRangeHandleInternal.h"
 #import "WKWebProcessPlugInScriptWorldInternal.h"
 #import "WeakObjCPtr.h"
 #import "WebPage.h"
@@ -74,6 +76,7 @@ using namespace WebKit;
     API::ObjectStorage<WebPage> _page;
     WeakObjCPtr<id <WKWebProcessPlugInLoadDelegate>> _loadDelegate;
     WeakObjCPtr<id <WKWebProcessPlugInFormDelegatePrivate>> _formDelegate;
+    WeakObjCPtr<id <WKWebProcessPlugInEditingDelegate>> _editingDelegate;
     
     RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
 }
@@ -563,6 +566,113 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
         _page->setInjectedBundleFormClient(std::make_unique<FormClient>(self));
     else
         _page->setInjectedBundleFormClient(nullptr);
+}
+
+- (id <WKWebProcessPlugInEditingDelegate>)_editingDelegate
+{
+    return _editingDelegate.getAutoreleased();
+}
+
+static inline WKEditorInsertAction toWK(EditorInsertAction action)
+{
+    switch (action) {
+    case EditorInsertAction::Typed:
+        return WKEditorInsertActionTyped;
+    case EditorInsertAction::Pasted:
+        return WKEditorInsertActionPasted;
+    case EditorInsertAction::Dropped:
+        return WKEditorInsertActionDropped;
+    }
+}
+
+- (void)_setEditingDelegate:(id <WKWebProcessPlugInEditingDelegate>)editingDelegate
+{
+    _editingDelegate = editingDelegate;
+
+    class Client final : public API::InjectedBundle::EditorClient {
+    public:
+        explicit Client(WKWebProcessPlugInBrowserContextController *controller)
+            : m_controller { controller }
+            , m_delegateMethods { m_controller->_editingDelegate.get() }
+        {
+        }
+
+    private:
+        bool shouldInsertText(WebPage&, StringImpl* text, Range* rangeToReplace, EditorInsertAction action) final
+        {
+            if (!m_delegateMethods.shouldInsertText)
+                return true;
+
+            return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller shouldInsertText:String(text) replacingRange:wrapper(*InjectedBundleRangeHandle::getOrCreate(rangeToReplace)) givenAction:toWK(action)];
+        }
+
+        bool shouldChangeSelectedRange(WebPage&, Range* fromRange, Range* toRange, EAffinity affinity, bool stillSelecting) final
+        {
+            if (!m_delegateMethods.shouldChangeSelectedRange)
+                return true;
+
+            auto apiFromRange = fromRange ? adoptNS([[WKDOMRange alloc] _initWithImpl:fromRange]) : nil;
+            auto apiToRange = toRange ? adoptNS([[WKDOMRange alloc] _initWithImpl:toRange]) : nil;
+#if PLATFORM(IOS)
+            UITextStorageDirection apiAffinity = affinity == UPSTREAM ? UITextStorageDirectionBackward : UITextStorageDirectionForward;
+#else
+            NSSelectionAffinity apiAffinity = affinity == UPSTREAM ? NSSelectionAffinityUpstream : NSSelectionAffinityDownstream;
+#endif
+
+            return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller shouldChangeSelectedRange:apiFromRange.get() toRange:apiToRange.get() affinity:apiAffinity stillSelecting:stillSelecting];
+        }
+
+        void willWriteToPasteboard(WebKit::WebPage&, WebCore::Range* range) final
+        {
+            if (!m_delegateMethods.willWriteToPasteboard)
+                return;
+
+            [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller willWriteRangeToPasteboard:wrapper(*InjectedBundleRangeHandle::getOrCreate(range).get())];
+        }
+
+        void getPasteboardDataForRange(WebKit::WebPage&, WebCore::Range* range, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final
+        {
+            if (!m_delegateMethods.getPasteboardDataForRange)
+                return;
+
+            auto dataByType = [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller pasteboardDataForRange:wrapper(*InjectedBundleRangeHandle::getOrCreate(range).get())];
+            for (NSString *type in dataByType) {
+                pasteboardTypes.append(type);
+                pasteboardData.append(SharedBuffer::wrapNSData(dataByType[type]));
+            };
+        }
+
+        void didWriteToPasteboard(WebKit::WebPage&) final
+        {
+            if (!m_delegateMethods.didWriteToPasteboard)
+                return;
+
+            [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextControllerDidWriteToPasteboard:m_controller];
+        }
+
+        WKWebProcessPlugInBrowserContextController *m_controller;
+        const struct DelegateMethods {
+            DelegateMethods(RetainPtr<id <WKWebProcessPlugInEditingDelegate>> delegate)
+                : shouldInsertText([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:shouldInsertText:replacingRange:givenAction:)])
+                , shouldChangeSelectedRange([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:shouldChangeSelectedRange:toRange:affinity:stillSelecting:)])
+                , willWriteToPasteboard([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:willWriteRangeToPasteboard:)])
+                , getPasteboardDataForRange([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:pasteboardDataForRange:)])
+                , didWriteToPasteboard([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextControllerDidWriteToPasteboard:)])
+            {
+            }
+
+            bool shouldInsertText;
+            bool shouldChangeSelectedRange;
+            bool willWriteToPasteboard;
+            bool getPasteboardDataForRange;
+            bool didWriteToPasteboard;
+        } m_delegateMethods;
+    };
+
+    if (editingDelegate)
+        _page->setInjectedBundleEditorClient(std::make_unique<Client>(self));
+    else
+        _page->setInjectedBundleEditorClient(nullptr);
 }
 
 - (BOOL)_defersLoading

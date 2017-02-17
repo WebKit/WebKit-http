@@ -47,6 +47,7 @@
 #include "APISessionState.h"
 #include "APIUIClient.h"
 #include "APIWebProxy.h"
+#include "APIWebsitePolicies.h"
 #include "APIWindowFeatures.h"
 #include "AuthenticationChallengeProxy.h"
 #include "LegacySessionStateCoding.h"
@@ -113,7 +114,7 @@ template<> struct ClientTraits<WKPagePolicyClientBase> {
 };
 
 template<> struct ClientTraits<WKPageUIClientBase> {
-    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7, WKPageUIClientV8> Versions;
+    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7, WKPageUIClientV8, WKPageUIClientV9> Versions;
 };
 
 #if ENABLE(CONTEXT_MENUS)
@@ -322,6 +323,11 @@ WKBackForwardListRef WKPageGetBackForwardList(WKPageRef pageRef)
 bool WKPageWillHandleHorizontalScrollEvents(WKPageRef pageRef)
 {
     return toImpl(pageRef)->willHandleHorizontalScrollEvents();
+}
+
+void WKPageUpdateWebsitePolicies(WKPageRef pageRef, WKWebsitePoliciesRef websitePoliciesRef)
+{
+    toImpl(pageRef)->updateWebsitePolicies(toImpl(websitePoliciesRef)->websitePolicies());
 }
 
 WKStringRef WKPageCopyTitle(WKPageRef pageRef)
@@ -1377,7 +1383,7 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* 
         void decidePolicyForNavigationAction(WebPageProxy& page, WebFrameProxy* frame, const NavigationActionData& navigationActionData, WebFrameProxy* originatingFrame, const WebCore::ResourceRequest& originalResourceRequest, const WebCore::ResourceRequest& resourceRequest, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData) override
         {
             if (!m_client.decidePolicyForNavigationAction_deprecatedForUseWithV0 && !m_client.decidePolicyForNavigationAction_deprecatedForUseWithV1 && !m_client.decidePolicyForNavigationAction) {
-                listener->use();
+                listener->use({ });
                 return;
             }
 
@@ -1395,7 +1401,7 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* 
         void decidePolicyForNewWindowAction(WebPageProxy& page, WebFrameProxy& frame, const NavigationActionData& navigationActionData, const ResourceRequest& resourceRequest, const String& frameName, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData) override
         {
             if (!m_client.decidePolicyForNewWindowAction) {
-                listener->use();
+                listener->use({ });
                 return;
             }
 
@@ -1407,7 +1413,7 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* 
         void decidePolicyForResponse(WebPageProxy& page, WebFrameProxy& frame, const ResourceResponse& resourceResponse, const ResourceRequest& resourceRequest, bool canShowMIMEType, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData) override
         {
             if (!m_client.decidePolicyForResponse_deprecatedForUseWithV0 && !m_client.decidePolicyForResponse) {
-                listener->use();
+                listener->use({ });
                 return;
             }
 
@@ -2257,6 +2263,32 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.willAddDetailedMessageToConsole(toAPI(page), toAPI(source.impl()), toAPI(level.impl()),
                     line, column, toAPI(message.impl()), toAPI(url.impl()), m_client.base.clientInfo);
         }
+
+#if ENABLE(POINTER_LOCK)
+        void requestPointerLock(WebPageProxy* page) override
+        {
+            if (!m_client.requestPointerLock)
+                return;
+            
+            m_client.requestPointerLock(toAPI(page), m_client.base.clientInfo);
+        }
+
+        void didLosePointerLock(WebPageProxy* page) override
+        {
+            if (!m_client.didLosePointerLock)
+                return;
+
+            m_client.didLosePointerLock(toAPI(page), m_client.base.clientInfo);
+        }
+#endif
+
+        void didPlayMediaPreventedFromPlayingWithoutUserGesture(WebPageProxy& page) override
+        {
+            if (!m_client.didPlayMediaPreventedFromPlayingWithoutUserGesture)
+                return;
+
+            m_client.didPlayMediaPreventedFromPlayingWithoutUserGesture(toAPI(&page), m_client.base.clientInfo);
+        }
     };
 
     toImpl(pageRef)->setUIClient(std::make_unique<UIClient>(wkClient));
@@ -2645,6 +2677,33 @@ void WKPageSetMuted(WKPageRef page, WKMediaMutedState muted)
     toImpl(page)->setMuted(muted);
 }
 
+void WKPageDidAllowPointerLock(WKPageRef page)
+{
+#if ENABLE(POINTER_LOCK)
+    toImpl(page)->didAllowPointerLock();
+#else
+    UNUSED_PARAM(page);
+#endif
+}
+
+void WKPageClearUserMediaState(WKPageRef page)
+{
+#if ENABLE(MEDIA_STREAM)
+    toImpl(page)->clearUserMediaState();
+#else
+    UNUSED_PARAM(page);
+#endif
+}
+
+void WKPageDidDenyPointerLock(WKPageRef page)
+{
+#if ENABLE(POINTER_LOCK)
+    toImpl(page)->didDenyPointerLock();
+#else
+    UNUSED_PARAM(page);
+#endif
+}
+
 bool WKPageHasMediaSessionWithActiveMediaElements(WKPageRef page)
 {
 #if ENABLE(MEDIA_SESSION)
@@ -2792,10 +2851,10 @@ WKMediaState WKPageGetMediaState(WKPageRef page)
         state |= kWKMediaIsPlayingAudio;
     if (coreState & WebCore::MediaProducer::IsPlayingVideo)
         state |= kWKMediaIsPlayingVideo;
-    if (coreState & WebCore::MediaProducer::HasMediaCaptureDevice)
-        state |= kWKMediaHasCaptureDevice;
-    if (coreState & WebCore::MediaProducer::HasActiveMediaCaptureDevice)
-        state |= kWKMediaHasActiveCaptureDevice;
+    if (coreState & WebCore::MediaProducer::HasActiveAudioCaptureDevice)
+        state |= kWKMediaHasActiveAudioCaptureDevice;
+    if (coreState & WebCore::MediaProducer::HasActiveVideoCaptureDevice)
+        state |= kWKMediaHasActiveVideoCaptureDevice;
 
     return state;
 }

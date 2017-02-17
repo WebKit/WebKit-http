@@ -29,12 +29,19 @@
 
 #include "CompilationResult.h"
 #include "VM.h"
+#include "WasmB3IRGenerator.h"
 #include "WasmFormat.h"
+#include <wtf/Bag.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
 
-namespace JSC { namespace Wasm {
-class Memory;
+namespace JSC {
+
+class CallLinkInfo;
+class JSGlobalObject;
+class JSWebAssemblyCallee;
+
+namespace Wasm {
 
 class Plan {
 public:
@@ -42,7 +49,11 @@ public:
     JS_EXPORT_PRIVATE Plan(VM*, const uint8_t*, size_t);
     JS_EXPORT_PRIVATE ~Plan();
 
+    bool parseAndValidateModule();
+
     JS_EXPORT_PRIVATE void run();
+
+    JS_EXPORT_PRIVATE void initializeCallees(JSGlobalObject*, std::function<void(unsigned, JSWebAssemblyCallee*, JSWebAssemblyCallee*)>);
 
     bool WARN_UNUSED_RETURN failed() const { return m_failed; }
     const String& errorMessage() const
@@ -50,42 +61,54 @@ public:
         RELEASE_ASSERT(failed());
         return m_errorMessage;
     }
-    
-    std::unique_ptr<ModuleInformation>& getModuleInformation()
+
+    Vector<Export>& exports() const
     {
         RELEASE_ASSERT(!failed());
-        return m_moduleInformation;
+        return m_moduleInformation->exports;
     }
-    const Memory* memory() const
+
+    size_t internalFunctionCount() const
     {
         RELEASE_ASSERT(!failed());
-        return m_moduleInformation->memory.get();
+        return m_wasmInternalFunctions.size();
     }
-    size_t compiledFunctionCount() const
+
+    std::unique_ptr<ModuleInformation>&& takeModuleInformation()
     {
         RELEASE_ASSERT(!failed());
-        return m_compiledFunctions.size();
+        return WTFMove(m_moduleInformation);
     }
-    const FunctionCompilation* compiledFunction(size_t i) const
+
+    Bag<CallLinkInfo>&& takeCallLinkInfos()
     {
         RELEASE_ASSERT(!failed());
-        return m_compiledFunctions.at(i).get();
+        return WTFMove(m_callLinkInfos);
     }
-    CompiledFunctions& getCompiledFunctions()
+
+    Vector<WasmExitStubs>&& takeWasmExitStubs()
     {
         RELEASE_ASSERT(!failed());
-        return m_compiledFunctions;
+        return WTFMove(m_wasmExitStubs);
     }
 
 private:
     std::unique_ptr<ModuleInformation> m_moduleInformation;
-    CompiledFunctions m_compiledFunctions;
+    Vector<FunctionLocationInBinary> m_functionLocationInBinary;
+    Vector<SignatureIndex> m_moduleSignatureIndicesToUniquedSignatureIndices;
+    Bag<CallLinkInfo> m_callLinkInfos;
+    Vector<WasmExitStubs> m_wasmExitStubs;
+    Vector<std::unique_ptr<WasmInternalFunction>> m_wasmInternalFunctions;
+    Vector<CompilationContext> m_compilationContexts;
 
     VM* m_vm;
+    Vector<Vector<UnlinkedWasmToWasmCall>> m_unlinkedWasmToWasmCalls;
     const uint8_t* m_source;
     const size_t m_sourceLength;
     bool m_failed { true };
     String m_errorMessage;
+    uint32_t m_currentIndex;
+    Lock m_lock;
 };
 
 } } // namespace JSC::Wasm

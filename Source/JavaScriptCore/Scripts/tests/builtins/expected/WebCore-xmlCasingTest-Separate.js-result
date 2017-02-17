@@ -85,7 +85,7 @@ public:
     explicit xmlCasingTestBuiltinsWrapper(JSC::VM* vm)
         : m_vm(*vm)
         WEBCORE_FOREACH_XMLCASINGTEST_BUILTIN_FUNCTION_NAME(INITIALIZE_BUILTIN_NAMES)
-#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(JSC::makeSource(StringImpl::createFromLiteral(s_##name, length)))
+#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(JSC::makeSource(StringImpl::createFromLiteral(s_##name, length), { }))
         WEBCORE_FOREACH_XMLCASINGTEST_BUILTIN_CODE(INITIALIZE_BUILTIN_SOURCE_MEMBERS)
 #undef INITIALIZE_BUILTIN_SOURCE_MEMBERS
     {
@@ -157,7 +157,7 @@ inline void xmlCasingTestBuiltinFunctions::init(JSC::JSGlobalObject& globalObjec
 
 inline void xmlCasingTestBuiltinFunctions::visit(JSC::SlotVisitor& visitor)
 {
-#define VISIT_FUNCTION(name) visitor.append(&m_##name##Function);
+#define VISIT_FUNCTION(name) visitor.append(m_##name##Function);
     WEBCORE_FOREACH_XMLCASINGTEST_BUILTIN_FUNCTION_NAME(VISIT_FUNCTION)
 #undef VISIT_FUNCTION
 }
@@ -267,7 +267,7 @@ const char* s_xmlCasingTestUrlCasingTestCode =
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \
 {\
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData); \
-    return clientData->builtinFunctions().xmlCasingTestBuiltins().codeName##Executable()->link(vm, clientData->builtinFunctions().xmlCasingTestBuiltins().codeName##Source(), Nullopt, s_##codeName##Intrinsic); \
+    return clientData->builtinFunctions().xmlCasingTestBuiltins().codeName##Executable()->link(vm, clientData->builtinFunctions().xmlCasingTestBuiltins().codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \
 }
 WEBCORE_FOREACH_XMLCASINGTEST_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR

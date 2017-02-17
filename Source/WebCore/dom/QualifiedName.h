@@ -91,7 +91,7 @@ public:
     // Uppercased localName, cached for efficiency
     const AtomicString& localNameUpper() const;
 
-    WEBCORE_EXPORT String toString() const;
+    String toString() const;
 
     QualifiedNameImpl* impl() const { return m_impl.get(); }
 #if ENABLE(JIT)
@@ -142,6 +142,14 @@ struct QualifiedNameHash {
 
 void createQualifiedName(void* targetAddress, StringImpl* name);
 void createQualifiedName(void* targetAddress, StringImpl* name, const AtomicString& nameNamespace);
+
+inline String QualifiedName::toString() const
+{
+    if (!hasPrefix())
+        return localName();
+
+    return prefix().string() + ':' + localName().string();
+}
 
 } // namespace WebCore
 

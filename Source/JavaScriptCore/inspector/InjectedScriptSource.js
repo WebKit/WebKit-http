@@ -55,14 +55,6 @@ function isUInt32(obj)
     return "" + (obj >>> 0) === obj;
 }
 
-function endsWith(str, suffix)
-{
-    var position = str.length - suffix.length;
-    if (position < 0)
-        return false;
-    return str.indexOf(suffix, position) === position;
-}
-
 function isSymbol(obj)
 {
     return typeof obj === "symbol";
@@ -171,7 +163,7 @@ InjectedScript.prototype = {
 
         // FIXME: Currently columns are ignored. Instead, the frontend filters all
         // properties based on the provided column names and in the provided order.
-        // Should we filter here too?
+        // We could filter here to avoid sending very large preview objects.
 
         var columnNames = null;
         if (typeof columns === "string")
@@ -653,7 +645,7 @@ InjectedScript.prototype = {
                 }
 
                 if (nativeGettersAsValues) {
-                    if (endsWith(String(descriptor.get), "[native code]\n}") || (!descriptor.get && descriptor.hasOwnProperty("get") && !descriptor.set && descriptor.hasOwnProperty("set"))) {
+                    if (String(descriptor.get).endsWith("[native code]\n}") || (!descriptor.get && descriptor.hasOwnProperty("get") && !descriptor.set && descriptor.hasOwnProperty("set"))) {
                         // Developers may create such a descriptor, so we should be resilient:
                         // var x = {}; Object.defineProperty(x, "p", {get:undefined}); Object.getOwnPropertyDescriptor(x, "p")
                         var fakeDescriptor = createFakeValueDescriptor(name, symbol, descriptor, isOwnProperty, true);
@@ -688,7 +680,7 @@ InjectedScript.prototype = {
             isArrayLike = injectedScript._subtype(object) === "array" && isFinite(object.length) && object.length > 0;
         } catch(e) {}
 
-        for (var o = object; this._isDefined(o); o = o.__proto__) {
+        for (var o = object; this._isDefined(o); o = Object.getPrototypeOf(o)) {
             var isOwnProperty = o === object;
 
             if (isArrayLike && isOwnProperty)
@@ -815,7 +807,7 @@ InjectedScript.prototype = {
 
         // NodeList in JSC is a function, check for array prior to this.
         if (typeof obj === "function")
-            return toString(obj);
+            return obj.toString();
 
         // If Object, try for a better name from the constructor.
         if (className === "Object") {
@@ -979,9 +971,9 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
     }
 };
 
-InjectedScript.RemoteObject.createObjectPreviewForValue = function(value, generatePreview)
+InjectedScript.RemoteObject.createObjectPreviewForValue = function(value, generatePreview, columnNames)
 {
-    var remoteObject = new InjectedScript.RemoteObject(value, undefined, false, generatePreview, undefined);
+    var remoteObject = new InjectedScript.RemoteObject(value, undefined, false, generatePreview, columnNames);
     if (remoteObject.objectId)
         injectedScript.releaseObject(remoteObject.objectId);
     if (remoteObject.classPrototype && remoteObject.classPrototype.objectId)
@@ -1163,7 +1155,7 @@ InjectedScript.RemoteObject.prototype = {
             // Second level.
             if ((secondLevelKeys === null || secondLevelKeys) || this._isPreviewableObject(value, object)) {
                 // FIXME: If we want secondLevelKeys filter to continue we would need some refactoring.
-                var subPreview = InjectedScript.RemoteObject.createObjectPreviewForValue(value, value !== object);
+                var subPreview = InjectedScript.RemoteObject.createObjectPreviewForValue(value, value !== object, secondLevelKeys);
                 property.valuePreview = subPreview;
                 if (!subPreview.lossless)
                     preview.lossless = false;

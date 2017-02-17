@@ -1092,6 +1092,8 @@ elements
 // -webkit-scroll-snap-type
 mandatory
 proximity
+x
+y
 #endif
 
 // -webkit-region-fragment
@@ -1150,6 +1152,7 @@ isolate
 scale-down
 
 // background-image, etc.
+container-scroll
 cross-fade
 image-set
 linear-gradient
@@ -1165,6 +1168,9 @@ repeating-radial-gradient
 -webkit-repeating-radial-gradient
 -webkit-image-set
 -webkit-named-image
+filter
+-webkit-filter
+dashboard-region
 
 // deprecated gradients
 from
@@ -1290,7 +1296,7 @@ white-outline
 plain
 buy
 set-up
-other
+donate
 #endif
 
 // font-synthesis
@@ -1322,6 +1328,7 @@ display-p3
 
 // prefers-reduced-motion
 reduce
+no-preference
 
 #if defined(ENABLE_CSS_GRID_LAYOUT) && ENABLE_CSS_GRID_LAYOUT
 // auto-repeat

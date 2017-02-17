@@ -26,10 +26,12 @@
 #include "DOMJITIDLConvert.h"
 #include "DOMJITIDLType.h"
 #include "DOMJITIDLTypeFilter.h"
-#include "JSByteString.h"
 #include "JSDOMBinding.h"
-#include "JSDOMConstructor.h"
+#include "JSDOMBindingCaller.h"
+#include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMWrapperCache.h"
 #include "JSElement.h"
 #include "JSNodeList.h"
 #include <interpreter/FrameTracers.h>
@@ -230,7 +232,7 @@ JSTestDOMJIT::JSTestDOMJIT(Structure* structure, JSDOMGlobalObject& globalObject
 void JSTestDOMJIT::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
 }
 
@@ -244,14 +246,14 @@ JSObject* JSTestDOMJIT::prototype(VM& vm, JSGlobalObject* globalObject)
     return getDOMPrototype<JSTestDOMJIT>(vm, globalObject);
 }
 
-template<> inline JSTestDOMJIT* BindingCaller<JSTestDOMJIT>::castForAttribute(ExecState&, EncodedJSValue thisValue)
+template<> inline JSTestDOMJIT* BindingCaller<JSTestDOMJIT>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
 {
-    return jsDynamicDowncast<JSTestDOMJIT*>(JSValue::decode(thisValue));
+    return jsDynamicDowncast<JSTestDOMJIT*>(state.vm(), JSValue::decode(thisValue));
 }
 
 template<> inline JSTestDOMJIT* BindingCaller<JSTestDOMJIT>::castForOperation(ExecState& state)
 {
-    return jsDynamicDowncast<JSTestDOMJIT*>(state.thisValue());
+    return jsDynamicDowncast<JSTestDOMJIT*>(state.vm(), state.thisValue());
 }
 
 static inline JSValue jsTestDOMJITAnyAttrGetter(ExecState&, JSTestDOMJIT&, ThrowScope& throwScope);
@@ -671,7 +673,7 @@ static inline JSValue jsTestDOMJITByteStringAttrGetter(ExecState& state, JSTestD
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = toJS<IDLByteString>(state, *thisObject.globalObject(), impl.byteStringAttr());
+    JSValue result = toJS<IDLByteString>(state, impl.byteStringAttr());
     return result;
 }
 
@@ -1130,7 +1132,7 @@ static inline JSValue jsTestDOMJITByteStringNullableAttrGetter(ExecState& state,
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = toJS<IDLNullable<IDLByteString>>(state, *thisObject.globalObject(), impl.byteStringNullableAttr());
+    JSValue result = toJS<IDLNullable<IDLByteString>>(state, impl.byteStringNullableAttr());
     return result;
 }
 
@@ -1203,7 +1205,7 @@ EncodedJSValue jsTestDOMJITConstructor(ExecState* state, EncodedJSValue thisValu
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestDOMJITPrototype* domObject = jsDynamicDowncast<JSTestDOMJITPrototype*>(JSValue::decode(thisValue));
+    JSTestDOMJITPrototype* domObject = jsDynamicDowncast<JSTestDOMJITPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestDOMJIT::getConstructor(state->vm(), domObject->globalObject()));
@@ -1214,7 +1216,7 @@ bool setJSTestDOMJITConstructor(ExecState* state, EncodedJSValue thisValue, Enco
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestDOMJITPrototype* domObject = jsDynamicDowncast<JSTestDOMJITPrototype*>(JSValue::decode(thisValue));
+    JSTestDOMJITPrototype* domObject = jsDynamicDowncast<JSTestDOMJITPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -1391,7 +1393,6 @@ void JSTestDOMJIT::visitChildren(JSCell* cell, SlotVisitor& visitor)
     auto* thisObject = jsCast<JSTestDOMJIT*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    thisObject->wrapped().visitJSEventListeners(visitor);
 }
 
 

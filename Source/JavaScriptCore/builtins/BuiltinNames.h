@@ -81,12 +81,13 @@ namespace JSC {
     macro(BuiltinLog) \
     macro(homeObject) \
     macro(getTemplateObject) \
+    macro(templateRegistryKey) \
     macro(enqueueJob) \
-    macro(handler) \
     macro(promiseState) \
-    macro(promiseFulfillReactions) \
-    macro(promiseRejectReactions) \
+    macro(promiseReactions) \
     macro(promiseResult) \
+    macro(onFulfilled) \
+    macro(onRejected) \
     macro(push) \
     macro(repeatCharacter) \
     macro(capabilities) \
@@ -159,12 +160,14 @@ namespace JSC {
     macro(stringSubstrInternal) \
     macro(makeBoundFunction) \
     macro(hasOwnLengthProperty) \
+    macro(importModule) \
     macro(WebAssembly) \
     macro(Module) \
     macro(Instance) \
     macro(Memory) \
     macro(Table) \
     macro(CompileError) \
+    macro(LinkError) \
     macro(RuntimeError) \
 
 

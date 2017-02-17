@@ -56,7 +56,6 @@
 #include "Text.h"
 #include "TextDocument.h"
 #include "XMLDocument.h"
-#include "XMLNames.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 
@@ -114,6 +113,7 @@ ExceptionOr<Ref<XMLDocument>> DOMImplementation::createDocument(const String& na
 
     RefPtr<Element> documentElement;
     if (!qualifiedName.isEmpty()) {
+        ASSERT(!document->domWindow()); // If domWindow is not null, createElementNS could find CustomElementRegistry and arbitrary scripts.
         auto result = document->createElementNS(namespaceURI, qualifiedName);
         if (result.hasException())
             return result.releaseException();
@@ -133,7 +133,7 @@ Ref<CSSStyleSheet> DOMImplementation::createCSSStyleSheet(const String&, const S
     // FIXME: Title should be set.
     // FIXME: Media could have wrong syntax, in which case we should generate an exception.
     auto sheet = CSSStyleSheet::create(StyleSheetContents::create());
-    sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(media));
+    sheet->setMediaQueries(MediaQuerySet::create(media));
     return sheet;
 }
 

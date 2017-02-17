@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,10 @@
 #include "X86Assembler.h"
 #include "AbstractMacroAssembler.h"
 #include <wtf/Optional.h>
+
+#if COMPILER(MSVC)
+#include <intrin.h>
+#endif
 
 namespace JSC {
 
@@ -313,6 +317,22 @@ public:
         clz32AfterBsr(dst);
     }
 
+    void countTrailingZeros32(RegisterID src, RegisterID dst)
+    {
+        if (supportsBMI1()) {
+            m_assembler.tzcnt_rr(src, dst);
+            return;
+        }
+        m_assembler.bsf_rr(src, dst);
+        ctzAfterBsf<32>(dst);
+    }
+
+    // Only used for testing purposes.
+    void illegalInstruction()
+    {
+        m_assembler.illegalInstruction();
+    }
+    
     void lshift32(RegisterID shift_amount, RegisterID dest)
     {
         if (shift_amount == X86Registers::ecx)
@@ -412,6 +432,18 @@ public:
         ASSERT_UNUSED(eax, eax == X86Registers::eax);
         ASSERT_UNUSED(edx, edx == X86Registers::edx);
         x86Div32(denominator);
+    }
+
+    void x86UDiv32(RegisterID denominator)
+    {
+        m_assembler.divl_r(denominator);
+    }
+
+    void x86UDiv32(RegisterID eax, RegisterID edx, RegisterID denominator)
+    {
+        ASSERT_UNUSED(eax, eax == X86Registers::eax);
+        ASSERT_UNUSED(edx, edx == X86Registers::edx);
+        x86UDiv32(denominator);
     }
 
     void neg32(RegisterID srcDest)
@@ -554,7 +586,45 @@ public:
         move32IfNeeded(src, dest);
         urshift32(imm, dest);
     }
-    
+
+    void rotateRight32(TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.rorl_i8r(imm.m_value, dest);
+    }
+
+    void rotateRight32(RegisterID src, RegisterID dest)
+    {
+        if (src == X86Registers::ecx)
+            m_assembler.rorl_CLr(dest);
+        else {
+            ASSERT(src != dest);
+
+            // Can only rotate by ecx, so we do some swapping if we see anything else.
+            swap(src, X86Registers::ecx);
+            m_assembler.rorl_CLr(dest == X86Registers::ecx ? src : dest);
+            swap(src, X86Registers::ecx);
+        }
+    }
+
+    void rotateLeft32(TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.roll_i8r(imm.m_value, dest);
+    }
+
+    void rotateLeft32(RegisterID src, RegisterID dest)
+    {
+        if (src == X86Registers::ecx)
+            m_assembler.roll_CLr(dest);
+        else {
+            ASSERT(src != dest);
+
+            // Can only rotate by ecx, so we do some swapping if we see anything else.
+            swap(src, X86Registers::ecx);
+            m_assembler.roll_CLr(dest == X86Registers::ecx ? src : dest);
+            swap(src, X86Registers::ecx);
+        }
+    }
+
     void sub32(RegisterID src, RegisterID dest)
     {
         m_assembler.subl_rr(src, dest);
@@ -745,6 +815,16 @@ public:
     void floorFloat(Address src, FPRegisterID dst)
     {
         m_assembler.roundss_mr(src.offset, src.base, dst, X86Assembler::RoundingType::TowardNegativeInfiniti);
+    }
+
+    void roundTowardNearestIntDouble(FPRegisterID src, FPRegisterID dst)
+    {
+        m_assembler.roundsd_rr(src, dst, X86Assembler::RoundingType::ToNearestWithTiesToEven);
+    }
+
+    void roundTowardNearestIntFloat(FPRegisterID src, FPRegisterID dst)
+    {
+        m_assembler.roundss_rr(src, dst, X86Assembler::RoundingType::ToNearestWithTiesToEven);
     }
 
     void roundTowardZeroDouble(FPRegisterID src, FPRegisterID dst)
@@ -1515,6 +1595,36 @@ public:
         }
     }
 
+    void orDouble(FPRegisterID src, FPRegisterID dst)
+    {
+        m_assembler.orps_rr(src, dst);
+    }
+
+    void orDouble(FPRegisterID src1, FPRegisterID src2, FPRegisterID dst)
+    {
+        if (src1 == dst)
+            orDouble(src2, dst);
+        else {
+            moveDouble(src2, dst);
+            orDouble(src1, dst);
+        }
+    }
+
+    void orFloat(FPRegisterID src, FPRegisterID dst)
+    {
+        m_assembler.orps_rr(src, dst);
+    }
+
+    void orFloat(FPRegisterID src1, FPRegisterID src2, FPRegisterID dst)
+    {
+        if (src1 == dst)
+            orFloat(src2, dst);
+        else {
+            moveDouble(src2, dst);
+            orFloat(src1, dst);
+        }
+    }
+
     void xorDouble(FPRegisterID src, FPRegisterID dst)
     {
         m_assembler.xorps_rr(src, dst);
@@ -1608,15 +1718,13 @@ public:
         ASSERT(isSSE2Present());
         m_assembler.cvttsd2si_rr(src, dest);
     }
-    
-#if CPU(X86_64)
-    void truncateDoubleToUint32(FPRegisterID src, RegisterID dest)
+
+    void truncateFloatToInt32(FPRegisterID src, RegisterID dest)
     {
         ASSERT(isSSE2Present());
-        m_assembler.cvttsd2siq_rr(src, dest);
+        m_assembler.cvttss2si_rr(src, dest);
     }
-#endif
-    
+
     // Convert 'src' to an integer, and places the resulting 'dest'.
     // If the result is not representable as a 32 bit value, branch.
     // May also branch for some values that are representable in 32 bits
@@ -2606,7 +2714,7 @@ public:
         }
     }
 
-    static Optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
+    static std::optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
     {
         switch (cond) {
         case Equal:
@@ -2619,7 +2727,7 @@ public:
             return PositiveOrZero;
             break;
         default:
-            return Nullopt;
+            return std::nullopt;
         }
     }
 
@@ -2785,6 +2893,39 @@ protected:
         return s_lzcntCheckState == CPUIDCheckState::Set;
     }
 
+    static bool supportsBMI1()
+    {
+        if (s_bmi1CheckState == CPUIDCheckState::NotChecked) {
+            int flags = 0;
+#if COMPILER(MSVC)
+            int cpuInfo[4];
+            __cpuid(cpuInfo, 0x80000001);
+            flags = cpuInfo[2];
+#elif COMPILER(GCC_OR_CLANG)
+            asm (
+                 "movl $0x7, %%eax;"
+                 "movl $0x0, %%ecx;"
+                 "cpuid;"
+                 "movl %%ebx, %0;"
+                 : "=g" (flags)
+                 :
+                 : "%eax", "%ebx", "%ecx", "%edx"
+                 );
+#endif // COMPILER(GCC_OR_CLANG)
+            static int BMI1FeatureBit = 1 << 3;
+            s_bmi1CheckState = (flags & BMI1FeatureBit) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
+        }
+        return s_bmi1CheckState == CPUIDCheckState::Set;
+    }
+
+    template<int sizeOfRegister>
+    void ctzAfterBsf(RegisterID dst)
+    {
+        Jump srcIsNonZero = m_assembler.jCC(x86Condition(NonZero));
+        move(TrustedImm32(sizeOfRegister), dst);
+        srcIsNonZero.link(this);
+    }
+
 private:
     // Only MacroAssemblerX86 should be using the following method; SSE2 is always available on
     // x86_64, and clients & subclasses of MacroAssembler should be using 'supportsFloatingPoint()'.
@@ -2934,7 +3075,7 @@ private:
         return s_sse2CheckState == HasSSE2;
     }
     
-    static SSE2CheckState s_sse2CheckState;
+    JS_EXPORTDATA static SSE2CheckState s_sse2CheckState;
 
 #endif // OS(MAC_OS_X)
 #elif !defined(NDEBUG) // CPU(X86)
@@ -2955,6 +3096,7 @@ private:
     };
     JS_EXPORT_PRIVATE static CPUIDCheckState s_sse4_1CheckState;
     JS_EXPORT_PRIVATE static CPUIDCheckState s_avxCheckState;
+    static CPUIDCheckState s_bmi1CheckState;
     static CPUIDCheckState s_lzcntCheckState;
 };
 

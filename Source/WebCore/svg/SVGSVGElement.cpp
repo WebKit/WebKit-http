@@ -34,6 +34,13 @@
 #include "RenderView.h"
 #include "SMILTimeContainer.h"
 #include "SVGAngle.h"
+#include "SVGLength.h"
+#include "SVGMatrix.h"
+#include "SVGNumber.h"
+#include "SVGPoint.h"
+#include "SVGRect.h"
+#include "SVGStaticPropertyTearOff.h"
+#include "SVGTransform.h"
 #include "SVGViewElement.h"
 #include "SVGViewSpec.h"
 #include "StaticNodeList.h"
@@ -91,10 +98,9 @@ SVGSVGElement::~SVGSVGElement()
     document().accessSVGExtensions().removeTimeContainer(this);
 }
 
-void SVGSVGElement::didMoveToNewDocument(Document* oldDocument)
+void SVGSVGElement::didMoveToNewDocument(Document& oldDocument)
 {
-    if (oldDocument)
-        oldDocument->unregisterForDocumentSuspensionCallbacks(this);
+    oldDocument.unregisterForDocumentSuspensionCallbacks(this);
     document().registerForDocumentSuspensionCallbacks(this);
     SVGGraphicsElement::didMoveToNewDocument(oldDocument);
 }
@@ -123,10 +129,10 @@ void SVGSVGElement::setContentStyleType(const AtomicString& type)
     setAttributeWithoutSynchronization(SVGNames::contentStyleTypeAttr, type);
 }
 
-FloatRect SVGSVGElement::viewport() const
+Ref<SVGRect> SVGSVGElement::viewport() const
 {
     // FIXME: Not implemented.
-    return { };
+    return SVGRect::create();
 }
 
 float SVGSVGElement::pixelUnitToMillimeterX() const
@@ -162,7 +168,7 @@ Frame* SVGSVGElement::frameForCurrentScale() const
 {
     // The behavior of currentScale() is undefined when we're dealing with non-standalone SVG documents.
     // If the document is embedded, the scaling is handled by the host renderer.
-    if (!inDocument() || !isOutermostSVGSVGElement())
+    if (!isConnected() || !isOutermostSVGSVGElement())
         return nullptr;
     Frame* frame = document().frame();
     return frame && frame->isMainFrame() ? frame : nullptr;
@@ -180,6 +186,11 @@ void SVGSVGElement::setCurrentScale(float scale)
 {
     if (Frame* frame = frameForCurrentScale())
         frame->setPageZoomFactor(scale);
+}
+
+Ref<SVGPoint> SVGSVGElement::currentTranslate()
+{
+    return SVGStaticPropertyTearOff<SVGSVGElement, SVGPoint>::create(*this, m_currentTranslate, &SVGSVGElement::updateCurrentTranslate);
 }
 
 void SVGSVGElement::setCurrentTranslate(const FloatPoint& translation)
@@ -236,23 +247,23 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::xAttr)
-        setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setXBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        setYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setYBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::widthAttr) {
-        SVGLength length = SVGLength::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths);
+        auto length = SVGLengthValue::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths);
         if (parseError != NoError || value.isEmpty()) {
             // FIXME: This is definitely the correct behavior for a missing/removed attribute.
             // Not sure it's correct for the empty string or for something that can't be parsed.
-            length = SVGLength(LengthModeWidth, ASCIILiteral("100%"));
+            length = SVGLengthValue(LengthModeWidth, ASCIILiteral("100%"));
         }
         setWidthBaseValue(length);
     } else if (name == SVGNames::heightAttr) {
-        SVGLength length = SVGLength::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths);
+        auto length = SVGLengthValue::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths);
         if (parseError != NoError || value.isEmpty()) {
             // FIXME: This is definitely the correct behavior for a removed attribute.
             // Not sure it's correct for the empty string or for something that can't be parsed.
-            length = SVGLength(LengthModeHeight, ASCIILiteral("100%"));
+            length = SVGLengthValue(LengthModeHeight, ASCIILiteral("100%"));
         }
         setHeightBaseValue(length);
     }
@@ -310,7 +321,7 @@ void SVGSVGElement::forceRedraw()
 {
 }
 
-Ref<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(const FloatRect& rect, SVGElement* referenceElement, bool (*checkFunction)(const SVGElement*, const FloatRect&))
+Ref<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(SVGRect& rect, SVGElement* referenceElement, bool (*checkFunction)(const SVGElement*, SVGRect&))
 {
     Vector<Ref<Element>> elements;
     for (auto& element : descendantsOfType<SVGElement>(referenceElement ? *referenceElement : *this)) {
@@ -320,24 +331,25 @@ Ref<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(const FloatRect&
     return StaticElementList::create(WTFMove(elements));
 }
 
-Ref<NodeList> SVGSVGElement::getIntersectionList(const FloatRect& rect, SVGElement* referenceElement)
+Ref<NodeList> SVGSVGElement::getIntersectionList(SVGRect& rect, SVGElement* referenceElement)
 {
+    document().updateLayoutIgnorePendingStylesheets();
     return collectIntersectionOrEnclosureList(rect, referenceElement, checkIntersection);
 }
 
-Ref<NodeList> SVGSVGElement::getEnclosureList(const FloatRect& rect, SVGElement* referenceElement)
+Ref<NodeList> SVGSVGElement::getEnclosureList(SVGRect& rect, SVGElement* referenceElement)
 {
     return collectIntersectionOrEnclosureList(rect, referenceElement, checkEnclosure);
 }
 
-bool SVGSVGElement::checkIntersection(const SVGElement* element, const FloatRect& rect)
+bool SVGSVGElement::checkIntersection(const SVGElement* element, SVGRect& rect)
 {
-    return element && RenderSVGModelObject::checkIntersection(element->renderer(), rect);
+    return element && RenderSVGModelObject::checkIntersection(element->renderer(), rect.propertyReference());
 }
 
-bool SVGSVGElement::checkEnclosure(const SVGElement* element, const FloatRect& rect)
+bool SVGSVGElement::checkEnclosure(const SVGElement* element, SVGRect& rect)
 {
-    return element && RenderSVGModelObject::checkEnclosure(element->renderer(), rect);
+    return element && RenderSVGModelObject::checkEnclosure(element->renderer(), rect.propertyReference());
 }
 
 void SVGSVGElement::deselectAll()
@@ -346,9 +358,14 @@ void SVGSVGElement::deselectAll()
         frame->selection().clear();
 }
 
-SVGLength SVGSVGElement::createSVGLength()
+Ref<SVGNumber> SVGSVGElement::createSVGNumber()
 {
-    return { };
+    return SVGNumber::create();
+}
+
+Ref<SVGLength> SVGSVGElement::createSVGLength()
+{
+    return SVGLength::create();
 }
 
 Ref<SVGAngle> SVGSVGElement::createSVGAngle()
@@ -356,29 +373,29 @@ Ref<SVGAngle> SVGSVGElement::createSVGAngle()
     return SVGAngle::create();
 }
 
-SVGPoint SVGSVGElement::createSVGPoint()
+Ref<SVGPoint> SVGSVGElement::createSVGPoint()
 {
-    return { };
+    return SVGPoint::create();
 }
 
-SVGMatrix SVGSVGElement::createSVGMatrix()
+Ref<SVGMatrix> SVGSVGElement::createSVGMatrix()
 {
-    return { };
+    return SVGMatrix::create();
 }
 
-FloatRect SVGSVGElement::createSVGRect()
+Ref<SVGRect> SVGSVGElement::createSVGRect()
 {
-    return { };
+    return SVGRect::create();
 }
 
-SVGTransform SVGSVGElement::createSVGTransform()
+Ref<SVGTransform> SVGSVGElement::createSVGTransform()
 {
-    return SVGTransform::SVG_TRANSFORM_MATRIX;
+    return SVGTransform::create(SVGTransformValue { SVGTransformValue::SVG_TRANSFORM_MATRIX });
 }
 
-SVGTransform SVGSVGElement::createSVGTransformFromMatrix(const SVGMatrix& matrix)
+Ref<SVGTransform> SVGSVGElement::createSVGTransformFromMatrix(SVGMatrix& matrix)
 {
-    return SVGTransform { matrix };
+    return SVGTransform::create(SVGTransformValue { matrix.propertyReference() });
 }
 
 AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope mode) const
@@ -450,7 +467,7 @@ RenderPtr<RenderElement> SVGSVGElement::createElementRenderer(RenderStyle&& styl
 
 Node::InsertionNotificationRequest SVGSVGElement::insertedInto(ContainerNode& rootParent)
 {
-    if (rootParent.inDocument()) {
+    if (rootParent.isConnected()) {
         document().accessSVGExtensions().addTimeContainer(this);
 
         // Animations are started at the end of document parsing and after firing the load event,
@@ -464,7 +481,7 @@ Node::InsertionNotificationRequest SVGSVGElement::insertedInto(ContainerNode& ro
 
 void SVGSVGElement::removedFrom(ContainerNode& rootParent)
 {
-    if (rootParent.inDocument())
+    if (rootParent.isConnected())
         document().accessSVGExtensions().removeTimeContainer(this);
     SVGGraphicsElement::removedFrom(rootParent);
 }
@@ -678,11 +695,11 @@ Element* SVGSVGElement::getElementById(const AtomicString& id)
         return nullptr;
 
     Element* element = treeScope().getElementById(id);
-    if (element && element->isDescendantOf(this))
+    if (element && element->isDescendantOf(*this))
         return element;
     if (treeScope().containsMultipleElementsWithId(id)) {
         for (auto* element : *treeScope().getAllElementsById(id)) {
-            if (element->isDescendantOf(this))
+            if (element->isDescendantOf(*this))
                 return element;
         }
     }

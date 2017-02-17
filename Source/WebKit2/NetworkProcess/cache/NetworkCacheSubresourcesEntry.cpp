@@ -30,14 +30,17 @@
 
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
-#include "NetworkCacheDecoder.h"
-#include "NetworkCacheEncoder.h"
+
+using namespace std::chrono;
 
 namespace WebKit {
 namespace NetworkCache {
 
-void SubresourceInfo::encode(Encoder& encoder) const
+void SubresourceInfo::encode(WTF::Persistence::Encoder& encoder) const
 {
+    encoder << m_key;
+    encoder << m_lastSeen;
+    encoder << m_firstSeen;
     encoder << m_isTransient;
 
     // Do not bother serializing other data members of transient resources as they are empty.
@@ -46,40 +49,51 @@ void SubresourceInfo::encode(Encoder& encoder) const
 
     encoder << m_firstPartyForCookies;
     encoder << m_requestHeaders;
+    encoder.encodeEnum(m_priority);
 }
 
-bool SubresourceInfo::decode(Decoder& decoder, SubresourceInfo& info)
+bool SubresourceInfo::decode(WTF::Persistence::Decoder& decoder, SubresourceInfo& info)
 {
+    if (!decoder.decode(info.m_key))
+        return false;
+    if (!decoder.decode(info.m_lastSeen))
+        return false;
+    if (!decoder.decode(info.m_firstSeen))
+        return false;
+    
     if (!decoder.decode(info.m_isTransient))
         return false;
-
+    
     if (info.m_isTransient)
         return true;
-
+    
     if (!decoder.decode(info.m_firstPartyForCookies))
         return false;
 
     if (!decoder.decode(info.m_requestHeaders))
         return false;
 
+    if (!decoder.decodeEnum(info.m_priority))
+        return false;
+    
     return true;
 }
 
 Storage::Record SubresourcesEntry::encodeAsStorageRecord() const
 {
-    Encoder encoder;
+    WTF::Persistence::Encoder encoder;
     encoder << m_subresources;
 
     encoder.encodeChecksum();
 
-    return { m_key, m_timeStamp, { encoder.buffer(), encoder.bufferSize() } , { } };
+    return { m_key, m_timeStamp, { encoder.buffer(), encoder.bufferSize() }, { }, { }};
 }
 
 std::unique_ptr<SubresourcesEntry> SubresourcesEntry::decodeStorageRecord(const Storage::Record& storageEntry)
 {
     auto entry = std::make_unique<SubresourcesEntry>(storageEntry);
 
-    Decoder decoder(storageEntry.header.data(), storageEntry.header.size());
+    WTF::Persistence::Decoder decoder(storageEntry.header.data(), storageEntry.header.size());
     if (!decoder.decode(entry->m_subresources))
         return nullptr;
 
@@ -98,24 +112,61 @@ SubresourcesEntry::SubresourcesEntry(const Storage::Record& storageEntry)
     ASSERT(m_key.type() == "SubResources");
 }
 
+SubresourceInfo::SubresourceInfo(const Key& key, const WebCore::ResourceRequest& request, const SubresourceInfo* previousInfo)
+    : m_key(key)
+    , m_lastSeen(std::chrono::system_clock::now())
+    , m_firstSeen(previousInfo ? previousInfo->firstSeen() : m_lastSeen)
+    , m_isTransient(!previousInfo)
+    , m_firstPartyForCookies(request.firstPartyForCookies())
+    , m_requestHeaders(request.httpHeaderFields())
+    , m_priority(request.priority())
+{
+}
+
+static Vector<SubresourceInfo> makeSubresourceInfoVector(const Vector<std::unique_ptr<SubresourceLoad>>& subresourceLoads, Vector<SubresourceInfo>* previousSubresources)
+{
+    Vector<SubresourceInfo> result;
+    result.reserveInitialCapacity(subresourceLoads.size());
+    
+    HashMap<Key, unsigned> previousMap;
+    if (previousSubresources) {
+        for (unsigned i = 0; i < previousSubresources->size(); ++i)
+            previousMap.add(previousSubresources->at(i).key(), i);
+    }
+
+    HashSet<Key> deduplicationSet;
+    for (auto& load : subresourceLoads) {
+        if (!deduplicationSet.add(load->key).isNewEntry)
+            continue;
+        
+        SubresourceInfo* previousInfo = nullptr;
+        if (previousSubresources) {
+            auto it = previousMap.find(load->key);
+            if (it != previousMap.end())
+                previousInfo = &(*previousSubresources)[it->value];
+        }
+        
+        result.uncheckedAppend({ load->key, load->request, previousInfo });
+        
+        // FIXME: We should really consider all resources seen for the first time transient.
+        if (!previousSubresources)
+            result.last().setNonTransient();
+    }
+
+    return result;
+}
+
 SubresourcesEntry::SubresourcesEntry(Key&& key, const Vector<std::unique_ptr<SubresourceLoad>>& subresourceLoads)
     : m_key(WTFMove(key))
     , m_timeStamp(std::chrono::system_clock::now())
+    , m_subresources(makeSubresourceInfoVector(subresourceLoads, nullptr))
 {
     ASSERT(m_key.type() == "SubResources");
-    for (auto& subresourceLoad : subresourceLoads)
-        m_subresources.add(subresourceLoad->key, SubresourceInfo(subresourceLoad->request));
 }
-
+    
 void SubresourcesEntry::updateSubresourceLoads(const Vector<std::unique_ptr<SubresourceLoad>>& subresourceLoads)
 {
-    auto oldSubresources = WTFMove(m_subresources);
-
-    // Mark keys that are common with last load as non-Transient.
-    for (auto& subresourceLoad : subresourceLoads) {
-        bool isTransient = !oldSubresources.contains(subresourceLoad->key);
-        m_subresources.add(subresourceLoad->key, SubresourceInfo(subresourceLoad->request, isTransient));
-    }
+    m_subresources = makeSubresourceInfoVector(subresourceLoads, &m_subresources);
 }
 
 } // namespace WebKit

@@ -440,9 +440,9 @@ RefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page, con
 }
 #endif
 
-std::unique_ptr<ValidationBubble> PageClientImpl::createValidationBubble(const String& message)
+Ref<ValidationBubble> PageClientImpl::createValidationBubble(const String& message)
 {
-    return std::make_unique<ValidationBubble>(m_view, message);
+    return ValidationBubble::create(m_view, message);
 }
 
 void PageClientImpl::setTextIndicator(Ref<TextIndicator> textIndicator, WebCore::TextIndicatorWindowLifetime lifetime)
@@ -568,10 +568,24 @@ String PageClientImpl::dismissCorrectionPanelSoon(WebCore::ReasonForDismissingAl
 #endif
 }
 
-void PageClientImpl::recordAutocorrectionResponse(AutocorrectionResponseType responseType, const String& replacedString, const String& replacementString)
+static inline NSCorrectionResponse toCorrectionResponse(AutocorrectionResponse response)
 {
-    NSCorrectionResponse response = responseType == AutocorrectionReverted ? NSCorrectionResponseReverted : NSCorrectionResponseEdited;
-    CorrectionPanel::recordAutocorrectionResponse(m_view, m_impl->spellCheckerDocumentTag(), response, replacedString, replacementString);
+    switch (response) {
+    case WebCore::AutocorrectionResponse::Reverted:
+        return NSCorrectionResponseReverted;
+    case WebCore::AutocorrectionResponse::Edited:
+        return NSCorrectionResponseEdited;
+    case WebCore::AutocorrectionResponse::Accepted:
+        return NSCorrectionResponseAccepted;
+    }
+
+    ASSERT_NOT_REACHED();
+    return NSCorrectionResponseAccepted;
+}
+
+void PageClientImpl::recordAutocorrectionResponse(AutocorrectionResponse response, const String& replacedString, const String& replacementString)
+{
+    CorrectionPanel::recordAutocorrectionResponse(m_impl->spellCheckerDocumentTag(), toCorrectionResponse(response), replacedString, replacementString);
 }
 
 void PageClientImpl::recommendedScrollbarStyleDidChange(ScrollbarStyle newStyle)

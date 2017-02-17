@@ -43,9 +43,25 @@ URL PreloadRequest::completeURL(Document& document)
 CachedResourceRequest PreloadRequest::resourceRequest(Document& document)
 {
     ASSERT(isMainThread());
-    CachedResourceRequest request(completeURL(document), CachedResourceLoader::defaultCachedResourceOptions());
+
+    bool skipContentSecurityPolicyCheck = false;
+    if (m_resourceType == CachedResource::Type::Script)
+        skipContentSecurityPolicyCheck = document.contentSecurityPolicy()->allowScriptWithNonce(m_nonceAttribute);
+    else if (m_resourceType == CachedResource::Type::CSSStyleSheet)
+        skipContentSecurityPolicyCheck = document.contentSecurityPolicy()->allowStyleWithNonce(m_nonceAttribute);
+
+    ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
+    if (skipContentSecurityPolicyCheck)
+        options.contentSecurityPolicyImposition = ContentSecurityPolicyImposition::SkipPolicyCheck;
+
+    CachedResourceRequest request { completeURL(document), options };
     request.setInitiator(m_initiator);
-    request.setAsPotentiallyCrossOrigin(m_crossOriginMode, document);
+    String crossOriginMode = m_crossOriginMode;
+    if (m_moduleScript == ModuleScript::Yes) {
+        if (crossOriginMode.isNull())
+            crossOriginMode = ASCIILiteral("omit");
+    }
+    request.setAsPotentiallyCrossOrigin(crossOriginMode, document);
     return request;
 }
 
@@ -57,7 +73,7 @@ void HTMLResourcePreloader::preload(PreloadRequestStream requests)
 
 static bool mediaAttributeMatches(Document& document, const RenderStyle* renderStyle, const String& attributeValue)
 {
-    auto mediaQueries = MediaQuerySet::createAllowingDescriptionSyntax(attributeValue);
+    auto mediaQueries = MediaQuerySet::create(attributeValue);
     return MediaQueryEvaluator { "screen", document, renderStyle }.evaluate(mediaQueries.get());
 }
 

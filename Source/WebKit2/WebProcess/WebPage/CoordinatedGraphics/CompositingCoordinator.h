@@ -86,9 +86,7 @@ public:
 
     void syncDisplayState();
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
     double nextAnimationServiceTime() const;
-#endif
 
 private:
     enum ReleaseAtlasPolicy {
@@ -161,9 +159,7 @@ private:
     WebCore::FloatRect m_visibleContentsRect;
     WebCore::Timer m_releaseInactiveAtlasesTimer;
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
     double m_lastAnimationServiceTime { 0 };
-#endif
 };
 
 }

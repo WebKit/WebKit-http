@@ -50,8 +50,8 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/SetForScope.h>
 #include <wtf/SystemTracing.h>
-#include <wtf/TemporaryChange.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS)
@@ -451,13 +451,17 @@ void GraphicsLayerCA::willBeDestroyed()
 
 void GraphicsLayerCA::setName(const String& name)
 {
+#if ENABLE(TREE_DEBUGGING)
     String caLayerDescription;
 
     if (!m_layer->isPlatformCALayerRemote())
         caLayerDescription = String::format("CALayer(%p) ", m_layer->platformLayer());
 
-    String longName = caLayerDescription + String::format("GraphicsLayer(%p, %llu) ", this, primaryLayerID()) + name;
-    GraphicsLayer::setName(longName);
+    GraphicsLayer::setName(caLayerDescription + String::format("GraphicsLayer(%p, %llu) ", this, primaryLayerID()) + name);
+#else
+    GraphicsLayer::setName(name);
+#endif
+
     noteLayerPropertyChanged(NameChanged);
 }
 
@@ -787,7 +791,7 @@ bool GraphicsLayerCA::setBackdropFilters(const FilterOperations& filterOperation
         clearBackdropFilters();
     }
 
-    noteLayerPropertyChanged(BackdropFiltersChanged);
+    noteLayerPropertyChanged(BackdropFiltersChanged | DebugIndicatorsChanged);
     return canCompositeFilters;
 }
 
@@ -920,8 +924,8 @@ bool GraphicsLayerCA::animationCanBeAccelerated(const KeyframeValueList& valueLi
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     // If there is a trigger that depends on the scroll position, we cannot accelerate the animation.
-    if (anim->trigger()->isScrollAnimationTrigger()) {
-        ScrollAnimationTrigger& scrollTrigger = downcast<ScrollAnimationTrigger>(*anim->trigger().get());
+    if (is<ScrollAnimationTrigger>(anim->trigger())) {
+        auto& scrollTrigger = downcast<ScrollAnimationTrigger>(*anim->trigger());
         if (scrollTrigger.hasEndValue())
             return false;
     }
@@ -932,6 +936,8 @@ bool GraphicsLayerCA::animationCanBeAccelerated(const KeyframeValueList& valueLi
 
 bool GraphicsLayerCA::addAnimation(const KeyframeValueList& valueList, const FloatSize& boxSize, const Animation* anim, const String& animationName, double timeOffset)
 {
+    LOG(Animations, "GraphicsLayerCA %p addAnimation %s (can be accelerated %d)", this, animationName.utf8().data(), animationCanBeAccelerated(valueList, anim));
+
     ASSERT(!animationName.isEmpty());
 
     if (!animationCanBeAccelerated(valueList, anim))
@@ -961,6 +967,8 @@ bool GraphicsLayerCA::addAnimation(const KeyframeValueList& valueList, const Flo
 
 void GraphicsLayerCA::pauseAnimation(const String& animationName, double timeOffset)
 {
+    LOG(Animations, "GraphicsLayerCA %p pauseAnimation %s (running %d)", this, animationName.utf8().data(), animationIsRunning(animationName));
+
     if (!animationIsRunning(animationName))
         return;
 
@@ -978,6 +986,8 @@ void GraphicsLayerCA::pauseAnimation(const String& animationName, double timeOff
 
 void GraphicsLayerCA::removeAnimation(const String& animationName)
 {
+    LOG(Animations, "GraphicsLayerCA %p removeAnimation %s (running %d)", this, animationName.utf8().data(), animationIsRunning(animationName));
+
     if (!animationIsRunning(animationName))
         return;
 
@@ -987,11 +997,13 @@ void GraphicsLayerCA::removeAnimation(const String& animationName)
 
 void GraphicsLayerCA::platformCALayerAnimationStarted(const String& animationKey, CFTimeInterval startTime)
 {
+    LOG(Animations, "GraphicsLayerCA %p platformCALayerAnimationStarted %s at %f", this, animationKey.utf8().data(), startTime);
     client().notifyAnimationStarted(this, animationKey, startTime);
 }
 
 void GraphicsLayerCA::platformCALayerAnimationEnded(const String& animationKey)
 {
+    LOG(Animations, "GraphicsLayerCA %p platformCALayerAnimationEnded %s", this, animationKey.utf8().data());
     client().notifyAnimationEnded(this, animationKey);
 }
 
@@ -1008,8 +1020,10 @@ void GraphicsLayerCA::setContentsToSolidColor(const Color& color)
         if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForBackgroundColor) {
             m_contentsLayerPurpose = ContentsLayerForBackgroundColor;
             m_contentsLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
-#ifndef NDEBUG
-            m_contentsLayer->setName(String::format("Background Color Layer %llu", m_contentsLayer->layerID()));
+#if ENABLE(TREE_DEBUGGING)
+            m_contentsLayer->setName(String::format("contents color %llu", m_contentsLayer->layerID()));
+#else
+            m_contentsLayer->setName("contents color");
 #endif
             contentsLayerChanged = true;
         }
@@ -1126,20 +1140,20 @@ FloatPoint GraphicsLayerCA::computePositionRelativeToBase(float& pageScale) cons
     return FloatPoint();
 }
 
-void GraphicsLayerCA::flushCompositingState(const FloatRect& clipRect, bool viewportIsStable)
+void GraphicsLayerCA::flushCompositingState(const FloatRect& clipRect)
 {
     TransformState state(TransformState::UnapplyInverseTransformDirection, FloatQuad(clipRect));
     FloatQuad coverageQuad(clipRect);
     state.setSecondaryQuad(&coverageQuad);
-    recursiveCommitChanges(CommitState(viewportIsStable), state);
+    recursiveCommitChanges(CommitState(), state);
 }
 
-void GraphicsLayerCA::flushCompositingStateForThisLayerOnly(bool viewportIsStable)
+void GraphicsLayerCA::flushCompositingStateForThisLayerOnly()
 {
     float pageScaleFactor;
     bool hadChanges = m_uncommittedChanges;
     
-    CommitState commitState(viewportIsStable);
+    CommitState commitState;
 
     FloatPoint offset = computePositionRelativeToBase(pageScaleFactor);
     commitLayerChangesBeforeSublayers(commitState, pageScaleFactor, offset);
@@ -1234,7 +1248,7 @@ TransformationMatrix GraphicsLayerCA::layerTransform(const FloatPoint& position,
 
 GraphicsLayerCA::VisibleAndCoverageRects GraphicsLayerCA::computeVisibleAndCoverageRect(TransformState& state, bool preserves3D, ComputeVisibleRectFlags flags) const
 {
-    FloatPoint position = m_position;
+    FloatPoint position = approximatePosition();
     client().customPositionForVisibleRectComputation(this, position);
 
     TransformationMatrix layerTransform;
@@ -1274,7 +1288,7 @@ GraphicsLayerCA::VisibleAndCoverageRects GraphicsLayerCA::computeVisibleAndCover
     }
 
     FloatRect coverageRect = clipRectForSelf;
-    Optional<FloatQuad> quad = state.mappedSecondaryQuad(&mapWasClamped);
+    std::optional<FloatQuad> quad = state.mappedSecondaryQuad(&mapWasClamped);
     if (quad && !mapWasClamped && !applyWasClamped)
         coverageRect = (*quad).boundingBox();
 
@@ -1306,14 +1320,11 @@ bool GraphicsLayerCA::adjustCoverageRect(VisibleAndCoverageRects& rects, const F
     return true;
 }
 
-void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& rects, bool isViewportConstrained, bool viewportIsStable)
+void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& rects, bool isViewportConstrained)
 {
     bool visibleRectChanged = rects.visibleRect != m_visibleRect;
     bool coverageRectChanged = rects.coverageRect != m_coverageRect;
     if (!visibleRectChanged && !coverageRectChanged)
-        return;
-
-    if (isViewportConstrained && !viewportIsStable)
         return;
 
     // FIXME: we need to take reflections into account when determining whether this layer intersects the coverage rect.
@@ -1321,32 +1332,16 @@ void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& 
     if (intersectsCoverageRect != m_intersectsCoverageRect) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_intersectsCoverageRect = intersectsCoverageRect;
-
-        if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
-            maskLayer->m_uncommittedChanges |= CoverageRectChanged;
-            maskLayer->m_intersectsCoverageRect = intersectsCoverageRect;
-        }
     }
 
     if (visibleRectChanged) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_visibleRect = rects.visibleRect;
-
-        if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
-            // FIXME: this assumes that the mask layer has the same geometry as this layer (which is currently always true).
-            maskLayer->m_uncommittedChanges |= CoverageRectChanged;
-            maskLayer->m_visibleRect = rects.visibleRect;
-        }
     }
 
     if (coverageRectChanged) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_coverageRect = rects.coverageRect;
-
-        if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
-            maskLayer->m_uncommittedChanges |= CoverageRectChanged;
-            maskLayer->m_coverageRect = rects.coverageRect;
-        }
     }
 }
 
@@ -1366,12 +1361,12 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
             localState.setLastPlanarSecondaryQuad(&secondaryQuad);
         }
     }
-    setVisibleAndCoverageRects(rects, m_isViewportConstrained || commitState.ancestorIsViewportConstrained, commitState.viewportIsStable);
+    setVisibleAndCoverageRects(rects, m_isViewportConstrained || commitState.ancestorIsViewportConstrained);
 
 #ifdef VISIBLE_TILE_WASH
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
     // they start to obscure useful information.
-    if ((!m_transform.isIdentity() || m_usingTiledBacking) && !m_visibleTileWashLayer) {
+    if ((!m_transform.isIdentity() || tiledBacking()) && !m_visibleTileWashLayer) {
         static NeverDestroyed<Color> washFillColor(255, 0, 0, 50);
         static NeverDestroyed<Color> washBorderColor(255, 0, 0, 100);
         
@@ -1412,8 +1407,10 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
     
     childCommitState.ancestorIsViewportConstrained |= m_isViewportConstrained;
 
-    if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer))
+    if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
+        maskLayer->setVisibleAndCoverageRects(rects, m_isViewportConstrained || commitState.ancestorIsViewportConstrained);
         maskLayer->commitLayerChangesBeforeSublayers(childCommitState, pageScaleFactor, baseRelativePosition);
+    }
 
     const Vector<GraphicsLayer*>& childLayers = children();
     size_t numChildren = childLayers.size();
@@ -1534,7 +1531,7 @@ static bool isCustomBackdropLayerType(PlatformCALayer::LayerType layerType)
 
 void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState, float pageScaleFactor, const FloatPoint& positionRelativeToBase)
 {
-    TemporaryChange<bool> committingChangesChange(m_isCommittingChanges, true);
+    SetForScope<bool> committingChangesChange(m_isCommittingChanges, true);
 
     ++commitState.treeDepth;
     if (m_structuralLayer)
@@ -1548,13 +1545,15 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
 
     bool needTiledLayer = requiresTiledLayer(pageScaleFactor);
     bool needBackdropLayerType = (customAppearance() == LightBackdropAppearance || customAppearance() == DarkBackdropAppearance);
-    PlatformCALayer::LayerType neededLayerType = m_layer->layerType();
+
+    PlatformCALayer::LayerType currentLayerType = m_layer->layerType();
+    PlatformCALayer::LayerType neededLayerType = currentLayerType;
 
     if (needBackdropLayerType)
         neededLayerType = layerTypeForCustomBackdropAppearance(customAppearance());
     else if (needTiledLayer)
         neededLayerType = PlatformCALayer::LayerTypeTiledBackingLayer;
-    else if (isCustomBackdropLayerType(m_layer->layerType()) || m_usingTiledBacking)
+    else if (currentLayerType == PlatformCALayer::LayerTypeTiledBackingLayer || isCustomBackdropLayerType(m_layer->layerType()))
         neededLayerType = PlatformCALayer::LayerTypeWebLayer;
 
     if (neededLayerType != m_layer->layerType())
@@ -1688,7 +1687,7 @@ void GraphicsLayerCA::commitLayerChangesAfterSublayers(CommitState& commitState)
     if (!m_uncommittedChanges)
         return;
 
-    TemporaryChange<bool> committingChangesChange(m_isCommittingChanges, true);
+    SetForScope<bool> committingChangesChange(m_isCommittingChanges, true);
 
     if (m_uncommittedChanges & MaskLayerChanged)
         updateMaskLayer();
@@ -1706,13 +1705,13 @@ void GraphicsLayerCA::updateNames()
 {
     switch (structuralLayerPurpose()) {
     case StructuralLayerForPreserves3D:
-        m_structuralLayer->setName("Transform layer " + name());
+        m_structuralLayer->setName("preserve-3d: " + name());
         break;
     case StructuralLayerForReplicaFlattening:
-        m_structuralLayer->setName("Replica flattening layer " + name());
+        m_structuralLayer->setName("replica flattening: " + name());
         break;
     case StructuralLayerForBackdrop:
-        m_structuralLayer->setName("Backdrop hosting layer " + name());
+        m_structuralLayer->setName("backdrop hosting: " + name());
         break;
     case NoStructuralLayer:
         break;
@@ -1976,6 +1975,7 @@ void GraphicsLayerCA::updateBackdropFilters()
         m_backdropLayer = createPlatformCALayer(PlatformCALayer::LayerTypeBackdropLayer, this);
         m_backdropLayer->setAnchorPoint(FloatPoint3D());
         m_backdropLayer->setMasksToBounds(true);
+        m_backdropLayer->setName("backdrop");
     }
 
     m_backdropLayer->setHidden(!m_contentsVisible);
@@ -2324,8 +2324,10 @@ void GraphicsLayerCA::updateContentsImage()
     if (m_pendingContentsImage) {
         if (!m_contentsLayer.get()) {
             m_contentsLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
-#ifndef NDEBUG
-            m_contentsLayer->setName(String::format("Image Layer %llu", m_contentsLayer->layerID()));
+#if ENABLE(TREE_DEBUGGING)
+            m_contentsLayer->setName(String::format("contents image %llu", m_contentsLayer->layerID()));
+#else
+            m_contentsLayer->setName("contents image");
 #endif
             setupContentsLayer(m_contentsLayer.get());
             // m_contentsLayer will be parented by updateSublayerList
@@ -2401,6 +2403,7 @@ void GraphicsLayerCA::updateClippingStrategy(PlatformCALayer& clippingLayer, Ref
     if (!shapeMaskLayer) {
         shapeMaskLayer = createPlatformCALayer(PlatformCALayer::LayerTypeShapeLayer, this);
         shapeMaskLayer->setAnchorPoint(FloatPoint3D());
+        shapeMaskLayer->setName("shape mask");
     }
     
     shapeMaskLayer->setPosition(FloatPoint());
@@ -2429,8 +2432,10 @@ void GraphicsLayerCA::updateContentsRects()
         if (!m_contentsClippingLayer) {
             m_contentsClippingLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
             m_contentsClippingLayer->setAnchorPoint(FloatPoint());
-#ifndef NDEBUG
-            m_contentsClippingLayer->setName(String::format("Contents Clipping Layer %llu", m_contentsClippingLayer->layerID()));
+#if ENABLE(TREE_DEBUGGING)
+            m_contentsClippingLayer->setName(String::format("contents clipping %llu", m_contentsClippingLayer->layerID()));
+#else
+            m_contentsClippingLayer->setName("contents clipping");
 #endif
             gainedOrLostClippingLayer = true;
         }
@@ -2524,20 +2529,18 @@ void GraphicsLayerCA::updateMasksToBoundsRect()
 void GraphicsLayerCA::updateMaskLayer()
 {
     PlatformCALayer* maskCALayer = m_maskLayer ? downcast<GraphicsLayerCA>(*m_maskLayer).primaryLayer() : nullptr;
-    m_layer->setMask(maskCALayer);
-
-    if (m_backdropLayer) {
-        if (m_maskLayer) {
-            ReplicaState replicaState(ReplicaState::ChildBranch);
-            RefPtr<PlatformCALayer> maskClone = downcast<GraphicsLayerCA>(*m_maskLayer).fetchCloneLayers(this, replicaState, IntermediateCloneLevel);
-            m_backdropLayer->setMask(maskClone.get());
-        } else
-            m_backdropLayer->setMask(nullptr);
+    
+    LayerMap* layerCloneMap;
+    if (m_structuralLayer) {
+        m_structuralLayer->setMask(maskCALayer);
+        layerCloneMap = m_structuralLayerClones.get();
+    } else {
+        m_layer->setMask(maskCALayer);
+        layerCloneMap = m_layerClones.get();
     }
 
     LayerMap* maskLayerCloneMap = m_maskLayer ? downcast<GraphicsLayerCA>(*m_maskLayer).primaryLayerClones() : nullptr;
-    
-    if (LayerMap* layerCloneMap = m_layerClones.get()) {
+    if (layerCloneMap) {
         for (auto& clone : *layerCloneMap) {
             PlatformCALayer* maskClone = maskLayerCloneMap ? maskLayerCloneMap->get(clone.key) : nullptr;
             clone.value->setMask(maskClone);
@@ -2788,7 +2791,7 @@ bool GraphicsLayerCA::createAnimationFromKeyframes(const KeyframeValueList& valu
     int animationIndex = 0;
     
     RefPtr<PlatformCAAnimation> caAnimation;
-    
+
     if (isKeyframe) {
         caAnimation = createKeyframeAnimation(animation, propertyIdToString(valueList.property()), additive);
         valuesOK = setAnimationKeyframes(valueList, animation, caAnimation.get());
@@ -2799,7 +2802,7 @@ bool GraphicsLayerCA::createAnimationFromKeyframes(const KeyframeValueList& valu
             caAnimation = createBasicAnimation(animation, propertyIdToString(valueList.property()), additive);
         valuesOK = setAnimationEndpoints(valueList, animation, caAnimation.get());
     }
-    
+
     if (!valuesOK)
         return false;
 
@@ -3007,13 +3010,12 @@ void GraphicsLayerCA::setupAnimation(PlatformCAAnimation* propertyAnim, const An
     propertyAnim->setFillMode(fillMode);
 }
 
-const TimingFunction* GraphicsLayerCA::timingFunctionForAnimationValue(const AnimationValue& animValue, const Animation& anim)
+const TimingFunction& GraphicsLayerCA::timingFunctionForAnimationValue(const AnimationValue& animValue, const Animation& anim)
 {
     if (animValue.timingFunction())
-        return animValue.timingFunction();
+        return *animValue.timingFunction();
     if (anim.isTimingFunctionSet())
-        return anim.timingFunction().get();
-    
+        return *anim.timingFunction();
     return CubicBezierTimingFunction::defaultTimingFunction();
 }
 
@@ -3037,9 +3039,7 @@ bool GraphicsLayerCA::setAnimationEndpoints(const KeyframeValueList& valueList, 
 
     // This codepath is used for 2-keyframe animations, so we still need to look in the start
     // for a timing function. Even in the reversing animation case, the first keyframe provides the timing function.
-    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), *animation);
-    if (timingFunction)
-        basicAnim->setTimingFunction(timingFunction, !forwards);
+    basicAnim->setTimingFunction(&timingFunctionForAnimationValue(valueList.at(0), *animation), !forwards);
 
     return true;
 }
@@ -3069,13 +3069,13 @@ bool GraphicsLayerCA::setAnimationKeyframes(const KeyframeValueList& valueList, 
         }
 
         if (i < (valueList.size() - 1))
-            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
+            timingFunctions.append(&timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
     }
-    
+
     keyframeAnim->setKeyTimes(keyTimes);
     keyframeAnim->setValues(values);
     keyframeAnim->setTimingFunctions(timingFunctions, !forwards);
-    
+
     return true;
 }
 
@@ -3088,8 +3088,8 @@ bool GraphicsLayerCA::setTransformAnimationEndpoints(const KeyframeValueList& va
     unsigned fromIndex = !forwards;
     unsigned toIndex = forwards;
     
-    const TransformAnimationValue& startValue = static_cast<const TransformAnimationValue&>(valueList.at(fromIndex));
-    const TransformAnimationValue& endValue = static_cast<const TransformAnimationValue&>(valueList.at(toIndex));
+    auto& startValue = static_cast<const TransformAnimationValue&>(valueList.at(fromIndex));
+    auto& endValue = static_cast<const TransformAnimationValue&>(valueList.at(toIndex));
 
     if (isMatrixAnimation) {
         TransformationMatrix fromTransform, toTransform;
@@ -3132,10 +3132,9 @@ bool GraphicsLayerCA::setTransformAnimationEndpoints(const KeyframeValueList& va
 
     // This codepath is used for 2-keyframe animations, so we still need to look in the start
     // for a timing function. Even in the reversing animation case, the first keyframe provides the timing function.
-    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), *animation);
-    basicAnim->setTimingFunction(timingFunction, !forwards);
+    basicAnim->setTimingFunction(&timingFunctionForAnimationValue(valueList.at(0), *animation), !forwards);
 
-    PlatformCAAnimation::ValueFunctionType valueFunction = getValueFunctionNameForTransformOperation(transformOpType);
+    auto valueFunction = getValueFunctionNameForTransformOperation(transformOpType);
     if (valueFunction != PlatformCAAnimation::NoValueFunction)
         basicAnim->setValueFunction(valueFunction);
 
@@ -3187,7 +3186,7 @@ bool GraphicsLayerCA::setTransformAnimationKeyframes(const KeyframeValueList& va
         }
 
         if (i < (valueList.size() - 1))
-            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
+            timingFunctions.append(&timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
     }
     
     keyframeAnim->setKeyTimes(keyTimes);
@@ -3243,7 +3242,7 @@ bool GraphicsLayerCA::setFilterAnimationEndpoints(const KeyframeValueList& value
 
     // This codepath is used for 2-keyframe animations, so we still need to look in the start
     // for a timing function. Even in the reversing animation case, the first keyframe provides the timing function.
-    basicAnim->setTimingFunction(timingFunctionForAnimationValue(valueList.at(0), *animation), !forwards);
+    basicAnim->setTimingFunction(&timingFunctionForAnimationValue(valueList.at(0), *animation), !forwards);
 
     return true;
 }
@@ -3271,7 +3270,7 @@ bool GraphicsLayerCA::setFilterAnimationKeyframes(const KeyframeValueList& value
         }
 
         if (i < (valueList.size() - 1))
-            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
+            timingFunctions.append(&timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
     }
     
     keyframeAnim->setKeyTimes(keyTimes);
@@ -3495,6 +3494,9 @@ void GraphicsLayerCA::dumpAdditionalProperties(TextStream& textStream, int inden
         IntRect gridExtent = tiledBacking()->tileGridExtent();
         writeIndent(textStream, indent + 1);
         textStream << "(top left tile " << gridExtent.x() << ", " << gridExtent.y() << " tiles grid " << gridExtent.width() << " x " << gridExtent.height() << ")\n";
+
+        writeIndent(textStream, indent + 1);
+        textStream << "(in window " << tiledBacking()->isInWindow() << ")\n";
     }
     
     if (behavior & LayerTreeAsTextIncludeContentLayers) {
@@ -3549,11 +3551,12 @@ void GraphicsLayerCA::changeLayerTypeTo(PlatformCALayer::LayerType newLayerType)
     if (newLayerType == oldLayerType)
         return;
 
-    RefPtr<PlatformCALayer> oldLayer = m_layer;
+    bool wasTiledLayer = oldLayerType == PlatformCALayer::LayerTypeTiledBackingLayer;
+    bool isTiledLayer = newLayerType == PlatformCALayer::LayerTypeTiledBackingLayer;
 
+    RefPtr<PlatformCALayer> oldLayer = m_layer;
     m_layer = createPlatformCALayer(newLayerType, this);
 
-    m_usingTiledBacking = newLayerType == PlatformCALayer::LayerTypeTiledBackingLayer;
     m_usingBackdropLayerType = isCustomBackdropLayerType(newLayerType);
 
     m_layer->adoptSublayers(*oldLayer);
@@ -3589,23 +3592,19 @@ void GraphicsLayerCA::changeLayerTypeTo(PlatformCALayer::LayerType newLayerType)
         | BackdropFiltersChanged
         | MaskLayerChanged
         | OpacityChanged
+        | NameChanged
         | DebugIndicatorsChanged;
     
-    if (m_usingTiledBacking)
+    if (isTiledLayer)
         m_uncommittedChanges |= CoverageRectChanged;
-
-#ifndef NDEBUG
-    String name = String::format("%sCALayer(%p) GraphicsLayer(%p, %llu) ", (newLayerType == PlatformCALayer::LayerTypeWebTiledLayer) ? "Tiled " : "", m_layer->platformLayer(), this, primaryLayerID()) + m_name;
-    m_layer->setName(name);
-#endif
 
     moveAnimations(oldLayer.get(), m_layer.get());
     
     // need to tell new layer to draw itself
     setNeedsDisplay();
 
-    if (oldLayerType == PlatformCALayer::LayerTypeTiledBackingLayer || newLayerType == PlatformCALayer::LayerTypeTiledBackingLayer)
-        client().tiledBackingUsageChanged(this, m_usingTiledBacking);
+    if (wasTiledLayer || isTiledLayer)
+        client().tiledBackingUsageChanged(this, isTiledLayer);
 }
 
 GraphicsLayer::CompositingCoordinatesOrientation GraphicsLayerCA::defaultContentsOrientation() const
@@ -3650,8 +3649,10 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::findOrMakeClone(CloneID cloneID, Pl
         resultLayer = addResult.iterator->value.get();
     } else {
         resultLayer = cloneLayer(sourceLayer, cloneLevel);
-#ifndef NDEBUG
-        resultLayer->setName(String::format("Clone %d of layer %llu", cloneID[0U], sourceLayer->layerID()));
+#if ENABLE(TREE_DEBUGGING)
+        resultLayer->setName(String::format("clone %d of %llu", cloneID[0U], sourceLayer->layerID()));
+#else
+        resultLayer->setName("clone of " + m_name);
 #endif
         addResult.iterator->value = resultLayer;
     }

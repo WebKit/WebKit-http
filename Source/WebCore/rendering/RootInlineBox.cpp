@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -30,7 +30,6 @@
 #include "HitTestResult.h"
 #include "InlineTextBox.h"
 #include "LogicalSelectionOffsetCaches.h"
-#include "Page.h"
 #include "PaintInfo.h"
 #include "RenderFlowThread.h"
 #include "RenderInline.h"
@@ -50,7 +49,7 @@ struct SameSizeAsRootInlineBox : public InlineFlowBox {
 COMPILE_ASSERT(sizeof(RootInlineBox) == sizeof(SameSizeAsRootInlineBox), RootInlineBox_should_stay_small);
 
 typedef WTF::HashMap<const RootInlineBox*, std::unique_ptr<EllipsisBox>> EllipsisBoxMap;
-static EllipsisBoxMap* gEllipsisBoxMap = 0;
+static EllipsisBoxMap* gEllipsisBoxMap;
 
 static ContainingRegionMap& containingRegionMap(RenderBlockFlow& block)
 {
@@ -208,10 +207,10 @@ void RootInlineBox::adjustPosition(float dx, float dy)
 void RootInlineBox::childRemoved(InlineBox* box)
 {
     if (&box->renderer() == m_lineBreakObj)
-        setLineBreakInfo(0, 0, BidiStatus());
+        setLineBreakInfo(nullptr, 0, BidiStatus());
 
     for (RootInlineBox* prev = prevRootBox(); prev && prev->lineBreakObj() == &box->renderer(); prev = prev->prevRootBox()) {
-        prev->setLineBreakInfo(0, 0, BidiStatus());
+        prev->setLineBreakInfo(nullptr, 0, BidiStatus());
         prev->markDirty();
     }
 }
@@ -566,22 +565,20 @@ RenderObject::SelectionState RootInlineBox::selectionState()
 
 InlineBox* RootInlineBox::firstSelectedBox()
 {
-    for (InlineBox* box = firstLeafChild(); box; box = box->nextLeafChild()) {
+    for (auto* box = firstLeafChild(); box; box = box->nextLeafChild()) {
         if (box->selectionState() != RenderObject::SelectionNone)
             return box;
     }
-
-    return 0;
+    return nullptr;
 }
 
 InlineBox* RootInlineBox::lastSelectedBox()
 {
-    for (InlineBox* box = lastLeafChild(); box; box = box->prevLeafChild()) {
+    for (auto* box = lastLeafChild(); box; box = box->prevLeafChild()) {
         if (box->selectionState() != RenderObject::SelectionNone)
             return box;
     }
-
-    return 0;
+    return nullptr;
 }
 
 LayoutUnit RootInlineBox::selectionTop() const
@@ -641,29 +638,64 @@ LayoutUnit RootInlineBox::selectionTop() const
     return prevBottom;
 }
 
+static RenderBlock* blockBeforeWithinSelectionRoot(const RenderBlockFlow& blockFlow, LayoutSize& offset)
+{
+    if (blockFlow.isSelectionRoot())
+        return nullptr;
+
+    const RenderElement* object = &blockFlow;
+    RenderObject* sibling;
+    do {
+        sibling = object->previousSibling();
+        while (sibling && (!is<RenderBlock>(*sibling) || downcast<RenderBlock>(*sibling).isSelectionRoot()))
+            sibling = sibling->previousSibling();
+
+        offset -= LayoutSize(downcast<RenderBlock>(*object).logicalLeft(), downcast<RenderBlock>(*object).logicalTop());
+        object = object->parent();
+    } while (!sibling && is<RenderBlock>(object) && !downcast<RenderBlock>(*object).isSelectionRoot());
+
+    if (!sibling)
+        return nullptr;
+
+    RenderBlock* beforeBlock = downcast<RenderBlock>(sibling);
+
+    offset += LayoutSize(beforeBlock->logicalLeft(), beforeBlock->logicalTop());
+
+    RenderObject* child = beforeBlock->lastChild();
+    while (is<RenderBlock>(child)) {
+        beforeBlock = downcast<RenderBlock>(child);
+        offset += LayoutSize(beforeBlock->logicalLeft(), beforeBlock->logicalTop());
+        child = beforeBlock->lastChild();
+    }
+    return beforeBlock;
+}
+
 LayoutUnit RootInlineBox::selectionTopAdjustedForPrecedingBlock() const
 {
     const RootInlineBox& rootBox = root();
     LayoutUnit top = selectionTop();
 
-    RenderObject::SelectionState blockSelectionState = rootBox.blockFlow().selectionState();
+    auto blockSelectionState = rootBox.blockFlow().selectionState();
     if (blockSelectionState != RenderObject::SelectionInside && blockSelectionState != RenderObject::SelectionEnd)
         return top;
 
     LayoutSize offsetToBlockBefore;
-    if (RenderBlock* block = rootBox.blockFlow().blockBeforeWithinSelectionRoot(offsetToBlockBefore)) {
-        if (is<RenderBlockFlow>(*block)) {
-            if (RootInlineBox* lastLine = downcast<RenderBlockFlow>(*block).lastRootBox()) {
-                RenderObject::SelectionState lastLineSelectionState = lastLine->selectionState();
-                if (lastLineSelectionState != RenderObject::SelectionInside && lastLineSelectionState != RenderObject::SelectionStart)
-                    return top;
+    auto* blockBefore = blockBeforeWithinSelectionRoot(rootBox.blockFlow(), offsetToBlockBefore);
+    if (!is<RenderBlockFlow>(blockBefore))
+        return top;
 
-                LayoutUnit lastLineSelectionBottom = lastLine->selectionBottom() + offsetToBlockBefore.height();
-                top = std::max(top, lastLineSelectionBottom);
-            }
-        }
+    // Do not adjust blocks sharing the same line.
+    if (!offsetToBlockBefore.height())
+        return top;
+
+    if (auto* lastLine = downcast<RenderBlockFlow>(*blockBefore).lastRootBox()) {
+        RenderObject::SelectionState lastLineSelectionState = lastLine->selectionState();
+        if (lastLineSelectionState != RenderObject::SelectionInside && lastLineSelectionState != RenderObject::SelectionStart)
+            return top;
+
+        LayoutUnit lastLineSelectionBottom = lastLine->selectionBottom() + offsetToBlockBefore.height();
+        top = std::max(top, lastLineSelectionBottom);
     }
-
     return top;
 }
 
@@ -770,7 +802,7 @@ InlineBox* RootInlineBox::closestLeafChildForLogicalLeftPosition(int leftPositio
         // Return it.
         return lastLeaf;
 
-    InlineBox* closestLeaf = 0;
+    InlineBox* closestLeaf = nullptr;
     for (InlineBox* leaf = firstLeaf; leaf; leaf = leaf->nextLeafChildIgnoringLineBreak()) {
         if (!leaf->renderer().isListMarker() && (!onlyEditableLeaves || isEditableLeaf(leaf))) {
             closestLeaf = leaf;
@@ -786,13 +818,13 @@ InlineBox* RootInlineBox::closestLeafChildForLogicalLeftPosition(int leftPositio
 
 BidiStatus RootInlineBox::lineBreakBidiStatus() const
 { 
-    return BidiStatus(static_cast<UCharDirection>(m_lineBreakBidiStatusEor), static_cast<UCharDirection>(m_lineBreakBidiStatusLastStrong), static_cast<UCharDirection>(m_lineBreakBidiStatusLast), m_lineBreakContext);
+    return { static_cast<UCharDirection>(m_lineBreakBidiStatusEor), static_cast<UCharDirection>(m_lineBreakBidiStatusLastStrong), static_cast<UCharDirection>(m_lineBreakBidiStatusLast), m_lineBreakContext.copyRef() };
 }
 
-void RootInlineBox::setLineBreakInfo(RenderObject* obj, unsigned breakPos, const BidiStatus& status)
+void RootInlineBox::setLineBreakInfo(RenderObject* object, unsigned breakPosition, const BidiStatus& status)
 {
-    m_lineBreakObj = obj;
-    m_lineBreakPos = breakPos;
+    m_lineBreakObj = object;
+    m_lineBreakPos = breakPosition;
     m_lineBreakBidiStatusEor = status.eor;
     m_lineBreakBidiStatusLastStrong = status.lastStrong;
     m_lineBreakBidiStatusLast = status.last;
@@ -802,7 +834,7 @@ void RootInlineBox::setLineBreakInfo(RenderObject* obj, unsigned breakPos, const
 EllipsisBox* RootInlineBox::ellipsisBox() const
 {
     if (!hasEllipsisBox())
-        return 0;
+        return nullptr;
     return gEllipsisBoxMap->get(this);
 }
 
@@ -901,8 +933,8 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
     const RenderStyle& boxLineStyle = box.lineStyle();
     if (usedFonts && !usedFonts->isEmpty() && (includeFont || (boxLineStyle.lineHeight().isNegative() && includeLeading))) {
         usedFonts->append(&boxLineStyle.fontCascade().primaryFont());
-        for (size_t i = 0; i < usedFonts->size(); ++i) {
-            const FontMetrics& fontMetrics = usedFonts->at(i)->fontMetrics();
+        for (auto& font : *usedFonts) {
+            auto& fontMetrics = font->fontMetrics();
             int usedFontAscent = fontMetrics.ascent(baselineType());
             int usedFontDescent = fontMetrics.descent(baselineType());
             int halfLeading = (fontMetrics.lineSpacing() - fontMetrics.height()) / 2;

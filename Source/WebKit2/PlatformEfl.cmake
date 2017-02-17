@@ -1,7 +1,6 @@
 list(APPEND WebKit2_SOURCES
     DatabaseProcess/efl/DatabaseProcessMainEfl.cpp
 
-    NetworkProcess/CustomProtocols/soup/CustomProtocolManagerImpl.cpp
     NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
 
     NetworkProcess/Downloads/efl/DownloadSoupErrorsEfl.cpp
@@ -63,9 +62,12 @@ list(APPEND WebKit2_SOURCES
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/LegacySessionStateCodingNone.cpp
+    UIProcess/WebResourceLoadStatisticsManager.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
     UIProcess/WebTextChecker.cpp
     UIProcess/WebTextCheckerClient.cpp
+
+    UIProcess/API/C/WKResourceLoadStatisticsManager.cpp
 
     UIProcess/API/C/CoordinatedGraphics/WKView.cpp
 
@@ -76,7 +78,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/efl/WKViewEfl.cpp
 
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
-    UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
 
     UIProcess/API/CoordinatedGraphics/WKCoordinatedScene.cpp
 
@@ -131,8 +132,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Launcher/efl/ProcessLauncherEfl.cpp
 
     UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
-    UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
-    UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
 
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
@@ -234,14 +233,6 @@ list(APPEND WebKit2_MESSAGES_IN_FILES
 )
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/platform/efl"
-    "${WEBCORE_DIR}/platform/graphics/cairo"
-    "${WEBCORE_DIR}/platform/graphics/efl"
-    "${WEBCORE_DIR}/platform/graphics/freetype"
-    "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/x11"
-    "${WEBCORE_DIR}/platform/network/soup"
-    "${WEBCORE_DIR}/platform/text/enchant"
     "${WEBKIT2_DIR}/DatabaseProcess/unix"
     "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols/soup"
     "${WEBKIT2_DIR}/NetworkProcess/Downloads/soup"
@@ -256,6 +247,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/efl"
     "${WEBKIT2_DIR}/Shared/soup"
     "${WEBKIT2_DIR}/Shared/unix"
+    "${WEBKIT2_DIR}/UIProcess/API"
     "${WEBKIT2_DIR}/UIProcess/API/C/cairo"
     "${WEBKIT2_DIR}/UIProcess/API/C/CoordinatedGraphics"
     "${WEBKIT2_DIR}/UIProcess/API/C/efl"
@@ -276,9 +268,6 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/efl"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/soup"
     "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
-    "${WTF_DIR}/wtf/efl"
-    "${WTF_DIR}/wtf/glib"
-    "${WTF_DIR}"
     "${WEBKIT2_DIR}"
 )
 
@@ -468,10 +457,10 @@ set(EWK2UnitTests_LIBRARIES
     ${GLIB_GTHREAD_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
+    WebKit2
     JavaScriptCore
     WTF
     WebCore
-    WebKit2
     gtest
 )
 

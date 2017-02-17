@@ -28,6 +28,9 @@
 
 #import "DumpRenderTree.h"
 #import "UIScriptContext.h"
+#import <JavaScriptCore/JSContext.h>
+#import <JavaScriptCore/JSStringRefCF.h>
+#import <JavaScriptCore/JSValue.h>
 #import <WebKit/WebKit.h>
 #import <WebKit/WebViewPrivate.h>
 
@@ -46,6 +49,16 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
     });
 }
 
+void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
+{
+    return doAsyncTask(callback);
+}
+
+void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
 void UIScriptController::insertText(JSStringRef, int, int)
 {
 }
@@ -57,16 +70,56 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     WebView *webView = [mainFrame webView];
     [webView _scaleWebView:scale atOrigin:NSZeroPoint];
 
-    dispatch_async(dispatch_get_main_queue(), ^ {
+    dispatch_async(dispatch_get_main_queue(), ^{
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
     });
 }
 
+void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
+{
+}
+
 JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
 {
+#if JSC_OBJC_API_ENABLED
+    WebView *webView = [mainFrame webView];
+    RetainPtr<CFStringRef> interfaceItemCF = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, interfaceItem));
+    NSDictionary *contentDictionary = [webView _contentsOfUserInterfaceItem:(NSString *)interfaceItemCF.get()];
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:contentDictionary inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+#else
+    UNUSED_PARAM(interfaceItem);
     return nullptr;
+#endif
+}
+
+void UIScriptController::removeViewFromWindow(JSValueRef callback)
+{
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    WebView *webView = [mainFrame webView];
+    [webView removeFromSuperview];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    });
+}
+
+void UIScriptController::addViewToWindow(JSValueRef callback)
+{
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    WebView *webView = [mainFrame webView];
+    [[mainWindow contentView] addSubview:webView];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    });
 }
 
 }

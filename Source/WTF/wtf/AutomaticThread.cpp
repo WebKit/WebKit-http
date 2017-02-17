@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,22 +47,33 @@ AutomaticThreadCondition::~AutomaticThreadCondition()
 
 void AutomaticThreadCondition::notifyOne(const LockHolder& locker)
 {
-    if (m_condition.notifyOne())
-        return;
-    
-    if (m_threads.isEmpty())
-        return;
-    
-    m_threads.takeLast()->start(locker);
+    for (AutomaticThread* thread : m_threads) {
+        if (thread->isWaiting(locker)) {
+            thread->notify(locker);
+            return;
+        }
+    }
+
+    for (AutomaticThread* thread : m_threads) {
+        if (!thread->hasUnderlyingThread(locker)) {
+            thread->start(locker);
+            return;
+        }
+    }
+
+    m_condition.notifyOne();
 }
 
 void AutomaticThreadCondition::notifyAll(const LockHolder& locker)
 {
     m_condition.notifyAll();
-    
-    for (AutomaticThread* thread : m_threads)
-        thread->start(locker);
-    m_threads.clear();
+
+    for (AutomaticThread* thread : m_threads) {
+        if (thread->isWaiting(locker))
+            thread->notify(locker);
+        else if (!thread->hasUnderlyingThread(locker))
+            thread->start(locker);
+    }
 }
 
 void AutomaticThreadCondition::wait(Lock& lock)
@@ -117,32 +128,24 @@ bool AutomaticThread::tryStop(const LockHolder&)
     return true;
 }
 
+bool AutomaticThread::isWaiting(const LockHolder& locker)
+{
+    return hasUnderlyingThread(locker) && m_isWaiting;
+}
+
+bool AutomaticThread::notify(const LockHolder& locker)
+{
+    ASSERT_UNUSED(locker, hasUnderlyingThread(locker));
+    m_isWaiting = false;
+    return m_waitCondition.notifyOne();
+}
+
 void AutomaticThread::join()
 {
     LockHolder locker(*m_lock);
     while (m_isRunning)
         m_isRunningCondition.wait(*m_lock);
 }
-
-class AutomaticThread::ThreadScope {
-public:
-    ThreadScope(RefPtr<AutomaticThread> thread)
-        : m_thread(thread)
-    {
-        m_thread->threadDidStart();
-    }
-    
-    ~ThreadScope()
-    {
-        m_thread->threadWillStop();
-        
-        LockHolder locker(*m_thread->m_lock);
-        m_thread->m_hasUnderlyingThread = false;
-    }
-
-private:
-    RefPtr<AutomaticThread> m_thread;
-};
 
 void AutomaticThread::start(const LockHolder&)
 {
@@ -157,16 +160,28 @@ void AutomaticThread::start(const LockHolder&)
         [=] () {
             if (verbose)
                 dataLog(RawPointer(this), ": Running automatic thread!\n");
-            ThreadScope threadScope(preserveThisForThread);
+            
+            RefPtr<AutomaticThread> thread = preserveThisForThread;
+            thread->threadDidStart();
             
             if (!ASSERT_DISABLED) {
                 LockHolder locker(*m_lock);
-                ASSERT(!m_condition->contains(locker, this));
+                ASSERT(m_condition->contains(locker, this));
             }
             
-            auto stop = [&] (const LockHolder&) {
+            auto stopImpl = [&] (const LockHolder& locker) {
+                thread->threadIsStopping(locker);
+                thread->m_hasUnderlyingThread = false;
+            };
+            
+            auto stopPermanently = [&] (const LockHolder& locker) {
                 m_isRunning = false;
                 m_isRunningCondition.notifyAll();
+                stopImpl(locker);
+            };
+            
+            auto stopForTimeout = [&] (const LockHolder& locker) {
+                stopImpl(locker);
             };
             
             for (;;) {
@@ -177,16 +192,22 @@ void AutomaticThread::start(const LockHolder&)
                         if (result == PollResult::Work)
                             break;
                         if (result == PollResult::Stop)
-                            return stop(locker);
+                            return stopPermanently(locker);
                         RELEASE_ASSERT(result == PollResult::Wait);
                         // Shut the thread down after one second.
+                        m_isWaiting = true;
                         bool awokenByNotify =
-                            m_condition->m_condition.waitFor(*m_lock, Seconds(1));
-                        if (!awokenByNotify) {
+                            m_waitCondition.waitFor(*m_lock, 1_s);
+                        if (verbose && !awokenByNotify && !m_isWaiting)
+                            dataLog(RawPointer(this), ": waitFor timed out, but notified via m_isWaiting flag!\n");
+                        if (m_isWaiting) {
+                            m_isWaiting = false;
                             if (verbose)
                                 dataLog(RawPointer(this), ": Going to sleep!\n");
-                            m_condition->add(locker, this);
-                            return;
+                            // It's important that we don't release the lock until we have completely
+                            // indicated that the thread is kaput. Otherwise we'll have a a notify
+                            // race that manifests as a deadlock on VM shutdown.
+                            return stopForTimeout(locker);
                         }
                     }
                 }
@@ -194,7 +215,7 @@ void AutomaticThread::start(const LockHolder&)
                 WorkResult result = work();
                 if (result == WorkResult::Stop) {
                     LockHolder locker(*m_lock);
-                    return stop(locker);
+                    return stopPermanently(locker);
                 }
                 RELEASE_ASSERT(result == WorkResult::Continue);
             }
@@ -206,7 +227,7 @@ void AutomaticThread::threadDidStart()
 {
 }
 
-void AutomaticThread::threadWillStop()
+void AutomaticThread::threadIsStopping(const LockHolder&)
 {
 }
 

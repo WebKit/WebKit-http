@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,11 +50,8 @@ class AuthenticationChallenge;
 class DocumentLoader;
 class Frame;
 class FrameLoader;
-class URL;
-
-#if USE(QUICK_LOOK)
 class QuickLookHandle;
-#endif
+class URL;
 
 class ResourceLoader : public RefCounted<ResourceLoader>, protected ResourceHandleClient {
 public:
@@ -110,6 +107,7 @@ public:
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
     virtual void didReceiveDataArray(CFArrayRef dataArray);
 #endif
+    virtual void didRetrieveDerivedDataFromCache(const String& type, SharedBuffer&);
 
     virtual bool shouldUseCredentialStorage();
     virtual void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
@@ -119,9 +117,8 @@ public:
     virtual void receivedCancellation(const AuthenticationChallenge&);
 
 #if USE(QUICK_LOOK)
-    void didCreateQuickLookHandle(QuickLookHandle&) override;
+    bool isQuickLookResource() const;
 #endif
-    bool isQuickLookResource() { return m_isQuickLookResource; }
 
     const URL& url() const { return m_request.url(); }
     ResourceHandle* handle() const { return m_handle.get(); }
@@ -150,6 +147,8 @@ public:
     const Frame* frame() const { return m_frame.get(); }
     WEBCORE_EXPORT bool isAlwaysOnLoggingAllowed() const;
 
+    const ResourceLoaderOptions& options() const { return m_options; }
+
 protected:
     ResourceLoader(Frame&, ResourceLoaderOptions);
 
@@ -159,8 +158,6 @@ protected:
     bool wasCancelled() const { return m_cancellationStatus >= Cancelled; }
 
     void didReceiveDataOrBuffer(const char*, unsigned, RefPtr<SharedBuffer>&&, long long encodedDataLength, DataPayloadType);
-
-    const ResourceLoaderOptions& options() { return m_options; }
 
 #if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
     NSCachedURLResponse* willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
@@ -176,6 +173,9 @@ protected:
     RefPtr<DocumentLoader> m_documentLoader;
     ResourceResponse m_response;
     LoadTiming m_loadTiming;
+#if USE(QUICK_LOOK)
+    std::unique_ptr<QuickLookHandle> m_quickLookHandle;
+#endif
 
 private:
     virtual void willCancel(const ResourceError&) = 0;
@@ -232,7 +232,6 @@ private:
     bool m_defersLoading;
     ResourceRequest m_deferredRequest;
     ResourceLoaderOptions m_options;
-    bool m_isQuickLookResource { false };
 
 #if ENABLE(CONTENT_EXTENSIONS)
 protected:

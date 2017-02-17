@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -85,7 +85,10 @@ static NSString * const WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey = @"
 static NSString * const WebKitSuppressMemoryPressureHandlerDefaultsKey = @"WebKitSuppressMemoryPressureHandler";
 static NSString * const WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey = @"WebKitNetworkLoadThrottleLatencyMilliseconds";
 
-static NSString * const WebKitVariationFontsEnabledDefaultsKey = @"ExperimentalVariationFontsEnabled";
+#if ENABLE(NETWORK_CAPTURE)
+static NSString * const WebKitRecordReplayModeDefaultsKey = @"WebKitRecordReplayMode";
+static NSString * const WebKitRecordReplayCacheLocationDefaultsKey = @"WebKitRecordReplayCacheLocation";
+#endif
 
 namespace WebKit {
 
@@ -108,8 +111,6 @@ static void registerUserDefaultsIfNeeded()
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitNetworkCacheEnabledDefaultsKey];
     [registrationDictionary setObject:[NSNumber numberWithBool:NO] forKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
 #endif
-
-    [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitVariationFontsEnabledDefaultsKey];
 
     [[NSUserDefaults standardUserDefaults] registerDefaults:registrationDictionary];
 }
@@ -144,6 +145,9 @@ void WebProcessPool::platformInitialize()
     IPC::setAllowsDecodingSecKeyRef(true);
     WebKit::WebMemoryPressureHandler::singleton();
 #endif
+
+    if (m_websiteDataStore)
+        m_websiteDataStore->registerSharedResourceLoadObserver();
 }
 
 #if PLATFORM(IOS)
@@ -158,6 +162,17 @@ String WebProcessPool::cookieStorageDirectory() const
     return path;
 }
 #endif
+
+void WebProcessPool::platformResolvePathsForSandboxExtensions()
+{
+    m_resolvedPaths.uiProcessBundleResourcePath = resolvePathForSandboxExtension([[NSBundle mainBundle] resourcePath]);
+
+#if PLATFORM(IOS)
+    m_resolvedPaths.cookieStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(cookieStorageDirectory());
+    m_resolvedPaths.containerCachesDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(webContentCachesDirectory());
+    m_resolvedPaths.containerTemporaryDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(containerTemporaryDirectory());
+#endif
+}
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
@@ -186,10 +201,21 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 #endif
 
     // FIXME: This should really be configurable; we shouldn't just blindly allow read access to the UI process bundle.
-    parameters.uiProcessBundleResourcePath = [[NSBundle mainBundle] resourcePath];
-    SandboxExtension::createHandle(parameters.uiProcessBundleResourcePath, SandboxExtension::ReadOnly, parameters.uiProcessBundleResourcePathExtensionHandle);
+    parameters.uiProcessBundleResourcePath = m_resolvedPaths.uiProcessBundleResourcePath;
+    SandboxExtension::createHandleWithoutResolvingPath(parameters.uiProcessBundleResourcePath, SandboxExtension::ReadOnly, parameters.uiProcessBundleResourcePathExtensionHandle);
 
     parameters.uiProcessBundleIdentifier = String([[NSBundle mainBundle] bundleIdentifier]);
+
+#if PLATFORM(IOS)
+    if (!m_resolvedPaths.cookieStorageDirectory.isEmpty())
+        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.cookieStorageDirectory, SandboxExtension::ReadWrite, parameters.cookieStorageDirectoryExtensionHandle);
+
+    if (!m_resolvedPaths.containerCachesDirectory.isEmpty())
+        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.containerCachesDirectory, SandboxExtension::ReadWrite, parameters.containerCachesDirectoryExtensionHandle);
+
+    if (!m_resolvedPaths.containerTemporaryDirectory.isEmpty())
+        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.containerTemporaryDirectory, SandboxExtension::ReadWrite, parameters.containerTemporaryDirectoryExtensionHandle);
+#endif
 
     parameters.fontWhitelist = m_fontWhitelist;
 
@@ -262,6 +288,13 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 #endif
 
     parameters.cookieStoragePartitioningEnabled = cookieStoragePartitioningEnabled();
+
+#if ENABLE(NETWORK_CAPTURE)
+    parameters.recordReplayMode = [defaults stringForKey:WebKitRecordReplayModeDefaultsKey];
+    parameters.recordReplayCacheLocation = [defaults stringForKey:WebKitRecordReplayCacheLocationDefaultsKey];
+    if (parameters.recordReplayCacheLocation.isEmpty())
+        parameters.recordReplayCacheLocation = parameters.diskCacheDirectory;
+#endif
 }
 
 void WebProcessPool::platformInvalidateContext()
@@ -429,7 +462,7 @@ bool WebProcessPool::isNetworkCacheEnabled()
 
     bool networkCacheEnabledByDefaults = [defaults boolForKey:WebKitNetworkCacheEnabledDefaultsKey];
 
-    return networkCacheEnabledByDefaults && linkedOnOrAfter(LibraryVersion::FirstWithNetworkCache);
+    return networkCacheEnabledByDefaults && linkedOnOrAfter(SDKVersion::FirstWithNetworkCache);
 #else
     return false;
 #endif
@@ -437,11 +470,7 @@ bool WebProcessPool::isNetworkCacheEnabled()
 
 String WebProcessPool::platformDefaultIconDatabasePath() const
 {
-    // FIXME: <rdar://problem/9138817> - After this "backwards compatibility" radar is removed, this code should be removed to only return an empty String.
-    NSString *databasesDirectory = [[NSUserDefaults standardUserDefaults] objectForKey:WebIconDatabaseDirectoryDefaultsKey];
-    if (!databasesDirectory || ![databasesDirectory isKindOfClass:[NSString class]])
-        databasesDirectory = @"~/Library/Icons/WebpageIcons.db";
-    return stringByResolvingSymlinksInPath([databasesDirectory stringByStandardizingPath]);
+    return "";
 }
 
 bool WebProcessPool::omitPDFSupport()

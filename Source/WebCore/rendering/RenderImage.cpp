@@ -230,10 +230,7 @@ void RenderImage::styleDidChange(StyleDifference diff, const RenderStyle* oldSty
 
 void RenderImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
 {
-    // FIXME (86669): Instead of the RenderImage determining whether its document is in the page
-    // cache, the RenderImage should remove itself as a client when its document is put into the
-    // page cache.
-    if (documentBeingDestroyed() || document().pageCacheState() != Document::NotInPageCache)
+    if (documentBeingDestroyed())
         return;
 
     if (hasVisibleBoxDecorations() || hasMask() || hasShapeOutside())
@@ -364,14 +361,12 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     GraphicsContext& context = paintInfo.context();
     float deviceScaleFactor = document().deviceScaleFactor();
 
-    Page* page = frame().page();
-
     if (!imageResource().hasImage() || imageResource().errorOccurred()) {
         if (paintInfo.phase == PaintPhaseSelection)
             return;
 
-        if (page && paintInfo.phase == PaintPhaseForeground)
-            page->addRelevantUnpaintedObject(this, visualOverflowRect());
+        if (paintInfo.phase == PaintPhaseForeground)
+            page().addRelevantUnpaintedObject(this, visualOverflowRect());
 
         if (cWidth > 2 && cHeight > 2) {
             LayoutUnit borderWidth = LayoutUnit(1 / deviceScaleFactor);
@@ -437,8 +432,8 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     } else if (imageResource().hasImage() && cWidth > 0 && cHeight > 0) {
         RefPtr<Image> img = imageResource().image(cWidth, cHeight);
         if (!img || img->isNull()) {
-            if (page && paintInfo.phase == PaintPhaseForeground)
-                page->addRelevantUnpaintedObject(this, visualOverflowRect());
+            if (paintInfo.phase == PaintPhaseForeground)
+                page().addRelevantUnpaintedObject(this, visualOverflowRect());
             return;
         }
 
@@ -453,14 +448,14 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 
         paintIntoRect(context, snapRectToDevicePixels(replacedContentRect, deviceScaleFactor));
         
-        if (cachedImage() && page && paintInfo.phase == PaintPhaseForeground) {
+        if (cachedImage() && paintInfo.phase == PaintPhaseForeground) {
             // For now, count images as unpainted if they are still progressively loading. We may want 
             // to refine this in the future to account for the portion of the image that has painted.
             LayoutRect visibleRect = intersection(replacedContentRect, contentBoxRect);
             if (cachedImage()->isLoading())
-                page->addRelevantUnpaintedObject(this, visibleRect);
+                page().addRelevantUnpaintedObject(this, visibleRect);
             else
-                page->addRelevantRepaintedObject(this, visibleRect);
+                page().addRelevantRepaintedObject(this, visibleRect);
         }
     }
 }
@@ -483,9 +478,6 @@ void RenderImage::paintAreaElementFocusRing(PaintInfo& paintInfo, const LayoutPo
         return;
     
     if (paintInfo.context().paintingDisabled() && !paintInfo.context().updatingControlTints())
-        return;
-
-    if (!document().page())
         return;
 
     Element* focusedElement = document().focusedElement();
@@ -520,9 +512,9 @@ void RenderImage::paintAreaElementFocusRing(PaintInfo& paintInfo, const LayoutPo
 
 #if PLATFORM(MAC)
     bool needsRepaint;
-    paintInfo.context().drawFocusRing(path, document().page()->focusController().timeSinceFocusWasSet(), needsRepaint);
+    paintInfo.context().drawFocusRing(path, page().focusController().timeSinceFocusWasSet(), needsRepaint);
     if (needsRepaint)
-        document().page()->focusController().setFocusedElementNeedsRepaint();
+        page().focusController().setFocusedElementNeedsRepaint();
 #else
     paintInfo.context().drawFocusRing(path, outlineWidth, areaElementStyle->outlineOffset(), areaElementStyle->visitedDependentColor(CSSPropertyOutlineColor));
 #endif
@@ -557,7 +549,7 @@ void RenderImage::paintIntoRect(GraphicsContext& context, const FloatRect& rect)
 
 #if USE(CG)
     if (is<PDFDocumentImage>(image))
-        downcast<PDFDocumentImage>(*image).setPdfImageCachingPolicy(frame().settings().pdfImageCachingPolicy());
+        downcast<PDFDocumentImage>(*image).setPdfImageCachingPolicy(settings().pdfImageCachingPolicy());
 #endif
 
     ImageOrientationDescription orientationDescription(shouldRespectImageOrientation(), style().imageOrientation());
@@ -682,6 +674,9 @@ void RenderImage::layout()
 
 void RenderImage::layoutShadowControls(const LayoutSize& oldSize)
 {
+    // We expect a single containing box under the UA shadow root.
+    ASSERT(firstChild() == lastChild());
+
     auto* controlsRenderer = downcast<RenderBox>(firstChild());
     if (!controlsRenderer)
         return;

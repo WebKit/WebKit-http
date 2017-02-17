@@ -28,7 +28,9 @@ class MediaControls extends LayoutNode
 
     constructor({ width = 300, height = 150, layoutTraits = LayoutTraits.Unknown } = {})
     {
-        super(`<div class="media-controls">`);
+        super(`<div class="media-controls"></div>`);
+
+        this._scaleFactor = 1;
 
         this.width = width;
         this.height = height;
@@ -42,15 +44,13 @@ class MediaControls extends LayoutNode
         this.pipButton = new PiPButton(this);
         this.fullscreenButton = new FullscreenButton(this);
 
-        this.statusLabel = new StatusLabel(this)
+        this.statusLabel = new StatusLabel(this);
         this.timeControl = new TimeControl(this);
 
-        this.controlsBar = new LayoutItem({
-            element: `<div class="controls-bar">`,
-            layoutDelegate: this
-        });
+        this.controlsBar = new ControlsBar(this);
 
         this.airplayPlacard = new AirplayPlacard(this);
+        this.invalidPlacard = new InvalidPlacard(this);
         this.pipPlacard = new PiPPlacard(this);
 
         this.showsStartButton = false;
@@ -60,17 +60,45 @@ class MediaControls extends LayoutNode
 
     get showsStartButton()
     {
-        return this.children.includes(this.startButton);
+        return !!this._showsStartButton;
     }
 
-    set showsStartButton(showsStartButton)
+    set showsStartButton(flag)
     {
-        this.children = [showsStartButton ? this.startButton : this.controlsBar];
+        if (this._showsStartButton === flag)
+            return;
+
+        this._showsStartButton = flag;
+        this._invalidateChildren();
+    }
+
+    get usesLTRUserInterfaceLayoutDirection()
+    {
+        return this.element.classList.contains("uses-ltr-user-interface-layout-direction");
+    }
+
+    set usesLTRUserInterfaceLayoutDirection(flag)
+    {
+        this.element.classList.toggle("uses-ltr-user-interface-layout-direction", flag);
+    }
+
+    get scaleFactor()
+    {
+        return this._scaleFactor;
+    }
+
+    set scaleFactor(scaleFactor)
+    {
+        if (this._scaleFactor === scaleFactor)
+            return;
+
+        this._scaleFactor = scaleFactor;
+        this.markDirtyProperty("scaleFactor");
     }
 
     get showsPlacard()
     {
-        return this.children.includes(this.airplayPlacard) || this.children.includes(this.pipPlacard);
+        return this.children[0] instanceof Placard;
     }
 
     showPlacard(placard)
@@ -84,7 +112,37 @@ class MediaControls extends LayoutNode
 
     hidePlacard()
     {
-        this.children = [this.controlsBar];
+        if (this.showsPlacard)
+            this.children[0].remove();
+        this._invalidateChildren();
+    }
+
+    fadeIn()
+    {
+        this.element.classList.add("fade-in");
+    }
+
+    // Protected
+
+    commitProperty(propertyName)
+    {
+        if (propertyName === "scaleFactor")
+            this.element.style.zoom = 1 / this._scaleFactor;
+        else
+            super.commitProperty(propertyName);
+    }
+
+    controlsBarVisibilityDidChange(controlsBar)
+    {
+        // Implemented by subclasses as needed.
+    }
+
+    // Private
+
+    _invalidateChildren()
+    {
+        if (!this.showsPlacard)
+            this.children = [this._showsStartButton ? this.startButton : this.controlsBar];
     }
 
 }

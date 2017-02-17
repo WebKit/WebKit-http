@@ -41,6 +41,9 @@
 #include <wtf/Condition.h>
 #include <wtf/glib/GLibUtilities.h>
 
+GST_DEBUG_CATEGORY_EXTERN(webkit_mse_debug);
+#define GST_CAT_DEFAULT webkit_mse_debug
+
 namespace WebCore {
 
 static const char* dumpAppendState(AppendPipeline::AppendState appendState)
@@ -576,12 +579,12 @@ void AppendPipeline::parseDemuxerSrcPadCaps(GstCaps* demuxerSrcPadCaps)
     GstStructure* structure = gst_caps_get_structure(m_demuxerSrcPadCaps.get(), 0);
     bool sizeConfigured = false;
 
-#if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
+#if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA))
     if (gst_structure_has_name(structure, "application/x-cenc")) {
         // Any previous decryptor should have been removed from the pipeline by disconnectFromAppSinkFromStreamingThread()
         ASSERT(!m_decryptor);
 
-        m_decryptor = adoptGRef(WebCore::createGstDecryptor(gst_structure_get_string(structure, "protection-system")));
+        m_decryptor = WebCore::createGstDecryptor(gst_structure_get_string(structure, "protection-system"));
         if (!m_decryptor) {
             GST_ERROR("decryptor not found for caps: %" GST_PTR_FORMAT, m_demuxerSrcPadCaps.get());
             return;
@@ -734,7 +737,7 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
             mediaSample->applyPtsOffset(MediaTime::zeroTime());
         }
 
-        m_sourceBufferPrivate->didReceiveSample(mediaSample);
+        m_sourceBufferPrivate->didReceiveSample(*mediaSample);
         setAppendState(AppendState::Sampling);
         m_flowReturn = GST_FLOW_OK;
         m_newSampleCondition.notifyOne();
@@ -983,7 +986,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         if (!parent)
             gst_bin_add(GST_BIN(m_pipeline.get()), m_appsink.get());
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
         if (m_decryptor) {
             gst_object_ref(m_decryptor.get());
             gst_bin_add(GST_BIN(m_pipeline.get()), m_decryptor.get());
@@ -997,13 +1000,15 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
             gst_element_sync_state_with_parent(m_appsink.get());
             gst_element_sync_state_with_parent(m_decryptor.get());
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
             if (m_pendingKey)
                 dispatchPendingDecryptionKey();
+#endif
         } else {
 #endif
             gst_pad_link(demuxerSrcPad, appsinkSinkPad.get());
             gst_element_sync_state_with_parent(m_appsink.get());
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
         }
 #endif
         gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
@@ -1093,7 +1098,7 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad* dem
 
     GST_DEBUG("Disconnecting appsink");
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     if (m_decryptor) {
         gst_element_unlink(m_decryptor.get(), m_appsink.get());
         gst_element_unlink(m_demux.get(), m_decryptor.get());

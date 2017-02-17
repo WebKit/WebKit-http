@@ -31,7 +31,8 @@
 #include "config.h"
 #include "WebKitSettings.h"
 
-#include "ExperimentalFeatures.h"
+#include "HardwareAccelerationManager.h"
+#include "WebKitEnumTypes.h"
 #include "WebKitPrivate.h"
 #include "WebKitSettingsPrivate.h"
 #include "WebPageProxy.h"
@@ -145,7 +146,8 @@ enum {
     PROP_ENABLE_SPATIAL_NAVIGATION,
     PROP_ENABLE_MEDIASOURCE,
     PROP_ALLOW_FILE_ACCESS_FROM_FILE_URLS,
-    PROP_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS
+    PROP_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS,
+    PROP_HARDWARE_ACCELERATION_POLICY,
 };
 
 static void webKitSettingsConstructed(GObject* object)
@@ -154,10 +156,6 @@ static void webKitSettingsConstructed(GObject* object)
 
     WebPreferences* prefs = WEBKIT_SETTINGS(object)->priv->preferences.get();
     prefs->setShouldRespectImageOrientation(true);
-    ExperimentalFeatures features;
-    bool cssGridLayoutEnabled = features.isEnabled(ExperimentalFeatures::CSSGridLayout);
-    if (prefs->cssGridLayoutEnabled() != cssGridLayoutEnabled)
-        prefs->setCSSGridLayoutEnabled(cssGridLayoutEnabled);
 }
 
 static void webKitSettingsSetProperty(GObject* object, guint propId, const GValue* value, GParamSpec* paramSpec)
@@ -235,7 +233,9 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
         webkit_settings_set_default_charset(settings, g_value_get_string(value));
         break;
     case PROP_ENABLE_PRIVATE_BROWSING:
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
         webkit_settings_set_enable_private_browsing(settings, g_value_get_boolean(value));
+        G_GNUC_END_IGNORE_DEPRECATIONS;
         break;
     case PROP_ENABLE_DEVELOPER_EXTRAS:
         webkit_settings_set_enable_developer_extras(settings, g_value_get_boolean(value));
@@ -321,6 +321,9 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
     case PROP_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS:
         webkit_settings_set_allow_universal_access_from_file_urls(settings, g_value_get_boolean(value));
         break;
+    case PROP_HARDWARE_ACCELERATION_POLICY:
+        webkit_settings_set_hardware_acceleration_policy(settings, static_cast<WebKitHardwareAccelerationPolicy>(g_value_get_enum(value)));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
         break;
@@ -402,7 +405,9 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
         g_value_set_string(value, webkit_settings_get_default_charset(settings));
         break;
     case PROP_ENABLE_PRIVATE_BROWSING:
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
         g_value_set_boolean(value, webkit_settings_get_enable_private_browsing(settings));
+        G_GNUC_END_IGNORE_DEPRECATIONS;
         break;
     case PROP_ENABLE_DEVELOPER_EXTRAS:
         g_value_set_boolean(value, webkit_settings_get_enable_developer_extras(settings));
@@ -481,6 +486,9 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
         break;
     case PROP_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS:
         g_value_set_boolean(value, webkit_settings_get_allow_universal_access_from_file_urls(settings));
+        break;
+    case PROP_HARDWARE_ACCELERATION_POLICY:
+        g_value_set_enum(value, webkit_settings_get_hardware_acceleration_policy(settings));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
@@ -679,7 +687,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                          readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:default-font-family:
+     * WebKitSettings:default-font-family:
      *
      * The font family to use as the default for content that does not specify a font.
      */
@@ -692,7 +700,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                         readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:monospace-font-family:
+     * WebKitSettings:monospace-font-family:
      *
      * The font family used as the default for content using a monospace font.
      *
@@ -706,7 +714,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                         readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:serif-font-family:
+     * WebKitSettings:serif-font-family:
      *
      * The font family used as the default for content using a serif font.
      */
@@ -719,7 +727,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                         readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:sans-serif-font-family:
+     * WebKitSettings:sans-serif-font-family:
      *
      * The font family used as the default for content using a sans-serif font.
      */
@@ -732,7 +740,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                         readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:cursive-font-family:
+     * WebKitSettings:cursive-font-family:
      *
      * The font family used as the default for content using a cursive font.
      */
@@ -745,7 +753,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                         readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:fantasy-font-family:
+     * WebKitSettings:fantasy-font-family:
      *
      * The font family used as the default for content using a fantasy font.
      */
@@ -758,7 +766,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                         readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:pictograph-font-family:
+     * WebKitSettings:pictograph-font-family:
      *
      * The font family used as the default for content using a pictograph font.
      */
@@ -771,7 +779,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                         readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:default-font-size:
+     * WebKitSettings:default-font-size:
      *
      * The default font size in pixels to use for content displayed if
      * no font size is specified.
@@ -785,7 +793,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                       readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:default-monospace-font-size:
+     * WebKitSettings:default-monospace-font-size:
      *
      * The default font size in pixels to use for content displayed in
      * monospace font if no font size is specified.
@@ -799,7 +807,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                       readWriteConstructParamFlags));
 
     /**
-     * WebKitWebSettings:minimum-font-size:
+     * WebKitSettings:minimum-font-size:
      *
      * The minimum font size in points used to display text. This setting
      * controls the absolute smallest size. Values other than 0 can
@@ -831,6 +839,8 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
      *
      * Determines whether or not private browsing is enabled. Private browsing
      * will disable history, cache and form auto-fill for any pages visited.
+     *
+     * Deprecated: 2.16. Use #WebKitWebView:is-ephemeral or #WebKitWebContext:is-ephemeral instead.
      */
     g_object_class_install_property(gObjectClass,
                                     PROP_ENABLE_PRIVATE_BROWSING,
@@ -1205,7 +1215,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
      * there is an element they might be trying to reach towards the right, and if
      * there are multiple elements, which element they probably wants.
      *
-     * Since: 2.3
+     * Since: 2.4
      */
     g_object_class_install_property(gObjectClass,
         PROP_ENABLE_SPATIAL_NAVIGATION,
@@ -1272,6 +1282,32 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
             _("Allow universal access from the context of file scheme URLs"),
             _("Whether or not universal access is allowed from the context of file scheme URLs"),
             FALSE,
+            readWriteConstructParamFlags));
+
+    /**
+     * WebKitSettings:hardware-acceleration-policy:
+     *
+     * The #WebKitHardwareAccelerationPolicy to decide how to enable and disable
+     * hardware acceleration. The default value %WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND
+     * enables the hardware acceleration when the web contents request it, disabling it again
+     * when no longer needed. It's possible to enfore hardware acceleration to be always enabled
+     * by using %WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS. And it's also posible to disable it
+     * completely using %WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER. Note that disabling hardware
+     * acceleration might cause some websites to not render correctly or consume more CPU.
+     *
+     * Note that changing this setting might not be possible if hardware acceleration is not
+     * supported by the hardware or the system. In that case you can get the value to know the
+     * actual policy being used, but changing the setting will not have any effect.
+     *
+     * Since: 2.16
+     */
+    g_object_class_install_property(gObjectClass,
+        PROP_HARDWARE_ACCELERATION_POLICY,
+        g_param_spec_enum("hardware-acceleration-policy",
+            _("Hardware Acceleration Policy"),
+            _("The policy to decide how to enable and disable hardware acceleration"),
+            WEBKIT_TYPE_HARDWARE_ACCELERATION_POLICY,
+            WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND,
             readWriteConstructParamFlags));
 }
 
@@ -2143,6 +2179,8 @@ void webkit_settings_set_default_charset(WebKitSettings* settings, const gchar* 
  * Get the #WebKitSettings:enable-private-browsing property.
  *
  * Returns: %TRUE If private browsing is enabled or %FALSE otherwise.
+ *
+ * Deprecated: 2.16. Use #WebKitWebView:is-ephemeral or #WebKitWebContext:is-ephemeral instead.
  */
 gboolean webkit_settings_get_enable_private_browsing(WebKitSettings* settings)
 {
@@ -2152,11 +2190,13 @@ gboolean webkit_settings_get_enable_private_browsing(WebKitSettings* settings)
 }
 
 /**
- * webkit_settings_set_private_caret_browsing:
+ * webkit_settings_set_enable_private_browsing:
  * @settings: a #WebKitSettings
  * @enabled: Value to be set
  *
  * Set the #WebKitSettings:enable-private-browsing property.
+ *
+ * Deprecated: 2.16. Use #WebKitWebView:is-ephemeral or #WebKitWebContext:is-ephemeral instead.
  */
 void webkit_settings_set_enable_private_browsing(WebKitSettings* settings, gboolean enabled)
 {
@@ -2973,6 +3013,7 @@ void webkit_settings_set_enable_media_stream(WebKitSettings* settings, gboolean 
         return;
 
     priv->preferences->setMediaStreamEnabled(enabled);
+    priv->preferences->setPeerConnectionEnabled(enabled);
     g_object_notify(G_OBJECT(settings), "enable-media-stream");
 }
 
@@ -3130,4 +3171,86 @@ void webkit_settings_set_allow_universal_access_from_file_urls(WebKitSettings* s
 
     priv->preferences->setAllowUniversalAccessFromFileURLs(allowed);
     g_object_notify(G_OBJECT(settings), "allow-universal-access-from-file-urls");
+}
+
+/**
+ * webkit_settings_get_hardware_acceleration_policy:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:hardware-acceleration-policy property.
+ *
+ * Return: a #WebKitHardwareAccelerationPolicy
+ *
+ * Since: 2.16
+ */
+WebKitHardwareAccelerationPolicy webkit_settings_get_hardware_acceleration_policy(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND);
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    if (!priv->preferences->acceleratedCompositingEnabled())
+        return WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER;
+
+    if (priv->preferences->forceCompositingMode())
+        return WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS;
+
+    return WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND;
+}
+
+/**
+ * webkit_settings_set_hardware_acceleration_policy:
+ * @settings: a #WebKitSettings
+ * @policy: a #WebKitHardwareAccelerationPolicy
+ *
+ * Set the #WebKitSettings:hardware-acceleration-policy property.
+ *
+ * Since: 2.16
+ */
+void webkit_settings_set_hardware_acceleration_policy(WebKitSettings* settings, WebKitHardwareAccelerationPolicy policy)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool changed = false;
+    switch (policy) {
+    case WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS:
+        if (!HardwareAccelerationManager::singleton().canUseHardwareAcceleration())
+            return;
+        if (!priv->preferences->acceleratedCompositingEnabled()) {
+            priv->preferences->setAcceleratedCompositingEnabled(true);
+            changed = true;
+        }
+        if (!priv->preferences->forceCompositingMode()) {
+            priv->preferences->setForceCompositingMode(true);
+            changed = true;
+        }
+        break;
+    case WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER:
+        if (HardwareAccelerationManager::singleton().forceHardwareAcceleration())
+            return;
+        if (priv->preferences->acceleratedCompositingEnabled()) {
+            priv->preferences->setAcceleratedCompositingEnabled(false);
+            changed = true;
+        }
+
+        if (priv->preferences->forceCompositingMode()) {
+            priv->preferences->setForceCompositingMode(false);
+            changed = true;
+        }
+        break;
+    case WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND:
+        if (!priv->preferences->acceleratedCompositingEnabled() && HardwareAccelerationManager::singleton().canUseHardwareAcceleration()) {
+            priv->preferences->setAcceleratedCompositingEnabled(true);
+            changed = true;
+        }
+
+        if (priv->preferences->forceCompositingMode() && !HardwareAccelerationManager::singleton().forceHardwareAcceleration()) {
+            priv->preferences->setForceCompositingMode(false);
+            changed = true;
+        }
+        break;
+    }
+
+    if (changed)
+        g_object_notify(G_OBJECT(settings), "hardware-acceleration-policy");
 }

@@ -730,7 +730,8 @@ private:
         case GetSetter:
         case GetCallee:
         case NewFunction:
-        case NewGeneratorFunction: {
+        case NewGeneratorFunction:
+        case NewAsyncFunction: {
             setPrediction(SpecFunction);
             break;
         }
@@ -859,6 +860,7 @@ private:
             break;
         }
             
+        case ArraySlice:
         case NewArrayWithSpread:
         case NewArray:
         case NewArrayWithSize:
@@ -1007,9 +1009,12 @@ private:
         case PhantomNewObject:
         case PhantomNewFunction:
         case PhantomNewGeneratorFunction:
+        case PhantomNewAsyncFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomCreateRest:
+        case PhantomSpread:
+        case PhantomNewArrayWithSpread:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
         case GetMyArgumentByValOutOfBounds:
@@ -1101,6 +1106,7 @@ private:
         case LoadVarargs:
         case ForwardVarargs:
         case PutDynamicVar:
+        case NukeStructureAndSetButterfly:
             break;
             
         // This gets ignored because it only pretends to produce a value.

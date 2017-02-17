@@ -37,12 +37,9 @@ class RGBColor final : public RefCounted<RGBColor> {
 public:
     static Ref<RGBColor> create(unsigned rgbColor);
 
-    WEBCORE_EXPORT Ref<CSSPrimitiveValue> red();
-    WEBCORE_EXPORT Ref<CSSPrimitiveValue> green();
-    WEBCORE_EXPORT Ref<CSSPrimitiveValue> blue();
-    WEBCORE_EXPORT Ref<CSSPrimitiveValue> alpha();
-
     Color color() const { return Color(m_rgbColor); }
+
+    RGBA32 rgbColor() const { return m_rgbColor; }
 
 private:
     RGBColor(unsigned rgbColor)

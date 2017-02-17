@@ -26,13 +26,15 @@
 #include "config.h"
 #include "UnlinkedEvalCodeBlock.h"
 
+#include "JSCellInlines.h"
+
 namespace JSC {
 
 const ClassInfo UnlinkedEvalCodeBlock::s_info = { "UnlinkedEvalCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedEvalCodeBlock) };
 
 void UnlinkedEvalCodeBlock::destroy(JSCell* cell)
 {
-    jsCast<UnlinkedEvalCodeBlock*>(cell)->~UnlinkedEvalCodeBlock();
+    static_cast<UnlinkedEvalCodeBlock*>(cell)->~UnlinkedEvalCodeBlock();
 }
 
 }

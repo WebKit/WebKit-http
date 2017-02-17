@@ -27,9 +27,16 @@
 
 #include "ArgumentCoders.h"
 #include <WebCore/ColorSpace.h>
+#include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/IndexedDB.h>
 #include <WebCore/PaymentHeaders.h>
+#include <WebCore/ScrollSnapOffsetsInfo.h>
+
+namespace WTF {
+class MonotonicTime;
+class Seconds;
+}
 
 namespace WebCore {
 class AffineTransform;
@@ -41,6 +48,7 @@ class Credential;
 class CubicBezierTimingFunction;
 class Cursor;
 class DatabaseDetails;
+class DragData;
 class FilterOperation;
 class FilterOperations;
 class FloatPoint;
@@ -54,6 +62,8 @@ class IntPoint;
 class IntRect;
 class IntSize;
 class KeyframeValueList;
+class LayoutSize;
+class LayoutPoint;
 class LinearTimingFunction;
 class Notification;
 class Path;
@@ -111,6 +121,12 @@ struct ViewportArguments;
 }
 #endif
 
+#if USE(SOUP)
+namespace WebCore {
+struct SoupNetworkProxySettings;
+}
+#endif
+
 #if PLATFORM(WPE)
 namespace WebCore {
 struct PasteboardWebContents;
@@ -149,6 +165,16 @@ using IDBKeyPath = Variant<String, Vector<String>>;
 #endif
 
 namespace IPC {
+
+template<> struct ArgumentCoder<WTF::MonotonicTime> {
+    static void encode(Encoder&, const WTF::MonotonicTime&);
+    static bool decode(Decoder&, WTF::MonotonicTime&);
+};
+
+template<> struct ArgumentCoder<WTF::Seconds> {
+    static void encode(Encoder&, const WTF::Seconds&);
+    static bool decode(Decoder&, WTF::Seconds&);
+};
 
 template<> struct ArgumentCoder<WebCore::AffineTransform> {
     static void encode(Encoder&, const WebCore::AffineTransform&);
@@ -242,6 +268,16 @@ template<> struct ArgumentCoder<WebCore::IntSize> {
     static bool decode(Decoder&, WebCore::IntSize&);
 };
 
+template<> struct ArgumentCoder<WebCore::LayoutSize> {
+    static void encode(Encoder&, const WebCore::LayoutSize&);
+    static bool decode(Decoder&, WebCore::LayoutSize&);
+};
+
+template<> struct ArgumentCoder<WebCore::LayoutPoint> {
+    static void encode(Encoder&, const WebCore::LayoutPoint&);
+    static bool decode(Decoder&, WebCore::LayoutPoint&);
+};
+
 template<> struct ArgumentCoder<WebCore::Path> {
     static void encode(Encoder&, const WebCore::Path&);
     static bool decode(Decoder&, WebCore::Path&);
@@ -320,6 +356,13 @@ template<> struct ArgumentCoder<WebCore::Color> {
     static bool decode(Decoder&, WebCore::Color&);
 };
 
+#if ENABLE(DRAG_SUPPORT)
+template<> struct ArgumentCoder<WebCore::DragData> {
+    static void encode(Encoder&, const WebCore::DragData&);
+    static bool decode(Decoder&, WebCore::DragData&);
+};
+#endif
+
 #if PLATFORM(COCOA)
 template<> struct ArgumentCoder<WebCore::MachSendRight> {
     static void encode(Encoder&, const WebCore::MachSendRight&);
@@ -352,6 +395,13 @@ template<> struct ArgumentCoder<WebCore::PasteboardWebContent> {
 template<> struct ArgumentCoder<WebCore::PasteboardImage> {
     static void encode(Encoder&, const WebCore::PasteboardImage&);
     static bool decode(Decoder&, WebCore::PasteboardImage&);
+};
+#endif
+
+#if USE(SOUP)
+template<> struct ArgumentCoder<WebCore::SoupNetworkProxySettings> {
+    static void encode(Encoder&, const WebCore::SoupNetworkProxySettings&);
+    static bool decode(Decoder&, WebCore::SoupNetworkProxySettings&);
 };
 #endif
 
@@ -577,6 +627,15 @@ template<> struct ArgumentCoder<WebCore::IDBKeyPath> {
 
 #endif
 
+#if ENABLE(CSS_SCROLL_SNAP)
+
+template<> struct ArgumentCoder<WebCore::ScrollOffsetRange<float>> {
+    static void encode(Encoder&, const WebCore::ScrollOffsetRange<float>&);
+    static bool decode(Decoder&, WebCore::ScrollOffsetRange<float>&);
+};
+
+#endif
+
 } // namespace IPC
 
 namespace WTF {
@@ -596,6 +655,14 @@ template<> struct EnumTraits<WebCore::HasInsecureContent> {
         WebCore::HasInsecureContent,
         WebCore::HasInsecureContent::No,
         WebCore::HasInsecureContent::Yes
+    >;
+};
+
+template<> struct EnumTraits<WebCore::ShouldSample> {
+    using values = EnumValues<
+        WebCore::ShouldSample,
+        WebCore::ShouldSample::No,
+        WebCore::ShouldSample::Yes
     >;
 };
 

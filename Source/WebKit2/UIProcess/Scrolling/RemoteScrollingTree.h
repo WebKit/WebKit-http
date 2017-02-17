@@ -36,7 +36,7 @@ namespace WebKit {
 
 class RemoteScrollingCoordinatorProxy;
 
-class RemoteScrollingTree : public WebCore::ScrollingTree {
+class RemoteScrollingTree final : public WebCore::ScrollingTree {
 public:
     static Ref<RemoteScrollingTree> create(RemoteScrollingCoordinatorProxy&);
     virtual ~RemoteScrollingTree();
@@ -46,7 +46,7 @@ public:
 
     const RemoteScrollingCoordinatorProxy& scrollingCoordinatorProxy() const { return m_scrollingCoordinatorProxy; }
 
-    void scrollingTreeNodeDidScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, const Optional<WebCore::FloatPoint>& layoutViewportOrigin, WebCore::SetOrSyncScrollingLayerPosition = WebCore::SyncScrollingLayerPosition) override;
+    void scrollingTreeNodeDidScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, const std::optional<WebCore::FloatPoint>& layoutViewportOrigin, WebCore::ScrollingLayerPositionAction = WebCore::ScrollingLayerPositionAction::Sync) override;
     void scrollingTreeNodeRequestsScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, bool representsProgrammaticScroll) override;
 
     void currentSnapPointIndicesDidChange(WebCore::ScrollingNodeID, unsigned horizontal, unsigned vertical) override;
@@ -65,7 +65,7 @@ private:
     void scrollingTreeNodeDidEndScroll() override;
 #endif
 
-    PassRefPtr<WebCore::ScrollingTreeNode> createScrollingTreeNode(WebCore::ScrollingNodeType, WebCore::ScrollingNodeID) override;
+    Ref<WebCore::ScrollingTreeNode> createScrollingTreeNode(WebCore::ScrollingNodeType, WebCore::ScrollingNodeID) override;
     
     RemoteScrollingCoordinatorProxy& m_scrollingCoordinatorProxy;
 };

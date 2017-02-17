@@ -111,7 +111,7 @@ namespace JSC {
         previous->m_next = this;
     }
 
-    inline TemplateStringNode::TemplateStringNode(const JSTokenLocation& location, const Identifier& cooked, const Identifier& raw)
+    inline TemplateStringNode::TemplateStringNode(const JSTokenLocation& location, const Identifier* cooked, const Identifier* raw)
         : ExpressionNode(location)
         , m_cooked(cooked)
         , m_raw(raw)
@@ -164,6 +164,12 @@ namespace JSC {
 
     inline SuperNode::SuperNode(const JSTokenLocation& location)
         : ExpressionNode(location)
+    {
+    }
+
+    inline ImportNode::ImportNode(const JSTokenLocation& location, ExpressionNode* expr)
+        : ExpressionNode(location)
+        , m_expr(expr)
     {
     }
 

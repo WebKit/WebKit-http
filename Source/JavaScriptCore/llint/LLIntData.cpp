@@ -138,7 +138,7 @@ void Data::performAssertions(VM& vm)
 #endif
 #if (CPU(X86_64) && !OS(WINDOWS)) || CPU(ARM64) || !ENABLE(JIT)
     STATIC_ASSERT(!maxFrameExtentForSlowPathCall);
-#elif CPU(ARM) || CPU(SH4)
+#elif CPU(ARM)
     STATIC_ASSERT(maxFrameExtentForSlowPathCall == 24);
 #elif CPU(X86) || CPU(MIPS)
     STATIC_ASSERT(maxFrameExtentForSlowPathCall == 40);
@@ -156,21 +156,21 @@ void Data::performAssertions(VM& vm)
     
     STATIC_ASSERT(StringType == 6);
     STATIC_ASSERT(SymbolType == 7);
-    STATIC_ASSERT(ObjectType == 21);
-    STATIC_ASSERT(FinalObjectType == 22);
-    STATIC_ASSERT(JSFunctionType == 24);
-    STATIC_ASSERT(ArrayType == 32);
-    STATIC_ASSERT(DerivedArrayType == 33);
-    STATIC_ASSERT(ProxyObjectType == 51);
-    STATIC_ASSERT(Int8ArrayType == 34);
-    STATIC_ASSERT(Int16ArrayType == 35);
-    STATIC_ASSERT(Int32ArrayType == 36);
-    STATIC_ASSERT(Uint8ArrayType == 37);
-    STATIC_ASSERT(Uint8ClampedArrayType == 38);
-    STATIC_ASSERT(Uint16ArrayType == 39);
-    STATIC_ASSERT(Uint32ArrayType == 40);
-    STATIC_ASSERT(Float32ArrayType == 41);
-    STATIC_ASSERT(Float64ArrayType == 42);
+    STATIC_ASSERT(ObjectType == 23);
+    STATIC_ASSERT(FinalObjectType == 24);
+    STATIC_ASSERT(JSFunctionType == 26);
+    STATIC_ASSERT(ArrayType == 34);
+    STATIC_ASSERT(DerivedArrayType == 35);
+    STATIC_ASSERT(ProxyObjectType == 53);
+    STATIC_ASSERT(Int8ArrayType == 36);
+    STATIC_ASSERT(Int16ArrayType == 37);
+    STATIC_ASSERT(Int32ArrayType == 38);
+    STATIC_ASSERT(Uint8ArrayType == 39);
+    STATIC_ASSERT(Uint8ClampedArrayType == 40);
+    STATIC_ASSERT(Uint16ArrayType == 41);
+    STATIC_ASSERT(Uint32ArrayType == 42);
+    STATIC_ASSERT(Float32ArrayType == 43);
+    STATIC_ASSERT(Float64ArrayType == 44);
     STATIC_ASSERT(MasqueradesAsUndefined == 1);
     STATIC_ASSERT(ImplementsDefaultHasInstance == 2);
     STATIC_ASSERT(FirstConstantRegisterIndex == 0x40000000);
@@ -178,6 +178,15 @@ void Data::performAssertions(VM& vm)
     STATIC_ASSERT(EvalCode == 1);
     STATIC_ASSERT(FunctionCode == 2);
     STATIC_ASSERT(ModuleCode == 3);
+    
+    STATIC_ASSERT(IsArray == 0x01);
+    STATIC_ASSERT(IndexingShapeMask == 0x0E);
+    STATIC_ASSERT(NoIndexingShape == 0x00);
+    STATIC_ASSERT(Int32Shape == 0x04);
+    STATIC_ASSERT(DoubleShape == 0x06);
+    STATIC_ASSERT(ContiguousShape == 0x08);
+    STATIC_ASSERT(ArrayStorageShape == 0x0A);
+    STATIC_ASSERT(SlowPutArrayStorageShape == 0x0C);
 
     ASSERT(!(reinterpret_cast<ptrdiff_t>((reinterpret_cast<WriteBarrier<JSCell>*>(0x4000)->slot())) - 0x4000));
     static_assert(PutByIdPrimaryTypeMask == 0x6, "LLInt assumes PutByIdPrimaryTypeMask is == 0x6");

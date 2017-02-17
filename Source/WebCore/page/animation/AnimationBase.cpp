@@ -29,12 +29,11 @@
 #include "config.h"
 #include "AnimationBase.h"
 
-#include "AnimationControllerPrivate.h"
+#include "CSSAnimationControllerPrivate.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyAnimation.h"
 #include "CompositeAnimation.h"
 #include "Document.h"
-#include "EventNames.h"
 #include "FloatConversion.h"
 #include "GeometryUtilities.h"
 #include "Logging.h"
@@ -89,9 +88,11 @@ AnimationBase::AnimationBase(const Animation& animation, RenderElement* renderer
 
 void AnimationBase::setNeedsStyleRecalc(Element* element)
 {
-    ASSERT(!element || element->document().pageCacheState() == Document::NotInPageCache);
-    if (element)
-        element->invalidateStyleAndLayerComposition();
+    if (!element || element->document().renderTreeBeingDestroyed())
+        return;
+
+    ASSERT(element->document().pageCacheState() == Document::NotInPageCache);
+    element->invalidateStyleAndLayerComposition();
 }
 
 double AnimationBase::duration() const
@@ -492,7 +493,7 @@ void AnimationBase::fireAnimationEventsIfNeeded()
         if (m_animation->trigger() && m_animation->trigger()->isScrollAnimationTrigger()) {
             if (m_object) {
                 float offset = m_compositeAnimation->animationController().scrollPosition();
-                ScrollAnimationTrigger& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger().get());
+                auto& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger());
                 if (offset > scrollTrigger.startValue().value())
                     updateStateMachine(AnimationStateInput::StartTimerFired, 0);
             }
@@ -575,7 +576,7 @@ double AnimationBase::timeToNextService()
         if (m_animation->trigger()->isScrollAnimationTrigger()) {
             if (m_object) {
                 float currentScrollPosition = m_object->view().frameView().scrollPositionForFixedPosition().y().toFloat();
-                ScrollAnimationTrigger& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger().get());
+                auto& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger());
                 if (currentScrollPosition >= scrollTrigger.startValue().value() && (!scrollTrigger.hasEndValue() || currentScrollPosition <= scrollTrigger.endValue().value()))
                     return 0;
             }
@@ -651,7 +652,7 @@ double AnimationBase::progress(double scale, double offset, const TimingFunction
     }
 
     if (!timingFunction)
-        timingFunction = m_animation->timingFunction().get();
+        timingFunction = m_animation->timingFunction();
 
     switch (timingFunction->type()) {
     case TimingFunction::CubicBezierFunction: {
@@ -741,7 +742,7 @@ double AnimationBase::getElapsedTime() const
 {
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     if (m_animation->trigger() && m_animation->trigger()->isScrollAnimationTrigger()) {
-        ScrollAnimationTrigger& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger().get());
+        auto& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger());
         if (scrollTrigger.hasEndValue() && m_object) {
             float offset = m_compositeAnimation->animationController().scrollPosition();
             float startValue = scrollTrigger.startValue().value();

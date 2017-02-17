@@ -22,6 +22,8 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
+#include "CachedResourceLoader.h"
+#include "CookieJar.h"
 #include "GRefPtrGStreamer.h"
 #include "GStreamerUtilities.h"
 #include "GUniquePtrGStreamer.h"
@@ -46,8 +48,9 @@
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
-#include "CachedResourceLoader.h"
-#include "CookieJar.h"
+#if USE(SOUP)
+#include "SoupNetworkSession.h"
+#endif
 
 using namespace WebCore;
 
@@ -114,6 +117,9 @@ class ResourceHandleStreamingClient : public ResourceHandleClient, public Stream
         Lock m_terminateRunLoopConditionMutex;
         Condition m_terminateRunLoopCondition;
         RefPtr<ResourceHandle> m_resource;
+#if USE(SOUP)
+        std::unique_ptr<SoupNetworkSession> m_session;
+#endif
 };
 
 enum MainThreadSourceNotification {
@@ -894,7 +900,7 @@ char* StreamingClient::createReadBuffer(size_t requestedSize, size_t& actualSize
 
     GstBuffer* buffer = gst_buffer_new_and_alloc(requestedSize);
 
-    mapGstBuffer(buffer);
+    mapGstBuffer(buffer, GST_MAP_WRITE);
 
     WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
     priv->buffer = adoptGRef(buffer);
@@ -1104,7 +1110,13 @@ ResourceHandleStreamingClient::ResourceHandleStreamingClient(WebKitWebSrc* src, 
         {
             LockHolder locker(m_initializeRunLoopConditionMutex);
             m_runLoop = &RunLoop::current();
+#if USE(SOUP)
+            m_session = std::make_unique<SoupNetworkSession>();
+            m_resource = ResourceHandle::create(*m_session, request, this, true, false);
+#else
+            // FIXME: This create will hit an assert in debug builds. See https://bugs.webkit.org/show_bug.cgi?id=167003.
             m_resource = ResourceHandle::create(nullptr /*context*/, request, this, true, false);
+#endif
             m_initializeRunLoopCondition.notifyOne();
         }
         if (!m_resource)
@@ -1118,6 +1130,9 @@ ResourceHandleStreamingClient::ResourceHandleStreamingClient(WebKitWebSrc* src, 
             m_resource->clearClient();
             m_resource->cancel();
             m_resource = nullptr;
+#if USE(SOUP)
+            m_session = nullptr;
+#endif
             m_terminateRunLoopCondition.notifyOne();
         }
     });

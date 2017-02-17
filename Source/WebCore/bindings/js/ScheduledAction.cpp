@@ -29,7 +29,7 @@
 #include "Document.h"
 #include "Frame.h"
 #include "FrameLoader.h"
-#include "JSDOMBinding.h"
+#include "JSDOMExceptionHandling.h"
 #include "JSDOMWindow.h"
 #include "JSMainThreadExecState.h"
 #include "JSMainThreadExecStateInstrumentation.h"
@@ -55,7 +55,7 @@ std::unique_ptr<ScheduledAction> ScheduledAction::create(ExecState* exec, DOMWra
     if (getCallData(v, callData) == CallType::None) {
         if (policy && !policy->allowEval(exec))
             return nullptr;
-        String string = v.toString(exec)->value(exec);
+        String string = v.toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, nullptr);
         return std::unique_ptr<ScheduledAction>(new ScheduledAction(string, isolatedWorld));
     }

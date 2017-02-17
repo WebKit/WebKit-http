@@ -83,7 +83,7 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
 {
     Structure* structure = currentInstruction[3].u.objectAllocationProfile->structure();
     size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
-    MarkedAllocator* allocator = m_vm->heap.allocatorForObjectWithoutDestructor(allocationSize);
+    MarkedAllocator* allocator = subspaceFor<JSFinalObject>(*m_vm)->allocatorFor(allocationSize);
 
     RegisterID resultReg = regT0;
     RegisterID allocatorReg = regT1;
@@ -94,6 +94,7 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
         addSlowCase(Jump());
     JumpList slowCases;
     emitAllocateJSObject(resultReg, allocator, allocatorReg, TrustedImmPtr(structure), TrustedImmPtr(0), scratchReg, slowCases);
+    emitInitializeInlineStorage(resultReg, structure->inlineCapacity());
     addSlowCase(slowCases);
     emitPutVirtualRegister(currentInstruction[1].u.operand);
 }
@@ -752,6 +753,10 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
 
     JumpList slowCases;
     emitAllocateJSObject(resultReg, nullptr, allocatorReg, structureReg, TrustedImmPtr(0), scratchReg, slowCases);
+    emitGetVirtualRegister(callee, scratchReg);
+    loadPtr(Address(scratchReg, JSFunction::offsetOfRareData()), scratchReg);
+    load32(Address(scratchReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfInlineCapacity()), scratchReg);
+    emitInitializeInlineStorage(resultReg, scratchReg);
     addSlowCase(slowCases);
     emitPutVirtualRegister(currentInstruction[1].u.operand);
 }

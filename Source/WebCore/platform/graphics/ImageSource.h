@@ -53,8 +53,11 @@ public:
     ImageSource(Image*, AlphaOption = AlphaOption::Premultiplied, GammaAndColorProfileOption = GammaAndColorProfileOption::Applied);
     ~ImageSource();
 
-    void destroyDecodedData(SharedBuffer* data, bool destroyAll = true, size_t count = 0);
-    bool destroyDecodedDataIfNecessary(SharedBuffer* data, bool destroyAll = true, size_t count = 0);
+    void destroyAllDecodedData() { m_frameCache->destroyAllDecodedData(); }
+    void destroyAllDecodedDataExcludeFrame(size_t excludeFrame) { m_frameCache->destroyAllDecodedDataExcludeFrame(excludeFrame); }
+    void destroyDecodedDataBeforeFrame(size_t beforeFrame) { m_frameCache->destroyDecodedDataBeforeFrame(beforeFrame); }
+    void clearFrameBufferCache(size_t);
+    void clear(SharedBuffer* data);
 
     bool ensureDecoderAvailable(SharedBuffer*);
     bool isDecoderAvailable() const { return m_decoder.get(); }
@@ -67,6 +70,7 @@ public:
 
     bool isAsyncDecodingRequired();
     bool requestFrameAsyncDecodingAtIndex(size_t index, SubsamplingLevel subsamplingLevel) { return m_frameCache->requestFrameAsyncDecodingAtIndex(index, subsamplingLevel); }
+    bool hasDecodingQueue() const { return m_frameCache->hasDecodingQueue(); }
     void stopAsyncDecodingQueue() { m_frameCache->stopAsyncDecodingQueue(); }
 
     // Image metadata which is calculated by the decoder or can deduced by the case of the memory NativeImage.
@@ -74,7 +78,7 @@ public:
     size_t frameCount() { return m_frameCache->frameCount(); }
     RepetitionCount repetitionCount() { return m_frameCache->repetitionCount(); }
     String filenameExtension() { return m_frameCache->filenameExtension(); }
-    Optional<IntPoint> hotSpot() { return m_frameCache->hotSpot(); }
+    std::optional<IntPoint> hotSpot() { return m_frameCache->hotSpot(); }
 
     // Image metadata which is calculated from the first ImageFrame.
     IntSize size() { return m_frameCache->size(); }
@@ -101,8 +105,6 @@ public:
     NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default);
 
 private:
-    void clearFrameBufferCache(size_t);
-    void clear(bool destroyAll, size_t count, SharedBuffer* data);
     void dump(TextStream&);
 
     void setDecoderTargetContext(const GraphicsContext*);
@@ -110,7 +112,7 @@ private:
     Ref<ImageFrameCache> m_frameCache;
     std::unique_ptr<ImageDecoder> m_decoder;
 
-    Optional<SubsamplingLevel> m_maximumSubsamplingLevel;
+    std::optional<SubsamplingLevel> m_maximumSubsamplingLevel;
 
 #if PLATFORM(IOS)
     // FIXME: We should expose a setting to enable/disable progressive loading so that we can remove the PLATFORM(IOS)-guard.

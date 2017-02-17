@@ -43,6 +43,7 @@
 #include "SerializedScriptValue.h"
 #include "UniqueIDBDatabaseConnection.h"
 #include <heap/HeapInlines.h>
+#include <heap/StrongInlines.h>
 #include <runtime/AuxiliaryBarrierInlines.h>
 #include <runtime/StructureInlines.h>
 #include <wtf/MainThread.h>
@@ -1051,7 +1052,7 @@ void UniqueIDBDatabase::getRecord(const IDBRequestData& requestData, const IDBGe
     if (uint64_t indexIdentifier = requestData.indexIdentifier())
         postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performGetIndexRecord, callbackID, requestData.transactionIdentifier(), requestData.objectStoreIdentifier(), indexIdentifier, requestData.indexRecordType(), getRecordData.keyRangeData));
     else
-        postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performGetRecord, callbackID, requestData.transactionIdentifier(), requestData.objectStoreIdentifier(), getRecordData.keyRangeData));
+        postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performGetRecord, callbackID, requestData.transactionIdentifier(), requestData.objectStoreIdentifier(), getRecordData.keyRangeData, getRecordData.type));
 }
 
 void UniqueIDBDatabase::getAllRecords(const IDBRequestData& requestData, const IDBGetAllRecordsData& getAllRecordsData, GetAllResultsCallback callback)
@@ -1066,7 +1067,7 @@ void UniqueIDBDatabase::getAllRecords(const IDBRequestData& requestData, const I
     postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performGetAllRecords, callbackID, requestData.transactionIdentifier(), getAllRecordsData));
 }
 
-void UniqueIDBDatabase::performGetRecord(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& keyRangeData)
+void UniqueIDBDatabase::performGetRecord(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& keyRangeData, IDBGetRecordDataType type)
 {
     ASSERT(!isMainThread());
     LOG(IndexedDB, "(db) UniqueIDBDatabase::performGetRecord");
@@ -1074,7 +1075,7 @@ void UniqueIDBDatabase::performGetRecord(uint64_t callbackIdentifier, const IDBR
     ASSERT(m_backingStore);
 
     IDBGetResult result;
-    IDBError error = m_backingStore->getRecord(transactionIdentifier, objectStoreIdentifier, keyRangeData, result);
+    IDBError error = m_backingStore->getRecord(transactionIdentifier, objectStoreIdentifier, keyRangeData, type, result);
 
     postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformGetRecord, callbackIdentifier, error, result));
 }
@@ -1232,7 +1233,27 @@ void UniqueIDBDatabase::performIterateCursor(uint64_t callbackIdentifier, const 
     IDBGetResult result;
     IDBError error = m_backingStore->iterateCursor(transactionIdentifier, cursorIdentifier, data, result);
 
+    if (error.isNull()) {
+        auto addResult = m_prefetchProtectors.add(cursorIdentifier, nullptr);
+        if (addResult.isNewEntry) {
+            addResult.iterator->value = this;
+            postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performPrefetchCursor, transactionIdentifier, cursorIdentifier));
+        }
+    }
+
     postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformIterateCursor, callbackIdentifier, error, result));
+}
+
+void UniqueIDBDatabase::performPrefetchCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier)
+{
+    ASSERT(!isMainThread());
+    ASSERT(m_prefetchProtectors.contains(cursorIdentifier));
+    LOG(IndexedDB, "(db) UniqueIDBDatabase::performPrefetchCursor");
+
+    if (m_backingStore->prefetchCursor(transactionIdentifier, cursorIdentifier))
+        postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performPrefetchCursor, transactionIdentifier, cursorIdentifier));
+    else
+        postDatabaseTaskReply(WTF::Function<void ()>([prefetchProtector = m_prefetchProtectors.take(cursorIdentifier)]() { }));
 }
 
 void UniqueIDBDatabase::didPerformIterateCursor(uint64_t callbackIdentifier, const IDBError& error, const IDBGetResult& result)
@@ -1685,7 +1706,6 @@ void UniqueIDBDatabase::transactionCompleted(RefPtr<UniqueIDBDatabaseTransaction
 
 void UniqueIDBDatabase::postDatabaseTask(CrossThreadTask&& task)
 {
-    ASSERT(isMainThread());
     m_databaseQueue.append(WTFMove(task));
     ++m_queuedTaskCount;
 

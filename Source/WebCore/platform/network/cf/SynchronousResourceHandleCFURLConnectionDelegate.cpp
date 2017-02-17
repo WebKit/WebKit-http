@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2013, 2015 Apple Inc.  All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,6 +65,8 @@ void SynchronousResourceHandleCFURLConnectionDelegate::setupRequest(CFMutableURL
 {
 #if PLATFORM(IOS)
     CFURLRequestSetShouldStartSynchronously(request, 1);
+#else
+    UNUSED_PARAM(request);
 #endif
 }
 
@@ -167,24 +169,11 @@ void SynchronousResourceHandleCFURLConnectionDelegate::didReceiveResponse(CFURLC
     }
 #endif
 
-#if USE(QUICK_LOOK)
-    bool isQuickLookPreview = false;
-    m_handle->setQuickLookHandle(QuickLookHandle::create(m_handle, this, cfResponse));
-    if (m_handle->quickLookHandle()) {
-        cfResponse = m_handle->quickLookHandle()->cfResponse();
-        isQuickLookPreview = true;
-    }
-#endif
-
     ResourceResponse resourceResponse(cfResponse);
 #if PLATFORM(COCOA) && ENABLE(WEB_TIMING)
     ResourceHandle::getConnectionTimingData(connection, resourceResponse.networkLoadTiming());
 #else
     UNUSED_PARAM(connection);
-#endif
-
-#if USE(QUICK_LOOK)
-    resourceResponse.setIsQuickLook(isQuickLookPreview);
 #endif
 
     m_handle->client()->didReceiveResponse(m_handle, WTFMove(resourceResponse));
@@ -194,11 +183,6 @@ void SynchronousResourceHandleCFURLConnectionDelegate::didReceiveData(CFDataRef 
 {
     LOG(Network, "CFNet - SynchronousResourceHandleCFURLConnectionDelegate::didReceiveData(handle=%p, bytes=%ld) (%s)", m_handle, CFDataGetLength(data), m_handle->firstRequest().url().string().utf8().data());
 
-#if USE(QUICK_LOOK)
-    if (m_handle->quickLookHandle() && m_handle->quickLookHandle()->didReceiveData(data))
-        return;
-#endif
-
     if (ResourceHandleClient* client = m_handle->client())
         client->didReceiveBuffer(m_handle, SharedBuffer::wrapCFData(data), originalLength);
 }
@@ -207,11 +191,6 @@ void SynchronousResourceHandleCFURLConnectionDelegate::didFinishLoading()
 {
     LOG(Network, "CFNet - SynchronousResourceHandleCFURLConnectionDelegate::didFinishLoading(handle=%p) (%s)", m_handle, m_handle->firstRequest().url().string().utf8().data());
 
-#if USE(QUICK_LOOK)
-    if (m_handle->quickLookHandle() && m_handle->quickLookHandle()->didFinishLoading())
-        return;
-#endif
-
     if (ResourceHandleClient* client = m_handle->client())
         client->didFinishLoading(m_handle, 0);
 }
@@ -219,11 +198,6 @@ void SynchronousResourceHandleCFURLConnectionDelegate::didFinishLoading()
 void SynchronousResourceHandleCFURLConnectionDelegate::didFail(CFErrorRef error)
 {
     LOG(Network, "CFNet - SynchronousResourceHandleCFURLConnectionDelegate::didFail(handle=%p, error = %p) (%s)", m_handle, error, m_handle->firstRequest().url().string().utf8().data());
-
-#if USE(QUICK_LOOK)
-    if (QuickLookHandle* quickLookHandle = m_handle->quickLookHandle())
-        quickLookHandle->didFail();
-#endif
 
     if (ResourceHandleClient* client = m_handle->client())
         client->didFail(m_handle, ResourceError(error));
@@ -287,13 +261,13 @@ Boolean SynchronousResourceHandleCFURLConnectionDelegate::canRespondToProtection
 
     LOG(Network, "CFNet - SynchronousResourceHandleCFURLConnectionDelegate::canRespondToProtectionSpace(handle=%p (%s)", m_handle, m_handle->firstRequest().url().string().utf8().data());
 
-#if PLATFORM(IOS)
     ProtectionSpace coreProtectionSpace = ProtectionSpace(protectionSpace);
+#if PLATFORM(IOS)
     if (coreProtectionSpace.authenticationScheme() == ProtectionSpaceAuthenticationSchemeUnknown)
         return false;
     return m_handle->canAuthenticateAgainstProtectionSpace(coreProtectionSpace);
 #else
-    return m_handle->canAuthenticateAgainstProtectionSpace(core(protectionSpace));
+    return m_handle->canAuthenticateAgainstProtectionSpace(coreProtectionSpace);
 #endif
 }
 #endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
@@ -305,11 +279,6 @@ void SynchronousResourceHandleCFURLConnectionDelegate::didReceiveDataArray(CFArr
         return;
 
     LOG(Network, "CFNet - SynchronousResourceHandleCFURLConnectionDelegate::didReceiveDataArray(handle=%p, arrayLength=%ld) (%s)", m_handle, CFArrayGetCount(dataArray), m_handle->firstRequest().url().string().utf8().data());
-
-#if USE(QUICK_LOOK)
-    if (m_handle->quickLookHandle() && m_handle->quickLookHandle()->didReceiveDataArray(dataArray))
-        return;
-#endif
 
     if (ResourceHandleClient* client = m_handle->client())
         client->didReceiveBuffer(m_handle, SharedBuffer::wrapCFDataArray(dataArray), -1);

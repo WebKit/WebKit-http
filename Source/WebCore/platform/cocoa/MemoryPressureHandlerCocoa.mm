@@ -34,6 +34,7 @@
 #import <wtf/CurrentTime.h>
 
 #if PLATFORM(IOS)
+#import "GraphicsServicesSPI.h"
 #import "SystemMemory.h"
 #import "WebCoreThread.h"
 #endif
@@ -49,7 +50,6 @@ void MemoryPressureHandler::platformReleaseMemory(Critical critical)
     if (critical == Critical::Yes && (!isUnderMemoryPressure() || m_isSimulatingMemoryPressure)) {
         // libcache listens to OS memory notifications, but for process suspension
         // or memory pressure simulation, we need to prod it manually:
-        ReliefLogger log("Purging libcache caches");
         cache_simulate_memory_warning_event(DISPATCH_MEMORYPRESSURE_CRITICAL);
     }
 }
@@ -186,20 +186,15 @@ void MemoryPressureHandler::respondToMemoryPressure(Critical critical, Synchrono
 #endif
 }
 
-size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
+std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
 {
-    // Flush free memory back to the OS before every measurement.
-    // Note that this code only runs when detailed pressure relief logging is enabled.
-    WTF::releaseFastMallocFreeMemory();
-    malloc_zone_pressure_relief(nullptr, 0);
-
     task_vm_info_data_t vmInfo;
     mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
     kern_return_t err = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &vmInfo, &count);
     if (err != KERN_SUCCESS)
-        return static_cast<size_t>(-1);
+        return std::nullopt;
 
-    return static_cast<size_t>(vmInfo.internal);
+    return MemoryUsage {static_cast<size_t>(vmInfo.internal), static_cast<size_t>(vmInfo.phys_footprint)};
 }
 
 #if PLATFORM(IOS)

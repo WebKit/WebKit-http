@@ -73,7 +73,7 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
     initialLayout()
     {
         // Selector Section
-        this._selectorSection = new WebInspector.VisualStyleSelectorSection(this);
+        this._selectorSection = new WebInspector.VisualStyleSelectorSection;
         this._selectorSection.addEventListener(WebInspector.VisualStyleSelectorSection.Event.SelectorChanged, this._updateSections, this);
         this.element.appendChild(this._selectorSection.element);
 
@@ -148,7 +148,7 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         function createOptionsElement() {
             let container = document.createElement("div");
             container.classList.add("visual-style-section-clear");
-            container.title = WebInspector.UIString("Click to clear modified properties");
+            container.title = WebInspector.UIString("Clear modified properties");
             container.addEventListener("click", this._clearModifiedSection.bind(this, camelCaseId));
             return container;
         }

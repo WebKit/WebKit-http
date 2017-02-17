@@ -57,6 +57,7 @@ extern "C" {
     M(NetworkCacheStorage) \
     M(NetworkScheduling) \
     M(NetworkSession) \
+    M(PerformanceLogging) \
     M(Plugins) \
     M(Printing) \
     M(ProcessSuspension) \
@@ -67,6 +68,7 @@ extern "C" {
     M(StorageAPI) \
     M(TextInput) \
     M(ViewGestures) \
+    M(ViewState) \
     M(VirtualMemory) \
     M(VisibleRects) \
 

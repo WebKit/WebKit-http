@@ -57,7 +57,7 @@ ErrorPrototype::ErrorPrototype(VM& vm, Structure* structure)
 void ErrorPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("Error"))), DontEnum);
     putDirect(vm, vm.propertyNames->message, jsEmptyString(&vm), DontEnum);
 }
@@ -80,6 +80,7 @@ EncodedJSValue JSC_HOST_CALL errorProtoFuncToString(ExecState* exec)
 
     // Guard against recursion!
     StringRecursionChecker checker(exec, thisObj);
+    ASSERT(!scope.exception() || checker.earlyReturnValue());
     if (JSValue earlyReturnValue = checker.earlyReturnValue())
         return JSValue::encode(earlyReturnValue);
 
@@ -92,7 +93,7 @@ EncodedJSValue JSC_HOST_CALL errorProtoFuncToString(ExecState* exec)
     if (name.isUndefined())
         nameString = ASCIILiteral("Error");
     else {
-        nameString = name.toString(exec)->value(exec);
+        nameString = name.toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
@@ -107,7 +108,7 @@ EncodedJSValue JSC_HOST_CALL errorProtoFuncToString(ExecState* exec)
     if (message.isUndefined())
         messageString = String();
     else {
-        messageString = message.toString(exec)->value(exec);
+        messageString = message.toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 

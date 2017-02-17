@@ -93,6 +93,17 @@ fast/mediastream
 http/tests/media/media-stream
 http/tests/ssl/media-stream
 
+# These tests test the Shadow DOM based HTML form validation UI but Mac WK1 is using native dialogs instead.
+fast/forms/validation-message-on-listbox.html
+fast/forms/validation-message-on-menulist.html
+fast/forms/validation-message-on-radio.html
+fast/forms/validation-message-on-checkbox.html
+fast/forms/validation-message-on-range.html
+fast/forms/validation-message-clone.html
+fast/forms/validation-message-in-relative-body.html
+fast/forms/validation-message-appearance.html
+fast/forms/validation-message-on-textarea.html
+
 # Disable snapshotting tests on WK1 only
 plugins/snapshotting
 
@@ -186,7 +197,8 @@ inspector/heap/getRemoteObject.html [ Skip ]
 inspector/unit-tests/heap-snapshot.html [ Skip ]
 inspector/unit-tests/heap-snapshot-collection-event.html [ Skip ]
 
-# This test checks ScrollAnimator events only for main frame scrollbars that use native widgets in WK1.
+# These tests check ScrollAnimator events for main frame scrollbars that use native widgets in WK1.
+fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 
 # This hit-test test doesn't work on DRT
@@ -198,11 +210,15 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
+webkit.org/b/156069 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]
+webkit.org/b/156069 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
+webkit.org/b/156069 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
 
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
@@ -243,10 +259,6 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 # rdar://problem/26478296
 [ Sierra+ ] svg/hixie/text/003.html [ Failure ]
 
-# We do not support the new HTML validation UI on WebKit1 yet (rdar://problem/28944652).
-fast/forms/validation-custom-message.html [ Skip ]
-fast/forms/validation-messages.html [ Skip ]
-
 [ Yosemite ] http/tests/media/hls/video-controller-getStartDate.html [ Pass Timeout ]
 
 webkit.org/b/159893 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm [ Pass Failure ]
@@ -257,7 +269,7 @@ webkit.org/b/105870 [ Debug ] webaudio/audionode-connect-order.html [ Pass Crash
 
 webkit.org/b/160227 [ ElCapitan Debug ] inspector/memory/tracking.html [ Pass Crash ]
 
-[ Yosemite ] js/dom/global-constructors-attributes.html [ Failure ]
+webkit.org/b/165934 [ ElCapitan Yosemite ] js/dom/global-constructors-attributes.html [ Failure ]
 
 # rdar://problem/27723718
 [ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html [ ImageOnlyFailure ]
@@ -270,20 +282,29 @@ webkit.org/b/162592 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-refle
 webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection-add-backdrop.html [ Pass ImageOnlyFailure ]
 webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection-value-change.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
-
-webkit.org/b/162986 inspector/formatting/formatting-javascript.html [ Pass Crash ]
-
 webkit.org/b/161360 [ Release ] imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin.html [ Pass Failure ]
 
-webkit.org/b/163598 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html [ Pass Failure ]
-
-webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-exception.html [ Pass Failure ]
-webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-invoked.html [ Pass Failure ]
-webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-multicalls.html [ Pass Failure ]
-
-webkit.org/b/163750 compositing/iframes/page-cache-layer-tree.html [ Pass Failure ]
+webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-exception.html [ Pass Failure ]
+webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-invoked.html [ Pass Failure ]
+webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-multicalls.html [ Pass Failure ]
 
 webkit.org/b/164491 [ Yosemite ElCapitan ] fast/visual-viewport/rtl-zoomed-rects.html [ Failure ]
 
-webkit.org/b/164336 [ Debug ] media/modern-media-controls/pip-support/pip-support-enabled.html [ Pass Crash ]
+webkit.org/b/164933 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
+
+webkit.org/b/165541 compositing/layer-creation/fixed-overlap-extent-rtl.html [ Failure ]
+webkit.org/b/165541 compositing/rtl/rtl-fixed-overflow.html [ Failure ]
+
+webkit.org/b/154612 [ Sierra ] compositing/repaint/fixed-background-scroll.html [ Pass Failure ]
+
+webkit.org/b/165589 pointer-lock/lock-lost-on-esc-in-fullscreen.html [ Skip ]
+
+# webkit.org/b/163585
+media/track/track-cues-cuechange.html [ Pass Crash ]
+media/track/track-cue-rendering-horizontal.html [ Pass Crash ]
+media/accessibility-closed-captions-has-aria-owns.html [ Pass Crash ]
+media/track/track-cues-enter-exit.html [ Pass Crash ]
+
+webkit.org/b/167127 pointer-lock/locked-element-removed-from-dom.html
+
+webkit.org/b/167857 pageoverlay/overlay-remove-reinsert-view.html [ Skip ]

@@ -76,6 +76,7 @@ ALWAYS_INLINE unsigned getLength(ExecState* exec, JSObject* obj)
 
     JSValue lengthValue = obj->get(exec, vm.propertyNames->length);
     RETURN_IF_EXCEPTION(scope, UINT_MAX);
+    scope.release();
     return lengthValue.toUInt32(exec);
 }
 
@@ -88,7 +89,13 @@ ALWAYS_INLINE double toLength(ExecState* exec, JSObject* obj)
 
     JSValue lengthValue = obj->get(exec, vm.propertyNames->length);
     RETURN_IF_EXCEPTION(scope, PNaN);
+    scope.release();
     return lengthValue.toLength(exec);
+}
+
+ALWAYS_INLINE bool JSArray::isIteratorProtocolFastAndNonObservable()
+{
+    return globalObject()->isArrayIteratorProtocolFastAndNonObservable();
 }
 
 } // namespace JSC

@@ -59,58 +59,53 @@ void ExecutableBase::clearCode()
 #endif
     m_numParametersForCall = NUM_PARAMETERS_NOT_COMPILED;
     m_numParametersForConstruct = NUM_PARAMETERS_NOT_COMPILED;
+    VM& vm = *this->vm();
 
-    if (classInfo() == FunctionExecutable::info()) {
-        FunctionExecutable* executable = jsCast<FunctionExecutable*>(this);
+
+    if (structure(vm)->classInfo() == FunctionExecutable::info()) {
+        FunctionExecutable* executable = static_cast<FunctionExecutable*>(this);
         executable->m_codeBlockForCall.clear();
         executable->m_codeBlockForConstruct.clear();
         return;
     }
 
-    if (classInfo() == EvalExecutable::info()) {
-        EvalExecutable* executable = jsCast<EvalExecutable*>(this);
+    if (structure(vm)->classInfo() == EvalExecutable::info()) {
+        EvalExecutable* executable = static_cast<EvalExecutable*>(this);
         executable->m_evalCodeBlock.clear();
         executable->m_unlinkedEvalCodeBlock.clear();
         return;
     }
     
-    if (classInfo() == ProgramExecutable::info()) {
-        ProgramExecutable* executable = jsCast<ProgramExecutable*>(this);
+    if (structure(vm)->classInfo() == ProgramExecutable::info()) {
+        ProgramExecutable* executable = static_cast<ProgramExecutable*>(this);
         executable->m_programCodeBlock.clear();
         executable->m_unlinkedProgramCodeBlock.clear();
         return;
     }
 
-    if (classInfo() == ModuleProgramExecutable::info()) {
-        ModuleProgramExecutable* executable = jsCast<ModuleProgramExecutable*>(this);
+    if (structure(vm)->classInfo() == ModuleProgramExecutable::info()) {
+        ModuleProgramExecutable* executable = static_cast<ModuleProgramExecutable*>(this);
         executable->m_moduleProgramCodeBlock.clear();
         executable->m_unlinkedModuleProgramCodeBlock.clear();
         executable->m_moduleEnvironmentSymbolTable.clear();
         return;
     }
     
-#if ENABLE(WEBASSEMBLY)
-    if (classInfo() == WebAssemblyExecutable::info()) {
-        WebAssemblyExecutable* executable = jsCast<WebAssemblyExecutable*>(this);
-        executable->m_codeBlockForCall.clear();
-        return;
-    }
-#endif
-
-    ASSERT(classInfo() == NativeExecutable::info());
+    ASSERT(structure(vm)->classInfo() == NativeExecutable::info());
 }
 
 void ExecutableBase::dump(PrintStream& out) const
 {
+    VM& vm = *this->vm();
     ExecutableBase* realThis = const_cast<ExecutableBase*>(this);
-    
-    if (classInfo() == NativeExecutable::info()) {
+
+    if (classInfo(vm) == NativeExecutable::info()) {
         NativeExecutable* native = jsCast<NativeExecutable*>(realThis);
         out.print("NativeExecutable:", RawPointer(bitwise_cast<void*>(native->function())), "/", RawPointer(bitwise_cast<void*>(native->constructor())));
         return;
     }
     
-    if (classInfo() == EvalExecutable::info()) {
+    if (classInfo(vm) == EvalExecutable::info()) {
         EvalExecutable* eval = jsCast<EvalExecutable*>(realThis);
         if (CodeBlock* codeBlock = eval->codeBlock())
             out.print(*codeBlock);
@@ -119,7 +114,7 @@ void ExecutableBase::dump(PrintStream& out) const
         return;
     }
     
-    if (classInfo() == ProgramExecutable::info()) {
+    if (classInfo(vm) == ProgramExecutable::info()) {
         ProgramExecutable* eval = jsCast<ProgramExecutable*>(realThis);
         if (CodeBlock* codeBlock = eval->codeBlock())
             out.print(*codeBlock);
@@ -128,7 +123,7 @@ void ExecutableBase::dump(PrintStream& out) const
         return;
     }
 
-    if (classInfo() == ModuleProgramExecutable::info()) {
+    if (classInfo(vm) == ModuleProgramExecutable::info()) {
         ModuleProgramExecutable* executable = jsCast<ModuleProgramExecutable*>(realThis);
         if (CodeBlock* codeBlock = executable->codeBlock())
             out.print(*codeBlock);
@@ -151,7 +146,7 @@ void ExecutableBase::dump(PrintStream& out) const
 
 CodeBlockHash ExecutableBase::hashFor(CodeSpecializationKind kind) const
 {
-    if (this->classInfo() == NativeExecutable::info())
+    if (this->classInfo(*this->vm()) == NativeExecutable::info())
         return jsCast<const NativeExecutable*>(this)->hashFor(kind);
     
     return jsCast<const ScriptExecutable*>(this)->hashFor(kind);

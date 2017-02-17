@@ -78,7 +78,7 @@ void HTMLStyleElement::parseAttribute(const QualifiedName& name, const AtomicStr
     else if (name == mediaAttr) {
         m_styleSheetOwner.setMedia(value);
         if (sheet()) {
-            sheet()->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(value));
+            sheet()->setMediaQueries(MediaQuerySet::create(value));
             if (auto* scope = m_styleSheetOwner.styleScope())
                 scope->didChangeStyleSheetContents();
         } else
@@ -97,9 +97,9 @@ void HTMLStyleElement::finishParsingChildren()
 
 Node::InsertionNotificationRequest HTMLStyleElement::insertedInto(ContainerNode& insertionPoint)
 {
-    bool wasInDocument = inDocument();
+    bool wasInDocument = isConnected();
     auto result = HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint.inDocument() && !wasInDocument)
+    if (insertionPoint.isConnected() && !wasInDocument)
         m_styleSheetOwner.insertedIntoDocument(*this);
     return result;
 }
@@ -107,7 +107,7 @@ Node::InsertionNotificationRequest HTMLStyleElement::insertedInto(ContainerNode&
 void HTMLStyleElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint.inDocument() && !inDocument())
+    if (insertionPoint.isConnected() && !isConnected())
         m_styleSheetOwner.removedFromDocument(*this);
 }
 

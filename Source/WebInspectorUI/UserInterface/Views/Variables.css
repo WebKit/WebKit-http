@@ -33,6 +33,7 @@
     --z-index-uncaught-exception-sheet: 4096;
 
     --selected-foreground-color: white;
+    --selected-secondary-text-color: hsla(0, 100%, 100%, 0.7);
     --selected-background-color: hsl(212, 92%, 54%);
     --selected-background-color-unfocused: hsl(0, 0%, 83%);
     --selected-background-color-active: hsl(218, 85%, 52%);
@@ -47,12 +48,17 @@
 
     --border-color: hsl(0, 0%, 70%);
     --border-color-dark: hsl(0, 0%, 57%);
+
+    --button-background-color: white;
+    --button-background-color-pressed: hsl(0, 0%, 85%);
+
     --panel-background-color: hsl(0, 0%, 94%);
     --panel-background-color-light: hsl(0, 0%, 96%);
 
     --console-secondary-text-color: hsla(0, 0%, 0%, 0.33);
     --console-prompt-min-height: 30px;
 
+    --text-color-gray-medium: hsl(0, 0%, 50%);
     --error-text-color: hsl(0, 86%, 47%);
 
     --syntax-highlight-number-color: hsl(248, 100%, 40%);

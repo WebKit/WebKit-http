@@ -37,6 +37,10 @@ extern DumpRenderTreeBrowserView *gWebBrowserView;
 extern DumpRenderTreeWebScrollView *gWebScrollView;
 
 namespace WTR {
+    
+void UIScriptController::checkForOutstandingCallbacks()
+{
+}
 
 void UIScriptController::doAsyncTask(JSValueRef callback)
 {
@@ -47,6 +51,16 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
             return;
         m_context->asyncTaskComplete(callbackID);
     });
+}
+
+void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
+{
+    return doAsyncTask(callback);
+}
+
+void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback)
+{
+    doAsyncTask(callback);
 }
 
 void UIScriptController::zoomToScale(double scale, JSValueRef callback)
@@ -61,6 +75,10 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
             protectedThis->context()->asyncTaskComplete(callbackID);
         }];
     });
+}
+
+void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
+{
 }
 
 double UIScriptController::zoomScale() const
@@ -141,8 +159,35 @@ JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfac
     return nullptr;
 }
 
-void UIScriptController::scrollToOffset(long, long)
+static CGPoint contentOffsetBoundedInValidRange(UIScrollView *scrollView, CGPoint contentOffset)
 {
+    UIEdgeInsets contentInsets = scrollView.contentInset;
+    CGSize contentSize = scrollView.contentSize;
+    CGSize scrollViewSize = scrollView.bounds.size;
+
+    CGFloat maxHorizontalOffset = contentSize.width + contentInsets.right - scrollViewSize.width;
+    contentOffset.x = std::min(maxHorizontalOffset, contentOffset.x);
+    contentOffset.x = std::max(-contentInsets.left, contentOffset.x);
+
+    CGFloat maxVerticalOffset = contentSize.height + contentInsets.bottom - scrollViewSize.height;
+    contentOffset.y = std::min(maxVerticalOffset, contentOffset.y);
+    contentOffset.y = std::max(-contentInsets.top, contentOffset.y);
+    return contentOffset;
+}
+
+void UIScriptController::scrollToOffset(long x, long y)
+{
+    [gWebScrollView setContentOffset:contentOffsetBoundedInValidRange(gWebScrollView, CGPointMake(x, y)) animated:YES];
+}
+
+void UIScriptController::immediateScrollToOffset(long x, long y)
+{
+    [gWebScrollView setContentOffset:contentOffsetBoundedInValidRange(gWebScrollView, CGPointMake(x, y)) animated:NO];
+}
+
+void UIScriptController::immediateZoomToScale(double scale)
+{
+    [gWebScrollView setZoomScale:scale animated:NO];
 }
 
 void UIScriptController::keyboardAccessoryBarNext()
@@ -162,6 +207,16 @@ double UIScriptController::maximumZoomScale() const
 {
     return gWebScrollView.maximumZoomScale;
 }
+
+std::optional<bool> UIScriptController::stableStateOverride() const
+{
+    return std::nullopt;
+}
+
+void UIScriptController::setStableStateOverride(std::optional<bool>)
+{
+}
+
 
 JSObjectRef UIScriptController::contentVisibleRect() const
 {
@@ -215,6 +270,16 @@ JSObjectRef UIScriptController::selectionRangeViewRects() const
     return nullptr;
 }
 
+JSObjectRef UIScriptController::textSelectionCaretRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::inputViewBounds() const
+{
+    return nullptr;
+}
+
 void UIScriptController::removeAllDynamicDictionaries()
 {
 }
@@ -222,6 +287,23 @@ void UIScriptController::removeAllDynamicDictionaries()
 JSRetainPtr<JSStringRef> UIScriptController::scrollingTreeAsText() const
 {
     return nullptr;
+}
+
+void UIScriptController::retrieveSpeakSelectionContent(JSValueRef)
+{
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::accessibilitySpeakSelectionContent() const
+{
+    return nullptr;
+}
+
+void UIScriptController::removeViewFromWindow(JSValueRef)
+{
+}
+
+void UIScriptController::addViewToWindow(JSValueRef)
+{
 }
 
 }

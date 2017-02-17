@@ -3918,7 +3918,8 @@
       ],
       "nicks" : [
          "GameMaker"
-      ]
+      ],
+      "status" : "committer"
    },
    "Michael Br\u00fcning" : {
       "emails" : [
@@ -5260,8 +5261,9 @@
          "Tim Hatcher"
       ],
       "emails" : [
-         "timothy@apple.com",
-         "timothy@hatcher.name"
+         "timothy@hatcher.name",
+         "thatcher@tesla.com",
+         "timothy@apple.com"
       ],
       "expertise" : "WebKit API (Mac), WebKit Web Site, Developer Tools (Web Inspector, JavaScript Debugger)",
       "nicks" : [
@@ -5304,6 +5306,15 @@
       ],
       "nicks" : [
          "tommyw"
+      ],
+      "status" : "committer"
+   },
+   "Tom\u00e1\u0161 Popela" : {
+      "emails" : [
+         "tpopela@redhat.com"
+      ],
+      "nicks" : [
+         "tpopela"
       ],
       "status" : "committer"
    },
@@ -5651,7 +5662,8 @@
    "Youenn Fablet" : {
       "emails" : [
          "youennf@gmail.com",
-         "youenn.fablet@crf.canon.fr"
+         "youenn@apple.com",
+         "yfablet@apple.com"
       ],
       "nicks" : [
          "youenn"

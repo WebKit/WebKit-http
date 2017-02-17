@@ -47,7 +47,7 @@ PlatformWebView::~PlatformWebView()
 {
 }
 
-void PlatformWebView::resizeTo(unsigned, unsigned)
+void PlatformWebView::resizeTo(unsigned, unsigned, WebViewSizingMode)
 {
 }
 
@@ -65,7 +65,7 @@ WKRect PlatformWebView::windowFrame()
     return WKRect{ 0, 0, 1, 1 };
 }
 
-void PlatformWebView::setWindowFrame(WKRect)
+void PlatformWebView::setWindowFrame(WKRect, WebViewSizingMode)
 {
 }
 
@@ -78,6 +78,14 @@ void PlatformWebView::addChromeInputField()
 }
 
 void PlatformWebView::removeChromeInputField()
+{
+}
+
+void PlatformWebView::addToWindow()
+{
+}
+
+void PlatformWebView::removeFromWindow()
 {
 }
 

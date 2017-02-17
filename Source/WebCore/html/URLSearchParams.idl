@@ -24,7 +24,8 @@
  */
 
 [
-    Constructor(optional (USVString or URLSearchParams) init = ""),
+    Constructor(optional (sequence<sequence<USVString>> or record<USVString, USVString> or USVString) init = ""),
+    ConstructorMayThrowException,
     Exposed=(Window,Worker),
     ImplementationLacksVTable,
 ] interface URLSearchParams {
@@ -34,7 +35,10 @@
     sequence<USVString> getAll(USVString name);
     boolean has(USVString name);
     void set(USVString name, USVString value);
-    // FIXME: This should be iterable.
+
+    void sort();
+
+    iterable<USVString, USVString>;
 
     // FIXME: This should just be stringifier once that is supported in the bindings generator
     DOMString toString();

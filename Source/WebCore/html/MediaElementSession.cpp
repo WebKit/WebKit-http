@@ -29,8 +29,6 @@
 
 #include "MediaElementSession.h"
 
-#include "Chrome.h"
-#include "ChromeClient.h"
 #include "Document.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -46,8 +44,10 @@
 #include "RenderMedia.h"
 #include "RenderView.h"
 #include "ScriptController.h"
+#include "Settings.h"
 #include "SourceBuffer.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(IOS)
 #include "AudioSession.h"
@@ -148,30 +148,33 @@ void MediaElementSession::removeBehaviorRestriction(BehaviorRestrictions restric
     m_restrictions &= ~restriction;
 }
 
-bool MediaElementSession::playbackPermitted(const HTMLMediaElement& element) const
+SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted(const HTMLMediaElement& element) const
 {
+    if (element.document().isMediaDocument() && !element.document().ownerElement())
+        return SuccessOr<MediaPlaybackDenialReason>();
+
     if (pageExplicitlyAllowsElementToAutoplayInline(element))
-        return true;
+        return SuccessOr<MediaPlaybackDenialReason>();
 
     if (requiresFullscreenForVideoPlayback(element) && !fullscreenPermitted(element)) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of fullscreen restriction");
-        return false;
+        return MediaPlaybackDenialReason::FullscreenRequired;
     }
 
     if (m_restrictions & OverrideUserGestureRequirementForMainContent && updateIsMainContent())
-        return true;
+        return SuccessOr<MediaPlaybackDenialReason>();
 
     if (m_restrictions & RequireUserGestureForVideoRateChange && element.isVideo() && !ScriptController::processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of video rate change restriction");
-        return false;
+        return MediaPlaybackDenialReason::UserGestureRequired;
     }
 
     if (m_restrictions & RequireUserGestureForAudioRateChange && (!element.isVideo() || element.hasAudio()) && !element.muted() && !ScriptController::processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of audio rate change restriction");
-        return false;
+        return MediaPlaybackDenialReason::UserGestureRequired;
     }
 
-    return true;
+    return SuccessOr<MediaPlaybackDenialReason>();
 }
 
 bool MediaElementSession::autoplayPermitted() const
@@ -395,8 +398,7 @@ bool MediaElementSession::hasWirelessPlaybackTargets(const HTMLMediaElement&) co
 
 bool MediaElementSession::wirelessVideoPlaybackDisabled(const HTMLMediaElement& element) const
 {
-    Settings* settings = element.document().settings();
-    if (!settings || !settings->allowsAirPlayForMediaPlayback()) {
+    if (!element.document().settings().allowsAirPlayForMediaPlayback()) {
         LOG(Media, "MediaElementSession::wirelessVideoPlaybackDisabled - returning TRUE because of settings");
         return true;
     }
@@ -538,11 +540,13 @@ bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElem
     if (is<HTMLAudioElement>(element))
         return false;
 
-    Settings* settings = element.document().settings();
-    if (!settings || !settings->allowsInlineMediaPlayback())
+    if (element.isTemporarilyAllowingInlinePlaybackAfterFullscreen())
+        return false;
+
+    if (!element.document().settings().allowsInlineMediaPlayback())
         return true;
 
-    if (!settings->inlineMediaPlaybackRequiresPlaysInlineAttribute())
+    if (!element.document().settings().inlineMediaPlaybackRequiresPlaysInlineAttribute())
         return false;
 
 #if PLATFORM(IOS)
@@ -559,8 +563,7 @@ bool MediaElementSession::allowsAutomaticMediaDataLoading(const HTMLMediaElement
     if (pageExplicitlyAllowsElementToAutoplayInline(element))
         return true;
 
-    Settings* settings = element.document().settings();
-    if (settings && settings->mediaDataLoadsAutomatically())
+    if (element.document().settings().mediaDataLoadsAutomatically())
         return true;
 
     return false;
@@ -591,8 +594,7 @@ void MediaElementSession::resetPlaybackSessionState()
 
 bool MediaElementSession::allowsPictureInPicture(const HTMLMediaElement& element) const
 {
-    Settings* settings = element.document().settings();
-    return settings && settings->allowsPictureInPictureMediaPlayback() && !element.webkitCurrentPlaybackTargetIsWireless();
+    return element.document().settings().allowsPictureInPictureMediaPlayback() && !element.webkitCurrentPlaybackTargetIsWireless();
 }
 
 #if PLATFORM(IOS)
@@ -603,21 +605,13 @@ bool MediaElementSession::requiresPlaybackTargetRouteMonitoring() const
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
-const unsigned fiveMinutesOf1080PVideo = 290 * 1024 * 1024; // 290 MB is approximately 5 minutes of 8Mbps (1080p) content.
-const unsigned fiveMinutesStereoAudio = 14 * 1024 * 1024; // 14 MB is approximately 5 minutes of 384kbps content.
-
 size_t MediaElementSession::maximumMediaSourceBufferSize(const SourceBuffer& buffer) const
 {
     // A good quality 1080p video uses 8,000 kbps and stereo audio uses 384 kbps, so assume 95% for video and 5% for audio.
     const float bufferBudgetPercentageForVideo = .95;
     const float bufferBudgetPercentageForAudio = .05;
 
-    size_t maximum;
-    Settings* settings = buffer.document().settings();
-    if (settings)
-        maximum = settings->maximumSourceBufferSize();
-    else
-        maximum = fiveMinutesOf1080PVideo + fiveMinutesStereoAudio;
+    size_t maximum = buffer.document().settings().maximumSourceBufferSize();
 
     // Allow a SourceBuffer to buffer as though it is audio-only even if it doesn't have any active tracks (yet).
     size_t bufferSize = static_cast<size_t>(maximum * bufferBudgetPercentageForAudio);

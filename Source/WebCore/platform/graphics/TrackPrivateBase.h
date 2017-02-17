@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Cable Television Labs, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,34 +25,29 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TrackPrivateBase_h
-#define TrackPrivateBase_h
-
-#include <wtf/Forward.h>
-#include <wtf/MediaTime.h>
-#include <wtf/Noncopyable.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/AtomicString.h>
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
-namespace WebCore {
+#include <wtf/MediaTime.h>
+#include <wtf/text/AtomicString.h>
 
-class TrackPrivateBase;
+namespace WebCore {
 
 class TrackPrivateBaseClient {
 public:
     virtual ~TrackPrivateBaseClient() { }
-    virtual void idChanged(TrackPrivateBase*, const AtomicString&) = 0;
-    virtual void labelChanged(TrackPrivateBase*, const AtomicString&) = 0;
-    virtual void languageChanged(TrackPrivateBase*, const AtomicString&) = 0;
-    virtual void willRemove(TrackPrivateBase*) = 0;
+    virtual void idChanged(const AtomicString&) = 0;
+    virtual void labelChanged(const AtomicString&) = 0;
+    virtual void languageChanged(const AtomicString&) = 0;
+    virtual void willRemove() = 0;
 };
 
 class TrackPrivateBase : public RefCounted<TrackPrivateBase> {
-    WTF_MAKE_NONCOPYABLE(TrackPrivateBase); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(TrackPrivateBase);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    virtual ~TrackPrivateBase() { }
+    virtual ~TrackPrivateBase() = default;
 
     virtual TrackPrivateBaseClient* client() const = 0;
 
@@ -63,18 +58,17 @@ public:
     virtual int trackIndex() const { return 0; }
 
     virtual MediaTime startTimeVariance() const { return MediaTime::zeroTime(); }
-    
+
     void willBeRemoved()
     {
-        if (TrackPrivateBaseClient* client = this->client())
-            client->willRemove(this);
+        if (auto* client = this->client())
+            client->willRemove();
     }
 
 protected:
-    TrackPrivateBase() { }
+    TrackPrivateBase() = default;
 };
 
 } // namespace WebCore
 
-#endif
 #endif

@@ -32,7 +32,6 @@
 #include "AudioSourceProvider.h"
 #include "GraphicsContext.h"
 #include "IntRect.h"
-#include "MediaSourceSettings.h"
 #include "UUID.h"
 
 namespace WebCore {
@@ -47,27 +46,18 @@ Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(Ref<RealtimeMediaSo
     return adoptRef(*new MediaStreamTrackPrivate(WTFMove(source), WTFMove(id)));
 }
 
-MediaStreamTrackPrivate::MediaStreamTrackPrivate(const MediaStreamTrackPrivate& other)
-    : m_source(other.m_source.copyRef())
-    , m_id(createCanonicalUUIDString())
-    , m_isEnabled(other.enabled())
-    , m_isEnded(other.ended())
-{
-    m_source->addObserver(this);
-}
-
 MediaStreamTrackPrivate::MediaStreamTrackPrivate(Ref<RealtimeMediaSource>&& source, String&& id)
     : m_source(WTFMove(source))
     , m_id(WTFMove(id))
     , m_isEnabled(true)
     , m_isEnded(false)
 {
-    m_source->addObserver(this);
+    m_source->addObserver(*this);
 }
 
 MediaStreamTrackPrivate::~MediaStreamTrackPrivate()
 {
-    m_source->removeObserver(this);
+    m_source->removeObserver(*this);
 }
 
 void MediaStreamTrackPrivate::addObserver(MediaStreamTrackPrivate::Observer& observer)
@@ -132,17 +122,16 @@ void MediaStreamTrackPrivate::endTrack()
 
 Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::clone()
 {
-    return adoptRef(*new MediaStreamTrackPrivate(*this));
+    auto clonedMediaStreamTrackPrivate = create(m_source.copyRef());
+    clonedMediaStreamTrackPrivate->m_isEnabled = this->m_isEnabled;
+    clonedMediaStreamTrackPrivate->m_isEnded = this->m_isEnded;
+
+    return clonedMediaStreamTrackPrivate;
 }
 
 RealtimeMediaSource::Type MediaStreamTrackPrivate::type() const
 {
     return m_source->type();
-}
-
-RefPtr<MediaConstraints> MediaStreamTrackPrivate::constraints() const
-{
-    return m_constraints;
 }
 
 const RealtimeMediaSourceSettings& MediaStreamTrackPrivate::settings() const
@@ -209,7 +198,7 @@ bool MediaStreamTrackPrivate::preventSourceFromStopping()
     return !m_isEnded;
 }
 
-void MediaStreamTrackPrivate::sourceHasMoreMediaData(MediaSample& mediaSample)
+void MediaStreamTrackPrivate::videoSampleAvailable(MediaSample& mediaSample)
 {
     mediaSample.setTrackID(id());
     for (auto& observer : m_observers)

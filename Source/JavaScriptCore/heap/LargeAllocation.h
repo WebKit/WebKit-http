@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,14 +30,18 @@
 
 namespace JSC {
 
+class SlotVisitor;
+
 // WebKit has a good malloc that already knows what to do for large allocations. The GC shouldn't
 // have to think about such things. That's where LargeAllocation comes in. We will allocate large
 // objects directly using malloc, and put the LargeAllocation header just before them. We can detect
 // when a HeapCell* is a LargeAllocation because it will have the MarkedBlock::atomSize / 2 bit set.
 
-class LargeAllocation {
+class LargeAllocation : public BasicRawSentinelNode<LargeAllocation> {
 public:
-    static LargeAllocation* tryCreate(Heap&, size_t, const AllocatorAttributes&);
+    static LargeAllocation* tryCreate(Heap&, size_t, Subspace*);
+    
+    ~LargeAllocation();
     
     static LargeAllocation* fromCell(const void* cell)
     {
@@ -62,7 +66,7 @@ public:
     
     void shrink();
     
-    void visitWeakSet(HeapRootVisitor&);
+    void visitWeakSet(SlotVisitor&);
     void reapWeakSet();
     
     void clearNewlyAllocated() { m_isNewlyAllocated = false; }
@@ -121,6 +125,12 @@ public:
     
     void noteMarked() { }
     
+#if ASSERT_DISABLED
+    void assertValidCell(VM&, HeapCell*) const { }
+#else
+    void assertValidCell(VM&, HeapCell*) const;
+#endif
+    
     void sweep();
     
     void destroy();
@@ -128,7 +138,7 @@ public:
     void dump(PrintStream&) const;
     
 private:
-    LargeAllocation(Heap&, size_t, const AllocatorAttributes&);
+    LargeAllocation(Heap&, size_t, Subspace*);
     
     static const unsigned alignment = MarkedBlock::atomSize;
     static const unsigned halfAlignment = alignment / 2;
@@ -140,6 +150,7 @@ private:
     bool m_hasValidCell;
     Atomic<bool> m_isMarked;
     AllocatorAttributes m_attributes;
+    Subspace* m_subspace;
     WeakSet m_weakSet;
 };
 

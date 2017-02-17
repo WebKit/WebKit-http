@@ -31,24 +31,82 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
+#include "CDM.h"
+#include "CDMInstance.h"
 #include "MediaKeySession.h"
-#include "NotImplemented.h"
+#include "SharedBuffer.h"
 
 namespace WebCore {
 
-MediaKeys::MediaKeys() = default;
+MediaKeys::MediaKeys(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>& supportedSessionTypes, Ref<CDM>&& implementation, Ref<CDMInstance>&& instance)
+    : m_useDistinctiveIdentifier(useDistinctiveIdentifier)
+    , m_persistentStateAllowed(persistentStateAllowed)
+    , m_supportedSessionTypes(supportedSessionTypes)
+    , m_implementation(WTFMove(implementation))
+    , m_instance(WTFMove(instance))
+{
+}
 
 MediaKeys::~MediaKeys() = default;
 
-ExceptionOr<Ref<MediaKeySession>> MediaKeys::createSession(MediaKeySessionType)
+ExceptionOr<Ref<MediaKeySession>> MediaKeys::createSession(ScriptExecutionContext& context, MediaKeySessionType sessionType)
 {
-    notImplemented();
-    return Exception { NOT_SUPPORTED_ERR };
+    // https://w3c.github.io/encrypted-media/#dom-mediakeys-setservercertificate
+    // W3C Editor's Draft 09 November 2016
+
+    // When this method is invoked, the user agent must run the following steps:
+    // 1. If this object's supported session types value does not contain sessionType, throw [WebIDL] a NotSupportedError.
+    if (!m_supportedSessionTypes.contains(sessionType))
+        return Exception(NOT_SUPPORTED_ERR);
+
+    // 2. If the implementation does not support MediaKeySession operations in the current state, throw [WebIDL] an InvalidStateError.
+    if (!m_implementation->supportsSessions())
+        return Exception(INVALID_STATE_ERR);
+
+    // 3. Let session be a new MediaKeySession object, and initialize it as follows:
+    // NOTE: Continued in MediaKeySession.
+    // 4. Return session.
+    return MediaKeySession::create(context, sessionType, m_useDistinctiveIdentifier, m_implementation.copyRef(), m_instance.copyRef());
 }
 
-void MediaKeys::setServerCertificate(const BufferSource&, Ref<DeferredPromise>&&)
+void MediaKeys::setServerCertificate(const BufferSource& serverCertificate, Ref<DeferredPromise>&& promise)
 {
-    notImplemented();
+    // https://w3c.github.io/encrypted-media/#dom-mediakeys-setservercertificate
+    // W3C Editor's Draft 09 November 2016
+
+    // When this method is invoked, the user agent must run the following steps:
+    // 1. If the Key System implementation represented by this object's cdm implementation value does not support
+    //    server certificates, return a promise resolved with false.
+    if (!m_implementation->supportsServerCertificates()) {
+        promise->reject(false);
+        return;
+    }
+
+    // 2. If serverCertificate is an empty array, return a promise rejected with a new a newly created TypeError.
+    if (!serverCertificate.length()) {
+        promise->reject(TypeError);
+        return;
+    }
+
+    // 3. Let certificate be a copy of the contents of the serverCertificate parameter.
+    auto certificate = SharedBuffer::create(serverCertificate.data(), serverCertificate.length());
+
+    // 4. Let promise be a new promise.
+    // 5. Run the following steps in parallel:
+
+    m_taskQueue.enqueueTask([this, certificate = WTFMove(certificate), promise = WTFMove(promise)] () mutable {
+        // 5.1. Use this object's cdm instance to process certificate.
+        if (m_instance->setServerCertificate(WTFMove(certificate)) == CDMInstance::Failed) {
+            // 5.2. If the preceding step failed, resolve promise with a new DOMException whose name is the appropriate error name.
+            promise->reject(INVALID_STATE_ERR);
+            return;
+        }
+
+        // 5.1. Resolve promise with true.
+        promise->resolve<IDLBoolean>(true);
+    });
+
+    // 6. Return promise.
 }
 
 } // namespace WebCore

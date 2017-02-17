@@ -44,6 +44,7 @@
 #include "FTLValueFromBlock.h"
 #include "FTLWeight.h"
 #include "FTLWeightedTarget.h"
+#include "HeapCell.h"
 #include <wtf/OrderMaker.h>
 #include <wtf/StringPrintStream.h>
 
@@ -104,9 +105,29 @@ public:
 
     LValue constBool(bool value);
     LValue constInt32(int32_t value);
+
+    LValue weakPointer(DFG::Graph& graph, JSCell* cell)
+    {
+        ASSERT(graph.m_plan.weakReferences.contains(cell));
+
+        if (sizeof(void*) == 8)
+            return constInt64(bitwise_cast<intptr_t>(cell));
+        return constInt32(bitwise_cast<intptr_t>(cell));
+    }
+
+    LValue weakPointer(DFG::FrozenValue* value)
+    {
+        RELEASE_ASSERT(value->value().isCell());
+
+        if (sizeof(void*) == 8)
+            return constInt64(bitwise_cast<intptr_t>(value->cell()));
+        return constInt32(bitwise_cast<intptr_t>(value->cell()));
+    }
+
     template<typename T>
     LValue constIntPtr(T* value)
     {
+        static_assert(!std::is_base_of<HeapCell, T>::value, "To use a GC pointer, the graph must be aware of it. Use gcPointer instead and make sure the graph is aware of this reference.");
         if (sizeof(void*) == 8)
             return constInt64(bitwise_cast<intptr_t>(value));
         return constInt32(bitwise_cast<intptr_t>(value));
@@ -172,11 +193,11 @@ public:
 
     LValue doubleLog(LValue);
 
-    static bool hasSensibleDoubleToInt();
     LValue doubleToInt(LValue);
     LValue doubleToUInt(LValue);
 
     LValue signExt32To64(LValue);
+    LValue signExt32ToPtr(LValue);
     LValue zeroExt(LValue, LType);
     LValue zeroExtPtr(LValue value) { return zeroExt(value, B3::Int64); }
     LValue intToDouble(LValue);
@@ -189,7 +210,7 @@ public:
 
     LValue load(TypedPointer, LType);
     void store(LValue, TypedPointer);
-    B3::FenceValue* fence();
+    B3::FenceValue* fence(const AbstractHeap* read, const AbstractHeap* write);
 
     LValue load8SignExt32(TypedPointer);
     LValue load8ZeroExt32(TypedPointer);

@@ -32,6 +32,10 @@
 #include "ArgumentCodersCF.h"
 #endif
 
+#if USE(SOUP)
+#include "WebCoreArgumentCoders.h"
+#endif
+
 namespace WebKit {
 
 NetworkProcessCreationParameters::NetworkProcessCreationParameters()
@@ -89,9 +93,14 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder.encodeEnum(cookieAcceptPolicy);
     encoder << ignoreTLSErrors;
     encoder << languages;
+    encoder << proxySettings;
 #endif
 #if OS(LINUX)
     encoder << memoryPressureMonitorHandle;
+#endif
+#if ENABLE(NETWORK_CAPTURE)
+    encoder << recordReplayMode;
+    encoder << recordReplayCacheLocation;
 #endif
 }
 
@@ -181,10 +190,19 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.languages))
         return false;
+    if (!decoder.decode(result.proxySettings))
+        return false;
 #endif
 
 #if OS(LINUX)
     if (!decoder.decode(result.memoryPressureMonitorHandle))
+        return false;
+#endif
+
+#if ENABLE(NETWORK_CAPTURE)
+    if (!decoder.decode(result.recordReplayMode))
+        return false;
+    if (!decoder.decode(result.recordReplayCacheLocation))
         return false;
 #endif
 

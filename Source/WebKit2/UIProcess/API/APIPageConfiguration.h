@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "APIObject.h"
 #include "WebPreferencesStore.h"
 #include <WebCore/SessionID.h>
+#include <wtf/Forward.h>
 #include <wtf/GetPtr.h>
 
 namespace WebKit {
@@ -95,6 +96,12 @@ public:
     bool waitsForPaintAfterViewDidMoveToWindow() const { return m_waitsForPaintAfterViewDidMoveToWindow; }
     void setWaitsForPaintAfterViewDidMoveToWindow(bool shouldSynchronize) { m_waitsForPaintAfterViewDidMoveToWindow = shouldSynchronize; }
 
+    bool isControlledByAutomation() const { return m_controlledByAutomation; }
+    void setControlledByAutomation(bool controlledByAutomation) { m_controlledByAutomation = controlledByAutomation; }
+
+    const WTF::String& overrideContentSecurityPolicy() const { return m_overrideContentSecurityPolicy; }
+    void setOverrideContentSecurityPolicy(const WTF::String& overrideContentSecurityPolicy) { m_overrideContentSecurityPolicy = overrideContentSecurityPolicy; }
+
 private:
 
     RefPtr<WebKit::WebProcessPool> m_processPool;
@@ -116,6 +123,9 @@ private:
 #endif
     bool m_initialCapitalizationEnabled = true;
     bool m_waitsForPaintAfterViewDidMoveToWindow = true;
+    bool m_controlledByAutomation = false;
+
+    WTF::String m_overrideContentSecurityPolicy;
 };
 
 } // namespace API

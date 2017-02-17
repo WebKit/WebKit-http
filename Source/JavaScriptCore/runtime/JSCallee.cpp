@@ -51,7 +51,7 @@ JSCallee::JSCallee(VM& vm, JSScope* scope, Structure* structure)
 void JSCallee::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 }
 
 void JSCallee::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -60,7 +60,7 @@ void JSCallee::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_scope);
+    visitor.append(thisObject->m_scope);
 }
 
 } // namespace JSC

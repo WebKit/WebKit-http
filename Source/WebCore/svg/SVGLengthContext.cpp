@@ -32,7 +32,6 @@
 #include "RenderSVGRoot.h"
 #include "RenderSVGViewportContainer.h"
 #include "RenderView.h"
-#include "SVGNames.h"
 #include "SVGSVGElement.h"
 
 namespace WebCore {
@@ -48,7 +47,7 @@ SVGLengthContext::SVGLengthContext(const SVGElement* context, const FloatRect& v
 {
 }
 
-FloatRect SVGLengthContext::resolveRectangle(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const FloatRect& viewport, const SVGLength& x, const SVGLength& y, const SVGLength& width, const SVGLength& height)
+FloatRect SVGLengthContext::resolveRectangle(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const FloatRect& viewport, const SVGLengthValue& x, const SVGLengthValue& y, const SVGLengthValue& width, const SVGLengthValue& height)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {
@@ -63,7 +62,7 @@ FloatRect SVGLengthContext::resolveRectangle(const SVGElement* context, SVGUnitT
                      height.value(lengthContext));
 }
 
-FloatPoint SVGLengthContext::resolvePoint(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLength& x, const SVGLength& y)
+FloatPoint SVGLengthContext::resolvePoint(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLengthValue& x, const SVGLengthValue& y)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {
@@ -75,7 +74,7 @@ FloatPoint SVGLengthContext::resolvePoint(const SVGElement* context, SVGUnitType
     return FloatPoint(x.valueAsPercentage(), y.valueAsPercentage());
 }
 
-float SVGLengthContext::resolveLength(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLength& x)
+float SVGLengthContext::resolveLength(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLengthValue& x)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {

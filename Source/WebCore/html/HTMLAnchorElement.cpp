@@ -129,7 +129,7 @@ bool HTMLAnchorElement::isKeyboardFocusable(KeyboardEvent& event) const
     if (!document().frame())
         return false;
 
-    if (!document().frame()->eventHandler().tabsToLinks(&event))
+    if (!document().frame()->eventHandler().tabsToLinks(event))
         return false;
 
     if (!renderer() && ancestorsOfType<HTMLCanvasElement>(*this).first())
@@ -201,9 +201,7 @@ void HTMLAnchorElement::defaultEventHandler(Event& event)
 void HTMLAnchorElement::setActive(bool down, bool pause)
 {
     if (hasEditableStyle()) {
-        EditableLinkBehavior editableLinkBehavior = EditableLinkDefaultBehavior;
-        if (Settings* settings = document().settings())
-            editableLinkBehavior = settings->editableLinkBehavior();
+        EditableLinkBehavior editableLinkBehavior = document().settings().editableLinkBehavior();
             
         switch (editableLinkBehavior) {
             default:
@@ -353,7 +351,10 @@ bool HTMLAnchorElement::isLiveLink() const
 
 void HTMLAnchorElement::sendPings(const URL& destinationURL)
 {
-    if (!hasAttributeWithoutSynchronization(pingAttr) || !document().settings() || !document().settings()->hyperlinkAuditingEnabled())
+    if (!document().frame())
+        return;
+
+    if (!hasAttributeWithoutSynchronization(pingAttr) || !document().settings().hyperlinkAuditingEnabled())
         return;
 
     SpaceSplitString pingURLs(attributeWithoutSynchronization(pingAttr), false);
@@ -378,24 +379,16 @@ void HTMLAnchorElement::handleClick(Event& event)
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     if (RuntimeEnabledFeatures::sharedFeatures().downloadAttributeEnabled()) {
         // Ignore the download attribute completely if the href URL is cross origin.
-        bool isSameOrigin = completedURL.protocolIsData() || document().securityOrigin()->canRequest(completedURL);
+        bool isSameOrigin = completedURL.protocolIsData() || document().securityOrigin().canRequest(completedURL);
         if (isSameOrigin)
             downloadAttribute = attributeWithoutSynchronization(downloadAttr);
         else if (hasAttributeWithoutSynchronization(downloadAttr))
             document().addConsoleMessage(MessageSource::Security, MessageLevel::Warning, "The download attribute on anchor was ignored because its href URL has a different security origin.");
-        // If the a element has a download attribute and the algorithm is not triggered by user activation
-        // then abort these steps.
-        // https://html.spec.whatwg.org/#the-a-element:triggered-by-user-activation
-        if (!downloadAttribute.isNull() && !event.isTrusted() && !ScriptController::processingUserGesture()) {
-            // The specification says to throw an InvalidAccessError but other browsers do not.
-            document().addConsoleMessage(MessageSource::Security, MessageLevel::Warning, "Non user-triggered activations of anchors that have a download attribute are ignored.");
-            return;
-        }
     }
 #endif
 
     ShouldSendReferrer shouldSendReferrer = hasRel(Relation::NoReferrer) ? NeverSendReferrer : MaybeSendReferrer;
-    auto newFrameOpenerPolicy = hasRel(Relation::NoOpener) ? makeOptional(NewFrameOpenerPolicy::Suppress) : Nullopt;
+    auto newFrameOpenerPolicy = hasRel(Relation::NoOpener) ? std::make_optional(NewFrameOpenerPolicy::Suppress) : std::nullopt;
     frame->loader().urlSelected(completedURL, target(), &event, LockHistory::No, LockBackForwardList::No, shouldSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate(), newFrameOpenerPolicy, downloadAttribute);
 
     sendPings(completedURL);
@@ -413,11 +406,7 @@ bool HTMLAnchorElement::treatLinkAsLiveForEventType(EventType eventType) const
     if (!hasEditableStyle())
         return true;
 
-    Settings* settings = document().settings();
-    if (!settings)
-        return true;
-
-    switch (settings->editableLinkBehavior()) {
+    switch (document().settings().editableLinkBehavior()) {
     case EditableLinkDefaultBehavior:
     case EditableLinkAlwaysLive:
         return true;

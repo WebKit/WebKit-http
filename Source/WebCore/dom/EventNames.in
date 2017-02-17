@@ -54,7 +54,7 @@ SVGEvents interfaceName=Event
 SVGZoomEvent
 SVGZoomEvents interfaceName=SVGZoomEvent
 IDBVersionChangeEvent conditional=INDEXED_DATABASE
-TouchEvent conditional=TOUCH_EVENTS, runtimeConditional=touchEnabled
+TouchEvent conditional=TOUCH_EVENTS
 DeviceMotionEvent conditional=DEVICE_ORIENTATION
 DeviceOrientationEvent conditional=DEVICE_ORIENTATION
 DeviceProximityEvent conditional=PROXIMITY_EVENTS
@@ -66,7 +66,6 @@ TrackEvent conditional=VIDEO_TRACK
 AutocompleteErrorEvent conditional=REQUEST_AUTOCOMPLETE
 CSSFontFaceLoadEvent conditional=FONT_LOAD_EVENTS
 SecurityPolicyViolationEvent
-UIRequestEvent conditional=INDIE_UI
 GestureEvent conditional=IOS_GESTURE_EVENTS|MAC_GESTURE_EVENTS
 WebKitPlaybackTargetAvailabilityEvent conditional=WIRELESS_PLAYBACK_TARGET
 GamepadEvent conditional=GAMEPAD

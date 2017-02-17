@@ -67,7 +67,22 @@ Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& do
     element->setIsCustomElementUpgradeCandidate();
     element->setIsFailedCustomElement(*this);
 
-    return element.get();
+    return WTFMove(element);
+}
+
+Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& document, const QualifiedName& name)
+{
+    if (auto element = tryToConstructCustomElement(document, name.localName())) {
+        if (name.prefix() != nullAtom)
+            element->setPrefix(name.prefix());
+        return element.releaseNonNull();
+    }
+
+    auto element = HTMLUnknownElement::create(name, document);
+    element->setIsCustomElementUpgradeCandidate();
+    element->setIsFailedCustomElement(*this);
+
+    return WTFMove(element);
 }
 
 RefPtr<Element> JSCustomElementInterface::tryToConstructCustomElement(Document& document, const AtomicString& localName)
@@ -110,16 +125,14 @@ static RefPtr<Element> constructCustomElementSynchronously(Document& document, V
         return nullptr;
     }
 
-    MarkedArgumentBuffer args;
-    args.append(jsStringWithCache(&state, localName));
-
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionConstruct(&document, constructType, constructData);
+    MarkedArgumentBuffer args;
     JSValue newElement = construct(&state, constructor, constructType, constructData, args);
     InspectorInstrumentation::didCallFunction(cookie, &document);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     ASSERT(!newElement.isEmpty());
-    HTMLElement* wrappedElement = JSHTMLElement::toWrapped(newElement);
+    HTMLElement* wrappedElement = JSHTMLElement::toWrapped(vm, newElement);
     if (!wrappedElement) {
         throwTypeError(&state, scope, ASCIILiteral("The result of constructing a custom element must be a HTMLElement"));
         return nullptr;
@@ -197,7 +210,7 @@ void JSCustomElementInterface::upgradeElement(Element& element)
         return;
     }
 
-    Element* wrappedElement = JSElement::toWrapped(returnedElement);
+    Element* wrappedElement = JSElement::toWrapped(vm, returnedElement);
     if (!wrappedElement || wrappedElement != &element) {
         element.setIsFailedCustomElement(*this);
         reportException(state, createDOMException(state, INVALID_STATE_ERR, "Custom element constructor failed to upgrade an element"));

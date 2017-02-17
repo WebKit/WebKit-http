@@ -40,86 +40,38 @@ static void testWebContextDefault(Test* test, gconstpointer)
     g_assert(webkit_web_context_get_default() != test->m_webContext.get());
 }
 
-static void testWebContextConfiguration(WebViewTest* test, gconstpointer)
+static void testWebContextEphemeral(Test* test, gconstpointer)
 {
-    WebKitWebsiteDataManager* manager = webkit_web_context_get_website_data_manager(test->m_webContext.get());
+    // By default web contexts are not ephemeral.
+    g_assert(!webkit_web_context_is_ephemeral(webkit_web_context_get_default()));
+    g_assert(!webkit_web_context_is_ephemeral(test->m_webContext.get()));
+
+    WebKitWebsiteDataManager* manager = webkit_web_context_get_website_data_manager(webkit_web_context_get_default());
     g_assert(WEBKIT_IS_WEBSITE_DATA_MANAGER(manager));
-    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(manager));
+    g_assert(!webkit_website_data_manager_is_ephemeral(manager));
+    manager = webkit_web_context_get_website_data_manager(test->m_webContext.get());
+    g_assert(WEBKIT_IS_WEBSITE_DATA_MANAGER(manager));
+    g_assert(!webkit_website_data_manager_is_ephemeral(manager));
 
-    // Base directories are not used by TestMain.
-    g_assert(!webkit_website_data_manager_get_base_data_directory(manager));
-    g_assert(!webkit_website_data_manager_get_base_cache_directory(manager));
+    GRefPtr<WebKitWebView> webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
+    g_assert(!webkit_web_view_is_ephemeral(webView.get()));
 
-    GUniquePtr<char> localStorageDirectory(g_build_filename(Test::dataDirectory(), "local-storage", nullptr));
-    g_assert_cmpstr(localStorageDirectory.get(), ==, webkit_website_data_manager_get_local_storage_directory(manager));
-    g_assert(g_file_test(localStorageDirectory.get(), G_FILE_TEST_IS_DIR));
+    webView = WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(test->m_webContext.get()));
+    g_assert(!webkit_web_view_is_ephemeral(webView.get()));
 
-    test->loadURI(kServer->getURIForPath("/empty").data());
-    test->waitUntilLoadFinished();
-    test->runJavaScriptAndWaitUntilFinished("window.indexedDB.open('TestDatabase');", nullptr);
-    GUniquePtr<char> indexedDBDirectory(g_build_filename(Test::dataDirectory(), "indexeddb", nullptr));
-    g_assert_cmpstr(indexedDBDirectory.get(), ==, webkit_website_data_manager_get_indexeddb_directory(manager));
-    g_assert(g_file_test(indexedDBDirectory.get(), G_FILE_TEST_IS_DIR));
+    GRefPtr<WebKitWebContext> context = adoptGRef(webkit_web_context_new_ephemeral());
+    g_assert(webkit_web_context_is_ephemeral(context.get()));
+    manager = webkit_web_context_get_website_data_manager(context.get());
+    g_assert(WEBKIT_IS_WEBSITE_DATA_MANAGER(manager));
+    g_assert(webkit_website_data_manager_is_ephemeral(manager));
 
-    test->loadURI(kServer->getURIForPath("/appcache").data());
-    test->waitUntilLoadFinished();
-    GUniquePtr<char> applicationCacheDirectory(g_build_filename(Test::dataDirectory(), "appcache", nullptr));
-    g_assert_cmpstr(applicationCacheDirectory.get(), ==, webkit_website_data_manager_get_offline_application_cache_directory(manager));
-    GUniquePtr<char> applicationCacheDatabase(g_build_filename(applicationCacheDirectory.get(), "ApplicationCache.db", nullptr));
-    unsigned triesCount = 4;
-    while (!g_file_test(applicationCacheDatabase.get(), G_FILE_TEST_IS_REGULAR) && --triesCount)
-        test->wait(0.25);
-    g_assert(triesCount);
+    webView = WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(context.get()));
+    g_assert(webkit_web_view_is_ephemeral(webView.get()));
 
-
-    GUniquePtr<char> webSQLDirectory(g_build_filename(Test::dataDirectory(), "websql", nullptr));
-    g_assert_cmpstr(webSQLDirectory.get(), ==, webkit_website_data_manager_get_websql_directory(manager));
-    test->runJavaScriptAndWaitUntilFinished("db = openDatabase(\"TestDatabase\", \"1.0\", \"TestDatabase\", 1);", nullptr);
-    g_assert(g_file_test(webSQLDirectory.get(), G_FILE_TEST_IS_DIR));
-
-    GUniquePtr<char> diskCacheDirectory(g_build_filename(Test::dataDirectory(), "disk-cache", nullptr));
-    g_assert_cmpstr(diskCacheDirectory.get(), ==, webkit_website_data_manager_get_disk_cache_directory(manager));
-    g_assert(g_file_test(diskCacheDirectory.get(), G_FILE_TEST_IS_DIR));
-
-    // The default context should have a different manager with different configuration.
-    WebKitWebsiteDataManager* defaultManager = webkit_web_context_get_website_data_manager(webkit_web_context_get_default());
-    g_assert(WEBKIT_IS_WEBSITE_DATA_MANAGER(defaultManager));
-    g_assert(manager != defaultManager);
-    g_assert_cmpstr(webkit_website_data_manager_get_local_storage_directory(manager), !=, webkit_website_data_manager_get_local_storage_directory(defaultManager));
-    g_assert_cmpstr(webkit_website_data_manager_get_indexeddb_directory(manager), !=, webkit_website_data_manager_get_indexeddb_directory(defaultManager));
-    g_assert_cmpstr(webkit_website_data_manager_get_disk_cache_directory(manager), !=, webkit_website_data_manager_get_disk_cache_directory(defaultManager));
-    g_assert_cmpstr(webkit_website_data_manager_get_offline_application_cache_directory(manager), !=, webkit_website_data_manager_get_offline_application_cache_directory(defaultManager));
-    g_assert_cmpstr(webkit_website_data_manager_get_websql_directory(manager), !=, webkit_website_data_manager_get_websql_directory(defaultManager));
-
-    // Using Test::dataDirectory() we get the default configuration but for a differrent prefix.
-    GRefPtr<WebKitWebsiteDataManager> baseDataManager = adoptGRef(webkit_website_data_manager_new("base-data-directory", Test::dataDirectory(), "base-cache-directory", Test::dataDirectory(), nullptr));
-    g_assert(WEBKIT_IS_WEBSITE_DATA_MANAGER(baseDataManager.get()));
-
-    localStorageDirectory.reset(g_build_filename(Test::dataDirectory(), "localstorage", nullptr));
-    g_assert_cmpstr(webkit_website_data_manager_get_local_storage_directory(baseDataManager.get()), ==, localStorageDirectory.get());
-
-    indexedDBDirectory.reset(g_build_filename(Test::dataDirectory(), "databases", "indexeddb", nullptr));
-    g_assert_cmpstr(webkit_website_data_manager_get_indexeddb_directory(baseDataManager.get()), ==, indexedDBDirectory.get());
-
-    applicationCacheDirectory.reset(g_build_filename(Test::dataDirectory(), "applications", nullptr));
-    g_assert_cmpstr(webkit_website_data_manager_get_offline_application_cache_directory(baseDataManager.get()), ==, applicationCacheDirectory.get());
-
-    webSQLDirectory.reset(g_build_filename(Test::dataDirectory(), "databases", nullptr));
-    g_assert_cmpstr(webkit_website_data_manager_get_websql_directory(baseDataManager.get()), ==, webSQLDirectory.get());
-
-    g_assert_cmpstr(webkit_website_data_manager_get_disk_cache_directory(baseDataManager.get()), ==, Test::dataDirectory());
-
-    // Any specific configuration provided takes precedence over base dirs.
-    indexedDBDirectory.reset(g_build_filename(Test::dataDirectory(), "mycustomindexeddb", nullptr));
-    applicationCacheDirectory.reset(g_build_filename(Test::dataDirectory(), "mycustomappcache", nullptr));
-    baseDataManager = adoptGRef(webkit_website_data_manager_new("base-data-directory", Test::dataDirectory(), "base-cache-directory", Test::dataDirectory(),
-        "indexeddb-directory", indexedDBDirectory.get(), "offline-application-cache-directory", applicationCacheDirectory.get(), nullptr));
-    g_assert_cmpstr(webkit_website_data_manager_get_indexeddb_directory(baseDataManager.get()), ==, indexedDBDirectory.get());
-    g_assert_cmpstr(webkit_website_data_manager_get_offline_application_cache_directory(baseDataManager.get()), ==, applicationCacheDirectory.get());
-    // The resutl should be the same as previous manager.
-    g_assert_cmpstr(webkit_website_data_manager_get_local_storage_directory(baseDataManager.get()), ==, localStorageDirectory.get());
-    g_assert_cmpstr(webkit_website_data_manager_get_websql_directory(baseDataManager.get()), ==, webSQLDirectory.get());
-    g_assert_cmpstr(webkit_website_data_manager_get_disk_cache_directory(baseDataManager.get()), ==, Test::dataDirectory());
+    GRefPtr<WebKitWebsiteDataManager> ephemeralManager = adoptGRef(webkit_website_data_manager_new_ephemeral());
+    g_assert(webkit_website_data_manager_is_ephemeral(ephemeralManager.get()));
+    context = adoptGRef(webkit_web_context_new_with_website_data_manager(ephemeralManager.get()));
+    g_assert(webkit_web_context_is_ephemeral(context.get()));
 }
 
 class PluginsTest: public Test {
@@ -175,7 +127,7 @@ static void testWebContextGetPlugins(PluginsTest* test, gconstpointer)
 
     char normalizedPath[PATH_MAX];
     g_assert(realpath(WEBKIT_TEST_PLUGIN_DIR, normalizedPath));
-    GUniquePtr<char> pluginPath(g_build_filename(normalizedPath, "libTestNetscapePlugin.so", nullptr));
+    GUniquePtr<char> pluginPath(g_build_filename(normalizedPath, "libTestNetscapePlugIn.so", nullptr));
     g_assert_cmpstr(webkit_plugin_get_path(testPlugin.get()), ==, pluginPath.get());
     g_assert_cmpstr(webkit_plugin_get_description(testPlugin.get()), ==, "Simple Netscape® plug-in that handles test content for WebKit");
     GList* mimeInfoList = webkit_plugin_get_mime_info_list(testPlugin.get());
@@ -536,18 +488,9 @@ static void serverCallback(SoupServer* server, SoupMessage* message, const char*
         soup_message_body_append(message->response_body, SOUP_MEMORY_STATIC, emptyHTML, strlen(emptyHTML));
         soup_message_body_complete(message->response_body);
         soup_message_set_status(message, SOUP_STATUS_OK);
-    } else if (g_str_equal(path, "/appcache")) {
-        const char* appcacheHTML = "<html manifest=appcache.manifest><body></body></html>";
-        soup_message_body_append(message->response_body, SOUP_MEMORY_STATIC, appcacheHTML, strlen(appcacheHTML));
-        soup_message_body_complete(message->response_body);
-        soup_message_set_status(message, SOUP_STATUS_OK);
-    } else if (g_str_equal(path, "/appcache.manifest")) {
-        const char* appcacheManifest = "CACHE MANIFEST\nCACHE:\nappcache/foo.txt\n";
-        soup_message_body_append(message->response_body, SOUP_MEMORY_STATIC, appcacheManifest, strlen(appcacheManifest));
-        soup_message_body_complete(message->response_body);
-        soup_message_set_status(message, SOUP_STATUS_OK);
-    } else if (g_str_equal(path, "/appcache/foo.txt")) {
-        soup_message_body_append(message->response_body, SOUP_MEMORY_STATIC, "foo", 3);
+    } else if (g_str_equal(path, "/echoPort")) {
+        char* port = g_strdup_printf("%u", soup_server_get_port(server));
+        soup_message_body_append(message->response_body, SOUP_MEMORY_TAKE, port, strlen(port));
         soup_message_body_complete(message->response_body);
         soup_message_set_status(message, SOUP_STATUS_OK);
     } else
@@ -700,19 +643,136 @@ static void testWebContextSecurityFileXHR(WebViewTest* test, gconstpointer)
     webkit_settings_set_allow_file_access_from_file_urls(webkit_web_view_get_settings(test->m_webView), FALSE);
 }
 
+class ProxyTest : public WebViewTest {
+public:
+    MAKE_GLIB_TEST_FIXTURE(ProxyTest);
+
+    ProxyTest()
+    {
+        // This "proxy server" is actually just a different instance of the main
+        // test server (kServer), listening on a different port. Requests
+        // will not actually be proxied to kServer because proxyServer is not
+        // actually a proxy server. We're testing whether the proxy settings
+        // work, not whether we can write a soup proxy server.
+        m_proxyServer.run(serverCallback);
+        g_assert(m_proxyServer.baseURI());
+    }
+
+    CString loadURIAndGetMainResourceData(const char* uri)
+    {
+        loadURI(uri);
+        waitUntilLoadFinished();
+        size_t dataSize = 0;
+        const char* data = mainResourceData(dataSize);
+        return CString(data, dataSize);
+    }
+
+    GUniquePtr<char> proxyServerPortAsString()
+    {
+        GUniquePtr<char> port(g_strdup_printf("%u", soup_uri_get_port(m_proxyServer.baseURI())));
+        return port;
+    }
+
+    WebKitTestServer m_proxyServer;
+};
+
+static void ephemeralViewloadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent, WebViewTest* test)
+{
+    if (loadEvent != WEBKIT_LOAD_FINISHED)
+        return;
+    g_signal_handlers_disconnect_by_func(webView, reinterpret_cast<void*>(ephemeralViewloadChanged), test);
+    test->quitMainLoop();
+}
+
+static void testWebContextProxySettings(ProxyTest* test, gconstpointer)
+{
+    // Proxy URI is unset by default. Requests to kServer should be received by kServer.
+    GUniquePtr<char> serverPortAsString(g_strdup_printf("%u", soup_uri_get_port(kServer->baseURI())));
+    auto mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
+    ASSERT_CMP_CSTRING(mainResourceData, ==, serverPortAsString.get());
+
+    // Set default proxy URI to point to proxyServer. Requests to kServer should be received by proxyServer instead.
+    GUniquePtr<char> proxyURI(soup_uri_to_string(test->m_proxyServer.baseURI(), FALSE));
+    WebKitNetworkProxySettings* settings = webkit_network_proxy_settings_new(proxyURI.get(), nullptr);
+    webkit_web_context_set_network_proxy_settings(test->m_webContext.get(), WEBKIT_NETWORK_PROXY_MODE_CUSTOM, settings);
+    GUniquePtr<char> proxyServerPortAsString = test->proxyServerPortAsString();
+    mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
+    ASSERT_CMP_CSTRING(mainResourceData, ==, proxyServerPortAsString.get());
+    webkit_network_proxy_settings_free(settings);
+
+    // Proxy settings also affect ephemeral web views.
+    GRefPtr<WebKitWebView> webView = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+        "web-context", test->m_webContext.get(),
+        "is-ephemeral", TRUE,
+        nullptr));
+    g_assert(webkit_web_view_is_ephemeral(webView.get()));
+    g_assert(!webkit_web_context_is_ephemeral(webkit_web_view_get_context(webView.get())));
+
+    g_signal_connect(webView.get(), "load-changed", G_CALLBACK(ephemeralViewloadChanged), test);
+    webkit_web_view_load_uri(webView.get(), kServer->getURIForPath("/echoPort").data());
+    g_main_loop_run(test->m_mainLoop);
+    WebKitWebResource* resource = webkit_web_view_get_main_resource(webView.get());
+    g_assert(WEBKIT_IS_WEB_RESOURCE(resource));
+    webkit_web_resource_get_data(resource, nullptr, [](GObject* object, GAsyncResult* result, gpointer userData) {
+        size_t dataSize;
+        GUniquePtr<char> data(reinterpret_cast<char*>(webkit_web_resource_get_data_finish(WEBKIT_WEB_RESOURCE(object), result, &dataSize, nullptr)));
+        g_assert(data);
+        auto* test = static_cast<ProxyTest*>(userData);
+        GUniquePtr<char> proxyServerPortAsString = test->proxyServerPortAsString();
+        ASSERT_CMP_CSTRING(CString(data.get(), dataSize), ==, proxyServerPortAsString.get());
+        test->quitMainLoop();
+        }, test);
+    g_main_loop_run(test->m_mainLoop);
+
+    // Remove the proxy. Requests to kServer should be received by kServer again.
+    webkit_web_context_set_network_proxy_settings(test->m_webContext.get(), WEBKIT_NETWORK_PROXY_MODE_NO_PROXY, nullptr);
+    mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
+    ASSERT_CMP_CSTRING(mainResourceData, ==, serverPortAsString.get());
+
+    // Use a default proxy uri, but ignoring requests to localhost.
+    static const char* ignoreHosts[] = { "localhost", nullptr };
+    settings = webkit_network_proxy_settings_new(proxyURI.get(), ignoreHosts);
+    webkit_web_context_set_network_proxy_settings(test->m_webContext.get(), WEBKIT_NETWORK_PROXY_MODE_CUSTOM, settings);
+    mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
+    ASSERT_CMP_CSTRING(mainResourceData, ==, proxyServerPortAsString.get());
+    GUniquePtr<char> localhostEchoPortURI(g_strdup_printf("http://localhost:%s/echoPort", serverPortAsString.get()));
+    mainResourceData = test->loadURIAndGetMainResourceData(localhostEchoPortURI.get());
+    ASSERT_CMP_CSTRING(mainResourceData, ==, serverPortAsString.get());
+    webkit_network_proxy_settings_free(settings);
+
+    // Remove the proxy again to ensure next test is not using any previous values.
+    webkit_web_context_set_network_proxy_settings(test->m_webContext.get(), WEBKIT_NETWORK_PROXY_MODE_NO_PROXY, nullptr);
+    mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
+    ASSERT_CMP_CSTRING(mainResourceData, ==, serverPortAsString.get());
+
+    // Use scheme specific proxy instead of the default.
+    settings = webkit_network_proxy_settings_new(nullptr, nullptr);
+    webkit_network_proxy_settings_add_proxy_for_scheme(settings, "http", proxyURI.get());
+    webkit_web_context_set_network_proxy_settings(test->m_webContext.get(), WEBKIT_NETWORK_PROXY_MODE_CUSTOM, settings);
+    mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
+    ASSERT_CMP_CSTRING(mainResourceData, ==, proxyServerPortAsString.get());
+    webkit_network_proxy_settings_free(settings);
+
+    // Reset to use the default resolver.
+    webkit_web_context_set_network_proxy_settings(test->m_webContext.get(), WEBKIT_NETWORK_PROXY_MODE_DEFAULT, nullptr);
+    mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
+    ASSERT_CMP_CSTRING(mainResourceData, ==, serverPortAsString.get());
+}
+
 void beforeAll()
 {
     kServer = new WebKitTestServer();
     kServer->run(serverCallback);
 
     Test::add("WebKitWebContext", "default-context", testWebContextDefault);
-    WebViewTest::add("WebKitWebContext", "configuration", testWebContextConfiguration);
+    Test::add("WebKitWebContext", "ephemeral", testWebContextEphemeral);
     PluginsTest::add("WebKitWebContext", "get-plugins", testWebContextGetPlugins);
     URISchemeTest::add("WebKitWebContext", "uri-scheme", testWebContextURIScheme);
     Test::add("WebKitWebContext", "spell-checker", testWebContextSpellChecker);
     WebViewTest::add("WebKitWebContext", "languages", testWebContextLanguages);
     SecurityPolicyTest::add("WebKitSecurityManager", "security-policy", testWebContextSecurityPolicy);
     WebViewTest::add("WebKitSecurityManager", "file-xhr", testWebContextSecurityFileXHR);
+    ProxyTest::add("WebKitWebContext", "proxy", testWebContextProxySettings);
 }
 
 void afterAll()

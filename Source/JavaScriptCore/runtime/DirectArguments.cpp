@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -78,7 +78,7 @@ DirectArguments* DirectArguments::createByCopying(ExecState* exec)
     for (unsigned i = capacity; i--;)
         result->storage()[i].set(vm, result, exec->getArgumentUnsafe(i));
     
-    result->callee().set(vm, result, jsCast<JSFunction*>(exec->callee()));
+    result->callee().set(vm, result, jsCast<JSFunction*>(exec->jsCallee()));
     
     return result;
 }
@@ -86,8 +86,9 @@ DirectArguments* DirectArguments::createByCopying(ExecState* exec)
 size_t DirectArguments::estimatedSize(JSCell* cell)
 {
     DirectArguments* thisObject = jsCast<DirectArguments*>(cell);
-    size_t overridesSize = thisObject->m_overrides ? thisObject->overridesSize() : 0;
-    return Base::estimatedSize(cell) + overridesSize;
+    size_t mappedArgumentsSize = thisObject->m_mappedArguments ? thisObject->mappedArgumentsSize() * sizeof(bool) : 0;
+    size_t modifiedArgumentsSize = thisObject->m_modifiedArgumentsDescriptor ? thisObject->m_length * sizeof(bool) : 0;
+    return Base::estimatedSize(cell) + mappedArgumentsSize + modifiedArgumentsSize;
 }
 
 void DirectArguments::visitChildren(JSCell* thisCell, SlotVisitor& visitor)
@@ -95,12 +96,13 @@ void DirectArguments::visitChildren(JSCell* thisCell, SlotVisitor& visitor)
     DirectArguments* thisObject = static_cast<DirectArguments*>(thisCell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    
+
     visitor.appendValues(thisObject->storage(), std::max(thisObject->m_length, thisObject->m_minCapacity));
-    visitor.append(&thisObject->m_callee);
-    
-    if (thisObject->m_overrides)
-        visitor.markAuxiliary(thisObject->m_overrides.get());
+    visitor.append(thisObject->m_callee);
+
+    if (thisObject->m_mappedArguments)
+        visitor.markAuxiliary(thisObject->m_mappedArguments.get());
+    GenericArguments<DirectArguments>::visitChildren(thisCell, visitor);
 }
 
 Structure* DirectArguments::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
@@ -110,35 +112,35 @@ Structure* DirectArguments::createStructure(VM& vm, JSGlobalObject* globalObject
 
 void DirectArguments::overrideThings(VM& vm)
 {
-    RELEASE_ASSERT(!m_overrides);
+    RELEASE_ASSERT(!m_mappedArguments);
     
     putDirect(vm, vm.propertyNames->length, jsNumber(m_length), DontEnum);
     putDirect(vm, vm.propertyNames->callee, m_callee.get(), DontEnum);
     putDirect(vm, vm.propertyNames->iteratorSymbol, globalObject()->arrayProtoValuesFunction(), DontEnum);
     
-    void* backingStore = vm.heap.tryAllocateAuxiliary(this, overridesSize());
+    void* backingStore = vm.auxiliarySpace.tryAllocate(mappedArgumentsSize());
     RELEASE_ASSERT(backingStore);
     bool* overrides = static_cast<bool*>(backingStore);
-    m_overrides.set(vm, this, overrides);
+    m_mappedArguments.set(vm, this, overrides);
     for (unsigned i = m_length; i--;)
         overrides[i] = false;
 }
 
 void DirectArguments::overrideThingsIfNecessary(VM& vm)
 {
-    if (!m_overrides)
+    if (!m_mappedArguments)
         overrideThings(vm);
 }
 
-void DirectArguments::overrideArgument(VM& vm, unsigned index)
+void DirectArguments::unmapArgument(VM& vm, unsigned index)
 {
     overrideThingsIfNecessary(vm);
-    m_overrides.get()[index] = true;
+    m_mappedArguments.get()[index] = true;
 }
 
 void DirectArguments::copyToArguments(ExecState* exec, VirtualRegister firstElementDest, unsigned offset, unsigned length)
 {
-    if (!m_overrides) {
+    if (!m_mappedArguments) {
         unsigned limit = std::min(length + offset, m_length);
         unsigned i;
         VirtualRegister start = firstElementDest - offset;
@@ -152,10 +154,10 @@ void DirectArguments::copyToArguments(ExecState* exec, VirtualRegister firstElem
     GenericArguments::copyToArguments(exec, firstElementDest, offset, length);
 }
 
-unsigned DirectArguments::overridesSize()
+unsigned DirectArguments::mappedArgumentsSize()
 {
     // We always allocate something; in the relatively uncommon case of overriding an empty argument we
-    // still allocate so that m_overrides is non-null. We use that to indicate that the other properties
+    // still allocate so that m_mappedArguments is non-null. We use that to indicate that the other properties
     // (length, etc) are overridden.
     return WTF::roundUpToMultipleOf<8>(m_length ? m_length : 1);
 }

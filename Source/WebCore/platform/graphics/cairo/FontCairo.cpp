@@ -241,8 +241,7 @@ Path CairoGlyphToPathTranslator::path()
     Path path;
     path.ensurePlatformPath();
 
-    cairo_glyph_t cairoGlyph;
-    cairoGlyph.index = m_glyphBuffer.glyphAt(m_index);
+    cairo_glyph_t cairoGlyph = { m_glyphBuffer.glyphAt(m_index), 0, 0 };
     cairo_set_scaled_font(path.platformPath()->context(), m_fontData->platformData().scaledFont());
     cairo_glyph_path(path.platformPath()->context(), &cairoGlyph, 1);
 

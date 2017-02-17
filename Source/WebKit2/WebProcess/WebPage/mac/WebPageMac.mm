@@ -76,7 +76,6 @@
 #import <WebCore/Page.h>
 #import <WebCore/PageOverlayController.h>
 #import <WebCore/PlatformKeyboardEvent.h>
-#import <WebCore/PlatformMediaSessionManager.h>
 #import <WebCore/PluginDocument.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
@@ -90,7 +89,7 @@
 #import <WebCore/WindowsKeyboardCodes.h>
 #import <WebCore/htmlediting.h>
 #import <WebKitSystemInterface.h>
-#import <wtf/TemporaryChange.h>
+#import <wtf/SetForScope.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include <WebCore/MediaPlaybackTargetMac.h>
@@ -160,22 +159,6 @@ void WebPage::handleAcceptedCandidate(WebCore::TextCheckingResult acceptedCandid
 
     frame->editor().handleAcceptedCandidate(acceptedCandidate);
     send(Messages::WebPageProxy::DidHandleAcceptedCandidate());
-}
-
-void WebPage::requestActiveNowPlayingSessionInfo()
-{
-    bool hasActiveSession = false;
-    String title = emptyString();
-    double duration = NAN;
-    double elapsedTime = NAN;
-    if (auto* sharedManager = WebCore::PlatformMediaSessionManager::sharedManagerIfExists()) {
-        hasActiveSession = sharedManager->hasActiveNowPlayingSession();
-        title = sharedManager->lastUpdatedNowPlayingTitle();
-        duration = sharedManager->lastUpdatedNowPlayingDuration();
-        elapsedTime = sharedManager->lastUpdatedNowPlayingElapsedTime();
-    }
-
-    send(Messages::WebPageProxy::HandleActiveNowPlayingSessionInfoResponse(hasActiveSession, title, duration, elapsedTime));
 }
 
 NSObject *WebPage::accessibilityObjectForMainFramePlugin()
@@ -362,7 +345,7 @@ void WebPage::attributedSubstringForCharacterRangeAsync(const EditingRange& edit
         return;
     }
 
-    result.string = editingAttributedStringFromRange(*range);
+    result.string = editingAttributedStringFromRange(*range, IncludeImagesInAttributedString::No);
     NSAttributedString* attributedString = result.string.get();
     
     // WebCore::editingAttributedStringFromRange() insists on inserting a trailing
@@ -724,7 +707,7 @@ String WebPage::cachedResponseMIMETypeForURL(const URL& url)
     return [[cachedResponseForURL(this, url) response] MIMEType];
 }
 
-PassRefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL& url)
+RefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL& url)
 {
     return SharedBuffer::wrapNSData([cachedResponseForURL(this, url) data]);
 }
@@ -773,37 +756,33 @@ void WebPage::acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEvent& ev
         result = !!hitResult.scrollbar();
 }
 
-void WebPage::setTopOverhangImage(PassRefPtr<WebImage> image)
+void WebPage::setTopOverhangImage(WebImage* image)
 {
-    FrameView* frameView = m_mainFrame->coreFrame()->view();
+    auto* frameView = m_mainFrame->coreFrame()->view();
     if (!frameView)
         return;
 
-    GraphicsLayer* layer = frameView->setWantsLayerForTopOverHangArea(image.get());
+    auto* layer = frameView->setWantsLayerForTopOverHangArea(image);
     if (!layer)
         return;
 
     layer->setSize(image->size());
     layer->setPosition(FloatPoint(0, -image->size().height()));
-
-    RetainPtr<CGImageRef> cgImage = image->bitmap()->makeCGImageCopy();
-    layer->platformLayer().contents = (id)cgImage.get();
+    layer->platformLayer().contents = (id)image->bitmap().makeCGImageCopy().get();
 }
 
-void WebPage::setBottomOverhangImage(PassRefPtr<WebImage> image)
+void WebPage::setBottomOverhangImage(WebImage* image)
 {
-    FrameView* frameView = m_mainFrame->coreFrame()->view();
+    auto* frameView = m_mainFrame->coreFrame()->view();
     if (!frameView)
         return;
 
-    GraphicsLayer* layer = frameView->setWantsLayerForBottomOverHangArea(image.get());
+    auto* layer = frameView->setWantsLayerForBottomOverHangArea(image);
     if (!layer)
         return;
 
     layer->setSize(image->size());
-    
-    RetainPtr<CGImageRef> cgImage = image->bitmap()->makeCGImageCopy();
-    layer->platformLayer().contents = (id)cgImage.get();
+    layer->platformLayer().contents = (id)image->bitmap().makeCGImageCopy().get();
 }
 
 void WebPage::updateHeaderAndFooterLayersForDeviceScaleChange(float scaleFactor)

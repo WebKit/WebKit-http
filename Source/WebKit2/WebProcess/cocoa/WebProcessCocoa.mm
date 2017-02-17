@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #import "WebProcess.h"
 
 #import "CustomProtocolManager.h"
+#import "Logging.h"
 #import "ObjCObjectGraph.h"
 #import "SandboxExtension.h"
 #import "SandboxInitializationParameters.h"
@@ -51,8 +52,9 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NSAccessibilitySPI.h>
+#import <WebCore/PerformanceLogging.h>
+#import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/RuntimeApplicationChecks.h>
-#import <WebCore/VNodeTracker.h>
 #import <WebCore/WebCoreNSURLExtras.h>
 #import <WebCore/pthreadSPI.h>
 #import <WebKitSystemInterface.h>
@@ -99,6 +101,9 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.mediaCacheDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.mediaKeyStorageDirectoryExtensionHandle);
+#if ENABLE(MEDIA_STREAM)
+    SandboxExtension::consumePermanently(parameters.audioCaptureExtensionHandle);
+#endif
 #if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.cookieStorageDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.containerCachesDirectoryExtensionHandle);
@@ -122,15 +127,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 
     WebCore::registerMemoryReleaseNotifyCallbacks();
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
-
-#if PLATFORM(IOS)
-    // Track the number of vnodes we are using on iOS and make sure we only use a
-    // reasonable amount because limits are fairly low on iOS devices and we can
-    // get killed when reaching the limit.
-    VNodeTracker::singleton().setPressureHandler([] (Critical critical) {
-        MemoryPressureHandler::singleton().releaseMemory(critical);
-    });
-#endif
 
     setEnhancedAccessibility(parameters.accessibilityEnhancedUserInterfaceEnabled);
 
@@ -193,6 +189,24 @@ void WebProcess::registerWithStateDumper()
             // Create a dictionary to contain the collected state. This
             // dictionary will be serialized and passed back to os_state.
             auto stateDict = adoptNS([[NSMutableDictionary alloc] init]);
+
+            {
+                auto memoryUsageStats = adoptNS([[NSMutableDictionary alloc] init]);
+                for (auto& it : PerformanceLogging::memoryUsageStatistics(ShouldIncludeExpensiveComputations::Yes)) {
+                    auto keyString = adoptNS([[NSString alloc] initWithUTF8String:it.key]);
+                    [memoryUsageStats setObject:@(it.value) forKey:keyString.get()];
+                }
+                [stateDict setObject:memoryUsageStats.get() forKey:@"Memory Usage Stats"];
+            }
+
+            {
+                auto jsObjectCounts = adoptNS([[NSMutableDictionary alloc] init]);
+                for (auto& it : PerformanceLogging::javaScriptObjectCounts()) {
+                    auto keyString = adoptNS([[NSString alloc] initWithUTF8String:it.key]);
+                    [jsObjectCounts setObject:@(it.value) forKey:keyString.get()];
+                }
+                [stateDict setObject:jsObjectCounts.get() forKey:@"JavaScript Object Counts"];
+            }
 
             auto pageLoadTimes = adoptNS([[NSMutableArray alloc] init]);
             for (auto& page : m_pageMap.values()) {
@@ -423,7 +437,14 @@ RefPtr<ObjCObjectGraph> WebProcess::transformObjectsToHandles(ObjCObjectGraph& o
 
 void WebProcess::destroyRenderingResources()
 {
-    WKDestroyRenderingResources();
+#if !RELEASE_LOG_DISABLED
+    double startTime = monotonicallyIncreasingTime();
+#endif
+    CABackingStoreCollectBlocking();
+#if !RELEASE_LOG_DISABLED
+    double endTime = monotonicallyIncreasingTime();
+#endif
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::destroyRenderingResources() took %.2fms", this, (endTime - startTime) * 1000.0);
 }
 
 } // namespace WebKit

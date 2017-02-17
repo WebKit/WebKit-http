@@ -17,6 +17,12 @@
     "imported/w3c/web-platform-tests/IndexedDB/idbdatabase_createObjectStore8-parameters.htm": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/IndexedDB/idbindex-rename.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/IndexedDB/idbobjectstore-rename-store.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_createIndex3-usable-right-away.htm": [
         "slow"
     ],
@@ -30,6 +36,120 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/IndexedDB/writer-starvation.htm": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_ecdh_bits.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_ecdh_keys.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_hkdf.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/digest/test_digest.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_cbc.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_ctr.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_gcm.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_rsa_oaep.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_aes-cbc.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_aes-ctr.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-CBC.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-CTR.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-GCM.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-KW.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDH.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDSA.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_HMAC.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_RSA-OAEP.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_RSA-PSS.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_RSASSA-PKCS1-v1_5.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-CBC.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-CTR.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-GCM.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-KW.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDH.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDSA.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_HMAC.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSA-OAEP.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSA-PSS.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_ecdsa.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_hmac.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pkcs.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pss.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/test_wrapKey_unwrapKey.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/XMLHttpRequest/progress-events-response-data-gzip.htm": [
@@ -176,6 +296,9 @@
     "imported/w3c/web-platform-tests/dom/traversal/TreeWalker.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-encrypted-clear-sources.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential-readyState.html": [
         "slow"
     ],
@@ -188,6 +311,30 @@
     "imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-requestmediakeysystemaccess.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-events.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-expiration.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-keystatuses-multiple-sessions.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-keystatuses.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-destroy-persistent-license.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-persistent-license-events.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-persistent-license.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-persistent-usage-record-events.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-persistent-usage-record.html": [
         "slow"
     ],
@@ -195,6 +342,18 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-retrieve-persistent-license.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-retrieve-persistent-usage-record.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-clear-encrypted.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-encrypted-clear-sources.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-encrypted-clear.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-events.html": [
@@ -209,7 +368,70 @@
     "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-multikey-sequential.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-multikey.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-multisession.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-setMediaKeys-after-src.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-setMediaKeys-after-update.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-setMediaKeys-immediately.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-setMediaKeys-onencrypted.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-two-videos.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary-waitingforkey.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-playback-temporary.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-requestmediakeysystemaccess.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-setmediakeys-again-after-playback.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-setmediakeys-again-after-resetting-src.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-setmediakeys-at-same-time.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-setmediakeys-multiple-times-with-different-mediakeys.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-setmediakeys-multiple-times-with-the-same-mediakeys.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-setmediakeys-to-multiple-video-elements.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-mp4-waiting-for-a-key.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/encrypted-media/drm-temporary-license-type.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/fetch/api/headers/header-values-normalize.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/fetch/api/headers/header-values.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/fetch/api/request/request-cache.html": [
@@ -237,6 +459,9 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/007.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-exceptions.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-on-new-window.html": [
@@ -281,6 +506,9 @@
     "imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/submit-entity-body.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection.html": [
         "slow"
     ],
@@ -311,6 +539,15 @@
     "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_inbody01.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_adoption01.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_foreign-fragment.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_math.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_tests4.html": [
         "slow"
     ],
@@ -323,10 +560,19 @@
     "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_tests_innerHTML_1.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_webkit02.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_isindex.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_main-element.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_menuitem-element.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_namespace-sensitivity.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_pending-spec-changes-plain-text-unsafe.html": [
@@ -336,6 +582,9 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_plain-text-unsafe.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_ruby.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_scriptdata01.html": [

@@ -64,7 +64,7 @@ WebDragClient::WebDragClient(WebView* webView)
     ASSERT(webView);
 }
 
-DragDestinationAction WebDragClient::actionMaskForDrag(DragData& dragData)
+DragDestinationAction WebDragClient::actionMaskForDrag(const DragData& dragData)
 {
     COMPtr<IWebUIDelegate> delegateRef = 0;
     //Default behaviour (eg. no delegate, or callback not implemented) is to allow
@@ -76,7 +76,7 @@ DragDestinationAction WebDragClient::actionMaskForDrag(DragData& dragData)
     return (DragDestinationAction)mask;
 }
 
-void WebDragClient::willPerformDragDestinationAction(DragDestinationAction action, DragData& dragData)
+void WebDragClient::willPerformDragDestinationAction(DragDestinationAction action, const DragData& dragData)
 {
     //Default delegate for willPerformDragDestinationAction has no side effects
     //so we just call the delegate, and don't worry about whether it's implemented
@@ -110,7 +110,7 @@ void WebDragClient::willPerformDragSourceAction(DragSourceAction action, const I
         const_cast<Pasteboard&>(dataTransfer.pasteboard()).setExternalDataObject(newDataObject.get());
 }
 
-void WebDragClient::startDrag(DragImageRef image, const IntPoint& imageOrigin, const IntPoint& dragPoint, DataTransfer& dataTransfer, Frame& frame, bool isLink)
+void WebDragClient::startDrag(DragImageRef image, const IntPoint& imageOrigin, const IntPoint& dragPoint, const FloatPoint&, DataTransfer& dataTransfer, Frame& frame, bool isLink)
 {
     //FIXME: Allow UIDelegate to override behaviour <rdar://problem/5015953>
 

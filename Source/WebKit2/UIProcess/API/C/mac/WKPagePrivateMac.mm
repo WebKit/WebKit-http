@@ -26,6 +26,7 @@
 #import "config.h"
 #import "WKPagePrivateMac.h"
 
+#import "FullscreenClient.h"
 #import "PageLoadStateObserver.h"
 #import "WKAPICast.h"
 #import "WKNSURLExtras.h"
@@ -100,6 +101,19 @@ using namespace WebKit;
     return [NSURL _web_URLWithWTFString:_page->pageLoadState().unreachableURL()];
 }
 
+- (SecTrustRef)serverTrust
+{
+#if HAVE(SEC_TRUST_SERIALIZATION)
+    auto certificateInfo = _page->pageLoadState().certificateInfo();
+    if (!certificateInfo)
+        return nil;
+
+    return certificateInfo->certificateInfo().trust();
+#else
+    return nil;
+#endif
+}
+
 @end
 
 id <_WKObservablePageState> WKPageCreateObservableState(WKPageRef pageRef)
@@ -130,3 +144,20 @@ bool WKPageIsPlayingVideoInEnhancedFullscreen(WKPageRef pageRef)
     return toImpl(pageRef)->isPlayingVideoInEnhancedFullscreen();
 }
 #endif
+
+void WKPageSetFullscreenDelegate(WKPageRef page, id <_WKFullscreenDelegate> delegate)
+{
+#if WK_API_ENABLED && ENABLE(FULLSCREEN_API)
+    static_cast<WebKit::FullscreenClient&>(toImpl(page)->fullscreenClient()).setDelegate(delegate);
+#endif
+}
+
+id <_WKFullscreenDelegate> WKPageGetFullscreenDelegate(WKPageRef page)
+{
+#if WK_API_ENABLED && ENABLE(FULLSCREEN_API)
+    return static_cast<WebKit::FullscreenClient&>(toImpl(page)->fullscreenClient()).delegate().autorelease();
+#else
+    return nil;
+#endif
+}
+

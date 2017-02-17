@@ -87,13 +87,13 @@ void SVGUseElement::parseAttribute(const QualifiedName& name, const AtomicString
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::xAttr)
-        setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setXBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        setYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setYBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::widthAttr)
-        setWidthBaseValue(SVGLength::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths));
+        setWidthBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths));
     else if (name == SVGNames::heightAttr)
-        setHeightBaseValue(SVGLength::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths));
+        setHeightBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths));
 
     reportAttributeParsingError(parseError, name, value);
 
@@ -105,7 +105,7 @@ void SVGUseElement::parseAttribute(const QualifiedName& name, const AtomicString
 Node::InsertionNotificationRequest SVGUseElement::insertedInto(ContainerNode& rootParent)
 {
     SVGGraphicsElement::insertedInto(rootParent);
-    if (inDocument()) {
+    if (isConnected()) {
         SVGExternalResourcesRequired::insertedIntoDocument(this);
         invalidateShadowTree();
         updateExternalDocument();
@@ -179,12 +179,12 @@ void SVGUseElement::svgAttributeChanged(const QualifiedName& attrName)
     SVGGraphicsElement::svgAttributeChanged(attrName);
 }
 
-bool SVGUseElement::willRecalcStyle(Style::Change change)
+void SVGUseElement::willRecalcStyle(Style::Change change)
 {
     // FIXME: Shadow tree should be updated before style recalc.
     if (m_shadowTreeNeedsUpdate)
         updateShadowTree();
-    return SVGGraphicsElement::willRecalcStyle(change);
+    SVGGraphicsElement::willRecalcStyle(change);
 }
 
 static HashSet<AtomicString> createAllowedElementSet()
@@ -229,7 +229,7 @@ void SVGUseElement::updateShadowTree()
     // FIXME: It's expensive to re-clone the entire tree every time. We should find a more efficient way to handle this.
     clearShadowTree();
 
-    if (isInShadowTree() || !inDocument())
+    if (isInShadowTree() || !isConnected())
         return;
 
     String targetID;
@@ -261,7 +261,7 @@ SVGElement* SVGUseElement::targetClone() const
     auto* root = userAgentShadowRoot();
     if (!root)
         return nullptr;
-    return downcast<SVGElement>(root->firstChild());
+    return childrenOfType<SVGElement>(*root).first();
 }
 
 RenderPtr<RenderElement> SVGUseElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
@@ -329,7 +329,7 @@ static void removeDisallowedElementsFromSubtree(SVGElement& subtree)
     // This function is used only on elements in subtrees that are not yet in documents, so
     // mutation events are not a factor; there are no event listeners to handle those events.
     // Assert that it's not in a document to make sure callers are still using it this way.
-    ASSERT(!subtree.inDocument());
+    ASSERT(!subtree.isConnected());
 
     Vector<Element*> disallowedElements;
     auto descendants = descendantsOfType<Element>(subtree);
@@ -409,7 +409,7 @@ SVGElement* SVGUseElement::findTarget(String* targetID) const
         return nullptr;
     auto& target = downcast<SVGElement>(*targetCandidate);
 
-    if (!target.inDocument() || isDisallowedElement(target))
+    if (!target.isConnected() || isDisallowedElement(target))
         return nullptr;
 
     // Reject any target that has already been cloned to create one of the ancestors of this element,
@@ -553,7 +553,7 @@ void SVGUseElement::finishParsingChildren()
 void SVGUseElement::updateExternalDocument()
 {
     URL externalDocumentURL;
-    if (inDocument() && isExternalURIReference(href(), document())) {
+    if (isConnected() && isExternalURIReference(href(), document())) {
         externalDocumentURL = document().completeURL(href());
         if (!externalDocumentURL.hasFragmentIdentifier())
             externalDocumentURL = URL();
@@ -572,7 +572,7 @@ void SVGUseElement::updateExternalDocument()
         options.contentSecurityPolicyImposition = isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
         options.mode = FetchOptions::Mode::SameOrigin;
         CachedResourceRequest request { ResourceRequest { externalDocumentURL }, options };
-        request.setInitiator(this);
+        request.setInitiator(*this);
         m_externalDocument = document().cachedResourceLoader().requestSVGDocument(WTFMove(request));
         if (m_externalDocument)
             m_externalDocument->addClient(*this);

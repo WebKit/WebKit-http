@@ -30,7 +30,6 @@
 #include "CachedScript.h"
 #include "LoadableScript.h"
 #include "LoadableScriptClient.h"
-#include "SecurityOrigin.h"
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
@@ -40,25 +39,32 @@ namespace WebCore {
 // destroyed in order to guarantee that the data buffer will not be purged.
 class LoadableClassicScript final : public LoadableScript, private CachedResourceClient {
 public:
-    ~LoadableClassicScript();
+    virtual ~LoadableClassicScript();
 
-    static Ref<LoadableClassicScript> create(CachedResourceHandle<CachedScript>&&);
-    bool isLoaded() const override;
-    Optional<Error> wasErrored() const override;
-    bool wasCanceled() const override;
+    static Ref<LoadableClassicScript> create(const String& nonce, const String& crossOriginMode, const String& charset, const AtomicString& initiatorName, bool isInUserAgentShadowTree);
+    bool isLoaded() const final;
+    std::optional<Error> error() const final;
+    bool wasCanceled() const final;
 
     CachedScript& cachedScript() { return *m_cachedScript; }
-    bool isClassicScript() const final { return true; }
 
-    void execute(ScriptElement&) override;
+    bool isClassicScript() const final { return true; }
+    bool isModuleScript() const final { return false; }
+
+    void execute(ScriptElement&) final;
+
+    bool load(Document&, const URL&);
 
 private:
-    LoadableClassicScript(CachedResourceHandle<CachedScript>&& cachedScript) : m_cachedScript(WTFMove(cachedScript)) { }
+    LoadableClassicScript(const String& nonce, const String& crossOriginMode, const String& charset, const AtomicString& initiatorName, bool isInUserAgentShadowTree)
+        : LoadableScript(nonce, crossOriginMode, charset, initiatorName, isInUserAgentShadowTree)
+    {
+    }
 
     void notifyFinished(CachedResource&) final;
 
-    CachedResourceHandle<CachedScript> m_cachedScript;
-    Optional<Error> m_error { Nullopt };
+    CachedResourceHandle<CachedScript> m_cachedScript { };
+    std::optional<Error> m_error { std::nullopt };
 };
 
 }

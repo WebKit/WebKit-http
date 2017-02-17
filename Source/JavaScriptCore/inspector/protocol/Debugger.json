@@ -1,6 +1,7 @@
 {
     "domain": "Debugger",
     "description": "Debugger domain exposes JavaScript debugging capabilities. It allows setting and removing breakpoints, stepping through execution, exploring stack traces, etc.",
+    "workerSupported": true,
     "types": [
         {
             "id": "BreakpointId",
@@ -136,6 +137,13 @@
             "description": "Disables debugger for given page."
         },
         {
+            "name": "setAsyncStackTraceDepth",
+            "description": "Set the async stack trace depth for the page. A value of zero disables recording of async stack traces.",
+            "parameters": [
+                { "name": "depth", "type": "integer", "description": "Async stack trace depth." }
+            ]
+        },
+        {
             "name": "setBreakpointsActive",
             "parameters": [
                 { "name": "active", "type": "boolean", "description": "New value for breakpoints active state." }
@@ -177,11 +185,15 @@
             "description": "Removes JavaScript breakpoint."
         },
         {
+            "name": "continueUntilNextRunLoop",
+            "description": "Continues execution until the current evaluation completes. This will trigger either a Debugger.paused or Debugger.resumed event."
+        },
+        {
             "name": "continueToLocation",
+            "description": "Continues execution until specific location is reached. This will trigger either a Debugger.paused or Debugger.resumed event.",
             "parameters": [
                 { "name": "location", "$ref": "Location", "description": "Location to continue to." }
-            ],
-            "description": "Continues execution until specific location is reached. This will trigger either a Debugger.paused or Debugger.resumed event."
+            ]
         },
         {
             "name": "stepOver",
@@ -293,7 +305,8 @@
                 { "name": "endColumn", "type": "integer", "description": "Length of the last line of the script." },
                 { "name": "isContentScript", "type": "boolean", "optional": true, "description": "Determines whether this script is a user extension script." },
                 { "name": "sourceURL", "type": "string", "optional": true, "description": "sourceURL name of the script (if any)." },
-                { "name": "sourceMapURL", "type": "string", "optional": true, "description": "URL of source map associated with script (if any)." }
+                { "name": "sourceMapURL", "type": "string", "optional": true, "description": "URL of source map associated with script (if any)." },
+                { "name": "module", "type": "boolean", "optional": true, "description": "True if this script was parsed as a module." }
             ],
             "description": "Fired when virtual machine parses script. This event is also fired for all known and uncollected scripts upon enabling debugger."
         },
@@ -321,7 +334,8 @@
             "parameters": [
                 { "name": "callFrames", "type": "array", "items": { "$ref": "CallFrame" }, "description": "Call stack the virtual machine stopped on." },
                 { "name": "reason", "type": "string", "enum": ["XHR", "DOM", "EventListener", "exception", "assert", "CSPViolation", "DebuggerStatement", "Breakpoint", "PauseOnNextStatement", "other"], "description": "Pause reason." },
-                { "name": "data", "type": "object", "optional": true, "description": "Object containing break-specific auxiliary properties." }
+                { "name": "data", "type": "object", "optional": true, "description": "Object containing break-specific auxiliary properties." },
+                { "name": "asyncStackTrace", "$ref": "Console.StackTrace", "optional": true, "description": "Linked list of asynchronous StackTraces." }
             ],
             "description": "Fired when the virtual machine stopped on breakpoint or exception or any other stop criteria."
         },

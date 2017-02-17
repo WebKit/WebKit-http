@@ -40,7 +40,7 @@ OBJC_CLASS NSImage;
 #elif PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
 #elif PLATFORM(GTK) || PLATFORM(WPE)
-typedef struct _cairo_surface cairo_surface_t;
+#include "RefPtrCairo.h"
 #endif
 
 // We need to #define YOffset as it needs to be shared with WebKit
@@ -62,9 +62,13 @@ typedef RetainPtr<NSImage> DragImageRef;
 #elif PLATFORM(WIN)
 typedef HBITMAP DragImageRef;
 #elif PLATFORM(GTK) || PLATFORM(WPE)
-typedef cairo_surface_t* DragImageRef;
+typedef RefPtr<cairo_surface_t> DragImageRef;
 #elif PLATFORM(EFL)
 typedef void* DragImageRef;
+#endif
+
+#if PLATFORM(COCOA)
+static const float SelectionDragImagePadding = 15;
 #endif
 
 IntSize dragImageSize(DragImageRef);
@@ -85,5 +89,21 @@ WEBCORE_EXPORT DragImageRef createDragImageForRange(Frame&, Range&, bool forceBl
 DragImageRef createDragImageForImage(Frame&, Node&, IntRect& imageRect, IntRect& elementRect);
 DragImageRef createDragImageForLink(URL&, const String& label, FontRenderingMode);
 void deleteDragImage(DragImageRef);
+
+class DragImage final {
+public:
+    DragImage();
+    explicit DragImage(DragImageRef);
+    DragImage(DragImage&&);
+    ~DragImage();
+
+    DragImage& operator=(DragImage&&);
+
+    explicit operator bool() const { return !!m_dragImageRef; }
+    DragImageRef get() const { return m_dragImageRef; }
+
+private:
+    DragImageRef m_dragImageRef;
+};
 
 }

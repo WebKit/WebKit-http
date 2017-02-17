@@ -1,5 +1,4 @@
 Bug(WPE) accessibility/ [ Skip ]
-Bug(WPE) batterystatus/ [ Skip ]
 Bug(WPE) compositing/ [ Skip ]
 Bug(WPE) contentfiltering/ [ Skip ]
 Bug(WPE) crypto/ [ Skip ]
@@ -19,7 +18,6 @@ Bug(WPE) indieui/ [ Skip ]
 Bug(WPE) inspector/ [ Skip ]
 Bug(WPE) java/ [ Skip ]
 Bug(WPE) jquery/ [ Skip ]
-Bug(WPE) loader/ [ Skip ]
 Bug(WPE) mathml/ [ Skip ]
 Bug(WPE) media/ [ Skip ]
 Bug(WPE) mhtml/ [ Skip ]
@@ -31,7 +29,6 @@ Bug(WPE) printing/ [ Skip ]
 Bug(WPE) proximity/ [ Skip ]
 Bug(WPE) scrollbars/ [ Skip ]
 Bug(WPE) scrollingcoordinator/ [ Skip ]
-Bug(WPE) security/ [ Skip ]
 Bug(WPE) storage/ [ Skip ]
 Bug(WPE) svg/ [ Skip ]
 Bug(WPE) tables/ [ Skip ]
@@ -39,7 +36,6 @@ Bug(WPE) userscripts/ [ Skip ]
 Bug(WPE) vibration/ [ Skip ]
 Bug(WPE) webarchive/ [ Skip ]
 Bug(WPE) webaudio/ [ Skip ]
-Bug(WPE) webgl/ [ Skip ]
 
 # Require ENABLE_CSS_ANIMATIONS_LEVEL_2
 Bug(WPE) animations/trigger-computed-style.html [ Failure ]
@@ -67,6 +63,62 @@ Bug(WPE) canvas/philip/tests/2d.text.draw.space.collapse.space.html [ Failure ]
 Bug(WPE) canvas/philip/tests/2d.text.draw.space.collapse.start.html [ Failure ]
 Bug(WPE) canvas/philip/tests/2d.text.measure.width.space.html [ Failure ]
 
+# These are prone to run in parallel, consuming all the memory on the system.
 Bug(WPE) js/stringimpl-to-jsstring-on-large-strings-1.html [ Skip ]
 Bug(WPE) js/stringimpl-to-jsstring-on-large-strings-2.html [ Skip ]
 Bug(WPE) js/stringimpl-to-jsstring-on-large-strings-3.html [ Skip ]
+
+# Need investigation.
+Bug(WPE) loader/navigation-policy/should-open-external-urls/ [ Skip ]
+Bug(WPE) loader/stateobjects/pushstate-size-iframe.html [ Skip ]
+Bug(WPE) loader/stateobjects/pushstate-size.html [ Skip ]
+
+# webgl/1.0.2:
+#  Failing
+Bug(WPE) webgl/1.0.2/conformance/canvas/buffer-offscreen-test.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/canvas/canvas-test.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/canvas/drawingbuffer-test.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/context/context-attribute-preserve-drawing-buffer.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/context/premultiplyalpha-test.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/extensions/oes-vertex-array-object.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/textures/gl-teximage.html [ Failure ]
+#  Timing out
+Bug(WPE) webgl/1.0.2/conformance/context/context-creation-and-destruction.html [ Timeout ]
+Bug(WPE) webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html [ Timeout ]
+Bug(WPE) webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Timeout ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html [ Timeout ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Timeout ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Timeout ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Timeout ]
+
+# webgl/1.0.3:
+#  Failing:
+Bug(WPE) webgl/1.0.3/conformance/attribs/gl-bindAttribLocation-aliasing.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/attribs/gl-bindAttribLocation-matrix.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/context/context-creation.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/context/context-eviction-with-garbage-collection.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/extensions/oes-texture-half-float-with-canvas.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/extensions/oes-texture-half-float-with-image-data.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/extensions/oes-texture-half-float-with-image.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/extensions/oes-texture-half-float.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/extensions/webgl-compressed-texture-size-limit.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/glsl/misc/shaders-with-invariance.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/glsl/misc/shaders-with-name-conflicts.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/renderbuffers/feedback-loop.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/rendering/point-no-attributes.html [ Failure ]
+Bug(WPE) webgl/1.0.3/conformance/textures/texture-copying-feedback-loops.html [ Failure ]
+#  Timing out:
+Bug(WPE) webgl/1.0.3/conformance/extensions/oes-texture-half-float-with-video.html [ Timeout ]
+Bug(WPE) webgl/1.0.3/conformance/glsl/bugs/temp-expressions-should-not-crash.html [ Timeout ]
+Bug(WPE) webgl/1.0.3/conformance/textures/texture-upload-size.html [ Timeout ]
+#  One of these tests is DDoS-ing Mesa AMD drivers.
+Bug(WPE) webgl/1.0.3/conformance/glsl/bugs [ Skip ]
+
+# Pixel test result oddities
+Bug(WPE) webgl/webgl-border.html [ ImageOnlyFailure ]
+Bug(WPE) webgl/webgl-box-shadow.html [ ImageOnlyFailure ]
+
+# WebGL2
+Bug(WPE) webgl/webgl-vertex-array-object-defined.html [ Failure ]
+Bug(WPE) webgl/webgl2-rendering-context-defined.html [ Failure ]
+Bug(WPE) webgl/webgl2-rendering-context-obtain.html [ Failure ]

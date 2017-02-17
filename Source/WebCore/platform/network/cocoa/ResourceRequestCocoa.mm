@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2014-2017 Apple, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #if PLATFORM(COCOA)
 
+#import "FileSystem.h"
 #import "FormDataStreamMac.h"
 #import "HTTPHeaderNames.h"
 #import "ResourceRequestCFNet.h"
@@ -60,7 +61,29 @@ NSURLRequest *ResourceRequest::nsURLRequest(HTTPBodyUpdatePolicy bodyPolicy) con
     return [[m_nsRequest.get() retain] autorelease];
 }
 
-#if !USE(CFURLCONNECTION)
+#if USE(CFURLCONNECTION)
+
+void ResourceRequest::clearOrUpdateNSURLRequest()
+{
+    // There is client code that extends NSURLRequest and expects to get back, in the delegate
+    // callbacks, an object of the same type that they passed into WebKit. To keep then running, we
+    // create an object of the same type and return that. See <rdar://9843582>.
+    // Also, developers really really want an NSMutableURLRequest so try to create an
+    // NSMutableURLRequest instead of NSURLRequest.
+    static Class nsURLRequestClass = [NSURLRequest class];
+    static Class nsMutableURLRequestClass = [NSMutableURLRequest class];
+    Class requestClass = [m_nsRequest.get() class];
+    
+    if (!m_cfRequest)
+        return;
+    
+    if (requestClass && requestClass != nsURLRequestClass && requestClass != nsMutableURLRequestClass)
+        m_nsRequest = adoptNS([[requestClass alloc] _initWithCFURLRequest:m_cfRequest.get()]);
+    else
+        m_nsRequest = nullptr;
+}
+
+#else
 
 CFURLRequestRef ResourceRequest::cfURLRequest(HTTPBodyUpdatePolicy bodyPolicy) const
 {
@@ -125,13 +148,11 @@ void ResourceRequest::doUpdateResourceRequest()
             m_responseContentDispositionEncodingFallbackArray.uncheckedAppend(CFStringConvertEncodingToIANACharSetName(encoding));
     }
 
-#if ENABLE(CACHE_PARTITIONING)
     if (m_nsRequest) {
         NSString* cachePartition = [NSURLProtocol propertyForKey:(NSString *)wkCachePartitionKey() inRequest:m_nsRequest.get()];
         if (cachePartition)
             m_cachePartition = cachePartition;
     }
-#endif
 }
 
 void ResourceRequest::doUpdateResourceHTTPBody()
@@ -195,11 +216,20 @@ void ResourceRequest::doUpdatePlatformRequest()
     }
     [nsRequest setContentDispositionEncodingFallbackArray:encodingFallbacks];
 
-#if ENABLE(CACHE_PARTITIONING)
     String partition = cachePartition();
     if (!partition.isNull() && !partition.isEmpty()) {
         NSString *partitionValue = [NSString stringWithUTF8String:partition.utf8().data()];
         [NSURLProtocol setProperty:partitionValue forKey:(NSString *)wkCachePartitionKey() inRequest:nsRequest];
+    }
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+    if (m_url.isLocalFile()) {
+        auto fsRepFile = fileSystemRepresentation(m_url.fileSystemPath());
+        if (!fsRepFile.isNull()) {
+            auto fileDevice = getFileDeviceId(fsRepFile);
+            if (fileDevice && fileDevice.value())
+                [nsRequest _setProperty:[NSNumber numberWithInteger:fileDevice.value()] forKey:@"NSURLRequestFileProtocolExpectedDevice"];
+        }
     }
 #endif
 

@@ -47,11 +47,17 @@
 #include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
+namespace WTF {
+class MediaTime;
+}
+
 namespace WebCore {
 
+class AudioStreamDescription;
 class FloatRect;
 class GraphicsContext;
 class MediaStreamPrivate;
+class PlatformAudioData;
 class RealtimeMediaSourceSettings;
 
 class RealtimeMediaSource : public RefCounted<RealtimeMediaSource> {
@@ -68,8 +74,11 @@ public:
         // Observer state queries.
         virtual bool preventSourceFromStopping() = 0;
         
-        // Media data changes.
-        virtual void sourceHasMoreMediaData(MediaSample&) = 0;
+        // Called on the main thread.
+        virtual void videoSampleAvailable(MediaSample&) { }
+
+        // May be called on a background thread.
+        virtual void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t /*numberOfFrames*/) { }
     };
 
     virtual ~RealtimeMediaSource() { }
@@ -94,12 +103,14 @@ public:
     using SuccessHandler = std::function<void()>;
     using FailureHandler = std::function<void(const String& badConstraint, const String& errorString)>;
     void applyConstraints(const MediaConstraints&, SuccessHandler, FailureHandler);
-    Optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
+    std::optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
 
     virtual bool supportsConstraints(const MediaConstraints&, String&);
 
     virtual void settingsDidChange();
-    void mediaDataUpdated(MediaSample&);
+
+    void videoSampleAvailable(MediaSample&);
+    void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t);
     
     bool stopped() const { return m_stopped; }
 
@@ -112,8 +123,8 @@ public:
     virtual bool remote() const { return m_remote; }
     virtual void setRemote(bool remote) { m_remote = remote; }
 
-    void addObserver(Observer*);
-    void removeObserver(Observer*);
+    void addObserver(Observer&);
+    void removeObserver(Observer&);
 
     virtual void startProducingData() { }
     virtual void stopProducingData() { }
@@ -126,7 +137,6 @@ public:
 
     virtual AudioSourceProvider* audioSourceProvider() { return nullptr; }
 
-    virtual PlatformLayer* platformLayer() const { return nullptr; }
     virtual RefPtr<Image> currentFrameImage() { return nullptr; }
     virtual void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) { }
 
@@ -173,11 +183,11 @@ protected:
 
     virtual bool selectSettings(const MediaConstraints&, FlattenedConstraint&, String&);
     virtual double fitnessDistance(const MediaConstraint&);
-    virtual bool supportsSizeAndFrameRate(Optional<IntConstraint> width, Optional<IntConstraint> height, Optional<DoubleConstraint>, String&);
-    virtual bool supportsSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>);
+    virtual bool supportsSizeAndFrameRate(std::optional<IntConstraint> width, std::optional<IntConstraint> height, std::optional<DoubleConstraint>, String&);
+    virtual bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
     virtual void applyConstraint(const MediaConstraint&);
     virtual void applyConstraints(const FlattenedConstraint&);
-    virtual void applySizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>);
+    virtual void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
 
     bool m_muted { false };
 

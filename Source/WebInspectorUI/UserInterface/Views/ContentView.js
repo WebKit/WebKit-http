@@ -310,7 +310,7 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
     get supportsSplitContentBrowser()
     {
         // Implemented by subclasses.
-        return true;
+        return WebInspector.dockedConfigurationSupportsSplitContentBrowser();
     }
 
     shown()
@@ -364,6 +364,17 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
     {
         // Implemented by subclasses.
         return false;
+    }
+
+    get supportsCustomFindBanner()
+    {
+        // Implemented by subclasses.
+        return false;
+    }
+
+    showCustomFindBanner()
+    {
+        // Implemented by subclasses.
     }
 
     get numberOfSearchResults()

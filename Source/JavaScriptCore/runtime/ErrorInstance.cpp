@@ -39,6 +39,15 @@ ErrorInstance::ErrorInstance(VM& vm, Structure* structure)
 {
 }
 
+ErrorInstance* ErrorInstance::create(ExecState* state, Structure* structure, JSValue message, SourceAppender appender, RuntimeType type, bool useCurrentFrame)
+{
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    String messageString = message.isUndefined() ? String() : message.toWTFString(state);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    return create(state, vm, structure, messageString, appender, type, useCurrentFrame);
+}
+
 static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, unsigned bytecodeOffset)
 {
     ErrorInstance::SourceAppender appender = exception->sourceAppender();
@@ -138,7 +147,7 @@ private:
 void ErrorInstance::finishCreation(ExecState* exec, VM& vm, const String& message, bool useCurrentFrame)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     if (!message.isNull())
         putDirect(vm, vm.propertyNames->message, jsString(&vm, message), DontEnum);
 
@@ -184,7 +193,7 @@ String ErrorInstance::sanitizedToString(ExecState* exec)
     if (!nameValue)
         nameString = ASCIILiteral("Error");
     else {
-        nameString = nameValue.toString(exec)->value(exec);
+        nameString = nameValue.toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, String());
     }
 
@@ -199,7 +208,7 @@ String ErrorInstance::sanitizedToString(ExecState* exec)
     if (!messageValue)
         messageString = String();
     else {
-        messageString = messageValue.toString(exec)->value(exec);
+        messageString = messageValue.toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, String());
     }
 

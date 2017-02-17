@@ -110,17 +110,20 @@ void JSDOMGlobalObject::addBuiltinGlobals(VM& vm)
 #endif
     JSObject* privateReadableStreamDefaultReaderConstructor = createReadableStreamDefaultReaderPrivateConstructor(vm, *this);
 
-    ASSERT(!constructors().get(privateReadableStreamDefaultControllerConstructor->info()).get());
+    ASSERT(!constructors(NoLockingNecessary).get(privateReadableStreamDefaultControllerConstructor->info()).get());
 #if ENABLE(READABLE_BYTE_STREAM_API)
-    ASSERT(!constructors().get(privateReadableByteStreamControllerConstructor->info()).get());
+    ASSERT(!constructors(NoLockingNecessary).get(privateReadableByteStreamControllerConstructor->info()).get());
 #endif
-    ASSERT(!constructors().get(privateReadableStreamDefaultReaderConstructor->info()).get());
+    ASSERT(!constructors(NoLockingNecessary).get(privateReadableStreamDefaultReaderConstructor->info()).get());
     JSC::WriteBarrier<JSC::JSObject> temp;
-    constructors().add(privateReadableStreamDefaultControllerConstructor->info(), temp).iterator->value.set(vm, this, privateReadableStreamDefaultControllerConstructor);
+    {
+        auto locker = lockDuringMarking(vm.heap, m_gcLock);
+        constructors(locker).add(privateReadableStreamDefaultControllerConstructor->info(), temp).iterator->value.set(vm, this, privateReadableStreamDefaultControllerConstructor);
 #if ENABLE(READABLE_BYTE_STREAM_API)
-    constructors().add(privateReadableByteStreamControllerConstructor->info(), temp).iterator->value.set(vm, this, privateReadableByteStreamControllerConstructor);
+        constructors(locker).add(privateReadableByteStreamControllerConstructor->info(), temp).iterator->value.set(vm, this, privateReadableByteStreamControllerConstructor);
 #endif
-    constructors().add(privateReadableStreamDefaultReaderConstructor->info(), temp).iterator->value.set(vm, this, privateReadableStreamDefaultReaderConstructor);
+        constructors(locker).add(privateReadableStreamDefaultReaderConstructor->info(), temp).iterator->value.set(vm, this, privateReadableStreamDefaultReaderConstructor);
+    }
 #endif
     JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);
     JSDOMGlobalObject::GlobalPropertyInfo staticGlobals[] = {
@@ -155,26 +158,31 @@ void JSDOMGlobalObject::addBuiltinGlobals(VM& vm)
 void JSDOMGlobalObject::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     addBuiltinGlobals(vm);
+    
+    RELEASE_ASSERT(classInfo());
 }
 
 void JSDOMGlobalObject::finishCreation(VM& vm, JSObject* thisValue)
 {
     Base::finishCreation(vm, thisValue);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     addBuiltinGlobals(vm);
+    
+    RELEASE_ASSERT(classInfo());
 }
 
 ScriptExecutionContext* JSDOMGlobalObject::scriptExecutionContext() const
 {
-    if (inherits(JSDOMWindowBase::info()))
+    if (inherits(vm(), JSDOMWindowBase::info()))
         return jsCast<const JSDOMWindowBase*>(this)->scriptExecutionContext();
-    if (inherits(JSWorkerGlobalScopeBase::info()))
+    if (inherits(vm(), JSWorkerGlobalScopeBase::info()))
         return jsCast<const JSWorkerGlobalScopeBase*>(this)->scriptExecutionContext();
-    ASSERT_NOT_REACHED();
+    dataLog("Unexpected global object: ", JSValue(this), "\n");
+    RELEASE_ASSERT_NOT_REACHED();
     return 0;
 }
 
@@ -183,15 +191,19 @@ void JSDOMGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSDOMGlobalObject* thisObject = jsCast<JSDOMGlobalObject*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-
-    for (auto& structure : thisObject->structures().values())
-        visitor.append(&structure);
-
-    for (auto& constructor : thisObject->constructors().values())
-        visitor.append(&constructor);
-
-    for (auto& deferredPromise : thisObject->deferredPromises())
-        deferredPromise->visitAggregate(visitor);
+    
+    {
+        auto locker = holdLock(thisObject->m_gcLock);
+        
+        for (auto& structure : thisObject->structures(locker).values())
+            visitor.append(structure);
+        
+        for (auto& constructor : thisObject->constructors(locker).values())
+            visitor.append(constructor);
+        
+        for (auto& deferredPromise : thisObject->deferredPromises(locker))
+            deferredPromise->visitAggregate(visitor);
+    }
 
     thisObject->m_builtinInternalFunctions.visit(visitor);
 }

@@ -41,7 +41,7 @@ void JSSymbolTableObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSSymbolTableObject* thisObject = jsCast<JSSymbolTableObject*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_symbolTable);
+    visitor.append(thisObject->m_symbolTable);
 }
 
 bool JSSymbolTableObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
@@ -57,7 +57,7 @@ void JSSymbolTableObject::getOwnNonIndexPropertyNames(JSObject* object, ExecStat
 {
     JSSymbolTableObject* thisObject = jsCast<JSSymbolTableObject*>(object);
     {
-        ConcurrentJITLocker locker(thisObject->symbolTable()->m_lock);
+        ConcurrentJSLocker locker(thisObject->symbolTable()->m_lock);
         SymbolTable::Map::iterator end = thisObject->symbolTable()->end(locker);
         for (SymbolTable::Map::iterator it = thisObject->symbolTable()->begin(locker); it != end; ++it) {
             if (!(it->value.getAttributes() & DontEnum) || mode.includeDontEnumProperties()) {

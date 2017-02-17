@@ -77,6 +77,7 @@ RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea(WebPage& webPage, const W
 #if PLATFORM(IOS)
     webPage.corePage()->settings().setDelegatesPageScaling(true);
 #endif
+    m_rootLayer->setName("drawing area root");
 
     m_commitQueue = dispatch_queue_create("com.apple.WebKit.WebContent.RemoteLayerTreeDrawingArea.CommitQueue", nullptr);
 
@@ -230,7 +231,7 @@ void RemoteLayerTreeDrawingArea::acceleratedAnimationDidEnd(uint64_t layerID, co
     m_remoteLayerTreeContext->animationDidEnd(layerID, key);
 }
 
-void RemoteLayerTreeDrawingArea::setViewExposedRect(Optional<WebCore::FloatRect> viewExposedRect)
+void RemoteLayerTreeDrawingArea::setViewExposedRect(std::optional<WebCore::FloatRect> viewExposedRect)
 {
     m_viewExposedRect = viewExposedRect;
     updateScrolledExposedRect();
@@ -371,9 +372,9 @@ void RemoteLayerTreeDrawingArea::flushLayers()
 
     // Because our view-relative overlay root layer is not attached to the FrameView's GraphicsLayer tree, we need to flush it manually.
     if (m_viewOverlayRootLayer)
-        m_viewOverlayRootLayer->flushCompositingState(visibleRect, m_webPage.mainFrameView()->viewportIsStable());
+        m_viewOverlayRootLayer->flushCompositingState(visibleRect);
 
-    m_rootLayer->flushCompositingStateForThisLayerOnly(m_webPage.mainFrameView()->viewportIsStable());
+    m_rootLayer->flushCompositingStateForThisLayerOnly();
 
     // FIXME: Minimize these transactions if nothing changed.
     RemoteLayerTreeTransaction layerTransaction;
@@ -427,7 +428,7 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     dispatch_async(m_commitQueue, [backingStoreFlusher, pageID] {
         backingStoreFlusher->flush();
 
-        std::chrono::milliseconds timestamp = std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(monotonicallyIncreasingTime() * 1000));
+        MonotonicTime timestamp = MonotonicTime::now();
         dispatch_async(dispatch_get_main_queue(), [pageID, timestamp] {
             if (WebPage* webPage = WebProcess::singleton().webPage(pageID))
                 webPage->didFlushLayerTreeAtTime(timestamp);

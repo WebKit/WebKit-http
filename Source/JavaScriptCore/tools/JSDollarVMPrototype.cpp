@@ -276,13 +276,14 @@ static EncodedJSValue JSC_HOST_CALL functionCodeBlockForFrame(ExecState* exec)
 
 static CodeBlock* codeBlockFromArg(ExecState* exec)
 {
+    VM& vm = exec->vm();
     if (exec->argumentCount() < 1)
         return nullptr;
 
     JSValue value = exec->uncheckedArgument(0);
     CodeBlock* candidateCodeBlock = nullptr;
     if (value.isCell()) {
-        JSFunction* func = jsDynamicCast<JSFunction*>(value.asCell());
+        JSFunction* func = jsDynamicCast<JSFunction*>(vm, value.asCell());
         if (func) {
             if (func->isHostFunction())
                 candidateCodeBlock = nullptr;
@@ -337,7 +338,7 @@ static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
 {
     auto scope = DECLARE_THROW_SCOPE(exec->vm());
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
-        String argStr = exec->uncheckedArgument(i).toString(exec)->value(exec);
+        String argStr = exec->uncheckedArgument(i).toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         dataLog(argStr);
     }

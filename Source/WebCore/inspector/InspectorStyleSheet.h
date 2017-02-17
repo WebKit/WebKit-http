@@ -215,7 +215,7 @@ private:
     bool inlineStyleSheetText(String* result) const;
     Ref<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> buildArrayForRuleList(CSSRuleList*);
     Ref<Inspector::Protocol::CSS::CSSSelector> buildObjectForSelector(const CSSSelector*, Element*);
-    Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, Element*);
+    Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, Element*, int& endingLine);
 
     InspectorPageAgent* m_pageAgent;
     String m_id;
@@ -251,7 +251,7 @@ protected:
 private:
     CSSStyleDeclaration* inlineStyle() const;
     const String& elementStyleText() const;
-    bool getStyleAttributeRanges(CSSRuleSourceData* result) const;
+    Ref<CSSRuleSourceData> ruleSourceData() const;
 
     RefPtr<Element> m_element;
     RefPtr<CSSRuleSourceData> m_ruleSourceData;

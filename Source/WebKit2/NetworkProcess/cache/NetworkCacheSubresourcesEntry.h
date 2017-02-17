@@ -28,8 +28,6 @@
 
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
 
-#include "NetworkCacheDecoder.h"
-#include "NetworkCacheEncoder.h"
 #include "NetworkCacheStorage.h"
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/URL.h>
@@ -41,25 +39,31 @@ namespace NetworkCache {
 class SubresourceInfo {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    void encode(Encoder&) const;
-    static bool decode(Decoder&, SubresourceInfo&);
+    void encode(WTF::Persistence::Encoder&) const;
+    static bool decode(WTF::Persistence::Decoder&, SubresourceInfo&);
 
     SubresourceInfo() = default;
-    SubresourceInfo(const WebCore::ResourceRequest& request, bool isTransient = false)
-        : m_isTransient(isTransient)
-        , m_firstPartyForCookies(isTransient ? WebCore::URL() : request.firstPartyForCookies())
-        , m_requestHeaders(isTransient ? WebCore::HTTPHeaderMap() : request.httpHeaderFields())
-    {
-    }
+    SubresourceInfo(const Key&, const WebCore::ResourceRequest&, const SubresourceInfo* previousInfo);
+
+    const Key& key() const { return m_key; }
+    std::chrono::system_clock::time_point lastSeen() const { return m_lastSeen; }
+    std::chrono::system_clock::time_point firstSeen() const { return m_firstSeen; }
 
     bool isTransient() const { return m_isTransient; }
     const WebCore::URL& firstPartyForCookies() const { ASSERT(!m_isTransient); return m_firstPartyForCookies; }
     const WebCore::HTTPHeaderMap& requestHeaders() const { ASSERT(!m_isTransient); return m_requestHeaders; }
+    WebCore::ResourceLoadPriority priority() const { ASSERT(!m_isTransient); return m_priority; }
+    
+    void setNonTransient() { m_isTransient = false; }
 
 private:
-    bool m_isTransient { true };
+    Key m_key;
+    std::chrono::system_clock::time_point m_lastSeen;
+    std::chrono::system_clock::time_point m_firstSeen;
+    bool m_isTransient { false };
     WebCore::URL m_firstPartyForCookies;
     WebCore::HTTPHeaderMap m_requestHeaders;
+    WebCore::ResourceLoadPriority m_priority;
 };
 
 struct SubresourceLoad {
@@ -85,14 +89,14 @@ public:
 
     const Key& key() const { return m_key; }
     std::chrono::system_clock::time_point timeStamp() const { return m_timeStamp; }
-    const HashMap<Key, SubresourceInfo>& subresources() const { return m_subresources; }
+    const Vector<SubresourceInfo>& subresources() const { return m_subresources; }
 
     void updateSubresourceLoads(const Vector<std::unique_ptr<SubresourceLoad>>&);
 
 private:
     Key m_key;
     std::chrono::system_clock::time_point m_timeStamp;
-    HashMap<Key, SubresourceInfo> m_subresources;
+    Vector<SubresourceInfo> m_subresources;
 };
 
 } // namespace WebKit

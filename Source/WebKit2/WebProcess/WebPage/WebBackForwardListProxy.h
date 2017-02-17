@@ -41,7 +41,7 @@ public:
     static uint64_t idForItem(WebCore::HistoryItem*);
     static void removeItem(uint64_t itemID);
 
-    static void addItemFromUIProcess(uint64_t itemID, Ref<WebCore::HistoryItem>&&, uint64_t pageID);
+    void addItemFromUIProcess(uint64_t itemID, Ref<WebCore::HistoryItem>&&, uint64_t pageID);
     static void setHighestItemIDFromUIProcess(uint64_t itemID);
     
     void clear();
@@ -60,7 +60,6 @@ private:
     void close() override;
 
     WebPage* m_page;
-    HashSet<uint64_t> m_associatedItemIDs;
 };
 
 } // namespace WebKit

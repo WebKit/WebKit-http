@@ -77,9 +77,9 @@ void LazyClassStructure::Initializer::setConstructor(PropertyName propertyName, 
 void LazyClassStructure::Initializer::setConstructor(JSObject* constructor)
 {
     String name;
-    if (InternalFunction* internalFunction = jsDynamicCast<InternalFunction*>(constructor))
+    if (InternalFunction* internalFunction = jsDynamicCast<InternalFunction*>(vm, constructor))
         name = internalFunction->name();
-    else if (JSFunction* function = jsDynamicCast<JSFunction*>(constructor))
+    else if (JSFunction* function = jsDynamicCast<JSFunction*>(vm, constructor))
         name = function->name(vm);
     else
         RELEASE_ASSERT_NOT_REACHED();
@@ -90,7 +90,7 @@ void LazyClassStructure::Initializer::setConstructor(JSObject* constructor)
 void LazyClassStructure::visit(SlotVisitor& visitor)
 {
     m_structure.visit(visitor);
-    visitor.append(&m_constructor);
+    visitor.append(m_constructor);
 }
 
 void LazyClassStructure::dump(PrintStream& out) const

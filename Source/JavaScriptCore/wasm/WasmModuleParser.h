@@ -34,42 +34,41 @@
 
 namespace JSC { namespace Wasm {
 
-class ModuleParser : public Parser {
+struct ModuleParserResult {
+    std::unique_ptr<ModuleInformation> module;
+    Vector<FunctionLocationInBinary> functionLocationInBinary;
+    Vector<SignatureIndex> moduleSignatureIndicesToUniquedSignatureIndices;
+};
+
+class ModuleParser : public Parser<ModuleParserResult> {
 public:
 
-    static const unsigned magicNumber = 0xc;
-
-    ModuleParser(const uint8_t* sourceBuffer, size_t sourceLength)
-        : Parser(sourceBuffer, sourceLength)
+    ModuleParser(VM* vm, const uint8_t* sourceBuffer, size_t sourceLength)
+        : Parser(vm, sourceBuffer, sourceLength)
     {
     }
-    ModuleParser(const Vector<uint8_t>& sourceBuffer)
-        : Parser(sourceBuffer.data(), sourceBuffer.size())
+    ModuleParser(VM* vm, const Vector<uint8_t>& sourceBuffer)
+        : ModuleParser(vm, sourceBuffer.data(), sourceBuffer.size())
     {
     }
 
-    bool WARN_UNUSED_RETURN parse();
-    bool WARN_UNUSED_RETURN failed() const { return m_failed; }
-    const String& errorMessage() const
-    {
-        RELEASE_ASSERT(failed());
-        return m_errorMessage;
-    }
-
-    std::unique_ptr<ModuleInformation>& moduleInformation()
-    {
-        RELEASE_ASSERT(!failed());
-        return m_module;
-    }
+    Result WARN_UNUSED_RETURN parse();
 
 private:
-#define WASM_SECTION_DECLARE_PARSER(NAME, ID, DESCRIPTION) bool WARN_UNUSED_RETURN parse ## NAME();
+
+#define WASM_SECTION_DECLARE_PARSER(NAME, ID, DESCRIPTION) PartialResult WARN_UNUSED_RETURN parse ## NAME();
     FOR_EACH_WASM_SECTION(WASM_SECTION_DECLARE_PARSER)
 #undef WASM_SECTION_DECLARE_PARSER
 
-    std::unique_ptr<ModuleInformation> m_module;
-    bool m_failed { true };
-    String m_errorMessage;
+    PartialResult WARN_UNUSED_RETURN parseCustom(uint32_t);
+    PartialResult WARN_UNUSED_RETURN parseGlobalType(Global&);
+    PartialResult WARN_UNUSED_RETURN parseMemoryHelper(bool isImport);
+    PartialResult WARN_UNUSED_RETURN parseTableHelper(bool isImport);
+    PartialResult WARN_UNUSED_RETURN parseResizableLimits(uint32_t& initial, std::optional<uint32_t>& maximum);
+    PartialResult WARN_UNUSED_RETURN parseInitExpr(uint8_t&, uint64_t&, Type& initExprType);
+
+    ModuleParserResult m_result;
+    bool m_hasTable { false };
 };
 
 } } // namespace JSC::Wasm

@@ -1,4 +1,5 @@
 find_package(WaylandEGL REQUIRED)
+find_package(WPE-mesa REQUIRED)
 
 set(WPE_EMBEDDER_DIR "${TOOLS_DIR}/wpe/examples/embedder")
 
@@ -9,9 +10,8 @@ set(WPE_EMBEDDER_SOURCES
 set(WPE_EMBEDDER_INCLUDE_DIRECTORIES
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
-    ${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include
-    ${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-mesa/include
     ${FORWARDING_HEADERS_DIR}
+    ${WPE_MESA_INCLUDE_DIRS}
     ${WTF_DIR}
 )
 
@@ -22,9 +22,10 @@ set(WPE_EMBEDDER_SYSTEM_INCLUDE_DIRECTORIES
 
 set(WPE_EMBEDDER_LIBRARIES
     WebKit2
-    WPE-mesa
-    ${GLIB_LIBRARIES}
+    wayland-client
     ${WAYLAND_EGL_LIBRARIES}
+    ${GLIB_LIBRARIES}
+    ${WPE_MESA_LIBRARIES}
 )
 
 include_directories(SYSTEM ${WPE_EMBEDDER_SYSTEM_INCLUDE_DIRECTORIES})

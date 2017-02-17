@@ -25,12 +25,9 @@
 #include "config.h"
 #include "HTMLFormControlElementWithState.h"
 
-#include "Chrome.h"
-#include "ChromeClient.h"
 #include "FormController.h"
 #include "Frame.h"
 #include "HTMLFormElement.h"
-#include "Page.h"
 
 namespace WebCore {
 
@@ -45,14 +42,14 @@ HTMLFormControlElementWithState::~HTMLFormControlElementWithState()
 
 Node::InsertionNotificationRequest HTMLFormControlElementWithState::insertedInto(ContainerNode& insertionPoint)
 {
-    if (insertionPoint.inDocument() && !containingShadowRoot())
+    if (insertionPoint.isConnected() && !containingShadowRoot())
         document().formController().registerFormElementWithState(this);
     return HTMLFormControlElement::insertedInto(insertionPoint);
 }
 
 void HTMLFormControlElementWithState::removedFrom(ContainerNode& insertionPoint)
 {
-    if (insertionPoint.inDocument() && !containingShadowRoot() && !insertionPoint.containingShadowRoot())
+    if (insertionPoint.isConnected() && !containingShadowRoot() && !insertionPoint.containingShadowRoot())
         document().formController().unregisterFormElementWithState(this);
     HTMLFormControlElement::removedFrom(insertionPoint);
 }
@@ -67,7 +64,7 @@ bool HTMLFormControlElementWithState::shouldAutocomplete() const
 bool HTMLFormControlElementWithState::shouldSaveAndRestoreFormControlState() const
 {
     // We don't save/restore control state in a form with autocomplete=off.
-    return inDocument() && shouldAutocomplete();
+    return isConnected() && shouldAutocomplete();
 }
 
 FormControlState HTMLFormControlElementWithState::saveFormControlState() const

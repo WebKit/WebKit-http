@@ -44,7 +44,6 @@
 #include "Node.h"
 #include "XMLDocument.h"
 #include "XMLDocumentParser.h"
-
 #include <wtf/Deque.h>
 #include <wtf/HashTraits.h>
 #include <wtf/RefPtr.h>
@@ -64,14 +63,6 @@ struct DOMPatchSupport::Digest {
     Node* node;
     Vector<std::unique_ptr<Digest>> children;
 };
-
-void DOMPatchSupport::patchDocument(Document& document, const String& markup)
-{
-    InspectorHistory history;
-    DOMEditor domEditor { history };
-    DOMPatchSupport patchSupport(domEditor, document);
-    patchSupport.patchDocument(markup);
-}
 
 DOMPatchSupport::DOMPatchSupport(DOMEditor& domEditor, Document& document)
     : m_domEditor(domEditor)

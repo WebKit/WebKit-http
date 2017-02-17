@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2008, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -314,7 +314,7 @@ bool AlternativeTextController::applyAutocorrectionBeforeTypingIfAppropriate()
 void AlternativeTextController::respondToUnappliedSpellCorrection(const VisibleSelection& selectionOfCorrected, const String& corrected, const String& correction)
 {
     if (AlternativeTextClient* client = alternativeTextClient())
-        client->recordAutocorrectionResponse(AutocorrectionReverted, corrected, correction);
+        client->recordAutocorrectionResponse(AutocorrectionResponse::Reverted, corrected, correction);
 
     Ref<Frame> protector(m_frame);
     m_frame.document()->updateLayout();
@@ -516,15 +516,10 @@ TextCheckerClient* AlternativeTextController::textChecker()
     return nullptr;
 }
 
-void AlternativeTextController::recordAutocorrectionResponseReversed(const String& replacedString, const String& replacementString)
+void AlternativeTextController::recordAutocorrectionResponse(AutocorrectionResponse response, const String& replacedString, PassRefPtr<Range> replacementRange)
 {
-    if (AlternativeTextClient* client = alternativeTextClient())
-        client->recordAutocorrectionResponse(AutocorrectionReverted, replacedString, replacementString);
-}
-
-void AlternativeTextController::recordAutocorrectionResponseReversed(const String& replacedString, PassRefPtr<Range> replacementRange)
-{
-    recordAutocorrectionResponseReversed(replacedString, plainText(replacementRange.get()));
+    if (auto client = alternativeTextClient())
+        client->recordAutocorrectionResponse(response, replacedString, plainText(replacementRange.get()));
 }
 
 void AlternativeTextController::markReversed(PassRefPtr<Range> changedRange)
@@ -557,9 +552,9 @@ void AlternativeTextController::recordSpellcheckerResponseForModifiedCorrection(
         // Spelling corrected text has been edited. We need to determine whether user has reverted it to original text or
         // edited it to something else, and notify spellchecker accordingly.
         if (markersHaveIdenticalDescription(correctedOnceMarkers) && correctedOnceMarkers[0]->description() == corrected)
-            client->recordAutocorrectionResponse(AutocorrectionReverted, corrected, correction);
+            client->recordAutocorrectionResponse(AutocorrectionResponse::Reverted, corrected, correction);
         else
-            client->recordAutocorrectionResponse(AutocorrectionEdited, corrected, correction);
+            client->recordAutocorrectionResponse(AutocorrectionResponse::Edited, corrected, correction);
     }
 
     markers.removeMarkers(rangeOfCorrection, DocumentMarker::Autocorrected, DocumentMarkerController::RemovePartiallyOverlappingMarker);
@@ -649,13 +644,13 @@ bool AlternativeTextController::respondToMarkerAtEndOfWord(const DocumentMarker&
         startAlternativeTextUITimer(AlternativeTextTypeReversion);
         break;
     case DocumentMarker::DictationAlternatives: {
-        const DictationMarkerDetails* markerDetails = static_cast<const DictationMarkerDetails*>(marker.details());
-        if (!markerDetails)
+        if (!WTF::holds_alternative<DocumentMarker::DictationData>(marker.data()))
             return false;
-        if (currentWord != markerDetails->originalText())
+        auto& markerData = WTF::get<DocumentMarker::DictationData>(marker.data());
+        if (currentWord != markerData.originalText)
             return false;
         m_alternativeTextInfo.rangeWithAlternative = wordRange;
-        m_alternativeTextInfo.details = DictationAlternativeDetails::create(markerDetails->dictationContext());
+        m_alternativeTextInfo.details = DictationAlternativeDetails::create(markerData.context);
         startAlternativeTextUITimer(AlternativeTextTypeDictationAlternatives);
     }
         break;
@@ -696,27 +691,23 @@ bool AlternativeTextController::insertDictatedText(const String& text, const Vec
     return event->defaultHandled();
 }
 
-void AlternativeTextController::removeDictationAlternativesForMarker(const DocumentMarker* marker)
+void AlternativeTextController::removeDictationAlternativesForMarker(const DocumentMarker& marker)
 {
 #if USE(DICTATION_ALTERNATIVES)
-    ASSERT(marker->details());
-    if (DictationMarkerDetails* details = static_cast<DictationMarkerDetails*>(marker->details())) {
-        if (AlternativeTextClient* client = alternativeTextClient())
-            client->removeDictationAlternatives(details->dictationContext());
-    }
+    ASSERT(WTF::holds_alternative<DocumentMarker::DictationData>(marker.data()));
+    if (auto* client = alternativeTextClient())
+        client->removeDictationAlternatives(WTF::get<DocumentMarker::DictationData>(marker.data()).context);
 #else
     UNUSED_PARAM(marker);
 #endif
 }
 
-Vector<String> AlternativeTextController::dictationAlternativesForMarker(const DocumentMarker* marker)
+Vector<String> AlternativeTextController::dictationAlternativesForMarker(const DocumentMarker& marker)
 {
 #if USE(DICTATION_ALTERNATIVES)
-    ASSERT(marker->type() == DocumentMarker::DictationAlternatives);
-    if (AlternativeTextClient* client = alternativeTextClient()) {
-        DictationMarkerDetails* details = static_cast<DictationMarkerDetails*>(marker->details());
-        return client->dictationAlternatives(details->dictationContext());
-    }
+    ASSERT(marker.type() == DocumentMarker::DictationAlternatives);
+    if (auto* client = alternativeTextClient())
+        return client->dictationAlternatives(WTF::get<DocumentMarker::DictationData>(marker.data()).context);
     return Vector<String>();
 #else
     UNUSED_PARAM(marker);
@@ -729,12 +720,12 @@ void AlternativeTextController::applyDictationAlternative(const String& alternat
 #if USE(DICTATION_ALTERNATIVES)
     Editor& editor = m_frame.editor();
     RefPtr<Range> selection = editor.selectedRange();
-    if (!selection || !editor.shouldInsertText(alternativeString, selection.get(), EditorInsertActionPasted))
+    if (!selection || !editor.shouldInsertText(alternativeString, selection.get(), EditorInsertAction::Pasted))
         return;
     DocumentMarkerController& markers = selection->startContainer().document().markers();
     Vector<RenderedDocumentMarker*> dictationAlternativesMarkers = markers.markersInRange(selection.get(), DocumentMarker::DictationAlternatives);
     for (auto* marker : dictationAlternativesMarkers)
-        removeDictationAlternativesForMarker(marker);
+        removeDictationAlternativesForMarker(*marker);
 
     applyAlternativeTextToRange(selection.get(), alternativeString, AlternativeTextTypeDictationAlternatives, markerTypesForAppliedDictationAlternative());
 #else

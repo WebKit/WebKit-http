@@ -128,7 +128,7 @@ static void extractSourceInformationFromException(JSC::ExecState* exec, JSObject
     JSValue columnValue = exceptionObject->getDirect(exec->vm(), Identifier::fromString(exec, "column"));
     *columnNumber = columnValue && columnValue.isNumber() ? int(columnValue.toNumber(exec)) : 0;
     JSValue sourceURLValue = exceptionObject->getDirect(exec->vm(), Identifier::fromString(exec, "sourceURL"));
-    *sourceURL = sourceURLValue && sourceURLValue.isString() ? sourceURLValue.toString(exec)->value(exec) : ASCIILiteral("undefined");
+    *sourceURL = sourceURLValue && sourceURLValue.isString() ? sourceURLValue.toWTFString(exec) : ASCIILiteral("undefined");
     scope.clearException();
 }
 
@@ -156,7 +156,7 @@ Ref<ScriptCallStack> createScriptCallStackFromException(JSC::ExecState* exec, JS
             extractSourceInformationFromException(exec, exceptionObject, &lineNumber, &columnNumber, &exceptionSourceURL);
             frames.append(ScriptCallFrame(String(), exceptionSourceURL, noSourceID, lineNumber, columnNumber));
         } else {
-            if (stackTrace[0].isNative() || stackTrace[0].sourceURL().isEmpty()) {
+            if (!stackTrace[0].hasLineAndColumnInfo() || stackTrace[0].sourceURL().isEmpty()) {
                 const ScriptCallFrame& firstCallFrame = frames.first();
                 extractSourceInformationFromException(exec, exceptionObject, &lineNumber, &columnNumber, &exceptionSourceURL);
                 frames[0] = ScriptCallFrame(firstCallFrame.functionName(), exceptionSourceURL, stackTrace[0].sourceID(), lineNumber, columnNumber);

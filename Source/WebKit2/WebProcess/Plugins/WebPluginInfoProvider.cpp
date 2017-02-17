@@ -119,10 +119,8 @@ void WebPluginInfoProvider::getWebVisiblePluginInfo(WebCore::Page& page, Vector<
 
 #if PLATFORM(MAC)
     if (auto* document = page.mainFrame().document()) {
-        if (auto* securityOrigin = document->securityOrigin()) {
-            if (securityOrigin->isLocal())
-                return;
-        }
+        if (document->securityOrigin().isLocal())
+            return;
     }
 
     for (int32_t i = plugins.size() - 1; i >= 0; --i) {
@@ -164,7 +162,7 @@ void WebPluginInfoProvider::populatePluginCache(const WebCore::Page& page)
 #endif
 
 #if PLATFORM(MAC)
-Optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoadClientPolicyForHost(const String& host, const WebCore::PluginInfo& info) const
+std::optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoadClientPolicyForHost(const String& host, const WebCore::PluginInfo& info) const
 {
     String hostToLookUp = host;
     String identifier = info.bundleIdentifier;
@@ -181,7 +179,7 @@ Optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoadClien
         }
     }
     if (policiesByIdentifierIterator == m_hostsToPluginIdentifierData.end())
-        return Nullopt;
+        return std::nullopt;
 
     auto& policiesByIdentifier = policiesByIdentifierIterator->value;
 
@@ -195,7 +193,7 @@ Optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoadClien
     }
 
     if (identifierPolicyIterator == policiesByIdentifier.end())
-        return Nullopt;
+        return std::nullopt;
 
     auto& versionsToPolicies = identifierPolicyIterator->value;
 
@@ -209,7 +207,7 @@ Optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoadClien
     }
 
     if (policyIterator == versionsToPolicies.end())
-        return Nullopt;
+        return std::nullopt;
 
     return policyIterator->value;
 }

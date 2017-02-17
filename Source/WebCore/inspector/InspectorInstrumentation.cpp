@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2011 Google Inc. All rights reserved.
-* Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+* Copyright (C) 2014-2017 Apple Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -83,11 +83,27 @@ static const char* const setTimerEventName = "setTimer";
 static const char* const clearTimerEventName = "clearTimer";
 static const char* const timerFiredEventName = "timerFired";
 
+enum AsyncCallType {
+    AsyncCallTypeRequestAnimationFrame,
+    AsyncCallTypeTimer,
+};
+
 namespace {
 static HashSet<InstrumentingAgents*>* s_instrumentingAgentsSet = nullptr;
 }
 
 int InspectorInstrumentation::s_frontendCounter = 0;
+
+static void didScheduleAsyncCall(InstrumentingAgents& instrumentingAgents, AsyncCallType type, int callbackId, ScriptExecutionContext& context, bool singleShot)
+{
+    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent()) {
+        JSC::ExecState* scriptState = context.execState();
+        if (!scriptState)
+            return;
+
+        debuggerAgent->didScheduleAsyncCall(scriptState, type, callbackId, singleShot);
+    }
+}
 
 static Frame* frameForScriptExecutionContext(ScriptExecutionContext* context)
 {
@@ -323,6 +339,8 @@ void InspectorInstrumentation::willSendXMLHttpRequestImpl(InstrumentingAgents& i
 void InspectorInstrumentation::didInstallTimerImpl(InstrumentingAgents& instrumentingAgents, int timerId, std::chrono::milliseconds timeout, bool singleShot, ScriptExecutionContext& context)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, setTimerEventName, true);
+    didScheduleAsyncCall(instrumentingAgents, AsyncCallTypeTimer, timerId, context, singleShot);
+
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
         timelineAgent->didInstallTimer(timerId, timeout, singleShot, frameForScriptExecutionContext(context));
 }
@@ -330,6 +348,9 @@ void InspectorInstrumentation::didInstallTimerImpl(InstrumentingAgents& instrume
 void InspectorInstrumentation::didRemoveTimerImpl(InstrumentingAgents& instrumentingAgents, int timerId, ScriptExecutionContext& context)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, clearTimerEventName, true);
+
+    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
+        debuggerAgent->didCancelAsyncCall(AsyncCallTypeTimer, timerId);
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
         timelineAgent->didRemoveTimer(timerId, frameForScriptExecutionContext(context));
 }
@@ -365,16 +386,9 @@ InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEventImpl(I
     return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willHandleEventImpl(InstrumentingAgents& instrumentingAgents, const Event& event)
+void InspectorInstrumentation::willHandleEventImpl(InstrumentingAgents& instrumentingAgents, const Event& event)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, true, event.type(), false);
-    return InspectorInstrumentationCookie(instrumentingAgents, 0);
-}
-
-void InspectorInstrumentation::didHandleEventImpl(const InspectorInstrumentationCookie& cookie)
-{
-    if (cookie.isValid())
-        cancelPauseOnNativeEvent(*cookie.instrumentingAgents());
 }
 
 void InspectorInstrumentation::didDispatchEventImpl(const InspectorInstrumentationCookie& cookie)
@@ -420,15 +434,12 @@ void InspectorInstrumentation::didEvaluateScriptImpl(const InspectorInstrumentat
         timelineAgent->didEvaluateScript(frame);
 }
 
-void InspectorInstrumentation::scriptsEnabledImpl(InstrumentingAgents& instrumentingAgents, bool isEnabled)
-{
-    if (InspectorPageAgent* pageAgent = instrumentingAgents.inspectorPageAgent())
-        pageAgent->scriptsEnabled(isEnabled);
-}
-
 InspectorInstrumentationCookie InspectorInstrumentation::willFireTimerImpl(InstrumentingAgents& instrumentingAgents, int timerId, ScriptExecutionContext& context)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, timerFiredEventName, false);
+
+    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
+        debuggerAgent->willDispatchAsyncCall(AsyncCallTypeTimer, timerId);
 
     int timelineAgentId = 0;
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent()) {
@@ -440,9 +451,8 @@ InspectorInstrumentationCookie InspectorInstrumentation::willFireTimerImpl(Instr
 
 void InspectorInstrumentation::didFireTimerImpl(const InspectorInstrumentationCookie& cookie)
 {
-    if (cookie.isValid())
-        cancelPauseOnNativeEvent(*cookie.instrumentingAgents());
-
+    if (InspectorDebuggerAgent* debuggerAgent = cookie.instrumentingAgents()->inspectorDebuggerAgent())
+        debuggerAgent->didDispatchAsyncCall();
     if (InspectorTimelineAgent* timelineAgent = retrieveTimelineAgent(cookie))
         timelineAgent->didFireTimer();
 }
@@ -572,20 +582,10 @@ void InspectorInstrumentation::didLoadResourceFromMemoryCacheImpl(InstrumentingA
         networkAgent->didLoadResourceFromMemoryCache(*loader, *cachedResource);
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willReceiveResourceResponseImpl(InstrumentingAgents& instrumentingAgents)
+void InspectorInstrumentation::didReceiveResourceResponseImpl(InstrumentingAgents& instrumentingAgents, unsigned long identifier, DocumentLoader* loader, const ResourceResponse& response, ResourceLoader* resourceLoader)
 {
-    return InspectorInstrumentationCookie(instrumentingAgents, 0);
-}
-
-void InspectorInstrumentation::didReceiveResourceResponseImpl(const InspectorInstrumentationCookie& cookie, unsigned long identifier, DocumentLoader* loader, const ResourceResponse& response, ResourceLoader* resourceLoader)
-{
-    if (!cookie.isValid())
-        return;
-
     if (!loader)
         return;
-
-    InstrumentingAgents& instrumentingAgents = *cookie.instrumentingAgents();
 
     if (InspectorNetworkAgent* networkAgent = instrumentingAgents.inspectorNetworkAgent())
         networkAgent->didReceiveResponse(identifier, *loader, response, resourceLoader);
@@ -593,28 +593,10 @@ void InspectorInstrumentation::didReceiveResourceResponseImpl(const InspectorIns
         consoleAgent->didReceiveResponse(identifier, response); // This should come AFTER resource notification, front-end relies on this.
 }
 
-void InspectorInstrumentation::didReceiveResourceResponseButCanceledImpl(Frame* frame, DocumentLoader& loader, unsigned long identifier, const ResourceResponse& r)
+void InspectorInstrumentation::didReceiveThreadableLoaderResponseImpl(InstrumentingAgents& instrumentingAgents, DocumentThreadableLoader& documentThreadableLoader, unsigned long identifier)
 {
-    if (!frame)
-        return;
-
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willReceiveResourceResponse(frame);
-    InspectorInstrumentation::didReceiveResourceResponse(cookie, identifier, &loader, r, nullptr);
-}
-
-void InspectorInstrumentation::continueAfterXFrameOptionsDeniedImpl(Frame* frame, DocumentLoader& loader, unsigned long identifier, const ResourceResponse& r)
-{
-    didReceiveResourceResponseButCanceledImpl(frame, loader, identifier, r);
-}
-
-void InspectorInstrumentation::continueWithPolicyDownloadImpl(Frame* frame, DocumentLoader& loader, unsigned long identifier, const ResourceResponse& r)
-{
-    didReceiveResourceResponseButCanceledImpl(frame, loader, identifier, r);
-}
-
-void InspectorInstrumentation::continueWithPolicyIgnoreImpl(Frame* frame, DocumentLoader& loader, unsigned long identifier, const ResourceResponse& r)
-{
-    didReceiveResourceResponseButCanceledImpl(frame, loader, identifier, r);
+    if (InspectorNetworkAgent* networkAgent = instrumentingAgents.inspectorNetworkAgent())
+        networkAgent->didReceiveThreadableLoaderResponse(identifier, documentThreadableLoader);
 }
 
 void InspectorInstrumentation::didReceiveDataImpl(InstrumentingAgents& instrumentingAgents, unsigned long identifier, const char* data, int dataLength, int encodedDataLength)
@@ -643,20 +625,14 @@ void InspectorInstrumentation::didFailLoadingImpl(InstrumentingAgents& instrumen
         consoleAgent->didFailLoading(identifier, error); // This should come AFTER resource notification, front-end relies on this.
 }
 
-void InspectorInstrumentation::didFinishXHRLoadingImpl(InstrumentingAgents& instrumentingAgents, ThreadableLoaderClient* client, unsigned long identifier, Optional<String> decodedText, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber)
+void InspectorInstrumentation::didFinishXHRLoadingImpl(InstrumentingAgents& instrumentingAgents, unsigned long identifier, std::optional<String> decodedText, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber)
 {
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
         consoleAgent->didFinishXHRLoading(identifier, url, sendURL, sendLineNumber, sendColumnNumber);
     if (InspectorNetworkAgent* networkAgent = instrumentingAgents.inspectorNetworkAgent()) {
         if (decodedText)
-            networkAgent->didFinishXHRLoading(client, identifier, *decodedText);
+            networkAgent->didFinishXHRLoading(identifier, *decodedText);
     }
-}
-
-void InspectorInstrumentation::didReceiveXHRResponseImpl(InstrumentingAgents& instrumentingAgents, unsigned long identifier)
-{
-    if (InspectorNetworkAgent* networkAgent = instrumentingAgents.inspectorNetworkAgent())
-        networkAgent->didReceiveXHRResponse(identifier);
 }
 
 void InspectorInstrumentation::willLoadXHRSynchronouslyImpl(InstrumentingAgents& instrumentingAgents)
@@ -828,19 +804,6 @@ void InspectorInstrumentation::frameClearedScheduledNavigationImpl(Instrumenting
 {
     if (InspectorPageAgent* inspectorPageAgent = instrumentingAgents.inspectorPageAgent())
         inspectorPageAgent->frameClearedScheduledNavigation(frame);
-}
-
-InspectorInstrumentationCookie InspectorInstrumentation::willRunJavaScriptDialogImpl(InstrumentingAgents& instrumentingAgents, const String& message)
-{
-    if (InspectorPageAgent* inspectorPageAgent = instrumentingAgents.inspectorPageAgent())
-        inspectorPageAgent->willRunJavaScriptDialog(message);
-    return InspectorInstrumentationCookie(instrumentingAgents, 0);
-}
-
-void InspectorInstrumentation::didRunJavaScriptDialogImpl(const InspectorInstrumentationCookie& cookie)
-{
-    if (InspectorPageAgent* inspectorPageAgent = cookie.instrumentingAgents()->inspectorPageAgent())
-        inspectorPageAgent->didRunJavaScriptDialog();
 }
 
 void InspectorInstrumentation::willDestroyCachedResourceImpl(CachedResource& cachedResource)
@@ -1110,10 +1073,10 @@ void InspectorInstrumentation::networkStateChangedImpl(InstrumentingAgents& inst
         applicationCacheAgent->networkStateChanged();
 }
 
-void InspectorInstrumentation::updateApplicationCacheStatusImpl(InstrumentingAgents& instrumentingAgents, Frame* frame)
+void InspectorInstrumentation::updateApplicationCacheStatusImpl(InstrumentingAgents& instrumentingAgents, Frame& frame)
 {
-    if (InspectorApplicationCacheAgent* applicationCacheAgent = instrumentingAgents.inspectorApplicationCacheAgent())
-        applicationCacheAgent->updateApplicationCacheStatus(frame);
+    if (auto* applicationCacheAgent = instrumentingAgents.inspectorApplicationCacheAgent())
+        applicationCacheAgent->updateApplicationCacheStatus(&frame);
 }
 
 bool InspectorInstrumentation::consoleAgentEnabled(ScriptExecutionContext* scriptExecutionContext)
@@ -1146,15 +1109,10 @@ void InspectorInstrumentation::pauseOnNativeEventIfNeeded(InstrumentingAgents& i
         domDebuggerAgent->pauseOnNativeEventIfNeeded(isDOMEvent, eventName, synchronous);
 }
 
-void InspectorInstrumentation::cancelPauseOnNativeEvent(InstrumentingAgents& instrumentingAgents)
-{
-    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
-        debuggerAgent->cancelPauseOnNextStatement();
-}
-
 void InspectorInstrumentation::didRequestAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Frame* frame)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, requestAnimationFrameEventName, true);
+    didScheduleAsyncCall(instrumentingAgents, AsyncCallTypeRequestAnimationFrame, callbackId, *frame->document(), true);
 
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
         timelineAgent->didRequestAnimationFrame(callbackId, frame);
@@ -1164,6 +1122,8 @@ void InspectorInstrumentation::didCancelAnimationFrameImpl(InstrumentingAgents& 
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, cancelAnimationFrameEventName, true);
 
+    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
+        debuggerAgent->didCancelAsyncCall(AsyncCallTypeRequestAnimationFrame, callbackId);
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
         timelineAgent->didCancelAnimationFrame(callbackId, frame);
 }
@@ -1171,6 +1131,9 @@ void InspectorInstrumentation::didCancelAnimationFrameImpl(InstrumentingAgents& 
 InspectorInstrumentationCookie InspectorInstrumentation::willFireAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Frame* frame)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, animationFrameFiredEventName, false);
+
+    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
+        debuggerAgent->willDispatchAsyncCall(AsyncCallTypeRequestAnimationFrame, callbackId);
 
     int timelineAgentId = 0;
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent()) {
@@ -1182,6 +1145,8 @@ InspectorInstrumentationCookie InspectorInstrumentation::willFireAnimationFrameI
 
 void InspectorInstrumentation::didFireAnimationFrameImpl(const InspectorInstrumentationCookie& cookie)
 {
+    if (InspectorDebuggerAgent* debuggerAgent = cookie.instrumentingAgents()->inspectorDebuggerAgent())
+        debuggerAgent->didDispatchAsyncCall();
     if (InspectorTimelineAgent* timelineAgent = retrieveTimelineAgent(cookie))
         timelineAgent->didFireAnimationFrame();
 }

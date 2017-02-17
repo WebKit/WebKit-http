@@ -29,20 +29,84 @@ import * as WASM from 'WASM.js';
 
 const put = (bin, type, value) => bin[type](value);
 
+const putResizableLimits = (bin, initial, maximum) => {
+    assert.truthy(typeof initial === "number", "We expect 'initial' to be an integer");
+    let hasMaximum = 0;
+    if (typeof maximum === "number") {
+        hasMaximum = 1;
+    } else {
+        assert.truthy(typeof maximum === "undefined", "We expect 'maximum' to be an integer if it's defined");
+    }
+
+    put(bin, "varuint1", hasMaximum);
+    put(bin, "varuint32", initial);
+    if (hasMaximum)
+        put(bin, "varuint32", maximum);
+};
+
+const putTable = (bin, {initial, maximum, element}) => {
+    assert.truthy(WASM.isValidType(element), "We expect 'element' to be a valid type. It was: " + element);
+    put(bin, "varint7", WASM.typeValue[element]);
+
+    putResizableLimits(bin, initial, maximum);
+};
+
+const valueType = WASM.description.type.i32.type
+
+const putGlobalType = (bin, global) => {
+    put(bin, valueType, WASM.typeValue[global.type]);
+    put(bin, "varuint1", global.mutability);
+};
+
+const putOp = (bin, op) => {
+    put(bin, "uint8", op.value);
+    if (op.arguments.length !== 0)
+        throw new Error(`Unimplemented: arguments`); // FIXME https://bugs.webkit.org/show_bug.cgi?id=162706
+
+    switch (op.name) {
+    default:
+        for (let i = 0; i < op.immediates.length; ++i) {
+            const type = WASM.description.opcode[op.name].immediate[i].type
+            if (!bin[type])
+                throw new TypeError(`Unknown type: ${type} in op: ${op.name}`);
+            put(bin, type, op.immediates[i]);
+        }
+        break;
+    case "i32.const": {
+        assert.eq(op.immediates.length, 1);
+        let imm = op.immediates[0];
+        // Do a static cast to make large int32s signed.
+        if (imm >= 2 ** 31)
+            imm = imm - (2 ** 32);
+        put(bin, "varint32", imm);
+        break;
+    }
+    case "br_table":
+        put(bin, "varuint32", op.immediates.length - 1);
+        for (let imm of op.immediates)
+            put(bin, "varuint32", imm);
+        break;
+    }
+};
+
+const putInitExpr = (bin, expr) => {
+    putOp(bin, { value: WASM.description.opcode[expr.op].value, name: expr.op, immediates: [expr.initValue], arguments: [] });
+    putOp(bin, { value: WASM.description.opcode.end.value, name: "end", immediates: [], arguments: [] });
+};
+
 const emitters = {
     Type: (section, bin) => {
         put(bin, "varuint32", section.data.length);
         for (const entry of section.data) {
-            const funcTypeConstructor = -0x20; // FIXME Move this to wasm.json.
-            put(bin, "varint7", funcTypeConstructor);
+            put(bin, "varint7", WASM.typeValue["func"]);
             put(bin, "varuint32", entry.params.length);
             for (const param of entry.params)
-                put(bin, "uint8", WASM.valueTypeValue[param]);
+                put(bin, "varint7", WASM.typeValue[param]);
             if (entry.ret === "void")
                 put(bin, "varuint1", 0);
             else {
                 put(bin, "varuint1", 1);
-                put(bin, "uint8", WASM.valueTypeValue[entry.ret]);
+                put(bin, "varint7", WASM.typeValue[entry.ret]);
             }
         }
     },
@@ -54,10 +118,22 @@ const emitters = {
             put(bin, "uint8", WASM.externalKindValue[entry.kind]);
             switch (entry.kind) {
             default: throw new Error(`Implementation problem: unexpected kind ${entry.kind}`);
-            case "Function": put(bin, "varuint32", entry.type); break;
-            case "Table": throw new Error(`Not yet implemented`);
-            case "Memory": throw new Error(`Not yet implemented`);
-            case "Global": throw new Error(`Not yet implemented`);
+            case "Function": {
+                put(bin, "varuint32", entry.type);
+                break;
+            }
+            case "Table": {
+                putTable(bin, entry.tableDescription);
+                break;
+            }
+            case "Memory": {
+                let {initial, maximum} = entry.memoryDescription;
+                putResizableLimits(bin, initial, maximum);
+                break;
+            };
+            case "Global":
+                putGlobalType(bin, entry.globalDescription);
+                break;
             }
         }
     },
@@ -68,7 +144,12 @@ const emitters = {
             put(bin, "varuint32", signature);
     },
 
-    Table: (section, bin) => { throw new Error(`Not yet implemented`); },
+    Table: (section, bin) => {
+        put(bin, "varuint32", section.data.length);
+        for (const {tableDescription} of section.data) {
+            putTable(bin, tableDescription);
+        }
+    },
 
     Memory: (section, bin) => {
         // Flags, currently can only be [0,1]
@@ -81,10 +162,50 @@ const emitters = {
         }
     },
 
-    Global: (section, bin) => { throw new Error(`Not yet implemented`); },
-    Export: (section, bin) => { throw new Error(`Not yet implemented`); },
-    Start: (section, bin) => { throw new Error(`Not yet implemented`); },
-    Element: (section, bin) => { throw new Error(`Not yet implemented`); },
+    Global: (section, bin) => {
+        put(bin, "varuint32", section.data.length);
+        for (const global of section.data) {
+            putGlobalType(bin, global);
+            putInitExpr(bin, global)
+        }
+    },
+
+    Export: (section, bin) => {
+        put(bin, "varuint32", section.data.length);
+        for (const entry of section.data) {
+            put(bin, "string", entry.field);
+            put(bin, "uint8", WASM.externalKindValue[entry.kind]);
+            switch (entry.kind) {
+            case "Global":
+            case "Function":
+            case "Memory":
+            case "Table":
+                put(bin, "varuint32", entry.index);
+                break;
+            default: throw new Error(`Implementation problem: unexpected kind ${entry.kind}`);
+            }
+        }
+    },
+    Start: (section, bin) => {
+        put(bin, "varuint32", section.data[0]);
+    },
+    Element: (section, bin) => {
+        const data = section.data;
+        put(bin, "varuint32", data.length);
+        for (const {tableIndex, offset, functionIndices} of data) {
+            put(bin, "varuint32", tableIndex);
+
+            // FIXME allow complex init_expr here. https://bugs.webkit.org/show_bug.cgi?id=165700
+            // For now we only handle i32.const as offset.
+            put(bin, "uint8", WASM.description.opcode["i32.const"].value);
+            put(bin, WASM.description.opcode["i32.const"].immediate[0].type, offset);
+            put(bin, "uint8", WASM.description.opcode["end"].value);
+
+            put(bin, "varuint32", functionIndices.length);
+            for (const functionIndex of functionIndices)
+                put(bin, "varuint32", functionIndex);
+        }
+    },
 
     Code: (section, bin) => {
         put(bin, "varuint32", section.data.length);
@@ -94,35 +215,30 @@ const emitters = {
             put(funcBin, "varuint32", localCount);
             for (let i = func.parameterCount; i < func.locals.length; ++i) {
                 put(funcBin, "varuint32", 1);
-                put(funcBin, "uint8", WASM.valueTypeValue[func.locals[i]]);
+                put(funcBin, "varint7", WASM.typeValue[func.locals[i]]);
             }
 
-            for (const op of func.code) {
-                put(funcBin, "uint8", op.value);
-                if (op.arguments.length !== 0)
-                    throw new Error(`Unimplemented: arguments`); // FIXME https://bugs.webkit.org/show_bug.cgi?id=162706
+            for (const op of func.code)
+                putOp(funcBin, op);
 
-                switch (op.name) {
-                default:
-                    for (let i = 0; i < op.immediates.length; ++i) {
-                        const type = WASM.description.opcode[op.name].immediate[i].type
-                        if (!funcBin[type])
-                            throw new TypeError(`Unknown type: ${type} in op: ${op.name}`);
-                        put(funcBin, type, op.immediates[i]);
-                    }
-                    break;
-                case "br_table":
-                    put(funcBin, "varuint32", op.immediates.length - 1);
-                    for (let imm of op.immediates)
-                        put(funcBin, "varuint32", imm);
-                    break;
-                }
-            }
             funcBin.apply();
         }
     },
 
-    Data: (section, bin) => { throw new Error(`Not yet implemented`); },
+    Data: (section, bin) => {
+        put(bin, "varuint32", section.data.length);
+        for (const datum of section.data) {
+            put(bin, "varuint32", datum.index);
+            // FIXME allow complex init_expr here. https://bugs.webkit.org/show_bug.cgi?id=165700
+            // For now we only handle i32.const as offset.
+            put(bin, "uint8", WASM.description.opcode["i32.const"].value);
+            put(bin, WASM.description.opcode["i32.const"].immediate[0].type, datum.offset);
+            put(bin, "uint8", WASM.description.opcode["end"].value);
+            put(bin, "varuint32", datum.data.length);
+            for (const byte of datum.data)
+                put(bin, "uint8", byte);
+        }
+    },
 };
 
 export const Binary = (preamble, sections) => {

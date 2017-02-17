@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -75,6 +75,7 @@ private:
     void didFail(const ResourceError&) override;
     void willCancel(const ResourceError&) override;
     void didCancel(const ResourceError&) override;
+    void didRetrieveDerivedDataFromCache(const String& type, SharedBuffer&) override;
 
 #if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
     NSCachedURLResponse *willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
@@ -100,6 +101,10 @@ private:
     void didReceiveDataOrBuffer(const char*, int, RefPtr<SharedBuffer>&&, long long encodedDataLength, DataPayloadType);
 
     void notifyDone();
+
+#if USE(QUICK_LOOK)
+    bool shouldCreateQuickLookHandleForResponse(const ResourceResponse&) const;
+#endif
 
     enum SubresourceLoaderState {
         Uninitialized,
@@ -128,7 +133,7 @@ private:
     CachedResource* m_resource;
     bool m_loadingMultipartContent;
     SubresourceLoaderState m_state;
-    Optional<RequestCountTracker> m_requestCountTracker;
+    std::optional<RequestCountTracker> m_requestCountTracker;
     RefPtr<SecurityOrigin> m_origin;
     unsigned m_redirectCount { 0 };
 };

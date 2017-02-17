@@ -29,12 +29,20 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "B3Compilation.h"
+#include "JSCInlines.h"
+#include "JSGlobalObject.h"
+#include "JSWebAssemblyCallee.h"
 #include "WasmB3IRGenerator.h"
+#include "WasmBinding.h"
 #include "WasmCallingConvention.h"
 #include "WasmMemory.h"
 #include "WasmModuleParser.h"
 #include "WasmValidate.h"
 #include <wtf/DataLog.h>
+#include <wtf/Locker.h>
+#include <wtf/MonotonicTime.h>
+#include <wtf/NumberOfCores.h>
+#include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace JSC { namespace Wasm {
@@ -53,61 +61,209 @@ Plan::Plan(VM* vm, const uint8_t* source, size_t sourceLength)
 {
 }
 
-void Plan::run()
+bool Plan::parseAndValidateModule()
 {
-    if (verbose)
-        dataLogLn("Starting plan.");
+    MonotonicTime startTime;
+    if (verbose || Options::reportCompileTimes())
+        startTime = MonotonicTime::now();
+
     {
-        ModuleParser moduleParser(m_source, m_sourceLength);
-        if (!moduleParser.parse()) {
-            if (verbose)
-                dataLogLn("Parsing module failed: ", moduleParser.errorMessage());
-            m_errorMessage = moduleParser.errorMessage();
-            return;
+        ModuleParser moduleParser(m_vm, m_source, m_sourceLength);
+        auto parseResult = moduleParser.parse();
+        if (!parseResult) {
+            m_errorMessage = parseResult.error();
+            return false;
         }
-        m_moduleInformation = WTFMove(moduleParser.moduleInformation());
-    }
-    if (verbose)
-        dataLogLn("Parsed module.");
-
-    if (!m_compiledFunctions.tryReserveCapacity(m_moduleInformation->functions.size())) {
-        StringBuilder builder;
-        builder.appendLiteral("Failed allocating enough space for ");
-        builder.appendNumber(m_moduleInformation->functions.size());
-        builder.appendLiteral(" compiled functions");
-        m_errorMessage = builder.toString();
-        return;
+        m_moduleInformation = WTFMove(parseResult->module);
+        m_functionLocationInBinary = WTFMove(parseResult->functionLocationInBinary);
+        m_moduleSignatureIndicesToUniquedSignatureIndices = WTFMove(parseResult->moduleSignatureIndicesToUniquedSignatureIndices);
     }
 
-    for (const FunctionInformation& info : m_moduleInformation->functions) {
+    for (unsigned functionIndex = 0; functionIndex < m_functionLocationInBinary.size(); ++functionIndex) {
         if (verbose)
-            dataLogLn("Processing function starting at: ", info.start, " and ending at: ", info.end);
-        const uint8_t* functionStart = m_source + info.start;
-        size_t functionLength = info.end - info.start;
+            dataLogLn("Processing function starting at: ", m_functionLocationInBinary[functionIndex].start, " and ending at: ", m_functionLocationInBinary[functionIndex].end);
+        const uint8_t* functionStart = m_source + m_functionLocationInBinary[functionIndex].start;
+        size_t functionLength = m_functionLocationInBinary[functionIndex].end - m_functionLocationInBinary[functionIndex].start;
         ASSERT(functionLength <= m_sourceLength);
+        SignatureIndex signatureIndex = m_moduleInformation->internalFunctionSignatureIndices[functionIndex];
+        const Signature* signature = SignatureInformation::get(m_vm, signatureIndex);
 
-        String error = validateFunction(functionStart, functionLength, info.signature, m_moduleInformation->functions);
-        if (!error.isNull()) {
+        auto validationResult = validateFunction(m_vm, functionStart, functionLength, signature, *m_moduleInformation, m_moduleSignatureIndicesToUniquedSignatureIndices);
+        if (!validationResult) {
             if (verbose) {
                 for (unsigned i = 0; i < functionLength; ++i)
                     dataLog(RawPointer(reinterpret_cast<void*>(functionStart[i])), ", ");
                 dataLogLn();
             }
-            m_errorMessage = error;
-            return;
+            m_errorMessage = makeString(validationResult.error(), ", in function at index ", String::number(functionIndex)); // FIXME make this an Expected.
+            return false;
         }
-
-        m_compiledFunctions.uncheckedAppend(parseAndCompile(*m_vm, functionStart, functionLength, m_moduleInformation->memory.get(), info.signature, m_moduleInformation->functions));
     }
 
-    // Patch the call sites for each function.
-    for (std::unique_ptr<FunctionCompilation>& functionPtr : m_compiledFunctions) {
-        FunctionCompilation* function = functionPtr.get();
-        for (auto& call : function->unlinkedCalls)
-            MacroAssembler::repatchCall(call.callLocation, CodeLocationLabel(m_compiledFunctions[call.functionIndex]->code->code()));
+    if (verbose || Options::reportCompileTimes())
+        dataLogLn("Took ", (MonotonicTime::now() - startTime).microseconds(), " us to validate module");
+    return true;
+}
+
+// We are creating a bunch of threads that touch the main thread's stack. This will make ASAN unhappy.
+// The reason this is OK is that we guarantee that the main thread doesn't continue until all threads
+// that could touch its stack are done executing.
+SUPPRESS_ASAN 
+void Plan::run()
+{
+    if (!parseAndValidateModule())
+        return;
+
+    auto tryReserveCapacity = [this] (auto& vector, size_t size, const char* what) {
+        if (UNLIKELY(!vector.tryReserveCapacity(size))) {
+            StringBuilder builder;
+            builder.appendLiteral("Failed allocating enough space for ");
+            builder.appendNumber(size);
+            builder.append(what);
+            m_errorMessage = builder.toString();
+            return false;
+        }
+        return true;
+    };
+
+    if (!tryReserveCapacity(m_wasmExitStubs, m_moduleInformation->importFunctionSignatureIndices.size(), " WebAssembly to JavaScript stubs")
+        || !tryReserveCapacity(m_unlinkedWasmToWasmCalls, m_functionLocationInBinary.size(), " unlinked WebAssembly to WebAssembly calls")
+        || !tryReserveCapacity(m_wasmInternalFunctions, m_functionLocationInBinary.size(), " WebAssembly functions")
+        || !tryReserveCapacity(m_compilationContexts, m_functionLocationInBinary.size(), " compilation contexts"))
+        return;
+
+    m_unlinkedWasmToWasmCalls.resize(m_functionLocationInBinary.size());
+    m_wasmInternalFunctions.resize(m_functionLocationInBinary.size());
+    m_compilationContexts.resize(m_functionLocationInBinary.size());
+
+    for (unsigned importIndex = 0; importIndex < m_moduleInformation->imports.size(); ++importIndex) {
+        Import* import = &m_moduleInformation->imports[importIndex];
+        if (import->kind != ExternalKind::Function)
+            continue;
+        unsigned importFunctionIndex = m_wasmExitStubs.size();
+        if (verbose)
+            dataLogLn("Processing import function number ", importFunctionIndex, ": ", import->module, ": ", import->field);
+        SignatureIndex signatureIndex = m_moduleInformation->importFunctionSignatureIndices.at(import->kindIndex);
+        m_wasmExitStubs.uncheckedAppend(exitStubGenerator(m_vm, m_callLinkInfos, signatureIndex, importFunctionIndex));
+    }
+
+    m_currentIndex = 0;
+
+    auto doWork = [this] {
+        while (true) {
+            uint32_t functionIndex;
+            {
+                auto locker = holdLock(m_lock);
+                if (m_currentIndex >= m_functionLocationInBinary.size())
+                    return;
+                functionIndex = m_currentIndex;
+                ++m_currentIndex;
+            }
+
+            const uint8_t* functionStart = m_source + m_functionLocationInBinary[functionIndex].start;
+            size_t functionLength = m_functionLocationInBinary[functionIndex].end - m_functionLocationInBinary[functionIndex].start;
+            ASSERT(functionLength <= m_sourceLength);
+            SignatureIndex signatureIndex = m_moduleInformation->internalFunctionSignatureIndices[functionIndex];
+            const Signature* signature = SignatureInformation::get(m_vm, signatureIndex);
+            unsigned functionIndexSpace = m_wasmExitStubs.size() + functionIndex;
+            ASSERT_UNUSED(functionIndexSpace, m_moduleInformation->signatureIndexFromFunctionIndexSpace(functionIndexSpace) == signatureIndex);
+            ASSERT(validateFunction(m_vm, functionStart, functionLength, signature, *m_moduleInformation, m_moduleSignatureIndicesToUniquedSignatureIndices));
+
+            m_unlinkedWasmToWasmCalls[functionIndex] = Vector<UnlinkedWasmToWasmCall>();
+            auto parseAndCompileResult = parseAndCompile(*m_vm, m_compilationContexts[functionIndex], functionStart, functionLength, signature, m_unlinkedWasmToWasmCalls[functionIndex], *m_moduleInformation, m_moduleSignatureIndicesToUniquedSignatureIndices);
+
+            if (UNLIKELY(!parseAndCompileResult)) {
+                auto locker = holdLock(m_lock);
+                if (!m_errorMessage) {
+                    // Multiple compiles could fail simultaneously. We arbitrarily choose the first.
+                    m_errorMessage = makeString(parseAndCompileResult.error(), ", in function at index ", String::number(functionIndex)); // FIXME make this an Expected.
+                }
+                m_currentIndex = m_functionLocationInBinary.size();
+
+                // We will terminate on the next execution.
+                continue; 
+            }
+
+            m_wasmInternalFunctions[functionIndex] = WTFMove(*parseAndCompileResult);
+        }
+    };
+
+    MonotonicTime startTime;
+    if (verbose || Options::reportCompileTimes())
+        startTime = MonotonicTime::now();
+
+    uint32_t threadCount = Options::useConcurrentJIT() ? WTF::numberOfProcessorCores() : 1;
+    uint32_t numWorkerThreads = threadCount - 1;
+    Vector<ThreadIdentifier> threads;
+    threads.reserveCapacity(numWorkerThreads);
+    for (uint32_t i = 0; i < numWorkerThreads; i++)
+        threads.uncheckedAppend(createThread("jsc.wasm-b3-compilation.thread", doWork));
+
+    doWork(); // Let the main thread do some work too.
+
+    for (uint32_t i = 0; i < numWorkerThreads; i++)
+        waitForThreadCompletion(threads[i]);
+
+    for (uint32_t functionIndex = 0; functionIndex < m_functionLocationInBinary.size(); functionIndex++) {
+        {
+            CompilationContext& context = m_compilationContexts[functionIndex];
+            SignatureIndex signatureIndex = m_moduleInformation->internalFunctionSignatureIndices[functionIndex];
+            String signatureDescription = SignatureInformation::get(m_vm, signatureIndex)->toString();
+            {
+                LinkBuffer linkBuffer(*m_vm, *context.wasmEntrypointJIT, nullptr);
+                m_wasmInternalFunctions[functionIndex]->wasmEntrypoint.compilation =
+                    std::make_unique<B3::Compilation>(FINALIZE_CODE(linkBuffer, ("WebAssembly function[%i] %s", functionIndex, signatureDescription.ascii().data())), WTFMove(context.wasmEntrypointByproducts));
+            }
+
+            {
+                LinkBuffer linkBuffer(*m_vm, *context.jsEntrypointJIT, nullptr);
+                linkBuffer.link(context.jsEntrypointToWasmEntrypointCall, FunctionPtr(m_wasmInternalFunctions[functionIndex]->wasmEntrypoint.compilation->code().executableAddress()));
+
+                m_wasmInternalFunctions[functionIndex]->jsToWasmEntrypoint.compilation =
+                    std::make_unique<B3::Compilation>(FINALIZE_CODE(linkBuffer, ("JavaScript->WebAssembly entrypoint[%i] %s", functionIndex, signatureDescription.ascii().data())), WTFMove(context.jsEntrypointByproducts));
+            }
+        }
+    }
+
+    if (verbose || Options::reportCompileTimes()) {
+        dataLogLn("Took ", (MonotonicTime::now() - startTime).microseconds(),
+            " us to compile and link the module");
+    }
+
+    // Patch the call sites for each WebAssembly function.
+    for (auto& unlinked : m_unlinkedWasmToWasmCalls) {
+        for (auto& call : unlinked) {
+            void* executableAddress;
+            if (m_moduleInformation->isImportedFunctionFromFunctionIndexSpace(call.functionIndex)) {
+                // FIXME imports could have been linked in B3, instead of generating a patchpoint. This condition should be replaced by a RELEASE_ASSERT. https://bugs.webkit.org/show_bug.cgi?id=166462
+                executableAddress = call.target == UnlinkedWasmToWasmCall::Target::ToJs
+                    ? m_wasmExitStubs.at(call.functionIndex).wasmToJs.code().executableAddress()
+                    : m_wasmExitStubs.at(call.functionIndex).wasmToWasm.code().executableAddress();
+            } else {
+                ASSERT(call.target != UnlinkedWasmToWasmCall::Target::ToJs);
+                executableAddress = m_wasmInternalFunctions.at(call.functionIndex - m_wasmExitStubs.size())->wasmEntrypoint.compilation->code().executableAddress();
+            }
+            MacroAssembler::repatchCall(call.callLocation, CodeLocationLabel(executableAddress));
+        }
     }
 
     m_failed = false;
+}
+
+void Plan::initializeCallees(JSGlobalObject* globalObject, std::function<void(unsigned, JSWebAssemblyCallee*, JSWebAssemblyCallee*)> callback)
+{
+    ASSERT(!failed());
+    for (unsigned internalFunctionIndex = 0; internalFunctionIndex < m_wasmInternalFunctions.size(); ++internalFunctionIndex) {
+        WasmInternalFunction* function = m_wasmInternalFunctions[internalFunctionIndex].get();
+
+        JSWebAssemblyCallee* jsEntrypointCallee = JSWebAssemblyCallee::create(globalObject->vm(), WTFMove(function->jsToWasmEntrypoint));
+        MacroAssembler::repatchPointer(function->jsToWasmCalleeMoveLocation, jsEntrypointCallee);
+
+        JSWebAssemblyCallee* wasmEntrypointCallee = JSWebAssemblyCallee::create(globalObject->vm(), WTFMove(function->wasmEntrypoint));
+        MacroAssembler::repatchPointer(function->wasmCalleeMoveLocation, wasmEntrypointCallee);
+
+        callback(internalFunctionIndex, jsEntrypointCallee, wasmEntrypointCallee);
+    }
 }
 
 Plan::~Plan() { }

@@ -83,12 +83,12 @@ int comparePositions(const Position& a, const Position& b)
     if (!commonScope)
         return 0;
 
-    Node* nodeA = commonScope->ancestorInThisScope(a.containerNode());
+    Node* nodeA = commonScope->ancestorNodeInThisScope(a.containerNode());
     ASSERT(nodeA);
     bool hasDescendentA = nodeA != a.containerNode();
     int offsetA = hasDescendentA ? 0 : a.computeOffsetInContainerNode();
 
-    Node* nodeB = commonScope->ancestorInThisScope(b.containerNode());
+    Node* nodeB = commonScope->ancestorNodeInThisScope(b.containerNode());
     ASSERT(nodeB);
     bool hasDescendentB = nodeB != b.containerNode();
     int offsetB = hasDescendentB ? 0 : b.computeOffsetInContainerNode();
@@ -292,17 +292,17 @@ Position firstEditablePositionAfterPositionInRoot(const Position& position, Cont
     Position candidate = position;
 
     if (&position.deprecatedNode()->treeScope() != &highestRoot->treeScope()) {
-        auto* shadowAncestor = highestRoot->treeScope().ancestorInThisScope(position.deprecatedNode());
+        auto* shadowAncestor = highestRoot->treeScope().ancestorNodeInThisScope(position.deprecatedNode());
         if (!shadowAncestor)
             return { };
 
         candidate = positionAfterNode(shadowAncestor);
     }
 
-    while (candidate.deprecatedNode() && !isEditablePosition(candidate) && candidate.deprecatedNode()->isDescendantOf(highestRoot))
+    while (candidate.deprecatedNode() && !isEditablePosition(candidate) && candidate.deprecatedNode()->isDescendantOf(*highestRoot))
         candidate = isAtomicNode(candidate.deprecatedNode()) ? positionInParentAfterNode(candidate.deprecatedNode()) : nextVisuallyDistinctCandidate(candidate);
 
-    if (candidate.deprecatedNode() && candidate.deprecatedNode() != highestRoot && !candidate.deprecatedNode()->isDescendantOf(highestRoot))
+    if (candidate.deprecatedNode() && candidate.deprecatedNode() != highestRoot && !candidate.deprecatedNode()->isDescendantOf(*highestRoot))
         return { };
 
     return candidate;
@@ -320,17 +320,17 @@ Position lastEditablePositionBeforePositionInRoot(const Position& position, Cont
     Position candidate = position;
 
     if (&position.deprecatedNode()->treeScope() != &highestRoot->treeScope()) {
-        auto* shadowAncestor = highestRoot->treeScope().ancestorInThisScope(position.deprecatedNode());
+        auto* shadowAncestor = highestRoot->treeScope().ancestorNodeInThisScope(position.deprecatedNode());
         if (!shadowAncestor)
             return { };
 
         candidate = firstPositionInOrBeforeNode(shadowAncestor);
     }
 
-    while (candidate.deprecatedNode() && !isEditablePosition(candidate) && candidate.deprecatedNode()->isDescendantOf(highestRoot))
+    while (candidate.deprecatedNode() && !isEditablePosition(candidate) && candidate.deprecatedNode()->isDescendantOf(*highestRoot))
         candidate = isAtomicNode(candidate.deprecatedNode()) ? positionInParentBeforeNode(candidate.deprecatedNode()) : previousVisuallyDistinctCandidate(candidate);
     
-    if (candidate.deprecatedNode() && candidate.deprecatedNode() != highestRoot && !candidate.deprecatedNode()->isDescendantOf(highestRoot))
+    if (candidate.deprecatedNode() && candidate.deprecatedNode() != highestRoot && !candidate.deprecatedNode()->isDescendantOf(*highestRoot))
         return { };
     
     return candidate;
@@ -496,11 +496,6 @@ static HTMLElement* lastInSpecialElement(const Position& position)
     return nullptr;
 }
 
-static bool isFirstVisiblePositionInSpecialElement(const Position& position)
-{
-    return firstInSpecialElement(position);
-}
-
 Position positionBeforeContainingSpecialElement(const Position& position, HTMLElement** containingSpecialElement)
 {
     auto* element = firstInSpecialElement(position);
@@ -514,11 +509,6 @@ Position positionBeforeContainingSpecialElement(const Position& position, HTMLEl
     return result;
 }
 
-static bool isLastVisiblePositionInSpecialElement(const Position& position)
-{
-    return lastInSpecialElement(position);
-}
-
 Position positionAfterContainingSpecialElement(const Position& position, HTMLElement** containingSpecialElement)
 {
     auto* element = lastInSpecialElement(position);
@@ -530,15 +520,6 @@ Position positionAfterContainingSpecialElement(const Position& position, HTMLEle
     if (containingSpecialElement)
         *containingSpecialElement = element;
     return result;
-}
-
-Position positionOutsideContainingSpecialElement(const Position& position, HTMLElement** containingSpecialElement)
-{
-    if (isFirstVisiblePositionInSpecialElement(position))
-        return positionBeforeContainingSpecialElement(position, containingSpecialElement);
-    if (isLastVisiblePositionInSpecialElement(position))
-        return positionAfterContainingSpecialElement(position, containingSpecialElement);
-    return position;
 }
 
 Element* isFirstPositionAfterTable(const VisiblePosition& position)
@@ -1060,7 +1041,7 @@ VisibleSelection selectionForParagraphIteration(const VisibleSelection& original
     // that we'll want modify is the last one inside the table, not the table itself
     // (a table is itself a paragraph).
     if (auto* table = isFirstPositionAfterTable(endOfSelection)) {
-        if (startOfSelection.deepEquivalent().deprecatedNode()->isDescendantOf(table))
+        if (startOfSelection.deepEquivalent().deprecatedNode()->isDescendantOf(*table))
             newSelection = VisibleSelection(startOfSelection, endOfSelection.previous(CannotCrossEditingBoundary));
     }
     
@@ -1069,7 +1050,7 @@ VisibleSelection selectionForParagraphIteration(const VisibleSelection& original
     // we'll want to modify is the first one inside the table, not the paragraph
     // containing the table itself.
     if (auto* table = isLastPositionBeforeTable(startOfSelection)) {
-        if (endOfSelection.deepEquivalent().deprecatedNode()->isDescendantOf(table))
+        if (endOfSelection.deepEquivalent().deprecatedNode()->isDescendantOf(*table))
             newSelection = VisibleSelection(startOfSelection.next(CannotCrossEditingBoundary), endOfSelection);
     }
     
@@ -1290,14 +1271,17 @@ LayoutRect localCaretRectInRendererForRect(LayoutRect& localRect, Node* node, Re
     return localRect;
 }
 
-IntRect absoluteBoundsForLocalCaretRect(RenderBlock* rendererForCaretPainting, const LayoutRect& rect)
+IntRect absoluteBoundsForLocalCaretRect(RenderBlock* rendererForCaretPainting, const LayoutRect& rect, bool* insideFixed)
 {
+    if (insideFixed)
+        *insideFixed = false;
+
     if (!rendererForCaretPainting || rect.isEmpty())
         return IntRect();
 
     LayoutRect localRect(rect);
     rendererForCaretPainting->flipForWritingMode(localRect);
-    return rendererForCaretPainting->localToAbsoluteQuad(FloatRect(localRect)).enclosingBoundingBox();
+    return rendererForCaretPainting->localToAbsoluteQuad(FloatRect(localRect), UseTransforms, insideFixed).enclosingBoundingBox();
 }
 
 } // namespace WebCore

@@ -32,6 +32,7 @@
 #import "PluginSandboxProfile.h"
 #import <wtf/HashSet.h>
 #import <wtf/MainThread.h>
+#import <wtf/spi/cf/CFBundleSPI.h>
 
 using namespace WebCore;
 
@@ -208,7 +209,12 @@ bool NetscapePluginModule::getPluginInfo(const String& pluginPath, PluginModuleI
     RetainPtr<CFURLRef> bundleURL = adoptCF(CFURLCreateWithFileSystemPath(kCFAllocatorDefault, pluginPath.createCFString().get(), kCFURLPOSIXPathStyle, false));
     
     // Try to initialize the bundle.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+    RetainPtr<CFBundleRef> bundle = adoptCF(_CFBundleCreateUnique(kCFAllocatorDefault, bundleURL.get()));
+#else
     RetainPtr<CFBundleRef> bundle = adoptCF(CFBundleCreate(kCFAllocatorDefault, bundleURL.get()));
+#endif
+
     if (!bundle)
         return false;
     

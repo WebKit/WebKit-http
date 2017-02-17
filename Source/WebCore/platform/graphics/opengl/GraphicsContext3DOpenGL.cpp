@@ -73,7 +73,7 @@ void GraphicsContext3D::releaseShaderCompiler()
 void GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary(int x, int y, int width, int height, unsigned char* pixels)
 {
     // NVIDIA drivers have a bug where calling readPixels in BGRA can return the wrong values for the alpha channel when the alpha is off for the context.
-    if (!m_attrs.alpha && getExtensions()->isNVIDIA()) {
+    if (!m_attrs.alpha && getExtensions().isNVIDIA()) {
         ::glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #if USE(ACCELERATE)
         vImage_Buffer src;
@@ -121,9 +121,9 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
         // We don't allow the logic where stencil is required and depth is not.
         // See GraphicsContext3D::validateAttributes.
 
-        Extensions3D* extensions = getExtensions();
+        Extensions3D& extensions = getExtensions();
         // Use a 24 bit depth buffer where we know we have it.
-        if (extensions->supports("GL_EXT_packed_depth_stencil"))
+        if (extensions.supports("GL_EXT_packed_depth_stencil"))
             internalDepthStencilFormat = GL_DEPTH24_STENCIL8_EXT;
         else
 #if PLATFORM(IOS)
@@ -227,8 +227,10 @@ void GraphicsContext3D::resolveMultisamplingIfNecessary(const IntRect& rect)
     TemporaryOpenGLSetting scopedDepth(GL_DEPTH_TEST, GL_FALSE);
     TemporaryOpenGLSetting scopedStencil(GL_STENCIL_TEST, GL_FALSE);
 
+#if PLATFORM(IOS)
     GLint boundFrameBuffer;
     ::glGetIntegerv(GL_FRAMEBUFFER_BINDING, &boundFrameBuffer);
+#endif
 
     ::glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, m_multisampleFBO);
     ::glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
@@ -304,12 +306,12 @@ void GraphicsContext3D::getIntegerv(GC3Denum pname, GC3Dint* value)
 #endif
     case MAX_TEXTURE_SIZE:
         ::glGetIntegerv(MAX_TEXTURE_SIZE, value);
-        if (getExtensions()->requiresRestrictedMaximumTextureSize())
+        if (getExtensions().requiresRestrictedMaximumTextureSize())
             *value = std::min(4096, *value);
         break;
     case MAX_CUBE_MAP_TEXTURE_SIZE:
         ::glGetIntegerv(MAX_CUBE_MAP_TEXTURE_SIZE, value);
-        if (getExtensions()->requiresRestrictedMaximumTextureSize())
+        if (getExtensions().requiresRestrictedMaximumTextureSize())
             *value = std::min(1024, *value);
         break;
     default:
@@ -383,6 +385,16 @@ bool GraphicsContext3D::texImage2D(GC3Denum target, GC3Dint level, GC3Denum inte
     else if (format == Extensions3D::SRGB_EXT)
         openGLFormat = GL_RGB;
 #endif
+
+    if (m_usingCoreProfile && openGLInternalFormat == ALPHA) {
+        // We are using a core profile. This means that GL_ALPHA, which is a valid format in WebGL for texImage2D
+        // is not supported in OpenGL. It needs to be backed with a GL_RED plane. We change the formats to GL_RED
+        // (both need to be GL_ALPHA in WebGL) and instruct the texture to swizzle the red component values with
+        // the the alpha component values.
+        openGLInternalFormat = openGLFormat = RED;
+        texParameteri(target, TEXTURE_SWIZZLE_A, RED);
+    }
+
     texImage2DDirect(target, level, openGLInternalFormat, width, height, border, openGLFormat, type, pixels);
     return true;
 }
@@ -407,12 +419,14 @@ void GraphicsContext3D::clearDepth(GC3Dclampf depth)
 #endif
 }
 
-Extensions3D* GraphicsContext3D::getExtensions()
+#if !PLATFORM(GTK)
+Extensions3D& GraphicsContext3D::getExtensions()
 {
     if (!m_extensions)
         m_extensions = std::make_unique<Extensions3DOpenGL>(this, isGLES2Compliant());
-    return m_extensions.get();
+    return *m_extensions;
 }
+#endif
 
 void GraphicsContext3D::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, void* data)
 {

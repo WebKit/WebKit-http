@@ -91,6 +91,7 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case PutByOffset:
     case PutClosureVar:
     case RecordRegExpCachedResult:
+    case NukeStructureAndSetButterfly:
         break;
 
     case StrCat:
@@ -106,6 +107,7 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case MaterializeNewObject:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
     case NewStringObject:
     case ToNumber:
         result = ExitsForExceptions;

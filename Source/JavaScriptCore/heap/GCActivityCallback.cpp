@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
 #include "config.h"
 #include "GCActivityCallback.h"
 
-#include "Heap.h"
+#include "HeapInlines.h"
 #include "JSLock.h"
 #include "JSObject.h"
 #include "VM.h"
@@ -123,6 +123,7 @@ void GCActivityCallback::scheduleTimer(double newDelay)
         return;
 
     m_delay = newDelay;
+    m_nextFireTime = WTF::currentTime() + newDelay;
     if (!m_delay) {
         g_source_set_ready_time(m_timer.get(), 0);
         return;
@@ -142,6 +143,7 @@ void GCActivityCallback::scheduleTimer(double newDelay)
 void GCActivityCallback::cancelTimer()
 {
     m_delay = -1;
+    m_nextFireTime = 0;
     g_source_set_ready_time(m_timer.get(), -1);
 }
 #endif

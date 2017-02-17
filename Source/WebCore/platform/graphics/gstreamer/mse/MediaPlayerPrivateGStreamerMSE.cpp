@@ -66,9 +66,6 @@ static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
     }
 }
 
-// Max interval in seconds to stay in the READY state on manual state change requests.
-static const unsigned gReadyStateTimerInterval = 60;
-
 GST_DEBUG_CATEGORY(webkit_mse_debug);
 #define GST_CAT_DEFAULT webkit_mse_debug
 
@@ -770,7 +767,8 @@ bool MediaPlayerPrivateGStreamerMSE::supportsCodecs(const String& codecs)
 
         const char* codecData = codec.utf8().data();
         for (const auto& pattern : supportedCodecs) {
-            if (isCodecSupported = !fnmatch(pattern, codecData, 0))
+            isCodecSupported = !fnmatch(pattern, codecData, 0);
+            if (isCodecSupported)
                 break;
         }
         if (!isCodecSupported)

@@ -24,46 +24,14 @@
  */
 
 #include "config.h"
+#include "EvalExecutable.h"
 
-#include "BatchedTransitionOptimizer.h"
-#include "CodeBlock.h"
-#include "Debugger.h"
 #include "EvalCodeBlock.h"
-#include "FunctionCodeBlock.h"
-#include "JIT.h"
 #include "JSCInlines.h"
-#include "LLIntEntrypoint.h"
-#include "Parser.h"
-#include "TypeProfiler.h"
-#include "VMInlines.h"
-#include <wtf/CommaPrinter.h>
 
 namespace JSC {
 
 const ClassInfo EvalExecutable::s_info = { "EvalExecutable", &ScriptExecutable::s_info, 0, CREATE_METHOD_TABLE(EvalExecutable) };
-
-EvalExecutable* EvalExecutable::create(ExecState* exec, const SourceCode& source, bool isInStrictContext, DerivedContextType derivedContextType, bool isArrowFunctionContext, EvalContextType evalContextType, const VariableEnvironment* variablesUnderTDZ)
-{
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
-    if (!globalObject->evalEnabled()) {
-        throwException(exec, scope, createEvalError(exec, globalObject->evalDisabledErrorMessage()));
-        return 0;
-    }
-
-    EvalExecutable* executable = new (NotNull, allocateCell<EvalExecutable>(*exec->heap())) EvalExecutable(exec, source, isInStrictContext, derivedContextType, isArrowFunctionContext, evalContextType);
-    executable->finishCreation(vm);
-
-    UnlinkedEvalCodeBlock* unlinkedEvalCode = globalObject->createEvalCodeBlock(exec, executable, variablesUnderTDZ);
-    if (!unlinkedEvalCode)
-        return 0;
-
-    executable->m_unlinkedEvalCodeBlock.set(vm, executable, unlinkedEvalCode);
-
-    return executable;
-}
 
 EvalExecutable::EvalExecutable(ExecState* exec, const SourceCode& source, bool inStrictContext, DerivedContextType derivedContextType, bool isArrowFunctionContext, EvalContextType evalContextType)
     : ScriptExecutable(exec->vm().evalExecutableStructure.get(), exec->vm(), source, inStrictContext, derivedContextType, isArrowFunctionContext, evalContextType, NoIntrinsic)
@@ -81,9 +49,9 @@ void EvalExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
     EvalExecutable* thisObject = jsCast<EvalExecutable*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     ScriptExecutable::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_unlinkedEvalCodeBlock);
-    if (thisObject->m_evalCodeBlock)
-        thisObject->m_evalCodeBlock->visitWeakly(visitor);
+    visitor.append(thisObject->m_unlinkedEvalCodeBlock);
+    if (EvalCodeBlock* evalCodeBlock = thisObject->m_evalCodeBlock.get())
+        evalCodeBlock->visitWeakly(visitor);
 }
 
 } // namespace JSC

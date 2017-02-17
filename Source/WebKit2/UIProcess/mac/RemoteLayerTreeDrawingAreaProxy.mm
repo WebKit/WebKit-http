@@ -68,6 +68,7 @@ using namespace WebCore;
         _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkFired:)];
         [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
         _displayLink.paused = YES;
+        _displayLink.preferredFramesPerSecond = 60;
     }
     return self;
 }
@@ -202,7 +203,7 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
 #if PLATFORM(IOS)
     if (m_webPageProxy.scrollingCoordinatorProxy()->hasFixedOrSticky()) {
         // If we got a new layer for a fixed or sticky node, its position from the WebProcess is probably stale. We need to re-run the "viewport" changed logic to udpate it with our UI-side state.
-        FloatRect customFixedPositionRect = m_webPageProxy.computeCustomFixedPositionRect(m_webPageProxy.unobscuredContentRect(), m_webPageProxy.displayedContentScale());
+        FloatRect customFixedPositionRect = m_webPageProxy.computeCustomFixedPositionRect(m_webPageProxy.unobscuredContentRect(), m_webPageProxy.unobscuredContentRectRespectingInputViewBounds(), m_webPageProxy.customFixedPositionRect(), m_webPageProxy.displayedContentScale(), WebPageProxy::UnobscuredRectConstraint::Unconstrained, m_webPageProxy.scrollingCoordinatorProxy()->visualViewportEnabled());
         m_webPageProxy.scrollingCoordinatorProxy()->viewportChangedViaDelegatedScrolling(m_webPageProxy.scrollingCoordinatorProxy()->rootScrollingNodeID(), customFixedPositionRect, m_webPageProxy.displayedContentScale());
     }
 #endif
@@ -257,7 +258,7 @@ void RemoteLayerTreeDrawingAreaProxy::acceleratedAnimationDidEnd(uint64_t layerI
 static const float indicatorInset = 10;
 
 #if PLATFORM(MAC)
-void RemoteLayerTreeDrawingAreaProxy::setViewExposedRect(Optional<WebCore::FloatRect> viewExposedRect)
+void RemoteLayerTreeDrawingAreaProxy::setViewExposedRect(std::optional<WebCore::FloatRect> viewExposedRect)
 {
     DrawingAreaProxy::setViewExposedRect(viewExposedRect);
     updateDebugIndicatorPosition();
@@ -268,8 +269,8 @@ FloatPoint RemoteLayerTreeDrawingAreaProxy::indicatorLocation() const
 {
     if (m_webPageProxy.delegatesScrolling()) {
 #if PLATFORM(IOS)
-        FloatPoint tiledMapLocation = m_webPageProxy.unobscuredContentRect().location();
-        tiledMapLocation = tiledMapLocation.expandedTo(m_webPageProxy.exposedContentRect().location() + FloatSize(0, 60));
+        FloatPoint tiledMapLocation = m_webPageProxy.unobscuredContentRect().location().expandedTo(FloatPoint());
+        tiledMapLocation = tiledMapLocation.expandedTo(m_webPageProxy.exposedContentRect().location());
 
         float absoluteInset = indicatorInset / m_webPageProxy.displayedContentScale();
         tiledMapLocation += FloatSize(absoluteInset, absoluteInset);
@@ -462,9 +463,19 @@ void RemoteLayerTreeDrawingAreaProxy::hideContentUntilAnyUpdate()
     m_remoteLayerTreeHost.detachRootLayer();
 }
 
+void RemoteLayerTreeDrawingAreaProxy::prepareForAppSuspension()
+{
+    m_remoteLayerTreeHost.mapAllIOSurfaceBackingStore();
+}
+
 bool RemoteLayerTreeDrawingAreaProxy::hasVisibleContent() const
 {
     return m_remoteLayerTreeHost.rootLayer();
+}
+
+bool RemoteLayerTreeDrawingAreaProxy::isAlwaysOnLoggingAllowed() const
+{
+    return m_webPageProxy.isAlwaysOnLoggingAllowed();
 }
 
 } // namespace WebKit

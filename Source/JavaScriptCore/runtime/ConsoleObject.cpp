@@ -68,7 +68,7 @@ ConsoleObject::ConsoleObject(VM& vm, Structure* structure)
 void ConsoleObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     // For legacy reasons, console properties are enumerable, writable, deleteable,
     // and all have a length of 0. This may change if Console is standardized.
@@ -101,7 +101,7 @@ static String valueToStringWithUndefinedOrNullCheck(ExecState* exec, JSValue val
 {
     if (value.isUndefinedOrNull())
         return String();
-    return value.toString(exec)->value(exec);
+    return value.toWTFString(exec);
 }
 
 static EncodedJSValue consoleLogWithLevel(ExecState* exec, MessageLevel level)
@@ -291,7 +291,7 @@ static String valueOrDefaultLabelString(ExecState* exec, JSValue value)
 {
     if (value.isUndefined())
         return ASCIILiteral("default");
-    return value.toString(exec)->value(exec);
+    return value.toWTFString(exec);
 }
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTime(ExecState* exec)

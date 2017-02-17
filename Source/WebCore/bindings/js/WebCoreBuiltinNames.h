@@ -45,10 +45,10 @@ namespace WebCore {
     macro(controller) \
     macro(createReadableStreamSource) \
     macro(disturbed) \
+    macro(failureKind) \
     macro(fetchRequest) \
     macro(fillFromJS) \
     macro(finishConsumingStream) \
-    macro(getUserMedia) \
     macro(getRemoteStreams) \
     macro(getSenders) \
     macro(getTracks) \
@@ -73,6 +73,7 @@ namespace WebCore {
     macro(queuedSetLocalDescription) \
     macro(queuedSetRemoteDescription) \
     macro(reader) \
+    macro(readIntoRequests) \
     macro(readRequests) \
     macro(readableStreamController) \
     macro(readyPromiseCapability) \

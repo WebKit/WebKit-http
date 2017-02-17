@@ -226,6 +226,9 @@ void TiledCoreAnimationDrawingArea::updateRootLayers()
     }
 
     [m_hostingLayer setSublayers:m_viewOverlayRootLayer ? @[ m_rootLayer.get(), m_viewOverlayRootLayer->platformLayer() ] : @[ m_rootLayer.get() ]];
+    
+    if (m_debugInfoLayer)
+        [m_hostingLayer addSublayer:m_debugInfoLayer.get()];
 }
 
 void TiledCoreAnimationDrawingArea::attachViewOverlayGraphicsLayer(Frame* frame, GraphicsLayer* viewOverlayRootLayer)
@@ -425,7 +428,7 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
 
         // Because our view-relative overlay root layer is not attached to the main GraphicsLayer tree, we need to flush it manually.
         if (m_viewOverlayRootLayer)
-            m_viewOverlayRootLayer->flushCompositingState(visibleRect, m_webPage.mainFrameView()->viewportIsStable());
+            m_viewOverlayRootLayer->flushCompositingState(visibleRect);
 
         RefPtr<WebPage> retainedPage = &m_webPage;
 #if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
@@ -511,7 +514,7 @@ void TiledCoreAnimationDrawingArea::resumePainting()
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_hostingLayer.get() forKey:@"layer"]];
 }
 
-void TiledCoreAnimationDrawingArea::setViewExposedRect(Optional<WebCore::FloatRect> viewExposedRect)
+void TiledCoreAnimationDrawingArea::setViewExposedRect(std::optional<WebCore::FloatRect> viewExposedRect)
 {
     m_viewExposedRect = viewExposedRect;
     updateScrolledExposedRect();
@@ -648,9 +651,9 @@ void TiledCoreAnimationDrawingArea::setRootCompositingLayer(CALayer *layer)
     updateRootLayers();
 
     if (hadRootLayer != !!layer)
-        m_layerHostingContext->setRootLayer(layer ? m_hostingLayer.get() : 0);
+        m_layerHostingContext->setRootLayer(layer ? m_hostingLayer.get() : nil);
 
-    updateDebugInfoLayer(m_webPage.corePage()->settings().showTiledScrollingIndicator());
+    updateDebugInfoLayer(layer && m_webPage.corePage()->settings().showTiledScrollingIndicator());
 
     [CATransaction commit];
 }
@@ -663,6 +666,11 @@ TiledBacking* TiledCoreAnimationDrawingArea::mainFrameTiledBacking() const
 
 void TiledCoreAnimationDrawingArea::updateDebugInfoLayer(bool showLayer)
 {
+    if (m_debugInfoLayer) {
+        [m_debugInfoLayer removeFromSuperlayer];
+        m_debugInfoLayer = nil;
+    }
+    
     if (showLayer) {
         if (TiledBacking* tiledBacking = mainFrameTiledBacking()) {
             if (PlatformCALayer* indicatorLayer = tiledBacking->tiledScrollingIndicatorLayer())
@@ -670,14 +678,9 @@ void TiledCoreAnimationDrawingArea::updateDebugInfoLayer(bool showLayer)
         }
 
         if (m_debugInfoLayer) {
-#ifndef NDEBUG
             [m_debugInfoLayer setName:@"Debug Info"];
-#endif
             [m_hostingLayer addSublayer:m_debugInfoLayer.get()];
         }
-    } else if (m_debugInfoLayer) {
-        [m_debugInfoLayer removeFromSuperlayer];
-        m_debugInfoLayer = nullptr;
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -575,7 +575,7 @@ bool AccessCase::propagateTransitions(SlotVisitor& visitor) const
     switch (m_type) {
     case Transition:
         if (Heap::isMarkedConcurrently(m_structure->previousID()))
-            visitor.appendUnbarrieredReadOnlyPointer(m_structure.get());
+            visitor.appendUnbarriered(m_structure.get());
         else
             result = false;
         break;
@@ -607,7 +607,7 @@ void AccessCase::generateWithGuard(
     switch (m_type) {
     case ArrayLength: {
         ASSERT(!viaProxy());
-        jit.load8(CCallHelpers::Address(baseGPR, JSCell::indexingTypeOffset()), scratchGPR);
+        jit.load8(CCallHelpers::Address(baseGPR, JSCell::indexingTypeAndMiscOffset()), scratchGPR);
         fallThrough.append(
             jit.branchTest32(
                 CCallHelpers::Zero, scratchGPR, CCallHelpers::TrustedImm32(IsArray)));
@@ -638,7 +638,7 @@ void AccessCase::generateWithGuard(
         fallThrough.append(
             jit.branchTestPtr(
                 CCallHelpers::NonZero,
-                CCallHelpers::Address(baseGPR, DirectArguments::offsetOfOverrides())));
+                CCallHelpers::Address(baseGPR, DirectArguments::offsetOfMappedArguments())));
         jit.load32(
             CCallHelpers::Address(baseGPR, DirectArguments::offsetOfLength()),
             valueRegs.payloadGPR());
@@ -885,6 +885,8 @@ void AccessCase::generateImpl(AccessGenerationState& state)
     case CustomAccessorGetter:
     case CustomValueSetter:
     case CustomAccessorSetter: {
+        GPRReg valueRegsPayloadGPR = valueRegs.payloadGPR();
+        
         if (isValidOffset(m_offset)) {
             Structure* currStructure;
             if (m_conditionSet.isEmpty())
@@ -896,7 +898,15 @@ void AccessCase::generateImpl(AccessGenerationState& state)
 
         GPRReg baseForGetGPR;
         if (viaProxy()) {
-            baseForGetGPR = valueRegs.payloadGPR();
+            ASSERT(m_type != CustomValueSetter || m_type != CustomAccessorSetter); // Because setters need to not trash valueRegsPayloadGPR.
+            if (m_type == Getter || m_type == Setter)
+                baseForGetGPR = scratchGPR;
+            else
+                baseForGetGPR = valueRegsPayloadGPR;
+
+            ASSERT((m_type != Getter && m_type != Setter) || baseForGetGPR != baseGPR);
+            ASSERT(m_type != Setter || baseForGetGPR != valueRegsPayloadGPR);
+
             jit.loadPtr(
                 CCallHelpers::Address(baseGPR, JSProxy::targetOffset()),
                 baseForGetGPR);
@@ -915,9 +925,12 @@ void AccessCase::generateImpl(AccessGenerationState& state)
         GPRReg loadedValueGPR = InvalidGPRReg;
         if (m_type != CustomValueGetter && m_type != CustomAccessorGetter && m_type != CustomValueSetter && m_type != CustomAccessorSetter) {
             if (m_type == Load || m_type == GetGetter)
-                loadedValueGPR = valueRegs.payloadGPR();
+                loadedValueGPR = valueRegsPayloadGPR;
             else
                 loadedValueGPR = scratchGPR;
+
+            ASSERT((m_type != Getter && m_type != Setter) || loadedValueGPR != baseGPR);
+            ASSERT(m_type != Setter || loadedValueGPR != valueRegsPayloadGPR);
 
             GPRReg storageGPR;
             if (isInlineOffset(m_offset))
@@ -986,6 +999,9 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             CCallHelpers::tagFor(static_cast<VirtualRegister>(CallFrameSlot::argumentCount)));
 
         if (m_type == Getter || m_type == Setter) {
+            ASSERT(baseGPR != loadedValueGPR);
+            ASSERT(m_type != Setter || (baseGPR != valueRegsPayloadGPR && loadedValueGPR != valueRegsPayloadGPR));
+
             // Create a JS call using a JS call inline cache. Assume that:
             //
             // - SP is aligned and represents the extent of the calling compiler's stack usage.
@@ -1064,7 +1080,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 loadedValueGPR, calleeFrame.withOffset(CallFrameSlot::callee * sizeof(Register)));
 
             jit.storeCell(
-                baseForGetGPR,
+                baseGPR,
                 calleeFrame.withOffset(virtualRegisterForArgument(0).offset() * sizeof(Register)));
 
             if (m_type == Setter) {
@@ -1118,6 +1134,8 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                         CodeLocationLabel(vm.getCTIStub(linkCallThunkGenerator).code()));
                 });
         } else {
+            ASSERT(m_type == CustomValueGetter || m_type == CustomAccessorGetter || m_type == CustomValueSetter || m_type == CustomAccessorSetter);
+
             // Need to make room for the C call so any of our stack spillage isn't overwritten. It's
             // hard to track if someone did spillage or not, so we just assume that we always need
             // to make some space here.
@@ -1246,7 +1264,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             size_t newSize = newStructure()->outOfLineCapacity() * sizeof(JSValue);
             
             if (allocatingInline) {
-                MarkedAllocator* allocator = vm.heap.allocatorForAuxiliaryData(newSize);
+                MarkedAllocator* allocator = vm.auxiliarySpace.allocatorFor(newSize);
                 
                 if (!allocator) {
                     // Yuck, this case would suck!
@@ -1257,12 +1275,13 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 jit.emitAllocate(scratchGPR, allocator, scratchGPR2, scratchGPR3, slowPath);
                 jit.addPtr(CCallHelpers::TrustedImm32(newSize + sizeof(IndexingHeader)), scratchGPR);
                 
+                size_t oldSize = structure()->outOfLineCapacity() * sizeof(JSValue);
+                ASSERT(newSize > oldSize);
+                
                 if (reallocating) {
                     // Handle the case where we are reallocating (i.e. the old structure/butterfly
                     // already had out-of-line property storage).
-                    size_t oldSize = structure()->outOfLineCapacity() * sizeof(JSValue);
-                    ASSERT(newSize > oldSize);
-            
+                    
                     jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR3);
                     
                     // We have scratchGPR = new storage, scratchGPR3 = old storage,
@@ -1281,6 +1300,9 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                                 -static_cast<ptrdiff_t>(offset + sizeof(JSValue) + sizeof(void*))));
                     }
                 }
+                
+                for (size_t offset = oldSize; offset < newSize; offset += sizeof(void*))
+                    jit.storePtr(CCallHelpers::TrustedImmPtr(0), CCallHelpers::Address(scratchGPR, -static_cast<ptrdiff_t>(offset + sizeof(JSValue) + sizeof(void*))));
             } else {
                 // Handle the case where we are allocating out-of-line using an operation.
                 RegisterSet extraRegistersToPreserve;
@@ -1353,8 +1375,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             // We set the new butterfly and the structure last. Doing it this way ensures that
             // whatever we had done up to this point is forgotten if we choose to branch to slow
             // path.
-            
-            jit.storePtr(scratchGPR, CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()));
+            jit.nukeStructureAndStoreButterfly(scratchGPR, baseGPR);
         }
         
         uint32_t structureBits = bitwise_cast<uint32_t>(newStructure()->id());

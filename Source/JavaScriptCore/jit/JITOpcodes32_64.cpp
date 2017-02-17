@@ -70,7 +70,7 @@ JIT::CodeRef JIT::privateCompileCTINativeCall(VM* vm, NativeFunction func)
 
     addPtr(TrustedImm32(8), stackPointerRegister);
 
-#elif CPU(ARM) || CPU(SH4) || CPU(MIPS)
+#elif CPU(ARM) || CPU(MIPS)
 #if CPU(MIPS)
     // Allocate stack space for (unused) 16 bytes (8-byte aligned) for 4 arguments.
     subPtr(TrustedImm32(16), stackPointerRegister);
@@ -164,7 +164,7 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
 {
     Structure* structure = currentInstruction[3].u.objectAllocationProfile->structure();
     size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
-    MarkedAllocator* allocator = m_vm->heap.allocatorForObjectWithoutDestructor(allocationSize);
+    MarkedAllocator* allocator = subspaceFor<JSFinalObject>(*m_vm)->allocatorFor(allocationSize);
 
     RegisterID resultReg = returnValueGPR;
     RegisterID allocatorReg = regT1;
@@ -175,6 +175,7 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
         addSlowCase(Jump());
     JumpList slowCases;
     emitAllocateJSObject(resultReg, allocator, allocatorReg, TrustedImmPtr(structure), TrustedImmPtr(0), scratchReg, slowCases);
+    emitInitializeInlineStorage(resultReg, structure->inlineCapacity());
     addSlowCase(slowCases);
     emitStoreCell(currentInstruction[1].u.operand, resultReg);
 }

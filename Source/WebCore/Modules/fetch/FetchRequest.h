@@ -38,42 +38,49 @@
 
 namespace WebCore {
 
-class Dictionary;
+class Blob;
 class ScriptExecutionContext;
+class URLSearchParams;
 
 class FetchRequest final : public FetchBodyOwner {
 public:
-    static Ref<FetchRequest> create(ScriptExecutionContext& context) { return adoptRef(*new FetchRequest(context, Nullopt, FetchHeaders::create(FetchHeaders::Guard::Request), { })); }
+    static Ref<FetchRequest> create(ScriptExecutionContext& context) { return adoptRef(*new FetchRequest(context, std::nullopt, FetchHeaders::create(FetchHeaders::Guard::Request), { })); }
 
-    ExceptionOr<FetchHeaders&> initializeWith(FetchRequest&, const Dictionary&);
-    ExceptionOr<FetchHeaders&> initializeWith(const String&, const Dictionary&);
+    using Cache = FetchOptions::Cache;
+    using Credentials = FetchOptions::Credentials;
+    using Destination = FetchOptions::Destination;
+    using Mode = FetchOptions::Mode;
+    using Redirect = FetchOptions::Redirect;
+    using ReferrerPolicy = FetchOptions::ReferrerPolicy;
+    using Type = FetchOptions::Type;
+
+    struct Init {
+        String method;
+        String referrer;
+        std::optional<ReferrerPolicy> referrerPolicy;
+        std::optional<Mode> mode;
+        std::optional<Credentials> credentials;
+        std::optional<Cache> cache;
+        std::optional<Redirect> redirect;
+        String integrity;
+        JSC::JSValue window;
+    };
+
+    ExceptionOr<FetchHeaders&> initializeWith(FetchRequest&, const Init&);
+    ExceptionOr<FetchHeaders&> initializeWith(const String&, const Init&);
     ExceptionOr<void> setBody(JSC::ExecState&, JSC::JSValue, FetchRequest*);
 
     const String& method() const { return m_internalRequest.request.httpMethod(); }
     const String& url() const;
     FetchHeaders& headers() { return m_headers.get(); }
 
-    using Type = FetchOptions::Type;
     Type type() const;
-
-    using Destination = FetchOptions::Destination;
     Destination destination() const;
-
     String referrer() const;
-
-    using ReferrerPolicy = FetchOptions::ReferrerPolicy;
     ReferrerPolicy referrerPolicy() const;
-
-    using Mode = FetchOptions::Mode;
     Mode mode() const;
-
-    using Credentials = FetchOptions::Credentials;
     Credentials credentials() const;
-
-    using Cache = FetchOptions::Cache;
     Cache cache() const;
-
-    using Redirect = FetchOptions::Redirect;
     Redirect redirect() const;
 
     const String& integrity() const { return m_internalRequest.integrity; }
@@ -89,13 +96,14 @@ public:
 
     const FetchOptions& fetchOptions() const { return m_internalRequest.options; }
     ResourceRequest internalRequest() const;
+    bool isBodyReadableStream() const { return !isBodyNull() && body().isReadableStream(); }
 
     const String& internalRequestReferrer() const { return m_internalRequest.referrer; }
 
 private:
-    FetchRequest(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&, InternalRequest&&);
+    FetchRequest(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, InternalRequest&&);
 
-    ExceptionOr<FetchHeaders&> initializeOptions(const Dictionary&);
+    ExceptionOr<FetchHeaders&> initializeOptions(const Init&);
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
@@ -104,7 +112,7 @@ private:
     mutable String m_requestURL;
 };
 
-inline FetchRequest::FetchRequest(ScriptExecutionContext& context, Optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, InternalRequest&& internalRequest)
+inline FetchRequest::FetchRequest(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, InternalRequest&& internalRequest)
     : FetchBodyOwner(context, WTFMove(body), WTFMove(headers))
     , m_internalRequest(WTFMove(internalRequest))
 {

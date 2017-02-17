@@ -27,6 +27,7 @@
 #include "StorageNamespaceProvider.h"
 
 #include "Document.h"
+#include "SecurityOriginData.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
 
@@ -60,9 +61,9 @@ void StorageNamespaceProvider::removePage(Page& page)
 
 RefPtr<StorageArea> StorageNamespaceProvider::localStorageArea(Document& document)
 {
-    auto& storageNamespace = document.securityOrigin()->canAccessLocalStorage(document.topOrigin()) ? localStorageNamespace() : transientLocalStorageNamespace(*document.topOrigin());
+    auto& storageNamespace = document.securityOrigin().canAccessLocalStorage(&document.topOrigin()) ? localStorageNamespace() : transientLocalStorageNamespace(document.topOrigin());
 
-    return storageNamespace.storageArea(document.securityOrigin());
+    return storageNamespace.storageArea(SecurityOriginData::fromSecurityOrigin(document.securityOrigin()));
 }
 
 StorageNamespace& StorageNamespaceProvider::localStorageNamespace()

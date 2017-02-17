@@ -30,7 +30,6 @@
 #include "HitTestResult.h"
 #include "InlineElementBox.h"
 #include "InlineTextBox.h"
-#include "Page.h"
 #include "RenderBlock.h"
 #include "RenderChildIterator.h"
 #include "RenderFullScreen.h"
@@ -275,9 +274,12 @@ LayoutRect RenderInline::localCaretRect(InlineBox* inlineBox, unsigned, LayoutUn
 
 void RenderInline::addChild(RenderObject* newChild, RenderObject* beforeChild)
 {
+    auto* beforeChildOrPlaceholder = beforeChild;
+    if (auto* flowThread = flowThreadContainingBlock())
+        beforeChildOrPlaceholder = flowThread->resolveMovedChild(beforeChild);
     if (continuation())
-        return addChildToContinuation(newChild, beforeChild);
-    return addChildIgnoringContinuation(newChild, beforeChild);
+        return addChildToContinuation(newChild, beforeChildOrPlaceholder);
+    return addChildIgnoringContinuation(newChild, beforeChildOrPlaceholder);
 }
 
 static RenderBoxModelObject* nextContinuation(RenderObject* renderer)
@@ -324,7 +326,7 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
     if (!beforeChild && isAfterContent(lastChild()))
         beforeChild = lastChild();
     
-    bool useNewBlockInsideInlineModel = document().settings()->newBlockInsideInlineModelEnabled();
+    bool useNewBlockInsideInlineModel = settings().newBlockInsideInlineModelEnabled();
     bool childInline = newChildIsInline(*newChild, *this);
     // This code is for the old block-inside-inline model that uses continuations.
     if (!useNewBlockInsideInlineModel && !childInline && !newChild->isFloatingOrOutOfFlowPositioned()) {

@@ -26,11 +26,9 @@
 #include "config.h"
 #include "PlatformMediaSessionManager.h"
 
-
 #include "AudioSession.h"
 #include "Document.h"
 #include "Logging.h"
-#include "NotImplemented.h"
 #include "PlatformMediaSession.h"
 
 namespace WebCore {
@@ -69,6 +67,7 @@ void PlatformMediaSessionManager::resetRestrictions()
 {
     m_restrictions[PlatformMediaSession::Video] = NoRestrictions;
     m_restrictions[PlatformMediaSession::Audio] = NoRestrictions;
+    m_restrictions[PlatformMediaSession::VideoAudio] = NoRestrictions;
     m_restrictions[PlatformMediaSession::WebAudio] = NoRestrictions;
 }
 
@@ -113,9 +112,9 @@ void PlatformMediaSessionManager::beginInterruption(PlatformMediaSession::Interr
     LOG(Media, "PlatformMediaSessionManager::beginInterruption");
 
     m_interrupted = true;
-    Vector<PlatformMediaSession*> sessions = m_sessions;
-    for (auto* session : sessions)
-        session->beginInterruption(type);
+    forEachSession([type] (PlatformMediaSession& session, size_t) {
+        session.beginInterruption(type);
+    });
     updateSessionState();
 }
 
@@ -124,9 +123,9 @@ void PlatformMediaSessionManager::endInterruption(PlatformMediaSession::EndInter
     LOG(Media, "PlatformMediaSessionManager::endInterruption");
 
     m_interrupted = false;
-    Vector<PlatformMediaSession*> sessions = m_sessions;
-    for (auto* session : sessions)
-        session->endInterruption(flags);
+    forEachSession([flags] (PlatformMediaSession& session, size_t) {
+        session.endInterruption(flags);
+    });
 }
 
 void PlatformMediaSessionManager::addSession(PlatformMediaSession& session)
@@ -400,7 +399,7 @@ void PlatformMediaSessionManager::stopAllMediaPlaybackForProcess()
     });
 }
 
-void PlatformMediaSessionManager::forEachSession(std::function<void(PlatformMediaSession&, size_t)> func) const
+void PlatformMediaSessionManager::forEachSession(const Function<void(PlatformMediaSession&, size_t)>& predicate) const
 {
     ++m_iteratingOverSessions;
 
@@ -408,7 +407,7 @@ void PlatformMediaSessionManager::forEachSession(std::function<void(PlatformMedi
         auto session = m_sessions[i];
         if (!session)
             continue;
-        func(*session, i);
+        predicate(*session, i);
     }
 
     --m_iteratingOverSessions;
@@ -416,20 +415,20 @@ void PlatformMediaSessionManager::forEachSession(std::function<void(PlatformMedi
         m_sessions.removeAll(nullptr);
 }
 
-bool PlatformMediaSessionManager::anyOfSessions(std::function<bool(PlatformMediaSession&, size_t)> func) const
+PlatformMediaSession* PlatformMediaSessionManager::findSession(const Function<bool(PlatformMediaSession&, size_t)>& predicate) const
 {
     ++m_iteratingOverSessions;
 
-    bool found = false;
+    PlatformMediaSession* foundSession = nullptr;
     for (size_t i = 0, size = m_sessions.size(); i < size; ++i) {
         auto session = m_sessions[i];
         if (!session)
             continue;
 
-        if (!func(*session, i))
+        if (!predicate(*session, i))
             continue;
 
-        found = true;
+        foundSession = session;
         break;
     }
 
@@ -437,7 +436,7 @@ bool PlatformMediaSessionManager::anyOfSessions(std::function<bool(PlatformMedia
     if (!m_iteratingOverSessions)
         m_sessions.removeAll(nullptr);
 
-    return found;
+    return foundSession;
 }
 
 #endif // ENABLE(VIDEO) || ENABLE(WEB_AUDIO)

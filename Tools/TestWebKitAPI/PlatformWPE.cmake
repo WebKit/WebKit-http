@@ -26,6 +26,11 @@ set(test_main_SOURCES
     ${TESTWEBKITAPI_DIR}/wpe/main.cpp
 )
 
+set(bundle_harness_SOURCES
+    ${TESTWEBKITAPI_DIR}/wpe/InjectedBundleControllerWPE.cpp
+    ${TESTWEBKITAPI_DIR}/wpe/PlatformUtilitiesWPE.cpp
+)
+
 # TestWTF
 
 list(APPEND TestWTF_SOURCES
@@ -42,6 +47,7 @@ add_executable(TestWebCore
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBufferTest.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FileSystem.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/PublicSuffix.cpp
 )

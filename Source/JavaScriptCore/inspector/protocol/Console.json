@@ -1,6 +1,7 @@
 {
     "domain": "Console",
     "description": "Console domain defines methods and events for interaction with the JavaScript console. Console collects messages created by means of the <a href='http://getfirebug.com/wiki/index.php/Console_API'>JavaScript Console API</a>. One needs to enable this domain using <code>enable</code> command in order to start receiving the console messages. Browser collects messages issued while console domain is not enabled as well and reports them using <code>messageAdded</code> notification upon enabling.",
+    "workerSupported": true,
     "types": [
         {
             "id": "ConsoleMessage",
@@ -16,7 +17,7 @@
                 { "name": "column", "type": "integer", "optional": true, "description": "Column number on the line in the resource that generated this message." },
                 { "name": "repeatCount", "type": "integer", "optional": true, "description": "Repeat count for repeated messages." },
                 { "name": "parameters", "type": "array", "items": { "$ref": "Runtime.RemoteObject" }, "optional": true, "description": "Message parameters in case of the formatted message." },
-                { "name": "stackTrace", "$ref": "StackTrace", "optional": true, "description": "JavaScript stack trace for assertions and error messages." },
+                { "name": "stackTrace", "type": "array", "items": { "$ref": "CallFrame" }, "optional": true, "description": "JavaScript stack trace for assertions and error messages." },
                 { "name": "networkRequestId", "$ref": "Network.RequestId", "optional": true, "description": "Identifier of the network request associated with this message." }
             ]
         },
@@ -34,9 +35,14 @@
         },
         {
             "id": "StackTrace",
-            "type": "array",
-            "items": { "$ref": "CallFrame" },
-            "description": "Call frames for assertions or error messages."
+            "description": "Call frames for async function calls, console assertions, and error messages.",
+            "type": "object",
+            "properties": [
+                { "name": "callFrames", "type": "array", "items": { "$ref": "CallFrame" } },
+                { "name": "topCallFrameIsBoundary", "type": "boolean", "optional": true, "description": "Whether the first item in <code>callFrames</code> is the native function that scheduled the asynchronous operation (e.g. setTimeout)." },
+                { "name": "truncated", "type": "boolean", "optional": true, "description": "Whether one or more frames have been truncated from the bottom of the stack." },
+                { "name": "parentStackTrace", "$ref": "StackTrace", "optional": true, "description": "Parent StackTrace." }
+            ]
         }
     ],
     "commands": [

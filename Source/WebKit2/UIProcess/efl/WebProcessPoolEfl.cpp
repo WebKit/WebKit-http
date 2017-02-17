@@ -32,7 +32,6 @@
 #include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
-#include "WebSoupCustomProtocolRequestManager.h"
 #include <Efreet.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/IconDatabase.h>
@@ -94,6 +93,7 @@ String WebProcessPool::legacyPlatformDefaultMediaCacheDirectory()
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
     initializeInspectorServer();
+    parameters.proxySettings = m_networkProxySettings;
 }
 
 void WebProcessPool::platformInvalidateContext()
@@ -132,6 +132,10 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
 String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
     return API::WebsiteDataStore::defaultNetworkCacheDirectory();
+}
+
+void WebProcessPool::platformResolvePathsForSandboxExtensions()
+{
 }
 
 } // namespace WebKit

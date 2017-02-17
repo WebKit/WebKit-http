@@ -22,7 +22,7 @@
 #include "JSTestCallbackFunctionWithTypedefs.h"
 
 #include "JSDOMConvert.h"
-#include "JSLONG.h"
+#include "JSDOMExceptionHandling.h"
 #include "ScriptExecutionContext.h"
 #include <runtime/JSArray.h>
 #include <runtime/JSLock.h>
@@ -34,7 +34,7 @@ namespace WebCore {
 JSTestCallbackFunctionWithTypedefs::JSTestCallbackFunctionWithTypedefs(JSObject* callback, JSDOMGlobalObject* globalObject)
     : TestCallbackFunctionWithTypedefs()
     , ActiveDOMCallback(globalObject->scriptExecutionContext())
-    , m_data(new JSCallbackDataStrong(callback, this))
+    , m_data(new JSCallbackDataStrong(callback, globalObject, this))
 {
 }
 
@@ -52,7 +52,7 @@ JSTestCallbackFunctionWithTypedefs::~JSTestCallbackFunctionWithTypedefs()
 #endif
 }
 
-bool JSTestCallbackFunctionWithTypedefs::handleEvent(Vector<RefPtr<LONG>> sequenceArg, int32_t longArg)
+bool JSTestCallbackFunctionWithTypedefs::handleEvent(Vector<int32_t> sequenceArg, int32_t longArg)
 {
     if (!canInvokeCallback())
         return true;
@@ -63,7 +63,7 @@ bool JSTestCallbackFunctionWithTypedefs::handleEvent(Vector<RefPtr<LONG>> sequen
 
     ExecState* state = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS<IDLSequence<IDLNullable<IDLInterface<LONG>>>>(*state, *m_data->globalObject(), sequenceArg));
+    args.append(toJS<IDLSequence<IDLNullable<IDLLong>>>(*state, *m_data->globalObject(), sequenceArg));
     args.append(toJS<IDLLong>(longArg));
 
     NakedPtr<JSC::Exception> returnedException;
@@ -73,7 +73,7 @@ bool JSTestCallbackFunctionWithTypedefs::handleEvent(Vector<RefPtr<LONG>> sequen
     return !returnedException;
 }
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestCallbackFunctionWithTypedefs& impl)
+JSC::JSValue toJS(TestCallbackFunctionWithTypedefs& impl)
 {
     if (!static_cast<JSTestCallbackFunctionWithTypedefs&>(impl).callbackData())
         return jsNull();

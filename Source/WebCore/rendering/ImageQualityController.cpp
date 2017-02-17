@@ -97,7 +97,7 @@ void ImageQualityController::restartTimer()
     m_timer.startOneShot(cLowQualityTimeThreshold);
 }
 
-Optional<InterpolationQuality> ImageQualityController::interpolationQualityFromStyle(const RenderStyle& style)
+std::optional<InterpolationQuality> ImageQualityController::interpolationQualityFromStyle(const RenderStyle& style)
 {
     switch (style.imageRendering()) {
     case ImageRenderingOptimizeSpeed:
@@ -110,16 +110,16 @@ Optional<InterpolationQuality> ImageQualityController::interpolationQualityFromS
     case ImageRenderingAuto:
         break;
     }
-    return Nullopt;
+    return std::nullopt;
 }
 
-InterpolationQuality ImageQualityController::chooseInterpolationQuality(GraphicsContext& context, RenderBoxModelObject* object, Image& image, const void *layer, const LayoutSize& size)
+InterpolationQuality ImageQualityController::chooseInterpolationQuality(GraphicsContext& context, RenderBoxModelObject* object, Image& image, const void* layer, const LayoutSize& size)
 {
     // If the image is not a bitmap image, then none of this is relevant and we just paint at high quality.
     if (!(image.isBitmapImage() || image.isPDFDocumentImage()) || context.paintingDisabled())
         return InterpolationDefault;
 
-    if (Optional<InterpolationQuality> styleInterpolation = interpolationQualityFromStyle(object->style()))
+    if (std::optional<InterpolationQuality> styleInterpolation = interpolationQualityFromStyle(object->style()))
         return styleInterpolation.value();
 
     // Make sure to use the unzoomed image size, since if a full page zoom is in effect, the image
@@ -161,7 +161,7 @@ InterpolationQuality ImageQualityController::chooseInterpolationQuality(Graphics
     }
 
     // There is no need to hash scaled images that always use low quality mode when the page demands it. This is the iChat case.
-    if (m_renderView.frame().page()->inLowQualityImageInterpolationMode()) {
+    if (m_renderView.page().inLowQualityImageInterpolationMode()) {
         double totalPixels = static_cast<double>(image.width()) * static_cast<double>(image.height());
         if (totalPixels > cInterpolationCutoff)
             return InterpolationLow;

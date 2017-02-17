@@ -55,6 +55,10 @@
 #include <sys/time.h>
 #endif
 
+#if OS(LINUX)
+#include <sys/prctl.h>
+#endif
+
 namespace WTF {
 
 class PthreadState {
@@ -172,7 +176,7 @@ ThreadIdentifier createThreadInternal(ThreadFunction entryPoint, void* data, con
     pthread_attr_t attr;
     pthread_attr_init(&attr);
 #if HAVE(QOS_CLASSES)
-    pthread_attr_set_qos_class_np(&attr, QOS_CLASS_USER_INITIATED, 0);
+    pthread_attr_set_qos_class_np(&attr, adjustedQOSClass(QOS_CLASS_USER_INITIATED), 0);
 #endif
     int error = pthread_create(&threadHandle, &attr, wtfThreadEntryPoint, invocation.get());
     pthread_attr_destroy(&attr);
@@ -191,7 +195,9 @@ ThreadIdentifier createThreadInternal(ThreadFunction entryPoint, void* data, con
 void initializeCurrentThreadInternal(const char* threadName)
 {
 #if HAVE(PTHREAD_SETNAME_NP)
-    pthread_setname_np(threadName);
+    pthread_setname_np(normalizeThreadName(threadName));
+#elif OS(LINUX)
+    prctl(PR_SET_NAME, normalizeThreadName(threadName));
 #else
     UNUSED_PARAM(threadName);
 #endif

@@ -38,7 +38,6 @@
 #include "Page.h"
 #include "RenderImage.h"
 #include "RenderSVGImage.h"
-#include "SecurityOrigin.h"
 #include <wtf/NeverDestroyed.h>
 
 #if ENABLE(VIDEO)
@@ -178,7 +177,7 @@ void ImageLoader::updateFromElement()
         options.sameOriginDataURLFlag = SameOriginDataURLFlag::Set;
 
         CachedResourceRequest request(ResourceRequest(document.completeURL(sourceURI(attr))), options);
-        request.setInitiator(&element());
+        request.setInitiator(element());
 
         request.setAsPotentiallyCrossOrigin(element().attributeWithoutSynchronization(HTMLNames::crossoriginAttr), document);
 

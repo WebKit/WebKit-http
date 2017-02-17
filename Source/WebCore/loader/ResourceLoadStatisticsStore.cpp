@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,14 +31,16 @@
 #include "NetworkStorageSession.h"
 #include "PlatformStrategies.h"
 #include "ResourceLoadStatistics.h"
-#include "SecurityOrigin.h"
 #include "SharedBuffer.h"
 #include "URL.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-static const unsigned minimumOriginsLoadedForProcessing = 100;
+static const auto statisticsModelVersion = 3;
+// 30 days in seconds
+static auto timeToLiveUserInteraction = 2592000;
 
 Ref<ResourceLoadStatisticsStore> ResourceLoadStatisticsStore::create()
 {
@@ -73,7 +75,8 @@ typedef HashMap<String, ResourceLoadStatistics>::KeyValuePairType StatisticsValu
 std::unique_ptr<KeyedEncoder> ResourceLoadStatisticsStore::createEncoderFromData()
 {
     auto encoder = KeyedEncoder::encoder();
-    
+
+    encoder->encodeUInt32("version", statisticsModelVersion);
     encoder->encodeObjects("browsingStatistics", m_resourceStatisticsMap.begin(), m_resourceStatisticsMap.end(), [this](KeyedEncoder& encoderInner, const StatisticsValue& origin) {
         origin.value.encode(encoderInner);
     });
@@ -86,9 +89,12 @@ void ResourceLoadStatisticsStore::readDataFromDecoder(KeyedDecoder& decoder)
     if (m_resourceStatisticsMap.size())
         return;
 
+    unsigned version;
+    if (!decoder.decodeUInt32("version", version))
+        version = 1;
     Vector<ResourceLoadStatistics> loadedStatistics;
-    bool succeeded = decoder.decodeObjects("browsingStatistics", loadedStatistics, [this](KeyedDecoder& decoderInner, ResourceLoadStatistics& statistics) {
-        return statistics.decode(decoderInner);
+    bool succeeded = decoder.decodeObjects("browsingStatistics", loadedStatistics, [this, version](KeyedDecoder& decoderInner, ResourceLoadStatistics& statistics) {
+        return statistics.decode(decoderInner, version);
     });
 
     if (!succeeded)
@@ -141,25 +147,50 @@ void ResourceLoadStatisticsStore::fireDataModificationHandler()
         m_dataAddedHandler();
 }
 
-bool ResourceLoadStatisticsStore::hasEnoughDataForStatisticsProcessing()
+void ResourceLoadStatisticsStore::setTimeToLiveUserInteraction(double seconds)
 {
-    return m_resourceStatisticsMap.size() >= minimumOriginsLoadedForProcessing;
+    if (seconds >= 0)
+        timeToLiveUserInteraction = seconds;
 }
 
 void ResourceLoadStatisticsStore::processStatistics(std::function<void(ResourceLoadStatistics&)>&& processFunction)
 {
-    ASSERT(hasEnoughDataForStatisticsProcessing());
     for (auto& resourceStatistic : m_resourceStatisticsMap.values())
         processFunction(resourceStatistic);
+}
+
+bool ResourceLoadStatisticsStore::hasHadRecentUserInteraction(ResourceLoadStatistics& resourceStatistic)
+{
+    if (!resourceStatistic.hadUserInteraction)
+        return false;
+
+    if (currentTime() > resourceStatistic.mostRecentUserInteraction + timeToLiveUserInteraction) {
+        // Drop privacy sensitive data because we no longer need it.
+        // Set timestamp to 0.0 so that statistics merge will know
+        // it has been reset as opposed to its default -1.
+        resourceStatistic.mostRecentUserInteraction = 0;
+        resourceStatistic.hadUserInteraction = false;
+        return false;
+    }
+
+    return true;
 }
 
 Vector<String> ResourceLoadStatisticsStore::prevalentResourceDomainsWithoutUserInteraction()
 {
     Vector<String> prevalentResources;
     for (auto& resourceStatistic : m_resourceStatisticsMap.values()) {
-        if (resourceStatistic.isPrevalentResource && !resourceStatistic.hadUserInteraction)
+        if (resourceStatistic.isPrevalentResource && !hasHadRecentUserInteraction(resourceStatistic))
             prevalentResources.append(resourceStatistic.highLevelDomain);
     }
     return prevalentResources;
+}
+
+void ResourceLoadStatisticsStore::updateStatisticsForRemovedDataRecords(const Vector<String>& prevalentResourceDomains)
+{
+    for (auto& prevalentResourceDomain : prevalentResourceDomains) {
+        ResourceLoadStatistics& statisic = ensureResourceStatisticsForPrimaryDomain(prevalentResourceDomain);
+        ++statisic.dataRecordsRemoved;
+    }
 }
 }

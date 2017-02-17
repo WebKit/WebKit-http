@@ -98,8 +98,10 @@ public:
 
     void pageDestroyed() { m_page = nullptr; }
 
-    enum class ForcedPrefersReducedMotionValue { System, On, Off };
-    static const Settings::ForcedPrefersReducedMotionValue defaultForcedPrefersReducedMotionValue = ForcedPrefersReducedMotionValue::System;
+    enum class ForcedAccessibilityValue { System, On, Off };
+    static const Settings::ForcedAccessibilityValue defaultForcedColorsAreInvertedAccessibilityValue = ForcedAccessibilityValue::System;
+    static const Settings::ForcedAccessibilityValue defaultForcedDisplayIsMonochromeAccessibilityValue = ForcedAccessibilityValue::System;
+    static const Settings::ForcedAccessibilityValue defaultForcedPrefersReducedMotionAccessibilityValue = ForcedAccessibilityValue::System;
 
     WEBCORE_EXPORT void setStandardFontFamily(const AtomicString&, UScriptCode = USCRIPT_COMMON);
     WEBCORE_EXPORT const AtomicString& standardFontFamily(UScriptCode = USCRIPT_COMMON) const;
@@ -170,8 +172,8 @@ public:
     WEBCORE_EXPORT void setMinimumDOMTimerInterval(std::chrono::milliseconds); // Initialized to DOMTimer::defaultMinimumInterval().
     std::chrono::milliseconds minimumDOMTimerInterval() const { return m_minimumDOMTimerInterval; }
 
-    WEBCORE_EXPORT void setLayoutInterval(std::chrono::milliseconds);
-    std::chrono::milliseconds layoutInterval() const { return m_layoutInterval; }
+    WEBCORE_EXPORT void setLayoutInterval(Seconds);
+    Seconds layoutInterval() const { return m_layoutInterval; }
 
     bool hiddenPageDOMTimerThrottlingEnabled() const { return m_hiddenPageDOMTimerThrottlingEnabled; }
     WEBCORE_EXPORT void setHiddenPageDOMTimerThrottlingEnabled(bool);
@@ -196,6 +198,13 @@ public:
     static void setShouldUseHighResolutionTimers(bool);
     static bool shouldUseHighResolutionTimers() { return gShouldUseHighResolutionTimers; }
 #endif
+
+    static bool isPostLoadCPUUsageMeasurementEnabled();
+    static bool isPostBackgroundingCPUUsageMeasurementEnabled();
+    static bool isPerActivityStateCPUUsageMeasurementEnabled();
+
+    static bool isPostLoadMemoryUsageMeasurementEnabled();
+    static bool isPostBackgroundingMemoryUsageMeasurementEnabled();
 
     static bool globalConstRedeclarationShouldThrow();
 
@@ -328,7 +337,7 @@ private:
     URL m_userStyleSheetLocation;
     const std::unique_ptr<FontGenericFamilies> m_fontGenericFamilies;
     SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
-    std::chrono::milliseconds m_layoutInterval;
+    Seconds m_layoutInterval;
     std::chrono::milliseconds m_minimumDOMTimerInterval;
 
     SETTINGS_MEMBER_VARIABLES
@@ -417,5 +426,50 @@ private:
     static bool gResourceLoadStatisticsEnabledEnabled;
     static bool gAllowsAnySSLCertificate;
 };
+
+inline bool Settings::isPostLoadCPUUsageMeasurementEnabled()
+{
+#if PLATFORM(COCOA)
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline bool Settings::isPostBackgroundingCPUUsageMeasurementEnabled()
+{
+#if PLATFORM(MAC)
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline bool Settings::isPerActivityStateCPUUsageMeasurementEnabled()
+{
+#if PLATFORM(MAC)
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline bool Settings::isPostLoadMemoryUsageMeasurementEnabled()
+{
+#if PLATFORM(COCOA)
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline bool Settings::isPostBackgroundingMemoryUsageMeasurementEnabled()
+{
+#if PLATFORM(MAC)
+    return true;
+#else
+    return false;
+#endif
+}
 
 } // namespace WebCore

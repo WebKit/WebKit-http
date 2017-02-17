@@ -79,8 +79,10 @@ function privateInitializeReadableStreamDefaultController(stream, underlyingSour
     this.@strategy = @validateAndNormalizeQueuingStrategy(size, highWaterMark);
 
     const controller = this;
-    const startResult = @promiseInvokeOrNoopNoCatch(underlyingSource, "start", [this]).@then(() => {
+    @promiseInvokeOrNoopNoCatch(underlyingSource, "start", [this]).@then(() => {
         controller.@started = true;
+        @assert(!controller.@pulling);
+        @assert(!controller.@pullAgain);
         @readableStreamDefaultControllerCallPullIfNeeded(controller);
     }, (error) => {
         if (stream.@state === @streamReadable)
@@ -411,6 +413,13 @@ function readableStreamClose(stream)
     reader.@closedPromiseCapability.@resolve.@call();
 }
 
+function readableStreamFulfillReadRequest(stream, chunk, done)
+{
+    "use strict";
+
+    stream.@reader.@readRequests.@shift().@resolve.@call(@undefined, {value: chunk, done: done});
+}
+
 function readableStreamDefaultControllerEnqueue(controller, chunk)
 {
     "use strict";
@@ -420,7 +429,7 @@ function readableStreamDefaultControllerEnqueue(controller, chunk)
     @assert(stream.@state === @streamReadable);
 
     if (@isReadableStreamLocked(stream) && stream.@reader.@readRequests.length) {
-        stream.@reader.@readRequests.@shift().@resolve.@call(@undefined, {value: chunk, done: false});
+        @readableStreamFulfillReadRequest(stream, chunk, false);
         @readableStreamDefaultControllerCallPullIfNeeded(controller);
         return;
     }

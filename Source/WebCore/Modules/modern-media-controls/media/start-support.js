@@ -38,7 +38,7 @@ class StartSupport extends MediaControllerSupport
         return ["loadedmetadata", "play", "error", "webkitfullscreenchange"];
     }
 
-    buttonWasClicked(control)
+    buttonWasPressed(control)
     {
         this.mediaController.media.play();
     }
@@ -62,7 +62,7 @@ class StartSupport extends MediaControllerSupport
     {
         const media = this.mediaController.media;
 
-        if (this._hasPlayed)
+        if (this._hasPlayed || media.played.length)
             return false;
 
         if (!media.paused)

@@ -196,7 +196,7 @@ Element* SelectorDataList::queryFirst(ContainerNode& rootNode) const
 
 static const CSSSelector* selectorForIdLookup(const ContainerNode& rootNode, const CSSSelector& firstSelector)
 {
-    if (!rootNode.inDocument())
+    if (!rootNode.isConnected())
         return nullptr;
     if (rootNode.document().inQuirksMode())
         return nullptr;
@@ -228,7 +228,7 @@ ALWAYS_INLINE void SelectorDataList::executeFastPathForIdSelector(const Containe
         ASSERT(elements);
         bool rootNodeIsTreeScopeRoot = isTreeScopeRoot(rootNode);
         for (auto& element : *elements) {
-            if ((rootNodeIsTreeScopeRoot || element->isDescendantOf(&rootNode)) && selectorMatches(selectorData, *element, rootNode)) {
+            if ((rootNodeIsTreeScopeRoot || element->isDescendantOf(rootNode)) && selectorMatches(selectorData, *element, rootNode)) {
                 SelectorQueryTrait::appendOutputForElement(output, element);
                 if (SelectorQueryTrait::shouldOnlyMatchFirstElement)
                     return;
@@ -238,7 +238,7 @@ ALWAYS_INLINE void SelectorDataList::executeFastPathForIdSelector(const Containe
     }
 
     Element* element = rootNode.treeScope().getElementById(idToMatch);
-    if (!element || !(isTreeScopeRoot(rootNode) || element->isDescendantOf(&rootNode)))
+    if (!element || !(isTreeScopeRoot(rootNode) || element->isDescendantOf(rootNode)))
         return;
     if (selectorMatches(selectorData, *element, rootNode))
         SelectorQueryTrait::appendOutputForElement(output, element);
@@ -246,7 +246,7 @@ ALWAYS_INLINE void SelectorDataList::executeFastPathForIdSelector(const Containe
 
 static ContainerNode& filterRootById(ContainerNode& rootNode, const CSSSelector& firstSelector)
 {
-    if (!rootNode.inDocument())
+    if (!rootNode.isConnected())
         return rootNode;
     if (rootNode.document().inQuirksMode())
         return rootNode;
@@ -269,7 +269,7 @@ static ContainerNode& filterRootById(ContainerNode& rootNode, const CSSSelector&
                 if (LIKELY(!rootNode.treeScope().containsMultipleElementsWithId(idToMatch))) {
                     if (inAdjacentChain)
                         searchRoot = searchRoot->parentNode();
-                    if (searchRoot && (isTreeScopeRoot(rootNode) || searchRoot == &rootNode || searchRoot->isDescendantOf(&rootNode)))
+                    if (searchRoot && (isTreeScopeRoot(rootNode) || searchRoot == &rootNode || searchRoot->isDescendantOf(rootNode)))
                         return *searchRoot;
                 }
             }

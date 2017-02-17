@@ -26,10 +26,10 @@
 #include "config.h"
 #include "JSModuleNamespaceObject.h"
 
+#include "AbstractModuleRecord.h"
 #include "Error.h"
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
-#include "JSModuleRecord.h"
 #include "JSPropertyNameIterator.h"
 
 namespace JSC {
@@ -45,12 +45,12 @@ JSModuleNamespaceObject::JSModuleNamespaceObject(VM& vm, Structure* structure)
 {
 }
 
-void JSModuleNamespaceObject::finishCreation(ExecState* exec, JSGlobalObject* globalObject, JSModuleRecord* moduleRecord, const IdentifierSet& exports)
+void JSModuleNamespaceObject::finishCreation(ExecState* exec, JSGlobalObject* globalObject, AbstractModuleRecord* moduleRecord, const IdentifierSet& exports)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     // http://www.ecma-international.org/ecma-262/6.0/#sec-module-namespace-exotic-objects
     // Quoted from the spec:
@@ -83,7 +83,7 @@ void JSModuleNamespaceObject::finishCreation(ExecState* exec, JSGlobalObject* gl
 
 void JSModuleNamespaceObject::destroy(JSCell* cell)
 {
-    JSModuleNamespaceObject* thisObject = jsCast<JSModuleNamespaceObject*>(cell);
+    JSModuleNamespaceObject* thisObject = static_cast<JSModuleNamespaceObject*>(cell);
     thisObject->JSModuleNamespaceObject::~JSModuleNamespaceObject();
 }
 
@@ -92,7 +92,7 @@ void JSModuleNamespaceObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSModuleNamespaceObject* thisObject = jsCast<JSModuleNamespaceObject*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_moduleRecord);
+    visitor.append(thisObject->m_moduleRecord);
 }
 
 bool JSModuleNamespaceObject::getOwnPropertySlot(JSObject* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -120,12 +120,12 @@ bool JSModuleNamespaceObject::getOwnPropertySlot(JSObject* cell, ExecState* exec
     switch (slot.internalMethodType()) {
     case PropertySlot::InternalMethodType::Get:
     case PropertySlot::InternalMethodType::GetOwnProperty: {
-        JSModuleRecord* moduleRecord = thisObject->moduleRecord();
+        AbstractModuleRecord* moduleRecord = thisObject->moduleRecord();
 
-        JSModuleRecord::Resolution resolution = moduleRecord->resolveExport(exec, Identifier::fromUid(exec, propertyName.uid()));
-        ASSERT(resolution.type != JSModuleRecord::Resolution::Type::NotFound && resolution.type != JSModuleRecord::Resolution::Type::Ambiguous);
+        AbstractModuleRecord::Resolution resolution = moduleRecord->resolveExport(exec, Identifier::fromUid(exec, propertyName.uid()));
+        ASSERT(resolution.type != AbstractModuleRecord::Resolution::Type::NotFound && resolution.type != AbstractModuleRecord::Resolution::Type::Ambiguous);
 
-        JSModuleRecord* targetModule = resolution.moduleRecord;
+        AbstractModuleRecord* targetModule = resolution.moduleRecord;
         JSModuleEnvironment* targetEnvironment = targetModule->moduleEnvironment();
 
         PropertySlot trampolineSlot(targetEnvironment, PropertySlot::InternalMethodType::Get);
@@ -213,7 +213,7 @@ EncodedJSValue JSC_HOST_CALL moduleNamespaceObjectSymbolIterator(ExecState* exec
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSModuleNamespaceObject* object = jsDynamicCast<JSModuleNamespaceObject*>(exec->thisValue());
+    JSModuleNamespaceObject* object = jsDynamicCast<JSModuleNamespaceObject*>(vm, exec->thisValue());
     if (!object)
         return throwVMTypeError(exec, scope, ASCIILiteral("|this| should be a module namespace object"));
     return JSValue::encode(JSPropertyNameIterator::create(exec, exec->lexicalGlobalObject()->propertyNameIteratorStructure(), object));

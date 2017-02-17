@@ -350,7 +350,6 @@ private:
     bool updateBacking(RenderLayer&, CompositingChangeRepaint shouldRepaint, BackingRequired = BackingRequired::Unknown);
 
     void clearBackingForLayerIncludingDescendants(RenderLayer&);
-    void setIsInWindowForLayerIncludingDescendants(RenderLayer&, bool isInWindow);
 
     // Repaint this and its child layers.
     void recursiveRepaintLayer(RenderLayer&);
@@ -410,7 +409,7 @@ private:
     void updateScrollCoordinatedLayersAfterFlushIncludingSubframes();
     void updateScrollCoordinatedLayersAfterFlush();
     
-    Page* page() const;
+    Page& page() const;
     
     GraphicsLayerFactory* graphicsLayerFactory() const;
     ScrollingCoordinator* scrollingCoordinator() const;
@@ -437,9 +436,6 @@ private:
     bool requiresCompositingForScrolling(const RenderLayer&) const;
 
     void updateCustomLayersAfterFlush();
-
-    ChromeClient* chromeClient() const;
-
 #endif
 
     void updateScrollCoordinationForThisFrame(ScrollingNodeID);

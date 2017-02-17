@@ -29,6 +29,7 @@
 
 #if USE(COORDINATED_GRAPHICS)
 
+#include "Extensions3DCache.h"
 #include <WebCore/DOMWindow.h>
 #include <WebCore/Document.h>
 #include <WebCore/FrameView.h>
@@ -37,8 +38,7 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/Page.h>
-#include <wtf/TemporaryChange.h>
-#include "Extensions3DCache.h"
+#include <wtf/SetForScope.h>
 
 using namespace WebCore;
 
@@ -101,16 +101,15 @@ void CompositingCoordinator::sizeDidChange(const IntSize& newSize)
 
 bool CompositingCoordinator::flushPendingLayerChanges()
 {
-    TemporaryChange<bool> protector(m_isFlushingLayerChanges, true);
+    SetForScope<bool> protector(m_isFlushingLayerChanges, true);
 
     initializeRootCompositingLayerIfNeeded();
 
-    bool viewportIsStable = m_page->mainFrame().view()->viewportIsStable();
-    m_rootLayer->flushCompositingStateForThisLayerOnly(viewportIsStable);
+    m_rootLayer->flushCompositingStateForThisLayerOnly();
     m_client.didFlushRootLayer(m_visibleContentsRect);
 
     if (m_overlayCompositingLayer)
-        m_overlayCompositingLayer->flushCompositingState(FloatRect(FloatPoint(), m_rootLayer->size()), viewportIsStable);
+        m_overlayCompositingLayer->flushCompositingState(FloatRect(FloatPoint(), m_rootLayer->size()));
 
     bool didSync = m_page->mainFrame().view()->flushCompositingStateIncludingSubframes();
 
@@ -149,7 +148,7 @@ double CompositingCoordinator::timestamp() const
 
 void CompositingCoordinator::syncDisplayState()
 {
-#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER) && !USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+#if !USE(REQUEST_ANIMATION_FRAME_TIMER) && !USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     // Make sure that any previously registered animation callbacks are being executed before we flush the layers.
     m_lastAnimationServiceTime = timestamp();
     m_page->mainFrame().view()->serviceScriptedAnimations();
@@ -157,14 +156,12 @@ void CompositingCoordinator::syncDisplayState()
     m_page->mainFrame().view()->updateLayoutAndStyleIfNeededRecursive();
 }
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
 double CompositingCoordinator::nextAnimationServiceTime() const
 {
     // According to the requestAnimationFrame spec, rAF callbacks should not be faster than 60FPS.
     static const double MinimalTimeoutForAnimations = 1. / 60.;
     return std::max<double>(0., MinimalTimeoutForAnimations - timestamp() + m_lastAnimationServiceTime);
 }
-#endif
 
 void CompositingCoordinator::clearPendingStateChanges()
 {
@@ -375,7 +372,7 @@ void CompositingCoordinator::renderNextFrame()
 
 void CompositingCoordinator::purgeBackingStores()
 {
-    TemporaryChange<bool> purgingToggle(m_isPurging, true);
+    SetForScope<bool> purgingToggle(m_isPurging, true);
 
     for (auto& registeredLayer : m_registeredLayers.values())
         registeredLayer->purgeBackingStores();
@@ -421,13 +418,21 @@ void CompositingCoordinator::releaseInactiveAtlasesTimerFired()
 
 void CompositingCoordinator::releaseAtlases(ReleaseAtlasPolicy policy)
 {
+    // We always want to keep one atlas for root contents layer.
+    std::unique_ptr<UpdateAtlas> atlasToKeepAnyway;
+    bool foundActiveAtlasForRootContentsLayer = false;
     for (int i = m_updateAtlases.size() - 1;  i >= 0; --i) {
         UpdateAtlas* atlas = m_updateAtlases[i].get();
-        if (!atlas->isInUse()) {
+        bool inUse = atlas->isInUse();
+        if (!inUse)
             atlas->addTimeInactive(ReleaseInactiveAtlasesTimerInterval);
-            if (atlas->isInactive() || policy == ReleaseUnused)
-                m_updateAtlases.remove(i);
-        }
+        bool usableForRootContentsLayer = !atlas->supportsAlpha();
+        if (atlas->isInactive() || (!inUse && policy == ReleaseUnused)) {
+            if (!foundActiveAtlasForRootContentsLayer && !atlasToKeepAnyway && usableForRootContentsLayer)
+                atlasToKeepAnyway = WTFMove(m_updateAtlases[i]);
+            m_updateAtlases.remove(i);
+        } else if (usableForRootContentsLayer)
+            foundActiveAtlasForRootContentsLayer = true;
     }
 
     m_updateAtlases.shrinkToFit();

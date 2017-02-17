@@ -65,7 +65,8 @@ void UIGamepadProvider::gamepadSyncTimerFired()
     if (!webPageProxy || !m_processPoolsUsingGamepads.contains(&webPageProxy->process().processPool()))
         return;
 
-    webPageProxy->gamepadActivity(snapshotGamepads());
+    webPageProxy->gamepadActivity(snapshotGamepads(), m_shouldMakeGamepadsVisibleOnSync);
+    m_shouldMakeGamepadsVisibleOnSync = false;
 }
 
 void UIGamepadProvider::scheduleGamepadStateSync()
@@ -126,7 +127,7 @@ void UIGamepadProvider::platformGamepadDisconnected(PlatformGamepad& gamepad)
         pool->gamepadDisconnected(*disconnectedGamepad);
 }
 
-void UIGamepadProvider::platformGamepadInputActivity()
+void UIGamepadProvider::platformGamepadInputActivity(bool shouldMakeGamepadsVisible)
 {
     auto platformGamepads = GamepadProvider::singleton().platformGamepads();
     ASSERT(platformGamepads.size() == m_gamepads.size());
@@ -141,6 +142,9 @@ void UIGamepadProvider::platformGamepadInputActivity()
         m_gamepads[i]->updateFromPlatformGamepad(*platformGamepads[i]);
     }
 
+    if (shouldMakeGamepadsVisible)
+        m_shouldMakeGamepadsVisibleOnSync = true;
+
     scheduleGamepadStateSync();
 }
 
@@ -151,8 +155,6 @@ void UIGamepadProvider::processPoolStartedUsingGamepads(WebProcessPool& pool)
 
     if (!m_isMonitoringGamepads && platformWebPageProxyForGamepadInput())
         startMonitoringGamepads();
-
-    scheduleGamepadStateSync();
 }
 
 void UIGamepadProvider::processPoolStoppedUsingGamepads(WebProcessPool& pool)
@@ -162,8 +164,6 @@ void UIGamepadProvider::processPoolStoppedUsingGamepads(WebProcessPool& pool)
 
     if (m_isMonitoringGamepads && !platformWebPageProxyForGamepadInput())
         platformStopMonitoringInput();
-
-    scheduleGamepadStateSync();
 }
 
 void UIGamepadProvider::viewBecameActive(WebPageProxy& page)

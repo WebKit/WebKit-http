@@ -34,6 +34,7 @@
     CustomNamedSetter,
     CustomPreventExtensions,
     CustomSetPrototype,
+    CustomToStringName,
     GenerateIsReachable=ImplFrame,
     JSCustomDefineOwnProperty,
     JSCustomDefineOwnPropertyOnPrototype,
@@ -58,6 +59,6 @@
 
     readonly attribute USVString origin;
 
-    // FIXME: Add support for SameObject
-    [Unforgeable, CachedAttribute] readonly attribute FrozenArray<USVString> ancestorOrigins;
+    // FIXME: Add support for SameObject.
+    [Unforgeable, CachedAttribute] readonly attribute DOMStringList ancestorOrigins;
 };

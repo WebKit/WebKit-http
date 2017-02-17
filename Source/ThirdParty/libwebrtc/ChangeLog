@@ -1,0 +1,844 @@
+2017-02-14  Alex Christensen  <achristensen@webkit.org>
+
+        Remove android-specific files from ThirdParty/libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=168272
+
+        Reviewed by Brady Eidson.
+
+        * Source/third_party/boringssl/src/third_party/android-cmake: Removed.
+        * Source/third_party/boringssl/src/third_party/android-cmake/AndroidNdkGdb.cmake: Removed.
+        * Source/third_party/boringssl/src/third_party/android-cmake/AndroidNdkModules.cmake: Removed.
+        * Source/third_party/boringssl/src/third_party/android-cmake/LICENSE: Removed.
+        * Source/third_party/boringssl/src/third_party/android-cmake/METADATA: Removed.
+        * Source/third_party/boringssl/src/third_party/android-cmake/README.md: Removed.
+        * Source/third_party/boringssl/src/third_party/android-cmake/android.toolchain.cmake: Removed.
+        * Source/third_party/boringssl/src/third_party/android-cmake/ndk_links.md: Removed.
+        * Source/third_party/boringssl/src/util/run_android_tests.go: Removed.
+        * Source/third_party/libyuv/util/android: Removed.
+        * Source/third_party/libyuv/util/android/test_runner.py: Removed.
+        * Source/webrtc/androidjunit: Removed.
+        * Source/webrtc/androidjunit/OWNERS: Removed.
+        * Source/webrtc/androidjunit/src: Removed.
+        * Source/webrtc/androidjunit/src/org: Removed.
+        * Source/webrtc/androidjunit/src/org/webrtc: Removed.
+        * Source/webrtc/androidjunit/src/org/webrtc/CameraEnumerationTest.java: Removed.
+        * Source/webrtc/api/android: Removed.
+        * Source/webrtc/api/android/PRESUBMIT.py: Removed.
+        * Source/webrtc/api/android/README: Removed.
+        * Source/webrtc/api/android/java: Removed.
+        * Source/webrtc/api/android/java/src: Removed.
+        * Source/webrtc/api/android/java/src/org: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/AudioSource.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/AudioTrack.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/CallSessionFileRotatingLogSink.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/Camera1Capturer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/Camera1Enumerator.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/Camera1Session.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/Camera2Capturer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/Camera2Enumerator.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/Camera2Session.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/CameraCapturer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/CameraEnumerationAndroid.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/CameraEnumerator.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/CameraSession.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/CameraVideoCapturer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/DataChannel.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/EglBase.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/EglBase10.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/EglBase14.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/EglRenderer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/FileVideoCapturer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/GlRectDrawer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/GlShader.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/GlTextureFrameBuffer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/GlUtil.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/IceCandidate.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/MediaCodecVideoDecoder.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/MediaCodecVideoEncoder.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/MediaConstraints.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/MediaSource.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/MediaStream.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/MediaStreamTrack.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/Metrics.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/NetworkMonitor.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/NetworkMonitorAutoDetect.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/OWNERS: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/PeerConnection.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/PeerConnectionFactory.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/RendererCommon.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/RtpParameters.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/RtpReceiver.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/RtpSender.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/ScreenCapturerAndroid.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/SdpObserver.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/SessionDescription.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/StatsObserver.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/StatsReport.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/SurfaceTextureHelper.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/SurfaceViewRenderer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/VideoCapturer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/VideoCapturerAndroid.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/VideoFileRenderer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/VideoRenderer.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/VideoRendererGui.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/VideoSource.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/VideoTrack.java: Removed.
+        * Source/webrtc/api/android/java/src/org/webrtc/YuvConverter.java: Removed.
+        * Source/webrtc/api/android/jni: Removed.
+        * Source/webrtc/api/android/jni/OWNERS: Removed.
+        * Source/webrtc/api/android/jni/androidmediacodeccommon.h: Removed.
+        * Source/webrtc/api/android/jni/androidmediadecoder_jni.cc: Removed.
+        * Source/webrtc/api/android/jni/androidmediadecoder_jni.h: Removed.
+        * Source/webrtc/api/android/jni/androidmediaencoder_jni.cc: Removed.
+        * Source/webrtc/api/android/jni/androidmediaencoder_jni.h: Removed.
+        * Source/webrtc/api/android/jni/androidmetrics_jni.cc: Removed.
+        * Source/webrtc/api/android/jni/androidnetworkmonitor_jni.cc: Removed.
+        * Source/webrtc/api/android/jni/androidnetworkmonitor_jni.h: Removed.
+        * Source/webrtc/api/android/jni/androidvideotracksource_jni.cc: Removed.
+        * Source/webrtc/api/android/jni/classreferenceholder.cc: Removed.
+        * Source/webrtc/api/android/jni/classreferenceholder.h: Removed.
+        * Source/webrtc/api/android/jni/jni_helpers.cc: Removed.
+        * Source/webrtc/api/android/jni/jni_helpers.h: Removed.
+        * Source/webrtc/api/android/jni/jni_onload.cc: Removed.
+        * Source/webrtc/api/android/jni/native_handle_impl.cc: Removed.
+        * Source/webrtc/api/android/jni/native_handle_impl.h: Removed.
+        * Source/webrtc/api/android/jni/peerconnection_jni.cc: Removed.
+        * Source/webrtc/api/android/jni/surfacetexturehelper_jni.cc: Removed.
+        * Source/webrtc/api/android/jni/surfacetexturehelper_jni.h: Removed.
+        * Source/webrtc/api/androidtests: Removed.
+        * Source/webrtc/api/androidtests/AndroidManifest.xml: Removed.
+        * Source/webrtc/api/androidtests/OWNERS: Removed.
+        * Source/webrtc/api/androidtests/ant.properties: Removed.
+        * Source/webrtc/api/androidtests/build.xml: Removed.
+        * Source/webrtc/api/androidtests/project.properties: Removed.
+        * Source/webrtc/api/androidtests/res: Removed.
+        * Source/webrtc/api/androidtests/res/drawable-hdpi: Removed.
+        * Source/webrtc/api/androidtests/res/drawable-hdpi/ic_launcher.png: Removed.
+        * Source/webrtc/api/androidtests/res/drawable-ldpi: Removed.
+        * Source/webrtc/api/androidtests/res/drawable-ldpi/ic_launcher.png: Removed.
+        * Source/webrtc/api/androidtests/res/drawable-mdpi: Removed.
+        * Source/webrtc/api/androidtests/res/drawable-mdpi/ic_launcher.png: Removed.
+        * Source/webrtc/api/androidtests/res/drawable-xhdpi: Removed.
+        * Source/webrtc/api/androidtests/res/drawable-xhdpi/ic_launcher.png: Removed.
+        * Source/webrtc/api/androidtests/res/values: Removed.
+        * Source/webrtc/api/androidtests/res/values/strings.xml: Removed.
+        * Source/webrtc/api/androidtests/src: Removed.
+        * Source/webrtc/api/androidtests/src/org: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/Camera1CapturerUsingByteBufferTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/Camera1CapturerUsingTextureTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/Camera2CapturerTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/CameraVideoCapturerTestFixtures.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/EglRendererTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/GlRectDrawerTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/MediaCodecVideoEncoderTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/NetworkMonitorTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/PeerConnectionTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/RendererCommonTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/SurfaceTextureHelperTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/SurfaceViewRendererOnMeasureTest.java: Removed.
+        * Source/webrtc/api/androidtests/src/org/webrtc/WebRtcJniBootTest.java: Removed.
+        * Source/webrtc/api/androidvideotracksource.cc: Removed.
+        * Source/webrtc/api/androidvideotracksource.h: Removed.
+        * Source/webrtc/api/test/androidtestinitializer.cc: Removed.
+        * Source/webrtc/api/test/androidtestinitializer.h: Removed.
+        * Source/webrtc/base/ifaddrs-android.cc: Removed.
+        * Source/webrtc/base/ifaddrs-android.h: Removed.
+        * Source/webrtc/build/android: Removed.
+        * Source/webrtc/build/android/AndroidManifest.xml: Removed.
+        * Source/webrtc/build/android/suppressions.xml: Removed.
+        * Source/webrtc/build/android/test_runner.py: Removed.
+        * Source/webrtc/examples/androidapp: Removed.
+        * Source/webrtc/examples/androidapp/AndroidManifest.xml: Removed.
+        * Source/webrtc/examples/androidapp/OWNERS: Removed.
+        * Source/webrtc/examples/androidapp/README: Removed.
+        * Source/webrtc/examples/androidapp/ant.properties: Removed.
+        * Source/webrtc/examples/androidapp/build.xml: Removed.
+        * Source/webrtc/examples/androidapp/project.properties: Removed.
+        * Source/webrtc/examples/androidapp/res: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-hdpi: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-hdpi/disconnect.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-hdpi/ic_action_full_screen.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-hdpi/ic_action_return_from_full_screen.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-hdpi/ic_launcher.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-hdpi/ic_loopback_call.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-ldpi: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-ldpi/disconnect.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-ldpi/ic_action_full_screen.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-ldpi/ic_action_return_from_full_screen.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-ldpi/ic_launcher.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-ldpi/ic_loopback_call.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-mdpi: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-mdpi/disconnect.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-mdpi/ic_action_full_screen.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-mdpi/ic_action_return_from_full_screen.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-mdpi/ic_launcher.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-mdpi/ic_loopback_call.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-xhdpi: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-xhdpi/disconnect.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-xhdpi/ic_action_full_screen.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-xhdpi/ic_action_return_from_full_screen.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-xhdpi/ic_launcher.png: Removed.
+        * Source/webrtc/examples/androidapp/res/drawable-xhdpi/ic_loopback_call.png: Removed.
+        * Source/webrtc/examples/androidapp/res/layout: Removed.
+        * Source/webrtc/examples/androidapp/res/layout/activity_call.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/layout/activity_connect.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/layout/fragment_call.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/layout/fragment_hud.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/menu: Removed.
+        * Source/webrtc/examples/androidapp/res/menu/connect_menu.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/values: Removed.
+        * Source/webrtc/examples/androidapp/res/values-v17: Removed.
+        * Source/webrtc/examples/androidapp/res/values-v17/styles.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/values-v21: Removed.
+        * Source/webrtc/examples/androidapp/res/values-v21/styles.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/values/arrays.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/values/strings.xml: Removed.
+        * Source/webrtc/examples/androidapp/res/xml: Removed.
+        * Source/webrtc/examples/androidapp/res/xml/preferences.xml: Removed.
+        * Source/webrtc/examples/androidapp/src: Removed.
+        * Source/webrtc/examples/androidapp/src/org: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/AppRTCAudioManager.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/AppRTCClient.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/AppRTCProximitySensor.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/CallActivity.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/CallFragment.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/CaptureQualityController.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/ConnectActivity.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/CpuMonitor.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/DirectRTCClient.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/HudFragment.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/PeerConnectionClient.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/PercentFrameLayout.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/RoomParametersFetcher.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/SettingsActivity.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/SettingsFragment.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/TCPChannelClient.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/UnhandledExceptionHandler.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/WebSocketChannelClient.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/WebSocketRTCClient.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/util: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/util/AppRTCUtils.java: Removed.
+        * Source/webrtc/examples/androidapp/src/org/appspot/apprtc/util/AsyncHttpURLConnection.java: Removed.
+        * Source/webrtc/examples/androidapp/start_loopback_stubbed_camera_saved_video_out.py: Removed.
+        * Source/webrtc/examples/androidapp/third_party: Removed.
+        * Source/webrtc/examples/androidapp/third_party/autobanh: Removed.
+        * Source/webrtc/examples/androidapp/third_party/autobanh/BUILD.gn: Removed.
+        * Source/webrtc/examples/androidapp/third_party/autobanh/LICENSE: Removed.
+        * Source/webrtc/examples/androidapp/third_party/autobanh/LICENSE.md: Removed.
+        * Source/webrtc/examples/androidapp/third_party/autobanh/NOTICE: Removed.
+        * Source/webrtc/examples/androidapp/third_party/autobanh/lib: Removed.
+        * Source/webrtc/examples/androidapp/third_party/autobanh/lib/autobanh.jar: Removed.
+        * Source/webrtc/examples/androidjunit: Removed.
+        * Source/webrtc/examples/androidjunit/README: Removed.
+        * Source/webrtc/examples/androidjunit/src: Removed.
+        * Source/webrtc/examples/androidjunit/src/org: Removed.
+        * Source/webrtc/examples/androidjunit/src/org/appspot: Removed.
+        * Source/webrtc/examples/androidjunit/src/org/appspot/apprtc: Removed.
+        * Source/webrtc/examples/androidjunit/src/org/appspot/apprtc/DirectRTCClientTest.java: Removed.
+        * Source/webrtc/examples/androidjunit/src/org/appspot/apprtc/TCPChannelClientTest.java: Removed.
+        * Source/webrtc/examples/androidtests: Removed.
+        * Source/webrtc/examples/androidtests/AndroidManifest.xml: Removed.
+        * Source/webrtc/examples/androidtests/README: Removed.
+        * Source/webrtc/examples/androidtests/ant.properties: Removed.
+        * Source/webrtc/examples/androidtests/build.xml: Removed.
+        * Source/webrtc/examples/androidtests/project.properties: Removed.
+        * Source/webrtc/examples/androidtests/src: Removed.
+        * Source/webrtc/examples/androidtests/src/org: Removed.
+        * Source/webrtc/examples/androidtests/src/org/appspot: Removed.
+        * Source/webrtc/examples/androidtests/src/org/appspot/apprtc: Removed.
+        * Source/webrtc/examples/androidtests/src/org/appspot/apprtc/test: Removed.
+        * Source/webrtc/examples/androidtests/src/org/appspot/apprtc/test/FileVideoCapturerTest.java: Removed.
+        * Source/webrtc/examples/androidtests/src/org/appspot/apprtc/test/PeerConnectionClientTest.java: Removed.
+        * Source/webrtc/examples/androidtests/src/org/appspot/apprtc/test/VideoFileRendererTest.java: Removed.
+        * Source/webrtc/examples/androidtests/src/org/appspot/apprtc/test/capturetestvideo.y4m: Removed.
+        * Source/webrtc/modules/audio_device/android: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_common.h: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_device_template.h: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_device_unittest.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_manager.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_manager.h: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_manager_unittest.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_record_jni.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_record_jni.h: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_track_jni.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/audio_track_jni.h: Removed.
+        * Source/webrtc/modules/audio_device/android/build_info.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/build_info.h: Removed.
+        * Source/webrtc/modules/audio_device/android/ensure_initialized.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/ensure_initialized.h: Removed.
+        * Source/webrtc/modules/audio_device/android/java: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org/webrtc: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org/webrtc/voiceengine: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org/webrtc/voiceengine/BuildInfo.java: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org/webrtc/voiceengine/WebRtcAudioEffects.java: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org/webrtc/voiceengine/WebRtcAudioManager.java: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org/webrtc/voiceengine/WebRtcAudioRecord.java: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org/webrtc/voiceengine/WebRtcAudioTrack.java: Removed.
+        * Source/webrtc/modules/audio_device/android/java/src/org/webrtc/voiceengine/WebRtcAudioUtils.java: Removed.
+        * Source/webrtc/modules/audio_device/android/opensles_common.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/opensles_common.h: Removed.
+        * Source/webrtc/modules/audio_device/android/opensles_player.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/opensles_player.h: Removed.
+        * Source/webrtc/modules/audio_device/android/opensles_recorder.cc: Removed.
+        * Source/webrtc/modules/audio_device/android/opensles_recorder.h: Removed.
+        * Source/webrtc/modules/audio_processing/test/android: Removed.
+        * Source/webrtc/modules/audio_processing/test/android/apmtest: Removed.
+        * Source/webrtc/modules/audio_processing/test/android/apmtest/AndroidManifest.xml: Removed.
+        * Source/webrtc/modules/audio_processing/test/android/apmtest/default.properties: Removed.
+        * Source/webrtc/modules/audio_processing/test/android/apmtest/jni: Removed.
+        * Source/webrtc/modules/audio_processing/test/android/apmtest/jni/main.c: Removed.
+        * Source/webrtc/modules/audio_processing/test/android/apmtest/res: Removed.
+        * Source/webrtc/modules/audio_processing/test/android/apmtest/res/values: Removed.
+        * Source/webrtc/modules/audio_processing/test/android/apmtest/res/values/strings.xml: Removed.
+        * Source/webrtc/modules/utility/include/helpers_android.h: Removed.
+        * Source/webrtc/modules/utility/include/jvm_android.h: Removed.
+        * Source/webrtc/modules/utility/source/helpers_android.cc: Removed.
+        * Source/webrtc/modules/utility/source/jvm_android.cc: Removed.
+        * Source/webrtc/system_wrappers/source/cpu_features_android.c: Removed.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS libwebrtc build after r212127
+        https://bugs.webkit.org/show_bug.cgi?id=168134
+
+        * Configurations/libwebrtc.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+        I got a little carried away removing ObjC sources.
+        We still need RTCLogging.mm and RTCUIApplication.mm on iOS.
+        Also sorted the project file.
+
+2017-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS libwebrtc build after r212127
+        https://bugs.webkit.org/show_bug.cgi?id=168134
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        I got a little carried away removing -fobjc-arc.  These files need it.
+        It was originally added in r211902 and these files are in the 
+        EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*] list in libwebrtc.xcconfig
+        so adding this flag won't break the 32-bit El Capitan build.
+
+2017-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unnecessary automatic reference counting in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=168134
+
+        Reviewed by Youenn Fablet.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-10  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Activate libwebrtc G711/G722 audio codecs
+        https://bugs.webkit.org/show_bug.cgi?id=168123
+
+        Reviewed by Alex Christensen.
+
+        Adding G711/G722 missing codec files.
+        Activating use of these in the build system.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Source/webrtc/modules/audio_coding/codecs/g711/g711.c: Added.
+        (ulaw_to_alaw):
+        * Source/webrtc/modules/audio_coding/codecs/g711/g711.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/audio_decoder_g722.cc: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/audio_decoder_g722.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/audio_encoder_g722.cc: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/audio_encoder_g722.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_decode.c: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_enc_dec.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_encode.c: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_interface.c: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_interface.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/test/testG722.cc: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix ASAN build.
+
+        * Source/webrtc/base/sanitizer.h:
+        SANITIZER_UNUSED3 wasn't defined if we are using address_sanitizer but not memory_sanitizer.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix El Capitan build.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Remove more SSE4 code.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix El Capitan build.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Remove more SSE4 code.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS and El Capitan builds of libwebrtc.
+
+        * Configurations/libwebrtc.xcconfig:
+        Skip building audio_mixer_manager_mac.cc on iOS.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        El Capitan doesn't like the SSE4 optimizations in opus.
+        Just don't include them for now.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix warnings in libwebrtc build
+        https://bugs.webkit.org/show_bug.cgi?id=168088
+
+        Reviewed by Youenn Fablet.
+
+        * Source/third_party/opus/src/src/opus_decoder.c:
+        Silence a warning.  Debug builds of opus can be slow.  No big deal.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        More sdk files need ARC.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS libwebrtc build after r211960
+        https://bugs.webkit.org/show_bug.cgi?id=168038
+
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCOpenGLVideoRenderer.h:
+        GlContextType declaration needs to be platform specific here like it is in RTCOpenGLDefines.h
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix i386 libwebrtc build
+        https://bugs.webkit.org/show_bug.cgi?id=168038
+
+        Reviewed by Geoffrey Garen.
+
+        Unfortunately, 32-bit ObjC can't use all the coolest new features of ObjC.
+        Fortunately, we can move things around a bit to become valid old ObjC.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCAVFoundationVideoSource.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCAudioSource.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCFileLogger.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCI420Shader.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaConstraints.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaSource+Private.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaSource.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaStream.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaStreamTrack+Private.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaStreamTrack.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCOpenGLVideoRenderer.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCOpenGLVideoRenderer.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCPeerConnectionFactory.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCRtpReceiver.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCRtpSender.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCShader.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoFrame.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoRendererAdapter.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoRendererAdapter.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoSource.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoTrack.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/avfoundationvideocapturer.mm:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCAVFoundationVideoSource.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCAudioSource.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCAudioTrack.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCConfiguration.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCDataChannelConfiguration.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCFileLogger.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCIceCandidate.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCIceServer.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCLegacyStatsReport.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMediaConstraints.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMediaSource.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMediaStream.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMediaStreamTrack.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMetricsSampleInfo.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCPeerConnectionFactory.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpCodecParameters.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpEncodingParameters.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpParameters.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpReceiver.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpSender.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCSessionDescription.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCVideoFrame.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCVideoSource.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCVideoTrack.h:
+        Make code compile for i386.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Added missing headers so Xcode can search them.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Remove svn:executable property from headers.
+
+        * Source/webrtc/base/sigslottester.h: Removed property svn:executable.
+        * Source/webrtc/modules/video_processing/util/skin_detection.h: Removed property svn:executable.
+
+2017-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix libwebrtc build.
+        https://bugs.webkit.org/show_bug.cgi?id=168017
+
+        * Configurations/libwebrtc.xcconfig:
+        Trying to compile audio_device_not_implemented_ios.mm on Mac doesn't work.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Add some neon files.  They are nicely protected by macros at the top, so their contents are only compiled if necessary.
+
+2017-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix libwebrtc build on iOS simulator
+        https://bugs.webkit.org/show_bug.cgi?id=168017
+
+        Reviewed by Tim Horton.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        Use $(inherited)
+        * Source/webrtc/modules/audio_device/ios/audio_device_ios.h:
+        * Source/webrtc/modules/audio_device/ios/audio_device_ios.mm:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSession+Configuration.mm:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSession+Private.h:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSession.h:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSession.mm:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSessionConfiguration.h:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSessionConfiguration.m:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSessionDelegateAdapter.h:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSessionDelegateAdapter.mm:
+        Renamed RTCAudioSession* to WebRTCAudioSession* so that all ObjC classes in WebCore start with Web prefix.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Add necessary files.  Some iOS-specific files need ARC, 
+        and this matches the Build.gn in Source/webrtc/modules/audio_device
+
+2017-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS libwebrtc build
+        https://bugs.webkit.org/show_bug.cgi?id=168004
+
+        Reviewed by Youenn Fablet.
+
+        We might still need to add some neon files.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        * Configurations/opus.xcconfig:
+        Don't build sse-specific files for iOS.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Don't include the sse4 optimization for now.
+        We can add the optimization for CPUs that support it later.
+
+2017-02-08  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Fix libwebrtc build system
+        https://bugs.webkit.org/show_bug.cgi?id=167978
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        * Configurations/usrsctp.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-07  Youenn Fablet  <youenn@apple.com>
+
+        Fix libwebrtcpcrtc target include path
+        https://bugs.webkit.org/show_bug.cgi?id=167971
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/libwebrtcpcrtc.xcconfig:
+
+2017-02-07  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] usrsctp (libwebrtc third party library) is not compiling
+        https://bugs.webkit.org/show_bug.cgi?id=167969
+
+        Reviewed by Alex Christensen.
+
+        Also removing .gitignore files in libwebrtc directory.
+
+        * Source/.gitignore: Removed.
+        * Source/third_party/boringssl/src/.gitignore: Removed.
+        * Source/third_party/gflags/src/.gitignore: Removed.
+        * Source/third_party/jsoncpp/source/.gitignore: Removed.
+        * Source/third_party/libyuv/.gitignore: Removed.
+        * Source/third_party/protobuf/.gitignore: Removed.
+        * Source/third_party/protobuf/csharp/.gitignore: Removed.
+        * Source/third_party/protobuf/ruby/.gitignore: Removed.
+        * Source/third_party/usrsctp/usrsctplib/.gitignore: Removed.
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_input.c:
+        (sctp_process_cookie_existing):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_output.c:
+        * Source/tools/.gitignore: Removed.
+        * Source/webrtc/.gitignore: Removed.
+
+2017-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        Move webrtc/pc to own Xcode target
+        https://bugs.webkit.org/show_bug.cgi?id=167970
+
+        Reviewed by Youenn Fablet.
+
+        It needs to include different directories than the rest of libwebrtc.
+        Also moved some target names so liblibsrtp.a is changed to libsrtp.a, etc.
+
+        * Configurations/libwebrtcpcrtc.xcconfig: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        [libwebrtc] Move libsrtp and libyuv to own Xcode targets
+        https://bugs.webkit.org/show_bug.cgi?id=167966
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/libsrtp.xcconfig: Added.
+        * Configurations/libyuv.xcconfig: Added.
+        * Configurations/usrsctp.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        Fix libwebrtc build after r211817
+        https://bugs.webkit.org/show_bug.cgi?id=167944
+
+        * Configurations/usrsctp.xcconfig:
+        Disable more warnings.
+
+2017-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        build usrsctp with Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=167944
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/usrsctp.xcconfig:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_pcb.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/user_atomic.h:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-06  Alex Christensen  <achristensen@webkit.org>
+
+        [WebRTC] Remove unneeded build directory accidentally checked in with libwebrtc source.
+
+        Reviewed by Youenn Fablet.
+
+        * third_party/usrsctp/build: Removed.
+
+2017-02-03  Alex Christensen  <achristensen@webkit.org>
+
+        [WebRTC] Add more files to libwebrtc build
+        https://bugs.webkit.org/show_bug.cgi?id=167824
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/usrsctp.xcconfig: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-02  Alex Christensen  <achristensen@webkit.org>
+
+        Build libwebrtc and dependencies with Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=167758
+
+        Reviewed by Dean Jackson.
+
+        * Configurations: Added.
+        * Configurations/Base.xcconfig: Added.
+        * Configurations/DebugRelease.xcconfig: Added.
+        * Configurations/boringssl.xcconfig: Added.
+        * Configurations/libwebrtc.xcconfig: Added.
+        * Configurations/opus.xcconfig: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-01-30  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Upload a diff of WebKit libwebrtc code and original libwebrtc code
+        https://bugs.webkit.org/show_bug.cgi?id=167573
+
+        Reviewed by Alex Christensen.
+
+        * WebKit/patch-libwebrtc: Added.
+
+2017-01-27  Dan Bernstein  <mitz@apple.com>
+
+        Ignore Xcode’s project.xcworkspace and userdata directories in this new project like we do
+        in other projects.
+
+        * libwebrtc.xcodeproj: Added property svn:ignore.
+
+2017-01-24  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Use HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE for libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167353
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-01-23  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Filter libwebrtc link flags
+        https://bugs.webkit.org/show_bug.cgi?id=167287
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-01-23  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Make VP8 optional in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167257
+
+        Reviewed by Darin Adler.
+
+        Reusing strategy used to have VP9 optional for VP8 codec.
+
+        * CMakeLists.txt: Updated tocompile and link vp8_noop.cc
+        * Source/webrtc/media/engine/webrtcvideoengine2.cc:
+        * Source/webrtc/modules/video_coding/codecs/vp8/include/vp8.h:
+        * Source/webrtc/modules/video_coding/codecs/vp8/vp8_impl.cc:
+        * Source/webrtc/modules/video_coding/codecs/vp8/vp8_noop.cc: Added.
+        * Source/webrtc/video/video_encoder.cc:
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Update build system to make G711 optional in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167256
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt: Updating to add compilation of generic pcm encoder functions.
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Update libwertc AudioRtpSender::SetAudioSend
+        https://bugs.webkit.org/show_bug.cgi?id=167243
+
+        Reviewed by Alex Christensen.
+
+        Introducing  WEBRTC_WEBKIT_BUILD macro to match existing WEBRTC_CHROMIUM_BUILD.
+        WEBRTC_WEBKIT_BUILD is defined by current WebKit libwebrtc build system.
+
+        * Source/webrtc/api/rtpsender.cc:
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] libwebrtc NO_RETURN is conflicting with WebKit one
+        https://bugs.webkit.org/show_bug.cgi?id=167244
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/typedefs.h: Defining NO_RETURN only if not already defined.
+
+2017-01-20  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] libwebrtc headers are incompatible with WebKit compilation flags
+        https://bugs.webkit.org/show_bug.cgi?id=167242
+
+        Reviewed by Alex Christensen.
+
+        WebKit is enforcing -Wunused-parameter and -Wunused-variable which conflict with some included libwertc headers.
+        Removed unused parameter names for inlined functions.
+
+        * Source/webrtc/api/jsep.h:
+        (webrtc::SessionDescriptionInterface::RemoveCandidates):
+        * Source/webrtc/api/mediastreaminterface.h:
+        (webrtc::AudioSourceInterface::SetVolume):
+        (webrtc::AudioSourceInterface::RegisterAudioObserver):
+        (webrtc::AudioSourceInterface::UnregisterAudioObserver):
+        (webrtc::AudioSourceInterface::AddSink):
+        (webrtc::AudioSourceInterface::RemoveSink):
+        (webrtc::AudioTrackInterface::GetSignalLevel):
+        * Source/webrtc/api/peerconnectionfactory.h:
+        * Source/webrtc/api/peerconnectioninterface.h:
+        (webrtc::MetricsObserverInterface::IncrementEnumCounter):
+        (webrtc::PeerConnectionInterface::AddTrack):
+        (webrtc::PeerConnectionInterface::RemoveTrack):
+        (webrtc::PeerConnectionInterface::CreateSender):
+        (webrtc::PeerConnectionInterface::GetStats):
+        (webrtc::PeerConnectionInterface::CreateOffer):
+        (webrtc::PeerConnectionInterface::CreateAnswer):
+        (webrtc::PeerConnectionInterface::UpdateIce):
+        (webrtc::PeerConnectionInterface::SetConfiguration):
+        (webrtc::PeerConnectionInterface::RemoveIceCandidates):
+        (webrtc::PeerConnectionInterface::StartRtcEventLog):
+        (webrtc::PeerConnectionObserver::OnAddStream):
+        (webrtc::PeerConnectionObserver::OnRemoveStream):
+        (webrtc::PeerConnectionObserver::OnDataChannel):
+        (webrtc::PeerConnectionObserver::OnIceCandidatesRemoved):
+        (webrtc::PeerConnectionObserver::OnIceConnectionReceivingChange):
+        * Source/webrtc/api/rtpsender.cc:
+        * Source/webrtc/base/messagehandler.h:
+        (rtc::FunctorMessageHandler::OnMessage):
+        * Source/webrtc/base/sanitizer.h:
+        (rtc_AsanPoison):
+        (rtc_AsanUnpoison):
+        (rtc_MsanMarkUninitialized):
+        (rtc_MsanCheckInitialized):
+        * Source/webrtc/base/stream.h:
+        (rtc::StreamInterface::ConsumeReadData):
+        (rtc::StreamInterface::ConsumeWriteBuffer):
+        * Source/webrtc/media/base/mediachannel.h:
+        (cricket::DataMediaChannel::GetStats):
+        (cricket::DataMediaChannel::OnNetworkRouteChanged):
+        * Source/webrtc/media/engine/webrtcvideodecoderfactory.h:
+        (cricket::WebRtcVideoDecoderFactory::CreateVideoDecoderWithParams):
+        * Source/webrtc/media/engine/webrtcvideoencoderfactory.h:
+        (cricket::WebRtcVideoEncoderFactory::VideoCodec::VideoCodec):
+        (cricket::WebRtcVideoEncoderFactory::EncoderTypeHasInternalSource):
+        * Source/webrtc/media/engine/webrtcvideoengine2.cc:
+        * Source/webrtc/modules/include/module.h:
+        (webrtc::Module::ProcessThreadAttached):
+        * Source/webrtc/modules/video_coding/codecs/vp9/vp9_noop.cc:
+        * Source/webrtc/p2p/base/port.h:
+        (cricket::Port::HandleIncomingPacket):
+        (cricket::Port::HandleConnectionDestroyed):
+        (cricket::Connection::set_receiving_timeout):
+        * Source/webrtc/p2p/base/stun.h:
+        (cricket::StunAttribute::SetOwner):
+        * Source/webrtc/p2p/base/stunrequest.h:
+        (cricket::StunRequest::Prepare):
+        (cricket::StunRequest::OnResponse):
+        (cricket::StunRequest::OnErrorResponse):
+        * Source/webrtc/p2p/base/transport.h:
+        (cricket::Transport::SetLocalCertificate):
+        (cricket::Transport::GetLocalCertificate):
+        (cricket::Transport::GetSslRole):
+        (cricket::Transport::SetSslMaxProtocolVersion):
+        * Source/webrtc/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.cc:
+        * Source/webrtc/typedefs.h:
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Update libwertc AudioRtpSender::SetAudioSend
+        https://bugs.webkit.org/show_bug.cgi?id=167243
+
+        Reviewed by Alex Christensen.
+
+        Introducing  WEBRTC_WEBKIT_BUILD macro to match existing WEBRTC_CHROMIUM_BUILD.
+        WEBRTC_WEBKIT_BUILD is defined by current WebKit libwebrtc build system.
+
+        * Source/webrtc/api/rtpsender.cc:
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] libwebrtc H.264 codec is using VTB only for IOS
+        https://bugs.webkit.org/show_bug.cgi?id=167245
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.cc: Removing WEBRTC_IOS flag.
+
+2017-01-19  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Upload libwebrtc code base
+        https://bugs.webkit.org/show_bug.cgi?id=167205
+
+        Reviewed by Alex Christensen and Jon Lee.
+
+        Add initial libwebrtc source from branch 56. Here's how to get what we committed:
+        git clone https://chromium.googlesource.com/external/webrtc.git && cd webrtc && git checkout 7bf536976366443ea59153ff3d22da0ec32badc1

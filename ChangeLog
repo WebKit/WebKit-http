@@ -1,3 +1,302 @@
+2017-02-10  Brian Burg  <bburg@apple.com>
+
+        Add basic debugging macros for CMake
+        https://bugs.webkit.org/show_bug.cgi?id=161538
+
+        Reviewed by Michael Catanzaro.
+
+        It's useful to be able to dump the state of everything when debugging
+        CMake build problems, especially when they happen on EWS (but not locally).
+
+        Start with macros for:
+            - dumping out all CMake variables
+            - dumping all executed commands (by turning off pretty-printing)
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Build libwebrtc on bots without using it yet
+        https://bugs.webkit.org/show_bug.cgi?id=168062
+
+        Reviewed by Brent Fulgham.
+
+        * Source/Makefile:
+
+2017-02-07  Olivier Blin  <olivier.blin@softathome.com>
+
+        [GTK][Efl] Do not require LibXslt if XSLT is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=167931
+
+        This fixes build with --no-xslt, when the libxslt dev files are not installed.
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-02-03  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] RelWithDebInfo builds are super broken at runtime
+        https://bugs.webkit.org/show_bug.cgi?id=163897
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsCommon.cmake: Apply -fno-strict-aliasing,
+        -fno-exceptions, and -fno-rtti flags to all configurations,
+        instead of only "Release".
+
+2017-02-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add initial implementation of resource usage overlay
+        https://bugs.webkit.org/show_bug.cgi?id=167731
+
+        Reviewed by Michael Catanzaro.
+
+        Enable RESOURCE_USAGE.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-02-02  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r211602
+        https://bugs.webkit.org/show_bug.cgi?id=167758
+
+        * Source/Makefile:
+        Don't build libwebrtc by default.  It's not used yet anyway.
+
+2017-02-02  David Kilzer  <ddkilzer@apple.com>
+
+        Make the Makefile great again after r211570, r211572
+
+        * Makefile: Restore tabs and ending newline.
+
+2017-02-02  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed build fix after r211570
+
+        * Makefile: Placed back.
+
+2017-02-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Propagate networking errors correctly for import() operator
+        https://bugs.webkit.org/show_bug.cgi?id=167501
+
+        Reviewed by Ryosuke Niwa.
+
+        * Source/ModuleFetchFailureKind.h: Added.
+
+2017-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.15.4 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2017-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fold USER_TIMING into WEB_TIMING and make it a RuntimeEnabledFeature
+        https://bugs.webkit.org/show_bug.cgi?id=167394
+
+        Reviewed by Ryosuke Niwa.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-01-22  Don Olmstead <don.olmstead@am.sony.com> and Myles C. Maxfield <mmaxfield@apple.com>
+
+        Introducing the Platform Abstraction Layer (PAL)
+        https://bugs.webkit.org/show_bug.cgi?id=143358
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+        * Source/CMakeLists.txt:
+        * Source/cmake/WebKitFS.cmake:
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove outdated ENABLE(CSP_NEXT) build flag
+        https://bugs.webkit.org/show_bug.cgi?id=167252
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-01-20  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Add libwebrtc build infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=167207
+
+        Reviewed by Alex Christensen.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+
+2017-01-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.15.3 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2017-01-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ENABLE(USER_TIMING) Not Defined for Apple Windows or OS X Ports
+        https://bugs.webkit.org/show_bug.cgi?id=116551
+        <rdar://problem/13949830>
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-01-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove the REQUEST_ANIMATION_FRAME flag
+        https://bugs.webkit.org/show_bug.cgi?id=156980
+        <rdar://problem/25906849>
+
+        Reviewed by Simon Fraser.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-01-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove stale references to ENABLE_ES6_GENERATORS and ENABLE_PROMISES
+        https://bugs.webkit.org/show_bug.cgi?id=167043
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(DETAILS_ELEMENT) guards
+        https://bugs.webkit.org/show_bug.cgi?id=167042
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-01-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Clean up SHARED_CORE option
+        https://bugs.webkit.org/show_bug.cgi?id=167004
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2016-12-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        set PYTHONPATH in separate COMMAND doesn't work with all CMake generators
+        https://bugs.webkit.org/show_bug.cgi?id=164997
+
+        Reviewed by Alex Christensen.
+
+        Fix for r201413.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2016-12-17  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL] bump EFL version to 1.18.4
+        https://bugs.webkit.org/show_bug.cgi?id=166004
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake: Use efl-1.18.4 instead of 1.18.1.
+
+2016-12-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove flex and bison build dependencies; commit generated XPath parser
+        https://bugs.webkit.org/show_bug.cgi?id=165783
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/WebKitCommon.cmake:
+        * Source/cmake/WebKitMacros.cmake:
+
+2016-12-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Include WTF, JSC, and WebCore headers automatically to targers using them
+        https://bugs.webkit.org/show_bug.cgi?id=165686
+
+        Reviewed by Michael Catanzaro.
+
+        This change reduces duplication of include path lists between modules,
+        and reduces future need for fixes like r209605 (broken build because of
+        WebCore header suddenly becoming used in WebKit2).
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2016-11-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Apple build is using incorrect ICU library (if present)
+        https://bugs.webkit.org/show_bug.cgi?id=164934
+        <rdar://problem/29329654>
+
+        Reviewed by Alex Christensen.
+
+        Move the 'icuuc.lib' and 'icuin.lib' library names to the end of the set of choices when searching for ICU.
+        so that we preferentially select the 'new' version of these libraries if they are available.
+
+        * Source/cmake/FindICU.cmake:
+
+2016-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove ENABLE_ASSEMBLER_WX_EXCLUSIVE code
+        https://bugs.webkit.org/show_bug.cgi?id=165027
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/WebKitFeatures.cmake: Remove the ENABLE_ASSEMBLER_WX_EXCLUSIVE option.
+
+2016-11-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.15.2 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2016-11-17  Saam Barati  <sbarati@apple.com>
+
+        Remove async/await compile time flag and enable tests
+        https://bugs.webkit.org/show_bug.cgi?id=164828
+        <rdar://problem/28639334>
+
+        Reviewed by Yusuke Suzuki.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-11-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6][WebCore] Change ES6_MODULES compile time flag to runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=164827
+
+        Reviewed by Ryosuke Niwa.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
 2016-11-12  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         Unreviewed, rolling out r207872.

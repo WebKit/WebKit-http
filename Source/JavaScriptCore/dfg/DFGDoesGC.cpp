@@ -244,9 +244,12 @@ bool doesGC(Graph& graph, Node* node)
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomCreateRest:
+    case PhantomNewArrayWithSpread:
+    case PhantomSpread:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
@@ -264,6 +267,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetDynamicVar:
     case PutDynamicVar:
     case ResolveScope:
+    case NukeStructureAndSetButterfly:
         return false;
 
     case CreateActivation:
@@ -288,6 +292,7 @@ bool doesGC(Graph& graph, Node* node)
     case MakeRope:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
     case NewTypedArray:
     case ThrowStaticError:
     case GetPropertyEnumerator:
@@ -304,6 +309,7 @@ bool doesGC(Graph& graph, Node* node)
     case ToLowerCase:
     case CallDOMGetter:
     case CallDOM:
+    case ArraySlice:
         return true;
         
     case MultiPutByOffset:

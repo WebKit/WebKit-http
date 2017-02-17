@@ -40,9 +40,9 @@
 #include "DatabaseThread.h"
 #include "DatabaseTracker.h"
 #include "Document.h"
+#include "ExceptionCode.h"
 #include "JSDOMWindow.h"
 #include "Logging.h"
-#include "Page.h"
 #include "SQLError.h"
 #include "SQLTransaction.h"
 #include "SQLTransactionCallback.h"
@@ -208,7 +208,7 @@ Database::Database(DatabaseContext& context, const String& name, const String& e
     {
         std::lock_guard<StaticLock> locker(guidMutex);
 
-        m_guid = guidForOriginAndName(securityOrigin().toString(), name);
+        m_guid = guidForOriginAndName(securityOrigin().securityOrigin()->toString(), name);
         guidToDatabaseMap().ensure(m_guid, [] {
             return HashSet<Database*>();
         }).iterator->value.add(this);
@@ -229,9 +229,9 @@ Database::~Database()
 {
     // The reference to the ScriptExecutionContext needs to be cleared on the JavaScript thread.  If we're on that thread already, we can just let the RefPtr's destruction do the dereffing.
     if (!m_scriptExecutionContext->isContextThread()) {
-        auto passedContext = m_scriptExecutionContext.copyRef();
+        auto passedContext = WTFMove(m_scriptExecutionContext);
         auto& contextRef = passedContext.get();
-        contextRef.postTask({ScriptExecutionContext::Task::CleanupTask, [passedContext = WTFMove(passedContext)] (ScriptExecutionContext& context) {
+        contextRef.postTask({ScriptExecutionContext::Task::CleanupTask, [passedContext = WTFMove(passedContext), databaseContext = WTFMove(m_databaseContext)] (ScriptExecutionContext& context) {
             ASSERT_UNUSED(context, &context == passedContext.ptr());
         }});
     }
@@ -422,7 +422,7 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
         return Exception { INVALID_STATE_ERR, "unable to open database, version mismatch, '" + m_expectedVersion + "' does not match the currentVersion of '" + currentVersion + "'" };
     }
 
-    m_sqliteDatabase.setAuthorizer(m_databaseAuthorizer.ptr());
+    m_sqliteDatabase.setAuthorizer(m_databaseAuthorizer.get());
 
     DatabaseTracker::singleton().addOpenDatabase(*this);
     m_opened = true;
@@ -766,13 +766,13 @@ Vector<String> Database::tableNames()
     return result;
 }
 
-SecurityOrigin& Database::securityOrigin()
+SecurityOriginData Database::securityOrigin()
 {
     if (m_scriptExecutionContext->isContextThread())
-        return m_contextThreadSecurityOrigin.get();
+        return SecurityOriginData::fromSecurityOrigin(m_contextThreadSecurityOrigin.get());
     auto& thread = databaseThread();
     if (currentThread() == thread.getThreadID())
-        return m_databaseThreadSecurityOrigin.get();
+        return SecurityOriginData::fromSecurityOrigin(m_databaseThreadSecurityOrigin.get());
     RELEASE_ASSERT_NOT_REACHED();
 }
 

@@ -169,6 +169,10 @@ private:
     bool didPassCORSAccessCheck() const override;
     bool canSaveMediaData() const override;
 
+    void purgeOldDownloadFiles(const char*);
+    static void uriDecodeBinElementAddedCallback(GstBin*, GstElement*, MediaPlayerPrivateGStreamer*);
+    static void downloadBufferFileCreatedCallback(MediaPlayerPrivateGStreamer*);
+
 protected:
     bool m_buffering;
     int m_bufferingPercentage;
@@ -243,6 +247,7 @@ private:
     std::unique_ptr<AudioSourceProviderGStreamer> m_audioSourceProvider;
 #endif
     GRefPtr<GstElement> m_autoAudioSink;
+    GRefPtr<GstElement> m_downloadBuffer;
     RefPtr<MediaPlayerRequestInstallMissingPluginsCallback> m_missingPluginsCallback;
 #if ENABLE(VIDEO_TRACK)
     Vector<RefPtr<AudioTrackPrivateGStreamer>> m_audioTracks;

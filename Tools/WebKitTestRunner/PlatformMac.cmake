@@ -23,19 +23,17 @@ list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore
+    ${WEBCORE_DIR}/testing/cocoa
     ${WEBKIT_TESTRUNNER_DIR}/cf
     ${WEBKIT_TESTRUNNER_DIR}/cg
     ${WEBKIT_TESTRUNNER_DIR}/cocoa
     ${WEBKIT_TESTRUNNER_DIR}/mac
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/mac
-    ${WTF_DIR}/icu
     ${CMAKE_SOURCE_DIR}/WebKitLibraries
 )
 
 list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
-    ${WEBKIT_TESTRUNNER_DIR}/mac/WebArchiveDumpSupportMac.mm
     ${WEBKIT_TESTRUNNER_DIR}/cocoa/CrashReporterInfo.mm
-    ${WEBKIT_TESTRUNNER_DIR}/cf/WebArchiveDumpSupport.cpp
 
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/cocoa/ActivateFontsCocoa.mm
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/cocoa/InjectedBundlePageCocoa.mm

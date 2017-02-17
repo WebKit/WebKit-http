@@ -300,7 +300,10 @@ const double zoomButtonScaleMultiplier = 1.18920;
 
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController copyItems:(NSArray *)items withTypes:(NSArray *)types
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     _pdfPlugin->writeItemsToPasteboard(NSGeneralPboard, items, types);
+#pragma clang diagnostic pop
 }
 
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController showDefinitionForAttributedString:(NSAttributedString *)string atPoint:(CGPoint)point
@@ -840,23 +843,7 @@ void PDFPlugin::didCalculateSizes()
     pluginElement->setInlineStyleProperty(CSSPropertyWidth, m_pdfDocumentSize.width(), CSSPrimitiveValue::CSS_PX);
     pluginElement->setInlineStyleProperty(CSSPropertyHeight, m_pdfDocumentSize.height(), CSSPrimitiveValue::CSS_PX);
 
-    // FIXME: Can't do this in the overflow/subframe case. Where does scroll-snap-type go?
-    if (m_usingContinuousMode || !m_frame->isMainFrame() || !isFullFramePlugin())
-        return;
-
-    RetainPtr<NSArray> pageRects = [m_pdfLayerController pageRects];
-
-    StringBuilder coordinates;
-    for (NSValue *rect in pageRects.get()) {
-        // FIXME: Why 4?
-        coordinates.appendNumber((long)[rect rectValue].origin.y / 4);
-        coordinates.appendLiteral("px ");
-    }
-
-    pluginElement->setInlineStyleProperty(CSSPropertyWebkitScrollSnapCoordinate, coordinates.toString());
-
-    Document* document = webFrame()->coreFrame()->document();
-    document->bodyOrFrameset()->setInlineStyleProperty(CSSPropertyWebkitScrollSnapType, "mandatory");
+    // FIXME: Adopt the new scroll snap specification.
 }
 
 bool PDFPlugin::initialize(const Parameters& parameters)
@@ -932,7 +919,7 @@ IntRect PDFPlugin::boundsOnScreen() const
 void PDFPlugin::geometryDidChange(const IntSize& pluginSize, const IntRect&, const AffineTransform& pluginToRootViewTransform)
 {
     m_pluginToRootViewTransform = pluginToRootViewTransform;
-    m_rootViewToPluginTransform = pluginToRootViewTransform.inverse().valueOr(AffineTransform());
+    m_rootViewToPluginTransform = pluginToRootViewTransform.inverse().value_or(AffineTransform());
     m_size = pluginSize;
 
     FrameView* frameView = webFrame()->coreFrame()->view();
@@ -1137,8 +1124,11 @@ bool PDFPlugin::handleEditingCommand(const String& commandName, const String& ar
         [m_pdfLayerController selectAll];
     else if (commandName == "takeFindStringFromSelection") {
         NSString *string = [m_pdfLayerController currentSelection].string;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if (string.length)
             writeItemsToPasteboard(NSFindPboard, @[ [string dataUsingEncoding:NSUTF8StringEncoding] ], @[ NSPasteboardTypeString ]);
+#pragma clang diagnostic pop
     }
 
     return true;

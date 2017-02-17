@@ -48,7 +48,7 @@ static String& applicationBundleIdentifierOverride()
     return identifier;
 }
 
-static String applicationBundleIdentifier()
+String applicationBundleIdentifier()
 {
     // The override only gets set in WebKit2's WebProcess and NetworkProcess. If unset, we use the main bundle identifier.
     const auto& identifier = applicationBundleIdentifierOverride();
@@ -154,12 +154,6 @@ bool MacApplication::isSolidStateNetworksDownloader()
     return isSolidStateNetworksDownloader;
 }
 
-bool MacApplication::isAppStore()
-{
-    static bool isAppStore = applicationBundleIsEqualTo("com.apple.appstore");
-    return isAppStore;
-}
-
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
@@ -184,8 +178,8 @@ bool IOSApplication::isWebBookmarksD()
 
 bool IOSApplication::isDumpRenderTree()
 {
-    // We use a prefix match instead of strict equality since LayoutTestRelay may launch multiple instances of
-    // DumpRenderTree where the bundle identifier of each instance has a unique suffix.
+    // We use a prefix match instead of strict equality since multiple instances of DumpRenderTree
+    // may be launched, where the bundle identifier of each instance has a unique suffix.
     static bool isDumpRenderTree = applicationBundleIsEqualTo("org.webkit.DumpRenderTree"); // e.g. org.webkit.DumpRenderTree0
     return isDumpRenderTree;
 }
@@ -251,12 +245,6 @@ bool IOSApplication::isTheSecretSocietyHiddenMystery()
 {
     static bool isTheSecretSocietyHiddenMystery = applicationBundleIsEqualTo("com.g5e.secretsociety");
     return isTheSecretSocietyHiddenMystery;
-}
-
-bool IOSApplication::isBaiduNuomi()
-{
-    static bool isBaiduNuomi = applicationBundleIsEqualTo("com.renren-inc.nuomi");
-    return isBaiduNuomi;
 }
 
 #endif

@@ -24,8 +24,11 @@
 #include "JSLocation.h"
 
 #include "JSDOMBinding.h"
+#include "JSDOMBindingSecurity.h"
+#include "JSDOMExceptionHandling.h"
 #include "RuntimeApplicationChecks.h"
 #include <runtime/JSFunction.h>
+#include <runtime/Lookup.h>
 
 using namespace JSC;
 
@@ -50,6 +53,12 @@ bool JSLocation::getOwnPropertySlotDelegate(ExecState* state, PropertyName prope
     String message;
     if (BindingSecurity::shouldAllowAccessToFrame(*state, *frame, message))
         return false;
+
+    // https://html.spec.whatwg.org/#crossorigingetownpropertyhelper-(-o,-p-)
+    if (propertyName == state->propertyNames().toStringTagSymbol || propertyName == state->propertyNames().hasInstanceSymbol || propertyName == state->propertyNames().isConcatSpreadableSymbol) {
+        slot.setValue(this, ReadOnly | DontEnum, jsUndefined());
+        return true;
+    }
 
     // We only allow access to Location.replace() cross origin.
     if (propertyName == state->propertyNames().replace) {
@@ -114,12 +123,22 @@ bool JSLocation::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned p
     return Base::deletePropertyByIndex(thisObject, exec, propertyName);
 }
 
-static void addCrossOriginLocationPropertyNames(ExecState& state, PropertyNameArray& propertyNames)
+// https://html.spec.whatwg.org/#crossoriginproperties-(-o-)
+static void addCrossOriginPropertyNames(ExecState& state, PropertyNameArray& propertyNames)
 {
-    // https://html.spec.whatwg.org/#crossoriginproperties-(-o-)
     static const Identifier* const properties[] = { &state.propertyNames().href, &state.propertyNames().replace };
     for (auto* property : properties)
         propertyNames.add(*property);
+}
+
+// https://html.spec.whatwg.org/#crossoriginownpropertykeys-(-o-)
+static void addCrossOriginOwnPropertyNames(ExecState& state, PropertyNameArray& propertyNames)
+{
+    addCrossOriginPropertyNames(state, propertyNames);
+
+    propertyNames.add(state.propertyNames().toStringTagSymbol);
+    propertyNames.add(state.propertyNames().hasInstanceSymbol);
+    propertyNames.add(state.propertyNames().isConcatSpreadableSymbol);
 }
 
 void JSLocation::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
@@ -127,7 +146,7 @@ void JSLocation::getOwnPropertyNames(JSObject* object, ExecState* exec, Property
     JSLocation* thisObject = jsCast<JSLocation*>(object);
     if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), DoNotReportSecurityError)) {
         if (mode.includeDontEnumProperties())
-            addCrossOriginLocationPropertyNames(*exec, propertyNames);
+            addCrossOriginOwnPropertyNames(*exec, propertyNames);
         return;
     }
     Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
@@ -163,14 +182,20 @@ JSValue JSLocation::getPrototype(JSObject* object, ExecState* exec)
     return Base::getPrototype(object, exec);
 }
 
-bool JSLocation::preventExtensions(JSObject* object, ExecState* exec)
+bool JSLocation::preventExtensions(JSObject*, ExecState* exec)
 {
-    JSLocation* thisObject = jsCast<JSLocation*>(object);
-    if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), ThrowSecurityError))
-        return false;
-    // FIXME: The specification says to return false in the same origin case as well but other browsers have
-    // not implemented this yet.
-    return Base::preventExtensions(object, exec);
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+
+    throwTypeError(exec, scope, ASCIILiteral("Cannot prevent extensions on this object"));
+    return false;
+}
+
+String JSLocation::toStringName(const JSObject* object, ExecState* exec)
+{
+    auto* thisObject = jsCast<const JSLocation*>(object);
+    if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), DoNotReportSecurityError))
+        return ASCIILiteral("Object");
+    return ASCIILiteral("Location");
 }
 
 bool JSLocationPrototype::putDelegate(ExecState* exec, PropertyName propertyName, JSValue, PutPropertySlot&, bool& putResult)

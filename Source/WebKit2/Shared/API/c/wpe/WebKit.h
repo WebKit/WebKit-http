@@ -65,7 +65,6 @@
 #include <WebKit/WKBundlePage.h>
 #include <WebKit/WKBundlePageBanner.h>
 #include <WebKit/WKBundlePageContextMenuClient.h>
-#include <WebKit/WKBundlePageDiagnosticLoggingClient.h>
 #include <WebKit/WKBundlePageEditorClient.h>
 #include <WebKit/WKBundlePageFormClient.h>
 #include <WebKit/WKBundlePageFullScreenClient.h>

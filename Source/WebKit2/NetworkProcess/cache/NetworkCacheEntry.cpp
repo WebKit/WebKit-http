@@ -28,8 +28,6 @@
 
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
-#include "NetworkCacheDecoder.h"
-#include "NetworkCacheEncoder.h"
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SharedBuffer.h>
 #include <wtf/text/StringBuilder.h>
@@ -56,10 +54,10 @@ Entry::Entry(const Key& key, const WebCore::ResourceResponse& response, const We
     , m_varyingRequestHeaders(varyingRequestHeaders)
 {
     ASSERT(m_key.type() == "Resource");
-    // Redirect body is not needed even if exists.
 
-    m_redirectRequest = std::make_unique<WebCore::ResourceRequest>();
+    m_redirectRequest.emplace();
     m_redirectRequest->setAsIsolatedCopy(redirectRequest);
+    // Redirect body is not needed even if exists.
     m_redirectRequest->setHTTPBody(nullptr);
 }
 
@@ -68,6 +66,7 @@ Entry::Entry(const Entry& other)
     , m_timeStamp(other.m_timeStamp)
     , m_response(other.m_response)
     , m_varyingRequestHeaders(other.m_varyingRequestHeaders)
+    , m_redirectRequest(other.m_redirectRequest)
     , m_buffer(other.m_buffer)
     , m_sourceStorageRecord(other.m_sourceStorageRecord)
 {
@@ -83,7 +82,7 @@ Entry::Entry(const Storage::Record& storageEntry)
 
 Storage::Record Entry::encodeAsStorageRecord() const
 {
-    Encoder encoder;
+    WTF::Persistence::Encoder encoder;
     encoder << m_response;
 
     bool hasVaryingRequestHeaders = !m_varyingRequestHeaders.isEmpty();
@@ -103,17 +102,19 @@ Storage::Record Entry::encodeAsStorageRecord() const
     if (m_buffer)
         body = { reinterpret_cast<const uint8_t*>(m_buffer->data()), m_buffer->size() };
 
-    return { m_key, m_timeStamp, header, body };
+    return { m_key, m_timeStamp, header, body, { } };
 }
 
 std::unique_ptr<Entry> Entry::decodeStorageRecord(const Storage::Record& storageEntry)
 {
     auto entry = std::make_unique<Entry>(storageEntry);
 
-    Decoder decoder(storageEntry.header.data(), storageEntry.header.size());
+    WTF::Persistence::Decoder decoder(storageEntry.header.data(), storageEntry.header.size());
     if (!decoder.decode(entry->m_response))
         return nullptr;
     entry->m_response.setSource(WebCore::ResourceResponse::Source::DiskCache);
+    if (storageEntry.bodyHash)
+        entry->m_response.setCacheBodyKey(*storageEntry.bodyHash);
 
     bool hasVaryingRequestHeaders;
     if (!decoder.decode(hasVaryingRequestHeaders))
@@ -129,7 +130,7 @@ std::unique_ptr<Entry> Entry::decodeStorageRecord(const Storage::Record& storage
         return nullptr;
 
     if (isRedirect) {
-        entry->m_redirectRequest = std::make_unique<WebCore::ResourceRequest>();
+        entry->m_redirectRequest.emplace();
         if (!entry->m_redirectRequest->decodeWithoutPlatformData(decoder))
             return nullptr;
     }
@@ -145,6 +146,9 @@ std::unique_ptr<Entry> Entry::decodeStorageRecord(const Storage::Record& storage
 #if ENABLE(SHAREABLE_RESOURCE)
 void Entry::initializeShareableResourceHandleFromStorageRecord() const
 {
+    if (!NetworkCache::singleton().canUseSharedMemoryForBodyData())
+        return;
+
     auto sharedMemory = m_sourceStorageRecord.body.tryCreateSharedMemory();
     if (!sharedMemory)
         return;

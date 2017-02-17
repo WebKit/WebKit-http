@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKBundleAPICast_h
-#define WKBundleAPICast_h
+#pragma once
 
 #include "WKSharedAPICast.h"
 #include "WKBundlePage.h"
@@ -75,11 +74,11 @@ WK_ADD_API_MAPPING(WKBundleScriptWorldRef, InjectedBundleScriptWorld)
 inline WKInsertActionType toAPI(WebCore::EditorInsertAction action)
 {
     switch (action) {
-    case WebCore::EditorInsertActionTyped:
+    case WebCore::EditorInsertAction::Typed:
         return kWKInsertActionTyped;
-    case WebCore::EditorInsertActionPasted:
+    case WebCore::EditorInsertAction::Pasted:
         return kWKInsertActionPasted;
-    case WebCore::EditorInsertActionDropped:
+    case WebCore::EditorInsertAction::Dropped:
         return kWKInsertActionDropped;
     }
     ASSERT_NOT_REACHED();
@@ -147,5 +146,3 @@ inline WKConsoleMessageLevel toAPI(JSC::MessageLevel level)
 }
 
 } // namespace WebKit
-
-#endif // WKBundleAPICast_h

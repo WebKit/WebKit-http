@@ -80,7 +80,7 @@ JSValue JSMessageEvent::data(ExecState& state) const
         if (RefPtr<SerializedScriptValue> serializedValue = event.dataAsSerializedScriptValue()) {
             Vector<RefPtr<MessagePort>> ports = wrapped().ports();
             // FIXME: Why does this suppress exceptions?
-            result = serializedValue->deserialize(state, globalObject(), ports, NonThrowing);
+            result = serializedValue->deserialize(state, globalObject(), ports, SerializationErrorMode::NonThrowing);
         } else
             result = jsNull();
         break;
@@ -108,7 +108,7 @@ static JSC::JSValue handleInitMessageEvent(JSMessageEvent* jsEvent, JSC::ExecSta
     VM& vm = state.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    const String& typeArg = state.argument(0).toString(&state)->value(&state);
+    const String& typeArg = state.argument(0).toWTFString(&state);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     bool canBubbleArg = state.argument(1).toBoolean(&state);
@@ -119,10 +119,10 @@ static JSC::JSValue handleInitMessageEvent(JSMessageEvent* jsEvent, JSC::ExecSta
 
     JSValue dataArg = state.argument(3);
 
-    const String originArg = valueToUSVString(&state, state.argument(4));
+    const String originArg = convert<IDLUSVString>(state, state.argument(4));
     RETURN_IF_EXCEPTION(scope, JSValue());
 
-    const String lastEventIdArg = state.argument(5).toString(&state)->value(&state);
+    const String lastEventIdArg = state.argument(5).toWTFString(&state);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     auto sourceArg = convert<IDLNullable<IDLUnion<IDLInterface<DOMWindow>, IDLInterface<MessagePort>>>>(state, state.argument(6));

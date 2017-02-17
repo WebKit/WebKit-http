@@ -8,8 +8,17 @@
 
 fast/scrolling/ios [ Pass ]
 fast/viewport/ios [ Pass ]
+fast/visual-viewport/ios/ [ Pass ]
 scrollingcoordinator/ios [ Pass ]
 editing/selection/character-granularity-rect.html [ Pass ]
+
+fast/media/mq-inverted-colors-live-update.html [ Pass ]
+fast/media/mq-inverted-colors-live-update-in-subframes.html [ Pass ]
+fast/media/mq-monochrome-live-update.html [ Pass ]
+fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
+
+fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
+fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -317,29 +326,9 @@ svg/zoom/page/zoom-svg-through-object-with-percentage-size.xhtml [ Failure ]
 # <rdar://problem/19223413> ASSERT(animatedTypes[0].properties.size() == 1) failed in SVGAnimatedTypeAnimator::constructFromBaseValue()
 svg/animations/unsupported-animate-element-attributes.svg
 
-# Webarchive tests that fail with stderr:
-webarchive/adopt-attribute-styled-body-webarchive.html
-webarchive/adopt-attribute-styled-node-webarchive.html
-webarchive/adopt-inline-styled-node-webarchive.html
-webarchive/archive-with-unencoded-url.html
-webarchive/test-body-background.html
-webarchive/test-css-url-resources-in-stylesheets.html
-webarchive/test-css-url-resources-inline-styles.html
-webarchive/test-duplicate-resources.html
-webarchive/test-frameset.html
-webarchive/test-img-src.html
-webarchive/test-input-src.html
-webarchive/test-object-data.html
-webarchive/test-table-background.html
-webarchive/test-td-background.html
-webarchive/test-xml-stylesheet.xml
-
 # Webarchive tests that fail:
 webarchive/archive-empty-frame-source.html [ Failure ]
 webarchive/doctype.html [ Failure ]
-webarchive/test-css-import.html [ Failure ]
-webarchive/test-link-href.html [ Failure ]
-webarchive/test-script-src.html [ Failure ]
 
 # HTTP tests that fail:
 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Failure ]
@@ -1769,12 +1758,23 @@ fast/dom/Window/post-message-crash.html [ Pass Failure ]
 webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html [ Pass Failure ]
 
 # eventSender.mouseDown is not implemented
+fast/events/focusing-element-with-tabindex-by-tap-or-click.html [ Skip ]
 fast/loader/location-hash-user-gesture.html [ Skip ]
 imported/blink/editing/selection/selectstart-event-crash.html [ Skip ]
 fast/dom/Window/post-message-user-action.html [ Skip ]
+fast/images/image-usemap-parsing.html [ Skip ]
+fast/shadow-dom/click-on-slotted-anchor-with-hover.html [ Skip ]
 fast/shadow-dom/click-text-inside-linked-slot.html [ Skip ]
+fast/shadow-dom/fullscreen-in-shadow-fullscreenElement.html [ Skip ]
+fast/shadow-dom/fullscreen-in-shadow-webkitCurrentFullScreenElement.html [ Skip ]
+fast/shadow-dom/fullscreen-in-slot-fullscreenElement.html [ Skip ]
+fast/shadow-dom/fullscreen-in-slot-webkitCurrentFullScreenElement.html [ Skip ]
+fast/events/focus-label-legend-elements-with-tab.html [ Skip ]
 
 # No touch events
+fast/visual-viewport/ios/bottom-bar-with-keyboard.html [ Skip ]
+fast/visual-viewport/ios/fixed-element-on-bottom-with-keyboard.html [ Skip ]
+fast/visual-viewport/ios/zoomed-focus-in-fixed.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never.html [ Skip ]
@@ -1797,10 +1797,6 @@ webkit.org/b/155201 storage/domstorage/events/basic-body-attribute.html [ Pass F
 # Forcing always allow user scalable is not supported on certain OS version.
 webkit.org/b/155056 fast/viewport/ios/force-always-user-scalable.html [ Skip ]
 
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
-
 webkit.org/b/155501 animations/3d/transform-origin-vs-functions.html [ Pass Failure ]
 
 webkit.org/b/155495 compositing/visible-rect/animated-from-none.html [ Pass Failure ]
@@ -1818,10 +1814,12 @@ webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156067 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156067 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-data.html [ Skip ]
@@ -1862,7 +1860,7 @@ svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure ]
 
 webkit.org/b/159379 fast/history/page-cache-webdatabase-pending-transaction.html [ Pass Failure ]
 
-webkit.org/b/159840 [ Release ] http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
+webkit.org/b/159840 http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
 
 webkit.org/b/159884 [ Debug ] http/tests/loading/basic-auth-resend-wrong-credentials.html [ Pass Failure ]
 
@@ -1884,8 +1882,9 @@ webkit.org/b/153809 transitions/clip-path-transitions.html [ Pass Failure ]
 webkit.org/b/153809 transitions/clip-path-path-transitions.html [ Pass Failure ]
 webkit.org/b/153029 fast/css-generated-content/details-summary-before-after.html [ Failure ]
 
+webkit.org/b/165815 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-frag-percent-encoded.html [ Pass Failure ]
+webkit.org/b/165814 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-anchor-name.html [ Pass Failure ]
 webkit.org/b/161359 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-top.html [ Pass Failure ]
-
 webkit.org/b/161631 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-id-top.html [ Pass Failure ]
 
 # rdar://problem/26477855
@@ -1900,3 +1899,18 @@ webkit.org/b/162524 [ Release ] http/tests/cache/disk-cache/disk-cache-redirect.
 webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pass Failure ]
 
 webkit.org/b/163362 [ Debug ] platform/ios-simulator/ios/plugin/youtube-flash-plugin-iframe.html [ Pass Failure ]
+
+webkit.org/b/164960 [ Release ] http/tests/security/module-correct-mime-types.html [ Slow ]
+
+webkit.org/b/164961 [ Release ] http/tests/storage/callbacks-are-called-in-correct-context.html [ Timeout ]
+
+webkit.org/b/165165 [ Release ] http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce.html [ Pass Timeout ]
+
+webkit.org/b/165344 [ Release ] http/tests/security/module-incorrect-mime-types.html [ Pass Timeout ]
+
+# Hover test does not apply
+fast/css/deferred-parsing/hover-test.html [ Skip ]
+
+webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
+
+webkit.org/b/167258 media/modern-media-controls/audio/audio-controls-metrics.html [ Skip ]

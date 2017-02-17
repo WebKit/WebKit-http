@@ -23,7 +23,7 @@
 #include "Microtasks.h"
 
 #include <wtf/MainThread.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 
 namespace WebCore {
 
@@ -50,10 +50,7 @@ MicrotaskQueue& MicrotaskQueue::mainThreadQueue()
 
 void MicrotaskQueue::append(std::unique_ptr<Microtask>&& task)
 {
-    if (m_performingMicrotaskCheckpoint)
-        m_tasksAppendedDuringMicrotaskCheckpoint.append(WTFMove(task));
-    else
-        m_microtaskQueue.append(WTFMove(task));
+    m_microtaskQueue.append(WTFMove(task));
 
     m_timer.startOneShot(0);
 }
@@ -63,12 +60,6 @@ void MicrotaskQueue::remove(const Microtask& task)
     for (size_t i = 0; i < m_microtaskQueue.size(); ++i) {
         if (m_microtaskQueue[i].get() == &task) {
             m_microtaskQueue.remove(i);
-            return;
-        }
-    }
-    for (size_t i = 0; i < m_tasksAppendedDuringMicrotaskCheckpoint.size(); ++i) {
-        if (m_tasksAppendedDuringMicrotaskCheckpoint[i].get() == &task) {
-            m_tasksAppendedDuringMicrotaskCheckpoint.remove(i);
             return;
         }
     }
@@ -84,23 +75,24 @@ void MicrotaskQueue::performMicrotaskCheckpoint()
     if (m_performingMicrotaskCheckpoint)
         return;
 
-    TemporaryChange<bool> change(m_performingMicrotaskCheckpoint, true);
+    SetForScope<bool> change(m_performingMicrotaskCheckpoint, true);
 
-    Vector<std::unique_ptr<Microtask>> queue = WTFMove(m_microtaskQueue);
-    for (auto& task : queue) {
-        auto result = task->run();
-        switch (result) {
-        case Microtask::Result::Done:
-            break;
-        case Microtask::Result::KeepInQueue:
-            m_microtaskQueue.append(WTFMove(task));
-            break;
+    Vector<std::unique_ptr<Microtask>> toKeep;
+    while (!m_microtaskQueue.isEmpty()) {
+        Vector<std::unique_ptr<Microtask>> queue = WTFMove(m_microtaskQueue);
+        for (auto& task : queue) {
+            auto result = task->run();
+            switch (result) {
+            case Microtask::Result::Done:
+                break;
+            case Microtask::Result::KeepInQueue:
+                toKeep.append(WTFMove(task));
+                break;
+            }
         }
     }
 
-    for (auto& task : m_tasksAppendedDuringMicrotaskCheckpoint)
-        m_microtaskQueue.append(WTFMove(task));
-    m_tasksAppendedDuringMicrotaskCheckpoint.clear();
+    m_microtaskQueue = WTFMove(toKeep);
 }
 
 } // namespace WebCore

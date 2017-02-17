@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2014 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include "MemoryPressureHandler.h"
 
 #include "Logging.h"
+#include <wtf/MemoryFootprint.h>
 
 namespace WebCore {
 
@@ -50,6 +51,117 @@ MemoryPressureHandler::MemoryPressureHandler()
 {
 }
 
+void MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor(bool use)
+{
+    if (use) {
+        m_measurementTimer = std::make_unique<RunLoop::Timer<MemoryPressureHandler>>(RunLoop::main(), this, &MemoryPressureHandler::measurementTimerFired);
+        m_measurementTimer->startRepeating(30);
+    } else
+        m_measurementTimer = nullptr;
+}
+
+#if !RELEASE_LOG_DISABLED
+static const char* toString(MemoryUsagePolicy policy)
+{
+    switch (policy) {
+    case MemoryUsagePolicy::Unrestricted: return "Unrestricted";
+    case MemoryUsagePolicy::Conservative: return "Conservative";
+    case MemoryUsagePolicy::Strict: return "Strict";
+    case MemoryUsagePolicy::Panic: return "Panic";
+    }
+}
+#endif
+
+static size_t thresholdForPolicy(MemoryUsagePolicy policy)
+{
+    switch (policy) {
+    case MemoryUsagePolicy::Conservative:
+        return 1 * GB;
+    case MemoryUsagePolicy::Strict:
+        return 2 * GB;
+    case MemoryUsagePolicy::Panic:
+#if CPU(X86_64) || CPU(ARM64)
+        return 4 * GB;
+#else
+        return 3 * GB;
+#endif
+    case MemoryUsagePolicy::Unrestricted:
+    default:
+        ASSERT_NOT_REACHED();
+        return 0;
+    }
+}
+
+static MemoryUsagePolicy policyForFootprint(size_t footprint)
+{
+    if (footprint >= thresholdForPolicy(MemoryUsagePolicy::Panic))
+        return MemoryUsagePolicy::Panic;
+    if (footprint >= thresholdForPolicy(MemoryUsagePolicy::Strict))
+        return MemoryUsagePolicy::Strict;
+    if (footprint >= thresholdForPolicy(MemoryUsagePolicy::Conservative))
+        return MemoryUsagePolicy::Conservative;
+    return MemoryUsagePolicy::Unrestricted;
+}
+
+void MemoryPressureHandler::measurementTimerFired()
+{
+    auto footprint = memoryFootprint();
+    if (!footprint)
+        return;
+
+    RELEASE_LOG(MemoryPressure, "Current memory footprint: %lu MB", footprint.value() / MB);
+
+    auto newPolicy = policyForFootprint(footprint.value());
+    if (newPolicy == m_memoryUsagePolicy) {
+        if (m_memoryUsagePolicy != MemoryUsagePolicy::Panic)
+            return;
+        RELEASE_LOG(MemoryPressure, "Memory usage still above panic threshold");
+    } else
+        RELEASE_LOG(MemoryPressure, "Memory usage policy changed: %s -> %s", toString(m_memoryUsagePolicy), toString(newPolicy));
+
+    m_memoryUsagePolicy = newPolicy;
+
+    if (newPolicy == MemoryUsagePolicy::Unrestricted)
+        return;
+
+    if (newPolicy == MemoryUsagePolicy::Conservative) {
+        // FIXME: Implement this policy by choosing which caches should respect it, and hooking them up.
+        return;
+    }
+
+    if (newPolicy == MemoryUsagePolicy::Strict) {
+        RELEASE_LOG(MemoryPressure, "Attempting to reduce memory footprint by freeing less important objects.");
+        releaseMemory(Critical::No, Synchronous::No);
+        return;
+    }
+
+    RELEASE_ASSERT(newPolicy == MemoryUsagePolicy::Panic);
+
+    RELEASE_LOG(MemoryPressure, "Attempting to reduce memory footprint by freeing more important objects.");
+    if (m_processIsEligibleForMemoryKillCallback) {
+        if (!m_processIsEligibleForMemoryKillCallback()) {
+            releaseMemory(Critical::Yes, Synchronous::No);
+            return;
+        }
+    }
+
+    releaseMemory(Critical::Yes, Synchronous::Yes);
+
+    // Remeasure footprint to see how well the pressure handler did.
+    footprint = memoryFootprint();
+    RELEASE_ASSERT(footprint);
+
+    RELEASE_LOG(MemoryPressure, "New memory footprint: %lu MB", footprint.value() / MB);
+    if (footprint.value() < thresholdForPolicy(MemoryUsagePolicy::Panic)) {
+        m_memoryUsagePolicy = policyForFootprint(footprint.value());
+        RELEASE_LOG(MemoryPressure, "Pressure reduced below panic threshold. New memory usage policy: %s", toString(m_memoryUsagePolicy));
+        return;
+    }
+
+    if (m_memoryKillCallback)
+        m_memoryKillCallback();
+}
+
 void MemoryPressureHandler::beginSimulatedMemoryPressure()
 {
     m_isSimulatingMemoryPressure = true;
@@ -66,6 +178,7 @@ void MemoryPressureHandler::releaseMemory(Critical critical, Synchronous synchro
     if (!m_lowMemoryHandler)
         return;
 
+    ReliefLogger log("Total");
     m_lowMemoryHandler(critical, synchronous);
     platformReleaseMemory(critical);
 }
@@ -83,25 +196,19 @@ void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
 #define MEMORYPRESSURE_LOG(...) WTFLogAlways(__VA_ARGS__)
 #endif
 
-    if (s_loggingEnabled) {
-        size_t currentMemory = platformMemoryUsage();
-        if (currentMemory == static_cast<size_t>(-1) || m_initialMemory == static_cast<size_t>(-1)) {
-            MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION ": (Unable to get dirty memory information for process)", m_logString);
-            return;
-        }
-
-        long memoryDiff = currentMemory - m_initialMemory;
-        if (memoryDiff < 0)
-            MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION ": -dirty %ld bytes (from %zu to %zu)", m_logString, (memoryDiff * -1), m_initialMemory, currentMemory);
-        else if (memoryDiff > 0)
-            MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION ": +dirty %ld bytes (from %zu to %zu)", m_logString, memoryDiff, m_initialMemory, currentMemory);
-        else
-            MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION ": =dirty (at %zu bytes)", m_logString, currentMemory);
-#if !RELEASE_LOG_DISABLED
-    } else {
-        MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION, m_logString);
-#endif
+    auto currentMemory = platformMemoryUsage();
+    if (!currentMemory || !m_initialMemory) {
+        MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION ": (Unable to get dirty memory information for process)", m_logString);
+        return;
     }
+
+    long residentDiff = currentMemory->resident - m_initialMemory->resident;
+    long physicalDiff = currentMemory->physical - m_initialMemory->physical;
+
+    MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION ": res = %zu/%zu/%ld, res+swap = %zu/%zu/%ld",
+        m_logString,
+        m_initialMemory->resident, currentMemory->resident, residentDiff,
+        m_initialMemory->physical, currentMemory->physical, physicalDiff);
 }
 
 #if !PLATFORM(COCOA) && !OS(LINUX) && !PLATFORM(WIN)
@@ -110,7 +217,7 @@ void MemoryPressureHandler::uninstall() { }
 void MemoryPressureHandler::holdOff(unsigned) { }
 void MemoryPressureHandler::respondToMemoryPressure(Critical, Synchronous) { }
 void MemoryPressureHandler::platformReleaseMemory(Critical) { }
-size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage() { return 0; }
+std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage() { return std::nullopt; }
 #endif
 
 } // namespace WebCore

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -120,7 +120,11 @@ public:
     // thread is to first try this, and if that doesn't work, to tell the thread using your own
     // mechanism (set some flag and then notify the condition).
     bool tryStop(const LockHolder&);
-    
+
+    bool isWaiting(const LockHolder&);
+
+    bool notify(const LockHolder&);
+
     void join();
     
 protected:
@@ -164,20 +168,19 @@ protected:
     // when the thread dies. These methods let you do this. You can override these methods, and you
     // can be sure that the default ones don't do anything (so you don't need a super call).
     virtual void threadDidStart();
-    virtual void threadWillStop();
+    virtual void threadIsStopping(const LockHolder&);
     
 private:
     friend class AutomaticThreadCondition;
-    
-    class ThreadScope;
-    friend class ThreadScope;
     
     void start(const LockHolder&);
     
     Box<Lock> m_lock;
     RefPtr<AutomaticThreadCondition> m_condition;
     bool m_isRunning { true };
+    bool m_isWaiting { false };
     bool m_hasUnderlyingThread { false };
+    Condition m_waitCondition;
     Condition m_isRunningCondition;
 };
 

@@ -33,6 +33,7 @@
 #include "InspectorController.h"
 
 #include "CommandLineAPIHost.h"
+#include "CommonVM.h"
 #include "DOMWrapperWorld.h"
 #include "GraphicsContext.h"
 #include "InspectorApplicationCacheAgent.h"
@@ -53,6 +54,7 @@
 #include "InspectorTimelineAgent.h"
 #include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
+#include "JSDOMBindingSecurity.h"
 #include "JSDOMWindow.h"
 #include "JSDOMWindowCustom.h"
 #include "JSMainThreadExecState.h"
@@ -202,15 +204,12 @@ void InspectorController::inspectedPageDestroyed()
 {
     m_injectedScriptManager->disconnect();
 
-    // If the local frontend page was destroyed, close the window.
-    if (m_inspectorFrontendClient)
-        m_inspectorFrontendClient->closeWindow();
-
-    // The frontend should call setInspectorFrontendClient(nullptr) under closeWindow().
-    ASSERT(!m_inspectorFrontendClient);
-
     // Clean up resources and disconnect local and remote frontends.
     disconnectAllFrontends();
+
+    // Disconnect the client.
+    m_inspectorClient->inspectedPageDestroyed();
+    m_inspectorClient = nullptr;
 
     m_agents.discardValues();
 }
@@ -299,8 +298,15 @@ void InspectorController::disconnectFrontend(FrontendChannel* frontendChannel)
 
 void InspectorController::disconnectAllFrontends()
 {
-    // The local frontend client should be disconnected already.
+    // If the local frontend page was destroyed, close the window.
+    if (m_inspectorFrontendClient)
+        m_inspectorFrontendClient->closeWindow();
+
+    // The frontend should call setInspectorFrontendClient(nullptr) under closeWindow().
     ASSERT(!m_inspectorFrontendClient);
+
+    if (!m_frontendRouter->hasFrontends())
+        return;
 
     for (unsigned i = 0; i < m_frontendRouter->frontendCount(); ++i)
         InspectorInstrumentation::frontendDeleted();
@@ -313,10 +319,6 @@ void InspectorController::disconnectAllFrontends()
 
     // Destroy the inspector overlay's page.
     m_overlay->freePage();
-
-    // Disconnect local WK2 frontend and destroy the client.
-    m_inspectorClient->inspectedPageDestroyed();
-    m_inspectorClient = nullptr;
 
     // Disconnect any remaining remote frontends.
     m_frontendRouter->disconnectAllFrontends();
@@ -433,7 +435,8 @@ bool InspectorController::developerExtrasEnabled() const
 bool InspectorController::canAccessInspectedScriptState(JSC::ExecState* scriptState) const
 {
     JSLockHolder lock(scriptState);
-    JSDOMWindow* inspectedWindow = toJSDOMWindow(scriptState->lexicalGlobalObject());
+
+    JSDOMWindow* inspectedWindow = toJSDOMWindow(scriptState->vm(), scriptState->lexicalGlobalObject());
     if (!inspectedWindow)
         return false;
 
@@ -470,7 +473,7 @@ PageScriptDebugServer& InspectorController::scriptDebugServer()
 
 JSC::VM& InspectorController::vm()
 {
-    return JSDOMWindowBase::commonVM();
+    return commonVM();
 }
 
 void InspectorController::didComposite(Frame& frame)

@@ -38,7 +38,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 
 #if USE(CAIRO)
 #include "CairoUtilities.h"
@@ -246,9 +246,15 @@ void TextureMapperGL::drawNumber(int number, const Color& color, const FloatPoin
     cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
     cairo_t* cr = cairo_create(surface);
 
-    float r, g, b, a;
-    color.getRGBA(r, g, b, a);
-    cairo_set_source_rgba(cr, b, g, r, a); // Since we won't swap R+B when uploading a texture, paint with the swapped R+B color.
+    // Since we won't swap R+B when uploading a texture, paint with the swapped R+B color.
+    if (color.isExtended())
+        cairo_set_source_rgba(cr, color.asExtended().blue(), color.asExtended().green(), color.asExtended().red(), color.asExtended().alpha());
+    else {
+        float r, g, b, a;
+        color.getRGBA(r, g, b, a);
+        cairo_set_source_rgba(cr, b, g, r, a);
+    }
+
     cairo_rectangle(cr, 0, 0, width, height);
     cairo_fill(cr);
 
@@ -412,7 +418,7 @@ void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect&
         return;
 
     const BitmapTextureGL& textureGL = static_cast<const BitmapTextureGL&>(texture);
-    TemporaryChange<const BitmapTextureGL::FilterInfo*> filterInfo(data().filterInfo, textureGL.filterInfo());
+    SetForScope<const BitmapTextureGL::FilterInfo*> filterInfo(data().filterInfo, textureGL.filterInfo());
 
     drawTexture(textureGL.id(), textureGL.isOpaque() ? 0 : ShouldBlend, textureGL.size(), targetRect, matrix, opacity, exposedEdges);
 }
@@ -420,7 +426,7 @@ void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect&
 static bool driverSupportsNPOTTextures(GraphicsContext3D& context)
 {
     if (context.isGLES2Compliant()) {
-        static bool supportsNPOTTextures = context.getExtensions()->supports("GL_OES_texture_npot");
+        static bool supportsNPOTTextures = context.getExtensions().supports("GL_OES_texture_npot");
         return supportsNPOTTextures;
     }
 
@@ -688,7 +694,9 @@ void TextureMapperGL::beginClip(const TransformationMatrix& modelViewMatrix, con
     m_context3D->useProgram(program->programID());
     m_context3D->enableVertexAttribArray(program->vertexLocation());
     const GC3Dfloat unitRect[] = {0, 0, 1, 0, 1, 1, 0, 1};
-    m_context3D->vertexAttribPointer(program->vertexLocation(), 2, GraphicsContext3D::FLOAT, false, 0, GC3Dintptr(unitRect));
+    Platform3DObject vbo = data().getStaticVBO(GraphicsContext3D::ARRAY_BUFFER, sizeof(GC3Dfloat) * 8, unitRect);
+    m_context3D->bindBuffer(GraphicsContext3D::ARRAY_BUFFER, vbo);
+    m_context3D->vertexAttribPointer(program->vertexLocation(), 2, GraphicsContext3D::FLOAT, false, 0, 0);
 
     TransformationMatrix matrix(modelViewMatrix);
     matrix.multiply(TransformationMatrix::rectToRect(FloatRect(0, 0, 1, 1), targetRect));
@@ -718,6 +726,7 @@ void TextureMapperGL::beginClip(const TransformationMatrix& modelViewMatrix, con
     m_context3D->drawArrays(GraphicsContext3D::TRIANGLE_FAN, 0, 4);
 
     // Clear the state.
+    m_context3D->bindBuffer(GraphicsContext3D::ARRAY_BUFFER, 0);
     m_context3D->disableVertexAttribArray(program->vertexLocation());
     m_context3D->stencilMask(0);
 

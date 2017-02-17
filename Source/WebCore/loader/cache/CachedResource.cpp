@@ -42,7 +42,6 @@
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
-#include "Page.h"
 #include "PlatformStrategies.h"
 #include "ResourceHandle.h"
 #include "SchemeRegistry.h"
@@ -71,8 +70,8 @@ ResourceLoadPriority CachedResource::defaultPriorityForResourceType(Type type)
     case CachedResource::MainResource:
         return ResourceLoadPriority::VeryHigh;
     case CachedResource::CSSStyleSheet:
-        return ResourceLoadPriority::High;
     case CachedResource::Script:
+        return ResourceLoadPriority::High;
 #if ENABLE(SVG_FONTS)
     case CachedResource::SVGFontResource:
 #endif
@@ -122,6 +121,7 @@ CachedResource::CachedResource(CachedResourceRequest&& request, Type type, Sessi
     , m_responseTimestamp(std::chrono::system_clock::now())
     , m_fragmentIdentifierForRequest(request.releaseFragmentIdentifier())
     , m_origin(request.releaseOrigin())
+    , m_isLinkPreload(request.isLinkPreload())
     , m_type(type)
 {
     ASSERT(sessionID.isValid());
@@ -215,16 +215,6 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
 
     m_loading = true;
 
-#if USE(QUICK_LOOK)
-    if (!m_resourceRequest.isNull() && m_resourceRequest.url().protocolIs(QLPreviewProtocol())) {
-        // When QuickLook is invoked to convert a document, it returns a unique URL in the
-        // NSURLReponse for the main document. To make safeQLURLForDocumentURLAndResourceURL()
-        // work, we need to use the QL URL not the original URL.
-        const URL& documentURL = frameLoader.documentLoader()->response().url();
-        m_resourceRequest.setURL(safeQLURLForDocumentURLAndResourceURL(documentURL, url()));
-    }
-#endif
-
     if (isCacheValidator()) {
         CachedResource* resourceToRevalidate = m_resourceToRevalidate;
         ASSERT(resourceToRevalidate->canUseCacheValidator());
@@ -297,6 +287,9 @@ void CachedResource::loadFrom(const CachedResource& resource)
 void CachedResource::setBodyDataFrom(const CachedResource& resource)
 {
     m_data = resource.m_data;
+    m_response = resource.m_response;
+    setDecodedSize(resource.decodedSize());
+    setEncodedSize(resource.encodedSize());
 }
 
 void CachedResource::checkNotify()
@@ -366,8 +359,12 @@ bool CachedResource::isCORSSameOrigin() const
 {
     // Following resource types do not use CORS
     ASSERT(type() != CachedResource::Type::FontResource);
+#if ENABLE(SVG_FONTS)
     ASSERT(type() != CachedResource::Type::SVGFontResource);
+#endif
+#if ENABLE(XSLT)
     ASSERT(type() != CachedResource::XSLStyleSheet);
+#endif
 
     // https://html.spec.whatwg.org/multipage/infrastructure.html#cors-same-origin
     return !loadFailedOrCanceled() && m_responseTainting != ResourceResponse::Tainting::Opaque;
@@ -752,7 +749,14 @@ CachedResource::RevalidationDecision CachedResource::makeRevalidationDecision(Ca
         return RevalidationDecision::No;
 
     case CachePolicyReload:
+        return RevalidationDecision::YesDueToCachePolicy;
+
     case CachePolicyRevalidate:
+        if (m_response.cacheControlContainsImmutable() && m_response.url().protocolIs("https")) {
+            if (isExpired())
+                return RevalidationDecision::YesDueToExpired;
+            return RevalidationDecision::No;
+        }
         return RevalidationDecision::YesDueToCachePolicy;
 
     case CachePolicyVerify:
@@ -802,7 +806,7 @@ bool CachedResource::areAllClientsXMLHttpRequests() const
     return true;
 }
 
-void CachedResource::setLoadPriority(const Optional<ResourceLoadPriority>& loadPriority)
+void CachedResource::setLoadPriority(const std::optional<ResourceLoadPriority>& loadPriority)
 {
     if (loadPriority)
         m_loadPriority = loadPriority.value();

@@ -30,12 +30,50 @@
 
 #import "SoftLinking.h"
 #import "UIKitSPI.h"
+#import <wtf/RetainPtr.h>
 #import <wtf/text/WTFString.h>
 
 SOFT_LINK_FRAMEWORK(UIKit);
+SOFT_LINK_CLASS(UIKit, UIFont);
 SOFT_LINK_CLASS(UIKit, UILabel);
+SOFT_LINK_CLASS(UIKit, UIPopoverPresentationController);
+SOFT_LINK_CLASS(UIKit, UITapGestureRecognizer);
 SOFT_LINK_CLASS(UIKit, UIView);
 SOFT_LINK_CLASS(UIKit, UIViewController);
+
+@interface WebValidationBubbleTapRecognizer : NSObject
+@end
+
+@implementation WebValidationBubbleTapRecognizer {
+    RetainPtr<UIViewController> _popoverController;
+    RetainPtr<UITapGestureRecognizer> _tapGestureRecognizer;
+}
+
+- (WebValidationBubbleTapRecognizer *)initWithPopoverController:(UIViewController *)popoverController
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _popoverController = popoverController;
+    _tapGestureRecognizer = adoptNS([[getUITapGestureRecognizerClass() alloc] initWithTarget:self action:@selector(dismissPopover)]);
+    [[_popoverController view] addGestureRecognizer:_tapGestureRecognizer.get()];
+
+    return self;
+}
+
+- (void)dealloc
+{
+    [[_popoverController view] removeGestureRecognizer:_tapGestureRecognizer.get()];
+    [super dealloc];
+}
+
+- (void)dismissPopover
+{
+    [_popoverController dismissViewControllerAnimated:NO completion:nil];
+}
+
+@end
 
 @interface WebValidationBubbleDelegate : NSObject <UIPopoverPresentationControllerDelegate> {
 }
@@ -55,8 +93,8 @@ SOFT_LINK_CLASS(UIKit, UIViewController);
 
 namespace WebCore {
 
-static const CGFloat horizontalPadding = 8;
-static const CGFloat verticalPadding = 8;
+static const CGFloat horizontalPadding = 17;
+static const CGFloat verticalPadding = 9;
 static const CGFloat maxLabelWidth = 300;
 
 ValidationBubble::ValidationBubble(UIView* view, const String& message)
@@ -68,11 +106,13 @@ ValidationBubble::ValidationBubble(UIView* view, const String& message)
 
     RetainPtr<UIView> popoverView = adoptNS([[getUIViewClass() alloc] initWithFrame:CGRectZero]);
     [m_popoverController setView:popoverView.get()];
+    m_tapRecognizer = adoptNS([[WebValidationBubbleTapRecognizer alloc] initWithPopoverController:m_popoverController.get()]);
 
     RetainPtr<UILabel> label = adoptNS([[getUILabelClass() alloc] initWithFrame:CGRectZero]);
     [label setText:message];
-    [label setLineBreakMode:NSLineBreakByWordWrapping];
-    [label setNumberOfLines:0]; // No limit.
+    [label setFont:[getUIFontClass() systemFontOfSize:14.0]];
+    [label setLineBreakMode:NSLineBreakByTruncatingTail];
+    [label setNumberOfLines:4];
     [popoverView addSubview:label.get()];
 
     CGSize labelSize = [label sizeThatFits:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)];
@@ -89,11 +129,27 @@ ValidationBubble::~ValidationBubble()
 
 void ValidationBubble::show()
 {
-    [m_presentingViewController presentViewController:m_popoverController.get() animated:NO completion:nil];
+    // Protect the validation bubble so it stays alive until it is effectively presented. UIKit does not deal nicely with
+    // dismissing a popover that is being presented.
+    RefPtr<ValidationBubble> protectedThis(this);
+    [m_presentingViewController presentViewController:m_popoverController.get() animated:NO completion:[protectedThis]() { }];
+}
+
+static UIViewController *fallbackViewController(UIView *view)
+{
+    for (UIView *currentView = view; currentView; currentView = currentView.superview) {
+        if (UIViewController *viewController = [getUIViewControllerClass() viewControllerForView:currentView])
+            return viewController;
+    }
+    NSLog(@"Failed to find a view controller to show form validation popover");
+    return nil;
 }
 
 void ValidationBubble::setAnchorRect(const IntRect& anchorRect, UIViewController* presentingViewController)
 {
+    if (!presentingViewController)
+        presentingViewController = fallbackViewController(m_view);
+
     UIPopoverPresentationController *presentationController = [m_popoverController popoverPresentationController];
     m_popoverDelegate = adoptNS([[WebValidationBubbleDelegate alloc] init]);
     presentationController.delegate = m_popoverDelegate.get();

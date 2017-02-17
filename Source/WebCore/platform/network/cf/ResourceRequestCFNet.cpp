@@ -139,14 +139,15 @@ void ResourceRequest::doUpdatePlatformRequest()
 
     RetainPtr<CFURLRef> url = ResourceRequest::url().createCFURL();
     RetainPtr<CFURLRef> firstPartyForCookies = ResourceRequest::firstPartyForCookies().createCFURL();
+    double timeoutInterval = ResourceRequestBase::timeoutInterval() ? ResourceRequestBase::timeoutInterval() : ResourceRequestBase::defaultTimeoutInterval();
     if (m_cfRequest) {
         cfRequest = CFURLRequestCreateMutableCopy(0, m_cfRequest.get());
         CFURLRequestSetURL(cfRequest, url.get());
         CFURLRequestSetMainDocumentURL(cfRequest, firstPartyForCookies.get());
         CFURLRequestSetCachePolicy(cfRequest, (CFURLRequestCachePolicy)cachePolicy());
-        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval());
+        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval);
     } else
-        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval(), firstPartyForCookies.get());
+        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval, firstPartyForCookies.get());
 
     CFURLRequestSetHTTPRequestMethod(cfRequest, httpMethod().createCFString().get());
 
@@ -201,14 +202,15 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
 
     RetainPtr<CFURLRef> url = ResourceRequest::url().createCFURL();
     RetainPtr<CFURLRef> firstPartyForCookies = ResourceRequest::firstPartyForCookies().createCFURL();
+    double timeoutInterval = ResourceRequestBase::timeoutInterval() ? ResourceRequestBase::timeoutInterval() : ResourceRequestBase::defaultTimeoutInterval();
     if (m_cfRequest) {
         cfRequest = CFURLRequestCreateMutableCopy(0, m_cfRequest.get());
         CFURLRequestSetURL(cfRequest, url.get());
         CFURLRequestSetMainDocumentURL(cfRequest, firstPartyForCookies.get());
         CFURLRequestSetCachePolicy(cfRequest, toPlatformRequestCachePolicy(cachePolicy()));
-        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval());
+        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval);
     } else
-        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval(), firstPartyForCookies.get());
+        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval, firstPartyForCookies.get());
 
     FormData* formData = httpBody();
     if (formData && !formData->isEmpty())
@@ -358,32 +360,6 @@ void ResourceRequest::setHTTPPipeliningEnabled(bool flag)
 {
     s_httpPipeliningEnabled = flag;
 }
-
-#if ENABLE(CACHE_PARTITIONING)
-String ResourceRequest::partitionName(const String& domain)
-{
-    if (domain.isNull())
-        return emptyString();
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-    String highLevel = topPrivatelyControlledDomain(domain);
-    if (highLevel.isNull())
-        return emptyString();
-    return highLevel;
-#else
-    return domain;
-#endif
-}
-#endif
-
-void ResourceRequest::doPlatformSetAsIsolatedCopy(const ResourceRequest& other)
-{
-#if ENABLE(CACHE_PARTITIONING)
-    m_cachePartition = other.m_cachePartition.isolatedCopy();
-#else
-    UNUSED_PARAM(other);
-#endif
-}
-
 
 // FIXME: It is confusing that this function both sets connection count and determines maximum request count at network layer. This can and should be done separately.
 unsigned initializeMaximumHTTPConnectionCountPerHost()

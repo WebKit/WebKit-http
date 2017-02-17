@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,10 @@
 #import <wtf/Forward.h>
 #import <wtf/Vector.h>
 #import <wtf/text/WTFString.h>
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKContentViewInteractionAdditions.h>)
+#import <WebKitAdditions/WKContentViewInteractionAdditions.h>
+#endif
 
 namespace API {
 class OpenPanelParameters;
@@ -114,6 +118,9 @@ struct WKAutoCorrectionData {
     RetainPtr<UITapGestureRecognizer> _twoFingerDoubleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _twoFingerSingleTapGestureRecognizer;
     RetainPtr<WKInspectorNodeSearchGestureRecognizer> _inspectorNodeSearchGestureRecognizer;
+#if ENABLE(DATA_INTERACTION)
+    RetainPtr<UILongPressGestureRecognizer> _dataInteractionGestureRecognizer;
+#endif
 
     RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
     RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
@@ -159,6 +166,8 @@ struct WKAutoCorrectionData {
 
     WebKit::WKSelectionDrawingInfo _lastSelectionDrawingInfo;
 
+    std::optional<WebKit::InteractionInformationRequest> _outstandingPositionInformationRequest;
+
     BOOL _isEditable;
     BOOL _showingTextStyleOptions;
     BOOL _hasValidPositionInformation;
@@ -175,15 +184,26 @@ struct WKAutoCorrectionData {
     BOOL _isExpectingFastSingleTapCommit;
     BOOL _showDebugTapHighlightsForFastClicking;
 
+    BOOL _becomingFirstResponder;
     BOOL _resigningFirstResponder;
+    BOOL _needsDeferredEndScrollingSelectionUpdate;
+
+#if ENABLE(DATA_INTERACTION)
+    WebKit::WKDataInteractionState _dataInteractionState;
+#endif
 }
 
 @end
 
-@interface WKContentView (WKInteraction) <UIGestureRecognizerDelegate, UIWebTouchEventsGestureRecognizerDelegate, UITextInputPrivate, UIWebFormAccessoryDelegate, UIWKInteractionViewProtocol, WKFileUploadPanelDelegate, WKActionSheetAssistantDelegate>
+@interface WKContentView (WKInteraction) <UIGestureRecognizerDelegate, UIWebTouchEventsGestureRecognizerDelegate, UITextInputPrivate, UIWebFormAccessoryDelegate, UIWKInteractionViewProtocol, WKFileUploadPanelDelegate, WKActionSheetAssistantDelegate
+#if ENABLE(DATA_INTERACTION)
+    , WKViewDataInteractionSourceDelegate, WKDataInteractionSessionDelegate, WKViewDataInteractionDestinationDelegate, WKDataInteractionItemVisualTarget
+#endif
+>
 
 @property (nonatomic, readonly) CGPoint lastInteractionLocation;
 @property (nonatomic, readonly) BOOL isEditable;
+@property (nonatomic, readonly) BOOL shouldHideSelectionWhenScrolling;
 @property (nonatomic, readonly) const WebKit::InteractionInformationAtPosition& positionInformation;
 @property (nonatomic, readonly) const WebKit::WKAutoCorrectionData& autocorrectionData;
 @property (nonatomic, readonly) const WebKit::AssistedNodeInformation& assistedNodeInformation;
@@ -193,6 +213,22 @@ struct WKAutoCorrectionData {
 - (void)cleanupInteraction;
 
 - (void)scrollViewWillStartPanOrPinchGesture;
+
+- (BOOL)canBecomeFirstResponderForWebView;
+- (BOOL)becomeFirstResponderForWebView;
+- (BOOL)resignFirstResponderForWebView;
+- (BOOL)canPerformActionForWebView:(SEL)action withSender:(id)sender;
+
+- (void)_addShortcut:(id)sender;
+- (void)_arrowKey:(id)sender;
+- (void)_define:(id)sender;
+- (void)_lookup:(id)sender;
+- (void)_reanalyze:(id)sender;
+- (void)_share:(id)sender;
+- (void)_showTextStyleOptions:(id)sender;
+- (void)_promptForReplace:(id)sender;
+- (void)_transliterateChinese:(id)sender;
+- (void)replace:(id)sender;
 
 #if ENABLE(TOUCH_EVENTS)
 - (void)_webTouchEvent:(const WebKit::NativeWebTouchEvent&)touchEvent preventsNativeGestures:(BOOL)preventsDefault;
@@ -226,6 +262,26 @@ struct WKAutoCorrectionData {
 - (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler;
 - (void)_setDoubleTapGesturesEnabled:(BOOL)enabled;
 - (NSArray *)_dataDetectionResults;
+- (NSArray<NSValue *> *)_uiTextSelectionRects;
+- (void)accessibilityRetrieveSpeakSelectionContent;
+- (void)_accessibilityRetrieveRectsEnclosingSelectionOffset:(NSInteger)offset withGranularity:(UITextGranularity)granularity;
+- (void)_accessibilityRetrieveRectsAtSelectionOffset:(NSInteger)offset withText:(NSString *)text;
+
+#if ENABLE(DATA_INTERACTION)
+- (void)_didPerformDataInteractionControllerOperation;
+- (void)_didHandleStartDataInteractionRequest:(BOOL)started;
+- (void)_startDataInteractionWithImage:(RetainPtr<CGImageRef>)image atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint isLink:(BOOL)isLink;
+- (void)_simulateDataInteractionGestureRecognized:(UILongPressGestureRecognizer *)gestureRecognizer WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionEntered:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionUpdated:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionPerformOperation:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionEnded:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateDataInteractionSessionDidEnd:(id)session withOperation:(NSUInteger)operation WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateFailedDataInteractionWithIndex:(NSInteger)sourceIndex WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateWillBeginDataInteractionWithIndex:(NSInteger)sourceIndex withSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (NSArray *)_simulatedItemsForDataInteractionWithIndex:(NSInteger)sourceIndex WK_API_AVAILABLE(ios(WK_IOS_TBA));
+#endif
+
 @end
 
 @interface WKContentView (WKTesting)

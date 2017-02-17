@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,7 +56,7 @@ void FunctionRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     rareData->m_objectAllocationProfile.visitAggregate(visitor);
     rareData->m_internalFunctionAllocationProfile.visitAggregate(visitor);
-    visitor.append(&rareData->m_boundFunctionStructure);
+    visitor.append(rareData->m_boundFunctionStructure);
 }
 
 FunctionRareData::FunctionRareData(VM& vm)
@@ -79,9 +79,9 @@ FunctionRareData::~FunctionRareData()
 {
 }
 
-void FunctionRareData::initializeObjectAllocationProfile(VM& vm, JSObject* prototype, size_t inlineCapacity)
+void FunctionRareData::initializeObjectAllocationProfile(VM& vm, JSGlobalObject* globalObject, JSObject* prototype, size_t inlineCapacity)
 {
-    m_objectAllocationProfile.initialize(vm, this, prototype, inlineCapacity);
+    m_objectAllocationProfile.initialize(vm, globalObject, this, prototype, inlineCapacity);
 }
 
 void FunctionRareData::clear(const char* reason)

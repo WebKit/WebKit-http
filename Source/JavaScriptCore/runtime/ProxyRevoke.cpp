@@ -57,7 +57,7 @@ void ProxyRevoke::finishCreation(VM& vm, const char* name, ProxyObject* proxy)
 
 static EncodedJSValue JSC_HOST_CALL performProxyRevoke(ExecState* exec)
 {
-    ProxyRevoke* proxyRevoke = jsCast<ProxyRevoke*>(exec->callee());
+    ProxyRevoke* proxyRevoke = jsCast<ProxyRevoke*>(exec->jsCallee());
     JSValue proxyValue = proxyRevoke->proxy();
     if (proxyValue.isNull())
         return JSValue::encode(jsUndefined());
@@ -81,7 +81,7 @@ void ProxyRevoke::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_proxy);
+    visitor.append(thisObject->m_proxy);
 }
 
 } // namespace JSC

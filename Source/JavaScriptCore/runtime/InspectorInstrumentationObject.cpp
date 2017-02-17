@@ -60,7 +60,7 @@ InspectorInstrumentationObject::InspectorInstrumentationObject(VM& vm, Structure
 void InspectorInstrumentationObject::finishCreation(VM& vm, JSGlobalObject*)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     putDirectWithoutTransition(vm, vm.propertyNames->isEnabled, jsBoolean(false));
 }
 
@@ -86,7 +86,7 @@ EncodedJSValue JSC_HOST_CALL inspectorInstrumentationObjectLog(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue target = exec->argument(0);
-    String value = target.toString(exec)->value(exec);
+    String value = target.toWTFString(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     dataLog(value, "\n");
     return JSValue::encode(jsUndefined());

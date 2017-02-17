@@ -97,6 +97,7 @@
     <link rel="stylesheet" href="Views/HeapSnapshotInstancesContentView.css">
     <link rel="stylesheet" href="Views/HierarchicalPathComponent.css">
     <link rel="stylesheet" href="Views/HoverMenu.css">
+    <link rel="stylesheet" href="Views/IdleTreeElement.css">
     <link rel="stylesheet" href="Views/ImageResourceContentView.css">
     <link rel="stylesheet" href="Views/IndeterminateProgressSpinner.css">
     <link rel="stylesheet" href="Views/IndexedDatabaseObjectStoreContentView.css">
@@ -167,6 +168,7 @@
     <link rel="stylesheet" href="Views/TextNavigationItem.css">
     <link rel="stylesheet" href="Views/TextResourceContentView.css">
     <link rel="stylesheet" href="Views/TextToggleButtonNavigationItem.css">
+    <link rel="stylesheet" href="Views/ThreadTreeElement.css">
     <link rel="stylesheet" href="Views/TimelineDataGrid.css">
     <link rel="stylesheet" href="Views/TimelineIcons.css">
     <link rel="stylesheet" href="Views/TimelineOverview.css">
@@ -253,28 +255,32 @@
     <script src="Protocol/LoggingProtocolTracer.js"></script>
     <script src="Protocol/InspectorBackend.js"></script>
 
+    <script src="Protocol/Connection.js"></script>
+    <script src="Protocol/InspectorFrontendAPI.js"></script>
+    <script src="Protocol/LoadInspectorBackendCommands.js"></script>
+    <script src="Protocol/MessageDispatcher.js"></script>
+    <script src="Protocol/RemoteObject.js"></script>
+    <script src="Protocol/Target.js"></script>
+
+    <script src="Protocol/MainTarget.js"></script>
+    <script src="Protocol/WorkerTarget.js"></script>
+
     <script src="Protocol/ApplicationCacheObserver.js"></script>
     <script src="Protocol/CSSObserver.js"></script>
-    <script src="Protocol/Connection.js"></script>
     <script src="Protocol/ConsoleObserver.js"></script>
     <script src="Protocol/DOMObserver.js"></script>
     <script src="Protocol/DOMStorageObserver.js"></script>
     <script src="Protocol/DatabaseObserver.js"></script>
     <script src="Protocol/DebuggerObserver.js"></script>
     <script src="Protocol/HeapObserver.js"></script>
-    <script src="Protocol/InspectorFrontendAPI.js"></script>
     <script src="Protocol/InspectorObserver.js"></script>
     <script src="Protocol/LayerTreeObserver.js"></script>
-    <script src="Protocol/LoadInspectorBackendCommands.js"></script>
     <script src="Protocol/MemoryObserver.js"></script>
-    <script src="Protocol/MessageDispatcher.js"></script>
     <script src="Protocol/NetworkObserver.js"></script>
     <script src="Protocol/PageObserver.js"></script>
-    <script src="Protocol/RemoteObject.js"></script>
     <script src="Protocol/ReplayObserver.js"></script>
     <script src="Protocol/RuntimeObserver.js"></script>
     <script src="Protocol/ScriptProfilerObserver.js"></script>
-    <script src="Protocol/Target.js"></script>
     <script src="Protocol/TimelineObserver.js"></script>
     <script src="Protocol/WorkerObserver.js"></script>
 
@@ -421,6 +427,7 @@
     <script src="Views/TimelineView.js"></script>
     <script src="Views/TreeElement.js"></script>
     <script src="Views/TreeOutline.js"></script>
+    <script src="Views/TreeOutlineGroup.js"></script>
 
     <script src="Views/ButtonNavigationItem.js"></script>
     <script src="Views/DatabaseUserQueryViewBase.js"></script>
@@ -558,6 +565,7 @@
     <script src="Views/HeapSnapshotInstanceFetchMoreDataGridNode.js"></script>
     <script src="Views/HierarchicalPathNavigationItem.js"></script>
     <script src="Views/HoverMenu.js"></script>
+    <script src="Views/IdleTreeElement.js"></script>
     <script src="Views/ImageResourceContentView.js"></script>
     <script src="Views/IndeterminateProgressSpinner.js"></script>
     <script src="Views/IndexedDatabaseDetailsSidebarPanel.js"></script>
@@ -650,6 +658,7 @@
     <script src="Views/TextNavigationItem.js"></script>
     <script src="Views/TextResourceContentView.js"></script>
     <script src="Views/TextToggleButtonNavigationItem.js"></script>
+    <script src="Views/ThreadTreeElement.js"></script>
     <script src="Views/TimelineRecordBar.js"></script>
     <script src="Views/TimelineRecordFrame.js"></script>
     <script src="Views/TimelineRecordingContentView.js"></script>
@@ -696,6 +705,7 @@
     <script src="Controllers/ApplicationCacheManager.js"></script>
     <script src="Controllers/BasicBlockAnnotator.js"></script>
     <script src="Controllers/BranchManager.js"></script>
+    <script src="Controllers/BreakpointLogMessageLexer.js"></script>
     <script src="Controllers/BreakpointPopoverController.js"></script>
     <script src="Controllers/CSSStyleManager.js"></script>
     <script src="Controllers/CodeMirrorColorEditingController.js"></script>

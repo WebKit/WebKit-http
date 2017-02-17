@@ -341,7 +341,7 @@ private:
             // We have to do some constant-folding here because this enables CreateThis folding. Note
             // that we don't have such watchpoint-based folding for inlined uses of Callee, since in that
             // case if the function is a singleton then we already know it.
-            if (FunctionExecutable* executable = jsDynamicCast<FunctionExecutable*>(m_codeBlock->ownerExecutable())) {
+            if (FunctionExecutable* executable = jsDynamicCast<FunctionExecutable*>(*m_vm, m_codeBlock->ownerExecutable())) {
                 InferredValue* singleton = executable->singletonFunction();
                 if (JSValue value = singleton->inferredValue()) {
                     m_graph.watchpoints().addLazily(singleton);
@@ -407,7 +407,7 @@ private:
     {
         ASSERT(node->op() == GetLocal);
         ASSERT(node->origin.semantic.bytecodeIndex == m_currentIndex);
-        ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+        ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
         LazyOperandValueProfileKey key(m_currentIndex, node->local());
         SpeculatedType prediction = m_inlineStackTop->m_lazyOperands.prediction(locker, key);
         node->variableAccessData()->predict(prediction);
@@ -852,7 +852,7 @@ private:
     {
         SpeculatedType prediction;
         {
-            ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+            ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
             prediction = m_inlineStackTop->m_profiledBlock->valueProfilePredictionForBytecodeOffset(locker, bytecodeIndex);
         }
 
@@ -891,7 +891,7 @@ private:
 
             bytecodeIndex = codeOrigin->bytecodeIndex;
             CodeBlock* profiledBlock = stack->m_profiledBlock;
-            ConcurrentJITLocker locker(profiledBlock->m_lock);
+            ConcurrentJSLocker locker(profiledBlock->m_lock);
             return profiledBlock->valueProfilePredictionForBytecodeOffset(locker, bytecodeIndex);
         }
 
@@ -928,7 +928,7 @@ private:
     
     ArrayMode getArrayMode(ArrayProfile* profile, Array::Action action)
     {
-        ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+        ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
         profile->computeUpdatedPrediction(locker, m_inlineStackTop->m_profiledBlock);
         bool makeSafe = profile->outOfBounds(locker);
         return ArrayMode::fromObserved(locker, profile, action, makeSafe);
@@ -1883,7 +1883,7 @@ bool ByteCodeParser::handleInlining(
                         // arguments received inside the callee. But that probably won't matter for most
                         // calls.
                         if (codeBlock && argument < static_cast<unsigned>(codeBlock->numParameters())) {
-                            ConcurrentJITLocker locker(codeBlock->m_lock);
+                            ConcurrentJSLocker locker(codeBlock->m_lock);
                             if (ValueProfile* profile = codeBlock->valueProfileForArgument(argument))
                                 variable->predict(profile->computeUpdatedPrediction(locker));
                         }
@@ -2246,6 +2246,94 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
             return false;
         }
     }
+
+    case ArraySliceIntrinsic: {
+#if USE(JSVALUE32_64)
+        if (isX86()) {
+            // There aren't enough registers for this to be done easily.
+            return false;
+        }
+#endif
+        if (argumentCountIncludingThis < 2)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadConstantCache)
+            || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCache))
+            return false;
+
+        ArrayMode arrayMode = getArrayMode(m_currentInstruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile);
+        if (!arrayMode.isJSArray())
+            return false;
+
+        if (arrayMode.arrayClass() != Array::OriginalArray)
+            return false;
+
+        switch (arrayMode.type()) {
+        case Array::Double:
+        case Array::Int32:
+        case Array::Contiguous: {
+            JSGlobalObject* globalObject = m_graph.globalObjectFor(currentNodeOrigin().semantic);
+
+            InlineWatchpointSet& objectPrototypeTransition = globalObject->objectPrototype()->structure()->transitionWatchpointSet();
+            InlineWatchpointSet& arrayPrototypeTransition = globalObject->arrayPrototype()->structure()->transitionWatchpointSet();
+
+            // FIXME: We could easily relax the Array/Object.prototype transition as long as we OSR exitted if we saw a hole.
+            if (globalObject->arraySpeciesWatchpoint().state() == IsWatched
+                && globalObject->havingABadTimeWatchpoint()->isStillValid()
+                && arrayPrototypeTransition.isStillValid()
+                && objectPrototypeTransition.isStillValid()
+                && globalObject->arrayPrototypeChainIsSane()) {
+
+                m_graph.watchpoints().addLazily(globalObject->arraySpeciesWatchpoint());
+                m_graph.watchpoints().addLazily(globalObject->havingABadTimeWatchpoint());
+                m_graph.watchpoints().addLazily(arrayPrototypeTransition);
+                m_graph.watchpoints().addLazily(objectPrototypeTransition);
+
+                insertChecks();
+
+                Node* array = get(virtualRegisterForArgument(0, registerOffset));
+                // We do a few things here to prove that we aren't skipping doing side-effects in an observable way:
+                // 1. We ensure that the "constructor" property hasn't been changed (because the observable
+                // effects of slice require that we perform a Get(array, "constructor") and we can skip
+                // that if we're an original array structure. (We can relax this in the future by using
+                // TryGetById and CheckCell).
+                //
+                // 2. We check that the array we're calling slice on has the same global object as the lexical
+                // global object that this code is running in. This requirement is necessary because we setup the
+                // watchpoints above on the lexical global object. This means that code that calls slice on
+                // arrays produced by other global objects won't get this optimization. We could relax this
+                // requirement in the future by checking that the watchpoint hasn't fired at runtime in the code
+                // we generate instead of registering it as a watchpoint that would invalidate the compilation.
+                //
+                // 3. By proving we're an original array structure, we guarantee that the incoming array
+                // isn't a subclass of Array.
+
+                StructureSet structureSet;
+                structureSet.add(globalObject->originalArrayStructureForIndexingType(ArrayWithInt32));
+                structureSet.add(globalObject->originalArrayStructureForIndexingType(ArrayWithContiguous));
+                structureSet.add(globalObject->originalArrayStructureForIndexingType(ArrayWithDouble));
+                addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(structureSet)), array);
+
+                addVarArgChild(array);
+                addVarArgChild(get(virtualRegisterForArgument(1, registerOffset))); // Start index.
+                if (argumentCountIncludingThis >= 3)
+                    addVarArgChild(get(virtualRegisterForArgument(2, registerOffset))); // End index.
+                addVarArgChild(addToGraph(GetButterfly, array));
+
+                Node* arraySlice = addToGraph(Node::VarArg, ArraySlice, OpInfo(), OpInfo());
+                set(VirtualRegister(resultOperand), arraySlice);
+                return true;
+            }
+
+            return false;
+        }
+        default:
+            return false;
+        }
+
+        RELEASE_ASSERT_NOT_REACHED();
+        return false;
+    }
         
     case ArrayPopIntrinsic: {
         if (argumentCountIncludingThis != 1)
@@ -2343,7 +2431,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
             Structure* regExpStructure = globalObject->regExpStructure();
             m_graph.registerStructure(regExpStructure);
             ASSERT(regExpStructure->storedPrototype().isObject());
-            ASSERT(regExpStructure->storedPrototype().asCell()->classInfo() == RegExpPrototype::info());
+            ASSERT(regExpStructure->storedPrototype().asCell()->classInfo(*m_vm) == RegExpPrototype::info());
 
             FrozenValue* regExpPrototypeObjectValue = m_graph.freeze(regExpStructure->storedPrototype());
             Structure* regExpPrototypeStructure = regExpPrototypeObjectValue->structure();
@@ -2404,7 +2492,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         Structure* regExpStructure = globalObject->regExpStructure();
         m_graph.registerStructure(regExpStructure);
         ASSERT(regExpStructure->storedPrototype().isObject());
-        ASSERT(regExpStructure->storedPrototype().asCell()->classInfo() == RegExpPrototype::info());
+        ASSERT(regExpStructure->storedPrototype().asCell()->classInfo(*m_vm) == RegExpPrototype::info());
 
         FrozenValue* regExpPrototypeObjectValue = m_graph.freeze(regExpStructure->storedPrototype());
         Structure* regExpPrototypeStructure = regExpPrototypeObjectValue->structure();
@@ -2872,7 +2960,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
             result = addToGraph(CallStringConstructor, get(virtualRegisterForArgument(1, registerOffset)));
         
         if (kind == CodeForConstruct)
-            result = addToGraph(NewStringObject, OpInfo(function->globalObject()->stringObjectStructure()), result);
+            result = addToGraph(NewStringObject, OpInfo(m_graph.registerStructure(function->globalObject()->stringObjectStructure())), result);
         
         set(VirtualRegister(resultOperand), result);
         return true;
@@ -2884,7 +2972,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
 
         Node* result;
         if (argumentCountIncludingThis <= 1)
-            result = addToGraph(NewObject, OpInfo(function->globalObject()->objectStructureForObjectConstructor()));
+            result = addToGraph(NewObject, OpInfo(m_graph.registerStructure(function->globalObject()->objectStructureForObjectConstructor())));
         else
             result = addToGraph(CallObjectConstructor, get(virtualRegisterForArgument(1, registerOffset)));
         set(VirtualRegister(resultOperand), result);
@@ -3065,7 +3153,7 @@ GetByOffsetMethod ByteCodeParser::planLoad(const ObjectPropertyCondition& condit
     // because it's the most profitable. Also, there are cases where the presence is watchable but
     // we don't want to watch it unless it became an equivalence (see the relationship between
     // (1), (2), and (3) above).
-    ObjectPropertyCondition equivalenceCondition = condition.attemptToMakeEquivalenceWithoutBarrier();
+    ObjectPropertyCondition equivalenceCondition = condition.attemptToMakeEquivalenceWithoutBarrier(*m_vm);
     if (m_graph.watchCondition(equivalenceCondition))
         return GetByOffsetMethod::constant(m_graph.freeze(equivalenceCondition.requiredValue()));
     
@@ -3204,7 +3292,7 @@ bool ByteCodeParser::checkPresenceLike(
 void ByteCodeParser::checkPresenceLike(
     Node* base, UniquedStringImpl* uid, PropertyOffset offset, const StructureSet& set)
 {
-    if (JSObject* knownBase = base->dynamicCastConstant<JSObject*>()) {
+    if (JSObject* knownBase = base->dynamicCastConstant<JSObject*>(*m_vm)) {
         if (checkPresenceLike(knownBase, uid, offset, set))
             return;
     }
@@ -3223,7 +3311,7 @@ Node* ByteCodeParser::load(
     
     UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
     
-    if (JSObject* knownBase = base->dynamicCastConstant<JSObject*>()) {
+    if (JSObject* knownBase = base->dynamicCastConstant<JSObject*>(*m_vm)) {
         // Try to optimize away the structure check. Note that it's not worth doing anything about this
         // if the base's structure is watched.
         Structure* structure = base->constant()->structure();
@@ -3257,7 +3345,7 @@ Node* ByteCodeParser::load(
                     presenceLike(knownBase, uid, variant.offset(), variant.structureSet());
                 if (presenceCondition) {
                     ObjectPropertyCondition equivalenceCondition =
-                        presenceCondition.attemptToMakeEquivalenceWithoutBarrier();
+                        presenceCondition.attemptToMakeEquivalenceWithoutBarrier(*m_vm);
                     if (m_graph.watchCondition(equivalenceCondition))
                         return weakJSConstant(equivalenceCondition.requiredValue());
                     
@@ -3295,7 +3383,7 @@ Node* ByteCodeParser::load(
             // We did emit a structure check. That means that we have an opportunity to do constant folding
             // here, since we didn't do it above.
             JSValue constant = m_graph.tryGetConstantProperty(
-                base->asJSValue(), variant.structureSet(), variant.offset());
+                base->asJSValue(), *m_graph.addStructureSet(variant.structureSet()), variant.offset());
             if (constant)
                 return weakJSConstant(constant);
         }
@@ -3341,7 +3429,7 @@ void ByteCodeParser::handleGetById(
             }
         }
         if (ok)
-            getByIdStatus.filter(base->structure());
+            getByIdStatus.filter(base->structure().get());
     }
     
     NodeType getById;
@@ -3394,7 +3482,7 @@ void ByteCodeParser::handleGetById(
             if (variant.conditionSet().isEmpty()) {
                 cases.append(
                     MultiGetByOffsetCase(
-                        variant.structureSet(),
+                        *m_graph.addStructureSet(variant.structureSet()),
                         GetByOffsetMethod::load(variant.offset())));
                 continue;
             }
@@ -3406,7 +3494,7 @@ void ByteCodeParser::handleGetById(
                 return;
             }
             
-            cases.append(MultiGetByOffsetCase(variant.structureSet(), method));
+            cases.append(MultiGetByOffsetCase(*m_graph.addStructureSet(variant.structureSet()), method));
         }
 
         if (m_graph.compilation())
@@ -3533,8 +3621,13 @@ void ByteCodeParser::handlePutById(
         if (m_graph.compilation())
             m_graph.compilation()->noticeInlinedPutById();
 
-        for (const PutByIdVariant& variant : putByIdStatus.variants())
+        for (const PutByIdVariant& variant : putByIdStatus.variants()) {
             m_graph.registerInferredType(variant.requiredType());
+            for (Structure* structure : variant.oldStructure())
+                m_graph.registerStructure(structure);
+            if (variant.kind() == PutByIdVariant::Transition)
+                m_graph.registerStructure(variant.newStructure());
+        }
         
         MultiPutByOffsetData* data = m_graph.m_multiPutByOffsetData.add();
         data->variants = putByIdStatus.variants();
@@ -3565,7 +3658,7 @@ void ByteCodeParser::handlePutById(
     
         Node* propertyStorage;
         Transition* transition = m_graph.m_transitions.add(
-            variant.oldStructureForTransition(), variant.newStructure());
+            m_graph.registerStructure(variant.oldStructureForTransition()), m_graph.registerStructure(variant.newStructure()));
 
         if (variant.reallocatesStorage()) {
 
@@ -3594,12 +3687,22 @@ void ByteCodeParser::handlePutById(
         data->inferredType = variant.requiredType();
         m_graph.registerInferredType(data->inferredType);
         
+        // NOTE: We could GC at this point because someone could insert an operation that GCs.
+        // That's fine because:
+        // - Things already in the structure will get scanned because we haven't messed with
+        //   the object yet.
+        // - The value we are fixing to put is going to be kept live by OSR exit handling. So
+        //   if the GC does a conservative scan here it will see the new value.
+        
         addToGraph(
             PutByOffset,
             OpInfo(data),
             propertyStorage,
             base,
             value);
+        
+        if (variant.reallocatesStorage())
+            addToGraph(NukeStructureAndSetButterfly, base, propertyStorage);
 
         // FIXME: PutStructure goes last until we fix either
         // https://bugs.webkit.org/show_bug.cgi?id=142921 or
@@ -3779,13 +3882,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             int calleeOperand = currentInstruction[2].u.operand;
             Node* callee = get(VirtualRegister(calleeOperand));
 
-            JSFunction* function = callee->dynamicCastConstant<JSFunction*>();
+            JSFunction* function = callee->dynamicCastConstant<JSFunction*>(*m_vm);
             if (!function) {
                 JSCell* cachedFunction = currentInstruction[4].u.jsCell.unvalidatedGet();
                 if (cachedFunction
                     && cachedFunction != JSCell::seenMultipleCalleeObjects()
                     && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
-                    ASSERT(cachedFunction->inherits(JSFunction::info()));
+                    ASSERT(cachedFunction->inherits(*m_vm, JSFunction::info()));
 
                     FrozenValue* frozen = m_graph.freeze(cachedFunction);
                     addToGraph(CheckCell, OpInfo(frozen), callee);
@@ -3802,7 +3905,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                         m_graph.watchpoints().addLazily(rareData->allocationProfileWatchpointSet());
                         // The callee is still live up to this point.
                         addToGraph(Phantom, callee);
-                        set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(NewObject, OpInfo(structure)));
+                        set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(NewObject, OpInfo(m_graph.registerStructure(structure))));
                         alreadyEmitted = true;
                     }
                 }
@@ -3817,7 +3920,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         case op_new_object: {
             set(VirtualRegister(currentInstruction[1].u.operand),
                 addToGraph(NewObject,
-                    OpInfo(currentInstruction[3].u.objectAllocationProfile->structure())));
+                    OpInfo(m_graph.registerStructure(currentInstruction[3].u.objectAllocationProfile->structure()))));
             NEXT_OPCODE(op_new_object);
         }
             
@@ -4261,7 +4364,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             GetByIdStatus getByIdStatus;
             unsigned identifierNumber = 0;
             {
-                ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
                 ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
                 // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
                 // At that time, there is no information.
@@ -4319,7 +4422,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 unsigned identifierNumber = std::numeric_limits<unsigned>::max();
                 PutByIdStatus putByIdStatus;
                 {
-                    ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                    ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
                     ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
                     // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
                     // At that time, there is no information.
@@ -4909,7 +5012,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                         break;
                     }
                 }
-                if (JSScope* scope = localBase->dynamicCastConstant<JSScope*>()) {
+                if (JSScope* scope = localBase->dynamicCastConstant<JSScope*>(*m_vm)) {
                     for (unsigned n = depth; n--;)
                         scope = scope->next();
                     set(VirtualRegister(dst), weakJSConstant(scope));
@@ -4945,7 +5048,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             WatchpointSet* watchpoints = 0;
             uintptr_t operand;
             {
-                ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
                 if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks || resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)
                     watchpoints = currentInstruction[5].u.watchpointSet;
                 else if (resolveType != UnresolvedProperty && resolveType != UnresolvedPropertyWithVarInjectionChecks)
@@ -4991,7 +5094,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 ScopeOffset offset;
                 JSSegmentedVariableObject* scopeObject = jsCast<JSSegmentedVariableObject*>(JSScope::constantScopeForCodeBlock(resolveType, m_inlineStackTop->m_codeBlock));
                 {
-                    ConcurrentJITLocker locker(scopeObject->symbolTable()->m_lock);
+                    ConcurrentJSLocker locker(scopeObject->symbolTable()->m_lock);
                     SymbolTableEntry entry = scopeObject->symbolTable()->get(locker, uid);
                     watchpointSet = entry.watchpointSet();
                     offset = entry.scopeOffset();
@@ -5114,7 +5217,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             WatchpointSet* watchpoints = nullptr;
             uintptr_t operand;
             {
-                ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
                 if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks || resolveType == LocalClosureVar || resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)
                     watchpoints = currentInstruction[5].u.watchpointSet;
                 else if (resolveType != UnresolvedProperty && resolveType != UnresolvedPropertyWithVarInjectionChecks)
@@ -5253,7 +5356,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // bytecode-level liveness of the scope register.
             Node* callee = get(VirtualRegister(CallFrameSlot::callee));
             Node* result;
-            if (JSFunction* function = callee->dynamicCastConstant<JSFunction*>())
+            if (JSFunction* function = callee->dynamicCastConstant<JSFunction*>(*m_vm))
                 result = weakJSConstant(function->scope());
             else
                 result = addToGraph(GetScope, callee);
@@ -5325,23 +5428,29 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_new_func:
-        case op_new_generator_func: {
+        case op_new_generator_func:
+        case op_new_async_func: {
             FunctionExecutable* decl = m_inlineStackTop->m_profiledBlock->functionDecl(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(decl);
-            NodeType op = (opcodeID == op_new_generator_func) ? NewGeneratorFunction : NewFunction;
+            NodeType op = (opcodeID == op_new_generator_func) ? NewGeneratorFunction :
+                (opcodeID == op_new_async_func) ? NewAsyncFunction : NewFunction;
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
             static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_generator_func), "The length of op_new_func should eqaual to one of op_new_generator_func");
+            static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_async_func), "The length of op_new_func should eqaual to one of op_new_async_func");
             NEXT_OPCODE(op_new_func);
         }
 
         case op_new_func_exp:
-        case op_new_generator_func_exp: {
+        case op_new_generator_func_exp:
+        case op_new_async_func_exp: {
             FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(expr);
-            NodeType op = (opcodeID == op_new_generator_func_exp) ? NewGeneratorFunction : NewFunction;
+            NodeType op = (opcodeID == op_new_generator_func_exp) ? NewGeneratorFunction :
+                (opcodeID == op_new_async_func_exp) ? NewAsyncFunction : NewFunction;
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
-            
+    
             static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_generator_func_exp");
+            static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_async_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_async_func_exp");
             NEXT_OPCODE(op_new_func_exp);
         }
 
@@ -5372,8 +5481,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_in: {
+            ArrayMode arrayMode = getArrayMode(currentInstruction[OPCODE_LENGTH(op_in) - 1].u.arrayProfile);
             set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(In, get(VirtualRegister(currentInstruction[2].u.operand)), get(VirtualRegister(currentInstruction[3].u.operand))));
+                addToGraph(In, OpInfo(arrayMode.asWord()), get(VirtualRegister(currentInstruction[2].u.operand)), get(VirtualRegister(currentInstruction[3].u.operand))));
             NEXT_OPCODE(op_in);
         }
 
@@ -5402,7 +5512,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             Node* base = get(VirtualRegister(currentInstruction[2].u.operand));
             ArrayMode arrayMode = getArrayMode(currentInstruction[4].u.arrayProfile, Array::Read);
             Node* property = get(VirtualRegister(currentInstruction[3].u.operand));
-            Node* hasIterableProperty = addToGraph(HasIndexedProperty, OpInfo(arrayMode.asWord()), base, property);
+            Node* hasIterableProperty = addToGraph(HasIndexedProperty, OpInfo(arrayMode.asWord()), OpInfo(static_cast<uint32_t>(PropertySlot::InternalMethodType::GetOwnProperty)), base, property);
             set(VirtualRegister(currentInstruction[1].u.operand), hasIterableProperty);
             NEXT_OPCODE(op_has_indexed_property);
         }
@@ -5546,7 +5656,7 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
     , m_caller(byteCodeParser->m_inlineStackTop)
 {
     {
-        ConcurrentJITLocker locker(m_profiledBlock->m_lock);
+        ConcurrentJSLocker locker(m_profiledBlock->m_lock);
         m_lazyOperands.initialize(locker, m_profiledBlock->lazyOperandValueProfiles());
         m_exitProfile.initialize(locker, profiledBlock->exitProfile());
         
@@ -5574,7 +5684,7 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         ASSERT(callsiteBlockHead);
         
         m_inlineCallFrame = byteCodeParser->m_graph.m_plan.inlineCallFrames->add();
-        byteCodeParser->m_graph.freeze(codeBlock->baselineVersion());
+
         // The owner is the machine code block, and we already have a barrier on that when the
         // plan finishes.
         m_inlineCallFrame->baselineCodeBlock.setWithoutWriteBarrier(codeBlock->baselineVersion());

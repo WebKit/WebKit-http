@@ -26,15 +26,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-enum MediaKeySessionType {
-    "temporary",
-    "persistent-usage-record",
-    "persistent-license"
-};
- 
 [
     Conditional=ENCRYPTED_MEDIA,
+    EnabledAtRuntime=EncryptedMediaAPI,
+    ImplementationLacksVTable,
 ] interface MediaKeys {
-    [MayThrowException] MediaKeySession createSession(optional MediaKeySessionType sessionType = "temporary");
+    [CallWith=ScriptExecutionContext, MayThrowException] MediaKeySession createSession(optional MediaKeySessionType sessionType = "temporary");
     Promise<bool> setServerCertificate(BufferSource serverCertificate);
 };

@@ -45,7 +45,7 @@ public:
     RenderMathMLBlock(Document&, RenderStyle&&);
     virtual ~RenderMathMLBlock();
 
-    MathMLStyle* mathMLStyle() const { return const_cast<MathMLStyle*>(&m_mathMLStyle.get()); }
+    MathMLStyle& mathMLStyle() const { return m_mathMLStyle; }
 
     bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
 
@@ -79,7 +79,7 @@ protected:
 
     static LayoutUnit ascentForChild(const RenderBox& child)
     {
-        return child.firstLineBaseline().valueOr(child.logicalHeight());
+        return child.firstLineBaseline().value_or(child.logicalHeight());
     }
 
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
@@ -104,12 +104,12 @@ public:
     }
 
 
-    MathMLStyle* mathMLStyle() const { return const_cast<MathMLStyle*>(&m_mathMLStyle.get()); }
+    MathMLStyle& mathMLStyle() const { return m_mathMLStyle; }
 
 private:
     bool isRenderMathMLTable() const final { return true; }
     const char* renderName() const final { return "RenderMathMLTable"; }
-    Optional<int> firstLineBaseline() const final;
+    std::optional<int> firstLineBaseline() const final;
 
     Ref<MathMLStyle> m_mathMLStyle;
 };

@@ -76,7 +76,7 @@ MathObject::MathObject(VM& vm, Structure* structure)
 void MathObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     putDirectWithoutTransition(vm, Identifier::fromString(&vm, "E"), jsNumber(exp(1.0)), DontDelete | DontEnum | ReadOnly);
     putDirectWithoutTransition(vm, Identifier::fromString(&vm, "LN2"), jsNumber(log(2.0)), DontDelete | DontEnum | ReadOnly);
@@ -297,6 +297,7 @@ EncodedJSValue JSC_HOST_CALL mathProtoFuncIMul(ExecState* exec)
     auto scope = DECLARE_THROW_SCOPE(vm);
     int32_t left = exec->argument(0).toInt32(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     int32_t right = exec->argument(1).toInt32(exec);
     return JSValue::encode(jsNumber(left * right));
 }

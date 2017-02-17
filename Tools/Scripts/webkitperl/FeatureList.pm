@@ -51,15 +51,11 @@ BEGIN {
 my (
     $accelerated2DCanvasSupport,
     $allInOneBuild,
-    $asyncfunctionSyntax,
     $attachmentElementSupport,
     $canvasPathSupport,
     $canvasProxySupport,
     $channelMessagingSupport,
-    $classSyntax,
-    $cspNextSupport,
     $css3TextSupport,
-    $css4ImagesSupport,
     $cssBoxDecorationBreakSupport,
     $cssCompositingSupport,
     $cssDeviceAdaptation,
@@ -73,11 +69,8 @@ my (
     $customSchemeHandlerSupport,
     $dataTransferItemsSupport,
     $datalistElementSupport,
-    $detailsElementSupport,
     $deviceOrientationSupport,
-    $directoryUploadSupport,
     $dom4EventsConstructor,
-    $domIterator,
     $downloadAttributeSupport,
     $encryptedMediaSupport,
     $fetchAPISupport,
@@ -86,7 +79,6 @@ my (
     $ftpDirSupport,
     $fullscreenAPISupport,
     $gamepadSupport,
-    $generatorsSupport,
     $geolocationSupport,
     $hardwareConcurrencySupport,
     $highDPICanvasSupport,
@@ -115,41 +107,27 @@ my (
     $mediaStreamSupport,
     $meterElementSupport,
     $mhtmlSupport,
-    $modernMediaControls,
-    $modulesSupport,
     $mouseCursorScaleSupport,
     $netscapePluginAPISupport,
     $nosniffSupport,
     $notificationsSupport,
     $orientationEventsSupport,
-    $pageVisibilityAPISupport,
     $performanceTimelineSupport,
-    $promiseSupport,
     $proximityEventsSupport,
     $quotaSupport,
     $readableStreamAPISupport,
     $readableByteStreamAPISupport,
     $registerProtocolHandlerSupport,
-    $requestAnimationFrameSupport,
     $resolutionMediaQuerySupport,
-    $resourceTimingSupport,
     $scriptedSpeechSupport,
-    $shadowDOMSupport,
-    $styleScopedSupport,
     $subtleCrypto,
-    $svgDOMObjCBindingsSupport,
     $svgFontsSupport,
     $systemMallocSupport,
-    $templateElementSupport,
-    $templateLiteralSyntax,
-    $textAutosizingSupport,
     $threadedCompositorSupport,
-    $threadedHTMLParserSupport,
     $threeDTransformsSupport,
     $touchEventsSupport,
     $touchIconLoadingSupport,
     $touchSliderSupport,
-    $userTimingSupport,
     $vibrationSupport,
     $videoSupport,
     $videoTrackSupport,
@@ -169,17 +147,13 @@ prohibitUnknownPort();
 
 my @features = (
     { option => "3d-rendering", desc => "Toggle 3D Rendering support",
-      define => "ENABLE_3D_TRANSFORMS", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$threeDTransformsSupport },
+      define => "ENABLE_3D_TRANSFORMS", default => (isAppleCocoaWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$threeDTransformsSupport },
 
     { option => "accelerated-2d-canvas", desc => "Toggle Accelerated 2D Canvas support",
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => isWPE(), value => \$accelerated2DCanvasSupport },
 
     { option => "allinone-build", desc => "Toggle all-in-one build",
       define => "ENABLE_ALLINONE_BUILD", default => isWindows(), value => \$allInOneBuild },
-
-    { option => "asyncfunction-syntax", desc => "Toggle ES2017 async functions support",
-      define => "ENABLE_ES2017_ASYNCFUNCTION_SYNTAX", default => 0, value => \$asyncfunctionSyntax,
-      javascript => 1 },
 
     { option => "attachment-element", desc => "Toggle Attachment Element support",
       define => "ENABLE_ATTACHMENT_ELEMENT", default => 0, value => \$attachmentElementSupport },
@@ -193,9 +167,6 @@ my @features = (
     { option => "channel-messaging", desc => "Toggle Channel Messaging support",
       define => "ENABLE_CHANNEL_MESSAGING", default => 1, value => \$channelMessagingSupport },
 
-    { option => "csp-next", desc => "Toggle Content Security Policy 1.1 support",
-      define => "ENABLE_CSP_NEXT", default => isGtk(), value => \$cspNextSupport },
-
     { option => "css-box-decoration-break", desc => "Toggle CSS box-decoration-break support",
       define => "ENABLE_CSS_BOX_DECORATION_BREAK", default => 1, value => \$cssBoxDecorationBreakSupport },
 
@@ -203,7 +174,7 @@ my @features = (
       define => "ENABLE_CSS_COMPOSITING", default => isAppleWebKit(), value => \$cssCompositingSupport },
 
     { option => "css-device-adaptation", desc => "Toggle CSS Device Adaptation support",
-      define => "ENABLE_CSS_DEVICE_ADAPTATION", default => isEfl(), value => \$cssDeviceAdaptation },
+      define => "ENABLE_CSS_DEVICE_ADAPTATION", default => 0, value => \$cssDeviceAdaptation },
 
     { option => "css-grid-layout", desc => "Toggle CSS Grid Layout support",
       define => "ENABLE_CSS_GRID_LAYOUT", default => 1, value => \$cssGridLayoutSupport },
@@ -238,9 +209,6 @@ my @features = (
     { option => "datalist-element", desc => "Toggle Datalist Element support",
       define => "ENABLE_DATALIST_ELEMENT", default => isEfl(), value => \$datalistElementSupport },
 
-    { option => "details-element", desc => "Toggle Details Element support",
-      define => "ENABLE_DETAILS_ELEMENT", default => 1, value => \$detailsElementSupport },
-
     { option => "device-orientation", desc => "Toggle Device Orientation support",
       define => "ENABLE_DEVICE_ORIENTATION", default => (isIOSWebKit() || isWPE()), value => \$deviceOrientationSupport },
 
@@ -266,14 +234,10 @@ my @features = (
       define => "ENABLE_FTPDIR", default => 1, value => \$ftpDirSupport },
 
     { option => "fullscreen-api", desc => "Toggle Fullscreen API support",
-      define => "ENABLE_FULLSCREEN_API", default => (isAppleMacWebKit() || isEfl() || isGtk()), value => \$fullscreenAPISupport },
+      define => "ENABLE_FULLSCREEN_API", default => (isAppleCocoaWebKit() || isEfl() || isGtk()), value => \$fullscreenAPISupport },
 
     { option => "gamepad", desc => "Toggle Gamepad support",
       define => "ENABLE_GAMEPAD", default => 0, value => \$gamepadSupport },
-
-    { option => "generators", desc => "Toggle ES6 generators support",
-      define => "ENABLE_ES6_GENERATORS", default => 1, value => \$generatorsSupport,
-      javascript => 1 },
 
     { option => "geolocation", desc => "Toggle Geolocation support",
       define => "ENABLE_GEOLOCATION", default => (isAppleWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$geolocationSupport },
@@ -285,7 +249,7 @@ my @features = (
       define => "ENABLE_ICONDATABASE", default => !isIOSWebKit(), value => \$icondatabaseSupport },
 
     { option => "indexed-database", desc => "Toggle Indexed Database support",
-      define => "ENABLE_INDEXED_DATABASE", default => (isAppleMacWebKit() || isEfl() || isGtk() || isWPE()), value => \$indexedDatabaseSupport },
+      define => "ENABLE_INDEXED_DATABASE", default => (isAppleCocoaWebKit() || isEfl() || isGtk() || isWPE()), value => \$indexedDatabaseSupport },
 
     { option => "input-speech", desc => "Toggle Input Speech support",
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
@@ -351,11 +315,7 @@ my @features = (
       define => "ENABLE_METER_ELEMENT", default => !isAppleWinWebKit(), value => \$meterElementSupport },
 
     { option => "mhtml", desc => "Toggle MHTML support",
-      define => "ENABLE_MHTML", default => (isGtk() || isEfl()), value => \$mhtmlSupport },
-
-    { option => "modules", desc => "Toggle ES6 modules support",
-      define => "ENABLE_ES6_MODULES", default => 0, value => \$modulesSupport,
-      javascript => 1 },
+      define => "ENABLE_MHTML", default => (isGtk() || isEfl() || isWPE()), value => \$mhtmlSupport },
 
     { option => "mouse-cursor-scale", desc => "Toggle Scaled mouse cursor support",
       define => "ENABLE_MOUSE_CURSOR_SCALE", default => isEfl(), value => \$mouseCursorScaleSupport },
@@ -381,17 +341,11 @@ my @features = (
     { option => "performance-timeline", desc => "Toggle Performance Timeline support",
       define => "ENABLE_PERFORMANCE_TIMELINE", default => (isGtk() || isWPE()), value => \$performanceTimelineSupport },
 
-    { option => "promises", desc => "Toggle Promise support",
-      define => "ENABLE_PROMISES", default => 1, value => \$promiseSupport },
-
     { option => "proximity-events", desc => "Toggle Proximity Events support",
       define => "ENABLE_PROXIMITY_EVENTS", default => 0, value => \$proximityEventsSupport },
 
     { option => "quota", desc => "Toggle Quota support",
       define => "ENABLE_QUOTA", default => 0, value => \$quotaSupport },
-
-    { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
-      define => "ENABLE_REQUEST_ANIMATION_FRAME", default => 1, value => \$requestAnimationFrameSupport },
 
     { option => "readableStreamAPI", desc => "Toggle ReadableStream API support",
       define => "ENABLE_READABLE_STREAM_API", default => 1, value => \$readableStreamAPISupport },
@@ -402,14 +356,11 @@ my @features = (
     { option => "resolution-media-query", desc => "Toggle resolution media query support",
       define => "ENABLE_RESOLUTION_MEDIA_QUERY", default => isEfl(), value => \$resolutionMediaQuerySupport },
 
-    { option => "resource-timing", desc => "Toggle Resource Timing support",
-      define => "ENABLE_RESOURCE_TIMING", default => (isGtk() || isWPE()), value => \$resourceTimingSupport },
-
     { option => "scripted-speech", desc => "Toggle Scripted Speech support",
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
 
     { option => "subtle-crypto", desc => "Toggle WebCrypto Subtle-Crypto support",
-      define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isEfl() || isAppleMacWebKit() || isIOSWebKit()), value => \$subtleCrypto },
+      define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isEfl() || isAppleCocoaWebKit() || isIOSWebKit()), value => \$subtleCrypto },
 
     { option => "svg-fonts", desc => "Toggle SVG Fonts support",
       define => "ENABLE_SVG_FONTS", default => 1, value => \$svgFontsSupport },
@@ -429,9 +380,6 @@ my @features = (
     { option => "touch-slider", desc => "Toggle Touch Slider support",
       define => "ENABLE_TOUCH_SLIDER", default => isEfl(), value => \$touchSliderSupport },
 
-    { option => "user-timing", desc => "Toggle User Timing support",
-      define => "ENABLE_USER_TIMING", default => (isGtk() || isWPE()), value => \$userTimingSupport },
-
     { option => "vibration", desc => "Toggle Vibration support",
       define => "ENABLE_VIBRATION", default => isEfl(), value => \$vibrationSupport },
 
@@ -448,10 +396,10 @@ my @features = (
       define => "ENABLE_WEB_AUDIO", default => (isEfl() || isGtk() || isWPE()), value => \$webAudioSupport },
 
     { option => "web-replay", desc => "Toggle Web Replay support",
-      define => "ENABLE_WEB_REPLAY", default => isAppleMacWebKit(), value => \$webReplaySupport },
+      define => "ENABLE_WEB_REPLAY", default => isAppleCocoaWebKit(), value => \$webReplaySupport },
 
     { option => "web-rtc", desc => "Toggle WebRTC support",
-      define => "ENABLE_WEB_RTC", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk()), value => \$webRTCSupport },
+      define => "ENABLE_WEB_RTC", default => (isAppleCocoaWebKit() || isIOSWebKit() || isGtk()), value => \$webRTCSupport },
 
     { option => "web-sockets", desc => "Toggle Web Sockets support",
       define => "ENABLE_WEB_SOCKETS", default => 1, value => \$webSocketsSupport },
@@ -463,7 +411,7 @@ my @features = (
       define => "ENABLE_WEBASSEMBLY", default => 0, value => \$webAssemblySupport },
 
     { option => "webgl", desc => "Toggle WebGL support",
-      define => "ENABLE_WEBGL", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$webglSupport },
+      define => "ENABLE_WEBGL", default => (isAppleCocoaWebKit() || isGtk() || isEfl() || isWPE()), value => \$webglSupport },
 
     { option => "writableStreamAPI", desc => "Toggle WritableStream API support",
       define => "ENABLE_WRITABLE_STREAM_API", default => 1, value => \$writableStreamAPISupport },

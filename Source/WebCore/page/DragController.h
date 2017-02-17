@@ -28,6 +28,7 @@
 #include "DragActions.h"
 #include "DragImage.h"
 #include "IntPoint.h"
+#include "IntRect.h"
 #include "URL.h"
 
 namespace WebCore {
@@ -56,10 +57,10 @@ namespace WebCore {
 
         DragClient& client() const { return m_client; }
 
-        WEBCORE_EXPORT DragOperation dragEntered(DragData&);
-        WEBCORE_EXPORT void dragExited(DragData&);
-        WEBCORE_EXPORT DragOperation dragUpdated(DragData&);
-        WEBCORE_EXPORT bool performDragOperation(DragData&);
+        WEBCORE_EXPORT DragOperation dragEntered(const DragData&);
+        WEBCORE_EXPORT void dragExited(const DragData&);
+        WEBCORE_EXPORT DragOperation dragUpdated(const DragData&);
+        WEBCORE_EXPORT bool performDragOperation(const DragData&);
 
         bool mouseIsOverFileInput() const { return m_fileInputElementUnderMouse; }
         unsigned numberOfItemsToBeAccepted() const { return m_numberOfItemsToBeAccepted; }
@@ -96,22 +97,22 @@ namespace WebCore {
         static const float DragImageAlpha;
 
     private:
-        bool dispatchTextInputEventFor(Frame*, DragData&);
-        bool canProcessDrag(DragData&);
-        bool concludeEditDrag(DragData&);
-        DragOperation dragEnteredOrUpdated(DragData&);
-        DragOperation operationForLoad(DragData&);
-        bool tryDocumentDrag(DragData&, DragDestinationAction, DragOperation&);
-        bool tryDHTMLDrag(DragData&, DragOperation&);
-        DragOperation dragOperation(DragData&);
+        bool dispatchTextInputEventFor(Frame*, const DragData&);
+        bool canProcessDrag(const DragData&);
+        bool concludeEditDrag(const DragData&);
+        DragOperation dragEnteredOrUpdated(const DragData&);
+        DragOperation operationForLoad(const DragData&);
+        bool tryDocumentDrag(const DragData&, DragDestinationAction, DragOperation&);
+        bool tryDHTMLDrag(const DragData&, DragOperation&);
+        DragOperation dragOperation(const DragData&);
         void clearDragCaret();
-        bool dragIsMove(FrameSelection&, DragData&);
-        bool isCopyKeyDown(DragData&);
+        bool dragIsMove(FrameSelection&, const DragData&);
+        bool isCopyKeyDown(const DragData&);
 
         void mouseMovedIntoDocument(Document*);
 
         void doImageDrag(Element&, const IntPoint&, const IntRect&, DataTransfer&, Frame&, IntPoint&);
-        void doSystemDrag(DragImageRef, const IntPoint&, const IntPoint&, DataTransfer&, Frame&, bool forLink);
+        void doSystemDrag(DragImage, const IntPoint&, const IntPoint&, const IntRect& dragImageBounds, DataTransfer&, Frame&, bool forLink);
         void cleanupAfterSystemDrag();
         void declareAndWriteDragImage(DataTransfer&, Element&, const URL&, const String& label);
 #if ENABLE(ATTACHMENT_ELEMENT)

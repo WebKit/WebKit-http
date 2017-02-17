@@ -15,7 +15,7 @@
     }
     
 </style>
-<video src="../../content/test.mp4" autoplay></video>
+<video src="../../content/test.mp4" autoplay controls></video>
 <div id="host"></div>
 <script type="text/javascript">
 
@@ -28,12 +28,17 @@ const media = document.querySelector("video");
 const mediaController = createControls(container, media, null);
 
 let numberOfEvents = 0;
-media.addEventListener("play", () => {
-    media.pause();
+scheduler.frameDidFire = function() {
+    if (media.paused)
+        return;
 
     const input = mediaController.controls.timeControl.scrubber.children[1].element;
     const bounds = input.getBoundingClientRect();
-    const minX = bounds.left;
+    if (bounds.width === 0)
+        return;
+
+    media.pause();
+
     const dragStartX = bounds.left + bounds.width / 2;
     const dragEndX = bounds.left;
     const centerY = bounds.top + bounds.height / 2;
@@ -42,7 +47,7 @@ media.addEventListener("play", () => {
         numberOfEvents++;
 
         if (numberOfEvents == 1) {
-            shouldBe("media.currentTime", "media.duration / 2");
+            shouldBeCloseTo("media.currentTime", media.duration / 2, 0.2);
             const delta = dragEndX - dragStartX;
             const iterations = Math.abs(delta);
             for (let i = 1; i <= iterations; ++i)
@@ -55,13 +60,14 @@ media.addEventListener("play", () => {
             media.remove();
             finishJSTest();
         }
-        
+    
     });
 
     // Start dragging.
     eventSender.mouseMoveTo(dragStartX, centerY);
     eventSender.mouseDown();
-});
+    scheduler.frameDidFire = null;
+};
 
 </script>
 <script src="../../../resources/js-test-post.js"></script>
