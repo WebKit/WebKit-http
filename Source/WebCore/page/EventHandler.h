@@ -226,12 +226,6 @@ public:
     bool handleGestureEvent(const PlatformGestureEvent&);
     bool handleGestureTap(const PlatformGestureEvent&);
     bool handleGestureLongPress(const PlatformGestureEvent&);
-    bool handleGestureLongTap(const PlatformGestureEvent&);
-    bool handleGestureTwoFingerTap(const PlatformGestureEvent&);
-    bool handleGestureScrollUpdate(const PlatformGestureEvent&);
-    bool handleGestureScrollBegin(const PlatformGestureEvent&);
-    void clearGestureScrollNodes();
-    bool isScrollbarHandlingGestures() const;
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -482,11 +476,7 @@ private:
 #endif
 
 #if ENABLE(QT_GESTURE_EVENTS)
-    bool handleGestureTapDown();
     bool handleGestureForTextSelectionOrContextMenu(const PlatformGestureEvent&);
-    bool passGestureEventToWidget(const PlatformGestureEvent&, Widget*);
-    bool passGestureEventToWidgetIfPossible(const PlatformGestureEvent&, RenderObject*);
-    bool sendScrollEventToView(const PlatformGestureEvent&, const FloatSize&);
 #endif
 
     void setLastKnownMousePosition(const PlatformMouseEvent&);
@@ -598,14 +588,6 @@ private:
     RefPtr<Document> m_originatingTouchPointDocument;
     unsigned m_originatingTouchPointTargetKey { 0 };
     bool m_touchPressed { false };
-#endif
-
-#if ENABLE(QT_GESTURE_EVENTS)
-    RefPtr<Node> m_scrollGestureHandlingNode;
-    bool m_lastHitTestResultOverWidget;
-    RefPtr<Element> m_previousGestureScrolledElement;
-    RefPtr<Scrollbar> m_scrollbarHandlingScrollGesture;
-    bool m_didLongPressInvokeContextMenu { false };
 #endif
 
     double m_maxMouseMovedDuration { 0 };

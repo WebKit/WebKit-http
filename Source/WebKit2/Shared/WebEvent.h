@@ -73,8 +73,6 @@ public:
 
 #if ENABLE(QT_GESTURE_EVENTS)
         // WebGestureEvent
-        GestureScrollBegin,
-        GestureScrollEnd,
         GestureSingleTap,
 #endif
 

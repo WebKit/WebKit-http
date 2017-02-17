@@ -44,9 +44,7 @@ public:
 
     static RefPtr<GestureEvent> create(AbstractView*, const PlatformGestureEvent&);
 
-    void initGestureEvent(const AtomicString& type, PassRefPtr<AbstractView>, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, float deltaX, float deltaY);
-
-    virtual EventInterface eventInterface() const;
+    EventInterface eventInterface() const override;
 
     float deltaX() const { return m_deltaX; }
     float deltaY() const { return m_deltaY; }

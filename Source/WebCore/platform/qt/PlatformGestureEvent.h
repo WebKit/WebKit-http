@@ -38,28 +38,9 @@ namespace WebCore {
 class PlatformGestureEvent : public PlatformEvent {
 public:
     PlatformGestureEvent()
-        : PlatformEvent(PlatformEvent::GestureScrollBegin)
+        : PlatformEvent(PlatformEvent::GestureTap)
         , m_deltaX(0)
         , m_deltaY(0)
-    {
-    }
-
-    PlatformGestureEvent(Type type, const IntPoint& position, const IntPoint& globalPosition, double timestamp, float deltaX, float deltaY, bool shiftKey, bool ctrlKey, bool altKey, bool metaKey)
-        : PlatformEvent(type, shiftKey, ctrlKey, altKey, metaKey, timestamp)
-        , m_position(position)
-        , m_globalPosition(globalPosition)
-        , m_deltaX(deltaX)
-        , m_deltaY(deltaY)
-    {
-    }
-
-    PlatformGestureEvent(Type type, const IntPoint& position, const IntPoint& globalPosition, double timestamp, const IntSize& area, const FloatPoint& delta, bool shiftKey, bool ctrlKey, bool altKey, bool metaKey)
-        : PlatformEvent(type, shiftKey, ctrlKey, altKey, metaKey, timestamp)
-        , m_position(position)
-        , m_globalPosition(globalPosition)
-        , m_area(area)
-        , m_deltaX(delta.x())
-        , m_deltaY(delta.y())
     {
     }
 

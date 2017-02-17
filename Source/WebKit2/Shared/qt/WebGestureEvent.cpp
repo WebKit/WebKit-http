@@ -80,7 +80,7 @@ bool WebGestureEvent::decode(IPC::ArgumentDecoder& decoder, WebGestureEvent& t)
 
 bool WebGestureEvent::isGestureEventType(Type type)
 {
-    return type == GestureScrollBegin || type == GestureScrollEnd || type == GestureSingleTap;
+    return type == GestureSingleTap;
 }
 
 } // namespace WebKit

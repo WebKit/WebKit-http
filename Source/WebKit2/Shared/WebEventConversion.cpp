@@ -230,12 +230,6 @@ public:
     {
         // PlatformEvent
         switch (webEvent.type()) {
-        case WebEvent::GestureScrollBegin:
-            m_type = WebCore::PlatformEvent::GestureScrollBegin;
-            break;
-        case WebEvent::GestureScrollEnd:
-            m_type = WebCore::PlatformEvent::GestureScrollEnd;
-            break;
         case WebEvent::GestureSingleTap:
             m_type = WebCore::PlatformEvent::GestureTap;
             break;

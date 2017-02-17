@@ -4602,8 +4602,6 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     case WebEvent::RawKeyDown:
     case WebEvent::Char:
 #if ENABLE(QT_GESTURE_EVENTS)
-    case WebEvent::GestureScrollBegin:
-    case WebEvent::GestureScrollEnd:
     case WebEvent::GestureSingleTap:
 #endif
 #if ENABLE(TOUCH_EVENTS)
@@ -4632,8 +4630,6 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     case WebEvent::MouseDown:
         break;
 #if ENABLE(QT_GESTURE_EVENTS)
-    case WebEvent::GestureScrollBegin:
-    case WebEvent::GestureScrollEnd:
     case WebEvent::GestureSingleTap: {
         WebGestureEvent event = m_gestureEventQueue.first();
         MESSAGE_CHECK(type == event.type());

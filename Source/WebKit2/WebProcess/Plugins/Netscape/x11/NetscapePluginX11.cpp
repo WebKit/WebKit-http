@@ -489,8 +489,6 @@ bool NetscapePluginX11::handleMouseEvent(const WebMouseEvent& event)
     case WebEvent::RawKeyDown:
     case WebEvent::Char:
 #if ENABLE(QT_GESTURE_EVENTS)
-    case WebEvent::GestureScrollBegin:
-    case WebEvent::GestureScrollEnd:
     case WebEvent::GestureSingleTap:
 #endif
 #if ENABLE(TOUCH_EVENTS)
