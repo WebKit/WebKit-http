@@ -428,7 +428,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             GstBuffer* data = nullptr;
             gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
 
-#if USE(PLAYREADY)
+#if USE(PLAYREADY) && !ENABLE(ENCRYPTED_MEDIA)
             if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
                 LockHolder locker(m_prSessionMutex);
@@ -1470,7 +1470,7 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
     return static_cast<unsigned>(position);
 }
 
-#if USE(PLAYREADY)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(PLAYREADY)
 PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 {
     PlayreadySession* session = nullptr;
@@ -1484,9 +1484,7 @@ PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 #endif
     return session;
 }
-#endif
 
-#if USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerBase::emitPlayReadySession()
 {
     PlayreadySession* session = prSession();

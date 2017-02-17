@@ -82,9 +82,9 @@ public:
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void dispatchDecryptionKey(GstBuffer*) override;
-#endif
 #if USE(PLAYREADY)
     void emitPlayReadySession() override;
+#endif
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
