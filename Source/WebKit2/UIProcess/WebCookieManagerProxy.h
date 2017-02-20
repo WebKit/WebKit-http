@@ -78,8 +78,10 @@ public:
     void getCookies(WebCore::SessionID, std::function<void (API::Array*, CallbackBase::Error)>);
     void didGetCookies(Vector<WebCore::Cookie> cookies,  uint64_t callbackID);
 
-    void startObservingCookieChanges(WebCore::SessionID, std::function<void ()>&& = nullptr);
+    void startObservingCookieChanges(WebCore::SessionID);
     void stopObservingCookieChanges(WebCore::SessionID);
+
+    void setCookieObserverCallback(WebCore::SessionID, std::function<void ()>&&);
 
 #if USE(SOUP)
     void setCookiePersistentStorage(const String& storagePath, uint32_t storageType);
