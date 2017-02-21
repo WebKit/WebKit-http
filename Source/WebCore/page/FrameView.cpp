@@ -4592,6 +4592,7 @@ void FrameView::removeChild(Widget& widget)
 
 bool FrameView::wheelEvent(const PlatformWheelEvent& wheelEvent)
 {
+#if !PLATFORM(QT)
     // Note that to allow for rubber-band over-scroll behavior, even non-scrollable views
     // should handle wheel events.
 #if !ENABLE(RUBBER_BANDING)
@@ -4609,6 +4610,7 @@ bool FrameView::wheelEvent(const PlatformWheelEvent& wheelEvent)
         }
         return true;
     }
+#endif
 
     // We don't allow mouse wheeling to happen in a ScrollView that has had its scrollbars explicitly disabled.
     if (!canHaveScrollbars())
