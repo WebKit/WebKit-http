@@ -370,7 +370,7 @@ static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSyst
     ASSERT(streamEncryptionAllowedSystems);
     Vector<String> streamEncryptionAllowedSystemsVector;
     unsigned i;
-    for (i = 0; !streamEncryptionAllowedSystems[i]; ++i)
+    for (i = 0; streamEncryptionAllowedSystems[i]; ++i)
         streamEncryptionAllowedSystemsVector.append(streamEncryptionAllowedSystems[i]);
 
     const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");
@@ -1673,7 +1673,7 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
     if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
-        GST_TRACE("event %u already handled", GST_EVENT_SEQNUM(event));
+        GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
         m_handledProtectionEvents.remove(GST_EVENT_SEQNUM(event));
         return;
     }
