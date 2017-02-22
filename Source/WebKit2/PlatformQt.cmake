@@ -37,6 +37,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit2_SOURCES
+    DatabaseProcess/qt/DatabaseProcessMainQt.cpp
+
     NetworkProcess/CustomProtocols/qt/CustomProtocolManagerQt.cpp
 
     NetworkProcess/Downloads/qt/DownloadQt.cpp
@@ -240,9 +242,8 @@ list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/qt/NetworkProcessMain.cpp
 )
 
-# FIXME
 list(APPEND DatabaseProcess_SOURCES
-    DatabaseProcess/EntryPoint/unix/DatabaseProcessMain.cpp
+    DatabaseProcess/EntryPoint/qt/DatabaseProcessMain.cpp
 )
 
 list(APPEND PluginProcess_SOURCES
