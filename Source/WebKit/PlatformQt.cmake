@@ -147,6 +147,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/network/qt"
     "${WEBCORE_DIR}/platform/text/qt"
+    "${WEBCORE_DIR}/plugins/qt"
     "${WEBCORE_DIR}/rendering"
     "${WEBCORE_DIR}/rendering/style"
 
@@ -278,12 +279,6 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
         list(APPEND WebKit_SOURCES
             qt/Plugins/PluginPackageQt.cpp
             qt/Plugins/PluginViewQt.cpp
-        )
-    endif ()
-
-    if (PLUGIN_BACKEND_XLIB)
-        list(APPEND WebKit_SOURCES
-            qt/Plugins/QtX11ImageConversion.cpp
         )
     endif ()
 
