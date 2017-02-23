@@ -34,6 +34,7 @@
 #include <wayland-client.h>
 #include <wayland-egl.h>
 
+#if defined(WPE_BACKEND_MESA)
 #include <gbm.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -97,6 +98,7 @@ struct Backend {
     struct gbm_device* device;
 };
 }
+#endif
 
 namespace Westeros {
 
@@ -379,27 +381,39 @@ struct wpe_renderer_backend_egl_offscreen_target_interface westeros_renderer_bac
     // create
     []() -> void*
     {
+#if defined(WPE_BACKEND_MESA)        
         return new GBM::EGLOffscreenTarget;
+#else
+        return nullptr;
+#endif        
     },
     // destroy
     [](void* data)
     {
+#if defined(WPE_BACKEND_MESA)        
         auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
         delete target;
+#endif        
     },
     // initialize
     [](void* data, void* backend_data)
     {
+#if defined(WPE_BACKEND_MESA)        
         auto* backend = new GBM::Backend;
         auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
         target->initialize(backend->device, DEFAULT_MODE_WIDTH, DEFAULT_MODE_HEIGHT);
+#endif        
     },
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
+#if defined(WPE_BACKEND_MESA)        
         auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
         printf("westeros_renderer_backend_egl_offscreen_target_interface: native window %x\n", target->surface);`        
         return (EGLNativeWindowType)target->surface;
+#else
+        return (EGLNativeWindowType)nullptr;
+#endif        
     },
 };
 
