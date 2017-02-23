@@ -1460,7 +1460,7 @@ public:
 
     void memoryFence()
     {
-        m_assembler.dmbSY();
+        m_assembler.memoryFence();
     }
 
     static FunctionPtr readCallTarget(CodeLocationCall call)
