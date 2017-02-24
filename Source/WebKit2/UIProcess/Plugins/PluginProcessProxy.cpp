@@ -214,9 +214,9 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::I
     }
 
     m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
+#if (PLATFORM(MAC) || PLATFORM(QT) && USE(MACH_PORTS)) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     m_connection->setShouldCloseConnectionOnMachExceptions();
-#elif PLATFORM(QT)
+#elif PLATFORM(QT) && USE(UNIX_DOMAIN_SOCKETS)
     m_connection->setShouldCloseConnectionOnProcessTermination(processIdentifier());
 #endif
 

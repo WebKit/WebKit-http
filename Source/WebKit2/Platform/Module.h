@@ -73,7 +73,7 @@ private:
     void* platformFunctionPointer(const char* functionName) const;
 
     String m_path;
-#if USE(CF)
+#if USE(CF) && !PLATFORM(QT)
     RetainPtr<CFBundleRef> m_bundle;
 #if !defined(__LP64__)
     CFBundleRefNum m_bundleResourceMap;

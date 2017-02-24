@@ -159,9 +159,9 @@ public:
 
     Client* client() const { return m_client; }
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
+#if (PLATFORM(MAC) || (PLATFORM(QT) && USE(MACH_PORTS))) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     void setShouldCloseConnectionOnMachExceptions();
-#elif PLATFORM(QT)
+#elif PLATFORM(QT) && USE(UNIX_DOMAIN_SOCKETS)
     void setShouldCloseConnectionOnProcessTermination(WebKit::PlatformProcessIdentifier);
 #endif
 
@@ -204,7 +204,7 @@ public:
 
     Identifier identifier() const;
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || (PLATFORM(QT) && USE(MACH_PORTS))
     bool kill();
     void terminateSoon(double intervalInSeconds);
 #endif
@@ -360,7 +360,7 @@ private:
     mach_port_t m_receivePort;
     dispatch_source_t m_receivePortDataAvailableSource;
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
+#if (PLATFORM(MAC) || (PLATFORM(QT) && USE(MACH_PORTS))) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     void exceptionSourceEventHandler();
 
     // If setShouldCloseConnectionOnMachExceptions has been called, this has

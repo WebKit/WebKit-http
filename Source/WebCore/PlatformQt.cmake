@@ -193,7 +193,7 @@ endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
     if (WIN32)
-        set(WebCore_FORWARDING_HEADERS_FILES
+        list(APPEND WebCore_FORWARDING_HEADERS_FILES
             platform/graphics/win/LocalWindowsContext.h
 
             platform/win/BitmapInfo.h
@@ -210,8 +210,8 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
             version
         )
     elseif (PLUGIN_BACKEND_XLIB)
-        set(WebCore_FORWARDING_HEADERS_FILES
-            plugins/qt/QtX11ImageConversion.h
+        list(APPEND WebCore_FORWARDING_HEADERS_FILES
+           plugins/qt/QtX11ImageConversion.h
         )
         list(APPEND WebCore_SOURCES
             plugins/qt/QtX11ImageConversion.cpp
@@ -285,6 +285,16 @@ if (ENABLE_WEBKIT2)
     list(APPEND WebCore_SOURCES
         page/qt/GestureTapHighlighter.cpp
     )
+    if (USE_MACH_PORTS)
+        list(APPEND WebCore_FORWARDING_HEADERS_FILES
+            platform/cocoa/MachSendRight.h
+
+            platform/spi/cocoa/MachVMSPI.h
+        )
+        list(APPEND WebCore_SOURCES
+            platform/cocoa/MachSendRight.cpp
+        )
+    endif ()
 endif ()
 
 if (ENABLE_OPENGL)

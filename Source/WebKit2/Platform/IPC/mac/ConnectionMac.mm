@@ -130,7 +130,7 @@ void Connection::platformInvalidate()
     m_receivePortDataAvailableSource = 0;
     m_receivePort = MACH_PORT_NULL;
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
+#if (PLATFORM(MAC) || (PLATFORM(QT) && USE(MACH_PORTS))) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     if (m_exceptionPort) {
         dispatch_source_cancel(m_exceptionPortDataAvailableSource);
         dispatch_release(m_exceptionPortDataAvailableSource);
@@ -150,7 +150,7 @@ void Connection::terminateSoon(double intervalInSeconds)
     
 void Connection::platformInitialize(Identifier identifier)
 {
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
+#if (PLATFORM(MAC) || (PLATFORM(QT) && USE(MACH_PORTS))) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     m_exceptionPort = MACH_PORT_NULL;
     m_exceptionPortDataAvailableSource = nullptr;
 #endif
@@ -219,7 +219,7 @@ bool Connection::open()
         connection->receiveSourceEventHandler();
     });
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
+#if (PLATFORM(MAC) || (PLATFORM(QT) && USE(MACH_PORTS))) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     if (m_exceptionPort) {
         m_exceptionPortDataAvailableSource = createDataAvailableSource(m_exceptionPort, m_connectionQueue, [connection] {
             connection->exceptionSourceEventHandler();
@@ -238,7 +238,7 @@ bool Connection::open()
 
         if (m_deadNameSource)
             dispatch_resume(m_deadNameSource);
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
+#if (PLATFORM(MAC) || (PLATFORM(QT) && USE(MACH_PORTS))) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
         if (m_exceptionPortDataAvailableSource)
             dispatch_resume(m_exceptionPortDataAvailableSource);
 #endif
@@ -540,7 +540,7 @@ void Connection::receiveSourceEventHandler()
     processIncomingMessage(WTFMove(decoder));
 }    
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
+#if (PLATFORM(MAC) || (PLATFORM(QT) && USE(MACH_PORTS))) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
 void Connection::exceptionSourceEventHandler()
 {
     ReceiveBuffer buffer;

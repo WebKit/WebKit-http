@@ -210,7 +210,7 @@ qt5_add_resources(WebKit2_SOURCES
     WebKit2.qrc
 )
 
-if (APPLE)
+if (USE_MACH_PORTS)
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
         "${WEBKIT2_DIR}/Platform/IPC/mac"
         "${WEBKIT2_DIR}/Platform/mac"
@@ -220,6 +220,9 @@ if (APPLE)
 
         Platform/mac/MachUtilities.cpp
         Platform/mac/SharedMemoryMac.cpp
+    )
+    list(APPEND WebKit2_LIBRARIES
+        objc
     )
 elseif (WIN32)
     list(APPEND WebKit2_SOURCES

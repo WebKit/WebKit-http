@@ -82,6 +82,9 @@ file Source/WTF/wtf/cf
 file Source/WTF/wtf/cocoa
 file Source/WTF/wtf/text/cf
 file Source/WebCore/platform/cf/SharedBufferCF.cpp
+file Source/WebCore/platform/cocoa/MachSendRight.cpp
+file Source/WebCore/platform/cocoa/MachSendRight.h
+file Source/WebCore/platform/spi/cocoa/MachVMSPI.h
 
 # WK2 on Windows and macOS
 file Source/WebKit2/Platform/IPC/mac

@@ -29,7 +29,7 @@
 #include <dispatch/dispatch.h>
 #include <os/object.h>
 
-#if PLATFORM(MAC) || USE(APPLE_INTERNAL_SDK)
+#if PLATFORM(MAC) || USE(APPLE_INTERNAL_SDK) || PLATFORM(QT)
 #include <xpc/xpc.h>
 #else
 

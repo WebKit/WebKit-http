@@ -30,7 +30,7 @@
 #include <mach/kern_return.h>
 #include <mach/mach_types.h>
 
-#if PLATFORM(MAC) || USE(APPLE_INTERNAL_SDK)
+#if PLATFORM(MAC) || USE(APPLE_INTERNAL_SDK) || PLATFORM(QT)
 #include <mach/mach_vm.h>
 #endif
 

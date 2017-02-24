@@ -35,6 +35,7 @@
 #endif
 
 #if HAVE(QOS_CLASSES)
+#include <pthread.h>
 #include <pthread/qos.h>
 #endif
 
