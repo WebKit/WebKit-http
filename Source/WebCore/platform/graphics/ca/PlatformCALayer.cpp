@@ -66,6 +66,14 @@ PlatformCALayer::~PlatformCALayer()
     setOwner(nullptr);
 }
 
+bool PlatformCALayer::canHaveBackingStore() const
+{
+    return m_layerType == LayerType::LayerTypeWebLayer
+        || m_layerType == LayerType::LayerTypeTiledBackingLayer
+        || m_layerType == LayerType::LayerTypePageTiledBackingLayer
+        || m_layerType == LayerType::LayerTypeTiledBackingTileLayer;
+}
+
 void PlatformCALayer::drawRepaintIndicator(CGContextRef context, PlatformCALayer* platformCALayer, int repaintCount, CGColorRef customBackgroundColor)
 {
     char text[16]; // that's a lot of repaints
@@ -106,6 +114,12 @@ void PlatformCALayer::drawRepaintIndicator(CGContextRef context, PlatformCALayer
         CGContextSetRGBStrokeColor(context, 0, 0, 0, 0.65);
         CGContextSetLineWidth(context, 2);
         CGContextStrokeRect(context, indicatorBox);
+    }
+
+    if (!platformCALayer->isOpaque() && platformCALayer->supportsSubpixelAntialiasedText()) {
+        // Draw a gray shadow behind the repaint count.
+        CGContextSetRGBFillColor(context, 1, 1, 1, 0.4);
+        platformCALayer->drawTextAtPoint(context, indicatorBox.x() + 7, indicatorBox.y() + 24, CGSizeMake(1, -1), 22, text, strlen(text));
     }
 
     if (platformCALayer->acceleratesDrawing())
@@ -176,9 +190,6 @@ TextStream& operator<<(TextStream& ts, PlatformCALayer::LayerType layerType)
         break;
     case PlatformCALayer::LayerTypeTransformLayer:
         ts << "transform-layer";
-        break;
-    case PlatformCALayer::LayerTypeWebTiledLayer:
-        ts << "tiled-layer";
         break;
     case PlatformCALayer::LayerTypeTiledBackingLayer:
         ts << "tiled-backing-layer";

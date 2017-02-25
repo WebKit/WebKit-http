@@ -26,6 +26,7 @@
 #import "config.h"
 #import "WebProcessPool.h"
 
+#import "CustomProtocolManagerClient.h"
 #import "NetworkProcessCreationParameters.h"
 #import "NetworkProcessMessages.h"
 #import "NetworkProcessProxy.h"
@@ -146,6 +147,8 @@ void WebProcessPool::platformInitialize()
     WebKit::WebMemoryPressureHandler::singleton();
 #endif
 
+    setCustomProtocolManagerClient(std::make_unique<CustomProtocolManagerClient>());
+
     if (m_websiteDataStore)
         m_websiteDataStore->registerSharedResourceLoadObserver();
 }
@@ -246,12 +249,14 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.uiProcessCookieStorageIdentifier.append(CFDataGetBytePtr(cookieStorageData.get()), CFDataGetLength(cookieStorageData.get()));
 #endif
 #if ENABLE(MEDIA_STREAM)
+    // Allow microphone access if either preference is set because WebRTC requires microphone access.
     bool mediaStreamEnabled = m_defaultPageGroup->preferences().mediaStreamEnabled();
+    bool webRTCEnabled = m_defaultPageGroup->preferences().peerConnectionEnabled();
     if ([defaults objectForKey:@"ExperimentalPeerConnectionEnabled"])
-        mediaStreamEnabled = [defaults boolForKey:@"ExperimentalPeerConnectionEnabled"];
+        webRTCEnabled = [defaults boolForKey:@"ExperimentalPeerConnectionEnabled"];
     
     // FIXME: Remove this and related parameter when <rdar://problem/29448368> is fixed.
-    if (mediaStreamEnabled)
+    if (mediaStreamEnabled || webRTCEnabled)
         SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.audioCaptureExtensionHandle);
 #endif
 }
@@ -264,9 +269,6 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
     parameters.parentProcessName = [[NSProcessInfo processInfo] processName];
     parameters.uiProcessBundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
-
-    for (const auto& scheme : globalURLSchemesWithCustomProtocolHandlers())
-        parameters.urlSchemesRegisteredForCustomProtocols.append(scheme);
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
@@ -308,8 +310,9 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
     bool webRTCEnabled = m_defaultPageGroup->preferences().peerConnectionEnabled();
     if ([defaults objectForKey:@"ExperimentalPeerConnectionEnabled"])
         webRTCEnabled = [defaults boolForKey:@"ExperimentalPeerConnectionEnabled"];
-    
-    parameters.webRTCEnabled = webRTCEnabled;
+
+    if (webRTCEnabled)
+        SandboxExtension::createHandleForGenericExtension("com.apple.webkit.webrtc", parameters.webRTCNetworkingHandle);
 #endif
 }
 

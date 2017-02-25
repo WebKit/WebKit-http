@@ -132,6 +132,26 @@ RunResolver::RunResolver(const RenderBlockFlow& flow, const Layout& layout)
 {
 }
 
+unsigned RunResolver::adjustLineIndexForStruts(LayoutUnit y, unsigned lineIndexCandidate) const
+{
+    auto& struts = m_layout.struts();
+    // We need to offset the lineIndex with line struts when there's an actual strut before the candidate.
+    auto& strut = struts.first();
+    if (strut.lineBreak >= lineIndexCandidate)
+        return lineIndexCandidate;
+    // Jump over the first strut since we know that the line we are looking for is beyond the strut.
+    unsigned strutIndex = 1;
+    float topPosition = strut.lineBreak * m_lineHeight + strut.offset;
+    for (auto lineIndex = strut.lineBreak; lineIndex < m_layout.lineCount(); ++lineIndex) {
+        if (strutIndex < struts.size() && struts.at(strutIndex).lineBreak == lineIndex)
+            topPosition += struts.at(strutIndex++).offset;
+        if (y >= topPosition && y < (topPosition + m_lineHeight))
+            return lineIndex;
+        topPosition += m_lineHeight;
+    }
+    return m_layout.lineCount() - 1;
+}
+
 unsigned RunResolver::lineIndexForHeight(LayoutUnit height, IndexType type) const
 {
     ASSERT(m_lineHeight);
@@ -142,30 +162,33 @@ unsigned RunResolver::lineIndexForHeight(LayoutUnit height, IndexType type) cons
     else
         y -= m_baseline - m_ascent;
     y = std::max<float>(y, 0);
-    return std::min<unsigned>(y / m_lineHeight, m_layout.lineCount() - 1);
+    auto lineIndexCandidate =  std::min<unsigned>(y / m_lineHeight, m_layout.lineCount() - 1);
+    if (m_layout.hasLineStruts())
+        return adjustLineIndexForStruts(y, lineIndexCandidate);
+    return lineIndexCandidate;
 }
 
-Range<RunResolver::Iterator> RunResolver::rangeForRect(const LayoutRect& rect) const
+WTF::IteratorRange<RunResolver::Iterator> RunResolver::rangeForRect(const LayoutRect& rect) const
 { 
     if (!m_lineHeight)
-        return Range<Iterator>(begin(), end());
+        return { begin(), end() };
 
     unsigned firstLine = lineIndexForHeight(rect.y(), IndexType::First);
     unsigned lastLine = std::max(firstLine, lineIndexForHeight(rect.maxY(), IndexType::Last));
 
     auto rangeBegin = begin().advanceLines(firstLine);
     if (rangeBegin == end())
-        return Range<Iterator>(end(), end());
+        return { end(), end() };
     auto rangeEnd = rangeBegin;
     ASSERT(lastLine >= firstLine);
     rangeEnd.advanceLines(lastLine - firstLine + 1);
-    return Range<Iterator>(rangeBegin, rangeEnd);
+    return { rangeBegin, rangeEnd };
 }
 
-Range<RunResolver::Iterator> RunResolver::rangeForRenderer(const RenderObject& renderer) const
+WTF::IteratorRange<RunResolver::Iterator> RunResolver::rangeForRenderer(const RenderObject& renderer) const
 {
     if (begin() == end())
-        return Range<Iterator>(end(), end());
+        return { end(), end() };
     FlowContents::Iterator segment = m_flowContents.begin();
     auto run = begin();
     ASSERT(segment->start <= (*run).start());
@@ -183,7 +206,7 @@ Range<RunResolver::Iterator> RunResolver::rangeForRenderer(const RenderObject& r
     // Do we actually have a run for this renderer?
     // Collapsed whitespace with dedicated renderer could end up with no run at all.
     if (run == end() || (segment->start != segment->end && segment->end <= (*run).start()))
-        return Range<Iterator>(end(), end());
+        return { end(), end() };
 
     auto rangeBegin = run;
     // Move beyond the end of the segment.
@@ -192,7 +215,51 @@ Range<RunResolver::Iterator> RunResolver::rangeForRenderer(const RenderObject& r
     // Special case when segment == run.
     if (run == rangeBegin)
         ++run;
-    return Range<Iterator>(rangeBegin, run);
+    return { rangeBegin, run };
+}
+
+RunResolver::Iterator RunResolver::runForPoint(const LayoutPoint& point) const
+{
+    if (!m_lineHeight)
+        return end();
+    unsigned lineIndex = lineIndexForHeight(point.y(), IndexType::Last);
+    auto x = point.x() - m_borderAndPaddingBefore;
+    auto it = begin();
+    it.advanceLines(lineIndex);
+    // Point is at the left side of the first run on this line.
+    if ((*it).logicalLeft() > x)
+        return it;
+    // Advance to the first candidate run on this line.
+    while (it != end() && (*it).logicalRight() < x && lineIndex == it.lineIndex())
+        ++it;
+    // We jumped to the next line so the point is at the right side of the previous line.
+    if (it.lineIndex() > lineIndex)
+        return --it;
+    // Now we have a candidate run.
+    // Find the last run that still contains this point (taking overlapping runs with odd word spacing values into account).
+    while (it != end() && (*it).logicalLeft() <= x && lineIndex == it.lineIndex())
+        ++it;
+    return --it;
+}
+
+WTF::IteratorRange<RunResolver::Iterator> RunResolver::rangeForRendererWithOffsets(const RenderObject& renderer, unsigned startOffset, unsigned endOffset) const
+{
+    ASSERT(startOffset <= endOffset);
+    auto range = rangeForRenderer(renderer);
+    auto it = range.begin();
+    // Advance to the firt run with the start offset inside.
+    while (it != range.end() && (*it).end() <= startOffset)
+        ++it;
+    if (it == range.end())
+        return { end(), end() };
+    auto rangeBegin = it;
+    // Special case empty ranges that start at the edge of the run. Apparently normal line layout include those.
+    if (endOffset == startOffset && (*it).start() == endOffset)
+        return { rangeBegin, ++it };
+    // Advance beyond the last run with the end offset.
+    while (it != range.end() && (*it).start() < endOffset)
+        ++it;
+    return { rangeBegin, it };
 }
 
 LineResolver::Iterator::Iterator(RunResolver::Iterator runIterator)

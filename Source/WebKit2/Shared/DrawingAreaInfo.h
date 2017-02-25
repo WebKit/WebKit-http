@@ -34,14 +34,10 @@ enum DrawingAreaType {
     DrawingAreaTypeTiledCoreAnimation,
 #endif
     DrawingAreaTypeRemoteLayerTree,
-#else
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    DrawingAreaTypeCoordinated
 #elif PLATFORM(WPE)
     DrawingAreaTypeWPE
 #else
     DrawingAreaTypeImpl
-#endif
 #endif
 };
 

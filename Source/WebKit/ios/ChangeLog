@@ -1,3 +1,119 @@
+2017-02-23  Aakash Jain  <aakash_jain@apple.com>
+
+        Move instance member from WebFixedPositionContent to implementation file
+        https://bugs.webkit.org/show_bug.cgi?id=168766
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebFixedPositionContent.h: Moving instance member to implementation file.
+        * WebCoreSupport/WebFixedPositionContent.mm: Ditto.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Move instance members from WebPDFView to implementation file
+        https://bugs.webkit.org/show_bug.cgi?id=168765
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebPDFViewIOS.h: Moving instance members to implementation file.
+        * WebView/WebPDFViewIOS.mm: Ditto.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Export m_isLoggingEnabled symbol from MemoryMeasure.h
+        https://bugs.webkit.org/show_bug.cgi?id=168760
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.iOS.exp: Exporting m_isLoggingEnabled symbol.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Move instance members from WebPDFViewPlaceholder.h to implementation file
+        https://bugs.webkit.org/show_bug.cgi?id=168705
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebPDFViewPlaceholder.h: Moving instance members to implementation file.
+        * WebView/WebPDFViewPlaceholder.mm: Ditto.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Move instance members from WebSelectionRect.h to implementation file
+        https://bugs.webkit.org/show_bug.cgi?id=168732
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebSelectionRect.h: Moving instance members to implementation file.
+        * WebCoreSupport/WebSelectionRect.m: Ditto.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Move iOS specific symbols to WebKit.ios.exp
+        https://bugs.webkit.org/show_bug.cgi?id=168726
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.iOS.exp:
+
+2017-02-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212768.
+        https://bugs.webkit.org/show_bug.cgi?id=168698
+
+        Rolling out since this would break other projects. (Requested
+        by aakashjain on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Remove old WebKit1 MemoryMeasure helper."
+        https://bugs.webkit.org/show_bug.cgi?id=168675
+        http://trac.webkit.org/changeset/212768
+
+2017-02-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] Remove old WebKit1 MemoryMeasure helper.
+        <https://webkit.org/b/168675>
+
+        Reviewed by Sam Weinig.
+
+        Remove the MemoryMeasure logging helper from the WebKit1 days. It was using an old way
+        of measuring memory, and we were only using it in a single place anyway.
+
+        * Misc/MemoryMeasure.h: Removed.
+        * Misc/MemoryMeasure.mm: Removed.
+        * WebKit.iOS.exp:
+
+2017-02-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] WebKit1 should use shared memory pressure handler code.
+        <https://webkit.org/b/168653>
+
+        Reviewed by Antti Koivisto.
+
+        * Misc/WebUIKitSupport.mm:
+        (WebKitInitialize): Don't unconditionally install a memory warning handler just
+        because the framework is loaded.
+
+2017-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        List of WebCore symbols to re-export from WebKitLegacy should be built automatically
+        https://bugs.webkit.org/show_bug.cgi?id=168342
+        rdar://problem/26182266
+
+        Reviewed by Tim Horton.
+
+        * WebKit.iOS.exp: Removed manually added symbols.
+
+2017-02-20  Aakash Jain  <aakash_jain@apple.com>
+
+        Stop exporting WebPluginController from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=168603
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.iOS.exp:
+
 2017-02-10  Aakash Jain  <aakash_jain@apple.com>
 
         WebKitLegacy doesn't re-export various symbols from WebCore required by clients

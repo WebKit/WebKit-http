@@ -34,7 +34,7 @@ extern "C" {
 
 WK_EXPORT void WKTextCheckerSetTestingMode(bool enabled);
 
-#if defined(BUILDING_EFL__) || defined(BUILDING_GTK__) || defined(BUILDING_WPE__)
+#if defined(BUILDING_GTK__) || defined(BUILDING_WPE__)
 
 // TextChecker Client
 typedef bool (*WKTextCheckerContinousSpellCheckingAllowed)(const void *clientInfo);

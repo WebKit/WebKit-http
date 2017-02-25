@@ -60,7 +60,7 @@ private:
     void didCloseWebSocketConnection(WebSocketServerConnection*) final;
 
     bool platformResourceForPath(const String& path, Vector<char>& data, String& contentType);
-#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
+#if PLATFORM(GTK) || PLATFORM(WPE)
     void buildPageList(Vector<char>& data, String& contentType);
 #endif
 

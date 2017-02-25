@@ -87,7 +87,7 @@ class MacOSInlineMediaControls extends MacOSMediaControls
         this.leftContainer.layout();
         this.rightContainer.layout();
 
-        const middleContainer = !!this.statusLabel.text ? this.statusLabel : this.timeControl;
+        const middleContainer = this.statusLabel.enabled ? this.statusLabel : this.timeControl;
         this.controlsBar.children = [this._backgroundTint, this.leftContainer, middleContainer, this.rightContainer, this._volumeSliderContainer];
 
         if (middleContainer === this.timeControl)
@@ -141,7 +141,12 @@ class MacOSInlineMediaControls extends MacOSMediaControls
 
     handleEvent(event)
     {
-        this._volumeSliderContainer.visible = event.type === "mouseenter" || event.relatedTarget === this._volumeSliderContainer.element;
+        if (event.type === "mouseenter" && event.currentTarget === this.muteButton.element)
+            this._volumeSliderContainer.visible = true;
+        else if (event.type === "mouseleave" && (event.currentTarget === this.muteButton.element || event.currentTarget === this._volumeSliderContainer.element))
+            this._volumeSliderContainer.visible = this._volumeSliderContainer.element.contains(event.relatedTarget);
+        else
+            super.handleEvent(event);
     }
 
     controlsBarVisibilityDidChange(controlsBar)

@@ -59,6 +59,10 @@ void ScriptableDocumentParser::executeScriptsWaitingForStylesheetsSoon()
 
 void ScriptableDocumentParser::scriptsWaitingForStylesheetsExecutionTimerFired()
 {
+    ASSERT(!isDetached());
+
+    Ref<ScriptableDocumentParser> protectedThis(*this);
+
     if (!document()->styleScope().hasPendingSheets())
         executeScriptsWaitingForStylesheets();
 

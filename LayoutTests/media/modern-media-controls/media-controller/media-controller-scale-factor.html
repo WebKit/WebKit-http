@@ -7,7 +7,7 @@
 
 window.jsTestIsAsync = true;
 
-description("Testing the <code>MediaController</code> has a single container for captions and media controls.");
+description("Testing that we apply a CSS zoom to ensure controls are always 50 device points tall on iOS.");
 
 const media = document.querySelector("video");
 const shadowRoot = window.internals.shadowRoot(media);
@@ -16,6 +16,7 @@ window.requestAnimationFrame(() => {
     shouldBeEqualToString("shadowRoot.querySelector('.media-controls').style.width", "800px");
     shouldBeEqualToString("shadowRoot.querySelector('.media-controls').style.height", "600px");
     shouldBeEqualToString("shadowRoot.querySelector('.media-controls').style.zoom", "0.5");
+    shouldBeEqualToString("shadowRoot.querySelector('.media-controls').style.top", "auto");
 
     debug("");
     media.remove();

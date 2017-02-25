@@ -63,6 +63,7 @@ extern "C" {
     M(ProcessSuspension) \
     M(RemoteLayerTree) \
     M(Resize) \
+    M(ResourceLoadStatistics) \
     M(Selection) \
     M(SessionState) \
     M(StorageAPI) \

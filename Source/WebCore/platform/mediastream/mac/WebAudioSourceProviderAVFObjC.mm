@@ -34,6 +34,7 @@
 #import "CARingBuffer.h"
 #import "Logging.h"
 #import "MediaTimeAVFoundation.h"
+#import "WebAudioBufferList.h"
 #import <AudioToolbox/AudioToolbox.h>
 #import <objc/runtime.h>
 #import <wtf/MainThread.h>
@@ -53,12 +54,12 @@ namespace WebCore {
 
 static const double kRingBufferDuration = 1;
 
-Ref<WebAudioSourceProviderAVFObjC> WebAudioSourceProviderAVFObjC::create(AudioCaptureSourceProviderObjC& source)
+Ref<WebAudioSourceProviderAVFObjC> WebAudioSourceProviderAVFObjC::create(RealtimeMediaSource& source)
 {
     return adoptRef(*new WebAudioSourceProviderAVFObjC(source));
 }
 
-WebAudioSourceProviderAVFObjC::WebAudioSourceProviderAVFObjC(AudioCaptureSourceProviderObjC& source)
+WebAudioSourceProviderAVFObjC::WebAudioSourceProviderAVFObjC(RealtimeMediaSource& source)
     : m_captureSource(&source)
 {
 }
@@ -72,7 +73,7 @@ WebAudioSourceProviderAVFObjC::~WebAudioSourceProviderAVFObjC()
         AudioConverterDispose(m_converter);
         m_converter = nullptr;
     }
-    if (m_connected)
+    if (m_connected && m_captureSource)
         m_captureSource->removeObserver(*this);
 }
 
@@ -127,10 +128,13 @@ void WebAudioSourceProviderAVFObjC::setClient(AudioSourceProviderClient* client)
 
     m_client = client;
 
+    if (!m_captureSource)
+        return;
+
     if (m_client && !m_connected) {
         m_connected = true;
         m_captureSource->addObserver(*this);
-        m_captureSource->start();
+        m_captureSource->startProducingData();
     } else if (!m_client && m_connected) {
         m_captureSource->removeObserver(*this);
         m_connected = false;
@@ -212,6 +216,11 @@ void WebAudioSourceProviderAVFObjC::unprepare()
     m_ringBuffer = nullptr;
     m_list = nullptr;
     m_listBufferSize = 0;
+    if (m_captureSource) {
+        m_captureSource->removeObserver(*this);
+        m_captureSource = nullptr;
+    }
+
     if (m_converter) {
         // FIXME: make and use a smart pointer for AudioConverter
         AudioConverterDispose(m_converter);
@@ -219,24 +228,14 @@ void WebAudioSourceProviderAVFObjC::unprepare()
     }
 }
 
-void WebAudioSourceProviderAVFObjC::process(CMFormatDescriptionRef, CMSampleBufferRef sampleBuffer)
+void WebAudioSourceProviderAVFObjC::audioSamplesAvailable(const MediaTime&, const PlatformAudioData& data, const AudioStreamDescription&, size_t frameCount)
 {
-    std::lock_guard<Lock> lock(m_mutex);
-
     if (!m_ringBuffer)
         return;
 
-    CMItemCount frameCount = CMSampleBufferGetNumSamples(sampleBuffer);
-    CMBlockBufferRef buffer = nil;
+    auto& bufferList = downcast<WebAudioBufferList>(data);
 
-    OSStatus err = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(sampleBuffer, nullptr, m_list.get(), m_listBufferSize, kCFAllocatorSystemDefault, kCFAllocatorSystemDefault, kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment, &buffer);
-
-    if (err) {
-        LOG(Media, "WebAudioSourceProviderAVFObjC::process(%p) - CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer returned error %i", this, err);
-        return;
-    }
-
-    m_ringBuffer->store(m_list.get(), frameCount, m_writeCount);
+    m_ringBuffer->store(bufferList.list(), frameCount, m_writeCount);
     m_writeCount += frameCount;
 }
 

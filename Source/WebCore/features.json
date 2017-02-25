@@ -345,6 +345,15 @@
         "description": "An API that can be used to understand the visibility and position of DOM elements relative to a containing element or to the top-level viewport."
     },
     {
+        "name": "Media Capture and Streams",
+        "status": {
+            "status": "In Development"
+        },
+        "url": "https://w3c.github.io/mediacapture-main/",
+        "keywords": ["mediastream", "getusermedia"],
+        "description": "A set of JavaScript APIs that allow local media, including audio and video, to be requested."
+    },
+    {
         "name": "Navigation Timing Level 1",
         "status": {
             "status": "Done"
@@ -520,20 +529,20 @@
         }
     },
     {
-        "name": "WebCrypto",
+        "name": "Web Cryptography API",
         "status": {
-            "status": "Partial Support",
+            "status": "In Development",
             "enabled-by-default": true
         },
         "url": "http://www.w3.org/TR/WebCryptoAPI/",
-        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=122679",
-        "keywords": ["webcrypto"],
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=160880",
+        "keywords": ["webcrypto", "web cryptography api", "crypto"],
         "category": "webapps",
         "description": "A JavaScript API for web applications to perform cryptographic operations.",
+        "comment": "The prefixed ‘webkitSubtle’ attribute which gave access to the SubtleCrypto API is now deprecated in preference to the official “subtle” property.",
         "contact": {
-            "name": "Jon Davis",
-            "twitter": "@jonathandavis",
-            "email": "web-evangelist@apple.com"
+            "name": "Jiewen Tan",
+            "email": "jiewen_tan@apple.com"
         }
     },
     {
@@ -824,7 +833,7 @@
         "url": "https://html.spec.whatwg.org/multipage/webappapis.html#imagebitmap",
         "webkit-url": "https://webkit.org/b/",
         "specification": "HTML5",
-        "description": "An interface for drawing bitmap images to a <canvas> without undue latency.",
+        "description": "An interface for drawing bitmap images to a &lt;canvas&gt; without undue latency.",
         "contact": {
             "name": "Jonathan Davis",
             "email": "web-evangelist@apple.com",
@@ -1069,6 +1078,25 @@
         "keywords": ["visual viewport", "viewport", "viewportapi"]
     },
     {
+        "name": "Web Audio",
+        "status": {
+            "status": "In Development"
+        },
+        "url": "https://www.w3.org/TR/webaudio/",
+        "keywords": ["audio", "webaudio"],
+        "description": "A high-level JavaScript API for processing and synthesizing audio in web applications.",
+        "comment": "WebKit's implementation does not match the current specification."
+    },
+    {
+        "name": "Web Authentication",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://w3c.github.io/webauthn/",
+        "keywords": ["authentication", "credentials"],
+        "description": "An API enabling the creation and use of strong, attested, cryptographic scoped credentials by web applications, for the purpose of strongly authenticating users."
+    },
+    {
         "name": "Web Bluetooth",
         "status": {
             "status": "Not Considering"
@@ -1076,6 +1104,15 @@
         "url": "https://webbluetoothcg.github.io/web-bluetooth/",
         "keywords": ["bluetooth"],
         "description": "An API to discover and communicate with devices over the Bluetooth."
+    },
+    {
+        "name": "Web MIDI",
+        "status": {
+            "status": "Not Considering"
+        },
+        "url": "https://www.w3.org/TR/webmidi/",
+        "keywords": ["MIDI, music, synthesizer, keyboard"],
+        "description": "An API supporting the Musical Instrument Digital Interface (MIDI) protocol, enabling web applications to enumerate and select MIDI input and output devices on the client system and send and receive MIDI messages."
     },
     {
         "name": "WebUSB",

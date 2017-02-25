@@ -43,6 +43,12 @@ class TiledBacking;
 - (WebCore::TiledBacking*)tiledBacking;
 - (void)invalidate;
 
+- (void)setWantsDeepColorBackingStore:(BOOL)wantsDeepColor;
+- (BOOL)wantsDeepColorBackingStore;
+
+- (void)setSupportsSubpixelAntialiasedText:(BOOL)supportsSubpixelAntialiasedText;
+- (BOOL)supportsSubpixelAntialiasedText;
+
 @end
 
 #endif // WebTiledBackingLayer_h

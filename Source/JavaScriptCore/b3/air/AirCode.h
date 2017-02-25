@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 
 #include "AirArg.h"
 #include "AirBasicBlock.h"
+#include "AirDisassembler.h"
 #include "AirSpecial.h"
 #include "AirStackSlot.h"
 #include "AirTmp.h"
@@ -51,6 +52,7 @@ namespace Air {
 
 class BlockInsertionSet;
 class CCallSpecial;
+class Disassembler;
 
 typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg, unsigned);
 typedef SharedTask<WasmBoundsCheckGeneratorFunction> WasmBoundsCheckGenerator;
@@ -67,18 +69,18 @@ public:
 
     Procedure& proc() { return m_proc; }
     
-    const Vector<Reg>& regsInPriorityOrder(Arg::Type type) const
+    const Vector<Reg>& regsInPriorityOrder(Bank bank) const
     {
-        switch (type) {
-        case Arg::GP:
+        switch (bank) {
+        case GP:
             return m_gpRegsInPriorityOrder;
-        case Arg::FP:
+        case FP:
             return m_fpRegsInPriorityOrder;
         }
         ASSERT_NOT_REACHED();
     }
     
-    void setRegsInPriorityOrder(Arg::Type, const Vector<Reg>&);
+    void setRegsInPriorityOrder(Bank, const Vector<Reg>&);
     
     // This is the set of registers that Air is allowed to emit code to mutate. It's derived from
     // regsInPriorityOrder. Any registers not in this set are said to be "pinned".
@@ -102,23 +104,23 @@ public:
     // This is the special you need to make a C call!
     CCallSpecial* cCallSpecial();
 
-    Tmp newTmp(Arg::Type type)
+    Tmp newTmp(Bank bank)
     {
-        switch (type) {
-        case Arg::GP:
+        switch (bank) {
+        case GP:
             return Tmp::gpTmpForIndex(m_numGPTmps++);
-        case Arg::FP:
+        case FP:
             return Tmp::fpTmpForIndex(m_numFPTmps++);
         }
         ASSERT_NOT_REACHED();
     }
 
-    unsigned numTmps(Arg::Type type)
+    unsigned numTmps(Bank bank)
     {
-        switch (type) {
-        case Arg::GP:
+        switch (bank) {
+        case GP:
             return m_numGPTmps;
-        case Arg::FP:
+        case FP:
             return m_numFPTmps;
         }
         ASSERT_NOT_REACHED();
@@ -275,18 +277,21 @@ public:
     // it's mainly for validating the results from JSAir.
     unsigned jsHash() const;
 
+    void setDisassembler(std::unique_ptr<Disassembler>&& disassembler) { m_disassembler = WTFMove(disassembler); }
+    Disassembler* disassembler() { return m_disassembler.get(); }
+
 private:
     friend class ::JSC::B3::Procedure;
     friend class BlockInsertionSet;
     
     Code(Procedure&);
 
-    Vector<Reg>& regsInPriorityOrderImpl(Arg::Type type)
+    Vector<Reg>& regsInPriorityOrderImpl(Bank bank)
     {
-        switch (type) {
-        case Arg::GP:
+        switch (bank) {
+        case GP:
             return m_gpRegsInPriorityOrder;
-        case Arg::FP:
+        case FP:
             return m_fpRegsInPriorityOrder;
         }
         ASSERT_NOT_REACHED();
@@ -310,6 +315,7 @@ private:
     Vector<CCallHelpers::Label> m_entrypointLabels; // This is empty until code generation.
     RefPtr<WasmBoundsCheckGenerator> m_wasmBoundsCheckGenerator;
     const char* m_lastPhaseName;
+    std::unique_ptr<Disassembler> m_disassembler;
 };
 
 } } } // namespace JSC::B3::Air

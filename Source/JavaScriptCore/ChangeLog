@@ -1,3 +1,1407 @@
+2017-02-24  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: miscellaneous spec fixes
+        https://bugs.webkit.org/show_bug.cgi?id=168822
+
+        Reviewed by Saam Barati.
+
+        * wasm/WasmModuleParser.cpp: "unknown" sections are now called "custom" sections
+        * wasm/WasmSections.h:
+        (JSC::Wasm::validateOrder):
+        (JSC::Wasm::makeString): fix ASSERT_UNREACHABLE bug in printing
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance): disallow i64 import
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link): disallow i64 export
+        (JSC::WebAssemblyModuleRecord::evaluate):
+
+2017-02-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Move Arg::Type and Arg::Width out into the B3 namespace, since they are general concepts
+        https://bugs.webkit.org/show_bug.cgi?id=168833
+
+        Reviewed by Saam Barati.
+        
+        I want to use the Air::Arg::Type and Air::Arg::Width concepts in B3. We are already
+        doing this a bit, and it's akward because of the namespacing. Throughout B3 we take the
+        approach that if something is not specific to Air, then it should be in the B3
+        namespace.
+        
+        This moves Air::Arg::Type to B3::Bank. This moves Air::Arg::Width to B3::Width.
+        
+        I renamed Arg::Type to Bank because there is already a B3::Type and because Arg::Type
+        was never really a type. Its purpose was always to identify register banks, and we use
+        this enum when the thing we care about is whether the value is most appropriate for
+        GPRs or FPRs.
+        
+        I kept both as non-enum classes because I think that we've learned that terse compiler
+        code is a good thing. I don't want to say Bank::GP when I can say GP. With Width, the
+        argument is even stronger, since you cannot say Width::8 but you can say Width8.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3Bank.cpp: Added.
+        (WTF::printInternal):
+        * b3/B3Bank.h: Added.
+        (JSC::B3::forEachBank):
+        (JSC::B3::bankForType):
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::forEachArg):
+        * b3/B3LegalizeMemoryOffsets.cpp:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::run):
+        (JSC::B3::Air::LowerToAir::tmp):
+        (JSC::B3::Air::LowerToAir::scaleForShl):
+        (JSC::B3::Air::LowerToAir::effectiveAddr):
+        (JSC::B3::Air::LowerToAir::addr):
+        (JSC::B3::Air::LowerToAir::createGenericCompare):
+        (JSC::B3::Air::LowerToAir::createBranch):
+        (JSC::B3::Air::LowerToAir::createCompare):
+        (JSC::B3::Air::LowerToAir::createSelect):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3MemoryValue.cpp:
+        (JSC::B3::MemoryValue::accessWidth):
+        * b3/B3MemoryValue.h:
+        * b3/B3MoveConstants.cpp:
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::forEachArg):
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::forEachArgImpl):
+        * b3/B3Value.h:
+        * b3/B3Variable.h:
+        (JSC::B3::Variable::width):
+        (JSC::B3::Variable::bank):
+        * b3/B3WasmAddressValue.h:
+        * b3/B3Width.cpp: Added.
+        (WTF::printInternal):
+        * b3/B3Width.h: Added.
+        (JSC::B3::pointerWidth):
+        (JSC::B3::widthForType):
+        (JSC::B3::conservativeWidth):
+        (JSC::B3::minimumWidth):
+        (JSC::B3::bytes):
+        (JSC::B3::widthForBytes):
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+        * b3/air/AirAllocateStack.cpp:
+        (JSC::B3::Air::allocateStack):
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::canRepresent):
+        (JSC::B3::Air::Arg::isCompatibleBank):
+        (JSC::B3::Air::Arg::isCompatibleType): Deleted.
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::hasBank):
+        (JSC::B3::Air::Arg::bank):
+        (JSC::B3::Air::Arg::isBank):
+        (JSC::B3::Air::Arg::forEachTmp):
+        (JSC::B3::Air::Arg::forEachType): Deleted.
+        (JSC::B3::Air::Arg::pointerWidth): Deleted.
+        (JSC::B3::Air::Arg::typeForB3Type): Deleted.
+        (JSC::B3::Air::Arg::widthForB3Type): Deleted.
+        (JSC::B3::Air::Arg::conservativeWidth): Deleted.
+        (JSC::B3::Air::Arg::minimumWidth): Deleted.
+        (JSC::B3::Air::Arg::bytes): Deleted.
+        (JSC::B3::Air::Arg::widthForBytes): Deleted.
+        (JSC::B3::Air::Arg::hasType): Deleted.
+        (JSC::B3::Air::Arg::type): Deleted.
+        (JSC::B3::Air::Arg::isType): Deleted.
+        * b3/air/AirArgInlines.h:
+        (JSC::B3::Air::ArgThingHelper<Tmp>::forEach):
+        (JSC::B3::Air::ArgThingHelper<Arg>::forEach):
+        (JSC::B3::Air::ArgThingHelper<Reg>::forEach):
+        (JSC::B3::Air::Arg::forEach):
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::forEachArg):
+        * b3/air/AirCCallingConvention.cpp:
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::Code):
+        (JSC::B3::Air::Code::setRegsInPriorityOrder):
+        (JSC::B3::Air::Code::pinRegister):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::regsInPriorityOrder):
+        (JSC::B3::Air::Code::newTmp):
+        (JSC::B3::Air::Code::numTmps):
+        (JSC::B3::Air::Code::regsInPriorityOrderImpl):
+        * b3/air/AirCustom.cpp:
+        (JSC::B3::Air::PatchCustom::isValidForm):
+        (JSC::B3::Air::ShuffleCustom::isValidForm):
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::forEachArg):
+        (JSC::B3::Air::CCallCustom::forEachArg):
+        (JSC::B3::Air::ColdCCallCustom::forEachArg):
+        (JSC::B3::Air::ShuffleCustom::forEachArg):
+        (JSC::B3::Air::WasmBoundsCheckCustom::forEachArg):
+        * b3/air/AirDumpAsJS.cpp:
+        (JSC::B3::Air::dumpAsJS):
+        * b3/air/AirEliminateDeadCode.cpp:
+        (JSC::B3::Air::eliminateDeadCode):
+        * b3/air/AirEmitShuffle.cpp:
+        (JSC::B3::Air::emitShuffle):
+        * b3/air/AirEmitShuffle.h:
+        (JSC::B3::Air::ShufflePair::ShufflePair):
+        (JSC::B3::Air::ShufflePair::width):
+        * b3/air/AirFixObviousSpills.cpp:
+        * b3/air/AirFixPartialRegisterStalls.cpp:
+        (JSC::B3::Air::fixPartialRegisterStalls):
+        * b3/air/AirInst.cpp:
+        (JSC::B3::Air::Inst::hasArgEffects):
+        * b3/air/AirInst.h:
+        (JSC::B3::Air::Inst::forEachTmp):
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::forEach):
+        (JSC::B3::Air::Inst::forEachDef):
+        (JSC::B3::Air::Inst::forEachDefWithExtraClobberedRegs):
+        * b3/air/AirLiveness.h:
+        (JSC::B3::Air::TmpLivenessAdapter::numIndices):
+        (JSC::B3::Air::TmpLivenessAdapter::acceptsBank):
+        (JSC::B3::Air::TmpLivenessAdapter::valueToIndex):
+        (JSC::B3::Air::TmpLivenessAdapter::indexToValue):
+        (JSC::B3::Air::StackSlotLivenessAdapter::acceptsBank):
+        (JSC::B3::Air::RegLivenessAdapter::acceptsBank):
+        (JSC::B3::Air::AbstractLiveness::AbstractLiveness):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::execute):
+        (JSC::B3::Air::TmpLivenessAdapter::acceptsType): Deleted.
+        (JSC::B3::Air::StackSlotLivenessAdapter::acceptsType): Deleted.
+        (JSC::B3::Air::RegLivenessAdapter::acceptsType): Deleted.
+        * b3/air/AirLogRegisterPressure.cpp:
+        (JSC::B3::Air::logRegisterPressure):
+        * b3/air/AirLowerAfterRegAlloc.cpp:
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/AirLowerMacros.cpp:
+        (JSC::B3::Air::lowerMacros):
+        * b3/air/AirPadInterference.cpp:
+        (JSC::B3::Air::padInterference):
+        * b3/air/AirReportUsedRegisters.cpp:
+        (JSC::B3::Air::reportUsedRegisters):
+        * b3/air/AirSpillEverything.cpp:
+        (JSC::B3::Air::spillEverything):
+        * b3/air/AirTmpInlines.h:
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::GP>::absoluteIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::GP>::lastMachineRegisterIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::GP>::tmpFromAbsoluteIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::FP>::absoluteIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::FP>::lastMachineRegisterIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::FP>::tmpFromAbsoluteIndex): Deleted.
+        * b3/air/AirTmpWidth.cpp:
+        (JSC::B3::Air::TmpWidth::recompute):
+        * b3/air/AirTmpWidth.h:
+        (JSC::B3::Air::TmpWidth::width):
+        (JSC::B3::Air::TmpWidth::requiredWidth):
+        (JSC::B3::Air::TmpWidth::defWidth):
+        (JSC::B3::Air::TmpWidth::useWidth):
+        (JSC::B3::Air::TmpWidth::Widths::Widths):
+        * b3/air/AirUseCounts.h:
+        (JSC::B3::Air::UseCounts::UseCounts):
+        * b3/air/AirValidate.cpp:
+        * b3/air/opcode_generator.rb:
+        * b3/air/testair.cpp:
+        (JSC::B3::Air::compile): Deleted.
+        (JSC::B3::Air::invoke): Deleted.
+        (JSC::B3::Air::compileAndRun): Deleted.
+        (JSC::B3::Air::testSimple): Deleted.
+        (JSC::B3::Air::loadConstantImpl): Deleted.
+        (JSC::B3::Air::loadConstant): Deleted.
+        (JSC::B3::Air::loadDoubleConstant): Deleted.
+        (JSC::B3::Air::testShuffleSimpleSwap): Deleted.
+        (JSC::B3::Air::testShuffleSimpleShift): Deleted.
+        (JSC::B3::Air::testShuffleLongShift): Deleted.
+        (JSC::B3::Air::testShuffleLongShiftBackwards): Deleted.
+        (JSC::B3::Air::testShuffleSimpleRotate): Deleted.
+        (JSC::B3::Air::testShuffleSimpleBroadcast): Deleted.
+        (JSC::B3::Air::testShuffleBroadcastAllRegs): Deleted.
+        (JSC::B3::Air::testShuffleTreeShift): Deleted.
+        (JSC::B3::Air::testShuffleTreeShiftBackward): Deleted.
+        (JSC::B3::Air::testShuffleTreeShiftOtherBackward): Deleted.
+        (JSC::B3::Air::testShuffleMultipleShifts): Deleted.
+        (JSC::B3::Air::testShuffleRotateWithFringe): Deleted.
+        (JSC::B3::Air::testShuffleRotateWithFringeInWeirdOrder): Deleted.
+        (JSC::B3::Air::testShuffleRotateWithLongFringe): Deleted.
+        (JSC::B3::Air::testShuffleMultipleRotates): Deleted.
+        (JSC::B3::Air::testShuffleShiftAndRotate): Deleted.
+        (JSC::B3::Air::testShuffleShiftAllRegs): Deleted.
+        (JSC::B3::Air::testShuffleRotateAllRegs): Deleted.
+        (JSC::B3::Air::testShuffleSimpleSwap64): Deleted.
+        (JSC::B3::Air::testShuffleSimpleShift64): Deleted.
+        (JSC::B3::Air::testShuffleSwapMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleShiftMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemory): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemoryLong): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs64): Deleted.
+        (JSC::B3::Air::combineHiLo): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegsMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemory): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemory64): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemoryMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegs64): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegsMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleSwapDouble): Deleted.
+        (JSC::B3::Air::testShuffleShiftDouble): Deleted.
+        (JSC::B3::Air::testX86VMULSD): Deleted.
+        (JSC::B3::Air::testX86VMULSDDestRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDOp1DestRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDOp2DestRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDOpsDestRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDAddrOpRexAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDDestRexAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDRegOpDestRexAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDAddrOpDestRexAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDBaseNeedsRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDIndexNeedsRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDBaseIndexNeedRex): Deleted.
+        (JSC::B3::Air::run): Deleted.
+
+2017-02-24  Keith Miller  <keith_miller@apple.com>
+
+        We should be able to use std::tuples as keys in HashMap
+        https://bugs.webkit.org/show_bug.cgi?id=168805
+
+        Reviewed by Filip Pizlo.
+
+        Convert the mess of std::pairs we used as the keys in PrototypeMap
+        to a std::tuple. I also plan on using this for a HashMap in wasm.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/PrototypeMap.cpp:
+        (JSC::PrototypeMap::createEmptyStructure):
+        (JSC::PrototypeMap::clearEmptyObjectStructureForPrototype):
+        * runtime/PrototypeMap.h:
+
+2017-02-24  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Remove inaccurate copy-paste comment from r212939.
+
+        * dfg/DFGOperations.cpp:
+
+2017-02-23  Saam Barati  <sbarati@apple.com>
+
+        Intrinsicify parseInt
+        https://bugs.webkit.org/show_bug.cgi?id=168627
+
+        Reviewed by Filip Pizlo.
+
+        This patch makes parseInt an intrinsic in the DFG and FTL.
+        We do our best to eliminate this node. If we speculate that
+        the first operand to the operation is an int32, and that there
+        isn't a second operand, we convert to the identity of the first
+        operand. That's because parseInt(someInt) === someInt.
+        
+        If the first operand is proven to be an integer, and the second
+        operand is the integer 0 or the integer 10, we can eliminate the
+        node by making it an identity over its first operand. That's
+        because parseInt(someInt, 0) === someInt and parseInt(someInt, 10) === someInt.
+        
+        If we are not able to constant fold the node away, we try to remove
+        checks. The most common use case of parseInt is that its first operand
+        is a proven string. The DFG might be able to remove type checks in this
+        case. We also set up CSE rules for parseInt(someString, someIntRadix)
+        because it's a "pure" operation (modulo resolving a rope).
+
+        This looks to be a 4% Octane/Box2D progression.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::parseIntResult):
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileParseInt):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        (JSC::DFG::SpeculativeJIT::appendCallSetResult):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileParseInt):
+        * jit/JITOperations.h:
+        * parser/Lexer.cpp:
+        * runtime/ErrorInstance.cpp:
+        * runtime/Intrinsic.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::toStringView): Deleted.
+        (JSC::isStrWhiteSpace): Deleted.
+        (JSC::parseDigit): Deleted.
+        (JSC::parseIntOverflow): Deleted.
+        (JSC::parseInt): Deleted.
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/ParseInt.h: Added.
+        (JSC::parseDigit):
+        (JSC::parseIntOverflow):
+        (JSC::isStrWhiteSpace):
+        (JSC::parseInt):
+        (JSC::toStringView):
+        * runtime/StringPrototype.cpp:
+
+2017-02-23  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: support 0x1 version
+        https://bugs.webkit.org/show_bug.cgi?id=168672
+
+        Reviewed by Keith Miller.
+
+        * wasm/wasm.json: update the version number, everything is based
+        on its value
+
+2017-02-23  Saam Barati  <sbarati@apple.com>
+
+        Make Briggs fixpoint validation run only with validateGraphAtEachPhase
+        https://bugs.webkit.org/show_bug.cgi?id=168795
+
+        Rubber stamped by Keith Miller.
+
+        The Briggs allocator was running intensive validation
+        on each step of the fixpoint. Instead, it now will just
+        do it when shouldValidateIRAtEachPhase() is true because
+        doing this for all !ASSERT_DISABLED builds takes too long.
+
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+
+2017-02-23  Filip Pizlo  <fpizlo@apple.com>
+
+        SpeculativeJIT::compilePutByValForIntTypedArray should only do the constant-folding optimization when the constant passes the type check
+        https://bugs.webkit.org/show_bug.cgi?id=168787
+
+        Reviewed by Michael Saboff and Mark Lam.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compilePutByValForIntTypedArray):
+
+2017-02-23  Mark Lam  <mark.lam@apple.com>
+
+        Ensure that the end of the last invalidation point does not extend beyond the end of the buffer.
+        https://bugs.webkit.org/show_bug.cgi?id=168786
+
+        Reviewed by Filip Pizlo.
+
+        In practice, we will always have multiple instructions after invalidation points,
+        and have enough room in the JIT buffer for the invalidation point to work with.
+        However, as a precaution, we can guarantee that there's enough room by always
+        emitting a label just before we link the buffer.  The label will emit nop padding
+        if needed.
+
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::linkCode):
+
+2017-02-23  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix the cloop build. Needed a #if.
+
+        * jit/ExecutableAllocator.cpp:
+
+2017-02-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Better handle Thread and RunLoop initialization
+        https://bugs.webkit.org/show_bug.cgi?id=167828
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading): Do not initialize double_conversion, that is already initialized by WTF, and GC
+        threads that will be initialized by WTF main thread when needed.
+
+2017-02-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: clear out insignificant i32 bits when calling JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=166677
+
+        Reviewed by Keith Miller.
+
+        When WebAssembly calls JavaScript it needs to clear out the
+        insignificant bits of int32 values:
+
+          +------------------- tag
+          |  +---------------- insignificant
+          |  |   +------------ 32-bit integer value
+          |  |   |
+          |--|---|-------|
+        0xffff0000ffffffff
+
+        At least some JavaScript code assumes that these bits are all
+        zero. In the wasm-to-wasm.js example we store a 64-bit value in an
+        object with lo / hi fields, each containing 32-bit integers. We
+        then load these back, and the baseline compiler fails its
+        comparison because it first checks the value are the same type
+        (yes, because the int32 tag is set in both), and then whether they
+        have the same value (no, because comparing the two registers
+        fails). We could argue that the baseline compiler is wrong for
+        performing a 64-bit comparison, but it doesn't really matter
+        because there's not much of a point in breaking that invariant for
+        WebAssembly's sake.
+
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToJs):
+
+2017-02-22  Keith Miller  <keith_miller@apple.com>
+
+        Remove the demand executable allocator
+        https://bugs.webkit.org/show_bug.cgi?id=168754
+
+        Reviewed by Saam Barati.
+
+        We currently only use the demand executable allocator for non-iOS 32-bit platforms.
+        Benchmark results on a MBP indicate there is no appreciable performance difference
+        between a the fixed and demand allocators. In a future patch I will go back through
+        this code and remove more of the abstractions.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator):
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps):
+        (JSC::FixedVMPoolExecutableAllocator::jitWriteThunkGenerator):
+        (JSC::FixedVMPoolExecutableAllocator::genericWriteToJITRegion):
+        (JSC::ExecutableAllocator::initializeAllocator):
+        (JSC::ExecutableAllocator::ExecutableAllocator):
+        (JSC::FixedVMPoolExecutableAllocator::~FixedVMPoolExecutableAllocator):
+        (JSC::ExecutableAllocator::isValid):
+        (JSC::ExecutableAllocator::underMemoryPressure):
+        (JSC::ExecutableAllocator::memoryPressureMultiplier):
+        (JSC::ExecutableAllocator::allocate):
+        (JSC::ExecutableAllocator::isValidExecutableMemory):
+        (JSC::ExecutableAllocator::getLock):
+        (JSC::ExecutableAllocator::committedByteCount):
+        (JSC::ExecutableAllocator::dumpProfile):
+        (JSC::DemandExecutableAllocator::DemandExecutableAllocator): Deleted.
+        (JSC::DemandExecutableAllocator::~DemandExecutableAllocator): Deleted.
+        (JSC::DemandExecutableAllocator::bytesAllocatedByAllAllocators): Deleted.
+        (JSC::DemandExecutableAllocator::bytesCommittedByAllocactors): Deleted.
+        (JSC::DemandExecutableAllocator::dumpProfileFromAllAllocators): Deleted.
+        (JSC::DemandExecutableAllocator::allocateNewSpace): Deleted.
+        (JSC::DemandExecutableAllocator::notifyNeedPage): Deleted.
+        (JSC::DemandExecutableAllocator::notifyPageIsFree): Deleted.
+        (JSC::DemandExecutableAllocator::allocators): Deleted.
+        (JSC::DemandExecutableAllocator::allocatorsMutex): Deleted.
+        * jit/ExecutableAllocator.h:
+        * jit/ExecutableAllocatorFixedVMPool.cpp: Removed.
+        * jit/JITStubRoutine.h:
+        (JSC::JITStubRoutine::canPerformRangeFilter):
+        (JSC::JITStubRoutine::filteringStartAddress):
+        (JSC::JITStubRoutine::filteringExtentSize):
+
+2017-02-22  Saam Barati  <sbarati@apple.com>
+
+        Add biased coloring to Briggs and IRC
+        https://bugs.webkit.org/show_bug.cgi?id=168611
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements biased coloring as proposed by Briggs. See section
+        5.3.3 of his thesis for more information: http://www.cs.utexas.edu/users/mckinley/380C/lecs/briggs-thesis-1992.pdf
+
+        The main idea of biased coloring is this:
+        We try to coalesce a move between u and v, but the conservative heuristic
+        fails. We don't want coalesce the move because we don't want to risk
+        creating an uncolorable graph. However, if the conservative heuristic fails,
+        it's not proof that the graph is uncolorable if the move were indeed coalesced.
+        So, when we go to color the tmps, we'll remember that we really want the
+        same register for u and v, and if legal during coloring, we will
+        assign them to the same register.
+
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+
+2017-02-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        JSModuleNamespace object should have IC
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+
+        Reviewed by Saam Barati.
+
+        This patch optimizes accesses to module namespace objects.
+
+        1. Cache the resolutions for module namespace objects.
+
+            When constructing the module namespace object, we already resolves all the exports.
+            The module namespace object caches this result and leverage it in the later access in
+            getOwnPropertySlot. This avoids resolving bindings through resolveExport.
+
+        2. Introduce ModuleNamespaceLoad IC.
+
+            This patch adds new IC for module namespace objects. The mechanism is simple, getOwnPropertySlot
+            tells us about module namespace object resolution. The IC first checks whether the given object
+            is an expected module namespace object. If this check succeeds, we load the value from the module
+            environment.
+
+        3. Introduce DFG/FTL optimization.
+
+            After exploiting module namespace object accesses in (2), DFG can recognize this in ByteCodeParser.
+            DFG will convert it to CheckCell with the namespace object and GetClosureVar from the cached environment.
+            At that time, we have a chance to fold it to the constant.
+
+        This optimization improves the performance of accessing to module namespace objects.
+
+        Before
+            $ time ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m module-assert-access-namespace.js
+            ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m   0.43s user 0.03s system 101% cpu 0.451 total
+            $ time ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m module-assert-access-binding.js
+            ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m   0.08s user 0.02s system 103% cpu 0.104 total
+
+        After
+            $ time ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-namespace.js
+            ../../WebKitBuild/module-ic/Release/bin/jsc -m   0.11s user 0.01s system 106% cpu 0.109 total
+            $ time ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-binding.js
+            ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-binding.j  0.08s user 0.02s system 102% cpu 0.105 total
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::create):
+        (JSC::AccessCase::guardedByStructureCheck):
+        (JSC::AccessCase::canReplace):
+        (JSC::AccessCase::visitWeak):
+        (JSC::AccessCase::generateWithGuard):
+        (JSC::AccessCase::generateImpl):
+        * bytecode/AccessCase.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::GetByIdStatus):
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        (JSC::GetByIdStatus::makesCalls):
+        (JSC::GetByIdStatus::dump):
+        * bytecode/GetByIdStatus.h:
+        (JSC::GetByIdStatus::isModuleNamespace):
+        (JSC::GetByIdStatus::takesSlowPath):
+        (JSC::GetByIdStatus::moduleNamespaceObject):
+        (JSC::GetByIdStatus::moduleEnvironment):
+        (JSC::GetByIdStatus::scopeOffset):
+        * bytecode/ModuleNamespaceAccessCase.cpp: Added.
+        (JSC::ModuleNamespaceAccessCase::ModuleNamespaceAccessCase):
+        (JSC::ModuleNamespaceAccessCase::create):
+        (JSC::ModuleNamespaceAccessCase::~ModuleNamespaceAccessCase):
+        (JSC::ModuleNamespaceAccessCase::clone):
+        (JSC::ModuleNamespaceAccessCase::emit):
+        * bytecode/ModuleNamespaceAccessCase.h: Added.
+        (JSC::ModuleNamespaceAccessCase::moduleNamespaceObject):
+        (JSC::ModuleNamespaceAccessCase::moduleEnvironment):
+        (JSC::ModuleNamespaceAccessCase::scopeOffset):
+        * bytecode/PolymorphicAccess.cpp:
+        (WTF::printInternal):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleModuleNamespaceLoad):
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::loadValue):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::getModuleNamespace):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::finishCreation):
+        (JSC::JSModuleNamespaceObject::visitChildren):
+        (JSC::getValue):
+        (JSC::JSModuleNamespaceObject::getOwnPropertySlot):
+        (JSC::JSModuleNamespaceObject::getOwnPropertyNames):
+        * runtime/JSModuleNamespaceObject.h:
+        (JSC::isJSModuleNamespaceObject):
+        (JSC::JSModuleNamespaceObject::create): Deleted.
+        (JSC::JSModuleNamespaceObject::createStructure): Deleted.
+        (JSC::JSModuleNamespaceObject::moduleRecord): Deleted.
+        * runtime/JSModuleRecord.h:
+        (JSC::JSModuleRecord::moduleEnvironment): Deleted.
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::domJIT):
+        (JSC::PropertySlot::moduleNamespaceSlot):
+        (JSC::PropertySlot::setValueModuleNamespace):
+        (JSC::PropertySlot::setCacheableCustom):
+
+2017-02-22  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Rename AirGraphColoring.* files to AirAllocateRegistersByGraphColoring.* to be more consistent with the rest of the Air file names.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp: Copied from Source/JavaScriptCore/b3/air/AirGraphColoring.cpp.
+        * b3/air/AirAllocateRegistersByGraphColoring.h: Copied from Source/JavaScriptCore/b3/air/AirGraphColoring.h.
+        * b3/air/AirGenerate.cpp:
+        * b3/air/AirGraphColoring.cpp: Removed.
+        * b3/air/AirGraphColoring.h: Removed.
+
+2017-02-21  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        <rdar://problem/30401864>
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-21  Saam Barati  <sbarati@apple.com>
+
+        Add the Briggs optimistic allocator to run on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=168454
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds the Briggs allocator to Air:
+        http://www.cs.utexas.edu/users/mckinley/380C/lecs/briggs-thesis-1992.pdf
+        It uses it by default on ARM64. I was measuring an 8-10% speedup
+        in the phase because of this. I also wasn't able to detect a slowdown 
+        for generated code on ARM64. There are still a few things we can do
+        to speed things up even further. Moving the interference graph into
+        a BitVector was another 10-20% speedup. We should consider doing this
+        in a follow up patch. This is especially important now, since making
+        register allocation faster has a direct impact on startup time for
+        Wasm modules.
+        
+        I abstracted away the common bits between Briggs and IRC, and moved
+        them into a common super class. In a follow up to this patch, I plan
+        on implementing biased coloring for both Briggs and IRC (this is
+        described in Briggs's thesis). I was able to detect a 1% slowdown
+        with Briggs on Octane for x86-64. This is because the register file
+        for x86-64 is smaller than ARM64. When I implemented biased coloring,
+        I was no longer able to detect this slowdown. I still think it's a
+        sensible plan to run Briggs on ARM64 and IRC on x86-64.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::prepareForGeneration):
+        * b3/air/AirGraphColoring.cpp: Copied from Source/JavaScriptCore/b3/air/AirIteratedRegisterCoalescing.cpp.
+        (JSC::B3::Air::allocateRegistersByGraphColoring):
+        (JSC::B3::Air::iteratedRegisterCoalescing): Deleted.
+        * b3/air/AirGraphColoring.h: Copied from Source/JavaScriptCore/b3/air/AirIteratedRegisterCoalescing.h.
+        * b3/air/AirIteratedRegisterCoalescing.cpp: Removed.
+        * b3/air/AirIteratedRegisterCoalescing.h: Removed.
+        * runtime/Options.h:
+
+2017-02-21  Mark Lam  <mark.lam@apple.com>
+
+        Add more missing exception checks detected by running marathon.js.
+        https://bugs.webkit.org/show_bug.cgi?id=168697
+
+        Reviewed by Saam Barati.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::replaceUsingStringSearch):
+
+2017-02-21  JF Bastien  <jfbastien@apple.com>
+
+        FullCodeOrigin for CodeBlock+CodeOrigin printing
+        https://bugs.webkit.org/show_bug.cgi?id=168673
+
+        Reviewed by Filip Pizlo.
+
+        WebAssembly doesn't have a CodeBlock, so printing it isn't
+        valid. This patch adds FullCodeOrigin to handle the
+        CodeBlock+CodeOrigin printing pattern, and uses it through all the
+        places I could find, including Repatch.cpp where it's relevant for
+        WebAssembly.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::noticeIncomingCall):
+        * bytecode/FullCodeOrigin.cpp: Added.
+        (JSC::FullCodeOrigin::dump):
+        (JSC::FullCodeOrigin::dumpInContext):
+        * bytecode/FullCodeOrigin.h: Added.
+        (JSC::FullCodeOrigin::FullCodeOrigin):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::regenerate):
+        * jit/PolymorphicCallStubRoutine.cpp:
+        (JSC::PolymorphicCallStubRoutine::PolymorphicCallStubRoutine):
+        * jit/Repatch.cpp:
+        (JSC::linkFor):
+        (JSC::linkDirectFor):
+        (JSC::linkVirtualFor):
+
+2017-02-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix cloop. I managed to have my local patch for relanding be the one without the cloop
+        fix. I keep forgetting about cloop!
+
+        * heap/Heap.cpp:
+        (JSC::Heap::stopThePeriphery):
+        * runtime/JSLock.cpp:
+
+2017-02-21  Mark Lam  <mark.lam@apple.com>
+
+        Add missing exception checks detected by running marathon.js.
+        https://bugs.webkit.org/show_bug.cgi?id=168687
+
+        Reviewed by Saam Barati.
+
+        When running the marathon.js test from https://bugs.webkit.org/show_bug.cgi?id=168580,
+        we get some crashes due to missing exception checks.  This patch adds those
+        missing exception checks.
+
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::toPropertyKey):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getPrimitiveNumber):
+
+2017-02-20  Filip Pizlo  <fpizlo@apple.com>
+
+        The collector thread should only start when the mutator doesn't have heap access
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+
+        Reviewed by Keith Miller.
+        
+        This turns the collector thread's workflow into a state machine, so that the mutator thread can
+        run it directly. This reduces the amount of synchronization we do with the collector thread, and
+        means that most apps will never start the collector thread. The collector thread will still start
+        when we need to finish collecting and we don't have heap access.
+        
+        In this new world, "stopping the world" means relinquishing control of collection to the mutator.
+        This means tracking who is conducting collection. I use the GCConductor enum to say who is
+        conducting. It's either GCConductor::Mutator or GCConductor::Collector. I use the term "conn" to
+        refer to the concept of conducting (having the conn, relinquishing the conn, taking the conn).
+        So, stopping the world means giving the mutator the conn. Releasing heap access means giving the
+        collector the conn.
+        
+        This meant bringing back the conservative scan of the calling thread. It turns out that this
+        scan was too slow to be called on each GC increment because apparently setjmp() now does system
+        calls. So, I wrote our own callee save register saving for the GC. Then I had doubts about
+        whether or not it was correct, so I also made it so that the GC only rarely asks for the register
+        state. I think we still want to use my register saving code instead of setjmp because setjmp
+        seems to save things we don't need, and that could make us overly conservative.
+        
+        It turns out that this new scheduling discipline makes the old space-time scheduler perform
+        better than the new stochastic space-time scheduler on systems with fewer than 4 cores. This is
+        because the mutator having the conn enables us to time the mutator<->collector context switches
+        by polling. The OS is never involved. So, we can use super precise timing. This allows the old
+        space-time schduler to shine like it hadn't before.
+        
+        The splay results imply that this is all a good thing. On 2-core systems, this reduces pause
+        times by 40% and it increases throughput about 5%. On 1-core systems, this reduces pause times by
+        half and reduces throughput by 8%. On 4-or-more-core systems, this doesn't seem to have much
+        effect.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::visitChildren):
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::ThreadBody::ThreadBody):
+        (JSC::DFG::Worklist::dump):
+        (JSC::DFG::numberOfWorklists):
+        (JSC::DFG::ensureWorklistForIndex):
+        (JSC::DFG::existingWorklistForIndexOrNull):
+        (JSC::DFG::existingWorklistForIndex):
+        * dfg/DFGWorklist.h:
+        (JSC::DFG::numberOfWorklists): Deleted.
+        (JSC::DFG::ensureWorklistForIndex): Deleted.
+        (JSC::DFG::existingWorklistForIndexOrNull): Deleted.
+        (JSC::DFG::existingWorklistForIndex): Deleted.
+        * heap/CollectingScope.h: Added.
+        (JSC::CollectingScope::CollectingScope):
+        (JSC::CollectingScope::~CollectingScope):
+        * heap/CollectorPhase.cpp: Added.
+        (JSC::worldShouldBeSuspended):
+        (WTF::printInternal):
+        * heap/CollectorPhase.h: Added.
+        * heap/EdenGCActivityCallback.cpp:
+        (JSC::EdenGCActivityCallback::lastGCLength):
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::doCollection):
+        (JSC::FullGCActivityCallback::lastGCLength):
+        * heap/GCConductor.cpp: Added.
+        (JSC::gcConductorShortName):
+        (WTF::printInternal):
+        * heap/GCConductor.h: Added.
+        * heap/GCFinalizationCallback.cpp: Added.
+        (JSC::GCFinalizationCallback::GCFinalizationCallback):
+        (JSC::GCFinalizationCallback::~GCFinalizationCallback):
+        * heap/GCFinalizationCallback.h: Added.
+        (JSC::GCFinalizationCallbackFuncAdaptor::GCFinalizationCallbackFuncAdaptor):
+        (JSC::createGCFinalizationCallback):
+        * heap/Heap.cpp:
+        (JSC::Heap::Thread::Thread):
+        (JSC::Heap::Heap):
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::gatherStackRoots):
+        (JSC::Heap::updateObjectCounts):
+        (JSC::Heap::sweepSynchronously):
+        (JSC::Heap::collectAllGarbage):
+        (JSC::Heap::collectAsync):
+        (JSC::Heap::collectSync):
+        (JSC::Heap::shouldCollectInCollectorThread):
+        (JSC::Heap::collectInCollectorThread):
+        (JSC::Heap::checkConn):
+        (JSC::Heap::runNotRunningPhase):
+        (JSC::Heap::runBeginPhase):
+        (JSC::Heap::runFixpointPhase):
+        (JSC::Heap::runConcurrentPhase):
+        (JSC::Heap::runReloopPhase):
+        (JSC::Heap::runEndPhase):
+        (JSC::Heap::changePhase):
+        (JSC::Heap::finishChangingPhase):
+        (JSC::Heap::stopThePeriphery):
+        (JSC::Heap::resumeThePeriphery):
+        (JSC::Heap::stopTheMutator):
+        (JSC::Heap::resumeTheMutator):
+        (JSC::Heap::stopIfNecessarySlow):
+        (JSC::Heap::collectInMutatorThread):
+        (JSC::Heap::waitForCollector):
+        (JSC::Heap::acquireAccessSlow):
+        (JSC::Heap::releaseAccessSlow):
+        (JSC::Heap::relinquishConn):
+        (JSC::Heap::finishRelinquishingConn):
+        (JSC::Heap::handleNeedFinalize):
+        (JSC::Heap::notifyThreadStopping):
+        (JSC::Heap::finalize):
+        (JSC::Heap::addFinalizationCallback):
+        (JSC::Heap::requestCollection):
+        (JSC::Heap::waitForCollection):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::didFinishCollection):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        (JSC::Heap::notifyIsSafeToCollect):
+        (JSC::Heap::preventCollection):
+        (JSC::Heap::performIncrement):
+        (JSC::Heap::markToFixpoint): Deleted.
+        (JSC::Heap::shouldCollectInThread): Deleted.
+        (JSC::Heap::collectInThread): Deleted.
+        (JSC::Heap::stopTheWorld): Deleted.
+        (JSC::Heap::resumeTheWorld): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::machineThreads):
+        (JSC::Heap::lastFullGCLength):
+        (JSC::Heap::lastEdenGCLength):
+        (JSC::Heap::increaseLastFullGCLength):
+        * heap/HeapInlines.h:
+        (JSC::Heap::mutatorIsStopped): Deleted.
+        * heap/HeapStatistics.cpp: Removed.
+        * heap/HeapStatistics.h: Removed.
+        * heap/HelpingGCScope.h: Removed.
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::stopSweeping):
+        (JSC::IncrementalSweeper::willFinishSweeping): Deleted.
+        * heap/IncrementalSweeper.h:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::gatherFromCurrentThread):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        (JSC::callWithCurrentThreadState):
+        * heap/MachineStackMarker.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateSlowCaseImpl):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::sweep):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::sweep):
+        * heap/MutatorState.cpp:
+        (WTF::printInternal):
+        * heap/MutatorState.h:
+        * heap/RegisterState.h: Added.
+        * heap/RunningScope.h: Added.
+        (JSC::RunningScope::RunningScope):
+        (JSC::RunningScope::~RunningScope):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::SlotVisitor):
+        (JSC::SlotVisitor::drain):
+        (JSC::SlotVisitor::drainFromShared):
+        (JSC::SlotVisitor::drainInParallelPassively):
+        (JSC::SlotVisitor::donateAll):
+        (JSC::SlotVisitor::donate):
+        * heap/SlotVisitor.h:
+        (JSC::SlotVisitor::codeName):
+        * heap/StochasticSpaceTimeMutatorScheduler.cpp:
+        (JSC::StochasticSpaceTimeMutatorScheduler::beginCollection):
+        (JSC::StochasticSpaceTimeMutatorScheduler::synchronousDrainingDidStall):
+        (JSC::StochasticSpaceTimeMutatorScheduler::timeToStop):
+        * heap/SweepingScope.h: Added.
+        (JSC::SweepingScope::SweepingScope):
+        (JSC::SweepingScope::~SweepingScope):
+        * jit/JITWorklist.cpp:
+        (JSC::JITWorklist::Thread::Thread):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionFlashHeapAccess):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+        * runtime/Options.h:
+        * runtime/TestRunnerUtils.cpp:
+        (JSC::finalizeStatsAtEndOfTesting):
+
+2017-02-21  Saam Barati  <sbarati@apple.com>
+
+        Air should have a disassembly mode that dumps IR and assembly intermixed
+        https://bugs.webkit.org/show_bug.cgi?id=168629
+
+        Reviewed by Filip Pizlo.
+
+        This will make dumping FTL disassembly dump Air intermixed
+        with the assembly generated by each Air Inst. This is similar
+        to how dumpDFGDisassembly dumps the generated assembly for each
+        Node.
+        
+        Here is what the output will look like:
+        
+        Generated FTL JIT code for foo#CUaFiQ:[0x10b76c960->0x10b76c2d0->0x10b7b6da0, FTLFunctionCall, 40 (NeverInline)], instruction count = 40:
+        BB#0: ; frequency = 1.000000
+                0x469004e02e00: push %rbp
+                0x469004e02e01: mov %rsp, %rbp
+                0x469004e02e04: add $0xffffffffffffffd0, %rsp
+            Move $0x10b76c960, %rax, $4487301472(@16)
+                0x469004e02e08: mov $0x10b76c960, %rax
+            Move %rax, 16(%rbp), @19
+                0x469004e02e12: mov %rax, 0x10(%rbp)
+            Patch &Patchpoint2, %rbp, %rax, @20
+                0x469004e02e16: lea -0x50(%rbp), %rax
+                0x469004e02e1a: mov $0x1084081e0, %r11
+                0x469004e02e24: cmp %rax, (%r11)
+                0x469004e02e27: ja 0x469004e02e9a
+            Move 56(%rbp), %rdx, @23
+                0x469004e02e2d: mov 0x38(%rbp), %rdx
+            Move $0xffff000000000002, %rax, $-281474976710654(@15)
+                0x469004e02e31: mov $0xffff000000000002, %rax
+            Patch &BranchTest64(3,SameAsRep)1, NonZero, %rdx, %rax, %rdx, @26
+                0x469004e02e3b: test %rdx, %rax
+                0x469004e02e3e: jnz 0x469004e02f08
+            Move 48(%rbp), %rax, @29
+                0x469004e02e44: mov 0x30(%rbp), %rax
+            Move %rax, %rcx, @31
+                0x469004e02e48: mov %rax, %rcx
+            Xor64 $6, %rcx, @31
+                0x469004e02e4b: xor $0x6, %rcx
+            Patch &BranchTest64(3,SameAsRep)1, NonZero, %rcx, $-2, %rax, @35
+                0x469004e02e4f: test $0xfffffffffffffffe, %rcx
+                0x469004e02e56: jnz 0x469004e02f12
+            Patch &Branch32(3,SameAsRep)0, NotEqual, (%rdx), $266, %rdx, @45
+                0x469004e02e5c: cmp $0x10a, (%rdx)
+                0x469004e02e62: jnz 0x469004e02f1c
+            BranchTest32 NonZero, %rax, $1, @49
+                0x469004e02e68: test $0x1, %al
+                0x469004e02e6a: jnz 0x469004e02e91
+          Successors: #3, #1
+        BB#1: ; frequency = 1.000000
+          Predecessors: #0
+            Move $0, %rcx, @65
+                0x469004e02e70: xor %rcx, %rcx
+            Jump @66
+          Successors: #2
+        BB#2: ; frequency = 1.000000
+          Predecessors: #1, #3
+            Move 24(%rdx), %rax, @58
+                0x469004e02e73: mov 0x18(%rdx), %rax
+            Patch &BranchAdd32(4,ForceLateUseUnlessRecoverable)3, Overflow, %rcx, %rax, %rcx, %rcx, %rax, @60
+                0x469004e02e77: add %eax, %ecx
+                0x469004e02e79: jo 0x469004e02f26
+            Move $0xffff000000000000, %rax, $-281474976710656(@14)
+                0x469004e02e7f: mov $0xffff000000000000, %rax
+            Add64 %rcx, %rax, %rax, @62
+                0x469004e02e89: add %rcx, %rax
+            Ret64 %rax, @63
+                0x469004e02e8c: mov %rbp, %rsp
+                0x469004e02e8f: pop %rbp
+                0x469004e02e90: ret 
+        BB#3: ; frequency = 1.000000
+          Predecessors: #0
+            Move 16(%rdx), %rcx, @52
+                0x469004e02e91: mov 0x10(%rdx), %rcx
+            Jump @55
+                0x469004e02e95: jmp 0x469004e02e73
+          Successors: #2
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::setDisassembler):
+        (JSC::B3::Air::Code::disassembler):
+        * b3/air/AirDisassembler.cpp: Added.
+        (JSC::B3::Air::Disassembler::startEntrypoint):
+        (JSC::B3::Air::Disassembler::endEntrypoint):
+        (JSC::B3::Air::Disassembler::startLatePath):
+        (JSC::B3::Air::Disassembler::endLatePath):
+        (JSC::B3::Air::Disassembler::startBlock):
+        (JSC::B3::Air::Disassembler::addInst):
+        (JSC::B3::Air::Disassembler::dump):
+        * b3/air/AirDisassembler.h: Added.
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+
+2017-02-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r212712.
+
+        This change broke the CLoop build.
+
+        Reverted changeset:
+
+        "JSModuleNamespace object should have IC"
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+        http://trac.webkit.org/changeset/212712
+
+2017-02-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        JSModuleNamespace object should have IC
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+
+        Reviewed by Saam Barati.
+
+        This patch optimizes accesses to module namespace objects.
+
+        1. Cache the resolutions for module namespace objects.
+
+            When constructing the module namespace object, we already resolves all the exports.
+            The module namespace object caches this result and leverage it in the later access in
+            getOwnPropertySlot. This avoids resolving bindings through resolveExport.
+
+        2. Introduce ModuleNamespaceLoad IC.
+
+            This patch adds new IC for module namespace objects. The mechanism is simple, getOwnPropertySlot
+            tells us about module namespace object resolution. The IC first checks whether the given object
+            is an expected module namespace object. If this check succeeds, we load the value from the module
+            environment.
+
+        3. Introduce DFG/FTL optimization.
+
+            After exploiting module namespace object accesses in (2), DFG can recognize this in ByteCodeParser.
+            DFG will convert it to CheckCell with the namespace object and GetClosureVar from the cached environment.
+            At that time, we have a chance to fold it to the constant.
+
+        This optimization improves the performance of accessing to module namespace objects.
+
+        Before
+            $ time ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m module-assert-access-namespace.js
+            ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m   0.43s user 0.03s system 101% cpu 0.451 total
+            $ time ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m module-assert-access-binding.js
+            ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m   0.08s user 0.02s system 103% cpu 0.104 total
+
+        After
+            $ time ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-namespace.js
+            ../../WebKitBuild/module-ic/Release/bin/jsc -m   0.11s user 0.01s system 106% cpu 0.109 total
+            $ time ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-binding.js
+            ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-binding.j  0.08s user 0.02s system 102% cpu 0.105 total
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::create):
+        (JSC::AccessCase::guardedByStructureCheck):
+        (JSC::AccessCase::canReplace):
+        (JSC::AccessCase::visitWeak):
+        (JSC::AccessCase::generateWithGuard):
+        (JSC::AccessCase::generateImpl):
+        * bytecode/AccessCase.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::GetByIdStatus):
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        (JSC::GetByIdStatus::makesCalls):
+        (JSC::GetByIdStatus::dump):
+        * bytecode/GetByIdStatus.h:
+        (JSC::GetByIdStatus::isModuleNamespace):
+        (JSC::GetByIdStatus::takesSlowPath):
+        (JSC::GetByIdStatus::moduleNamespaceObject):
+        (JSC::GetByIdStatus::moduleEnvironment):
+        (JSC::GetByIdStatus::scopeOffset):
+        * bytecode/ModuleNamespaceAccessCase.cpp: Added.
+        (JSC::ModuleNamespaceAccessCase::ModuleNamespaceAccessCase):
+        (JSC::ModuleNamespaceAccessCase::create):
+        (JSC::ModuleNamespaceAccessCase::~ModuleNamespaceAccessCase):
+        (JSC::ModuleNamespaceAccessCase::clone):
+        (JSC::ModuleNamespaceAccessCase::emit):
+        * bytecode/ModuleNamespaceAccessCase.h: Added.
+        (JSC::ModuleNamespaceAccessCase::moduleNamespaceObject):
+        (JSC::ModuleNamespaceAccessCase::moduleEnvironment):
+        (JSC::ModuleNamespaceAccessCase::scopeOffset):
+        * bytecode/PolymorphicAccess.cpp:
+        (WTF::printInternal):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleModuleNamespaceLoad):
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::loadValue):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::getModuleNamespace):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::finishCreation):
+        (JSC::JSModuleNamespaceObject::visitChildren):
+        (JSC::getValue):
+        (JSC::JSModuleNamespaceObject::getOwnPropertySlot):
+        (JSC::JSModuleNamespaceObject::getOwnPropertyNames):
+        * runtime/JSModuleNamespaceObject.h:
+        (JSC::isJSModuleNamespaceObject):
+        (JSC::JSModuleNamespaceObject::create): Deleted.
+        (JSC::JSModuleNamespaceObject::createStructure): Deleted.
+        (JSC::JSModuleNamespaceObject::moduleRecord): Deleted.
+        * runtime/JSModuleRecord.h:
+        (JSC::JSModuleRecord::moduleEnvironment): Deleted.
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::domJIT):
+        (JSC::PropertySlot::moduleNamespaceSlot):
+        (JSC::PropertySlot::setValueModuleNamespace):
+        (JSC::PropertySlot::setCacheableCustom):
+
+2017-02-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ASSERTION FAILED: "!scope.exception()" with Object.isSealed/isFrozen and uninitialized module bindings
+        https://bugs.webkit.org/show_bug.cgi?id=168605
+
+        Reviewed by Saam Barati.
+
+        We should check exception state after calling getOwnPropertyDescriptor() since it can throw errors.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorIsSealed):
+        (JSC::objectConstructorIsFrozen):
+
+2017-02-20  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] CachedCall should let GC know to keep its arguments alive.
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        <rdar://problem/30475767>
+
+        Reviewed by Saam Barati.
+
+        We fix this by having CachedCall use a MarkedArgumentBuffer to store its
+        arguments instead of a Vector.
+
+        Also declared CachedCall, MarkedArgumentBuffer, and ProtoCallFrame as
+        WTF_FORBID_HEAP_ALLOCATION because they rely on being stack allocated for
+        correctness.
+
+        Update: the original patch has a bug in MarkedArgumentBuffer::expandCapacity()
+        where it was copying and calling addMarkSet() on values in m_buffer beyond m_size
+        (up to m_capacity).  As a result, depending on the pre-existing values in
+        m_inlineBuffer, this may result in a computed Heap pointer that is wrong, and
+        subsequently, manifest as a crash.  This is likely to be the cause of the PLT
+        regression.
+
+        I don't have a new test for this fix because the issue relies on sufficiently bad
+        values randomly showing up in m_inlineBuffer when we do an ensureCapacity() which
+        calls expandCapacity().
+
+        * interpreter/CachedCall.h:
+        (JSC::CachedCall::CachedCall):
+        (JSC::CachedCall::call):
+        (JSC::CachedCall::clearArguments):
+        (JSC::CachedCall::appendArgument):
+        (JSC::CachedCall::setArgument): Deleted.
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::emptyList):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::prepareForRepeatCall):
+        * interpreter/Interpreter.h:
+        * interpreter/ProtoCallFrame.h:
+        * runtime/ArgList.cpp:
+        (JSC::MarkedArgumentBuffer::slowEnsureCapacity):
+        (JSC::MarkedArgumentBuffer::expandCapacity):
+        (JSC::MarkedArgumentBuffer::slowAppend):
+        * runtime/ArgList.h:
+        (JSC::MarkedArgumentBuffer::append):
+        (JSC::MarkedArgumentBuffer::ensureCapacity):
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-02-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212618.
+        https://bugs.webkit.org/show_bug.cgi?id=168609
+
+        "Appears to cause PLT regression" (Requested by mlam on
+        #webkit).
+
+        Reverted changeset:
+
+        "CachedCall should let GC know to keep its arguments alive."
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        http://trac.webkit.org/changeset/212618
+
+2017-02-19  Mark Lam  <mark.lam@apple.com>
+
+        BytecodeGenerator should not iterate its m_controlFlowScopeStack using a pointer bump.
+        https://bugs.webkit.org/show_bug.cgi?id=168585
+
+        Reviewed by Yusuke Suzuki.
+
+        This is because m_controlFlowScopeStack is a SegmentedVector, and entries for
+        consecutive indices in the vector are not guaranteed to be consecutive in memory
+        layout.  Instead, we should be using indexing instead.
+
+        This issue was detected by the marathon.js test from
+        https://bugs.webkit.org/show_bug.cgi?id=168580.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitJumpViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitReturnViaFinallyIfNeeded):
+
+2017-02-20  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Remove compilation flag ENABLE_CSS_GRID_LAYOUT
+        https://bugs.webkit.org/show_bug.cgi?id=167693
+
+        Reviewed by Sergio Villar Senin.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212472.
+        https://bugs.webkit.org/show_bug.cgi?id=168584
+
+        Broke CLoop builds when r212466 was rolled out in r212616
+        (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, fix cloop build."
+        http://trac.webkit.org/changeset/212472
+
+2017-02-19  Mark Lam  <mark.lam@apple.com>
+
+        functionTestWasmModuleFunctions() should use a MarkedArgumentBuffer for storing args instead of a Vector.
+        https://bugs.webkit.org/show_bug.cgi?id=168574
+
+        Reviewed by Filip Pizlo.
+
+        * jsc.cpp:
+        (callWasmFunction):
+        (functionTestWasmModuleFunctions):
+        * runtime/ArgList.h:
+
+2017-02-19  Mark Lam  <mark.lam@apple.com>
+
+        CachedCall should let GC know to keep its arguments alive.
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        <rdar://problem/30475767>
+
+        Reviewed by Saam Barati.
+
+        We fix this by having CachedCall use a MarkedArgumentBuffer to store its
+        arguments instead of a Vector.
+
+        Also declared CachedCall, MarkedArgumentBuffer, and ProtoCallFrame as
+        WTF_FORBID_HEAP_ALLOCATION because they rely on being stack allocated for
+        correctness.
+
+        * interpreter/CachedCall.h:
+        (JSC::CachedCall::CachedCall):
+        (JSC::CachedCall::call):
+        (JSC::CachedCall::clearArguments):
+        (JSC::CachedCall::appendArgument):
+        (JSC::CachedCall::setArgument): Deleted.
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::emptyList):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::prepareForRepeatCall):
+        * interpreter/Interpreter.h:
+        * interpreter/ProtoCallFrame.h:
+        * runtime/ArgList.cpp:
+        (JSC::MarkedArgumentBuffer::expandCapacity):
+        * runtime/ArgList.h:
+        (JSC::MarkedArgumentBuffer::ensureCapacity):
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-02-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212466.
+        https://bugs.webkit.org/show_bug.cgi?id=168577
+
+        causes crashes on AArch64 on linux, maybe it's causing crashes
+        on iOS too (Requested by pizlo on #webkit).
+
+        Reverted changeset:
+
+        "The collector thread should only start when the mutator
+        doesn't have heap access"
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+        http://trac.webkit.org/changeset/212466
+
+2017-02-17  Michael Saboff  <msaboff@apple.com>
+
+        Improve ARM64 disassembler handling of pseudo ops, unsupported opcodes and zero reg
+        https://bugs.webkit.org/show_bug.cgi?id=168527
+
+        Reviewed by Filip Pizlo.
+
+        Added support for data processing 1 source instructions like rbit, rev, clz and cls.
+        Added support for the FP conditional select instruction, fcsel.  Consolidated the
+        two classes for handling dmb instructions into one class.  Fixed the instruction
+        selection mask in the integer conditional select class, A64DOpcodeConditionalSelect.
+        Fixed the processing of extract instruction (extr) including the rotate right (ror)
+        pseudo instruction.  Changed the printing of x31 and w31 to xzr and wzr as operands
+        according to the spec.  Added support for common pseudo instructions.  This includes:
+        - mvn x1, X2 in place of orn x1, xzr, x2
+        - lsl x3, x4, #count in place of ubfiz x3, x4, #count, #count
+        - smull x5, w6, w7 in place of smaddl x5, w6, w7, XZR
+        - More understandable mov x8, #-304 in place of movn x8, #0x12f
+        - Eliminated xzr from register index loads and stores, outputing
+          ldr x10, [x11] instead of ldr x10, [x11, xzr]
+
+        Changed the move wide instructions to use hex literals for movz and movk.
+        This makes it much easier to decifer sequences of wide moves for large literals.
+                Before                       After
+          movz   x17, #26136           movz   x17, #0x6618
+          movk   x17, #672, lsl #16    movk   x17, #0x2a0, lsl #16
+          movk   x17, #1, lsl #32      movk   x17, #0x1, lsl #32
+
+        Verified that all instructions currently generated by the JSC stress tests are
+        disassembled.
+
+        * disassembler/ARM64/A64DOpcode.cpp:
+        (JSC::ARM64Disassembler::A64DOpcodeBitfield::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing2Source::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing3Source::format):
+        (JSC::ARM64Disassembler::A64DOpcodeExtract::format):
+        (JSC::ARM64Disassembler::A64DOpcodeFloatingPointConditionalSelect::format):
+        (JSC::ARM64Disassembler::A64DOpcodeFloatingPointIntegerConversions::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDmb::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreImmediate::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreRegisterOffset::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreRegisterPair::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreUnsignedImmediate::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLogicalShiftedRegister::format):
+        (JSC::ARM64Disassembler::A64DOpcodeMoveWide::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDmbIsh::format): Deleted.
+        (JSC::ARM64Disassembler::A64DOpcodeDmbIshSt::format): Deleted.
+        * disassembler/ARM64/A64DOpcode.h:
+        (JSC::ARM64Disassembler::A64DOpcode::appendSignedImmediate64):
+        (JSC::ARM64Disassembler::A64DOpcode::appendUnsignedHexImmediate):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::opName):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::sBit):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::opCode):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::opCode2):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::opNameIndex):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing3Source::opName):
+        (JSC::ARM64Disassembler::A64DOpcodeFloatingPointConditionalSelect::opName):
+        (JSC::ARM64Disassembler::A64DOpcodeFloatingPointConditionalSelect::condition):
+        (JSC::ARM64Disassembler::A64DOpcodeDmb::option):
+        (JSC::ARM64Disassembler::A64DOpcodeDmb::crM):
+        (JSC::ARM64Disassembler::A64DOpcodeLogicalShiftedRegister::isMov):
+        (JSC::ARM64Disassembler::A64DOpcodeDmbIsh::opName): Deleted.
+        (JSC::ARM64Disassembler::A64DOpcodeDmbIshSt::opName): Deleted.
+
 2017-02-17  Zan Dobersek  <zdobersek@igalia.com>
 
         [GLib] GCActivityCallback::scheduleTimer() keeps pushing dispatch into the future

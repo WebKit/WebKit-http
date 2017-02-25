@@ -562,11 +562,7 @@ enum EDisplay {
     TABLE_COLUMN_GROUP, TABLE_COLUMN, TABLE_CELL,
     TABLE_CAPTION, BOX, INLINE_BOX,
     FLEX, WEBKIT_FLEX, INLINE_FLEX, WEBKIT_INLINE_FLEX,
-    CONTENTS,
-#if ENABLE(CSS_GRID_LAYOUT)
-    GRID, INLINE_GRID,
-#endif
-    NONE
+    CONTENTS, GRID, INLINE_GRID, NONE
 };
 
 enum EInsideLink {
@@ -634,7 +630,6 @@ enum LineAlign { LineAlignNone, LineAlignEdges };
 
 enum RubyPosition { RubyPositionBefore, RubyPositionAfter, RubyPositionInterCharacter };
 
-#if ENABLE(CSS_GRID_LAYOUT)
 static const size_t GridAutoFlowBits = 4;
 enum InternalGridAutoFlowAlgorithm {
     InternalAutoFlowAlgorithmSparse = 0x1,
@@ -658,7 +653,6 @@ enum AutoRepeatType {
     AutoFill,
     AutoFit
 };
-#endif
 
 // Reasonable maximum to prevent insane font sizes from causing crashes on some platforms (such as Windows).
 static const float maximumAllowedFontSize = 1000000.0f;
@@ -731,5 +725,22 @@ TextStream& operator<<(TextStream&, EFillBox);
 TextStream& operator<<(TextStream&, EFillRepeat);
 TextStream& operator<<(TextStream&, EMaskSourceType);
 TextStream& operator<<(TextStream&, Edge);
+
+// These are all minimized combinations of paint-order.
+enum class PaintOrder {
+    Normal,
+    Fill,
+    FillMarkers,
+    Stroke,
+    StrokeMarkers,
+    Markers,
+    MarkersStroke
+};
+
+enum class PaintType {
+    Fill,
+    Stroke,
+    Markers
+};
 
 } // namespace WebCore

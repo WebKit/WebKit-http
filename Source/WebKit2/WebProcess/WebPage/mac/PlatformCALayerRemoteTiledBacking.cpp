@@ -87,6 +87,26 @@ void PlatformCALayerRemoteTiledBacking::setAcceleratesDrawing(bool acceleratesDr
     m_tileController->setAcceleratesDrawing(acceleratesDrawing);
 }
 
+bool PlatformCALayerRemoteTiledBacking::wantsDeepColorBackingStore() const
+{
+    return m_tileController->wantsDeepColorBackingStore();
+}
+
+void PlatformCALayerRemoteTiledBacking::setWantsDeepColorBackingStore(bool wantsDeepColorBackingStore)
+{
+    m_tileController->setWantsDeepColorBackingStore(wantsDeepColorBackingStore);
+}
+
+bool PlatformCALayerRemoteTiledBacking::supportsSubpixelAntialiasedText() const
+{
+    return m_tileController->supportsSubpixelAntialiasedText();
+}
+
+void PlatformCALayerRemoteTiledBacking::setSupportsSubpixelAntialiasedText(bool supportsSubpixelAntialiasedText)
+{
+    m_tileController->setSupportsSubpixelAntialiasedText(supportsSubpixelAntialiasedText);
+}
+
 float PlatformCALayerRemoteTiledBacking::contentsScale() const
 {
     return m_tileController->contentsScale();

@@ -136,10 +136,6 @@
 #include "RemoteScrollingCoordinatorProxy.h"
 #endif
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-#include "CoordinatedLayerTreeHostProxyMessages.h"
-#endif
-
 #if ENABLE(VIBRATION)
 #include "WebVibrationProxy.h"
 #endif
@@ -1556,17 +1552,24 @@ void WebPageProxy::dispatchActivityStateChange()
     // This must happen after the SetActivityState message is sent, to ensure the page visibility event can fire.
     updateThrottleState();
 
-    // If we've started the responsiveness timer as part of telling the web process to update the backing store
-    // state, it might not send back a reply (since it won't paint anything if the web page is hidden) so we
-    // stop the unresponsiveness timer here.
-    if ((changed & ActivityState::IsVisible) && !isViewVisible())
-        m_process->responsivenessTimer().stop();
-
 #if ENABLE(POINTER_LOCK)
     if (((changed & ActivityState::IsVisible) && !isViewVisible()) || ((changed & ActivityState::WindowIsActive) && !m_pageClient.isViewWindowActive())
         || ((changed & ActivityState::IsFocused) && !(m_activityState & ActivityState::IsFocused)))
         requestPointerUnlock();
 #endif
+
+    if (changed & ActivityState::IsVisible) {
+        if (isViewVisible())
+            m_visiblePageToken = m_process->visiblePageToken();
+        else {
+            m_visiblePageToken = nullptr;
+
+            // If we've started the responsiveness timer as part of telling the web process to update the backing store
+            // state, it might not send back a reply (since it won't paint anything if the web page is hidden) so we
+            // stop the unresponsiveness timer here.
+            m_process->responsivenessTimer().stop();
+        }
+    }
 
     if (changed & ActivityState::IsInWindow) {
         if (isInWindow())
@@ -4105,31 +4108,6 @@ void WebPageProxy::runBeforeUnloadConfirmPanel(const String& message, uint64_t f
     m_uiClient->runBeforeUnloadConfirmPanel(this, message, frame, [reply](bool result) { reply->send(result); });
 }
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-void WebPageProxy::pageDidRequestScroll(const IntPoint& point)
-{
-    m_pageClient.pageDidRequestScroll(point);
-}
-
-void WebPageProxy::pageTransitionViewportReady()
-{
-    m_pageClient.pageTransitionViewportReady();
-}
-
-void WebPageProxy::didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect)
-{
-    m_pageClient.didRenderFrame(contentsSize, coveredRect);
-}
-
-void WebPageProxy::commitPageTransitionViewport()
-{
-    if (!isValid())
-        return;
-
-    process().send(Messages::WebPage::CommitPageTransitionViewport(), m_pageID);
-}
-#endif
-
 void WebPageProxy::didChangeViewportProperties(const ViewportAttributes& attr)
 {
     m_pageClient.didChangeViewportProperties(attr);
@@ -5482,6 +5460,7 @@ void WebPageProxy::resetStateAfterProcessExited()
     m_activityToken = nullptr;
 #endif
     m_pageIsUserObservableCount = nullptr;
+    m_visiblePageToken = nullptr;
 
     m_isValid = false;
     m_isPageSuspended = false;
@@ -5593,6 +5572,15 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.userInterfaceLayoutDirection = m_pageClient.userInterfaceLayoutDirection();
     parameters.observedLayoutMilestones = m_observedLayoutMilestones;
     parameters.overrideContentSecurityPolicy = m_overrideContentSecurityPolicy;
+
+#if ENABLE(WEB_RTC)
+    // FIXME: We should tie ICE filtering with getUserMedia permission.
+    parameters.disableICECandidateFiltering = true;
+#if USE(LIBWEBRTC)
+    // FIXME: Turn down network interface enumeration by default.
+    parameters.enableEnumeratingAllNetworkInterfaces = true;
+#endif
+#endif
 
     return parameters;
 }
@@ -6545,9 +6533,9 @@ void WebPageProxy::focusedContentMediaElementDidChange(uint64_t elementID)
 }
 #endif
 
-void WebPageProxy::didPlayMediaPreventedFromPlayingWithoutUserGesture()
+void WebPageProxy::handleAutoplayEvent(uint32_t event)
 {
-    m_uiClient->didPlayMediaPreventedFromPlayingWithoutUserGesture(*this);
+    m_uiClient->handleAutoplayEvent(*this, static_cast<AutoplayEvent>(event));
 }
 
 #if PLATFORM(MAC)

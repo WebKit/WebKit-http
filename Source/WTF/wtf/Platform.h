@@ -911,16 +911,6 @@
 #endif
 #endif
 
-/* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
-   On non-Windows x86-64, iOS, and ARM64 we use a single fixed mmap, on other platforms we mmap on demand. */
-#if ENABLE(ASSEMBLER)
-#if CPU(X86_64) || PLATFORM(IOS) || CPU(ARM64)
-#define ENABLE_EXECUTABLE_ALLOCATOR_FIXED 1
-#else
-#define ENABLE_EXECUTABLE_ALLOCATOR_DEMAND 1
-#endif
-#endif
-
 /* CSS Selector JIT Compiler */
 #if !defined(ENABLE_CSS_SELECTOR_JIT)
 #if (CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(WPE))
@@ -1121,10 +1111,6 @@
 #define ENABLE_CSS3_TEXT_DECORATION_SKIP_INK 1
 #endif
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000)
-#define ENABLE_PLATFORM_FONT_LOOKUP 1
-#endif
-
 #if COMPILER(MSVC)
 #undef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
@@ -1209,5 +1195,9 @@
 #define ENABLE_WEB_PLAYBACK_CONTROLS_MANAGER 1
 #endif
 #endif /* PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101201 && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 */
+
+#if PLATFORM(COCOA) && ENABLE(WEB_RTC)
+#define USE_LIBWEBRTC 1
+#endif
 
 #endif /* WTF_Platform_h */

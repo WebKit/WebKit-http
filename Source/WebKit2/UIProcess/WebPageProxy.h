@@ -62,6 +62,7 @@
 #include "WebProcessLifetimeTracker.h"
 #include "WebsitePolicies.h"
 #include <WebCore/ActivityState.h>
+#include <WebCore/AutoplayEvent.h>
 #include <WebCore/Color.h>
 #include <WebCore/DragActions.h>
 #include <WebCore/EventTrackingRegions.h>
@@ -232,6 +233,10 @@ typedef GenericCallback<uint64_t> UnsignedCallback;
 typedef GenericCallback<EditingRange> EditingRangeCallback;
 typedef GenericCallback<const String&> StringCallback;
 typedef GenericCallback<API::SerializedScriptValue*, bool, const WebCore::ExceptionDetails&> ScriptValueCallback;
+
+enum VisibleWebPageCounterType { };
+using VisibleWebPageCounter = RefCounter<VisibleWebPageCounterType>;
+using VisibleWebPageToken = VisibleWebPageCounter::Token;
 
 #if PLATFORM(GTK)
 typedef GenericCallback<API::Error*> PrintFinishedCallback;
@@ -569,9 +574,6 @@ public:
     void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
     void commitPageTransitionViewport();
 #endif
-#if PLATFORM(EFL)
-    void setThemePath(const String&);
-#endif
 
 #if PLATFORM(GTK)
     void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
@@ -629,13 +631,6 @@ public:
     void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize);
     CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *) const;
 #endif // PLATFORM(MAC)
-
-#if PLATFORM(EFL)
-    void handleInputMethodKeydown(bool& handled);
-    void confirmComposition(const String&);
-    void setComposition(const String&, Vector<WebCore::CompositionUnderline>&, int);
-    void cancelComposition();
-#endif
 
 #if PLATFORM(GTK)
     PlatformWidget viewWidget();
@@ -837,7 +832,7 @@ public:
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
     void dragCancelled();
 #if PLATFORM(COCOA)
-    void setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, const WebCore::FloatPoint& dragImageAnchor, bool isLinkDrag);
+    void setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, std::optional<WebCore::TextIndicatorData>, const WebCore::FloatPoint& dragImageAnchor, uint64_t action);
     void setPromisedDataForImage(const String& pasteboardName, const SharedMemory::Handle& imageHandle, uint64_t imageSize, const String& filename, const String& extension,
                          const String& title, const String& url, const String& visibleURL, const SharedMemory::Handle& archiveHandle, uint64_t archiveSize);
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -912,10 +907,6 @@ public:
     void didCancelForOpenPanel();
 
     WebPageCreationParameters creationParameters();
-
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    void findZoomableAreaForPoint(const WebCore::IntPoint&, const WebCore::IntSize&);
-#endif
 
     void handleDownloadRequest(DownloadProxy*);
 
@@ -1073,7 +1064,7 @@ public:
     bool hasActiveAudioStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveAudioCaptureDevice; }
     bool hasActiveVideoStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveVideoCaptureDevice; }
     WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
-    void didPlayMediaPreventedFromPlayingWithoutUserGesture();
+    void handleAutoplayEvent(uint32_t);
 
 #if PLATFORM(MAC)
     void videoControlsManagerDidChange();
@@ -1113,12 +1104,6 @@ public:
 
     void setHeaderBannerHeightForTesting(int);
     void setFooterBannerHeightForTesting(int);
-#endif
-
-#if PLATFORM(EFL) && HAVE(ACCESSIBILITY) && defined(HAVE_ECORE_X)
-    bool accessibilityObjectReadByPoint(const WebCore::IntPoint&);
-    bool accessibilityObjectReadPrevious();
-    bool accessibilityObjectReadNext();
 #endif
 
 #if USE(UNIFIED_TEXT_CHECKING)
@@ -1354,12 +1339,6 @@ private:
     void clearNotifications(const Vector<uint64_t>& notificationIDs);
     void didDestroyNotification(uint64_t notificationID);
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    void pageDidRequestScroll(const WebCore::IntPoint&);
-    void pageTransitionViewportReady();
-    void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
-#endif
-
     void didChangeContentSize(const WebCore::IntSize&);
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -1397,9 +1376,6 @@ private:
 #if PLATFORM(GTK)
     void getEditorCommandsForKeyEvent(const AtomicString&, Vector<String>&);
     void bindAccessibilityTree(const String&);
-#endif
-#if PLATFORM(EFL)
-    void getEditorCommandsForKeyEvent(Vector<String>&);
 #endif
 
     // Popup Menu.
@@ -1955,6 +1931,7 @@ private:
     UserObservablePageCounter::Token m_pageIsUserObservableCount;
     ProcessSuppressionDisabledToken m_preventProcessSuppressionCount;
     HiddenPageThrottlingAutoIncreasesCounter::Token m_hiddenPageDOMTimerThrottlingAutoIncreasesCount;
+    VisibleWebPageToken m_visiblePageToken;
         
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior;
     std::optional<WebCore::ScrollbarOverlayStyle> m_scrollbarOverlayStyle;

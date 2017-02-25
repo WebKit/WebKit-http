@@ -822,11 +822,7 @@ bool WebChromeClient::shouldNotifyOnFormChanges()
 
 bool WebChromeClient::selectItemWritingDirectionIsNatural()
 {
-#if PLATFORM(EFL)
-    return true;
-#else
     return false;
-#endif
 }
 
 bool WebChromeClient::selectItemAlignmentFollowsMenuWritingDirection()
@@ -1015,7 +1011,7 @@ Color WebChromeClient::underlayColor() const
 
 void WebChromeClient::pageExtendedBackgroundColorDidChange(Color backgroundColor) const
 {
-#if PLATFORM(MAC) || PLATFORM(EFL)
+#if PLATFORM(MAC)
     m_page.send(Messages::WebPageProxy::PageExtendedBackgroundColorDidChange(backgroundColor));
 #else
     UNUSED_PARAM(backgroundColor);
@@ -1087,9 +1083,9 @@ void WebChromeClient::isPlayingMediaDidChange(MediaProducer::MediaStateFlags sta
     m_page.send(Messages::WebPageProxy::IsPlayingMediaDidChange(state, sourceElementID));
 }
 
-void WebChromeClient::didPlayMediaPreventedFromPlayingWithoutUserGesture()
+void WebChromeClient::handleAutoplayEvent(AutoplayEvent event)
 {
-    m_page.send(Messages::WebPageProxy::DidPlayMediaPreventedFromPlayingWithoutUserGesture());
+    m_page.send(Messages::WebPageProxy::HandleAutoplayEvent(static_cast<uint32_t>(event)));
 }
 
 #if ENABLE(MEDIA_SESSION)

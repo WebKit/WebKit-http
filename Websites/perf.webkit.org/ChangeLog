@@ -1,3 +1,306 @@
+2017-02-25  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Commit should order by 'commit_order' as secondary key.
+        https://bugs.webkit.org/show_bug.cgi?id=168866
+
+        Reviewed by Ryosuke Niwa.
+
+        Currently, commits are sorted by 'commit_time' only.
+        We should use 'commit_order' as secondary key when 'commit_time' is equal or null.
+
+        * public/include/commit-log-fetcher.php:
+        * public/include/db.php:
+        * server-tests/api-commits.js:
+        (return.addSlaveForReport.subversionCommits.then):
+        (then):
+
+2017-02-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r212853): Comparisons to baseline no longer shows up
+        https://bugs.webkit.org/show_bug.cgi?id=168863
+
+        Reviewed by Joseph Pecoraro.
+
+        The bug was caused by ChartStatusView's code not being updated to use TimeSeriesView's.
+        Updated the code to use TimeSeriesView's methods to fix the bug.
+
+        Also made InteractiveTimeSeriesChart's currentPoint to return a (TimeSeriesView, point, isLocked) tuple
+        to consolidate it with lockedIndicator() to work towards making the baseline data points selectable.
+
+        * browser-tests/time-series-chart-tests.js: Updated the test cases to use currentIndicator, and added
+        test cases for newly added lastPointInTimeRange.
+
+        * public/v3/components/chart-pane.js:
+        (ChartPane.prototype.serializeState): Updated to use currentIndicator.
+        (ChartPane.prototype._renderFilteringPopover): Ditto.
+
+        * public/v3/components/chart-status-view.js:
+        (ChartStatusView.prototype.updateStatusIfNeeded): Use currentIndicator for an interative time series.
+        Fixed the non-interactive chart's code path for TimeSeriesView.
+        (ChartStatusView.prototype._computeChartStatus): Modernized the code.
+        (ChartStatusView.prototype._findLastPointPriorToTime): Deleted. Replaced by TimeSeriesView's
+        lastPointInTimeRange.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.currentIndicator):
+        (InteractiveTimeSeriesChart.prototype.moveLockedIndicatorWithNotification):
+        (InteractiveTimeSeriesChart.prototype._renderChartContent):
+        (InteractiveTimeSeriesChart):
+
+        * public/v3/models/time-series.js:
+        (TimeSeriesView.prototype.lastPointInTimeRange): Added.
+        (TimeSeriesView.prototype._reverse): Added. Traverses the view in the reverse order.
+        * unit-tests/time-series-tests.js:
+
+2017-02-23  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Rename 'commit_parent' in 'commits' table to 'commit_previous_commit'.
+        https://bugs.webkit.org/show_bug.cgi?id=168816
+
+        Reviewed by Ryosuke Niwa.
+
+        Rename 'commit_parent' to avoid ambiguity in the coming feature.
+        For exisiting database, run
+            "ALTER TABLE commits RENAME commit_parent TO commit_previous_commit;"
+        to update the database.
+
+        * init-database.sql:
+        * public/api/report-commits.php:
+        * public/include/commit-log-fetcher.php:
+        * server-tests/api-commits.js:
+        (then):
+        * server-tests/api-report-commits-tests.js:
+        (then):
+        * tools/sync-commits.py:
+        (main):
+        (Repository.fetch_commits_and_submit):
+        (GitRepository._revision_from_tokens):
+        * unit-tests/analysis-task-tests.js:
+        (sampleAnalysisTask):
+
+2017-02-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New sampling algorithm shows very few points when zoomed out
+        https://bugs.webkit.org/show_bug.cgi?id=168813
+
+        Reviewed by Saam Barati.
+
+        When a chart is zoomed out to a large time interval, the new sampling algorithm introduced in r212853 can
+        hide most of the data points because the difference between the preceding point's time and the succeeding
+        point's time of most points will be below the threshold we computed.
+
+        Instead, rank each data point based on the aforementioned time interval difference, and pick the first M data
+        points when M data points are to be shown.
+
+        This makes the new algorithm behave like our old algorithm while keeping it stable still. Note that this
+        algorithm still biases data points without a close neighboring point but this seems to work out in practice
+        because such a point tends to be an important sample anyway, and we don't have a lot of space between
+        data points since we aim to show about one point per pixel.
+
+        * browser-tests/index.html:
+        (CanvasTest.canvasContainsColor): Extracted from one of the test cases and generalized. Returns true when
+        the specified region of the canvas contains a specified color (alpha is optional).
+        * browser-tests/time-series-chart-tests.js: Added a test case for sampling. It checks that sampling happens
+        and that we always show some data point even when zoomed out to a large time interval.
+        (createChartWithSampleCluster):
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype._sampleTimeSeries):
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype._ensureSampledTimeSeries): M, the number of data points we pick must be computed
+        based on the width of data points we're about to draw constrained by the canvas size. e.g. when the canvas
+        is only half filled, we shouldn't be showing two points per pixel in the filled region.
+        (TimeSeriesChart.prototype._sampleTimeSeries): Refined the algorithm. First, compute the time difference or
+        the rank for each N data points. Sort those ranks in descending order (in the order we prefer), and include
+        all data points above the M-th rank in the sample.
+        (TimeSeriesChart.prototype.computeTimeGrid): Revert the inadvertent change in r212935.
+
+        * public/v3/models/time-series.js:
+        (TimeSeriesView.prototype.filter): Fixed a bug that the indices passed onto the callback were shifted by the
+        starting index.
+        * unit-tests/time-series-tests.js: Added a test case to ensure callbacks are called with correct data points
+        and indices.
+
+2017-02-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r212542): Make TimeSeriesChart.computeTimeGrid stops x-axis grid prematurely
+        https://bugs.webkit.org/show_bug.cgi?id=168812
+
+        Reviewed by Joseph Pecoraro.
+
+        Add time iterator of two months, three months, and four months with some tests.
+
+        Also for one-month time iterator, round the day of month to 1 or 15 whichever is closer.
+
+        * browser-tests/time-series-chart-tests.js: Added more tests.
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart._timeIterators.next):
+        (TimeSeriesChart._timeIterators):
+
+2017-02-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add tests for InteractiveTimeSeriesChart and adopt actions
+        https://bugs.webkit.org/show_bug.cgi?id=168750
+
+        Reviewed by Chris Dumez.
+
+        Added tests for InteractiveTimeSeriesChart.
+
+        Also replaced selection.onchange, selection.onzoom, indicator.onchange, annotations.onclick callbacks
+        by "selectionChange", "zoom", "indicatorChange", and "annotationClick" actions respectively.
+
+        Also fixed various bugs and bad code I encountered while writing these tests.
+
+        * browser-tests/index.html:
+        (waitForComponentsToRender): Delay the call to enqueueToRender until the next run loop because there
+        might be outstanding promises that just got resolved. e.g. for fetching measurement sets JSONs. Let
+        all those promises get resolved first. Otherwise, some tests become racy.
+        (canvasImageData): Extracted from time-series-chart-tests.js.
+        (canvasRefTest): Ditto.
+        (CanvasTest): Ditto.
+        (CanvasTest.fillCanvasBeforeRedrawCheck): Ditto.
+        (CanvasTest.hasCanvasBeenRedrawn): Ditto.
+        (CanvasTest.canvasImageData): Ditto.
+        (CanvasTest.expectCanvasesMatch): Ditto.
+        (CanvasTest.expectCanvasesMismatch): Ditto.
+
+        * browser-tests/time-series-chart-tests.js: Fixed some test cases where dpr multipler was not doing
+        the right thing anymore in Safari under a high DPI screen. Also added a lot of test cases for interactive
+        time series chart and one for rendering annotations.
+        (scripts): Moved.
+        (posixTime): Added. A helper function for sampleCluster.
+        (dayInMilliseconds): Ditto.
+        (sampleCluster): Moved here. Made the same cluster more artifical for an easier testing.
+        (createChartWithSampleCluster): Moved out of one of the tests.
+        (respondWithSampleCluster): Ditto.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype.configure): Adopted new actions in InteractiveTimeSeriesChart.
+
+        * public/v3/components/chart-status-view.js:
+        (ChartStatusView.prototype.updateStatusIfNeeded): Removed a superflous console.log.
+
+        * public/v3/components/chart-styles.js:
+        (ChartStyles.mainChartOptions): Set zoomButton to true. InteractiveTimeSeriesChart used to determine
+        whether to show the zoom button or not based on the precense of the zoom callback. We made it explicit.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.setIndicator): Explicitly call _notifySelectionChanged with false
+        instead of relying on undefined to be treated as falsey.
+        (InteractiveTimeSeriesChart.prototype._createCanvas): Use id instead of selector to find elements.
+        (InteractiveTimeSeriesChart.htmlTemplate):
+        (InteractiveTimeSeriesChart.cssTemplate):
+        (InteractiveTimeSeriesChart.prototype._mouseMove): Explicitly call _startOrContinueDragging with false
+        instead of relying on undefined treated as falsey. Also added the missing call to enqueueToRender found
+        by new tests. This was working fine on the dashboard due to other components invoking enqueueToRender
+        but won't work in a standalone instance of InteractiveTimeSeriesChart.
+        (InteractiveTimeSeriesChart.prototype._mouseLeave): Ditto, adding the missing call to enqueueToRender.
+        (InteractiveTimeSeriesChart.prototype._click): Removed the assignment to _forceRender when calling
+        _mouseMove in an early exist, which does set this flag and invokes enqueueToRender, and added the missing
+        call to enqueueToRender in the other code path.
+        (InteractiveTimeSeriesChart.prototype._startOrContinueDragging): Replaced annotations.onclick callback
+        by the newly added "annotationClick" action, and added the missing call to enqueueToRender.
+        (InteractiveTimeSeriesChart.prototype._endDragging): Use arrow function.
+        (InteractiveTimeSeriesChart.prototype._notifyIndicatorChanged): Replaced indicator.onchange callback by
+        the newly added "indicatorChange" action.
+        (InteractiveTimeSeriesChart.prototype._notifySelectionChanged): Replaced selection.onchange callback by
+        the newly added "selectionChange" action.
+        (InteractiveTimeSeriesChart.prototype._renderChartContent): Show the zoom button when options.zoomButton
+        is set instead of relying on the presence of selection.onzoom especially now that the callback has been
+        replaced by the "zoom" action.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype.setAnnotations): Added the missing call to enqueueToRender.
+
+        * public/v3/main.js:
+
+2017-02-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make sampling algorithm more stable and introduce an abstraction for sampled data
+        https://bugs.webkit.org/show_bug.cgi?id=168693
+
+        Reviewed by Chris Dumez.
+
+        Before this patch, TimeSeriesChart's resampling resulted in some points poping up and disappearing as
+        the width of a chart is changed. e.g. when resizing the browser window. The bug was by caused by
+        the sample for a given width not always including all points for a smaller width so as the width is
+        expanded, some point may be dropped.
+
+        Fixed this by using a much simpler algorithm of always picking a point when the time interval between
+        the preceding point and the succeeding point is larger than the minimum space we allow for a given width.
+
+        Also introduced a new abstraction around the sample data: TimeSeriesView. A TimeSeriesView provides
+        a similar API to TimeSeries for a subset of the time series filtered by a time range a custom function.
+        This paves a way to adding the ability to select baseline, etc... on the chart status view.
+
+        TimeSeriesView can be in two modes:
+        Mode 1. The view represents a contiguous subrange of TimeSeries - In this mode, this._data references
+                the underlying TimeSeries's _data directly, and we use _startingIndex to adjust index given to
+                find the relative index. Finding the next point or the previous point of a given point is done
+                via looking up the point's seriesIndex and doing a simple arithmetic. In general, an index is
+                converted to the absolute index in the underlying TimeSeries's _data array.
+
+        Mode 2. The view represents a filtered non-contiguous subset of TimeSeries -  In this mode, this._data is
+                its own array. Finding the next point or the previous point of a given point requires finding
+                a sibling point in the underlying TimeSeries which is in this view. Since this may result in O(n)
+                traversal and a hash lookup, we lazily build a map of each point to its position in _data instead.
+
+        * public/v3/components/chart-status-view.js:
+        (ChartStatusView.prototype.updateStatusIfNeeded): Call selectedPoints instead of sampledDataBetween for
+        clarity. This function now returns a TimeSeriesView instead of a raw array.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.currentPoint): Updated now that _sampledTimeSeriesData contains
+        an array of TimeSeriesView's. Note that diff is either 0, -1, or 1.
+        (InteractiveTimeSeriesChart.prototype.selectedPoints): Ditto. sampledDataBetween no longer exists since
+        we can simply call viewTimeRange on TimeSeriesView returned by sampledDataBetween.
+        (InteractiveTimeSeriesChart.prototype.firstSelectedPoint): Ditto.
+        (InteractiveTimeSeriesChart.prototype._sampleTimeSeries): Use add since excludedPoints is now a Set.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype.sampledDataBetween): Deleted.
+        (TimeSeriesChart.prototype.firstSampledPointBetweenTime): Deleted.
+        (TimeSeriesChart.prototype._ensureSampledTimeSeries): Modernized the code. Use the the time interval of
+        the chart divided by the number of allowed points as the time interval used in the new sampling algorithm.
+        (TimeSeriesChart.prototype._sampleTimeSeries): Rewritten. We also create TimeSeriesView here.
+        (TimeSeriesChart.prototype._sampleTimeSeries.findMedian): Deleted.
+        (TimeSeriesChart.prototype._updateCanvasSizeIfClientSizeChanged): Fixed a bug that the canvas size wasn't
+        set to the correct value on Chrome when a high DPI screen is used.
+
+        * public/v3/models/time-series.js:
+        (TimeSeries.prototype.viewBetweenPoints): Renamed from dataBetweenPoints. Now returns a TimeSeriesView.
+        (TimeSeriesView): Added. This constructor is to be called by viewBetweenPoints, viewTimeRange, and filter.
+        (TimeSeriesView.prototype._buildPointIndexMap): Added. Used in mode (2).
+        (TimeSeriesView.prototype.length): Added.
+        (TimeSeriesView.prototype.firstPoint): Added.
+        (TimeSeriesView.prototype.lastPoint): Added.
+        (TimeSeriesView.prototype.nextPoint): Added. Note index is always a position in this._data. In mode (1),
+        this is the position of the point in the underlying TimeSeries' _data. In mode (2), this is the position
+        of the point in this._data which is dictinct from the underlying TimeSeries' _data.
+        (TimeSeriesView.prototype.previousPoint): Ditto.
+        (TimeSeriesView.prototype.findPointByIndex): Added. Finds the point using the positional index from the
+        beginning of this view. findPointByIndex(0) on one view may not be same as findPointByIndex(0) of another.
+        (TimeSeriesView.prototype.findById): Added. This is O(n).
+        (TimeSeriesView.prototype.values): Added. Returns the value of each point in this view.
+        (TimeSeriesView.prototype.filter): Added. Creates a new view with a subset of data points the predicate
+        function returned true.
+        (TimeSeriesView.prototype.viewTimeRange): Added. Creates a new view with a subset of data points for the
+        given time ragne. When the resultant view would include all points of this view, it simply returns itself
+        as an optimization.
+        (TimeSeriesView.prototype.firstPointInTimeRange): Added. Returns the first point in the view which lies
+        within the specified time range.
+        (TimeSeriesView.prototype.Symbol.iterator): Added. Iterates over each point in the view.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskChartPane.prototype.selectedPoints): Use selectedPoints in lieu of getting selection and then
+        calling sampledDataBetween with that range.
+
+        * public/v3/pages/summary-page.js:
+        (SummaryPageConfigurationGroup.set _medianForTimeRange): Modernized.
+
+        * unit-tests/time-series-tests.js: Added tests for TimeSeries and TimeSeriesView. Already caught bugs!
+        (addPointsToSeries):
+
 2017-02-17  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add tests for the time series chart and fix bugs I found along the way

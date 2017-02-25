@@ -1207,6 +1207,7 @@
 		5C6CDD541E413598009754E3 /* video_receive_stream.h in Headers */ = {isa = PBXBuildFile; fileRef = 5C6CDD471E413598009754E3 /* video_receive_stream.h */; };
 		5C6CDD551E413598009754E3 /* video_send_stream.h in Headers */ = {isa = PBXBuildFile; fileRef = 5C6CDD481E413598009754E3 /* video_send_stream.h */; };
 		5C6CDD561E413598009754E3 /* voice_engine_configurations.h in Headers */ = {isa = PBXBuildFile; fileRef = 5C6CDD491E413598009754E3 /* voice_engine_configurations.h */; };
+		5C85C4CB1E5780DD00D097B1 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C85C4CA1E5780DD00D097B1 /* CFNetwork.framework */; };
 		5CDD83541E43257200621E92 /* h264_bitstream_parser.cc in Sources */ = {isa = PBXBuildFile; fileRef = 5CDD83431E43257200621E92 /* h264_bitstream_parser.cc */; };
 		5CDD83551E43257200621E92 /* h264_bitstream_parser.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CDD83441E43257200621E92 /* h264_bitstream_parser.h */; };
 		5CDD83561E43257200621E92 /* h264_common.cc in Sources */ = {isa = PBXBuildFile; fileRef = 5CDD83451E43257200621E92 /* h264_common.cc */; };
@@ -2412,7 +2413,6 @@
 		5CFD53801E4BA4F500482908 /* audio_session_observer.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CFD53791E4BA4F500482908 /* audio_session_observer.h */; };
 		5CFD53811E4BA4F500482908 /* voice_processing_audio_unit.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CFD537A1E4BA4F500482908 /* voice_processing_audio_unit.h */; };
 		5CFD53821E4BA4F500482908 /* voice_processing_audio_unit.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CFD537B1E4BA4F500482908 /* voice_processing_audio_unit.mm */; settings = {COMPILER_FLAGS = "-fobjc-arc"; }; };
-		5CFD53841E4BBD8D00482908 /* audio_device_not_implemented_ios.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CFD53831E4BBD8D00482908 /* audio_device_not_implemented_ios.mm */; settings = {COMPILER_FLAGS = "-fobjc-arc"; }; };
 		5CFD538D1E4BD3A300482908 /* compare_neon.cc in Sources */ = {isa = PBXBuildFile; fileRef = 5CFD53851E4BD3A300482908 /* compare_neon.cc */; };
 		5CFD538E1E4BD3A300482908 /* compare_neon64.cc in Sources */ = {isa = PBXBuildFile; fileRef = 5CFD53861E4BD3A300482908 /* compare_neon64.cc */; };
 		5CFD538F1E4BD3A300482908 /* rotate_neon.cc in Sources */ = {isa = PBXBuildFile; fileRef = 5CFD53871E4BD3A300482908 /* rotate_neon.cc */; };
@@ -3826,6 +3826,7 @@
 		5C6CDD471E413598009754E3 /* video_receive_stream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = video_receive_stream.h; sourceTree = "<group>"; };
 		5C6CDD481E413598009754E3 /* video_send_stream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = video_send_stream.h; sourceTree = "<group>"; };
 		5C6CDD491E413598009754E3 /* voice_engine_configurations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = voice_engine_configurations.h; sourceTree = "<group>"; };
+		5C85C4CA1E5780DD00D097B1 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
 		5CDD83431E43257200621E92 /* h264_bitstream_parser.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = h264_bitstream_parser.cc; path = h264/h264_bitstream_parser.cc; sourceTree = "<group>"; };
 		5CDD83441E43257200621E92 /* h264_bitstream_parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = h264_bitstream_parser.h; path = h264/h264_bitstream_parser.h; sourceTree = "<group>"; };
 		5CDD83451E43257200621E92 /* h264_common.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = h264_common.cc; path = h264/h264_common.cc; sourceTree = "<group>"; };
@@ -5123,6 +5124,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5C85C4CB1E5780DD00D097B1 /* CFNetwork.framework in Frameworks */,
 				5C0073461E552CA20042215A /* SystemConfiguration.framework in Frameworks */,
 				5C0073431E552C800042215A /* CoreGraphics.framework in Frameworks */,
 				5C0073441E552C800042215A /* Security.framework in Frameworks */,
@@ -7165,6 +7167,7 @@
 		5CB3048A1DE4143400D2C405 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				5C85C4CA1E5780DD00D097B1 /* CFNetwork.framework */,
 				5C0073451E552CA20042215A /* SystemConfiguration.framework */,
 				5C0073411E552C800042215A /* CoreGraphics.framework */,
 				5C0073421E552C800042215A /* Security.framework */,
@@ -11019,7 +11022,6 @@
 				5C11A01D1E457578004F0987 /* audio_device_dummy.cc in Sources */,
 				5C119FFE1E457400004F0987 /* audio_device_generic.cc in Sources */,
 				5C11A00B1E457448004F0987 /* audio_device_mac.cc in Sources */,
-				5CFD53841E4BBD8D00482908 /* audio_device_not_implemented_ios.mm in Sources */,
 				5CDD84171E439B2900621E92 /* audio_encoder.cc in Sources */,
 				5CDD8CA71E43C6F700621E92 /* audio_encoder_cng.cc in Sources */,
 				5CDD8FF31E43CDF400621E92 /* audio_encoder_copy_red.cc in Sources */,
@@ -11947,6 +11949,7 @@
 		};
 		5C63F6631E414AB6002CA531 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D7C59C51208C68B001C873E /* libwebrtc.xcconfig */;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -11954,6 +11957,7 @@
 		};
 		5C63F6641E414AB6002CA531 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D7C59C51208C68B001C873E /* libwebrtc.xcconfig */;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -11961,6 +11965,7 @@
 		};
 		5C63F6651E414AB6002CA531 /* Production */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D7C59C51208C68B001C873E /* libwebrtc.xcconfig */;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

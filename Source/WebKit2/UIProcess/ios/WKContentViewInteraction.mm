@@ -558,11 +558,6 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     [self _createAndConfigureLongPressGestureRecognizer];
 
 #if ENABLE(DATA_INTERACTION)
-    _dataInteractionGestureRecognizer = adoptNS([[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(_dataInteractionGestureRecognized:)]);
-    [_dataInteractionGestureRecognizer setDelay:0.5];
-    [_dataInteractionGestureRecognizer setDelegate:self];
-    [_dataInteractionGestureRecognizer _setRequiresQuietImpulse:YES];
-    [self addGestureRecognizer:_dataInteractionGestureRecognizer.get()];
     [self setupDataInteractionDelegates];
 #endif
 
@@ -642,9 +637,8 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     [self removeGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
 
 #if ENABLE(DATA_INTERACTION)
-    [_dataInteractionGestureRecognizer setDelegate:nil];
-    [self removeGestureRecognizer:_dataInteractionGestureRecognizer.get()];
     [self teardownDataInteractionDelegates];
+    _isPerformingDataInteractionOperation = NO;
 #endif
 
     _inspectorNodeSearchEnabled = NO;
@@ -674,9 +668,6 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     [self removeGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
-#if ENABLE(DATA_INTERACTION)
-    [self removeGestureRecognizer:_dataInteractionGestureRecognizer.get()];
-#endif
 }
 
 - (void)_addDefaultGestureRecognizers
@@ -688,9 +679,6 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     [self addGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
-#if ENABLE(DATA_INTERACTION)
-    [self addGestureRecognizer:_dataInteractionGestureRecognizer.get()];
-#endif
 }
 
 - (UIView*)unscaledView
@@ -1226,14 +1214,6 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _previewGestureRecognizer.get()))
         return YES;
 
-#if ENABLE(DATA_INTERACTION)
-    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _dataInteractionGestureRecognizer.get()))
-        return YES;
-
-    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _longPressGestureRecognizer.get(), _dataInteractionGestureRecognizer.get()))
-        return YES;
-#endif
-
     return NO;
 }
 
@@ -1404,11 +1384,6 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         }
     }
 
-#if ENABLE(DATA_INTERACTION)
-    if (gestureRecognizer == _dataInteractionGestureRecognizer)
-        return [self pointIsInDataInteractionContent:point];
-#endif
-
     return YES;
 }
 
@@ -1441,7 +1416,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     [self ensurePositionInformationIsUpToDate:request];
 
 #if ENABLE(DATA_INTERACTION)
-    if (_positionInformation.hasDataInteractionAtPosition) {
+    if (_positionInformation.hasSelectionAtPosition) {
         // If the position might initiate a data interaction, we don't want to consider the content at this position to be selectable.
         // FIXME: This should be renamed to something more precise, such as textSelectionShouldRecognizeGestureAtPoint:
         return NO;
@@ -1461,15 +1436,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (_positionInformation.isImage || _positionInformation.isLink)
         return YES;
 
-    return _positionInformation.hasDataInteractionAtPosition;
-}
-
-- (UILongPressGestureRecognizer *)_dataInteractionGestureRecognizer
-{
-    if ([_webView._testingDelegate respondsToSelector:@selector(dataInteractionGestureRecognizer)])
-        return _webView._testingDelegate.dataInteractionGestureRecognizer;
-
-    return _dataInteractionGestureRecognizer.get();
+    return _positionInformation.hasSelectionAtPosition;
 }
 
 #endif
@@ -1487,7 +1454,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     [self ensurePositionInformationIsUpToDate:request];
 
 #if ENABLE(DATA_INTERACTION)
-    if (_positionInformation.hasDataInteractionAtPosition) {
+    if (_positionInformation.hasSelectionAtPosition) {
         // If the position might initiate data interaction, we don't want to change the selection.
         // FIXME: This should be renamed to something more precise, such as textInteractionShouldRecognizeGestureAtPoint:
         return NO;
@@ -1753,10 +1720,6 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     _hasValidPositionInformation = YES;
     if (_actionSheetAssistant)
         [_actionSheetAssistant updateSheetPosition];
-
-#if ENABLE(DATA_INTERACTION)
-    [self _updateDataInteractionPreviewSnapshotIfPossible];
-#endif
 }
 
 - (void)_willStartScrollingOrZooming
@@ -3776,6 +3739,9 @@ static bool isAssistableInputType(InputType type)
     else {
         // The default behavior is to allow node assistance if the user is interacting or the keyboard is already active.
         shouldShowKeyboard = userIsInteracting || _textSelectionAssistant;
+#if ENABLE(DATA_INTERACTION)
+        shouldShowKeyboard |= _isPerformingDataInteractionOperation;
+#endif
     }
     if (!shouldShowKeyboard)
         return;

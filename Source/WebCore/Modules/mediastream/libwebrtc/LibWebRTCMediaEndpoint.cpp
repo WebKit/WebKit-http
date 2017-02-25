@@ -36,7 +36,6 @@
 #include "PlatformStrategies.h"
 #include "RTCDataChannel.h"
 #include "RTCDataChannelEvent.h"
-#include "RTCIceCandidate.h"
 #include "RTCPeerConnection.h"
 #include "RTCSessionDescription.h"
 #include "RTCTrackEvent.h"
@@ -219,8 +218,8 @@ void LibWebRTCMediaEndpoint::getStats(MediaStreamTrack* track, const DeferredPro
     m_backend->GetStats(StatsCollector::create(*this, promise, track).get());
 }
 
-LibWebRTCMediaEndpoint::StatsCollector::StatsCollector(LibWebRTCMediaEndpoint& endpoint, const DeferredPromise& promise, MediaStreamTrack* track)
-    : m_endpoint(endpoint)
+LibWebRTCMediaEndpoint::StatsCollector::StatsCollector(Ref<LibWebRTCMediaEndpoint>&& endpoint, const DeferredPromise& promise, MediaStreamTrack* track)
+    : m_endpoint(WTFMove(endpoint))
     , m_promise(promise)
 {
     if (track)
@@ -230,13 +229,13 @@ LibWebRTCMediaEndpoint::StatsCollector::StatsCollector(LibWebRTCMediaEndpoint& e
 void LibWebRTCMediaEndpoint::StatsCollector::OnStatsDelivered(const rtc::scoped_refptr<const webrtc::RTCStatsReport>& report)
 {
     callOnMainThread([protectedThis = rtc::scoped_refptr<LibWebRTCMediaEndpoint::StatsCollector>(this), report] {
-        if (protectedThis->m_endpoint.isStopped())
+        if (protectedThis->m_endpoint->isStopped())
             return;
 
         // FIXME: Fulfill promise with the report
         UNUSED_PARAM(report);
 
-        protectedThis->m_endpoint.m_peerConnectionBackend.getStatsFailed(protectedThis->m_promise, Exception { TypeError, ASCIILiteral("Stats API is not yet implemented") });
+        protectedThis->m_endpoint->m_peerConnectionBackend.getStatsFailed(protectedThis->m_promise, Exception { TypeError, ASCIILiteral("Stats API is not yet implemented") });
     });
 }
 
@@ -446,7 +445,7 @@ void LibWebRTCMediaEndpoint::OnIceCandidate(const webrtc::IceCandidateInterface 
     callOnMainThread([protectedThis = makeRef(*this), mid = WTFMove(candidateMid), sdp = WTFMove(candidateSDP)] {
         if (protectedThis->isStopped())
             return;
-        protectedThis->m_peerConnectionBackend.fireICECandidateEvent(RTCIceCandidate::create(String(sdp), String(mid), 0));
+        protectedThis->m_peerConnectionBackend.newICECandidate(String(sdp), String(mid));
     });
 }
 

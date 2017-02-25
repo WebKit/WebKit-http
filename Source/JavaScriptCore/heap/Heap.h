@@ -62,7 +62,6 @@ class ExecutableBase;
 class FullGCActivityCallback;
 class GCActivityCallback;
 class GCAwareJITStubRoutine;
-class GCFinalizationCallback;
 class Heap;
 class HeapProfiler;
 class HeapVerifier;
@@ -353,8 +352,6 @@ public:
     JS_EXPORT_PRIVATE void setRunLoop(CFRunLoopRef);
 #endif // USE(CF)
     
-    JS_EXPORT_PRIVATE void addFinalizationCallback(RefPtr<GCFinalizationCallback>);
-
 private:
     friend class AllocatingScope;
     friend class CodeBlock;
@@ -676,8 +673,6 @@ private:
     uintptr_t m_barriersExecuted { 0 };
     
     CurrentThreadState* m_currentThreadState { nullptr };
-    
-    Vector<RefPtr<GCFinalizationCallback>> m_finalizationCallbacks;
 };
 
 } // namespace JSC

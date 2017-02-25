@@ -95,12 +95,6 @@ messages -> WebPageProxy {
     HandleInputMethodKeydown() -> (bool handled)
 #endif
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    PageDidRequestScroll(WebCore::IntPoint point)
-    PageTransitionViewportReady()
-    DidFindZoomableArea(WebCore::IntPoint target, WebCore::IntRect area)
-#endif
-
     DidChangeContentSize(WebCore::IntSize newSize)
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -308,7 +302,7 @@ messages -> WebPageProxy {
     DidPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted)
 #endif
 #if PLATFORM(COCOA) && ENABLE(DRAG_SUPPORT)
-    SetDragImage(WebCore::IntPoint clientPosition, WebKit::ShareableBitmap::Handle dragImage, WebCore::FloatPoint dragImageAnchor, bool linkDrag)
+    SetDragImage(WebCore::IntPoint clientPosition, WebKit::ShareableBitmap::Handle dragImage, std::optional<WebCore::TextIndicatorData> textIndicator, WebCore::FloatPoint dragImageAnchor, uint64_t action)
     SetPromisedDataForImage(String pasteboardName, WebKit::SharedMemory::Handle imageHandle, uint64_t imageSize, String filename, String extension, String title, String url, String visibleURL, WebKit::SharedMemory::Handle archiveHandle, uint64_t archiveSize)
 #if ENABLE(ATTACHMENT_ELEMENT)
     SetPromisedDataForAttachment(String pasteboardName, String filename, String extension, String title, String url, String visibleURL)
@@ -446,7 +440,7 @@ messages -> WebPageProxy {
 #endif
 
     IsPlayingMediaDidChange(unsigned state, uint64_t sourceElementID)
-    DidPlayMediaPreventedFromPlayingWithoutUserGesture()
+    HandleAutoplayEvent(uint32_t event)
 
 #if ENABLE(MEDIA_SESSION)
     HasMediaSessionWithActiveMediaElementsDidChange(bool state)

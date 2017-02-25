@@ -113,6 +113,26 @@ using namespace WebCore;
     return _tileController ? _tileController->acceleratesDrawing() : NO;
 }
 
+- (void)setWantsDeepColorBackingStore:(BOOL)wantsDeepColor
+{
+    _tileController->setWantsDeepColorBackingStore(wantsDeepColor);
+}
+
+- (BOOL)wantsDeepColorBackingStore
+{
+    return _tileController->wantsDeepColorBackingStore();
+}
+
+- (void)setSupportsSubpixelAntialiasedText:(BOOL)supportsSubpixelAntialiasedText
+{
+    _tileController->setSupportsSubpixelAntialiasedText(supportsSubpixelAntialiasedText);
+}
+
+- (BOOL)supportsSubpixelAntialiasedText
+{
+    return _tileController->supportsSubpixelAntialiasedText();
+}
+
 - (void)setContentsScale:(CGFloat)contentsScale
 {
     _tileController->setContentsScale(contentsScale);
