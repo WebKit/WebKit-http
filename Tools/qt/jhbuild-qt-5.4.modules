@@ -6,8 +6,10 @@
   <metamodule id="qt">
     <dependencies>
       <dep package="qtbase"/>
+      <dep package="qtdeclarative"/>
       <dep package="qtlocation"/>
       <dep package="qtsensors"/>
+      <dep package="qtwebchannel"/>
     </dependencies>
   </metamodule>
 
@@ -77,6 +79,18 @@
     </dependencies>
   </autotools>
 
+  <autotools id="qtdeclarative"
+      autogen-template="%(prefix)s/bin/qmake %(srcdir)s"
+      makeinstallargs="install INSTALL_ROOT='$(DESTDIR)'"
+      supports-non-srcdir-builds="no">
+      <branch module="archive/qt/5.4/${version}/submodules/qtdeclarative-opensource-src-${version}.tar.xz" version="5.4.0"
+          repo="download.qt.io"
+          hash="sha256:e67c9275b0f6869a7c1e8023ad7c0a23fb19f8a8d2f350371e954ead0cfad7b6"/>
+      <dependencies>
+          <dep package="qtbase"/>
+      </dependencies>
+  </autotools>
+
   <autotools id="qtlocation"
       autogen-template="%(prefix)s/bin/qmake %(srcdir)s"
       makeinstallargs="install INSTALL_ROOT='$(DESTDIR)'"
@@ -98,6 +112,19 @@
           hash="sha256:8a0f33ccf572b9fbcdc46fca602d75270979a2f851b6a1f399d039b1f7aae159"/>
       <dependencies>
           <dep package="qtbase"/>
+      </dependencies>
+  </autotools>
+
+  <autotools id="qtwebchannel"
+      autogen-template="%(prefix)s/bin/qmake %(srcdir)s"
+      makeinstallargs="install INSTALL_ROOT='$(DESTDIR)'"
+      supports-non-srcdir-builds="no">
+      <branch module="archive/qt/5.4/${version}/submodules/qtwebchannel-opensource-src-${version}.tar.xz" version="5.4.0"
+          repo="download.qt.io"
+          hash="sha256:24eb0125198270f8595babb6c0df74dd13e0ccc8c8a5e665151cf68c3306594c"/>
+      <dependencies>
+          <dep package="qtbase"/>
+          <dep package="qtdeclarative"/>
       </dependencies>
   </autotools>
 </moduleset>
