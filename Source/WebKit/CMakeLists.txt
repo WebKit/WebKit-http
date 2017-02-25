@@ -74,6 +74,10 @@ if (${PORT} STREQUAL "Qt")
             MACOSX_FRAMEWORK_IDENTIFIER org.qt-project.QtWebKit
         )
     endif ()
+
+    if (ENABLE_WEBKIT2)
+        add_dependencies(WebKit WebKit2)
+    endif ()
 endif ()
 
 add_dependencies(WebKit WebCore)

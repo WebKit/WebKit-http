@@ -760,6 +760,8 @@ WEBKIT_FRAMEWORK(WebKit2)
 add_dependencies(WebKit2 WebCore ${WEBKIT2_EXTRA_DEPENDENCIES})
 add_webkit2_prefix_header(WebKit2)
 
+QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT(WebKit2)
+
 # Suppress unused parameter warnings for sources in WebKit2.
 ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
 
@@ -815,8 +817,8 @@ POPULATE_LIBRARY_VERSION(WEBKIT2)
 set_target_properties(WebKit2 PROPERTIES VERSION ${WEBKIT2_VERSION} SOVERSION ${WEBKIT2_VERSION_MAJOR})
 
 if (NOT APPLE)
-    install(TARGETS WebKit2 WebProcess NetworkProcess
-        LIBRARY DESTINATION "${LIB_INSTALL_DIR}"
-        RUNTIME DESTINATION "${LIBEXEC_INSTALL_DIR}"
-    )
+    install(TARGETS WebProcess NetworkProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
+    if (SHARED_CORE OR NOT PORT STREQUAL "Qt")
+        install(TARGETS WebKit2 DESTINATION "${LIB_INSTALL_DIR}")
+    endif ()
 endif ()

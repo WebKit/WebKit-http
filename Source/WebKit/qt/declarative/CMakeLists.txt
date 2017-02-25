@@ -22,7 +22,7 @@ include_directories(SYSTEM
 
 add_library(qmlwebkitplugin MODULE plugin.cpp)
 target_link_libraries(qmlwebkitplugin
-    WebKit2 Qt5::Quick)
+    WebKit Qt5::Quick)
 
 set(qmlwebkit_output_dir "${CMAKE_BINARY_DIR}/imports/QtWebKit")
 set(qmlwebkit_install_dir "${QML_INSTALL_DIR}/QtWebKit")

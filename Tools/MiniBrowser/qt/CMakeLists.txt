@@ -50,7 +50,6 @@ set(MiniBrowser_SYSTEM_INCLUDE_DIRECTORIES
 
 set(MiniBrowser_LIBRARIES
     WebKit
-    WebKit2
     ${Qt5Quick_LIBRARIES}
 )
 

@@ -3,6 +3,12 @@ set(WebKit2_NetworkProcess_OUTPUT_NAME QtWebNetworkProcess)
 set(WebKit2_PluginProcess_OUTPUT_NAME QtWebPluginProcess)
 set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebDatabaseProcess)
 
+if (SHARED_CORE)
+    set(WebKit2_LIBRARY_TYPE SHARED)
+else ()
+    set(WebKit2_LIBRARY_TYPE STATIC)
+endif ()
+
 #set(WebKit2_USE_PREFIX_HEADER ON)
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
@@ -260,9 +266,22 @@ list(APPEND WebProcess_SOURCES
 )
 
 # FIXME: Allow building without widgets
-list(APPEND WebProcess_LIBRARIES
+set(WebProcess_LIBRARIES
+    WebKit
     Qt5::Widgets
     WebKitWidgets
+)
+
+set(NetworkProcess_LIBRARIES
+    WebKit
+)
+
+set(DatabaseProcess_LIBRARIES
+    WebKit
+)
+
+set(PluginProcess_LIBRARIES
+    WebKit
 )
 
 list(APPEND NetworkProcess_SOURCES
