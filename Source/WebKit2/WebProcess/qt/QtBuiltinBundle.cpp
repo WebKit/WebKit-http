@@ -92,7 +92,7 @@ void QtBuiltinBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef 
         handleMessageToNavigatorQtObject(page, messageBody);
     else if (WKStringIsEqualToUTF8CString(messageName, "SetNavigatorQtObjectEnabled"))
         handleSetNavigatorQtObjectEnabled(page, messageBody);
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     else if (WKStringIsEqualToUTF8CString(messageName, "MessageToNavigatorQtWebChannelTransportObject"))
         handleMessageToNavigatorQtWebChannelTransport(page, messageBody);
 #endif
@@ -122,7 +122,7 @@ void QtBuiltinBundle::handleSetNavigatorQtObjectEnabled(WKBundlePageRef page, WK
     bundlePage->setNavigatorQtObjectEnabled(enabled);
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 void QtBuiltinBundle::handleMessageToNavigatorQtWebChannelTransport(WKBundlePageRef page, WKTypeRef messageBody)
 {
     ASSERT(messageBody);

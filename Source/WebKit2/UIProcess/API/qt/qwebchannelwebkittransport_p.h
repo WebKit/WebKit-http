@@ -41,8 +41,6 @@
 
 #pragma once
 
-#ifdef HAVE_WEBCHANNEL
-
 #include <QtWebChannel/QWebChannelAbstractTransport>
 
 class QQuickWebViewExperimental;
@@ -59,5 +57,3 @@ public:
 private:
     QQuickWebViewExperimental* m_experimental;
 };
-
-#endif // HAVE_WEBCHANNEL

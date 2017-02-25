@@ -86,7 +86,7 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 #include "qwebchannelwebkittransport_p.h"
 #include <QtWebChannel/QQmlWebChannel>
 #endif
@@ -990,7 +990,7 @@ void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtObject(WKStringRef me
     emit q_ptr->experimental()->messageReceived(variantMap);
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKStringRef message)
 {
     // TODO: can I convert a WKStringRef to a UTF8 QByteArray directly?
@@ -1118,12 +1118,12 @@ QQuickWebViewExperimental::QQuickWebViewExperimental(QQuickWebView *webView, QQu
     , d_ptr(webViewPrivate)
     , schemeParent(new QObject(this))
     , m_test(new QWebKitTest(webViewPrivate, this))
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     , m_webChannel(new QQmlWebChannel(this))
     , m_webChannelTransport(new QWebChannelWebKitTransport(this))
 #endif
 {
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     m_webChannel->connectTo(m_webChannelTransport);
 #endif
 }
@@ -1214,7 +1214,7 @@ bool QQuickWebViewExperimental::flickableViewportEnabled()
     return s_flickableViewportEnabled;
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 QQmlWebChannel* QQuickWebViewExperimental::webChannel() const
 {
     return m_webChannel;
@@ -1256,7 +1256,7 @@ void QQuickWebViewExperimental::postMessage(const QString& message)
     WKPagePostMessageToInjectedBundle(d->webPage.get(), messageName, contents.get());
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 void QQuickWebViewExperimental::postQtWebChannelTransportMessage(const QByteArray& message)
 {
     Q_D(QQuickWebView);

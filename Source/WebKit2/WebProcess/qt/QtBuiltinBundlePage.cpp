@@ -127,7 +127,7 @@ static void callOnMessage(JSObjectRef object, WKStringRef contents, WKBundlePage
     JSObjectCallAsFunction(context, onmessageFunction, 0, 1, &wrappedMessage, 0);
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 static JSClassRef navigatorQtWebChannelTransportObjectClass()
 {
     static JSClassRef classRef = createEmptyJSClassRef();
@@ -157,7 +157,7 @@ QtBuiltinBundlePage::QtBuiltinBundlePage(QtBuiltinBundle* bundle, WKBundlePageRe
     , m_page(page)
     , m_navigatorQtObject(0)
     , m_navigatorQtObjectEnabled(false)
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     , m_navigatorQtWebChannelTransportObject(0)
 #endif
 {
@@ -172,7 +172,7 @@ QtBuiltinBundlePage::QtBuiltinBundlePage(QtBuiltinBundle* bundle, WKBundlePageRe
 QtBuiltinBundlePage::~QtBuiltinBundlePage()
 {
     if (!m_navigatorQtObject
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
         && !m_navigatorQtWebChannelTransportObject
 #endif
     )
@@ -186,7 +186,7 @@ QtBuiltinBundlePage::~QtBuiltinBundlePage()
     if (m_navigatorQtObject)
         JSValueUnprotect(context, m_navigatorQtObject);
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     if (m_navigatorQtWebChannelTransportObject)
         JSValueUnprotect(context, m_navigatorQtWebChannelTransportObject);
 #endif
@@ -203,7 +203,7 @@ void QtBuiltinBundlePage::didClearWindowForFrame(WKBundleFrameRef frame, WKBundl
         return;
     JSGlobalContextRef context = WKBundleFrameGetJavaScriptContextForWorld(frame, world);
     registerNavigatorQtObject(context);
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     registerNavigatorQtWebChannelTransportObject(context);
 #endif
 }
@@ -236,7 +236,7 @@ void QtBuiltinBundlePage::registerNavigatorQtObject(JSGlobalContextRef context)
                             postMessageName, &qt_postMessageCallback);
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 void QtBuiltinBundlePage::registerNavigatorQtWebChannelTransportObject(JSGlobalContextRef context)
 {
     static JSStringRef name = JSStringCreateWithUTF8CString("qtWebChannelTransport");

@@ -90,7 +90,7 @@ static void globalInitialization()
 static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messageName, WKTypeRef messageBody, const void*)
 {
     if (!WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject")
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
         && !WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject")
 #endif
         )
@@ -111,7 +111,7 @@ static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messag
 
     if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject"))
         QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtObject(str);
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     else if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject"))
         QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtWebChannelTransportObject(str);
 #endif

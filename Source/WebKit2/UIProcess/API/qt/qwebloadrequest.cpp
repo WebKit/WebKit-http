@@ -108,3 +108,5 @@ int QWebLoadRequest::errorCode() const
 {
     return d->errorCode;
 }
+
+#include "moc_qwebloadrequest_p.cpp"

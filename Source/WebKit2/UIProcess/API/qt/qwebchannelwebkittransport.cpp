@@ -42,7 +42,7 @@
 #include "config.h"
 #include "qwebchannelwebkittransport_p.h"
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 
 #include "qquickwebview_p.h"
 
@@ -77,4 +77,6 @@ void QWebChannelWebKitTransport::receiveMessage(const QByteArray& message)
     emit messageReceived(doc.object(), this);
 }
 
-#endif // HAVE_WEBCHANNEL
+#include "moc_qwebchannelwebkittransport_p.cpp"
+
+#endif // ENABLE(QT_WEBCHANNEL)

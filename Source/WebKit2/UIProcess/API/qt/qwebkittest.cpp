@@ -176,3 +176,5 @@ QVariant QWebKitTest::contentsScale() const
         return viewport->currentScale();
     return 1.0;
 }
+
+#include "moc_qwebkittest_p.cpp"
