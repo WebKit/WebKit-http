@@ -130,6 +130,11 @@ void WebPageProxy::windowedPluginGeometryDidChange(const WebCore::IntRect& frame
 {
     notImplemented();
 }
+
+void WebPageProxy::windowedPluginVisibilityDidChange(bool isVisible, uint64_t windowID)
+{
+    notImplemented();
+}
 #endif
 
 void WebPageProxy::changeSelectedIndex(int32_t selectedIndex)

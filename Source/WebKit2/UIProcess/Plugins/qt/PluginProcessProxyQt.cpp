@@ -44,8 +44,6 @@
 #include <QStringBuilder>
 #include <QVariant>
 #include <WebCore/FileSystem.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebKit {
 
@@ -60,23 +58,25 @@ void PluginProcessProxy::platformInitializePluginProcess(PluginProcessCreationPa
 {
 }
 
-static PassOwnPtr<QFile> cacheFile()
+#if PLUGIN_ARCHITECTURE(X11)
+
+static std::unique_ptr<QFile> cacheFile()
 {
     QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
     if (cachePath.isEmpty())
-        return PassOwnPtr<QFile>();
+        return std::make_unique<QFile>();
 
     // This should match the path set through WKContextSetDiskCacheDirectory.
     cachePath.append(QDir::separator()).append(QStringLiteral(".QtWebKit")).append(QDir::separator());
     QString cacheFilePath = cachePath % QStringLiteral("plugin_meta_data.json");
 
     QDir::root().mkpath(cachePath);
-    return adoptPtr(new QFile(cacheFilePath));
+    return std::make_unique<QFile>(cacheFilePath);
 }
 
 static void removeCacheFile()
 {
-    if (OwnPtr<QFile> file = cacheFile())
+    if (auto file = cacheFile())
         file->remove();
 }
 
@@ -90,7 +90,7 @@ struct ReadResult {
 
 static ReadResult::Tag readMetaDataFromCacheFile(QJsonDocument& result)
 {
-    OwnPtr<QFile> file = cacheFile();
+    auto file = cacheFile();
     if (!file || !file->open(QFile::ReadOnly))
         return ReadResult::Empty;
     QByteArray data = file->readAll();
@@ -110,7 +110,7 @@ static ReadResult::Tag readMetaDataFromCacheFile(QJsonDocument& result)
 
 static void writeToCacheFile(const QJsonArray& array)
 {
-    OwnPtr<QFile> file = cacheFile();
+    auto file = cacheFile();
     if (file && file->open(QFile::WriteOnly | QFile::Truncate))
         // Don't care about write error here. We will detect it later.
         file->write(QJsonDocument(array).toJson());
@@ -245,6 +245,8 @@ bool PluginProcessProxy::scanPlugin(const String& pluginPath, RawPluginMetaData&
     appendToCacheFile(QJsonObject::fromVariantMap(map));
     return true;
 }
+
+#endif // PLUGIN_ARCHITECTURE(X11)
 
 } // namespace WebKit
 

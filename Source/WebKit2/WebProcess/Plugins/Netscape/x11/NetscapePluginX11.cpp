@@ -107,7 +107,7 @@ static Display* getPluginDisplay()
 static inline int x11Screen()
 {
 #if PLATFORM(QT)
-    return XDefaultScreen(NetscapePlugin::x11HostDisplay());
+    return XDefaultScreen(x11HostDisplay());
 #elif PLATFORM(GTK)
     return gdk_screen_get_number(gdk_screen_get_default());
 #elif PLATFORM(EFL) && defined(HAVE_ECORE_X)
@@ -120,7 +120,7 @@ static inline int x11Screen()
 static inline int displayDepth()
 {
 #if PLATFORM(QT)
-    return XDefaultDepth(NetscapePlugin::x11HostDisplay(), x11Screen());
+    return XDefaultDepth(x11HostDisplay(), x11Screen());
 #elif PLATFORM(GTK)
     return gdk_visual_get_depth(gdk_screen_get_system_visual(gdk_screen_get_default()));
 #elif PLATFORM(EFL) && defined(HAVE_ECORE_X)
@@ -133,7 +133,7 @@ static inline int displayDepth()
 static inline unsigned long rootWindowID()
 {
 #if PLATFORM(QT)
-    return XDefaultRootWindow(NetscapePlugin::x11HostDisplay());
+    return XDefaultRootWindow(x11HostDisplay());
 #elif PLATFORM(GTK)
     return GDK_ROOT_WINDOW();
 #elif PLATFORM(EFL) && defined(HAVE_ECORE_X)
@@ -336,9 +336,9 @@ void NetscapePluginX11::paint(GraphicsContext& context, const IntRect& dirtyRect
         XSync(m_pluginDisplay, false);
 
 #if PLATFORM(QT)
-    XImage* xImage = XGetImage(NetscapePlugin::x11HostDisplay(), m_drawable, exposedRect.x(), exposedRect.y(),
+    XImage* xImage = XGetImage(x11HostDisplay(), m_drawable.get(), exposedRect.x(), exposedRect.y(),
         exposedRect.width(), exposedRect.height(), ULONG_MAX, ZPixmap);
-    QPainter* painter = context->platformContext();
+    QPainter* painter = context.platformContext();
     painter->drawImage(QPoint(exposedRect.x(), exposedRect.y()), qimageFromXImage(xImage), exposedRect);
 
     XDestroyImage(xImage);

@@ -16,11 +16,13 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
 
     # The WebKit2 Qt APIs depend on qwebkitglobal.h, which lives in WebKit
     "${WEBKIT_DIR}/qt/Api"
+    "${WEBKIT_DIR}/qt/Plugins"
 
     "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols/qt"
     "${WEBKIT2_DIR}/NetworkProcess/qt"
 
     "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
+    "${WEBKIT2_DIR}/Shared/Plugins/unix"
     "${WEBKIT2_DIR}/Shared/qt"
     "${WEBKIT2_DIR}/Shared/unix"
 
@@ -31,6 +33,9 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/InspectorServer/qt"
     "${WEBKIT2_DIR}/UIProcess/gstreamer"
     "${WEBKIT2_DIR}/UIProcess/qt"
+
+    "${WEBKIT2_DIR}/WebProcess/Plugins/Netscape/unix"
+    "${WEBKIT2_DIR}/WebProcess/Plugins/Netscape/x11"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/qt"
     "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
     "${WEBKIT2_DIR}/WebProcess/qt"
@@ -65,6 +70,10 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp
     Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
     Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp
+
+    Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
+
+    Shared/Plugins/unix/PluginSearchPath.cpp
 
     Shared/qt/ArgumentCodersQt.cpp
     Shared/qt/NativeWebKeyboardEventQt.cpp
@@ -123,6 +132,8 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/Plugins/qt/PluginProcessProxyQt.cpp
 
+    UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
+
     UIProcess/Storage/StorageManager.cpp
 
     UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp
@@ -161,6 +172,10 @@ list(APPEND WebKit2_SOURCES
     WebProcess/InjectedBundle/qt/InjectedBundleQt.cpp
 
     WebProcess/Plugins/Netscape/qt/PluginProxyQt.cpp
+
+    WebProcess/Plugins/Netscape/unix/NetscapePluginUnix.cpp
+
+    WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp
 
     WebProcess/WebCoreSupport/qt/WebContextMenuClientQt.cpp
     WebProcess/WebCoreSupport/qt/WebDragClientQt.cpp
@@ -210,6 +225,16 @@ else ()
     )
 endif ()
 
+if (ENABLE_NETSCAPE_PLUGIN_API)
+    # We don't build PluginProcess on Win and Mac because we don't
+    # support WK2 NPAPI on these platforms, however NPAPI works in WK1.
+    # Some WK2 code is guarded with ENABLE(NETSCAPE_PLUGIN_API) now
+    # so it should be compiled even when we don't want PluginProcess
+    # Enabling PLUGIN_PROCESS without building PluginProcess executable
+    # fixes things
+    add_definitions(-DENABLE_PLUGIN_PROCESS=1)
+endif ()
+
 list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
     ${GSTREAMER_INCLUDE_DIRS}
     ${Qt5Quick_INCLUDE_DIRS}
@@ -221,6 +246,7 @@ list(APPEND WebKit2_LIBRARIES
     ${Qt5Positioning_LIBRARIES}
     ${Qt5Quick_LIBRARIES}
     ${Qt5WebChannel_LIBRARIES}
+    ${X11_X11_LIB}
 )
 
 list(APPEND WebKit2_MESSAGES_IN_FILES

@@ -122,7 +122,7 @@ void ProcessLauncher::launchProcess()
         QByteArray networkProcessPrefix = qgetenv("QT_WEBKIT2_NP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(networkProcessPrefix.constData())).arg(QString(executablePathOfNetworkProcess()));
 #if ENABLE(PLUGIN_PROCESS)
-    } else if (m_launchOptions.processType == PluginProcess) {
+    } else if (m_launchOptions.processType == ProcessType::Plugin32 || m_launchOptions.processType == ProcessType::Plugin64) {
         commandLine = QLatin1String("%1 \"%2\" %3 %4");
         QByteArray pluginProcessPrefix = qgetenv("QT_WEBKIT2_PP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(pluginProcessPrefix.constData())).arg(QString(executablePathOfPluginProcess()));
@@ -177,7 +177,7 @@ void ProcessLauncher::launchProcess()
 #endif
 
 #if ENABLE(PLUGIN_PROCESS)
-    if (m_launchOptions.processType == PluginProcess)
+    if (m_launchOptions.processType == ProcessType::Plugin32 || m_launchOptions.processType == ProcessType::Plugin64)
         commandLine = commandLine.arg(QString(m_launchOptions.extraInitializationData.get("plugin-path")));
 #endif
 
