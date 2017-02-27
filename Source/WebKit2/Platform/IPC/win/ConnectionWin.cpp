@@ -27,7 +27,6 @@
 #include "Connection.h"
 
 #include "DataReference.h"
-#include <wtf/Functional.h>
 #include <wtf/RandomNumber.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/threads/BinarySemaphore.h>
@@ -161,8 +160,8 @@ void Connection::readEventHandler()
         if (!m_readBuffer.isEmpty()) {
             // We have a message, let's dispatch it.
 
-            OwnPtr<MessageDecoder> decoder = MessageDecoder::create(DataReference(m_readBuffer.data(), m_readBuffer.size()));
-            processIncomingMessage(decoder.release());
+            auto decoder = std::make_unique<MessageDecoder>(DataReference(m_readBuffer.data(), m_readBuffer.size()), Vector<Attachment>());
+            processIncomingMessage(WTFMove(decoder));
         }
 
         // Find out the size of the next message in the pipe (if there is one) so that we can read
@@ -250,12 +249,21 @@ bool Connection::open()
     // We connected the two ends of the pipe in createServerAndClientIdentifiers.
     m_isConnected = true;
 
+    RefPtr<Connection> protectedThis(this);
+
     // Start listening for read and write state events.
-    m_connectionQueue->registerHandle(m_readState.hEvent, bind(&Connection::readEventHandler, this));
-    m_connectionQueue->registerHandle(m_writeState.hEvent, bind(&Connection::writeEventHandler, this));
+    m_connectionQueue->registerHandle(m_readState.hEvent, [protectedThis] {
+        protectedThis->readEventHandler();
+    });
+
+    m_connectionQueue->registerHandle(m_writeState.hEvent, [protectedThis] {
+        protectedThis->writeEventHandler();
+    });
 
     // Schedule a read.
-    m_connectionQueue->dispatch(bind(&Connection::readEventHandler, this));
+    m_connectionQueue->dispatch([protectedThis] {
+        protectedThis->readEventHandler();
+    });
 
     return true;
 }
@@ -268,7 +276,7 @@ bool Connection::platformCanSendOutgoingMessages() const
     return !m_pendingWriteEncoder;
 }
 
-bool Connection::sendOutgoingMessage(PassOwnPtr<MessageEncoder> encoder)
+bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
 {
     ASSERT(!m_pendingWriteEncoder);
 
@@ -301,7 +309,7 @@ bool Connection::sendOutgoingMessage(PassOwnPtr<MessageEncoder> encoder)
 
     // The message will be sent soon. Hold onto the encoder so that it won't be destroyed
     // before the write completes.
-    m_pendingWriteEncoder = encoder;
+    m_pendingWriteEncoder = WTFMove(encoder);
 
     // We can only send one asynchronous message at a time (see comment in platformCanSendOutgoingMessages).
     return false;
@@ -346,6 +354,16 @@ bool Connection::dispatchSentMessagesUntil(const Vector<HWND>& windows, WTF::Bin
         ASSERT_WITH_MESSAGE(false, "::MsgWaitForMultipleObjectsEx returned unexpected result %lu", result);
         return false;
     }
+}
+
+void Connection::willSendSyncMessage(unsigned flags)
+{
+    UNUSED_PARAM(flags);
+}
+
+void Connection::didReceiveSyncReply(unsigned flags)
+{
+    UNUSED_PARAM(flags);
 }
 
 } // namespace IPC
