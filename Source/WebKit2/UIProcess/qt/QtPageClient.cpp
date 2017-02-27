@@ -433,11 +433,13 @@ void QtPageClient::derefView()
 {
 }
 
+#if ENABLE(VIDEO) && USE(GSTREAMER)
 bool QtPageClient::decidePolicyForInstallMissingMediaPluginsPermissionRequest(WebKit::InstallMissingMediaPluginsPermissionRequest&)
 {
     // QTFIXME
     return false;
 }
+#endif
 
 void QtPageClient::didRestoreScrollPosition()
 {

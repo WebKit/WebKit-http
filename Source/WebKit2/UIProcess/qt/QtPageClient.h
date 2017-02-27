@@ -141,7 +141,9 @@ public:
     void didChangeBackgroundColor() override;
     void refView() override;
     void derefView() override;
+#if ENABLE(VIDEO) && USE(GSTREAMER)
     bool decidePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
+#endif
     void didRestoreScrollPosition() override;
 };
 
