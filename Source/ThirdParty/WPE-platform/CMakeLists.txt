@@ -9,6 +9,7 @@ option(USE_WPE_BACKEND_WAYLAND_EGL "Whether to enable support for the wayland-eg
 option(USE_WPE_BACKEND_WESTEROS "Whether to enable support for the Westeros WPE backend" OFF)
 
 option(USE_PLATFORM_BROADCOM "Whether the playback is based on Broadcom plugins" OFF)
+option(USE_WPE_BACKEND_WESTEROS_MESA "Whether to enable support for the gbm based offscreen target for westeros Mesa only" OFF)
 
 # TODO
 option(USE_WPE_BACKEND_DRM "Whether to enable support for the DRM WPE backend" OFF)
@@ -31,6 +32,10 @@ if (USE_KEY_INPUT_HANDLING_LINUX_INPUT)
 else ()
     find_package(Libxkbcommon 0.4.0 REQUIRED)
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
+endif ()
+
+if (USE_WPE_BACKEND_WESTEROS_MESA)
+   add_definitions(-DWPE_BACKEND_MESA=1)
 endif ()
 
 set(WPE_PLATFORM_INCLUDE_DIRECTORIES
