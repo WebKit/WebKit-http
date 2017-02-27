@@ -34,6 +34,72 @@
 #include <wayland-client.h>
 #include <wayland-egl.h>
 
+#if defined(WPE_BACKEND_MESA)
+#include <gbm.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#define DEFAULT_CARD "/dev/dri/card0"
+#define DEFAULT_MODE_WIDTH (1280)
+#define DEFAULT_MODE_HEIGHT (720)
+
+namespace GBM{
+
+struct EGLOffscreenTarget {
+    ~EGLOffscreenTarget()
+    {
+        if (surface)
+            gbm_surface_destroy(surface);
+    }
+
+    struct gbm_surface* surface;
+
+    void initialize(struct gbm_device* device, uint32_t width, uint32_t height)
+    {
+       if (device)
+           surface = gbm_surface_create(device, width, height, GBM_FORMAT_XRGB8888, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+       else{
+           printf("EGLOffscreenTarget: gbm device is null\n");
+           return;
+       }
+
+       if (!surface)
+           printf("EGLOffscreenTarget: gbm surface created failed\n");
+    }
+};
+
+struct Backend {
+    Backend()
+    {
+        fd = open(DEFAULT_CARD, O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
+        if (fd < 0){
+            printf("Backend: DRM device open failure\n");
+            return;
+        }
+
+        device = gbm_create_device(fd);
+        if (!device) {
+            printf("Backend: gbm device not created\n");
+            close(fd);
+            return;
+        }
+    }
+
+    ~Backend()
+    {
+        if (device)
+            gbm_device_destroy(device);
+
+        if (fd >= 0)
+            close(fd);
+    }
+
+    int fd { -1 };
+    struct gbm_device* device;
+};
+}
+#endif
+
 namespace Westeros {
 
 class EventSource {
@@ -315,20 +381,39 @@ struct wpe_renderer_backend_egl_offscreen_target_interface westeros_renderer_bac
     // create
     []() -> void*
     {
+#if defined(WPE_BACKEND_MESA)        
+        return new GBM::EGLOffscreenTarget;
+#else
         return nullptr;
+#endif        
     },
     // destroy
     [](void* data)
     {
+#if defined(WPE_BACKEND_MESA)        
+        auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
+        delete target;
+#endif        
     },
     // initialize
     [](void* data, void* backend_data)
     {
+#if defined(WPE_BACKEND_MESA)        
+        auto* backend = new GBM::Backend;
+        auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
+        target->initialize(backend->device, DEFAULT_MODE_WIDTH, DEFAULT_MODE_HEIGHT);
+#endif        
     },
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
+#if defined(WPE_BACKEND_MESA)        
+        auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
+        printf("westeros_renderer_backend_egl_offscreen_target_interface: native window %x\n", target->surface);`        
+        return (EGLNativeWindowType)target->surface;
+#else
         return (EGLNativeWindowType)nullptr;
+#endif        
     },
 };
 
