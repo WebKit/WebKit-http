@@ -93,7 +93,7 @@ RefPtr<NetscapePlugInStreamLoader> WebLoaderStrategy::schedulePluginStreamLoad(F
 
 static std::chrono::milliseconds maximumBufferingTime(CachedResource* resource)
 {
-#if !ENABLE(NETWORK_CACHE)
+#if !ENABLE(NETWORK_CACHE) && !PLATFORM(WPE)
     return 0ms;
 #endif
 
