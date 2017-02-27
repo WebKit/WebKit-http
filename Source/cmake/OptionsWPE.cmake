@@ -6,8 +6,6 @@ set(PROJECT_VERSION_PATCH 20161117)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 set(WPE_API_VERSION 0.1)
 
-set(WPE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include")
-
 if (WTF_CPU_X86_64)
     set(ENABLE_FTL_DEFAULT ON)
 else ()
@@ -106,6 +104,8 @@ endif ()
 
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
+
+find_package(WPE REQUIRED)
 
 if (USE_WPE_BACKEND_BCM_RPI)
     find_package(BCMHost REQUIRED)
