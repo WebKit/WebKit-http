@@ -47,6 +47,7 @@
 #include "RenderView.h"
 #include "ScriptController.h"
 #include "SourceBuffer.h"
+#include <wtf/text/StringBuilder.h>
 #include <wtf/CurrentTime.h>
 
 #if PLATFORM(IOS)

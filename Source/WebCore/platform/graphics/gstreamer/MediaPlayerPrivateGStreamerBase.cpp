@@ -370,7 +370,7 @@ static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSyst
     ASSERT(streamEncryptionAllowedSystems);
     Vector<String> streamEncryptionAllowedSystemsVector;
     unsigned i;
-    for (i = 0; !streamEncryptionAllowedSystems[i]; ++i)
+    for (i = 0; streamEncryptionAllowedSystems[i]; ++i)
         streamEncryptionAllowedSystemsVector.append(streamEncryptionAllowedSystems[i]);
 
     const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");
@@ -429,6 +429,10 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                         if (session->ready()) {
                             GST_DEBUG("playready key already negotiated");
                             emitPlayReadySession();
+                        }
+                        if (streamEncryptionInformation.second.contains(eventKeySystemId)) {
+                            GST_TRACE("considering init data handled for %s", eventKeySystemId);
+                            m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
                         }
                         return false;
                     }
@@ -816,8 +820,16 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
 
     LockHolder holder(m_platformLayerProxy->lock());
 
-    if (!m_platformLayerProxy->isActive())
+    if (!m_platformLayerProxy->isActive()) {
+        // Consume the buffer (so it gets eventually unreffed) but keep the rest of the info.
+        const GstStructure* info = gst_sample_get_info(m_sample.get());
+        GstStructure* infoCopy = nullptr;
+        if (info)
+            infoCopy = gst_structure_copy(info);
+        m_sample = adoptGRef(gst_sample_new(nullptr, gst_sample_get_caps(m_sample.get()),
+            gst_sample_get_segment(m_sample.get()), infoCopy));
         return;
+    }
 
 #if USE(GSTREAMER_GL)
     std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation));
@@ -1665,7 +1677,7 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
     if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
-        GST_TRACE("event %u already handled", GST_EVENT_SEQNUM(event));
+        GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
         m_handledProtectionEvents.remove(GST_EVENT_SEQNUM(event));
         return;
     }

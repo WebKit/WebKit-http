@@ -30,6 +30,7 @@
 #include "MediaPlayer.h"
 #include "NotImplemented.h"
 #include "TimeRanges.h"
+#include <wtf/NeverDestroyed.h>
 
 #if ENABLE(MEDIA_SOURCE)
 #include "MediaSource.h"
