@@ -1,3 +1,178 @@
+2017-02-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [TextureMapper] Remove InterpolationQuality, TextDrawingModeFlags member variables
+        https://bugs.webkit.org/show_bug.cgi?id=168906
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the InterpolationQuality and TextDrawingModeFlags member variables from the
+        TextureMapper class. These weren't modified anywhere in the code.
+
+        BitmapTexture::updateContents() still sets the image interpolation quality and
+        drawing mode on the ImageBuffer's GraphicsContext, but now uses the default
+        InterpolationDefault and TextModeFill values.
+
+        * platform/graphics/texmap/BitmapTexture.cpp:
+        (WebCore::BitmapTexture::updateContents):
+        * platform/graphics/texmap/TextureMapper.cpp:
+        (WebCore::TextureMapper::TextureMapper): Deleted.
+        (WebCore::TextureMapper::~TextureMapper): Deleted.
+        * platform/graphics/texmap/TextureMapper.h:
+        (WebCore::TextureMapper::setImageInterpolationQuality): Deleted.
+        (WebCore::TextureMapper::setTextDrawingMode): Deleted.
+        (WebCore::TextureMapper::imageInterpolationQuality): Deleted.
+        (WebCore::TextureMapper::textDrawingMode): Deleted.
+
+2017-02-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordinatedGraphics] Remove CoordinatedGraphicsScene::paintToGraphicsContext()
+        https://bugs.webkit.org/show_bug.cgi?id=168903
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the GraphicsContext pointer member from the TextureMapper class
+        since the getter and setter methods are not used anywhere.
+
+        * platform/graphics/texmap/TextureMapper.cpp:
+        (WebCore::TextureMapper::TextureMapper):
+        * platform/graphics/texmap/TextureMapper.h:
+        (WebCore::TextureMapper::setGraphicsContext): Deleted.
+        (WebCore::TextureMapper::graphicsContext): Deleted.
+
+2017-02-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Stop compiling our own cursorMovementIterator()
+        https://bugs.webkit.org/show_bug.cgi?id=168211
+
+        Reviewed by David Hyatt.
+
+        Covered by existing tests.
+
+        Hook up the caret iterator.
+
+        * platform/graphics/ComplexTextController.cpp:
+        (WebCore::ComplexTextController::offsetForPosition):
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::previousOffset):
+        (WebCore::RenderText::nextOffset):
+        * rendering/RenderText.h:
+
+2017-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212942.
+        https://bugs.webkit.org/show_bug.cgi?id=168882
+
+        Made EWS very flaky (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Modern Media Controls] Dragging controls in fullscreen on
+        macOS prevents scrubbing or interacting with controls"
+        https://bugs.webkit.org/show_bug.cgi?id=168820
+        http://trac.webkit.org/changeset/212942
+
+2017-02-26  Chris Dumez  <cdumez@apple.com>
+
+        HitTestResult's linkSuggestedFilename should sanitize download attribute
+        https://bugs.webkit.org/show_bug.cgi?id=168856
+        <rdar://problem/30683109>
+
+        Reviewed by Antti Koivisto.
+
+        HitTestResult's linkSuggestedFilename should sanitize download attribute.
+        This is used by the context menu's "Download Linked File" & "Download Linked
+        File As..." actions.
+
+        * rendering/HitTestResult.cpp:
+        (WebCore::HitTestResult::linkSuggestedFilename):
+        * rendering/HitTestResult.h:
+
+2017-02-25  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Move coverage functions out of SimpleLineLayout.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=168872
+        
+        Reviewed by Simon Fraser.
+
+        SimpleLineLayout.cpp is for core functions only.
+
+        No change in functionality.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * rendering/RenderingAllInOne.cpp:
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::canUseForWithReason):
+        (WebCore::SimpleLineLayout::printReason): Deleted.
+        (WebCore::SimpleLineLayout::printReasons): Deleted.
+        (WebCore::SimpleLineLayout::printTextForSubtree): Deleted.
+        (WebCore::SimpleLineLayout::textLengthForSubtree): Deleted.
+        (WebCore::SimpleLineLayout::collectNonEmptyLeafRenderBlockFlows): Deleted.
+        (WebCore::SimpleLineLayout::collectNonEmptyLeafRenderBlockFlowsForCurrentPage): Deleted.
+        (WebCore::SimpleLineLayout::toggleSimpleLineLayout): Deleted.
+        (WebCore::SimpleLineLayout::printSimpleLineLayoutBlockList): Deleted.
+        (WebCore::SimpleLineLayout::printSimpleLineLayoutCoverage): Deleted.
+        * rendering/SimpleLineLayout.h:
+        * rendering/SimpleLineLayoutCoverage.cpp: Added.
+        (WebCore::SimpleLineLayout::printReason):
+        (WebCore::SimpleLineLayout::printReasons):
+        (WebCore::SimpleLineLayout::printTextForSubtree):
+        (WebCore::SimpleLineLayout::textLengthForSubtree):
+        (WebCore::SimpleLineLayout::collectNonEmptyLeafRenderBlockFlows):
+        (WebCore::SimpleLineLayout::collectNonEmptyLeafRenderBlockFlowsForCurrentPage):
+        (WebCore::SimpleLineLayout::toggleSimpleLineLayout):
+        (WebCore::SimpleLineLayout::printSimpleLineLayoutBlockList):
+        (WebCore::SimpleLineLayout::printSimpleLineLayoutCoverage):
+        * rendering/SimpleLineLayoutCoverage.h: Added.
+
+2017-02-25  Zalan Bujtas  <zalan@apple.com>
+
+        Text might wrap when its preferred logical width is used for sizing the containing block.
+        https://bugs.webkit.org/show_bug.cgi?id=168864
+        <rdar://problem/30690734>
+
+        Reviewed by Antti Koivisto.
+
+        In certain cases we end up measuring a text run in 2 different ways.
+        1. preferred width computation -> slow path FontCascade::width() 
+        2. line breaking logic -> fast path FontCascade::widthForSimpleText()
+ 
+        FontCascade::width() and ::widthForSimpleText() might return different results for the same run even when
+        the individual glyph widths are measured to be the same. It's because they run diffrent set of
+        arithmetics on the float values and for certain values these arithmetics produce different results due to the floating point
+        precision.
+        Since RenderText::computePreferredLogicalWidths() currently forces us to use the slow path
+        (to retrieve fontfallback and glyph overflow information) the only alternative solution is to turn off the fast path
+        for all runs that have been already measured using the slow path (which would be just wasteful).
+
+        Test: fast/text/fast-run-width-vs-slow-run-width.html
+
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::FontCascade::widthForSimpleText): Mimics WidthIterator::applyFontTransforms. Use the same set of arithmetics here.  
+
+2017-02-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve how multiple codegen-properties are handled in CSSProperties.json
+        https://bugs.webkit.org/show_bug.cgi?id=168867
+
+        Reviewed by Zalan Bujtas.
+
+        To make upcoming metadata storage easier, it's better if property entries in CSSProperties.json
+        are always hashes. One property (line-height) used an array, in order to represent settings for
+        two different build flags (ENABLE_TEXT_AUTOSIZING and !ENABLE_TEXT_AUTOSIZING).
+
+        Fix by making "codegen-properties" optionally be an array. The relevant item is selected in
+        removeInactiveCodegenProperties() and used to replace the array.
+
+        Sort @internalProprerties when generating code, otherwise the contents of isInternalCSSProperty()
+        are unstable (the order in @allNames is not stable because it's the keys in a hash).
+
+        * css/CSSProperties.json:
+        * css/makeprop.pl:
+        (matchEnableFlags):
+        (removeInactiveCodegenProperties):
+        (isPropertyEnabled):
+
 2017-02-24  Joseph Pecoraro  <pecoraro@apple.com>
 
         [Resource Timing] Media elements initiated loads should set the initiatorType to their element name (video/audio)

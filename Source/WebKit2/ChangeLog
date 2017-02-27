@@ -1,3 +1,199 @@
+2017-02-27  Andy Estes  <aestes@apple.com>
+
+        Links cannot be activated when running Mobile Safari with external SDK build of WebKit for iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=141906
+
+        Reviewed by Tim Horton.
+
+        Even if Touch Events are disabled, we still need to register a
+        UIWebTouchEventsGestureRecognizer to record the layer tree transaction ID when a touch
+        begins. Click events are only generated for touches that occur after the current frame's
+        load has committed, and we use the transaction ID from when the touch began to implement
+        this check.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleTouchEventSynchronously):
+        (WebKit::WebPageProxy::resetState):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKContentViewInteraction.h: Declared _layerTreeTransactionIdAtLastTouchStart.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]): Register a UIWebTouchEventsGestureRecognizer even if
+        Touch Events are disabled.
+        (-[WKContentView cleanupInteraction]): Reset _layerTreeTransactionIdAtLastTouchStart to 0.
+        (-[WKContentView _webTouchEventsRecognized:]): Update _layerTreeTransactionIdAtLastTouchStart
+        when a touch begins, even if Touch Events are disabled.
+        (-[WKContentView _singleTapCommited:]): Passed _layerTreeTransactionIdAtLastTouchStart to
+        WebPageProxy::commitPotentialTap().
+        (-[WKContentView _attemptClickAtLocation:]): Ditto for WebPageProxy::handleTap().
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::commitPotentialTap):
+        (WebKit::WebPageProxy::handleTap):
+
+2017-02-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordinatedGraphics] Remove CoordinatedGraphicsScene::paintToGraphicsContext()
+        https://bugs.webkit.org/show_bug.cgi?id=168903
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the CoordinatedGraphicsScene::paintToGraphicsContext() method as it
+        is not used anywhere. Also enables removing the GraphicsContext pointer
+        member from the TextureMapper class.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::paintToGraphicsContext): Deleted.
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+
+2017-02-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Hangs when showing Google search results
+        https://bugs.webkit.org/show_bug.cgi?id=168699
+
+        Reviewed by Žan Doberšek.
+
+        Connection::sendOutgoingMessage() can poll forever if sendmsg fails with EAGAIN or EWOULDBLOCK. For example if
+        socket read buffers are full, poll will be blocked until we read the pending data, but we can't read because
+        the thread is blocked in the poll. In case of EAGAIN/EWOULDBLOCK we should poll using the run loop, to allow
+        reads to happen in thread while we wait for the socket to be writable again. In the GTK+ port we use
+        GSocketMonitor to poll socket file descriptor without blocking, using the run loop. This patch renames the
+        socket monitor as readSocketMonitor and adds another one for polling output. When sendmsg fails with
+        EAGAIN/EWOULDBLOCK, the pending message is saved and the write monitor starts polling. Once the socket is
+        writable again we send the pending message. Helper class MessageInfo and a new one UnixMessage have been moved
+        to its own header file to be able to use std::unique_ptr member to save the pending message.
+
+        * Platform/IPC/Connection.cpp: Include UnixMessage.h as required by std::unique_ptr.
+        * Platform/IPC/Connection.h: Add write socket monitor and also keep the GSocket as a member to reuse it.
+        * Platform/IPC/glib/GSocketMonitor.cpp: Use Function instead of std::function.
+        (IPC::GSocketMonitor::start):
+        * Platform/IPC/glib/GSocketMonitor.h:
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        (IPC::Connection::platformInitialize): Initialize the GSocket here since we rely on it to take the ownership of
+        the descriptor. We were leaking it if the connection was invalidated without being opened.
+        (IPC::Connection::platformInvalidate): Destroy the GSocket even when not connected. Also stop the write monitor.
+        (IPC::Connection::processMessage):
+        (IPC::Connection::open):
+        (IPC::Connection::platformCanSendOutgoingMessages): Return false if we have a pending message to ensure
+        Connection doesn't try to send more messages until the pending message is dispatched. We don't need to check
+        m_isConnected because the caller already checks that.
+        (IPC::Connection::sendOutgoingMessage): Split it in two. This creates and prepares a UnixMessage and then calls
+        sendOutputMessage() to do the rest.
+        (IPC::Connection::sendOutputMessage): Send the message, or save it if sendmsg fails with EAGAIN or EWOULDBLOCK
+        to be sent later when the socket is writable.
+        * Platform/IPC/unix/UnixMessage.h: Added.
+        (IPC::MessageInfo::MessageInfo):
+        (IPC::MessageInfo::setMessageBodyIsOutOfLine):
+        (IPC::MessageInfo::isMessageBodyIsOutOfLine):
+        (IPC::MessageInfo::bodySize):
+        (IPC::MessageInfo::attachmentCount):
+        (IPC::UnixMessage::UnixMessage):
+        (IPC::UnixMessage::~UnixMessage):
+        (IPC::UnixMessage::attachments):
+        (IPC::UnixMessage::messageInfo):
+        (IPC::UnixMessage::body):
+        (IPC::UnixMessage::bodySize):
+        (IPC::UnixMessage::appendAttachment):
+        * PlatformGTK.cmake:
+
+2017-02-26  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: Docking Left doesn't constrain the page width
+        https://bugs.webkit.org/show_bug.cgi?id=168862
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::inspectedViewFrameDidChange):
+        Calculate the inspectedViewFrame to be the remaining space after WebInspector is opened
+        instead of using the original page size.
+
+2017-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Stop exporting C++ member variables from WKDOMTextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=168885
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMTextIterator.mm:
+
+2017-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Add preprocessor guards to Mac specific files that are exposed as private headers on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168878
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/WKInspector.h:
+        * WebProcess/InjectedBundle/API/c/mac/WKBundlePageBannerMac.h:
+
+2017-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove spurious C++ include from _WKTestingDelegate.h
+        https://bugs.webkit.org/show_bug.cgi?id=168877
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/_WKTestingDelegate.h:
+
+2017-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove unimplemented WKResourceLoadStatisticsManagerSetReducedTimestampResolution
+        https://bugs.webkit.org/show_bug.cgi?id=168880
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/WKResourceLoadStatisticsManager.h:
+
+2017-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove leftover WebKit2 C API function declarations
+        https://bugs.webkit.org/show_bug.cgi?id=168879
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+
+2017-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove some old WKSecurityOrigin binary compatibility stubs
+        https://bugs.webkit.org/show_bug.cgi?id=168881
+
+        Reviewed by Dan Bernstein.
+
+        * Shared/API/c/WKSecurityOriginRef.cpp:
+        (WKSecurityOriginGetHost): Deleted.
+        (WKSecurityOriginGetProtocol): Deleted.
+
+2017-02-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r211312): Double-clicking a word selects it along with the space that follows it
+        https://bugs.webkit.org/show_bug.cgi?id=168821
+        <rdar://problem/30690431>
+
+        Reviewed by Tim Horton.
+
+        Actually encode and decode smartInsertDeleteEnabled when sending WebPageCreationParameters over XPC.
+
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::encode):
+        (WebKit::WebPageCreationParameters::decode):
+
+2017-02-26  Chris Dumez  <cdumez@apple.com>
+
+        HitTestResult's linkSuggestedFilename should sanitize download attribute
+        https://bugs.webkit.org/show_bug.cgi?id=168856
+        <rdar://problem/30683109>
+
+        Reviewed by Antti Koivisto.
+
+        HitTestResult's linkSuggestedFilename should sanitize download attribute.
+        This is used by the context menu's "Download Linked File" & "Download Linked
+        File As..." actions.
+
+        * Shared/WebHitTestResultData.cpp:
+        (WebKit::WebHitTestResultData::WebHitTestResultData):
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp:
+        (WebKit::InjectedBundleHitTestResult::linkSuggestedFilename):
+
 2017-02-25  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK] Unreviewed, document deficiency in webkit_website_data_manager_clear() API

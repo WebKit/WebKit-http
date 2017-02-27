@@ -2430,8 +2430,6 @@ webkit.org/b/152137 fast/media/mq-pointer.html [ Failure ]
 
 webkit.org/b/152442 fast/scrolling/rtl-point-in-iframe.html [ Skip ]
 
-webkit.org/b/152449 fast/events/can-click-element-on-page-with-active-pseudo-class-and-search-field.html [ Skip ]
-
 webkit.org/b/152701 fast/animation/request-animation-frame-disabled.html [ Skip ]
 
 webkit.org/b/152282 css3/filters/composited-during-animation-layertree.html [ Failure ]
@@ -2889,3 +2887,7 @@ imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location.html [ Fail
 [ Debug ] fast/frames/exponential-frames.html [ Skip ]
 
 webkit.org/b/168053 pageoverlay/overlay-remove-reinsert-view.html [ Pass Failure ]
+
+# Bundle upload is not supported on iOS
+fast/files/filereader-zip-bundle-using-open-panel.html [ Skip ]
+http/tests/local/fileapi/upload-zip-bundle-as-blob-using-open-panel.html [ Skip ]
