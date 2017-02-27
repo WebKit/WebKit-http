@@ -72,8 +72,9 @@ public:
 
     CountedUserActivity& connectionActivity() { return m_connectionActivity; }
 
-private:
     PluginProcess();
+
+private:
     ~PluginProcess();
 
     // ChildProcess

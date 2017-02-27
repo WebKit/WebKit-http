@@ -237,8 +237,9 @@ public:
     bool areBeingProcessed() const { return !!m_currentRecord; }
     Record* next();
 
-private:
     ExceededDatabaseQuotaRecords() { }
+
+private:
     ~ExceededDatabaseQuotaRecords() { }
 
     Deque<std::unique_ptr<Record>> m_records;

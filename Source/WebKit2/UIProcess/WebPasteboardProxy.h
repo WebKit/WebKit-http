@@ -50,9 +50,9 @@ public:
 
     void addWebProcessProxy(WebProcessProxy&);
 
-private:
     WebPasteboardProxy();
 
+private:
     virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
     virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
 

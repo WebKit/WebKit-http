@@ -65,9 +65,9 @@ public:
 
     void postDatabaseTask(std::unique_ptr<WebCore::CrossThreadTask>);
 
-private:
     DatabaseProcess();
 
+private:
     // ChildProcess
     virtual void initializeProcess(const ChildProcessInitializationParameters&) override;
     virtual void initializeProcessName(const ChildProcessInitializationParameters&) override;

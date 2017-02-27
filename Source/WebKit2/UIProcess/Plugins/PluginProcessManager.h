@@ -71,9 +71,9 @@ public:
     void updateProcessSuppressionDisabled(bool);
 #endif
 
-private:
     PluginProcessManager();
 
+private:
     PluginProcessProxy* getOrCreatePluginProcess(uint64_t pluginProcessToken);
 
     Vector<std::pair<PluginProcessAttributes, uint64_t>> m_pluginProcessTokens;

@@ -59,7 +59,7 @@ class NetworkConnectionToWebProcess;
 class NetworkProcessSupplement;
 struct NetworkProcessCreationParameters;
 
-class NetworkProcess : public ChildProcess, private DownloadManager::Client {
+class NetworkProcess : public ChildProcess, public DownloadManager::Client {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
     friend class NeverDestroyed<NetworkProcess>;
     friend class NeverDestroyed<DownloadManager>;
@@ -109,8 +109,9 @@ public:
 
     void prefetchDNS(const String&);
 
-private:
     NetworkProcess();
+
+private:
     ~NetworkProcess();
 
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);

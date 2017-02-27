@@ -41,9 +41,9 @@ class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCor
 public:
     static void initialize();
     
-private:
     WebPlatformStrategies();
     
+private:
     // WebCore::PlatformStrategies
     virtual WebCore::CookiesStrategy* createCookiesStrategy() override;
     virtual WebCore::LoaderStrategy* createLoaderStrategy() override;
