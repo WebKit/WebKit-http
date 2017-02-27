@@ -82,6 +82,7 @@ public:
         size_t m_size;
 #elif OS(WINDOWS)
         mutable HANDLE m_handle;
+        size_t m_size;
 #endif
     };
 
@@ -93,7 +94,7 @@ public:
 #endif
 
 #if OS(WINDOWS)
-    static PassRefPtr<SharedMemory> adopt(HANDLE, size_t, Protection);
+    static RefPtr<SharedMemory> adopt(HANDLE, size_t, Protection);
 #endif
 
     ~SharedMemory();

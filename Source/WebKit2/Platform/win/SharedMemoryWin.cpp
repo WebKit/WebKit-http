@@ -110,16 +110,16 @@ bool SharedMemory::Handle::decode(IPC::ArgumentDecoder& decoder, Handle& handle)
     return true;
 }
 
-PassRefPtr<SharedMemory> SharedMemory::create(size_t size)
+RefPtr<SharedMemory> SharedMemory::allocate(size_t size)
 {
     HANDLE handle = ::CreateFileMappingW(INVALID_HANDLE_VALUE, 0, PAGE_READWRITE, 0, size, 0);
     if (!handle)
-        return 0;
+        return nullptr;
 
     void* baseAddress = ::MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, size);
     if (!baseAddress) {
         ::CloseHandle(handle);
-        return 0;
+        return nullptr;
     }
 
     RefPtr<SharedMemory> memory = adoptRef(new SharedMemory);
@@ -127,15 +127,15 @@ PassRefPtr<SharedMemory> SharedMemory::create(size_t size)
     memory->m_data = baseAddress;
     memory->m_handle = handle;
 
-    return memory.release();
+    return memory;
 }
 
 static DWORD accessRights(SharedMemory::Protection protection)
 {
     switch (protection) {
-    case SharedMemory::ReadOnly:
+    case SharedMemory::Protection::ReadOnly:
         return FILE_MAP_READ;
-    case SharedMemory::ReadWrite:
+    case SharedMemory::Protection::ReadWrite:
         return FILE_MAP_READ | FILE_MAP_WRITE;
     }
 
@@ -143,36 +143,36 @@ static DWORD accessRights(SharedMemory::Protection protection)
     return 0;
 }
 
-PassRefPtr<SharedMemory> SharedMemory::create(const Handle& handle, Protection protection)
+RefPtr<SharedMemory> SharedMemory::map(const Handle& handle, Protection protection)
 {
     RefPtr<SharedMemory> memory = adopt(handle.m_handle, handle.m_size, protection);
     if (!memory)
-        return 0;
+        return nullptr;
 
     // The SharedMemory object now owns the HANDLE.
     handle.m_handle = 0;
 
-    return memory.release();
+    return memory;
 }
 
-PassRefPtr<SharedMemory> SharedMemory::adopt(HANDLE handle, size_t size, Protection protection)
+RefPtr<SharedMemory> SharedMemory::adopt(HANDLE handle, size_t size, Protection protection)
 {
     if (!handle)
-        return 0;
+        return nullptr;
 
     DWORD desiredAccess = accessRights(protection);
 
     void* baseAddress = ::MapViewOfFile(handle, desiredAccess, 0, 0, size);
     ASSERT_WITH_MESSAGE(baseAddress, "::MapViewOfFile failed with error %lu", ::GetLastError());
     if (!baseAddress)
-        return 0;
+        return nullptr;
 
     RefPtr<SharedMemory> memory = adoptRef(new SharedMemory);
     memory->m_size = size;
     memory->m_data = baseAddress;
     memory->m_handle = handle;
 
-    return memory.release();
+    return memory;
 }
 
 SharedMemory::~SharedMemory()
@@ -198,31 +198,6 @@ bool SharedMemory::createHandle(Handle& handle, Protection protection)
     handle.m_handle = duplicatedHandle;
     handle.m_size = m_size;
     return true;
-}
-
-PassRefPtr<SharedMemory> SharedMemory::createCopyOnWriteCopy(size_t size) const
-{
-    ASSERT_ARG(size, size <= this->size());
-
-    HANDLE duplicatedHandle;
-    BOOL result = ::DuplicateHandle(::GetCurrentProcess(), m_handle, ::GetCurrentProcess(), &duplicatedHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
-    ASSERT_WITH_MESSAGE(result, "::DuplicateHandle failed with error %lu", ::GetLastError());
-    if (!result)
-        return 0;
-
-    void* newMapping = ::MapViewOfFile(duplicatedHandle, FILE_MAP_COPY, 0, 0, size);
-    ASSERT_WITH_MESSAGE(newMapping, "::MapViewOfFile failed with error %lu", ::GetLastError());
-    if (!newMapping) {
-        ::CloseHandle(duplicatedHandle);
-        return 0;
-    }
-
-    RefPtr<SharedMemory> memory = adoptRef(new SharedMemory);
-    memory->m_size = size;
-    memory->m_data = newMapping;
-    memory->m_handle = duplicatedHandle;
-
-    return memory.release();
 }
 
 unsigned SharedMemory::systemPageSize()
