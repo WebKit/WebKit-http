@@ -62,6 +62,17 @@ build_pass|!debug_and_release {
         CMAKE_CONFIG += QT_CONAN_DIR=$$ROOT_BUILD_DIR
     }
 
+    macos {
+        # Reuse the cached sdk version value from mac/sdk.prf if available
+        # otherwise query for it.
+        QMAKE_MAC_SDK_PATH = $$eval(QMAKE_MAC_SDK.$${QMAKE_MAC_SDK}.Path)
+        isEmpty(QMAKE_MAC_SDK_PATH) {
+            QMAKE_MAC_SDK_PATH = $$system("/usr/bin/xcodebuild -sdk $${QMAKE_MAC_SDK} -version Path 2>/dev/null")
+        }
+        exists($$QMAKE_MAC_SDK_PATH): CMAKE_CONFIG += CMAKE_OSX_SYSROOT=$$QMAKE_MAC_SDK_PATH
+        !isEmpty($$QMAKE_MACOSX_DEPLOYMENT_TARGET): CMAKE_CONFIG += CMAKE_OSX_DEPLOYMENT_TARGET=$$QMAKE_MACOSX_DEPLOYMENT_TARGET
+    }
+
     equals(QMAKE_HOST.os, Windows) {
         if(equals(MAKEFILE_GENERATOR, MSVC.NET)|equals(MAKEFILE_GENERATOR, MSBUILD)) {
             cmake_generator = "NMake Makefiles JOM"
