@@ -1,7 +1,6 @@
 list(APPEND WTF_SOURCES
     qt/MainThreadQt.cpp
     qt/RunLoopQt.cpp
-    qt/WorkQueueQt.cpp
 
     text/qt/StringQt.cpp
 )
@@ -30,6 +29,8 @@ endif ()
 if (UNIX AND NOT APPLE)
     list(APPEND WTF_SOURCES
         UniStdExtras.cpp
+
+        qt/WorkQueueQt.cpp
     )
 endif ()
 
@@ -47,6 +48,15 @@ if (USE_GLIB)
 endif ()
 
 if (WIN32)
+    list(REMOVE_ITEM WTF_SOURCES
+        threads/BinarySemaphore.cpp
+    )
+    list(APPEND WTF_SOURCES
+        threads/win/BinarySemaphoreWin.cpp
+
+        win/WorkItemWin.cpp
+        win/WorkQueueWin.cpp
+    )
     list(APPEND WTF_LIBRARIES
         winmm
     )
@@ -54,6 +64,8 @@ endif ()
 
 if (APPLE)
     list(APPEND WTF_SOURCES
+        cocoa/WorkQueueCocoa.cpp
+
         text/cf/AtomicStringImplCF.cpp
         text/cf/StringCF.cpp
         text/cf/StringImplCF.cpp
