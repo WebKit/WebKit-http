@@ -175,6 +175,14 @@ void DatabaseProcess::createDatabaseToWebProcessConnection()
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
     m_databaseToWebProcessConnections.append(DatabaseToWebProcessConnection::create(socketPair.server));
     parentProcessConnection()->send(Messages::DatabaseProcessProxy::DidCreateDatabaseToWebProcessConnection(IPC::Attachment(socketPair.client)), 0);
+#elif OS(WINDOWS)
+    IPC::Connection::Identifier serverIdentifier, clientIdentifier;
+    if (!IPC::Connection::createServerAndClientIdentifiers(serverIdentifier, clientIdentifier)) {
+        // log it?
+        return;
+    }
+    m_databaseToWebProcessConnections.append(DatabaseToWebProcessConnection::create(serverIdentifier));
+    parentProcessConnection()->send(Messages::DatabaseProcessProxy::DidCreateDatabaseToWebProcessConnection(IPC::Attachment(clientIdentifier)), 0);
 #elif OS(DARWIN)
     // Create the listening port.
     mach_port_t listeningPort;

@@ -76,6 +76,13 @@ void WebInspector::openFrontendConnection(bool underTest)
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
     IPC::Connection::Identifier connectionIdentifier(socketPair.server);
     IPC::Attachment connectionClientPort(socketPair.client);
+#elif OS(WINDOWS)
+    IPC::Connection::Identifier connectionIdentifier, clientIdentifier;
+    if (!IPC::Connection::createServerAndClientIdentifiers(connectionIdentifier, clientIdentifier)) {
+        // log it?
+        return;
+    }
+    IPC::Attachment connectionClientPort(clientIdentifier);
 #elif OS(DARWIN)
     mach_port_t listeningPort;
     mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);

@@ -230,6 +230,7 @@ if (USE_MACH_PORTS)
     )
 elseif (WIN32)
     list(APPEND WebKit2_SOURCES
+        Platform/IPC/win/AttachmentWin.cpp
         Platform/IPC/win/ConnectionWin.cpp
 
         Platform/win/SharedMemoryWin.cpp

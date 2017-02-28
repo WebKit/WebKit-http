@@ -239,6 +239,18 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
 
     IPC::Attachment clientSocket(socketPair.client);
     parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCreateNetworkConnectionToWebProcess(clientSocket), 0);
+#elif OS(WINDOWS)
+    IPC::Connection::Identifier serverIdentifier, clientIdentifier;
+    if (!IPC::Connection::createServerAndClientIdentifiers(serverIdentifier, clientIdentifier)) {
+        // log it?
+        return;
+    }
+
+    RefPtr<NetworkConnectionToWebProcess> connection = NetworkConnectionToWebProcess::create(serverIdentifier);
+    m_webProcessConnections.append(connection.release());
+
+    IPC::Attachment clientSocket(clientIdentifier);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCreateNetworkConnectionToWebProcess(clientSocket), 0);
 #elif OS(DARWIN)
     // Create the listening port.
     mach_port_t listeningPort;
