@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,48 +40,31 @@ class Watchdog : public WTF::ThreadSafeRefCounted<Watchdog> {
 public:
     class Scope;
 
-    Watchdog();
+    Watchdog(VM*);
+    void willDestroyVM(VM*);
 
     typedef bool (*ShouldTerminateCallback)(ExecState*, void* data1, void* data2);
     void setTimeLimit(std::chrono::microseconds limit, ShouldTerminateCallback = 0, void* data1 = 0, void* data2 = 0);
-    JS_EXPORT_PRIVATE void terminateSoon();
 
-    bool shouldTerminate(ExecState* exec)
-    {
-        if (!m_timerDidFire)
-            return false;
-        return shouldTerminateSlow(exec);
-    }
+    bool shouldTerminate(ExecState*);
 
     bool hasTimeLimit();
     void enteredVM();
     void exitedVM();
 
-    void* timerDidFireAddress() { return &m_timerDidFire; }
-
     static const std::chrono::microseconds noTimeLimit;
 
 private:
-    void startTimer(LockHolder&, std::chrono::microseconds timeLimit);
-    void stopTimer(LockHolder&);
+    void startTimer(std::chrono::microseconds timeLimit);
+    void stopTimer();
 
-    bool shouldTerminateSlow(ExecState*);
-
-    // m_timerDidFire indicates whether the timer fired. The Watchdog
-    // still needs to check if the allowed CPU time has elapsed. If so, then
-    // the Watchdog fires and m_didFire will be set.
-    // NOTE: m_timerDidFire is only set by the platform specific timer
-    // (probably from another thread) but is only cleared in the script thread.
-    bool m_timerDidFire;
+    Lock m_lock; // Guards access to m_vm.
+    VM* m_vm;
 
     std::chrono::microseconds m_timeLimit;
 
     std::chrono::microseconds m_cpuDeadline;
     std::chrono::microseconds m_wallClockDeadline;
-
-    // Writes to m_timerDidFire and m_timeLimit, and Reads+Writes to m_cpuDeadline and m_wallClockDeadline
-    // must be guarded by this lock.
-    Lock m_lock;
 
     bool m_hasEnteredVM { false };
 

@@ -57,23 +57,9 @@ BitmapTextureGL* toBitmapTextureGL(BitmapTexture* texture)
     return static_cast<BitmapTextureGL*>(texture);
 }
 
-BitmapTextureGL::BitmapTextureGL(RefPtr<GraphicsContext3D>&& context3D, const Flags flags)
-    : BitmapTextureGL(WTFMove(context3D), GraphicsContext3D::DONT_CARE, flags)
-{
-}
-
 BitmapTextureGL::BitmapTextureGL(RefPtr<GraphicsContext3D>&& context3D, GC3Dint internalFormat, const Flags flags)
-    : m_id(0)
-    , m_fbo(0)
-    , m_rbo(0)
-    , m_depthBufferObject(0)
-    , m_shouldClear(true)
-    , m_context3D(WTFMove(context3D))
-#if OS(DARWIN)
-    , m_type(GL_UNSIGNED_INT_8_8_8_8_REV)
-#else
-    , m_type(GraphicsContext3D::UNSIGNED_BYTE)
-#endif
+    : m_context3D(WTFMove(context3D))
+    , m_internalFormat(internalFormat)
 {
     if (internalFormat != GraphicsContext3D::DONT_CARE) {
         m_internalFormat = m_format = internalFormat;

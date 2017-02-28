@@ -1,3 +1,126 @@
+2017-02-28  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: jsc-ews should run when Makefiles and build scripts are changed
+        https://bugs.webkit.org/show_bug.cgi?id=168950
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/steps/checkpatchrelevance.py:
+        (CheckPatchRelevance): Add makefiles and build scripts to jsc_paths.
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        Begin enabling WebRTC on 64-bit
+        https://bugs.webkit.org/show_bug.cgi?id=168915
+
+        Reviewed by Eric Carlson.
+
+        * Scripts/build-webkit:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-02-27  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Windows regression: webkitpy.tool.steps.steps_unittest.StepsTest.test_runtests_jsc[_debug]
+        https://bugs.webkit.org/show_bug.cgi?id=168628
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/steps/runtests.py:
+        (RunTests._run_javascriptcore_tests): Pass options to the Base instance.
+        * Scripts/webkitpy/tool/steps/steps_unittest.py:
+        (StepsTest._step_options): Add a new 'root' option that's passed through to the Base instance.
+        (test_runtests_jsc): Not running webkit-build-directory anymore, and changed json output directory.
+        (test_runtests_jsc_debug): Ditto
+
+2017-02-27  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add machine-readable results for bindings tests
+        https://bugs.webkit.org/show_bug.cgi?id=168626
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/run-bindings-tests:
+        (main): Add optional --json-output command-line parameter.
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.__init__): Add variables to store machine-readable results.
+        (BindingsTests.detect_changes): Store results in machine-readable form if applicable.
+        (BindingsTests.main): Write data to JSON file if applicable.
+
+2017-02-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, roll out r213065.
+
+        We need these temporary fixes to keep the perf bots running.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _advanceProgress]):
+
+2017-02-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Add specification and status metadata to CSSProperties.json, and validate it
+        https://bugs.webkit.org/show_bug.cgi?id=168901
+
+        Reviewed by Darin Adler.
+
+        Enhance check-webkit-style to validate the status and spec data in CSSProperties.json.
+        
+        Current validation is basic type validation and some cross-referencing, but could be
+        enhanced.
+
+        * Scripts/webkitpy/style/checkers/jsonchecker.py:
+        (JSONCSSPropertiesChecker.check):
+        (JSONCSSPropertiesChecker.check_category):
+        (JSONCSSPropertiesChecker):
+        (JSONCSSPropertiesChecker.check_categories):
+        (JSONCSSPropertiesChecker.validate_url):
+        (JSONCSSPropertiesChecker.validate_status_type):
+        (JSONCSSPropertiesChecker.validate_comment):
+        (JSONCSSPropertiesChecker.validate_status):
+        (JSONCSSPropertiesChecker.validate_property_category):
+        (JSONCSSPropertiesChecker.validate_property_specification):
+        (JSONCSSPropertiesChecker.check_property):
+
+2017-02-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix two GTK+ unit tests failing after r213062.
+
+        We were building wrong Content-Disposition headers that libsoup doesn't parse correctly.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDownloads.cpp:
+        (addContentDispositionHTTPHeaderToResponse):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (serverCallback):
+
+2017-02-24  Jer Noble  <jer.noble@apple.com>
+
+        Add public method to MediaTime for doing timeScale conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=168860
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-02-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, revert all temporary build fixes for data interaction
+
+        Rolls out r212990, r212988 and r212984.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _advanceProgress]):
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        [libwebrtc] Enable WebRTC in some Production Builds
+        https://bugs.webkit.org/show_bug.cgi?id=168858
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
 2017-02-27  Andy Estes  <aestes@apple.com>
 
         Add a way to test file input without relying on drag and drop

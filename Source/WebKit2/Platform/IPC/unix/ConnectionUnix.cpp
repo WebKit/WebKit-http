@@ -93,7 +93,7 @@ private:
 void Connection::platformInitialize(Identifier identifier)
 {
     m_socketDescriptor = identifier;
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
     m_socket = adoptGRef(g_socket_new_from_fd(m_socketDescriptor, nullptr));
 #endif
     m_readBuffer.reserveInitialCapacity(messageMaxSize);

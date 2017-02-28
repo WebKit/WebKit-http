@@ -1,3 +1,657 @@
+2017-02-27  Dave Hyatt  <hyatt@apple.com>
+
+        Update flexbox to Blink's tip of tree
+        https://bugs.webkit.org/show_bug.cgi?id=168657
+
+        Reviewed by Zalan Bujtas.
+
+        * css3/flexbox/align-absolute-child-expected.txt:
+        * css3/flexbox/align-absolute-child.html:
+        * css3/flexbox/alignContent-applies-with-flexWrap-wrap-with-single-line-expected.txt: Added.
+        * css3/flexbox/alignContent-applies-with-flexWrap-wrap-with-single-line.html: Added.
+        * css3/flexbox/anonymous-block-merge-crash.html:
+        * css3/flexbox/assert-generated-new-flexbox-expected.txt: Added.
+        * css3/flexbox/assert-generated-new-flexbox.html: Added.
+        * css3/flexbox/auto-height-dynamic-expected.txt:
+        * css3/flexbox/auto-height-dynamic.html:
+        * css3/flexbox/auto-height-with-flex-expected.html: Added.
+        * css3/flexbox/auto-height-with-flex.html: Added.
+        * css3/flexbox/auto-margins-expected.html: Removed.
+        * css3/flexbox/auto-margins.html: Removed.
+        * css3/flexbox/border-and-padding-abspos-expected.txt: Added.
+        * css3/flexbox/border-and-padding-abspos.html: Added.
+        * css3/flexbox/box-orient-button-expected.txt: Added.
+        * css3/flexbox/box-orient-button.html: Added.
+        * css3/flexbox/box-sizing-expected.txt:
+        * css3/flexbox/box-sizing-min-max-sizes-expected.txt:
+        * css3/flexbox/box-sizing-min-max-sizes.html:
+        * css3/flexbox/box-sizing.html:
+        * css3/flexbox/bug527039-expected.txt: Added.
+        * css3/flexbox/bug527039.html: Added.
+        * css3/flexbox/bug580586-expected.txt: Added.
+        * css3/flexbox/bug580586.html: Added.
+        * css3/flexbox/bug604346-expected.html: Added.
+        * css3/flexbox/bug604346.html: Added.
+        * css3/flexbox/bug605682-expected.txt: Added.
+        * css3/flexbox/bug605682.html: Added.
+        * css3/flexbox/bug633212-expected.txt: Added.
+        * css3/flexbox/bug633212.html: Added.
+        * css3/flexbox/bug646288-expected.txt: Added.
+        * css3/flexbox/bug646288.html: Added.
+        * css3/flexbox/bug669714-expected.txt: Added.
+        * css3/flexbox/bug669714.html: Added.
+        * css3/flexbox/canvas-dynamic-change-expected.txt: Added.
+        * css3/flexbox/canvas-dynamic-change.html: Added.
+        * css3/flexbox/change-flexitem-into-abspos-expected.txt: Added.
+        * css3/flexbox/change-flexitem-into-abspos.html: Added.
+        * css3/flexbox/child-overflow-expected.html:
+        * css3/flexbox/child-overflow.html:
+        * css3/flexbox/column-flex-child-with-overflow-scroll-expected.txt: Added.
+        * css3/flexbox/column-flex-child-with-overflow-scroll.html: Added.
+        * css3/flexbox/columns-auto-size.html:
+        * css3/flexbox/columns-center-with-margins-and-wrap-expected.html: Added.
+        * css3/flexbox/columns-center-with-margins-and-wrap.html: Added.
+        * css3/flexbox/columns-center-with-margins-expected.html: Added.
+        * css3/flexbox/columns-center-with-margins.html: Added.
+        * css3/flexbox/columns-height-set-via-top-bottom-expected.txt:
+        * css3/flexbox/columns-height-set-via-top-bottom.html:
+        * css3/flexbox/content-height-with-scrollbars.html:
+        * css3/flexbox/cross-axis-scrollbar-expected.html:
+        * css3/flexbox/cross-axis-scrollbar.html:
+        * css3/flexbox/css-properties-expected.txt:
+        * css3/flexbox/css-properties.html:
+        * css3/flexbox/csswg/flex-margin-no-collapse.html:
+        * css3/flexbox/definite-cross-sizes-expected.txt: Added.
+        * css3/flexbox/definite-cross-sizes.html: Added.
+        * css3/flexbox/definite-main-size-expected.txt: Added.
+        * css3/flexbox/definite-main-size.html: Added.
+        * css3/flexbox/display-flexbox-set-get-expected.txt:
+        * css3/flexbox/display-flexbox-set-get.html:
+        * css3/flexbox/flex-algorithm-expected.txt:
+        * css3/flexbox/flex-algorithm-min-max-expected.txt:
+        * css3/flexbox/flex-algorithm-min-max.html:
+        * css3/flexbox/flex-algorithm-with-margins-expected.txt:
+        * css3/flexbox/flex-algorithm-with-margins.html:
+        * css3/flexbox/flex-algorithm.html:
+        * css3/flexbox/flex-align-baseline-expected.txt:
+        * css3/flexbox/flex-align-baseline.html:
+        * css3/flexbox/flex-align-column-expected.txt:
+        * css3/flexbox/flex-align-column.html:
+        * css3/flexbox/flex-align-end-expected.txt:
+        * css3/flexbox/flex-align-end.html:
+        * css3/flexbox/flex-align-max-expected.txt:
+        * css3/flexbox/flex-align-max.html:
+        * css3/flexbox/flex-align-percent-height-expected.txt:
+        * css3/flexbox/flex-align-percent-height.html:
+        * css3/flexbox/flex-align-stretch-expected.txt:
+        * css3/flexbox/flex-align-stretch.html:
+        * css3/flexbox/flex-align-vertical-writing-mode.html:
+        * css3/flexbox/flex-align.html:
+        * css3/flexbox/flex-column-relayout-assert-expected.txt: Added.
+        * css3/flexbox/flex-column-relayout-assert.html: Added.
+        * css3/flexbox/flex-factor-less-than-one-expected.txt: Added.
+        * css3/flexbox/flex-factor-less-than-one.html: Added.
+        * css3/flexbox/flex-flow-2-expected.txt:
+        * css3/flexbox/flex-flow-2.html:
+        * css3/flexbox/flex-flow-auto-margins-expected.txt:
+        * css3/flexbox/flex-flow-auto-margins-no-available-space-assert-expected.txt: Added.
+        * css3/flexbox/flex-flow-auto-margins-no-available-space-assert.html: Added.
+        * css3/flexbox/flex-flow-auto-margins-no-available-space-expected.txt:
+        * css3/flexbox/flex-flow-auto-margins-no-available-space.html:
+        * css3/flexbox/flex-flow-auto-margins.html:
+        * css3/flexbox/flex-flow-border-expected.txt:
+        * css3/flexbox/flex-flow-border.html:
+        * css3/flexbox/flex-flow-expected.txt:
+        * css3/flexbox/flex-flow-initial-expected.txt:
+        * css3/flexbox/flex-flow-initial.html:
+        * css3/flexbox/flex-flow-margins-auto-size-expected.txt:
+        * css3/flexbox/flex-flow-margins-auto-size.html:
+        * css3/flexbox/flex-flow-margins-expected.txt:
+        * css3/flexbox/flex-flow-margins.html:
+        * css3/flexbox/flex-flow-orientations-expected.txt:
+        * css3/flexbox/flex-flow-orientations.html:
+        * css3/flexbox/flex-flow-overflow-expected.txt:
+        * css3/flexbox/flex-flow-overflow.html:
+        * css3/flexbox/flex-flow-padding-expected.txt:
+        * css3/flexbox/flex-flow-padding.html:
+        * css3/flexbox/flex-flow.html:
+        * css3/flexbox/flex-item-child-overflow-expected.txt:
+        * css3/flexbox/flex-item-child-overflow.html:
+        * css3/flexbox/flex-item-contains-strict-expected.txt: Added.
+        * css3/flexbox/flex-item-contains-strict.html: Added.
+        * css3/flexbox/flex-item-firstLine-valid-expected.txt:
+        * css3/flexbox/flex-item-firstLine-valid.html:
+        * css3/flexbox/flex-justify-content-expected.txt:
+        * css3/flexbox/flex-justify-content.html:
+        * css3/flexbox/flex-longhand-parsing-expected.txt:
+        * css3/flexbox/flex-longhand-parsing.html:
+        * css3/flexbox/flex-no-flex-expected.txt:
+        * css3/flexbox/flex-no-flex.html:
+        * css3/flexbox/flex-one-sets-flex-basis-to-zero-px-expected.txt: Added.
+        * css3/flexbox/flex-one-sets-flex-basis-to-zero-px.html: Added.
+        * css3/flexbox/flex-order-expected.html: Added.
+        * css3/flexbox/flex-order-expected.png: Removed.
+        * css3/flexbox/flex-order-expected.txt: Removed.
+        * css3/flexbox/flex-order.html:
+        * css3/flexbox/flex-property-parsing-expected.txt:
+        * css3/flexbox/flex-property-parsing.html:
+        * css3/flexbox/flex-shorthand-flex-basis-middle-expected.txt: Added.
+        * css3/flexbox/flex-shorthand-flex-basis-middle.html: Added.
+        * css3/flexbox/flexbox-baseline.html:
+        * css3/flexbox/flexbox-height-with-overflow-auto-expected.txt: Added.
+        * css3/flexbox/flexbox-height-with-overflow-auto.html: Added.
+        * css3/flexbox/flexbox-ignore-container-firstLetter-expected.txt:
+        * css3/flexbox/flexbox-ignore-container-firstLetter.html:
+        * css3/flexbox/flexbox-ignore-firstLetter-expected.txt:
+        * css3/flexbox/flexbox-ignore-firstLetter.html:
+        * css3/flexbox/flexbox-ignore-firstLine-expected.txt:
+        * css3/flexbox/flexbox-ignore-firstLine.html:
+        * css3/flexbox/flexbox-lines-must-be-stretched-by-default-expected.txt:
+        * css3/flexbox/flexbox-lines-must-be-stretched-by-default.html:
+        * css3/flexbox/flexbox-overflow-auto-expected.html:
+        * css3/flexbox/flexbox-overflow-auto.html:
+        * css3/flexbox/flexbox-with-multi-column-property-expected.html: Added.
+        * css3/flexbox/flexbox-with-multi-column-property.html: Added.
+        * css3/flexbox/flexbox-wordwrap-expected.txt: Added.
+        * css3/flexbox/flexbox-wordwrap.html: Added.
+        * css3/flexbox/flexitem-expected.txt:
+        * css3/flexbox/flexitem-no-margin-collapsing-expected.txt:
+        * css3/flexbox/flexitem-no-margin-collapsing.html:
+        * css3/flexbox/flexitem-percent-height-change-expected.txt:
+        * css3/flexbox/flexitem-percent-height-change.html:
+        * css3/flexbox/flexitem-stretch-image-expected.txt:
+        * css3/flexbox/flexitem-stretch-image.html:
+        * css3/flexbox/flexitem-stretch-range.html:
+        * css3/flexbox/flexitem.html:
+        * css3/flexbox/floated-flexbox-expected.txt:
+        * css3/flexbox/floated-flexbox.html:
+        * css3/flexbox/floated-flexitem.html:
+        * css3/flexbox/inline-flex-crash.html:
+        * css3/flexbox/inline-flex-crash2.html:
+        * css3/flexbox/inline-flex-expected.txt:
+        * css3/flexbox/inline-flex.html:
+        * css3/flexbox/inline-flexbox-ignore-firstLine-expected.txt:
+        * css3/flexbox/inline-flexbox-ignore-firstLine.html:
+        * css3/flexbox/inline-flexbox-wrap-vertically-width-calculation-expected.txt: Added.
+        * css3/flexbox/inline-flexbox-wrap-vertically-width-calculation.html: Added.
+        * css3/flexbox/insert-text-crash.html:
+        * css3/flexbox/intrinsic-min-width-applies-with-fixed-width-expected.txt:
+        * css3/flexbox/intrinsic-min-width-applies-with-fixed-width.html:
+        * css3/flexbox/intrinsic-width-orthogonal-writing-mode-expected.txt: Added.
+        * css3/flexbox/intrinsic-width-orthogonal-writing-mode.html: Added.
+        * css3/flexbox/large-flex-shrink-assert-expected.txt: Added.
+        * css3/flexbox/large-flex-shrink-assert.html: Added.
+        * css3/flexbox/line-wrapping.html:
+        * css3/flexbox/mainAxisExtent-crash-expected.txt: Added.
+        * css3/flexbox/mainAxisExtent-crash.html: Added.
+        * css3/flexbox/max-width-violation-expected.txt: Added.
+        * css3/flexbox/max-width-violation.html: Added.
+        * css3/flexbox/min-size-auto-expected.txt:
+        * css3/flexbox/min-size-auto.html:
+        * css3/flexbox/minimum-size-image-expected.txt: Added.
+        * css3/flexbox/minimum-size-image.html: Added.
+        * css3/flexbox/multiline-align-content-expected.txt:
+        * css3/flexbox/multiline-align-content-horizontal-column-expected.txt:
+        * css3/flexbox/multiline-align-content-horizontal-column.html:
+        * css3/flexbox/multiline-align-content.html:
+        * css3/flexbox/multiline-align-self-expected.txt:
+        * css3/flexbox/multiline-align-self.html:
+        * css3/flexbox/multiline-column-auto-expected.txt:
+        * css3/flexbox/multiline-column-auto.html:
+        * css3/flexbox/multiline-column-overflow-expected.html: Added.
+        * css3/flexbox/multiline-column-overflow.html: Added.
+        * css3/flexbox/multiline-expected.txt:
+        * css3/flexbox/multiline-justify-content-expected.txt:
+        * css3/flexbox/multiline-justify-content.html:
+        * css3/flexbox/multiline-min-max-expected.txt: Added.
+        * css3/flexbox/multiline-min-max.html: Added.
+        * css3/flexbox/multiline-min-preferred-width-expected.txt:
+        * css3/flexbox/multiline-min-preferred-width.html:
+        * css3/flexbox/multiline-reverse-wrap-baseline.html:
+        * css3/flexbox/multiline-reverse-wrap-overflow-expected.txt:
+        * css3/flexbox/multiline-reverse-wrap-overflow.html:
+        * css3/flexbox/multiline-shrink-to-fit-expected.html:
+        * css3/flexbox/multiline-shrink-to-fit.html:
+        * css3/flexbox/multiline.html:
+        * css3/flexbox/negative-flex-rounding-assert.html:
+        * css3/flexbox/negative-margins-assert.html:
+        * css3/flexbox/negative-overflow-expected.txt:
+        * css3/flexbox/negative-overflow.html:
+        * css3/flexbox/nested-flexbox-min-size-auto-expected.txt: Added.
+        * css3/flexbox/nested-flexbox-min-size-auto.html: Added.
+        * css3/flexbox/nested-orthogonal-flexbox-relayout-expected.html: Added.
+        * css3/flexbox/nested-orthogonal-flexbox-relayout.html: Added.
+        * css3/flexbox/nested-stretch-expected.txt:
+        * css3/flexbox/nested-stretch.html:
+        * css3/flexbox/order-painting.html:
+        * css3/flexbox/orthogonal-flex-directions-expected.txt:
+        * css3/flexbox/orthogonal-flex-directions.html:
+        * css3/flexbox/orthogonal-writing-modes-and-intrinsic-sizing-expected.txt: Added.
+        * css3/flexbox/orthogonal-writing-modes-and-intrinsic-sizing.html: Added.
+        * css3/flexbox/overflow-and-padding-expected.txt: Added.
+        * css3/flexbox/overflow-and-padding.html: Added.
+        * css3/flexbox/overflow-auto-dynamic-changes-abspos-expected.html: Added.
+        * css3/flexbox/overflow-auto-dynamic-changes-abspos.html: Added.
+        * css3/flexbox/overflow-auto-dynamic-changes-expected.html: Added.
+        * css3/flexbox/overflow-auto-dynamic-changes.html: Added.
+        * css3/flexbox/overflow-auto-resizes-correctly-expected.txt: Added.
+        * css3/flexbox/overflow-auto-resizes-correctly.html: Added.
+        * css3/flexbox/overflow-keep-scrollpos-expected.txt:
+        * css3/flexbox/overflow-keep-scrollpos.html:
+        * css3/flexbox/percent-height-children-of-alignSelf-stretch-flex-item-expected.txt: Added.
+        * css3/flexbox/percent-height-children-of-alignSelf-stretch-flex-item.html: Added.
+        * css3/flexbox/percent-margins-expected.txt:
+        * css3/flexbox/percent-margins.html:
+        * css3/flexbox/percentage-height-in-abspos-expected.html: Added.
+        * css3/flexbox/percentage-height-in-abspos.html: Added.
+        * css3/flexbox/percentage-height-replaced-element-expected.txt: Added.
+        * css3/flexbox/percentage-height-replaced-element.html: Added.
+        * css3/flexbox/percentage-heights-expected.txt:
+        * css3/flexbox/percentage-heights.html:
+        * css3/flexbox/percentage-max-width-cross-axis-expected.txt: Added.
+        * css3/flexbox/percentage-max-width-cross-axis.html: Added.
+        * css3/flexbox/percentage-sizes-expected.txt:
+        * css3/flexbox/percentage-sizes-quirks-expected.txt:
+        * css3/flexbox/percentage-sizes-quirks.html:
+        * css3/flexbox/percentage-sizes.html:
+        * css3/flexbox/percentage-width-in-abspos-expected.html: Added.
+        * css3/flexbox/percentage-width-in-abspos.html: Added.
+        * css3/flexbox/perpendicular-writing-modes-inside-flex-item-expected.txt:
+        * css3/flexbox/perpendicular-writing-modes-inside-flex-item.html:
+        * css3/flexbox/position-absolute-child-expected.txt:
+        * css3/flexbox/position-absolute-child.html:
+        * css3/flexbox/position-absolute-children-expected.txt:
+        * css3/flexbox/position-absolute-children.html:
+        * css3/flexbox/preferred-widths-expected.txt:
+        * css3/flexbox/preferred-widths-orthogonal.html:
+        * css3/flexbox/preferred-widths.html:
+        * css3/flexbox/relayout-align-items-expected.txt:
+        * css3/flexbox/relayout-align-items.html:
+        * css3/flexbox/relayout-image-load-expected.txt:
+        * css3/flexbox/relayout-image-load.html:
+        * css3/flexbox/relpos-with-percentage-top-expected.txt: Added.
+        * css3/flexbox/relpos-with-percentage-top.html: Added.
+        * css3/flexbox/relpos-with-scrollable-with-abspos-crash-expected.txt: Added.
+        * css3/flexbox/relpos-with-scrollable-with-abspos-crash.html: Added.
+        * css3/flexbox/resize-min-content-flexbox-expected.txt: Added.
+        * css3/flexbox/resize-min-content-flexbox.html: Added.
+        * css3/flexbox/resources/box-orient-button.js: Added.
+        (setFlexDirection):
+        (gebi):
+        (test):
+        * css3/flexbox/scrollbars-auto-expected.html: Added.
+        * css3/flexbox/scrollbars-auto.html: Added.
+        * css3/flexbox/scrollbars-expected.html: Added.
+        * css3/flexbox/scrollbars.html: Added.
+        * css3/flexbox/shrinking-column-flexbox-expected.txt: Added.
+        * css3/flexbox/shrinking-column-flexbox.html: Added.
+        * css3/flexbox/stretch-after-sibling-size-change-expected.txt:
+        * css3/flexbox/stretch-after-sibling-size-change.html:
+        * css3/flexbox/stretch-input-in-column-expected.html:
+        * css3/flexbox/stretch-simplified-layout-expected.txt:
+        * css3/flexbox/stretch-simplified-layout.html:
+        * css3/flexbox/stretch-table-child-expected.txt: Added.
+        * css3/flexbox/stretch-table-child.html: Added.
+        * css3/flexbox/stretched-child-shrink-on-relayout-expected.txt: Added.
+        * css3/flexbox/stretched-child-shrink-on-relayout.html: Added.
+        * css3/flexbox/stretching-orthogonal-flows-expected.html: Added.
+        * css3/flexbox/stretching-orthogonal-flows.html: Added.
+        * css3/flexbox/style-change-expected.txt:
+        * css3/flexbox/style-change.html:
+        * css3/flexbox/text-overflow-on-flexbox-expected.html: Added.
+        * css3/flexbox/text-overflow-on-flexbox.html: Added.
+        * css3/flexbox/true-centering-expected.txt:
+        * css3/flexbox/true-centering.html:
+        * css3/flexbox/undefined-min-width-expected.txt: Added.
+        * css3/flexbox/undefined-min-width.html: Added.
+        * css3/flexbox/vertical-align-do-not-effect-flex-items-expected.html: Added.
+        * css3/flexbox/vertical-align-do-not-effect-flex-items.html: Added.
+        * css3/flexbox/vertical-flexbox-percentage-ignored-expected.html: Added.
+        * css3/flexbox/vertical-flexbox-percentage-ignored.html: Added.
+        * css3/flexbox/whitespace-in-flexitem-expected.html: Added.
+        * css3/flexbox/whitespace-in-flexitem.html: Added.
+        * css3/flexbox/width-change-and-relayout-children-expected.txt:
+        * css3/flexbox/width-change-and-relayout-children.html:
+        * css3/flexbox/wrapping-column-dynamic-changes-expected.txt: Added.
+        * css3/flexbox/wrapping-column-dynamic-changes.html: Added.
+        * css3/flexbox/writing-modes-expected.txt:
+        * css3/flexbox/writing-modes.html:
+        * css3/flexbox/z-index.html:
+        * resources/check-layout-th.js: Added.
+        (checkSubtreeExpectedValues):
+        (checkAttribute):
+        (assert_tolerance):
+        (checkExpectedValues):
+        (window.checkLayout):
+
+2017-02-28  Alex Christensen  <achristensen@webkit.org>
+
+        Main resource requests need cachePartition
+        https://bugs.webkit.org/show_bug.cgi?id=168806
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/security/credentials-main-resource-expected.txt: Added.
+        * http/tests/security/credentials-main-resource.html: Added.
+        * http/tests/security/resources/credentials-main-resource.php: Added.
+
+2017-02-28  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION: LayoutTest http/tests/security/credentials-iframes.html is failing on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=167967
+
+        Reviewed by Brady Eidson.
+
+        * platform/ios-simulator/TestExpectations:
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Use compact mode by default on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=168958
+        <rdar://problem/30748638>
+
+        Reviewed by Jon Lee.
+
+        Rebaseline tests to account for compact mode being the default mode for macOS
+        and remove tests that would check dynamically applying compact mode at some
+        threshold and the reduced padding mode.
+
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-reduced-padding-expected.txt: Removed.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-reduced-padding.html: Removed.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-tight-padding-expected.txt: Removed.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-tight-padding.html: Removed.
+        * media/modern-media-controls/media-controller/media-controller-compact.html:
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-change-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-change.html:
+        * media/modern-media-controls/media-controller/media-controller-reduced-padding-expected.txt: Removed.
+        * media/modern-media-controls/media-controller/media-controller-reduced-padding.html: Removed.
+        * media/modern-media-controls/media-controller/media-controller-toggle-compact-mode-expected.txt: Removed.
+        * media/modern-media-controls/media-controller/media-controller-toggle-compact-mode.html: Removed.
+        * platform/mac/TestExpectations:
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Adhere to tight padding on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168949
+        <rdar://problem/30746164>
+
+        Reviewed by Jon Lee.
+
+        Adding a new test for the TightPadding layout trait on iOS.
+
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-tight-padding-expected.txt: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-tight-padding.html: Added.
+
+2017-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark compositing/video/video-poster.html as flaky on macOS release.
+        https://bugs.webkit.org/show_bug.cgi?id=168953
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Use a solid background for <audio> controls on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=168941
+        <rdar://problem/30744316>
+
+        Unreviewed test gardening.
+
+        Skipping a macOS-specific test on iOS.
+
+        * platform/ios-simulator/TestExpectations:
+
+2017-02-27  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Add support for libwebrtc TCP incoming connections
+        https://bugs.webkit.org/show_bug.cgi?id=168748
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/datachannel/basic-expected.txt: Added.
+        * webrtc/datachannel/basic.html:
+        * webrtc/routines.js:
+        (createConnections):
+        (iceCallback1):
+        (iceCallback2):
+
+2017-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/dom/timer-throttling-hidden-page.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168927
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/rewind-button/rewind-button.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167352
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-27  Andy Estes  <aestes@apple.com>
+
+        [iOS] Enable file replacement
+        https://bugs.webkit.org/show_bug.cgi?id=168907
+        <rdar://problem/22258242>
+
+        Reviewed by David Kilzer.
+
+        * platform/ios-simulator/TestExpectations: Un-skipped file replacement tests on iOS.
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Use a solid background for <audio> controls on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=168941
+        <rdar://problem/30744316>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that checks that we use a solid background fill for <audio> on macOS.
+
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-audio-background-expected.txt: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-audio-background.html: Added.
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] StatusLabel should use similar properties to TimeLabel
+        https://bugs.webkit.org/show_bug.cgi?id=168938
+        <rdar://problem/30743185>
+
+        Reviewed by Dean Jackson.
+
+        We add new tests to ensure we test all the various styles that can be applied
+        to a StatusLabel.
+
+        * media/modern-media-controls/status-label/status-label-expected.txt:
+        * media/modern-media-controls/status-label/status-label-ios-expected.txt: Added.
+        * media/modern-media-controls/status-label/status-label-ios.html: Added.
+        * media/modern-media-controls/status-label/status-label-macos-expected.txt: Added.
+        * media/modern-media-controls/status-label/status-label-macos.html: Added.
+        * media/modern-media-controls/status-label/status-label.html:
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unprefix -webkit-line-break
+        https://bugs.webkit.org/show_bug.cgi?id=168213
+
+        Reviewed by Darin Adler.
+
+        Updating expected results.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/text/line-break-unprefixed.html: Added.
+        * fast/text/line-break-unprefixed-expected.html: Added.
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2017-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/IndexedDB/idbdatabase-deleteObjectStore-exception-order.htm as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168936
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/controller/runtime-controller-import.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168926
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/media-source/SourceBuffer-abort.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168094
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-02-27  Chris Dumez  <cdumez@apple.com>
+
+        LayoutTest fast/events/currentTarget-gc-crash.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=168917
+
+        Reviewed by Alex Christensen.
+
+        Make sure we never call finishJSTest() more than once.
+
+        * fast/events/currentTarget-gc-crash.html:
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Status text does not appear on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168918
+        <rdar://problem/30737644>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test checking that we correctly display the status label on iOS.
+
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-status-label-expected.txt: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-status-label.html: Added.
+
+2017-02-27  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [CredentialManagement] Add IDL definitions for Credential, SiteBoundCredential, and PasswordCredential
+        https://bugs.webkit.org/show_bug.cgi?id=168616
+        <rdar://problem/30167149>
+
+        Reviewed by Daniel Bates.
+
+        * credentials/idlharness-expected.txt: Added.
+        * credentials/idlharness.html: Added.
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * resources/WebIDLParser.js: Added.
+        * resources/idlharness.js: Renamed from LayoutTests/imported/w3c/resources/idlharness.js.
+        Removed LayoutTests/imported/w3c/resources/idlharness.js since it is not needed any more.
+        Added resources/idlharness.js for idl harness.
+
+2017-02-27  Jer Noble  <jer.noble@apple.com>
+
+        [WebRTC] Fix remote audio rendering
+        https://bugs.webkit.org/show_bug.cgi?id=168898
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/audio-peer-connection-webaudio-expected.txt: Added.
+        * webrtc/audio-peer-connection-webaudio.html: Added.
+
+2017-02-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        compositing/transitions/transform-on-large-layer.html : ImageDiff produced stderr output
+        https://bugs.webkit.org/show_bug.cgi?id=168217
+
+        Reviewed by Simon Fraser.
+
+        ImageDiff reports an error for image size mismatch of expected and
+        actual images. But, Nwtr ignores the errors for ref tests at the moment
+        (Bug 168033). They should have same window size before fixing the
+        bug.
+
+        * compositing/transitions/transform-on-large-layer-expected.html:
+        Do not resize the window to match the actual.
+        * fast/css/sticky/sticky-left-percentage-expected.html: Resize the
+        window to match the actual.
+
+2017-02-27  Antti Koivisto  <antti@apple.com>
+
+        Add a test verifying cache deduplication is not sensitive to SHA1 collision attack
+        https://bugs.webkit.org/show_bug.cgi?id=168774
+
+        Reviewed by Alex Christensen.
+
+        We use SHA1 for deduplicating disk cache resources. Since a real world SHA1 collision was demonstrated
+        recently (http://shattered.io/) we can add a test that shows it can't be used for cache poisoning.
+
+        There are two protections in the cache code that both individually stop this type of attack:
+
+        - When deduplicating the data is verified to be equal by a bytewise comparison.
+        - SHA1 computations include random salt unique to cache instance.
+
+        Commenting out both protections is needed to make this test fail.
+
+        * http/tests/cache/disk-cache/resources/make-sha1-collision.php: Added.
+
+        This script turns the nocolliding pdfs into colliding ones on the fly, in memory. This way we don't need
+        to land the colliding versions and risk blowing up the infrastructure.
+
+        * http/tests/cache/disk-cache/resources/shattered-nocollision-1.pdf: Added.
+        * http/tests/cache/disk-cache/resources/shattered-nocollision-2.pdf: Added.
+
+        > shasum shattered-nocollision-*
+        5439274cf677fe3b7c51264f88a5ecee97319ee9  shattered-nocollision-1.pdf
+        7fdd163dc21064b7f26e1199fc560ee6e0307498  shattered-nocollision-2.pdf
+
+        * http/tests/cache/disk-cache/shattered-deduplication-expected.html: Added.
+        * http/tests/cache/disk-cache/shattered-deduplication.html: Added.
+
+2017-02-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Downloads attributes tests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=168871
+
+        Reviewed by Michael Catanzaro.
+
+        Remove passing tests and add new baseline for
+        fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html because libsoup handles slashes
+        differently but download succeeds.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes-expected.txt: Added.
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Dragging controls in fullscreen on macOS prevents scrubbing or interacting with controls
+        https://bugs.webkit.org/show_bug.cgi?id=168820
+        <rdar://problem/30690281>
+
+        Reviewed by Jon Lee.
+
+        Making the existing test more robust and adding a new test that checks what happens
+        when we initiate a drag over some controls.
+
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag-is-prevented-over-button-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag-is-prevented-over-button.html: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag.html:
+
 2017-02-27  Andy Estes  <aestes@apple.com>
 
         Add a way to test file input without relying on drag and drop

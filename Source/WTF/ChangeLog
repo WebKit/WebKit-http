@@ -1,3 +1,61 @@
+2017-02-27  Andy Estes  <aestes@apple.com>
+
+        [iOS] Enable file replacement
+        https://bugs.webkit.org/show_bug.cgi?id=168907
+        <rdar://problem/22258242>
+
+        Reviewed by David Kilzer.
+
+        * wtf/FeatureDefines.h: Set ENABLE_FILE_REPLACEMENT to 1 on all Cocoa platforms.
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Rename ICU cursor iterator to caret iterator
+        https://bugs.webkit.org/show_bug.cgi?id=168206
+
+        Reviewed by Simon Fraser.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::mapModeToBackingIterator):
+        * wtf/text/TextBreakIterator.h:
+        * wtf/text/cf/TextBreakIteratorCF.h:
+        (WTF::TextBreakIteratorCF::TextBreakIteratorCF):
+        * wtf/text/icu/TextBreakIteratorICU.h:
+        (WTF::caretRules):
+        (WTF::TextBreakIteratorICU::TextBreakIteratorICU):
+        (WTF::cursorRules): Deleted.
+        * wtf/text/mac/TextBreakIteratorInternalICUMac.mm:
+        (WTF::mapModeToBackingIterator):
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use RAII for ICU breaking iterators
+        https://bugs.webkit.org/show_bug.cgi?id=168203
+
+        Reviewed by Simon Fraser.
+
+        * wtf/text/TextBreakIterator.h:
+        (WTF::CachedTextBreakIterator::CachedTextBreakIterator):
+        (WTF::CachedTextBreakIterator::~CachedTextBreakIterator):
+        (WTF::CachedTextBreakIterator::preceding):
+        (WTF::CachedTextBreakIterator::following):
+        (WTF::CachedTextBreakIterator::isBoundary):
+
+2017-02-24  Jer Noble  <jer.noble@apple.com>
+
+        Add public method to MediaTime for doing timeScale conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=168860
+
+        Reviewed by Eric Carlson.
+
+        The newly public method, modeled on CMTimeConvertScale, allows callers to specify what rounding technique
+        will be used when converting to a new time scale.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::toTimeScale):
+        (WTF::MediaTime::setTimeScale):
+        * wtf/MediaTime.h:
+
 2017-02-26  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Stop compiling our own cursorMovementIterator()

@@ -1,3 +1,952 @@
+2017-02-27  Dave Hyatt  <hyatt@apple.com>
+
+        Update flexbox to Blink's tip of tree
+        https://bugs.webkit.org/show_bug.cgi?id=168657
+
+        Reviewed by Zalan Bujtas.
+
+        Added new tests in css3/flexbox.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::ComputedStyleExtractor::propertyValue):
+        * rendering/FlexibleBoxAlgorithm.cpp: Added.
+        (WebCore::FlexItem::FlexItem):
+        (WebCore::FlexLayoutAlgorithm::FlexLayoutAlgorithm):
+        (WebCore::FlexLayoutAlgorithm::computeNextFlexLine):
+        * rendering/FlexibleBoxAlgorithm.h: Added.
+        (WebCore::FlexItem::hypotheticalMainAxisMarginBoxSize):
+        (WebCore::FlexItem::flexBaseMarginBoxSize):
+        (WebCore::FlexItem::flexedMarginBoxSize):
+        (WebCore::FlexLayoutAlgorithm::isMultiline):
+        * rendering/GridTrackSizingAlgorithm.cpp:
+        (WebCore::GridTrackSizingAlgorithm::computeTrackBasedSize):
+        (WebCore::GridTrackSizingAlgorithm::increaseSizesToAccommodateSpanningItems):
+        (WebCore::GridTrackSizingAlgorithm::assumedRowsSizeForOrthogonalChild):
+        (WebCore::GridTrackSizingAlgorithm::gridAreaBreadthForChild):
+        (WebCore::IndefiniteSizeStrategy::recomputeUsedFlexFractionIfNeeded):
+        * rendering/GridTrackSizingAlgorithm.h:
+        * rendering/OrderIterator.cpp:
+        (WebCore::OrderIterator::next):
+        (WebCore::OrderIterator::reset):
+        (WebCore::OrderIteratorPopulator::~OrderIteratorPopulator):
+        (WebCore::OrderIteratorPopulator::collectChild):
+        (WebCore::OrderIteratorPopulator::OrderIteratorPopulator): Deleted.
+        (WebCore::OrderIteratorPopulator::removeDuplicatedOrderValues): Deleted.
+        * rendering/OrderIterator.h:
+        (WebCore::OrderIteratorPopulator::OrderIteratorPopulator):
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::updateBlockChildDirtyBitsBeforeLayout):
+        (WebCore::RenderBlock::layoutPositionedObject):
+        (WebCore::RenderBlock::computeBlockPreferredLogicalWidths):
+        (WebCore::RenderBlock::computeChildPreferredLogicalWidths):
+        (WebCore::RenderBlock::hasDefiniteLogicalHeight):
+        (WebCore::RenderBlock::availableLogicalHeightForPercentageComputation):
+        * rendering/RenderBlock.h:
+        (WebCore::RenderBlock::hasPercentHeightDescendants):
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::computeInlinePreferredLogicalWidths):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::columnFlexItemHasStretchAlignment):
+        (WebCore::RenderBox::isStretchingColumnFlexItem):
+        (WebCore::RenderBox::hasStretchedLogicalWidth):
+        (WebCore::RenderBox::sizesLogicalWidthToFitContent):
+        (WebCore::RenderBox::computeInlineDirectionMargins):
+        (WebCore::RenderBox::cacheIntrinsicContentLogicalHeightForFlexItem):
+        (WebCore::RenderBox::updateLogicalHeight):
+        (WebCore::RenderBox::computeLogicalHeightWithoutLayout):
+        (WebCore::RenderBox::skipContainingBlockForPercentHeightCalculation):
+        (WebCore::RenderBox::shouldTreatChildAsReplacedInTableCells):
+        (WebCore::tableCellShouldHaveZeroInitialSize):
+        (WebCore::RenderBox::computePercentageLogicalHeight):
+        (WebCore::RenderBox::computeReplacedLogicalHeightUsing):
+        (WebCore::RenderBox::availableLogicalHeightUsing):
+        (WebCore::RenderBox::percentageLogicalHeightIsResolvable):
+        (WebCore::RenderBox::hasUnsplittableScrollingOverflow):
+        (WebCore::flexItemHasStretchAlignment): Deleted.
+        (WebCore::isStretchingColumnFlexItem): Deleted.
+        (WebCore::logicalWidthIsResolvable): Deleted.
+        (WebCore::RenderBox::hasDefiniteLogicalWidth): Deleted.
+        (WebCore::percentageLogicalHeightIsResolvable): Deleted.
+        (WebCore::RenderBox::percentageLogicalHeightIsResolvableFromBlock): Deleted.
+        (WebCore::RenderBox::hasDefiniteLogicalHeight): Deleted.
+        * rendering/RenderBox.h:
+        (WebCore::RenderBox::isGridItem):
+        (WebCore::RenderBox::isFlexItem):
+        (WebCore::RenderBox::selfAlignmentNormalBehavior):
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::isOutOfFlowPositionedWithImplicitHeight):
+        (WebCore::RenderBoxModelObject::containingBlockForAutoHeightDetection):
+        (WebCore::RenderBoxModelObject::hasAutoHeightOrContainingBlockWithAutoHeight):
+        * rendering/RenderBoxModelObject.h:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::removeChildInternal):
+        * rendering/RenderFlexibleBox.cpp:
+        (WebCore::RenderFlexibleBox::LineContext::LineContext):
+        (WebCore::RenderFlexibleBox::RenderFlexibleBox):
+        (WebCore::RenderFlexibleBox::computeIntrinsicLogicalWidths):
+        (WebCore::contentAlignmentNormalBehavior):
+        (WebCore::RenderFlexibleBox::styleDidChange):
+        (WebCore::RenderFlexibleBox::layoutBlock):
+        (WebCore::RenderFlexibleBox::repositionLogicalHeightDependentFlexItems):
+        (WebCore::RenderFlexibleBox::clientLogicalBottomAfterRepositioning):
+        (WebCore::RenderFlexibleBox::hasOrthogonalFlow):
+        (WebCore::RenderFlexibleBox::flexBasisForChild):
+        (WebCore::RenderFlexibleBox::crossAxisExtentForChild):
+        (WebCore::RenderFlexibleBox::cachedChildIntrinsicContentLogicalHeight):
+        (WebCore::RenderFlexibleBox::setCachedChildIntrinsicContentLogicalHeight):
+        (WebCore::RenderFlexibleBox::clearCachedChildIntrinsicContentLogicalHeight):
+        (WebCore::RenderFlexibleBox::childIntrinsicLogicalHeight):
+        (WebCore::RenderFlexibleBox::childIntrinsicLogicalWidth):
+        (WebCore::RenderFlexibleBox::crossAxisIntrinsicExtentForChild):
+        (WebCore::RenderFlexibleBox::mainAxisExtentForChild):
+        (WebCore::RenderFlexibleBox::mainAxisContentExtentForChildIncludingScrollbar):
+        (WebCore::RenderFlexibleBox::crossAxisExtent):
+        (WebCore::RenderFlexibleBox::mainAxisExtent):
+        (WebCore::RenderFlexibleBox::mainAxisContentExtent):
+        (WebCore::RenderFlexibleBox::computeMainAxisExtentForChild):
+        (WebCore::RenderFlexibleBox::transformedWritingMode):
+        (WebCore::RenderFlexibleBox::flowAwareMarginStartForChild):
+        (WebCore::RenderFlexibleBox::flowAwareMarginEndForChild):
+        (WebCore::RenderFlexibleBox::flowAwareMarginBeforeForChild):
+        (WebCore::RenderFlexibleBox::crossAxisMarginExtentForChild):
+        (WebCore::RenderFlexibleBox::flowAwareLocationForChild):
+        (WebCore::RenderFlexibleBox::useChildAspectRatio):
+        (WebCore::RenderFlexibleBox::computeMainSizeFromAspectRatioUsing):
+        (WebCore::RenderFlexibleBox::setFlowAwareLocationForChild):
+        (WebCore::RenderFlexibleBox::mainAxisLengthIsDefinite):
+        (WebCore::RenderFlexibleBox::crossAxisLengthIsDefinite):
+        (WebCore::RenderFlexibleBox::cacheChildMainSize):
+        (WebCore::RenderFlexibleBox::clearCachedMainSizeForChild):
+        (WebCore::RenderFlexibleBox::computeInnerFlexBaseSizeForChild):
+        (WebCore::RenderFlexibleBox::layoutFlexItems):
+        (WebCore::RenderFlexibleBox::autoMarginOffsetInMainAxis):
+        (WebCore::RenderFlexibleBox::updateAutoMarginsInMainAxis):
+        (WebCore::RenderFlexibleBox::hasAutoMarginsInCrossAxis):
+        (WebCore::RenderFlexibleBox::availableAlignmentSpaceForChild):
+        (WebCore::RenderFlexibleBox::updateAutoMarginsInCrossAxis):
+        (WebCore::RenderFlexibleBox::marginBoxAscentForChild):
+        (WebCore::RenderFlexibleBox::computeChildMarginValue):
+        (WebCore::RenderFlexibleBox::adjustChildSizeForMinAndMax):
+        (WebCore::RenderFlexibleBox::crossSizeForPercentageResolution):
+        (WebCore::RenderFlexibleBox::mainSizeForPercentageResolution):
+        (WebCore::RenderFlexibleBox::childLogicalHeightForPercentageResolution):
+        (WebCore::RenderFlexibleBox::adjustChildSizeForAspectRatioCrossAxisMinAndMax):
+        (WebCore::RenderFlexibleBox::constructFlexItem):
+        (WebCore::RenderFlexibleBox::freezeViolations):
+        (WebCore::RenderFlexibleBox::freezeInflexibleItems):
+        (WebCore::RenderFlexibleBox::resolveFlexibleLengths):
+        (WebCore::alignmentOffset):
+        (WebCore::RenderFlexibleBox::setOverrideMainAxisContentSizeForChild):
+        (WebCore::RenderFlexibleBox::staticMainAxisPositionForPositionedChild):
+        (WebCore::RenderFlexibleBox::staticCrossAxisPositionForPositionedChild):
+        (WebCore::RenderFlexibleBox::staticInlinePositionForPositionedChild):
+        (WebCore::RenderFlexibleBox::staticBlockPositionForPositionedChild):
+        (WebCore::RenderFlexibleBox::setStaticPositionForPositionedLayout):
+        (WebCore::RenderFlexibleBox::prepareChildForPositionedLayout):
+        (WebCore::RenderFlexibleBox::alignmentForChild):
+        (WebCore::RenderFlexibleBox::resetAutoMarginsAndLogicalTopInCrossAxis):
+        (WebCore::RenderFlexibleBox::needToStretchChildLogicalHeight):
+        (WebCore::RenderFlexibleBox::childHasIntrinsicMainAxisSize):
+        (WebCore::RenderFlexibleBox::crossAxisOverflowForChild):
+        (WebCore::RenderFlexibleBox::layoutAndPlaceChildren):
+        (WebCore::RenderFlexibleBox::layoutColumnReverse):
+        (WebCore::initialAlignContentOffset):
+        (WebCore::alignContentSpaceBetweenChildren):
+        (WebCore::RenderFlexibleBox::alignFlexLines):
+        (WebCore::RenderFlexibleBox::adjustAlignmentForChild):
+        (WebCore::RenderFlexibleBox::alignChildren):
+        (WebCore::RenderFlexibleBox::applyStretchAlignmentToChild):
+        (WebCore::RenderFlexibleBox::flipForRightToLeftColumn):
+        (WebCore::RenderFlexibleBox::flipForWrapReverse):
+        (WebCore::RenderFlexibleBox::Violation::Violation): Deleted.
+        (WebCore::RenderFlexibleBox::setCrossAxisExtent): Deleted.
+        (WebCore::RenderFlexibleBox::flowAwareMarginAfterForChild): Deleted.
+        (WebCore::RenderFlexibleBox::mainAxisBorderAndPaddingExtentForChild): Deleted.
+        (WebCore::RenderFlexibleBox::mainAxisScrollbarExtentForChild): Deleted.
+        (WebCore::RenderFlexibleBox::preferredMainAxisContentExtentForChild): Deleted.
+        (WebCore::RenderFlexibleBox::computeNextFlexLine): Deleted.
+        (WebCore::RenderFlexibleBox::setLogicalOverrideSize): Deleted.
+        (WebCore::RenderFlexibleBox::numberOfInFlowPositionedChildren): Deleted.
+        (WebCore::RenderFlexibleBox::needToStretchChild): Deleted.
+        (WebCore::contentAlignmentNormalBehaviorFlexibleBox): Deleted.
+        * rendering/RenderFlexibleBox.h:
+        (WebCore::RenderFlexibleBox::orderIterator):
+        (WebCore::RenderFlexibleBox::isFlexibleBoxImpl):
+        * rendering/RenderFullScreen.h:
+        * rendering/RenderGrid.cpp:
+        (WebCore::selfAlignmentChangedToStretchInRowAxis):
+        (WebCore::selfAlignmentChangedFromStretchInRowAxis):
+        (WebCore::selfAlignmentChangedFromStretchInColumnAxis):
+        (WebCore::RenderGrid::styleDidChange):
+        (WebCore::RenderGrid::computeTrackBasedLogicalHeight):
+        (WebCore::RenderGrid::computeTrackSizesForDefiniteSize):
+        (WebCore::RenderGrid::gridGapForDirection):
+        (WebCore::RenderGrid::guttersSize):
+        (WebCore::RenderGrid::computeTrackSizesForIndefiniteSize):
+        (WebCore::RenderGrid::computeAutoRepeatTracksCount):
+        (WebCore::RenderGrid::trackSizesForComputedStyle):
+        (WebCore::RenderGrid::offsetAndBreadthForPositionedChild):
+        (WebCore::RenderGrid::populateGridPositionsForDirection):
+        (WebCore::RenderGrid::alignSelfForChild):
+        (WebCore::RenderGrid::justifySelfForChild):
+        (WebCore::RenderGrid::columnAxisPositionForChild):
+        (WebCore::RenderGrid::rowAxisPositionForChild):
+        (WebCore::RenderGrid::columnAxisOffsetForChild):
+        (WebCore::RenderGrid::rowAxisOffsetForChild):
+        (WebCore::RenderGrid::needToStretchChildLogicalHeight): Deleted.
+        * rendering/RenderGrid.h:
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::updateScrollbarsAfterLayout):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::computeLogicalHeight):
+        * rendering/RenderTable.cpp:
+        (WebCore::RenderTable::layout):
+        * rendering/RenderTableCell.cpp:
+        (WebCore::RenderTableCell::layout):
+        * rendering/RenderTableSection.cpp:
+        (WebCore::shouldFlexCellChild):
+        (WebCore::RenderTableSection::relayoutCellIfFlexed):
+        (WebCore::RenderTableSection::layoutRows):
+        * rendering/RenderTableSection.h:
+        * rendering/RenderTextControl.cpp:
+        (WebCore::RenderTextControl::computeLogicalHeight):
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::resolvedSelfAlignment):
+        (WebCore::RenderStyle::resolvedAlignSelf):
+        (WebCore::RenderStyle::resolvedJustifySelf):
+        * rendering/style/RenderStyle.h:
+        * style/RenderTreeUpdater.cpp:
+        (WebCore::textRendererIsNeeded):
+
+2017-02-28  Alex Christensen  <achristensen@webkit.org>
+
+        Main resource requests need cachePartition
+        https://bugs.webkit.org/show_bug.cgi?id=168806
+        <rdar://30639764>
+
+        Reviewed by Brady Eidson.
+
+        Test: http/tests/security/credentials-main-resource.html
+
+        r211751 caused an unintended regression on pages whose main resource is protected
+        by basic authentication.  We were not setting the cache partition for main resource
+        requests, and we use the cache partition now for credentials, so the credentials for
+        the main resource were not being put into a partition in the CredentialStorage that
+        would not be used for subresources of the page, whose requests had the correct partition
+        for the domain of the page.  This caused users to have to enter their credentials twice,
+        once for the main resource and once for any subresources.  This is fixed by using the
+        domain from the main resource request as the cache partition.  Elsewhere the Document is
+        used to get the cache partition, but there is no Document yet when requesting the main resource.
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::startLoadingMainResource):
+        Set the cache partition for the main resource loads based on the SecurityOrigin of the
+        initial request if we are loading the main resource for a new top document.  If the main resource
+        request is redirected, then we will still use the partition of the initial request because that is
+        what the user requested and that is where the user entered the credentials.
+        * loader/cache/CachedResourceLoader.h:
+        * loader/cache/CachedResourceRequest.cpp:
+        (WebCore::CachedResourceRequest::setDomainForCachePartition):
+        * loader/cache/CachedResourceRequest.h:
+
+2017-02-28  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION: LayoutTest http/tests/security/credentials-iframes.html is failing on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=167967
+
+        Reviewed by Brady Eidson.
+
+        XHR credentials have a persistence of CredentialPersistenceNone because we keep
+        them in the WebCore::CredentialStorage.  We were storing them to CFNetwork's NSURLCredentialStorage
+        on iOS and then they were being given as the proposedCredential in
+        NetworkDataTaskCocoa::tryPasswordBasedAuthentication even though we set CredentialPersistenceNone.
+
+        This fixes http/tests/security/credentials-iframes.html
+
+        * platform/network/CredentialStorage.cpp:
+        (WebCore::CredentialStorage::set):
+        * platform/network/CredentialStorage.h:
+        * platform/network/cf/CredentialStorageCFNet.cpp:
+        (WebCore::CredentialStorage::saveToPersistentStorage): Deleted.
+        * platform/network/mac/CredentialStorageMac.mm:
+        (WebCore::CredentialStorage::saveToPersistentStorage): Deleted.
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix WinCairo build.
+
+        * PlatformWinCairo.cmake:
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        Begin enabling WebRTC on 64-bit
+        https://bugs.webkit.org/show_bug.cgi?id=168915
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Use compact mode by default on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=168958
+        <rdar://problem/30748638>
+
+        Reviewed by Jon Lee.
+
+        We now use the compact layout mode by default on macOS.
+
+        * Modules/modern-media-controls/controls/layout-item.js: Remove the ReducedPadding trait.
+        * Modules/modern-media-controls/controls/macos-compact-inline-media-controls.css: 
+        (.media-controls.mac.inline.compact .time-label,): Vertically align the time label with
+        the scrubber in compact mode.
+        (.media-controls.mac.inline.compact .scrubber.slider): Correctly position the scrubber in
+        compact mode so that it's vertically aligned.
+        * Modules/modern-media-controls/controls/macos-inline-media-controls.js:
+        (MacOSInlineMediaControls.prototype.layoutTraitsDidChange): Remove handling of tight and
+        reduced padding traits since these do not apply to macOS anymore. We also notify the
+        scrubber of a layout trait change so that it may adjust its height.
+        * Modules/modern-media-controls/controls/scrubber.js:
+        (Scrubber):
+        (Scrubber.prototype.layoutTraitsDidChange): Adjust the height of the scrubber to match
+        compact layout traits.
+        * Modules/modern-media-controls/controls/time-control.js:
+        (TimeControl.prototype.get isSufficientlyWide): Adjust the minimum scrubber width for
+        TimeControl visibility to match compact layout traits.
+        * Modules/modern-media-controls/media/media-controller.js:
+        (MediaController.prototype.get layoutTraits): Use the compact layout trait by default
+        on macOS and make the tight padding specific to iOS.
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Adhere to tight padding on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168949
+        <rdar://problem/30746164>
+
+        Reviewed by Jon Lee.
+
+        We used to only support custom margins on macOS, to support this on iOS as
+        well, we promote the notification when the layoutTraits property is set to
+        MediaControls and expose a new protected method layoutTraitsDidChange() for
+        subclasses to implement. IOSInlineMediaControls now implements that method
+        and will use tighter margins for the TightPadding layout trait.
+
+        Test: media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-tight-padding.html
+
+        * Modules/modern-media-controls/controls/ios-inline-media-controls.js:
+        (IOSInlineMediaControls.prototype.layoutTraitsDidChange):
+        (IOSInlineMediaControls):
+        * Modules/modern-media-controls/controls/macos-inline-media-controls.js:
+        (MacOSInlineMediaControls.prototype.get layoutTraits): Deleted.
+        (MacOSInlineMediaControls.prototype.set layoutTraits): Deleted.
+        (MacOSInlineMediaControls.prototype._matchLayoutTraits): Deleted.
+        * Modules/modern-media-controls/controls/media-controls.js:
+        (MediaControls.prototype.get layoutTraits):
+        (MediaControls.prototype.set layoutTraits):
+        (MediaControls.prototype.layoutTraitsDidChange):
+
+2017-02-27  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Support modern RTCStatsReport
+        https://bugs.webkit.org/show_bug.cgi?id=166916
+        <rdar://problem/30293780>
+
+        Reviewed by Alex Christensen.
+
+        Updating binding generator and IDL parser to handle maplike.
+        Covered by binding tests.
+
+        Added support for maplike binding from JS wrapper to DOM class.
+        The principle is to have the JSXX wrapper having a @backingMap slot containing a Map.
+        All maplike methods are forwarded to the corresponding Map methods.
+        The XX object is responsible to add key/value pairs using a helper routine.
+        The creation of the Map is done at creation of the JSXX wrapper.
+
+        DOM class is interacting with the map through DOMMapLike.
+        Extracted DOMGuarded from DOM promise implementation.
+        This allows reusing this code for DOMMapLike.
+
+        Covered by binding tests and manual tests.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/mediastream/RTCStatsReport.h:
+        (WebCore::RTCStatsReport::InboundRTPStreamStats::InboundRTPStreamStats):
+        (WebCore::RTCStatsReport::OutboundRTPStreamStats::OutboundRTPStreamStats):
+        (WebCore::RTCStatsReport::create):
+        (WebCore::RTCStatsReport::synchronizeBackingMap):
+        (WebCore::RTCStatsReport::backingMap):
+        (WebCore::RTCStatsReport::addStats):
+        * Modules/mediastream/RTCStatsReport.idl:
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::fromStdString):
+        (WebCore::fillRTCStats):
+        (WebCore::fillRTCRTPStreamStats):
+        (WebCore::fillInboundRTPStreamStats):
+        (WebCore::fillOutboundRTPStreamStats):
+        (WebCore::LibWebRTCMediaEndpoint::StatsCollector::OnStatsDelivered):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.h:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/JSDOMBindingInternals.js: Added.
+        (mapLikeForEach):
+        * bindings/js/JSDOMGlobalObject.cpp:
+        (WebCore::JSDOMGlobalObject::visitChildren):
+        * bindings/js/JSDOMGlobalObject.h:
+        * bindings/js/JSDOMGuardedObject.cpp: Added.
+        (WebCore::DOMGuardedObject::DOMGuardedObject):
+        (WebCore::DOMGuardedObject::~DOMGuardedObject):
+        (WebCore::DOMGuardedObject::clear):
+        (WebCore::DOMGuardedObject::contextDestroyed):
+        * bindings/js/JSDOMGuardedObject.h: Added.
+        (WebCore::DOMGuardedObject::isSuspended):
+        (WebCore::DOMGuardedObject::visitAggregate):
+        (WebCore::DOMGuardedObject::guardedObject):
+        (WebCore::DOMGuardedObject::globalObject):
+        (WebCore::DOMGuardedObject::isEmpty):
+        (WebCore::DOMGuarded::DOMGuarded):
+        (WebCore::DOMGuarded::guarded):
+        * bindings/js/JSDOMMapLike.cpp: Added.
+        (WebCore::getBackingMap):
+        (WebCore::initializeBackingMap):
+        (WebCore::createBackingMap):
+        (WebCore::forwardAttributeGetterToBackingMap):
+        (WebCore::forwardFunctionCallToBackingMap):
+        (WebCore::forwardForEachCallToBackingMap):
+        * bindings/js/JSDOMMapLike.h: Added.
+        (WebCore::DOMMapLike::set):
+        (WebCore::synchronizeBackingMap):
+        (WebCore::forwardSizeToMapLike):
+        (WebCore::forwardEntriesToMapLike):
+        (WebCore::forwardKeysToMapLike):
+        (WebCore::forwardValuesToMapLike):
+        (WebCore::forwardClearToMapLike):
+        (WebCore::forwardForEachToMapLike):
+        (WebCore::forwardHasToMapLike):
+        (WebCore::forwardAddToMapLike):
+        (WebCore::forwardDeleteToMapLike):
+        * bindings/js/JSDOMPromise.cpp:
+        (WebCore::DeferredPromise::promise):
+        (WebCore::DeferredPromise::reject):
+        * bindings/js/JSDOMPromise.h:
+        (WebCore::DeferredPromise::resolve):
+        (WebCore::DeferredPromise::resolveWithNewlyCreated):
+        (WebCore::DeferredPromise::reject):
+        (WebCore::DeferredPromise::resolveWithCallback):
+        (WebCore::DeferredPromise::rejectWithCallback):
+        (WebCore::DeferredPromise::DeferredPromise):
+        (WebCore::DeferredPromise::deferred):
+        * bindings/js/WebCoreBuiltinNames.h:
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (PrototypeFunctionCount):
+        (GeneratePropertiesHashTable):
+        (InterfaceNeedsIterator):
+        (GenerateImplementation):
+        (GenerateParametersCheck):
+        * bindings/scripts/IDLParser.pm:
+        (assert):
+        (parseAttributeOrOperationOrIterator):
+        (parseSerializer):
+        (parseAttributeOrOperationRest):
+        (parseAttribute):
+        (parseAttributeRest):
+        (parseOperationOrIterator):
+        (parseOptionalIterableInterface):
+        (parseMapLikeRest):
+        (parseMapLikeProperties):
+        (parseOperationRest):
+        (applyMemberList):
+        * bindings/scripts/test/JS/JSMapLike.cpp: Added.
+        * bindings/scripts/test/JS/JSMapLike.h: Added.
+        * bindings/scripts/test/JS/JSReadOnlyMapLike.cpp: Added.
+        * bindings/scripts/test/JS/JSReadOnlyMapLike.h: Added.
+        * bindings/scripts/test/TestMapLike.idl: Added.
+        * bindings/scripts/test/TestReadOnlyMapLike.idl: Added.
+
+2017-02-27  Mark Lam  <mark.lam@apple.com>
+
+        Introduce a VM Traps mechanism and refactor Watchdog to use it.
+        https://bugs.webkit.org/show_bug.cgi?id=168842
+
+        Reviewed by Filip Pizlo.
+
+        No new tests needed because this is a re-implementation of existing functionality.
+
+        * bindings/js/WorkerScriptController.cpp:
+        (WebCore::WorkerScriptController::WorkerScriptController):
+        (WebCore::WorkerScriptController::scheduleExecutionTermination):
+
+2017-02-27  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Rename FileMac.mm to FileCocoa.mm
+        https://bugs.webkit.org/show_bug.cgi?id=168947
+
+        Reviewed by Zalan Bujtas.
+
+        * PlatformMac.cmake:
+        * WebCore.xcodeproj/project.pbxproj:
+        * fileapi/FileCocoa.mm: Renamed from Source/WebCore/fileapi/FileMac.mm.
+
+2017-02-27  Andy Estes  <aestes@apple.com>
+
+        [iOS] Enable file replacement
+        https://bugs.webkit.org/show_bug.cgi?id=168907
+        <rdar://problem/22258242>
+
+        Reviewed by David Kilzer.
+
+        Covered by existing tests.
+
+        * fileapi/FileMac.mm:
+        (WebCore::File::shouldReplaceFile): Stop using Carbon and AppKit API for determining if a
+        file path is a file package. Use NSURL and CoreServices instead, which exist on Mac and iOS.
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Use a solid background for <audio> controls on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=168941
+        <rdar://problem/30744316>
+
+        Reviewed by Dean Jackson.
+
+        Use a solid background for <audio> elements on macOS, the same way we do on iOS.
+
+        Test: media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-audio-background.html
+
+        * Modules/modern-media-controls/controls/macos-media-controls.css:
+        (:host(audio) .media-controls.mac.inline > .controls-bar):
+        (:host(audio) .media-controls.mac.inline > .controls-bar > .background-tint):
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] StatusLabel should use similar properties to TimeLabel
+        https://bugs.webkit.org/show_bug.cgi?id=168938
+        <rdar://problem/30743185>
+
+        Reviewed by Dean Jackson.
+
+        Ensure we use the same styling properties for StatusLabel and TimeLabel.
+
+        Tests: media/modern-media-controls/status-label/status-label-ios.html
+               media/modern-media-controls/status-label/status-label-macos.html
+
+        * Modules/modern-media-controls/controls/ios-inline-media-controls.css:
+        (.media-controls.ios.inline .time-label,):
+        (.media-controls.ios.inline .time-label): Deleted.
+        * Modules/modern-media-controls/controls/macos-media-controls.css:
+        (.media-controls.mac > .controls-bar .time-label,):
+        (.media-controls.mac > .controls-bar .time-label): Deleted.
+        * Modules/modern-media-controls/controls/status-label.css:
+        (.status-label):
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Rename ICU cursor iterator to caret iterator
+        https://bugs.webkit.org/show_bug.cgi?id=168206
+
+        Reviewed by Simon Fraser.
+
+        Mechanical find/replace.
+
+        No new tests because there is no behavior change.
+
+        * platform/graphics/ComplexTextController.cpp:
+        (WebCore::ComplexTextController::offsetForPosition):
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::previousOffset):
+        (WebCore::RenderText::nextOffset):
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unprefix -webkit-line-break
+        https://bugs.webkit.org/show_bug.cgi?id=168213
+
+        Reviewed by Darin Adler.
+
+        We support the property as specced.
+
+        Test: fast/text/line-break-unprefixed.html
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::ComputedStyleExtractor::propertyValue):
+        * css/CSSProperties.json:
+        * css/parser/CSSParserFastPaths.cpp:
+        (WebCore::CSSParserFastPaths::isValidKeywordPropertyAndValue):
+        (WebCore::CSSParserFastPaths::isKeywordPropertyID):
+        * editing/Editor.cpp:
+        (WebCore::Editor::applyEditingStyleToElement):
+        * html/HTMLElement.cpp:
+        (WebCore::HTMLElement::collectStyleForPresentationAttribute):
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use RAII for ICU breaking iterators
+        https://bugs.webkit.org/show_bug.cgi?id=168203
+
+        Reviewed by Simon Fraser.
+
+        No new tests because there is no behavior change.
+
+        * platform/graphics/ComplexTextController.cpp:
+        (WebCore::ComplexTextController::offsetForPosition):
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::previousOffset):
+        (WebCore::RenderText::nextOffset):
+
+2017-02-27  Basuke Suzuki  <Basuke.Suzuki@am.sony.com>
+
+        [WinCairo][MiniBrowser] Add ca-bundle to display secure pages
+        https://bugs.webkit.org/show_bug.cgi?id=168486
+
+        Reviewed by Alex Christensen.
+
+        change the order of path location search to make it possible to 
+        configure with environment variable because bundled ca-bundle is
+        always available now.
+
+        * platform/network/curl/ResourceHandleManager.cpp:
+        (WebCore::certificatePath):
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Status text does not appear on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168918
+        <rdar://problem/30737644>
+
+        Reviewed by Dean Jackson.
+
+        We refactor the layout code out of MacOSInlineMediaControls and into a new
+        InlineLayoutSupport class which IOSInlineMediaControls uses as well. Now
+        both the macOS and iOS inline media controls run the same layout logic to
+        control whether the status label or scrubber should be displayed, and which
+        controls should be dropped due to space constraints.
+
+        Test: media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-status-label.html
+
+        * Modules/modern-media-controls/controls/inline-layout-support.js: Added.
+        (InlineLayoutSupport):
+        (InlineLayoutSupport.prototype.childrenAfterPerformingLayout):
+        * Modules/modern-media-controls/controls/ios-inline-media-controls.js:
+        (IOSInlineMediaControls.prototype.layout):
+        (IOSInlineMediaControls):
+        * Modules/modern-media-controls/controls/macos-inline-media-controls.js:
+        (MacOSInlineMediaControls.prototype.layout):
+        * Modules/modern-media-controls/js-files:
+
+2017-02-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Add specification and status metadata to CSSProperties.json, and validate it
+        https://bugs.webkit.org/show_bug.cgi?id=168901
+
+        Reviewed by Darin Adler.
+
+        Annotate CSS properties with data about the WebKit development status, and
+        where they are specified. A property has a canonical specification reference,
+        but individual values may have a reference to a more recent spec.
+
+        Add a list of specifications to the JSON that properties reference by key.
+
+        Enhance check-webkit-style to validate the status and spec data.
+
+        * css/CSSProperties.json:
+
+2017-02-27  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [CredentialManagement] Add IDL definitions for Credential, SiteBoundCredential, and PasswordCredential
+        https://bugs.webkit.org/show_bug.cgi?id=168616
+        <rdar://problem/30167149>
+
+        Reviewed by Daniel Bates.
+
+        This patch adds IDL definitions for:
+        1. Credential(https://w3c.github.io/webappsec-credential-management/#interfaces-credential-types-credential),
+        2. SiteBoundCredential(https://w3c.github.io/webappsec-credential-management/#interfaces-credential-types-siteboundcredential), and
+        3. PasswordCredential(https://w3c.github.io/webappsec-credential-management/#interfaces-credential-types-passwordcredential).
+
+        Test: credentials/idlharness.html
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/credentials/BasicCredential.cpp: Added.
+        (WebCore::BasicCredential::BasicCredential):
+        (WebCore::BasicCredential::~BasicCredential):
+        (WebCore::BasicCredential::type):
+        * Modules/credentials/BasicCredential.h: Added.
+        (WebCore::BasicCredential::id):
+        * Modules/credentials/BasicCredential.idl: Added.
+        * Modules/credentials/CredentialData.h: Added.
+        * Modules/credentials/CredentialData.idl: Added.
+        * Modules/credentials/PasswordCredential.cpp: Added.
+        (WebCore::PasswordCredential::PasswordCredential):
+        (WebCore::PasswordCredential::PasswordCredential):
+        Dummy constructors for now.
+        * Modules/credentials/PasswordCredential.h: Added.
+        (WebCore::PasswordCredential::create):
+        (WebCore::PasswordCredential::create):
+        (WebCore::PasswordCredential::setIdName):
+        (WebCore::PasswordCredential::idName):
+        (WebCore::PasswordCredential::setPasswordName):
+        (WebCore::PasswordCredential::passwordName):
+        (WebCore::PasswordCredential::setAdditionalData):
+        (WebCore::PasswordCredential::additionalData):
+        * Modules/credentials/PasswordCredential.idl: Added.
+        * Modules/credentials/SiteBoundCredential.cpp: Added.
+        (WebCore::SiteBoundCredential::SiteBoundCredential):
+        (WebCore::SiteBoundCredential::~SiteBoundCredential):
+        * Modules/credentials/SiteBoundCredential.h: Added.
+        (WebCore::SiteBoundCredential::name):
+        (WebCore::SiteBoundCredential::iconURL):
+        (WebCore::SiteBoundCredential::setOrigin):
+        (WebCore::SiteBoundCredential::origin):
+        * Modules/credentials/SiteBoundCredential.idl: Added.
+        * Modules/credentials/SiteBoundCredentialData.h: Added.
+        * Modules/credentials/SiteBoundCredentialData.idl: Added.
+        * WebCore.xcodeproj/project.pbxproj:
+
+2017-02-27  Jer Noble  <jer.noble@apple.com>
+
+        [WebRTC] Fix remote audio rendering
+        https://bugs.webkit.org/show_bug.cgi?id=168898
+
+        Reviewed by Eric Carlson.
+
+        Test: webrtc/audio-peer-connection-webaudio.html
+
+        Fix MediaStreamAudioSourceNode by not bailing out early if the input sample rate doesn't match
+        the AudioContext's sample rate; there's code in setFormat() to do the sample rate conversion
+        correctly.
+
+        * Modules/webaudio/MediaStreamAudioSourceNode.cpp:
+        (WebCore::MediaStreamAudioSourceNode::setFormat):
+
+        Fix AudioSampleBufferList by making the AudioConverter input proc a free function, and passing
+        its refCon a struct containing only the information it needs to perform its task. Because the
+        conversion may result in a different number of output samples than input ones, just ask to
+        generate the entire capacity of the scratch buffer, and signal that the input buffer was fully
+        converted with a special return value.
+
+        * platform/audio/mac/AudioSampleBufferList.cpp:
+        (WebCore::audioConverterFromABLCallback):
+        (WebCore::AudioSampleBufferList::copyFrom):
+        (WebCore::AudioSampleBufferList::convertInput): Deleted.
+        (WebCore::AudioSampleBufferList::audioConverterCallback): Deleted.
+        * platform/audio/mac/AudioSampleBufferList.h:
+
+        Fix AudioSampleDataSource by updating both the sampleCount and the sampleTime after doing
+        a sample rate conversion to take into account that both the number of samples may have changed,
+        as well as the timeScale of the sampleTime. This may result in small off-by-one rounding errors
+        due to the sample rate conversion of sampleTime, so remember what the next expected sampleTime
+        should be, and correct sampleTime if it is indeed off-by-one. If the pull operation has gotten
+        ahead of the push operation, delay the next pull by the empty amount by rolling back the
+        m_outputSampleOffset. Introduce the same offset behavior during pull operations.
+
+        * platform/audio/mac/AudioSampleDataSource.h:
+        * platform/audio/mac/AudioSampleDataSource.mm:
+        (WebCore::AudioSampleDataSource::pushSamplesInternal):
+        (WebCore::AudioSampleDataSource::pullSamplesInternal):
+        (WebCore::AudioSampleDataSource::pullAvalaibleSamplesAsChunks):
+
+        Fix MediaPlayerPrivateMediaStreamAVFObjC by obeying the m_muted property.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::setVolume):
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::setMuted):
+
+        Fix LibWebRTCAudioModule by sleeping for the correct amount after emitting frames. Previously,
+        LibWebRTCAudioModule would sleep for a fixed amount of time, which meant it would get slowly out
+        of sync when emitting frames took a non-zero amount of time. Now, the amount of time before the
+        next cycle starts is correctly calculated, and then LibWebRTCAudioModule sleeps for a dynamic amount
+        of time in order to wake up correctly at the beginning of the next cycle.
+
+        * platform/mediastream/libwebrtc/LibWebRTCAudioModule.cpp:
+        (WebCore::LibWebRTCAudioModule::StartPlayoutOnAudioThread):
+
+        Fix AudioTrackPrivateMediaStreamCocoa by just using the output unit's preferred format
+        description (with the current system sample rate), rather than whatever is the current
+        input description.
+
+        * platform/mediastream/mac/AudioTrackPrivateMediaStreamCocoa.cpp:
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::createAudioUnit):
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::audioSamplesAvailable):
+        * platform/mediastream/mac/AudioTrackPrivateMediaStreamCocoa.h:
+
+        Fix RealtimeIncomingAudioSource by actually creating an AudioSourceProvider when asked.
+
+        * platform/mediastream/mac/RealtimeIncomingAudioSource.cpp:
+        (WebCore::RealtimeIncomingAudioSource::OnData):
+        (WebCore::RealtimeIncomingAudioSource::audioSourceProvider):
+        * platform/mediastream/mac/RealtimeIncomingAudioSource.h:
+
+        Fix RealtimeOutgoingAudioSource by using the outgoing format description rather than the
+        incoming one to determine the sample rate, channel count, sample byte size, etc., to use
+        when delivering data upstream to libWebRTC.
+
+        * platform/mediastream/mac/RealtimeOutgoingAudioSource.cpp:
+        (WebCore::RealtimeOutgoingAudioSource::audioSamplesAvailable):
+        (WebCore::RealtimeOutgoingAudioSource::pullAudioData):
+        * platform/mediastream/mac/RealtimeOutgoingAudioSource.h:
+
+        Fix WebAudioSourceProviderAVFObjC by using a AudioSampleDataSource to do format and sample
+        rate conversion rather than trying to duplicate all that code and use a CARingBuffer and 
+        AudioConverter directly.
+
+        * platform/mediastream/mac/WebAudioSourceProviderAVFObjC.h:
+        * platform/mediastream/mac/WebAudioSourceProviderAVFObjC.mm:
+        (WebCore::WebAudioSourceProviderAVFObjC::~WebAudioSourceProviderAVFObjC):
+        (WebCore::WebAudioSourceProviderAVFObjC::provideInput):
+        (WebCore::WebAudioSourceProviderAVFObjC::prepare):
+        (WebCore::WebAudioSourceProviderAVFObjC::unprepare):
+        (WebCore::WebAudioSourceProviderAVFObjC::audioSamplesAvailable):
+
+        Fix the MockLibWebRTCAudioTrack by passing along the AddSink() sink to its AudioSourceInterface,
+        allowing the RealtimeOutgoingAudioSource to push data into the libWebRTC network stack. Also,
+        make sure m_enabled is initialized to a good value.
+
+        * testing/MockLibWebRTCPeerConnection.h:
+
+2017-02-21  Jer Noble  <jer.noble@apple.com>
+
+        AudioSampleDataSource should not exclusively lock its read and write threads.
+        https://bugs.webkit.org/show_bug.cgi?id=168646
+
+        Reviewed by Eric Carlson.
+
+        Locking the write thread causes the read thread to drop audio samples and generates audible
+        glitches, and the realtime audio thread backing the read thread should never block. There's
+        no real reason to lock these threads against one another here; they both rely on the
+        CARingBuffer to safely and simultaneously read and write data.
+
+        * platform/audio/mac/AudioSampleDataSource.cpp:
+        (WebCore::AudioSampleDataSource::setPaused):
+        (WebCore::AudioSampleDataSource::pushSamplesInternal):
+        (WebCore::AudioSampleDataSource::pushSamples):
+        (WebCore::AudioSampleDataSource::pullSamplesInternal):
+        (WebCore::AudioSampleDataSource::pullAvalaibleSamplesAsChunks):
+        (WebCore::AudioSampleDataSource::pullSamples):
+        * platform/audio/mac/AudioSampleDataSource.h:
+
+2017-02-21  Jer Noble  <jer.noble@apple.com>
+
+        AudioTrackPrivateMediaStreamCocoa should not exclusively lock its read and write threads.
+        https://bugs.webkit.org/show_bug.cgi?id=168643
+
+        Reviewed by Eric Carlson.
+
+        Locking the write thread causes the read thread to drop audio samples and generates audible
+        glitches, and the realtime audio thread backing the read thread should never block. There's
+        no real reason to lock these threads against one another here; they both rely on the
+        AudioSampleDataSource and it's CARingBuffer to safely and simultaneously read and write
+        data.
+
+        The one piece which locks previously protected against unsafe access was during creation of
+        the audio unit.  Without a lock, the audio unit could begin playback after the unit was
+        created and assigned to m_remoteIOUnit but before the ring buffer was created. To protect
+        against this possibility, create the unit, set the input and output descriptions, but only
+        assign the new audio unit to m_remoteIOUnit after the ring buffer has been created and
+        initialized.
+
+        * platform/audio/mac/CAAudioStreamDescription.h:
+        * platform/mediastream/mac/AudioTrackPrivateMediaStreamCocoa.cpp:
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::~AudioTrackPrivateMediaStreamCocoa):
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::playInternal):
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::play):
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::pause):
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::setVolume):
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::createAudioUnit):
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::setupAudioUnit): Renamed to createAudioUnit()
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::audioSamplesAvailable):
+        * platform/mediastream/mac/AudioTrackPrivateMediaStreamCocoa.h:
+
+2017-02-27  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] RealtimOutgoingVideoSource should not need to do image conversion
+        https://bugs.webkit.org/show_bug.cgi?id=168802
+
+        Reviewed by Jon Lee.
+
+        Covered by manual testing as mock sources do not hit the same code path.
+
+        * platform/mediastream/mac/AVVideoCaptureSource.h:
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        (WebCore::AVVideoCaptureSource::currentFrameCGImage):
+        * platform/mediastream/mac/RealtimeOutgoingVideoSource.cpp:
+        (WebCore::RealtimeOutgoingVideoSource::sendFrame):
+        (WebCore::RealtimeOutgoingVideoSource::videoSampleAvailable):
+        * platform/mediastream/mac/RealtimeOutgoingVideoSource.h:
+
+2017-02-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Downloads attributes tests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=168871
+
+        Reviewed by Michael Catanzaro.
+
+        Use libsoup to get the suggested filename from the Content-Disposition header instead of buggy
+        filenameFromHTTPContentDisposition().
+
+        Fixes: fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html
+               fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html
+
+        * platform/network/soup/ResourceResponseSoup.cpp:
+        (WebCore::ResourceResponse::platformSuggestedFilename):
+
+2017-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Dragging controls in fullscreen on macOS prevents scrubbing or interacting with controls
+        https://bugs.webkit.org/show_bug.cgi?id=168820
+        <rdar://problem/30690281>
+
+        Reviewed by Jon Lee.
+
+        We broke this in https://bugs.webkit.org/show_bug.cgi?id=168755. We restore the check that the
+        event target when initiating a drag is the controls bar itself and not some of its content.
+
+        Since this wasn't caught by our existing tests, we add a test that attemps to initiate a drag
+        starting over one of the controls and notice that no dragging occurs.
+
+        We also fix an issue where we wouldn't update the layout of the left container as its icon
+        buttons would load, which would cause the layout width of the left container to be incorrect
+        and the related tests to time out.
+
+        Test: media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag-is-prevented-over-button.html
+
+        * Modules/modern-media-controls/controls/macos-fullscreen-media-controls.js:
+        (MacOSFullscreenMediaControls.prototype.layout):
+        (MacOSFullscreenMediaControls.prototype._handleMousedown):
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        [libwebrtc] Enable WebRTC in some Production Builds
+        https://bugs.webkit.org/show_bug.cgi?id=168858
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [TextureMapper] Clean up BitmapTextureGL construction
+        https://bugs.webkit.org/show_bug.cgi?id=168909
+
+        Reviewed by Carlos Garcia Campos.
+
+        Have the BitmapTextureGL constructor accept an rvalue reference pointer
+        to the GraphicsContext3D object. A static create() method is also added
+        to help with constructing these objects. Construction sites are updated
+        appropriately.
+
+        The BitmapTextureGL constructor is further cleaned up by moving default
+        member initializations together with the member declarations.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::pushTextureToCompositor):
+        * platform/graphics/texmap/BitmapTextureGL.cpp:
+        (WebCore::BitmapTextureGL::BitmapTextureGL):
+        * platform/graphics/texmap/BitmapTextureGL.h:
+        * platform/graphics/texmap/BitmapTexturePool.cpp:
+        (WebCore::BitmapTexturePool::createTexture):
+        * platform/graphics/texmap/TextureMapperGL.cpp:
+        (WebCore::TextureMapperGL::createTexture):
+
 2017-02-27  Zan Dobersek  <zdobersek@igalia.com>
 
         [TextureMapper] Remove InterpolationQuality, TextDrawingModeFlags member variables

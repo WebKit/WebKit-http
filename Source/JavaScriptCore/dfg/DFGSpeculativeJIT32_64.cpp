@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -227,45 +227,6 @@ void SpeculativeJIT::cachedGetById(
     }
 
     m_jit.addGetById(gen, slowPath.get());
-    addSlowPathGenerator(WTFMove(slowPath));
-}
-
-void SpeculativeJIT::cachedGetByIdWithThis(
-    CodeOrigin codeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg thisTagGPR, GPRReg thisPayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR,
-    unsigned identifierNumber, JITCompiler::JumpList slowPathTarget)
-{
-    RegisterSet usedRegisters = this->usedRegisters();
-    
-    CallSiteIndex callSite = m_jit.recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(codeOrigin, m_stream->size());
-    JITGetByIdWithThisGenerator gen(
-        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters, identifierUID(identifierNumber),
-        JSValueRegs(resultTagGPR, resultPayloadGPR), JSValueRegs(baseTagGPROrNone, basePayloadGPR), JSValueRegs(thisTagGPR, thisPayloadGPR), AccessType::GetWithThis);
-    
-    gen.generateFastPath(m_jit);
-    
-    JITCompiler::JumpList slowCases;
-    if (!slowPathTarget.empty())
-        slowCases.append(slowPathTarget);
-    slowCases.append(gen.slowPathJump());
-
-    std::unique_ptr<SlowPathGenerator> slowPath;
-    if (baseTagGPROrNone == InvalidGPRReg && thisTagGPR == InvalidGPRReg) {
-        slowPath = slowPathCall(
-            slowCases, this, operationGetByIdWithThisOptimize,
-            JSValueRegs(resultTagGPR, resultPayloadGPR), gen.stubInfo(),
-            static_cast<int32_t>(JSValue::CellTag), basePayloadGPR,
-            static_cast<int32_t>(JSValue::CellTag), thisPayloadGPR,
-            identifierUID(identifierNumber));
-    } else {
-        ASSERT(baseTagGPROrNone != InvalidGPRReg);
-        ASSERT(thisTagGPR != InvalidGPRReg);
-        
-        slowPath = slowPathCall(
-            slowCases, this, operationGetByIdWithThisOptimize,
-            JSValueRegs(resultTagGPR, resultPayloadGPR), gen.stubInfo(), JSValueRegs(baseTagGPROrNone, basePayloadGPR), JSValueRegs(thisTagGPR, thisPayloadGPR), identifierUID(identifierNumber));
-    }
-
-    m_jit.addGetByIdWithThis(gen, slowPath.get());
     addSlowPathGenerator(WTFMove(slowPath));
 }
 
@@ -4330,42 +4291,21 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case GetByIdWithThis: {
-        if (node->child1().useKind() == CellUse && node->child2().useKind() == CellUse) {
-            SpeculateCellOperand base(this, node->child1());
-            SpeculateCellOperand thisValue(this, node->child2());
-            GPRTemporary resultTag(this);
-            GPRTemporary resultPayload(this);
-            
-            GPRReg baseGPR = base.gpr();
-            GPRReg thisGPR = thisValue.gpr();
-            GPRReg resultTagGPR = resultTag.gpr();
-            GPRReg resultPayloadGPR = resultPayload.gpr();
-            
-            cachedGetByIdWithThis(node->origin.semantic, InvalidGPRReg, baseGPR, InvalidGPRReg, thisGPR, resultTagGPR, resultPayloadGPR, node->identifierNumber());
-            
-            jsValueResult(resultTagGPR, resultPayloadGPR, node, UseChildrenCalledExplicitly);
-        } else {
-            JSValueOperand base(this, node->child1());
-            JSValueOperand thisValue(this, node->child2());
-            GPRTemporary resultTag(this);
-            GPRTemporary resultPayload(this);
-            
-            GPRReg baseTagGPR = base.tagGPR();
-            GPRReg basePayloadGPR = base.payloadGPR();
-            GPRReg thisTagGPR = thisValue.tagGPR();
-            GPRReg thisPayloadGPR = thisValue.payloadGPR();
-            GPRReg resultTagGPR = resultTag.gpr();
-            GPRReg resultPayloadGPR = resultPayload.gpr();
-            
-            JITCompiler::JumpList notCellList;
-            notCellList.append(m_jit.branchIfNotCell(base.jsValueRegs()));
-            notCellList.append(m_jit.branchIfNotCell(thisValue.jsValueRegs()));
-            
-            cachedGetByIdWithThis(node->origin.semantic, baseTagGPR, basePayloadGPR, thisTagGPR, thisPayloadGPR, resultTagGPR, resultPayloadGPR, node->identifierNumber(), notCellList);
-            
-            jsValueResult(resultTagGPR, resultPayloadGPR, node, UseChildrenCalledExplicitly);
-        }
-        
+        JSValueOperand base(this, node->child1());
+        JSValueRegs baseRegs = base.jsValueRegs();
+        JSValueOperand thisValue(this, node->child2());
+        JSValueRegs thisRegs = thisValue.jsValueRegs();
+
+        GPRFlushedCallResult resultPayload(this);
+        GPRFlushedCallResult2 resultTag(this);
+        GPRReg resultPayloadGPR = resultPayload.gpr();
+        GPRReg resultTagGPR = resultTag.gpr();
+
+        flushRegisters();
+        callOperation(operationGetByIdWithThis, JSValueRegs(resultTagGPR, resultPayloadGPR), baseRegs, thisRegs, identifierUID(node->identifierNumber()));
+        m_jit.exceptionCheck();
+
+        jsValueResult(resultTagGPR, resultPayloadGPR, node);
         break;
     }
 
@@ -5603,17 +5543,9 @@ void SpeculativeJIT::compile(Node* node)
         emitInvalidationPoint(node);
         break;
 
-    case CheckWatchdogTimer: {
-        ASSERT(m_jit.vm()->watchdog());
-        GPRTemporary unused(this);
-        GPRReg unusedGPR = unused.gpr();
-        
-        JITCompiler::Jump timerDidFire = m_jit.branchTest8(JITCompiler::NonZero,
-            JITCompiler::AbsoluteAddress(m_jit.vm()->watchdog()->timerDidFireAddress()));
-        
-        addSlowPathGenerator(slowPathCall(timerDidFire, this, operationHandleWatchdogTimer, unusedGPR));
+    case CheckTraps:
+        compileCheckTraps(node);
         break;
-    }
 
     case CountExecution:
         m_jit.add64(TrustedImm32(1), MacroAssembler::AbsoluteAddress(node->executionCounter()->address()));

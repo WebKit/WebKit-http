@@ -1,5 +1,82 @@
 2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
 
+        Fix tests after r213119 and r213120.
+
+        * browser-tests/time-series-chart-tests.js:
+        (return.ChartTest.importChartScripts.context.then):
+        (string_appeared_here.then): Deleted.
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Removed the unused code that was supposed to be removed in the previous commit.
+
+        * browser-tests/time-series-chart-tests.js:
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Split tests for InteractiveTimeSeriesChart into a separate test file.
+        https://bugs.webkit.org/show_bug.cgi?id=168960
+
+        Reviewed by Joseph Pecoraro.
+
+        Extracted the test cases for InteractiveTimeSeriesChart charts from time-series-chart-tests.js
+        into interactive-time-series-chart-tests.js now that the former file has gotten really big over time.
+
+        Also extracted a bunch of helper functions time-series-chart-tests.js as ChartTest in index.html.
+        Any test which instantiates a time series chart can use this helper class.
+
+        * browser-tests/index.html:
+        (ChartTest.importChartScripts): Ditto.
+        (ChartTest.posixTime): Moved from time-series-chart-tests.js.
+        (ChartTest.sampleCluster): Ditto.
+        (ChartTest.createChartWithSampleCluster): Ditto.
+        (ChartTest.createInteractiveChartWithSampleCluster): Ditto.
+        (ChartTest.respondWithSampleCluster):
+        * browser-tests/interactive-time-series-chart-tests.js: Extracted from time-series-chart-tests.js.
+        * browser-tests/time-series-chart-tests.js:
+        (posixTime): Moved.
+        (dayInMilliseconds): Moved.
+        (sampleCluster): Moved.
+        (createChartWithSampleCluster): Moved.
+        (createInteractiveChartWithSampleCluster): Moved.
+        (respondWithSampleCluster): Moved.
+        * unit-tests/analysis-task-tests.js: Fixed a typo. s/adopter/adapter/.
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Calling build() on a baseline point results in an exception
+        https://bugs.webkit.org/show_bug.cgi?id=168959
+
+        Reviewed by Joseph Pecoraro.
+
+        Some baseline points may lack the build information. e.g. A custom data point made by an user.
+        Only instantiate Build object in a point object returned by MeasurementAdaptor when the builder id
+        is available so that we don't hit an assertion inside Build's constructor.
+
+        * public/v3/models/measurement-adaptor.js:
+        (MeasurementAdaptor.prototype.applyTo..build): Only instantiate Build when builderId is set.
+        * unit-tests/measurement-adaptor-tests.js: Added a test case.
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Arrow key shouldn't move the indicator beyond the visible points
+        https://bugs.webkit.org/show_bug.cgi?id=168956
+
+        Reviewed by Joseph Pecoraro.
+
+        The bug was caused by moveLockedIndicatorWithNotification using the full sampled time series view
+        instead of the one constrained by the domain. Since the time series chart expands the visible domain
+        to include at least one point before the start time and one point after the end tiem to draw lines
+        extending beyond the visible region (otherwise it looks as though the graph ends there), we need to
+        use a view constrained by the start time and the end time before looking for a next/previous point.
+
+        * browser-tests/time-series-chart-tests.js: Added test cases for moveLockedIndicatorWithNotification.
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.moveLockedIndicatorWithNotification): Fixed the bug. Also
+        enqueue itself to render instead of relying on a parent component to do it.
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
         A Locked indicator should be visually distinct from an unlocked indicator
         https://bugs.webkit.org/show_bug.cgi?id=168868
         <rdar://problem/29666054>

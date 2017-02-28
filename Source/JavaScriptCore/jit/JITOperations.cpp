@@ -265,43 +265,6 @@ EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState* exec, Structure
     }));
 }
 
-EncodedJSValue JIT_OPERATION operationGetByIdWithThisGeneric(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue base, EncodedJSValue thisEncoded, UniquedStringImpl* uid)
-{
-    SuperSamplerScope superSamplerScope(false);
-
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
-    Identifier ident = Identifier::fromUid(vm, uid);
-
-    stubInfo->tookSlowPath = true;
-
-    JSValue baseValue = JSValue::decode(base);
-    JSValue thisValue = JSValue::decode(thisEncoded);
-    PropertySlot slot(thisValue, PropertySlot::InternalMethodType::Get);
-
-    return JSValue::encode(baseValue.get(exec, ident, slot));
-}
-
-EncodedJSValue JIT_OPERATION operationGetByIdWithThisOptimize(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue base, EncodedJSValue thisEncoded, UniquedStringImpl* uid)
-{
-    SuperSamplerScope superSamplerScope(false);
-    
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
-    Identifier ident = Identifier::fromUid(vm, uid);
-
-    JSValue baseValue = JSValue::decode(base);
-    JSValue thisValue = JSValue::decode(thisEncoded);
-    LOG_IC((ICEvent::OperationGetByIdWithThisOptimize, baseValue.classInfoOrNull(*vm), ident));
-
-    PropertySlot slot(thisValue, PropertySlot::InternalMethodType::Get);
-    return JSValue::encode(baseValue.getPropertySlot(exec, ident, slot, [&] (bool found, PropertySlot& slot) -> JSValue {
-        if (stubInfo->considerCaching(exec->codeBlock(), baseValue.structureOrNull()))
-            repatchGetByID(exec, baseValue, ident, slot, *stubInfo, GetByIDKind::WithThis);
-        return found ? slot.getValue(exec, ident) : jsUndefined();
-    }));
-}
-
 EncodedJSValue JIT_OPERATION operationInOptimize(ExecState* exec, StructureStubInfo* stubInfo, JSCell* base, UniquedStringImpl* key)
 {
     SuperSamplerScope superSamplerScope(false);
@@ -1242,18 +1205,14 @@ EncodedJSValue JIT_OPERATION operationNewRegexp(ExecState* exec, void* regexpPtr
 }
 
 // The only reason for returning an UnusedPtr (instead of void) is so that we can reuse the
-// existing DFG slow path generator machinery when creating the slow path for CheckWatchdogTimer
+// existing DFG slow path generator machinery when creating the slow path for CheckTraps
 // in the DFG. If a DFG slow path generator that supports a void return type is added in the
 // future, we can switch to using that then.
-UnusedPtr JIT_OPERATION operationHandleWatchdogTimer(ExecState* exec)
+UnusedPtr JIT_OPERATION operationHandleTraps(ExecState* exec)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (UNLIKELY(vm.shouldTriggerTermination(exec)))
-        throwException(exec, scope, createTerminatedExecutionException(&vm));
-
+    vm.handleTraps(exec);
     return nullptr;
 }
 

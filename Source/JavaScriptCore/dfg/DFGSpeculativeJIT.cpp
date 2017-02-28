@@ -1063,11 +1063,9 @@ void SpeculativeJIT::compileIn(Node* node)
             stubInfo->codeOrigin = node->origin.semantic;
             stubInfo->patch.baseGPR = static_cast<int8_t>(baseGPR);
             stubInfo->patch.valueGPR = static_cast<int8_t>(resultGPR);
-            stubInfo->patch.thisGPR = static_cast<int8_t>(InvalidGPRReg);
 #if USE(JSVALUE32_64)
             stubInfo->patch.valueTagGPR = static_cast<int8_t>(InvalidGPRReg);
             stubInfo->patch.baseTagGPR = static_cast<int8_t>(InvalidGPRReg);
-            stubInfo->patch.thisTagGPR = static_cast<int8_t>(InvalidGPRReg);
 #endif
             stubInfo->patch.usedRegisters = usedRegisters();
 
@@ -1896,6 +1894,17 @@ void SpeculativeJIT::linkOSREntries(LinkBuffer& linkBuffer)
         if (!dumpContext.isEmpty())
             dumpContext.dump(WTF::dataFile());
     }
+}
+    
+void SpeculativeJIT::compileCheckTraps(Node*)
+{
+    GPRTemporary unused(this);
+    GPRReg unusedGPR = unused.gpr();
+
+    JITCompiler::Jump needTrapHandling = m_jit.branchTest8(JITCompiler::NonZero,
+        JITCompiler::AbsoluteAddress(m_jit.vm()->needTrapHandlingAddress()));
+
+    addSlowPathGenerator(slowPathCall(needTrapHandling, this, operationHandleTraps, unusedGPR));
 }
 
 void SpeculativeJIT::compileDoublePutByVal(Node* node, SpeculateCellOperand& base, SpeculateStrictInt32Operand& property)
