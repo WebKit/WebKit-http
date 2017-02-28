@@ -50,14 +50,14 @@ void HTTPCookieStorage::deleteAllCookies()
 
 void HTTPCookieStorage::startObservingCookieChanges()
 {
-    m_webPage.process().processPool().supplement<WebKit::WebCookieManagerProxy>()->startObservingCookieChanges(m_webPage.sessionID(), [this] {
+    m_webPage.process().processPool().supplement<WebKit::WebCookieManagerProxy>()->setCookieObserverCallback(m_webPage.sessionID(), [this] {
         m_webPage.cookiesDidChange();
     });
 }
 
 void HTTPCookieStorage::stopObservingCookieChanges()
 {
-    m_webPage.process().processPool().supplement<WebKit::WebCookieManagerProxy>()->stopObservingCookieChanges(m_webPage.sessionID());
+    m_webPage.process().processPool().supplement<WebKit::WebCookieManagerProxy>()->setCookieObserverCallback(m_webPage.sessionID(), nullptr);
 }
 
 void HTTPCookieStorage::setCookies(const Vector<WebCore::Cookie>& cookies)
