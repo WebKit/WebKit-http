@@ -36,6 +36,7 @@
 #include "APIFrameHandle.h"
 #include "APIFrameInfo.h"
 #include "APIGeometry.h"
+#include "APIHTTPCookieStorage.h"
 #include "APIHitTestResult.h"
 #include "APILoaderClient.h"
 #include "APINavigationAction.h"
@@ -101,7 +102,7 @@ using namespace WebKit;
 
 namespace API {
 template<> struct ClientTraits<WKPageLoaderClientBase> {
-    typedef std::tuple<WKPageLoaderClientV0, WKPageLoaderClientV1, WKPageLoaderClientV2, WKPageLoaderClientV3, WKPageLoaderClientV4, WKPageLoaderClientV5, WKPageLoaderClientV6> Versions;
+    typedef std::tuple<WKPageLoaderClientV0, WKPageLoaderClientV1, WKPageLoaderClientV2, WKPageLoaderClientV3, WKPageLoaderClientV4, WKPageLoaderClientV5, WKPageLoaderClientV6, WKPageLoaderClientV7> Versions;
 };
 
 template<> struct ClientTraits<WKPageNavigationClientBase> {
@@ -1278,6 +1279,12 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
         {
             if (m_client.navigationGestureDidEnd)
                 m_client.navigationGestureDidEnd(toAPI(&page), willNavigate, toAPI(&item), m_client.base.clientInfo);
+        }
+
+        void cookiesDidChange(WebPageProxy& page) override
+        {
+            if (m_client.cookiesDidChange)
+                m_client.cookiesDidChange(toAPI(&page), m_client.base.clientInfo);
         }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -2832,6 +2839,11 @@ void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportSca
 pid_t WKPageGetProcessIdentifier(WKPageRef page)
 {
     return toImpl(page)->processIdentifier();
+}
+
+WKHTTPCookieStorageRef WKPageGetHTTPCookieStorage(WKPageRef page)
+{
+    return toAPI(&toImpl(page)->httpCookieStorage());
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

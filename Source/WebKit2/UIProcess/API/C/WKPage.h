@@ -31,6 +31,7 @@
 #include <WebKit/WKEvent.h>
 #include <WebKit/WKFindOptions.h>
 #include <WebKit/WKGeometry.h>
+#include <WebKit/WKHTTPCookieStorageRef.h>
 #include <WebKit/WKNativeEvent.h>
 #include <WebKit/WKPageContextMenuClient.h>
 #include <WebKit/WKPageDiagnosticLoggingClient.h>
@@ -275,7 +276,7 @@ WK_EXPORT void WKPagePostSynchronousMessageToInjectedBundle(WKPageRef page, WKSt
 
 WK_EXPORT void WKPageSelectContextMenuItem(WKPageRef page, WKContextMenuItemRef item);
 
-
+WK_EXPORT WKHTTPCookieStorageRef WKPageGetHTTPCookieStorage(WKPageRef page);
 
 /* DEPRECATED -  Please use constants from WKPluginInformation instead. */
 

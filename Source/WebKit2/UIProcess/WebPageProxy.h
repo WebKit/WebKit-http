@@ -129,6 +129,7 @@ class FindClient;
 class FindMatchesClient;
 class FormClient;
 class FullscreenClient;
+class HTTPCookieStorage;
 class HistoryClient;
 class LoaderClient;
 class Navigation;
@@ -366,6 +367,8 @@ public:
 
     API::UIClient& uiClient() { return *m_uiClient; }
     void setUIClient(std::unique_ptr<API::UIClient>);
+
+    API::HTTPCookieStorage& httpCookieStorage() { return m_httpCookieStorage.get(); }
 
     void initializeWebPage();
 
@@ -1153,6 +1156,8 @@ public:
 
     void canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t frameID, const WebCore::ProtectionSpace&);
 
+    void cookiesDidChange();
+
 #if ENABLE(GAMEPAD)
     void gamepadActivity(const Vector<GamepadData>&);
 #endif
@@ -1918,6 +1923,8 @@ private:
     bool m_hasHadSelectionChangesFromUserInteraction { false };
     bool m_needsHiddenContentEditableQuirk { false };
     bool m_needsPlainTextQuirk { false };
+
+    Ref<API::HTTPCookieStorage> m_httpCookieStorage;
 
 #if ENABLE(MEDIA_SESSION)
     bool m_hasMediaSessionWithActiveMediaElements { false };
