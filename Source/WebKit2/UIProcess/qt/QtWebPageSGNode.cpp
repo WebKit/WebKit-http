@@ -25,8 +25,6 @@
 #include "WebPageProxy.h"
 
 #include <QtGui/QPolygonF>
-#include <QtQuick/QQuickItem>
-#include <QtQuick/QQuickWindow>
 #include <QtQuick/QSGSimpleRectNode>
 #include <WebCore/TransformationMatrix.h>
 
