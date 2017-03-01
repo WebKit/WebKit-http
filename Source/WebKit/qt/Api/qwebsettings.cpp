@@ -272,6 +272,11 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::LocalContentCanAccessFileUrls));
         settings->setAllowFileAccessFromFileURLs(value);
 
+        value = attributes.value(QWebSettings::AllowRunningInsecureContent,
+                                      global->attributes.value(QWebSettings::AllowRunningInsecureContent));
+        settings->setAllowDisplayOfInsecureContent(value);
+        settings->setAllowRunningOfInsecureContent(value);
+
         value = attributes.value(QWebSettings::XSSAuditingEnabled,
                                       global->attributes.value(QWebSettings::XSSAuditingEnabled));
         settings->setXSSAuditorEnabled(value);
@@ -592,6 +597,7 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::WebSecurityEnabled, true);
     d->attributes.insert(QWebSettings::FullScreenSupportEnabled, true);
     d->attributes.insert(QWebSettings::ImagesEnabled, true);
+    d->attributes.insert(QWebSettings::AllowRunningInsecureContent, false);
     d->offlineStorageDefaultQuota = 5 * 1024 * 1024;
     d->defaultTextEncoding = QLatin1String("iso-8859-1");
     d->thirdPartyCookiePolicy = AlwaysAllowThirdPartyCookies;
