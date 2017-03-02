@@ -2158,10 +2158,21 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     setPipeline(gst_element_factory_make("playbin", "play"));
     setStreamVolumeElement(GST_STREAM_VOLUME(m_pipeline.get()));
 
+#if ENABLE(TEXT_SINK)
     unsigned flagText = getGstPlayFlag("text");
+#else
+    unsigned flagText = 0x0;
+#endif
+    
     unsigned flagAudio = getGstPlayFlag("audio");
     unsigned flagVideo = getGstPlayFlag("video");
+    
+#if ENABLE(NATIVE_VIDEO)    
     unsigned flagNativeVideo = getGstPlayFlag("native-video");
+#else    
+    unsigned flagNativeVideo = 0x0;
+#endif
+    
     g_object_set(m_pipeline.get(), "flags", flagText | flagAudio | flagVideo | flagNativeVideo, nullptr);
 
     GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
