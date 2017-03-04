@@ -53,7 +53,7 @@ my @commands = (
     "tar -xf $src_repo/snapshot.tar --strip-components=1",
     "git add -A",
     "rm $src_repo/snapshot.tar",
-    "git commit -m 'Imported WebKit commit $commit'"
+    "git commit -m 'Import WebKit commit $commit'"
 );
 
 my $cmd = join " && ", @commands;
