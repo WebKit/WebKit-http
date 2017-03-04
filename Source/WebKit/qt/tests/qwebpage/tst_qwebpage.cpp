@@ -28,6 +28,7 @@
 #include <QMenu>
 #include <QMimeDatabase>
 #include <QPushButton>
+#include <QRegExp>
 #include <QStateMachine>
 #include <QStyle>
 #include <QtTest/QtTest>

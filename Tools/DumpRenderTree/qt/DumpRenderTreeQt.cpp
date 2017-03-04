@@ -64,6 +64,7 @@
 #include <QPrinter>
 #endif
 #include <QProgressBar>
+#include <QRegExp>
 #include <QUndoStack>
 #include <QUrl>
 #include <limits.h>

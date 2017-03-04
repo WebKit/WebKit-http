@@ -35,7 +35,6 @@
 
 #include <QDir>
 #include <QLatin1String>
-#include <QRegExp>
 
 int main(int argc, char** argv)
 {

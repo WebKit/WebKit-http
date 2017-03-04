@@ -30,7 +30,6 @@
 #include <QComboBox>
 #include <QPaintEngine>
 #include <QPicture>
-#include <QRegExp>
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QTextCodec>
