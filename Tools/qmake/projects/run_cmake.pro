@@ -70,7 +70,7 @@ build_pass|!debug_and_release {
             QMAKE_MAC_SDK_PATH = $$system("/usr/bin/xcodebuild -sdk $${QMAKE_MAC_SDK} -version Path 2>/dev/null")
         }
         exists($$QMAKE_MAC_SDK_PATH): CMAKE_CONFIG += CMAKE_OSX_SYSROOT=$$QMAKE_MAC_SDK_PATH
-        !isEmpty($$QMAKE_MACOSX_DEPLOYMENT_TARGET): CMAKE_CONFIG += CMAKE_OSX_DEPLOYMENT_TARGET=$$QMAKE_MACOSX_DEPLOYMENT_TARGET
+        !isEmpty(QMAKE_MACOSX_DEPLOYMENT_TARGET): CMAKE_CONFIG += CMAKE_OSX_DEPLOYMENT_TARGET=$$QMAKE_MACOSX_DEPLOYMENT_TARGET
     }
 
     equals(QMAKE_HOST.os, Windows) {
