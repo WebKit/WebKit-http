@@ -131,6 +131,7 @@ class FindClient;
 class FindMatchesClient;
 class FormClient;
 class FullscreenClient;
+class HTTPCookieStorage;
 class HistoryClient;
 class IconLoadingClient;
 class LoaderClient;
@@ -381,6 +382,8 @@ public:
 
     API::IconLoadingClient& iconLoadingClient() { return *m_iconLoadingClient; }
     void setIconLoadingClient(std::unique_ptr<API::IconLoadingClient>);
+
+    API::HTTPCookieStorage& httpCookieStorage() { return m_httpCookieStorage.get(); }
 
     void initializeWebPage();
 
@@ -1179,6 +1182,8 @@ public:
 
     void canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t frameID, const WebCore::ProtectionSpace&);
 
+    void cookiesDidChange();
+
 #if ENABLE(GAMEPAD)
     void gamepadActivity(const Vector<GamepadData>&, bool shouldMakeGamepadsVisible);
 #endif
@@ -1954,6 +1959,8 @@ private:
     bool m_hasHadSelectionChangesFromUserInteraction { false };
     bool m_needsHiddenContentEditableQuirk { false };
     bool m_needsPlainTextQuirk { false };
+
+    Ref<API::HTTPCookieStorage> m_httpCookieStorage;
 
 #if ENABLE(MEDIA_SESSION)
     bool m_hasMediaSessionWithActiveMediaElements { false };

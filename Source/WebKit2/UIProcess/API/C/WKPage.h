@@ -31,6 +31,7 @@
 #include <WebKit/WKEvent.h>
 #include <WebKit/WKFindOptions.h>
 #include <WebKit/WKGeometry.h>
+#include <WebKit/WKHTTPCookieStorageRef.h>
 #include <WebKit/WKNativeEvent.h>
 #include <WebKit/WKPageContextMenuClient.h>
 #include <WebKit/WKPageDiagnosticLoggingClient.h>
@@ -276,6 +277,8 @@ WK_EXPORT void WKPagePostMessageToInjectedBundle(WKPageRef page, WKStringRef mes
 WK_EXPORT void WKPagePostSynchronousMessageToInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody);
 
 WK_EXPORT void WKPageSelectContextMenuItem(WKPageRef page, WKContextMenuItemRef item);
+
+WK_EXPORT WKHTTPCookieStorageRef WKPageGetHTTPCookieStorage(WKPageRef page);
 
 #ifdef __cplusplus
 }

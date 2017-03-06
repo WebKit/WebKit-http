@@ -440,8 +440,13 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                         GST_DEBUG("playready key already negotiated");
                         emitPlayReadySession();
                     }
+                    if (streamEncryptionInformation.second.contains(eventKeySystemId)) {
+                        GST_TRACE("considering init data handled for %s", eventKeySystemId);
+                        m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
+                    }
                     return false;
                 }
+                return false;
             }
 #endif
 
@@ -1746,7 +1751,7 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
     if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
-        GST_TRACE("event %u already handled", GST_EVENT_SEQNUM(event));
+        GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
         m_handledProtectionEvents.remove(GST_EVENT_SEQNUM(event));
         return;
     }

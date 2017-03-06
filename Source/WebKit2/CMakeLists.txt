@@ -330,6 +330,7 @@ set(WebKit2_SOURCES
 
     UIProcess/API/APIExperimentalFeature.cpp
     UIProcess/API/APIFrameInfo.cpp
+    UIProcess/API/APIHTTPCookieStorage.cpp
     UIProcess/API/APIHitTestResult.cpp
     UIProcess/API/APINavigation.cpp
     UIProcess/API/APINavigationData.cpp
@@ -366,6 +367,7 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKGeolocationPermissionRequest.cpp
     UIProcess/API/C/WKGeolocationPosition.cpp
     UIProcess/API/C/WKGrammarDetail.cpp
+    UIProcess/API/C/WKHTTPCookieStorageRef.cpp
     UIProcess/API/C/WKHitTestResult.cpp
     UIProcess/API/C/WKIconDatabase.cpp
     UIProcess/API/C/WKInspector.cpp

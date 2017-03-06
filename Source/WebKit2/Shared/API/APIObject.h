@@ -117,6 +117,7 @@ public:
         HitTestResult,
         GeolocationPosition,
         GrammarDetail,
+        HTTPCookieStorage,
         IconDatabase,
         Inspector,
         KeyValueStorageManager,

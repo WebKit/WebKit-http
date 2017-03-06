@@ -74,11 +74,11 @@ public:
     void setHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy);
     void getHTTPCookieAcceptPolicy(std::function<void (HTTPCookieAcceptPolicy, CallbackBase::Error)>);
 
-    void setCookies(const Vector<WebCore::Cookie>& cookies);
-    void getCookies(std::function<void (API::Array*, CallbackBase::Error)>);
+    void setCookies(WebCore::SessionID, const Vector<WebCore::Cookie>& cookies);
+    void getCookies(WebCore::SessionID, std::function<void (API::Array*, CallbackBase::Error)>);
     void didGetCookies(Vector<WebCore::Cookie> cookies,  uint64_t callbackID);
 
-    void startObservingCookieChanges(WebCore::SessionID, std::function<void ()>&& = nullptr);
+    void startObservingCookieChanges(WebCore::SessionID);
     void stopObservingCookieChanges(WebCore::SessionID);
 
     void setCookieObserverCallback(WebCore::SessionID, std::function<void ()>&&);

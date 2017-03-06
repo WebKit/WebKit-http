@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2017 Metrological Group B.V.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,24 +22,43 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
- messages -> WebCookieManager {
-    void GetHostnamesWithCookies(WebCore::SessionID sessionID, uint64_t callbackID)
-    void DeleteCookiesForHostname(WebCore::SessionID sessionID, String hostname)
-    void DeleteAllCookies(WebCore::SessionID sessionID)
-    void DeleteAllCookiesModifiedSince(WebCore::SessionID sessionID, std::chrono::system_clock::time_point time)
-    void AddCookie(WebCore::SessionID sessionID, struct WebCore::Cookie cookie, String hostname)
 
-    void SetHTTPCookieAcceptPolicy(uint32_t policy)
-    void GetHTTPCookieAcceptPolicy(uint64_t callbackID)
+#pragma once
 
-    void SetCookies(WebCore::SessionID sessionID, Vector<WebCore::Cookie> cookies)
-    void GetCookies(WebCore::SessionID sessionID, uint64_t callbackID)
+#include "APIObject.h"
+#include "GenericCallback.h"
+#include <functional>
+#include <wtf/Vector.h>
 
-    void StartObservingCookieChanges(WebCore::SessionID sessionID)
-    void StopObservingCookieChanges(WebCore::SessionID sessionID)
-
-#if USE(SOUP)
-    SetCookiePersistentStorage(String storagePath, uint32_t storageType)
-#endif
+namespace WebCore {
+struct Cookie;
 }
+
+namespace WebKit {
+class WebPageProxy;
+};
+
+namespace API {
+
+class HTTPCookieStorage final : public ObjectImpl<Object::Type::HTTPCookieStorage> {
+public:
+    static Ref<HTTPCookieStorage> create(WebKit::WebPageProxy& webPage)
+    {
+        return adoptRef(*new HTTPCookieStorage(webPage));
+    }
+
+    virtual ~HTTPCookieStorage();
+
+    void deleteAllCookies();
+    void startObservingCookieChanges();
+    void stopObservingCookieChanges();
+    void setCookies(const Vector<WebCore::Cookie>&);
+    void getCookies(std::function<void (API::Array*, WebKit::CallbackBase::Error)>);
+
+private:
+    HTTPCookieStorage(WebKit::WebPageProxy&);
+
+    WebKit::WebPageProxy& m_webPage;
+};
+
+} // namespace API

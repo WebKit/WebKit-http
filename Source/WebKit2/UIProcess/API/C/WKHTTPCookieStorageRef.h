@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2017 Metrological Group B.V.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,24 +22,30 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
- messages -> WebCookieManager {
-    void GetHostnamesWithCookies(WebCore::SessionID sessionID, uint64_t callbackID)
-    void DeleteCookiesForHostname(WebCore::SessionID sessionID, String hostname)
-    void DeleteAllCookies(WebCore::SessionID sessionID)
-    void DeleteAllCookiesModifiedSince(WebCore::SessionID sessionID, std::chrono::system_clock::time_point time)
-    void AddCookie(WebCore::SessionID sessionID, struct WebCore::Cookie cookie, String hostname)
 
-    void SetHTTPCookieAcceptPolicy(uint32_t policy)
-    void GetHTTPCookieAcceptPolicy(uint64_t callbackID)
+#ifndef WKHTTPCookieStorageRef_h
+#define WKHTTPCookieStorageRef_h
 
-    void SetCookies(WebCore::SessionID sessionID, Vector<WebCore::Cookie> cookies)
-    void GetCookies(WebCore::SessionID sessionID, uint64_t callbackID)
+#include <WebKit/WKBase.h>
 
-    void StartObservingCookieChanges(WebCore::SessionID sessionID)
-    void StopObservingCookieChanges(WebCore::SessionID sessionID)
-
-#if USE(SOUP)
-    SetCookiePersistentStorage(String storagePath, uint32_t storageType)
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+WK_EXPORT WKTypeID WKHTTPCookieStorageGetTypeID();
+
+WK_EXPORT void WKHTTPCookieStorageDeleteAllCookies(WKHTTPCookieStorageRef cookieStorage);
+
+WK_EXPORT void WKHTTPCookieStorageSetCookies(WKHTTPCookieStorageRef cookieStorage, WKArrayRef cookieList);
+
+typedef void (*WKHTTPCookieStorageGetCookiesFunction)(WKArrayRef, WKErrorRef, void*);
+WK_EXPORT void WKHTTPCookieStorageGetCookies(WKHTTPCookieStorageRef cookieStorage, void* context, WKHTTPCookieStorageGetCookiesFunction callback);
+
+WK_EXPORT void WKHTTPCookieStorageStartObservingCookieChanges(WKHTTPCookieStorageRef cookieStorage);
+WK_EXPORT void WKHTTPCookieStorageStopObservingCookieChanges(WKHTTPCookieStorageRef cookieStorage);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* WKHTTPCookieStorageRef_h */

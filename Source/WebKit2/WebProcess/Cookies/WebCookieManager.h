@@ -76,8 +76,8 @@ private:
     void getHTTPCookieAcceptPolicy(uint64_t callbackID);
     HTTPCookieAcceptPolicy platformGetHTTPCookieAcceptPolicy();
 
-    void setCookies(const Vector<WebCore::Cookie>& cookies);
-    void getCookies(uint64_t callbackID);
+    void setCookies(WebCore::SessionID, const Vector<WebCore::Cookie>& cookies);
+    void getCookies(WebCore::SessionID, uint64_t callbackID);
 
     void startObservingCookieChanges(WebCore::SessionID);
     void stopObservingCookieChanges(WebCore::SessionID);

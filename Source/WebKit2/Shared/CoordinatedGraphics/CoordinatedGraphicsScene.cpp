@@ -67,7 +67,7 @@ CoordinatedGraphicsScene::CoordinatedGraphicsScene(CoordinatedGraphicsSceneClien
     : m_client(client)
     , m_isActive(false)
     , m_rootLayerID(InvalidCoordinatedLayerID)
-#if PLATFORM(INTEL_CE)
+#if PLATFORM(INTEL_CE) || PLATFORM(WESTEROS)
     , m_viewBackgroundColor(Color::transparent)
 #else
     , m_viewBackgroundColor(Color::black)

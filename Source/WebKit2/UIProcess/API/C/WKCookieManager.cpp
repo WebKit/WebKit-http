@@ -86,12 +86,12 @@ void WKCookieManagerSetCookies(WKCookieManagerRef cookieManager, WKArrayRef cook
     for (size_t i = 0; i < size; ++i)
         passCookies[i] = toImpl(static_cast<WKCookieRef>(WKArrayGetItemAtIndex(cookies, i)))->cookie();
 
-    toImpl(cookieManager)->setCookies(passCookies);
+    toImpl(cookieManager)->setCookies(WebCore::SessionID::defaultSessionID(), passCookies);
 }
 
 void WKCookieManagerGetCookies(WKCookieManagerRef cookieManager, void* context, WKCookieManagerGetCookiesFunction callback)
 {
-    toImpl(cookieManager)->getCookies(toGenericCallbackFunction(context, callback));
+    toImpl(cookieManager)->getCookies(WebCore::SessionID::defaultSessionID(), toGenericCallbackFunction(context, callback));
 }
 
 void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef cookieManager)

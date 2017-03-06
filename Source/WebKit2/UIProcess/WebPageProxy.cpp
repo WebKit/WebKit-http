@@ -35,6 +35,7 @@
 #include "APIFrameInfo.h"
 #include "APIFullscreenClient.h"
 #include "APIGeometry.h"
+#include "APIHTTPCookieStorage.h"
 #include "APIHistoryClient.h"
 #include "APIHitTestResult.h"
 #include "APIIconLoadingClient.h"
@@ -447,6 +448,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_configurationPreferenceValues(m_configuration->preferenceValues())
     , m_potentiallyChangedActivityStateFlags(ActivityState::NoFlags)
     , m_activityStateChangeWantsSynchronousReply(false)
+    , m_httpCookieStorage(API::HTTPCookieStorage::create(*this))
     , m_weakPtrFactory(this)
 {
     m_webProcessLifetimeTracker.addObserver(m_visitedLinkStore);
@@ -5607,6 +5609,11 @@ void WebPageProxy::updateAcceleratedCompositingMode(const LayerTreeContext& laye
 void WebPageProxy::backForwardClear()
 {
     m_backForwardList->clear();
+}
+
+void WebPageProxy::cookiesDidChange()
+{
+    m_loaderClient->cookiesDidChange(*this);
 }
 
 #if ENABLE(GAMEPAD)

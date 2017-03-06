@@ -197,18 +197,18 @@ void WebCookieManagerProxy::didGetHTTPCookieAcceptPolicy(uint32_t policy, uint64
     callback->performCallbackWithReturnValue(policy);
 }
 
-void WebCookieManagerProxy::setCookies(const Vector<WebCore::Cookie>& cookies)
+void WebCookieManagerProxy::setCookies(WebCore::SessionID sessionID, const Vector<WebCore::Cookie>& cookies)
 {
-    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies(cookies));
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies(sessionID, cookies));
 }
 
-void WebCookieManagerProxy::getCookies(std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
+void WebCookieManagerProxy::getCookies(WebCore::SessionID sessionID, std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
     RefPtr<ArrayCallback> callback = ArrayCallback::create(WTFMove(callbackFunction));
     uint64_t callbackID = callback->callbackID();
     m_arrayCallbacks.set(callbackID, callback.release());
 
-    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies(callbackID));
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies(sessionID, callbackID));
 }
 
 void WebCookieManagerProxy::didGetCookies(Vector<WebCore::Cookie> cookies, uint64_t callbackID)

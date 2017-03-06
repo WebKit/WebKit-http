@@ -46,6 +46,7 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "SourceBuffer.h"
+#include <wtf/text/StringBuilder.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/text/StringBuilder.h>
 

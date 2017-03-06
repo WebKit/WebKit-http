@@ -102,6 +102,8 @@ public:
     virtual void navigationGestureWillEnd(WebKit::WebPageProxy&, bool willNavigate, WebKit::WebBackForwardListItem&) { }
     virtual void navigationGestureDidEnd(WebKit::WebPageProxy&, bool willNavigate, WebKit::WebBackForwardListItem&) { }
 
+    virtual void cookiesDidChange(WebKit::WebPageProxy&) { }
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
     virtual WebKit::PluginModuleLoadPolicy pluginLoadPolicy(WebKit::WebPageProxy&, WebKit::PluginModuleLoadPolicy currentPluginLoadPolicy, API::Dictionary*, WTF::String& /* unavailabilityDescription */) { return currentPluginLoadPolicy; }
     virtual void didFailToInitializePlugin(WebKit::WebPageProxy&, API::Dictionary*) { }

@@ -129,14 +129,19 @@ static void webkit_cookie_manager_class_init(WebKitCookieManagerClass* findClass
 
 WebKitCookieManager* webkitCookieManagerCreate(WebKitWebsiteDataManager* dataManager)
 {
-    WebKitCookieManager* manager = WEBKIT_COOKIE_MANAGER(g_object_new(WEBKIT_TYPE_COOKIE_MANAGER, nullptr));
-    manager->priv->dataManager = dataManager;
-    auto sessionID = webkitWebsiteDataManagerGetDataStore(manager->priv->dataManager).websiteDataStore().sessionID();
-    for (auto* processPool : webkitWebsiteDataManagerGetProcessPools(manager->priv->dataManager)) {
-        processPool->supplement<WebCookieManagerProxy>()->setCookieObserverCallback(sessionID, [manager] {
-            g_signal_emit(manager, signals[CHANGED], 0);
-        });
-    }
+    WebKitCookieManager* manager = WEBKIT_COOKIE_MANAGER(g_object_new(WEBKIT_TYPE_COOKIE_MANAGER, NULL));
+    manager->priv->webCookieManager = webCookieManager;
+
+    WKCookieManagerClientV0 wkCookieManagerClient = {
+        {
+            0, // version
+            manager, // clientInfo
+        },
+        cookiesDidChange
+    };
+    WKCookieManagerSetClient(toAPI(webCookieManager), &wkCookieManagerClient.base);
+    manager->priv->webCookieManager->startObservingCookieChanges(WebCore::SessionID::defaultSessionID());
+
     return manager;
 }
 
@@ -162,8 +167,9 @@ void webkit_cookie_manager_set_persistent_storage(WebKitCookieManager* manager, 
     g_return_if_fail(filename);
     g_return_if_fail(!webkit_website_data_manager_is_ephemeral(manager->priv->dataManager));
 
-    for (auto* processPool : webkitWebsiteDataManagerGetProcessPools(manager->priv->dataManager))
-        processPool->supplement<WebCookieManagerProxy>()->setCookiePersistentStorage(String::fromUTF8(filename), toSoupCookiePersistentStorageType(storage));
+    manager->priv->webCookieManager->stopObservingCookieChanges(WebCore::SessionID::defaultSessionID());
+    manager->priv->webCookieManager->setCookiePersistentStorage(String::fromUTF8(filename), toSoupCookiePersistentStorageType(storage));
+    manager->priv->webCookieManager->startObservingCookieChanges(WebCore::SessionID::defaultSessionID());
 }
 
 /**
@@ -254,24 +260,7 @@ void webkit_cookie_manager_get_domains_with_cookies(WebKitCookieManager* manager
     g_return_if_fail(WEBKIT_IS_COOKIE_MANAGER(manager));
 
     GTask* task = g_task_new(manager, cancellable, callback, userData);
-    webkit_website_data_manager_fetch(manager->priv->dataManager, WEBKIT_WEBSITE_DATA_COOKIES, cancellable, [](GObject* object, GAsyncResult* result, gpointer userData) {
-        GRefPtr<GTask> task = adoptGRef(G_TASK(userData));
-        GError* error = nullptr;
-        GUniquePtr<GList> dataList(webkit_website_data_manager_fetch_finish(WEBKIT_WEBSITE_DATA_MANAGER(object), result, &error));
-        if (error) {
-            g_task_return_error(task.get(), error);
-            return;
-        }
-
-        GPtrArray* domains = g_ptr_array_sized_new(g_list_length(dataList.get()));
-        for (GList* item = dataList.get(); item; item = g_list_next(item)) {
-            auto* data = static_cast<WebKitWebsiteData*>(item->data);
-            g_ptr_array_add(domains, g_strdup(webkit_website_data_get_name(data)));
-            webkit_website_data_unref(data);
-        }
-        g_ptr_array_add(domains, nullptr);
-        g_task_return_pointer(task.get(), g_ptr_array_free(domains, FALSE), reinterpret_cast<GDestroyNotify>(g_strfreev));
-    }, task);
+    manager->priv->webCookieManager->getHostnamesWithCookies(WebCore::SessionID::defaultSessionID(), toGenericCallbackFunction(task, webkitCookieManagerGetDomainsWithCookiesCallback));
 }
 
 /**
@@ -311,12 +300,7 @@ void webkit_cookie_manager_delete_cookies_for_domain(WebKitCookieManager* manage
     g_return_if_fail(WEBKIT_IS_COOKIE_MANAGER(manager));
     g_return_if_fail(domain);
 
-    WebsiteDataRecord record;
-    record.addCookieHostName(String::fromUTF8(domain));
-    auto* data = webkitWebsiteDataCreate(WTFMove(record));
-    GList dataList = { data, nullptr, nullptr };
-    webkit_website_data_manager_remove(manager->priv->dataManager, WEBKIT_WEBSITE_DATA_COOKIES, &dataList, nullptr, nullptr, nullptr);
-    webkit_website_data_unref(data);
+    manager->priv->webCookieManager->deleteCookiesForHostname(WebCore::SessionID::defaultSessionID(), String::fromUTF8(domain));
 }
 
 /**
@@ -331,5 +315,5 @@ void webkit_cookie_manager_delete_all_cookies(WebKitCookieManager* manager)
 {
     g_return_if_fail(WEBKIT_IS_COOKIE_MANAGER(manager));
 
-    webkit_website_data_manager_clear(manager->priv->dataManager, WEBKIT_WEBSITE_DATA_COOKIES, 0, nullptr, nullptr, nullptr);
+    manager->priv->webCookieManager->deleteAllCookies(WebCore::SessionID::defaultSessionID());
 }
