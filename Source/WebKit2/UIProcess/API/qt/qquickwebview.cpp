@@ -398,6 +398,7 @@ void QQuickWebViewPrivate::initialize(WKPageConfigurationRef configurationRef)
     preferences.setCompositingBordersVisible(showDebugVisuals);
     preferences.setCompositingRepaintCountersVisible(showDebugVisuals);
     preferences.setFrameFlatteningEnabled(true);
+    preferences.setMediaSourceEnabled(false);
     preferences.setWebGLEnabled(true);
     preferences.setForceCompositingMode(true);
 
