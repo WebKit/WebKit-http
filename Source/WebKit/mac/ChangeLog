@@ -1,3 +1,343 @@
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        Begin enabling WebRTC on 64-bit
+        https://bugs.webkit.org/show_bug.cgi?id=168915
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-27  Aakash Jain  <aakash_jain@apple.com>
+
+        Enable SUPPORTS_TEXT_BASED_API in WebKitLegacy for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168919
+
+        Reviewed by Tim Horton.
+
+        * Configurations/WebKitLegacy.xcconfig: Enable SUPPORTS_TEXT_BASED_API.
+        * migrate-headers.sh: Run the migrate-headers script for installapi phase.
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        [libwebrtc] Enable WebRTC in some Production Builds
+        https://bugs.webkit.org/show_bug.cgi?id=168858
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Don't import RetainPtr in WebNotification.h
+        https://bugs.webkit.org/show_bug.cgi?id=168876
+
+        Reviewed by Dan Bernstein.
+
+        This is an Objective-C SPI header.
+
+        * WebView/WebNotification.h:
+        * WebView/WebNotification.mm:
+        (-[WebNotification initWithCoreNotification:notificationID:]):
+        (-[WebNotification dealloc]):
+
+2017-02-26  Aakash Jain  <aakash_jain@apple.com>
+
+        Simplify EXPORTED_SYMBOLS_FILE variables in WebKitLegacy.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=168819
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Export Objective-C symbols for variables in Webkit SPI
+        https://bugs.webkit.org/show_bug.cgi?id=168758
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/WebKitLegacy.xcconfig: using separate .exp file for i386.
+        * WebKit.exp: Added various Objective-C symbols.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Move instance members from WKQuadObject to implementation file
+        https://bugs.webkit.org/show_bug.cgi?id=168740
+
+        Reviewed by Tim Horton.
+
+        * DOM/DOM.mm: Moving instance member to implementation file.
+        * DOM/DOMExtensions.h: Ditto.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Move iOS specific symbols to WebKit.ios.exp
+        https://bugs.webkit.org/show_bug.cgi?id=168726
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.exp:
+
+2017-02-21  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        <rdar://problem/30401864>
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Export various NSString symbols from WebFramePrivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=168702
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.exp:
+
+2017-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Export various NSString symbols from WebPreferencesPrivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=168701
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.exp:
+
+2017-02-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add missing WebConsoleMessage string key
+        https://bugs.webkit.org/show_bug.cgi?id=168690
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.exp:
+        * WebView/WebUIDelegatePrivate.h:
+        This key has an implementation but was not extern / exported like the others.
+
+2017-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Export various NSString symbols from WebViewPrivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=168689
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.exp:
+
+2017-02-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212768.
+        https://bugs.webkit.org/show_bug.cgi?id=168698
+
+        Rolling out since this would break other projects. (Requested
+        by aakashjain on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Remove old WebKit1 MemoryMeasure helper."
+        https://bugs.webkit.org/show_bug.cgi?id=168675
+        http://trac.webkit.org/changeset/212768
+
+2017-02-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support to PlatformCALayer/GraphicsLayerCA for subpixel-antialiased text, with a Setting and a MiniBrowser switch
+        https://bugs.webkit.org/show_bug.cgi?id=168620
+        <rdar://problem/30617772>
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences subpixelAntialiasedLayerTextEnabled]):
+        (-[WebPreferences setSubpixelAntialiasedLayerTextEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+
+2017-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Export various NSString symbols from WebUIDelegatePrivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=168679
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebKit.exp:
+
+2017-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Export symbols for various classes present in webkit SPI
+        https://bugs.webkit.org/show_bug.cgi?id=168674
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.exp:
+
+2017-02-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] Remove old WebKit1 MemoryMeasure helper.
+        <https://webkit.org/b/168675>
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        * Misc/WebCache.mm:
+        (+[WebCache emptyInMemoryResources]):
+        * WebView/WebView.mm:
+
+2017-02-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] WebKit1 should use shared memory pressure handler code.
+        <https://webkit.org/b/168653>
+
+        Reviewed by Antti Koivisto.
+
+        Register a WebThread-aware memory callback with the shared MemoryPressureHandler
+        and get rid of the old iOS WebKit1 specific implementation. Some of it was even
+        dead code since MobileSafari has been using WebKit2 for quite a while.
+
+        * WebView/WebView.h:
+        * WebView/WebView.mm:
+        (WebInstallMemoryPressureHandler):
+        (+[WebView _handleMemoryWarning]): Deleted.
+        (+[WebView registerForMemoryNotifications]): Deleted.
+        (+[WebView releaseFastMallocMemoryOnCurrentThread]): Deleted.
+        (+[WebView garbageCollectNow]): Deleted.
+        (+[WebView purgeInactiveFontData]): Deleted.
+        (+[WebView drainLayerPool]): Deleted.
+        (+[WebView discardAllCompiledCode]): Deleted.
+        (+[WebView _clearMemoryPressure]): Deleted.
+        (+[WebView _shouldWaitForMemoryClearMessage]): Deleted.
+        * WebView/WebViewPrivate.h:
+
+2017-02-20  Aakash Jain  <aakash_jain@apple.com>
+
+        Stop exporting interface WebCoreScrollView on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168536
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.exp: Moved symbol for WebCoreScrollView interface to mac specific file.
+        * WebKit.mac.exp: Ditto.
+        * WebView/WebHTMLView.mm: WebCoreScrollView shouldn't be defined for iOS platform.
+
+2017-02-20  Aakash Jain  <aakash_jain@apple.com>
+
+        Exclude various mac-specific header files from iOS build
+        https://bugs.webkit.org/show_bug.cgi?id=168621
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2017-02-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add plumbing to the UI process for TextIndicatorData when computing the drag image
+        https://bugs.webkit.org/show_bug.cgi?id=168583
+        Work towards <rdar://problem/30313681>
+
+        Accounts for changes in WebCore -- see Source/WebCore/ChangeLog for more details.
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _selectionDraggingImage]):
+        (-[WebHTMLView selectionImageForcingBlackText:selectionImageForcingBlackText:]):
+
+2017-02-17  Anders Carlsson  <andersca@apple.com>
+
+        Add a new drag code path and use it for dragging plain text
+        https://bugs.webkit.org/show_bug.cgi?id=168534
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebDragClient.h:
+        Add new members.
+
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::useLegacyDragClient):
+        Return false here.
+
+        (WebDragClient::beginDrag):
+        New client member function. Create an NSDraggingItem and use it to begin a dragging session.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView draggingSession:sourceOperationMaskForDraggingContext:]):
+        Get the source operation mask from WebCore.
+
+        (-[WebHTMLView draggingSession:endedAtPoint:operation:]):
+        Send a fake mouse up event.
+
+        * WebView/WebHTMLViewInternal.h:
+        Declare that WebHTMLView conforms to NSDraggingSource.
+
+2017-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        List of WebCore symbols to re-export from WebKitLegacy should be built automatically
+        https://bugs.webkit.org/show_bug.cgi?id=168342
+        rdar://problem/26182266
+
+        Reviewed by Tim Horton.
+
+        * MigrateHeaders.make: On iOS only, process re-exported headers to build a list of
+        symbols to re-export.
+
+2017-02-20  Aakash Jain  <aakash_jain@apple.com>
+
+        Stop exporting DOMTokenList from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=168544
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.exp:
+
+2017-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up how WebKit exports _WebCreateFragment
+        https://bugs.webkit.org/show_bug.cgi?id=168579
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebCreateFragmentInternal.h: Added a private header.
+        * WebCoreSupport/WebEditorClient.mm: Include the new header that declares _WebCreateFragment.
+
+2017-02-20  Aakash Jain  <aakash_jain@apple.com>
+
+        Stop exporting DOMNodeFilter
+        https://bugs.webkit.org/show_bug.cgi?id=168542
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.exp:
+
+2017-02-20  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Remove compilation flag ENABLE_CSS_GRID_LAYOUT
+        https://bugs.webkit.org/show_bug.cgi?id=167693
+
+        Reviewed by Sergio Villar Senin.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-02-15  Brady Eidson  <beidson@apple.com>
+
+        Stop backing up localStorage databases to iCloud by default.
+        <rdar://problem/29045531> and https://bugs.webkit.org/show_bug.cgi?id=168388
+
+        Reviewed by Geoffrey Garen.
+
+        * Misc/WebKitVersionChecks.h:
+        * Misc/WebKitVersionChecks.mm: Renamed from Source/WebKit/mac/Misc/WebKitVersionChecks.m.
+        (WebKitLinkedOnOrAfter):
+        (setWebKitLinkTimeVersion):
+        (WebKitLinkTimeVersion):
+        (linkedOnOrAfter):
+
+        * Storage/WebStorageManager.mm:
+        (WebKitInitializeStorageIfNecessary):
+
 2017-02-16  Daniel Bates  <dabates@apple.com>
 
         Remove Chromium-specific code to call FrameLoaderClient::redirectDataToPlugin(nullptr)

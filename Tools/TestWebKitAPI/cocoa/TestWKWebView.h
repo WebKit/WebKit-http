@@ -24,6 +24,7 @@
  */
 
 #import <WebKit/WebKit.h>
+#import <wtf/RetainPtr.h>
 
 #if WK_API_ENABLED
 
@@ -41,11 +42,18 @@
 - (void)performAfterLoading:(dispatch_block_t)actions;
 @end
 
+#if PLATFORM(IOS)
+@interface TestWKWebView (IOSOnly)
+@property (nonatomic, readonly) RetainPtr<NSArray> selectionRectsAfterPresentationUpdate;
+@end
+#endif
+
 #if PLATFORM(MAC)
 @interface TestWKWebView (MacOnly)
 // Simulates clicking with a pressure-sensitive device, if possible.
 - (void)mouseDownAtPoint:(NSPoint)point simulatePressure:(BOOL)simulatePressure;
 - (void)mouseUpAtPoint:(NSPoint)point;
+- (void)sendClicksAtPoint:(NSPoint)point numberOfClicks:(NSUInteger)numberOfClicks;
 - (void)typeCharacter:(char)character;
 @end
 #endif

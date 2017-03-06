@@ -491,6 +491,7 @@ public:
         [NSNumber numberWithBool:NO],   WebKitJavaScriptCanAccessClipboardPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitXSSAuditorEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAcceleratedCompositingEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitSubpixelAntialiasedLayerTextEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitDisplayListDrawingEnabledPreferenceKey,
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
         [NSNumber numberWithBool:YES],  WebKitAcceleratedDrawingEnabledPreferenceKey,
@@ -624,9 +625,7 @@ public:
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
         [NSNumber numberWithBool:NO], WebKitDownloadAttributeEnabledPreferenceKey,
 #endif
-#if ENABLE(CSS_GRID_LAYOUT)
         [NSNumber numberWithBool:YES], WebKitCSSGridLayoutEnabledPreferenceKey,
-#endif
 #if ENABLE(WEB_ANIMATIONS)
         [NSNumber numberWithBool:NO], WebKitWebAnimationsEnabledPreferenceKey,
 #endif
@@ -1961,6 +1960,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setShowDebugBorders:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitShowDebugBordersPreferenceKey];
+}
+
+- (BOOL)subpixelAntialiasedLayerTextEnabled
+{
+    return [self _boolValueForKey:WebKitSubpixelAntialiasedLayerTextEnabledPreferenceKey];
+}
+
+- (void)setSubpixelAntialiasedLayerTextEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitSubpixelAntialiasedLayerTextEnabledPreferenceKey];
 }
 
 - (BOOL)simpleLineLayoutEnabled

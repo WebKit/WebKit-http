@@ -71,6 +71,7 @@ class SourceBuffer;
 class StyleSheet;
 class TimeRanges;
 class TypeConversions;
+class WebGLRenderingContextBase;
 class XMLHttpRequest;
 
 class Internals final : public RefCounted<Internals>, private ContextDestructionObserver {
@@ -530,11 +531,10 @@ public:
 #endif
 
     void setAsRunningUserScripts(Document&);
-    
-    bool isGCRunning(JSC::ExecState&);
-    void addGCFinalizationCallback(JSC::ExecState&, JSC::JSValue);
-    void stopSweeping(JSC::ExecState&);
-    void startSweeping(JSC::ExecState&);
+
+#if ENABLE(WEBGL)
+    void simulateWebGLContextChanged(WebGLRenderingContextBase&);
+#endif
 
 private:
     explicit Internals(Document&);

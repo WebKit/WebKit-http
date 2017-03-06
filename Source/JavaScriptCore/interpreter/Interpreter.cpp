@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010, 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -860,8 +860,10 @@ failedJSONP:
         codeBlock = jsCast<ProgramCodeBlock*>(tempCodeBlock);
     }
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        vm.handleTraps(callFrame);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     if (scope->structure()->isUncacheableDictionary())
         scope->flattenDictionaryObject(vm);
@@ -918,8 +920,10 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
     } else
         newCodeBlock = 0;
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        vm.handleTraps(callFrame);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(newCodeBlock, function, thisValue, argsCount, args.data());
@@ -981,8 +985,10 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
     } else
         newCodeBlock = 0;
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        vm.handleTraps(callFrame);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(newCodeBlock, constructor, newTarget, argsCount, args.data());
@@ -1005,7 +1011,7 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
     return checkedReturn(asObject(result));
 }
 
-CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionExecutable, CallFrame* callFrame, ProtoCallFrame* protoCallFrame, JSFunction* function, int argumentCountIncludingThis, JSScope* scope, JSValue* args)
+CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionExecutable, CallFrame* callFrame, ProtoCallFrame* protoCallFrame, JSFunction* function, int argumentCountIncludingThis, JSScope* scope, const ArgList& args)
 {
     VM& vm = *scope->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -1025,7 +1031,7 @@ CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionE
 
     size_t argsCount = argumentCountIncludingThis;
 
-    protoCallFrame->init(newCodeBlock, function, jsUndefined(), argsCount, args);
+    protoCallFrame->init(newCodeBlock, function, jsUndefined(), argsCount, args.data());
     // Return the successful closure:
     CallFrameClosure result = { callFrame, protoCallFrame, function, functionExecutable, &vm, scope, newCodeBlock->numParameters(), argumentCountIncludingThis };
     return result;
@@ -1043,8 +1049,10 @@ JSValue Interpreter::execute(CallFrameClosure& closure)
 
     StackStats::CheckPoint stackCheckPoint;
 
-    if (UNLIKELY(vm.shouldTriggerTermination(closure.oldCallFrame)))
-        return throwTerminatedExecutionException(closure.oldCallFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        vm.handleTraps(closure.oldCallFrame);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     // Execute the code:
     JSValue result = closure.functionExecutable->generatedJITCodeForCall()->execute(&vm, closure.protoCallFrame);
@@ -1144,8 +1152,10 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
         }
     }
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        vm.handleTraps(callFrame);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
 
@@ -1183,8 +1193,10 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
         codeBlock = jsCast<ModuleProgramCodeBlock*>(tempCodeBlock);
     }
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        vm.handleTraps(callFrame);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     if (scope->structure()->isUncacheableDictionary())
         scope->flattenDictionaryObject(vm);

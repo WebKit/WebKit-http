@@ -78,6 +78,7 @@ public:
 
     Vector<FloatQuad> absoluteQuadsClippedToEllipsis() const;
 
+    Position positionForPoint(const LayoutPoint&) override;
     VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
 
     bool is8Bit() const { return m_text.impl()->is8Bit(); }
@@ -137,6 +138,7 @@ public:
     bool containsCaretOffset(unsigned) const;
     bool hasRenderedText() const;
 
+    // FIXME: These should return unsigneds.
     int previousOffset(int current) const final;
     int previousOffsetForBackwardDeletion(int current) const final;
     int nextOffset(int current) const final;

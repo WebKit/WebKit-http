@@ -180,6 +180,8 @@ MediaPlayerPrivateMediaStreamAVFObjC::~MediaPlayerPrivateMediaStreamAVFObjC()
 
     destroyLayer();
 
+    [m_statusChangeListener invalidate];
+
     m_audioTrackMap.clear();
     m_videoTrackMap.clear();
 }
@@ -569,7 +571,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::setVolume(float volume)
 
     m_volume = volume;
     for (const auto& track : m_audioTrackMap.values())
-        track->setVolume(m_volume);
+        track->setVolume(m_muted ? 0 : m_volume);
 }
 
 void MediaPlayerPrivateMediaStreamAVFObjC::setMuted(bool muted)
@@ -580,6 +582,8 @@ void MediaPlayerPrivateMediaStreamAVFObjC::setMuted(bool muted)
         return;
 
     m_muted = muted;
+    for (const auto& track : m_audioTrackMap.values())
+        track->setVolume(m_muted ? 0 : m_volume);
 }
 
 bool MediaPlayerPrivateMediaStreamAVFObjC::hasVideo() const
@@ -751,6 +755,17 @@ void MediaPlayerPrivateMediaStreamAVFObjC::sampleBufferUpdated(MediaStreamTrackP
     }
 }
 
+void MediaPlayerPrivateMediaStreamAVFObjC::audioSamplesAvailable(MediaStreamTrackPrivate&)
+{
+    if (m_hasReceivedMedia)
+        return;
+    m_hasReceivedMedia = true;
+
+    scheduleDeferredTask([this] {
+        updateReadyState();
+    });
+}
+
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 void MediaPlayerPrivateMediaStreamAVFObjC::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, std::function<void()> completionHandler)
 {
@@ -849,6 +864,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::updateTracks()
             m_player->removeAudioTrack(*track);
             break;
         case TrackState::Add:
+            track->streamTrack().addObserver(*this);
             m_player->addAudioTrack(*track);
             break;
         case TrackState::Configure:

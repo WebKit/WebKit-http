@@ -23,8 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-const CompactModeMaxWidth = 241;
-const ReducedPaddingMaxWidth = 300;
 const AudioTightPaddingMaxWidth = 400;
 
 class MediaController
@@ -58,6 +56,13 @@ class MediaController
             media.addEventListener("webkitfullscreenchange", this);
     }
 
+    // Public
+
+    get isAudio()
+    {
+        return this.media instanceof HTMLAudioElement || (this.media.readyState >= HTMLMediaElement.HAVE_METADATA && this.media.videoWidth === 0);
+    }
+
     get layoutTraits()
     {
         let traits = window.navigator.platform === "MacIntel" ? LayoutTraits.macOS : LayoutTraits.iOS;
@@ -67,18 +72,21 @@ class MediaController
         } else if (this.media.webkitDisplayingFullscreen)
             return traits | LayoutTraits.Fullscreen;
 
-        const controlsWidth = this._controlsWidth();
-        if (controlsWidth <= CompactModeMaxWidth)
+        if (traits & LayoutTraits.macOS)
             return traits | LayoutTraits.Compact;
 
-        const isAudio = this.media instanceof HTMLAudioElement || this.media.videoTracks.length === 0;
-        if (isAudio && controlsWidth <= AudioTightPaddingMaxWidth)
+        if (this.isAudio && this._controlsWidth() <= AudioTightPaddingMaxWidth)
             return traits | LayoutTraits.TightPadding;
 
-        if (!isAudio && controlsWidth <= ReducedPaddingMaxWidth)
-            return traits | LayoutTraits.ReducedPadding;
-
         return traits;
+    }
+
+    togglePlayback()
+    {
+        if (this.media.paused)
+            this.media.play();
+        else
+            this.media.pause();
     }
 
     // Protected
@@ -92,6 +100,13 @@ class MediaController
     set usesLTRUserInterfaceLayoutDirection(flag)
     {
         this.controls.usesLTRUserInterfaceLayoutDirection = flag;
+    }
+
+    macOSControlsBackgroundWasClicked()
+    {
+        // Toggle playback when clicking on the video but not on any controls on macOS.
+        if (this.media.controls)
+            this.togglePlayback();
     }
 
     handleEvent(event)
@@ -137,6 +152,7 @@ class MediaController
         }
 
         this.controls = new ControlsClass;
+        this.controls.delegate = this;
 
         if (this.shadowRoot.host && this.shadowRoot.host.dataset.autoHideDelay)
             this.controls.controlsBar.autoHideDelay = this.shadowRoot.host.dataset.autoHideDelay;
@@ -159,12 +175,13 @@ class MediaController
     _updateControlsSize()
     {
         this.controls.width = this._controlsWidth();
-        this.controls.height = Math.round(this.media.offsetHeight * this.controls.scaleFactor);
+        this.controls.height = Math.round(this.container.getBoundingClientRect().height * this.controls.scaleFactor);
+        this.controls.shouldCenterControlsVertically = this.isAudio;
     }
 
     _controlsWidth()
     {
-        return Math.round(this.media.offsetWidth * (this.controls ? this.controls.scaleFactor : 1));
+        return Math.round(this.container.getBoundingClientRect().width * (this.controls ? this.controls.scaleFactor : 1));
     }
 
     _returnMediaLayerToInlineIfNeeded()

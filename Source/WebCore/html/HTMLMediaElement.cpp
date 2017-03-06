@@ -2451,8 +2451,12 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
             m_playbackStartedTime = currentMediaTime().toDouble();
             scheduleEvent(eventNames().playEvent);
             scheduleNotifyAboutPlaying();
-        } else if (success.value() == MediaPlaybackDenialReason::UserGestureRequired)
+        } else if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
             m_preventedFromPlayingWithoutUserGesture = true;
+
+            if (Page* page = document().page())
+                page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
+        }
 
         shouldUpdateDisplayState = true;
     }
@@ -3326,8 +3330,12 @@ void HTMLMediaElement::play(DOMPromise<void>&& promise)
 
     auto success = m_mediaSession->playbackPermitted(*this);
     if (!success) {
-        if (success.value() == MediaPlaybackDenialReason::UserGestureRequired)
+        if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
             m_preventedFromPlayingWithoutUserGesture = true;
+
+            if (Page* page = document().page())
+                page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
+        }
         promise.reject(NotAllowedError);
         return;
     }
@@ -3354,8 +3362,12 @@ void HTMLMediaElement::play()
 
     auto success = m_mediaSession->playbackPermitted(*this);
     if (!success) {
-        if (success.value() == MediaPlaybackDenialReason::UserGestureRequired)
+        if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
             m_preventedFromPlayingWithoutUserGesture = true;
+
+            if (Page* page = document().page())
+                page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
+        }
         return;
     }
     if (ScriptController::processingUserGestureForMedia())
@@ -3424,7 +3436,7 @@ bool HTMLMediaElement::playInternal()
 
     if (ScriptController::processingUserGestureForMedia() && m_preventedFromPlayingWithoutUserGesture) {
         if (Page* page = document().page())
-            page->chrome().client().didPlayMediaPreventedFromPlayingWithoutUserGesture();
+            page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPlayMediaPreventedFromPlaying);
         m_preventedFromPlayingWithoutUserGesture = false;
     }
 
@@ -6750,7 +6762,7 @@ CachedResourceLoader* HTMLMediaElement::mediaPlayerCachedResourceLoader()
 
 RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceLoader()
 {
-    return adoptRef(*new MediaResourceLoader(document(), crossOrigin()));
+    return adoptRef(*new MediaResourceLoader(document(), *this, crossOrigin()));
 }
 
 bool HTMLMediaElement::mediaPlayerShouldUsePersistentCache() const

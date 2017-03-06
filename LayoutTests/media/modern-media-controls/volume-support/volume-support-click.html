@@ -7,9 +7,6 @@
         position: absolute;
         top: 0;
         left: 0;
-    }
-
-    video {
         width: 800px;
         height: 240px;
     }
@@ -46,6 +43,9 @@ scheduler.frameDidFire = function() {
         eventSender.mouseMoveTo(volumeSliderBounds.left + volumeSliderBounds.width / 2, volumeSliderBounds.top + volumeSliderBounds.height / 2);
         eventSender.mouseDown();
         eventSender.mouseUp();
+
+        // Ensure the volume slider remains visible.
+        shouldBeTrue("mediaController.controls.volumeSlider.parent.visible");
 
         scheduler.frameDidFire = null;
     }

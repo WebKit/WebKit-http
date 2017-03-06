@@ -28,7 +28,7 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoAlgorithmAesCbcParams.h"
+#include "CryptoAlgorithmAesCbcCfbParams.h"
 #include "CryptoAlgorithmAesCbcParamsDeprecated.h"
 #include "CryptoKeyAES.h"
 #include "ExceptionCode.h"
@@ -41,14 +41,8 @@ namespace WebCore {
 // https://bugs.webkit.org/show_bug.cgi?id=164939
 static ExceptionOr<Vector<uint8_t>> transformAES_CBC(CCOperation operation, const uint8_t* iv, const Vector<uint8_t>& key, const uint8_t* data, size_t dataLength)
 {
-    size_t keyLengthInBytes = key.size();
     CCCryptorRef cryptor;
-#if PLATFORM(COCOA)
-    CCAlgorithm aesAlgorithm = kCCAlgorithmAES;
-#else
-    CCAlgorithm aesAlgorithm = kCCAlgorithmAES128;
-#endif
-    CCCryptorStatus status = CCCryptorCreate(operation, aesAlgorithm, kCCOptionPKCS7Padding, key.data(), keyLengthInBytes, iv, &cryptor);
+    CCCryptorStatus status = CCCryptorCreate(operation, kCCAlgorithmAES, kCCOptionPKCS7Padding, key.data(), key.size(), iv, &cryptor);
     if (status)
         return Exception { OperationError };
 
@@ -77,7 +71,7 @@ void CryptoAlgorithmAES_CBC::platformEncrypt(std::unique_ptr<CryptoAlgorithmPara
 {
     context.ref();
     workQueue.dispatch([parameters = WTFMove(parameters), key = WTFMove(key), plainText = WTFMove(plainText), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& aesParameters = downcast<CryptoAlgorithmAesCbcParams>(*parameters);
+        auto& aesParameters = downcast<CryptoAlgorithmAesCbcCfbParams>(*parameters);
         auto& aesKey = downcast<CryptoKeyAES>(key.get());
         ASSERT(aesParameters.ivVector().size() == kCCBlockSizeAES128);
         auto result = transformAES_CBC(kCCEncrypt, aesParameters.ivVector().data(), aesKey.key(), plainText.data(), plainText.size());
@@ -101,7 +95,7 @@ void CryptoAlgorithmAES_CBC::platformDecrypt(std::unique_ptr<CryptoAlgorithmPara
 {
     context.ref();
     workQueue.dispatch([parameters = WTFMove(parameters), key = WTFMove(key), cipherText = WTFMove(cipherText), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& aesParameters = downcast<CryptoAlgorithmAesCbcParams>(*parameters);
+        auto& aesParameters = downcast<CryptoAlgorithmAesCbcCfbParams>(*parameters);
         auto& aesKey = downcast<CryptoKeyAES>(key.get());
         assert(aesParameters.ivVector().size() == kCCBlockSizeAES128);
         auto result = transformAES_CBC(kCCDecrypt, aesParameters.ivVector().data(), aesKey.key(), cipherText.data(), cipherText.size());

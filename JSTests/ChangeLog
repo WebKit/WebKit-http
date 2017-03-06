@@ -1,3 +1,428 @@
+2017-02-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r213019.
+        https://bugs.webkit.org/show_bug.cgi?id=168925
+
+        "It broke 32-bit jsc tests in debug builds" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "op_get_by_id_with_this should use inline caching"
+        https://bugs.webkit.org/show_bug.cgi?id=162124
+        http://trac.webkit.org/changeset/213019
+
+2017-02-27  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: miscellaneous spec fixes part deux
+        https://bugs.webkit.org/show_bug.cgi?id=168861
+
+        Reviewed by Keith Miller.
+
+        * wasm.yaml: more passing tests
+        * wasm/Builder.js: use a Map instead of an Object for the function
+        index space, because Number entries such as 0 were colliding with
+        string entries such as "0". This in turn requires some hashing of
+        objects which are inserted, because Map uses Object's insertion
+        order when comparing.
+        (export.default.Builder):
+        (export.default.Builder.prototype._functionIndexSpaceKeyHash):
+        (export.default.Builder.prototype._registerFunctionToIndexSpace):
+        (export.default.Builder.prototype._getFunctionFromIndexSpace):
+        * wasm/js-api/test_Instance.js: add a FIXME test
+        * wasm/spec-tests/memory.wast.js:
+        (assert_unlinkable):
+        * wasm/spec-tests/names.wast.js:
+
+2017-02-26  Caio Lima  <ticaiolima@gmail.com>
+
+        op_get_by_id_with_this should use inline caching
+        https://bugs.webkit.org/show_bug.cgi?id=162124
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/super-getter.js: Added.
+        (A.prototype.get f):
+        (A):
+        (B.prototype.get f):
+        (B):
+        * stress/super-force-ic-fail.js: Added.
+        (let.assert):
+        (let.aObj.get foo):
+        (let.obj.jaz):
+        (let.bObj.get foo):
+        (let.obj2.foo):
+        * stress/super-get-by-id.js: Added.
+        (assert):
+        (Base):
+        (Base.prototype.get name):
+        (Base.prototype.set name):
+        (Subclass.prototype.get name):
+        (Subclass):
+        (getterName):
+        (getterValue):
+        (PolymorphicSubclass.prototype.get value):
+        (PolymorphicSubclass):
+        (i.let.BaseCode):
+        (i.get value):
+        (MegamorphicSubclass.prototype.get value):
+        (MegamorphicSubclass):
+        (let.subObj.get value):
+        (i.catch):
+        (subObj.get value):
+        (BaseException):
+        (BaseException.prototype.get name):
+        (SubclassException.prototype.get name):
+        (SubclassException):
+        (prototype.foo):
+        (prototype.get name):
+        (SubclassExceptionComplex.prototype.get name):
+        (SubclassExceptionComplex):
+        * stress/super-getter-reset-ic.js: Added.
+        (let.assert):
+        (let.B.f):
+
+2017-02-24  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: miscellaneous spec fixes
+        https://bugs.webkit.org/show_bug.cgi?id=168822
+
+        Reviewed by Saam Barati.
+
+        * wasm.yaml: mark some skip tests as normal, now that they pass
+        * wasm/Builder.js: error message was wrong, causing extra error if hit
+        * wasm/js-api/global-error.js: new tests
+        (assert.throws):
+        * wasm/spec-tests/call.wast.js: comment out stack check tests
+        * wasm/spec-tests/call_indirect.wast.js: comment out stack check tests
+        * wasm/spec-tests/fac.wast.js: comment out stack check tests
+        * wasm/spec-tests/float_exprs.wast.js: wabt is wrong, bug reported, we should update
+        * wasm/spec-tests/imports.wast.js: bug in old wabt, fixed in recent wabt
+        (assert_unlinkable):
+
+2017-02-23  Saam Barati  <sbarati@apple.com>
+
+        Intrinsicify parseInt
+        https://bugs.webkit.org/show_bug.cgi?id=168627
+
+        Reviewed by Filip Pizlo.
+
+        * stress/parse-int-intrinsic.js: Added.
+        (assert):
+        (testIntrinsic.let.s):
+        (testIntrinsic):
+        (testIntrinsic2.baz):
+        (testIntrinsic2):
+        (testIntrinsic3.foo):
+        (testIntrinsic3):
+        (testIntrinsic4.foo):
+        (testIntrinsic4):
+        (testIntrinsic5.foo):
+        (testIntrinsic5):
+        (testIntrinsic6.foo):
+        (testIntrinsic6):
+        (testIntrinsic7.foo):
+        (testIntrinsic7):
+
+2017-02-23  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: support 0x1 version
+        https://bugs.webkit.org/show_bug.cgi?id=168672
+
+        Reviewed by Keith Miller.
+
+        Update the version number for all the tests. Note that the spec
+        tests are only updated with a new version number because spec+wabt
+        aren't ready for 0x1 yet. This is tracked by bug #168784.
+
+        * wasm/import-spec-tests.rb: use the new spec repository layout
+        * wasm/js-api/test_basic_api.js:
+        * wasm/self-test/test_BuilderWebAssembly.js:
+        (EmptyModule):
+        (CustomSection):
+        * wasm/spec-tests/address.wast.js:
+        * wasm/spec-tests/binary.wast.js:
+        * wasm/spec-tests/block.wast.js:
+        * wasm/spec-tests/br.wast.js:
+        * wasm/spec-tests/br_if.wast.js:
+        * wasm/spec-tests/br_table.wast.js:
+        * wasm/spec-tests/break-drop.wast.js:
+        * wasm/spec-tests/call.wast.js:
+        * wasm/spec-tests/call_indirect.wast.js:
+        * wasm/spec-tests/comments.wast.js:
+        * wasm/spec-tests/conversions.wast.js:
+        * wasm/spec-tests/custom_section.wast.js:
+        * wasm/spec-tests/endianness.wast.js:
+        * wasm/spec-tests/exports.wast.js:
+        * wasm/spec-tests/f32.wast.js:
+        * wasm/spec-tests/f32_cmp.wast.js:
+        * wasm/spec-tests/f64.wast.js:
+        * wasm/spec-tests/f64_cmp.wast.js:
+        * wasm/spec-tests/fac.wast.js:
+        * wasm/spec-tests/float_exprs.wast.js:
+        * wasm/spec-tests/float_literals.wast.js:
+        * wasm/spec-tests/float_memory.wast.js:
+        * wasm/spec-tests/float_misc.wast.js:
+        * wasm/spec-tests/forward.wast.js:
+        * wasm/spec-tests/func.wast.js:
+        * wasm/spec-tests/func_ptrs.wast.js:
+        * wasm/spec-tests/get_local.wast.js:
+        * wasm/spec-tests/globals.wast.js:
+        * wasm/spec-tests/i32.wast.js:
+        * wasm/spec-tests/i64.wast.js:
+        * wasm/spec-tests/imports.wast.js:
+        * wasm/spec-tests/int_exprs.wast.js:
+        * wasm/spec-tests/int_literals.wast.js:
+        * wasm/spec-tests/left-to-right.wast.js:
+        * wasm/spec-tests/linking.wast.js:
+        * wasm/spec-tests/loop.wast.js:
+        * wasm/spec-tests/memory.wast.js:
+        * wasm/spec-tests/memory_redundancy.wast.js:
+        * wasm/spec-tests/memory_trap.wast.js:
+        * wasm/spec-tests/names.wast.js:
+        * wasm/spec-tests/nop.wast.js:
+        * wasm/spec-tests/resizing.wast.js:
+        * wasm/spec-tests/return.wast.js:
+        * wasm/spec-tests/select.wast.js:
+        * wasm/spec-tests/set_local.wast.js:
+        * wasm/spec-tests/skip-stack-guard-page.wast.js:
+        * wasm/spec-tests/stack.wast.js:
+        * wasm/spec-tests/start.wast.js:
+        * wasm/spec-tests/store_retval.wast.js:
+        * wasm/spec-tests/switch.wast.js:
+        * wasm/spec-tests/tee_local.wast.js:
+        * wasm/spec-tests/traps.wast.js:
+        * wasm/spec-tests/typecheck.wast.js:
+        * wasm/spec-tests/unreachable.wast.js:
+        * wasm/spec-tests/unwind.wast.js:
+        * wasm/wasm.json:
+
+2017-02-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        JSModuleNamespace object should have IC
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+
+        Reviewed by Saam Barati.
+
+        * modules/module-assert-access-binding.js: Added.
+        * modules/module-assert-access-namespace.js: Added.
+        * modules/namespace-empty.js: Added.
+        (from.string_appeared_here.access):
+        (i.shouldThrow):
+        * stress/module-namespace-access-change.js: Added.
+        (shouldBe):
+        (access):
+        (import.string_appeared_here.then):
+        * stress/module-namespace-access-non-constant.js: Added.
+        (shouldBe):
+        (import.string_appeared_here.then):
+        * stress/module-namespace-access-poly.js: Added.
+        (shouldBe):
+        (access):
+        (import.string_appeared_here.then):
+        * stress/module-namespace-access-transitive-exports.js: Added.
+        (shouldBe):
+        (import.string_appeared_here.then):
+        * stress/module-namespace-access.js: Added.
+        (shouldBe):
+        (import.string_appeared_here.then):
+        * stress/resources/module-namespace-access-transitive-exports-2.js: Added.
+        (export.cocoa):
+        (export.change):
+        * stress/resources/module-namespace-access-transitive-exports.js: Added.
+        * stress/resources/module-namespace-access.js: Added.
+        (export.cocoa):
+        (export.change):
+
+2017-02-20  Filip Pizlo  <fpizlo@apple.com>
+
+        The collector thread should only start when the mutator doesn't have heap access
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+
+        Reviewed by Keith Miller.
+        
+        Add versions of splay that flash heap access, to simulate what might happen if a third-party app
+        was running concurrent GC. In this case, we might actually start the collector thread.
+
+        * stress/splay-flash-access-1ms.js: Added.
+        (performance.now):
+        (this.Setup.setup.setup):
+        (this.TearDown.tearDown.tearDown):
+        (Benchmark):
+        (BenchmarkResult):
+        (BenchmarkResult.prototype.valueOf):
+        (BenchmarkSuite):
+        (alert):
+        (Math.random):
+        (BenchmarkSuite.ResetRNG):
+        (RunStep):
+        (BenchmarkSuite.RunSuites):
+        (BenchmarkSuite.CountBenchmarks):
+        (BenchmarkSuite.GeometricMean):
+        (BenchmarkSuite.GeometricMeanTime):
+        (BenchmarkSuite.AverageAbovePercentile):
+        (BenchmarkSuite.GeometricMeanLatency):
+        (BenchmarkSuite.FormatScore):
+        (BenchmarkSuite.prototype.NotifyStep):
+        (BenchmarkSuite.prototype.NotifyResult):
+        (BenchmarkSuite.prototype.NotifyError):
+        (BenchmarkSuite.prototype.RunSingleBenchmark):
+        (RunNextSetup):
+        (RunNextBenchmark):
+        (RunNextTearDown):
+        (BenchmarkSuite.prototype.RunStep):
+        (GeneratePayloadTree):
+        (GenerateKey):
+        (SplayUpdateStats):
+        (InsertNewNode):
+        (SplaySetup):
+        (SplayTearDown):
+        (SplayRun):
+        (SplayTree):
+        (SplayTree.prototype.isEmpty):
+        (SplayTree.prototype.insert):
+        (SplayTree.prototype.remove):
+        (SplayTree.prototype.find):
+        (SplayTree.prototype.findMax):
+        (SplayTree.prototype.findGreatestLessThan):
+        (SplayTree.prototype.exportKeys):
+        (SplayTree.prototype.splay_):
+        (SplayTree.Node):
+        (SplayTree.Node.prototype.traverse_):
+        (jscSetUp):
+        (jscTearDown):
+        (jscRun):
+        (averageAbovePercentile):
+        (printPercentile):
+        * stress/splay-flash-access.js: Added.
+        (performance.now):
+        (this.Setup.setup.setup):
+        (this.TearDown.tearDown.tearDown):
+        (Benchmark):
+        (BenchmarkResult):
+        (BenchmarkResult.prototype.valueOf):
+        (BenchmarkSuite):
+        (alert):
+        (Math.random):
+        (BenchmarkSuite.ResetRNG):
+        (RunStep):
+        (BenchmarkSuite.RunSuites):
+        (BenchmarkSuite.CountBenchmarks):
+        (BenchmarkSuite.GeometricMean):
+        (BenchmarkSuite.GeometricMeanTime):
+        (BenchmarkSuite.AverageAbovePercentile):
+        (BenchmarkSuite.GeometricMeanLatency):
+        (BenchmarkSuite.FormatScore):
+        (BenchmarkSuite.prototype.NotifyStep):
+        (BenchmarkSuite.prototype.NotifyResult):
+        (BenchmarkSuite.prototype.NotifyError):
+        (BenchmarkSuite.prototype.RunSingleBenchmark):
+        (RunNextSetup):
+        (RunNextBenchmark):
+        (RunNextTearDown):
+        (BenchmarkSuite.prototype.RunStep):
+        (GeneratePayloadTree):
+        (GenerateKey):
+        (SplayUpdateStats):
+        (InsertNewNode):
+        (SplaySetup):
+        (SplayTearDown):
+        (SplayRun):
+        (SplayTree):
+        (SplayTree.prototype.isEmpty):
+        (SplayTree.prototype.insert):
+        (SplayTree.prototype.remove):
+        (SplayTree.prototype.find):
+        (SplayTree.prototype.findMax):
+        (SplayTree.prototype.findGreatestLessThan):
+        (SplayTree.prototype.exportKeys):
+        (SplayTree.prototype.splay_):
+        (SplayTree.Node):
+        (SplayTree.Node.prototype.traverse_):
+        (jscSetUp):
+        (jscTearDown):
+        (jscRun):
+        (averageAbovePercentile):
+        (printPercentile):
+
+2017-02-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r212712.
+
+        This change broke the CLoop build.
+
+        Reverted changeset:
+
+        "JSModuleNamespace object should have IC"
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+        http://trac.webkit.org/changeset/212712
+
+2017-02-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        JSModuleNamespace object should have IC
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+
+        Reviewed by Saam Barati.
+
+        * modules/module-assert-access-binding.js: Added.
+        * modules/module-assert-access-namespace.js: Added.
+        * modules/namespace-empty.js: Added.
+        (from.string_appeared_here.access):
+        (i.shouldThrow):
+        * stress/module-namespace-access-change.js: Added.
+        (shouldBe):
+        (access):
+        (import.string_appeared_here.then):
+        * stress/module-namespace-access-non-constant.js: Added.
+        (shouldBe):
+        (import.string_appeared_here.then):
+        * stress/module-namespace-access-poly.js: Added.
+        (shouldBe):
+        (access):
+        (import.string_appeared_here.then):
+        * stress/module-namespace-access-transitive-exports.js: Added.
+        (shouldBe):
+        (import.string_appeared_here.then):
+        * stress/module-namespace-access.js: Added.
+        (shouldBe):
+        (import.string_appeared_here.then):
+        * stress/resources/module-namespace-access-transitive-exports-2.js: Added.
+        (export.cocoa):
+        (export.change):
+        * stress/resources/module-namespace-access-transitive-exports.js: Added.
+        * stress/resources/module-namespace-access.js: Added.
+        (export.cocoa):
+        (export.change):
+
+2017-02-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ASSERTION FAILED: "!scope.exception()" with Object.isSealed/isFrozen and uninitialized module bindings
+        https://bugs.webkit.org/show_bug.cgi?id=168605
+
+        Reviewed by Saam Barati.
+
+        * modules/module-namespace-is-frozen.js: Added.
+        (from.string_appeared_here.shouldThrow):
+        (export.b):
+        * modules/module-namespace-is-sealed.js: Added.
+        (from.string_appeared_here.shouldThrow):
+        (export.b):
+
+2017-02-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212466.
+        https://bugs.webkit.org/show_bug.cgi?id=168577
+
+        causes crashes on AArch64 on linux, maybe it's causing crashes
+        on iOS too (Requested by pizlo on #webkit).
+
+        Reverted changeset:
+
+        "The collector thread should only start when the mutator
+        doesn't have heap access"
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+        http://trac.webkit.org/changeset/212466
+
 2017-02-10  Filip Pizlo  <fpizlo@apple.com>
 
         The collector thread should only start when the mutator doesn't have heap access

@@ -36,6 +36,7 @@
 #include "DOMJITGetterSetter.h"
 #include "DirectArguments.h"
 #include "FTLThunks.h"
+#include "FullCodeOrigin.h"
 #include "FunctionCodeBlock.h"
 #include "GCAwareJITStubRoutine.h"
 #include "GetterSetter.h"
@@ -46,8 +47,10 @@
 #include "JIT.h"
 #include "JITInlines.h"
 #include "JSCInlines.h"
+#include "JSModuleNamespaceObject.h"
 #include "JSWebAssembly.h"
 #include "LinkBuffer.h"
+#include "ModuleNamespaceAccessCase.h"
 #include "PolymorphicAccess.h"
 #include "ScopedArguments.h"
 #include "ScratchRegisterAllocator.h"
@@ -191,6 +194,11 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
             if (!arguments->overrodeThings())
                 newCase = AccessCase::create(vm, codeBlock, AccessCase::ScopedArgumentsLength);
         }
+    }
+
+    if (!propertyName.isSymbol() && isJSModuleNamespaceObject(baseValue) && !slot.isUnset()) {
+        if (auto moduleNamespaceSlot = slot.moduleNamespaceSlot())
+            newCase = ModuleNamespaceAccessCase::create(vm, codeBlock, jsCast<JSModuleNamespaceObject*>(baseValue), moduleNamespaceSlot->environment, ScopeOffset(moduleNamespaceSlot->scopeOffset));
     }
     
     if (!newCase) {
@@ -602,7 +610,8 @@ void linkFor(
     callLinkInfo.setCallee(vm, owner, callee);
     callLinkInfo.setLastSeenCallee(vm, owner, callee);
     if (shouldDumpDisassemblyFor(callerCodeBlock))
-        dataLog("Linking call in ", *callerCodeBlock, " at ", callLinkInfo.codeOrigin(), " to ", pointerDump(calleeCodeBlock), ", entrypoint at ", codePtr, "\n");
+        dataLog("Linking call in ", FullCodeOrigin(callerCodeBlock, callLinkInfo.codeOrigin()), " to ", pointerDump(calleeCodeBlock), ", entrypoint at ", codePtr, "\n");
+
     MacroAssembler::repatchNearCall(callLinkInfo.hotPathOther(), CodeLocationLabel(codePtr));
 
     if (calleeCodeBlock)
@@ -629,7 +638,8 @@ void linkDirectFor(
     ASSERT(!callLinkInfo.isLinked());
     callLinkInfo.setCodeBlock(*vm, callerCodeBlock, jsCast<FunctionCodeBlock*>(calleeCodeBlock));
     if (shouldDumpDisassemblyFor(callerCodeBlock))
-        dataLog("Linking call in ", *callerCodeBlock, " at ", callLinkInfo.codeOrigin(), " to ", pointerDump(calleeCodeBlock), ", entrypoint at ", codePtr, "\n");
+        dataLog("Linking call in ", FullCodeOrigin(callerCodeBlock, callLinkInfo.codeOrigin()), " to ", pointerDump(calleeCodeBlock), ", entrypoint at ", codePtr, "\n");
+
     if (callLinkInfo.callType() == CallLinkInfo::DirectTailCall)
         MacroAssembler::repatchJumpToNop(callLinkInfo.patchableJump());
     MacroAssembler::repatchNearCall(callLinkInfo.hotPathOther(), CodeLocationLabel(codePtr));
@@ -684,7 +694,7 @@ void linkVirtualFor(ExecState* exec, CallLinkInfo& callLinkInfo)
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
 
     if (shouldDumpDisassemblyFor(callerCodeBlock))
-        dataLog("Linking virtual call at ", *callerCodeBlock, " ", callerFrame->codeOrigin(), "\n");
+        dataLog("Linking virtual call at ", FullCodeOrigin(callerCodeBlock, callerFrame->codeOrigin()), "\n");
 
     MacroAssemblerCodeRef virtualThunk = virtualThunkFor(&vm, callLinkInfo);
     revertCall(&vm, callLinkInfo, virtualThunk);

@@ -27,14 +27,7 @@
 
 #if WK_API_ENABLED
 
-#import <wtf/RetainPtr.h>
-
 @class WKWebView;
-
-#if TARGET_OS_IPHONE
-@class UIGestureRecognizer;
-@class UILongPressGestureRecognizer;
-#endif
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -42,11 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
 @optional
 
 #if TARGET_OS_IPHONE
-@property (nonatomic, readonly) UILongPressGestureRecognizer *dataInteractionGestureRecognizer;
-- (void)webViewDidSendDataInteractionStartRequest:(WKWebView *)webView;
-- (void)webView:(WKWebView *)webView didReceiveDataInteractionStartResponse:(BOOL)started;
 - (void)webViewDidPerformDataInteractionControllerOperation:(WKWebView *)webView;
-- (void)webView:(WKWebView *)webView beginDataInteractionWithSourceIndex:(NSInteger)sourceIndex gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
 #endif // TARGET_OS_PHONE
 
 @end

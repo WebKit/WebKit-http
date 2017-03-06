@@ -39,11 +39,6 @@
 #include "TextureMapperAnimation.h"
 #include "TransformationMatrix.h"
 
-#if USE(GRAPHICS_SURFACE)
-#include "GraphicsSurface.h"
-#include "GraphicsSurfaceToken.h"
-#endif
-
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
@@ -132,9 +127,6 @@ struct CoordinatedGraphicsLayerState {
         , replica(InvalidCoordinatedLayerID)
         , mask(InvalidCoordinatedLayerID)
         , imageID(InvalidCoordinatedImageBackingID)
-#if USE(GRAPHICS_SURFACE)
-        , platformLayerFrontBuffer(0)
-#endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
         , platformLayerProxy(0)
 #endif
@@ -164,13 +156,6 @@ struct CoordinatedGraphicsLayerState {
 
     unsigned repaintCount;
     Vector<TileUpdateInfo> tilesToUpdate;
-
-#if USE(GRAPHICS_SURFACE)
-    IntSize platformLayerSize;
-    GraphicsSurfaceToken platformLayerToken;
-    uint32_t platformLayerFrontBuffer;
-    GraphicsSurface::Flags platformLayerSurfaceFlags;
-#endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     RefPtr<TextureMapperPlatformLayerProxy> platformLayerProxy;

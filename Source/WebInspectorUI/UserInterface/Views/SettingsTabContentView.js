@@ -35,7 +35,9 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
         // Ensures that the Settings tab is displayable from a pinned tab bar item.
         tabBarItem.representedObject = this;
 
-        WebInspector.notifications.addEventListener(WebInspector.Notification.DebugUIEnabledDidChange, this.needsLayout.bind(this, WebInspector.View.LayoutReason.Dirty));
+        let boundNeedsLayout = this.needsLayout.bind(this, WebInspector.View.LayoutReason.Dirty);
+        WebInspector.notifications.addEventListener(WebInspector.Notification.DebugUIEnabledDidChange, boundNeedsLayout);
+        WebInspector.settings.zoomFactor.addEventListener(WebInspector.Setting.Event.Changed, boundNeedsLayout);
     }
 
     static tabInfo()
@@ -184,7 +186,7 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
             [0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2, 2.2, 2.4].forEach((level) => {
                 let option = select.createChild("option");
                 option.value = level;
-                option.textContent = `${Math.round(level * 100)}%`;
+                option.textContent = Number.percentageString(level, 0);
                 option.selected = currentZoom === level;
             });
         });

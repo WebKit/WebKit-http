@@ -179,6 +179,7 @@ list(APPEND WebCore_SOURCES
     crypto/WebKitSubtleCrypto.cpp
 
     crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
+    crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
     crypto/algorithms/CryptoAlgorithmAES_KW.cpp
     crypto/algorithms/CryptoAlgorithmHMAC.cpp
     crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
@@ -197,6 +198,7 @@ list(APPEND WebCore_SOURCES
     crypto/keys/CryptoKeyRSA.cpp
     crypto/keys/CryptoKeySerializationRaw.cpp
 
+    crypto/mac/CryptoAlgorithmAES_CFBMac.cpp
     crypto/mac/CryptoAlgorithmAES_CBCMac.cpp
     crypto/mac/CryptoAlgorithmAES_KWMac.cpp
     crypto/mac/CryptoAlgorithmHMACMac.cpp
@@ -225,7 +227,7 @@ list(APPEND WebCore_SOURCES
     editing/mac/TextAlternativeWithRange.mm
     editing/mac/TextUndoInsertionMarkupMac.mm
 
-    fileapi/FileMac.mm
+    fileapi/FileCocoa.mm
 
     html/HTMLSlotElement.cpp
 
@@ -466,6 +468,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/MediaRemoteSoftLink.cpp
     platform/mac/NSScrollerImpDetails.mm
     platform/mac/PasteboardMac.mm
+    platform/mac/PasteboardWriter.mm
     platform/mac/PlatformClockCA.cpp
     platform/mac/PlatformClockCM.mm
     platform/mac/PlatformEventFactoryMac.mm
@@ -522,7 +525,7 @@ list(APPEND WebCore_SOURCES
     platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp
 
     platform/network/cocoa/CredentialCocoa.mm
-    platform/network/cocoa/NetworkLoadTiming.mm
+    platform/network/cocoa/NetworkLoadMetrics.mm
     platform/network/cocoa/ProtectionSpaceCocoa.mm
     platform/network/cocoa/ResourceRequestCocoa.mm
     platform/network/cocoa/ResourceResponseCocoa.mm

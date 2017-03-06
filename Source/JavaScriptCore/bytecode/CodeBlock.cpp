@@ -44,6 +44,7 @@
 #include "DFGWorklist.h"
 #include "Debugger.h"
 #include "EvalCodeBlock.h"
+#include "FullCodeOrigin.h"
 #include "FunctionCodeBlock.h"
 #include "FunctionExecutableDump.h"
 #include "GetPutInfo.h"
@@ -1385,8 +1386,8 @@ void CodeBlock::dumpBytecode(
             printLocationAndOp(out, exec, location, it, "loop_hint");
             break;
         }
-        case op_watchdog: {
-            printLocationAndOp(out, exec, location, it, "watchdog");
+        case op_check_traps: {
+            printLocationAndOp(out, exec, location, it, "check_traps");
             break;
         }
         case op_log_shadow_chicken_prologue: {
@@ -3580,7 +3581,7 @@ void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
     }
     
     if (callerCodeBlock->capabilityLevelState() == DFG::CapabilityLevelNotSet) {
-        dataLog("In call from ", *callerCodeBlock, " ", callerFrame->codeOrigin(), " to ", *this, ": caller's DFG capability level is not set.\n");
+        dataLog("In call from ", FullCodeOrigin(callerCodeBlock, callerFrame->codeOrigin()), " to ", *this, ": caller's DFG capability level is not set.\n");
         CRASH();
     }
     

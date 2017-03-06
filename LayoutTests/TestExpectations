@@ -109,8 +109,6 @@ webkit.org/b/139903 editing/spelling/grammar-paste.html [ Timeout Pass ]
 # media/W3C/video/networkState/networkState_during_progress.html is flaky
 webkit.org/b/76280 media/W3C/video/networkState/networkState_during_progress.html [ Pass Failure ]
 
-webkit.org/b/118301 fast/dom/timer-throttling-hidden-page.html [ Skip ]
-
 # This test will run slowly in debug mode, but is plenty fast in release.
 [ Debug ] js/slow-stress/emscripten-memops.html [ Skip ]
 
@@ -310,11 +308,11 @@ imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-non-cors.htm [ S
 # Failing assertion with dynamic message
 imported/w3c/web-platform-tests/XMLHttpRequest/responsexml-document-properties.htm [ Failure ]
 
-# Failing with dynamic URLs.
+webkit.org/b/161088 imported/w3c/web-platform-tests/resource-timing/resource-timing.html [ Pass Failure ]
 webkit.org/b/168357 imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-media.html [ Failure ]
-
 webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-frames.html [ Pass Failure ]
 webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-workers.html [ Pass Failure ]
+imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass Failure ]
 
 webkit.org/b/161176 [ Debug ] imported/w3c/web-platform-tests/url/url-setters.html [ Skip ]
 
@@ -690,9 +688,26 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
-# WebRTC backend not enabled by default.
+# WebRTC backend not enabled by default on Mac/iOS.
+# GTK enables some of this tests on their TestExpectations file.
 webrtc [ Skip ]
 fast/mediastream/getUserMedia-webaudio.html [ Skip ]
+fast/mediastream/RTCPeerConnection-AddRemoveStream.html [ Skip ]
+fast/mediastream/RTCPeerConnection-closed-state.html [ Skip ]
+fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html [ Skip ]
+fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
+fast/mediastream/RTCPeerConnection-onnegotiationneeded.html [ Skip ]
+fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
+fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
+fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Pass Failure ]
+
+# See webkit.org/b/168736
+fast/mediastream/RTCPeerConnection-addIceCandidate.html [ Failure  ]
+fast/mediastream/RTCPeerConnection-addTrack-reuse-sender.html [ Failure  ]
+fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html [ Failure  ]
+imported/w3c/web-platform-tests/webrtc/datachannel-emptystring.html [ Failure  ]
+imported/w3c/web-platform-tests/webrtc/no-media-call.html [ Failure  ]
+imported/w3c/web-platform-tests/webrtc/promises-call.html [ Failure  ]
 
 # Only iOS WK1 has testRunner.setPagePaused.
 fast/dom/timer-fire-after-page-pause.html [ Skip ]
@@ -764,6 +779,7 @@ fast/css-intrinsic-dimensions/height-tables.html [ ImageOnlyFailure ]
 # integral hittest vs. subpixel table
 fast/table/hittest-tablecell-with-borders-right-edge.html [ Pass Failure ]
 fast/table/hittest-tablecell-right-edge.html [ Pass Failure ]
+fast/css/appearance-apple-pay-button.html [ ImageOnlyFailure ]
 
 webkit.org/b/150598 fast/repaint/table-hover-on-link.html [ Pass Failure ]
 
@@ -978,10 +994,6 @@ webkit.org/b/159755 fast/text/emoji-gender.html [ ImageOnlyFailure ]
 
 webkit.org/b/160017 js/regress-139548.html [ Slow ]
 
-webkit.org/b/161088 imported/w3c/web-platform-tests/resource-timing/resource-timing.html [ Pass Failure ]
-
-webkit.org/b/168356 [ Debug ] imported/w3c/web-platform-tests/resource-timing [ Skip ]
-
 # Only iOS has implemented lettepress.
 fast/text/letterpress-different.html [ ImageOnlyFailure ]
 
@@ -1022,6 +1034,7 @@ webkit.org/b/165460 compositing/repaint/scroll-fixed-layer-out-of-view.html [ Fa
 
 # iOS-specific test
 media/modern-media-controls/media-controller/media-controller-scale-factor.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-scale-factor-audio.html [ Skip ]
 
 webkit.org/b/166911 fast/dom/Window/window-properties-performance.html [ Pass Failure ]
 webkit.org/b/166911 fast/dom/Window/window-properties-performance-resource-timing.html [ Pass Failure ]
@@ -1180,6 +1193,9 @@ svg/custom/filter-source-alpha.svg [ Skip ]
 
 # Test landed disabled in r26904; never enabled
 svg/custom/font-face-fallback.svg [ Skip ]
+
+# Test disabled until we can fix layout of orthogonal writing mode roots
+fast/table/colspanMinWidth-vertical.html [ Skip ]
 
 ### END OF -disabled tests
 ########################################

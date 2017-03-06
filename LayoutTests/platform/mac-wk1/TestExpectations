@@ -77,6 +77,7 @@ plugins/unavailable-plugin-indicator-obscurity.html
 # Color input is not yet implemented on Mac WK1. Currently, using it erroneously triggers an ASSERT_NOT_REACHED.
 webkit.org/b/119094 fast/forms/color/input-color-onchange-event.html [ Skip ]
 webkit.org/b/119094 fast/forms/color/color-suggestion-picker-crash-on-set-value.html [ Skip ]
+webkit.org/b/119094 fast/forms/color/input-color-readonly.html [ Skip ]
 
 # DumpRenderTree doesn't support logging calls to runOpenPanel.
 fast/forms/file/open-file-panel.html [ Skip ]
@@ -92,6 +93,9 @@ fast/events/input-event-insert-replacement.html [ Skip ]
 fast/mediastream
 http/tests/media/media-stream
 http/tests/ssl/media-stream
+
+# Skip WebRTC for now in WK1
+imported/w3c/web-platform-tests/webrtc [ Skip ]
 
 # These tests test the Shadow DOM based HTML form validation UI but Mac WK1 is using native dialogs instead.
 fast/forms/validation-message-on-listbox.html
@@ -210,6 +214,9 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
 webkit.org/b/156069 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
@@ -288,6 +295,10 @@ webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-fr
 webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-invoked.html [ Pass Failure ]
 webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-multicalls.html [ Pass Failure ]
 
+# Resource Timing networking data not yet available in WebKit1.
+imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
+imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+
 webkit.org/b/164491 [ Yosemite ElCapitan ] fast/visual-viewport/rtl-zoomed-rects.html [ Failure ]
 
 webkit.org/b/164933 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
@@ -312,4 +323,5 @@ webkit.org/b/167857 pageoverlay/overlay-remove-reinsert-view.html [ Skip ]
 webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Timeout ]
 webkit.org/b/167589 media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html [ Pass Timeout ]
 webkit.org/b/168378 media/modern-media-controls/media-controller/media-controller-resize.html [ Pass Failure ]
+webkit.org/b/167352 [ Debug ] media/modern-media-controls/rewind-button/rewind-button.html [ Pass Timeout ]
 webkit.org/b/168476 media/modern-media-controls/tracks-button/tracks-button.html [ Pass Timeout ]

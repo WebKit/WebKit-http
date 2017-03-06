@@ -960,6 +960,9 @@ private:
         case IsTypedArrayView:
             compileIsTypedArrayView();
             break;
+        case ParseInt:
+            compileParseInt();
+            break;
         case TypeOf:
             compileTypeOf();
             break;
@@ -1018,8 +1021,8 @@ private:
         case MaterializeCreateActivation:
             compileMaterializeCreateActivation();
             break;
-        case CheckWatchdogTimer:
-            compileCheckWatchdogTimer();
+        case CheckTraps:
+            compileCheckTraps();
             break;
         case CreateRest:
             compileCreateRest();
@@ -8221,6 +8224,25 @@ private:
         setBoolean(m_out.phi(Int32, fastResult, slowResult));
     }
 
+    void compileParseInt()
+    {
+        RELEASE_ASSERT(m_node->child1().useKind() == UntypedUse || m_node->child1().useKind() == StringUse);
+        LValue result;
+        if (m_node->child2()) {
+            LValue radix = lowInt32(m_node->child2());
+            if (m_node->child1().useKind() == UntypedUse)
+                result = vmCall(Int64, m_out.operation(operationParseIntGeneric), m_callFrame, lowJSValue(m_node->child1()), radix);
+            else
+                result = vmCall(Int64, m_out.operation(operationParseIntString), m_callFrame, lowString(m_node->child1()), radix);
+        } else {
+            if (m_node->child1().useKind() == UntypedUse)
+                result = vmCall(Int64, m_out.operation(operationParseIntNoRadixGeneric), m_callFrame, lowJSValue(m_node->child1()));
+            else
+                result = vmCall(Int64, m_out.operation(operationParseIntStringNoRadix), m_callFrame, lowString(m_node->child1()));
+        }
+        setJSValue(result);
+    }
+
     void compileOverridesHasInstance()
     {
         FrozenValue* defaultHasInstanceFunction = m_node->cellOperand();
@@ -8961,20 +8983,20 @@ private:
         setJSValue(activation);
     }
 
-    void compileCheckWatchdogTimer()
+    void compileCheckTraps()
     {
-        LBasicBlock timerDidFire = m_out.newBlock();
+        LBasicBlock needTrapHandling = m_out.newBlock();
         LBasicBlock continuation = m_out.newBlock();
         
-        LValue state = m_out.load8ZeroExt32(m_out.absolute(vm().watchdog()->timerDidFireAddress()));
+        LValue state = m_out.load8ZeroExt32(m_out.absolute(vm().needTrapHandlingAddress()));
         m_out.branch(m_out.isZero32(state),
-            usually(continuation), rarely(timerDidFire));
+            usually(continuation), rarely(needTrapHandling));
 
-        LBasicBlock lastNext = m_out.appendTo(timerDidFire, continuation);
+        LBasicBlock lastNext = m_out.appendTo(needTrapHandling, continuation);
 
         lazySlowPath(
             [=] (const Vector<Location>&) -> RefPtr<LazySlowPath::Generator> {
-                return createLazyCallGenerator(operationHandleWatchdogTimer, InvalidGPRReg);
+                return createLazyCallGenerator(operationHandleTraps, InvalidGPRReg);
             });
         m_out.jump(continuation);
         

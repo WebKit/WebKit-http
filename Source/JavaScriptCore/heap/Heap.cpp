@@ -30,7 +30,6 @@
 #include "Exception.h"
 #include "FullGCActivityCallback.h"
 #include "GCActivityCallback.h"
-#include "GCFinalizationCallback.h"
 #include "GCIncomingRefCountedSetInlines.h"
 #include "GCSegmentedArrayInlines.h"
 #include "GCTypeMap.h"
@@ -1276,8 +1275,6 @@ NEVER_INLINE bool Heap::runConcurrentPhase(GCConductor conn)
 {
     SlotVisitor& slotVisitor = *m_collectorSlotVisitor;
 
-    ParallelModeEnabler enabler(slotVisitor);
-        
     switch (conn) {
     case GCConductor::Mutator: {
         // When the mutator has the conn, we poll runConcurrentPhase() on every time someone says
@@ -1293,7 +1290,10 @@ NEVER_INLINE bool Heap::runConcurrentPhase(GCConductor conn)
         return false;
     }
     case GCConductor::Collector: {
-        slotVisitor.drainInParallelPassively(m_scheduler->timeToStop());
+        {
+            ParallelModeEnabler enabler(slotVisitor);
+            slotVisitor.drainInParallelPassively(m_scheduler->timeToStop());
+        }
         return changePhase(conn, CollectorPhase::Reloop);
     } }
     
@@ -1916,14 +1916,6 @@ void Heap::finalize()
     if (HasOwnPropertyCache* cache = vm()->hasOwnPropertyCache())
         cache->clear();
     
-    {
-        // This idiom allows callbacks to call addFinalizationCallback() if they want to be added back.
-        Vector<RefPtr<GCFinalizationCallback>> myCallbacks;
-        std::swap(myCallbacks, m_finalizationCallbacks);
-        for (auto& callback : myCallbacks)
-            callback->didFinalize(*this);
-    }
-
     if (Options::sweepSynchronously())
         sweepSynchronously();
 
@@ -1931,11 +1923,6 @@ void Heap::finalize()
         MonotonicTime after = MonotonicTime::now();
         dataLog((after - before).milliseconds(), "ms]\n");
     }
-}
-
-void Heap::addFinalizationCallback(RefPtr<GCFinalizationCallback> callback)
-{
-    m_finalizationCallbacks.append(callback);
 }
 
 Heap::Ticket Heap::requestCollection(std::optional<CollectionScope> scope)

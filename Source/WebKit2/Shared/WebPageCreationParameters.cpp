@@ -85,11 +85,20 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << textAutosizingWidth;
     encoder << ignoresViewportScaleLimits;
 #endif
+#if PLATFORM(COCOA)
+    encoder << smartInsertDeleteEnabled;
+#endif
     encoder << appleMailPaginationQuirkEnabled;
     encoder << shouldScaleViewToFitDocument;
     encoder.encodeEnum(userInterfaceLayoutDirection);
     encoder.encodeEnum(observedLayoutMilestones);
     encoder << overrideContentSecurityPolicy;
+#if ENABLE(WEB_RTC)
+    encoder << disableICECandidateFiltering;
+#if USE(LIBWEBRTC)
+    encoder << enableEnumeratingAllNetworkInterfaces;
+#endif
+#endif
 }
 
 bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationParameters& parameters)
@@ -193,6 +202,10 @@ bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationPar
     if (!decoder.decode(parameters.ignoresViewportScaleLimits))
         return false;
 #endif
+#if PLATFORM(COCOA)
+    if (!decoder.decode(parameters.smartInsertDeleteEnabled))
+        return false;
+#endif
 
     if (!decoder.decode(parameters.appleMailPaginationQuirkEnabled))
         return false;
@@ -208,6 +221,14 @@ bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationPar
     if (!decoder.decode(parameters.overrideContentSecurityPolicy))
         return false;
 
+#if ENABLE(WEB_RTC)
+    if (!decoder.decode(parameters.disableICECandidateFiltering))
+        return false;
+#if USE(LIBWEBRTC)
+    if (!decoder.decode(parameters.enableEnumeratingAllNetworkInterfaces))
+        return false;
+#endif
+#endif
     return true;
 }
 

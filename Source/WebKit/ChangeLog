@@ -1,3 +1,94 @@
+2017-02-27  Aakash Jain  <aakash_jain@apple.com>
+
+        Enable SUPPORTS_TEXT_BASED_API in WebKitLegacy for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168919
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj: Run scripts which are run for installhdrs phase for installapi phase as well.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Export Objective-C symbols for variables in Webkit SPI
+        https://bugs.webkit.org/show_bug.cgi?id=168758
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.xcodeproj/project.pbxproj: Generating separate .exp file for i386 without _OBJC_IVAR symbols.
+
+2017-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Make WebKitStatisticsPrivate.h project header
+        https://bugs.webkit.org/show_bug.cgi?id=168686
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-02-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212768.
+        https://bugs.webkit.org/show_bug.cgi?id=168698
+
+        Rolling out since this would break other projects. (Requested
+        by aakashjain on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Remove old WebKit1 MemoryMeasure helper."
+        https://bugs.webkit.org/show_bug.cgi?id=168675
+        http://trac.webkit.org/changeset/212768
+
+2017-02-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] Remove old WebKit1 MemoryMeasure helper.
+        <https://webkit.org/b/168675>
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-02-21  JF Bastien  <jfbastien@apple.com>
+
+        Fix cmake build
+        https://bugs.webkit.org/show_bug.cgi?id=168665
+
+        Reviewed by Mark Lam.
+
+        It was broken by r212555 and r212681.
+
+        * PlatformMac.cmake:
+
+2017-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        List of WebCore symbols to re-export from WebKitLegacy should be built automatically
+        https://bugs.webkit.org/show_bug.cgi?id=168342
+        rdar://problem/26182266
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj: Append ReexportedWebCoreSymbols_${CURRENT_ARCH}.exp
+        to WebKitLegacy.generated.exp if it exists. Added it to build phase inputs for
+        dependency tracking.
+
+2017-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up how WebKit exports _WebCreateFragment
+        https://bugs.webkit.org/show_bug.cgi?id=168579
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj: Added WebCreateFragmentInternal.h.
+
+2017-02-15  Brady Eidson  <beidson@apple.com>
+
+        Stop backing up localStorage databases to iCloud by default.
+        <rdar://problem/29045531> and https://bugs.webkit.org/show_bug.cgi?id=168388
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
 2017-02-15  Aakash Jain  <aakash_jain@apple.com>
 
         revert DOMTextEvent.h and DOMHTMLCanvasElement.h to private header

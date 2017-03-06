@@ -762,6 +762,8 @@ public:
         return lastNode->op() == Branch && lastNode->child1() == m_currentNode ? m_block->size() - 1 : UINT_MAX;
     }
     
+    void compileCheckTraps(Node*);
+
     void compileMovHint(Node*);
     void compileMovHintAndCheck(Node*);
 
@@ -1307,6 +1309,13 @@ public:
         m_jit.setupArguments(arg1, arg2);
         return appendCallSetResult(operation, result);
     }
+
+    JITCompiler::Call callOperation(J_JITOperation_EJss operation, JSValueRegs result, GPRReg arg1)
+    {
+        m_jit.setupArgumentsWithExecState(arg1);
+        return appendCallSetResult(operation, result);
+    }
+
     JITCompiler::Call callOperation(T_JITOperation_EJss operation, GPRReg result, GPRReg arg1)
     {
         m_jit.setupArgumentsWithExecState(arg1);
@@ -1889,6 +1898,11 @@ public:
         m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg.payloadGPR(), arg.tagGPR(), mathIC);
         return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
     }
+    JITCompiler::Call callOperation(J_JITOperation_EJZ operation, JSValueRegs result, JSValueRegs arg1, GPRReg arg2)
+    {
+        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR(), arg2);
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(J_JITOperation_EJJMic operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2, TrustedImmPtr mathIC)
     {
         m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR(), arg2.payloadGPR(), arg2.tagGPR(), mathIC);
@@ -2435,6 +2449,14 @@ public:
         m_jit.setupResults(result1, result2);
         return call;
     }
+    JITCompiler::Call appendCallSetResult(const FunctionPtr& function, JSValueRegs resultRegs)
+    {
+#if USE(JSVALUE64)
+        return appendCallSetResult(function, resultRegs.gpr());
+#else
+        return appendCallSetResult(function, resultRegs.payloadGPR(), resultRegs.tagGPR());
+#endif
+    }
 #if CPU(X86)
     JITCompiler::Call appendCallSetResult(const FunctionPtr& function, FPRReg result)
     {
@@ -2684,6 +2706,8 @@ public:
 
     void compileCheckTypeInfoFlags(Node*);
     void compileCheckStringIdent(Node*);
+
+    void compileParseInt(Node*);
     
     void compileValueRep(Node*);
     void compileDoubleRep(Node*);

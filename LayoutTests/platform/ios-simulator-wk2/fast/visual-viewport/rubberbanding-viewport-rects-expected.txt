@@ -11,9 +11,9 @@ Scrolled to 475, 525
 JSON.stringify(layoutViewport) is {"top":525,"right":1275,"bottom":1125,"left":475,"width":800,"height":600}
 JSON.stringify(visualViewport) is {"top":525,"right":1275,"bottom":1125,"left":475,"width":800,"height":600}
 
-Scrolled to 1800, 1700
-JSON.stringify(layoutViewport) is {"top":1616,"right":2008,"bottom":2216,"left":1208,"width":800,"height":600}
-JSON.stringify(visualViewport) is {"top":1700,"right":2600,"bottom":2216,"left":1800,"width":800,"height":516}
+Scrolled to 1800, 1850
+JSON.stringify(layoutViewport) is {"top":1658,"right":2008,"bottom":2258,"left":1208,"width":800,"height":600}
+JSON.stringify(visualViewport) is {"top":1850,"right":2600,"bottom":2450,"left":1800,"width":800,"height":600}
 PASS successfullyParsed is true
 
 TEST COMPLETE

@@ -30,6 +30,7 @@ VPATH = \
     $(WebCore) \
     $(WebCore)/Modules/airplay \
     $(WebCore)/Modules/applepay \
+    $(WebCore)/Modules/credentials \
     $(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/encryptedmedia/legacy \
     $(WebCore)/Modules/fetch \
@@ -91,6 +92,11 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/applepay/ApplePayShippingMethod.idl \
     $(WebCore)/Modules/applepay/ApplePayShippingMethodSelectedEvent.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
+    $(WebCore)/Modules/credentials/BasicCredential.idl \
+    $(WebCore)/Modules/credentials/CredentialData.idl \
+    $(WebCore)/Modules/credentials/PasswordCredential.idl \
+    $(WebCore)/Modules/credentials/SiteBoundCredential.idl \
+    $(WebCore)/Modules/credentials/SiteBoundCredentialData.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySessionType.idl \
@@ -203,6 +209,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/streams/CountQueuingStrategy.idl \
     $(WebCore)/Modules/streams/ReadableByteStreamController.idl \
     $(WebCore)/Modules/streams/ReadableStream.idl \
+    $(WebCore)/Modules/streams/ReadableStreamBYOBRequest.idl \
     $(WebCore)/Modules/streams/ReadableStreamDefaultController.idl \
     $(WebCore)/Modules/streams/ReadableStreamDefaultReader.idl \
     $(WebCore)/Modules/streams/ReadableStreamSource.idl \
@@ -264,7 +271,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/RsaOtherPrimesInfo.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
     $(WebCore)/crypto/WebKitSubtleCrypto.idl \
-    $(WebCore)/crypto/parameters/AesCbcParams.idl \
+    $(WebCore)/crypto/parameters/AesCbcCfbParams.idl \
     $(WebCore)/crypto/parameters/AesKeyGenParams.idl \
     $(WebCore)/crypto/parameters/HmacKeyParams.idl \
     $(WebCore)/crypto/parameters/RsaHashedImportParams.idl \
@@ -1349,12 +1356,14 @@ WebCore_BUILTINS_SOURCES = \
     $(WebCore)/Modules/streams/ReadableByteStreamController.js \
     $(WebCore)/Modules/streams/ReadableByteStreamInternals.js \
     $(WebCore)/Modules/streams/ReadableStream.js \
+    $(WebCore)/Modules/streams/ReadableStreamBYOBRequest.js \
     $(WebCore)/Modules/streams/ReadableStreamDefaultController.js \
     $(WebCore)/Modules/streams/ReadableStreamInternals.js \
     $(WebCore)/Modules/streams/ReadableStreamDefaultReader.js \
     $(WebCore)/Modules/streams/StreamInternals.js \
     $(WebCore)/Modules/streams/WritableStream.js \
     $(WebCore)/Modules/streams/WritableStreamInternals.js \
+    $(WebCore)/bindings/js/JSDOMBindingInternals.js \
     $(WebCore)/xml/XMLHttpRequest.js \
 #
 

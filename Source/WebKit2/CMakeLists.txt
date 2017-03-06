@@ -271,6 +271,7 @@ set(WebKit2_SOURCES
 
     Shared/WebsiteData/WebsiteData.cpp
 
+    UIProcess/BackgroundProcessResponsivenessTimer.cpp
     UIProcess/ChildProcessProxy.cpp
     UIProcess/DrawingAreaProxy.cpp
     UIProcess/FrameLoadState.cpp
@@ -418,6 +419,8 @@ set(WebKit2_SOURCES
     UIProcess/InspectorServer/WebSocketServerConnection.cpp
 
     UIProcess/Launcher/ProcessLauncher.cpp
+
+    UIProcess/Network/CustomProtocols/CustomProtocolManagerProxy.cpp
 
     UIProcess/Network/NetworkProcessProxy.cpp
 

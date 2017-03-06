@@ -152,7 +152,19 @@ static bool runBeforeUnloadConfirmPanel(WKPageRef page, WKStringRef message, WKF
 static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParametersRef parameters, WKOpenPanelResultListenerRef resultListenerRef, const void*)
 {
     printf("OPEN FILE PANEL\n");
-    WKOpenPanelResultListenerCancel(resultListenerRef);
+    WKArrayRef fileURLs = TestController::singleton().openPanelFileURLs();
+    if (!fileURLs || !WKArrayGetSize(fileURLs)) {
+        WKOpenPanelResultListenerCancel(resultListenerRef);
+        return;
+    }
+
+    if (WKOpenPanelParametersGetAllowsMultipleFiles(parameters)) {
+        WKOpenPanelResultListenerChooseFiles(resultListenerRef, fileURLs);
+        return;
+    }
+
+    WKTypeRef firstItem = WKArrayGetItemAtIndex(fileURLs, 0);
+    WKOpenPanelResultListenerChooseFiles(resultListenerRef, adoptWK(WKArrayCreate(&firstItem, 1)).get());
 }
 
 void TestController::runModal(WKPageRef page, const void* clientInfo)
@@ -331,7 +343,6 @@ const char* TestController::libraryPathForTesting()
 void TestController::initialize(int argc, const char* argv[])
 {
     JSC::initializeThreading();
-    WTF::initializeMainThread();
     RunLoop::initializeMainRunLoop();
 
     platformInitialize();
@@ -642,6 +653,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(preferences, false);
     WKPreferencesSetOfflineWebApplicationCacheEnabled(preferences, true);
     WKPreferencesSetFontSmoothingLevel(preferences, kWKFontSmoothingLevelNoSubpixelAntiAliasing);
+    WKPreferencesSetSubpixelAntialiasedLayerTextEnabled(preferences, false);
     WKPreferencesSetXSSAuditorEnabled(preferences, false);
     WKPreferencesSetWebAudioEnabled(preferences, true);
     WKPreferencesSetMediaStreamEnabled(preferences, true);
@@ -822,6 +834,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     setNavigationGesturesEnabled(false);
     
     setIgnoresViewportScaleLimits(options.ignoresViewportScaleLimits);
+
+    m_openPanelFileURLs = nullptr;
 
     WKPageLoadURL(m_mainWebView->page(), blankURL());
     runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
@@ -2227,6 +2241,21 @@ void TestController::setStatisticsHasHadUserInteraction(WKStringRef hostName, bo
 bool TestController::isStatisticsHasHadUserInteraction(WKStringRef hostName)
 {
     return WKResourceLoadStatisticsManagerIsHasHadUserInteraction(hostName);
+}
+
+void TestController::setStatisticsSubframeUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName)
+{
+    WKResourceLoadStatisticsManagerSetSubframeUnderTopFrameOrigin(hostName, topFrameHostName);
+}
+
+void TestController::setStatisticsSubresourceUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName)
+{
+    WKResourceLoadStatisticsManagerSetSubresourceUnderTopFrameOrigin(hostName, topFrameHostName);
+}
+    
+void TestController::setStatisticsSubresourceUniqueRedirectTo(WKStringRef hostName, WKStringRef hostNameRedirectedTo)
+{
+    WKResourceLoadStatisticsManagerSetSubresourceUniqueRedirectTo(hostName, hostNameRedirectedTo);
 }
 
 void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)

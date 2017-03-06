@@ -57,14 +57,6 @@ void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)
         networkProcess()->send(Messages::NetworkProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors), 0);
 }
 
-void WebProcessPool::setCustomProtocolManagerClient(std::unique_ptr<API::CustomProtocolManagerClient>&& customProtocolManagerClient)
-{
-    if (!customProtocolManagerClient)
-        m_customProtocolManagerClient = std::make_unique<API::CustomProtocolManagerClient>();
-    else
-        m_customProtocolManagerClient = WTFMove(customProtocolManagerClient);
-}
-
 void WebProcessPool::setNetworkProxySettings(const WebCore::SoupNetworkProxySettings& settings)
 {
     m_networkProxySettings = settings;

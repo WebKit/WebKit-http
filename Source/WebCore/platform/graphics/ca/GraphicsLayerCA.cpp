@@ -39,6 +39,7 @@
 #include "Logging.h"
 #include "PlatformCAFilters.h"
 #include "PlatformCALayer.h"
+#include "PlatformScreen.h"
 #include "RotateTransformOperation.h"
 #include "ScaleTransformOperation.h"
 #include "TextStream.h"
@@ -341,7 +342,12 @@ bool GraphicsLayerCA::filtersCanBeComposited(const FilterOperations& filters)
 PassRefPtr<PlatformCALayer> GraphicsLayerCA::createPlatformCALayer(PlatformCALayer::LayerType layerType, PlatformCALayerClient* owner)
 {
 #if PLATFORM(COCOA)
-    return PlatformCALayerCocoa::create(layerType, owner);
+    auto result = PlatformCALayerCocoa::create(layerType, owner);
+    
+    if (result->canHaveBackingStore())
+        result->setWantsDeepColorBackingStore(screenSupportsExtendedColor());
+    
+    return result;
 #elif PLATFORM(WIN)
     return PlatformCALayerWin::create(layerType, owner);
 #endif
@@ -730,6 +736,15 @@ void GraphicsLayerCA::setContentsOpaque(bool opaque)
 
     GraphicsLayer::setContentsOpaque(opaque);
     noteLayerPropertyChanged(ContentsOpaqueChanged);
+}
+
+void GraphicsLayerCA::setSupportsSubpixelAntialiasedText(bool supportsSubpixelAntialiasedText)
+{
+    if (m_supportsSubpixelAntialiasedText == supportsSubpixelAntialiasedText)
+        return;
+
+    GraphicsLayer::setSupportsSubpixelAntialiasedText(supportsSubpixelAntialiasedText);
+    noteLayerPropertyChanged(SupportsSubpixelAntialiasedTextChanged);
 }
 
 void GraphicsLayerCA::setBackfaceVisibility(bool visible)
@@ -1665,6 +1680,9 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
     if (m_uncommittedChanges & AcceleratesDrawingChanged)
         updateAcceleratesDrawing();
 
+    if (m_uncommittedChanges & SupportsSubpixelAntialiasedTextChanged)
+        updateSupportsSubpixelAntialiasedText();
+
     if (m_uncommittedChanges & DebugIndicatorsChanged)
         updateDebugBorder();
 
@@ -2196,6 +2214,11 @@ void GraphicsLayerCA::updateAcceleratesDrawing()
     m_layer->setAcceleratesDrawing(m_acceleratesDrawing);
 }
 
+void GraphicsLayerCA::updateSupportsSubpixelAntialiasedText()
+{
+    m_layer->setSupportsSubpixelAntialiasedText(m_supportsSubpixelAntialiasedText);
+}
+
 static void setLayerDebugBorder(PlatformCALayer& layer, Color borderColor, float borderWidth)
 {
     layer.setBorderColor(borderColor);
@@ -2531,7 +2554,7 @@ void GraphicsLayerCA::updateMaskLayer()
     PlatformCALayer* maskCALayer = m_maskLayer ? downcast<GraphicsLayerCA>(*m_maskLayer).primaryLayer() : nullptr;
     
     LayerMap* layerCloneMap;
-    if (m_structuralLayer) {
+    if (m_structuralLayer && structuralLayerPurpose() == StructuralLayerForBackdrop) {
         m_structuralLayer->setMask(maskCALayer);
         layerCloneMap = m_structuralLayerClones.get();
     } else {
@@ -3497,6 +3520,11 @@ void GraphicsLayerCA::dumpAdditionalProperties(TextStream& textStream, int inden
 
         writeIndent(textStream, indent + 1);
         textStream << "(in window " << tiledBacking()->isInWindow() << ")\n";
+    }
+    
+    if (m_layer->wantsDeepColorBackingStore()) {
+        writeIndent(textStream, indent + 1);
+        textStream << "(deep color 1)\n";
     }
     
     if (behavior & LayerTreeAsTextIncludeContentLayers) {

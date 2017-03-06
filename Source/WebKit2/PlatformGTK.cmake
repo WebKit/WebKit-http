@@ -46,6 +46,8 @@ list(APPEND WebKit2_SOURCES
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
 
+    Platform/classifier/ResourceLoadStatisticsClassifier.cpp
+
     Platform/glib/ModuleGlib.cpp
 
     Platform/unix/LoggingUnix.cpp
@@ -58,6 +60,14 @@ list(APPEND WebKit2_SOURCES
     Shared/API/c/cairo/WKImageCairo.cpp
 
     Shared/Authentication/soup/AuthenticationManagerSoup.cpp
+
+    Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp
+    Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
+    Shared/CoordinatedGraphics/SimpleViewportController.cpp
+
+    Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp
+    Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
+    Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
 
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
 
@@ -294,8 +304,6 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/linux/MemoryPressureMonitor.cpp
 
-    UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
-
     UIProcess/Plugins/gtk/PluginInfoCache.cpp
 
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
@@ -471,6 +479,13 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
 
     WebProcess/WebPage/AcceleratedDrawingArea.cpp
+
+    WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
+    WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
+    WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
+    WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+    WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp
+
     WebProcess/WebPage/DrawingAreaImpl.cpp
 
     WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp
@@ -851,7 +866,11 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/NetworkProcess/soup"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Platform/IPC/glib"
+    "${WEBKIT2_DIR}/Platform/IPC/unix"
+    "${WEBKIT2_DIR}/Platform/classifier"
     "${WEBKIT2_DIR}/Shared/API/c/gtk"
+    "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
+    "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
     "${WEBKIT2_DIR}/Shared/Plugins/unix"
     "${WEBKIT2_DIR}/Shared/glib"
     "${WEBKIT2_DIR}/Shared/gtk"
@@ -878,6 +897,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/unix"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/gtk"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/soup"
+    "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
     "${WEBKIT2_DIR}/WebProcess/WebPage/atk"
     "${WEBKIT2_DIR}/WebProcess/WebPage/gtk"
 )
@@ -1178,34 +1198,6 @@ endif () # ENABLE_PLUGIN_PROCESS_GTK2
 list(APPEND PluginProcess_SOURCES
     PluginProcess/EntryPoint/unix/PluginProcessMain.cpp
 )
-
-if (ENABLE_THREADED_COMPOSITOR)
-    list(APPEND WebKit2_SOURCES
-        Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp
-        Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
-        Shared/CoordinatedGraphics/SimpleViewportController.cpp
-
-        Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp
-        Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
-        Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
-
-        WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp
-        WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
-        WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
-        WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
-        WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
-        WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp
-    )
-    list(APPEND WebKit2_INCLUDE_DIRECTORIES
-        "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
-        "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
-        "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
-    )
-else (ENABLE_THREADED_COMPOSITOR)
-    list(APPEND WebKit2_SOURCES
-        WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp
-    )
-endif ()
 
 # Commands for building the built-in injected bundle.
 include_directories(

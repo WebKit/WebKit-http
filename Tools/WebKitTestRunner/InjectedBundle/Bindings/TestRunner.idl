@@ -253,10 +253,16 @@ interface TestRunner {
     boolean isStatisticsPrevalentResource(DOMString hostName);
     void setStatisticsHasHadUserInteraction(DOMString hostName, boolean value);
     boolean isStatisticsHasHadUserInteraction(DOMString hostName);
+    void setStatisticsSubframeUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
+    void setStatisticsSubresourceUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
+    void setStatisticsSubresourceUniqueRedirectTo(DOMString hostName, DOMString hostNameRedirectedTo);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
     void statisticsFireDataModificationHandler();
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(boolean value);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(boolean value);
     void setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double seconds);
     void statisticsResetToConsistentState();
+
+    // Open panel
+    void setOpenPanelFiles(object filesArray);
 };

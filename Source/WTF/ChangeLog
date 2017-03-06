@@ -1,3 +1,487 @@
+2017-02-27  Andy Estes  <aestes@apple.com>
+
+        [iOS] Enable file replacement
+        https://bugs.webkit.org/show_bug.cgi?id=168907
+        <rdar://problem/22258242>
+
+        Reviewed by David Kilzer.
+
+        * wtf/FeatureDefines.h: Set ENABLE_FILE_REPLACEMENT to 1 on all Cocoa platforms.
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Rename ICU cursor iterator to caret iterator
+        https://bugs.webkit.org/show_bug.cgi?id=168206
+
+        Reviewed by Simon Fraser.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::mapModeToBackingIterator):
+        * wtf/text/TextBreakIterator.h:
+        * wtf/text/cf/TextBreakIteratorCF.h:
+        (WTF::TextBreakIteratorCF::TextBreakIteratorCF):
+        * wtf/text/icu/TextBreakIteratorICU.h:
+        (WTF::caretRules):
+        (WTF::TextBreakIteratorICU::TextBreakIteratorICU):
+        (WTF::cursorRules): Deleted.
+        * wtf/text/mac/TextBreakIteratorInternalICUMac.mm:
+        (WTF::mapModeToBackingIterator):
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use RAII for ICU breaking iterators
+        https://bugs.webkit.org/show_bug.cgi?id=168203
+
+        Reviewed by Simon Fraser.
+
+        * wtf/text/TextBreakIterator.h:
+        (WTF::CachedTextBreakIterator::CachedTextBreakIterator):
+        (WTF::CachedTextBreakIterator::~CachedTextBreakIterator):
+        (WTF::CachedTextBreakIterator::preceding):
+        (WTF::CachedTextBreakIterator::following):
+        (WTF::CachedTextBreakIterator::isBoundary):
+
+2017-02-24  Jer Noble  <jer.noble@apple.com>
+
+        Add public method to MediaTime for doing timeScale conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=168860
+
+        Reviewed by Eric Carlson.
+
+        The newly public method, modeled on CMTimeConvertScale, allows callers to specify what rounding technique
+        will be used when converting to a new time scale.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::toTimeScale):
+        (WTF::MediaTime::setTimeScale):
+        * wtf/MediaTime.h:
+
+2017-02-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Stop compiling our own cursorMovementIterator()
+        https://bugs.webkit.org/show_bug.cgi?id=168211
+
+        Reviewed by David Hyatt.
+
+        This patch creates a unified Text Breaking API, which can be backed by either ICU
+        or CoreFoundation (for ports which can use it). Rather than using inheritance and
+        virtual functions to implement this, because there are only two subclasses, the
+        simpler option of just using a Variant is used instead. There is also a cache which
+        allows you to reuse iterators without reconstructing them. This cache is better
+        than the previous method of having a single static iterator because the cache
+        lets you use two iterators simultaneously.
+
+        In the future, I will hook up all iterators to use this shared class. However, for
+        this patch, I've only hooked up the caret position iterator (backed by CoreFoundation
+        on Cocoa ports and UBRK_CHARACTER on other ports). 
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/spi/cf/CFStringSPI.h: Added.
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::initializeIteratorWithRules): Deleted.
+        (WTF::cursorMovementIterator): Deleted.
+        * wtf/text/TextBreakIterator.h:
+        (WTF::TextBreakIterator::preceding):
+        (WTF::TextBreakIterator::following):
+        (WTF::TextBreakIterator::isBoundary):
+        (WTF::TextBreakIterator::setText):
+        (WTF::TextBreakIterator::mode):
+        (WTF::TextBreakIterator::locale):
+        (WTF::TextBreakIteratorCache::singleton):
+        (WTF::TextBreakIteratorCache::take):
+        (WTF::TextBreakIteratorCache::put):
+        (WTF::TextBreakIteratorCache::TextBreakIteratorCache):
+        * wtf/text/cf/TextBreakIteratorCF.h: Added.
+        (WTF::TextBreakIteratorCF::TextBreakIteratorCF):
+        (WTF::TextBreakIteratorCF::setText):
+        (WTF::TextBreakIteratorCF::preceding):
+        (WTF::TextBreakIteratorCF::following):
+        (WTF::TextBreakIteratorCF::isBoundary):
+        * wtf/text/icu/TextBreakIteratorICU.h: Added.
+        (WTF::TextBreakIteratorICU::set8BitText):
+        (WTF::TextBreakIteratorICU::TextBreakIteratorICU):
+        (WTF::TextBreakIteratorICU::operator=):
+        (WTF::TextBreakIteratorICU::~TextBreakIteratorICU):
+        (WTF::TextBreakIteratorICU::setText):
+        (WTF::TextBreakIteratorICU::preceding):
+        (WTF::TextBreakIteratorICU::following):
+        (WTF::TextBreakIteratorICU::isBoundary):
+        * wtf/text/icu/UTextProviderLatin1.h:
+        * wtf/text/mac/TextBreakIteratorInternalICUMac.mm:
+        (WTF::mapModeToBackingIterator):
+        (WTF::TextBreakIterator::TextBreakIterator):
+
+2017-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Gather timing information with reliable responseEnd time
+        https://bugs.webkit.org/show_bug.cgi?id=168351
+
+        Reviewed by Alex Christensen.
+
+        * wtf/persistence/Coders.h:
+        (WTF::Persistence::Coder<Seconds>::encode):
+        (WTF::Persistence::Coder<Seconds>::decode):
+
+2017-02-24  Keith Miller  <keith_miller@apple.com>
+
+        Rubber-stamped by Chris Dumez.
+
+        Replace typename Bool with typename BoolType because X11 has
+        #define Bool int for some unknown reason...
+
+        * wtf/HashFunctions.h:
+        (WTF::TupleHash::allTrue):
+        * wtf/HashTraits.h:
+        (WTF::TupleHashTraits::allTrue):
+
+2017-02-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r212944.
+
+        Caused a lot of failures on the debug bots
+
+        Reverted changeset:
+
+        "[Resource Timing] Gather timing information with reliable
+        responseEnd time"
+        https://bugs.webkit.org/show_bug.cgi?id=168351
+        http://trac.webkit.org/changeset/212944
+
+2017-02-24  Keith Miller  <keith_miller@apple.com>
+
+        We should be able to use std::tuples as keys in HashMap
+        https://bugs.webkit.org/show_bug.cgi?id=168805
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds support for using std::tupeles as the key
+        type in HashMap. It is equivalent to doing a sequence of
+        std::pairs but has a nicer syntax.
+
+        * wtf/HashFunctions.h:
+        (WTF::TupleHash::hash):
+        (WTF::TupleHash::equal):
+        (WTF::TupleHash::allTrue):
+        * wtf/HashTraits.h:
+        (WTF::TupleHashTraits::allTrue):
+        (WTF::TupleHashTraits::emptyValue):
+        (WTF::TupleHashTraits::constructDeletedValue):
+        (WTF::TupleHashTraits::isDeletedValue):
+
+2017-02-24  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare to enable WebRTC on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168811
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/Platform.h:
+
+2017-02-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Gather timing information with reliable responseEnd time
+        https://bugs.webkit.org/show_bug.cgi?id=168351
+
+        Reviewed by Alex Christensen.
+
+        * wtf/persistence/Coders.h:
+        (WTF::Persistence::Coder<Seconds>::encode):
+        (WTF::Persistence::Coder<Seconds>::decode):
+
+2017-02-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Better handle Thread and RunLoop initialization
+        https://bugs.webkit.org/show_bug.cgi?id=167828
+
+        Reviewed by Yusuke Suzuki.
+
+        Make initialization functions more independent so that they can run in different
+        order. WTF::initializeMainThread initializes WTF threading, so that neither WTF nor JSC theading need to be
+        initialized before. RunLoop::initializeMainRunLoop() requires main thread to be initialized in some
+        ports, so it initializes main thread too. WebKit1 always calls WTF::initializeMainThreadToProcessMainThread()
+        before RunLoop::initializeMainRunLoop() so there's no problem there. GC threads are initialized alwayas by the
+        main thread. The rules should be simpler now:
+
+          - JSC::initializeThreading: should always be called when JSC is used.
+          - WTF::initializeThreading: only needs to be explicitly called when JSC is not used and process doesn't
+            initialize a main thread or main run loop.
+          - WTF::initializeMainThread: only needs to be explicitly called if process initializes a main thread but not a
+            main run loop.
+          - WTF::initializeMainThreadToProcessMainThread(): should always be called in WebKit1 before
+            RunLoop::initializeMainRunLoop().
+          - RunLoop::initializeMainRunLoop(): to initialize the main run loop. The only requirement is JSC::initializeThreading()
+            to be called before if JSC is used.
+
+        * wtf/MainThread.cpp:
+        (WTF::initializeMainThreadOnce): Use pthread_once to initialize the main thread also in GTK+ port.
+        (WTF::initializeMainThreadToProcessMainThreadOnce): Call initializeThreading() before the platform
+        initialization and initializeGCThreads() after it.
+        (WTF::initializeMainThread): Ditto.
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::initializeMainRunLoop): Call initializeMainThread().
+        * wtf/glib/MainThreadGLib.cpp:
+        (WTF::initializeMainThreadPlatform):
+        (WTF::isMainThread):
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::initializeMainThreadPlatform): Remove call to initializeGCThreads().
+        (WTF::initializeMainThreadToProcessMainThreadPlatform): Ditto.
+
+2017-02-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Remove Yosemite-specific font lookup code
+        https://bugs.webkit.org/show_bug.cgi?id=168682
+
+        Reviewed by Zalan Bujtas.
+
+        * wtf/Platform.h:
+
+2017-02-22  Keith Miller  <keith_miller@apple.com>
+
+        Remove the demand executable allocator
+        https://bugs.webkit.org/show_bug.cgi?id=168754
+
+        Reviewed by Saam Barati.
+
+        * wtf/Platform.h:
+
+2017-02-22  Alex Christensen  <achristensen@webkit.org>
+
+        Re-commit part of r212812 accidentally rolled out with r212841.
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+
+        * wtf/Platform.h:
+        Use libwebrtc on Mac if webrtc is enabled.
+
+2017-02-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix ASAN build after activating libwebrtc.
+
+        * wtf/Ref.h:
+        __asan_address_is_poisoned returns an int, not a bool.
+        This didn't cause a problem before because we didn't include the real definition anywhere,
+        but libwebrtc includes <sanitizer/asan_interface.h> directly now so the return types need to be correct.
+
+2017-02-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test fast/events/message-port-postMessage-recursive.html times out
+        https://bugs.webkit.org/show_bug.cgi?id=168570
+
+        Reviewed by Michael Catanzaro.
+
+        This has recently been added and the patch is good. It's just revealing a problem with our timers. The test is
+        posting a message recursively, and also starts a timeout timer to finish the test. The timeout timer is never
+        fired for us, because WebCore timers have lower priority than the one used by postMessage. ScriptExecutionContext
+        uses Document::postTask, that uses scheduleOnMainThread, that uses RunLoop::dispatch(). We are not setting any
+        priority for the timer used by RunLoop::dispatch, so it's using the default.
+        Use a RunLoop::Timer to schedule tasks to the main thread instead of using RunLoop::dispatch(). This allows us
+        to use a different priority, that is now set to G_PRIORITY_HIGH_IDLE + 20 to match WebCore timers. But it also
+        avoids the double queue we had with RunLoop::dispatch(), because scheduleOnMainThread() also queues the tasks.
+
+        * wtf/glib/MainThreadGLib.cpp:
+        (WTF::MainThreadDispatcher::MainThreadDispatcher):
+        (WTF::MainThreadDispatcher::schedule):
+        (WTF::MainThreadDispatcher::fired):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+
+2017-02-21  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2017-02-20  Filip Pizlo  <fpizlo@apple.com>
+
+        The collector thread should only start when the mutator doesn't have heap access
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+
+        Reviewed by Keith Miller.
+        
+        Extend the use of AbstractLocker so that we can use more locking idioms.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::notifyOne):
+        (WTF::AutomaticThreadCondition::notifyAll):
+        (WTF::AutomaticThreadCondition::add):
+        (WTF::AutomaticThreadCondition::remove):
+        (WTF::AutomaticThreadCondition::contains):
+        (WTF::AutomaticThread::AutomaticThread):
+        (WTF::AutomaticThread::tryStop):
+        (WTF::AutomaticThread::isWaiting):
+        (WTF::AutomaticThread::notify):
+        (WTF::AutomaticThread::start):
+        (WTF::AutomaticThread::threadIsStopping):
+        * wtf/AutomaticThread.h:
+        * wtf/NumberOfCores.cpp:
+        (WTF::numberOfProcessorCores):
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperClient::finish):
+        (WTF::ParallelHelperClient::claimTask):
+        (WTF::ParallelHelperPool::Thread::Thread):
+        (WTF::ParallelHelperPool::didMakeWorkAvailable):
+        (WTF::ParallelHelperPool::hasClientWithTask):
+        (WTF::ParallelHelperPool::getClientWithTask):
+        * wtf/ParallelHelperPool.h:
+
+2017-02-21  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212699.
+
+        Internal build not ready
+
+        Reverted changeset:
+
+        "[WebRTC][Mac] Activate libwebrtc"
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        http://trac.webkit.org/changeset/212699
+
+2017-02-20  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2017-02-20  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] CachedCall should let GC know to keep its arguments alive.
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        <rdar://problem/30475767>
+
+        Reviewed by Saam Barati.
+
+        Added a WTF_FORBID_HEAP_ALLOCATION that will cause a compilation failure if
+        a class declared with it is malloced.
+
+        While this doesn't prevent that class declared WTF_FORBID_HEAP_ALLOCATION from
+        being embedded in another class that is heap allocated, it does at minimum
+        document the intent and gives the users of this class a chance to do the
+        right thing.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/ForbidHeapAllocation.h: Added.
+
+2017-02-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r212685.
+
+        This change broke the 32-bit Sierra build.
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Add alternate classification
+        method"
+        https://bugs.webkit.org/show_bug.cgi?id=168347
+        http://trac.webkit.org/changeset/212685
+
+2017-02-20  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Add alternate classification method
+        https://bugs.webkit.org/show_bug.cgi?id=168347
+        <rdar://problem/30352793>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+            Added support for HAVE(CORE_PREDICTION).
+
+2017-02-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212618.
+        https://bugs.webkit.org/show_bug.cgi?id=168609
+
+        "Appears to cause PLT regression" (Requested by mlam on
+        #webkit).
+
+        Reverted changeset:
+
+        "CachedCall should let GC know to keep its arguments alive."
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        http://trac.webkit.org/changeset/212618
+
+2017-02-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed, rolling out r212622.
+
+        Caused several test failures
+
+        Reverted changeset:
+
+        "[GTK] Test fast/events/message-port-postMessage-
+        recursive.html times out"
+        https://bugs.webkit.org/show_bug.cgi?id=168570
+        http://trac.webkit.org/changeset/212622
+
+2017-02-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test fast/events/message-port-postMessage-recursive.html times out
+        https://bugs.webkit.org/show_bug.cgi?id=168570
+
+        Reviewed by Michael Catanzaro.
+
+        This has recently been added and the patch is good. It's just revealing a problem with our timers. The test is
+        posting a message recursively, and also starts a timeout timer to finish the test. The timeout timer is never
+        fired for us, because WebCore timers have lower priority than the one used by
+        postMessage. ScriptExecutionContext uses Document::postTask, that uses scheduleOnMainThread, that uses
+        RunLoop::dispatch(). We are not setting any priority for the timer used by RunLoop::dispatch, so it's using the
+        default. RunLoop::dispatch is normally used to schedule tasks between threads, or just to ensure something is
+        run in a different run loop iteration, but in general nothing urgent as a graphics redraw or something like
+        that. It's quite common to use g_idle_add to schedule tasks between threads, so I think it makes sense to use
+        G_PRIORITY_DEFAULT_IDLE for the RunLoop timer.
+
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::RunLoop):
+
+2017-02-19  Mark Lam  <mark.lam@apple.com>
+
+        CachedCall should let GC know to keep its arguments alive.
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        <rdar://problem/30475767>
+
+        Reviewed by Saam Barati.
+
+        Added a WTF_FORBID_HEAP_ALLOCATION that will cause a compilation failure if
+        a class declared with it is malloced.
+
+        While this doesn't prevent that class declared WTF_FORBID_HEAP_ALLOCATION from
+        being embedded in another class that is heap allocated, it does at minimum
+        document the intent and gives the users of this class a chance to do the
+        right thing.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/ForbidHeapAllocation.h: Added.
+
+2017-02-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212466.
+        https://bugs.webkit.org/show_bug.cgi?id=168577
+
+        causes crashes on AArch64 on linux, maybe it's causing crashes
+        on iOS too (Requested by pizlo on #webkit).
+
+        Reverted changeset:
+
+        "The collector thread should only start when the mutator
+        doesn't have heap access"
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+        http://trac.webkit.org/changeset/212466
+
+2017-02-18  Chris Dumez  <cdumez@apple.com>
+
+        Recursive MessagePort.postMessage() calls causes tab to become unresponsive
+        https://bugs.webkit.org/show_bug.cgi?id=168548
+        <rdar://problem/29808005>
+
+        Reviewed by Darin Adler.
+
+        Add API to retrieve all messages in the queue at once.
+
+        * wtf/MessageQueue.h:
+
 2017-02-16  Alex Christensen  <achristensen@webkit.org>
 
         Remove EFL-specific files in Source.

@@ -27,9 +27,8 @@
 
 #if ENABLE(WEB_AUDIO) && ENABLE(MEDIA_STREAM)
 
-#include "AudioCaptureSourceProviderObjC.h"
-#include "AudioSourceObserverObjC.h"
 #include "AudioSourceProvider.h"
+#include "RealtimeMediaSource.h"
 #include <wtf/Lock.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -42,36 +41,36 @@ typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
 
 namespace WebCore {
 
-class CARingBuffer;
+class AudioSampleDataSource;
+class CAAudioStreamDescription;
 
-class WebAudioSourceProviderAVFObjC : public RefCounted<WebAudioSourceProviderAVFObjC>, public AudioSourceProvider, public AudioSourceObserverObjC {
+class WebAudioSourceProviderAVFObjC : public RefCounted<WebAudioSourceProviderAVFObjC>, public AudioSourceProvider, RealtimeMediaSource::Observer {
 public:
-    static Ref<WebAudioSourceProviderAVFObjC> create(AudioCaptureSourceProviderObjC&);
+    static Ref<WebAudioSourceProviderAVFObjC> create(RealtimeMediaSource&);
     virtual ~WebAudioSourceProviderAVFObjC();
 
+    void prepare(const AudioStreamBasicDescription *);
+    void unprepare();
+
 private:
-    WebAudioSourceProviderAVFObjC(AudioCaptureSourceProviderObjC&);
+    WebAudioSourceProviderAVFObjC(RealtimeMediaSource&);
 
     // AudioSourceProvider
     void provideInput(AudioBus*, size_t) override;
     void setClient(AudioSourceProviderClient*) override;
 
-    // AudioSourceObserverObjC
-    void prepare(const AudioStreamBasicDescription *) final;
-    void unprepare() final;
-    void process(CMFormatDescriptionRef, CMSampleBufferRef) final;
+    // RealtimeMediaSource::Observer
+    void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
 
     size_t m_listBufferSize { 0 };
-    std::unique_ptr<AudioBufferList> m_list;
-    AudioConverterRef m_converter;
-    std::unique_ptr<AudioStreamBasicDescription> m_inputDescription;
-    std::unique_ptr<AudioStreamBasicDescription> m_outputDescription;
-    std::unique_ptr<CARingBuffer> m_ringBuffer;
+    std::unique_ptr<CAAudioStreamDescription> m_inputDescription;
+    std::unique_ptr<CAAudioStreamDescription> m_outputDescription;
+    RefPtr<AudioSampleDataSource> m_dataSource;
 
     uint64_t m_writeCount { 0 };
     uint64_t m_readCount { 0 };
     AudioSourceProviderClient* m_client { nullptr };
-    AudioCaptureSourceProviderObjC* m_captureSource { nullptr };
+    RealtimeMediaSource* m_captureSource { nullptr };
     Lock m_mutex;
     bool m_connected { false };
 };

@@ -65,7 +65,9 @@ struct ThreadMessageData : public rtc::MessageData {
 void PeerConnectionFactoryAndThreads::OnMessage(rtc::Message* message)
 {
     ASSERT(message->message_id == 1);
-    static_cast<ThreadMessageData*>(message->pdata)->callback();
+    auto* data = static_cast<ThreadMessageData*>(message->pdata);
+    data->callback();
+    delete data;
 }
 
 void LibWebRTCProvider::callOnWebRTCNetworkThread(Function<void()>&& callback)
@@ -82,6 +84,9 @@ void LibWebRTCProvider::callOnWebRTCSignalingThread(Function<void()>&& callback)
 
 static void initializePeerConnectionFactoryAndThreads()
 {
+#if defined(NDEBUG)
+    rtc::LogMessage::LogToDebug(rtc::LS_NONE);
+#endif
     auto& factoryAndThreads = staticFactoryAndThreads();
 
     ASSERT(!factoryAndThreads.factory);
@@ -149,7 +154,10 @@ rtc::scoped_refptr<webrtc::PeerConnectionInterface> LibWebRTCProvider::createPee
 
     std::unique_ptr<cricket::BasicPortAllocator> portAllocator;
     staticFactoryAndThreads().signalingThread->Invoke<void>(RTC_FROM_HERE, [&]() {
-        portAllocator.reset(new cricket::BasicPortAllocator(&networkManager, &packetSocketFactory));
+        auto basicPortAllocator = std::make_unique<cricket::BasicPortAllocator>(&networkManager, &packetSocketFactory);
+        if (!m_enableEnumeratingAllNetworkInterfaces)
+            basicPortAllocator->set_flags(basicPortAllocator->flags() | cricket::PORTALLOCATOR_DISABLE_ADAPTER_ENUMERATION);
+        portAllocator = WTFMove(basicPortAllocator);
     });
 
     return createActualPeerConnection(observer, WTFMove(portAllocator));

@@ -28,7 +28,7 @@
             layoutViewport = internals.layoutViewportRect();
             debug('Scrolled to ' + window.scrollX + ', ' + window.scrollY);
 
-            // Don't use shouldBeEqualToString() to avoid showing failures when correct output differs between platforms. 
+            // Don't use shouldBeEqualToString() to avoid showing failures when correct output differs between platforms.
             evalAndLogResult("JSON.stringify(layoutViewport)");
             evalAndLogResult("JSON.stringify(visualViewport)");
 
@@ -42,7 +42,7 @@
             evalAndLogResult("JSON.stringify(visualViewport)");
 
             debug('');
-            window.scrollTo(1800, 1700);
+            window.scrollTo(1800, 1850);
             visualViewport = internals.visualViewportRect();
             layoutViewport = internals.layoutViewportRect();
             debug('Scrolled to ' + window.scrollX + ', ' + window.scrollY);

@@ -1168,6 +1168,7 @@ webkit.org/b/148119 [ Yosemite ] fast/text/trak-optimizeLegibility.html [ Failur
 webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.html [ Pass Timeout ]
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
+webkit.org/b/168926 inspector/controller/runtime-controller-import.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/createStyleSheet.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/get-system-fonts.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/getAllStyleSheets.html [ Pass Timeout ]
@@ -1231,6 +1232,8 @@ webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Failure ]
 
 # Marking test as flaky in El Capitan
 webkit.org/b/149819 [ Debug ElCapitan+ ] compositing/video/video-poster.html [ Pass Crash ]
+
+webkit.org/b/168953 [ Release ] compositing/video/video-poster.html [ Pass Failure ]
 
 # Flaky on Mac
 webkit.org/b/148435 storage/domstorage/events/basic-body-attribute.html [ Pass Failure ]
@@ -1338,6 +1341,8 @@ webkit.org/b/159003 [ Sierra+ ] fast/text/font-cursive-italic-cjk.html [ Skip ]
 webkit.org/b/159003 [ Yosemite ElCapitan ] fast/text/font-cursive-italic-cjk-2.html [ ImageOnlyFailure ]
 
 webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Failure ]
+
+[ Sierra+ ] fast/css/appearance-apple-pay-button.html [ Pass ]
 
 # <rdar://problem/23500327> storage/websql/alter-to-info-table.html
 [ Sierra+ ] storage/websql/alter-to-info-table.html [ Pass Failure ]
@@ -1472,6 +1477,7 @@ media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ S
 media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-audio-background.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-ios-do-not-hide-controls-when-tapping-button.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-tight-padding.html [ Skip ]
 
 # This one always times out on the bots, cannot reproduce locally.
 webkit.org/b/165234 media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
@@ -1492,7 +1498,7 @@ webkit.org/b/167441 media/modern-media-controls/placard-support/placard-support-
 
 webkit.org/b/167442 media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
 
-webkit.org/b/165874 [ Debug ] streams/pipe-to.html [ Pass Failure ]
+webkit.org/b/165874 streams/pipe-to.html [ Pass Failure ]
 
 # New Encrypted Media API not enabled on Mac
 media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
@@ -1526,9 +1532,28 @@ webkit.org/b/168087 media/video-zoom.html [ Pass Failure ]
 # rdar://problem/23643423
 [ Debug ] fast/frames/exponential-frames.html [ Skip ]
 
+webkit.org/b/168094 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort.html [ Pass Failure ]
 webkit.org/b/167975 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort-removed.html [ Pass Failure ]
 
 webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.html [ Skip ]
 webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.worker.html [ Skip ]
 
 webkit.org/b/212466 [ ElCapitan ] js/dom/gc-slot-visitor-parallel-drain-pings-runloop-when-done.html [ Skip ]
+
+# Resource Timing networking data not yet available without Network Session.
+[ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
+[ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+
+# <rdar://problem/30610988>
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-worker.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-worker.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location.html [ Failure ]
+
+webkit.org/b/168503 editing/pasteboard/drag-drop-copy-content.html [ Failure ]
+
+webkit.org/b/168936 imported/w3c/web-platform-tests/IndexedDB/idbdatabase-deleteObjectStore-exception-order.htm [ Pass Failure ]
+
+webkit.org/b/168927 fast/dom/timer-throttling-hidden-page.html [ Pass Failure ]

@@ -300,6 +300,8 @@ fast/events/mouse-force-down.html [ Skip ]
 fast/events/mouse-force-up.html [ Skip ]
 
 # testRunner.setPageVisibility is not implemented for iOS
+webkit.org/b/165799 fast/dom/timer-throttling-hidden-page.html [ Skip ]
+webkit.org/b/165799 fast/dom/timer-throttling-hidden-page-non-nested.html [ Skip ]
 webkit.org/b/165799 fast/events/page-visibility-onvisibilitychange.html [ Skip ]
 webkit.org/b/165799 svg/animations/animations-paused-page-non-visible.html [ Skip ]
 
@@ -1328,9 +1330,12 @@ fast/flexbox/vertical-box-form-controls.html [ Failure ]
 fast/forms/autofocus-opera-003.html [ Failure ]
 fast/forms/button-inner-block-reuse.html [ Failure ]
 fast/forms/button-with-float.html [ ImageOnlyFailure ]
-fast/forms/color/color-setrangetext.html [ Failure ]
+
+# <input type=color> is not supported on iOS.
 fast/forms/color/input-color-onchange-event.html [ Failure ]
+fast/forms/color/input-color-readonly.html [ Failure ]
 fast/forms/color/input-value-sanitization-color.html [ Failure ]
+fast/forms/color/color-setrangetext.html [ Failure ]
 
 fast/forms/datalist/datalist-fallback-content.html [ ImageOnlyFailure ]
 fast/forms/datalist/datalist-nonoption-child.html [ Failure ]
@@ -2113,9 +2118,6 @@ platform/ios-simulator/ios/fast/text/emoji-complextext.html [ Failure ]
 platform/ios-simulator/ios/fast/text/emoji-text.html [ Failure ]
 platform/ios-simulator/ios/fast/text/line-breaking-with-kerning.html [ Failure ]
 platform/ios-simulator/ios/fast/text/mid-word-break-before-combining-mark.html [ Failure ]
-platform/ios-simulator/ios/fast/text/opticalFont.html [ Failure ]
-platform/ios-simulator/ios/fast/text/opticalFontWithTextStyle.html [ Failure ]
-platform/ios-simulator/ios/fast/text/opticalFontWithWeight.html [ Failure ]
 platform/ios-simulator/ios/fast/text/textStylesWithSizes.html [ Failure ]
 platform/ios-simulator/ios/fixed/absolute-inside-fixed.html [ Failure ]
 platform/ios-simulator/ios/fixed/four-bars.html [ Failure ]
@@ -2427,8 +2429,6 @@ webkit.org/b/152137 fast/media/mq-pointer-styling.html [ Failure ]
 webkit.org/b/152137 fast/media/mq-pointer.html [ Failure ]
 
 webkit.org/b/152442 fast/scrolling/rtl-point-in-iframe.html [ Skip ]
-
-webkit.org/b/152449 fast/events/can-click-element-on-page-with-active-pseudo-class-and-search-field.html [ Skip ]
 
 webkit.org/b/152701 fast/animation/request-animation-frame-disabled.html [ Skip ]
 
@@ -2774,6 +2774,7 @@ fast/css/deferred-parsing/hover-test.html [ Skip ]
 
 # iOS-specific test
 media/modern-media-controls/media-controller/media-controller-scale-factor.html [ Pass ]
+media/modern-media-controls/media-controller/media-controller-scale-factor-audio.html [ Pass ]
 
 # The tracks menu is never used in media controls on iOS
 media/modern-media-controls/tracks-panel [ Skip ]
@@ -2798,13 +2799,19 @@ media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
 media/modern-media-controls/volume-down-support [ Skip ]
 media/modern-media-controls/volume-up-support [ Skip ]
 
-# These tests are mouse-specific
+# These tests are macOS-specific or mouse-specific
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Skip ]
 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
 media/modern-media-controls/media-documents/click-on-video-should-not-pause.html [ Skip ]
+media/modern-media-controls/media-documents/click-on-video-should-not-pause.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-click-on-video-background-should-pause.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-click-on-video-background-should-pause-fullscreen.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-click-on-video-background-to-dismiss-tracks-panel-should-not-toggle-playback.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-click-on-video-controls-should-not-pause.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-audio-background.html [ Skip ]
 
 # Tests designed for macOS that have iOS equivalents in "ipad" directories
 media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Skip ]
@@ -2862,14 +2869,34 @@ webkit.org/b/167211 imported/w3c/web-platform-tests/html/browsers/history/the-lo
 
 webkit.org/b/167619 css3/filters/backdrop/dynamic-with-clip-path.html [ ImageOnlyFailure ]
 
-webkit.org/b/167967 http/tests/security/credentials-iframes.html [ Failure ]
-
 webkit.org/b/168054 compositing/masks/solid-color-masked.html [ ImageOnlyFailure ]
 
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
 
+# <rdar://problem/30610988>
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-worker.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-worker.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location.html [ Failure ]
+
 # rdar://problem/23643423
 [ Debug ] fast/frames/exponential-frames.html [ Skip ]
 
 webkit.org/b/168053 pageoverlay/overlay-remove-reinsert-view.html [ Pass Failure ]
+
+# Skip some flexbox tests that aren't designed to run in smaller viewports
+css3/flexbox/overflow-auto-resizes-correctly.html [ Skip ]
+css3/flexbox/flexbox-height-with-overflow-auto.html [ Skip ]
+css3/flexbox/flex-flow-auto-margins-no-available-space-assert.html [ Skip ]
+css3/flexbox/flex-one-sets-flex-basis-to-zero-px.html [ Skip ]
+
+# Skip test because checkboxes/radio buttons don't behave the same on iOS
+fast/replaced/table-percent-height.html [ Skip ]
+fast/table/003.html [ Skip ]
+
+# Bundle upload is not supported on iOS
+fast/files/filereader-zip-bundle-using-open-panel.html [ Skip ]
+http/tests/local/fileapi/upload-zip-bundle-as-blob-using-open-panel.html [ Skip ]

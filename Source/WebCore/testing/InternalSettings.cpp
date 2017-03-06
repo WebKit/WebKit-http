@@ -45,6 +45,10 @@
 #include "ColorChooser.h"
 #endif
 
+#if USE(SOUP)
+#include "SoupNetworkSession.h"
+#endif
+
 namespace WebCore {
 
 InternalSettings::Backup::Backup(Settings& settings)
@@ -97,9 +101,7 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
 #endif
-#if ENABLE(CSS_GRID_LAYOUT)
     , m_cssGridLayoutEnabled(RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled())
-#endif
 #if ENABLE(WEBGL2)
     , m_webGL2Enabled(RuntimeEnabledFeatures::sharedFeatures().webGL2Enabled())
 #endif
@@ -184,9 +186,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
 #endif
-#if ENABLE(CSS_GRID_LAYOUT)
     RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(m_cssGridLayoutEnabled);
-#endif
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(m_webGL2Enabled);
 #endif
@@ -682,11 +682,7 @@ void InternalSettings::setIndexedDBWorkersEnabled(bool enabled)
 
 void InternalSettings::setCSSGridLayoutEnabled(bool enabled)
 {
-#if ENABLE(CSS_GRID_LAYOUT)
     RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void InternalSettings::setWebGL2Enabled(bool enabled)
@@ -759,6 +755,9 @@ ExceptionOr<void> InternalSettings::setSystemLayoutDirection(const String& direc
 void InternalSettings::setAllowsAnySSLCertificate(bool allowsAnyCertificate)
 {
     Settings::setAllowsAnySSLCertificate(allowsAnyCertificate);
+#if USE(SOUP)
+    SoupNetworkSession::setShouldIgnoreTLSErrors(allowsAnyCertificate);
+#endif
 }
 
 ExceptionOr<bool> InternalSettings::deferredCSSParserEnabled()

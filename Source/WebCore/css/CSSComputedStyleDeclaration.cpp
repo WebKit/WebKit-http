@@ -82,11 +82,9 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
 
-#if ENABLE(CSS_GRID_LAYOUT)
 #include "CSSGridLineNamesValue.h"
 #include "CSSGridTemplateAreasValue.h"
 #include "RenderGrid.h"
-#endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
 #include "DashboardRegion.h"
@@ -320,10 +318,8 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyFlexShrink,
     CSSPropertyFlexWrap,
     CSSPropertyJustifyContent,
-#if ENABLE(CSS_GRID_LAYOUT)
     CSSPropertyJustifySelf,
     CSSPropertyJustifyItems,
-#endif
 #if ENABLE(FILTERS_LEVEL_2)
     CSSPropertyWebkitBackdropFilter,
 #endif
@@ -338,7 +334,6 @@ static const CSSPropertyID computedProperties[] = {
 #if ENABLE(VARIATION_FONTS)
     CSSPropertyFontVariationSettings,
 #endif
-#if ENABLE(CSS_GRID_LAYOUT)
     CSSPropertyGridAutoColumns,
     CSSPropertyGridAutoFlow,
     CSSPropertyGridAutoRows,
@@ -351,7 +346,6 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyGridRowStart,
     CSSPropertyGridColumnGap,
     CSSPropertyGridRowGap,
-#endif
     CSSPropertyWebkitHyphenateCharacter,
     CSSPropertyWebkitHyphenateLimitAfter,
     CSSPropertyWebkitHyphenateLimitBefore,
@@ -360,7 +354,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitInitialLetter,
     CSSPropertyWebkitLineAlign,
     CSSPropertyWebkitLineBoxContain,
-    CSSPropertyWebkitLineBreak,
+    CSSPropertyLineBreak,
     CSSPropertyWebkitLineClamp,
     CSSPropertyWebkitLineGrid,
     CSSPropertyWebkitLineSnap,
@@ -1000,7 +994,6 @@ Ref<CSSValue> ComputedStyleExtractor::valueForFilter(const RenderStyle& style, c
     return WTFMove(list);
 }
 
-#if ENABLE(CSS_GRID_LAYOUT)
 static Ref<CSSValue> specifiedValueForGridTrackBreadth(const GridLength& trackBreadth, const RenderStyle& style)
 {
     if (!trackBreadth.isLength())
@@ -1194,7 +1187,6 @@ static Ref<CSSValue> valueForGridPosition(const GridPosition& position)
         list->append(cssValuePool.createValue(position.namedGridLine(), CSSPrimitiveValue::CSS_STRING));
     return WTFMove(list);
 }
-#endif
 
 static Ref<CSSValue> createTransitionPropertyValue(const Animation& animation)
 {
@@ -1685,6 +1677,8 @@ static CSSValueID identifierForFamily(const AtomicString& family)
         return CSSValueSansSerif;
     if (family == serifFamily)
         return CSSValueSerif;
+    if (family == systemUiFamily)
+        return CSSValueSystemUi;
     return CSSValueInvalid;
 }
 
@@ -2261,13 +2255,11 @@ static bool isLayoutDependent(CSSPropertyID propertyID, const RenderStyle* style
         return paddingOrMarginIsRendererDependent<&RenderStyle::paddingBottom>(style, renderer);
     case CSSPropertyPaddingLeft:
         return paddingOrMarginIsRendererDependent<&RenderStyle::paddingLeft>(style, renderer); 
-#if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyGridTemplateColumns:
     case CSSPropertyGridTemplateRows:
     case CSSPropertyGridTemplate:
     case CSSPropertyGrid:
         return renderer && renderer->isRenderGrid();
-#endif
     default:
         return false;
     }
@@ -2285,7 +2277,6 @@ Element* ComputedStyleExtractor::styledElement()
     return m_element.get();
 }
 
-#if ENABLE(CSS_GRID_LAYOUT)
 static StyleSelfAlignmentData resolveLegacyJustifyItems(const StyleSelfAlignmentData& data)
 {
     if (data.positionType() == LegacyPosition)
@@ -2317,7 +2308,6 @@ static StyleSelfAlignmentData resolveJustifySelfAuto(const StyleSelfAlignmentDat
         return { ItemPositionNormal, OverflowAlignmentDefault };
     return resolveLegacyJustifyItems(resolveJustifyItemsAuto(parent->computedStyle()->justifyItems(), parent->parentNode()));
 }
-#endif
 
 static StyleSelfAlignmentData resolveAlignSelfAuto(const StyleSelfAlignmentData& data, Node* parent)
 {
@@ -2335,10 +2325,8 @@ static bool isImplicitlyInheritedGridOrFlexProperty(CSSPropertyID propertyID)
     // It would be nice if grid and flex worked within normal CSS mechanisms and not invented their own inheritance system.
     switch (propertyID) {
     case CSSPropertyAlignSelf:
-#if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyJustifySelf:
     case CSSPropertyJustifyItems:
-#endif
     // FIXME: In StyleResolver::adjustRenderStyle z-index is adjusted based on the parent display property for grid/flex.
     case CSSPropertyZIndex:
         return true;
@@ -2464,9 +2452,7 @@ static Ref<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlign
         result->append(cssValuePool.createValue(data.distribution()));
     if (data.distribution() == ContentDistributionDefault || data.position() != ContentPositionNormal) {
         bool gridEnabled = false;
-#if ENABLE(CSS_GRID_LAYOUT)
         gridEnabled = RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
-#endif
         if (data.position() != ContentPositionNormal || gridEnabled)
             result->append(cssValuePool.createValue(data.position()));
         else
@@ -2477,6 +2463,41 @@ static Ref<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlign
     ASSERT(result->length() > 0);
     ASSERT(result->length() <= 3);
     return result;
+}
+
+static Ref<CSSValue> paintOrder(PaintOrder paintOrder)
+{
+    if (paintOrder == PaintOrder::Normal)
+        return CSSPrimitiveValue::createIdentifier(CSSValueNormal);
+    
+    auto paintOrderList = CSSValueList::createSpaceSeparated();
+    switch (paintOrder) {
+    case PaintOrder::Normal:
+        ASSERT_NOT_REACHED();
+        break;
+    case PaintOrder::Fill:
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueFill));
+        break;
+    case PaintOrder::FillMarkers:
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueFill));
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueMarkers));
+        break;
+    case PaintOrder::Stroke:
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueStroke));
+        break;
+    case PaintOrder::StrokeMarkers:
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueStroke));
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueMarkers));
+        break;
+    case PaintOrder::Markers:
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueMarkers));
+        break;
+    case PaintOrder::MarkersStroke:
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueMarkers));
+        paintOrderList->append(CSSPrimitiveValue::createIdentifier(CSSValueStroke));
+        break;
+    }
+    return WTFMove(paintOrderList);
 }
 
 inline static bool isFlexOrGrid(ContainerNode* element)
@@ -2833,7 +2854,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyFlex:
             return getCSSPropertyValuesForShorthandProperties(flexShorthand());
         case CSSPropertyFlexBasis:
-            return cssValuePool.createValue(style->flexBasis());
+            return cssValuePool.createValue(style->flexBasis(), *style);
         case CSSPropertyFlexDirection:
             return cssValuePool.createValue(style->flexDirection());
         case CSSPropertyFlexFlow:
@@ -2846,12 +2867,10 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return cssValuePool.createValue(style->flexWrap());
         case CSSPropertyJustifyContent:
             return valueForContentPositionAndDistributionWithOverflowAlignment(style->justifyContent(), CSSValueFlexStart);
-#if ENABLE(CSS_GRID_LAYOUT)
         case CSSPropertyJustifyItems:
             return valueForItemPositionWithOverflowAlignment(resolveJustifyItemsAuto(style->justifyItems(), styledElement->parentNode()));
         case CSSPropertyJustifySelf:
             return valueForItemPositionWithOverflowAlignment(resolveJustifySelfAuto(style->justifySelf(), styledElement->parentNode()));
-#endif
         case CSSPropertyOrder:
             return cssValuePool.createValue(style->order(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyFloat:
@@ -2903,7 +2922,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return WTFMove(list);
         }
 #endif
-#if ENABLE(CSS_GRID_LAYOUT)
         case CSSPropertyGridAutoFlow: {
             auto list = CSSValueList::createSpaceSeparated();
             ASSERT(style->isGridAutoFlowDirectionRow() || style->isGridAutoFlowDirectionColumn());
@@ -2963,7 +2981,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return zoomAdjustedPixelValueForLength(style->gridRowGap(), *style);
         case CSSPropertyGridGap:
             return getCSSPropertyValuesForGridShorthand(gridGapShorthand());
-#endif /* ENABLE(CSS_GRID_LAYOUT) */
         case CSSPropertyHeight:
             if (renderer && !renderer->isRenderSVGModelObject()) {
                 // According to http://www.w3.org/TR/CSS2/visudet.html#the-height-property,
@@ -3297,7 +3314,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return zoomAdjustedPixelValue(style->fontCascade().wordSpacing(), *style);
         case CSSPropertyWordWrap:
             return cssValuePool.createValue(style->overflowWrap());
-        case CSSPropertyWebkitLineBreak:
+        case CSSPropertyLineBreak:
             return cssValuePool.createValue(style->lineBreak());
         case CSSPropertyWebkitNbspMode:
             return cssValuePool.createValue(style->nbspMode());
@@ -3806,8 +3823,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return zoomAdjustedPixelValueForLength(style->svgStyle().rx(), *style);
         case CSSPropertyRy:
             return zoomAdjustedPixelValueForLength(style->svgStyle().ry(), *style);
-        case CSSPropertyStrokeWidth:
-            return zoomAdjustedPixelValueForLength(style->svgStyle().strokeWidth(), *style);
         case CSSPropertyStrokeDashoffset:
             return zoomAdjustedPixelValueForLength(style->svgStyle().strokeDashOffset(), *style);
         case CSSPropertyX:
@@ -3816,6 +3831,15 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return zoomAdjustedPixelValueForLength(style->svgStyle().y(), *style);
         case CSSPropertyWebkitTextZoom:
             return cssValuePool.createValue(style->textZoom());
+
+        case CSSPropertyPaintOrder:
+            return paintOrder(style->paintOrder());
+        case CSSPropertyStrokeLinecap:
+            return CSSPrimitiveValue::create(style->capStyle());
+        case CSSPropertyStrokeLinejoin:
+            return CSSPrimitiveValue::create(style->joinStyle());
+        case CSSPropertyStrokeWidth:
+            return zoomAdjustedPixelValueForLength(style->strokeWidth(), *style);
 
         /* Unimplemented CSS 3 properties (including CSS3 shorthand properties) */
         case CSSPropertyAll:
@@ -3930,12 +3954,9 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyMarkerMid:
         case CSSPropertyMarkerStart:
         case CSSPropertyMaskType:
-        case CSSPropertyPaintOrder:
         case CSSPropertyShapeRendering:
         case CSSPropertyStroke:
         case CSSPropertyStrokeDasharray:
-        case CSSPropertyStrokeLinecap:
-        case CSSPropertyStrokeLinejoin:
         case CSSPropertyStrokeMiterlimit:
         case CSSPropertyStrokeOpacity:
         case CSSPropertyAlignmentBaseline:

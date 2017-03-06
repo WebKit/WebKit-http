@@ -55,6 +55,8 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/soup/NetworkSessionSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
+    Platform/classifier/ResourceLoadStatisticsClassifier.cpp
+
     Platform/glib/ModuleGlib.cpp
 
     Platform/IPC/glib/GSocketMonitor.cpp
@@ -129,8 +131,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
 
     UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp
-
-    UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
 
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
@@ -237,6 +237,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/NetworkProcess/soup"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Platform/IPC/glib"
+    "${WEBKIT2_DIR}/Platform/IPC/unix"
+    "${WEBKIT2_DIR}/Platform/classifier"
     "${WEBKIT2_DIR}/Shared/API/c/wpe"
     "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
     "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"

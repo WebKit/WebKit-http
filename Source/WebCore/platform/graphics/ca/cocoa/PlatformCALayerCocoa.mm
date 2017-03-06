@@ -32,7 +32,6 @@
 #import "LengthFunctions.h"
 #import "PlatformCAAnimationCocoa.h"
 #import "PlatformCAFilters.h"
-#import "PlatformScreen.h"
 #import "QuartzCoreSPI.h"
 #import "ScrollbarThemeMac.h"
 #import "SoftLinking.h"
@@ -240,9 +239,6 @@ PlatformCALayerCocoa::PlatformCALayerCocoa(LayerType layerType, PlatformCALayerC
         layerClass = [CALayer class];
         break;
 #endif
-    case LayerTypeWebTiledLayer:
-        ASSERT_NOT_REACHED();
-        break;
     case LayerTypeTiledBackingLayer:
     case LayerTypePageTiledBackingLayer:
         layerClass = [WebTiledBackingLayer class];
@@ -292,13 +288,6 @@ void PlatformCALayerCocoa::commonInit()
         [m_layer web_disableAllActions];
     else
         [m_layer setDelegate:[WebActionDisablingCALayerDelegate shared]];
-
-    if (m_layerType == LayerTypeWebLayer || m_layerType == LayerTypeTiledBackingTileLayer) {
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300
-        if (screenSupportsExtendedColor())
-            [m_layer setContentsFormat:kCAContentsFormatRGBA10XR];
-#endif
-    }
 
     // So that the scrolling thread's performance logging code can find all the tiles, mark this as being a tile.
     if (m_layerType == LayerTypeTiledBackingTileLayer)
@@ -696,6 +685,46 @@ void PlatformCALayerCocoa::setAcceleratesDrawing(bool acceleratesDrawing)
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
+bool PlatformCALayerCocoa::wantsDeepColorBackingStore() const
+{
+    return m_wantsDeepColorBackingStore;
+}
+
+void PlatformCALayerCocoa::setWantsDeepColorBackingStore(bool wantsDeepColorBackingStore)
+{
+    if (wantsDeepColorBackingStore == m_wantsDeepColorBackingStore)
+        return;
+
+    m_wantsDeepColorBackingStore = wantsDeepColorBackingStore;
+
+    if (usesTiledBackingLayer()) {
+        [static_cast<WebTiledBackingLayer *>(m_layer.get()) setWantsDeepColorBackingStore:m_wantsDeepColorBackingStore];
+        return;
+    }
+
+    updateContentsFormat();
+}
+
+bool PlatformCALayerCocoa::supportsSubpixelAntialiasedText() const
+{
+    return m_supportsSubpixelAntialiasedText;
+}
+
+void PlatformCALayerCocoa::setSupportsSubpixelAntialiasedText(bool supportsSubpixelAntialiasedText)
+{
+    if (supportsSubpixelAntialiasedText == m_supportsSubpixelAntialiasedText)
+        return;
+    
+    m_supportsSubpixelAntialiasedText = supportsSubpixelAntialiasedText;
+
+    if (usesTiledBackingLayer()) {
+        [static_cast<WebTiledBackingLayer *>(m_layer.get()) setSupportsSubpixelAntialiasedText:m_supportsSubpixelAntialiasedText];
+        return;
+    }
+
+    updateContentsFormat();
+}
+
 CFTypeRef PlatformCALayerCocoa::contents() const
 {
     return [m_layer contents];
@@ -965,6 +994,39 @@ void PlatformCALayerCocoa::updateCustomAppearance(GraphicsLayer::CustomAppearanc
 #endif
 }
 
+#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+static NSString *layerContentsFormat(bool wantsDeepColor, bool supportsSubpixelAntialiasedFonts)
+{
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300
+    if (wantsDeepColor)
+        return kCAContentsFormatRGBA10XR;
+#else
+    UNUSED_PARAM(wantsDeepColor);
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    if (supportsSubpixelAntialiasedFonts)
+        return kCAContentsFormatRGBA8ColorRGBA8LinearGlyphMask;
+#else
+    UNUSED_PARAM(supportsSubpixelAntialiasedFonts);
+#endif
+
+    return nil;
+}
+#endif
+
+void PlatformCALayerCocoa::updateContentsFormat()
+{
+    if (m_layerType == LayerTypeWebLayer || m_layerType == LayerTypeTiledBackingTileLayer) {
+        BEGIN_BLOCK_OBJC_EXCEPTIONS
+#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+        if (NSString *formatString = layerContentsFormat(wantsDeepColorBackingStore(), supportsSubpixelAntialiasedText()))
+            [m_layer setContentsFormat:formatString];
+#endif
+        END_BLOCK_OBJC_EXCEPTIONS
+    }
+}
+
 TiledBacking* PlatformCALayerCocoa::tiledBacking()
 {
     if (!usesTiledBackingLayer())
@@ -1073,7 +1135,7 @@ void PlatformCALayer::drawLayerContents(CGContextRef context, WebCore::PlatformC
         graphicsContext.setIsCALayerContext(true);
         graphicsContext.setIsAcceleratedContext(platformCALayer->acceleratesDrawing());
         
-        if (!layerContents->platformCALayerContentsOpaque()) {
+        if (!layerContents->platformCALayerContentsOpaque() && !platformCALayer->supportsSubpixelAntialiasedText()) {
             // Turn off font smoothing to improve the appearance of text rendered onto a transparent background.
             graphicsContext.setShouldSmoothFonts(false);
         }

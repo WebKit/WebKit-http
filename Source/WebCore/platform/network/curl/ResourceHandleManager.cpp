@@ -85,6 +85,7 @@ namespace WebCore {
 const int selectTimeoutMS = 5;
 const double pollTimeSeconds = 0.05;
 const int maxRunningJobs = 128;
+const char* const errorDomainCurl = "CurlErrorDomain";
 
 URL getCurlEffectiveURL(CURL* handle)
 {
@@ -99,6 +100,10 @@ static const bool ignoreSSLErrors = getenv("WEBKIT_IGNORE_SSL_ERRORS");
 
 static CString certificatePath()
 {
+    char* envPath = getenv("CURL_CA_BUNDLE_PATH");
+    if (envPath)
+        return envPath;
+
 #if USE(CF)
     CFBundleRef webKitBundleRef = webKitBundle();
     if (webKitBundleRef) {
@@ -110,9 +115,6 @@ static CString certificatePath()
         }
     }
 #endif
-    char* envPath = getenv("CURL_CA_BUNDLE_PATH");
-    if (envPath)
-       return envPath;
 
     return CString();
 }
@@ -169,14 +171,8 @@ static Lock* sharedResourceMutex(curl_lock_data data)
 }
 
 #if ENABLE(WEB_TIMING)
-static double milisecondsSinceRequest(double requestTime)
-{
-    return (monotonicallyIncreasingTime() - requestTime) * 1000.0;
-}
-
 static void calculateWebTimingInformations(ResourceHandleInternal* d)
 {
-    double startTransfertTime = 0;
     double preTransferTime = 0;
     double dnslookupTime = 0;
     double connectTime = 0;
@@ -185,20 +181,19 @@ static void calculateWebTimingInformations(ResourceHandleInternal* d)
     curl_easy_getinfo(d->m_handle, CURLINFO_NAMELOOKUP_TIME, &dnslookupTime);
     curl_easy_getinfo(d->m_handle, CURLINFO_CONNECT_TIME, &connectTime);
     curl_easy_getinfo(d->m_handle, CURLINFO_APPCONNECT_TIME, &appConnectTime);
-    curl_easy_getinfo(d->m_handle, CURLINFO_STARTTRANSFER_TIME, &startTransfertTime);
     curl_easy_getinfo(d->m_handle, CURLINFO_PRETRANSFER_TIME, &preTransferTime);
 
-    d->m_response.networkLoadTiming().domainLookupStart = 0;
-    d->m_response.networkLoadTiming().domainLookupEnd = dnslookupTime * 1000;
+    d->m_response.deprecatedNetworkLoadMetrics().domainLookupStart = Seconds(0);
+    d->m_response.deprecatedNetworkLoadMetrics().domainLookupEnd = Seconds(dnslookupTime);
 
-    d->m_response.networkLoadTiming().connectStart = dnslookupTime * 1000;
-    d->m_response.networkLoadTiming().connectEnd = connectTime * 1000;
+    d->m_response.deprecatedNetworkLoadMetrics().connectStart = Seconds(dnslookupTime);
+    d->m_response.deprecatedNetworkLoadMetrics().connectEnd = Seconds(connectTime);
 
-    d->m_response.networkLoadTiming().requestStart = connectTime * 1000;
-    d->m_response.networkLoadTiming().responseStart = preTransferTime * 1000;
+    d->m_response.deprecatedNetworkLoadMetrics().requestStart = Seconds(connectTime);
+    d->m_response.deprecatedNetworkLoadMetrics().responseStart = Seconds(preTransferTime);
 
     if (appConnectTime)
-        d->m_response.networkLoadTiming().secureConnectionStart = connectTime * 1000;
+        d->m_response.deprecatedNetworkLoadMetrics().secureConnectionStart = Seconds(connectTime);
 }
 #endif
 
@@ -676,7 +671,7 @@ void ResourceHandleManager::downloadTimerCallback()
         // find the node which has same d->m_handle as completed transfer
         CURL* handle = msg->easy_handle;
         ASSERT(handle);
-        ResourceHandle* job = 0;
+        ResourceHandle* job = nullptr;
         CURLcode err = curl_easy_getinfo(handle, CURLINFO_PRIVATE, &job);
         ASSERT_UNUSED(err, CURLE_OK == err);
         ASSERT(job);
@@ -710,7 +705,7 @@ void ResourceHandleManager::downloadTimerCallback()
                 d->m_multipartHandle->contentEnded();
 
             if (d->client()) {
-                d->client()->didFinishLoading(job, 0);
+                d->client()->didFinishLoading(job);
                 CurlCacheManager::getInstance().didFinishLoading(*job);
             }
         } else {
@@ -719,7 +714,7 @@ void ResourceHandleManager::downloadTimerCallback()
             fprintf(stderr, "Curl ERROR for url='%s', error: '%s'\n", url.string().utf8().data(), curl_easy_strerror(msg->data.result));
 #endif
             if (d->client()) {
-                ResourceError resourceError(String(), msg->data.result, url, String(curl_easy_strerror(msg->data.result)));
+                ResourceError resourceError(ASCIILiteral(errorDomainCurl), msg->data.result, url, String(curl_easy_strerror(msg->data.result)));
                 resourceError.setSSLErrors(d->m_sslErrors);
                 d->client()->didFail(job, resourceError);
                 CurlCacheManager::getInstance().didFail(*job);
@@ -971,7 +966,7 @@ static void handleDataURL(ResourceHandle* handle)
     }
 
     if (handle->client())
-        handle->client()->didFinishLoading(handle, 0);
+        handle->client()->didFinishLoading(handle);
 }
 
 void ResourceHandleManager::dispatchSynchronousJob(ResourceHandle* job)
@@ -996,7 +991,7 @@ void ResourceHandleManager::dispatchSynchronousJob(ResourceHandle* job)
     CURLcode ret =  curl_easy_perform(handle->m_handle);
 
     if (ret != CURLE_OK) {
-        ResourceError error(String(handle->m_url), ret, kurl, String(curl_easy_strerror(ret)));
+        ResourceError error(ASCIILiteral(errorDomainCurl), ret, kurl, String(curl_easy_strerror(ret)));
         error.setSSLErrors(handle->m_sslErrors);
         handle->client()->didFail(job, error);
     } else {

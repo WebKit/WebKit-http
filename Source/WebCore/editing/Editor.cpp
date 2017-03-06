@@ -1346,10 +1346,23 @@ void Editor::copyURL(const URL& url, const String& title, Pasteboard& pasteboard
     pasteboardURL.title = title;
 
 #if PLATFORM(MAC)
-    fillInUserVisibleForm(pasteboardURL);
+    pasteboardURL.userVisibleForm = userVisibleString(url);
 #endif
 
     pasteboard.write(pasteboardURL);
+}
+
+PasteboardWriterData::URL Editor::pasteboardWriterURL(const URL& url, const String& title)
+{
+    PasteboardWriterData::URL result;
+
+    result.url = url;
+    result.title = title;
+#if PLATFORM(MAC)
+    result.userVisibleForm = userVisibleString(url);
+#endif
+
+    return result;
 }
 
 #if !PLATFORM(IOS)
@@ -3093,7 +3106,7 @@ void Editor::applyEditingStyleToElement(Element* element) const
     CSSStyleDeclaration* style = downcast<StyledElement>(*element).cssomStyle();
     style->setPropertyInternal(CSSPropertyWordWrap, "break-word", false);
     style->setPropertyInternal(CSSPropertyWebkitNbspMode, "space", false);
-    style->setPropertyInternal(CSSPropertyWebkitLineBreak, "after-white-space", false);
+    style->setPropertyInternal(CSSPropertyLineBreak, "after-white-space", false);
 }
 
 bool Editor::findString(const String& target, FindOptions options)

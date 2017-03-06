@@ -243,12 +243,7 @@ WebInspector.contentLoaded = function()
     }
 
     document.body.classList.add(this.debuggableType);
-
-    let layoutDirection = WebInspector.settings.layoutDirection.value;
-    if (layoutDirection === WebInspector.LayoutDirection.System)
-        layoutDirection = InspectorFrontendHost.userInterfaceLayoutDirection();
-
-    document.body.setAttribute("dir", layoutDirection);
+    document.body.setAttribute("dir", this.resolvedLayoutDirection());
 
     function setTabSize() {
         document.body.style.tabSize = WebInspector.settings.tabSize.value;
@@ -363,9 +358,12 @@ WebInspector.contentLoaded = function()
     this._undockToolbarButton.element.classList.add(WebInspector.Popover.IgnoreAutoDismissClassName);
     this._undockToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._undock, this);
 
-    this._dockRightToolbarButton = new WebInspector.ButtonToolbarItem("dock-right", WebInspector.UIString("Dock to right of window"), null, "Images/DockRight.svg");
-    this._dockRightToolbarButton.element.classList.add(WebInspector.Popover.IgnoreAutoDismissClassName);
-    this._dockRightToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._dockRight, this);
+    let dockImage = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? "Images/DockLeft.svg" : "Images/DockRight.svg";
+    this._dockToSideToolbarButton = new WebInspector.ButtonToolbarItem("dock-right", WebInspector.UIString("Dock to side of window"), null, dockImage);
+    this._dockToSideToolbarButton.element.classList.add(WebInspector.Popover.IgnoreAutoDismissClassName);
+
+    let dockToSideCallback = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? this._dockLeft : this._dockRight;
+    this._dockToSideToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, dockToSideCallback, this);
 
     this._dockBottomToolbarButton = new WebInspector.ButtonToolbarItem("dock-bottom", WebInspector.UIString("Dock to bottom of window"), null, "Images/DockBottom.svg");
     this._dockBottomToolbarButton.element.classList.add(WebInspector.Popover.IgnoreAutoDismissClassName);
@@ -405,7 +403,7 @@ WebInspector.contentLoaded = function()
     this.toolbar.addToolbarItem(this._closeToolbarButton, WebInspector.Toolbar.Section.Control);
 
     this.toolbar.addToolbarItem(this._undockToolbarButton, WebInspector.Toolbar.Section.Left);
-    this.toolbar.addToolbarItem(this._dockRightToolbarButton, WebInspector.Toolbar.Section.Left);
+    this.toolbar.addToolbarItem(this._dockToSideToolbarButton, WebInspector.Toolbar.Section.Left);
     this.toolbar.addToolbarItem(this._dockBottomToolbarButton, WebInspector.Toolbar.Section.Left);
 
     this.toolbar.addToolbarItem(this._reloadToolbarButton, WebInspector.Toolbar.Section.CenterLeft);
@@ -757,11 +755,12 @@ WebInspector.updateDockedState = function(side)
         return;
 
     this._previousDockConfiguration = this._dockConfiguration;
+
     if (!this._previousDockConfiguration) {
-        if (side === WebInspector.DockConfiguration.Right)
+        if (side === WebInspector.DockConfiguration.Right || side === WebInspector.DockConfiguration.Left)
             this._previousDockConfiguration = WebInspector.DockConfiguration.Bottom;
         else
-            this._previousDockConfiguration = WebInspector.DockConfiguration.Right;
+            this._previousDockConfiguration = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? WebInspector.DockConfiguration.Left : WebInspector.DockConfiguration.Right;
     }
 
     this._dockConfiguration = side;
@@ -772,12 +771,15 @@ WebInspector.updateDockedState = function(side)
 
     if (side === WebInspector.DockConfiguration.Bottom) {
         document.body.classList.add("docked", WebInspector.DockConfiguration.Bottom);
-        document.body.classList.remove("window-inactive", WebInspector.DockConfiguration.Right);
+        document.body.classList.remove("window-inactive", WebInspector.DockConfiguration.Right, WebInspector.DockConfiguration.Left);
     } else if (side === WebInspector.DockConfiguration.Right) {
         document.body.classList.add("docked", WebInspector.DockConfiguration.Right);
-        document.body.classList.remove("window-inactive", WebInspector.DockConfiguration.Bottom);
+        document.body.classList.remove("window-inactive", WebInspector.DockConfiguration.Bottom, WebInspector.DockConfiguration.Left);
+    } else if (side === WebInspector.DockConfiguration.Left) {
+        document.body.classList.add("docked", WebInspector.DockConfiguration.Left);
+        document.body.classList.remove("window-inactive", WebInspector.DockConfiguration.Bottom, WebInspector.DockConfiguration.Right);
     } else
-        document.body.classList.remove("docked", WebInspector.DockConfiguration.Right, WebInspector.DockConfiguration.Bottom);
+        document.body.classList.remove("docked", WebInspector.DockConfiguration.Right, WebInspector.DockConfiguration.Left, WebInspector.DockConfiguration.Bottom);
 
     this._ignoreToolbarModeDidChangeEvents = false;
 
@@ -808,24 +810,24 @@ WebInspector.handlePossibleLinkClick = function(event, frame, alwaysOpenExternal
     event.preventDefault();
     event.stopPropagation();
 
-    this.openURL(anchorElement.href, frame, false, anchorElement.lineNumber);
+    this.openURL(anchorElement.href, frame, {lineNumber: anchorElement.lineNumber});
 
     return true;
 };
 
-WebInspector.openURL = function(url, frame, alwaysOpenExternally, lineNumber)
+WebInspector.openURL = function(url, frame, options = {})
 {
     console.assert(url);
     if (!url)
         return;
 
-    console.assert(typeof lineNumber === "undefined" || typeof lineNumber === "number", "lineNumber should be a number.");
+    console.assert(typeof options.lineNumber === "undefined" || typeof options.lineNumber === "number", "lineNumber should be a number.");
 
     // If alwaysOpenExternally is not defined, base it off the command/meta key for the current event.
-    if (alwaysOpenExternally === undefined || alwaysOpenExternally === null)
-        alwaysOpenExternally = window.event ? window.event.metaKey : false;
+    if (options.alwaysOpenExternally === undefined || options.alwaysOpenExternally === null)
+        options.alwaysOpenExternally = window.event ? window.event.metaKey : false;
 
-    if (alwaysOpenExternally) {
+    if (options.alwaysOpenExternally) {
         InspectorFrontendHost.openInNewTab(url);
         return;
     }
@@ -842,8 +844,8 @@ WebInspector.openURL = function(url, frame, alwaysOpenExternally, lineNumber)
     let simplifiedURL = removeURLFragment(url);
     var resource = frame.url === simplifiedURL ? frame.mainResource : frame.resourceForURL(simplifiedURL, searchChildFrames);
     if (resource) {
-        var position = new WebInspector.SourceCodePosition(lineNumber, 0);
-        this.showSourceCode(resource, position);
+        let positionToReveal = new WebInspector.SourceCodePosition(options.lineNumber, 0);
+        this.showSourceCode(resource, Object.shallowMerge(options, {positionToReveal}));
         return;
     }
 
@@ -1580,6 +1582,11 @@ WebInspector._dockRight = function(event)
     InspectorFrontendHost.requestSetDockSide(WebInspector.DockConfiguration.Right);
 };
 
+WebInspector._dockLeft = function(event)
+{
+    InspectorFrontendHost.requestSetDockSide(WebInspector.DockConfiguration.Left);
+};
+
 WebInspector._togglePreviousDockConfiguration = function(event)
 {
     InspectorFrontendHost.requestSetDockSide(this._previousDockConfiguration);
@@ -1591,12 +1598,12 @@ WebInspector._updateDockNavigationItems = function()
         this._closeToolbarButton.hidden = !this.docked;
         this._undockToolbarButton.hidden = this._dockConfiguration === WebInspector.DockConfiguration.Undocked;
         this._dockBottomToolbarButton.hidden = this._dockConfiguration === WebInspector.DockConfiguration.Bottom;
-        this._dockRightToolbarButton.hidden = this._dockConfiguration === WebInspector.DockConfiguration.Right;
+        this._dockToSideToolbarButton.hidden = this._dockConfiguration === WebInspector.DockConfiguration.Right || this._dockConfiguration === WebInspector.DockConfiguration.Left;
     } else {
         this._closeToolbarButton.hidden = true;
         this._undockToolbarButton.hidden = true;
         this._dockBottomToolbarButton.hidden = true;
-        this._dockRightToolbarButton.hidden = true;
+        this._dockToSideToolbarButton.hidden = true;
     }
 };
 
@@ -1714,7 +1721,7 @@ WebInspector._toolbarMouseDown = function(event)
     if (event.ctrlKey)
         return;
 
-    if (this._dockConfiguration === WebInspector.DockConfiguration.Right)
+    if (this._dockConfiguration === WebInspector.DockConfiguration.Right || this._dockConfiguration === WebInspector.DockConfiguration.Left)
         return;
 
     if (this.docked)
@@ -1757,15 +1764,27 @@ WebInspector._dockedResizerMouseDown = function(event)
 
         lastScreenPosition = position;
 
-        // If delta is positive the docked Inspector size is decreasing, in which case the cursor client position
-        // with respect to the target cannot be less than the first mouse down position within the target.
-        if (delta > 0 && clientPosition < firstClientPosition)
-            return;
+        if (this._dockConfiguration === WebInspector.DockConfiguration.Left) {
+            // If the mouse is travelling rightward but is positioned left of the resizer, ignore the event.
+            if (delta > 0 && clientPosition < firstClientPosition)
+                return;
 
-        // If delta is negative the docked Inspector size is increasing, in which case the cursor client position
-        // with respect to the target cannot be greater than the first mouse down position within the target.
-        if (delta < 0 && clientPosition > firstClientPosition)
-            return;
+            // If the mouse is travelling leftward but is positioned to the right of the resizer, ignore the event.
+            if (delta < 0 && clientPosition > window[windowProperty])
+                return;
+
+            // We later subtract the delta from the current position, but since the inspected view and inspector view
+            // are flipped when docked to left, we want dragging to have the opposite effect from docked to right.
+            delta *= -1;
+        } else {
+            // If the mouse is travelling downward/rightward but is positioned above/left of the resizer, ignore the event.
+            if (delta > 0 && clientPosition < firstClientPosition)
+                return;
+
+            // If the mouse is travelling upward/leftward but is positioned below/right of the resizer, ignore the event.
+            if (delta < 0 && clientPosition > firstClientPosition)
+                return;
+        }
 
         let dimension = Math.max(0, window[windowProperty] - delta);
         // If zoomed in/out, there be greater/fewer document pixels shown, but the inspector's
@@ -2089,6 +2108,12 @@ WebInspector._copy = function(event)
             return;
         }
 
+        let tabContentView = this.tabBrowser.selectedTabContentView;
+        if (tabContentView && typeof tabContentView.handleCopyEvent === "function") {
+            tabContentView.handleCopyEvent(event);
+            return;
+        }
+
         return;
     }
 
@@ -2144,10 +2169,14 @@ WebInspector.setZoomFactor = function(factor)
     WebInspector.settings.zoomFactor.value = InspectorFrontendHost.zoomFactor();
 };
 
-WebInspector.getLayoutDirection = function()
+WebInspector.resolvedLayoutDirection = function()
 {
-    return WebInspector.settings.layoutDirection.value;
-};
+    let layoutDirection = WebInspector.settings.layoutDirection.value;
+    if (layoutDirection === WebInspector.LayoutDirection.System)
+        layoutDirection = InspectorFrontendHost.userInterfaceLayoutDirection();
+
+    return layoutDirection;
+}
 
 WebInspector.setLayoutDirection = function(value)
 {
@@ -2158,6 +2187,13 @@ WebInspector.setLayoutDirection = function(value)
         return;
 
     WebInspector.settings.layoutDirection.value = value;
+
+    if (value === WebInspector.LayoutDirection.RTL && this._dockConfiguration === WebInspector.DockConfiguration.Right)
+        this._dockLeft();
+
+    if (value === WebInspector.LayoutDirection.LTR && this._dockConfiguration === WebInspector.DockConfiguration.Left)
+        this._dockRight();
+
     window.location.reload();
 };
 
@@ -2657,6 +2693,7 @@ WebInspector.dialogWasDismissed = function(dialog)
 
 WebInspector.DockConfiguration = {
     Right: "right",
+    Left: "left",
     Bottom: "bottom",
     Undocked: "undocked",
 };

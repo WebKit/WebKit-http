@@ -152,12 +152,18 @@ public:
     bool isStatisticsPrevalentResource(WKStringRef hostName);
     void setStatisticsHasHadUserInteraction(WKStringRef hostName, bool value);
     bool isStatisticsHasHadUserInteraction(WKStringRef hostName);
+    void setStatisticsSubframeUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName);
+    void setStatisticsSubresourceUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName);
+    void setStatisticsSubresourceUniqueRedirectTo(WKStringRef hostName, WKStringRef hostNameRedirectedTo);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
     void statisticsFireDataModificationHandler();
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
     void setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double);
     void statisticsResetToConsistentState();
+
+    WKArrayRef openPanelFileURLs() const { return m_openPanelFileURLs.get(); }
+    void setOpenPanelFileURLs(WKArrayRef fileURLs) { m_openPanelFileURLs = fileURLs; }
 
 private:
     WKRetainPtr<WKPageConfigurationRef> generatePageConfiguration(WKContextConfigurationRef);
@@ -359,6 +365,8 @@ private:
     bool m_shouldShowWebView { false };
     
     bool m_shouldDecideNavigationPolicyAfterDelay { false };
+
+    WKRetainPtr<WKArrayRef> m_openPanelFileURLs;
 
     std::unique_ptr<EventSenderProxy> m_eventSenderProxy;
 

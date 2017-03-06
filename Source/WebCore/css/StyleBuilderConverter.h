@@ -96,12 +96,10 @@ public:
     static ScrollSnapType convertScrollSnapType(StyleResolver&, const CSSValue&);
     static ScrollSnapAlign convertScrollSnapAlign(StyleResolver&, const CSSValue&);
 #endif
-#if ENABLE(CSS_GRID_LAYOUT)
     static GridTrackSize convertGridTrackSize(StyleResolver&, const CSSValue&);
     static Vector<GridTrackSize> convertGridTrackSizeList(StyleResolver&, const CSSValue&);
     static std::optional<GridPosition> convertGridPosition(StyleResolver&, const CSSValue&);
     static GridAutoFlow convertGridAutoFlow(StyleResolver&, const CSSValue&);
-#endif // ENABLE(CSS_GRID_LAYOUT)
     static std::optional<Length> convertWordSpacing(StyleResolver&, const CSSValue&);
     static std::optional<float> convertPerspective(StyleResolver&, const CSSValue&);
     static std::optional<Length> convertMarqueeIncrement(StyleResolver&, const CSSValue&);
@@ -160,14 +158,12 @@ private:
     static Length convertTo100PercentMinusLength(const Length&);
     template<CSSValueID, CSSValueID> static Length convertPositionComponent(StyleResolver&, const CSSPrimitiveValue&);
 
-#if ENABLE(CSS_GRID_LAYOUT)
     static GridLength createGridTrackBreadth(const CSSPrimitiveValue&, StyleResolver&);
     static GridTrackSize createGridTrackSize(const CSSValue&, StyleResolver&);
     struct TracksData;
     static bool createGridTrackList(const CSSValue&, TracksData&, StyleResolver&);
     static bool createGridPosition(const CSSValue&, GridPosition&);
     static void createImplicitNamedGridLinesFromGridArea(const NamedGridAreaMap&, NamedGridLinesMap&, GridTrackSizingDirection);
-#endif // ENABLE(CSS_GRID_LAYOUT)
     static CSSToLengthConversionData csstoLengthConversionDataWithTextZoomFactor(StyleResolver&);
 };
 
@@ -833,7 +829,6 @@ inline ScrollSnapAlign StyleBuilderConverter::convertScrollSnapAlign(StyleResolv
 
 #endif
 
-#if ENABLE(CSS_GRID_LAYOUT)
 inline GridLength StyleBuilderConverter::createGridTrackBreadth(const CSSPrimitiveValue& primitiveValue, StyleResolver& styleResolver)
 {
     if (primitiveValue.valueID() == CSSValueWebkitMinContent)
@@ -1066,7 +1061,6 @@ inline GridAutoFlow StyleBuilderConverter::convertGridAutoFlow(StyleResolver&, c
 
     return autoFlow;
 }
-#endif // ENABLE(CSS_GRID_LAYOUT)
 
 inline CSSToLengthConversionData StyleBuilderConverter::csstoLengthConversionDataWithTextZoomFactor(StyleResolver& styleResolver)
 {
@@ -1228,20 +1222,20 @@ inline PaintOrder StyleBuilderConverter::convertPaintOrder(StyleResolver&, const
 {
     if (is<CSSPrimitiveValue>(value)) {
         ASSERT(downcast<CSSPrimitiveValue>(value).valueID() == CSSValueNormal);
-        return PaintOrderNormal;
+        return PaintOrder::Normal;
     }
 
     auto& orderTypeList = downcast<CSSValueList>(value);
     switch (downcast<CSSPrimitiveValue>(*orderTypeList.itemWithoutBoundsCheck(0)).valueID()) {
     case CSSValueFill:
-        return orderTypeList.length() > 1 ? PaintOrderFillMarkers : PaintOrderFill;
+        return orderTypeList.length() > 1 ? PaintOrder::FillMarkers : PaintOrder::Fill;
     case CSSValueStroke:
-        return orderTypeList.length() > 1 ? PaintOrderStrokeMarkers : PaintOrderStroke;
+        return orderTypeList.length() > 1 ? PaintOrder::StrokeMarkers : PaintOrder::Stroke;
     case CSSValueMarkers:
-        return orderTypeList.length() > 1 ? PaintOrderMarkersStroke : PaintOrderMarkers;
+        return orderTypeList.length() > 1 ? PaintOrder::MarkersStroke : PaintOrder::Markers;
     default:
         ASSERT_NOT_REACHED();
-        return PaintOrderNormal;
+        return PaintOrder::Normal;
     }
 }
 
@@ -1289,7 +1283,6 @@ inline StyleSelfAlignmentData StyleBuilderConverter::convertSelfOrDefaultAlignme
 inline StyleContentAlignmentData StyleBuilderConverter::convertContentAlignmentData(StyleResolver&, const CSSValue& value)
 {
     StyleContentAlignmentData alignmentData = RenderStyle::initialContentAlignment();
-#if ENABLE(CSS_GRID_LAYOUT)
     if (RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled()) {
         if (!is<CSSContentDistributionValue>(value))
             return alignmentData;
@@ -1302,7 +1295,6 @@ inline StyleContentAlignmentData StyleBuilderConverter::convertContentAlignmentD
             alignmentData.setOverflow(contentValue.overflow().get());
         return alignmentData;
     }
-#endif
     if (!is<CSSPrimitiveValue>(value))
         return alignmentData;
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);

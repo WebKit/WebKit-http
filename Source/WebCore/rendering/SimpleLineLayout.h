@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "SimpleLineLayoutCoverage.h"
 #include "TextFlags.h"
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -41,6 +42,8 @@ class RenderBlockFlow;
 namespace SimpleLineLayout {
 
 bool canUseFor(const RenderBlockFlow&);
+AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow&, IncludeReasons);
+
 
 struct Run {
 #if COMPILER(MSVC)
@@ -66,7 +69,7 @@ struct Run {
     ExpansionBehavior expansionBehavior { ForbidLeadingExpansion | ForbidTrailingExpansion };
 };
 
-struct SimplePaginationStrut {
+struct SimpleLineStrut {
     unsigned lineBreak;
     float offset;
 };
@@ -75,22 +78,26 @@ class Layout {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     using RunVector = Vector<Run, 10>;
-    using SimplePaginationStruts = Vector<SimplePaginationStrut, 4>;
-    static std::unique_ptr<Layout> create(const RunVector&, SimplePaginationStruts&, unsigned lineCount);
+    using SimpleLineStruts = Vector<SimpleLineStrut, 4>;
+    static std::unique_ptr<Layout> create(const RunVector&, unsigned lineCount);
 
     unsigned lineCount() const { return m_lineCount; }
 
     unsigned runCount() const { return m_runCount; }
     const Run& runAt(unsigned i) const { return m_runs[i]; }
 
-    bool isPaginated() const { return !m_paginationStruts.isEmpty(); }
-    const SimplePaginationStruts& struts() const { return m_paginationStruts; }
+    void setIsPaginated() { m_isPaginated = true; }
+    bool isPaginated() const { return m_isPaginated; }
+    bool hasLineStruts() const { return !m_lineStruts.isEmpty(); }
+    void setLineStruts(SimpleLineStruts&& lineStruts) { m_lineStruts = lineStruts; }
+    const SimpleLineStruts& struts() const { return m_lineStruts; }
 private:
-    Layout(const RunVector&, SimplePaginationStruts&, unsigned lineCount);
+    Layout(const RunVector&, unsigned lineCount);
 
     unsigned m_lineCount;
     unsigned m_runCount;
-    SimplePaginationStruts m_paginationStruts;
+    bool m_isPaginated { false };
+    SimpleLineStruts m_lineStruts;
     Run m_runs[0];
 };
 

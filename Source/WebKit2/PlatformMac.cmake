@@ -49,6 +49,10 @@ list(APPEND WebKit2_SOURCES
 
     Platform/cg/CGUtilities.cpp
 
+    Platform/classifier/ResourceLoadStatisticsClassifier.cpp
+
+    Platform/classifier/cocoa/ResourceLoadStatisticsClassifierCocoa.cpp
+
     Platform/foundation/LoggingFoundation.mm
 
     Platform/cocoa/SharedMemoryCocoa.cpp
@@ -238,6 +242,7 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/Cocoa/AutomationClient.mm
     UIProcess/Cocoa/AutomationSessionClient.mm
+    UIProcess/Cocoa/CustomProtocolManagerClient.mm
     UIProcess/Cocoa/DiagnosticLoggingClient.mm
     UIProcess/Cocoa/DownloadClient.mm
     UIProcess/Cocoa/FindClient.mm
@@ -258,8 +263,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/WebViewImpl.mm
 
     UIProcess/Launcher/mac/ProcessLauncherMac.mm
-
-    UIProcess/Network/CustomProtocols/mac/CustomProtocolManagerProxyMac.mm
 
     UIProcess/Network/mac/NetworkProcessProxyMac.mm
 
@@ -392,6 +395,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/Scrolling"
     "${WEBKIT2_DIR}/UIProcess/ios"
     "${WEBKIT2_DIR}/Platform/cg"
+    "${WEBKIT2_DIR}/Platform/classifier"
+    "${WEBKIT2_DIR}/Platform/classifier/cocoa"
     "${WEBKIT2_DIR}/Platform/mac"
     "${WEBKIT2_DIR}/Platform/unix"
     "${WEBKIT2_DIR}/Platform/spi/Cocoa"

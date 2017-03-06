@@ -40,10 +40,6 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "ThreadSafeCoordinatedSurface.h"
-#elif USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-#include "CoordinatedGraphicsArgumentCoders.h"
-#include "CoordinatedLayerTreeHostProxyMessages.h"
-#include "WebCoreArgumentCoders.h"
 #endif
 
 using namespace WebCore;
@@ -69,9 +65,6 @@ CoordinatedLayerTreeHost::CoordinatedLayerTreeHost(WebPage& webPage)
 #endif
 
     m_coordinator.createRootLayer(m_webPage.size());
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    m_layerTreeContext.contextID = downcast<CoordinatedGraphicsLayer>(*m_coordinator.rootLayer()).id();
-#endif
 
     CoordinatedSurface::setFactory(createCoordinatedSurface);
     scheduleLayerFlush();
@@ -178,7 +171,7 @@ void CoordinatedLayerTreeHost::layerFlushTimerFired()
 
     m_coordinator.syncDisplayState();
 
-    if (!m_isValid)
+    if (!m_isValid || !m_coordinator.rootCompositingLayer())
         return;
 
     bool didSync = m_coordinator.flushPendingLayerChanges();
@@ -200,9 +193,6 @@ void CoordinatedLayerTreeHost::paintLayerContents(const GraphicsLayer*, Graphics
 
 void CoordinatedLayerTreeHost::commitSceneState(const CoordinatedGraphicsState& state)
 {
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    m_webPage.send(Messages::CoordinatedLayerTreeHostProxy::CommitCoordinatedGraphicsState(state));
-#endif
     m_isWaitingForRenderer = true;
 }
 
@@ -210,8 +200,6 @@ RefPtr<CoordinatedSurface> CoordinatedLayerTreeHost::createCoordinatedSurface(co
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     return ThreadSafeCoordinatedSurface::create(size, flags);
-#elif USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    return WebCoordinatedSurface::create(size, flags);
 #else
     UNUSED_PARAM(size);
     UNUSED_PARAM(flags);

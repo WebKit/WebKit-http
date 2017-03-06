@@ -27,11 +27,9 @@
 
 #if ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
 
-#include "AudioSourceObserverObjC.h"
 #include "AudioTrackPrivateMediaStream.h"
 #include <AudioToolbox/AudioToolbox.h>
 #include <CoreAudio/CoreAudioTypes.h>
-#include <wtf/Lock.h>
 
 namespace WebCore {
 
@@ -63,16 +61,12 @@ private:
 
     // RealtimeMediaSource::Observer
     void sourceStopped() final;
-    void sourceMutedChanged()  final { }
-    void sourceEnabledChanged() final { }
-    void sourceSettingsChanged() final { }
-    bool preventSourceFromStopping() final { return false; }
     void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
 
     static OSStatus inputProc(void*, AudioUnitRenderActionFlags*, const AudioTimeStamp*, UInt32 inBusNumber, UInt32 numberOfFrames, AudioBufferList*);
     OSStatus render(UInt32 sampleCount, AudioBufferList&, UInt32 inBusNumber, const AudioTimeStamp&, AudioUnitRenderActionFlags&);
 
-    OSStatus setupAudioUnit();
+    AudioComponentInstance createAudioUnit(CAAudioStreamDescription&);
     void cleanup();
     void zeroBufferList(AudioBufferList&, size_t);
     void playInternal();
@@ -83,7 +77,6 @@ private:
 
     RefPtr<AudioSampleDataSource> m_dataSource;
 
-    Lock m_internalStateLock;
     float m_volume { 1 };
     bool m_isPlaying { false };
     bool m_autoPlay { false };

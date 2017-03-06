@@ -2282,12 +2282,12 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
         }
 #endif
 
-        void didPlayMediaPreventedFromPlayingWithoutUserGesture(WebPageProxy& page) override
+        void handleAutoplayEvent(WebPageProxy& page, WebCore::AutoplayEvent event) override
         {
-            if (!m_client.didPlayMediaPreventedFromPlayingWithoutUserGesture)
+            if (!m_client.handleAutoplayEvent)
                 return;
 
-            m_client.didPlayMediaPreventedFromPlayingWithoutUserGesture(toAPI(&page), m_client.base.clientInfo);
+            m_client.handleAutoplayEvent(toAPI(&page), static_cast<WKAutoplayEvent>(event), m_client.base.clientInfo);
         }
     };
 
@@ -2892,51 +2892,3 @@ pid_t WKPageGetProcessIdentifier(WKPageRef page)
 {
     return toImpl(page)->processIdentifier();
 }
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-
-// -- DEPRECATED --
-
-WKStringRef WKPageGetPluginInformationBundleIdentifierKey()
-{
-    return WKPluginInformationBundleIdentifierKey();
-}
-
-WKStringRef WKPageGetPluginInformationBundleVersionKey()
-{
-    return WKPluginInformationBundleVersionKey();
-}
-
-WKStringRef WKPageGetPluginInformationDisplayNameKey()
-{
-    return WKPluginInformationDisplayNameKey();
-}
-
-WKStringRef WKPageGetPluginInformationFrameURLKey()
-{
-    return WKPluginInformationFrameURLKey();
-}
-
-WKStringRef WKPageGetPluginInformationMIMETypeKey()
-{
-    return WKPluginInformationMIMETypeKey();
-}
-
-WKStringRef WKPageGetPluginInformationPageURLKey()
-{
-    return WKPluginInformationPageURLKey();
-}
-
-WKStringRef WKPageGetPluginInformationPluginspageAttributeURLKey()
-{
-    return WKPluginInformationPluginspageAttributeURLKey();
-}
-
-WKStringRef WKPageGetPluginInformationPluginURLKey()
-{
-    return WKPluginInformationPluginURLKey();
-}
-
-// -- DEPRECATED --
-
-#endif // ENABLE(NETSCAPE_PLUGIN_API)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009, 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) 2012 Igalia, S.L.
  *
@@ -195,7 +195,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
 
     allocateAndEmitScope();
 
-    emitWatchdog();
+    emitCheckTraps();
 
     const FunctionStack& functionStack = programNode->functionStack();
 
@@ -329,7 +329,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
 
     allocateAndEmitScope();
 
-    emitWatchdog();
+    emitCheckTraps();
     
     if (functionNameIsInScope(functionNode->ident(), functionNode->functionMode())) {
         ASSERT(parseMode != SourceParseMode::GeneratorBodyMode);
@@ -761,7 +761,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
 
     allocateAndEmitScope();
 
-    emitWatchdog();
+    emitCheckTraps();
     
     const DeclarationStacks::FunctionStack& functionStack = evalNode->functionStack();
     for (size_t i = 0; i < functionStack.size(); ++i)
@@ -846,7 +846,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ModuleProgramNode* moduleProgramNod
 
     allocateAndEmitScope();
 
-    emitWatchdog();
+    emitCheckTraps();
     
     m_calleeRegister.setIndex(CallFrameSlot::callee);
 
@@ -1269,13 +1269,13 @@ void BytecodeGenerator::emitEnter()
 void BytecodeGenerator::emitLoopHint()
 {
     emitOpcode(op_loop_hint);
-    emitWatchdog();
+    emitCheckTraps();
 }
 
-void BytecodeGenerator::emitWatchdog()
+void BytecodeGenerator::emitCheckTraps()
 {
-    if (vm()->watchdog())
-        emitOpcode(op_watchdog);
+    if (vm()->watchdog() || vm()->needAsynchronousTerminationSupport())
+        emitOpcode(op_check_traps);
 }
 
 void BytecodeGenerator::retrieveLastBinaryOp(int& dstIndex, int& src1Index, int& src2Index)
@@ -4822,25 +4822,23 @@ void BytecodeGenerator::emitGeneratorStateChange(int32_t state)
 bool BytecodeGenerator::emitJumpViaFinallyIfNeeded(int targetLabelScopeDepth, Label& jumpTarget)
 {
     ASSERT(labelScopeDepth() - targetLabelScopeDepth >= 0);
-    size_t scopeDelta = labelScopeDepth() - targetLabelScopeDepth;
-    ASSERT(scopeDelta <= m_controlFlowScopeStack.size());
-    if (!scopeDelta)
-        return false; // No finallys to thread through.
-
-    ControlFlowScope* topScope = &m_controlFlowScopeStack.last();
-    ControlFlowScope* bottomScope = &m_controlFlowScopeStack.last() - scopeDelta;
+    size_t numberOfScopesToCheckForFinally = labelScopeDepth() - targetLabelScopeDepth;
+    ASSERT(numberOfScopesToCheckForFinally <= m_controlFlowScopeStack.size());
+    if (!numberOfScopesToCheckForFinally)
+        return false;
 
     FinallyContext* innermostFinallyContext = nullptr;
     FinallyContext* outermostFinallyContext = nullptr;
-    while (topScope > bottomScope) {
-        if (topScope->isFinallyScope()) {
-            FinallyContext* finallyContext = &topScope->finallyContext;
+    size_t scopeIndex = m_controlFlowScopeStack.size() - 1;
+    while (numberOfScopesToCheckForFinally--) {
+        ControlFlowScope* scope = &m_controlFlowScopeStack[scopeIndex--];
+        if (scope->isFinallyScope()) {
+            FinallyContext* finallyContext = &scope->finallyContext;
             if (!innermostFinallyContext)
                 innermostFinallyContext = finallyContext;
             outermostFinallyContext = finallyContext;
             finallyContext->incNumberOfBreaksOrContinues();
         }
-        --topScope;
     }
     if (!outermostFinallyContext)
         return false; // No finallys to thread through.
@@ -4856,21 +4854,20 @@ bool BytecodeGenerator::emitJumpViaFinallyIfNeeded(int targetLabelScopeDepth, La
 
 bool BytecodeGenerator::emitReturnViaFinallyIfNeeded(RegisterID* returnRegister)
 {
-    if (!m_controlFlowScopeStack.size())
-        return false; // No finallys to thread through.
-
-    ControlFlowScope* topScope = &m_controlFlowScopeStack.last();
-    ControlFlowScope* bottomScope = &m_controlFlowScopeStack.first();
+    size_t numberOfScopesToCheckForFinally = m_controlFlowScopeStack.size();
+    if (!numberOfScopesToCheckForFinally)
+        return false;
 
     FinallyContext* innermostFinallyContext = nullptr;
-    while (topScope >= bottomScope) {
-        if (topScope->isFinallyScope()) {
-            FinallyContext* finallyContext = &topScope->finallyContext;
+    while (numberOfScopesToCheckForFinally) {
+        size_t scopeIndex = --numberOfScopesToCheckForFinally;
+        ControlFlowScope* scope = &m_controlFlowScopeStack[scopeIndex];
+        if (scope->isFinallyScope()) {
+            FinallyContext* finallyContext = &scope->finallyContext;
             if (!innermostFinallyContext)
                 innermostFinallyContext = finallyContext;
             finallyContext->setHandlesReturns();
         }
-        --topScope;
     }
     if (!innermostFinallyContext)
         return false; // No finallys to thread through.

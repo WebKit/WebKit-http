@@ -1,3 +1,106 @@
+2017-02-27  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] RealtimOutgoingVideoSource should not need to do image conversion
+        https://bugs.webkit.org/show_bug.cgi?id=168802
+
+        Reviewed by Jon Lee.
+
+        Exporting new symbols.
+        Including headers in the project file.
+
+        * Source/webrtc/common_video/include/corevideo_frame_buffer.h:
+        * Source/webrtc/common_video/include/i420_buffer_pool.h:
+        * Source/webrtc/common_video/include/video_frame_buffer.h:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-24  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unneeded protobuf tests directory.
+        
+        Rubber-stamped by Joe Pecoraro.
+        
+        This directory contained a swift file that was causing problems in an internal verification step.
+
+        * Source/third_party/protobuf/objectivec/Tests: Removed.
+        (And everything in this subdirectory)
+
+2017-02-22  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Disable libwebrtc stderr logging in release mode
+        https://bugs.webkit.org/show_bug.cgi?id=168734
+
+        Reviewed by Tim Horton.
+
+        * Source/webrtc/base/logging.h:
+
+2017-02-21  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        <rdar://problem/30401864>
+
+        Reviewed by Alex Christensen.
+
+        Doing some clean-up.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Source/webrtc/base/checks.h:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-21  Alex Christensen  <achristensen@webkit.org>
+
+        Don't build libwebrtc on 32-bit architectures
+        https://bugs.webkit.org/show_bug.cgi?id=168692
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-02-21  Youenn Fablet  <youenn@apple.com>
+
+        [Xcode] libwebrtc installhdrs doesn’t install any of the headers
+        https://bugs.webkit.org/show_bug.cgi?id=168634
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/libwebrtc.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-21  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212699.
+
+        Internal build not ready
+
+        Reverted changeset:
+
+        "[WebRTC][Mac] Activate libwebrtc"
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        http://trac.webkit.org/changeset/212699
+
+2017-02-20  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        <rdar://problem/30401864>
+
+        Reviewed by Alex Christensen.
+
+        Doing some clean-up.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Source/webrtc/base/checks.h:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS ASAN build after r212401
+        https://bugs.webkit.org/show_bug.cgi?id=168398
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        libwebrtc.dylib needs some symbols from CFNetwork,
+        like CFNetworkCopySystemProxySettings
+
 2017-02-16  Youenn Fablet  <youenn@apple.com>
 
         [WebRTC] Fix some missing exports after r212401

@@ -118,9 +118,6 @@ struct WKAutoCorrectionData {
     RetainPtr<UITapGestureRecognizer> _twoFingerDoubleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _twoFingerSingleTapGestureRecognizer;
     RetainPtr<WKInspectorNodeSearchGestureRecognizer> _inspectorNodeSearchGestureRecognizer;
-#if ENABLE(DATA_INTERACTION)
-    RetainPtr<UILongPressGestureRecognizer> _dataInteractionGestureRecognizer;
-#endif
 
     RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
     RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
@@ -163,6 +160,7 @@ struct WKAutoCorrectionData {
     UIWKKeyWebEventCompletionHandler _keyWebEventHandler;
 
     CGPoint _lastInteractionLocation;
+    uint64_t _layerTreeTransactionIdAtLastTouchStart;
 
     WebKit::WKSelectionDrawingInfo _lastSelectionDrawingInfo;
 
@@ -190,6 +188,11 @@ struct WKAutoCorrectionData {
 
 #if ENABLE(DATA_INTERACTION)
     WebKit::WKDataInteractionState _dataInteractionState;
+    BOOL _isPerformingDataInteractionOperation;
+#if HAS_DATA_INTERACTION_SPI
+    RetainPtr<WKDataInteraction> _dataInteraction;
+#endif
+    CGPoint _deferredActionSheetRequestLocation;
 #endif
 }
 
@@ -197,7 +200,10 @@ struct WKAutoCorrectionData {
 
 @interface WKContentView (WKInteraction) <UIGestureRecognizerDelegate, UIWebTouchEventsGestureRecognizerDelegate, UITextInputPrivate, UIWebFormAccessoryDelegate, UIWKInteractionViewProtocol, WKFileUploadPanelDelegate, WKActionSheetAssistantDelegate
 #if ENABLE(DATA_INTERACTION)
-    , WKViewDataInteractionSourceDelegate, WKDataInteractionSessionDelegate, WKViewDataInteractionDestinationDelegate, WKDataInteractionItemVisualTarget
+    , WKDataInteractionItemVisualTarget, WKViewDataInteractionDestinationDelegate
+#if HAS_DATA_INTERACTION_SPI
+    , WKDataInteractionDelegate
+#endif
 #endif
 >
 
@@ -270,16 +276,15 @@ struct WKAutoCorrectionData {
 #if ENABLE(DATA_INTERACTION)
 - (void)_didPerformDataInteractionControllerOperation;
 - (void)_didHandleStartDataInteractionRequest:(BOOL)started;
-- (void)_startDataInteractionWithImage:(RetainPtr<CGImageRef>)image atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint isLink:(BOOL)isLink;
-- (void)_simulateDataInteractionGestureRecognized:(UILongPressGestureRecognizer *)gestureRecognizer WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionEntered:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionUpdated:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionPerformOperation:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionEnded:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionSessionDidEnd:(id)session withOperation:(NSUInteger)operation WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateFailedDataInteractionWithIndex:(NSInteger)sourceIndex WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateWillBeginDataInteractionWithIndex:(NSInteger)sourceIndex withSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (NSArray *)_simulatedItemsForDataInteractionWithIndex:(NSInteger)sourceIndex WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_startDataInteractionWithImage:(RetainPtr<CGImageRef>)image withIndicatorData:(std::optional<WebCore::TextIndicatorData>)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action;
+- (void)_simulateDataInteractionEntered:(id)info;
+- (void)_simulateDataInteractionUpdated:(id)info;
+- (void)_simulateDataInteractionPerformOperation:(id)info;
+- (void)_simulateDataInteractionEnded:(id)info;
+- (void)_simulateDataInteractionSessionDidEnd:(id)session;
+- (void)_simulateWillBeginDataInteractionWithSession:(id)session;
+- (NSArray *)_simulatedItemsForSession:(id)session;
+- (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion;
 #endif
 
 @end

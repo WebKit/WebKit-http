@@ -36,24 +36,11 @@
 #include <wtf/Optional.h>
 #include <wtf/RunLoop.h>
 
-#if PLATFORM(IOS)
-#include <wtf/Lock.h>
-#include <wtf/ThreadingPrimitives.h>
-#endif
-
 #if USE(GLIB)
 #include <wtf/glib/GRefPtr.h>
 #endif
 
 namespace WebCore {
-
-#if PLATFORM(IOS)
-enum MemoryPressureReason {
-    MemoryPressureReasonNone = 0 << 0,
-    MemoryPressureReasonVMPressure = 1 << 0,
-    MemoryPressureReasonVMStatus = 1 << 1,
-};
-#endif
 
 enum class MemoryUsagePolicy {
     Unrestricted, // Allocate as much as you want
@@ -203,14 +190,7 @@ private:
     WTF::Function<void()> m_memoryKillCallback;
     WTF::Function<bool()> m_processIsEligibleForMemoryKillCallback;
 
-#if PLATFORM(IOS)
-    // FIXME: Can we share more of this with OpenSource?
-    uint32_t m_memoryPressureReason { MemoryPressureReasonNone };
-    bool m_clearPressureOnMemoryRelease { true };
-    void (^m_releaseMemoryBlock)() { nullptr };
-    CFRunLoopObserverRef m_observer { nullptr };
-    Lock m_observerMutex;
-#elif OS(LINUX)
+#if OS(LINUX)
     std::optional<int> m_eventFD;
     std::optional<int> m_pressureLevelFD;
     std::unique_ptr<EventFDPoller> m_eventFDPoller;

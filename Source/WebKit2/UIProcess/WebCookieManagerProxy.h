@@ -81,6 +81,8 @@ public:
     void startObservingCookieChanges(WebCore::SessionID, std::function<void ()>&& = nullptr);
     void stopObservingCookieChanges(WebCore::SessionID);
 
+    void setCookieObserverCallback(WebCore::SessionID, std::function<void ()>&&);
+
 #if USE(SOUP)
     void setCookiePersistentStorage(const String& storagePath, uint32_t storageType);
     void getCookiePersistentStorage(String& storagePath, uint32_t& storageType) const;

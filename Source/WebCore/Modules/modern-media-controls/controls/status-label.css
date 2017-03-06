@@ -26,11 +26,10 @@
 .status-label {
     position: absolute;
 
+    text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
 
     font-size: 14px;
-
-    color: rgba(255, 255, 255, 0.572);
 }

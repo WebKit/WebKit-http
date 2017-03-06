@@ -1,3 +1,678 @@
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: add support for Color Picker
+        https://bugs.webkit.org/show_bug.cgi?id=168853
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker):
+        (body[dir=ltr] .color-picker > .brightness):
+        (body[dir=rtl] .color-picker > .brightness):
+        (body[dir=ltr] .color-picker > .opacity):
+        (body[dir=rtl] .color-picker > .opacity):
+        (.color-picker > .brightness): Deleted.
+        (.color-picker > .opacity): Deleted.
+
+        * UserInterface/Views/ColorWheel.js:
+        (WebInspector.ColorWheel.prototype.set dimension):
+        Set the CSS width and height style of the container element to ensure that the element only
+        takes up the space it needs.
+
+        * UserInterface/Views/Slider.css:
+        (.slider):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Add `--slider-height` CSS variable for convenience.
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: add support for Bezier/Spring editor
+        https://bugs.webkit.org/show_bug.cgi?id=168854
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/BezierEditor.css:
+        (.bezier-editor):
+        (body[dir=ltr] .bezier-editor):
+        (body[dir=rtl] .bezier-editor):
+        (.bezier-editor > .bezier-preview-timing):
+        (body[dir=ltr] .bezier-editor > .bezier-preview-timing):
+        (body[dir=rtl] .bezier-editor > .bezier-preview-timing):
+        (@keyframes bezierPreview):
+        (body[dir=rtl] .bezier-editor > .bezier-container):
+        (.bezier-editor > .number-input-container > input):
+        (body[dir=ltr] .bezier-editor > .number-input-container > input):
+        (body[dir=rtl] .bezier-editor > .number-input-container > input):
+
+        * UserInterface/Views/SpringEditor.css:
+        (.spring-editor > .spring-timing):
+        (.spring-editor > .spring-timing::before):
+        (.spring-editor > .spring-timing::after):
+        (body[dir=ltr] .spring-editor > .spring-timing::before, body[dir=rtl] .spring-editor > .spring-timing::after):
+        (body[dir=ltr] .spring-editor > .spring-timing::after, body[dir=rtl] .spring-editor > .spring-timing::before):
+        (.spring-editor > .number-input-container > .number-input-row > input):
+
+        * UserInterface/Views/SpringEditor.js:
+        (WebInspector.SpringEditor.prototype._updatePreviewAnimation):
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: Elements tab Styles sidebar label/arrows need adjustment
+        https://bugs.webkit.org/show_bug.cgi?id=168746
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ScopeRadioButtonNavigationItem.css:
+        (.scope-radio-button-navigation-item):
+        (.scope-radio-button-navigation-item > .scope-radio-button-item-select):
+        (body[dir=ltr] .scope-radio-button-navigation-item > .scope-radio-button-item-select):
+        (body[dir=rtl] .scope-radio-button-navigation-item > .scope-radio-button-item-select):
+        (.scope-radio-button-navigation-item > .scope-radio-button-item-select:focus):
+        (.scope-radio-button-navigation-item > .arrows):
+        (body[dir=ltr] .scope-radio-button-navigation-item > .arrows):
+        (body[dir=rtl] .scope-radio-button-navigation-item > .arrows):
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: copying a search result out of Search Tab navigation sidebar does nothing
+        https://bugs.webkit.org/show_bug.cgi?id=167074
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._copy):
+        * UserInterface/Views/SearchTabContentView.js:
+        (WebInspector.SearchTabContentView.prototype.handleCopyEvent):
+        Provide the container TabContentView with the opportunity to intercept the copy event.
+
+        * UserInterface/Models/SourceCodeTextRange.js:
+        (WebInspector.SourceCodeTextRange.prototype.get synthesizedTextValue):
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement.prototype.get synthesizedTextValue):
+        Generate a string with the format `${url}:${lineNumber}:${resultLine}`.
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: Styles - Rules sidebar icons are misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=168807
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section > .header):
+        (body[dir=ltr] .style-declaration-section > .header):
+        (body[dir=rtl] .style-declaration-section > .header):
+        (.style-declaration-section.locked > .header > .locked-icon):
+        (body[dir=ltr] .style-declaration-section.locked > .header > .locked-icon):
+        (body[dir=rtl] .style-declaration-section.locked > .header > .locked-icon):
+        (.style-declaration-section > .header > .icon):
+        (body[dir=ltr] .style-declaration-section > .header > .icon):
+        (body[dir=rtl] .style-declaration-section > .header > .icon):
+        (.style-declaration-section > .header > textarea):
+        (body[dir=ltr] .style-declaration-section > .header > textarea):
+        (body[dir=rtl] .style-declaration-section > .header > textarea):
+        (.style-declaration-section.invalid-selector > .header > .icon):
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule):
+        (body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule):
+        (body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle):
+        (body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle):
+        (body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle):
+        (.sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input):
+        (body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input):
+        (body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input):
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: disclosure triangles in details section headers should be flipped and aligned right
+        https://bugs.webkit.org/show_bug.cgi?id=168283
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section):
+        (.details-section > .header):
+        (body[dir=ltr] .details-section > .header):
+        (body[dir=rtl] .details-section > .header):
+        (.details-section > .header > .options > .navigation-bar):
+        (body[dir=ltr] .details-section > .header > :matches(label, .node-link, .go-to-arrow, .options > .navigation-bar), body[dir=rtl] .details-section > .header::before):
+        (body[dir=ltr] .details-section > .header::before, body[dir=rtl] .details-section > .header > :matches(label, .node-link, .go-to-arrow, .options > .navigation-bar)):
+        (.details-section > .header::before):
+        (body[dir=rtl] .details-section > .header::before):
+        (.details-section > .header > label):
+        (.details-section > .header > label > input[type="checkbox"]):
+        (body[dir=ltr] .details-section > .header > label > input[type="checkbox"]):
+        (body[dir=rtl] .details-section > .header > label > input[type="checkbox"]):
+        (.details-section > .header .go-to-arrow):
+        (body[dir=ltr] .details-section > .header .go-to-arrow):
+        (body[dir=rtl] .details-section > .header .go-to-arrow):
+        (.details-section > .content > .group > .row.simple > .label):
+        (body[dir=ltr] .details-section > .content > .group > .row.simple > .label):
+        (body[dir=rtl] .details-section > .content > .group > .row.simple > .label):
+        (.details-section > .content > .group > .row.simple > .value):
+        (body[dir=ltr] .details-section > .content > .group > .row.simple > .value):
+        (body[dir=rtl] .details-section > .content > .group > .row.simple > .value):
+        (.details-section > .content > .group > .row.simple > .value .go-to-arrow):
+        (body[dir=ltr] .details-section > .content > .group > .row.simple > .value .go-to-arrow):
+        (body[dir=rtl] .details-section > .content > .group > .row.simple > .value .go-to-arrow):
+        (.details-section > .header > :matches(.node-link, .go-to-arrow)): Deleted.
+
+2017-02-24  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: add support for Error page
+        https://bugs.webkit.org/show_bug.cgi?id=168855
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Debug/UncaughtExceptionReporter.css:
+        (.uncaught-exception-sheet):
+        (body[dir=ltr] .uncaught-exception-sheet):
+        (body[dir=rtl] .uncaught-exception-sheet):
+        (.uncaught-exception-sheet h1 > img):
+        (body[dir=ltr] .uncaught-exception-sheet h1 > img):
+        (body[dir=rtl] .uncaught-exception-sheet h1 > img):
+        (.uncaught-exception-sheet h2 > img):
+        (body[dir=ltr] .uncaught-exception-sheet h2 > img):
+        (body[dir=rtl] .uncaught-exception-sheet h2 > img):
+        (.uncaught-exception-sheet dd):
+        (body[dir=ltr] .uncaught-exception-sheet dd):
+        (body[dir=rtl] .uncaught-exception-sheet dd):
+        (.uncaught-exception-sheet ul):
+        (body[dir=ltr] .uncaught-exception-sheet ul):
+        (body[dir=rtl] .uncaught-exception-sheet ul):
+
+2017-02-24  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Uncaught Exception: Unknown angle units "undefined"
+        https://bugs.webkit.org/show_bug.cgi?id=168851
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/GradientEditor.js:
+        (WebInspector.GradientEditor.prototype._gradientTypeChanged):
+
+2017-02-24  Jon Lee  <jonlee@apple.com>
+
+        Alias "system-ui" for the System font name
+        https://bugs.webkit.org/show_bug.cgi?id=151493
+
+        Reviewed by Tim Horton and Joseph Pecoraro.
+
+        * UserInterface/Models/CSSKeywordCompletions.js: Ditto.
+
+2017-02-23  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: DOM Tree spacing is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=168744
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Utilities.js:
+        (Element.prototype.totalOffsetRight):
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom):
+        (.tree-outline.dom ol):
+        (body[dir=ltr] .tree-outline.dom ol):
+        (body[dir=rtl] .tree-outline.dom ol):
+        (.tree-outline.dom li:matches(.hovered, .selected) + ol.children.expanded):
+        (body[dir=ltr] .tree-outline.dom li:matches(.hovered, .selected) + ol.children.expanded):
+        (body[dir=rtl] .tree-outline.dom li:matches(.hovered, .selected) + ol.children.expanded):
+        (.tree-outline.dom li.selected + ol.children.expanded):
+        (.tree-outline.dom li):
+        (body[dir=ltr] .tree-outline.dom li):
+        (body[dir=rtl] .tree-outline.dom li):
+        (.tree-outline.dom li.pseudo-class-enabled > .selection-area::before):
+        (body[dir=rtl] .tree-outline.dom li.pseudo-class-enabled > .selection-area::before):
+        (body[dir=ltr] .tree-outline.dom.single-node li):
+        (body[dir=rtl] .tree-outline.dom.single-node li):
+        (.tree-outline.dom li.parent):
+        (body[dir=ltr] .tree-outline.dom li.parent):
+        (body[dir=rtl] .tree-outline.dom li.parent):
+        (body[dir=ltr] .tree-outline.dom li .html-tag.close):
+        (body[dir=rtl] .tree-outline.dom li .html-tag.close):
+        (.tree-outline.dom li.parent::before):
+        (body[dir=rtl] .tree-outline.dom li.parent::before):
+        (body[dir=ltr] .tree-outline.dom li.parent::before):
+        (.tree-outline.dom li.parent.shadow::after):
+        (body[dir=ltr] .tree-outline.dom li.parent.shadow::after):
+        (body[dir=rtl] .tree-outline.dom li.parent.shadow::after):
+        (.tree-outline.dom.single-node li): Deleted.
+        (.tree-outline.dom li .html-tag.close): Deleted.
+
+        * UserInterface/Views/TreeElement.js:
+        (WebInspector.TreeElement.prototype.isEventWithinDisclosureTriangle):
+        Calculate the position of the ::before triangle based on the layout direction.
+
+2017-02-23  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: navigation sidebar section disclosure triangles and tree element icons should be aligned right
+        https://bugs.webkit.org/show_bug.cgi?id=168284
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TreeOutline.css:
+        (.tree-outline,):
+        (.tree-outline.large .item):
+        (body[dir=ltr] .tree-outline .item :matches(.disclosure-button, .icon)):
+        (body[dir=rtl] .tree-outline .item :matches(.disclosure-button, .icon)):
+        (body[dir=ltr] .tree-outline:not(.hide-disclosure-buttons) .item:not(.parent) > .icon):
+        (body[dir=rtl] .tree-outline:not(.hide-disclosure-buttons) .item:not(.parent) > .icon):
+        (.tree-outline .item .disclosure-button):
+        (body[dir=rtl] .tree-outline .item .disclosure-button):
+        (.tree-outline .item .icon):
+        (body[dir=ltr] .tree-outline .item .icon):
+        (body[dir=rtl] .tree-outline .item .icon):
+        (.tree-outline.large .item .icon):
+        (.tree-outline .item .status):
+        (body[dir=ltr] .tree-outline .item .status):
+        (body[dir=rtl] .tree-outline .item .status):
+        (.tree-outline:not(.hide-disclosure-buttons) .item:not(.parent) > .icon): Deleted.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline._generateStyleRulesIfNeeded):
+
+2017-02-22  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: Sidebar borders are on the wrong side
+        https://bugs.webkit.org/show_bug.cgi?id=168743
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Sidebar.css:
+        (body[dir=ltr] .sidebar.right > .resizer, body[dir=rtl] .sidebar.left > .resizer):
+        (body[dir=ltr] .sidebar.left > .resizer, body[dir=rtl] .sidebar.right > .resizer):
+        (body[dir=ltr] .sidebar.left, body[dir=rtl] .sidebar.right):
+        (body[dir=ltr] .sidebar.right, body[dir=rtl] .sidebar.left):
+        (.sidebar.right > .resizer): Deleted.
+        (.sidebar.left > .resizer): Deleted.
+        (.sidebar.left): Deleted.
+        (.sidebar.right): Deleted.
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.resizerDragging):
+        Reverse the change if the direction is RTL.
+
+2017-02-22  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: Settings tab labels need adjustment
+        https://bugs.webkit.org/show_bug.cgi?id=168497
+
+        Reviewed by Matt Baker.
+
+        Flip margins. Use 'text-align: end' instead of manually choosing
+        right and left based on body[dir].
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings > .setting-container > .setting-name):
+        (body[dir=ltr] .content-view.settings > .setting-container > .setting-name):
+        (body[dir=rtl] .content-view.settings > .setting-container > .setting-name):
+        (.content-view.settings > .setting-container > .setting-value-controller input[type="checkbox"]):
+        (body[dir=ltr] .content-view.settings > .setting-container > .setting-value-controller input[type="checkbox"]):
+        (body[dir=rtl] .content-view.settings > .setting-container > .setting-value-controller input[type="checkbox"]):
+        (.content-view.settings > .setting-container > .setting-value-controller input[type="number"]):
+        (body[dir=ltr] .content-view.settings > .setting-container > .setting-value-controller input[type="number"]):
+        (body[dir=rtl] .content-view.settings > .setting-container > .setting-value-controller input[type="number"]):
+
+2017-02-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Prefer Resources tab over Network tab when showing files
+        https://bugs.webkit.org/show_bug.cgi?id=168021
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.handlePossibleLinkClick):
+        (WebInspector.openURL):
+        Add `options` parameter to provide greater customization.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser.prototype.bestTabContentViewForRepresentedObject):
+        Add logic for `ignoreNetworkTab` option that will ignore instances of NetworkTabContentView.
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WebInspector.BreakpointPopoverController.prototype.appendContextMenuItems):
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.showMainResourceForFrame):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.tokenTrackingControllerHighlightedRangeWasClicked.showRangeInSourceCode):
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WebInspector.ComputedStyleDetailsPanel.prototype.cssStyleDeclarationTextEditorShowProperty):
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WebInspector.appendContextMenuItemsForSourceCode):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype._mouseWasClicked.followLink):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._populateTagContextMenu):
+        (WebInspector.DOMTreeElement.prototype._showCustomElementDefinition):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype.showContentViewForTreeElement):
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype._dataGridNodeGoToArrowClicked):
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel.prototype._treeSelectionDidChange):
+        (WebInspector.SearchSidebarPanel.prototype._treeElementDoubleClick):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.tokenTrackingControllerHighlightedRangeWasClicked):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._popoverCallStackTreeSelectionDidChange):
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.populateContextMenu):
+        Change arguments of functions to change content views to ignore the Network tab.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView.prototype.hasRepresentedObject):
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype.hasRepresentedObject):
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WebInspector.NetworkTabContentView.prototype.canShowRepresentedObject):
+        Ensure that the Network tab can only display resources that it has entries for in its view.
+
+2017-02-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: console scope bar's unread message indicator is misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=168625
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/LogContentView.css:
+        (.log-scope-bar > li.unread::before):
+        (body[dir=ltr] .log-scope-bar > li.unread::before):
+        (body[dir=rtl] .log-scope-bar > li.unread::before):
+
+2017-02-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tooltip for "Show console tab" should read "Show Console tab"
+        https://bugs.webkit.org/show_bug.cgi?id=168630
+        <rdar://problem/30621662>
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+
+2017-02-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: back/forward navigation buttons should not be flipped
+        https://bugs.webkit.org/show_bug.cgi?id=168275
+        <rdar://problem/30506897>
+
+        Reviewed by Matt Baker.
+
+        The leading button is always "back" and the trailing button is always "forward", but
+        in RTL the icons are swapped so that it still looks like '< >' from left-to-right.
+
+        Rename the two arrows in the SVG to "left" and "right" arrows, and use them appropriately
+        in ContentBrowser for back-forward icons based on the layout direction.
+
+        * UserInterface/Images/BackForwardArrows.svg:
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser):
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner > button.segmented.left > .glyph):
+        (.find-banner > button.segmented.left:active:not(:disabled) > .glyph):
+        (.find-banner > button.segmented.right > .glyph):
+        (.find-banner > button.segmented.right:active:not(:disabled) > .glyph):
+
+2017-02-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: hierarchical path components need spacing and icon adjustments
+        https://bugs.webkit.org/show_bug.cgi?id=168581
+
+        Reviewed by Matt Baker.
+
+        Flip a bunch of padding, margin, and offsets. Flip the chevron using a CSS transform.
+
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        (.hierarchical-path-component):
+        (.hierarchical-path-component > .icon):
+        (.hierarchical-path-component > :matches(.icon, .selector-arrows)):
+        (body[dir=ltr] .hierarchical-path-component > :matches(.icon, .selector-arrows)):
+        (body[dir=rtl] .hierarchical-path-component > :matches(.icon, .selector-arrows)):
+        (.hierarchical-path-component > .selector-arrows):
+        (.hierarchical-path-component > select):
+        (body[dir=ltr] .hierarchical-path-component > select):
+        (body[dir=rtl] .hierarchical-path-component > select):
+        (.hierarchical-path-component > .separator):
+        (body[dir=ltr] .hierarchical-path-component > .separator):
+        (body[dir=rtl] .hierarchical-path-component > .separator):
+        (.hierarchical-path-component.text-only):
+        (body[dir=ltr] .hierarchical-path-component.text-only):
+        (body[dir=rtl] .hierarchical-path-component.text-only):
+        (body[dir=ltr] .hierarchical-path-component.text-only > select):
+        (body[dir=rtl] .hierarchical-path-component.text-only > select):
+
+2017-02-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: adjust positioning of scope bar items with multiple values
+        https://bugs.webkit.org/show_bug.cgi?id=168575
+
+        Reviewed by Matt Baker.
+
+        Mirror the leading margin as necessary. Adjust the <select> positioning
+        so that the popup is really close to the scope bar item's position.
+
+        * UserInterface/Views/ScopeBar.css:
+        (body[dir=ltr] .scope-bar > li.multiple > select):
+        (body[dir=rtl] .scope-bar > li.multiple > select):
+        (.scope-bar > li.multiple > .arrows):
+        (body[dir=ltr] .scope-bar > li.multiple > .arrows):
+        (body[dir=rtl] .scope-bar > li.multiple > .arrows):
+
+2017-02-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: sidebar expand/collapse icons need to be flipped
+        https://bugs.webkit.org/show_bug.cgi?id=168276
+        <rdar://problem/30506999>
+
+        Reviewed by Matt Baker.
+
+        The sidebars themselves are already flipped due to the layout direction change, but the
+        icons have a directional design and need to be manually flipped based on the layout direction.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WebInspector.ContentBrowserTabContentView):
+
+2017-02-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Use Maps in FrameResourceManager instead of objects
+        https://bugs.webkit.org/show_bug.cgi?id=168549
+        <rdar://problem/30590110>
+
+        Reviewed by Joseph Pecoraro.
+
+        Use Map for _frameIdentifierMap and _resourceRequestIdentifierMap.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.initialize):
+        (WebInspector.FrameResourceManager.prototype.get frames):
+        (WebInspector.FrameResourceManager.prototype.frameForIdentifier):
+        (WebInspector.FrameResourceManager.prototype.frameDidDetach):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestWillBeSent):
+        (WebInspector.FrameResourceManager.prototype.markResourceRequestAsServedFromMemoryCache):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestWasServedFromMemoryCache):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidReceiveResponse):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidReceiveData):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidFinishLoading):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidFailLoading):
+        (WebInspector.FrameResourceManager.prototype._addNewResourceToFrameOrTarget):
+        (WebInspector.FrameResourceManager.prototype._processMainFrameResourceTreePayload):
+        (WebInspector.FrameResourceManager.prototype._createFrame):
+
+2017-02-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: Inspector window should dock to the left when using RTL layout direction
+        https://bugs.webkit.org/show_bug.cgi?id=168273
+        <rdar://problem/29949325>
+
+        Reviewed by Matt Baker.
+
+        Add the ability to dock Web Inspector to the left of the inspected view.
+        The frontend decides whether the Dock to Side button docks left or right
+        based on the current layout direction.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Rename the "Dock to Right" button to "Dock to Side" instead. It's easier to just
+        have one button than to try and conditionally hide one or the other based on
+        the layout direction. Change the dock callback and the icon used for the button
+        depending on layout direction.
+
+        (WebInspector.resolvedLayoutDirection):
+        Refactor getLayoutDirection() to resolvedLayoutDirection() so callers get back
+        either "ltr" or "rtl".
+
+        Flip the dock side if layout direction changes while docked to the side.
+
+        Adjust various code paths to account for the existing of left docking. In particular,
+        resize rejection needs special-casing for resizing leftward from beyond the right side
+        of the Inspector view when it is docked to the left. Improve related comments since it
+        took me an unbelievable amount of time to understand what this code is supposed to do.
+
+        * UserInterface/Views/Main.css:
+        (body.docked.right):
+        (body.docked.left #docked-resizer):
+        (body.docked:matches(.right, .left) #navigation-sidebar.collapsed > .resizer):
+        (body.docked.right #navigation-sidebar.collapsed > .resizer): Deleted.
+        Add .docked.left analogues to rules for .docked.right.
+
+2017-02-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: add TabBar support for RTL layout
+        https://bugs.webkit.org/show_bug.cgi?id=168446
+
+        Reviewed by Matt Baker.
+
+        There are two types of changes needed:
+         - Flip leading and trailing borders and margins for the tab items.
+         - Enumerate tabs in reverse order when performing manual layout.
+
+        Along the way, I added some color variables local to TabBar.css to
+        reduce the number of redundant border-style and color declarations.
+
+        * UserInterface/Base/Main.js:
+        Change this to resolvedLayoutDirection(), and resolve "System" to "ltr" or "rtl".
+        This makes it suitable for use in manual layout without worrying about "System".
+        Fix the one existing use-site to not do its own resolution of "System".
+
+        * UserInterface/Views/TabBar.css:
+        Define commonly used colors and border styles and adopt var() usages.
+        Flip borders that should vary in RTL vs LTR, but not all of them. In
+        many cases, the border is not direction-dependent and looks the same
+        on both sides. Also, no need to swap animated properties as all manual
+        layout is done from the left edge.
+
+        (.tab-bar):
+        (body.window-inactive .tab-bar):
+        (.tab-bar > .top-border):
+        (body.window-inactive .tab-bar > .top-border):
+        (.tab-bar > .item):
+        (body[dir=ltr] .tab-bar > :nth-child(n + 2 of .item),):
+        (body[dir=rtl] .tab-bar > :nth-child(n + 2 of .item),):
+        (.tab-bar:not(.animating) > .item:not(.selected, .disabled):hover):
+        (body[dir=ltr] .tab-bar:not(.animating) > .item:not(.selected, .disabled):hover,):
+        (body[dir=rtl] .tab-bar:not(.animating) > .item:not(.selected, .disabled):hover,):
+        (body.window-inactive .tab-bar > .item):
+        (body[dir=ltr].window-inactive .tab-bar > .item):
+        (body[dir=rtl].window-inactive .tab-bar > .item):
+        (.tab-bar > .item > .close):
+        (body[dir=ltr] .tab-bar > .item > .close):
+        (body[dir=rtl] .tab-bar > .item > .close):
+        (.tab-bar > .item:not(.pinned) > .flex-space:last-child):
+        (body[dir=ltr] .tab-bar > .item:not(.pinned) > .flex-space:last-child):
+        (body[dir=rtl] .tab-bar > .item:not(.pinned) > .flex-space:last-child):
+        (.tab-bar > .item > .title):
+        (body[dir=ltr] .tab-bar > .item > .title):
+        (body[dir=rtl] .tab-bar > .item > .title):
+        (.tab-bar.collapsed > .item > .close):
+        (body[dir=ltr] .tab-bar.collapsed > .item > .close):
+        (body[dir=rtl] .tab-bar.collapsed > .item > .close):
+
+        * UserInterface/Views/TabBar.js:
+        When doing manual layout, keep doing calculations with respect to the left edge
+        and keep the list of tab items in logical (LTR) order, as in the DOM. But, when
+        manually positioning tab items for RTL layout direction, reverse the tab items
+        so that it matches the screen/layout order of the flipped flexbox items.
+
+        (WebInspector.TabBar.prototype.insertTabBarItem):
+        (WebInspector.TabBar.prototype.removeTabBarItem.animateTabs):
+        In RTL, put extra space after closing a tab to the left of normal tabs. This
+        matches the behavior of LTR, but requires some additional measurement since we
+        still position tabs using `left` and can't simply infer the leftover space.
+
+        (WebInspector.TabBar.prototype._tabBarItemsFromLeftToRight): Added.
+        (WebInspector.TabBar.prototype._handleMouseMoved):
+        (WebInspector.TabBar.prototype._handleMouseUp):
+
+2017-02-17  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Zoom level UI out of sync with setting value
+        https://bugs.webkit.org/show_bug.cgi?id=168522
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView):
+        Trigger a layout whenever the zoomFactor setting is changed. This is needed since the
+        zoomFactor setting can also be modified by global keyboard shortcuts.
+
+2017-02-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Loc: Zoom level in Settings tab needs to use localized formatting
+        https://bugs.webkit.org/show_bug.cgi?id=168465
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.layout):
+        (WebInspector.SettingsTabContentView):
+
+2017-02-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: CodeMirror text editor instances have scrollbars on left and right
+        https://bugs.webkit.org/show_bug.cgi?id=168274
+
+        Reviewed by Matt Baker.
+
+        CodeMirror doesn't draw its own scrollbar correctly when content is in RTL,
+        so it draws an extra scrollbar on the right side. And, for the majority of
+        cases, we don't want to view CSS / JS content aligned to the right.
+
+        Manually set the "dir" attribute for all CodeMirror editor instances to "ltr".
+        Clients can override this if custom RTL layout is available in a particular case.
+
+        * UserInterface/Views/CodeMirrorEditor.js:
+        (WebInspector.CodeMirrorEditor.create):
+        (WebInspector.CodeMirrorEditor):
+
+2017-02-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline DataGridNodes are lacking detail in title
+        https://bugs.webkit.org/show_bug.cgi?id=168529
+        <rdar://problem/30579959>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.displayName):
+        Include detailed information for DataGridNode display names, since we
+        want to show maximum detail for records in the DataGrid.
+
 2017-02-16  Brian Burg  <bburg@apple.com>
 
         Web Inspector: add DebugUI setting to manually override UI layout direction

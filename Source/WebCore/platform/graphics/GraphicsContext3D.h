@@ -1133,6 +1133,9 @@ public:
     void forceContextLost();
     void recycleContext();
 
+    void dispatchContextChangedNotification();
+    void simulateContextChanged();
+
     void paintRenderingResultsToCanvas(ImageBuffer*);
     RefPtr<ImageData> paintRenderingResultsToImageData();
     bool paintCompositedResultsToCanvas(ImageBuffer*);
@@ -1143,6 +1146,9 @@ public:
 #if PLATFORM(MAC)
     void updateCGLContext();
 #endif
+    void setContextVisibility(bool);
+
+    GraphicsContext3DPowerPreference powerPreferenceUsedForCreation() const { return m_powerPreferenceUsedForCreation; }
 
     // Support for buffer creation and deletion
     Platform3DObject createBuffer();
@@ -1377,6 +1383,7 @@ private:
     friend class Extensions3DOpenGLCommon;
 
     GraphicsContext3DAttributes m_attrs;
+    GraphicsContext3DPowerPreference m_powerPreferenceUsedForCreation { GraphicsContext3DPowerPreference::Default };
     RenderStyle m_renderStyle;
     Vector<Vector<float>> m_vertexArray;
 
@@ -1423,7 +1430,8 @@ private:
     friend class GraphicsContext3DPrivate;
     std::unique_ptr<GraphicsContext3DPrivate> m_private;
 #endif
-    
+
+    // FIXME: Layering violation.
     WebGLRenderingContextBase* m_webglContext;
 
     bool m_isForWebGL2 { false };
