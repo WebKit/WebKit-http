@@ -50,6 +50,10 @@ public:
     // need to call this from non-member functions at the moment.
     void fired();
 
+#if PLATFORM(QT)
+    bool hasFiredFunction() const { return bool(m_firedFunction); }
+#endif
+
 private:
     MainThreadSharedTimer();
 
