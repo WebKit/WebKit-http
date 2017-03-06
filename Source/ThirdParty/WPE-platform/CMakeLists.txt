@@ -133,3 +133,10 @@ add_library(WPE-platform SHARED ${WPE_PLATFORM_SOURCES})
 target_include_directories(WPE-platform PRIVATE ${WPE_PLATFORM_INCLUDE_DIRECTORIES})
 target_link_libraries(WPE-platform ${WPE_PLATFORM_LIBRARIES})
 install(TARGETS WPE-platform DESTINATION "${LIB_INSTALL_DIR}")
+
+# Create a libWPE-backend.so symlink to libWPE-platform.so and install it.
+add_custom_command(TARGET WPE-platform
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E create_symlink libWPE-platform.so ${CMAKE_BINARY_DIR}/lib/libWPE-backend.so
+  )
+install(FILES ${CMAKE_BINARY_DIR}/lib/libWPE-backend.so DESTINATION lib)
