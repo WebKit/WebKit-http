@@ -67,9 +67,15 @@ public:
     };
 
 private:
+    void clearDataArrays();
+
     WstCompositor* m_compositor;
     struct wpe_view_backend* m_viewbackend;
     HandlerData m_handlerData;
+    GPtrArray* m_keyEventDataArray;
+    GPtrArray* m_motionEventDataArray;
+    GPtrArray* m_buttonEventDataArray;
+    GPtrArray* m_axisEventDataArray;
 };
 
 } // namespace Westeros
