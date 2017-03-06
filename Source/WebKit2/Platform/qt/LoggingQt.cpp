@@ -28,8 +28,6 @@
 #include "config.h"
 #include "Logging.h"
 
-#include <QDebug>
-
 namespace WebKit {
 
 #if !LOG_DISABLED

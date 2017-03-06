@@ -82,7 +82,6 @@
 #include "qwebpluginfactory.h"
 #include "qwebsettings.h"
 #include <QCoreApplication>
-#include <QDebug>
 #include <QFileInfo>
 #include <QMouseEvent>
 #include <QNetworkReply>

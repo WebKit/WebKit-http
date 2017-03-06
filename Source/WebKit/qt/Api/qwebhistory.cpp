@@ -37,7 +37,6 @@
 #include <wtf/text/WTFString.h>
 
 #include <QSharedData>
-#include <QDebug>
 #include <QJsonObject>
 
 static const int HistoryStreamVersion = 3;

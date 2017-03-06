@@ -25,7 +25,6 @@
 #include <qwebframe.h>
 #include <qwebelement.h>
 #include <qwebhistoryinterface.h>
-#include <QDebug>
 
 class tst_QWebHistoryInterface : public QObject
 {

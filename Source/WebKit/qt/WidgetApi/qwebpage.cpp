@@ -48,7 +48,6 @@
 #include <QBitArray>
 #include <QClipboard>
 #include <QColorDialog>
-#include <QDebug>
 #include <QDesktopWidget>
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>

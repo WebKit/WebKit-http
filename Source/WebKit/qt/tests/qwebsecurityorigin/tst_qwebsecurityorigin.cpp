@@ -19,7 +19,6 @@
 */
 
 
-#include <QDebug>
 #include <QNetworkReply>
 #include <QtTest>
 #include <qwebframe.h>

@@ -42,7 +42,6 @@
 #include "FrameView.h"
 
 #include <QCoreApplication>
-#include <QDebug>
 #include <QPaintEngine>
 #include <QPainter>
 

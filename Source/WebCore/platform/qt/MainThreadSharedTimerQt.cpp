@@ -33,7 +33,6 @@
 
 #include <QBasicTimer>
 #include <QCoreApplication>
-#include <QDebug>
 #include <QPointer>
 #include <wtf/CurrentTime.h>
 

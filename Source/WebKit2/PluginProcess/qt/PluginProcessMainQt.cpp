@@ -31,7 +31,6 @@
 #include "NetscapePluginModule.h"
 #include "PluginProcess.h"
 #include "WebKit2Initialize.h"
-#include <QDebug>
 #include <QGuiApplication>
 #include <QStringList>
 #include <QtGlobal>
