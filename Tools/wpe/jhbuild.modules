@@ -181,7 +181,8 @@
   </autotools>
 
   <cmake id="wpe">
-    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend.git" />
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend.git"
+            tag="5e2a29d2ccc637f7122ba72c1d62ef669b42f05c" />
   </cmake>
 
   <cmake id="wpe-mesa">
@@ -191,6 +192,7 @@
       <dep package="wayland" />
       <dep package="xkbcommon" />
     </dependencies>
-    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend-mesa.git" />
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend-mesa.git"
+            tag="9945753f9337fd67af098218b7819337aba21141" />
   </cmake>
 </moduleset>
