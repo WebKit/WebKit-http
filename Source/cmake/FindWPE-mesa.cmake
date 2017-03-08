@@ -37,7 +37,7 @@ find_path(WPE_MESA_INCLUDE_DIRS
 )
 
 find_library(WPE_MESA_LIBRARIES
-    NAMES WPE-mesa
+    NAMES WPEBackend-mesa
     HINTS ${PC_WPE_MESA_LIBDIR} ${PC_WPE_MESA_LIBRARY_DIRS}
 )
 

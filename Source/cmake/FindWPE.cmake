@@ -37,7 +37,7 @@ find_path(WPE_INCLUDE_DIRS
 )
 
 find_library(WPE_LIBRARIES
-    NAMES WPE
+    NAMES WPEBackend
     HINTS ${PC_WPE_LIBDIR} ${PC_WPE_LIBRARY_DIRS}
 )
 
