@@ -96,8 +96,9 @@
       <dep package="fontconfig"/>
       <dep package="pixman"/>
     </dependencies>
-    <branch repo="github.com" module="WebKitForWayland/cairo.git"
-            tag="dd8e6a461d53add34008ea9f33e7f1dba5d2c5cb"/>
+      <branch module="releases/cairo-1.14.8.tar.xz" version="1.14.8"
+            repo="cairographics.org"
+            hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e"/>
   </autotools>
 
   <autotools id="xkbcommon">
