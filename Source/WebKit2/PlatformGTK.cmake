@@ -492,6 +492,7 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
 
+    WebProcess/WebPage/gtk/AcceleratedSurface.cpp
     WebProcess/WebPage/gtk/AcceleratedSurfaceWayland.cpp
     WebProcess/WebPage/gtk/AcceleratedSurfaceX11.cpp
     WebProcess/WebPage/gtk/PrinterListGtk.cpp
