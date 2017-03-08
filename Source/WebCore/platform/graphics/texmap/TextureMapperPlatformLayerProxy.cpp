@@ -174,8 +174,8 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
     m_currentBuffer = WTFMove(m_pendingBuffer);
     m_targetLayer->setContentsLayer(m_currentBuffer.get());
 
-    if (m_pendingBuffer && m_pendingBuffer->hasManagedTexture())
-        m_usedBuffers.append(WTFMove(m_pendingBuffer));
+    if (prevBuffer && prevBuffer->hasManagedTexture())
+        m_usedBuffers.append(WTFMove(prevBuffer));
 }
 
 void TextureMapperPlatformLayerProxy::dropCurrentBufferWhilePreservingTexture()
