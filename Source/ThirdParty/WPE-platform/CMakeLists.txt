@@ -129,14 +129,14 @@ if (USE_WPEWEBKIT_BACKEND_WESTEROS)
     include(src/westeros/CMakeLists.txt)
 endif ()
 
-add_library(WPE-platform SHARED ${WPE_PLATFORM_SOURCES})
-target_include_directories(WPE-platform PRIVATE ${WPE_PLATFORM_INCLUDE_DIRECTORIES})
-target_link_libraries(WPE-platform ${WPE_PLATFORM_LIBRARIES})
-install(TARGETS WPE-platform DESTINATION "${LIB_INSTALL_DIR}")
+add_library(WPEBackend-rdk SHARED ${WPE_PLATFORM_SOURCES})
+target_include_directories(WPEBackend-rdk PRIVATE ${WPE_PLATFORM_INCLUDE_DIRECTORIES})
+target_link_libraries(WPEBackend-rdk ${WPE_PLATFORM_LIBRARIES})
+install(TARGETS WPEBackend-rdk DESTINATION "${LIB_INSTALL_DIR}")
 
-# Create a libWPE-backend.so symlink to libWPE-platform.so and install it.
-add_custom_command(TARGET WPE-platform
+# Create a libWPEBackend-default.so symlink to libWPEBackend-rdk.so and install it.
+add_custom_command(TARGET WPEBackend-rdk
   POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E create_symlink libWPE-platform.so ${CMAKE_BINARY_DIR}/lib/libWPE-backend.so
+  COMMAND ${CMAKE_COMMAND} -E create_symlink libWPEBackend-rdk.so ${CMAKE_BINARY_DIR}/lib/libWPEBackend-default.so
   )
-install(FILES ${CMAKE_BINARY_DIR}/lib/libWPE-backend.so DESTINATION lib)
+install(FILES ${CMAKE_BINARY_DIR}/lib/libWPEBackend-default.so DESTINATION lib)
