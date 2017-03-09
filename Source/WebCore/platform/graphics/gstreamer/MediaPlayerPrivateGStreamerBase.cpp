@@ -1447,7 +1447,7 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
     return static_cast<unsigned>(position);
 }
 
-#if USE(PLAYREADY)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(PLAYREADY)
 PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 {
     PlayreadySession* session = nullptr;
@@ -1461,9 +1461,7 @@ PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 #endif
     return session;
 }
-#endif
 
-#if USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerBase::emitPlayReadySession()
 {
     PlayreadySession* session = prSession();

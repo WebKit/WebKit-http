@@ -813,7 +813,6 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
     for (auto it : m_appendPipelinesMap)
         it.value->dispatchDecryptionKey(buffer);
 }
-#endif
 
 #if USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession()
@@ -829,6 +828,7 @@ void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession()
         it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
     }
 }
+#endif
 #endif
 
 void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
