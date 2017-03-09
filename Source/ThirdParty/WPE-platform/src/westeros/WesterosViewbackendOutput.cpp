@@ -66,8 +66,8 @@ void WesterosViewbackendOutput::handleScaleCallback( void *UserData, int32_t sca
 WesterosViewbackendOutput::WesterosViewbackendOutput(struct wpe_view_backend* backend)
  : m_compositor(nullptr)
  , m_viewbackend(backend)
- , m_width(0)
- , m_height(0)
+ , m_width(800)
+ , m_height(600)
  , m_modeDataArray(g_ptr_array_sized_new(4))
 {
 }
