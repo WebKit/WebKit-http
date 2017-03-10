@@ -791,8 +791,6 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
         DecodeOrderSampleMap::MapType erasedSamples(removeDecodeStart, removeDecodeEnd);
         PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(erasedSamples, trackBuffer, this, "removeCodedFrames");
 
-        // GStreamer backend doesn't support re-enqueue without preceding flushing seek, so just avoid adding same data to pipeline
-#if !USE(GSTREAMER)
         // Only force the TrackBuffer to re-enqueue if the removed ranges overlap with enqueued and possibly
         // not yet displayed samples.
         if (trackBuffer.lastEnqueuedPresentationTime.isValid() && currentMediaTime < trackBuffer.lastEnqueuedPresentationTime) {
@@ -801,7 +799,6 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
             if (possiblyEnqueuedRanges.length())
                 trackBuffer.needsReenqueueing = true;
         }
-#endif
 
         erasedRanges.invert();
         trackBuffer.buffered.intersectWith(erasedRanges);
@@ -1647,8 +1644,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
 
             PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(dependentSamples, trackBuffer, this, "sourceBufferPrivateDidReceiveSample");
 
-        // GStreamer backend doesn't support re-enqueue without preceding flushing seek, so just avoid adding same data to pipeline
-#if !USE(GSTREAMER)
             // Only force the TrackBuffer to re-enqueue if the removed ranges overlap with enqueued and possibly
             // not yet displayed samples.
             MediaTime currentMediaTime = m_source->currentTime();
@@ -1658,7 +1653,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
                 if (possiblyEnqueuedRanges.length())
                     trackBuffer.needsReenqueueing = true;
             }
-#endif
 
             erasedRanges.invert();
             trackBuffer.buffered.intersectWith(erasedRanges);

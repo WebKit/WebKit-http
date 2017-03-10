@@ -2,6 +2,7 @@
 #define WPE_ViewBackend_WesterosViewbackendOutput_h
 
 #include <cstdint>
+#include <glib.h>
 #include <westeros-compositor.h>
 
 struct wpe_view_backend;
@@ -28,10 +29,13 @@ public:
     static void handleScaleCallback( void *UserData, int32_t scale );
 
 private:
+    void clearDataArray();
+
     WstCompositor* m_compositor;
     struct wpe_view_backend* m_viewbackend;
     uint32_t m_width;
     uint32_t m_height;
+    GPtrArray* m_modeDataArray;
 };
 
 } // namespace Westeros

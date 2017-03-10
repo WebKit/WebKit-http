@@ -96,8 +96,11 @@
       <dep package="fontconfig"/>
       <dep package="pixman"/>
     </dependencies>
-    <branch repo="github.com" module="WebKitForWayland/cairo.git"
-            tag="dd8e6a461d53add34008ea9f33e7f1dba5d2c5cb"/>
+    <branch module="releases/cairo-1.14.8.tar.xz" version="1.14.8"
+            repo="cairographics.org"
+            hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e">
+      <patch file="cairo-egl-device-create-for-egl-surface.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="xkbcommon">
@@ -178,7 +181,8 @@
   </autotools>
 
   <cmake id="wpe">
-    <branch repo="github.com" module="WebKitForWayland/wpe.git" />
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend.git"
+            tag="5e2a29d2ccc637f7122ba72c1d62ef669b42f05c" />
   </cmake>
 
   <cmake id="wpe-mesa">
@@ -188,6 +192,7 @@
       <dep package="wayland" />
       <dep package="xkbcommon" />
     </dependencies>
-    <branch repo="github.com" module="WebKitForWayland/wpe-mesa.git" />
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend-mesa.git"
+            tag="9945753f9337fd67af098218b7819337aba21141" />
   </cmake>
 </moduleset>

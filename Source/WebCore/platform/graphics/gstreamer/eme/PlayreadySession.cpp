@@ -23,8 +23,11 @@
 #include "PlayreadySession.h"
 
 #if USE(PLAYREADY)
-#include "WebKitMediaKeyError.h"
 #include "MediaPlayerPrivateGStreamer.h"
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#include "WebKitMediaKeyError.h"
+#endif
 
 #include <runtime/JSCInlines.h>
 #include <runtime/TypedArrayInlines.h>

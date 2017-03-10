@@ -35,7 +35,8 @@
 
 namespace Westeros {
 
-struct ViewBackend {
+struct ViewBackend
+{
     ViewBackend(struct wpe_view_backend*);
     virtual ~ViewBackend();
 
@@ -60,7 +61,8 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     input_handler = new WesterosViewbackendInput(backend);
     output_handler = new WesterosViewbackendOutput(backend);
     const char* nestedTargetDisplay = std::getenv("WAYLAND_DISPLAY");
-    if (nestedTargetDisplay) {
+    if (nestedTargetDisplay)
+    {
         fprintf(stderr, "ViewBackendWesteros: running as the nested compositor\n");
         WstCompositorSetIsNested(compositor, true);
         WstCompositorSetIsRepeater(compositor, true);
@@ -76,6 +78,8 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     {
         fprintf(stderr, "ViewBackendWesteros: failed to start the compositor: %s\n",
             WstCompositorGetLastErrorDetail(compositor));
+        input_handler->deinitialize();
+        output_handler->deinitialize();
         WstCompositorDestroy(compositor);
         compositor = nullptr;
         delete input_handler;
@@ -92,7 +96,8 @@ ViewBackend::~ViewBackend()
     if(output_handler)
         output_handler->deinitialize();
 
-    if (compositor) {
+    if (compositor)
+    {
         WstCompositorStop(compositor);
         WstCompositorDestroy(compositor);
         compositor = nullptr;
