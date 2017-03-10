@@ -28,7 +28,7 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
-#include "GraphicsContext3D.h"
+#include "GraphicsTypes3D.h"
 #include "TextureMapper.h"
 #include "TransformationMatrix.h"
 #include <wtf/Condition.h>
@@ -71,7 +71,7 @@ public:
     // the implementation of TextureMapperPlatformLayerProxyProvider should
     // aquire / release the lock explicitly to use below methods.
     Lock& lock() { return m_lock; }
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(const IntSize&, GC3Dint internalFormat);
     void pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer>);
     bool isActive();
 
