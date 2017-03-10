@@ -170,7 +170,10 @@
     <branch module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" version="1.8.1"
             repo="gstreamer"
             hash="sha256:0bbd58f363734fc0c4a620b2d6fb01d427fdafdbda7b90b4e15d03b751ca40f5"
-            md5sum="e508da2a8a5c3d12264fe3415be2f451"/>
+            md5sum="e508da2a8a5c3d12264fe3415be2f451">
+      <patch file="gst-plugins-bad-0001-dtls-port-to-OpenSSL-1.1.0.patch" strip="1"/>
+      <patch file="gst-plugins-bad-0002-dtlscertificate-Fix-error-checking-in-RSA_generate_k.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="gst-libav" autogen-sh="configure" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
