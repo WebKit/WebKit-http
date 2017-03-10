@@ -100,6 +100,7 @@
 #include "WebProcessProxyMessages.h"
 #include "WebProgressTrackerClient.h"
 #include "WebStorageNamespaceProvider.h"
+#include "WebURLSchemeHandlerProxy.h"
 #include "WebUndoStep.h"
 #include "WebUserContentController.h"
 #include "WebUserMediaClient.h"
@@ -561,6 +562,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if PLATFORM(IOS)
     m_page->settings().setContentDispositionAttachmentSandboxEnabled(true);
 #endif
+
+    for (auto iterator : parameters.urlSchemeHandlers)
+        registerURLSchemeHandler(iterator.value, iterator.key);
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -5322,6 +5326,44 @@ void WebPage::dispatchDidLayout(WebCore::LayoutMilestones milestones)
 void WebPage::didRestoreScrollPosition()
 {
     send(Messages::WebPageProxy::DidRestoreScrollPosition());
+}
+
+WebURLSchemeHandlerProxy* WebPage::urlSchemeHandlerForScheme(const String& scheme)
+{
+    return m_schemeToURLSchemeHandlerProxyMap.get(scheme);
+}
+
+void WebPage::registerURLSchemeHandler(uint64_t handlerIdentifier, const String& scheme)
+{
+    auto schemeResult = m_schemeToURLSchemeHandlerProxyMap.add(scheme, std::make_unique<WebURLSchemeHandlerProxy>(*this, handlerIdentifier));
+    ASSERT(schemeResult.isNewEntry);
+
+    auto identifierResult = m_identifierToURLSchemeHandlerProxyMap.add(handlerIdentifier, schemeResult.iterator->value.get());
+    ASSERT_UNUSED(identifierResult, identifierResult.isNewEntry);
+}
+
+void WebPage::urlSchemeHandlerTaskDidReceiveResponse(uint64_t handlerIdentifier, uint64_t taskIdentifier, const ResourceResponse& response)
+{
+    auto* handler = m_identifierToURLSchemeHandlerProxyMap.get(handlerIdentifier);
+    ASSERT(handler);
+
+    handler->taskDidReceiveResponse(taskIdentifier, response);
+}
+
+void WebPage::urlSchemeHandlerTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, const IPC::DataReference& data)
+{
+    auto* handler = m_identifierToURLSchemeHandlerProxyMap.get(handlerIdentifier);
+    ASSERT(handler);
+
+    handler->taskDidReceiveData(taskIdentifier, data.size(), data.data());
+}
+
+void WebPage::urlSchemeHandlerTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, const ResourceError& error)
+{
+    auto* handler = m_identifierToURLSchemeHandlerProxyMap.get(handlerIdentifier);
+    ASSERT(handler);
+
+    handler->taskDidComplete(taskIdentifier, error);
 }
 
 } // namespace WebKit

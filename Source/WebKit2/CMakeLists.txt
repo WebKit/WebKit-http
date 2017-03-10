@@ -386,6 +386,8 @@ set(WebKit2_SOURCES
     UIProcess/WebProcessProxy.cpp
     UIProcess/WebTextChecker.cpp
     UIProcess/WebTextCheckerClient.cpp
+    UIProcess/WebURLSchemeHandler.cpp
+    UIProcess/WebURLSchemeHandlerTask.cpp
     UIProcess/WebVibrationProvider.cpp
     UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
@@ -398,6 +400,7 @@ set(WebKit2_SOURCES
     UIProcess/API/APIProcessPoolConfiguration.cpp
     UIProcess/API/APISession.cpp
     UIProcess/API/APISessionState.cpp
+    UIProcess/API/APIURLSchemeHandlerTask.cpp
     UIProcess/API/APIUserContentExtension.cpp
     UIProcess/API/APIUserContentExtensionStore.cpp
     UIProcess/API/APIWebsiteDataStore.cpp
@@ -622,9 +625,9 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebPage.cpp
     WebProcess/WebPage/WebPageGroupProxy.cpp
     WebProcess/WebPage/WebPageOverlay.cpp
+    WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp
+    WebProcess/WebPage/WebURLSchemeHandlerTaskProxy.cpp
     WebProcess/WebPage/WebUndoStep.cpp
-
-
 
     ${NetworkProcess_COMMON_SOURCES}
 )

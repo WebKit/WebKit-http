@@ -49,6 +49,7 @@
 #include "ShareableBitmap.h"
 #include "UserData.h"
 #include "UserMediaPermissionRequestManager.h"
+#include "WebURLSchemeHandler.h"
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/DragData.h>
@@ -184,6 +185,7 @@ class WebInspectorClient;
 class WebInspectorUI;
 class WebGestureEvent;
 class WebKeyboardEvent;
+class WebURLSchemeHandlerProxy;
 class WebMouseEvent;
 class WebNotificationClient;
 class WebOpenPanelResultListener;
@@ -946,6 +948,8 @@ public:
 
     void didRestoreScrollPosition();
 
+    WebURLSchemeHandlerProxy* urlSchemeHandlerForScheme(const String&);
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -1204,6 +1208,12 @@ private:
 #if ENABLE(VIDEO) && USE(GSTREAMER)
     void didEndRequestInstallMissingMediaPlugins(uint32_t result);
 #endif
+
+    void registerURLSchemeHandler(uint64_t identifier, const String& scheme);
+
+    void urlSchemeHandlerTaskDidReceiveResponse(uint64_t handlerIdentifier, uint64_t taskIdentifier, const WebCore::ResourceResponse&);
+    void urlSchemeHandlerTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, const IPC::DataReference&);
+    void urlSchemeHandlerTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, const WebCore::ResourceError&);
 
     uint64_t m_pageID;
 
@@ -1468,6 +1478,9 @@ private:
 #if ENABLE(VIDEO) && USE(GSTREAMER)
     RefPtr<WebCore::MediaPlayerRequestInstallMissingPluginsCallback> m_installMediaPluginsCallback;
 #endif
+
+    HashMap<String, std::unique_ptr<WebURLSchemeHandlerProxy>> m_schemeToURLSchemeHandlerProxyMap;
+    HashMap<uint64_t, WebURLSchemeHandlerProxy*> m_identifierToURLSchemeHandlerProxyMap;
 };
 
 } // namespace WebKit
