@@ -59,6 +59,7 @@ class NetworkProcessProxy;
 class WebBackForwardListItem;
 class WebPageGroup;
 class WebProcessPool;
+class WebsiteDataStore;
 enum class WebsiteDataType;
 struct WebNavigationDataStore;
 struct WebsiteData;
@@ -70,12 +71,15 @@ public:
     typedef HashMap<uint64_t, WebPageProxy*> WebPageProxyMap;
     typedef HashMap<uint64_t, RefPtr<API::UserInitiatedAction>> UserInitiatedActionMap;
 
-    static Ref<WebProcessProxy> create(WebProcessPool&);
+    static Ref<WebProcessProxy> create(WebProcessPool&, WebsiteDataStore*);
     ~WebProcessProxy();
 
     WebConnection* webConnection() const { return m_webConnection.get(); }
 
     WebProcessPool& processPool() { return m_processPool; }
+
+    // FIXME: WebsiteDataStores should be made per-WebPageProxy throughout WebKit2
+    WebsiteDataStore* websiteDataStore() const { return m_websiteDataStore.get(); }
 
     static WebPageProxy* webPage(uint64_t pageID);
     Ref<WebPageProxy> createWebPage(PageClient&, Ref<API::PageConfiguration>&&);
@@ -154,8 +158,11 @@ public:
     void isResponsive(std::function<void(bool isWebProcessResponsive)>);
     void didReceiveMainThreadPing();
 
+    void memoryPressureStatusChanged(bool isUnderMemoryPressure) { m_isUnderMemoryPressure = isUnderMemoryPressure; }
+    bool isUnderMemoryPressure() const { return m_isUnderMemoryPressure; }
+
 private:
-    explicit WebProcessProxy(WebProcessPool&);
+    explicit WebProcessProxy(WebProcessPool&, WebsiteDataStore*);
 
     // From ChildProcessProxy
     void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
@@ -256,6 +263,11 @@ private:
 
     VisibleWebPageCounter m_visiblePageCounter;
     std::unique_ptr<BackgroundProcessResponsivenessTimer> m_backgroundResponsivenessTimer;
+
+    // FIXME: WebsiteDataStores should be made per-WebPageProxy throughout WebKit2. Get rid of this member.
+    RefPtr<WebsiteDataStore> m_websiteDataStore;
+
+    bool m_isUnderMemoryPressure { false };
 };
 
 } // namespace WebKit

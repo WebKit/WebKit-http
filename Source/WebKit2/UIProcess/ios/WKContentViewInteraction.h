@@ -60,6 +60,7 @@ class TextStream;
 }
 
 namespace WebKit {
+class InputViewUpdateDeferrer;
 class NativeWebTouchEvent;
 class SmartMagnificationController;
 class WebOpenPanelResultListenerProxy;
@@ -121,6 +122,7 @@ struct WKAutoCorrectionData {
 
     RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
     RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
+    BOOL _suppressAssistantSelectionView;
 
     RetainPtr<UITextInputTraits> _traits;
     RetainPtr<UIWebFormAccessory> _formAccessoryView;
@@ -165,6 +167,8 @@ struct WKAutoCorrectionData {
     WebKit::WKSelectionDrawingInfo _lastSelectionDrawingInfo;
 
     std::optional<WebKit::InteractionInformationRequest> _outstandingPositionInformationRequest;
+    
+    std::unique_ptr<WebKit::InputViewUpdateDeferrer> _inputViewUpdateDeferrer;
 
     BOOL _isEditable;
     BOOL _showingTextStyleOptions;
@@ -193,6 +197,9 @@ struct WKAutoCorrectionData {
     RetainPtr<WKDataInteraction> _dataInteraction;
 #endif
     CGPoint _deferredActionSheetRequestLocation;
+    RetainPtr<UIView> _visibleContentViewSnapshot;
+    RetainPtr<UIImageView> _dataInteractionUnselectedContentSnapshot;
+    BOOL _isRunningConcludeEditDataInteractionAnimation;
 #endif
 }
 
@@ -214,6 +221,7 @@ struct WKAutoCorrectionData {
 @property (nonatomic, readonly) const WebKit::WKAutoCorrectionData& autocorrectionData;
 @property (nonatomic, readonly) const WebKit::AssistedNodeInformation& assistedNodeInformation;
 @property (nonatomic, readonly) UIWebFormAccessory *formAccessoryView;
+@property (nonatomic) BOOL suppressAssistantSelectionView;
 
 - (void)setupInteraction;
 - (void)cleanupInteraction;
@@ -241,6 +249,7 @@ struct WKAutoCorrectionData {
 #endif
 - (void)_commitPotentialTapFailed;
 - (void)_didNotHandleTapAsClick:(const WebCore::IntPoint&)point;
+- (void)_didCompleteSyntheticClick;
 - (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius;
 
 - (BOOL)_mayDisableDoubleTapGesturesDuringSingleTap;
@@ -277,6 +286,7 @@ struct WKAutoCorrectionData {
 - (void)_didPerformDataInteractionControllerOperation;
 - (void)_didHandleStartDataInteractionRequest:(BOOL)started;
 - (void)_startDataInteractionWithImage:(RetainPtr<CGImageRef>)image withIndicatorData:(std::optional<WebCore::TextIndicatorData>)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action;
+- (void)_didConcludeEditDataInteraction:(std::optional<WebCore::TextIndicatorData>)data;
 - (void)_simulateDataInteractionEntered:(id)info;
 - (void)_simulateDataInteractionUpdated:(id)info;
 - (void)_simulateDataInteractionPerformOperation:(id)info;

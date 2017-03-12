@@ -205,7 +205,7 @@ private:
 
 MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* player)
     : m_player(player)
-    , m_fpsSink(0)
+    , m_fpsSink(nullptr)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_networkState(MediaPlayer::Empty)
 #if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
@@ -213,7 +213,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #endif
     , m_usingFallbackVideoSink(false)
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    , m_cdmSession(0)
+    , m_cdmSession(nullptr)
 #endif
 {
     g_mutex_init(&m_sampleMutex);
@@ -228,6 +228,14 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
     m_protectionCondition.notifyOne();
 #endif
     m_notifier.cancelPendingNotifications();
+
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
+    m_drawTimer.stop();
+    {
+        LockHolder locker(m_drawMutex);
+        m_drawCondition.notifyOne();
+    }
+#endif
 
     if (m_videoSink) {
         g_signal_handlers_disconnect_matched(m_videoSink.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
@@ -254,6 +262,9 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     m_cdmSession = nullptr;
 #endif
+
+    if (m_pipeline)
+        gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
 }
 
 void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
@@ -594,7 +605,7 @@ void MediaPlayerPrivateGStreamerBase::setMuted(bool muted)
     if (!m_volumeElement)
         return;
 
-    g_object_set(m_volumeElement.get(), "mute", muted, NULL);
+    g_object_set(m_volumeElement.get(), "mute", muted, nullptr);
 }
 
 bool MediaPlayerPrivateGStreamerBase::muted() const
@@ -603,7 +614,7 @@ bool MediaPlayerPrivateGStreamerBase::muted() const
         return false;
 
     bool muted;
-    g_object_get(m_volumeElement.get(), "mute", &muted, NULL);
+    g_object_get(m_volumeElement.get(), "mute", &muted, nullptr);
     return muted;
 }
 
@@ -613,7 +624,7 @@ void MediaPlayerPrivateGStreamerBase::notifyPlayerOfMute()
         return;
 
     gboolean muted;
-    g_object_get(m_volumeElement.get(), "mute", &muted, NULL);
+    g_object_get(m_volumeElement.get(), "mute", &muted, nullptr);
     m_player->muteChanged(static_cast<bool>(muted));
 }
 
@@ -1231,12 +1242,12 @@ void MediaPlayerPrivateGStreamerBase::setStreamVolumeElement(GstStreamVolume* vo
     // https://bugs.webkit.org/show_bug.cgi?id=118974 for more information.
     if (!m_player->platformVolumeConfigurationRequired()) {
         GST_DEBUG("Setting stream volume to %f", m_player->volume());
-        g_object_set(m_volumeElement.get(), "volume", m_player->volume(), NULL);
+        g_object_set(m_volumeElement.get(), "volume", m_player->volume(), nullptr);
     } else
         GST_DEBUG("Not setting stream volume, trusting system one");
 
     GST_DEBUG("Setting stream muted %d",  m_player->muted());
-    g_object_set(m_volumeElement.get(), "mute", m_player->muted(), NULL);
+    g_object_set(m_volumeElement.get(), "mute", m_player->muted(), nullptr);
 
     g_signal_connect_swapped(m_volumeElement.get(), "notify::volume", G_CALLBACK(volumeChangedCallback), this);
     g_signal_connect_swapped(m_volumeElement.get(), "notify::mute", G_CALLBACK(muteChangedCallback), this);
@@ -1246,7 +1257,7 @@ unsigned MediaPlayerPrivateGStreamerBase::decodedFrameCount() const
 {
     guint64 decodedFrames = 0;
     if (m_fpsSink)
-        g_object_get(m_fpsSink.get(), "frames-rendered", &decodedFrames, NULL);
+        g_object_get(m_fpsSink.get(), "frames-rendered", &decodedFrames, nullptr);
     return static_cast<unsigned>(decodedFrames);
 }
 
@@ -1254,7 +1265,7 @@ unsigned MediaPlayerPrivateGStreamerBase::droppedFrameCount() const
 {
     guint64 framesDropped = 0;
     if (m_fpsSink)
-        g_object_get(m_fpsSink.get(), "frames-dropped", &framesDropped, NULL);
+        g_object_get(m_fpsSink.get(), "frames-dropped", &framesDropped, nullptr);
     return static_cast<unsigned>(framesDropped);
 }
 

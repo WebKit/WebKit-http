@@ -59,6 +59,10 @@
 
 using namespace WebCore;
 
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebDragClientAdditionsWebKit1.mm>)
+#import <WebKitAdditions/WebDragClientAdditionsWebKit1.mm>
+#endif
+
 WebDragClient::WebDragClient(WebView* webView)
     : m_webView(webView) 
 {
@@ -175,7 +179,7 @@ void WebDragClient::declareAndWriteAttachment(const String& pasteboardName, Elem
 }
 #endif
 
-#else
+#elif !ENABLE(DATA_INTERACTION)
 
 bool WebDragClient::useLegacyDragClient()
 {

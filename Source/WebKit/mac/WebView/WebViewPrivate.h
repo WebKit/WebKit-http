@@ -55,6 +55,9 @@
 #endif
 #endif
 
+#define WEBKIT_DI_BLOCK 1
+
+@class UIImage;
 @class NSError;
 @class WebFrame;
 @class WebDeviceOrientation;
@@ -179,6 +182,17 @@ typedef enum {
     WebNotificationPermissionNotAllowed,
     WebNotificationPermissionDenied
 } WebNotificationPermission;
+
+@interface WebUITextIndicatorData : NSObject
+@property (nonatomic, retain) UIImage *dataInteractionImage;
+@property (nonatomic, assign) CGRect selectionRectInRootViewCoordinates;
+@property (nonatomic, assign) CGRect textBoundingRectInRootViewCoordinates;
+@property (nonatomic, retain) NSArray<NSValue *> *textRectsInBoundingRectCoordinates; // CGRect values
+@property (nonatomic, assign) CGFloat contentImageScaleFactor;
+@property (nonatomic, retain) UIImage *contentImageWithHighlight;
+@property (nonatomic, retain) UIImage *contentImage;
+
+@end
 
 #if !TARGET_OS_IPHONE
 @interface WebController : NSTreeController {
@@ -449,7 +463,15 @@ Could be worth adding to the API.
 + (void)_releaseMemoryNow;
 
 - (void)_replaceCurrentHistoryItem:(WebHistoryItem *)item;
-#endif // PLATFORM(IOS)
+#endif // TARGET_OS_IPHONE
+
+- (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition;
+- (WebUITextIndicatorData *)_getDataInteractionData;
+- (uint64_t)_enteredDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (uint64_t)_updatedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (void)_exitedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (void)_performDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)clientPosition;
 
 #if TARGET_OS_IPHONE
 // Deprecated. Use -[WebDataSource _quickLookContent] instead.

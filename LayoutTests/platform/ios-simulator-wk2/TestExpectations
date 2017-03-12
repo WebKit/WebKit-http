@@ -6,6 +6,8 @@
 # Platform-specific directories. Skipped globally, then re-enabled here.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
+compositing/ios [ Pass ]
+fast/history/ios [ Pass ]
 fast/scrolling/ios [ Pass ]
 fast/viewport/ios [ Pass ]
 fast/visual-viewport/ios/ [ Pass ]
@@ -783,6 +785,7 @@ fast/history/form-submit-in-frame.html
 fast/history/gesture-before-onload-form-submit.html
 fast/history/gesture-before-onload-location-href.html
 fast/history/history_reload.html
+fast/history/history-scroll-restoration.html [ Skip ]
 fast/history/timed-refresh-in-cached-frame.html
 fast/history/window-open.html
 fast/images/animate-list-item-image-assertion.html
@@ -1812,6 +1815,7 @@ webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-backslash.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
@@ -1826,6 +1830,7 @@ webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]
+webkit.org/b/156067 http/tests/download/anchor-download-no-value.html [ Skip ]
 
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-vary.html [ Pass Timeout ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-vary-no-body.html [ Pass Timeout ]
@@ -1914,6 +1919,10 @@ fast/css/deferred-parsing/hover-test.html [ Skip ]
 
 webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
 
-webkit.org/b/167258 media/modern-media-controls/audio/audio-controls-metrics.html [ Skip ]
-
 imported/w3c/web-platform-tests/webrtc [ Skip ]
+webrtc [ Skip ]
+
+# Skipped because there is no key to show the context menu
+fast/events/context-activated-by-key-event.html [ Skip ]
+
+webkit.org/b/168924 scrollingcoordinator/ios/non-stable-viewport-scroll.html [ Pass Failure ]

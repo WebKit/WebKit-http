@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2009, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2007-2009 Torch Mobile, Inc.
  * Copyright (C) 2010, 2011 Research In Motion Limited. All rights reserved.
  *
@@ -759,6 +759,19 @@
 #define ENABLE_CONCURRENT_JS 1
 #endif
 
+/* FIXME: Enable it on Linux once https://bugs.webkit.org/show_bug.cgi?id=169510 is fixed. */
+#if CPU(ARM64) && OS(DARWIN)
+#define HAVE_LL_SC 1
+#endif // CPU(ARM64) && OS(DARWIN)
+
+#if __has_include(<System/pthread_machdep.h>)
+#define HAVE_FAST_TLS 1
+#endif
+
+#if (CPU(X86_64) || CPU(ARM64)) && HAVE(FAST_TLS)
+#define ENABLE_FAST_TLS_JIT 1
+#endif
+
 /* This controls whether B3 is built. B3 is needed for FTL JIT and WebAssembly */
 #if ENABLE(FTL_JIT) || ENABLE(WEBASSEMBLY)
 #define ENABLE_B3_JIT 1
@@ -897,7 +910,7 @@
 
 /* Enable the following if you want to use the MacroAssembler::probe() facility
    to do JIT debugging. */
-#if (CPU(X86) || CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && OS(DARWIN) && !defined(NDEBUG)
+#if (CPU(X86) || CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && OS(DARWIN)
 #define ENABLE_MASM_PROBE 1
 #else
 #define ENABLE_MASM_PROBE 0
@@ -909,6 +922,10 @@
 #else
 #define ENABLE_EXCEPTION_SCOPE_VERIFICATION 1
 #endif
+#endif
+
+#if OS(DARWIN) && ENABLE(JIT)
+#define ENABLE_SIGNAL_BASED_VM_TRAPS 1
 #endif
 
 /* CSS Selector JIT Compiler */
@@ -1026,7 +1043,7 @@
 #define HAVE_AVFOUNDATION_LOADER_DELEGATE 1
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || (PLATFORM(IOS) && ENABLE(WEB_RTC))
 #define USE_VIDEOTOOLBOX 1
 #endif
 

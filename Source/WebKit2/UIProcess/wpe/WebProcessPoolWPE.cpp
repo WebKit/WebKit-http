@@ -148,6 +148,12 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
     return WebCore::stringFromFileSystemRepresentation(diskCacheDirectory.get());
 }
 
+String WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory()
+{
+    GUniquePtr<gchar> javaScriptCoreConfigDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "JavaScriptCoreDebug", nullptr));
+    return WebCore::stringFromFileSystemRepresentation(javaScriptCoreConfigDirectory.get());
+}
+
 void WebProcessPool::platformResolvePathsForSandboxExtensions()
 {
 }

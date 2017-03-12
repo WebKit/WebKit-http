@@ -29,6 +29,7 @@
 #include "ButterflyInlines.h"
 #include "CodeBlock.h"
 #include "Completion.h"
+#include "ConfigFile.h"
 #include "DOMJITGetterSetter.h"
 #include "DOMJITPatchpoint.h"
 #include "DOMJITPatchpointParams.h"
@@ -71,6 +72,7 @@
 #include "SuperSampler.h"
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
+#include "WasmFaultSignalHandler.h"
 #include "WasmPlan.h"
 #include "WasmMemory.h"
 #include <locale.h>
@@ -369,6 +371,12 @@ public:
             slot.setCacheableCustom(thisObject, DontDelete | ReadOnly | DontEnum, thisObject->customGetter);
             return true;
         }
+        
+        if (propertyName == PropertyName(Identifier::fromString(exec, "customGetterAccessor"))) {
+            slot.setCacheableCustom(thisObject, DontDelete | ReadOnly | DontEnum | CustomAccessor, thisObject->customGetterAcessor);
+            return true;
+        }
+        
         return JSObject::getOwnPropertySlot(thisObject, exec, propertyName, slot);
     }
 
@@ -379,6 +387,20 @@ private:
         auto scope = DECLARE_THROW_SCOPE(vm);
 
         CustomGetter* thisObject = jsDynamicCast<CustomGetter*>(vm, JSValue::decode(thisValue));
+        if (!thisObject)
+            return throwVMTypeError(exec, scope);
+        bool shouldThrow = thisObject->get(exec, PropertyName(Identifier::fromString(exec, "shouldThrow"))).toBoolean(exec);
+        if (shouldThrow)
+            return throwVMTypeError(exec, scope);
+        return JSValue::encode(jsNumber(100));
+    }
+    
+    static EncodedJSValue customGetterAcessor(ExecState* exec, EncodedJSValue thisValue, PropertyName)
+    {
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        
+        JSObject* thisObject = jsDynamicCast<JSObject*>(vm, JSValue::decode(thisValue));
         if (!thisObject)
             return throwVMTypeError(exec, scope);
         bool shouldThrow = thisObject->get(exec, PropertyName(Identifier::fromString(exec, "shouldThrow"))).toBoolean(exec);
@@ -3762,10 +3784,15 @@ int jscmain(int argc, char** argv)
     // comes first.
     CommandLine options(argc, argv);
 
+    processConfigFile(Options::configFile(), "jsc");
+
     // Initialize JSC before getting VM.
     WTF::initializeMainThread();
     JSC::initializeThreading();
     startTimeoutThreadIfNeeded();
+#if ENABLE(WEBASSEMBLY)
+    JSC::Wasm::enableFastMemory();
+#endif
 
     int result;
     result = runJSC(

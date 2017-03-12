@@ -88,7 +88,7 @@ void InspectorDOMDebuggerAgent::debuggerWasDisabled()
 void InspectorDOMDebuggerAgent::disable()
 {
     m_instrumentingAgents.setInspectorDOMDebuggerAgent(nullptr);
-    clear();
+    discardBindings();
 }
 
 void InspectorDOMDebuggerAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
@@ -106,9 +106,15 @@ void InspectorDOMDebuggerAgent::discardAgent()
     m_debuggerAgent = nullptr;
 }
 
+void InspectorDOMDebuggerAgent::mainFrameDOMContentLoaded()
+{
+    discardBindings();
+}
+
 void InspectorDOMDebuggerAgent::discardBindings()
 {
     m_domBreakpoints.clear();
+    m_xhrBreakpoints.clear();
 }
 
 void InspectorDOMDebuggerAgent::setEventListenerBreakpoint(ErrorString& error, const String& eventName)
@@ -253,6 +259,9 @@ void InspectorDOMDebuggerAgent::removeDOMBreakpoint(ErrorString& errorString, in
 
 void InspectorDOMDebuggerAgent::willInsertDOMNode(Node& parent)
 {
+    if (!m_debuggerAgent->breakpointsActive())
+        return;
+
     if (hasBreakpoint(&parent, SubtreeModified)) {
         Ref<InspectorObject> eventData = InspectorObject::create();
         descriptionForDOMEvent(parent, SubtreeModified, true, eventData.get());
@@ -262,6 +271,9 @@ void InspectorDOMDebuggerAgent::willInsertDOMNode(Node& parent)
 
 void InspectorDOMDebuggerAgent::willRemoveDOMNode(Node& node)
 {
+    if (!m_debuggerAgent->breakpointsActive())
+        return;
+
     Node* parentNode = InspectorDOMAgent::innerParentNode(&node);
     if (hasBreakpoint(&node, NodeRemoved)) {
         Ref<InspectorObject> eventData = InspectorObject::create();
@@ -276,6 +288,9 @@ void InspectorDOMDebuggerAgent::willRemoveDOMNode(Node& node)
 
 void InspectorDOMDebuggerAgent::willModifyDOMAttr(Element& element)
 {
+    if (!m_debuggerAgent->breakpointsActive())
+        return;
+
     if (hasBreakpoint(&element, AttributeModified)) {
         Ref<InspectorObject> eventData = InspectorObject::create();
         descriptionForDOMEvent(element, AttributeModified, false, eventData.get());
@@ -379,6 +394,9 @@ void InspectorDOMDebuggerAgent::removeXHRBreakpoint(ErrorString&, const String& 
 
 void InspectorDOMDebuggerAgent::willSendXMLHttpRequest(const String& url)
 {
+    if (!m_debuggerAgent->breakpointsActive())
+        return;
+
     String breakpointURL;
     if (m_pauseOnAllXHRsEnabled)
         breakpointURL = emptyString();
@@ -398,11 +416,6 @@ void InspectorDOMDebuggerAgent::willSendXMLHttpRequest(const String& url)
     eventData->setString("breakpointURL", breakpointURL);
     eventData->setString("url", url);
     m_debuggerAgent->breakProgram(Inspector::DebuggerFrontendDispatcher::Reason::XHR, WTFMove(eventData));
-}
-
-void InspectorDOMDebuggerAgent::clear()
-{
-    m_domBreakpoints.clear();
 }
 
 } // namespace WebCore

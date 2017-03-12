@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WebProcessPool.h"
 
-#import "CustomProtocolManagerClient.h"
+#import "LegacyCustomProtocolManagerClient.h"
 #import "NetworkProcessCreationParameters.h"
 #import "NetworkProcessMessages.h"
 #import "NetworkProcessProxy.h"
@@ -147,7 +147,7 @@ void WebProcessPool::platformInitialize()
     WebKit::WebMemoryPressureHandler::singleton();
 #endif
 
-    setCustomProtocolManagerClient(std::make_unique<CustomProtocolManagerClient>());
+    setLegacyCustomProtocolManagerClient(std::make_unique<LegacyCustomProtocolManagerClient>());
 
     if (m_websiteDataStore)
         m_websiteDataStore->registerSharedResourceLoadObserver();
@@ -470,6 +470,24 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 #endif
 
     return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
+}
+
+String WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory()
+{
+#if PLATFORM(IOS)
+    String path = pathForProcessContainer();
+    if (path.isEmpty())
+        path = NSHomeDirectory();
+    
+    path = path + "/Library/WebKit/JavaScriptCoreDebug";
+    path = stringByResolvingSymlinksInPath(path);
+
+    return path;
+#else
+    RetainPtr<NSString> javaScriptConfigPath = @"~/Library/WebKit/JavaScriptCoreDebug";
+    
+    return stringByResolvingSymlinksInPath([javaScriptConfigPath stringByStandardizingPath]);
+#endif
 }
 
 bool WebProcessPool::isNetworkCacheEnabled()

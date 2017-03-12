@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2009 University of Szeged
  * All rights reserved.
  * Copyright (C) 2010 MIPS Technologies, Inc. All rights reserved.
@@ -460,6 +460,14 @@ public:
         emitInst(0x0000000d | ((value & 0x3ff) << OP_SH_CODE));
     }
 
+    static bool isBkpt(void* address)
+    {
+        int value = 512; /* BRK_BUG */
+        MIPSWord expected = (0x0000000d | ((value & 0x3ff) << OP_SH_CODE));
+        MIPSWord candidateInstruction = *reinterpret_cast<MIPSWord*>(address);
+        return candidateInstruction == expected;
+    }
+
     void bgez(RegisterID rs, int imm)
     {
         emitInst(0x04010000 | (rs << OP_SH_RS) | (imm & 0xffff));
@@ -918,6 +926,15 @@ public:
             codeSize += sizeof(MIPSWord);
         }
         cacheFlush(insn, codeSize);
+    }
+
+    static void replaceWithBkpt(void* instructionStart)
+    {
+        ASSERT(!(bitwise_cast<uintptr_t>(instructionStart) & 3));
+        MIPSWord* insn = reinterpret_cast<MIPSWord*>(reinterpret_cast<intptr_t>(code));
+        int value = 512; /* BRK_BUG */
+        insn[0] = (0x0000000d | ((value & 0x3ff) << OP_SH_CODE));
+        cacheFlush(instructionStart, sizeof(MIPSWord));
     }
 
     static void replaceWithJump(void* instructionStart, void* to)

@@ -29,7 +29,7 @@
 #include "WebPageGroup.h"
 #include "WebPreferencesKeys.h"
 #include "WebProcessPool.h"
-#include <dlfcn.h>
+#include <WebCore/LibWebRTCProvider.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ThreadingPrimitives.h>
 
@@ -196,22 +196,6 @@ FOR_EACH_WEBKIT_DEBUG_PREFERENCE(DEFINE_PREFERENCE_GETTER_AND_SETTERS)
 
 #undef DEFINE_PREFERENCE_GETTER_AND_SETTERS
 
-bool checkWebRTCAvailability()
-{
-#if USE(LIBWEBRTC)
-    static bool available = [&] {
-        void* libwebrtcLibrary = dlopen("libwebrtc.dylib", RTLD_LAZY);
-        if (!libwebrtcLibrary)
-            return false;
-        dlclose(libwebrtcLibrary);
-        return true;
-    }();
-    return available;
-#else
-    return true;
-#endif
-}
-
 #define DEFINE_EXPERIMENTAL_PREFERENCE_GETTER_AND_SETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
     void WebPreferences::set##KeyUpper(const Type& value) \
     { \
@@ -276,12 +260,6 @@ bool WebPreferences::isEnabledForFeature(const API::ExperimentalFeature& feature
     return false;
 }
 
-void WebPreferences::setPeerConnectionAndMediaStreamEnabled(bool value)
-{
-    setPeerConnectionEnabled(value);
-    setMediaStreamEnabled(value);
-}
-
 void WebPreferences::setEnabledForFeature(bool value, const API::ExperimentalFeature& feature)
 {
     struct FeatureSetterMapping {
@@ -302,10 +280,7 @@ void WebPreferences::setEnabledForFeature(bool value, const API::ExperimentalFea
     
     for (auto& setter : setters) {
         if (key == setter.name) {
-            if (key == WebPreferencesKey::peerConnectionEnabledKey())
-                setPeerConnectionAndMediaStreamEnabled(value);
-            else
-                (this->*setter.function)(value);
+            (this->*setter.function)(value);
             return;
         }
     }

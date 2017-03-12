@@ -21,15 +21,12 @@
 
 #pragma once
 
+#include "PlatformThread.h"
 #include "RegisterState.h"
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ScopedLambda.h>
 #include <wtf/ThreadSpecific.h>
-
-#if OS(DARWIN)
-#include <mach/thread_act.h>
-#endif
 
 #if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
 #include <semaphore.h>
@@ -42,14 +39,6 @@
 #include <ucontext.h>
 #endif
 #endif
-
-#if OS(DARWIN)
-typedef mach_port_t PlatformThread;
-#elif OS(WINDOWS)
-typedef DWORD PlatformThread;
-#elif USE(PTHREADS)
-typedef pthread_t PlatformThread;
-#endif // OS(DARWIN)
 
 namespace JSC {
 
@@ -67,7 +56,7 @@ struct CurrentThreadState {
 class MachineThreads {
     WTF_MAKE_NONCOPYABLE(MachineThreads);
 public:
-    MachineThreads(Heap*);
+    MachineThreads();
     ~MachineThreads();
 
     void gatherConservativeRoots(ConservativeRoots&, JITStubRoutineSet&, CodeBlockSet&, CurrentThreadState*);
@@ -146,14 +135,14 @@ public:
     };
 
     Lock& getLock() { return m_registeredThreadsMutex; }
-    Thread* threadsListHead(const LockHolder&) const { ASSERT(m_registeredThreadsMutex.isLocked()); return m_registeredThreads; }
+    Thread* threadsListHead(const AbstractLocker&) const { ASSERT(m_registeredThreadsMutex.isLocked()); return m_registeredThreads; }
     Thread* machineThreadForCurrentThread();
 
 private:
     void gatherFromCurrentThread(ConservativeRoots&, JITStubRoutineSet&, CodeBlockSet&, CurrentThreadState&);
 
     void tryCopyOtherThreadStack(Thread*, void*, size_t capacity, size_t*);
-    bool tryCopyOtherThreadStacks(LockHolder&, void*, size_t capacity, size_t*);
+    bool tryCopyOtherThreadStacks(const AbstractLocker&, void*, size_t capacity, size_t*);
 
     static void THREAD_SPECIFIC_CALL removeThread(void*);
 
@@ -163,9 +152,6 @@ private:
     Lock m_registeredThreadsMutex;
     Thread* m_registeredThreads;
     WTF::ThreadSpecificKey m_threadSpecificForMachineThreads;
-#if !ASSERT_DISABLED
-    Heap* m_heap;
-#endif
 };
 
 #define DECLARE_AND_COMPUTE_CURRENT_THREAD_STATE(stateName) \

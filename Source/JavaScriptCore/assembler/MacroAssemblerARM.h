@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2013-2016 Apple Inc.
+ * Copyright (C) 2008-2017 Apple Inc.
  * Copyright (C) 2009, 2010 University of Szeged
  * All rights reserved.
  *
@@ -955,6 +955,8 @@ public:
         m_assembler.bkpt(0);
     }
 
+    static bool isBreakpoint(void* address) { return ARMAssembler::isBkpt(address); }
+
     Call nearCall()
     {
         m_assembler.loadBranchTarget(ARMRegisters::S1, ARMAssembler::AL, true);
@@ -1478,6 +1480,11 @@ public:
     static FunctionPtr readCallTarget(CodeLocationCall call)
     {
         return FunctionPtr(reinterpret_cast<void(*)()>(ARMAssembler::readCallTarget(call.dataLocation())));
+    }
+
+    static void replaceWithBreakpoint(CodeLocationLabel instructionStart)
+    {
+        ARMAssembler::replaceWithBkpt(instructionStart.executableAddress());
     }
 
     static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)

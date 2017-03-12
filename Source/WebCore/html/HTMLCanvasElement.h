@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2006, 2009, 2010, 2017 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
  * Copyright (C) 2010 Torch Mobile (Beijing) Co. Ltd. All rights reserved.
  *
@@ -39,6 +39,7 @@
 
 namespace WebCore {
 
+class BlobCallback;
 class CanvasRenderingContext;
 class GraphicsContext;
 class GraphicsContextStateSaver;
@@ -46,6 +47,8 @@ class HTMLCanvasElement;
 class Image;
 class ImageBuffer;
 class ImageData;
+class MediaSample;
+class MediaStream;
 
 namespace DisplayList {
 using AsTextFlags = unsigned;
@@ -97,10 +100,15 @@ public:
     static bool is3dType(const String&);
     CanvasRenderingContext* getContextWebGL(const String&, WebGLContextAttributes&& = { });
 #endif
+#if ENABLE(WEBGPU)
+    static bool isWebGPUType(const String&);
+    CanvasRenderingContext* getContextWebGPU(const String&);
+#endif
 
     static String toEncodingMimeType(const String& mimeType);
     WEBCORE_EXPORT ExceptionOr<String> toDataURL(const String& mimeType, std::optional<double> quality);
     ExceptionOr<String> toDataURL(const String& mimeType) { return toDataURL(mimeType, std::nullopt); }
+    ExceptionOr<void> toBlob(ScriptExecutionContext&, Ref<BlobCallback>&&, const String& mimeType, JSC::JSValue qualityValue);
 
     // Used for rendering
     void didDraw(const FloatRect&);
@@ -112,6 +120,11 @@ public:
     GraphicsContext* existingDrawingContext() const;
 
     CanvasRenderingContext* renderingContext() const { return m_context.get(); }
+
+#if ENABLE(MEDIA_STREAM)
+    RefPtr<MediaSample> toMediaSample();
+    ExceptionOr<Ref<MediaStream>> captureStream(ScriptExecutionContext&, std::optional<double>&& frameRequestRate);
+#endif
 
     ImageBuffer* buffer() const;
     Image* copiedImage() const;
@@ -166,6 +179,9 @@ private:
 
 #if ENABLE(WEBGL)
     bool is3D() const;
+#endif
+#if ENABLE(WEBGPU)
+    bool isGPU() const;
 #endif
 
     HashSet<CanvasObserver*> m_observers;

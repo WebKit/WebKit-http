@@ -126,6 +126,7 @@ private:
         explicit CachedImageObserver(CachedImage&);
 
         // ImageObserver API
+        URL sourceUrl() const override { return m_cachedImages[0]->url(); }
         bool allowSubsampling() const final { return m_allowSubsampling; }
         bool allowLargeImageAsyncDecoding() const override { return m_allowLargeImageAsyncDecoding; }
         bool allowAnimatedImageAsyncDecoding() const override { return m_allowAnimatedImageAsyncDecoding; }
@@ -143,8 +144,8 @@ private:
 #else
         bool m_allowSubsampling { false };
 #endif
-        bool m_allowLargeImageAsyncDecoding { true };
-        bool m_allowAnimatedImageAsyncDecoding { true };
+        bool m_allowLargeImageAsyncDecoding { false };
+        bool m_allowAnimatedImageAsyncDecoding { false };
         bool m_showDebugBackground { false };
     };
 

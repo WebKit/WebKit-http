@@ -157,9 +157,11 @@ public:
     void setStatisticsSubresourceUniqueRedirectTo(WKStringRef hostName, WKStringRef hostNameRedirectedTo);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
     void statisticsFireDataModificationHandler();
+    void statisticsFireShouldPartitionCookiesHandler(WKStringRef hostName, bool value);
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
     void setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double);
+    void statisticsClearInMemoryAndPersistentStore();
     void statisticsResetToConsistentState();
 
     WKArrayRef openPanelFileURLs() const { return m_openPanelFileURLs.get(); }

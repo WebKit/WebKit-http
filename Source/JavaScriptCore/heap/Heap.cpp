@@ -258,7 +258,7 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_objectSpace(this)
     , m_extraMemorySize(0)
     , m_deprecatedExtraMemorySize(0)
-    , m_machineThreads(std::make_unique<MachineThreads>(this))
+    , m_machineThreads(std::make_unique<MachineThreads>())
     , m_collectorSlotVisitor(std::make_unique<SlotVisitor>(*this, "C"))
     , m_mutatorSlotVisitor(std::make_unique<SlotVisitor>(*this, "M"))
     , m_mutatorMarkStack(std::make_unique<MarkStackArray>())
@@ -1103,7 +1103,7 @@ NEVER_INLINE bool Heap::runBeginPhase(GCConductor conn)
         m_verifier->verify(HeapVerifier::Phase::BeforeGC);
             
         m_verifier->initializeGCCycle();
-        m_verifier->gatherLiveObjects(HeapVerifier::Phase::BeforeMarking);
+        m_verifier->gatherLiveCells(HeapVerifier::Phase::BeforeMarking);
     }
         
     prepareForMarking();
@@ -1333,7 +1333,7 @@ NEVER_INLINE bool Heap::runEndPhase(GCConductor conn)
     endMarking();
         
     if (m_verifier) {
-        m_verifier->gatherLiveObjects(HeapVerifier::Phase::AfterMarking);
+        m_verifier->gatherLiveCells(HeapVerifier::Phase::AfterMarking);
         m_verifier->verify(HeapVerifier::Phase::AfterMarking);
     }
         
@@ -1360,7 +1360,7 @@ NEVER_INLINE bool Heap::runEndPhase(GCConductor conn)
     didFinishCollection();
     
     if (m_verifier) {
-        m_verifier->trimDeadObjects();
+        m_verifier->trimDeadCells();
         m_verifier->verify(HeapVerifier::Phase::AfterGC);
     }
 
@@ -1853,9 +1853,10 @@ void Heap::handleNeedFinalize()
 void Heap::setGCDidJIT()
 {
     m_worldState.transaction(
-        [&] (unsigned& state) {
+        [&] (unsigned& state) -> bool {
             RELEASE_ASSERT(state & stoppedBit);
             state |= gcDidJITBit;
+            return true;
         });
 }
 
@@ -2329,9 +2330,9 @@ void Heap::forEachCodeBlockImpl(const ScopedLambda<bool(CodeBlock*)>& func)
     return m_codeBlocks->iterate(func);
 }
 
-void Heap::forEachCodeBlockIgnoringJITPlansImpl(const ScopedLambda<bool(CodeBlock*)>& func)
+void Heap::forEachCodeBlockIgnoringJITPlansImpl(const AbstractLocker& locker, const ScopedLambda<bool(CodeBlock*)>& func)
 {
-    return m_codeBlocks->iterate(func);
+    return m_codeBlocks->iterate(locker, func);
 }
 
 void Heap::writeBarrierSlowPath(const JSCell* from)

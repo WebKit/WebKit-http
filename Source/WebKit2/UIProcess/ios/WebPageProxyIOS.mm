@@ -906,12 +906,12 @@ void WebPageProxy::couldNotRestorePageState()
     m_pageClient.couldNotRestorePageState();
 }
 
-void WebPageProxy::restorePageState(const WebCore::FloatPoint& scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale)
+void WebPageProxy::restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale)
 {
     m_pageClient.restorePageState(scrollPosition, scrollOrigin, obscuredInsetOnSave, scale);
 }
 
-void WebPageProxy::restorePageCenterAndScale(const WebCore::FloatPoint& center, double scale)
+void WebPageProxy::restorePageCenterAndScale(std::optional<WebCore::FloatPoint> center, double scale)
 {
     m_pageClient.restorePageCenterAndScale(center, scale);
 }
@@ -1028,11 +1028,6 @@ void WebPageProxy::showPlaybackTargetPicker(bool hasVideo, const IntRect& elemen
     m_pageClient.showPlaybackTargetPicker(hasVideo, elementRect);
 }
 
-void WebPageProxy::zoomToRect(FloatRect rect, double minimumScale, double maximumScale)
-{
-    m_pageClient.zoomToRect(rect, minimumScale, maximumScale);
-}
-
 void WebPageProxy::commitPotentialTapFailed()
 {
     m_pageClient.commitPotentialTapFailed();
@@ -1042,6 +1037,11 @@ void WebPageProxy::didNotHandleTapAsClick(const WebCore::IntPoint& point)
 {
     m_pageClient.didNotHandleTapAsClick(point);
     m_uiClient->didNotHandleTapAsClick(point);
+}
+    
+void WebPageProxy::didCompleteSyntheticClick()
+{
+    m_pageClient.didCompleteSyntheticClick();
 }
 
 void WebPageProxy::disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID)
@@ -1130,6 +1130,11 @@ void WebPageProxy::requestStartDataInteraction(const WebCore::IntPoint& clientPo
 {
     if (isValid())
         m_process->send(Messages::WebPage::RequestStartDataInteraction(clientPosition, globalPosition), m_pageID);
+}
+
+void WebPageProxy::didConcludeEditDataInteraction(std::optional<TextIndicatorData> data)
+{
+    m_pageClient.didConcludeEditDataInteraction(data);
 }
 
 #endif

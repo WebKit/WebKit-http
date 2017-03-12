@@ -76,17 +76,6 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
         this.controlsBar.element.addEventListener("mousedown", this);
     }
 
-    // Public
-
-    showTracksPanel()
-    {
-        super.showTracksPanel();
-
-        const tracksButtonBounds = this.tracksButton.element.getBoundingClientRect();
-        this.tracksPanel.rightX = window.innerWidth - tracksButtonBounds.right;
-        this.tracksPanel.bottomY = window.innerHeight - tracksButtonBounds.top + 1;
-    }
-
     // Protected
 
     handleEvent(event)
@@ -126,7 +115,8 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
 
     _handleMousedown(event)
     {
-        if (event.target !== this.controlsBar.element)
+        // We don't allow dragging when the interaction is initiated on an interactive element. 
+        if (event.target.localName === "button" || event.target.localName === "input")
             return;
 
         event.preventDefault();

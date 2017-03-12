@@ -257,6 +257,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)forceLowPowerGPUForWebGL;
 - (void)setForceWebGLUsesLowPower:(BOOL)forceLowPower;
 
+- (BOOL)webGPUEnabled;
+- (void)setWebGPUEnabled:(BOOL)enabled;
+
 - (BOOL)accelerated2dCanvasEnabled;
 - (void)setAccelerated2dCanvasEnabled:(BOOL)enabled;
 
@@ -496,6 +499,12 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag;
 - (BOOL)mockCaptureDevicesEnabled;
 
+- (void)setEnumeratingAllNetworkInterfacesEnabled:(BOOL)flag;
+- (BOOL)enumeratingAllNetworkInterfacesEnabled;
+
+- (void)setIceCandidateFilteringEnabled:(BOOL)flag;
+- (BOOL)iceCandidateFilteringEnabled;
+
 - (void)setMediaCaptureRequiresSecureConnection:(BOOL)flag;
 - (BOOL)mediaCaptureRequiresSecureConnection;
 
@@ -520,6 +529,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setModernMediaControlsEnabled:(BOOL)flag;
 - (BOOL)modernMediaControlsEnabled;
 
+- (void)setCredentialManagementEnabled:(BOOL)flag;
+- (BOOL)credentialManagementEnabled;
+
 @property (nonatomic) BOOL visualViewportEnabled;
 @property (nonatomic) BOOL largeImageAsyncDecodingEnabled;
 @property (nonatomic) BOOL animatedImageAsyncDecodingEnabled;
@@ -531,6 +543,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 @property (nonatomic) BOOL userTimingEnabled;
 @property (nonatomic) BOOL resourceTimingEnabled;
 @property (nonatomic) BOOL linkPreloadEnabled;
+@property (nonatomic) BOOL credentialManagementEnabled;
 
 #if TARGET_OS_IPHONE
 @property (nonatomic) BOOL quickLookDocumentSavingEnabled;

@@ -43,7 +43,6 @@
     [CEReactions, MayThrowException] void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
 
     [MayThrowException] void remove(); // ChildNode overload
-    [CEReactions] void remove(HTMLOptionElement option); // FIXME: This overload is not in the specification and was dropped in Blink
     [CEReactions] void remove(long index);
 
     readonly attribute HTMLCollection selectedOptions;
@@ -56,7 +55,7 @@
     readonly attribute DOMString validationMessage;
     boolean checkValidity();
     [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
-    void setCustomValidity(DOMString? error); // FIXME: Argument should not be nullable.
+    void setCustomValidity(DOMString error);
 
     readonly attribute NodeList labels;
 

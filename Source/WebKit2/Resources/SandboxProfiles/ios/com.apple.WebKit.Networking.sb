@@ -28,6 +28,14 @@
 (import "common.sb")
 (import "removed-dev-nodes.sb")
 
+(deny sysctl*)
+(allow sysctl-read
+    (sysctl-name
+        "hw.availcpu"
+        "hw.ncpu"
+        "hw.model"
+        "kern.memorystatus_level"))
+
 ;; Access to client's cache folder & re-vending to CFNetwork.
 ;; FIXME: Remove the webkit specific extension classes <rdar://problem/17755931>
 (allow file-issue-extension (require-all
@@ -60,3 +68,11 @@
 
 (deny file-write-create
        (vnode-type SYMLINK))
+
+;; FIXME should be removed when <rdar://problem/30498072> is fixed.
+(with-filter (extension "com.apple.webkit.webrtc")
+    (allow network*
+        (local udp)
+        (remote udp)
+        (local tcp)
+        (remote tcp)))

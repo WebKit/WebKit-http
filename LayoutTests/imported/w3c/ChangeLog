@@ -1,3 +1,534 @@
+2017-03-12  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBRequest respond() (closed stream state)
+        https://bugs.webkit.org/show_bug.cgi?id=168781
+
+        Reviewed by Youenn Fablet.
+
+        Updated WPT expectations for readable byte streams tests.
+
+        * web-platform-tests/streams/readable-byte-streams/general-expected.txt:
+        * web-platform-tests/streams/readable-byte-streams/general.dedicatedworker-expected.txt:
+
+2017-03-11  Youenn Fablet  <youenn@apple.com>
+
+        XMLHttpRequest: make setRequestHeader() use `, ` as separator (including a space)
+        https://bugs.webkit.org/show_bug.cgi?id=169285
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/XMLHttpRequest/setrequestheader-case-insensitive.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed.htm:
+        * web-platform-tests/fetch/api/headers/headers-combine.html:
+
+2017-03-10  Antti Koivisto  <antti@apple.com>
+
+        imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html is unreliable
+        https://bugs.webkit.org/show_bug.cgi?id=169465
+
+        Reviewed by Zalan Bujtas.
+
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute-expected.txt:
+
+2017-03-09  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Implement PBKDF2 in WebCrypto
+        https://bugs.webkit.org/show_bug.cgi?id=143458
+        <rdar://problem/27311703>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/symmetric_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_symmetric_importKey-expected.txt:
+
+2017-03-08  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for non-standard document.all.tags()
+        https://bugs.webkit.org/show_bug.cgi?id=169337
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline web platform test now that one more check is passing.
+
+        * web-platform-tests/html/infrastructure/common-dom-interfaces/collections/htmlallcollection-expected.txt:
+
+2017-03-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for history.scrollRestoration
+        https://bugs.webkit.org/show_bug.cgi?id=147782
+        rdar://problem/22614568
+
+        Reviewed by Sam Weinig.
+        
+        New passing baselines.
+
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-basic-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-cross-origin-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-samedoc-expected.txt:
+
+2017-03-07  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Implement ECDH ImportKey/ExportKey operations
+        https://bugs.webkit.org/show_bug.cgi?id=169257
+        <rdar://problem/23789585>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/import_export/ec_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_ec_importKey-expected.txt:
+
+2017-03-07  Alex Christensen  <achristensen@webkit.org>
+
+        [URLParser] Fix file URLs that are just file:// and a Windows drive letter
+        https://bugs.webkit.org/show_bug.cgi?id=169242
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2017-03-07  Youenn Fablet  <youenn@apple.com>
+
+        W3C importer should be able to update the import expectations file
+        https://bugs.webkit.org/show_bug.cgi?id=168037
+
+        Reviewed by Ryosuke Niwa.
+
+        * resources/import-expectations.json:
+
+2017-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Align initEvent / initCustomEvent / initMessageEvent with the latest specification
+        https://bugs.webkit.org/show_bug.cgi?id=169176
+
+        Reviewed by Alex Christensen.
+
+        Re-sync web-platform tests from upstream after:
+        - https://github.com/w3c/web-platform-tests/pull/5043
+        - https://github.com/w3c/web-platform-tests/pull/5044
+
+        * web-platform-tests/dom/events/CustomEvent-expected.txt:
+        * web-platform-tests/dom/events/CustomEvent.html:
+        * web-platform-tests/dom/events/Event-initEvent-expected.txt:
+        * web-platform-tests/dom/events/Event-initEvent.html:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/interfaces.html:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/dom/resources/interfaces.idl: Copied from LayoutTests/imported/w3c/web-platform-tests/html/dom/interfaces.html.
+        * web-platform-tests/html/dom/resources/untested-interfaces.idl: Added.
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor-expected.txt: Removed.
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.html: Removed.
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https.html:
+
+2017-03-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Implement ECDH GenerateKey operation
+        https://bugs.webkit.org/show_bug.cgi?id=169093
+        <rdar://problem/23789585>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/successes_ECDH.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDH-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDH-expected.txt:
+
+2017-03-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix URLs relative to file URLs with paths beginning with Windows drive letters
+        https://bugs.webkit.org/show_bug.cgi?id=169178
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2017-03-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Import W3C Test Suite
+        https://bugs.webkit.org/show_bug.cgi?id=169196
+
+        Reviewed by Youenn Fablet.
+
+        This patch imports the CSS Grid Layout test suite from csswg-test repository:
+        https://github.com/w3c/csswg-test/tree/master/css-grid-1
+
+        * csswg-test/css-grid-1/OWNERS: Added.
+        * csswg-test/css-grid-1/README.md: Added.
+        * csswg-test/css-grid-1/grid-definition/fr-unit-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/fr-unit-with-percentage-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/fr-unit-with-percentage.html: Added.
+        * csswg-test/css-grid-1/grid-definition/fr-unit.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-flexible-lengths-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-flexible-lengths-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-grid-template-areas-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-grid-template-areas-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-grid-template-columns-rows-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-grid-template-columns-rows-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-named-grid-lines-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-named-grid-lines-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-repeat-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-repeat-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-template-columns-rows-resolved-values-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-template-columns-rows-resolved-values-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-auto-tracks-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-auto-tracks.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-basic-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-basic.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-repeat-notation-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-repeat-notation.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-flexible-lengths-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-flexible-lengths-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-grid-template-areas-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-grid-template-areas-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-grid-template-columns-rows-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-grid-template-columns-rows-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-named-grid-lines-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-named-grid-lines-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-repeat-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-repeat-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-template-columns-rows-resolved-values-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-template-columns-rows-resolved-values-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/support/testing-utils.js: Added.
+        (checkGridTemplateRows):
+        (testGridTemplateColumnsRows):
+        (testGridTemplateAreas):
+        (TestingUtils):
+        * csswg-test/css-grid-1/grid-definition/support/w3c-import.log: Added.
+        * csswg-test/css-grid-1/grid-definition/w3c-import.log: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-inline-blocks-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-inline-blocks-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-006-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-006.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-001.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-002.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-003.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-004.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-inline-blocks-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-inline-blocks-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-sizing-alignment-001-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-sizing-alignment-001.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-grid-in-grid-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-grid-in-grid.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-z-order-a-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-z-order-a.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-z-order-b-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-z-order-b.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-005-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-006-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-006.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-007-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-007.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-008-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-008.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-009-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-009.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-010-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-010.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-011-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-011.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-012-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-012.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-013-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-013.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-014-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-014.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-015-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-015.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-016-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-016.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-017-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-017.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-018-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-018.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-006-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-006.xht: Added.
+        * csswg-test/css-grid-1/grid-items/ref-filled-green-100px-square-image.html: Added.
+        * csswg-test/css-grid-1/grid-items/support/100x100-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/100x50-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/200x200-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/50x100-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/50x50-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/w3c-import.log: Added.
+        * csswg-test/css-grid-1/grid-items/w3c-import.log: Added.
+        * csswg-test/css-grid-1/grid-layout-properties-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-layout-properties.html: Added.
+        * csswg-test/css-grid-1/grid-model/display-grid-expected.html: Added.
+        * csswg-test/css-grid-1/grid-model/display-grid.html: Added.
+        * csswg-test/css-grid-1/grid-model/display-inline-grid-expected.html: Added.
+        * csswg-test/css-grid-1/grid-model/display-inline-grid.html: Added.
+        * csswg-test/css-grid-1/grid-model/grid-computed-value-display-floated-items-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-model/grid-computed-value-display-floated-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-display-grid-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-display-grid-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-display-inline-grid-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-display-inline-grid-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-002.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-003.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-002.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-003.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-float-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-float-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-floats-no-intrude-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-floats-no-intrude-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-002.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-003.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-002.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-003.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-float-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-float-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-floats-no-intrude-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-floats-no-intrude-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-margins-no-collapse-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-margins-no-collapse-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-multicol-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-multicol-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-vertical-align-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-vertical-align-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-margins-no-collapse-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-margins-no-collapse-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-multicol-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-multicol-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-support-display-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-model/grid-support-display-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-vertical-align-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-vertical-align-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/w3c-import.log: Added.
+        * csswg-test/css-grid-1/implicit-grids/grid-support-grid-auto-columns-rows-001-expected.html: Added.
+        * csswg-test/css-grid-1/implicit-grids/grid-support-grid-auto-columns-rows-001.html: Added.
+        * csswg-test/css-grid-1/implicit-grids/w3c-import.log: Added.
+        * csswg-test/css-grid-1/layout-algorithm/grid-layout-free-space-unit-expected.html: Added.
+        * csswg-test/css-grid-1/layout-algorithm/grid-layout-free-space-unit.html: Added.
+        * csswg-test/css-grid-1/layout-algorithm/w3c-import.log: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-grid-span-expected.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-grid-span.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-lines-expected.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-lines-shorthands-expected.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-lines-shorthands.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-lines.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-placement-shorthands-expected.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-placement-shorthands.html: Added.
+        * csswg-test/css-grid-1/placement/w3c-import.log: Added.
+        * csswg-test/css-grid-1/test-plan/index.html: Added.
+        * csswg-test/css-grid-1/test-plan/w3c-import.log: Added.
+        * csswg-test/css-grid-1/w3c-import.log: Added.
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+
+2017-03-04  Chris Dumez  <cdumez@apple.com>
+
+        Rebaseline W3C test after r213412.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2017-03-03  Andy Estes  <aestes@apple.com>
+
+        Add support for canvas.toBlob
+        https://bugs.webkit.org/show_bug.cgi?id=148878
+        <rdar://problem/22590406>
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.jpeg-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.png-expected.txt:
+
+2017-03-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r213344.
+
+        This changed caused LayoutTest crashes under GuardMalloc.
+
+        Reverted changeset:
+
+        "Add support for canvas.toBlob"
+        https://bugs.webkit.org/show_bug.cgi?id=148878
+        http://trac.webkit.org/changeset/213344
+
+2017-03-02  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebCrypto API support for AES-GCM
+        https://bugs.webkit.org/show_bug.cgi?id=157175
+        <rdar://problem/27311691>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_gcm.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_gcm-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/failures_AES-GCM.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/successes_AES-GCM.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-GCM-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-GCM-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/symmetric_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_symmetric_importKey-expected.txt:
+
+2017-03-02  Andy Estes  <aestes@apple.com>
+
+        Add support for canvas.toBlob
+        https://bugs.webkit.org/show_bug.cgi?id=148878
+        <rdar://problem/22590406>
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.jpeg-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.png-expected.txt:
+
+2017-03-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r213301.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "WebCrypto API support for AES-GCM"
+        https://bugs.webkit.org/show_bug.cgi?id=157175
+        http://trac.webkit.org/changeset/213301
+
+2017-02-22  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebCrypto API support for AES-GCM
+        https://bugs.webkit.org/show_bug.cgi?id=157175
+        <rdar://problem/27311691>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_gcm.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_gcm-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/failures_AES-GCM.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/successes_AES-GCM.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-GCM-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-GCM-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/symmetric_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_symmetric_importKey-expected.txt:
+
 2017-02-24  Joseph Pecoraro  <pecoraro@apple.com>
 
         [Resource Timing] Media elements initiated loads should set the initiatorType to their element name (video/audio)

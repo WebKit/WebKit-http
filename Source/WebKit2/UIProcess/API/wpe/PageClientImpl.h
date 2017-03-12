@@ -43,6 +43,7 @@ private:
     virtual std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy() override;
     virtual void setViewNeedsDisplay(const WebCore::Region&) override;
     virtual void requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&, bool) override;
+    WebCore::FloatPoint viewScrollPosition() override;
     virtual WebCore::IntSize viewSize() override;
     virtual bool isViewWindowActive() override;
     virtual bool isViewFocused() override;

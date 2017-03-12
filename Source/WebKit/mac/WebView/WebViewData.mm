@@ -213,6 +213,9 @@ WebViewLayerFlushScheduler::WebViewLayerFlushScheduler(LayerFlushController* flu
     [_caretChangeListeners release];
     [_fixedPositionContent release];
 #endif
+#if ENABLE(DATA_INTERACTION)
+    [textIndicatorData release];
+#endif
 
     [super dealloc];
 }

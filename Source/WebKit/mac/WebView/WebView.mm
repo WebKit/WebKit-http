@@ -133,6 +133,7 @@
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/DragController.h>
 #import <WebCore/DragData.h>
+#import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
@@ -190,6 +191,7 @@
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/Settings.h>
 #import <WebCore/SocketProvider.h>
+#import <WebCore/SoftLinking.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/ThreadCheck.h>
@@ -201,7 +203,6 @@
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreView.h>
 #import <WebCore/Widget.h>
-#import <WebCore/htmlediting.h>
 #import <WebKitLegacy/DOM.h>
 #import <WebKitLegacy/DOMExtensions.h>
 #import <WebKitLegacy/DOMPrivate.h>
@@ -238,7 +239,6 @@
 #import <WebCore/AVKitSPI.h>
 #import <WebCore/LookupSPI.h>
 #import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
-#import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
 #import <WebCore/WebVideoFullscreenController.h>
@@ -317,6 +317,12 @@
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 #import <WebCore/WebPlaybackSessionInterfaceMac.h>
 #import <WebCore/WebPlaybackSessionModelMediaElement.h>
+#endif
+
+#if ENABLE(DATA_INTERACTION)
+#import <UIKit/UIImage.h>
+SOFT_LINK_FRAMEWORK(UIKit)
+SOFT_LINK_CLASS(UIKit, UIImage)
 #endif
 
 #if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
@@ -610,6 +616,69 @@ private:
 };
 
 } // namespace WebKit
+
+#if ENABLE(DATA_INTERACTION)
+
+@implementation WebUITextIndicatorData
+
+@synthesize dataInteractionImage=_dataInteractionImage;
+@synthesize selectionRectInRootViewCoordinates=_selectionRectInRootViewCoordinates;
+@synthesize textBoundingRectInRootViewCoordinates=_textBoundingRectInRootViewCoordinates;
+@synthesize textRectsInBoundingRectCoordinates=_textRectsInBoundingRectCoordinates;
+@synthesize contentImageWithHighlight=_contentImageWithHighlight;
+@synthesize contentImage=_contentImage;
+
+@end
+
+@implementation WebUITextIndicatorData (WebUITextIndicatorInternal)
+
+- (WebUITextIndicatorData *)initWithImage:(CGImageRef)image textIndicatorData:(WebCore::TextIndicatorData &)indicatorData scale:(CGFloat)scale
+{
+    if (!(self = [super init]))
+        return nil;
+    
+    _dataInteractionImage = [[[getUIImageClass() alloc] initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored] retain];
+    _selectionRectInRootViewCoordinates = indicatorData.selectionRectInRootViewCoordinates;
+    _textBoundingRectInRootViewCoordinates = indicatorData.textBoundingRectInRootViewCoordinates;
+    
+    NSMutableArray *textRectsInBoundingRectCoordinates = [NSMutableArray array];
+    for (auto rect : indicatorData.textRectsInBoundingRectCoordinates)
+        [textRectsInBoundingRectCoordinates addObject:[NSValue valueWithCGRect:rect]];
+    _textRectsInBoundingRectCoordinates = [[NSArray arrayWithArray:textRectsInBoundingRectCoordinates] retain];
+    _contentImageScaleFactor = indicatorData.contentImageScaleFactor;
+    if (indicatorData.contentImageWithHighlight)
+        _contentImageWithHighlight = [[[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored] retain];
+    if (indicatorData.contentImage)
+        _contentImage = [[[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImage.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored] retain];
+    
+    return self;
+}
+
+- (WebUITextIndicatorData *)initWithImage:(CGImageRef)image scale:(CGFloat)scale
+{
+    if (!(self = [super init]))
+        return nil;
+    
+    _dataInteractionImage = [[getUIImageClass() alloc] initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
+    
+    return self;
+}
+
+- (void)dealloc
+{
+    [_dataInteractionImage release];
+    [_textRectsInBoundingRectCoordinates release];
+    [_contentImageWithHighlight release];
+    [_contentImage release];
+    
+    [super dealloc];
+}
+
+@end
+#elif !PLATFORM(MAC)
+@implementation WebUITextIndicatorData
+@end
+#endif // ENABLE(DATA_INTERACTION)
 
 @interface WebView (WebFileInternal)
 #if !PLATFORM(IOS)
@@ -1710,7 +1779,62 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         }
     });
 }
-#endif // PLATFORM(IOS)
+#endif
+
+#if ENABLE(DATA_INTERACTION) && defined(__cplusplus)
+- (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
+{
+    return _private->page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(IntPoint(clientPosition), IntPoint(globalPosition));
+}
+
+- (void)_setDataInteractionData:(CGImageRef)image textIndicator:(std::optional<TextIndicatorData>)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action
+{
+    if (indicatorData)
+        _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image textIndicatorData:indicatorData.value() scale:_private->page->deviceScaleFactor()] retain];
+    else
+        _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image scale:_private->page->deviceScaleFactor()] retain];
+}
+
+- (WebUITextIndicatorData *)_getDataInteractionData
+{
+    return _private->textIndicatorData;
+}
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebViewAdditions.mm>)
+#include <WebKitAdditions/WebViewAdditions.mm>
+#endif
+
+#else
+- (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
+{
+    return NO;
+}
+- (void)_setDataInteractionData:(CGImageRef)image textIndicator:(TextIndicatorData&)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action
+{
+}
+- (WebUITextIndicatorData *)_getDataInteractionData
+{
+    return nil;
+}
+- (uint64_t)_enteredDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return 0;
+}
+
+- (uint64_t)_updatedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return 0;
+}
+- (void)_exitedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+}
+- (void)_performDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+}
+- (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)globalPosition
+{
+}
+#endif // ENABLE(DATA_INTERACTION) && defined(__cplusplus)
 
 static NSMutableSet *knownPluginMIMETypes()
 {
@@ -2586,6 +2710,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setShowRepaintCounter([preferences showRepaintCounter]);
     settings.setWebGLEnabled([preferences webGLEnabled]);
     settings.setSubpixelCSSOMElementMetricsEnabled([preferences subpixelCSSOMElementMetricsEnabled]);
+    settings.setSubpixelAntialiasedLayerTextEnabled([preferences subpixelAntialiasedLayerTextEnabled]);
 
     settings.setForceSoftwareWebGLRendering([preferences forceSoftwareWebGLRendering]);
     settings.setForceWebGLUsesLowPower([preferences forceLowPowerGPUForWebGL]);
@@ -2651,7 +2776,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setPlugInSnapshottingEnabled([preferences plugInSnapshottingEnabled]);
     settings.setHttpEquivEnabled([preferences httpEquivEnabled]);
 
-    settings.setFixedPositionCreatesStackingContext(true);
 #if PLATFORM(MAC)
     settings.setAcceleratedCompositingForFixedPositionEnabled(true);
 #endif
@@ -2779,6 +2903,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled([preferences webGL2Enabled]);
 #endif
 
+#if ENABLE(WEBGPU)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled([preferences webGPUEnabled]);
+#endif
+
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     RuntimeEnabledFeatures::sharedFeatures().setDownloadAttributeEnabled([preferences downloadAttributeEnabled]);
 #endif
@@ -2800,6 +2928,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setUserTimingEnabled(preferences.userTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(preferences.resourceTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(preferences.linkPreloadEnabled);
+    RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(preferences.credentialManagementEnabled);
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -9513,8 +9642,8 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
         if (!selection.isNone()) {
             Node* nodeToRemove;
             if (auto* style = Editor::styleForSelectionStart(coreFrame, nodeToRemove)) {
-                [_private->_textTouchBarItemController setTextIsBold:(style->fontCascade().weight() >= FontWeightBold)];
-                [_private->_textTouchBarItemController setTextIsItalic:(style->fontCascade().italic() == FontItalicOn)];
+                [_private->_textTouchBarItemController setTextIsBold:isFontWeightBold(style->fontCascade().weight())];
+                [_private->_textTouchBarItemController setTextIsItalic:isItalic(style->fontCascade().italic())];
 
                 RefPtr<EditingStyle> typingStyle = coreFrame->selection().typingStyle();
                 if (typingStyle && typingStyle->style()) {

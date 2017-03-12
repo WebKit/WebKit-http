@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009, 2010 University of Szeged
+ * Copyright (C) 2017 Apple Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -701,6 +702,14 @@ namespace JSC {
             m_buffer.putInt(BKPT | ((value & 0xff0) << 4) | (value & 0xf));
         }
 
+        static bool isBkpt(void* address)
+        {
+            ARMWord expected = BKPT;
+            ARMWord immediateMask = (0xff0 << 4) | 0xf;
+            ARMWord candidateInstruction = *reinterpret_cast<ARMWord*>(address);
+            return (candidateInstruction & ~immediateMask) == expected;
+        }
+
         void nop()
         {
             m_buffer.putInt(NOP);
@@ -984,6 +993,13 @@ namespace JSC {
         static void* readCallTarget(void* from)
         {
             return reinterpret_cast<void*>(readPointer(reinterpret_cast<void*>(getAbsoluteJumpAddress(from))));
+        }
+
+        static void replaceWithBkpt(void* instructionStart)
+        {
+            ARMWord* instruction = reinterpret_cast<ARMWord*>(instructionStart);
+            instruction[0] = BKPT;
+            cacheFlush(instruction, sizeof(ARMWord));
         }
 
         static void replaceWithJump(void* instructionStart, void* to)

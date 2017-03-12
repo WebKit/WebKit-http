@@ -445,6 +445,7 @@ fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-backslash.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
@@ -453,6 +454,7 @@ http/tests/download/anchor-download-no-extension.html [ Skip ]
 http/tests/download/area-download.html [ Skip ]
 http/tests/security/anchor-download-allow-data.html [ Skip ]
 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
+http/tests/download/anchor-download-no-value.html [ Skip ]
 
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
@@ -641,6 +643,9 @@ webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nes
 webkit.org/b/149630 css3/font-variant-all.html [ ImageOnlyFailure ]
 
 webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
+
+# Credential Management not supported
+credentials/ [ Skip ]
 
 ################################################################################
 ###########    End Missing Functionality Prevents Testing         ##############
@@ -2279,6 +2284,7 @@ webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
 
 # Disk cache is WK2 only
 http/tests/cache/disk-cache
+http/tests/inspector/network/resource-response-source-disk-cache.html
 
 # The following are unreviewed:
 http/tests/cache/content-type-ignored-during-revalidation.html [ Failure ]
@@ -3784,6 +3790,7 @@ fast/layers/prevent-hit-test-during-layout.html [ Skip ]
 
 # webrtc not supported
 imported/w3c/web-platform-tests/webrtc [ Skip ]
+webrtc [ Skip ]
 
 # Resource Timing networking data not yet available.
 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]

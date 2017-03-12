@@ -44,6 +44,10 @@
 
 /* Controls placement */
 
+.media-controls.mac.inline > .controls-bar button {
+    height: 100% !important;
+}
+
 .media-controls.mac.inline button.play-pause {
     -webkit-mask-position-y: 12px;
 }
@@ -109,10 +113,4 @@
 .media-controls.mac.inline .volume.slider {
     left: 11px;
     top: 10px;
-}
-
-/* Tracks Panel */
-
-.media-controls.mac.inline .tracks-panel {
-    bottom: 51px;
 }

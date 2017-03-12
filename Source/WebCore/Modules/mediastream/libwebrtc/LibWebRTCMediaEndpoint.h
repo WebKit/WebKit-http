@@ -32,9 +32,9 @@
 #include "RealtimeOutgoingVideoSource.h"
 
 #include <webrtc/api/jsep.h>
-#include <webrtc/api/peerconnectionfactory.h>
 #include <webrtc/api/peerconnectioninterface.h>
-#include <webrtc/api/rtcstatscollector.h>
+#include <webrtc/pc/peerconnectionfactory.h>
+#include <webrtc/pc/rtcstatscollector.h>
 
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -74,6 +74,12 @@ public:
 
     RefPtr<RTCSessionDescription> localDescription() const;
     RefPtr<RTCSessionDescription> remoteDescription() const;
+    RefPtr<RTCSessionDescription> currentLocalDescription() const;
+    RefPtr<RTCSessionDescription> currentRemoteDescription() const;
+    RefPtr<RTCSessionDescription> pendingLocalDescription() const;
+    RefPtr<RTCSessionDescription> pendingRemoteDescription() const;
+
+    void addTrack(MediaStreamTrack&, const Vector<String>&);
 
 private:
     LibWebRTCMediaEndpoint(LibWebRTCPeerConnectionBackend&, LibWebRTCProvider&);

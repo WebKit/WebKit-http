@@ -27,9 +27,9 @@
 #include "NetworkProcessProxy.h"
 
 #include "AuthenticationChallengeProxy.h"
-#include "CustomProtocolManagerProxyMessages.h"
 #include "DatabaseProcessMessages.h"
 #include "DownloadProxyMessages.h"
+#include "LegacyCustomProtocolManagerProxyMessages.h"
 #include "Logging.h"
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessMessages.h"
@@ -291,6 +291,13 @@ void NetworkProcessProxy::grantSandboxExtensionsToDatabaseProcessForBlobs(uint64
     connection()->send(Messages::NetworkProcess::DidGrantSandboxExtensionsToDatabaseProcessForBlobs(requestID), 0);
 #endif
 }
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+void NetworkProcessProxy::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& topPrivatelyOwnedDomains, bool value)
+{
+    connection()->send(Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains(topPrivatelyOwnedDomains, value), 0);
+}
+#endif
 
 void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)
 {

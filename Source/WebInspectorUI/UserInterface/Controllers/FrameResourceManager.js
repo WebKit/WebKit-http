@@ -49,6 +49,7 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
         this._mainFrame = null;
         this._resourceRequestIdentifierMap = new Map;
         this._orphanedResources = new Map;
+        this._webSocketIdentifierToURL = new Map;
 
         if (this._mainFrame !== oldMainFrame)
             this._mainFrameDidChange(oldMainFrame);
@@ -200,6 +201,103 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
         this._resourceRequestIdentifierMap.set(requestIdentifier, resource);
     }
 
+    webSocketCreated(requestId, url)
+    {
+        this._webSocketIdentifierToURL.set(requestId, url);
+    }
+
+    webSocketWillSendHandshakeRequest(requestId, timestamp, walltime, request)
+    {
+        let url = this._webSocketIdentifierToURL.get(requestId);
+        console.assert(url);
+        if (!url)
+            return;
+
+        // COMPATIBILITY(iOS 10.3): `walltime` did not exist in 10.3 and earlier.
+        if (!NetworkAgent.hasEventParameter("webSocketWillSendHandshakeRequest", "walltime")) {
+            request = arguments[2];
+            walltime = NaN;
+        }
+
+        // FIXME: <webkit.org/b/168475> Web Inspector: Correctly display iframe's and worker's WebSockets
+        let frameIdentifier = WebInspector.frameResourceManager.mainFrame.id;
+        let loaderIdentifier = WebInspector.frameResourceManager.mainFrame.id;
+        let targetId;
+
+        let frame = this.frameForIdentifier(frameIdentifier);
+        let requestData = null;
+        let elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
+        let initiatorSourceCodeLocation = null;
+
+        let resource = new WebInspector.WebSocketResource(url, loaderIdentifier, targetId, requestId, request.headers, requestData, timestamp, walltime, elapsedTime, initiatorSourceCodeLocation);
+
+        frame.addResource(resource);
+
+        this._resourceRequestIdentifierMap.set(requestId, resource);
+    }
+
+    webSocketHandshakeResponseReceived(requestId, timestamp, response)
+    {
+        let resource = this._resourceRequestIdentifierMap.get(requestId);
+        console.assert(resource);
+        if (!resource)
+            return;
+
+        resource.readyState = WebInspector.WebSocketResource.ReadyState.Open;
+
+        let elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
+        resource.markAsFinished(elapsedTime);
+
+        // FIXME: <webkit.org/b/169166> Web Inspector: WebSockets: Implement timing information
+        let responseTiming = response.timing || null;
+
+        resource.updateForResponse(resource.url, resource.mimeType, resource.type, response.headers, response.status, response.statusText, elapsedTime, responseTiming);
+    }
+
+    webSocketFrameReceived(requestId, timestamp, response)
+    {
+        this._webSocketFrameReceivedOrSent(requestId, timestamp, response);
+    }
+
+    webSocketFrameSent(requestId, timestamp, response)
+    {
+        this._webSocketFrameReceivedOrSent(requestId, timestamp, response);
+    }
+
+    webSocketClosed(requestId, timestamp)
+    {
+        let resource = this._resourceRequestIdentifierMap.get(requestId);
+        console.assert(resource);
+        if (!resource)
+            return;
+
+        resource.readyState = WebInspector.WebSocketResource.ReadyState.Closed;
+
+        let elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
+        resource.markAsFinished(elapsedTime);
+
+        this._webSocketIdentifierToURL.delete(requestId);
+        this._resourceRequestIdentifierMap.delete(requestId);
+    }
+
+    _webSocketFrameReceivedOrSent(requestId, timestamp, response)
+    {
+        let resource = this._resourceRequestIdentifierMap.get(requestId);
+        console.assert(resource);
+        if (!resource)
+            return;
+
+        // Data going from the client to the server is always masked.
+        let isOutgoing = !!response.mask;
+
+        let data = response.payloadData;
+        let opcode = response.opcode;
+
+        let elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
+
+        resource.addFrame(data, isOutgoing, opcode, timestamp, elapsedTime);
+    }
+
     markResourceRequestAsServedFromMemoryCache(requestIdentifier)
     {
         // Called from WebInspector.NetworkObserver.
@@ -216,7 +314,7 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
         if (!resource)
             return;
 
-        resource.markAsCached();
+        resource.legacyMarkServedFromMemoryCache();
     }
 
     resourceRequestWasServedFromMemoryCache(requestIdentifier, frameIdentifier, loaderIdentifier, cachedResourcePayload, timestamp, initiator)
@@ -229,15 +327,18 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
 
         console.assert(!this._resourceRequestIdentifierMap.has(requestIdentifier));
 
-        var elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
-        var initiatorSourceCodeLocation = this._initiatorSourceCodeLocationFromPayload(initiator);
-        var response = cachedResourcePayload.response;
-        var resource = this._addNewResourceToFrameOrTarget(requestIdentifier, frameIdentifier, loaderIdentifier, cachedResourcePayload.url, cachedResourcePayload.type, "GET", null, null, elapsedTime, null, null, initiatorSourceCodeLocation);
-        resource.markAsCached();
-        resource.updateForResponse(cachedResourcePayload.url, response.mimeType, cachedResourcePayload.type, response.headers, response.status, response.statusText, elapsedTime, response.timing);
+        let elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
+        let initiatorSourceCodeLocation = this._initiatorSourceCodeLocationFromPayload(initiator);
+        let response = cachedResourcePayload.response;
+        const responseSource = NetworkAgent.ResponseSource.MemoryCache;
+
+        let resource = this._addNewResourceToFrameOrTarget(requestIdentifier, frameIdentifier, loaderIdentifier, cachedResourcePayload.url, cachedResourcePayload.type, "GET", null, null, elapsedTime, null, null, initiatorSourceCodeLocation);
+        resource.updateForResponse(cachedResourcePayload.url, response.mimeType, cachedResourcePayload.type, response.headers, response.status, response.statusText, elapsedTime, response.timing, responseSource);
         resource.increaseSize(cachedResourcePayload.bodySize, elapsedTime);
         resource.increaseTransferSize(cachedResourcePayload.bodySize);
         resource.markAsFinished(elapsedTime);
+
+        console.assert(resource.cached, "This resource should be classified as cached since it was served from the MemoryCache", resource);
 
         if (cachedResourcePayload.sourceMapURL)
             WebInspector.sourceMapManager.downloadSourceMap(cachedResourcePayload.sourceMapURL, resource.url, resource);
@@ -283,10 +384,11 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
             this._resourceRequestIdentifierMap.set(requestIdentifier, resource);
         }
 
+        // COMPATIBILITY (iOS 10.3): `fromDiskCache` is legacy, replaced by `source`.
         if (response.fromDiskCache)
-            resource.markAsCached();
+            resource.legacyMarkServedFromDiskCache();
 
-        resource.updateForResponse(response.url, response.mimeType, type, response.headers, response.status, response.statusText, elapsedTime, response.timing);
+        resource.updateForResponse(response.url, response.mimeType, type, response.headers, response.status, response.statusText, elapsedTime, response.timing, response.source);
     }
 
     resourceRequestDidReceiveData(requestIdentifier, dataLength, encodedDataLength, timestamp)
@@ -312,7 +414,7 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
             resource.increaseTransferSize(encodedDataLength);
     }
 
-    resourceRequestDidFinishLoading(requestIdentifier, timestamp, sourceMapURL)
+    resourceRequestDidFinishLoading(requestIdentifier, timestamp, sourceMapURL, metrics)
     {
         // Called from WebInspector.NetworkObserver.
 
@@ -327,7 +429,10 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
         if (!resource)
             return;
 
-        var elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
+        if (metrics)
+            resource.updateWithMetrics(metrics);
+
+        let elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
         resource.markAsFinished(elapsedTime);
 
         if (sourceMapURL)
@@ -351,7 +456,7 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
         if (!resource)
             return;
 
-        var elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
+        let elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
         resource.markAsFailed(canceled, elapsedTime);
 
         if (resource === resource.parentFrame.provisionalMainResource)

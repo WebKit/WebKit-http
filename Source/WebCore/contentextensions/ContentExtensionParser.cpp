@@ -40,6 +40,7 @@
 #include <JavaScriptCore/JSONObject.h>
 #include <JavaScriptCore/VM.h>
 #include <wtf/CurrentTime.h>
+#include <wtf/Expected.h>
 #include <wtf/text/WTFString.h>
 
 using namespace JSC;
@@ -58,31 +59,42 @@ static bool containsOnlyASCIIWithNoUppercase(const String& domain)
     return true;
 }
     
-static std::error_code getDomainList(ExecState& exec, const JSObject* arrayObject, Vector<String>& vector)
+static Expected<Vector<String>, std::error_code> getStringList(ExecState& exec, const JSObject* arrayObject)
 {
+    static const ContentExtensionError error = ContentExtensionError::JSONInvalidConditionList;
     VM& vm = exec.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    ASSERT(vector.isEmpty());
     if (!arrayObject || !isJSArray(arrayObject))
-        return ContentExtensionError::JSONInvalidDomainList;
+        return makeUnexpected(error);
     const JSArray* array = jsCast<const JSArray*>(arrayObject);
     
+    Vector<String> strings;
     unsigned length = array->length();
     for (unsigned i = 0; i < length; ++i) {
         const JSValue value = array->getIndex(&exec, i);
         if (scope.exception() || !value.isString())
-            return ContentExtensionError::JSONInvalidDomainList;
+            return makeUnexpected(error);
         
-        // Domains should be punycode encoded lower case.
-        const String& domain = asString(value)->value(&exec);
-        if (domain.isEmpty())
-            return ContentExtensionError::JSONInvalidDomainList;
-        if (!containsOnlyASCIIWithNoUppercase(domain))
-            return ContentExtensionError::JSONDomainNotLowerCaseASCII;
-        vector.append(domain);
+        const String& string = asString(value)->value(&exec);
+        if (string.isEmpty())
+            return makeUnexpected(error);
+        strings.append(string);
     }
-    return { };
+    return WTFMove(strings);
+}
+
+static Expected<Vector<String>, std::error_code> getDomainList(ExecState& exec, const JSObject* arrayObject)
+{
+    auto strings = getStringList(exec, arrayObject);
+    if (!strings.hasValue())
+        return strings;
+    for (auto& domain : strings.value()) {
+        // Domains should be punycode encoded lower case.
+        if (!containsOnlyASCIIWithNoUppercase(domain))
+            return makeUnexpected(ContentExtensionError::JSONDomainNotLowerCaseASCII);
+    }
+    return strings;
 }
 
 static std::error_code getTypeFlags(ExecState& exec, const JSValue& typeValue, ResourceFlags& flags, uint16_t (*stringToType)(const String&))
@@ -117,71 +129,106 @@ static std::error_code getTypeFlags(ExecState& exec, const JSValue& typeValue, R
     return { };
 }
     
-static std::error_code loadTrigger(ExecState& exec, const JSObject& ruleObject, Trigger& trigger)
+static Expected<Trigger, std::error_code> loadTrigger(ExecState& exec, const JSObject& ruleObject)
 {
     VM& vm = exec.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     const JSValue triggerObject = ruleObject.get(&exec, Identifier::fromString(&exec, "trigger"));
     if (!triggerObject || scope.exception() || !triggerObject.isObject())
-        return ContentExtensionError::JSONInvalidTrigger;
+        return makeUnexpected(ContentExtensionError::JSONInvalidTrigger);
     
     const JSValue urlFilterObject = triggerObject.get(&exec, Identifier::fromString(&exec, "url-filter"));
     if (!urlFilterObject || scope.exception() || !urlFilterObject.isString())
-        return ContentExtensionError::JSONInvalidURLFilterInTrigger;
+        return makeUnexpected(ContentExtensionError::JSONInvalidURLFilterInTrigger);
 
     String urlFilter = asString(urlFilterObject)->value(&exec);
     if (urlFilter.isEmpty())
-        return ContentExtensionError::JSONInvalidURLFilterInTrigger;
+        return makeUnexpected(ContentExtensionError::JSONInvalidURLFilterInTrigger);
 
+    Trigger trigger;
     trigger.urlFilter = urlFilter;
 
     const JSValue urlFilterCaseValue = triggerObject.get(&exec, Identifier::fromString(&exec, "url-filter-is-case-sensitive"));
     if (urlFilterCaseValue && !scope.exception() && urlFilterCaseValue.isBoolean())
         trigger.urlFilterIsCaseSensitive = urlFilterCaseValue.toBoolean(&exec);
 
+    const JSValue topURLFilterCaseValue = triggerObject.get(&exec, Identifier::fromString(&exec, "top-url-filter-is-case-sensitive"));
+    if (topURLFilterCaseValue && !scope.exception() && topURLFilterCaseValue.isBoolean())
+        trigger.topURLConditionIsCaseSensitive = topURLFilterCaseValue.toBoolean(&exec);
+
     const JSValue resourceTypeValue = triggerObject.get(&exec, Identifier::fromString(&exec, "resource-type"));
     if (!scope.exception() && resourceTypeValue.isObject()) {
         auto typeFlagsError = getTypeFlags(exec, resourceTypeValue, trigger.flags, readResourceType);
         if (typeFlagsError)
-            return typeFlagsError;
+            return makeUnexpected(typeFlagsError);
     } else if (!resourceTypeValue.isUndefined())
-        return ContentExtensionError::JSONInvalidTriggerFlagsArray;
+        return makeUnexpected(ContentExtensionError::JSONInvalidTriggerFlagsArray);
 
     const JSValue loadTypeValue = triggerObject.get(&exec, Identifier::fromString(&exec, "load-type"));
     if (!scope.exception() && loadTypeValue.isObject()) {
         auto typeFlagsError = getTypeFlags(exec, loadTypeValue, trigger.flags, readLoadType);
         if (typeFlagsError)
-            return typeFlagsError;
+            return makeUnexpected(typeFlagsError);
     } else if (!loadTypeValue.isUndefined())
-        return ContentExtensionError::JSONInvalidTriggerFlagsArray;
+        return makeUnexpected(ContentExtensionError::JSONInvalidTriggerFlagsArray);
 
-    const JSValue ifDomain = triggerObject.get(&exec, Identifier::fromString(&exec, "if-domain"));
-    if (!scope.exception() && ifDomain.isObject()) {
-        auto ifDomainError = getDomainList(exec, asObject(ifDomain), trigger.domains);
-        if (ifDomainError)
-            return ifDomainError;
-        if (trigger.domains.isEmpty())
-            return ContentExtensionError::JSONInvalidDomainList;
-        ASSERT(trigger.domainCondition == Trigger::DomainCondition::None);
-        trigger.domainCondition = Trigger::DomainCondition::IfDomain;
-    } else if (!ifDomain.isUndefined())
-        return ContentExtensionError::JSONInvalidDomainList;
-    
-    const JSValue unlessDomain = triggerObject.get(&exec, Identifier::fromString(&exec, "unless-domain"));
-    if (!scope.exception() && unlessDomain.isObject()) {
-        if (trigger.domainCondition != Trigger::DomainCondition::None)
-            return ContentExtensionError::JSONUnlessAndIfDomain;
-        auto unlessDomainError = getDomainList(exec, asObject(unlessDomain), trigger.domains);
-        if (unlessDomainError)
-            return unlessDomainError;
-        if (trigger.domains.isEmpty())
-            return ContentExtensionError::JSONInvalidDomainList;
-        trigger.domainCondition = Trigger::DomainCondition::UnlessDomain;
-    } else if (!unlessDomain.isUndefined())
-        return ContentExtensionError::JSONInvalidDomainList;
+    const JSValue ifDomainValue = triggerObject.get(&exec, Identifier::fromString(&exec, "if-domain"));
+    if (!scope.exception() && ifDomainValue.isObject()) {
+        auto ifDomain = getDomainList(exec, asObject(ifDomainValue));
+        if (!ifDomain.hasValue())
+            return makeUnexpected(ifDomain.error());
+        trigger.conditions = WTFMove(ifDomain.value());
+        if (trigger.conditions.isEmpty())
+            return makeUnexpected(ContentExtensionError::JSONInvalidConditionList);
+        ASSERT(trigger.conditionType == Trigger::ConditionType::None);
+        trigger.conditionType = Trigger::ConditionType::IfDomain;
+    } else if (!ifDomainValue.isUndefined())
+        return makeUnexpected(ContentExtensionError::JSONInvalidConditionList);
 
-    return { };
+    const JSValue unlessDomainValue = triggerObject.get(&exec, Identifier::fromString(&exec, "unless-domain"));
+    if (!scope.exception() && unlessDomainValue.isObject()) {
+        if (trigger.conditionType != Trigger::ConditionType::None)
+            return makeUnexpected(ContentExtensionError::JSONMultipleConditions);
+        auto unlessDomain = getDomainList(exec, asObject(unlessDomainValue));
+        if (!unlessDomain.hasValue())
+            return makeUnexpected(unlessDomain.error());
+        trigger.conditions = WTFMove(unlessDomain.value());
+        if (trigger.conditions.isEmpty())
+            return makeUnexpected(ContentExtensionError::JSONInvalidConditionList);
+        trigger.conditionType = Trigger::ConditionType::UnlessDomain;
+    } else if (!unlessDomainValue.isUndefined())
+        return makeUnexpected(ContentExtensionError::JSONInvalidConditionList);
+
+    const JSValue ifTopURLValue = triggerObject.get(&exec, Identifier::fromString(&exec, "if-top-url"));
+    if (!scope.exception() && ifTopURLValue.isObject()) {
+        if (trigger.conditionType != Trigger::ConditionType::None)
+            return makeUnexpected(ContentExtensionError::JSONMultipleConditions);
+        auto ifTopURL = getStringList(exec, asObject(ifTopURLValue));
+        if (!ifTopURL.hasValue())
+            return makeUnexpected(ifTopURL.error());
+        trigger.conditions = WTFMove(ifTopURL.value());
+        if (trigger.conditions.isEmpty())
+            return makeUnexpected(ContentExtensionError::JSONInvalidConditionList);
+        trigger.conditionType = Trigger::ConditionType::IfTopURL;
+    } else if (!ifTopURLValue.isUndefined())
+        return makeUnexpected(ContentExtensionError::JSONInvalidConditionList);
+
+    const JSValue unlessTopURLValue = triggerObject.get(&exec, Identifier::fromString(&exec, "unless-top-url"));
+    if (!scope.exception() && unlessTopURLValue.isObject()) {
+        if (trigger.conditionType != Trigger::ConditionType::None)
+            return makeUnexpected(ContentExtensionError::JSONMultipleConditions);
+        auto unlessTopURL = getStringList(exec, asObject(unlessTopURLValue));
+        if (!unlessTopURL.hasValue())
+            return makeUnexpected(unlessTopURL.error());
+        trigger.conditions = WTFMove(unlessTopURL.value());
+        if (trigger.conditions.isEmpty())
+            return makeUnexpected(ContentExtensionError::JSONInvalidConditionList);
+        trigger.conditionType = Trigger::ConditionType::UnlessTopURL;
+    } else if (!unlessTopURLValue.isUndefined())
+        return makeUnexpected(ContentExtensionError::JSONInvalidConditionList);
+
+    return WTFMove(trigger);
 }
 
 static bool isValidSelector(const String& selector)
@@ -193,114 +240,109 @@ static bool isValidSelector(const String& selector)
     return selectorList.isValid();
 }
 
-static std::error_code loadAction(ExecState& exec, const JSObject& ruleObject, Action& action, bool& validSelector)
+static Expected<std::optional<Action>, std::error_code> loadAction(ExecState& exec, const JSObject& ruleObject)
 {
     VM& vm = exec.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    validSelector = true;
     const JSValue actionObject = ruleObject.get(&exec, Identifier::fromString(&exec, "action"));
     if (!actionObject || scope.exception() || !actionObject.isObject())
-        return ContentExtensionError::JSONInvalidAction;
+        return makeUnexpected(ContentExtensionError::JSONInvalidAction);
 
     const JSValue typeObject = actionObject.get(&exec, Identifier::fromString(&exec, "type"));
     if (!typeObject || scope.exception() || !typeObject.isString())
-        return ContentExtensionError::JSONInvalidActionType;
+        return makeUnexpected(ContentExtensionError::JSONInvalidActionType);
 
     String actionType = asString(typeObject)->value(&exec);
 
     if (actionType == "block")
-        action = ActionType::BlockLoad;
-    else if (actionType == "ignore-previous-rules")
-        action = ActionType::IgnorePreviousRules;
-    else if (actionType == "block-cookies")
-        action = ActionType::BlockCookies;
-    else if (actionType == "css-display-none") {
+        return {{ActionType::BlockLoad}};
+    if (actionType == "ignore-previous-rules")
+        return {{ActionType::IgnorePreviousRules}};
+    if (actionType == "block-cookies")
+        return {{ActionType::BlockCookies}};
+    if (actionType == "css-display-none") {
         JSValue selector = actionObject.get(&exec, Identifier::fromString(&exec, "selector"));
         if (!selector || scope.exception() || !selector.isString())
-            return ContentExtensionError::JSONInvalidCSSDisplayNoneActionType;
+            return makeUnexpected(ContentExtensionError::JSONInvalidCSSDisplayNoneActionType);
 
         String selectorString = asString(selector)->value(&exec);
         if (!isValidSelector(selectorString)) {
             // Skip rules with invalid selectors to be backwards-compatible.
-            validSelector = false;
-            return { };
+            return {std::nullopt};
         }
-        action = Action(ActionType::CSSDisplayNoneSelector, selectorString);
-    } else if (actionType == "make-https") {
-        action = ActionType::MakeHTTPS;
-    } else
-        return ContentExtensionError::JSONInvalidActionType;
-
-    return { };
+        return {Action(ActionType::CSSDisplayNoneSelector, selectorString)};
+    }
+    if (actionType == "make-https")
+        return {{ActionType::MakeHTTPS}};
+    return makeUnexpected(ContentExtensionError::JSONInvalidActionType);
 }
 
-static std::error_code loadRule(ExecState& exec, const JSObject& ruleObject, Vector<ContentExtensionRule>& ruleList)
+static Expected<std::optional<ContentExtensionRule>, std::error_code> loadRule(ExecState& exec, const JSObject& ruleObject)
 {
-    Trigger trigger;
-    auto triggerError = loadTrigger(exec, ruleObject, trigger);
-    if (triggerError)
-        return triggerError;
+    auto trigger = loadTrigger(exec, ruleObject);
+    if (!trigger.hasValue())
+        return makeUnexpected(trigger.error());
 
-    Action action;
-    bool validSelector;
-    auto actionError = loadAction(exec, ruleObject, action, validSelector);
-    if (actionError)
-        return actionError;
+    auto action = loadAction(exec, ruleObject);
+    if (!action.hasValue())
+        return makeUnexpected(action.error());
 
-    if (validSelector)
-        ruleList.append(ContentExtensionRule(trigger, action));
-    return { };
+    if (action.value())
+        return {{{WTFMove(trigger.value()), WTFMove(action.value().value())}}};
+
+    return {std::nullopt};
 }
 
-static std::error_code loadEncodedRules(ExecState& exec, const String& rules, Vector<ContentExtensionRule>& ruleList)
+static Expected<Vector<ContentExtensionRule>, std::error_code> loadEncodedRules(ExecState& exec, String&& ruleJSON)
 {
     VM& vm = exec.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     // FIXME: JSONParse should require callbacks instead of an ExecState.
-    const JSValue decodedRules = JSONParse(&exec, rules);
+    const JSValue decodedRules = JSONParse(&exec, ruleJSON);
 
     if (scope.exception() || !decodedRules)
-        return ContentExtensionError::JSONInvalid;
+        return makeUnexpected(ContentExtensionError::JSONInvalid);
 
     if (!decodedRules.isObject())
-        return ContentExtensionError::JSONTopLevelStructureNotAnObject;
+        return makeUnexpected(ContentExtensionError::JSONTopLevelStructureNotAnObject);
 
     const JSObject* topLevelObject = decodedRules.toObject(&exec);
     if (!topLevelObject || scope.exception())
-        return ContentExtensionError::JSONTopLevelStructureNotAnObject;
+        return makeUnexpected(ContentExtensionError::JSONTopLevelStructureNotAnObject);
     
     if (!isJSArray(topLevelObject))
-        return ContentExtensionError::JSONTopLevelStructureNotAnArray;
+        return makeUnexpected(ContentExtensionError::JSONTopLevelStructureNotAnArray);
 
     const JSArray* topLevelArray = jsCast<const JSArray*>(topLevelObject);
 
-    Vector<ContentExtensionRule> localRuleList;
+    Vector<ContentExtensionRule> ruleList;
 
     unsigned length = topLevelArray->length();
     const unsigned maxRuleCount = 50000;
     if (length > maxRuleCount)
-        return ContentExtensionError::JSONTooManyRules;
+        return makeUnexpected(ContentExtensionError::JSONTooManyRules);
     for (unsigned i = 0; i < length; ++i) {
         const JSValue value = topLevelArray->getIndex(&exec, i);
         if (scope.exception() || !value)
-            return ContentExtensionError::JSONInvalidObjectInTopLevelArray;
+            return makeUnexpected(ContentExtensionError::JSONInvalidObjectInTopLevelArray);
 
         const JSObject* ruleObject = value.toObject(&exec);
         if (!ruleObject || scope.exception())
-            return ContentExtensionError::JSONInvalidRule;
+            return makeUnexpected(ContentExtensionError::JSONInvalidRule);
 
-        auto error = loadRule(exec, *ruleObject, localRuleList);
-        if (error)
-            return error;
+        auto rule = loadRule(exec, *ruleObject);
+        if (!rule.hasValue())
+            return makeUnexpected(rule.error());
+        if (rule.value())
+            ruleList.append(*rule.value());
     }
 
-    ruleList = WTFMove(localRuleList);
-    return { };
+    return WTFMove(ruleList);
 }
 
-std::error_code parseRuleList(const String& rules, Vector<ContentExtensionRule>& ruleList)
+Expected<Vector<ContentExtensionRule>, std::error_code> parseRuleList(String&& ruleJSON)
 {
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     double loadExtensionStartTime = monotonicallyIncreasingTime();
@@ -311,22 +353,22 @@ std::error_code parseRuleList(const String& rules, Vector<ContentExtensionRule>&
     JSGlobalObject* globalObject = JSGlobalObject::create(*vm, JSGlobalObject::createStructure(*vm, jsNull()));
 
     ExecState* exec = globalObject->globalExec();
-    auto error = loadEncodedRules(*exec, rules, ruleList);
+    auto ruleList = loadEncodedRules(*exec, WTFMove(ruleJSON));
 
     vm = nullptr;
 
-    if (error)
-        return error;
+    if (!ruleList.hasValue())
+        return makeUnexpected(ruleList.error());
 
-    if (ruleList.isEmpty())
-        return ContentExtensionError::JSONContainsNoRules;
+    if (ruleList->isEmpty())
+        return makeUnexpected(ContentExtensionError::JSONContainsNoRules);
 
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     double loadExtensionEndTime = monotonicallyIncreasingTime();
     dataLogF("Time spent loading extension %f\n", (loadExtensionEndTime - loadExtensionStartTime));
 #endif
 
-    return { };
+    return WTFMove(*ruleList);
 }
 
 } // namespace ContentExtensions

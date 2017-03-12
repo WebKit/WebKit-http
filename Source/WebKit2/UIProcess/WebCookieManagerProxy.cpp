@@ -28,6 +28,7 @@
 
 #include "APIArray.h"
 #include "APISecurityOrigin.h"
+#include "NetworkProcessMessages.h"
 #include "WebCookieManagerMessages.h"
 #include "WebCookieManagerProxyMessages.h"
 #include "WebProcessPool.h"
@@ -128,9 +129,9 @@ void WebCookieManagerProxy::deleteAllCookiesModifiedSince(WebCore::SessionID ses
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::DeleteAllCookiesModifiedSince(sessionID, time));
 }
 
-void WebCookieManagerProxy::addCookie(WebCore::SessionID sessionID, const WebCore::Cookie& cookie, const String& hostname)
+void WebCookieManagerProxy::setCookies(WebCore::SessionID sessionID, const Vector<WebCore::Cookie>& cookies, const WebCore::URL& url, const WebCore::URL& mainDocumentURL)
 {
-    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::AddCookie(sessionID, cookie, hostname));
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies(sessionID, cookies, url, mainDocumentURL));
 }
 
 void WebCookieManagerProxy::startObservingCookieChanges(WebCore::SessionID sessionID)
@@ -194,6 +195,15 @@ void WebCookieManagerProxy::didGetHTTPCookieAcceptPolicy(uint32_t policy, uint64
     }
 
     callback->performCallbackWithReturnValue(policy);
+}
+
+void WebCookieManagerProxy::setCookieStoragePartitioningEnabled(bool enabled)
+{
+#if PLATFORM(COCOA)
+    processPool()->sendToNetworkingProcess(Messages::NetworkProcess::SetCookieStoragePartitioningEnabled(enabled));
+#else
+    UNUSED_PARAM(enabled);
+#endif
 }
 
 } // namespace WebKit

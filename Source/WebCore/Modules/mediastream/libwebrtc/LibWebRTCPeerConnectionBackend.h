@@ -60,16 +60,17 @@ private:
     Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) final;
 
     RefPtr<RTCSessionDescription> localDescription() const final;
-    RefPtr<RTCSessionDescription> currentLocalDescription() const final { return localDescription(); }
-    RefPtr<RTCSessionDescription> pendingLocalDescription() const final { return localDescription(); }
+    RefPtr<RTCSessionDescription> currentLocalDescription() const final;
+    RefPtr<RTCSessionDescription> pendingLocalDescription() const final;
 
     RefPtr<RTCSessionDescription> remoteDescription() const final;
-    RefPtr<RTCSessionDescription> currentRemoteDescription() const final { return remoteDescription(); }
-    RefPtr<RTCSessionDescription> pendingRemoteDescription() const final { return remoteDescription(); }
+    RefPtr<RTCSessionDescription> currentRemoteDescription() const final;
+    RefPtr<RTCSessionDescription> pendingRemoteDescription() const final;
 
+    void notifyAddedTrack(RTCRtpSender&) final;
     // FIXME: API to implement for real
     Vector<RefPtr<MediaStream>> getRemoteStreams() const final { return { }; }
-    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromise<void>&&) final { }
+    void replaceTrack(RTCRtpSender&, Ref<MediaStreamTrack>&&, DOMPromise<void>&&) final { }
 
     void emulatePlatformEvent(const String&) final { }
 

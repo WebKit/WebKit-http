@@ -51,8 +51,8 @@
 using namespace WebCore;
 using namespace WebKit;
 
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebDragClientAdditions.mm>)
-#import <WebKitAdditions/WebDragClientAdditions.mm>
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebDragClientAdditionsWebKit2.mm>)
+#import <WebKitAdditions/WebDragClientAdditionsWebKit2.mm>
 #endif
 
 #if PLATFORM(MAC)
@@ -80,6 +80,10 @@ static PassRefPtr<ShareableBitmap> convertImageToBitmap(NSImage *image, const In
     [NSGraphicsContext setCurrentContext:savedContext.get()];
 
     return WTFMove(bitmap);
+}
+
+void WebDragClient::didConcludeEditDrag()
+{
 }
 
 void WebDragClient::startDrag(DragImage image, const IntPoint& point, const IntPoint&, const FloatPoint&, DataTransfer&, Frame& frame, DragSourceAction dragSourceAction)

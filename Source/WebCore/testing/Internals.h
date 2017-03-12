@@ -66,6 +66,7 @@ class Page;
 class Range;
 class RenderedDocumentMarker;
 class RTCPeerConnection;
+class SVGSVGElement;
 class SerializedScriptValue;
 class SourceBuffer;
 class StyleSheet;
@@ -130,6 +131,7 @@ public:
     // DOMTimers throttling testing.
     ExceptionOr<bool> isTimerThrottled(int timeoutId);
     bool isRequestAnimationFrameThrottled() const;
+    double requestAnimationFrameInterval() const;
     bool areTimersThrottled() const;
 
     enum EventThrottlingBehavior { Responsive, Unresponsive };
@@ -146,6 +148,7 @@ public:
     ExceptionOr<void> resumeAnimations() const;
     ExceptionOr<bool> pauseAnimationAtTimeOnElement(const String& animationName, double pauseTime, Element&);
     ExceptionOr<bool> pauseAnimationAtTimeOnPseudoElement(const String& animationName, double pauseTime, Element&, const String& pseudoId);
+    double animationsInterval() const;
 
     // CSS Transition testing.
     ExceptionOr<bool> pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element&);
@@ -174,6 +177,9 @@ public:
     ExceptionOr<void> setMarkedTextMatchesAreHighlighted(bool);
 
     void invalidateFontCache();
+    void setFontSmoothingEnabled(bool);
+    
+    ExceptionOr<void> setLowPowerModeEnabled(bool);
 
     ExceptionOr<void> setScrollViewPosition(int x, int y);
     
@@ -254,6 +260,7 @@ public:
     InternalSettings* settings() const;
     unsigned workerThreadCount() const;
     bool areSVGAnimationsPaused() const;
+    ExceptionOr<double> svgAnimationsInterval(SVGSVGElement&) const;
 
     ExceptionOr<void> setDeviceProximity(const String& eventType, double value, double min, double max);
 
@@ -267,6 +274,7 @@ public:
         LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32,
     };
     ExceptionOr<String> layerTreeAsText(Document&, unsigned short flags) const;
+    ExceptionOr<uint64_t> layerIDForElement(Element&);
     ExceptionOr<String> repaintRectsAsText() const;
     ExceptionOr<String> scrollingStateTreeAsText() const;
     ExceptionOr<String> mainThreadScrollingReasons() const;
@@ -394,9 +402,9 @@ public:
 
 #if ENABLE(WEB_RTC)
     void enableMockMediaEndpoint();
-    void enableMockRTCPeerConnectionHandler();
     void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
     void useMockRTCPeerConnectionFactory(const String&);
+    void setICECandidateFiltering(bool);
 #endif
 
     String getImageSourceURL(Element&);

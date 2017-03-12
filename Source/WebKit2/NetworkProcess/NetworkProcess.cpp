@@ -30,9 +30,9 @@
 #include "Attachment.h"
 #include "AuthenticationManager.h"
 #include "ChildProcessMessages.h"
-#include "CustomProtocolManager.h"
 #include "DataReference.h"
 #include "DownloadProxyMessages.h"
+#include "LegacyCustomProtocolManager.h"
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkProcessCreationParameters.h"
@@ -109,9 +109,9 @@ NetworkProcess::NetworkProcess()
 
     addSupplement<AuthenticationManager>();
     addSupplement<WebCookieManager>();
-    addSupplement<CustomProtocolManager>();
+    addSupplement<LegacyCustomProtocolManager>();
 #if USE(NETWORK_SESSION) && PLATFORM(COCOA)
-    NetworkSessionCocoa::setCustomProtocolManager(supplement<CustomProtocolManager>());
+    NetworkSessionCocoa::setLegacyCustomProtocolManager(supplement<LegacyCustomProtocolManager>());
 #endif
 }
 
@@ -309,6 +309,13 @@ void NetworkProcess::didGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t
     if (auto handler = m_sandboxExtensionForBlobsCompletionHandlers.take(requestID))
         handler();
 }
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+void NetworkProcess::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domains, bool value)
+{
+    NetworkStorageSession::defaultStorageSession().setShouldPartitionCookiesForHosts(domains, value);
+}
+#endif
 
 static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetchOption> fetchOptions, Function<void (Vector<WebsiteData::Entry>)>&& completionHandler)
 {

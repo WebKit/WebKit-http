@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2014, 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -694,6 +694,21 @@ private:
         LdrLiteralOp_LDRSW = 2,
         LdrLiteralOp_128BIT = 2
     };
+    
+    enum ExoticLoadFence {
+        ExoticLoadFence_None,
+        ExoticLoadFence_Acquire
+    };
+    
+    enum ExoticLoadAtomic {
+        ExoticLoadAtomic_Link,
+        ExoticLoadAtomic_None
+    };
+
+    enum ExoticStoreFence {
+        ExoticStoreFence_None,
+        ExoticStoreFence_Release,
+    };
 
     static unsigned memPairOffsetShift(bool V, MemPairOpSize size)
     {
@@ -868,6 +883,14 @@ public:
         insn(excepnGeneration(ExcepnOp_BREAKPOINT, imm, 0));
     }
     
+    ALWAYS_INLINE static bool isBrk(void* address)
+    {
+        int expected = excepnGeneration(ExcepnOp_BREAKPOINT, 0, 0);
+        int immediateMask = excepnGenerationImmMask();
+        int candidateInstruction = *reinterpret_cast<int*>(address);
+        return (candidateInstruction & ~immediateMask) == expected;
+    }
+
     template<int datasize>
     ALWAYS_INLINE void cbnz(RegisterID rt, int32_t offset = 0)
     {
@@ -1523,6 +1546,55 @@ public:
     {
         insn(0xd5033abf);
     }
+    
+    template<int datasize>
+    void ldar(RegisterID dst, RegisterID src)
+    {
+        CHECK_DATASIZE();
+        insn(exoticLoad(MEMOPSIZE, ExoticLoadFence_Acquire, ExoticLoadAtomic_None, dst, src));
+    }
+
+    template<int datasize>
+    void ldxr(RegisterID dst, RegisterID src)
+    {
+        CHECK_DATASIZE();
+        insn(exoticLoad(MEMOPSIZE, ExoticLoadFence_None, ExoticLoadAtomic_Link, dst, src));
+    }
+
+    template<int datasize>
+    void ldaxr(RegisterID dst, RegisterID src)
+    {
+        CHECK_DATASIZE();
+        insn(exoticLoad(MEMOPSIZE, ExoticLoadFence_Acquire, ExoticLoadAtomic_Link, dst, src));
+    }
+    
+    template<int datasize>
+    void stxr(RegisterID result, RegisterID src, RegisterID dst)
+    {
+        CHECK_DATASIZE();
+        insn(exoticStore(MEMOPSIZE, ExoticStoreFence_None, result, src, dst));
+    }
+
+    template<int datasize>
+    void stlr(RegisterID src, RegisterID dst)
+    {
+        CHECK_DATASIZE();
+        insn(storeRelease(MEMOPSIZE, src, dst));
+    }
+
+    template<int datasize>
+    void stlxr(RegisterID result, RegisterID src, RegisterID dst)
+    {
+        CHECK_DATASIZE();
+        insn(exoticStore(MEMOPSIZE, ExoticStoreFence_Release, result, src, dst));
+    }
+    
+#if ENABLE(FAST_TLS_JIT)
+    void mrs_TPIDRRO_EL0(RegisterID dst)
+    {
+        insn(0xd53bd060 | dst); // Thanks, otool -t!
+    }
+#endif
 
     template<int datasize>
     ALWAYS_INLINE void orn(RegisterID rd, RegisterID rn, RegisterID rm)
@@ -2528,6 +2600,13 @@ public:
         linkPointer(addressOf(code, where), valuePtr);
     }
 
+    static void replaceWithBkpt(void* where)
+    {
+        int insn = excepnGeneration(ExcepnOp_BREAKPOINT, 0, 0);
+        performJITMemcpy(where, &insn, sizeof(int));
+        cacheFlush(where, sizeof(int));
+    }
+
     static void replaceWithJump(void* where, void* to)
     {
         intptr_t offset = (reinterpret_cast<intptr_t>(to) - reinterpret_cast<intptr_t>(where)) >> 2;
@@ -3282,6 +3361,11 @@ private:
         const int op2 = 0;
         return (0xd4000000 | opc << 21 | imm16 << 5 | op2 << 2 | LL);
     }
+    ALWAYS_INLINE static int excepnGenerationImmMask()
+    {
+        uint16_t imm16 =  std::numeric_limits<uint16_t>::max();
+        return (static_cast<int>(imm16) << 5);
+    }
 
     ALWAYS_INLINE static int extract(Datasize sf, RegisterID rm, int imms, RegisterID rn, RegisterID rd)
     {
@@ -3588,7 +3672,22 @@ private:
         const int op4 = 0;
         return (0xd6000000 | opc << 21 | op2 << 16 | op3 << 10 | xOrZr(rn) << 5 | op4);
     }
-
+    
+    static int exoticLoad(MemOpSize size, ExoticLoadFence fence, ExoticLoadAtomic atomic, RegisterID dst, RegisterID src)
+    {
+        return 0x085f7c00 | size << 30 | fence << 15 | atomic << 23 | src << 5 | dst;
+    }
+    
+    static int storeRelease(MemOpSize size, RegisterID src, RegisterID dst)
+    {
+        return 0x089ffc00 | size << 30 | dst << 5 | src;
+    }
+    
+    static int exoticStore(MemOpSize size, ExoticStoreFence fence, RegisterID result, RegisterID src, RegisterID dst)
+    {
+        return 0x08007c00 | size << 30 | result << 16 | fence << 15 | dst << 5 | src;
+    }
+    
     // Workaround for Cortex-A53 erratum (835769). Emit an extra nop if the
     // last instruction in the buffer is a load, store or prefetch. Needed
     // before 64-bit multiply-accumulate instructions.

@@ -66,15 +66,19 @@ public:
     WEBCORE_EXPORT void setReducedTimestampResolution(double seconds);
 
     WEBCORE_EXPORT void fireDataModificationHandler();
+    WEBCORE_EXPORT void fireShouldPartitionCookiesHandler(const String& primaryDomain, bool value);
 
     WEBCORE_EXPORT RefPtr<ResourceLoadStatisticsStore> statisticsStore();
     WEBCORE_EXPORT void setStatisticsStore(Ref<ResourceLoadStatisticsStore>&&);
+    WEBCORE_EXPORT void clearInMemoryAndPersistentStore();
+    WEBCORE_EXPORT void clearInMemoryAndPersistentStore(std::chrono::system_clock::time_point modifiedSince);
 
     WEBCORE_EXPORT String statisticsForOrigin(const String&);
 
 private:
     bool shouldLog(Page*);
     static String primaryDomain(const URL&);
+    static String primaryDomain(const String& host);
 
     RefPtr<ResourceLoadStatisticsStore> m_store;
     HashMap<String, size_t> m_originsVisitedMap;

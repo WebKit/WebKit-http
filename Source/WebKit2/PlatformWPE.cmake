@@ -31,7 +31,7 @@ list(APPEND DatabaseProcess_SOURCES
 list(APPEND WebKit2_SOURCES
     DatabaseProcess/wpe/DatabaseProcessMainWPE.cpp
 
-    NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
+    NetworkProcess/CustomProtocols/soup/LegacyCustomProtocolManagerSoup.cpp
 
     NetworkProcess/Downloads/wpe/DownloadSoupErrorsWPE.cpp
 

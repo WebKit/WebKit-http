@@ -20,6 +20,7 @@ find_library(COREAUDIO_LIBRARY CoreAudio)
 find_library(DISKARBITRATION_LIBRARY DiskArbitration)
 find_library(IOKIT_LIBRARY IOKit)
 find_library(IOSURFACE_LIBRARY IOSurface)
+find_library(METAL_LIBRARY Metal)
 find_library(OPENGL_LIBRARY OpenGL)
 find_library(QUARTZ_LIBRARY Quartz)
 find_library(QUARTZCORE_LIBRARY QuartzCore)
@@ -40,6 +41,7 @@ list(APPEND WebCore_LIBRARIES
     ${DISKARBITRATION_LIBRARY}
     ${IOKIT_LIBRARY}
     ${IOSURFACE_LIBRARY}
+    ${METAL_LIBRARY}
     ${OPENGL_LIBRARY}
     ${QUARTZ_LIBRARY}
     ${QUARTZCORE_LIBRARY}
@@ -107,6 +109,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/cocoa"
     "${WEBCORE_DIR}/platform/graphics/cg"
     "${WEBCORE_DIR}/platform/graphics/cv"
+    "${WEBCORE_DIR}/platform/graphics/gpu"
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/opengl"
@@ -180,8 +183,11 @@ list(APPEND WebCore_SOURCES
 
     crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
     crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
+    crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
     crypto/algorithms/CryptoAlgorithmAES_KW.cpp
+    crypto/algorithms/CryptoAlgorithmECDH.cpp
     crypto/algorithms/CryptoAlgorithmHMAC.cpp
+    crypto/algorithms/CryptoAlgorithmPBKDF2.cpp
     crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
     crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
     crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
@@ -194,18 +200,24 @@ list(APPEND WebCore_SOURCES
     crypto/keys/CryptoKeyAES.cpp
     crypto/keys/CryptoKeyDataOctetSequence.cpp
     crypto/keys/CryptoKeyDataRSAComponents.cpp
+    crypto/keys/CryptoKeyEC.cpp
     crypto/keys/CryptoKeyHMAC.cpp
     crypto/keys/CryptoKeyRSA.cpp
+    crypto/keys/CryptoKeyRaw.cpp
     crypto/keys/CryptoKeySerializationRaw.cpp
 
-    crypto/mac/CryptoAlgorithmAES_CFBMac.cpp
     crypto/mac/CryptoAlgorithmAES_CBCMac.cpp
+    crypto/mac/CryptoAlgorithmAES_CFBMac.cpp
+    crypto/mac/CryptoAlgorithmAES_GCMMac.cpp
     crypto/mac/CryptoAlgorithmAES_KWMac.cpp
+    crypto/mac/CryptoAlgorithmECDHMac.cpp
     crypto/mac/CryptoAlgorithmHMACMac.cpp
+    crypto/mac/CryptoAlgorithmPBKDF2Mac.cpp
     crypto/mac/CryptoAlgorithmRSAES_PKCS1_v1_5Mac.cpp
     crypto/mac/CryptoAlgorithmRSASSA_PKCS1_v1_5Mac.cpp
     crypto/mac/CryptoAlgorithmRSA_OAEPMac.cpp
     crypto/mac/CryptoAlgorithmRegistryMac.cpp
+    crypto/mac/CryptoKeyECMac.cpp
     crypto/mac/CryptoKeyMac.cpp
     crypto/mac/CryptoKeyRSAMac.cpp
     crypto/mac/SerializedCryptoKeyWrapMac.mm
@@ -295,6 +307,8 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/cocoa/MediaSessionManagerCocoa.cpp
 
+    platform/audio/mac/CAAudioStreamDescription.cpp
+
     platform/audio/mac/AudioBusMac.mm
     platform/audio/mac/AudioDestinationMac.cpp
     platform/audio/mac/AudioFileReaderMac.cpp
@@ -324,7 +338,6 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/LocalizedStringsCocoa.mm
     platform/cocoa/MIMETypeRegistryCocoa.mm
     platform/cocoa/MachSendRight.cpp
-    platform/cocoa/MemoryPressureHandlerCocoa.mm
     platform/cocoa/NetworkExtensionContentFilter.mm
     platform/cocoa/ParentalControlsContentFilter.mm
     platform/cocoa/ScrollController.mm
@@ -410,6 +423,12 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/SubimageCacheWithTimer.cpp
     platform/graphics/cg/TransformationMatrixCG.cpp
 
+    platform/graphics/cocoa/GPUBufferMetal.mm
+    platform/graphics/cocoa/GPUDeviceMetal.mm
+    platform/graphics/cocoa/GPUFunctionMetal.mm
+    platform/graphics/cocoa/GPULibraryMetal.mm
+    platform/graphics/cocoa/GPUTextureDescriptorMetal.mm
+    platform/graphics/cocoa/GPUTextureMetal.mm
     platform/graphics/cocoa/FontCacheCoreText.cpp
     platform/graphics/cocoa/FontCascadeCocoa.mm
     platform/graphics/cocoa/FontCocoa.mm
@@ -418,10 +437,18 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cocoa/IOSurfacePoolCocoa.mm
     platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
     platform/graphics/cocoa/WebCoreCALayerExtras.mm
+    platform/graphics/cocoa/WebGPULayer.mm
 
     platform/graphics/cv/PixelBufferConformerCV.cpp
     platform/graphics/cv/TextureCacheCV.mm
     platform/graphics/cv/VideoTextureCopierCV.cpp
+
+    platform/graphics/gpu/GPUBuffer.cpp
+    platform/graphics/gpu/GPUDevice.cpp
+    platform/graphics/gpu/GPUFunction.cpp
+    platform/graphics/gpu/GPULibrary.cpp
+    platform/graphics/gpu/GPUTexture.cpp
+    platform/graphics/gpu/GPUTextureDescriptor.cpp
 
     platform/graphics/mac/ColorMac.mm
     platform/graphics/mac/ComplexTextControllerCoreText.mm
@@ -485,6 +512,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/ScrollbarThemeMac.mm
     platform/mac/SerializedPlatformRepresentationMac.mm
     platform/mac/SoundMac.mm
+    platform/mac/StringUtilities.mm
     platform/mac/SuddenTermination.mm
     platform/mac/SystemSleepListenerMac.mm
     platform/mac/ThemeMac.mm

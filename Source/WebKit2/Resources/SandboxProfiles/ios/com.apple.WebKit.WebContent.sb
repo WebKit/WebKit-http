@@ -34,6 +34,14 @@
 (play-media)
 (media-remote)
 
+(deny sysctl*)
+(allow sysctl-read
+    (sysctl-name
+        "hw.availcpu"
+        "hw.ncpu"
+        "hw.model"
+        "kern.memorystatus_level"))
+
 ;; Read-only preferences and data
 (mobile-preferences-read
     "com.apple.LaunchServices"
@@ -108,11 +116,11 @@
 
 ;; Media capture, camera access
 (with-filter (extension "com.apple.webkit.camera")
-    (shared-preferences-read "com.apple.coremedia")
+    (allow user-preference-read
+        (preference-domain "com.apple.coremedia"))
     (allow file-read* (subpath "/Library/CoreMediaIO/Plug-Ins/DAL"))
     (allow mach-lookup (extension "com.apple.app-sandbox.mach"))
     (allow mach-lookup
-        (global-name "com.apple.coremedia.videoqueue")
         (global-name "com.apple.cmio.AppleCameraAssistant")
         ;; Apple DAL assistants
         (global-name "com.apple.cmio.VDCAssistant")
@@ -125,3 +133,10 @@
         (iokit-user-client-class "IOUSBDeviceUserClientV2")
         (iokit-user-client-class "IOUSBInterfaceUserClientV2"))
     (allow device-camera))
+
+;; Support incoming video connections
+(allow mach-lookup
+    (global-name "com.apple.audio.audiohald")
+    (global-name "com.apple.coremedia.compressionsession")
+    (global-name "com.apple.coremedia.decompressionsession")
+    (global-name "com.apple.coremedia.videoqueue"))

@@ -171,7 +171,7 @@ class Simulator(object):
     """
     Represents the iOS Simulator infrastructure under the currently select Xcode.app bundle.
     """
-    device_type_re = re.compile('(?P<name>[^(]+)\((?P<identifier>[^)]+)\)')
+    device_type_re = re.compile('(?P<name>.+)\((?P<identifier>[^)]+)\)')
     # FIXME: runtime_re parses the version from the runtime name, but that does not contain the full version number
     # (it can omit the revision). We should instead parse the version from the number contained in parentheses.
     runtime_re = re.compile(
@@ -179,9 +179,9 @@ class Simulator(object):
     unavailable_version_re = re.compile('-- Unavailable: (?P<identifier>[^ ]+) --')
     version_re = re.compile('-- (i|watch|tv)OS (?P<version>\d+\.\d+)(?P<internal> Internal)? --')
     devices_re = re.compile(
-        '\s*(?P<name>[^(]+ )\((?P<udid>[^)]+)\) \((?P<state>[^)]+)\)( \((?P<availability>[^)]+)\))?')
+        '\s*(?P<name>.+) \((?P<udid>[^)]+)\) \((?P<state>[^)]+)\)( \((?P<availability>[^)]+)\))?')
 
-    _managed_devices = {}
+    managed_devices = {}
     Device = None
 
     def __init__(self, host=None):
@@ -216,21 +216,21 @@ class Simulator(object):
     def create_device(number, device_type, runtime):
         device = Simulator().lookup_or_create_device(device_type.name + ' WebKit Tester' + str(number), device_type, runtime)
         _log.debug('created device {} {}'.format(number, device))
-        assert(len(Simulator._managed_devices) == number)
-        Simulator._managed_devices[number] = device
+        assert(len(Simulator.managed_devices) == number)
+        Simulator.managed_devices[number] = device
 
     @staticmethod
     def remove_device(number):
-        if not Simulator._managed_devices[number]:
+        if not Simulator.managed_devices[number]:
             return
-        device_udid = Simulator._managed_devices[number].udid
+        device_udid = Simulator.managed_devices[number].udid
         _log.debug('removing device {} {}'.format(number, device_udid))
-        del Simulator._managed_devices[number]
+        del Simulator.managed_devices[number]
         Simulator.delete_device(device_udid)
 
     @staticmethod
     def device_number(number):
-        return Simulator._managed_devices[number]
+        return Simulator.managed_devices[number]
 
     @staticmethod
     def device_state_description(state):

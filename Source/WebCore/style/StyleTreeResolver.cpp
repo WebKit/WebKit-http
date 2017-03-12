@@ -51,24 +51,6 @@ namespace WebCore {
 
 namespace Style {
 
-static std::unique_ptr<RenderStyle> makePlaceholderStyle(Document& document)
-{
-    auto placeholderStyle = RenderStyle::createPtr();
-    placeholderStyle->setDisplay(NONE);
-    placeholderStyle->setIsPlaceholderStyle();
-
-    FontCascadeDescription fontDescription;
-    fontDescription.setOneFamily(standardFamily);
-    fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
-    float size = Style::fontSizeForKeyword(CSSValueMedium, false, document);
-    fontDescription.setSpecifiedSize(size);
-    fontDescription.setComputedSize(size);
-    placeholderStyle->setFontDescription(fontDescription);
-
-    placeholderStyle->fontCascade().update(&document.fontSelector());
-    return placeholderStyle;
-}
-
 TreeResolver::TreeResolver(Document& document)
     : m_document(document)
 {
@@ -92,10 +74,9 @@ TreeResolver::Scope::Scope(ShadowRoot& shadowRoot, Scope& enclosingScope)
 {
 }
 
-TreeResolver::Parent::Parent(Document& document, Change change)
+TreeResolver::Parent::Parent(Document& document)
     : element(nullptr)
     , style(*document.renderStyle())
-    , change(change)
 {
 }
 
@@ -127,11 +108,6 @@ void TreeResolver::popScope()
 
 std::unique_ptr<RenderStyle> TreeResolver::styleForElement(Element& element, const RenderStyle& inheritedStyle)
 {
-    if (!m_document.haveStylesheetsLoaded() && !element.renderer()) {
-        m_document.setHasNodesWithPlaceholderStyle();
-        return makePlaceholderStyle(m_document);
-    }
-
     if (element.hasCustomStyleResolveCallbacks()) {
         RenderStyle* shadowHostStyle = scope().shadowRoot ? m_update->elementStyle(*scope().shadowRoot->host()) : nullptr;
         if (auto customStyle = element.resolveCustomStyle(inheritedStyle, shadowHostStyle)) {
@@ -191,14 +167,24 @@ static bool affectsRenderedSubtree(Element& element, const RenderStyle& newStyle
 
 ElementUpdate TreeResolver::resolveElement(Element& element)
 {
+    if (m_didSeePendingStylesheet && !element.renderer() && !m_document.isIgnoringPendingStylesheets()) {
+        m_document.setHasNodesWithNonFinalStyle();
+        return { };
+    }
+
     auto newStyle = styleForElement(element, parent().style);
 
     if (!affectsRenderedSubtree(element, *newStyle))
         return { };
 
-    auto update = createAnimatedElementUpdate(WTFMove(newStyle), element, parent().change);
-
     auto* existingStyle = element.renderStyle();
+
+    if (m_didSeePendingStylesheet && (!existingStyle || existingStyle->isNotFinal())) {
+        newStyle->setIsNotFinal();
+        m_document.setHasNodesWithNonFinalStyle();
+    }
+
+    auto update = createAnimatedElementUpdate(WTFMove(newStyle), element, parent().change);
 
     if (&element == m_document.documentElement()) {
         m_documentElementStyle = RenderStyle::clonePtr(*update.style);
@@ -360,6 +346,21 @@ static void clearNeedsStyleResolution(Element& element)
         after->setHasValidStyle();
 }
 
+static bool hasLoadingStylesheet(const Style::Scope& styleScope, const Element& element, bool checkDescendants)
+{
+    if (!styleScope.hasPendingSheetsInBody())
+        return false;
+    if (styleScope.hasPendingSheetInBody(element))
+        return true;
+    if (!checkDescendants)
+        return false;
+    for (auto& descendant : descendantsOfType<Element>(element)) {
+        if (styleScope.hasPendingSheetInBody(descendant))
+            return true;
+    };
+    return false;
+}
+
 void TreeResolver::resolveComposedTree()
 {
     ASSERT(m_parentStack.size() == 1);
@@ -439,6 +440,10 @@ void TreeResolver::resolveComposedTree()
         }
 
         bool shouldIterateChildren = style && (element.childNeedsStyleRecalc() || change != NoChange);
+
+        if (!m_didSeePendingStylesheet)
+            m_didSeePendingStylesheet = hasLoadingStylesheet(m_document.styleScope(), element, !shouldIterateChildren);
+
         if (!shouldIterateChildren) {
             it.traverseNextSkippingChildren();
             continue;
@@ -452,7 +457,7 @@ void TreeResolver::resolveComposedTree()
     popParentsToDepth(1);
 }
 
-std::unique_ptr<Update> TreeResolver::resolve(Change change)
+std::unique_ptr<Update> TreeResolver::resolve()
 {
     auto& renderView = *m_document.renderView();
 
@@ -461,12 +466,14 @@ std::unique_ptr<Update> TreeResolver::resolve(Change change)
         m_document.styleScope().resolver();
         return nullptr;
     }
-    if (change != Force && !documentElement->childNeedsStyleRecalc() && !documentElement->needsStyleRecalc())
+    if (!documentElement->childNeedsStyleRecalc() && !documentElement->needsStyleRecalc())
         return nullptr;
+
+    m_didSeePendingStylesheet = m_document.styleScope().hasPendingSheetsBeforeBody();
 
     m_update = std::make_unique<Update>(m_document);
     m_scopeStack.append(adoptRef(*new Scope(m_document)));
-    m_parentStack.append(Parent(m_document, change));
+    m_parentStack.append(Parent(m_document));
 
     // Pseudo element removal and similar may only work with these flags still set. Reset them after the style recalc.
     renderView.setUsesFirstLineRules(renderView.usesFirstLineRules() || scope().styleResolver.usesFirstLineRules());

@@ -1,3 +1,150 @@
+2017-03-10  Youenn Fablet  <youenn@apple.com>
+
+        Move libwebrtc backend to using tracks
+        https://bugs.webkit.org/show_bug.cgi?id=169472
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/pc/rtcstatscollector.cc: Moving from using media stream to tracks.
+
+2017-03-08  Youenn Fablet  <youenn@apple.com>
+
+        Use H264 hardware encoder for Mac libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=169383
+
+        Reviewed by Alex Christensen.
+
+        Switching to H264 hardware encoder if available for Mac.
+        Adding logs in case hardware encoder cannot be used.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Source/webrtc/sdk/objc/Framework/Classes/h264_video_toolbox_encoder.mm:
+        (webrtc::H264VideoToolboxEncoder::ResetCompressionSession):
+        (webrtc::H264VideoToolboxEncoder::ConfigureCompressionSession):
+
+2017-03-07  Youenn Fablet  <youenn@apple.com>
+
+        TurnPort::OnSocketConnect is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=169284
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/p2p/base/turnport.cc: Fixing the assertion.
+
+2017-03-06  Youenn Fablet  <youenn@apple.com>
+
+        Bring back WebKit specific changes to disable temporarily libwebrtc video adaptation
+        https://bugs.webkit.org/show_bug.cgi?id=169229
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/modules/video_coding/video_sender.cc: disabling frame dropping.
+        * Source/webrtc/video/vie_encoder.cc: disabling resolution decrease based on CPU overuse.
+
+2017-03-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Production libwebrtc build after r213418
+        https://bugs.webkit.org/show_bug.cgi?id=169217
+        <rdar://problem/30876775>
+
+        Reviewed by Tim Horton.
+
+        * Source/webrtc/base/checks.h:
+        * libwebrtc.xcodeproj/project.pbxproj:
+        MakeCheckOpString was a weak export, and it wasn't needed.
+        There is an internal build that checks for weak exports and fails if there is one.
+        Run the check-for-weak-vtables-and-externals script for libwebrtc.dylib like we do for the other frameworks.
+
+2017-03-04  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] libwebrtc.dylib’s current version is fixed at 1.0.0
+        https://bugs.webkit.org/show_bug.cgi?id=169170
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/Version.xcconfig: Copied from Source/JavaScriptCore/Configurations/Version.xcconfig.
+          This defines DYLIB_CURRENT_VERSION.
+        * Configurations/libwebrtc.xcconfig: Include Version.xcconfig.
+
+2017-03-04  Alex Christensen  <achristensen@webkit.org>
+
+        Cleanup after r213418
+        https://bugs.webkit.org/show_bug.cgi?id=169165
+
+        Reviewed by Youenn Fablet.
+
+        * WebKit/patch-libwebrtc:
+        I made another change after the last patch I uploaded to stop crashing.
+        This should be reflected in our patch.
+
+2017-03-03  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Update libwebrtc source code
+        https://bugs.webkit.org/show_bug.cgi?id=168599
+
+        Reviewed by Alex Christensen.
+
+        Very long list of file changes omitted.
+
+        We updated to git commit 716e726ef0b322e8317b749613691da043bfc61c
+        of https://chromium.googlesource.com/external/webrtc and applied
+        the changes that are now in WebKit/patch-libwebrtc
+
+2017-03-03  Alex Christensen  <achristensen@webkit.org>
+
+        Remove empty build directories.
+
+        * build: Removed.
+        * build/Debug: Removed.
+
+2017-03-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [WebRTC] Install libwebrtc.dylib inside of WebCore.framework
+        https://bugs.webkit.org/show_bug.cgi?id=168859
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        Define some general configuration variables.
+
+        * Configurations/DebugRelease.xcconfig:
+        Define WK_RELOCATABLE_FRAMEWORKS for Debug/Release builds.
+
+        * Configurations/libwebrtc.xcconfig:
+        Set INSTALL_PATH to be inside WebCore.framework's sub-Frameworks directory
+        unless WK_USE_OVERRIDE_FRAMEWORKS_DIR. Set the install name of the dylib to
+        be relative to WebCore / WebKit when frameworks are relocatable, such as
+        WK_USE_OVERRIDE_FRAMEWORKS_DIR or WK_RELOCATABLE_FRAMEWORKS.
+
+2017-02-28  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] CPU Overuse libwebrtc detector is decreasing the quality of the video
+        https://bugs.webkit.org/show_bug.cgi?id=168990
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/video/vie_encoder.cc: Disabling temporarily overuse detector.
+
+2017-02-28  Alex Christensen  <achristensen@webkit.org>
+
+        [WebRTC] Fix an internal production build
+        https://bugs.webkit.org/show_bug.cgi?id=168992
+
+        Reviewed by Youenn Fablet.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Link with Foundation and CoreFoundation frameworks.
+
+2017-02-28  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] LibWebRTC frame dropper is not working consistently
+        https://bugs.webkit.org/show_bug.cgi?id=168973
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/modules/video_coding/video_sender.cc: Disable temporarily the frame dropper as it is sometimes
+        dropping too many frames.
+
 2017-02-27  Youenn Fablet  <youenn@apple.com>
 
         [WebRTC] RealtimOutgoingVideoSource should not need to do image conversion

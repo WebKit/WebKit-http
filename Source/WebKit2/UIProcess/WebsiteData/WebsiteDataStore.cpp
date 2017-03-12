@@ -39,6 +39,7 @@
 #include <WebCore/DatabaseTracker.h>
 #include <WebCore/HTMLMediaElement.h>
 #include <WebCore/OriginLock.h>
+#include <WebCore/ResourceLoadObserver.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/RunLoop.h>
@@ -102,6 +103,21 @@ WebsiteDataStore::~WebsiteDataStore()
         for (auto& processPool : WebProcessPool::allProcessPools())
             processPool->sendToNetworkingProcess(Messages::NetworkProcess::DestroyPrivateBrowsingSession(m_sessionID));
     }
+}
+
+void WebsiteDataStore::resolveDirectoriesIfNecessary()
+{
+    if (m_hasResolvedDirectories)
+        return;
+    m_hasResolvedDirectories = true;
+
+    m_resolvedConfiguration.applicationCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.applicationCacheDirectory);
+    m_resolvedConfiguration.mediaCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaCacheDirectory);
+    m_resolvedConfiguration.mediaKeysStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaKeysStorageDirectory);
+    m_resolvedConfiguration.webSQLDatabaseDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.webSQLDatabaseDirectory);
+
+    if (!m_configuration.javaScriptConfigurationDirectory.isEmpty())
+        m_resolvedConfiguration.javaScriptConfigurationDirectory = resolvePathForSandboxExtension(m_configuration.javaScriptConfigurationDirectory);
 }
 
 void WebsiteDataStore::cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage)
@@ -757,6 +773,9 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, std::chr
     }
 #endif
 
+    if (dataTypes.contains(WebsiteDataType::WebsiteDataTypeResourceLoadStatistics))
+        WebCore::ResourceLoadObserver::sharedObserver().clearInMemoryAndPersistentStore(modifiedSince);
+
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
 }
@@ -1023,6 +1042,9 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
     }
 #endif
 
+    if (dataTypes.contains(WebsiteDataType::WebsiteDataTypeResourceLoadStatistics))
+        WebCore::ResourceLoadObserver::sharedObserver().clearInMemoryAndPersistentStore();
+
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
 }
@@ -1035,6 +1057,14 @@ void WebsiteDataStore::removeDataForTopPrivatelyOwnedDomains(OptionSet<WebsiteDa
         });
     });
 }
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+void WebsiteDataStore::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& topPrivatelyOwnedDomains, bool value)
+{
+    for (auto& processPool : processPools())
+        processPool->sendToNetworkingProcess(Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains(topPrivatelyOwnedDomains, value));
+}
+#endif
 
 void WebsiteDataStore::webPageWasAdded(WebPageProxy& webPageProxy)
 {
@@ -1200,8 +1230,15 @@ void WebsiteDataStore::registerSharedResourceLoadObserver()
 {
     if (!m_resourceLoadStatistics)
         return;
-
+    
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    m_resourceLoadStatistics->registerSharedResourceLoadObserver(
+        [this] (const Vector<String>& topPrivatelyOwnedDomains, bool value) {
+            this->shouldPartitionCookiesForTopPrivatelyOwnedDomains(topPrivatelyOwnedDomains, value);
+        });
+#else
     m_resourceLoadStatistics->registerSharedResourceLoadObserver();
+#endif
 }
 
 }

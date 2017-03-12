@@ -179,25 +179,10 @@ static ActiveMachineThreadsManager& activeMachineThreadsManager()
     return *manager;
 }
     
-static inline PlatformThread getCurrentPlatformThread()
-{
-#if OS(DARWIN)
-    return pthread_mach_thread_np(pthread_self());
-#elif OS(WINDOWS)
-    return GetCurrentThreadId();
-#elif USE(PTHREADS)
-    return pthread_self();
-#endif
-}
-
-MachineThreads::MachineThreads(Heap* heap)
+MachineThreads::MachineThreads()
     : m_registeredThreads(0)
     , m_threadSpecificForMachineThreads(0)
-#if !ASSERT_DISABLED
-    , m_heap(heap)
-#endif
 {
-    UNUSED_PARAM(heap);
     threadSpecificKeyCreate(&m_threadSpecificForMachineThreads, removeThread);
     activeMachineThreadsManager().add(this);
 }
@@ -218,7 +203,7 @@ MachineThreads::~MachineThreads()
 Thread* MachineThreads::Thread::createForCurrentThread()
 {
     auto stackBounds = wtfThreadData().stack();
-    return new Thread(getCurrentPlatformThread(), stackBounds.origin(), stackBounds.end());
+    return new Thread(currentPlatformThread(), stackBounds.origin(), stackBounds.end());
 }
 
 bool MachineThreads::Thread::operator==(const PlatformThread& other) const
@@ -234,8 +219,6 @@ bool MachineThreads::Thread::operator==(const PlatformThread& other) const
 
 void MachineThreads::addCurrentThread()
 {
-    ASSERT(!m_heap->vm()->hasExclusiveThread() || m_heap->vm()->exclusiveThread() == std::this_thread::get_id());
-
     if (threadSpecificGet(m_threadSpecificForMachineThreads)) {
 #ifndef NDEBUG
         LockHolder lock(m_registeredThreadsMutex);
@@ -256,7 +239,7 @@ void MachineThreads::addCurrentThread()
 Thread* MachineThreads::machineThreadForCurrentThread()
 {
     LockHolder lock(m_registeredThreadsMutex);
-    PlatformThread platformThread = getCurrentPlatformThread();
+    PlatformThread platformThread = currentPlatformThread();
     for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
         if (*thread == platformThread)
             return thread;
@@ -288,7 +271,7 @@ void THREAD_SPECIFIC_CALL MachineThreads::removeThread(void* p)
             return;
 #endif
 
-        machineThreads->removeThreadIfFound(getCurrentPlatformThread());
+        machineThreads->removeThreadIfFound(currentPlatformThread());
     }
 }
 
@@ -381,7 +364,7 @@ bool MachineThreads::Thread::suspend()
     ASSERT(threadIsSuspended);
     return threadIsSuspended;
 #elif USE(PTHREADS)
-    ASSERT_WITH_MESSAGE(getCurrentPlatformThread() != platformThread, "Currently we don't support suspend the current thread itself.");
+    ASSERT_WITH_MESSAGE(currentPlatformThread() != platformThread, "Currently we don't support suspend the current thread itself.");
     {
         // During suspend, suspend or resume should not be executed from the other threads.
         // We use global lock instead of per thread lock.
@@ -945,7 +928,7 @@ void MachineThreads::tryCopyOtherThreadStack(Thread* thread, void* buffer, size_
     thread->freeRegisters(registers);
 }
 
-bool MachineThreads::tryCopyOtherThreadStacks(LockHolder&, void* buffer, size_t capacity, size_t* size)
+bool MachineThreads::tryCopyOtherThreadStacks(const AbstractLocker&, void* buffer, size_t capacity, size_t* size)
 {
     // Prevent two VMs from suspending each other's threads at the same time,
     // which can cause deadlock: <rdar://problem/20300842>.
@@ -954,14 +937,14 @@ bool MachineThreads::tryCopyOtherThreadStacks(LockHolder&, void* buffer, size_t 
 
     *size = 0;
 
-    PlatformThread currentPlatformThread = getCurrentPlatformThread();
+    PlatformThread platformThread = currentPlatformThread();
     int numberOfThreads = 0; // Using 0 to denote that we haven't counted the number of threads yet.
     int index = 1;
     Thread* threadsToBeDeleted = nullptr;
 
     Thread* previousThread = nullptr;
     for (Thread* thread = m_registeredThreads; thread; index++) {
-        if (*thread != currentPlatformThread) {
+        if (*thread != platformThread) {
             bool success = thread->suspend();
 #if OS(DARWIN)
             if (!success) {
@@ -1005,12 +988,12 @@ bool MachineThreads::tryCopyOtherThreadStacks(LockHolder&, void* buffer, size_t 
     }
 
     for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
-        if (*thread != currentPlatformThread)
+        if (*thread != platformThread)
             tryCopyOtherThreadStack(thread, buffer, capacity, size);
     }
 
     for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
-        if (*thread != currentPlatformThread)
+        if (*thread != platformThread)
             thread->resume();
     }
 

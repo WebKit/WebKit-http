@@ -30,6 +30,11 @@
 #include "B3Bank.h"
 #include "B3Type.h"
 
+#if COMPILER(GCC) && ASSERT_DISABLED
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#endif // COMPILER(GCC) && ASSERT_DISABLED
+
 namespace JSC { namespace B3 {
 
 enum Width : int8_t {
@@ -60,7 +65,20 @@ inline Width widthForType(Type type)
         return Width64;
     }
     ASSERT_NOT_REACHED();
+    return Width8;
 }
+
+inline Width canonicalWidth(Width width)
+{
+    return std::max(Width32, width);
+}
+
+inline bool isCanonicalWidth(Width width)
+{
+    return width >= Width32;
+}
+
+Type bestType(Bank bank, Width width);
 
 inline Width conservativeWidth(Bank bank)
 {
@@ -93,6 +111,20 @@ inline Width widthForBytes(unsigned bytes)
     }
 }
 
+inline uint64_t mask(Width width)
+{
+    switch (width) {
+    case Width8:
+        return 0x00000000000000ffllu;
+    case Width16:
+        return 0x000000000000ffffllu;
+    case Width32:
+        return 0x00000000ffffffffllu;
+    case Width64:
+        return 0xffffffffffffffffllu;
+    }
+}
+
 } } // namespace JSC::B3
 
 namespace WTF {
@@ -102,6 +134,10 @@ class PrintStream;
 void printInternal(PrintStream&, JSC::B3::Width);
 
 } // namespace WTF
+
+#if COMPILER(GCC) && ASSERT_DISABLED
+#pragma GCC diagnostic pop
+#endif // COMPILER(GCC) && ASSERT_DISABLED
 
 #endif // ENABLE(B3_JIT)
 

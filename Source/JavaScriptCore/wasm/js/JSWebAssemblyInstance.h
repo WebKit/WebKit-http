@@ -29,6 +29,7 @@
 
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
+#include "JSWebAssemblyCodeBlock.h"
 #include "JSWebAssemblyMemory.h"
 #include "JSWebAssemblyTable.h"
 
@@ -47,30 +48,38 @@ public:
 
     DECLARE_INFO;
 
-    JSWebAssemblyModule* module()
+    JSWebAssemblyModule* module() const
     {
-        ASSERT(m_module);
-        return m_module.get();
+        ASSERT(m_codeBlock);
+        return m_codeBlock->module();
     }
 
-    WriteBarrier<JSCell>* importFunction(unsigned idx)
+    JSWebAssemblyCodeBlock* codeBlock() const
+    {
+        ASSERT(m_codeBlock);
+        return m_codeBlock.get();
+    }
+
+    WriteBarrier<JSObject>* importFunction(unsigned idx)
     {
         RELEASE_ASSERT(idx < m_numImportFunctions);
         return &importFunctions()[idx];
     }
 
-    WriteBarrier<JSCell>* importFunctions()
+    WriteBarrier<JSObject>* importFunctions()
     {
-        return bitwise_cast<WriteBarrier<JSCell>*>(bitwise_cast<char*>(this) + offsetOfImportFunctions());
+        return bitwise_cast<WriteBarrier<JSObject>*>(bitwise_cast<char*>(this) + offsetOfImportFunctions());
     }
 
-    void setImportFunction(VM& vm, JSCell* value, unsigned idx)
+    void setImportFunction(VM& vm, JSObject* value, unsigned idx)
     {
         importFunction(idx)->set(vm, this, value);
     }
 
     JSWebAssemblyMemory* memory() { return m_memory.get(); }
-    void setMemory(VM& vm, JSWebAssemblyMemory* memory) { m_memory.set(vm, this, memory); }
+    // Calling this might trigger a recompile.
+    void setMemory(VM&, ExecState*, JSWebAssemblyMemory*);
+    Wasm::Memory::Mode memoryMode() { return memory()->memory().mode(); }
 
     JSWebAssemblyTable* table() { return m_table.get(); }
     void setTable(VM& vm, JSWebAssemblyTable* table) { m_table.set(vm, this, table); }
@@ -104,7 +113,7 @@ protected:
     }
 
 private:
-    WriteBarrier<JSWebAssemblyModule> m_module;
+    WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlock;
     WriteBarrier<JSModuleNamespaceObject> m_moduleNamespaceObject;
     WriteBarrier<JSWebAssemblyMemory> m_memory;
     WriteBarrier<JSWebAssemblyTable> m_table;

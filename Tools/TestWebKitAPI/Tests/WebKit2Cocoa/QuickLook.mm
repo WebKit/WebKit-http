@@ -74,12 +74,12 @@ static NSURLRequest * const pagesDocumentRequest = [[NSURLRequest requestWithURL
 
 @end
 
-static void runTest(Class navigationDelegateClass)
+static void runTest(Class navigationDelegateClass, NSURLRequest *request)
 {
     auto webView = adoptNS([[WKWebView alloc] init]);
     auto navigationDelegate = adoptNS([[navigationDelegateClass alloc] init]);
     [webView setNavigationDelegate:navigationDelegate.get()];
-    [webView loadRequest:pagesDocumentRequest];
+    [webView loadRequest:request];
 
     isDone = false;
     Util::run(&isDone);
@@ -87,7 +87,7 @@ static void runTest(Class navigationDelegateClass)
 
 TEST(QuickLook, NavigationDelegate)
 {
-    runTest([QuickLookNavigationDelegate class]);
+    runTest([QuickLookNavigationDelegate class], pagesDocumentRequest);
     EXPECT_TRUE(didStartQuickLookLoad);
     EXPECT_TRUE(didFinishQuickLookLoad);
 }
@@ -123,8 +123,30 @@ TEST(QuickLook, NavigationDelegate)
 
 TEST(QuickLook, CancelNavigationAfterResponse)
 {
-    runTest([QuickLookDecidePolicyDelegate class]);
+    runTest([QuickLookDecidePolicyDelegate class], pagesDocumentRequest);
 }
+
+@interface QuickLookPasswordNavigationDelegate : NSObject <WKNavigationDelegatePrivate>
+@end
+
+@implementation QuickLookPasswordNavigationDelegate
+
+- (void)_webViewDidRequestPasswordForQuickLookDocument:(WKWebView *)webView
+{
+    isDone = true;
+}
+
+@end
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+
+TEST(QuickLook, DidRequestPasswordNavigationDelegate)
+{
+    NSURLRequest *passwordProtectedDocumentRequest = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"password-protected" withExtension:@"pages" subdirectory:@"TestWebKitAPI.resources"]];
+    runTest([QuickLookPasswordNavigationDelegate class], passwordProtectedDocumentRequest);
+}
+
+#endif
 
 TEST(QuickLook, LegacyQuickLookContent)
 {

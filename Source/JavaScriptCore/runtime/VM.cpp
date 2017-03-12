@@ -98,7 +98,6 @@
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
 #include "StructureInlines.h"
-#include "ThrowScope.h"
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
@@ -241,6 +240,7 @@ VM::VM(VMType vmType, HeapType heapType)
 #if ENABLE(WEBASSEMBLY)
     webAssemblyCalleeStructure.set(*this, JSWebAssemblyCallee::createStructure(*this, 0, jsNull()));
     webAssemblyToJSCalleeStructure.set(*this, WebAssemblyToJSCallee::createStructure(*this, 0, jsNull()));
+    webAssemblyCodeBlockStructure.set(*this, JSWebAssemblyCodeBlock::createStructure(*this, 0, jsNull()));
     webAssemblyToJSCallee.set(*this, WebAssemblyToJSCallee::create(*this, webAssemblyToJSCalleeStructure.get()));
 #endif
     moduleProgramExecutableStructure.set(*this, ModuleProgramExecutable::createStructure(*this, 0, jsNull()));
@@ -359,6 +359,7 @@ VM::~VM()
 {
     if (UNLIKELY(m_watchdog))
         m_watchdog->willDestroyVM(this);
+    m_traps.willDestroyVM();
     VMInspector::instance().remove(this);
 
     // Never GC, ever again.
@@ -392,7 +393,7 @@ VM::~VM()
     // Clear this first to ensure that nobody tries to remove themselves from it.
     m_perBytecodeProfiler = nullptr;
 
-    ASSERT(m_apiLock->currentThreadIsHoldingLock());
+    ASSERT(currentThreadIsHoldingAPILock());
     m_apiLock->willDestroyVM(this);
     heap.lastChanceToFinalize();
 
@@ -461,19 +462,8 @@ VM*& VM::sharedInstanceInternal()
 
 Watchdog& VM::ensureWatchdog()
 {
-    if (!m_watchdog) {
+    if (!m_watchdog)
         m_watchdog = adoptRef(new Watchdog(this));
-        
-        // The LLINT peeks into the Watchdog object directly. In order to do that,
-        // the LLINT assumes that the internal shape of a std::unique_ptr is the
-        // same as a plain C++ pointer, and loads the address of Watchdog from it.
-        RELEASE_ASSERT(*reinterpret_cast<Watchdog**>(&m_watchdog) == m_watchdog.get());
-
-        // And if we've previously compiled any functions, we need to revert
-        // them because they don't have the needed polling checks for the watchdog
-        // yet.
-        deleteAllCode(PreventCollectionAndDeleteAllCode);
-    }
     return *m_watchdog;
 }
 
@@ -945,29 +935,5 @@ void VM::verifyExceptionCheckNeedIsSatisfied(unsigned recursionDepth, ExceptionE
     }
 }
 #endif
-
-void VM::handleTraps(ExecState* exec)
-{
-    auto scope = DECLARE_THROW_SCOPE(*this);
-
-    ASSERT(needTrapHandling());
-    while (needTrapHandling()) {
-        auto trapEventType = m_traps.takeTopPriorityTrap();
-        switch (trapEventType) {
-        case VMTraps::NeedWatchdogCheck:
-            ASSERT(m_watchdog);
-            if (LIKELY(!m_watchdog->shouldTerminate(exec)))
-                continue;
-            FALLTHROUGH;
-
-        case VMTraps::NeedTermination:
-            JSC::throwException(exec, scope, createTerminatedExecutionException(this));
-            return;
-
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-        }
-    }
-}
 
 } // namespace JSC

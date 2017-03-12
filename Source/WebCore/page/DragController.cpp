@@ -41,6 +41,7 @@
 #include "DragData.h"
 #include "DragImage.h"
 #include "DragState.h"
+#include "Editing.h"
 #include "Editor.h"
 #include "EditorClient.h"
 #include "EventHandler.h"
@@ -64,6 +65,7 @@
 #include "PlatformKeyboardEvent.h"
 #include "PluginDocument.h"
 #include "PluginViewBase.h"
+#include "Position.h"
 #include "RenderFileUploadControl.h"
 #include "RenderImage.h"
 #include "RenderView.h"
@@ -75,7 +77,7 @@
 #include "StyleProperties.h"
 #include "Text.h"
 #include "TextEvent.h"
-#include "htmlediting.h"
+#include "VisiblePosition.h"
 #include "markup.h"
 
 #if ENABLE(DATA_INTERACTION)
@@ -182,6 +184,7 @@ void DragController::dragEnded()
 {
     m_dragInitiator = nullptr;
     m_didInitiateDrag = false;
+    m_documentUnderMouse = nullptr;
     clearDragCaret();
     
     m_client.dragEnded();
@@ -244,6 +247,7 @@ bool DragController::performDragOperation(const DragData& dragData)
     }
 
     if ((m_dragDestinationAction & DragDestinationActionEdit) && concludeEditDrag(dragData)) {
+        m_client.didConcludeEditDrag();
         m_documentUnderMouse = nullptr;
         return true;
     }
@@ -654,12 +658,20 @@ Element* DragController::draggableElement(const Frame* sourceFrame, Element* sta
     if (!startElement)
         return nullptr;
 #if ENABLE(ATTACHMENT_ELEMENT)
-    // Unlike image elements, attachment elements are immediately selected upon mouse down,
-    // but for those elements we still want to use the single element drag behavior as long as
-    // the element is the only content of the selection.
-    const VisibleSelection& selection = sourceFrame->selection().selection();
-    if (selection.isRange() && is<HTMLAttachmentElement>(selection.start().anchorNode()) && selection.start().anchorNode() == selection.end().anchorNode())
-        state.type = DragSourceActionNone;
+    if (is<HTMLAttachmentElement>(startElement)) {
+        auto selection = sourceFrame->selection().selection();
+        bool isSingleAttachmentSelection = selection.start() == Position(startElement, Position::PositionIsBeforeAnchor) && selection.end() == Position(startElement, Position::PositionIsAfterAnchor);
+        bool isAttachmentElementInCurrentSelection = false;
+        if (auto selectedRange = selection.toNormalizedRange()) {
+            auto compareResult = selectedRange->compareNode(*startElement);
+            isAttachmentElementInCurrentSelection = !compareResult.hasException() && compareResult.releaseReturnValue() == Range::NODE_INSIDE;
+        }
+
+        if (!isAttachmentElementInCurrentSelection || isSingleAttachmentSelection) {
+            state.type = DragSourceActionAttachment;
+            return startElement;
+        }
+    }
 #endif
 
     for (auto* renderer = startElement->renderer(); renderer; renderer = renderer->parent()) {
@@ -865,14 +877,18 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
                     pasteboardWriterData.setPlainText(WTFMove(plainText));
                 }
             } else {
-                mustUseLegacyDragClient = true;
-
+                if (mustUseLegacyDragClient) {
 #if PLATFORM(COCOA) || PLATFORM(GTK)
-                src.editor().writeSelectionToPasteboard(dataTransfer.pasteboard());
+                    src.editor().writeSelectionToPasteboard(dataTransfer.pasteboard());
 #else
-                // FIXME: Convert all other platforms to match Mac and delete this.
-                dataTransfer.pasteboard().writeSelection(*selectionRange, src.editor().canSmartCopyOrDelete(), src, IncludeImageAltTextForDataTransfer);
+                    // FIXME: Convert all other platforms to match Mac and delete this.
+                    dataTransfer.pasteboard().writeSelection(*selectionRange, src.editor().canSmartCopyOrDelete(), src, IncludeImageAltTextForDataTransfer);
 #endif
+                } else {
+#if PLATFORM(COCOA)
+                    src.editor().writeSelection(pasteboardWriterData);
+#endif
+                }
             }
 
             src.editor().didWriteSelectionToPasteboard();
@@ -997,11 +1013,22 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
     }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    if (!attachmentURL.isEmpty() && (m_dragSourceAction & DragSourceActionAttachment)) {
+    if (m_dragSourceAction & DragSourceActionAttachment) {
         if (!dataTransfer.pasteboard().hasData()) {
-            m_draggingAttachmentURL = attachmentURL;
             selectElement(element);
-            declareAndWriteAttachment(dataTransfer, element, attachmentURL);
+            if (!attachmentURL.isEmpty()) {
+                // Use the attachment URL specified by the file attribute to populate the pasteboard.
+                m_draggingAttachmentURL = attachmentURL;
+                declareAndWriteAttachment(dataTransfer, element, attachmentURL);
+            } else if (src.editor().client()) {
+#if PLATFORM(COCOA)
+                // Otherwise, if no file URL is specified, call out to the injected bundle to populate the pasteboard with data.
+                auto& editor = src.editor();
+                editor.willWriteSelectionToPasteboard(src.selection().toNormalizedRange());
+                editor.writeSelectionToPasteboard(dataTransfer.pasteboard());
+                editor.didWriteSelectionToPasteboard();
+#endif
+            }
         }
         
         m_client.willPerformDragSourceAction(DragSourceActionAttachment, dragOrigin, dataTransfer);

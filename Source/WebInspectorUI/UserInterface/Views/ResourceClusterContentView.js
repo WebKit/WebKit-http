@@ -83,6 +83,10 @@ WebInspector.ResourceClusterContentView = class ResourceClusterContentView exten
             this._responseContentView = new WebInspector.FontResourceContentView(this._resource);
             break;
 
+        case WebInspector.Resource.Type.WebSocket:
+            this._responseContentView = new WebInspector.WebSocketContentView(this._resource);
+            break;
+
         default:
             this._responseContentView = new WebInspector.GenericResourceContentView(this._resource);
             break;

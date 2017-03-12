@@ -105,6 +105,7 @@ public:
     void setCustomElementsEnabled(bool);
     void setModernMediaControlsEnabled(bool);
     void setWebGL2Enabled(bool);
+    void setWebGPUEnabled(bool);
     void setFetchAPIEnabled(bool);
     void setAllowUniversalAccessFromFileURLs(bool);
     void setAllowFileAccessFromFileURLs(bool);
@@ -270,6 +271,7 @@ public:
 
     // Cookies testing
     void setAlwaysAcceptCookies(bool);
+    void setCookieStoragePartitioningEnabled(bool);
 
     // Custom full screen behavior.
     void setHasCustomFullScreenBehavior(bool value) { m_customFullScreenBehavior = value; }
@@ -350,6 +352,7 @@ public:
     void installStatisticsDidModifyDataRecordsCallback(JSValueRef callback);
     void statisticsDidModifyDataRecordsCallback();
     void statisticsFireDataModificationHandler();
+    void statisticsFireShouldPartitionCookiesHandler(JSStringRef hostName, bool value);
     void setStatisticsPrevalentResource(JSStringRef hostName, bool value);
     bool isStatisticsPrevalentResource(JSStringRef hostName);
     void setStatisticsHasHadUserInteraction(JSStringRef hostName, bool value);
@@ -361,6 +364,7 @@ public:
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
     void setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double);
+    void statisticsClearInMemoryAndPersistentStore();
     void statisticsResetToConsistentState();
 
     // Open panel

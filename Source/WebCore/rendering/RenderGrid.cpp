@@ -65,41 +65,6 @@ RenderGrid::~RenderGrid()
 {
 }
 
-static inline bool defaultAlignmentIsStretch(ItemPosition position)
-{
-    return position == ItemPositionStretch || position == ItemPositionAuto;
-}
-
-static inline bool defaultAlignmentChangedToStretchInRowAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle)
-{
-    return !defaultAlignmentIsStretch(oldStyle.justifyItems().position()) && defaultAlignmentIsStretch(newStyle.justifyItems().position());
-}
-
-static inline bool defaultAlignmentChangedFromStretchInRowAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle)
-{
-    return defaultAlignmentIsStretch(oldStyle.justifyItems().position()) && !defaultAlignmentIsStretch(newStyle.justifyItems().position());
-}
-
-static inline bool defaultAlignmentChangedFromStretchInColumnAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle)
-{
-    return defaultAlignmentIsStretch(oldStyle.alignItems().position()) && !defaultAlignmentIsStretch(newStyle.alignItems().position());
-}
-
-static inline bool selfAlignmentChangedToStretchInRowAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle, const RenderStyle& childStyle, ItemPosition selfAlignNormalBehavior)
-{
-    return childStyle.resolvedJustifySelf(&oldStyle, selfAlignNormalBehavior).position() != ItemPositionStretch && childStyle.resolvedJustifySelf(&newStyle, selfAlignNormalBehavior).position() == ItemPositionStretch;
-}
-
-static inline bool selfAlignmentChangedFromStretchInRowAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle, const RenderStyle& childStyle, ItemPosition selfAlignNormalBehavior)
-{
-    return childStyle.resolvedJustifySelf(&oldStyle, selfAlignNormalBehavior).position() == ItemPositionStretch && childStyle.resolvedJustifySelf(&newStyle, selfAlignNormalBehavior).position() != ItemPositionStretch;
-}
-
-static inline bool selfAlignmentChangedFromStretchInColumnAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle, const RenderStyle& childStyle, ItemPosition selfAlignNormalBehavior)
-{
-    return childStyle.resolvedAlignSelf(&oldStyle, selfAlignNormalBehavior).position() == ItemPositionStretch && childStyle.resolvedAlignSelf(&newStyle, selfAlignNormalBehavior).position() != ItemPositionStretch;
-}
-
 void RenderGrid::addChild(RenderObject* newChild, RenderObject* beforeChild)
 {
     RenderBlock::addChild(newChild, beforeChild);
@@ -123,22 +88,6 @@ void RenderGrid::styleDidChange(StyleDifference diff, const RenderStyle* oldStyl
     RenderBlock::styleDidChange(diff, oldStyle);
     if (!oldStyle || diff != StyleDifferenceLayout)
         return;
-
-    const RenderStyle& newStyle = style();
-    if (defaultAlignmentChangedToStretchInRowAxis(*oldStyle, newStyle) || defaultAlignmentChangedFromStretchInRowAxis(*oldStyle, newStyle)
-        || defaultAlignmentChangedFromStretchInColumnAxis(*oldStyle, newStyle)) {
-        // Grid items that were not previously stretched in row-axis need to be relayed out so we can compute new available space.
-        // Grid items that were previously stretching in column-axis need to be relayed out so we can compute new available space.
-        // This is only necessary for stretching since other alignment values don't change the size of the box.
-        for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-            if (child->isOutOfFlowPositioned())
-                continue;
-            if (selfAlignmentChangedToStretchInRowAxis(*oldStyle, newStyle, child->style(), selfAlignmentNormalBehavior()) || selfAlignmentChangedFromStretchInRowAxis(*oldStyle, newStyle, child->style(), selfAlignmentNormalBehavior())
-                || selfAlignmentChangedFromStretchInColumnAxis(*oldStyle, newStyle, child->style(), selfAlignmentNormalBehavior())) {
-                child->setChildNeedsLayout(MarkOnlyThis);
-            }
-        }
-    }
 
     if (explicitGridDidResize(*oldStyle) || namedGridLinesDefinitionDidChange(*oldStyle) || oldStyle->gridAutoFlow() != style().gridAutoFlow()
         || (style().gridAutoRepeatColumns().size() || style().gridAutoRepeatRows().size()))
@@ -240,6 +189,11 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     setLogicalHeight(0);
     updateLogicalWidth();
+
+    // Fieldsets need to find their legend and position it inside the border of the object.
+    // The legend then gets skipped during normal layout. The same is true for ruby text.
+    // It doesn't get included in the normal layout process but is instead skipped.
+    layoutExcludedChildren(relayoutChildren);
 
     placeItemsOnGrid(m_grid, TrackSizing);
 
@@ -393,11 +347,20 @@ LayoutUnit RenderGrid::guttersSize(const Grid& grid, GridTrackSizingDirection di
 
 void RenderGrid::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
 {
+    LayoutUnit childMinWidth;
+    LayoutUnit childMaxWidth;
+    bool hadExcludedChildren = computePreferredWidthsForExcludedChildren(childMinWidth, childMaxWidth);
+    
     Grid grid(const_cast<RenderGrid&>(*this));
     placeItemsOnGrid(grid, IntrinsicSizeComputation);
 
     GridTrackSizingAlgorithm algorithm(this, grid);
     computeTrackSizesForIndefiniteSize(algorithm, ForColumns, grid, minLogicalWidth, maxLogicalWidth);
+
+    if (hadExcludedChildren) {
+        minLogicalWidth = std::max(minLogicalWidth, childMinWidth);
+        maxLogicalWidth = std::max(maxLogicalWidth, childMaxWidth);
+    }
 
     LayoutUnit scrollbarWidth = intrinsicScrollbarLogicalWidth();
     minLogicalWidth += scrollbarWidth;
@@ -581,7 +544,7 @@ void RenderGrid::placeItemsOnGrid(Grid& grid, SizingOperation sizingOperation) c
     Vector<RenderBox*> specifiedMajorAxisAutoGridItems;
     bool hasAnyOrthogonalGridItem = false;
     for (auto* child = grid.orderIterator().first(); child; child = grid.orderIterator().next()) {
-        if (child->isOutOfFlowPositioned())
+        if (grid.orderIterator().shouldSkipChild(*child))
             continue;
 
         hasAnyOrthogonalGridItem = hasAnyOrthogonalGridItem || isOrthogonalChild(*child);
@@ -624,7 +587,7 @@ void RenderGrid::placeItemsOnGrid(Grid& grid, SizingOperation sizingOperation) c
 
 #if ENABLE(ASSERT)
     for (auto* child = grid.orderIterator().first(); child; child = grid.orderIterator().next()) {
-        if (child->isOutOfFlowPositioned())
+        if (grid.orderIterator().shouldSkipChild(*child))
             continue;
 
         GridArea area = grid.gridItemArea(*child);
@@ -644,11 +607,9 @@ void RenderGrid::populateExplicitGridAndOrderIterator(Grid& grid) const
     unsigned maximumColumnIndex = GridPositionsResolver::explicitGridColumnCount(style(), autoRepeatColumns);
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (child->isOutOfFlowPositioned())
+        if (!populator.collectChild(*child))
             continue;
-
-        populator.collectChild(*child);
-
+        
         GridSpan rowPositions = GridPositionsResolver::resolveGridPositionsFromStyle(style(), *child, ForRows, autoRepeatRows);
         if (!rowPositions.isIndefinite()) {
             smallestRowStart = std::min(smallestRowStart, rowPositions.untranslatedStartLine());
@@ -884,8 +845,10 @@ void RenderGrid::layoutGridItems()
     populateGridPositionsForDirection(ForRows);
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (child->isOutOfFlowPositioned()) {
-            prepareChildForPositionedLayout(*child);
+        
+        if (m_grid.orderIterator().shouldSkipChild(*child)) {
+            if (child->isOutOfFlowPositioned())
+                prepareChildForPositionedLayout(*child);
             continue;
         }
 
@@ -1165,12 +1128,24 @@ LayoutUnit RenderGrid::availableAlignmentSpaceForChildBeforeStretching(LayoutUni
 
 StyleSelfAlignmentData RenderGrid::alignSelfForChild(const RenderBox& child) const
 {
-    return child.style().resolvedAlignSelf(&style(), selfAlignmentNormalBehavior());
+    if (!child.isAnonymous())
+        return child.style().resolvedAlignSelf(nullptr, selfAlignmentNormalBehavior(&child));
+
+    // All the 'auto' values have been resolved by the StyleAdjuster, but it's
+    // possible that some grid items generate Anonymous boxes, which need to be
+    // solved during layout.
+    return child.style().resolvedAlignSelf(&style(), selfAlignmentNormalBehavior(&child));
 }
 
 StyleSelfAlignmentData RenderGrid::justifySelfForChild(const RenderBox& child) const
 {
-    return child.style().resolvedJustifySelf(&style(), selfAlignmentNormalBehavior());
+    if (!child.isAnonymous())
+        return child.style().resolvedJustifySelf(nullptr, selfAlignmentNormalBehavior(&child));
+    
+    // All the 'auto' values have been resolved by the StyleAdjuster, but it's
+    // possible that some grid items generate Anonymous boxes, which need to be
+    // solved during layout.
+    return child.style().resolvedJustifySelf(&style(), selfAlignmentNormalBehavior(&child));
 }
 
 // FIXME: This logic is shared by RenderFlexibleBox, so it should be moved to RenderBox.
@@ -1331,7 +1306,7 @@ GridAxisPosition RenderGrid::columnAxisPositionForChild(const RenderBox& child) 
     bool hasSameWritingMode = child.style().writingMode() == style().writingMode();
     bool childIsLTR = child.style().isLeftToRightDirection();
 
-    switch (child.style().resolvedAlignSelf(&style(), selfAlignmentNormalBehavior()).position()) {
+    switch (alignSelfForChild(child).position()) {
     case ItemPositionSelfStart:
         // FIXME: Should we implement this logic in a generic utility function ?
         // Aligns the alignment subject to be flush with the edge of the alignment container
@@ -1396,7 +1371,7 @@ GridAxisPosition RenderGrid::rowAxisPositionForChild(const RenderBox& child) con
     bool hasSameDirection = child.style().direction() == style().direction();
     bool gridIsLTR = style().isLeftToRightDirection();
 
-    switch (child.style().resolvedJustifySelf(&style(), selfAlignmentNormalBehavior()).position()) {
+    switch (justifySelfForChild(child).position()) {
     case ItemPositionSelfStart:
         // FIXME: Should we implement this logic in a generic utility function ?
         // Aligns the alignment subject to be flush with the edge of the alignment container
@@ -1478,7 +1453,7 @@ LayoutUnit RenderGrid::columnAxisOffsetForChild(const RenderBox& child) const
         if (childEndLine < m_rowPositions.size() - 1)
             endOfRow -= gridGapForDirection(ForRows, TrackSizing) + m_offsetBetweenRows;
         LayoutUnit columnAxisChildSize = isOrthogonalChild(child) ? child.logicalWidth() + child.marginLogicalWidth() : child.logicalHeight() + child.marginLogicalHeight();
-        auto overflow = child.style().resolvedAlignSelf(&style(), selfAlignmentNormalBehavior()).overflow();
+        auto overflow = alignSelfForChild(child).overflow();
         LayoutUnit offsetFromStartPosition = computeOverflowAlignmentOffset(overflow, endOfRow - startOfRow, columnAxisChildSize);
         return startPosition + (axisPosition == GridAxisEnd ? offsetFromStartPosition : offsetFromStartPosition / 2);
     }
@@ -1510,7 +1485,7 @@ LayoutUnit RenderGrid::rowAxisOffsetForChild(const RenderBox& child) const
         if (childEndLine < m_columnPositions.size() - 1)
             endOfColumn -= gridGapForDirection(ForColumns, TrackSizing) + m_offsetBetweenColumns;
         LayoutUnit rowAxisChildSize = isOrthogonalChild(child) ? child.logicalHeight() + child.marginLogicalHeight() : child.logicalWidth() + child.marginLogicalWidth();
-        auto overflow = child.style().resolvedJustifySelf(&style(), selfAlignmentNormalBehavior()).overflow();
+        auto overflow = justifySelfForChild(child).overflow();
         LayoutUnit offsetFromStartPosition = computeOverflowAlignmentOffset(overflow, endOfColumn - startOfColumn, rowAxisChildSize);
         return startPosition + (axisPosition == GridAxisEnd ? offsetFromStartPosition : offsetFromStartPosition / 2);
     }

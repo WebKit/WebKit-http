@@ -142,7 +142,7 @@ public:
     void setHistoryClient(std::unique_ptr<API::LegacyContextHistoryClient>);
     void setDownloadClient(std::unique_ptr<API::DownloadClient>);
     void setAutomationClient(std::unique_ptr<API::AutomationClient>);
-    void setCustomProtocolManagerClient(std::unique_ptr<API::CustomProtocolManagerClient>&&);
+    void setLegacyCustomProtocolManagerClient(std::unique_ptr<API::CustomProtocolManagerClient>&&);
 
     void setMaximumNumberOfProcesses(unsigned); // Can only be called when there are no processes running.
     unsigned maximumNumberOfProcesses() const { return !m_configuration->maximumProcessCount() ? UINT_MAX : m_configuration->maximumProcessCount(); }
@@ -258,7 +258,7 @@ public:
 
     void allowSpecificHTTPSCertificateForHost(const WebCertificateInfo*, const String& host);
 
-    WebProcessProxy& createNewWebProcessRespectingProcessCountLimit(); // Will return an existing one if limit is met.
+    WebProcessProxy& createNewWebProcessRespectingProcessCountLimit(WebsiteDataStore*); // Will return an existing one if limit is met.
     void warmInitialProcess();
 
     bool shouldTerminate(WebProcessProxy*);
@@ -276,6 +276,8 @@ public:
 
     void getStatistics(uint32_t statisticsMask, std::function<void (API::Dictionary*, CallbackBase::Error)>);
     
+    bool javaScriptConfigurationFileEnabled() { return m_javaScriptConfigurationFileEnabled; }
+    void setJavaScriptConfigurationFileEnabled(bool flag);
     void garbageCollectJavaScriptObjects();
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
@@ -372,6 +374,7 @@ public:
     static String legacyPlatformDefaultMediaCacheDirectory();
     static String legacyPlatformDefaultApplicationCacheDirectory();
     static String legacyPlatformDefaultNetworkCacheDirectory();
+    static String legacyPlatformDefaultJavaScriptConfigurationDirectory();
     static bool isNetworkCacheEnabled();
 
     bool resourceLoadStatisticsEnabled() { return m_resourceLoadStatisticsEnabled; }
@@ -397,7 +400,7 @@ private:
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();
 
-    WebProcessProxy& createNewWebProcess();
+    WebProcessProxy& createNewWebProcess(WebsiteDataStore*);
 
     void requestWebContentStatistics(StatisticsRequest*);
     void requestNetworkingStatistics(StatisticsRequest*);
@@ -552,7 +555,14 @@ private:
 
     bool m_memoryCacheDisabled;
     bool m_resourceLoadStatisticsEnabled { false };
-
+    bool m_javaScriptConfigurationFileEnabled {
+#ifndef NDEBUG
+        // Enable JavaScript configuration file processing by default for Debug builds.
+        true
+#else
+        false
+#endif
+    };
     bool m_alwaysRunsAtBackgroundPriority;
 
     UserObservablePageCounter m_userObservablePageCounter;

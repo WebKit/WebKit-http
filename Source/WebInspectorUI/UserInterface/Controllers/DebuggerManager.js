@@ -204,6 +204,18 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         return [];
     }
 
+    breakpointForSourceCodeLocation(sourceCodeLocation)
+    {
+        console.assert(sourceCodeLocation instanceof WebInspector.SourceCodeLocation);
+
+        for (let breakpoint of this.breakpointsForSourceCode(sourceCodeLocation.sourceCode)) {
+            if (breakpoint.sourceCodeLocation.isEqual(sourceCodeLocation))
+                return breakpoint;
+        }
+
+        return null;
+    }
+
     isBreakpointRemovable(breakpoint)
     {
         return breakpoint !== this._allExceptionsBreakpoint
@@ -795,12 +807,16 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
             return WebInspector.DebuggerManager.PauseReason.Breakpoint;
         case DebuggerAgent.PausedReason.CSPViolation:
             return WebInspector.DebuggerManager.PauseReason.CSPViolation;
+        case DebuggerAgent.PausedReason.DOM:
+            return WebInspector.DebuggerManager.PauseReason.DOM;
         case DebuggerAgent.PausedReason.DebuggerStatement:
             return WebInspector.DebuggerManager.PauseReason.DebuggerStatement;
         case DebuggerAgent.PausedReason.Exception:
             return WebInspector.DebuggerManager.PauseReason.Exception;
         case DebuggerAgent.PausedReason.PauseOnNextStatement:
             return WebInspector.DebuggerManager.PauseReason.PauseOnNextStatement;
+        case DebuggerAgent.PausedReason.XHR:
+            return WebInspector.DebuggerManager.PauseReason.XHR;
         default:
             return WebInspector.DebuggerManager.PauseReason.Other;
         }
@@ -1211,7 +1227,9 @@ WebInspector.DebuggerManager.PauseReason = {
     Breakpoint: "breakpoint",
     CSPViolation: "CSP-violation",
     DebuggerStatement: "debugger-statement",
+    DOM: "DOM",
     Exception: "exception",
     PauseOnNextStatement: "pause-on-next-statement",
+    XHR: "xhr",
     Other: "other",
 };

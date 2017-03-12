@@ -45,7 +45,6 @@
 #include "RenderPtr.h"
 #include "ScriptExecutionContext.h"
 #include "StringWithDirection.h"
-#include "StyleChange.h"
 #include "Supplementable.h"
 #include "TextResourceDecoder.h"
 #include "Timer.h"
@@ -485,6 +484,7 @@ public:
     CSSFontSelector& fontSelector() { return m_fontSelector; }
 
     WEBCORE_EXPORT bool haveStylesheetsLoaded() const;
+    bool isIgnoringPendingStylesheets() const { return m_ignorePendingStylesheets; }
 
     WEBCORE_EXPORT StyleSheetList& styleSheets();
 
@@ -521,7 +521,8 @@ public:
     WEBCORE_EXPORT Ref<CSSStyleDeclaration> createCSSStyleDeclaration();
     Ref<Text> createEditingTextNode(const String&);
 
-    void recalcStyle(Style::Change = Style::NoChange);
+    enum class ResolveStyleType { Normal, Rebuild };
+    void resolveStyle(ResolveStyleType = ResolveStyleType::Normal);
     WEBCORE_EXPORT void updateStyleIfNeeded();
     bool needsStyleRecalc() const;
     unsigned lastStyleUpdateSizeForTesting() const { return m_lastStyleUpdateSizeForTesting; }
@@ -552,7 +553,6 @@ public:
     void didBecomeCurrentDocumentInFrame();
     void destroyRenderTree();
     void prepareForDestruction();
-    void didBecomeCurrentDocumentInView();
 
     // Override ScriptExecutionContext methods to do additional work
     bool shouldBypassMainWorldContentSecurityPolicy() const final;
@@ -936,12 +936,8 @@ public:
     WEBCORE_EXPORT Ref<XPathNSResolver> createNSResolver(Node* nodeResolver);
     WEBCORE_EXPORT ExceptionOr<Ref<XPathResult>> evaluate(const String& expression, Node* contextNode, RefPtr<XPathNSResolver>&&, unsigned short type, XPathResult*);
 
-    enum PendingSheetLayout { NoLayoutWithPendingSheets, DidLayoutWithPendingSheets, IgnoreLayoutWithPendingSheets };
-
-    bool didLayoutWithPendingStylesheets() const { return m_pendingSheetLayout == DidLayoutWithPendingSheets; }
-
-    bool hasNodesWithPlaceholderStyle() const { return m_hasNodesWithPlaceholderStyle; }
-    void setHasNodesWithPlaceholderStyle() { m_hasNodesWithPlaceholderStyle = true; }
+    bool hasNodesWithNonFinalStyle() const { return m_hasNodesWithNonFinalStyle; }
+    void setHasNodesWithNonFinalStyle() { m_hasNodesWithNonFinalStyle = true; }
 
     void updateFocusAppearanceSoon(SelectionRestorationMode);
     void cancelFocusAppearanceUpdate();
@@ -958,7 +954,6 @@ public:
     ScriptedAnimationController* scriptedAnimationController() { return m_scriptedAnimationController.get(); }
     void suspendScriptedAnimationControllerCallbacks();
     void resumeScriptedAnimationControllerCallbacks();
-    void scriptedAnimationControllerSetThrottled(bool);
     
     void windowScreenDidChange(PlatformDisplayID);
 
@@ -1327,9 +1322,9 @@ private:
 
     void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0) final;
 
-    std::chrono::milliseconds minimumTimerInterval() const final;
+    Seconds minimumDOMTimerInterval() const final;
 
-    std::chrono::milliseconds timerAlignmentInterval(bool hasReachedMaxNestingLevel) const final;
+    Seconds domTimerAlignmentInterval(bool hasReachedMaxNestingLevel) const final;
 
     void updateTitleFromTitleElement();
     void updateTitle(const StringWithDirection&);
@@ -1386,15 +1381,10 @@ private:
     const Ref<Settings> m_settings;
 
     std::unique_ptr<StyleResolver> m_userAgentShadowTreeStyleResolver;
-    bool m_hasNodesWithPlaceholderStyle;
+    bool m_hasNodesWithNonFinalStyle;
     // But sometimes you need to ignore pending stylesheet count to
     // force an immediate layout when requested by JS.
     bool m_ignorePendingStylesheets;
-
-    // If we do ignore the pending stylesheet count, then we need to add a boolean
-    // to track that this happened so that we can do a full repaint when the stylesheets
-    // do eventually load.
-    PendingSheetLayout m_pendingSheetLayout;
 
     RefPtr<DOMWindow> m_domWindow;
     WeakPtr<Document> m_contextDocument;

@@ -30,6 +30,7 @@ set(WTF_HEADERS
     DisallowCType.h
     DoublyLinkedList.h
     FastMalloc.h
+    FastTLS.h
     FeatureDefines.h
     FilePrintStream.h
     FlipBytes.h
@@ -65,6 +66,7 @@ set(WTF_HEADERS
     MathExtras.h
     MediaTime.h
     MemoryFootprint.h
+    MemoryPressureHandler.h
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
@@ -206,6 +208,7 @@ set(WTF_SOURCES
     MainThread.cpp
     MediaTime.cpp
     MemoryFootprint.cpp
+    MemoryPressureHandler.cpp
     MetaAllocator.cpp
     MonotonicTime.cpp
     NumberOfCores.cpp

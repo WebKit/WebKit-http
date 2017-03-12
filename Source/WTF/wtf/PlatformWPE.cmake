@@ -9,6 +9,9 @@ list(APPEND WTF_SOURCES
     glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
 
+    linux/CurrentProcessMemoryStatus.cpp
+    linux/MemoryPressureHandlerLinux.cpp
+
     text/wpe/TextBreakIteratorInternalICUWPE.cpp
 )
 

@@ -1,3 +1,58 @@
+2017-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Re-export a few symbols for backwards compatibility
+        https://bugs.webkit.org/show_bug.cgi?id=169490
+        <rdar://problem/30983623>
+
+        Reviewed by Dean Jackson.
+
+        Re-introduce a workaround that re-exports a few JavaScriptCore functions
+        that had been erroneously exported by WebKit in older builds. This
+        is needed so that we do not break certain old software still being used.
+
+        * WebKitDLL.cpp:
+        (DllMain): Bind functions at startup.
+        (bindJavaScriptTrampoline): Find JavaScriptCore library functions and
+        re-export them from WebKit.dll.
+        * WebKitDLL.h: Only advertise these functions when building WebKt itself.
+
+2017-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Expand font-weight and font-stretch to take any number
+        https://bugs.webkit.org/show_bug.cgi?id=168889
+
+        Reviewed by Simon Fraser.
+
+        Migrate off old enum types.
+
+        * WebKitGraphics.cpp:
+        (makeFont):
+
+2017-03-02  Sam Weinig  <sam@webkit.org>
+
+        Rename htmlediting.h/cpp to Editing.h/cpp
+        https://bugs.webkit.org/show_bug.cgi?id=169103
+
+        Reviewed by Alex Christensen.
+
+        * AccessibleTextImpl.cpp:
+
+2017-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Actually fix Windows build.
+
+        * WebFrame.cpp:
+        (WebFrame::invalidate):
+        r213266 changed Style::Force to ResolveStyleType::Rebuild, so I did so here.
+
+2017-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r213266
+        https://bugs.webkit.org/show_bug.cgi?id=169049
+
+        * WebFrame.cpp:
+        (WebFrame::invalidate):
+
 2017-02-27  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] Http preload tests are failing.
