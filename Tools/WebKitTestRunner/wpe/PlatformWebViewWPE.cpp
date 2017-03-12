@@ -45,6 +45,7 @@ PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const Tes
 
 PlatformWebView::~PlatformWebView()
 {
+    delete m_window;
 }
 
 void PlatformWebView::resizeTo(unsigned, unsigned, WebViewSizingMode)

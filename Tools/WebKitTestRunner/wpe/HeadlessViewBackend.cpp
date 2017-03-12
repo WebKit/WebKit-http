@@ -27,10 +27,20 @@
 #include "HeadlessViewBackend.h"
 
 #include <cassert>
+#include <fcntl.h>
+#include <unistd.h>
 
 HeadlessViewBackend::HeadlessViewBackend()
 {
-    m_egl.display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    m_gbm.fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
+    if (m_gbm.fd < 0)
+        return;
+
+    m_gbm.device = gbm_create_device(m_gbm.fd);
+    if (!m_gbm.device)
+        return;
+
+    m_egl.display = eglGetDisplay(m_gbm.device);
     if (m_egl.display == EGL_NO_DISPLAY)
         return;
 
@@ -81,6 +91,32 @@ HeadlessViewBackend::HeadlessViewBackend()
             return TRUE;
         }, this, nullptr);
     g_source_attach(m_updateSource, g_main_context_default());
+}
+
+HeadlessViewBackend::~HeadlessViewBackend()
+{
+    if (m_updateSource)
+        g_source_destroy(m_updateSource);
+
+    if (auto image = std::get<0>(m_pendingImage.second))
+        m_egl.destroyImage(m_egl.display, image);
+    if (auto image = std::get<0>(m_lockedImage.second))
+        m_egl.destroyImage(m_egl.display, image);
+
+    for (auto it : m_exportMap) {
+        int fd = it.second;
+        if (fd >= 0)
+            close(fd);
+    }
+
+    if (m_egl.context)
+        eglDestroyContext(m_egl.display, m_egl.context);
+
+    if (m_gbm.device)
+        gbm_device_destroy(m_gbm.device);
+
+    if (m_gbm.fd >= 0)
+        close(m_gbm.fd);
 }
 
 struct wpe_view_backend* HeadlessViewBackend::backend() const
@@ -176,19 +212,19 @@ struct wpe_mesa_view_backend_exportable_dma_buf_client HeadlessViewBackend::s_ex
     {
         auto& backend = *static_cast<HeadlessViewBackend*>(data);
 
-        auto it = backend.m_imageMap.end();
+        auto it = backend.m_exportMap.end();
         if (imageData->fd >= 0) {
-            assert(backend.m_imageMap.find(imageData->handle) == backend.m_imageMap.end());
+            assert(backend.m_exportMap.find(imageData->handle) == backend.m_exportMap.end());
 
-            it = backend.m_imageMap.insert({ imageData->handle, { imageData->fd, nullptr }}).first;
+            it = backend.m_exportMap.insert({ imageData->handle, imageData->fd }).first;
         } else {
-            assert(backend.m_imageMap.find(imageData->handle) != backend.m_imageMap.end());
-            it = backend.m_imageMap.find(imageData->handle);
+            assert(backend.m_exportMap.find(imageData->handle) != backend.m_exportMap.end());
+            it = backend.m_exportMap.find(imageData->handle);
         }
 
-        assert(it != backend.m_imageMap.end());
+        assert(it != backend.m_exportMap.end());
         uint32_t handle = it->first;
-        int32_t fd = it->second.first;
+        int32_t fd = it->second;
 
         backend.makeCurrent();
 

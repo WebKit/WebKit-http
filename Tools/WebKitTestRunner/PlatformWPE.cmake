@@ -1,3 +1,4 @@
+find_package(LibGBM REQUIRED)
 find_package(WPE-mesa REQUIRED)
 
 add_custom_target(WebKitTestRunner-forwarding-headers
@@ -20,12 +21,14 @@ list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
     ${FORWARDING_HEADERS_DIR}
     ${CAIRO_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
+    ${LIBGBM_INCLUDE_DIRS}
     ${WPE_MESA_INCLUDE_DIRS}
 )
 
 list(APPEND WebKitTestRunner_LIBRARIES
     ${CAIRO_LIBRARIES}
     ${GLIB_LIBRARIES}
+    ${LIBGBM_LIBRARIES}
     ${WPE_MESA_LIBRARIES}
 )
 

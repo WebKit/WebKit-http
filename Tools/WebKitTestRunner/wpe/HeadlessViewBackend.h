@@ -26,6 +26,7 @@
 #pragma once
 
 #include <cairo.h>
+#include <gbm.h>
 #include <glib.h>
 #include <unordered_map>
 #include <wpe-mesa/view-backend-exportable-dma-buf.h>
@@ -37,6 +38,7 @@
 class HeadlessViewBackend {
 public:
     HeadlessViewBackend();
+    ~HeadlessViewBackend();
 
     struct wpe_view_backend* backend() const;
 
@@ -47,6 +49,11 @@ private:
     void performUpdate();
 
     static struct wpe_mesa_view_backend_exportable_dma_buf_client s_exportableClient;
+
+    struct {
+        int fd { -1 };
+        struct gbm_device* device;
+    } m_gbm;
 
     struct {
         EGLDisplay display;
@@ -60,7 +67,7 @@ private:
 
     struct wpe_mesa_view_backend_exportable_dma_buf* m_exportable;
 
-    std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> m_imageMap;
+    std::unordered_map<uint32_t, int32_t> m_exportMap;
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_pendingImage { };
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_lockedImage { };
 
