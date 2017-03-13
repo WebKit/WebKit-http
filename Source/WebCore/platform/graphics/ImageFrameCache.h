@@ -55,8 +55,8 @@ public:
 
     ~ImageFrameCache();
 
-    void setDecoder(ImageDecoder* decoder) { m_decoder = decoder; }
-    ImageDecoder* decoder() const { return m_decoder; }
+    void setDecoder(ImageDecoder*);
+    ImageDecoder* decoder() const;
 
     unsigned decodedSize() const { return m_decodedSize; }
     void destroyDecodedData(bool destroyAll = true, size_t count = 0);
@@ -136,7 +136,7 @@ private:
 #endif
 
     Image* m_image { nullptr };
-    ImageDecoder* m_decoder { nullptr };
+    RefPtr<ImageDecoder> m_decoder;
     unsigned m_decodedSize { 0 };
     unsigned m_decodedPropertiesSize { 0 };
 
