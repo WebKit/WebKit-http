@@ -445,6 +445,7 @@ sub argumentsForConfiguration()
     push(@args, '--64-bit') if (isWin64());
     push(@args, '--gtk') if isGtk();
     push(@args, '--efl') if isEfl();
+    push(@args, '--wpe') if isWPE();
     push(@args, '--jsc-only') if isJSCOnly();
     push(@args, '--wincairo') if isWinCairo();
     push(@args, '--inspector-frontend') if isInspectorFrontend();
@@ -642,7 +643,7 @@ sub executableProductDir
     my $productDirectory = productDir();
 
     my $binaryDirectory;
-    if (isEfl() || isGtk() || isJSCOnly()) {
+    if (isEfl() || isGtk() || isJSCOnly() || isWPE()) {
         $binaryDirectory = "bin";
     } elsif (isAnyWindows()) {
         $binaryDirectory = isWin64() ? "bin64" : "bin32";
@@ -1452,6 +1453,8 @@ sub launcherPath()
         return "$relativeScriptsPath/run-minibrowser";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
+    } elsif (isWPE()) {
+        return "$relativeScriptsPath/run-wpe";
     }
 }
 
@@ -1463,6 +1466,8 @@ sub launcherName()
         return "Safari";
     } elsif (isAppleWinWebKit()) {
         return "MiniBrowser";
+    } elsif (isWPE()) {
+        return "WPELauncher";
     }
 }
 
@@ -2047,6 +2052,10 @@ sub buildCMakeProjectOrExit($$$@)
 
     if (isGtk() && checkForArgumentAndRemoveFromARGV("--update-gtk")) {
         system("perl", "$sourceDir/Tools/Scripts/update-webkitgtk-libs") == 0 or die $!;
+    }
+
+    if (isWPE() && checkForArgumentAndRemoveFromARGV("--update-wpe")) {
+        system("perl", "$sourceDir/Tools/Scripts/update-webkitwpe-libs") == 0 or die $!;
     }
 
     $returnCode = exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs));
