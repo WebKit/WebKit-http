@@ -768,7 +768,9 @@ add_webkit2_prefix_header(WebKit2)
 QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT(WebKit2)
 
 # Suppress unused parameter warnings for sources in WebKit2.
-ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
+if (COMPILER_IS_GCC_OR_CLANG)
+    ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
+endif ()
 
 if (WebKit2_VERSION_SCRIPT)
     ADD_TARGET_PROPERTIES(WebKit2 LINK_FLAGS "${WebKit2_VERSION_SCRIPT}")
