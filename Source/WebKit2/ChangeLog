@@ -1,3 +1,218 @@
+2017-03-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WK2] Move AcceleratedSurface files under WebProcess/WebPage/CoordinatedGraphics
+        https://bugs.webkit.org/show_bug.cgi?id=169348
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the AcceleratedSurface header and implementation files under the
+        WebProcess/WebPage directory since that class is not specific to the
+        GTK+ port.
+
+        * PlatformGTK.cmake:
+        * WebProcess/WebPage/AcceleratedSurface.cpp: Renamed from Source/WebKit2/WebProcess/WebPage/gtk/AcceleratedSurface.cpp.
+        (WebKit::AcceleratedSurface::create):
+        (WebKit::AcceleratedSurface::AcceleratedSurface):
+        (WebKit::AcceleratedSurface::resize):
+        * WebProcess/WebPage/AcceleratedSurface.h: Renamed from Source/WebKit2/WebProcess/WebPage/gtk/AcceleratedSurface.h.
+        (WebKit::AcceleratedSurface::window):
+        (WebKit::AcceleratedSurface::surfaceID):
+        (WebKit::AcceleratedSurface::shouldPaintMirrored):
+
+2017-03-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] [WK2] Guard flags intended for GCC-like compilers with COMPILER_IS_GCC_OR_CLANG
+        https://bugs.webkit.org/show_bug.cgi?id=169551
+
+        Reviewed by Yusuke Suzuki.
+
+        This change allows building WK2 code with MSVC.
+
+        * CMakeLists.txt:
+
+2017-03-13  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Only report background WebProcesses as unresponsive in the background after 90 seconds
+        https://bugs.webkit.org/show_bug.cgi?id=169425
+        <rdar://problem/30954003>
+
+        Reviewed by Andreas Kling.
+
+        The background responsiveness checking was previously relying on the
+        isResponsive(std::function<void(bool)>) API which uses the ResponsivenessTimer
+        and has a timeout of 3 seconds. We believe this is too aggressive for background
+        tabs. Update BackgroundResponsiveTimer to stop relying on ResponsivenessTimer
+        and have its own timeout Timer which a delay of 90 seconds instead.
+
+        * UIProcess/API/C/mac/WKPagePrivateMac.mm:
+        (-[WKObservablePageState _webProcessIsResponsive]):
+        * UIProcess/API/Cocoa/WKBrowsingContextController.mm:
+        (-[WKBrowsingContextController _webProcessIsResponsive]):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _webProcessIsResponsive]):
+        * UIProcess/BackgroundProcessResponsivenessTimer.cpp:
+        (WebKit::BackgroundProcessResponsivenessTimer::BackgroundProcessResponsivenessTimer):
+        (WebKit::BackgroundProcessResponsivenessTimer::~BackgroundProcessResponsivenessTimer):
+        (WebKit::BackgroundProcessResponsivenessTimer::updateState):
+        (WebKit::BackgroundProcessResponsivenessTimer::didReceiveBackgroundResponsivenessPong):
+        (WebKit::BackgroundProcessResponsivenessTimer::invalidate):
+        (WebKit::BackgroundProcessResponsivenessTimer::processTerminated):
+        (WebKit::BackgroundProcessResponsivenessTimer::responsivenessCheckTimerFired):
+        (WebKit::BackgroundProcessResponsivenessTimer::timeoutTimerFired):
+        (WebKit::BackgroundProcessResponsivenessTimer::setResponsive):
+        (WebKit::BackgroundProcessResponsivenessTimer::shouldBeActive):
+        (WebKit::BackgroundProcessResponsivenessTimer::scheduleNextResponsivenessCheck):
+        (WebKit::BackgroundProcessResponsivenessTimer::client):
+        * UIProcess/BackgroundProcessResponsivenessTimer.h:
+        (WebKit::BackgroundProcessResponsivenessTimer::isResponsive):
+        * UIProcess/ResponsivenessTimer.h:
+        (WebKit::ResponsivenessTimer::isResponsive):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::resetStateAfterProcessExited):
+        (WebKit::WebPageProxy::updateBackingStoreDiscardableState):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::WebProcessProxy):
+        (WebKit::WebProcessProxy::shutDown):
+        (WebKit::WebProcessProxy::isResponsive):
+        (WebKit::WebProcessProxy::didReceiveBackgroundResponsivenessPing):
+        (WebKit::WebProcessProxy::processTerminated):
+        (WebKit::WebProcessProxy::updateBackgroundResponsivenessTimer):
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebProcessProxy.messages.in:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::backgroundResponsivenessPing):
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.messages.in:
+
+2017-03-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Web Automation: automation commands hang when trying to navigate go/back and it's not possible
+        https://bugs.webkit.org/show_bug.cgi?id=169407
+
+        Reviewed by Michael Catanzaro.
+
+        Trying to navigate back or forward when there are no back/forward items makes the automation commands to hang, because
+        navigation callback is never called. WebPageProxy returns nullptr to indicate no navigation will take place. In
+        that case we can consider that the operation succeeded.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::goBackInBrowsingContext):
+        (WebKit::WebAutomationSession::goForwardInBrowsingContext):
+
+2017-03-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WK2][CMake] Remove the intermediate NetworkProcess_COMMON_SOURCES variable
+        https://bugs.webkit.org/show_bug.cgi?id=169524
+
+        Reviewed by Michael Catanzaro.
+
+        The NetworkProcess-specific source files listed in the
+        NetworkProcess_COMMON_SOURCES variable definition should be directly
+        inlined into the list with which the WebKit2_SOURCE variable is defined.
+        The NetworkProcess_COMMON_SOURCES variable is appended to the
+        WebKit2_SOURCES variable anyway, and is not used anywhere else. The
+        separate variable was previously use to support configurations that
+        allowed disabling NetworkProcess.
+
+        * CMakeLists.txt:
+
+2017-03-13  Dean Jackson  <dino@apple.com>
+
+        WebGPU remote layer hosting
+        https://bugs.webkit.org/show_bug.cgi?id=169539
+        <rdar://problem/31005380>
+
+        Reviewed by Jon Lee.
+
+        Implement the host-side part of WebGPULayer.
+
+        * Shared/mac/RemoteLayerBackingStore.mm: Add support for LayerTypeWebGPULayer.
+        (WebKit::RemoteLayerBackingStore::drawInContext):
+        * Shared/mac/RemoteLayerTreeTransaction.mm: Ditto.
+        (WebKit::RemoteLayerTreeTransaction::description):
+        * UIProcess/ios/RemoteLayerTreeHostIOS.mm: Ditto.
+        (WebKit::RemoteLayerTreeHost::createLayer):
+        * UIProcess/mac/RemoteLayerTreeHost.mm: Ditto.
+        (WebKit::RemoteLayerTreeHost::createLayer):
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm: Ditto.
+        (WebKit::PlatformCALayerRemoteCustom::PlatformCALayerRemoteCustom):
+        (WebKit::PlatformCALayerRemoteCustom::clone):
+
+2017-03-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ build fix. Use WTF::Function<> for the
+        WebPageProxy::getContentsAsMHTMLData() parameter, fixing
+        configurations that support enabling ENABLE(MHTML).
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::getContentsAsMHTMLData):
+        * UIProcess/WebPageProxy.h:
+
+2017-03-12  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Incorrect availability annotations in WKUserContentController.h
+        https://bugs.webkit.org/show_bug.cgi?id=169536
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/API/Cocoa/WKUserContentController.h: Use WK_MAC_TBA for macOS availability.
+
+2017-03-12  Brady Eidson  <beidson@apple.com>
+
+        Transition GenericCallback from std::function to WTF::Function.
+        https://bugs.webkit.org/show_bug.cgi?id=169530
+
+        Reviewed by Dean Jackson.
+
+        * UIProcess/GenericCallback.h:
+        (WebKit::GenericCallback::create):
+        (WebKit::GenericCallback::performCallbackWithReturnValue):
+        (WebKit::GenericCallback::GenericCallback):
+        (WebKit::CallbackMap::put):
+
+        * UIProcess/WebCookieManagerProxy.cpp:
+        (WebKit::WebCookieManagerProxy::getHostnamesWithCookies):
+        (WebKit::WebCookieManagerProxy::getHTTPCookieAcceptPolicy):
+        * UIProcess/WebCookieManagerProxy.h:
+
+        * UIProcess/WebFrameProxy.cpp:
+        (WebKit::WebFrameProxy::getWebArchive):
+        (WebKit::WebFrameProxy::getMainResourceData):
+        (WebKit::WebFrameProxy::getResourceData):
+        * UIProcess/WebFrameProxy.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::getSelectionAsWebArchiveData):
+        (WebKit::WebPageProxy::getMainResourceDataOfFrame):
+        (WebKit::WebPageProxy::getResourceDataFromFrame):
+        (WebKit::WebPageProxy::getWebArchiveOfFrame):
+        * UIProcess/WebPageProxy.h:
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::getStatistics):
+        * UIProcess/WebProcessPool.h:
+
+2017-03-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Unbreak build with GTK+ >=3.20 after r213772
+        https://bugs.webkit.org/show_bug.cgi?id=169533
+
+        Reviewed by Michael Catanzaro.
+
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewRunFileChooser): Add missing cast.
+
+2017-03-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] File choosers should run as modal by default if possible
+        https://bugs.webkit.org/show_bug.cgi?id=169526
+
+        Reviewed by Michael Catanzaro.
+
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewRunFileChooser): If a top-level window containing the web view is found, call
+        gtk_native_dialog_set_modal() to configure the dialog accordingly.
+
 2017-03-12  Dan Bernstein  <mitz@apple.com>
 
         [iOS] Some more -respondsToSelector: checks are unnecessary

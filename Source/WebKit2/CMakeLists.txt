@@ -102,16 +102,23 @@ set(WebKit2_SOURCES
 
     NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
 
+    NetworkProcess/Downloads/BlobDownloadClient.cpp
+    NetworkProcess/Downloads/Download.cpp
+    NetworkProcess/Downloads/DownloadManager.cpp
+    NetworkProcess/Downloads/PendingDownload.cpp
+
+    NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
+
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkDataTask.cpp
     NetworkProcess/NetworkDataTaskBlob.cpp
     NetworkProcess/NetworkLoad.cpp
     NetworkProcess/NetworkProcess.cpp
+    NetworkProcess/NetworkProcessCreationParameters.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
+    NetworkProcess/NetworkResourceLoadParameters.cpp
     NetworkProcess/NetworkResourceLoader.cpp
     NetworkProcess/NetworkSession.cpp
-
-    NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
     NetworkProcess/cache/NetworkCache.cpp
     NetworkProcess/cache/NetworkCacheBlobStorage.cpp
@@ -133,13 +140,10 @@ set(WebKit2_SOURCES
     NetworkProcess/capture/NetworkCaptureResource.cpp
     NetworkProcess/capture/NetworkDataTaskReplay.cpp
 
-    NetworkProcess/NetworkProcessCreationParameters.cpp
-    NetworkProcess/NetworkResourceLoadParameters.cpp
+    DatabaseProcess/DatabaseProcess.cpp
+    DatabaseProcess/DatabaseToWebProcessConnection.cpp
 
-    NetworkProcess/Downloads/BlobDownloadClient.cpp
-    NetworkProcess/Downloads/Download.cpp
-    NetworkProcess/Downloads/DownloadManager.cpp
-    NetworkProcess/Downloads/PendingDownload.cpp
+    DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
 
     Platform/Logging.cpp
     Platform/Module.cpp
@@ -795,12 +799,14 @@ WEBKIT_FRAMEWORK(WebKit2)
 add_dependencies(WebKit2 WebCore ${WEBKIT2_EXTRA_DEPENDENCIES})
 add_webkit2_prefix_header(WebKit2)
 
-if (NOT APPLE)
+if (COMPILER_IS_GCC_OR_CLANG AND NOT APPLE)
     target_link_libraries(WebKit2 -Wl,--start-group WebCore WebCoreDerivedSources -Wl,--end-group)
 endif ()
 
 # Suppress unused parameter warnings for sources in WebKit2.
-ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
+if (COMPILER_IS_GCC_OR_CLANG)
+    ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
+endif ()
 
 if (WebKit2_VERSION_SCRIPT)
     ADD_TARGET_PROPERTIES(WebKit2 LINK_FLAGS "${WebKit2_VERSION_SCRIPT}")

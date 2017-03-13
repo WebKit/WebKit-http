@@ -157,7 +157,8 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
 
-    WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp
+    WebProcess/WebPage/AcceleratedSurface.cpp
+
     WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
     WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
