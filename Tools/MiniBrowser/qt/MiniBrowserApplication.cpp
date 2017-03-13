@@ -330,7 +330,8 @@ void MiniBrowserApplication::handleUserOptions()
     if (useDesktopBehavior)
         windowOptions()->setTouchMockingEnabled(false);
 
-    QQuickWebViewExperimental::setFlickableViewportEnabled(!useDesktopBehavior);
+    // QTFIXME: flickable viewport has painting artifacts so we cannot enable it by default
+    // QQuickWebViewExperimental::setFlickableViewportEnabled(!useDesktopBehavior);
     if (!useDesktopBehavior)
         qputenv("QT_WEBKIT_USE_MOBILE_THEME", QByteArray("1"));
     m_windowOptions.setPrintLoadedUrls(takeOptionFlag(&args, "-v"));
