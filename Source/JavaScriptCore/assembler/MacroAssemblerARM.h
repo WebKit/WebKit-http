@@ -1460,7 +1460,11 @@ public:
 
     void memoryFence()
     {
-        m_assembler.memoryFence();
+#if WTF_ARM_ARCH_AT_LEAST(7)
+        m_assembler.dmbSY();
+#else
+        m_assembler.arm6MemFence();
+#endif
     }
 
     static FunctionPtr readCallTarget(CodeLocationCall call)
