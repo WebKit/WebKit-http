@@ -32,6 +32,7 @@
 
 #include "AssemblerBuffer.h"
 #include "JITCompilationEffort.h"
+#include <limits.h>
 #include <wtf/Assertions.h>
 #include <wtf/SegmentedVector.h>
 #include <limits.h>
