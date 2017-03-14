@@ -18,7 +18,6 @@
  */
 
 #include "config.h"
-
 #include "TouchAdjustment.h"
 
 #include "ContainerNode.h"
@@ -351,7 +350,7 @@ float hybridDistanceFunction(const IntPoint& touchHotspot, const IntRect& touchR
 
     // Convert from frame coordinates to window coordinates.
     rect = subtarget.node()->document().view()->contentsToWindow(rect);
-   
+
     float radiusSquared = 0.25f * (touchRect.size().diagonalLengthSquared());
     float distanceToAdjustScore = rect.distanceSquaredToPoint(touchHotspot) / radiusSquared;
 
@@ -468,10 +467,11 @@ bool findNodeWithLowestDistanceMetric(Node*& targetNode, IntPoint& targetPoint, 
             }
         }
     }
-    if (targetNode) {
+
+    if (targetNode)
         targetArea = targetNode->document().view()->contentsToWindow(targetArea);
-    }
-    return (targetNode);
+
+    return targetNode;
 }
 
 } // namespace TouchAdjustment

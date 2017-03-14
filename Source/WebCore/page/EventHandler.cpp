@@ -2725,8 +2725,7 @@ bool EventHandler::handleGestureEvent(const PlatformGestureEvent& gestureEvent)
         // The mouseup event synthesized for this gesture will clear the active state of the
         // targeted node, so performing a ReadOnly hit test here is fine.
         hitType |= HitTestRequest::ReadOnly;
-    }
-    else
+    } else
         hitType |= HitTestRequest::Active | HitTestRequest::ReadOnly;
 
     if (!shouldGesturesTriggerActive())

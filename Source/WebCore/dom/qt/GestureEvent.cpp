@@ -25,10 +25,9 @@
  */
 
 #include "config.h"
+#include "GestureEvent.h"
 
 #if ENABLE(QT_GESTURE_EVENTS)
-
-#include "GestureEvent.h"
 
 #include "Element.h"
 #include <wtf/text/AtomicString.h>
@@ -55,11 +54,11 @@ EventInterface GestureEvent::eventInterface() const
 }
 
 GestureEvent::GestureEvent(const AtomicString& type, double timestamp, AbstractView* view, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
-    : MouseRelatedEvent(type, true, true, timestamp, view, 0, IntPoint(screenX, screenY), IntPoint(clientX, clientY),
+    : MouseRelatedEvent(type, true, true, timestamp, view, 0, IntPoint(screenX, screenY), IntPoint(clientX, clientY)
 #if ENABLE(POINTER_LOCK)
-                        IntPoint(0, 0),
+        , IntPoint(0, 0)
 #endif
-                        ctrlKey, altKey, shiftKey, metaKey)
+        , ctrlKey, altKey, shiftKey, metaKey)
 {
 }
 
