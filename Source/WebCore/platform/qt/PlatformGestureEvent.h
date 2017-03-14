@@ -39,8 +39,6 @@ class PlatformGestureEvent : public PlatformEvent {
 public:
     PlatformGestureEvent()
         : PlatformEvent(PlatformEvent::GestureTap)
-        , m_deltaX(0)
-        , m_deltaY(0)
     {
     }
 
@@ -48,16 +46,11 @@ public:
     const IntPoint& globalPosition() const { return m_globalPosition; } // Screen coordinates.
 
     const IntSize& area() const { return m_area; }
-
-    float deltaX() const { return m_deltaX; }
-    float deltaY() const { return m_deltaY; }
     
 protected:
     IntPoint m_position;
     IntPoint m_globalPosition;
     IntSize m_area;
-    float m_deltaX;
-    float m_deltaY;
 };
 
 } // namespace WebCore

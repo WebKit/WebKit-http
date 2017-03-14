@@ -254,8 +254,6 @@ public:
         m_globalPosition = webEvent.globalPosition();
 
         m_area = webEvent.area();
-        m_deltaX = webEvent.delta().x();
-        m_deltaY = webEvent.delta().y();
     }
 };
 

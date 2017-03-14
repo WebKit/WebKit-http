@@ -33,22 +33,13 @@
 
 using namespace WebCore;
 
-namespace WebKit {    
+namespace WebKit {
 
-WebGestureEvent::WebGestureEvent(Type type, const IntPoint& position, const IntPoint& globalPosition, Modifiers modifiers, double timestamp)
-    : WebEvent(type, modifiers, timestamp)
-    , m_position(position)
-    , m_globalPosition(globalPosition)
-{
-    ASSERT(isGestureEventType(type));
-}
-
-WebGestureEvent::WebGestureEvent(Type type, const IntPoint& position, const IntPoint& globalPosition, Modifiers modifiers, double timestamp, const IntSize& area, const FloatPoint& delta)
+WebGestureEvent::WebGestureEvent(Type type, const IntPoint& position, const IntPoint& globalPosition, Modifiers modifiers, double timestamp, const IntSize& area/*, const FloatPoint& delta*/)
     : WebEvent(type, modifiers, timestamp)
     , m_position(position)
     , m_globalPosition(globalPosition)
     , m_area(area)
-    , m_delta(delta)
 {
     ASSERT(isGestureEventType(type));
 }
@@ -60,7 +51,6 @@ void WebGestureEvent::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_position;
     encoder << m_globalPosition;
     encoder << m_area;
-    encoder << m_delta;
 }
 
 bool WebGestureEvent::decode(IPC::ArgumentDecoder& decoder, WebGestureEvent& t)
@@ -72,8 +62,6 @@ bool WebGestureEvent::decode(IPC::ArgumentDecoder& decoder, WebGestureEvent& t)
     if (!decoder.decode(t.m_globalPosition))
         return false;
     if (!decoder.decode(t.m_area))
-        return false;
-    if (!decoder.decode(t.m_delta))
         return false;
     return true;
 }

@@ -46,14 +46,8 @@ public:
 
     EventInterface eventInterface() const override;
 
-    float deltaX() const { return m_deltaX; }
-    float deltaY() const { return m_deltaY; }
-
 private:
-    GestureEvent(const AtomicString& type, double timestamp, AbstractView*, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, float deltaX, float deltaY);
-
-    float m_deltaX;
-    float m_deltaY;
+    GestureEvent(const AtomicString& type, double timestamp, AbstractView*, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
 };
 
 } // namespace WebCore

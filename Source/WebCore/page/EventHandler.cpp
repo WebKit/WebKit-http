@@ -2782,10 +2782,6 @@ bool EventHandler::handleGestureTap(const PlatformGestureEvent& gestureEvent)
     mouseMoved(fakeMouseMove);
 
     int tapCount = 1;
-    // FIXME: deletaX is overloaded to mean different things for different gestures.
-    // http://wkb.ug/93123
-    if (gestureEvent.deltaX() > 0)
-        tapCount = static_cast<int>(gestureEvent.deltaX());
 
     bool defaultPrevented = false;
     PlatformMouseEvent fakeMouseDown(adjustedPoint, gestureEvent.globalPosition(),

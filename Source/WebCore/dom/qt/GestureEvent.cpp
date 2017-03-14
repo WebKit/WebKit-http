@@ -45,7 +45,7 @@ RefPtr<GestureEvent> GestureEvent::create(AbstractView* view, const PlatformGest
     default:
         return 0;
     }
-    return adoptRef(new GestureEvent(eventType, event.timestamp(), view, event.globalPosition().x(), event.globalPosition().y(), event.position().x(), event.position().y(), event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey(), event.deltaX(), event.deltaY()));
+    return adoptRef(new GestureEvent(eventType, event.timestamp(), view, event.globalPosition().x(), event.globalPosition().y(), event.position().x(), event.position().y(), event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey()));
 }
 
 EventInterface GestureEvent::eventInterface() const
@@ -54,14 +54,12 @@ EventInterface GestureEvent::eventInterface() const
     return EventInterfaceType;
 }
 
-GestureEvent::GestureEvent(const AtomicString& type, double timestamp, AbstractView* view, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, float deltaX, float deltaY)
+GestureEvent::GestureEvent(const AtomicString& type, double timestamp, AbstractView* view, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
     : MouseRelatedEvent(type, true, true, timestamp, view, 0, IntPoint(screenX, screenY), IntPoint(clientX, clientY),
 #if ENABLE(POINTER_LOCK)
                         IntPoint(0, 0),
 #endif
                         ctrlKey, altKey, shiftKey, metaKey)
-    , m_deltaX(deltaX)
-    , m_deltaY(deltaY)
 {
 }
 

@@ -301,13 +301,11 @@ private:
 class WebGestureEvent : public WebEvent {
 public:
     WebGestureEvent() { }
-    WebGestureEvent(Type, const WebCore::IntPoint& position, const WebCore::IntPoint& globalPosition, Modifiers, double timestamp);
-    WebGestureEvent(Type, const WebCore::IntPoint& position, const WebCore::IntPoint& globalPosition, Modifiers, double timestamp, const WebCore::IntSize& area, const WebCore::FloatPoint& delta);
+    WebGestureEvent(Type, const WebCore::IntPoint& position, const WebCore::IntPoint& globalPosition, Modifiers, double timestamp, const WebCore::IntSize& area);
 
     const WebCore::IntPoint position() const { return m_position; }
     const WebCore::IntPoint globalPosition() const { return m_globalPosition; }
     const WebCore::IntSize area() const { return m_area; }
-    const WebCore::FloatPoint delta() const { return m_delta; }
 
     void encode(IPC::ArgumentEncoder&) const;
     static bool decode(IPC::ArgumentDecoder&, WebGestureEvent&);
@@ -318,7 +316,6 @@ private:
     WebCore::IntPoint m_position;
     WebCore::IntPoint m_globalPosition;
     WebCore::IntSize m_area;
-    WebCore::FloatPoint m_delta;
 };
 #endif // ENABLE(QT_GESTURE_EVENTS)
 
