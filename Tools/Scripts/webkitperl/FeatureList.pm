@@ -402,7 +402,7 @@ my @features = (
       define => "ENABLE_WEB_TIMING", default => 1, value => \$webTimingSupport },
 
     { option => "webassembly", desc => "Toggle WebAssembly support",
-      define => "ENABLE_WEBASSEMBLY", default => (isX86_64() && (isGtk() || isJSCOnly())) , value => \$webAssemblySupport },
+      define => "ENABLE_WEBASSEMBLY", default => (isX86_64() && (isGtk() || isJSCOnly() || isWPE())) , value => \$webAssemblySupport },
 
     { option => "webgl", desc => "Toggle WebGL support",
       define => "ENABLE_WEBGL", default => (isAppleCocoaWebKit() || isGtk() || isEfl() || isWPE()), value => \$webglSupport },
