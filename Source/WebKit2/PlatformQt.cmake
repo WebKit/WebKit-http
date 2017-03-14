@@ -75,6 +75,7 @@ list(APPEND WebKit2_SOURCES
     Shared/qt/ShareableBitmapQt.cpp
     Shared/qt/WebCoreArgumentCodersQt.cpp
     Shared/qt/WebEventFactoryQt.cpp
+    Shared/qt/WebGestureEvent.cpp
 
     Shared/unix/ChildProcessMain.cpp
 
