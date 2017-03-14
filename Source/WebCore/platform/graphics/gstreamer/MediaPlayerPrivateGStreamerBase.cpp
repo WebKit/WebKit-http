@@ -837,8 +837,16 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
 
     LockHolder holder(m_platformLayerProxy->lock());
 
-    if (!m_platformLayerProxy->isActive())
+    if (!m_platformLayerProxy->isActive()) {
+        // Consume the buffer (so it gets eventually unreffed) but keep the rest of the info.
+        const GstStructure* info = gst_sample_get_info(m_sample.get());
+        GstStructure* infoCopy = nullptr;
+        if (info)
+            infoCopy = gst_structure_copy(info);
+        m_sample = adoptGRef(gst_sample_new(nullptr, gst_sample_get_caps(m_sample.get()),
+            gst_sample_get_segment(m_sample.get()), infoCopy));
         return;
+    }
 
 #if USE(GSTREAMER_GL)
     std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation));
@@ -1456,7 +1464,7 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
     return static_cast<unsigned>(position);
 }
 
-#if USE(PLAYREADY)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(PLAYREADY)
 PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 {
     PlayreadySession* session = nullptr;
@@ -1470,9 +1478,7 @@ PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 #endif
     return session;
 }
-#endif
 
-#if USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerBase::emitPlayReadySession()
 {
     PlayreadySession* session = prSession();

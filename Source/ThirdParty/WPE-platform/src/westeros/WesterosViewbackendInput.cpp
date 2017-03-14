@@ -136,26 +136,51 @@ void WesterosViewbackendInput::keyboardHandleRepeatInfo( void *userData, int32_t
     }
 }
 
+struct KeyEventData
+{
+    void* userData;
+    uint32_t key;
+    uint32_t state;
+    uint32_t time;
+};
+
 void WesterosViewbackendInput::handleKeyEvent(void* userData, uint32_t key, uint32_t state, uint32_t time)
 {
-    auto& backend_input = *static_cast<WesterosViewbackendInput*>(userData);
-    auto& handlerData = backend_input.m_handlerData;
+    auto& me = *static_cast<WesterosViewbackendInput*>(userData);
+    if (!me.m_viewbackend)
+        return;
 
-    auto& xkb = handlerData.xkb;
-    uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
-    uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
+    KeyEventData *eventData = new KeyEventData { userData, key, state, time };
+    g_ptr_array_add(me.m_keyEventDataArray, eventData);
 
-    if (xkb.composeState
-        && state == WL_KEYBOARD_KEY_STATE_PRESSED
-        && xkb_compose_state_feed(xkb.composeState, keysym) == XKB_COMPOSE_FEED_ACCEPTED
-        && xkb_compose_state_get_status(xkb.composeState) == XKB_COMPOSE_COMPOSED)
+    g_idle_add_full(G_PRIORITY_DEFAULT, [](gpointer data) -> gboolean
     {
-        keysym = xkb_compose_state_get_one_sym(xkb.composeState);
-        unicode = xkb_keysym_to_utf32(keysym);
-    }
+        KeyEventData *e = (KeyEventData*)data;
 
-    struct wpe_input_keyboard_event event{ time, keysym, unicode, !!state, xkb.modifiers };
-    wpe_view_backend_dispatch_keyboard_event(backend_input.m_viewbackend, &event);
+        auto& backend_input = *static_cast<WesterosViewbackendInput*>(e->userData);
+        auto& handlerData = backend_input.m_handlerData;
+
+        auto& xkb = handlerData.xkb;
+        uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, e->key);
+        uint32_t unicode = xkb_state_key_get_utf32(xkb.state, e->key);
+
+        if (xkb.composeState
+            && e->state == WL_KEYBOARD_KEY_STATE_PRESSED
+            && xkb_compose_state_feed(xkb.composeState, keysym) == XKB_COMPOSE_FEED_ACCEPTED
+            && xkb_compose_state_get_status(xkb.composeState) == XKB_COMPOSE_COMPOSED)
+        {
+            keysym = xkb_compose_state_get_one_sym(xkb.composeState);
+            unicode = xkb_keysym_to_utf32(keysym);
+        }
+
+        struct wpe_input_keyboard_event event
+                { e->time, keysym, unicode, !!e->state, xkb.modifiers };
+        wpe_view_backend_dispatch_keyboard_event(backend_input.m_viewbackend, &event);
+
+        g_ptr_array_remove_fast(backend_input.m_keyEventDataArray, data);
+        delete e;
+        return G_SOURCE_REMOVE;
+    }, eventData, nullptr);
 }
 
 gboolean WesterosViewbackendInput::repeatRateTimeout(void* userData)
@@ -185,53 +210,128 @@ void WesterosViewbackendInput::pointerHandleLeave( void *userData )
 {
 }
 
+struct MotionEventData
+{
+    void* userData;
+    uint32_t time;
+    wl_fixed_t sx;
+    wl_fixed_t sy;
+};
+
 void WesterosViewbackendInput::pointerHandleMotion( void *userData, uint32_t time, wl_fixed_t sx, wl_fixed_t sy )
 {
-    auto& backend_input = *static_cast<WesterosViewbackendInput*>(userData);
-    auto& handlerData = backend_input.m_handlerData;
+    auto& me = *static_cast<WesterosViewbackendInput*>(userData);
+    if (!me.m_viewbackend)
+        return;
 
-    auto x = wl_fixed_to_int(sx);
-    auto y = wl_fixed_to_int(sy);
+    MotionEventData *eventData = new MotionEventData { userData, time, sx, sy };
+    g_ptr_array_add(me.m_motionEventDataArray, eventData);
 
-    auto& pointer = handlerData.pointer;
-    pointer.coords = { x, y };
+    g_idle_add_full(G_PRIORITY_DEFAULT, [](gpointer data) -> gboolean
+    {
+        MotionEventData *e = (MotionEventData*)data;
 
-    struct wpe_input_pointer_event event{ wpe_input_pointer_event_type_motion, time, x, y, 0, 0 };
-    wpe_view_backend_dispatch_pointer_event(backend_input.m_viewbackend, &event);
+        auto& backend_input = *static_cast<WesterosViewbackendInput*>(e->userData);
+        auto& handlerData = backend_input.m_handlerData;
+
+        auto x = wl_fixed_to_int(e->sx);
+        auto y = wl_fixed_to_int(e->sy);
+
+        auto& pointer = handlerData.pointer;
+        pointer.coords = { x, y };
+
+        struct wpe_input_pointer_event event
+                { wpe_input_pointer_event_type_motion, e->time, x, y, 0, 0 };
+        wpe_view_backend_dispatch_pointer_event(backend_input.m_viewbackend, &event);
+
+        g_ptr_array_remove_fast(backend_input.m_motionEventDataArray, data);
+        delete e;
+        return G_SOURCE_REMOVE;
+    }, eventData, nullptr);
 }
+
+struct ButtonEventData
+{
+    void* userData;
+    uint32_t time;
+    uint32_t button;
+    uint32_t state;
+};
 
 void WesterosViewbackendInput::pointerHandleButton( void *userData, uint32_t time, uint32_t button, uint32_t state )
 {
-    auto& backend_input = *static_cast<WesterosViewbackendInput*>(userData);
-    auto& handlerData = backend_input.m_handlerData;
+    auto& me = *static_cast<WesterosViewbackendInput*>(userData);
+    if (!me.m_viewbackend)
+        return;
 
-    if (button >= BTN_MOUSE)
-            button = button - BTN_MOUSE + 1;
-        else
-            button = 0;
+    button = (button >= BTN_MOUSE) ? (button - BTN_MOUSE + 1) : 0;
+    ButtonEventData *eventData = new ButtonEventData { userData, time, button, state };
+    g_ptr_array_add(me.m_buttonEventDataArray, eventData);
 
-    auto& pointer = handlerData.pointer;
-    auto& coords = pointer.coords;
+    g_idle_add_full(G_PRIORITY_DEFAULT, [](gpointer data) -> gboolean
+    {
+        ButtonEventData *e = (ButtonEventData*)data;
 
-    struct wpe_input_pointer_event event{ wpe_input_pointer_event_type_button, time, coords.first, coords.second, button, state };
-    wpe_view_backend_dispatch_pointer_event(backend_input.m_viewbackend, &event);
+        auto& backend_input = *static_cast<WesterosViewbackendInput*>(e->userData);
+        auto& handlerData = backend_input.m_handlerData;
+
+        auto& pointer = handlerData.pointer;
+        auto& coords = pointer.coords;
+
+        struct wpe_input_pointer_event event
+                { wpe_input_pointer_event_type_button, e->time, coords.first, coords.second, e->button, e->state };
+        wpe_view_backend_dispatch_pointer_event(backend_input.m_viewbackend, &event);
+
+        g_ptr_array_remove_fast(backend_input.m_buttonEventDataArray, data);
+        delete e;
+        return G_SOURCE_REMOVE;
+    }, eventData, nullptr);
 }
+
+struct AxisEventData
+{
+    void* userData;
+    uint32_t time;
+    uint32_t axis;
+    wl_fixed_t value;
+};
 
 void WesterosViewbackendInput::pointerHandleAxis( void *userData, uint32_t time, uint32_t axis, wl_fixed_t value )
 {
-    auto& backend_input = *static_cast<WesterosViewbackendInput*>(userData);
-    auto& handlerData = backend_input.m_handlerData;
+    auto& me = *static_cast<WesterosViewbackendInput*>(userData);
+    if (!me.m_viewbackend)
+        return;
 
-    auto& pointer = handlerData.pointer;
-    auto& coords = pointer.coords;
+    AxisEventData *eventData = new AxisEventData { userData, time, axis, value };
+    g_ptr_array_add(me.m_axisEventDataArray, eventData);
 
-    struct wpe_input_axis_event event{ wpe_input_axis_event_type_motion, time, coords.first, coords.second, axis, -wl_fixed_to_int(value) };
-    wpe_view_backend_dispatch_axis_event(backend_input.m_viewbackend, &event);
+    g_idle_add_full(G_PRIORITY_DEFAULT, [](gpointer data) -> gboolean
+    {
+        AxisEventData *e = (AxisEventData*)data;
+
+        auto& backend_input = *static_cast<WesterosViewbackendInput*>(e->userData);
+        auto& handlerData = backend_input.m_handlerData;
+
+        auto& pointer = handlerData.pointer;
+        auto& coords = pointer.coords;
+
+        struct wpe_input_axis_event event{ wpe_input_axis_event_type_motion, e->time, coords.first, coords.second, e->axis, -wl_fixed_to_int(e->value) };
+        wpe_view_backend_dispatch_axis_event(backend_input.m_viewbackend, &event);
+
+        g_ptr_array_remove_fast(backend_input.m_axisEventDataArray, data);
+        delete e;
+        return G_SOURCE_REMOVE;
+    }, eventData, nullptr);
 }
 
 WesterosViewbackendInput::WesterosViewbackendInput(struct wpe_view_backend* backend)
  : m_compositor(nullptr)
  , m_viewbackend(backend)
+ , m_handlerData()
+ , m_keyEventDataArray(g_ptr_array_sized_new(4))
+ , m_motionEventDataArray(g_ptr_array_sized_new(4))
+ , m_buttonEventDataArray(g_ptr_array_sized_new(4))
+ , m_axisEventDataArray(g_ptr_array_sized_new(4))
 {
     m_handlerData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     m_handlerData.xkb.composeTable = xkb_compose_table_new_from_locale(m_handlerData.xkb.context, setlocale(LC_CTYPE, nullptr), XKB_COMPOSE_COMPILE_NO_FLAGS);
@@ -243,6 +343,8 @@ WesterosViewbackendInput::~WesterosViewbackendInput()
 {
     m_compositor = nullptr;
     m_viewbackend = nullptr;
+
+    clearDataArrays();
 
     if (m_handlerData.xkb.context)
         xkb_context_unref(m_handlerData.xkb.context);
@@ -272,6 +374,48 @@ void WesterosViewbackendInput::initializeNestedInputHandler(WstCompositor *compo
             fprintf(stderr, "WesterosViewbackendInput: failed to set pointer nested listener: %s\n",
                 WstCompositorGetLastErrorDetail(m_compositor));
         }
+    }
+}
+
+template<class Data>
+void clearArray(GPtrArray *array)
+{
+    if (array->len)
+    {
+        g_ptr_array_foreach(array, [](gpointer data, gpointer user_data)
+        {
+            g_idle_remove_by_data(data);
+            delete (Data*)data;
+        }, nullptr);
+    }
+    g_ptr_array_free(array, TRUE);
+}
+
+template<class Data>
+void clearArraySafe(GPtrArray *array)
+{
+    g_idle_add_full(G_PRIORITY_HIGH, [](gpointer data) -> gboolean
+    {
+        clearArray<Data>((GPtrArray*)data);
+        return G_SOURCE_REMOVE;
+    }, array, nullptr);
+}
+
+void WesterosViewbackendInput::clearDataArrays()
+{
+    if (g_main_context_is_owner(g_main_context_default()))
+    {
+        clearArray<KeyEventData>(m_keyEventDataArray);
+        clearArray<MotionEventData>(m_motionEventDataArray);
+        clearArray<ButtonEventData>(m_buttonEventDataArray);
+        clearArray<AxisEventData>(m_axisEventDataArray);
+    }
+    else
+    {
+        clearArraySafe<KeyEventData>(m_keyEventDataArray);
+        clearArraySafe<MotionEventData>(m_motionEventDataArray);
+        clearArraySafe<ButtonEventData>(m_buttonEventDataArray);
+        clearArraySafe<AxisEventData>(m_axisEventDataArray);
     }
 }
 

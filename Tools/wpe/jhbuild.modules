@@ -15,6 +15,8 @@
       <dep package="gst-plugins-good"/>
       <dep package="gst-plugins-bad"/>
       <dep package="gst-libav"/>
+      <dep package="wpe"/>
+      <dep package="wpe-mesa"/>
     </dependencies>
   </metamodule>
 
@@ -47,9 +49,12 @@
     <dependencies>
       <dep package="libffi"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/glib/2.42/glib-2.42.0.tar.xz" version="2.42.0"
+    <branch module="/pub/GNOME/sources/glib/2.44/glib-2.44.1.tar.xz" version="2.44.1"
             repo="ftp.gnome.org"
-            hash="sha256:94fbc0a7d10633433ff383e540607de649c1b46baaa59dea446a50977a6c4472"/>
+            hash="sha256:8811deacaf8a503d0a9b701777ea079ca6a4277be10e3d730d2112735d5eca07">
+      <patch file="glib-warning-fix.patch" strip="1"/>
+      <patch file="gdate-suppress-string-format-literal-warning.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="glib-networking">
@@ -94,8 +99,11 @@
       <dep package="fontconfig"/>
       <dep package="pixman"/>
     </dependencies>
-    <branch repo="github.com" module="WebKitForWayland/cairo.git"
-            tag="dd8e6a461d53add34008ea9f33e7f1dba5d2c5cb"/>
+    <branch module="releases/cairo-1.14.8.tar.xz" version="1.14.8"
+            repo="cairographics.org"
+            hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e">
+      <patch file="cairo-egl-device-create-for-egl-surface.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="xkbcommon">
@@ -117,7 +125,7 @@
             md5sum="af1bf3dab9e69f3c36f389285e2a12a1"/>
   </autotools>
 
-  <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
+  <autotools id="gstreamer" autogen-sh="configure" autogenargs="--disable-gtk-doc">
     <dependencies>
       <dep package="orc"/>
     </dependencies>
@@ -130,7 +138,7 @@
   </autotools>
 
   <autotools id="gst-plugins-base"
-             autogen-sh="autogen.sh"
+             autogen-sh="configure"
              autogenargs="--disable-examples --disable-gtk-doc">
     <dependencies>
       <dep package="gstreamer"/>
@@ -141,7 +149,7 @@
             md5sum="5421edfeb7479d5f5776e917ba30e24e"/>
   </autotools>
 
-  <autotools id="gst-plugins-good" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
+  <autotools id="gst-plugins-good" autogen-sh="configure" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
@@ -155,17 +163,20 @@
     </branch>
   </autotools>
 
-  <autotools id="gst-plugins-bad" autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
+  <autotools id="gst-plugins-bad" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
     <branch module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" version="1.8.1"
             repo="gstreamer"
             hash="sha256:0bbd58f363734fc0c4a620b2d6fb01d427fdafdbda7b90b4e15d03b751ca40f5"
-            md5sum="e508da2a8a5c3d12264fe3415be2f451"/>
+            md5sum="e508da2a8a5c3d12264fe3415be2f451">
+      <patch file="gst-plugins-bad-0001-dtls-port-to-OpenSSL-1.1.0.patch" strip="1"/>
+      <patch file="gst-plugins-bad-0002-dtlscertificate-Fix-error-checking-in-RSA_generate_k.patch" strip="1"/>
+    </branch>
   </autotools>
 
-  <autotools id="gst-libav" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
+  <autotools id="gst-libav" autogen-sh="configure" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
@@ -175,4 +186,19 @@
             md5sum="85f1a047606ca9e08493d7b6b42df462"/>
   </autotools>
 
+  <cmake id="wpe">
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend.git"
+            tag="5e2a29d2ccc637f7122ba72c1d62ef669b42f05c" />
+  </cmake>
+
+  <cmake id="wpe-mesa">
+    <dependencies>
+      <dep package="wpe" />
+      <dep package="glib" />
+      <dep package="wayland" />
+      <dep package="xkbcommon" />
+    </dependencies>
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend-mesa.git"
+            tag="9945753f9337fd67af098218b7819337aba21141" />
+  </cmake>
 </moduleset>

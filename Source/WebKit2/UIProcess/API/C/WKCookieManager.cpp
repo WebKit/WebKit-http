@@ -46,17 +46,17 @@ void WKCookieManagerSetClient(WKCookieManagerRef cookieManagerRef, const WKCooki
 
 void WKCookieManagerGetHostnamesWithCookies(WKCookieManagerRef cookieManagerRef, void* context, WKCookieManagerGetCookieHostnamesFunction callback)
 {
-    toImpl(cookieManagerRef)->getHostnamesWithCookies(toGenericCallbackFunction(context, callback));
+    toImpl(cookieManagerRef)->getHostnamesWithCookies(WebCore::SessionID::defaultSessionID(), toGenericCallbackFunction(context, callback));
 }
 
 void WKCookieManagerDeleteCookiesForHostname(WKCookieManagerRef cookieManagerRef, WKStringRef hostname)
 {
-    toImpl(cookieManagerRef)->deleteCookiesForHostname(toImpl(hostname)->string());
+    toImpl(cookieManagerRef)->deleteCookiesForHostname(WebCore::SessionID::defaultSessionID(), toImpl(hostname)->string());
 }
 
 void WKCookieManagerDeleteAllCookies(WKCookieManagerRef cookieManagerRef)
 {
-    toImpl(cookieManagerRef)->deleteAllCookies();
+    toImpl(cookieManagerRef)->deleteAllCookies(WebCore::SessionID::defaultSessionID());
 }
 
 void WKCookieManagerDeleteAllCookiesModifiedAfterDate(WKCookieManagerRef cookieManagerRef, double date)
@@ -64,7 +64,7 @@ void WKCookieManagerDeleteAllCookiesModifiedAfterDate(WKCookieManagerRef cookieM
     using namespace std::chrono;
 
     auto time = system_clock::time_point(duration_cast<system_clock::duration>(duration<double>(date)));
-    toImpl(cookieManagerRef)->deleteAllCookiesModifiedSince(time);
+    toImpl(cookieManagerRef)->deleteAllCookiesModifiedSince(WebCore::SessionID::defaultSessionID(), time);
 }
 
 void WKCookieManagerSetHTTPCookieAcceptPolicy(WKCookieManagerRef cookieManager, WKHTTPCookieAcceptPolicy policy)
@@ -86,20 +86,20 @@ void WKCookieManagerSetCookies(WKCookieManagerRef cookieManager, WKArrayRef cook
     for (size_t i = 0; i < size; ++i)
         passCookies[i] = toImpl(static_cast<WKCookieRef>(WKArrayGetItemAtIndex(cookies, i)))->cookie();
 
-    toImpl(cookieManager)->setCookies(passCookies);
+    toImpl(cookieManager)->setCookies(WebCore::SessionID::defaultSessionID(), passCookies);
 }
 
 void WKCookieManagerGetCookies(WKCookieManagerRef cookieManager, void* context, WKCookieManagerGetCookiesFunction callback)
 {
-    toImpl(cookieManager)->getCookies(toGenericCallbackFunction(context, callback));
+    toImpl(cookieManager)->getCookies(WebCore::SessionID::defaultSessionID(), toGenericCallbackFunction(context, callback));
 }
 
 void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef cookieManager)
 {
-    toImpl(cookieManager)->startObservingCookieChanges();
+    toImpl(cookieManager)->startObservingCookieChanges(WebCore::SessionID::defaultSessionID());
 }
 
 void WKCookieManagerStopObservingCookieChanges(WKCookieManagerRef cookieManager)
 {
-    toImpl(cookieManager)->stopObservingCookieChanges();
+    toImpl(cookieManager)->stopObservingCookieChanges(WebCore::SessionID::defaultSessionID());
 }

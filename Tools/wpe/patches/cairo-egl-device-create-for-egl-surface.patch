@@ -1,5 +1,15 @@
+From a4e0daf18bf8252463f66d75eef499cfffa32565 Mon Sep 17 00:00:00 2001
+From: Zan Dobersek <zdobersek@igalia.com>
+Date: Mon, 17 Nov 2014 01:23:15 -0800
+Subject: [PATCH] Add cairo_egl_device_create_for_egl_surface().
+
+---
+ src/cairo-egl-context.c | 66 ++++++++++++++++++++++++++++++++++++++++++-------
+ src/cairo-gl.h          |  3 +++
+ 2 files changed, 60 insertions(+), 9 deletions(-)
+
 diff --git a/src/cairo-egl-context.c b/src/cairo-egl-context.c
-index bb0772a..6daf436 100644
+index bf704c6..be2bcf9 100644
 --- a/src/cairo-egl-context.c
 +++ b/src/cairo-egl-context.c
 @@ -48,7 +48,8 @@ typedef struct _cairo_egl_context {

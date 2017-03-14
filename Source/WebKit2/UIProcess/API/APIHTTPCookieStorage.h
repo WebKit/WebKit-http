@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
- * Portions Copyright (c) 2010 Motorola Mobility, Inc.  All rights reserved.
- * Copyright (C) 2012 Igalia S.L.
+ * Copyright (C) 2017 Metrological Group B.V.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,29 +25,40 @@
 
 #pragma once
 
-#include <WebCore/FrameNetworkingContext.h>
-#include <WebCore/SessionID.h>
+#include "APIObject.h"
+#include "GenericCallback.h"
+#include <functional>
+#include <wtf/Vector.h>
+
+namespace WebCore {
+struct Cookie;
+}
 
 namespace WebKit {
-
-class WebFrame;
-class WebFrameLoaderClient;
-
-class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
-public:
-    static Ref<WebFrameNetworkingContext> create(WebFrame* frame)
-    {
-        return adoptRef(*new WebFrameNetworkingContext(frame));
-    }
-
-    static void ensurePrivateBrowsingSession(WebCore::SessionID);
-
-    WebFrameLoaderClient* webFrameLoaderClient() const;
-
-private:
-    WebFrameNetworkingContext(WebFrame*);
-
-    virtual WebCore::NetworkStorageSession& storageSession() const;
+class WebPageProxy;
 };
 
-}
+namespace API {
+
+class HTTPCookieStorage final : public ObjectImpl<Object::Type::HTTPCookieStorage> {
+public:
+    static Ref<HTTPCookieStorage> create(WebKit::WebPageProxy& webPage)
+    {
+        return adoptRef(*new HTTPCookieStorage(webPage));
+    }
+
+    virtual ~HTTPCookieStorage();
+
+    void deleteAllCookies();
+    void startObservingCookieChanges();
+    void stopObservingCookieChanges();
+    void setCookies(const Vector<WebCore::Cookie>&);
+    void getCookies(std::function<void (API::Array*, WebKit::CallbackBase::Error)>);
+
+private:
+    HTTPCookieStorage(WebKit::WebPageProxy&);
+
+    WebKit::WebPageProxy& m_webPage;
+};
+
+} // namespace API

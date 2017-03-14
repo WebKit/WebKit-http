@@ -21,32 +21,16 @@
 
 #if USE(SOUP)
 
-#include "NetworkStorageSession.h"
-#include <libsoup/soup.h>
-
 namespace WebCore {
 
-static CookieChangeCallbackPtr cookieChangeCallback;
-
-static void soupCookiesChanged(SoupCookieJar* jar)
+void startObservingCookieChanges(const NetworkStorageSession&, std::function<void ()>&&)
 {
-    if (jar != NetworkStorageSession::defaultStorageSession().cookieStorage())
-        return;
-    cookieChangeCallback();
+    ASSERT_NOT_REACHED();
 }
 
-void startObservingCookieChanges(CookieChangeCallbackPtr callback)
+void stopObservingCookieChanges(const NetworkStorageSession&)
 {
-    ASSERT(!cookieChangeCallback);
-    cookieChangeCallback = callback;
-
-    g_signal_connect(NetworkStorageSession::defaultStorageSession().cookieStorage(), "changed", G_CALLBACK(soupCookiesChanged), 0);
-}
-
-void stopObservingCookieChanges()
-{
-    g_signal_handlers_disconnect_by_func(NetworkStorageSession::defaultStorageSession().cookieStorage(), reinterpret_cast<void*>(soupCookiesChanged), nullptr);
-    cookieChangeCallback = nullptr;
+    ASSERT_NOT_REACHED();
 }
 
 }

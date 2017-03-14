@@ -20,7 +20,7 @@ list(APPEND WebProcess_SOURCES
     WebProcess/EntryPoint/unix/WebProcessMain.cpp
 )
 
-if (USE_WPE_BACKEND_WESTEROS)
+if (USE_WPEWEBKIT_BACKEND_WESTEROS)
     list(INSERT WebProcess_LIBRARIES  0 ${WAYLAND_EGL_LIBRARIES})
     list(INSERT WebProcess_LIBRARIES  0 ${WAYLAND_LIBRARIES})
     list(REMOVE_ITEM WebProcess_LIBRARIES  wayland-server)
@@ -268,7 +268,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${GSTREAMER_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
-    ${WPE_DIR}
+    ${WPE_INCLUDE_DIRS}
 )
 
 list(APPEND WebKit2_LIBRARIES
@@ -279,7 +279,7 @@ list(APPEND WebKit2_LIBRARIES
     ${GSTREAMER_LIBRARIES}
     ${HARFBUZZ_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
-    WPE
+    ${WPE_LIBRARIES}
 )
 
 if (ENABLE_BREAKPAD)
@@ -455,6 +455,7 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/C/WKFrame.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKFrameInfoRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKFramePolicyListener.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKHTTPCookieStorageRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKHitTestResult.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKNativeEvent.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationActionRef.h

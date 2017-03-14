@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
- * Portions Copyright (c) 2010 Motorola Mobility, Inc.  All rights reserved.
- * Copyright (C) 2012 Igalia S.L.
+ * Copyright (C) 2017 Metrological Group B.V.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,31 +23,29 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef WKHTTPCookieStorageRef_h
+#define WKHTTPCookieStorageRef_h
 
-#include <WebCore/FrameNetworkingContext.h>
-#include <WebCore/SessionID.h>
+#include <WebKit/WKBase.h>
 
-namespace WebKit {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class WebFrame;
-class WebFrameLoaderClient;
+WK_EXPORT WKTypeID WKHTTPCookieStorageGetTypeID();
 
-class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
-public:
-    static Ref<WebFrameNetworkingContext> create(WebFrame* frame)
-    {
-        return adoptRef(*new WebFrameNetworkingContext(frame));
-    }
+WK_EXPORT void WKHTTPCookieStorageDeleteAllCookies(WKHTTPCookieStorageRef cookieStorage);
 
-    static void ensurePrivateBrowsingSession(WebCore::SessionID);
+WK_EXPORT void WKHTTPCookieStorageSetCookies(WKHTTPCookieStorageRef cookieStorage, WKArrayRef cookieList);
 
-    WebFrameLoaderClient* webFrameLoaderClient() const;
+typedef void (*WKHTTPCookieStorageGetCookiesFunction)(WKArrayRef, WKErrorRef, void*);
+WK_EXPORT void WKHTTPCookieStorageGetCookies(WKHTTPCookieStorageRef cookieStorage, void* context, WKHTTPCookieStorageGetCookiesFunction callback);
 
-private:
-    WebFrameNetworkingContext(WebFrame*);
+WK_EXPORT void WKHTTPCookieStorageStartObservingCookieChanges(WKHTTPCookieStorageRef cookieStorage);
+WK_EXPORT void WKHTTPCookieStorageStopObservingCookieChanges(WKHTTPCookieStorageRef cookieStorage);
 
-    virtual WebCore::NetworkStorageSession& storageSession() const;
-};
-
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* WKHTTPCookieStorageRef_h */

@@ -288,6 +288,11 @@ sub determineBaseProductDir
     }
 }
 
+sub systemVerbose {
+    print "+ @_\n";
+    return system(@_);
+}
+
 sub setBaseProductDir($)
 {
     ($baseProductDir) = @_;
@@ -1846,6 +1851,11 @@ sub cmakeCachePath()
     return File::Spec->catdir(baseProductDir(), configuration(), "CMakeCache.txt");
 }
 
+sub cmakeFilesPath()
+{
+    return File::Spec->catdir(baseProductDir(), configuration(), "CMakeFiles");
+}
+
 sub shouldRemoveCMakeCache(@)
 {
     my ($cacheFilePath, @buildArgs) = @_;
@@ -1899,7 +1909,9 @@ sub removeCMakeCache(@)
     my (@buildArgs) = @_;
     if (shouldRemoveCMakeCache(@buildArgs)) {
         my $cmakeCache = cmakeCachePath();
+        my $cmakeFiles = cmakeFilesPath();
         unlink($cmakeCache) if -e $cmakeCache;
+        rmtree($cmakeFiles) if -d $cmakeFiles;
     }
 }
 
@@ -2002,7 +2014,7 @@ sub generateBuildSystemFromCMakeProject
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters.
     my $wrapper = join(" ", wrapperPrefixIfNeeded()) . " ";
-    my $returnCode = system($wrapper . "cmake @args");
+    my $returnCode = systemVerbose($wrapper . "cmake @args");
 
     chdir($originalWorkingDirectory);
     return $returnCode;
@@ -2036,7 +2048,7 @@ sub buildCMakeGeneratedProject($)
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters. In particular, $makeArgs may contain such metacharacters.
     my $wrapper = join(" ", wrapperPrefixIfNeeded()) . " ";
-    return system($wrapper . "$command @args");
+    return systemVerbose($wrapper . "$command @args");
 }
 
 sub cleanCMakeGeneratedProject()
@@ -2044,7 +2056,7 @@ sub cleanCMakeGeneratedProject()
     my $config = configuration();
     my $buildPath = File::Spec->catdir(baseProductDir(), $config);
     if (-d $buildPath) {
-        return system("cmake", "--build", $buildPath, "--config", $config, "--target", "clean");
+        return systemVerbose("cmake", "--build", $buildPath, "--config", $config, "--target", "clean");
     }
     return 0;
 }
