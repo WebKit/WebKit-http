@@ -26,25 +26,26 @@
 
 #include "WebKitOpenCDMDecryptorGStreamer.h"
 
-#define WIDEVINE_PROTECTION_SYSTEM_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
-#define WIDEVINE_PROTECTION_SYSTEM_ID "com.widevine.alpha"
+#define PLAYREADY_PROTECTION_SYSTEM_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
+#define PLAYREADY_PROTECTION_SYSTEM_ID "com.microsoft.playready"
+#define PLAYREADY_YT_PROTECTION_SYSTEM_ID "com.youtube.playready"
 
 G_BEGIN_DECLS
 
-#define WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT          (webkit_media_opencdm_widevine_decrypt_get_type())
-#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT, WebKitOpenCDMWidevineDecrypt))
-#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT, WebKitOpenCDMWidevineDecryptClass))
+#define WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT          (webkit_media_opencdm_playready_decrypt_get_type())
+#define WEBKIT_OPENCDM_PLAYREADY_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT, WebKitOpenCDMPlayReadyDecrypt))
+#define WEBKIT_OPENCDM_PLAYREADY_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT, WebKitOpenCDMPlayReadyDecryptClass))
 
-typedef struct _WebKitOpenCDMWidevineDecrypt           WebKitOpenCDMWidevineDecrypt;
-typedef struct _WebKitOpenCDMWidevineDecryptClass      WebKitOpenCDMWidevineDecryptClass;
+typedef struct _WebKitOpenCDMPlayReadyDecrypt           WebKitOpenCDMPlayReadyDecrypt;
+typedef struct _WebKitOpenCDMPlayReadyDecryptClass      WebKitOpenCDMPlayReadyDecryptClass;
 
-GType webkit_media_opencdm_widevine_decrypt_get_type(void);
+GType webkit_media_opencdm_playready_decrypt_get_type(void);
 
-struct _WebKitOpenCDMWidevineDecrypt {
+struct _WebKitOpenCDMPlayReadyDecrypt {
     WebKitOpenCDMDecrypt parent;
 };
 
-struct _WebKitOpenCDMWidevineDecryptClass {
+struct _WebKitOpenCDMPlayReadyDecryptClass {
     WebKitOpenCDMDecryptClass parentClass;
 };
 

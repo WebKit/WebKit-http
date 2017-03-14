@@ -27,35 +27,45 @@
 
 #pragma once
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDMPrivate.h"
+#else
+#include "CDMSession.h"
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include <open_cdm.h>
 
 namespace WebCore {
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 class CDM;
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 class MediaPlayerPrivateGStreamerBase;
 
-class CDMPrivateOpenCDMWidevine : public RefCounted<CDMPrivateOpenCDMWidevine> {
+class CDMPrivateOpenCDM : public RefCounted<CDMPrivateOpenCDM> {
 public:
-    explicit CDMPrivateOpenCDMWidevine(CDM*);
-    explicit CDMPrivateOpenCDMWidevine() = default;
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    explicit CDMPrivateOpenCDM(CDM*);
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    explicit CDMPrivateOpenCDM() = default;
 
     static bool supportsKeySystem(const String&);
     static bool supportsKeySystemAndMimeType(const String&, const String&);
     static std::unique_ptr<CDMSession> createSession(CDMSessionClient*, MediaPlayerPrivateGStreamerBase*);
-    virtual ~CDMPrivateOpenCDMWidevine() = default;
-    static OpenCdm* getOpenCdmInstance();
+    
+    static media::OpenCdm* getOpenCdmInstance();
 
 private:
     static String s_openCdmKeySystem;
-    static std::unique_ptr<OpenCdm> s_openCdm;
+    static std::unique_ptr<media::OpenCdm> s_openCdm;
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 protected:
     CDM* m_cdm;
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
