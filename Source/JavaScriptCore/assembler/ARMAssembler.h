@@ -212,10 +212,13 @@ namespace JSC {
 #if WTF_ARM_ARCH_AT_LEAST(7)
             MOVW = 0x03000000,
             MOVT = 0x03400000,
-#endif
-            NOP = 0xe1a00000,
             DMB_SY = 0xf57ff05f,
             DMB_ISHST = 0xf57ff05a,
+#else
+            // mcr     15, 0, r6, cr7, cr10, {5}
+            ARM6_MEMFENCE = 0xee076fba,
+#endif
+            NOP = 0xe1a00000,
 #if HAVE(ARM_IDIV_INSTRUCTIONS)
             SDIV = 0x0710f010,
             UDIV = 0x0730f010,
@@ -718,6 +721,7 @@ namespace JSC {
                 *ptr++ = insn;
         }
 
+#if WTF_ARM_ARCH_AT_LEAST(7)
         void dmbSY()
         {
             m_buffer.putInt(DMB_SY);
@@ -727,6 +731,12 @@ namespace JSC {
         {
             m_buffer.putInt(DMB_ISHST);
         }
+#else
+        void arm6MemFence()
+        {
+            m_buffer.putInt(ARM6_MEMFENCE);
+        }
+#endif
 
         void bx(int rm, Condition cc = AL)
         {

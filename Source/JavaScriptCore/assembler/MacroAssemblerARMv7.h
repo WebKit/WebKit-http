@@ -1348,7 +1348,7 @@ public:
     {
         m_assembler.dmbISHST();
     }
-    
+
     static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
     {
         ARMv7Assembler::replaceWithJump(instructionStart.dataLocation(), destination.dataLocation());
