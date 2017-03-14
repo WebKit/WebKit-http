@@ -283,10 +283,6 @@ private:
     std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
     CDMSession* m_cdmSession;
 #endif
-    ImageOrientation m_videoSourceOrientation;
-#if USE(GSTREAMER_GL)
-    std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
-#endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     Lock m_protectionMutex;
@@ -298,6 +294,11 @@ private:
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
     HashMap<String, Vector<uint8_t>> m_initDatas;
     void trimInitData(String, const unsigned char*&, unsigned &);
+#endif
+
+    ImageOrientation m_videoSourceOrientation;
+#if USE(GSTREAMER_GL)
+    std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
 #endif
 };
 
