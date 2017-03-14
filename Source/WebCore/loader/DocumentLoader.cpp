@@ -73,7 +73,6 @@
 #include "SecurityPolicy.h"
 #include "Settings.h"
 #include "SubresourceLoader.h"
-#include "SubstituteResource.h"
 #include "TextResourceDecoder.h"
 #include <wtf/Assertions.h>
 #include <wtf/NeverDestroyed.h>
