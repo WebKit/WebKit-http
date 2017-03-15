@@ -122,3 +122,16 @@ Bug(WPE) webgl/webgl-box-shadow.html [ ImageOnlyFailure ]
 Bug(WPE) webgl/webgl-vertex-array-object-defined.html [ Failure ]
 Bug(WPE) webgl/webgl2-rendering-context-defined.html [ Failure ]
 Bug(WPE) webgl/webgl2-rendering-context-obtain.html [ Failure ]
+
+# security/
+# Require EventSender support
+Bug(WPE) security/contentSecurityPolicy/image-with-blob-url-allowed-by-img-src-star-with-AllowContentSecurityPolicySourceStarToMatchAnyProtocol-enabled.html [ Skip ]
+Bug(WPE) security/contentSecurityPolicy/image-with-blob-url-blocked-by-img-src-star.html [ Skip ]
+Bug(WPE) security/contentSecurityPolicy/video-with-blob-url-allowed-by-media-src-star.html [ Skip ]
+# Require QuickTime support
+Bug(WPE) security/contentSecurityPolicy/plugins-types-allows-quicktime-plugin-replacement.html [ Skip ]
+# Unknown video-related timeouts
+Bug(WPE) security/contentSecurityPolicy/blocks-video.html [ Skip ]
+Bug(WPE) security/contentSecurityPolicy/video-with-data-url-allowed-by-media-src-star.html [ Skip ]
+Bug(WPE) security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star-with-AllowContentSecurityPolicySourceStarToMatchAnyProtocol-enabled.html [ Skip ]
+Bug(WPE) security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star.html [ Skip ]
