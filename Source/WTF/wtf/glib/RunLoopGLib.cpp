@@ -127,7 +127,7 @@ void RunLoop::wakeUp()
 class DispatchAfterContext {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    DispatchAfterContext(Function<void ()>&& function)
+    DispatchAfterContext(Function<void()>&& function)
         : m_function(WTFMove(function))
     {
     }
@@ -138,12 +138,12 @@ public:
     }
 
 private:
-    Function<void ()> m_function;
+    Function<void()> m_function;
 };
 
-void RunLoop::dispatchAfter(std::chrono::nanoseconds duration, Function<void ()>&& function)
+void RunLoop::dispatchAfter(Seconds duration, Function<void()>&& function)
 {
-    GRefPtr<GSource> source = adoptGRef(g_timeout_source_new(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()));
+    GRefPtr<GSource> source = adoptGRef(g_timeout_source_new(duration.millisecondsAs<guint>()));
     g_source_set_name(source.get(), "[WebKit] RunLoop dispatchAfter");
 
     std::unique_ptr<DispatchAfterContext> context = std::make_unique<DispatchAfterContext>(WTFMove(function));
@@ -185,25 +185,20 @@ void RunLoop::TimerBase::setPriority(int priority)
 
 void RunLoop::TimerBase::updateReadyTime()
 {
-    if (!m_fireInterval.count()) {
+    if (!m_fireInterval) {
         g_source_set_ready_time(m_source.get(), 0);
         return;
     }
 
     gint64 currentTime = g_get_monotonic_time();
-    gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, m_fireInterval.count());
+    gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, m_fireInterval.microsecondsAs<gint64>());
     ASSERT(targetTime >= currentTime);
     g_source_set_ready_time(m_source.get(), targetTime);
 }
 
 void RunLoop::TimerBase::start(double fireInterval, bool repeat)
 {
-    auto intervalDuration = std::chrono::duration<double>(fireInterval);
-    auto safeDuration = std::chrono::microseconds::max();
-    if (intervalDuration < safeDuration)
-        safeDuration = std::chrono::duration_cast<std::chrono::microseconds>(intervalDuration);
-
-    m_fireInterval = safeDuration;
+    m_fireInterval = Seconds(fireInterval);
     m_isRepeating = repeat;
     updateReadyTime();
 }

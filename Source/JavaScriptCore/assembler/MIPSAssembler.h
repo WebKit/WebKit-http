@@ -32,6 +32,7 @@
 
 #include "AssemblerBuffer.h"
 #include "JITCompilationEffort.h"
+#include <limits.h>
 #include <wtf/Assertions.h>
 #include <wtf/SegmentedVector.h>
 #include <limits.h>
@@ -192,7 +193,7 @@ public:
     {
         emitInst(0x00000000);
     }
-
+    
     static void fillNops(void* base, size_t size, bool isCopyingToExecutableMemory)
     {
         UNUSED_PARAM(isCopyingToExecutableMemory);
@@ -204,7 +205,7 @@ public:
         for (size_t i = 0; i < num32s; i++)
             *ptr++ = insn;
     }
-
+    
     void sync()
     {
         emitInst(0x0000000f);

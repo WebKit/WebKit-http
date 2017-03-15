@@ -1,3 +1,181 @@
+2017-03-14  Aakash Jain  <aakash_jain@apple.com>
+
+        start-queue-mac.sh should create logs directory if it doesn't exist
+        https://bugs.webkit.org/show_bug.cgi?id=169634
+
+        Reviewed by Alexey Proskuryakov.
+
+        * EWSTools/start-queue-mac.sh: Creating logs directory if it doesn't exist.
+
+2017-03-14  Andy Estes  <aestes@apple.com>
+
+        [iOS] -[WKWebView _dataForDisplayedPDF] returns nil when called before an encrypted PDF has been unlocked
+        https://bugs.webkit.org/show_bug.cgi?id=169653
+        <rdar://problem/24137675>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/encrypted.pdf: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKPDFView.mm: Added.
+        (runTest):
+        (TEST):
+
+2017-03-14  Brady Eidson  <beidson@apple.com>
+
+        Rename WKHTTPCookieStorage to WKHTTPCookieStore.
+        https://bugs.webkit.org/show_bug.cgi?id=169630
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStorage.mm:
+        (TEST):
+
+2017-03-14  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Efficient app installation for device testing
+        https://bugs.webkit.org/show_bug.cgi?id=169054
+        <rdar://problem/30790207>
+
+        Reviewed by Daniel Bates.
+
+        We should only install an app on a device once, not every time the app is run.
+        Move app installation to setup.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.setup_test_run): Install app to device.
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.__init__): Remove app installation.
+
+2017-03-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Nwtr ignores ImageDiff's errors for ref tests
+        https://bugs.webkit.org/show_bug.cgi?id=168033
+
+        Reviewed by Alexey Proskuryakov.
+
+        Nwtr checks ImageDiff's errors only for pixel tests, but for ref
+        tests. Those errors of ref tests also should be checked.
+
+        In the current implementation of expected mismatch ref tests,
+        diff_image was called if the image hashes match. This is useless
+        because two images are ensured identical in that case. Calling
+        image_hash is considered unnecessary for expected mismatch ref
+        tests. Do not call diff_image for them.
+
+        As the result, check the error only for expected match ref tests.
+
+        * Scripts/webkitpy/layout_tests/controllers/single_test_runner.py:
+        (SingleTestRunner._compare_image): Rename a variable 'err_str' to 'error_string'.
+        (SingleTestRunner._compare_output_with_reference): Do not call
+        diff_image for expected mismatch ref tests. Check the error and
+        marked the test failed for expected match ref tests.
+
+2017-03-14  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r213877): WebKit2.CookieManager fails.
+        https://bugs.webkit.org/show_bug.cgi?id=169581
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Reenable the test.
+
+2017-03-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Data interaction tests occasionally hit assertions in debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=169002
+        <rdar://problem/30994806>
+
+        Reviewed by Tim Horton.
+
+        Reenables and refactors data interaction tests.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _resetSimulatedState]):
+        (-[DataInteractionSimulator runFrom:to:]):
+        (-[DataInteractionSimulator _advanceProgress]):
+
+2017-03-13  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r213877): WebKit2.CookieManager fails.
+        https://bugs.webkit.org/show_bug.cgi?id=169581
+
+        Unreviewed gardening
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Skip for now until I can fix.
+
+2017-03-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up RunLoop and WorkQueue with Seconds and Function
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WTF/Time.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-03-13  Brady Eidson  <beidson@apple.com>
+
+        WKWebView provides no access to cookies.
+        https://bugs.webkit.org/show_bug.cgi?id=140191
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2017-03-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] install-dependencies needs to install Perl CGI modules on Debian based distros
+        https://bugs.webkit.org/show_bug.cgi?id=169563
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/install-dependencies:
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Unreviewed, fix accidental comma.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Unreviewed, change my email.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-03-13  Anders Carlsson  <andersca@apple.com>
+
+        Fix build warnings.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate openDocument:]):
+        * MiniBrowser/mac/ExtensionManagerWindowController.m:
+        (-[ExtensionManagerWindowController add:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:]):
+
+2017-03-13  Martin Robinson  <mrobinson@igalia.com>
+
+        Remove my email from some of the watchlists
+        https://bugs.webkit.org/show_bug.cgi?id=169541
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        * Scripts/webkitpy/common/config/watchlist: Remove my name from some lists.
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up RunLoop and WorkQueue with Seconds and Function
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST):
+
 2017-03-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [GTK] Remove dead code from previous autotools build in build-jsc

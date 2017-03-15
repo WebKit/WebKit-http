@@ -61,10 +61,6 @@ body[dir=rtl] .web-socket.content-view .icon {
     margin-left: 2px;
 }
 
-.web-socket.content-view .outgoing .icon {
-    background-image: url("../Images/ArrowUp.svg");
-}
-
 .web-socket.content-view .data-grid.variable-height-rows table.data tr:nth-child(odd) {
     background-color: unset;
 }

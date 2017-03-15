@@ -1,3 +1,281 @@
+2017-03-15  Antoine Quint  <graouts@apple.com>
+
+        [mac-wk1 debug] LayoutTest media/modern-media-controls/airplay-placard/airplay-placard-text-section.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=169654
+        <rdar://problem/31059092>
+
+        Reviewed by Dean Jackson.
+
+        Using an asynchronous assertion to improve reliability.
+
+        * media/modern-media-controls/airplay-placard/airplay-placard-text-section-expected.txt:
+        * media/modern-media-controls/airplay-placard/airplay-placard-text-section.html:
+
+2017-03-14  Youenn Fablet  <youenn@apple.com>
+
+        CanvasCapture should not generate a frame per each canvas draw command
+        https://bugs.webkit.org/show_bug.cgi?id=169498
+
+        Reviewed by Simon Fraser & Eric Carlson.
+
+        * fast/mediastream/captureStream/canvas2d-heavy-drawing-expected.txt: Added.
+        * fast/mediastream/captureStream/canvas2d-heavy-drawing.html: Added.
+
+2017-03-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, skip fast/media/video-element-in-details-collapse.html on iOS
+
+        * platform/ios-simulator/TestExpectations:
+
+2017-03-14  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION (r213882): 12 new/updated web-platform-tests failing
+        https://bugs.webkit.org/show_bug.cgi?id=169615
+
+        Unreviewed.
+
+        * TestExpectations: Marking tests requiring updated wptserver as failing.
+
+2017-03-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        RenderElements should unregister for viewport visibility callbacks when they are destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=169521
+        <rdar://problem/30959545>
+
+        Reviewed by Simon Fraser.
+
+        Adds a new layout test covering this regression. See WebCore ChangeLog for more details.
+
+        * fast/media/video-element-in-details-collapse-expected.txt: Added.
+        * fast/media/video-element-in-details-collapse.html: Added.
+
+2017-03-14  Andy Estes  <aestes@apple.com>
+
+        Update ApplePaySession.html after r213949
+
+        Rubber-stamped by Beth Dakin.
+
+        * http/tests/ssl/applepay/ApplePaySession-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+
+2017-03-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-javascript.html as failing on ios-simulator-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=169640
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-03-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-javascript.html as failing on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=169640
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-14  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Adjust hyphenation constrains based on the normal line layout line-breaking logic.
+        https://bugs.webkit.org/show_bug.cgi?id=169617
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-hyphenation-constrains-expected.html: Added.
+        * fast/text/simple-line-layout-hyphenation-constrains.html: Added.
+
+2017-03-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/cors/status.htm as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169625
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-03-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html as flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=169621
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-14  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Fullscreen controls during Live Broadcast is completely broken
+        https://bugs.webkit.org/show_bug.cgi?id=169354
+        <rdar://problem/30636370>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test, skipped on iOS, to check scrubbing controls are disabled in fullscreen
+        for a Live Broadcast video and that the status label is visible. We also rebaseline a
+        couple of tests now that the time control is added on first layout instead of inside
+        the constructor.
+
+        * http/tests/media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-live-broadcast-expected.txt: Added.
+        * http/tests/media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-live-broadcast.html: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-constructor-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-constructor.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles.html:
+        * platform/ios-simulator/TestExpectations:
+
+2017-03-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip 12 web-platform-tests until wptserver is upgraded.
+        https://bugs.webkit.org/show_bug.cgi?id=169615
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-03-14  Youenn Fablet  <youenn@apple.com>
+
+        Import web-platform-tests/cors
+        https://bugs.webkit.org/show_bug.cgi?id=169565
+
+        Reviewed by Sam Weinig.
+
+        * tests-options.json:
+
+2017-03-14  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] iOS may attempt to load fullscreen icon variants
+        https://bugs.webkit.org/show_bug.cgi?id=169608
+        <rdar://problem/31037369>
+
+        Reviewed by Eric Carlson.
+
+        Amend an existing test to check that we disregard fullscreen and compact variants on iOS.
+
+        * media/modern-media-controls/icon-service/icon-service-expected.txt:
+        * media/modern-media-controls/icon-service/icon-service.html:
+
+2017-03-14  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Controls are laid out incorrectly with RTL languages
+        https://bugs.webkit.org/show_bug.cgi?id=169605
+        <rdar://problem/30975709>
+
+        Reviewed by Eric Carlson.
+
+        Add a test that enforces "direction: rtl" on a parent element to check that the controls
+        bar use "direction: ltr" anyway.
+
+        * media/modern-media-controls/media-controls/media-controls-controls-bar-always-ltr-expected.txt: Added.
+        * media/modern-media-controls/media-controls/media-controls-controls-bar-always-ltr.html: Added.
+
+2017-03-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Make RepaintRegionAccumulator hold a WeakPtr to its root RenderView
+        https://bugs.webkit.org/show_bug.cgi?id=168480
+        <rdar://problem/30566976>
+
+        Reviewed by Antti Koivisto.
+
+        Introduces a new layout test. See WebCore ChangeLog for more details.
+
+        * TestExpectations:
+        * editing/execCommand/show-modal-dialog-during-execCommand-expected.txt: Added.
+        * editing/execCommand/show-modal-dialog-during-execCommand.html: Added.
+        * editing/execCommand/resources/self-closing-modal-dialog.html: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2017-03-13  Youenn Fablet  <youenn@apple.com>
+
+        Sync web-platform-tests up to revision a5b95cb31914507088a4eda16f7674bbc6f3313f
+        https://bugs.webkit.org/show_bug.cgi?id=169523
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac/imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type-expected.txt:
+        * tests-options.json:
+
+2017-03-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Move paintCurrentFrameInContext from RealtimeMediaSources to MediaPlayer
+        https://bugs.webkit.org/show_bug.cgi?id=169474
+        <rdar://problem/30976747>
+
+        Reviewed by Youenn Fablet.
+
+        * fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled-expected.txt:
+        * fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html: Fix 
+        bug uncovered by patch.
+
+2017-03-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip WebGPU tests on ios-simulator.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners section is missing 'once', 'passive' event listener flags
+        https://bugs.webkit.org/show_bug.cgi?id=167080
+
+        Reviewed by Joseph Pecoraro.
+
+        Tests the result of DOMAgent.getEventListenersForNode and ensures that additional options
+        are passed to the frontend.
+
+        * inspector/dom/getEventListenersForNode-expected.txt: Added.
+        * inspector/dom/getEventListenersForNode.html: Added.
+
+2017-03-13  Dean Jackson  <dino@apple.com>
+
+        Respect the runtime flag for WebGPU, default feature to off, and print a warning
+        https://bugs.webkit.org/show_bug.cgi?id=169564
+        <rdar://problem/31018864>
+
+        Reviewed by Tim Horton.
+
+        * fast/canvas/webgpu/webgpu-runtime-flag-expected.txt: Added.
+        * fast/canvas/webgpu/webgpu-runtime-flag.html: Added.
+
+2017-03-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] It should be possible create a label named let when parsing Statement in non strict mode
+        https://bugs.webkit.org/show_bug.cgi?id=168684
+
+        Reviewed by Saam Barati.
+
+        * js/let-syntax-expected.txt:
+        * js/script-tests/let-syntax.js:
+        (shouldNotHaveSyntaxErrorSloopyOnly):
+
+2017-03-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline js/dom/global-constructors-attributes.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-03-13  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Volume icon doesn't turn to mute when the knob is set to 0
+        https://bugs.webkit.org/show_bug.cgi?id=169553
+        <rdar://problem/30754543>
+
+        Reviewed by Eric Carlson.
+
+        Adding a new test where we drag the volume slider to 0 and ensure that the volume gets muted
+        and that clicking on the mute button resets the volume to be the same value as prior to the
+        dragging interaction.
+
+        * media/modern-media-controls/volume-support/volume-support-drag-to-mute-expected.txt: Added.
+        * media/modern-media-controls/volume-support/volume-support-drag-to-mute.html: Added.
+
 2017-03-13  Manuel Rego Casasnovas  <rego@igalia.com>
 
         Unprefix -webkit-min-content, -webkit-max-content and -webkit-fit-content

@@ -1,3 +1,267 @@
+2017-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Exception when fetching computed styles can break future updates of section
+        https://bugs.webkit.org/show_bug.cgi?id=169638
+        <rdar://problem/30588688>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.refresh.wrap):
+        (WebInspector.DOMNodeStyles.prototype.refresh):
+        Gracefully handle exceptions. If an exception did happen we
+        would be unable to update these in the future.
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for Memory timeline
+        https://bugs.webkit.org/show_bug.cgi?id=169584
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/MemoryCategoryView.css:
+        (.memory-category-view > .details):
+        (body[dir=ltr] .memory-category-view > .details):
+        (body[dir=rtl] .memory-category-view > .details):
+
+        * UserInterface/Views/MemoryTimelineOverviewGraph.css:
+        (.timeline-overview-graph.memory > .legend):
+        (body[dir=ltr] .timeline-overview-graph.memory > .legend):
+        (body[dir=rtl] .timeline-overview-graph.memory > .legend):
+        (.timeline-overview-graph.memory .memory-pressure-event):
+        (body[dir=ltr] .timeline-overview-graph.memory .memory-pressure-event):
+        (body[dir=rtl] .timeline-overview-graph.memory .memory-pressure-event):
+
+        * UserInterface/Views/MemoryTimelineOverviewGraph.js:
+        (WebInspector.MemoryTimelineOverviewGraph.prototype.layout):
+        Rework the calculation for the marker offset to use "right" in RTL.
+
+        * UserInterface/Views/MemoryTimelineView.css:
+        (.timeline-view.memory > .content > .details > .timeline-ruler):
+        (body[dir=ltr] .timeline-view.memory > .content > .details > .timeline-ruler):
+        (body[dir=rtl] .timeline-view.memory > .content > .details > .timeline-ruler):
+        (.timeline-view.memory > .content > .overview > .divider):
+        (body[dir=ltr] .timeline-view.memory > .content > .overview > .divider):
+        (body[dir=rtl] .timeline-view.memory > .content > .overview > .divider):
+        (.timeline-view.memory .legend):
+        (body[dir=ltr] .timeline-view.memory .legend):
+        (body[dir=rtl] .timeline-view.memory .legend):
+        (.timeline-view.memory .legend > .row):
+        (.timeline-view.memory .legend > .row > .swatch):
+        (body[dir=ltr] .timeline-view.memory .legend > .row > .swatch):
+        (body[dir=rtl] .timeline-view.memory .legend > .row > .swatch):
+        (body[dir=ltr] .timeline-view.memory .legend > .row > :matches(.label, .size)):
+        (body[dir=rtl] .timeline-view.memory .legend > .row > :matches(.label, .size)):
+        (.timeline-view.memory .legend > .row > .label):
+        (.timeline-view.memory .legend > .row > .size):
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for Timeline graphs
+        https://bugs.webkit.org/show_bug.cgi?id=169585
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/HeapAllocationsTimelineOverviewGraph.js:
+        (WebInspector.HeapAllocationsTimelineOverviewGraph.prototype.layout):
+        Rework the calculation for the icon offset to use "right" in RTL.
+
+        * UserInterface/Views/MemoryTimelineOverviewGraph.css:
+        (body[dir=rtl] .timeline-overview-graph.memory > .stacked-line-chart):
+        Flip the chart when in RTL.
+
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar):
+        (body[dir=ltr] .timeline-record-bar > .segment.inactive):
+        (body[dir=rtl] .timeline-record-bar > .segment.inactive):
+        (body[dir=ltr] .timeline-record-bar.unfinished > .segment):
+        (body[dir=rtl] .timeline-record-bar.unfinished > .segment):
+        (body[dir=ltr] .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (body[dir=rtl] .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (body[dir=ltr] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (body[dir=rtl] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (.timeline-record-bar > .segment.inactive,): Deleted.
+        (.timeline-record-bar.has-inactive-segment > .segment:not(.inactive)): Deleted.
+        (:matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)): Deleted.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        Apply the position updates to "right" in RTL.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        (WebInspector.TimelineRecordFrame.prototype.refresh):
+        Apply the position updates to "right" in RTL.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.layout):
+        (WebInspector.TimelineRuler.prototype._updatePositionOfElement):
+        (WebInspector.TimelineRuler.prototype._updateMarkers):
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+        Apply the position updates to "right" in RTL.
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for DataGrid disclosure arrows and indentation
+        https://bugs.webkit.org/show_bug.cgi?id=169582
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DataGrid.css:
+        (body[dir=rtl] .data-grid tr.parent td.disclosure::before):
+        Flip the image in RTL.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._updateScrollbarPadding):
+        Rework the padding calculation for the scrollbar offset to use "right" in RTL.
+
+        * UserInterface/Views/DataGridNode.js:
+        (WebInspector.DataGridNode.prototype.get indentPadding):
+        (WebInspector.DataGridNode.prototype.createCell):
+        Rework the padding calculation for indenting (as a child) to use "right" in RTL.
+
+        (WebInspector.DataGridNode.prototype.isEventWithinDisclosureTriangle):
+        Calculate the position of the ::before triangle based on the layout direction.
+
+        (WebInspector.DataGridNode.prototype.get leftPadding): Deleted.
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for TimelineOverview sidebar and container layout
+        https://bugs.webkit.org/show_bug.cgi?id=169583
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (body[dir=ltr] .timeline-overview > :matches(.navigation-bar.timelines, .tree-outline.timelines)):
+        (body[dir=rtl] .timeline-overview > :matches(.navigation-bar.timelines, .tree-outline.timelines)):
+        (body[dir=ltr] .timeline-overview:not(.frames) > :matches(.scroll-container, .timeline-ruler, .graphs-container)):
+        (body[dir=rtl] .timeline-overview:not(.frames) > :matches(.scroll-container, .timeline-ruler, .graphs-container)):
+        (.timeline-overview > .navigation-bar.timelines):
+        (.timeline-overview > .tree-outline.timelines):
+        (.timeline-overview > .scroll-container):
+        (.timeline-overview > .timeline-ruler):
+        (.timeline-overview > .graphs-container):
+        (.timeline-overview > .scroll-container > .scroll-width-sizer):
+        (body[dir=ltr] .timeline-overview > .scroll-container > .scroll-width-sizer):
+        (body[dir=rtl] .timeline-overview > .scroll-container > .scroll-width-sizer):
+        (.timeline-overview.frames > .graphs-container): Deleted.
+
+2017-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: More accurate Resource Timing data in Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=169577
+
+        Reviewed by Youenn Fablet.
+
+        * UserInterface/Models/ResourceTimingData.js:
+        (WebInspector.ResourceTimingData.prototype.get requestStart):
+        (WebInspector.ResourceTimingData.prototype.get responseStart):
+        Fallback to the startTime if available instead of using the
+        inaccurate WebContentProcess gathered timestamps.
+
+        (WebInspector.ResourceTimingData.prototype.markResponseEndTime):
+        Verify responseEnd compared to other times we may have.
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Remove unnecessary assert for Number.percentageString
+        https://bugs.webkit.org/show_bug.cgi?id=169589
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Utilities.js:
+        (Number.percentageString):
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: allow the user to copy locked CSS selectors in Style - Rules
+        https://bugs.webkit.org/show_bug.cgi?id=169587
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section:matches(.locked, .selector-locked) > .header > .selector):
+
+2017-03-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: color of outgoing message icon should match text color
+        https://bugs.webkit.org/show_bug.cgi?id=169512
+        <rdar://problem/30994284>
+
+        Reviewed by Devin Rousso.
+
+        Include SVG icon as an inline SVG element to make currentColor work.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Views/WebSocketContentView.css:
+        (.web-socket.content-view .outgoing .icon): Deleted.
+        * UserInterface/Views/WebSocketContentView.js:
+        (WebInspector.WebSocketContentView):
+        (WebInspector.WebSocketContentView.prototype.addFrame):
+        (WebInspector.WebSocketContentView.prototype._addRow):
+        (WebInspector.WebSocketContentView.prototype._timeStringFromTimestamp): Deleted.
+        * UserInterface/Views/WebSocketDataGridNode.js: Added.
+        (WebInspector.WebSocketDataGridNode.prototype.createCellContent):
+        (WebInspector.WebSocketDataGridNode.prototype._timeStringFromTimestamp):
+        (WebInspector.WebSocketDataGridNode):
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners detail section is unhelpful, default should show listeners by element rather than by event
+        https://bugs.webkit.org/show_bug.cgi?id=167077
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Views/EventListenerSection.js: Removed.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode.prototype.eventListeners): Renamed to getEventListeners.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.css: Added.
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter):
+        (body[dir=ltr] .sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter):
+        (body[dir=rtl] .sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter:hover):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter:active):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners.collapsed > .header > .filter):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter > select):
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.createOption):
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.createEventListenerSection):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByEvent):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByNode):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.eventListenersCallback):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners):
+        Add a filter to the Event Listeners section that changes the way in which event listeners
+        are grouped.  Currently supports two methods:
+         - Group by Event
+         - Group by Node
+
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup):
+        Add ability to display the event type.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section):
+        Drive-by fix: CSS variable was named incorrectly.
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners section is missing 'once', 'passive' event listener flags
+        https://bugs.webkit.org/show_bug.cgi?id=167080
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup):
+        (WebInspector.EventListenerSectionGroup.prototype._type): Deleted.
+
 2017-03-11  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Add "goto arrow" to DOMNodeTreeElements in the Debugger tab

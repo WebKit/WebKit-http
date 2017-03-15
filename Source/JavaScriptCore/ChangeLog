@@ -1,3 +1,436 @@
+2017-03-15  Dean Jackson  <dino@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=169669
+
+        Reviewed by Antoine Quint.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2017-03-14  Tomas Popela  <tpopela@redhat.com>
+
+        Wrong condition in offlineasm/risc.rb
+        https://bugs.webkit.org/show_bug.cgi?id=169597
+
+        Reviewed by Mark Lam.
+
+        It's missing the 'and' operator between the conditions.
+
+        * offlineasm/risc.rb:
+
+2017-03-14  Mark Lam  <mark.lam@apple.com>
+
+        BytecodeGenerator should use the same function to determine if it needs to store the DerivedConstructor in an ArrowFunction lexical environment.
+        https://bugs.webkit.org/show_bug.cgi?id=169647
+        <rdar://problem/31051832>
+
+        Reviewed by Michael Saboff.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::usesDerivedConstructorInArrowFunctionLexicalEnvironment):
+        (JSC::BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded):
+        (JSC::BytecodeGenerator::emitPutDerivedConstructorToArrowFunctionContextScope):
+        * bytecompiler/BytecodeGenerator.h:
+
+2017-03-14  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] Web Inspector: generated code for parsing an array of primitive-type enums from payload does not work
+        https://bugs.webkit.org/show_bug.cgi?id=169629
+
+        Reviewed by Joseph Pecoraro.
+
+        This was encountered while trying to compile new protocol definitions that support the Actions API.
+
+        * inspector/scripts/codegen/models.py:
+        (EnumType.__repr__): Improve debug logging so fields match the class member names.
+
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.payload_to_objc_expression_for_member):
+        If the array elements are actually a primitive type, then there's no need to do any
+        conversion from a payload. This happens for free since the payload is a tree of
+        NSDictionary, NSString, NSNumber, etc. 
+
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        Rebaseline.
+
+        * inspector/scripts/tests/generic/type-declaration-object-type.json:
+        Add new cases for properties that contain an array with enum type references and an array of anonymous enums.
+
+2017-03-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Record the HashSet/HashMap operations in DFG/FTL/B3 and replay them in a benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=169590
+
+        Reviewed by Saam Barati.
+        
+        Adds code to support logging some hashtable stuff in the DFG.
+
+        * dfg/DFGAvailabilityMap.cpp:
+        (JSC::DFG::AvailabilityMap::pruneHeap):
+        * dfg/DFGCombinedLiveness.cpp:
+        (JSC::DFG::liveNodesAtHead):
+        (JSC::DFG::CombinedLiveness::CombinedLiveness):
+        * dfg/DFGCombinedLiveness.h:
+        * dfg/DFGLivenessAnalysisPhase.cpp:
+        (JSC::DFG::LivenessAnalysisPhase::run):
+        (JSC::DFG::LivenessAnalysisPhase::processBlock):
+        * dfg/DFGNode.cpp:
+        * dfg/DFGNode.h:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2017-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused Network protocol event
+        https://bugs.webkit.org/show_bug.cgi?id=169619
+
+        Reviewed by Mark Lam.
+
+        * inspector/protocol/Network.json:
+        This became unused in r213621 and should have been removed
+        from the protocol file then.
+
+2017-03-14  Mark Lam  <mark.lam@apple.com>
+
+        Add a null check in VMTraps::willDestroyVM() to handle a race condition.
+        https://bugs.webkit.org/show_bug.cgi?id=169620
+
+        Reviewed by Filip Pizlo.
+
+        There exists a race between VMTraps::willDestroyVM() (which removed SignalSenders
+        from its m_signalSenders list) and SignalSender::send() (which removes itself
+        from the list).  In the event that SignalSender::send() removes itself between
+        the time that VMTraps::willDestroyVM() checks if m_signalSenders is empty and the
+        time it takes a sender from m_signalSenders, VMTraps::willDestroyVM() may end up
+        with a NULL sender pointer.  The fix is to add the missing null check before using
+        the sender pointer.
+
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::willDestroyVM):
+        (JSC::VMTraps::fireTrap):
+        * runtime/VMTraps.h:
+
+2017-03-14  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Speculative build fix for CLoop after r213886.
+        https://bugs.webkit.org/show_bug.cgi?id=169436
+
+        Not reviewed.
+
+        * runtime/MachineContext.h:
+
+2017-03-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop unnecessary pthread_attr_t for JIT enabled Linux / FreeBSD environment
+        https://bugs.webkit.org/show_bug.cgi?id=169592
+
+        Reviewed by Carlos Garcia Campos.
+
+        Since suspended mcontext_t has all the necessary information, we can drop
+        pthread_attr_t allocation and destroy for JIT enabled Linux / FreeBSD environment.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::Thread::getRegisters):
+        (JSC::MachineThreads::Thread::Registers::stackPointer):
+        (JSC::MachineThreads::Thread::Registers::framePointer):
+        (JSC::MachineThreads::Thread::Registers::instructionPointer):
+        (JSC::MachineThreads::Thread::Registers::llintPC):
+        (JSC::MachineThreads::Thread::freeRegisters):
+        * heap/MachineStackMarker.h:
+
+2017-03-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] Use USE(GLIB) guards in JavaScriptCore/inspector/EventLoop.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=169594
+
+        Reviewed by Carlos Garcia Campos.
+
+        Instead of PLATFORM(GTK) guards, utilize the USE(GLIB) build guards
+        to guard the GLib-specific includes and invocations in the JSC
+        inspector's EventLoop class implementation.
+
+        * inspector/EventLoop.cpp:
+        (Inspector::EventLoop::cycle):
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][Linux] Implement VMTrap in Linux ports
+        https://bugs.webkit.org/show_bug.cgi?id=169436
+
+        Reviewed by Mark Lam.
+
+        This patch port VMTrap to Linux ports.
+        We extract MachineContext accessors from various places (wasm/, heap/ and tools/)
+        and use them in all the JSC code.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::Thread::Registers::stackPointer):
+        (JSC::MachineThreads::Thread::Registers::framePointer):
+        (JSC::MachineThreads::Thread::Registers::instructionPointer):
+        (JSC::MachineThreads::Thread::Registers::llintPC):
+        * heap/MachineStackMarker.h:
+        * runtime/MachineContext.h: Added.
+        (JSC::MachineContext::stackPointer):
+        (JSC::MachineContext::framePointer):
+        (JSC::MachineContext::instructionPointer):
+        (JSC::MachineContext::argumentPointer<1>):
+        (JSC::MachineContext::argumentPointer):
+        (JSC::MachineContext::llintInstructionPointer):
+        * runtime/PlatformThread.h:
+        (JSC::platformThreadSignal):
+        * runtime/VMTraps.cpp:
+        (JSC::SignalContext::SignalContext):
+        (JSC::SignalContext::adjustPCToPointToTrappingInstruction):
+        * tools/CodeProfiling.cpp:
+        (JSC::profilingTimer):
+        * tools/SigillCrashAnalyzer.cpp:
+        (JSC::SignalContext::SignalContext):
+        (JSC::SignalContext::dump):
+        * tools/VMInspector.cpp:
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+
+2017-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Make the HeapVerifier useful again.
+        https://bugs.webkit.org/show_bug.cgi?id=161752
+
+        Reviewed by Filip Pizlo.
+
+        Resurrect the HeapVerifier.  Here's what the verifier now offers:
+
+        1. It captures the list of cells before and after GCs up to N GC cycles.
+           N is set by JSC_numberOfGCCyclesToRecordForVerification.
+           Currently, N defaults to 3.
+
+           This is useful if we're debugging in lldb and want to check if a candidate
+           cell pointer was observed by the GC during the last N GC cycles.  We can do
+           this check buy calling HeapVerifier::checkIfRecorded() with the cell address.
+
+           HeapVerifier::checkIfRecorded() is robust and can be used on bogus addresses.
+           If the candidate cell was previously recorded by the HeapVerifier during a
+           GC cycle, checkIfRecorded() will dump any useful info it has on that cell.
+
+        2. The HeapVerifier will verify that cells in its captured list after a GC are
+           sane.  Some examples of cell insanity are:
+           - the cell claims to belong to a different VM.
+           - the cell has a NULL structureID.
+           - the cell has a NULL structure.
+           - the cell's structure has a NULL structureID.
+           - the cell's structure has a NULL structure.
+           - the cell's structure's structure has a NULL structureID.
+           - the cell's structure's structure has a NULL structure.
+
+           These are all signs of corruption or a GC bug.  The verifier will report any
+           insanity it finds, and then crash with a RELEASE_ASSERT.
+
+        3. Since the HeapVerifier captures list of cells in the heap before and after GCs
+           for the last N GCs, it will also automatically "trim" dead cells those list
+           after the most recent GC.
+
+           "trim" here means that the CellProfile in the HeapVerifier's lists will be
+           updated to reflect that the cell is now dead.  It still keeps a record of the
+           dead cell pointer and the meta data collected about it back when it was alive.
+           As a result, checkIfRecorded() will also report if the candidate cell passed
+           to it is a dead object from a previous GC cycle. 
+
+        4. Each CellProfile captured by the HeapVerifier now track the following info:
+           - the cell's HeapCell::Kind.
+           - the cell's liveness.
+           - if is JSCell, the cell's classInfo()->className.
+           - an associated timestamp.
+           - an associated stack trace.
+
+           Currently, the timestamp is only used for the time when the cell was recorded
+           by the HeapVerifier during GC.  The stack trace is currently unused.
+
+           However, these fields are kept there so that we can instrument the VM (during
+           a debugging session, which requires rebuilding the VM) and record interesting
+           stack traces like that of the time of allocation of the cell.  Since
+           capturing the stack traces for each cell is a very heavy weight operation,
+           the HeapVerifier code does not do this by default.  Instead, we just leave
+           the building blocks for doing so in place to ease future debugging efforts.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::runBeginPhase):
+        (JSC::Heap::runEndPhase):
+        (JSC::Heap::didFinishCollection):
+        * heap/Heap.h:
+        (JSC::Heap::verifier):
+        * heap/MarkedAllocator.h:
+        (JSC::MarkedAllocator::takeLastActiveBlock): Deleted.
+        * heap/MarkedSpace.h:
+        * heap/MarkedSpaceInlines.h:
+        (JSC::MarkedSpace::forEachLiveCell):
+        * tools/CellList.cpp:
+        (JSC::CellList::find):
+        (JSC::CellList::reset):
+        (JSC::CellList::findCell): Deleted.
+        * tools/CellList.h:
+        (JSC::CellList::CellList):
+        (JSC::CellList::name):
+        (JSC::CellList::size):
+        (JSC::CellList::cells):
+        (JSC::CellList::add):
+        (JSC::CellList::reset): Deleted.
+        * tools/CellProfile.h:
+        (JSC::CellProfile::CellProfile):
+        (JSC::CellProfile::cell):
+        (JSC::CellProfile::jsCell):
+        (JSC::CellProfile::isJSCell):
+        (JSC::CellProfile::kind):
+        (JSC::CellProfile::isLive):
+        (JSC::CellProfile::isDead):
+        (JSC::CellProfile::setIsLive):
+        (JSC::CellProfile::setIsDead):
+        (JSC::CellProfile::timestamp):
+        (JSC::CellProfile::className):
+        (JSC::CellProfile::stackTrace):
+        (JSC::CellProfile::setStackTrace):
+        * tools/HeapVerifier.cpp:
+        (JSC::HeapVerifier::startGC):
+        (JSC::HeapVerifier::endGC):
+        (JSC::HeapVerifier::gatherLiveCells):
+        (JSC::trimDeadCellsFromList):
+        (JSC::HeapVerifier::trimDeadCells):
+        (JSC::HeapVerifier::printVerificationHeader):
+        (JSC::HeapVerifier::verifyCellList):
+        (JSC::HeapVerifier::validateCell):
+        (JSC::HeapVerifier::validateJSCell):
+        (JSC::HeapVerifier::verify):
+        (JSC::HeapVerifier::reportCell):
+        (JSC::HeapVerifier::checkIfRecorded):
+        (JSC::HeapVerifier::initializeGCCycle): Deleted.
+        (JSC::GatherCellFunctor::GatherCellFunctor): Deleted.
+        (JSC::GatherCellFunctor::visit): Deleted.
+        (JSC::GatherCellFunctor::operator()): Deleted.
+        (JSC::HeapVerifier::verifyButterflyIsInStorageSpace): Deleted.
+        * tools/HeapVerifier.h:
+        (JSC::HeapVerifier::GCCycle::reset):
+
+2017-03-13  SKumarMetro  <s.kumar@metrological.com>
+
+        JSC: fix compilation errors for MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=168402
+
+        Reviewed by Mark Lam.
+
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::fillNops):
+        Added.
+        * assembler/MacroAssemblerMIPS.h:
+        Added MacroAssemblerMIPS::numGPRs and MacroAssemblerMIPS::numFPRs .
+        * bytecode/InlineAccess.h:
+        (JSC::InlineAccess::sizeForPropertyAccess):
+        (JSC::InlineAccess::sizeForPropertyReplace):
+        (JSC::InlineAccess::sizeForLengthAccess):
+        Added MIPS cases.
+
+2017-03-13  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should not flush strict arguments unless it really needs to
+        https://bugs.webkit.org/show_bug.cgi?id=169519
+
+        Reviewed by Mark Lam.
+        
+        This is a refinement that we should have done ages ago. This kills some pointless PutStacks
+        in DFG SSA IR. It can sometimes unlock other optimizations.
+        
+        Relanding after I fixed the special cases for CreateArguments-style nodes. 
+
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners section is missing 'once', 'passive' event listener flags
+        https://bugs.webkit.org/show_bug.cgi?id=167080
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/DOM.json:
+        Add "passive" and "once" items to the EventListener type.
+
+2017-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Remove obsolete experimental ObjC SPI.
+        https://bugs.webkit.org/show_bug.cgi?id=169569
+
+        Reviewed by Saam Barati.
+
+        * API/JSVirtualMachine.mm:
+        (-[JSVirtualMachine enableSigillCrashAnalyzer]): Deleted.
+        * API/JSVirtualMachinePrivate.h: Removed.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2017-03-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r213856.
+        https://bugs.webkit.org/show_bug.cgi?id=169562
+
+        Breaks JSC stress test stress/super-property-access.js.ftl-
+        eager failing (Requested by mlam|g on #webkit).
+
+        Reverted changeset:
+
+        "FTL should not flush strict arguments unless it really needs
+        to"
+        https://bugs.webkit.org/show_bug.cgi?id=169519
+        http://trac.webkit.org/changeset/213856
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][Linux] Allow profilers to demangle C++ names
+        https://bugs.webkit.org/show_bug.cgi?id=169559
+
+        Reviewed by Michael Catanzaro.
+
+        Linux also offers dladdr & demangling feature.
+        Thus, we can use it to show the names in profilers.
+        For example, SamplingProfiler tells us the C function names.
+
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::StackFrame::displayName):
+        * tools/CodeProfile.cpp:
+        (JSC::symbolName):
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up RunLoop and WorkQueue with Seconds and Function
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Sam Weinig.
+
+        * runtime/Watchdog.cpp:
+        (JSC::Watchdog::startTimer):
+
+2017-03-11  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should not flush strict arguments unless it really needs to
+        https://bugs.webkit.org/show_bug.cgi?id=169519
+
+        Reviewed by Mark Lam.
+        
+        This is a refinement that we should have done ages ago. This kills some pointless PutStacks
+        in DFG SSA IR. It can sometimes unlock other optimizations.
+
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+
+2017-03-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] It should be possible create a label named let when parsing Statement in non strict mode
+        https://bugs.webkit.org/show_bug.cgi?id=168684
+
+        Reviewed by Saam Barati.
+
+        This patch is fixing a Parser bug to allow define a label named
+        ```let``` in sloppy mode when parsing a Statement.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseStatement):
+
 2017-03-11  Filip Pizlo  <fpizlo@apple.com>
 
         Structure::willStoreValueSlow needs to keep the property table alive until the end

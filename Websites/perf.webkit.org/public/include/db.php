@@ -105,18 +105,36 @@ class Database
         return $prefix ? $prefix . '_' . $column : $column;
     }
 
-    private function prepare_params($params, &$placeholders, &$values) {
-        $column_names = array_keys($params);
+    private function prepare_params($params, &$placeholders, &$values, &$null_columns = NULL) {
+        $column_names = array();
 
         $i = count($values) + 1;
-        foreach ($column_names as $name) {
+        foreach (array_keys($params) as $name) {
+            $current_value = $params[$name];
+            if ($current_value === NULL && $null_columns !== NULL) {
+                array_push($null_columns, $name);
+                continue;
+            }
             assert(ctype_alnum_underscore($name));
+            array_push($column_names, $name);
             array_push($placeholders, '$' . $i);
-            array_push($values, $params[$name]);
+            array_push($values, $current_value);
             $i++;
         }
 
         return $column_names;
+    }
+
+    private function select_conditions_with_null_columns($prefix, $column_names, $placeholders, $null_columns) {
+        $column_names = $this->prefixed_column_names($column_names, $prefix);
+        $placeholders = join(', ', $placeholders);
+
+        if (!$column_names && !$placeholders)
+            $column_names = $placeholders = '1';
+        $query = "($column_names) = ($placeholders)";
+        foreach ($null_columns as $column_name)
+            $query .= ' AND ' . $this->prefixed_name($column_name, $prefix) . ' IS NULL';
+        return $query;
     }
 
     function insert_row($table, $prefix, $params, $returning = 'id') {
@@ -154,7 +172,8 @@ class Database
         $values = array();
 
         $select_placeholders = array();
-        $select_column_names = $this->prepare_params($select_params, $select_placeholders, $values);
+        $select_null_columns = array();
+        $select_column_names = $this->prepare_params($select_params, $select_placeholders, $values, $select_null_columns);
         $select_values = array_slice($values, 0);
 
         if ($insert_params === NULL)
@@ -165,9 +184,9 @@ class Database
         assert(!!$returning);
         assert(!$prefix || ctype_alnum_underscore($prefix));
         $returning_column_name = $returning == '*' ? '*' : $this->prefixed_name($returning, $prefix);
-        $select_column_names = $this->prefixed_column_names($select_column_names, $prefix);
-        $select_placeholders = join(', ', $select_placeholders);
-        $query = "SELECT $returning_column_name FROM $table WHERE ($select_column_names) = ($select_placeholders)";
+
+        $condition = $this->select_conditions_with_null_columns($prefix, $select_column_names, $select_placeholders, $select_null_columns);
+        $query = "SELECT $returning_column_name FROM $table WHERE $condition";
 
         $insert_column_names = $this->prefixed_column_names($insert_column_names, $prefix);
         $insert_placeholders = join(', ', $insert_placeholders);
@@ -176,7 +195,7 @@ class Database
         $rows = NULL;
         if ($should_update) {
             $rows = $this->query_and_fetch_all("UPDATE $table SET ($insert_column_names) = ($insert_placeholders)
-                WHERE ($select_column_names) = ($select_placeholders) RETURNING $returning_column_name", $values);
+                WHERE $condition RETURNING $returning_column_name", $values);
         }
         if (!$rows && $should_insert) {
             $rows = $this->query_and_fetch_all("INSERT INTO $table ($insert_column_names) SELECT $insert_placeholders
@@ -186,26 +205,6 @@ class Database
             $rows = $this->query_and_fetch_all($query, $select_values);
 
         return $rows ? ($returning == '*' ? $rows[0] : $rows[0][$returning_column_name]) : NULL;
-    }
-
-    // FIXME: Should improve _select_update_or_insert_row to handle the NULL column case.
-    function select_or_insert_repository_row($repository_name, $repository_owner_id)
-    {
-        $result = NULL;
-        if ($repository_owner_id == NULL) {
-            $result = $this->query_and_fetch_all('INSERT INTO repositories (repository_name) SELECT $1
-                WHERE NOT EXISTS (SELECT repository_id FROM repositories WHERE repository_name = $2 AND repository_owner IS NULL) RETURNING repository_id',
-                array($repository_name, $repository_name));
-            if (!$result)
-                $result = $this->query_and_fetch_all('SELECT repository_id FROM repositories WHERE repository_name = $1 AND repository_owner IS NULL', array($repository_name));
-        } else {
-            $result = $this->query_and_fetch_all('INSERT INTO repositories (repository_name, repository_owner) SELECT $1, $2
-                WHERE NOT EXISTS (SELECT repository_id FROM repositories WHERE (repository_name, repository_owner) = ($3, $4)) RETURNING repository_id',
-                array($repository_name, $repository_owner_id, $repository_name, $repository_owner_id));
-            if (!$result)
-                $result = $this->query_and_fetch_all('SELECT repository_id FROM repositories WHERE (repository_name, repository_owner) = ($1, $2)', array($repository_name, $repository_owner_id));
-        }
-        return $result ? $result[0]['repository_id'] : NULL;
     }
 
     function select_first_row($table, $prefix, $params, $order_by = NULL) {
@@ -226,11 +225,12 @@ class Database
 
         $placeholders = array();
         $values = array();
-        $column_names = $this->prefixed_column_names($this->prepare_params($params, $placeholders, $values), $prefix);
-        $placeholders = join(', ', $placeholders);
-        if (!$column_names && !$placeholders)
-            $column_names = $placeholders = '1';
-        $query = "SELECT * FROM $table WHERE ($column_names) = ($placeholders)";
+        $null_columns = array();
+        $column_names = $this->prepare_params($params, $placeholders, $values, $null_columns);
+        $condition = $this->select_conditions_with_null_columns($prefix, $column_names, $placeholders, $null_columns);
+
+        $query = "SELECT * FROM $table WHERE $condition";
+
         if ($order_by) {
             if (!is_array($order_by))
                 $order_by = array($order_by);

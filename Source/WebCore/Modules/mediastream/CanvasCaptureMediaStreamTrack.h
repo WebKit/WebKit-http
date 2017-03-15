@@ -28,6 +28,7 @@
 
 #include "HTMLCanvasElement.h"
 #include "MediaStreamTrack.h"
+#include "Timer.h"
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
@@ -64,8 +65,6 @@ private:
         bool isProducingData() const { return m_isProducingData; }
         RefPtr<RealtimeMediaSourceCapabilities> capabilities() const final { return nullptr; }
         const RealtimeMediaSourceSettings& settings() const final { return m_settings; }
-        RefPtr<Image> currentFrameImage() final;
-        void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) final;
         bool applySize(const IntSize&) final { return true; }
 
         void captureCanvas();
@@ -75,6 +74,7 @@ private:
         bool m_shouldEmitFrame { true };
         std::optional<double> m_frameRequestRate;
         Timer m_requestFrameTimer;
+        Timer m_canvasChangedTimer;
         RealtimeMediaSourceSettings m_settings;
         HTMLCanvasElement* m_canvas;
         RefPtr<Image> m_currentImage;

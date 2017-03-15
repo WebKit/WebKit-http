@@ -48,6 +48,7 @@
 #import <JavaScriptCore/Options.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/CFNetworkSPI.h>
+#import <WebCore/CPUMonitor.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/FontCascade.h>
@@ -66,16 +67,32 @@
 #import <stdio.h>
 
 #if PLATFORM(IOS)
+#import "CelestialSPI.h"
 #import <WebCore/GraphicsServicesSPI.h>
+#import <WebCore/SoftLinking.h>
 #endif
 
 #if USE(OS_STATE)
 #include <os/state_private.h>
 #endif
 
+#if PLATFORM(IOS)
+SOFT_LINK_PRIVATE_FRAMEWORK_OPTIONAL(Celestial)
+
+SOFT_LINK_CLASS_OPTIONAL(Celestial, AVSystemController)
+
+SOFT_LINK_CONSTANT_MAY_FAIL(Celestial, AVSystemController_PIDToInheritApplicationStateFrom, NSString *)
+
+#define AVSystemController_PIDToInheritApplicationStateFrom getAVSystemController_PIDToInheritApplicationStateFrom()
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
+
+#if PLATFORM(MAC)
+static const Seconds backgroundCPUMonitoringInterval { 15_min };
+#endif
 
 void WebProcess::platformSetCacheModel(CacheModel)
 {
@@ -153,6 +170,16 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 #if TARGET_OS_IPHONE
     // Priority decay on iOS 9 is impacting page load time so we fix the priority of the WebProcess' main thread (rdar://problem/22003112).
     pthread_set_fixedpriority_self();
+#endif
+
+#if PLATFORM(IOS)
+    if (canLoadAVSystemController_PIDToInheritApplicationStateFrom()) {
+        pid_t pid = WebProcess::singleton().presenterApplicationPid();
+        NSError *error = nil;
+        [[getAVSystemControllerClass() sharedAVSystemController] setAttribute:@(pid) forKey:AVSystemController_PIDToInheritApplicationStateFrom error:&error];
+        if (error)
+            WTFLogAlways("Failed to set up PID proxying: %s", [[error localizedDescription] UTF8String]);
+    }
 #endif
 }
 
@@ -366,6 +393,49 @@ void WebProcess::updateActivePages()
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [activePageURLs] {
         WKSetApplicationInformationItem(CFSTR("LSActivePageUserVisibleOriginsKey"), (__bridge CFArrayRef)activePageURLs.get());
     });
+#endif
+}
+
+void WebProcess::updateBackgroundCPULimit()
+{
+#if PLATFORM(MAC)
+    std::optional<double> backgroundCPULimit;
+
+    // Use the largest limit among all pages in this process.
+    for (auto& page : m_pageMap.values()) {
+        auto pageCPULimit = page->backgroundCPULimit();
+        if (!pageCPULimit) {
+            backgroundCPULimit = std::nullopt;
+            break;
+        }
+        if (!backgroundCPULimit || pageCPULimit > backgroundCPULimit.value())
+            backgroundCPULimit = pageCPULimit;
+    }
+
+    if (m_backgroundCPULimit == backgroundCPULimit)
+        return;
+
+    m_backgroundCPULimit = backgroundCPULimit;
+    updateBackgroundCPUMonitorState();
+#endif
+}
+
+void WebProcess::updateBackgroundCPUMonitorState()
+{
+#if PLATFORM(MAC)
+    if (!m_backgroundCPULimit || hasVisibleWebPage()) {
+        if (m_backgroundCPUMonitor)
+            m_backgroundCPUMonitor->setCPULimit(std::nullopt);
+        return;
+    }
+
+    if (!m_backgroundCPUMonitor) {
+        m_backgroundCPUMonitor = std::make_unique<CPUMonitor>(backgroundCPUMonitoringInterval, [this] {
+            RELEASE_LOG(PerformanceLogging, "%p - WebProcess exceeded background CPU limit of %.1f%%", this, m_backgroundCPULimit.value() * 100);
+            parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedBackgroundCPULimit(), 0);
+        });
+    }
+    m_backgroundCPUMonitor->setCPULimit(m_backgroundCPULimit.value());
 #endif
 }
 

@@ -54,6 +54,7 @@ class MediaTime;
 namespace WebCore {
 
 class AudioStreamDescription;
+class CaptureDevice;
 class FloatRect;
 class GraphicsContext;
 class MediaStreamPrivate;
@@ -82,6 +83,15 @@ public:
         virtual void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t /*numberOfFrames*/) { }
     };
 
+    class CaptureFactory {
+    public:
+        virtual ~CaptureFactory() = default;
+        virtual RefPtr<RealtimeMediaSource> createMediaSourceForCaptureDeviceWithConstraints(const CaptureDevice&, const MediaConstraints*, String&) = 0;
+
+    protected:
+        CaptureFactory() = default;
+    };
+
     virtual ~RealtimeMediaSource() { }
 
     const String& id() const { return m_id; }
@@ -89,7 +99,7 @@ public:
     const String& persistentID() const { return m_persistentID; }
     virtual void setPersistentID(const String& persistentID) { m_persistentID = persistentID; }
 
-    enum Type { None, Audio, Video };
+    enum class Type { None, Audio, Video };
     Type type() const { return m_type; }
 
     virtual const String& name() const { return m_name; }
@@ -127,8 +137,8 @@ public:
     virtual bool remote() const { return m_remote; }
     virtual void setRemote(bool remote) { m_remote = remote; }
 
-    void addObserver(Observer&);
-    void removeObserver(Observer&);
+    WEBCORE_EXPORT void addObserver(Observer&);
+    WEBCORE_EXPORT void removeObserver(Observer&);
 
     virtual void startProducingData() { }
     virtual void stopProducingData() { }
@@ -140,9 +150,6 @@ public:
     virtual void reset();
 
     virtual AudioSourceProvider* audioSourceProvider() { return nullptr; }
-
-    virtual RefPtr<Image> currentFrameImage() { return nullptr; }
-    virtual void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) { }
 
     void setWidth(int);
     void setHeight(int);

@@ -80,7 +80,7 @@ public:
     WEBCORE_EXPORT static void setCookieStoragePartitioningEnabled(bool);
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     WEBCORE_EXPORT bool shouldPartitionCookiesForHost(const String&);
-    WEBCORE_EXPORT void setShouldPartitionCookiesForHosts(const Vector<String>&, bool value);
+    WEBCORE_EXPORT void setShouldPartitionCookiesForHosts(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd);
 #endif
 #elif USE(SOUP)
     NetworkStorageSession(SessionID, std::unique_ptr<SoupNetworkSession>&&);
@@ -100,7 +100,11 @@ public:
     NetworkingContext* context() const;
 #endif
 
+    WEBCORE_EXPORT void setCookie(const Cookie&);
     WEBCORE_EXPORT void setCookies(const Vector<Cookie>&, const URL&, const URL& mainDocumentURL);
+    WEBCORE_EXPORT void deleteCookie(const Cookie&);
+    WEBCORE_EXPORT Vector<Cookie> getAllCookies();
+    WEBCORE_EXPORT Vector<Cookie> getCookies(const URL&);
 
 private:
     static HashMap<SessionID, std::unique_ptr<NetworkStorageSession>>& globalSessionMap();

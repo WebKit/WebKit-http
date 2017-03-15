@@ -30,6 +30,7 @@
 #include "ContextDestructionObserver.h"
 #include "ExceptionOr.h"
 #include "PageConsoleClient.h"
+#include "RealtimeMediaSource.h"
 #include <runtime/Float32Array.h>
 
 #if ENABLE(MEDIA_SESSION)
@@ -57,6 +58,7 @@ class InspectorStubFrontend;
 class InternalSettings;
 class MallocStatistics;
 class MediaSession;
+class MediaStreamTrack;
 class MemoryInfo;
 class MockCDMFactory;
 class MockContentFilterSettings;
@@ -75,7 +77,11 @@ class TypeConversions;
 class WebGLRenderingContextBase;
 class XMLHttpRequest;
 
-class Internals final : public RefCounted<Internals>, private ContextDestructionObserver {
+class Internals final : public RefCounted<Internals>,  private ContextDestructionObserver
+#if ENABLE(MEDIA_STREAM)
+    , private RealtimeMediaSource::Observer
+#endif
+    {
 public:
     static Ref<Internals> create(Document&);
     virtual ~Internals();
@@ -544,12 +550,28 @@ public:
     void simulateWebGLContextChanged(WebGLRenderingContextBase&);
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+    unsigned long trackAudioSampleCount() const { return m_trackAudioSampleCount; }
+    unsigned long trackVideoSampleCount() const { return m_trackVideoSampleCount; }
+    void observeMediaStreamTrack(MediaStreamTrack&);
+#endif
+
 private:
     explicit Internals(Document&);
     Document* contextDocument() const;
     Frame* frame() const;
 
     ExceptionOr<RenderedDocumentMarker*> markerAt(Node&, const String& markerType, unsigned index);
+
+    // RealtimeMediaSource::Observer API
+#if ENABLE(MEDIA_STREAM)
+    void videoSampleAvailable(MediaSample&) final { m_trackVideoSampleCount++; }
+    void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final { m_trackAudioSampleCount++; }
+
+    unsigned long m_trackVideoSampleCount { 0 };
+    unsigned long m_trackAudioSampleCount { 0 };
+    RefPtr<MediaStreamTrack> m_track;
+#endif
 
     std::unique_ptr<InspectorStubFrontend> m_inspectorFrontend;
 };

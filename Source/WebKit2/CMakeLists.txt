@@ -338,6 +338,7 @@ set(WebKit2_SOURCES
     UIProcess/API/APIContentExtensionStore.cpp
     UIProcess/API/APIExperimentalFeature.cpp
     UIProcess/API/APIFrameInfo.cpp
+    UIProcess/API/APIHTTPCookieStore.cpp
     UIProcess/API/APIHitTestResult.cpp
     UIProcess/API/APINavigation.cpp
     UIProcess/API/APINavigationData.cpp

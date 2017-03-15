@@ -37,6 +37,9 @@ webgl
 fast/canvas/webgl
 http/tests/webgl
 
+# WebGPU is not enabled on iOS Simulator.
+fast/canvas/webgpu
+
 # Encrypted Media Extensions are not enabled
 media/encrypted-media/
 fast/events/constructors/device-proximity-event-constructor.html
@@ -371,6 +374,9 @@ fast/events/keyboardevent-key.html [ Skip ]
 fast/events/keyboardevent-code.html [ Skip ]
 http/tests/navigation/keyboard-events-during-provisional-navigation.html [ Skip ]
 media/audio-dealloc-crash.html [ Skip ]
+
+# This test uses EventSender's mouseMoveTo, mouseUp and mouseDown
+fast/media/video-element-in-details-collapse.html [ Skip ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
@@ -2806,6 +2812,7 @@ media/modern-media-controls/volume-up-support [ Skip ]
 media/modern-media-controls/volume-up-support [ Skip ]
 media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-video.html [ Skip ]
 media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-parent-element.html [ Skip ]
+http/tests/media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-live-broadcast.html [ Skip ]
 
 # These tests are macOS-specific or mouse-specific
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Skip ]

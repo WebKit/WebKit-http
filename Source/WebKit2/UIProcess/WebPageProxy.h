@@ -680,7 +680,8 @@ public:
 
     double estimatedProgress() const;
 
-    void terminateProcess();
+    enum class TerminationReason { ResourceExhaustionWhileInBackground, Other };
+    void terminateProcess(TerminationReason = TerminationReason::Other);
 
     SessionState sessionState(const std::function<bool (WebBackForwardListItem&)>& = nullptr) const;
     RefPtr<API::Navigation> restoreFromSessionState(SessionState, bool navigate);
@@ -832,7 +833,7 @@ public:
     void dragExited(WebCore::DragData&, const String& dragStorageName = String());
     void performDragOperation(WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
 
-    void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted);
+    void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
     void dragCancelled();
 #if PLATFORM(COCOA)
@@ -888,12 +889,8 @@ public:
     WebCore::DragOperation currentDragOperation() const { return m_currentDragOperation; }
     bool currentDragIsOverFileInput() const { return m_currentDragIsOverFileInput; }
     unsigned currentDragNumberOfFilesToBeAccepted() const { return m_currentDragNumberOfFilesToBeAccepted; }
-    void resetCurrentDragInformation()
-    {
-        m_currentDragOperation = WebCore::DragOperationNone;
-        m_currentDragIsOverFileInput = false;
-        m_currentDragNumberOfFilesToBeAccepted = 0;
-    }
+    WebCore::IntRect currentDragCaretRect() const { return m_currentDragCaretRect; }
+    void resetCurrentDragInformation();
 #endif
 
     void preferencesDidChange();
@@ -1722,6 +1719,7 @@ private:
     ProcessThrottler::ForegroundActivityToken m_activityToken;
 #endif
     bool m_initialCapitalizationEnabled;
+    std::optional<double> m_backgroundCPULimit;
     Ref<WebBackForwardList> m_backForwardList;
         
     bool m_maintainsInactiveSelection;
@@ -1872,6 +1870,7 @@ private:
     WebCore::DragOperation m_currentDragOperation;
     bool m_currentDragIsOverFileInput;
     unsigned m_currentDragNumberOfFilesToBeAccepted;
+    WebCore::IntRect m_currentDragCaretRect;
 #endif
 
     PageLoadState m_pageLoadState;
@@ -1985,6 +1984,7 @@ private:
 #endif
 
     bool m_isUsingHighPerformanceWebGL { false };
+    bool m_wasTerminatedDueToResourceExhaustionWhileInBackground { false };
         
     WeakPtrFactory<WebPageProxy> m_weakPtrFactory;
 

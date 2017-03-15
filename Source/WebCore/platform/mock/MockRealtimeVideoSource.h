@@ -49,6 +49,8 @@ public:
     static RefPtr<MockRealtimeVideoSource> create(const String&, const MediaConstraints*);
     static RefPtr<MockRealtimeVideoSource> createMuted(const String& name);
 
+    static CaptureFactory& factory();
+
     virtual ~MockRealtimeVideoSource() { }
 
 protected:
@@ -75,9 +77,6 @@ private:
     bool applyFrameRate(double) override;
     bool applyFacingMode(RealtimeMediaSourceSettings::VideoFacingMode) override { return true; }
     bool applyAspectRatio(double) override { return true; }
-
-    RefPtr<Image> currentFrameImage() override;
-    void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
 
     void generateFrame();
 

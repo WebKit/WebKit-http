@@ -69,56 +69,32 @@ bool CaptureDeviceManager::captureDeviceFromDeviceID(const String& captureDevice
     return false;
 }
 
-Vector<String> CaptureDeviceManager::bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type type, const MediaConstraints& constraints, String& invalidConstraint)
+std::optional<CaptureDevice> CaptureDeviceManager::deviceWithUID(const String& deviceUID, RealtimeMediaSource::Type type)
 {
-    Vector<RefPtr<RealtimeMediaSource>> bestSources;
+    for (auto& captureDevice : captureDevices()) {
+        CaptureDevice::DeviceType deviceType;
 
-    struct {
-        bool operator()(RefPtr<RealtimeMediaSource> a, RefPtr<RealtimeMediaSource> b)
-        {
-            return a->fitnessScore() < b->fitnessScore();
+        switch (type) {
+        case RealtimeMediaSource::Type::None:
+            continue;
+        case RealtimeMediaSource::Type::Audio:
+            deviceType = CaptureDevice::DeviceType::Audio;
+            break;
+        case RealtimeMediaSource::Type::Video:
+            deviceType = CaptureDevice::DeviceType::Video;
+            break;
         }
-    } sortBasedOnFitnessScore;
 
-    CaptureDevice::DeviceType deviceType = type == RealtimeMediaSource::Video ? CaptureDevice::DeviceType::Video : CaptureDevice::DeviceType::Audio;
-    for (auto& captureDevice : captureDevices()) {
-        if (!captureDevice.enabled() || captureDevice.type() != deviceType)
-            continue;
-
-        if (auto captureSource = createMediaSourceForCaptureDeviceWithConstraints(captureDevice, &constraints, invalidConstraint))
-            bestSources.append(captureSource.leakRef());
-    }
-
-    Vector<String> sourceUIDs;
-    if (bestSources.isEmpty())
-        return sourceUIDs;
-
-    sourceUIDs.reserveInitialCapacity(bestSources.size());
-    std::sort(bestSources.begin(), bestSources.end(), sortBasedOnFitnessScore);
-    for (auto& device : bestSources)
-        sourceUIDs.uncheckedAppend(device->persistentID());
-
-    return sourceUIDs;
-}
-
-RefPtr<RealtimeMediaSource> CaptureDeviceManager::sourceWithUID(const String& deviceUID, RealtimeMediaSource::Type type, const MediaConstraints* constraints, String& invalidConstraint)
-{
-    for (auto& captureDevice : captureDevices()) {
-        if (type == RealtimeMediaSource::None)
-            continue;
-
-        CaptureDevice::DeviceType deviceType = type == RealtimeMediaSource::Video ? CaptureDevice::DeviceType::Video : CaptureDevice::DeviceType::Audio;
         if (captureDevice.persistentId() != deviceUID || captureDevice.type() != deviceType)
             continue;
 
         if (!captureDevice.enabled())
             continue;
 
-        if (auto mediaSource = createMediaSourceForCaptureDeviceWithConstraints(captureDevice, constraints, invalidConstraint))
-            return mediaSource;
+        return captureDevice;
     }
 
-    return nullptr;
+    return std::nullopt;
 }
 
 #endif // ENABLE(MEDIA_STREAM)
