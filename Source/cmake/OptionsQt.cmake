@@ -393,6 +393,11 @@ if (ENABLE_API_TESTS OR ENABLE_TEST_SUPPORT)
     list(APPEND QT_REQUIRED_COMPONENTS
         Test
     )
+    if (ENABLE_WEBKIT2)
+        list(APPEND QT_REQUIRED_COMPONENTS
+            QuickTest
+        )
+    endif ()
 endif ()
 
 if (ENABLE_GEOLOCATION)
