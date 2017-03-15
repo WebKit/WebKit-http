@@ -70,6 +70,7 @@ TestWebView {
         name: "WebViewApplicationSchemes"
 
         function test_applicationScheme() {
+            skip("QTFIXME: application schemes are not supported yet")
             var testUrl = "applicationScheme://something"
             webView.url = testUrl
             verify(webView.waitForLoadSucceeded())
@@ -77,6 +78,7 @@ TestWebView {
         }
 
         function test_multipleSchemes() {
+            skip("QTFIXME: application schemes are not supported yet")
             // Test if we receive the right reply when defining multiple schemes.
             var testUrl = "scheme2://some-url-string"
             webView.url = testUrl
@@ -90,6 +92,7 @@ TestWebView {
         }
 
         function test_multipleUrlsForScheme() {
+            skip("QTFIXME: application schemes are not supported yet")
             var testUrl = "scheme3://url1"
             webView.url = testUrl            
             verify(webView.waitForLoadSucceeded())
@@ -103,6 +106,7 @@ TestWebView {
         }
 
         function test_charsets() {            
+            skip("QTFIXME: application schemes are not supported yet")
             var testUrl = "schemeCharset://latin1"
             webView.url = testUrl
             verify(webView.waitForLoadSucceeded())
