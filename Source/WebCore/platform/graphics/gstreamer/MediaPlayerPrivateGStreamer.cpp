@@ -1051,6 +1051,9 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
     GST_TRACE("Message %s received from element %s", GST_MESSAGE_TYPE_NAME(message), GST_MESSAGE_SRC_NAME(message));
     switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_ERROR:
+#if USE(OCDM)
+        resetOpenCDMSession();
+#endif
         if (m_resetPipeline)
             break;
         if (m_missingPluginsCallback)
@@ -1086,6 +1089,9 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             loadingFailed(error);
         break;
     case GST_MESSAGE_EOS:
+#if USE(OCDM)
+        resetOpenCDMSession();
+#endif
         didEnd();
         break;
     case GST_MESSAGE_ASYNC_DONE:

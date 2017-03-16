@@ -26,36 +26,41 @@
  */
 
 #include "config.h"
-#include "CDMPrivateOpenCDMWidevine.h"
+#include "CDMPrivateOpenCDM.h"
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM) 
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDM.h"
 #include "CDMSession.h"
-#include "CDMSessionOpenCDMWidevine.h"
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
+
+#include "CDMSessionOpenCDM.h"
 
 #include <gst/gst.h>
 
-GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_widevine_decrypt_debug_category);
-#define GST_CAT_DEFAULT webkit_media_opencdm_widevine_decrypt_debug_category
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_decrypt_debug_category);
+#define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
 
 namespace WebCore {
 
-String CDMPrivateOpenCDMWidevine::s_openCdmKeySystem;
-std::unique_ptr<OpenCdm> CDMPrivateOpenCDMWidevine::s_openCdm;
+String CDMPrivateOpenCDM::s_openCdmKeySystem;
+std::unique_ptr<media::OpenCdm> CDMPrivateOpenCDM::s_openCdm;
 
-CDMPrivateOpenCDMWidevine::CDMPrivateOpenCDMWidevine(CDM* cdm)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+CDMPrivateOpenCDM::CDMPrivateOpenCDM(CDM* cdm)
     : m_cdm(cdm)
 {
 }
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
-bool CDMPrivateOpenCDMWidevine::supportsKeySystem(const String& keySystem)
+bool CDMPrivateOpenCDM::supportsKeySystem(const String& keySystem)
 {
     s_openCdmKeySystem = keySystem;
     return getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(), "");
 }
 
-bool CDMPrivateOpenCDMWidevine::supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType)
+bool CDMPrivateOpenCDM::supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType)
 {
     if (!supportsKeySystem(keySystem))
         return false;
@@ -63,20 +68,20 @@ bool CDMPrivateOpenCDMWidevine::supportsKeySystemAndMimeType(const String& keySy
     return getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(), mimeType.utf8().data());
 }
 
-std::unique_ptr<CDMSession> CDMPrivateOpenCDMWidevine::createSession(CDMSessionClient* client, MediaPlayerPrivateGStreamerBase* playerPrivate)
+std::unique_ptr<CDMSession> CDMPrivateOpenCDM::createSession(CDMSessionClient* client, MediaPlayerPrivateGStreamerBase* playerPrivate)
 {
     ASSERT(s_openCdmKeySystem);
     getOpenCdmInstance()->SelectKeySystem(s_openCdmKeySystem.utf8().data());
-    return std::make_unique<CDMSessionOpenCDMWidevine>(client, getOpenCdmInstance(), playerPrivate, s_openCdmKeySystem);
+    return std::make_unique<CDMSessionOpenCDM>(client, getOpenCdmInstance(), playerPrivate, s_openCdmKeySystem);
 }
 
-OpenCdm* CDMPrivateOpenCDMWidevine::getOpenCdmInstance()
+media::OpenCdm* CDMPrivateOpenCDM::getOpenCdmInstance()
 {
     if (!s_openCdm)
-        s_openCdm = std::make_unique<OpenCdm>();
+        s_openCdm = std::make_unique<media::OpenCdm>();
     return s_openCdm.get();
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
