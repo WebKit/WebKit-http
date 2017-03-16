@@ -31,7 +31,6 @@
 #include "Extensions3DOpenGLES.h"
 
 #if ENABLE(GRAPHICS_CONTEXT_3D)
-
 #include "GraphicsContext3D.h"
 #include "NotImplemented.h"
 #include <EGL/egl.h>
@@ -266,51 +265,6 @@ void Extensions3DOpenGLES::vertexAttribDivisor(GC3Duint index, GC3Duint divisor)
 
 bool Extensions3DOpenGLES::supportsExtension(const String& name)
 {
-#if defined(GL_OES_texture_float) && GL_OES_texture_float
-    if (name == "GL_OES_texture_float")
-        return true;
-#endif
-#if defined(GL_OES_texture_float_linear) && GL_OES_texture_float_linear
-    if (name == "GL_OES_texture_float_linear")
-        return true;
-#endif
-#if defined(GL_OES_texture_half_float) && GL_OES_texture_half_float
-    if (name == "GL_OES_texture_half_float")
-        return true;
-#endif
-#if defined(GL_OES_texture_half_float_linear) && GL_OES_texture_half_float_linear
-    if (name == "GL_OES_texture_half_float_linear")
-        return true;
-#endif
-#if defined(GL_EXT_texture_compression_dxt1) && GL_EXT_texture_compression_dxt1
-    if (name == "GL_EXT_texture_compression_dxt1")
-        return true;
-#endif
-#if defined(GL_EXT_texture_compression_s3tc) && GL_EXT_texture_compression_s3tc
-    if (name == "GL_EXT_texture_compression_s3tc")
-        return true;
-#endif
-
-#if defined(GL_ANGLE_framebuffer_blit) && GL_ANGLE_framebuffer_blit
-    if (name == "GL_ANGLE_framebuffer_blit")
-        return true;
-#endif
-#if defined(GL_ANGLE_framebuffer_multisample) && GL_ANGLE_framebuffer_multisample
-    if (name == "GL_ANGLE_framebuffer_multisample")
-        return true;
-#endif
-
-#if defined(GL_IMG_multisampled_render_to_texture) && GL_IMG_multisampled_render_to_texture
-    if (name == "GL_IMG_multisampled_render_to_texture") {
-        if (!m_supportsIMGMultisampledRenderToTexture) {
-            m_glFramebufferTexture2DMultisampleIMG = reinterpret_cast<PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC>(eglGetProcAddress("glFramebufferTexture2DMultisampleIMG"));
-            m_glRenderbufferStorageMultisampleIMG = reinterpret_cast<PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC>(eglGetProcAddress("glRenderbufferStorageMultisampleIMG"));
-            m_supportsIMGMultisampledRenderToTexture = true;
-        }
-        return true;
-    }
-#endif
-
     if (m_availableExtensions.contains(name)) {
         if (!m_supportsOESvertexArrayObject && name == "GL_OES_vertex_array_object") {
             m_glBindVertexArrayOES = reinterpret_cast<PFNGLBINDVERTEXARRAYOESPROC>(eglGetProcAddress("glBindVertexArrayOES"));
@@ -318,6 +272,10 @@ bool Extensions3DOpenGLES::supportsExtension(const String& name)
             m_glDeleteVertexArraysOES = reinterpret_cast<PFNGLDELETEVERTEXARRAYSOESPROC>(eglGetProcAddress("glDeleteVertexArraysOES"));
             m_glIsVertexArrayOES = reinterpret_cast<PFNGLISVERTEXARRAYOESPROC>(eglGetProcAddress("glIsVertexArrayOES"));
             m_supportsOESvertexArrayObject = true;
+        } else if (!m_supportsIMGMultisampledRenderToTexture && name == "GL_IMG_multisampled_render_to_texture") {
+            m_glFramebufferTexture2DMultisampleIMG = reinterpret_cast<PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC>(eglGetProcAddress("glFramebufferTexture2DMultisampleIMG"));
+            m_glRenderbufferStorageMultisampleIMG = reinterpret_cast<PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC>(eglGetProcAddress("glRenderbufferStorageMultisampleIMG"));
+            m_supportsIMGMultisampledRenderToTexture = true;
         } else if (!m_glGetGraphicsResetStatusEXT && name == "GL_EXT_robustness") {
             m_glGetGraphicsResetStatusEXT = reinterpret_cast<PFNGLGETGRAPHICSRESETSTATUSEXTPROC>(eglGetProcAddress("glGetGraphicsResetStatusEXT"));
             m_glReadnPixelsEXT = reinterpret_cast<PFNGLREADNPIXELSEXTPROC>(eglGetProcAddress("glReadnPixelsEXT"));
