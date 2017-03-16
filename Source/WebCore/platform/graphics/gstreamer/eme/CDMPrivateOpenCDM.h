@@ -32,7 +32,7 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDMPrivate.h"
 #else
-#include "CDMSession.h"
+#include "LegacyCDMSession.h"
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include <open_cdm.h>
 

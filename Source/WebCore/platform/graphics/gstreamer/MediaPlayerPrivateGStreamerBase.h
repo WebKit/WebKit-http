@@ -143,9 +143,6 @@ public:
     void needKey(RefPtr<Uint8Array>);
     void setCDMSession(CDMSession*) override;
     void keyAdded() override;
-    virtual void dispatchDecryptionKey(GstBuffer*);
-    void handleProtectionEvent(GstEvent*);
-    void receivedGenerateKeyRequest(const String&);
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)

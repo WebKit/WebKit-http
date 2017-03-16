@@ -30,7 +30,7 @@
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(PLAYREADY)
 
-#include "CDMSession.h"
+#include "LegacyCDMSession.h"
 #include "PlayreadySession.h"
 #include "WebKitPlayReadyDecryptorGStreamer.h"
 

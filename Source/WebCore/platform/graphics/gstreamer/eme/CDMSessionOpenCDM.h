@@ -31,7 +31,7 @@
 #if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
 
 #include "CDMPrivateOpenCDM.h"
-#include "CDMSession.h"
+#include "LegacyCDMSession.h"
 
 namespace WebCore {
 

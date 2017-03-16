@@ -25,10 +25,12 @@
 
 #pragma once
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 
 #include <runtime/Uint8Array.h>
 #include <wtf/Forward.h>
+#include <wtf/PassRefPtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -55,6 +57,7 @@ enum CDMSessionType {
     CDMSessionTypeUnknown,
     CDMSessionTypeClearKey,
     CDMSessionTypeAVFoundationObjC,
+    CDMSessionTypePlayReady,
     CDMSessionTypeAVStreamSession,
     CDMSessionTypeAVContentKeySession,
 };
@@ -70,8 +73,10 @@ public:
     virtual void releaseKeys() = 0;
     virtual bool update(Uint8Array*, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode) = 0;
     virtual RefPtr<ArrayBuffer> cachedKeyForKeyID(const String&) const { return nullptr; }
+    virtual bool ready() const { return false; }
+    virtual bool keyRequested() const { return false; }
 };
 
 }
 
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)

@@ -160,10 +160,6 @@ using namespace std;
 
 namespace WebCore {
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-static AtomicString keySystemIdToUuid(const AtomicString&);
-#endif
-
 void registerWebKitGStreamerElements()
 {
     if (!webkitGstCheckVersion(1, 6, 1))
@@ -1763,46 +1759,6 @@ void MediaPlayerPrivateGStreamerBase::keyAdded()
     if (m_cdmSession)
         emitOpenCDMSession();
 #endif // USE(OCDM)
-}
-
-void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
-{
-    if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
-        GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
-        m_handledProtectionEvents.remove(GST_EVENT_SEQNUM(event));
-        return;
-    }
-
-    const gchar* eventKeySystemId = nullptr;
-    GstBuffer* data = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemId, &data, nullptr);
-
-    GstMapInfo mapInfo;
-    if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
-        GST_WARNING("cannot map %s protection data", eventKeySystemId);
-        return;
-    }
-
-    GST_DEBUG("scheduling keyNeeded event for %s with init data size of %" G_GSIZE_FORMAT, eventKeySystemId, mapInfo.size);
-    GST_MEMDUMP("init datas", mapInfo.data, mapInfo.size);
-    RefPtr<Uint8Array> initDataArray = Uint8Array::create(mapInfo.data, mapInfo.size);
-    needKey(initDataArray);
-    gst_buffer_unmap(data, &mapInfo);
-}
-
-void MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest(const String& keySystem)
-{
-    GST_DEBUG("received generate key request for %s", keySystem.utf8().data());
-    m_lastGenerateKeyRequestKeySystemUuid = keySystemIdToUuid(keySystem);
-    m_protectionCondition.notifyOne();
-}
-
-static AtomicString keySystemIdToUuid(const AtomicString& id)
-{
-    if (equalIgnoringASCIICase(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
-        return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
-
-    return { };
 }
 
 std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const String& keySystem, CDMSessionClient* client)
