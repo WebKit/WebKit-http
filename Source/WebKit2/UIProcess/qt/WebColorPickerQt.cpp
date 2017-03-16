@@ -139,11 +139,6 @@ void WebColorPickerQt::endPicker()
 {
     m_colorChooser = nullptr;
     m_context = nullptr;
-
-    if (!m_client)
-        return;
-
-    m_client->didEndColorPicker();
 }
 
 } // namespace WebKit
