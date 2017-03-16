@@ -371,9 +371,7 @@ void InjectedBundle::done()
 
     m_testRunner->invalidateWaitToDumpWatchdogTimer();
 
-#if HAVE(ACCESSIBILITY)
     m_accessibilityController->resetToConsistentState();
-#endif
 
     WKRetainPtr<WKStringRef> doneMessageName(AdoptWK, WKStringCreateWithUTF8CString("Done"));
     WKRetainPtr<WKMutableDictionaryRef> doneMessageBody(AdoptWK, WKMutableDictionaryCreate());

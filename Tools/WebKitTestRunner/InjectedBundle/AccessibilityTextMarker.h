@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if HAVE(ACCESSIBILITY)
-
 #include "JSWrappable.h"
 #include <JavaScriptCore/JSObjectRef.h>
 #include <wtf/Platform.h>
@@ -72,5 +70,3 @@ inline bool AccessibilityTextMarker::isEqual(AccessibilityTextMarker*) { return 
 #endif
 
 } // namespace WTR
-
-#endif // HAVE(ACCESSIBILITY)

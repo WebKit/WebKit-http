@@ -45,6 +45,9 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_SOURCES
+    accessibility/wpe/AXObjectCacheWPE.cpp
+    accessibility/wpe/AccessibilityObjectWPE.cpp
+
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 

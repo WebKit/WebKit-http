@@ -26,8 +26,6 @@
 #include "config.h"
 #include "AccessibilityController.h"
 
-#if HAVE(ACCESSIBILITY)
-
 #include "AccessibilityUIElement.h"
 #include "InjectedBundle.h"
 #include "InjectedBundlePage.h"
@@ -73,7 +71,7 @@ bool AccessibilityController::enhancedAccessibilityEnabled()
     return WKAccessibilityEnhancedAccessibilityEnabled();
 }
 
-#if !PLATFORM(GTK) && !PLATFORM(EFL)
+#if !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(WPE)
 Ref<AccessibilityUIElement> AccessibilityController::rootElement()
 {
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
@@ -104,4 +102,3 @@ RefPtr<AccessibilityUIElement> AccessibilityController::focusedElement() { retur
 
 } // namespace WTR
 
-#endif // HAVE(ACCESSIBILITY)

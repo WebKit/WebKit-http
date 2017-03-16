@@ -18,6 +18,7 @@ list(APPEND WebKitTestRunner_SOURCES
 )
 
 list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
+    ${WEBKIT_TESTRUNNER_DIR}/InjectedBundle/wpe
     ${FORWARDING_HEADERS_DIR}
     ${CAIRO_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
@@ -33,6 +34,8 @@ list(APPEND WebKitTestRunner_LIBRARIES
 )
 
 list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
+    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/AccessibilityControllerWPE.cpp
+    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/AccessibilityUIElementWPE.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/ActivateFontsWPE.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/InjectedBundleWPE.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/TestRunnerWPE.cpp

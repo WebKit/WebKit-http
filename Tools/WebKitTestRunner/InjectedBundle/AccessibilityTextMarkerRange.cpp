@@ -26,8 +26,6 @@
 #include "config.h"
 #include "AccessibilityTextMarker.h"
 
-#if HAVE(ACCESSIBILITY)
-
 #include "AccessibilityUIElement.h"
 #include "JSAccessibilityTextMarkerRange.h"
 
@@ -76,4 +74,3 @@ JSClassRef AccessibilityTextMarkerRange::wrapperClass()
     
 } // namespace WTR
 
-#endif // HAVE(ACCESSIBILITY)
