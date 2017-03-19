@@ -73,14 +73,14 @@ static webrtc::PeerConnectionInterface::RTCConfiguration configurationFromMediaE
 {
     webrtc::PeerConnectionInterface::RTCConfiguration rtcConfiguration;
 
-    if (configuration.iceTransportPolicy == PeerConnectionStates::IceTransportPolicy::Relay)
+    if (configuration.iceTransportPolicy == RTCIceTransportPolicy::Relay)
         rtcConfiguration.type = webrtc::PeerConnectionInterface::kRelay;
 
     // FIXME: Support PeerConnectionStates::BundlePolicy::MaxBundle.
     // LibWebRTC does not like it and will fail to set any configuration field otherwise.
     // See https://bugs.webkit.org/show_bug.cgi?id=169389.
 
-    if (configuration.bundlePolicy == PeerConnectionStates::BundlePolicy::MaxCompat)
+    if (configuration.bundlePolicy == RTCBundlePolicy::MaxCompat)
         rtcConfiguration.bundle_policy = webrtc::PeerConnectionInterface::kBundlePolicyMaxCompat;
 
     for (auto& server : configuration.iceServers) {
@@ -164,7 +164,15 @@ void LibWebRTCPeerConnectionBackend::doCreateAnswer(RTCAnswerOptions&&)
 
 void LibWebRTCPeerConnectionBackend::doStop()
 {
+    for (auto& source : m_audioSources)
+        source->stop();
+    for (auto& source : m_videoSources)
+        source->stop();
+
     m_endpoint->stop();
+
+    m_remoteStreams.clear();
+    m_pendingReceivers.clear();
 }
 
 void LibWebRTCPeerConnectionBackend::doAddIceCandidate(RTCIceCandidate& candidate)
@@ -200,14 +208,62 @@ void LibWebRTCPeerConnectionBackend::addVideoSource(Ref<RealtimeOutgoingVideoSou
     m_videoSources.append(WTFMove(source));
 }
 
-Ref<RTCRtpReceiver> LibWebRTCPeerConnectionBackend::createReceiver(const String&, const String& trackKind, const String& trackId)
+static inline Ref<RTCRtpReceiver> createReceiverForSource(ScriptExecutionContext& context, Ref<RealtimeMediaSource>&& source)
 {
-    // FIXME: We need to create a source that will get fueled once we will receive OnAddStream.
-    // For the moment, we create an empty one.
-    auto remoteTrackPrivate = (trackKind == "audio") ? MediaStreamTrackPrivate::create(RealtimeIncomingAudioSource::create(nullptr, String(trackId))) : MediaStreamTrackPrivate::create(RealtimeIncomingVideoSource::create(nullptr, String(trackId)));
-    auto remoteTrack = MediaStreamTrack::create(*m_peerConnection.scriptExecutionContext(), WTFMove(remoteTrackPrivate));
+    auto remoteTrackPrivate = MediaStreamTrackPrivate::create(WTFMove(source));
+    auto remoteTrack = MediaStreamTrack::create(context, WTFMove(remoteTrackPrivate));
 
     return RTCRtpReceiver::create(WTFMove(remoteTrack));
+}
+
+static inline Ref<RealtimeMediaSource> createEmptySource(const String& trackKind, String&& trackId)
+{
+    // FIXME: trackKind should be an enumeration
+    if (trackKind == "audio")
+        return RealtimeIncomingAudioSource::create(nullptr, WTFMove(trackId));
+    ASSERT(trackKind == "video");
+    return RealtimeIncomingVideoSource::create(nullptr, WTFMove(trackId));
+}
+
+Ref<RTCRtpReceiver> LibWebRTCPeerConnectionBackend::createReceiver(const String&, const String& trackKind, const String& trackId)
+{
+    auto receiver = createReceiverForSource(*m_peerConnection.scriptExecutionContext(), createEmptySource(trackKind, String(trackId)));
+    m_pendingReceivers.append(receiver.copyRef());
+    return receiver;
+}
+
+LibWebRTCPeerConnectionBackend::VideoReceiver LibWebRTCPeerConnectionBackend::videoReceiver(String&& trackId)
+{
+    // FIXME: Add to Vector a utility routine for that take-or-create pattern.
+    // FIXME: We should be selecting the receiver based on track id.
+    for (size_t cptr = 0; cptr < m_pendingReceivers.size(); ++cptr) {
+        if (m_pendingReceivers[cptr]->track()->source().type() == RealtimeMediaSource::Type::Video) {
+            Ref<RTCRtpReceiver> receiver = m_pendingReceivers[cptr].copyRef();
+            m_pendingReceivers.remove(cptr);
+            Ref<RealtimeIncomingVideoSource> source = static_cast<RealtimeIncomingVideoSource&>(receiver->track()->source());
+            return { WTFMove(receiver), WTFMove(source) };
+        }
+    }
+    auto source = RealtimeIncomingVideoSource::create(nullptr, WTFMove(trackId));
+    auto receiver = createReceiverForSource(*m_peerConnection.scriptExecutionContext(), source.copyRef());
+    return { WTFMove(receiver), WTFMove(source) };
+}
+
+LibWebRTCPeerConnectionBackend::AudioReceiver LibWebRTCPeerConnectionBackend::audioReceiver(String&& trackId)
+{
+    // FIXME: Add to Vector a utility routine for that take-or-create pattern.
+    // FIXME: We should be selecting the receiver based on track id.
+    for (size_t cptr = 0; cptr < m_pendingReceivers.size(); ++cptr) {
+        if (m_pendingReceivers[cptr]->track()->source().type() == RealtimeMediaSource::Type::Audio) {
+            Ref<RTCRtpReceiver> receiver = m_pendingReceivers[cptr].copyRef();
+            m_pendingReceivers.remove(cptr);
+            Ref<RealtimeIncomingAudioSource> source = static_cast<RealtimeIncomingAudioSource&>(receiver->track()->source());
+            return { WTFMove(receiver), WTFMove(source) };
+        }
+    }
+    auto source = RealtimeIncomingAudioSource::create(nullptr, WTFMove(trackId));
+    auto receiver = createReceiverForSource(*m_peerConnection.scriptExecutionContext(), source.copyRef());
+    return { WTFMove(receiver), WTFMove(source) };
 }
 
 std::unique_ptr<RTCDataChannelHandler> LibWebRTCPeerConnectionBackend::createDataChannelHandler(const String& label, const RTCDataChannelInit& options)
@@ -249,6 +305,18 @@ void LibWebRTCPeerConnectionBackend::notifyAddedTrack(RTCRtpSender& sender)
 {
     ASSERT(sender.track());
     m_endpoint->addTrack(*sender.track(), sender.mediaStreamIds());
+}
+
+void LibWebRTCPeerConnectionBackend::removeRemoteStream(MediaStream* mediaStream)
+{
+    m_remoteStreams.removeFirstMatching([mediaStream](const auto& item) {
+        return item.get() == mediaStream;
+    });
+}
+
+void LibWebRTCPeerConnectionBackend::addRemoteStream(Ref<MediaStream>&& mediaStream)
+{
+    m_remoteStreams.append(WTFMove(mediaStream));
 }
 
 } // namespace WebCore

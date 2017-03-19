@@ -103,7 +103,8 @@ public:
 
     StorageManager* storageManager() { return m_storageManager.get(); }
 
-    Ref<WebProcessPool> processPoolForCookieStorageOperations();
+    WebProcessPool* processPoolForCookieStorageOperations();
+    bool isAssociatedProcessPool(WebProcessPool&) const;
 
 private:
     explicit WebsiteDataStore(WebCore::SessionID);
@@ -121,7 +122,7 @@ private:
     void platformDestroy();
     static void platformRemoveRecentSearches(std::chrono::system_clock::time_point);
 
-    HashSet<RefPtr<WebProcessPool>> processPools(size_t count = std::numeric_limits<size_t>::max()) const;
+    HashSet<RefPtr<WebProcessPool>> processPools(size_t count = std::numeric_limits<size_t>::max(), bool ensureAPoolExists = true) const;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     Vector<PluginModuleInfo> plugins() const;

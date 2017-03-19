@@ -707,44 +707,34 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
-# WebRTC backend not enabled by default on Mac/iOS release bots.
-# GTK enables some of this tests on their TestExpectations file.
-[ Release ] webrtc [ Skip ]
-
-[ Debug ] webrtc/audio-peer-connection-webaudio.html [ Failure ]
+webrtc/peer-connection-audio-mute2.html [ Pass Failure ]
+webrtc/peer-connection-remote-audio-mute2.html [ Pass Failure ]
+webrtc/peer-connection-remote-audio-mute.html [ Pass Failure ]
 fast/mediastream/getUserMedia-webaudio.html [ Skip ]
-fast/mediastream/RTCPeerConnection-AddRemoveStream.html [ Skip ]
 fast/mediastream/RTCPeerConnection-closed-state.html [ Skip ]
 fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html [ Skip ]
 fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
-fast/mediastream/RTCPeerConnection-onnegotiationneeded.html [ Skip ]
 fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
 fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
 fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Pass Failure ]
-
-# See webkit.org/b/168736
-fast/mediastream/RTCPeerConnection-addIceCandidate.html [ Failure  ]
-imported/w3c/web-platform-tests/webrtc/datachannel-emptystring.html [ Failure  ]
-imported/w3c/web-platform-tests/webrtc/no-media-call.html [ Failure  ]
-imported/w3c/web-platform-tests/webrtc/promises-call.html [ Failure  ]
 
 # Need updating wptserve
 imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm [ Skip ]
 imported/w3c/web-platform-tests/XMLHttpRequest/open-url-redirected-worker-origin.htm [ Skip ]
 imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.html [ Skip ]
 imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.worker.html [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/anonymous-mode-unsupported.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/open-after-setrequestheader.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/open-referer.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/send-accept-language.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-empty-value.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-whitespace-in-value.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-case-insensitive.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-header-forbidden.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-open-setrequestheader.htm [ Failure ]
-imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Failure ]
-imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-attributes-body-window.html [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/anonymous-mode-unsupported.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/open-after-setrequestheader.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/open-referer.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/send-accept-language.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-empty-value.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-whitespace-in-value.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-case-insensitive.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-header-forbidden.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-open-setrequestheader.htm [ Skip ]
+imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Skip ]
+imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-attributes-body-window.html [ Skip ]
 
 # Only iOS WK1 has testRunner.setPagePaused.
 fast/dom/timer-fire-after-page-pause.html [ Skip ]
@@ -1240,20 +1230,5 @@ fast/table/colspanMinWidth-vertical.html [ Skip ]
 ########################################
 
 webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Failure ]
-
-
-# https://bugs.webkit.org/show_bug.cgi?id=169615
-imported/w3c/web-platform-tests/XMLHttpRequest/anonymous-mode-unsupported.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/open-after-setrequestheader.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/open-referer.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/send-accept-language.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-empty-value.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-whitespace-in-value.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-case-insensitive.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-header-forbidden.htm [ Skip ]
-imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-open-setrequestheader.htm [ Skip ]
-imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Skip ]
-imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-attributes-body-window.html [ Skip ]
 
 webkit.org/b/169625 imported/w3c/web-platform-tests/cors/status.htm [ Pass Failure ]

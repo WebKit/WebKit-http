@@ -36,12 +36,16 @@
 #include <webrtc/base/optional.h>
 #include <webrtc/common_video/include/i420_buffer_pool.h>
 #include <webrtc/media/base/videosinkinterface.h>
+#include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
 
-class RealtimeOutgoingVideoSource final : public RefCounted<RealtimeOutgoingVideoSource>, public webrtc::VideoTrackSourceInterface, private RealtimeMediaSource::Observer {
+class RealtimeOutgoingVideoSource final : public ThreadSafeRefCounted<RealtimeOutgoingVideoSource>, public webrtc::VideoTrackSourceInterface, private RealtimeMediaSource::Observer {
 public:
     static Ref<RealtimeOutgoingVideoSource> create(Ref<RealtimeMediaSource>&& videoSource) { return adoptRef(*new RealtimeOutgoingVideoSource(WTFMove(videoSource))); }
+    ~RealtimeOutgoingVideoSource() { stop(); }
+
+    void stop();
 
     int AddRef() const final { ref(); return refCount(); }
     int Release() const final { deref(); return refCount(); }
@@ -49,7 +53,7 @@ public:
 private:
     RealtimeOutgoingVideoSource(Ref<RealtimeMediaSource>&&);
 
-    void sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>&&);
+    void sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>&&, webrtc::VideoRotation);
 
     // Notifier API
     void RegisterObserver(webrtc::ObserverInterface*) final { }

@@ -49,11 +49,11 @@ class WebGPURenderingContext : public GPUBasedCanvasRenderingContext {
 public:
     static std::unique_ptr<WebGPURenderingContext> create(HTMLCanvasElement&);
 
-    bool isWebGPU() const override final { return true; }
+    bool isWebGPU() const final { return true; }
 
-    void reshape(int width, int height) override final;
+    void reshape(int width, int height) final;
 
-    void markLayerComposited() override final;
+    void markLayerComposited() final;
 
     PlatformLayer* platformLayer() const override;
 

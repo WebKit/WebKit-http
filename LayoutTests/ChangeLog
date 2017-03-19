@@ -1,3 +1,624 @@
+2017-03-19  Chris Dumez  <cdumez@apple.com>
+
+        `const location = "foo"` throws in a worker
+        https://bugs.webkit.org/show_bug.cgi?id=169839
+
+        Reviewed by Mark Lam.
+
+        * fast/dom/window-const-variable-shadowing-expected.txt: Added.
+        * fast/dom/window-const-variable-shadowing.html: Added.
+        * fast/workers/const-location-variable-expected.txt: Added.
+        * fast/workers/const-location-variable.html: Added.
+        * fast/workers/resources/worker-const-location.js: Added.
+        Add layout test coverage for behavior changes. Those tests pass in Firefox and Chrome.
+
+        * js/dom/const-expected.txt:
+        * js/dom/const.html:
+        Update test which wrongly expected a let variable not to be able to shadow a
+        window named property. This test was failing in Chrome and Firefox. The reason
+        this does not throw is because window named properties are not on the window
+        object, they are on the WindowProperties object in the Window prototype chain.
+
+2017-03-18  Jon Lee  <jonlee@apple.com>
+
+        Add support for ImplementedAs, Clamp, EnforceRange, TreatNullAs for dictionary members
+        https://bugs.webkit.org/show_bug.cgi?id=169731
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline. The enhancement progressed the results of these tests.
+        * crypto/subtle/aes-gcm-encrypt-malformed-parameters-expected.txt:
+        * crypto/subtle/aes-generate-key-malformed-parameters-expected.txt:
+        * crypto/subtle/hmac-generate-key-malformed-parameters-expected.txt:
+
+2017-03-18  Chris Dumez  <cdumez@apple.com>
+
+        Allow setting the prototype of cross-origin objects, as long as they don't change
+        https://bugs.webkit.org/show_bug.cgi?id=169787
+
+        Reviewed by Mark Lam.
+
+        * http/tests/security/cross-frame-access-object-setPrototypeOf-expected.txt:
+        * http/tests/security/cross-frame-access-object-setPrototypeOf.html:
+        * js/dom/setPrototypeOf-location-window-expected.txt:
+        * js/dom/setPrototypeOf-location-window.html:
+        Add checks for setting prototype of window and location objects to the same value
+        to make sure it does not throw, both in the same origin and the cross origin
+        cases.
+
+        * fast/dom/Window/window-custom-prototype-crash-expected.txt:
+        * http/tests/security/xss-DENIED-regular-propterty-with-iframe-proto-expected.txt:
+        * js/object-literal-shorthand-construction-expected.txt:
+        Rebaseline tests now that the exception message is a bit different.
+
+        * js/script-tests/prototype-assignment.js:
+        Remove special casing for Window, it now behaves like a regular immutable prototype
+        exotic object.
+
+2017-03-17  Youenn Fablet  <youenn@apple.com>
+
+        Implement incoming webrtc data based on tracksCurr
+        https://bugs.webkit.org/show_bug.cgi?id=169836
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-with-receiver-expected.txt: Added.
+        * webrtc/video-with-receiver.html: Copied from LayoutTests/webrtc/video.html.
+        * webrtc/video.html:
+
+2017-03-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove TestExpectation for a test that is no longer in the tree.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-17  Dean Jackson  <dino@apple.com>
+
+        MediaQueryList instances do not update for `prefers-reduced-motion`
+        https://bugs.webkit.org/show_bug.cgi?id=169835
+        <rdar://problem/30339378>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/media/mq-prefers-reduced-motion-matchMedia-expected.txt: Added.
+        * fast/media/mq-prefers-reduced-motion-matchMedia.html: Added.
+
+2017-03-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/airplay-placard/airplay-placard-text-section.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169654
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-03-17  Dave Hyatt  <hyatt@apple.com>
+
+        Disable per-region boxes for multicolumn
+        https://bugs.webkit.org/show_bug.cgi?id=169830
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/multicol/float-adjacent-to-overflow-block-expected.html: Added.
+        * fast/multicol/float-adjacent-to-overflow-block.html: Added.
+
+2017-03-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Make sure all CryptoKey classes are structured clonable
+        https://bugs.webkit.org/show_bug.cgi?id=169232
+        <rdar://problem/31106660>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/workers/subtle/aes-postMessage-worker-expected.txt:
+        * crypto/workers/subtle/aes-postMessage-worker.html:
+        * crypto/workers/subtle/ec-postMessage-worker-expected.txt: Added.
+        * crypto/workers/subtle/ec-postMessage-worker.html: Added.
+        * crypto/workers/subtle/hmac-postMessage-worker-expected.txt:
+        * crypto/workers/subtle/hmac-postMessage-worker.html:
+        * crypto/workers/subtle/raw-postMessage-worker-expected.txt: Added.
+        * crypto/workers/subtle/raw-postMessage-worker.html: Added.
+        * crypto/workers/subtle/resources/ec-postMessage-worker.js: Added.
+        * crypto/workers/subtle/resources/raw-postMessage-worker.js: Added.
+        * crypto/workers/subtle/resources/rsa-postMessage-worker.js:
+        * crypto/workers/subtle/rsa-postMessage-worker-expected.txt:
+        * crypto/workers/subtle/rsa-postMessage-worker.html:
+
+2017-03-17  Zalan Bujtas  <zalan@apple.com>
+
+        Fix the flow thread state on the descendants of out of flow positioned replaced elements.
+        https://bugs.webkit.org/show_bug.cgi?id=169821
+        <rdar://problem/30964017>
+
+        Reviewed by Simon Fraser.
+
+        * fast/multicol/fix-inherit-when-container-is-replaced-expected.txt: Added.
+        * fast/multicol/fix-inherit-when-container-is-replaced.html: Added.
+
+2017-03-17  Youenn Fablet  <youenn@apple.com>
+
+        Update webrtc tests expectations
+        https://bugs.webkit.org/show_bug.cgi?id=169828
+
+        Unreviewed.
+
+        * TestExpectations: Marking some webrtc tests as flaky.
+
+2017-03-17  Antti Koivisto  <antti@apple.com>
+
+        Add a reload policy where only expired subresources are revalidated
+        https://bugs.webkit.org/show_bug.cgi?id=169756
+
+        Reviewed by Andreas Kling.
+
+        * http/tests/cache/reload-expired-only-expected.txt: Added.
+        * http/tests/cache/reload-expired-only.html: Added.
+        * http/tests/cache/resources/document-with-cached-unique-script.html: Added.
+        * http/tests/cache/resources/random-cached.cgi:
+
+2017-03-17  Nan Wang  <n_wang@apple.com>
+
+        AX: VoiceOver no longer works corectly with editable text in the web
+        https://bugs.webkit.org/show_bug.cgi?id=169801
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/element-text-range-for-text-control-expected.txt: Added.
+        * accessibility/ios-simulator/element-text-range-for-text-control.html: Added.
+        * accessibility/mac/text-markers-for-input-with-placeholder-expected.txt: Added.
+        * accessibility/mac/text-markers-for-input-with-placeholder.html: Added.
+
+2017-03-17  Dave Hyatt  <hyatt@apple.com>
+
+        Initial letter does not paginate properly.
+        https://bugs.webkit.org/show_bug.cgi?id=169795
+        <rdar://problem/23715770>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/css-generated-content/initial-letter-pagination-raised-expected.html: Added.
+        * fast/css-generated-content/initial-letter-pagination-raised.html: Added.
+        * fast/css-generated-content/initial-letter-pagination-sunken-expected.html: Added.
+        * fast/css-generated-content/initial-letter-pagination-sunken.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2017-03-17  Youenn Fablet  <youenn@apple.com>
+
+        RealtimeIncomingAudioSource is not stopping properly
+        https://bugs.webkit.org/show_bug.cgi?id=169807
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/release-after-getting-track-expected.txt: Added.
+        * webrtc/release-after-getting-track.html: Added.
+
+2017-03-17  Miguel Gomez  <magomez@igalia.com>
+
+        Follow-up (r213833): write a layout test for 169199
+        https://bugs.webkit.org/show_bug.cgi?id=169576
+        <rdar://problem/31024766>
+
+        Reviewed by Said Abou-Hallawa.
+
+        Add a test that ensures there's no crash when deleting the ImageDecoder after requesting
+        an async decoding operation.
+
+        * fast/images/clear-animation-decoder-expected.txt: Added.
+        * fast/images/clear-animation-decoder.html: Added.
+
+2017-03-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Mark mediastream and webrtc new failures.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location_hash.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169572
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline js/dom/global-constructors-attributes.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-03-16  Youenn Fablet  <youenn@apple.com>
+
+        activating webrtc tests on Release bots
+        https://bugs.webkit.org/show_bug.cgi?id=169775
+
+        Unreviewed.
+
+        * TestExpectations:
+
+2017-03-16  Dean Jackson  <dino@apple.com>
+
+        WebGL: Improve index validation when using uint index values
+        https://bugs.webkit.org/show_bug.cgi?id=169798
+
+        Reviewed by Simon Fraser.
+
+        * fast/canvas/webgl/draw-elements-out-of-bounds-uint-index-expected.txt: Added.
+        * fast/canvas/webgl/draw-elements-out-of-bounds-uint-index.html: Added.
+
+2017-03-16  Youenn Fablet  <youenn@apple.com>
+
+        Wrap legacy WebRTC API in runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=169646
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/legacy-api-expected.txt: Added.
+        * webrtc/legacy-api.html: Added.
+
+2017-03-16  Youenn Fablet  <youenn@apple.com>
+
+        Rebase webrtc tests
+        https://bugs.webkit.org/show_bug.cgi?id=169791
+
+        Unreviewed.
+
+        * TestExpectations:
+        * fast/mediastream/MediaStream-add-remove-tracks-expected.txt:
+        * fast/mediastream/MediaStreamTrack-expected.txt:
+        * fast/mediastream/MediaStreamTrack-onended-expected.txt:
+        * fast/mediastream/RTCPeerConnection-addIceCandidate-expected.txt:
+        * fast/mediastream/RTCPeerConnection-events-expected.txt:
+        * fast/mediastream/RTCPeerConnection-media-setup-single-dialog-expected.txt:
+        * fast/mediastream/RTCPeerConnection-media-setup-two-dialogs-expected.txt:
+        * fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid-expected.txt:
+        * fast/mediastream/RTCPeerConnection-setLocalDescription-offer-expected.txt:
+        * fast/mediastream/RTCPeerConnection-setRemoteDescription-offer-expected.txt:
+        * fast/mediastream/RTCPeerConnection-statsSelector-expected.txt:
+        * platform/mac/TestExpectations:
+
+2017-03-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Support SPKI/PKCS8 for Elliptic Curve
+        https://bugs.webkit.org/show_bug.cgi?id=169318
+        <rdar://problem/31081956>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/subtle/ec-export-key-malformed-parameters-expected.txt:
+        * crypto/subtle/ec-export-key-malformed-parameters.html:
+        * crypto/subtle/ec-import-jwk-key-export-jwk-key-private-expected.txt:
+        * crypto/subtle/ec-import-jwk-key-export-jwk-key-private.html:
+        * crypto/subtle/ec-import-jwk-key-export-pkcs8-key-expected.txt: Added.
+        * crypto/subtle/ec-import-jwk-key-export-pkcs8-key.html: Added.
+        * crypto/subtle/ec-import-jwk-key-export-spki-key-expected.txt: Added.
+        * crypto/subtle/ec-import-jwk-key-export-spki-key.html: Added.
+        * crypto/subtle/ec-import-key-malformed-parameters-expected.txt:
+        * crypto/subtle/ec-import-key-malformed-parameters.html:
+        * crypto/subtle/ec-import-pkcs8-key-export-jwk-key-expected.txt: Added.
+        * crypto/subtle/ec-import-pkcs8-key-export-jwk-key.html: Added.
+        * crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p256-expected.txt: Added.
+        * crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p256.html: Added.
+        * crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p384-expected.txt: Added.
+        * crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p384.html: Added.
+        * crypto/subtle/ec-import-raw-key-export-spki-key-expected.txt: Added.
+        * crypto/subtle/ec-import-raw-key-export-spki-key.html: Added.
+        * crypto/subtle/ec-import-spki-key-export-jwk-key-expected.txt: Added.
+        * crypto/subtle/ec-import-spki-key-export-jwk-key.html: Added.
+        * crypto/subtle/ec-import-spki-key-export-raw-key-expected.txt: Added.
+        * crypto/subtle/ec-import-spki-key-export-raw-key.html: Added.
+        * crypto/subtle/ec-import-spki-key-export-spki-key-p256-expected.txt: Added.
+        * crypto/subtle/ec-import-spki-key-export-spki-key-p256.html: Added.
+        * crypto/subtle/ec-import-spki-key-export-spki-key-p384-expected.txt: Added.
+        * crypto/subtle/ec-import-spki-key-export-spki-key-p384.html: Added.
+        * crypto/subtle/ecdh-generate-export-key-spki-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-export-key-spki-p256.html: Added.
+        * crypto/subtle/ecdh-generate-export-key-spki-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-export-key-spki-p384.html: Added.
+        * crypto/subtle/ecdh-generate-export-pkcs8-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-export-pkcs8-p256.html: Added.
+        * crypto/subtle/ecdh-generate-export-pkcs8-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-export-pkcs8-p384.html: Added.
+        * crypto/subtle/ecdh-import-pkcs8-key-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-import-pkcs8-key-p256.html: Added.
+        * crypto/subtle/ecdh-import-pkcs8-key-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-import-pkcs8-key-p384.html: Added.
+        * crypto/subtle/ecdh-import-spki-key-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-import-spki-key-p256.html: Added.
+        * crypto/subtle/ecdh-import-spki-key-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-import-spki-key-p384.html: Added.
+        * crypto/workers/subtle/ec-generate-export-pkcs8-key-expected.txt: Added.
+        * crypto/workers/subtle/ec-generate-export-pkcs8-key.html: Added.
+        * crypto/workers/subtle/ec-generate-export-spki-key-expected.txt: Added.
+        * crypto/workers/subtle/ec-generate-export-spki-key.html: Added.
+        * crypto/workers/subtle/ec-import-pkcs8-key-expected.txt: Added.
+        * crypto/workers/subtle/ec-import-pkcs8-key.html: Added.
+        * crypto/workers/subtle/ec-import-spki-key-expected.txt: Added.
+        * crypto/workers/subtle/ec-import-spki-key.html: Added.
+        * crypto/workers/subtle/resources/ec-generate-export-pkcs8-key.js: Added.
+        * crypto/workers/subtle/resources/ec-generate-export-spki-key.js: Added.
+        * crypto/workers/subtle/resources/ec-import-pkcs8-key.js: Added.
+        * crypto/workers/subtle/resources/ec-import-spki-key.js: Added.
+
+2017-03-16  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Extend webkit-hyphenate-limit-lines to cover subsequent words.
+        https://bugs.webkit.org/show_bug.cgi?id=169631
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-hyphenation-limit-lines-accross-words-expected.html: Added.
+        * fast/text/simple-line-layout-hyphenation-limit-lines-accross-words.html: Added.
+
+2017-03-16  Youenn Fablet  <youenn@apple.com>
+
+        [mac-wk2 debug] LayoutTest webrtc/video-mute.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=169758
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+
+2017-03-16  Zalan Bujtas  <zalan@apple.com>
+
+        Stay inside the continuation while searching for a candidate ancestor for insertion.
+        https://bugs.webkit.org/show_bug.cgi?id=169768
+        <rdar://problem/30959936>
+
+        Reviewed by David Hyatt.
+
+        * fast/inline/continuation-crash-with-anon-ancestors-expected.txt: Added.
+        * fast/inline/continuation-crash-with-anon-ancestors.html: Added.
+
+2017-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169719
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        TestExpectations gardening for modern-media-controls tests.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/IndexedDB/fire-success-event-exception.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169760
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-16  Daniel Bates  <dabates@apple.com>
+
+        Update test fast/events/pageshow-pagehide-on-back-cached-with-frames.html to ensure
+        that pageshow events are dispatched to frames in post-order traversal
+        <https://bugs.webkit.org/show_bug.cgi?id=169682>
+
+        Reviewed by Brady Eidson.
+
+        * fast/events/pageshow-pagehide-on-back-cached-with-frames-expected.txt:
+        * fast/events/pageshow-pagehide-on-back-cached-with-frames.html:
+        * fast/events/resources/pageshow-pagehide-subframe-cachable-2.html: Added.
+        * fast/events/resources/pageshow-pagehide-subsubframe-cachable-2.html: Added.
+
+2017-03-16  Youenn Fablet  <youenn@apple.com>
+
+        Improve WebRTC track enabled support
+        https://bugs.webkit.org/show_bug.cgi?id=169727
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * webrtc/audio-peer-connection-webaudio.html:
+        * webrtc/peer-connection-audio-mute-expected.txt:
+        * webrtc/peer-connection-audio-mute.html:
+        * webrtc/peer-connection-audio-mute2-expected.txt: Added.
+        * webrtc/peer-connection-audio-mute2.html: Added.
+        * webrtc/peer-connection-remote-audio-mute-expected.txt: Added.
+        * webrtc/peer-connection-remote-audio-mute.html: Added.
+        * webrtc/video-mute-expected.txt:
+        * webrtc/video-mute.html:
+        * webrtc/video-remote-mute-expected.txt: Added.
+        * webrtc/video-remote-mute.html: Added.
+
+2017-03-16  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Crash on debug removing a positioned child
+        https://bugs.webkit.org/show_bug.cgi?id=169739
+
+        Reviewed by Sergio Villar Senin.
+
+        Add new test that checks that adding and removing a positioned grid item
+        doesn't cause any crashes.
+
+        * fast/css-grid-layout/grid-crash-remove-positioned-item-expected.txt: Added.
+        * fast/css-grid-layout/grid-crash-remove-positioned-item.html: Added.
+
+2017-03-16  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Spread
+        https://bugs.webkit.org/show_bug.cgi?id=167963
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+
+2017-03-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WebRTC] SDP sess-id in the "o=" line should be a value between 0 and LLONG_MAX.
+        https://bugs.webkit.org/show_bug.cgi?id=169681
+
+        Reviewed by Alejandro G. Castro.
+
+        Check that the generated sess-id value its between the limits before validating it.
+        This is covered by the tests fast/mediastream/RTCPeerConnection-inspect-answer.html
+        and fast/mediastream/RTCPeerConnection-inspect-offer.html.
+        Both tests will fail if the sess-id value generated is not within the limits.
+
+        * fast/mediastream/resources/sdp-utils.js:
+        (printComparableSessionDescription):
+
+2017-03-15  Zalan Bujtas  <zalan@apple.com>
+
+        Do not reparent floating object until after intruding/overhanging dependency is cleared.
+        https://bugs.webkit.org/show_bug.cgi?id=169711
+        <rdar://problem/30959743>
+
+        Reviewed by Simon Fraser.
+
+        * fast/block/float/inline-becomes-float-and-moves-around-expected.txt: Added.
+        * fast/block/float/inline-becomes-float-and-moves-around.html: Added.
+
+2017-03-15  Dave Hyatt  <hyatt@apple.com>
+
+        Positioned SVG not sized correctly
+        https://bugs.webkit.org/show_bug.cgi?id=169693
+        <rdar://problem/30996893>
+
+        Reviewed by Zalan Bujtas.
+
+        * svg/in-html/rect-positioned-expected.html: Added.
+        * svg/in-html/rect-positioned.html: Added.
+
+2017-03-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Clean up TestExpectations for some WPT LayoutTests.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-03-15  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Using the arrow keys to navigate in the tracks menu also scrolls the page
+        https://bugs.webkit.org/show_bug.cgi?id=169671
+        <rdar://problem/31060091>
+
+        Reviewed by Eric Carlson.
+
+        Add a test that checks that preventDefault() is called on "keydown" events that we know to handle.
+
+        * media/modern-media-controls/tracks-panel/tracks-panel-prevent-default-on-keydown-expected.txt: Added.
+        * media/modern-media-controls/tracks-panel/tracks-panel-prevent-default-on-keydown.html: Added.
+
+2017-03-15  Jonathan Bedard  <jbedard@apple.com>
+
+        Remove TestExpectations.orig after r213882
+
+        Unreviewed, removing file committed by mistake.
+
+        * TestExpectations.orig: Removed.
+
+2017-03-15  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Tracks menu overlaps controls bar in fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=169670
+        <rdar://problem/31060086>
+
+        Reviewed by Eric Carlson.
+
+        Unflake a test that checks the tracks panel position in fullscreen.
+
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen-expected.txt:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html:
+        * platform/mac/TestExpectations:
+
+2017-03-15  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Captions do not default to Auto when language is changed
+        https://bugs.webkit.org/show_bug.cgi?id=169675
+        <rdar://problem/30423369>
+
+        Reviewed by Eric Carlson.
+
+        Add new tests that check the cases where the expected selected track should be "Off" or "Auto".
+
+        * media/modern-media-controls/tracks-support/tracks-support-auto-text-track-expected.txt: Added.
+        * media/modern-media-controls/tracks-support/tracks-support-auto-text-track.html: Added.
+        * media/modern-media-controls/tracks-support/tracks-support-off-text-track-expected.txt: Added.
+        * media/modern-media-controls/tracks-support/tracks-support-off-text-track.html: Added.
+
+2017-03-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/media/modern-media-controls/time-labels-support/long-time.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=169677
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-03-15  Youenn Fablet  <youenn@apple.com>
+
+        run-webkit-tests is always creating mock libwebrtc tracks
+        https://bugs.webkit.org/show_bug.cgi?id=169658
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * webrtc/audio-peer-connection-webaudio.html:
+        * webrtc/peer-connection-audio-mute-expected.txt: Added.
+        * webrtc/peer-connection-audio-mute.html: Added.
+        * webrtc/routines.js:
+        (analyseAudio):
+        * webrtc/video-expected.txt:
+        * webrtc/video-mute-expected.txt: Added.
+        * webrtc/video-mute.html: Added.
+        * webrtc/video.html:
+
+2017-03-15  Youenn Fablet  <youenn@apple.com>
+
+        Preventive clean-up: ensure RTCPeerConnection stays valid when calling postTask
+        https://bugs.webkit.org/show_bug.cgi?id=169661
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/negotiatedneeded-event-addStream-expected.txt:
+        * webrtc/negotiatedneeded-event-addStream.html:
+
+2017-03-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/volume-down-support/volume-down-support.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169568
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-15  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Always use six digits to display time when overall media duration is an hour or more
+        https://bugs.webkit.org/show_bug.cgi?id=169668
+        <rdar://problem/31059699>
+
+        Reviewed by Dean Jackson.
+
+        Rebase some tests due to the rename of the labelsMayDisplayTimesOverAnHour property to
+        useSixDigitsForTimeLabels. We also add an assertion in long-time.html to check that
+        we currently use six digits to display a time that is under an hour but where the
+        media duration is over an hour.
+
+        * http/tests/media/modern-media-controls/time-labels-support/long-time-expected.txt:
+        * http/tests/media/modern-media-controls/time-labels-support/long-time.html:
+        * media/modern-media-controls/time-control/time-control-use-six-digits-for-time-labels-expected.txt: Renamed from LayoutTests/media/modern-media-controls/time-control/time-control-labels-may-display-times-over-an-hour-expected.txt.
+        * media/modern-media-controls/time-control/time-control-use-six-digits-for-time-labels.html: Renamed from LayoutTests/media/modern-media-controls/time-control/time-control-labels-may-display-times-over-an-hour.html.
+
 2017-03-15  Antoine Quint  <graouts@apple.com>
 
         [mac-wk1 debug] LayoutTest media/modern-media-controls/airplay-placard/airplay-placard-text-section.html is a flaky timeout

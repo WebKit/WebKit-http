@@ -140,11 +140,6 @@ set(WebKit2_SOURCES
     NetworkProcess/capture/NetworkCaptureResource.cpp
     NetworkProcess/capture/NetworkDataTaskReplay.cpp
 
-    DatabaseProcess/DatabaseProcess.cpp
-    DatabaseProcess/DatabaseToWebProcessConnection.cpp
-
-    DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
-
     Platform/Logging.cpp
     Platform/Module.cpp
 

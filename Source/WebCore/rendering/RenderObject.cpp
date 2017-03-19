@@ -197,8 +197,8 @@ RenderObject::FlowThreadState RenderObject::computedFlowThreadState(const Render
         // containingBlock() skips svg boundary (SVG root is a RenderReplaced).
         if (auto* svgRoot = SVGRenderSupport::findTreeRootObject(downcast<RenderElement>(renderer)))
             inheritedFlowState = svgRoot->flowThreadState();
-    } else if (auto* containingBlock = renderer.containingBlock())
-        inheritedFlowState = containingBlock->flowThreadState();
+    } else if (auto* container = renderer.container())
+        inheritedFlowState = container->flowThreadState();
     else {
         // Splitting lines or doing continuation, so just keep the current state.
         inheritedFlowState = renderer.flowThreadState();
@@ -226,7 +226,7 @@ void RenderObject::resetFlowThreadStateOnRemoval()
     if (flowThreadState() == NotInsideFlowThread)
         return;
 
-    if (!documentBeingDestroyed() && is<RenderElement>(*this)) {
+    if (!renderTreeBeingDestroyed() && is<RenderElement>(*this)) {
         downcast<RenderElement>(*this).removeFromRenderFlowThread();
         return;
     }
@@ -1473,7 +1473,7 @@ void RenderObject::willBeDestroyed()
 
     removeFromParent();
 
-    ASSERT(documentBeingDestroyed() || !is<RenderElement>(*this) || !view().frameView().hasSlowRepaintObject(downcast<RenderElement>(*this)));
+    ASSERT(renderTreeBeingDestroyed() || !is<RenderElement>(*this) || !view().frameView().hasSlowRepaintObject(downcast<RenderElement>(*this)));
 
     // The remove() call above may invoke axObjectCache()->childrenChanged() on the parent, which may require the AX render
     // object for this renderer. So we remove the AX render object now, after the renderer is removed.
@@ -1511,7 +1511,7 @@ void RenderObject::willBeRemovedFromTree()
 void RenderObject::destroyAndCleanupAnonymousWrappers()
 {
     // If the tree is destroyed, there is no need for a clean-up phase.
-    if (documentBeingDestroyed()) {
+    if (renderTreeBeingDestroyed()) {
         destroy();
         return;
     }

@@ -341,7 +341,7 @@ public:
 
     void reshape(int width, int height) override;
 
-    void markLayerComposited() override final;
+    void markLayerComposited() final;
     void paintRenderingResultsToCanvas() override;
     RefPtr<ImageData> paintRenderingResultsToImageData();
 

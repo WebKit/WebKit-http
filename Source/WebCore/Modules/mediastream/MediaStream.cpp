@@ -207,6 +207,12 @@ void MediaStream::didRemoveTrack(MediaStreamTrackPrivate& trackPrivate)
     internalRemoveTrack(trackPrivate.id(), StreamModifier::Platform);
 }
 
+void MediaStream::addTrackFromPlatform(Ref<MediaStreamTrack>&& track)
+{
+    m_private->addTrack(&track->privateTrack(), MediaStreamPrivate::NotifyClientOption::Notify);
+    internalAddTrack(WTFMove(track), StreamModifier::Platform);
+}
+
 bool MediaStream::internalAddTrack(Ref<MediaStreamTrack>&& trackToAdd, StreamModifier streamModifier)
 {
     auto result = m_trackSet.add(trackToAdd->id(), WTFMove(trackToAdd));
@@ -314,13 +320,13 @@ MediaProducer::MediaStateFlags MediaStream::mediaState() const
 
     if (m_private->hasAudio()) {
         state |= HasAudioOrVideo;
-        if (m_private->hasLocalAudioSource() && m_private->isProducingData())
+        if (m_private->hasCaptureAudioSource() && m_private->isProducingData())
             state |= HasActiveAudioCaptureDevice;
     }
 
     if (m_private->hasVideo()) {
         state |= HasAudioOrVideo;
-        if (m_private->hasLocalVideoSource() && m_private->isProducingData())
+        if (m_private->hasCaptureVideoSource() && m_private->isProducingData())
             state |= HasActiveVideoCaptureDevice;
     }
 

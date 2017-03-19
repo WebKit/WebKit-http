@@ -115,6 +115,7 @@ public:
     unsigned imageFrameIndex(HTMLImageElement&);
     void setImageFrameDecodingDuration(HTMLImageElement&, float duration);
     void resetImageAnimation(HTMLImageElement&);
+    void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement&, bool);
 
     void clearPageCache();
     unsigned pageCacheSize() const;
@@ -387,6 +388,7 @@ public:
     String toolTipFromElement(Element&) const;
 
     void forceReload(bool endToEnd);
+    void reloadExpiredOnly();
 
     void enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight);
 

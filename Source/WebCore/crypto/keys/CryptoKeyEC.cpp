@@ -113,6 +113,32 @@ RefPtr<CryptoKeyEC> CryptoKeyEC::importJwk(CryptoAlgorithmIdentifier identifier,
     return platformImportJWKPrivate(identifier, *namedCurve, WTFMove(x), WTFMove(y), WTFMove(d), extractable, usages);
 }
 
+RefPtr<CryptoKeyEC> CryptoKeyEC::importSpki(CryptoAlgorithmIdentifier identifier, const String& curve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
+{
+    auto namedCurve = toNamedCurve(curve);
+    if (!namedCurve)
+        return nullptr;
+
+    return platformImportSpki(identifier, *namedCurve, WTFMove(keyData), extractable, usages);
+}
+
+RefPtr<CryptoKeyEC> CryptoKeyEC::importPkcs8(CryptoAlgorithmIdentifier identifier, const String& curve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
+{
+    auto namedCurve = toNamedCurve(curve);
+    if (!namedCurve)
+        return nullptr;
+
+    return platformImportPkcs8(identifier, *namedCurve, WTFMove(keyData), extractable, usages);
+}
+
+ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportRaw() const
+{
+    if (type() != CryptoKey::Type::Public)
+        return Exception { INVALID_ACCESS_ERR };
+
+    return platformExportRaw();
+}
+
 JsonWebKey CryptoKeyEC::exportJwk() const
 {
     JsonWebKey result;
@@ -129,6 +155,40 @@ JsonWebKey CryptoKeyEC::exportJwk() const
     result.ext = extractable();
     platformAddFieldElements(result);
     return result;
+}
+
+ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportSpki() const
+{
+    if (type() != CryptoKey::Type::Public)
+        return Exception { INVALID_ACCESS_ERR };
+
+    return platformExportSpki();
+}
+
+ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportPkcs8() const
+{
+    if (type() != CryptoKey::Type::Private)
+        return Exception { INVALID_ACCESS_ERR };
+
+    return platformExportPkcs8();
+}
+
+String CryptoKeyEC::namedCurveString() const
+{
+    switch (m_curve) {
+    case NamedCurve::P256:
+        return String(P256);
+    case NamedCurve::P384:
+        return String(P384);
+    }
+
+    ASSERT_NOT_REACHED();
+    return emptyString();
+}
+
+bool CryptoKeyEC::isValidECAlgorithm(CryptoAlgorithmIdentifier algorithm)
+{
+    return algorithm == CryptoAlgorithmIdentifier::ECDSA || algorithm == CryptoAlgorithmIdentifier::ECDH;
 }
 
 std::unique_ptr<KeyAlgorithm> CryptoKeyEC::buildAlgorithm() const

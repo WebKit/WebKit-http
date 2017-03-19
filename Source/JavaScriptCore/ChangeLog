@@ -1,3 +1,537 @@
+2017-03-19  Chris Dumez  <cdumez@apple.com>
+
+        `const location = "foo"` throws in a worker
+        https://bugs.webkit.org/show_bug.cgi?id=169839
+
+        Reviewed by Mark Lam.
+
+        Our HasRestrictedGlobalProperty check in JSC was slightly wrong, causing us
+        to sometimes throw a Syntax exception when we shouldn't when declaring a
+        const/let variable and sometimes not throw an exception when we should have.
+
+        This aligns our behavior with ES6, Firefox and Chrome.
+
+        * runtime/ProgramExecutable.cpp:
+        (JSC::hasRestrictedGlobalProperty):
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        Rewrite hasRestrictedGlobalProperty logic as per the EcmaScript spec:
+        - http://www.ecma-international.org/ecma-262/6.0/index.html#sec-hasproperty
+        In particular, they were 2 issues:
+        - We should throw a SyntaxError if hasProperty() returned true but getOwnProperty()
+          would fail to return a descriptor. This would happen for properties that are
+          not OWN properties, but defined somewhere in the prototype chain. The spec does
+          not say to use hasProperty(), only getOwnProperty() and says we should return
+          false if getOwnProperty() does not return a descriptor. This is what we do now.
+        - We would fail to throw when declaring a let/const variable that shadows an own
+          property whose value is undefined. This is because the previous code was
+          explicitly checking for this case. I believe this was a misinterpretation of
+          ES6 which says:
+          """
+          Let desc be O.[[GetOwnProperty]](P).
+          If desc is undefined, return false.
+          """
+          We should check that desc is undefined, not desc.value. This is now fixed.
+
+2017-03-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        import(arg) crashes when ToString(arg) throws
+        https://bugs.webkit.org/show_bug.cgi?id=169778
+
+        Reviewed by Saam Barati.
+
+        JSPromiseDeferred should not be rejected with Exception*.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncImportModule):
+
+2017-03-18  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [JSC] Remove unnecessary condition from needsDerivedConstructorInArrowFunctionLexicalEnvironment in BytecodeGenerator.cpp 
+        https://bugs.webkit.org/show_bug.cgi?id=169832
+
+        Reviewed by Mark Lam.
+
+        Remove already covered condition in needsDerivedConstructorInArrowFunctionLexicalEnvironment 
+        function. Condition isConstructor() && constructorKind() == ConstructorKind::Extends is already
+        isClassContext.
+
+         * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::needsDerivedConstructorInArrowFunctionLexicalEnvironment):
+
+2017-03-18  Chris Dumez  <cdumez@apple.com>
+
+        Allow setting the prototype of cross-origin objects, as long as they don't change
+        https://bugs.webkit.org/show_bug.cgi?id=169787
+
+        Reviewed by Mark Lam.
+
+        * runtime/JSGlobalObject.h:
+        Mark JS global object as an immutable prototype exotic object to match Window.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::setPrototypeWithCycleCheck):
+        Update setPrototypeWithCycleCheck() for immutable prototype exotic objects in order
+        to align with:
+        - https://tc39.github.io/ecma262/#sec-set-immutable-prototype
+
+        In particular, we need to call [[GetPrototypeOf]] and return true if it returns the same
+        value as the new prototype. We really need to call [[GetPrototypeOf]] and not merely
+        getting the prototype slot via getPrototypeDirect() since Location and Window override
+        [[GetPrototypeOf]] to return null in the cross-origin case.
+
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::setPrototype):
+        Update JSProxy::setPrototype() to forward such calls to its target. This is needed so
+        we end up calling JSObject::setPrototypeWithCycleCheck() for the Window object.
+        Handling immutable prototype exotic objects in that method does the right thing for
+        Window.
+
+2017-03-17  Michael Saboff  <msaboff@apple.com>
+
+        Use USE_INTERNAL_SDK to compute ENABLE_FAST_JIT_PERMISSIONS instead of HAVE_INTERNAL_SDK
+        https://bugs.webkit.org/show_bug.cgi?id=169817
+
+        Reviewed by Filip Pizlo.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Air should be powerful enough to support Tmp-splitting
+        https://bugs.webkit.org/show_bug.cgi?id=169515
+
+        Reviewed by Saam Barati.
+        
+        In the process of implementing the Tmp-splitting optimization, I made some small
+        clean-ups. They don't affect anything - it's basically moving code around and adding
+        utility functions.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::allocate): testb3 was sometimes failing its checkDoesNotUseInstruction check because of uninitialized memory. This initializes the internal fragmentation slop of every JIT allocation.
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+        * b3/air/AirAllocateRegistersByGraphColoring.h:
+        (JSC::B3::Air::useIRC): It's useful to be able to query which register allocator we're using.
+        * b3/air/AirArg.cpp:
+        (WTF::printInternal):
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::temperature): The temperature of a role is a useful concept to have factored out.
+        * b3/air/AirBreakCriticalEdges.cpp: Added.
+        (JSC::B3::Air::breakCriticalEdges): I was surprised that we didn't have this already. It's a pretty fundamental CFG utility.
+        * b3/air/AirBreakCriticalEdges.h: Added.
+        * b3/air/AirGenerate.cpp:
+        * b3/air/AirInsertionSet.h: You can't use & if you want copy-constructibility, which seems to be a prerequisite to IndexMap<BasicBlock, InsertionSet>.
+        (JSC::B3::Air::InsertionSet::InsertionSet):
+        (JSC::B3::Air::InsertionSet::code):
+        * b3/air/AirLiveness.h: Teach Liveness to track only warm liveness.
+        (JSC::B3::Air::TmpLivenessAdapter::acceptsRole):
+        (JSC::B3::Air::StackSlotLivenessAdapter::acceptsRole):
+        (JSC::B3::Air::RegLivenessAdapter::acceptsRole):
+        (JSC::B3::Air::AbstractLiveness::AbstractLiveness):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::execute):
+
+2017-03-16  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception scope verification failures in GenericArgumentsInlines.h.
+        https://bugs.webkit.org/show_bug.cgi?id=165012
+
+        Reviewed by Saam Barati.
+
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::defineOwnProperty):
+
+2017-03-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the system tracing points
+        https://bugs.webkit.org/show_bug.cgi?id=169790
+
+        Reviewed by Zalan Bujtas.
+
+        Use a more cohesive set of system trace points that give a good overview of what
+        WebKit is doing. Added points for resource loading, render tree building, sync messages
+        to the web process, async image decode, WASM and fetching cookies.
+
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::run):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+
+2017-03-16  Mark Lam  <mark.lam@apple.com>
+
+        Array concat operation should check for length overflows.
+        https://bugs.webkit.org/show_bug.cgi?id=169796
+        <rdar://problem/31095276>
+
+        Reviewed by Keith Miller.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::concatAppendOne):
+        (JSC::arrayProtoPrivateFuncConcatMemcpy):
+
+2017-03-16  Mark Lam  <mark.lam@apple.com>
+
+        The new array with spread operation needs to check for length overflows.
+        https://bugs.webkit.org/show_bug.cgi?id=169780
+        <rdar://problem/31072182>
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewArrayWithSpread):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayWithSpread):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * llint/LLIntSlowPaths.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSGlobalObject.cpp:
+
+2017-03-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should support global and eval code
+        https://bugs.webkit.org/show_bug.cgi?id=169656
+
+        Reviewed by Geoffrey Garen and Saam Barati.
+        
+        Turned off the restriction against global and eval code running in the FTL, and then fixed all of
+        the things that didn't work.
+        
+        This is a big speed-up on microbenchmarks that I wrote for this patch. One of the reasons why we
+        hadn't done this earlier is that we've never seen a benchmark that needed it. Global and eval
+        code rarely gets FTL-hot. Still, this seems like possibly a small JetStream speed-up.
+
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::setOSREntryBlock): I outlined this for better debugging.
+        * dfg/DFGJITCode.h:
+        (JSC::DFG::JITCode::setOSREntryBlock): Deleted.
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isSemanticallySkippable): It turns out that global code often has InvalidationPoints before LoopHints. They are also skippable from the standpoint of OSR entrypoint analysis.
+        * dfg/DFGOperations.cpp: Don't do any normal compiles of global code - just do OSR compiles.
+        * ftl/FTLCapabilities.cpp: Enable FTL for global and eval code.
+        (JSC::FTL::canCompile):
+        * ftl/FTLCompile.cpp: Just debugging clean-ups.
+        (JSC::FTL::compile):
+        * ftl/FTLJITFinalizer.cpp: Implement finalize() and ensure that we only do things with the entrypoint buffer if we have one. We won't have one for eval code that we aren't OSR entering into.
+        (JSC::FTL::JITFinalizer::finalize):
+        (JSC::FTL::JITFinalizer::finalizeFunction):
+        (JSC::FTL::JITFinalizer::finalizeCommon):
+        * ftl/FTLJITFinalizer.h:
+        * ftl/FTLLink.cpp: When entering a function normally, we need the "entrypoint" to put the arity check code. Global and eval code don't need this.
+        (JSC::FTL::link):
+        * ftl/FTLOSREntry.cpp: Fix a dataLog statement.
+        (JSC::FTL::prepareOSREntry):
+        * ftl/FTLOSRExitCompiler.cpp: Remove dead code that happened to assert that we're exiting from a function.
+        (JSC::FTL::compileStub):
+
+2017-03-16  Michael Saboff  <msaboff@apple.com>
+
+        WebAssembly: function-tests/load-offset.js fails on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=169724
+
+        Reviewed by Keith Miller.
+
+        We need to use the two source version of Add64 to create a Wasm address with the
+        other source the first child.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+
+2017-03-16  Jon Lee  <jonlee@apple.com>
+
+        Add FIXMEs to update WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=169735
+
+        Reviewed by Youenn Fablet.
+
+        * runtime/CommonIdentifiers.h: Add RTCIceTransport.
+
+2017-03-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, copy m_numberOfArgumentsToSkip
+        https://bugs.webkit.org/show_bug.cgi?id=164582
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+
+2017-03-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix numParameter() - 1 OSRExit materialization
+        https://bugs.webkit.org/show_bug.cgi?id=164582
+
+        When materializing rest parameters, we rely on that numParameter() - 1 equals to
+        the numberOfArgumentsToSkip. But this assumption is broken in r214029.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::numberOfArgumentsToSkip):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+
+2017-03-16  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Spread
+        https://bugs.webkit.org/show_bug.cgi?id=167963
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch implements ECMA262 stage 3 Object Spread proposal [1].
+        It's implemented using CopyDataProperties to copy all enumerable keys
+        from object being spreaded.
+
+        It's also fixing CopyDataProperties that was using
+        Object.getOwnPropertyNames to list all keys to be copied, and now is
+        using Relect.ownKeys.
+
+        [1] - https://github.com/sebmarkbage/ecmascript-rest-spread
+
+        * builtins/GlobalOperations.js:
+        (globalPrivate.copyDataProperties):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::setConstantIdentifierSetRegisters):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addSetConstant):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitLoad):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        (JSC::ObjectPatternNode::bindValue):
+        (JSC::ObjectSpreadExpressionNode::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createObjectSpreadExpression):
+        (JSC::ASTBuilder::createProperty):
+        * parser/NodeConstructors.h:
+        (JSC::PropertyNode::PropertyNode):
+        (JSC::ObjectSpreadExpressionNode::ObjectSpreadExpressionNode):
+        * parser/Nodes.h:
+        (JSC::ObjectSpreadExpressionNode::expression):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseProperty):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createObjectSpreadExpression):
+        (JSC::SyntaxChecker::createProperty):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::privateToObject): Deleted.
+        * runtime/JSGlobalObjectFunctions.h:
+
+2017-03-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Default parameter part should be retrieved by op_get_argument opcode instead of changing arity
+        https://bugs.webkit.org/show_bug.cgi?id=164582
+
+        Reviewed by Saam Barati.
+
+        Previously we implement the default parameters as follows.
+
+            1. We count the default parameters as the usual parameters.
+            2. We just get the argument register.
+            3. Check it with op_is_undefined.
+            4. And fill the binding with either the argument register or default value.
+
+        The above is simple. However, it has the side effect that it always increase the arity of the function.
+        While `function.length` does not increase, internally, the number of parameters of CodeBlock increases.
+        This effectively prevent our DFG / FTL to perform inlining: currently we only allows DFG to inline
+        the function with the arity less than or equal the number of passing arguments. It is OK. But when using
+        default parameters, we frequently do not pass the argument for the parameter with the default value.
+        Thus, in our current implementation, we frequently need to fixup the arity. And we frequently fail
+        to inline the function.
+
+        This patch fixes the above problem by not increasing the arity of the function. When we encounter the
+        parameter with the default value, we use `op_argument` to get the argument instead of using the argument
+        registers.
+
+        This improves six-speed defaults.es6 performance by 4.45x.
+
+            defaults.es6        968.4126+-101.2350   ^    217.6602+-14.8831       ^ definitely 4.4492x faster
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeStack):
+        (JSC::BytecodeGenerator::initializeNextParameter):
+        (JSC::BytecodeGenerator::initializeParameters):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionNode::emitBytecode):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inliningCost):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionMetadata):
+        * parser/Nodes.cpp:
+        (JSC::FunctionMetadataNode::FunctionMetadataNode):
+        * parser/Nodes.h:
+        (JSC::FunctionParameters::size):
+        (JSC::FunctionParameters::at):
+        (JSC::FunctionParameters::append):
+        (JSC::FunctionParameters::isSimpleParameterList):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::isArrowFunctionParameters):
+        (JSC::Parser<LexerType>::parseGeneratorFunctionSourceElements):
+        (JSC::Parser<LexerType>::parseAsyncFunctionSourceElements):
+        (JSC::Parser<LexerType>::parseFormalParameters):
+        (JSC::Parser<LexerType>::parseFunctionBody):
+        (JSC::Parser<LexerType>::parseFunctionParameters):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        * parser/Parser.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createFunctionMetadata):
+        * runtime/FunctionExecutable.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::createBuiltinFunction):
+        (JSC::JSFunction::reifyLength):
+
+2017-03-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] ToString operation should have fixup for primitives to say this node does not have side effects
+        https://bugs.webkit.org/show_bug.cgi?id=169544
+
+        Reviewed by Saam Barati.
+
+        Our DFG ToString only considers well about String operands. While ToString(non cell operand) does not have
+        any side effect, it is not modeled well in DFG.
+
+        This patch introduces a fixup for ToString with NonCellUse edge. If this edge is set, ToString does not
+        clobber things (like ToLowerCase, producing String). And ToString(NonCellUse) allows us to perform CSE!
+
+        Our microbenchmark shows 32.9% improvement due to dropped GetButterfly and CSE for ToString().
+
+                                            baseline                  patched
+
+            template-string-array       12.6284+-0.2766     ^      9.4998+-0.2295        ^ definitely 1.3293x faster
+
+        And SixSpeed template_string.es6 shows 16.68x performance improvement due to LICM onto this non-side-effectful ToString().
+
+                                          baseline                  patched
+
+            template_string.es6     3229.7343+-40.5705    ^    193.6077+-36.3349       ^ definitely 16.6818x faster
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupToStringOrCallStringConstructor):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileToStringOrCallStringConstructorOnCell):
+        (JSC::DFG::SpeculativeJIT::speculateNotCell):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileToStringOrCallStringConstructor):
+        (JSC::FTL::DFG::LowerDFGToB3::lowNotCell):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateNotCell):
+
+2017-03-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Revert part of r213978 to see if it resolves LayoutTest crashes.
+        https://bugs.webkit.org/show_bug.cgi?id=169729
+
+        Reviewed by Alexey Proskuryakov.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2017-03-15  Guillaume Emont  <guijemont@igalia.com>
+
+        [jsc][mips] Fix compilation error introduced in r213652
+        https://bugs.webkit.org/show_bug.cgi?id=169723
+
+        Reviewed by Mark Lam.
+
+        The new replaceWithBkpt() contains a lapsus in it
+        (s/code/instructionStart) and won't compile.
+
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::replaceWithBkpt):
+
+2017-03-15  Daniel Ehrenberg  <littledan@chromium.org>
+
+        Switch back to ISO 4217 for Intl CurrencyDigits data
+        https://bugs.webkit.org/show_bug.cgi?id=169182
+    
+        Previously, a patch switched Intl.NumberFormat to use CLDR data through
+        ICU to get the default number of decimal digits for a currency.
+        However, that change actually violated the ECMA 402 specification,
+        which references ISO 4217 as the data source. This patch reverts to
+        an in-line implementation of that data.
+
+        Reviewed by Saam Barati.
+
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::computeCurrencySortKey):
+        (JSC::extractCurrencySortKey):
+        (JSC::computeCurrencyDigits):
+
+2017-03-15  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: When we GC to try to get a fast memory, we should call collectAllGarbage(), not collectSync()
+        https://bugs.webkit.org/show_bug.cgi?id=169704
+
+        Reviewed by Mark Lam.
+
+        We weren't always sweeping the memory needed to free
+        the WasmMemory we wanted to use. collectAllGarbage()
+        will do this if the JS objects wrapping WasmMemory
+        are dead.
+
+        This patch also moves the increment of the allocatedFastMemories
+        integer to be thread safe.
+
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::tryGetFastMemory):
+
+2017-03-15  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception scope verification failures in jsc.cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=164968
+
+        Reviewed by Saam Barati.
+
+        * jsc.cpp:
+        (WTF::CustomGetter::customGetter):
+
+        (GlobalObject::moduleLoaderResolve):
+        (GlobalObject::moduleLoaderFetch):
+        - The only way modules would throw an exception is if we encounter an OutOfMemory
+          error.  This should be extremely rare.  At this point, I don't think it's worth
+          doing the dance to propagate the exception when this happens.  Instead, we'll
+          simply do a RELEASE_ASSERT that we don't see any exceptions here.
+
+        (functionRun):
+        (functionRunString):
+        (functionLoadModule):
+        (functionCheckModuleSyntax):
+        (box):
+        (dumpException):
+        (runWithScripts):
+
+2017-03-15  Mark Lam  <mark.lam@apple.com>
+
+        Fix missing exception checks in Interpreter.cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=164964
+
+        Reviewed by Saam Barati.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+        (JSC::sizeOfVarargs):
+        (JSC::sizeFrameForVarargs):
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::prepareForRepeatCall):
+        (JSC::Interpreter::execute):
+
 2017-03-15  Dean Jackson  <dino@apple.com>
 
         Sort Xcode project files

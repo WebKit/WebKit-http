@@ -556,7 +556,9 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #endif
 
 #if ENABLE(WEB_RTC)
-    if (!parameters.iceCandidateFilteringEnabled)
+    m_shouldDoICECandidateFiltering = parameters.iceCandidateFilteringEnabled;
+
+    if (!m_shouldDoICECandidateFiltering)
         disableICECandidateFiltering();
 #if USE(LIBWEBRTC)
     if (parameters.enumeratingAllNetworkInterfacesEnabled)
@@ -567,6 +569,22 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     for (auto iterator : parameters.urlSchemeHandlers)
         registerURLSchemeHandler(iterator.value, iterator.key);
 }
+
+#if ENABLE(WEB_RTC)
+void WebPage::disableICECandidateFiltering()
+{
+    if (!m_shouldDoICECandidateFiltering)
+        return;
+    m_page->rtcController().disableICECandidateFiltering();
+}
+
+void WebPage::enableICECandidateFiltering()
+{
+    if (!m_shouldDoICECandidateFiltering)
+        return;
+    m_page->rtcController().disableICECandidateFiltering();
+}
+#endif
 
 void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 {
@@ -1297,7 +1315,7 @@ void WebPage::setDefersLoading(bool defersLoading)
     m_page->setDefersLoading(defersLoading);
 }
 
-void WebPage::reload(uint64_t navigationID, bool reloadFromOrigin, bool contentBlockersEnabled, const SandboxExtension::Handle& sandboxExtensionHandle)
+void WebPage::reload(uint64_t navigationID, uint32_t reloadOptions, const SandboxExtension::Handle& sandboxExtensionHandle)
 {
     SendStopResponsivenessTimer stopper(this);
 
@@ -1305,7 +1323,7 @@ void WebPage::reload(uint64_t navigationID, bool reloadFromOrigin, bool contentB
     m_pendingNavigationID = navigationID;
 
     m_sandboxExtensionTracker.beginLoad(m_mainFrame.get(), sandboxExtensionHandle);
-    corePage()->userInputBridge().reloadFrame(m_mainFrame->coreFrame(), reloadFromOrigin, contentBlockersEnabled);
+    corePage()->userInputBridge().reloadFrame(m_mainFrame->coreFrame(), OptionSet<ReloadOption>::fromRaw(reloadOptions));
 }
 
 void WebPage::goForward(uint64_t navigationID, uint64_t backForwardItemID)
@@ -2622,6 +2640,17 @@ void WebPage::updateIsInWindow(bool isInitialState)
         layoutIfNeeded();
 }
 
+void WebPage::visibilityDidChange()
+{
+    bool isVisible = m_activityState & ActivityState::IsVisible;
+    if (!isVisible) {
+        // We save the document / scroll state when backgrounding a tab so that we are able to restore it
+        // if it gets terminated while in the background.
+        if (auto* frame = m_mainFrame->coreFrame())
+            frame->loader().history().saveDocumentAndScrollState();
+    }
+}
+
 void WebPage::setActivityState(ActivityState::Flags activityState, bool wantsDidUpdateActivityState, const Vector<uint64_t>& callbackIDs)
 {
     ActivityState::Flags changed = m_activityState ^ activityState;
@@ -2639,6 +2668,9 @@ void WebPage::setActivityState(ActivityState::Flags activityState, bool wantsDid
 
     if (changed & ActivityState::IsInWindow)
         updateIsInWindow();
+
+    if (changed & ActivityState::IsVisible)
+        visibilityDidChange();
 }
 
 void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
@@ -3108,6 +3140,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(WEB_RTC)
     RuntimeEnabledFeatures::sharedFeatures().setPeerConnectionEnabled(store.getBoolValueForKey(WebPreferencesKey::peerConnectionEnabledKey()));
+    RuntimeEnabledFeatures::sharedFeatures().setWebRTCLegacyAPIEnabled(store.getBoolValueForKey(WebPreferencesKey::webRTCLegacyAPIEnabledKey()));
 #endif
 
 #if ENABLE(SERVICE_CONTROLS)
@@ -4117,7 +4150,7 @@ static bool shouldReuseCommittedSandboxExtension(WebFrame* frame)
     FrameLoadType frameLoadType = frameLoader.loadType();
 
     // If the page is being reloaded, it should reuse whatever extension is committed.
-    if (frameLoadType == FrameLoadType::Reload || frameLoadType == FrameLoadType::ReloadFromOrigin)
+    if (isReload(frameLoadType))
         return true;
 
     DocumentLoader* documentLoader = frameLoader.documentLoader();

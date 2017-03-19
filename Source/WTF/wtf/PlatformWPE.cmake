@@ -12,8 +12,7 @@ list(APPEND WTF_SOURCES
     linux/CurrentProcessMemoryStatus.cpp
     linux/MemoryPressureHandlerLinux.cpp
 
-    # FIXME-GWSHARE:
-    text/gtk/TextBreakIteratorInternalICUGtk.cpp
+    text/unix/TextBreakIteratorInternalICUUnix.cpp
 )
 
 list(APPEND WTF_LIBRARIES

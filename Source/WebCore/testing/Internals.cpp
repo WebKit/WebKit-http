@@ -744,6 +744,19 @@ void Internals::resetImageAnimation(HTMLImageElement& element)
     image->resetAnimation();
 }
 
+void Internals::setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement& element, bool value)
+{
+    auto* cachedImage = element.cachedImage();
+    if (!cachedImage)
+        return;
+
+    auto* image = cachedImage->image();
+    if (!is<BitmapImage>(image))
+        return;
+
+    downcast<BitmapImage>(*image).setClearDecoderAfterAsyncFrameRequestForTesting(value);
+}
+
 void Internals::clearPageCache()
 {
     PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
@@ -2825,7 +2838,16 @@ void Internals::setUsesMockScrollAnimator(bool enabled)
 
 void Internals::forceReload(bool endToEnd)
 {
-    frame()->loader().reload(endToEnd);
+    OptionSet<ReloadOption> reloadOptions;
+    if (endToEnd)
+        reloadOptions |= ReloadOption::FromOrigin;
+
+    frame()->loader().reload(reloadOptions);
+}
+
+void Internals::reloadExpiredOnly()
+{
+    frame()->loader().reload(ReloadOption::ExpiredOnly);
 }
 
 void Internals::enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight)

@@ -36,6 +36,7 @@ Bug(WPE) userscripts/ [ Skip ]
 Bug(WPE) vibration/ [ Skip ]
 Bug(WPE) webarchive/ [ Skip ]
 Bug(WPE) webaudio/ [ Skip ]
+Bug(WPE) webrtc [ Skip ]
 
 # Require ENABLE_CSS_ANIMATIONS_LEVEL_2
 Bug(WPE) animations/trigger-computed-style.html [ Failure ]

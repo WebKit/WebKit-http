@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -264,7 +264,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(
                     materialization->origin(), exec->codeBlock());
 
-                unsigned numberOfArgumentsToSkip = codeBlock->numParameters() - 1;
+                unsigned numberOfArgumentsToSkip = codeBlock->numberOfArgumentsToSkip();
                 JSGlobalObject* globalObject = codeBlock->globalObject();
                 Structure* structure = globalObject->restParameterStructure();
                 JSValue* argumentsToCopyRegion = exec->addressOfArgumentsStart() + numberOfArgumentsToSkip;
@@ -358,7 +358,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
             return result;
         }
         case PhantomCreateRest: {
-            unsigned numberOfArgumentsToSkip = codeBlock->numParameters() - 1;
+            unsigned numberOfArgumentsToSkip = codeBlock->numberOfArgumentsToSkip();
             JSGlobalObject* globalObject = codeBlock->globalObject();
             Structure* structure = globalObject->restParameterStructure();
             ASSERT(argumentCount > 0);
@@ -438,7 +438,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
         JSGlobalObject* globalObject = codeBlock->globalObject();
         Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
 
-        unsigned arraySize = 0;
+        Checked<unsigned, RecordOverflow> checkedArraySize = 0;
         unsigned numProperties = 0;
         for (unsigned i = materialization->properties().size(); i--;) {
             const ExitPropertyValue& property = materialization->properties()[i];
@@ -446,12 +446,13 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 ++numProperties;
                 JSValue value = JSValue::decode(values[i]);
                 if (JSFixedArray* fixedArray = jsDynamicCast<JSFixedArray*>(vm, value))
-                    arraySize += fixedArray->size();
+                    checkedArraySize += fixedArray->size();
                 else
-                    arraySize += 1;
+                    checkedArraySize += 1;
             }
         }
 
+        unsigned arraySize = checkedArraySize.unsafeGet(); // Crashes if overflowed.
         JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, structure, arraySize);
         RELEASE_ASSERT(result);
 

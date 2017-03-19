@@ -1,3 +1,156 @@
+2017-03-17  Michael Saboff  <msaboff@apple.com>
+
+        Use USE_INTERNAL_SDK to compute ENABLE_FAST_JIT_PERMISSIONS instead of HAVE_INTERNAL_SDK
+        https://bugs.webkit.org/show_bug.cgi?id=169817
+
+        Reviewed by Filip Pizlo.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-03-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the system tracing points
+        https://bugs.webkit.org/show_bug.cgi?id=169790
+
+        Reviewed by Zalan Bujtas.
+
+        Use a more cohesive set of system trace points that give a good overview of what
+        WebKit is doing. Added points for resource loading, render tree building, sync messages
+        to the web process, async image decode, WASM and fetching cookies.
+
+        * Tracing/SystemTracePoints.plist:
+
+2017-03-16  Youenn Fablet  <youenn@apple.com>
+
+        Wrap legacy WebRTC API in runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=169646
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebRTCLegacyAPIEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-03-16  Brady Eidson  <beidson@apple.com>
+
+        Update the WKHTTPCookieStore API to be simpler and add observers.
+        <rdar://problem/31096000> and https://bugs.webkit.org/show_bug.cgi?id=169776
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm: Renamed from Tools/TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStorage.mm.
+        (-[CookieObserver cookiesDidChangeInCookieStore:]):
+        (TEST): Also test delete and observers.
+
+2017-03-16  Kocsen Chung  <kocsen_chung@apple.com>
+
+        Fix quotes around --pretty format git flag.
+        https://bugs.webkit.org/show_bug.cgi?id=169712
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove double quotes from command list element '--pretty="format:%ct"' since it will cause
+        subprocess to not work as expected.
+        Additionally, take advantage of `git -C` flag.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.native_revision):
+        Take advantage of `git -C` flag.
+        (Git.timestamp_of_native_revision):
+        Take advantage of `git -C` flag and remove double quotes from git formatter.
+        We know this works from `committer_email_for_revision()` function.
+
+2017-03-16  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up WKContentExtension API
+        https://bugs.webkit.org/show_bug.cgi?id=169772
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKUserContentExtensionStore.mm:
+        (TEST_F):
+        (-[ContentExtensionDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+
+2017-03-16  Jonathan Bedard  <jbedard@apple.com>
+
+        webktpy: Fix device regular expression for parsing simctl output
+        https://bugs.webkit.org/show_bug.cgi?id=169757
+
+        Reviewed by Alex Christensen.
+
+        If a device is unavailable, the changes in r213164 mean that the
+        name of the device will consume the UDID and return the state as
+        the device UDID and the availability string as the device state.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator): Make UDID regular expression more strict.
+        * Scripts/webkitpy/xcode/simulator_unittest.py: Test an unavailable device.
+
+2017-03-15  Tim Horton  <timothy_horton@apple.com>
+
+        Null deref under callAfterNextPresentationUpdate
+        https://bugs.webkit.org/show_bug.cgi?id=169710
+        <rdar://problem/30987863>
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DoAfterNextPresentationUpdateAfterCrash.mm: Added.
+        (TEST):
+
+2017-03-15  Chris Dumez  <cdumez@apple.com>
+
+        Document state (e.g. form data) is lost after a tab is terminated in the background for power reasons
+        https://bugs.webkit.org/show_bug.cgi?id=169635
+        <rdar://problem/31046729>
+
+        Reviewed by Andreas Kling.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/mac/RestoreStateAfterTermination.mm: Added.
+        (TestWebKitAPI::runJavaScriptAlert):
+        (TestWebKitAPI::didFinishLoad):
+        (TestWebKitAPI::didCrash):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/simple-form.html:
+
+2017-03-15  Alex Christensen  <achristensen@webkit.org>
+
+        Compiled content extensions should include the JSON source
+        https://bugs.webkit.org/show_bug.cgi?id=169643
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKUserContentExtensionStore.mm:
+        (TEST_F):
+
+2017-03-15  Kocsen Chung  <kocsen_chung@apple.com>
+
+        Use git's -C flag when possible in VCSUtils.pm
+        https://bugs.webkit.org/show_bug.cgi?id=169003
+
+        Reviewed by Sam Weinig.
+
+        Use the git -C flag where appropriate to perform the
+        operation on a target directory and avoid unnecessary logic
+        to `cd` in and out of the target directory.
+
+        * Scripts/VCSUtils.pm:
+        (isGitDirectory):
+        (isGitSVNDirectory):
+        (svnRevisionForDirectory):
+        (svnInfoForPath):
+        For all four subroutines, use git's -C flag and strip `cd` logic.
+
 2017-03-14  Aakash Jain  <aakash_jain@apple.com>
 
         start-queue-mac.sh should create logs directory if it doesn't exist

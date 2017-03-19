@@ -61,7 +61,7 @@ class MediaStreamPrivate;
 class PlatformAudioData;
 class RealtimeMediaSourceSettings;
 
-class RealtimeMediaSource : public RefCounted<RealtimeMediaSource> {
+class WEBCORE_EXPORT RealtimeMediaSource : public RefCounted<RealtimeMediaSource> {
 public:
     class Observer {
     public:
@@ -134,8 +134,7 @@ public:
     virtual bool readonly() const;
     virtual void setReadonly(bool readonly) { m_readonly = readonly; }
 
-    virtual bool remote() const { return m_remote; }
-    virtual void setRemote(bool remote) { m_remote = remote; }
+    virtual bool isCaptureSource() const { return false; }
 
     WEBCORE_EXPORT void addObserver(Observer&);
     WEBCORE_EXPORT void removeObserver(Observer&);
@@ -200,6 +199,8 @@ protected:
     virtual void applyConstraints(const FlattenedConstraint&);
     virtual void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
 
+    const Vector<Observer*> observers() const { return m_observers; }
+
     bool m_muted { false };
     bool m_enabled { true };
 
@@ -224,7 +225,6 @@ private:
     bool m_echoCancellation { false };
     bool m_stopped { false };
     bool m_readonly { false };
-    bool m_remote { false };
     bool m_pendingSettingsDidChangeNotification { false };
     bool m_suppressNotifications { true };
 };

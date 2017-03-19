@@ -133,6 +133,7 @@
 #include <WebCore/WindowFeatures.h>
 #include <stdio.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/SystemTracing.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringView.h>
 
@@ -1163,7 +1164,7 @@ void WebPageProxy::stopLoading()
     m_process->responsivenessTimer().start();
 }
 
-RefPtr<API::Navigation> WebPageProxy::reload(bool reloadFromOrigin, bool contentBlockersEnabled)
+RefPtr<API::Navigation> WebPageProxy::reload(OptionSet<WebCore::ReloadOption> options)
 {
     SandboxExtension::Handle sandboxExtensionHandle;
 
@@ -1186,7 +1187,7 @@ RefPtr<API::Navigation> WebPageProxy::reload(bool reloadFromOrigin, bool content
     
     auto navigation = m_navigationState->createReloadNavigation();
 
-    m_process->send(Messages::WebPage::Reload(navigation->navigationID(), reloadFromOrigin, contentBlockersEnabled, sandboxExtensionHandle), m_pageID);
+    m_process->send(Messages::WebPage::Reload(navigation->navigationID(), options.toRaw(), sandboxExtensionHandle), m_pageID);
     m_process->responsivenessTimer().start();
 
     return WTFMove(navigation);
@@ -2178,6 +2179,8 @@ void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
 {
     if (!isValid())
         return;
+
+    TraceScope scope(SyncTouchEventStart, SyncTouchEventEnd);
 
     if (event.type() == WebEvent::TouchStart)
         updateTouchEventTracking(event);
@@ -6739,6 +6742,11 @@ void WebPageProxy::clearWheelEventTestTrigger()
 
 void WebPageProxy::callAfterNextPresentationUpdate(std::function<void (CallbackBase::Error)> callback)
 {
+    if (!isValid() || !m_drawingArea) {
+        callback(CallbackBase::Error::OwnerWasInvalidated);
+        return;
+    }
+
     m_drawingArea->dispatchAfterEnsuringDrawing(callback);
 }
 

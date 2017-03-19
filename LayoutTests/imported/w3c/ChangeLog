@@ -1,3 +1,75 @@
+2017-03-18  Jon Lee  <jonlee@apple.com>
+
+        Add support for ImplementedAs, Clamp, EnforceRange, TreatNullAs for dictionary members
+        https://bugs.webkit.org/show_bug.cgi?id=169731
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline tests. The results seem to show a problem in the original tests.
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_gcm.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_gcm-expected.txt:
+
+2017-03-18  Chris Dumez  <cdumez@apple.com>
+
+        innerText setter inserts empty text node if value starts with newline
+        https://bugs.webkit.org/show_bug.cgi?id=169600
+
+        Reviewed by Ryosuke Niwa.
+
+        Re-sync tests with upstream to gain test coverage.
+
+        * web-platform-tests/innerText/getter-expected.txt:
+        * web-platform-tests/innerText/getter-tests.js:
+        * web-platform-tests/innerText/setter-expected.txt:
+        * web-platform-tests/innerText/setter-tests.js:
+        * web-platform-tests/innerText/setter.html:
+
+2017-03-18  Chris Dumez  <cdumez@apple.com>
+
+        Allow setting the prototype of cross-origin objects, as long as they don't change
+        https://bugs.webkit.org/show_bug.cgi?id=169787
+
+        Reviewed by Mark Lam.
+
+        Import test coverage from W3C web-platform-tests.
+
+        * web-platform-tests/common/domain-setter.sub.html: Added.
+        * web-platform-tests/common/test-setting-immutable-prototype.js: Added.
+        (self.testSettingImmutablePrototypeToNewValueOnly.test):
+        (self.testSettingImmutablePrototypeToNewValueOnly):
+        (self.testSettingImmutablePrototype.else.test):
+        (self.testSettingImmutablePrototype):
+        * web-platform-tests/common/w3c-import.log:
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-cross-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-cross-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-goes-cross-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-goes-cross-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-same-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-same-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-same-origin-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-same-origin.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/w3c-import.log:
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/w3c-import.log: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-cross-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-cross-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-goes-cross-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-goes-cross-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-same-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-same-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-same-origin-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-same-origin.html: Added.
+
+2017-03-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Support SPKI/PKCS8 for Elliptic Curve
+        https://bugs.webkit.org/show_bug.cgi?id=169318
+        <rdar://problem/31081956>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/import_export/ec_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_ec_importKey-expected.txt:
+
 2017-03-14  Youenn Fablet  <youenn@apple.com>
 
         Import web-platform-tests/cors

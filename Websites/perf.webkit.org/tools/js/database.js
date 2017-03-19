@@ -127,6 +127,7 @@ class Database {
 
 const tableToPrefixMap = {
     'aggregators': 'aggregator',
+    'analysis_strategies': 'strategy',
     'analysis_tasks': 'task',
     'analysis_test_groups': 'testgroup',
     'bug_trackers': 'tracker',
@@ -151,6 +152,7 @@ const tableToPrefixMap = {
     'commit_sets': 'commitset',
     'commit_set_relationships': 'commitset',
     'run_iterations': 'iteration',
+    'uploaded_files': 'file',
 }
 
 if (typeof module != 'undefined')

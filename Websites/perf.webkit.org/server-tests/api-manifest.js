@@ -26,12 +26,12 @@ describe('/api/manifest', function () {
                 builders: {},
                 dashboard: {},
                 dashboards: {},
+                fileUploadSizeLimit: 2097152, // 2MB during testing.
                 metrics: {},
                 repositories: {},
                 tests: {},
                 triggerables: {},
                 summaryPages: [],
-                fileUploadSizeLimit: 0,
                 status: 'OK'
             });
         });

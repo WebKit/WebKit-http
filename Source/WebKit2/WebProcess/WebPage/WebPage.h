@@ -1048,13 +1048,14 @@ private:
     void loadString(const LoadParameters&);
     void loadAlternateHTMLString(const LoadParameters&);
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
-    void reload(uint64_t navigationID, bool reloadFromOrigin, bool contentBlockersEnabled, const SandboxExtension::Handle&);
+    void reload(uint64_t navigationID, uint32_t reloadOptions, const SandboxExtension::Handle&);
     void goForward(uint64_t navigationID, uint64_t);
     void goBack(uint64_t navigationID, uint64_t);
     void goToBackForwardItem(uint64_t navigationID, uint64_t);
     void tryRestoreScrollPosition();
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&, uint64_t callbackID);
     void updateIsInWindow(bool isInitialState = false);
+    void visibilityDidChange();
     void setActivityState(WebCore::ActivityState::Flags, bool wantsDidUpdateActivityState, const Vector<uint64_t>& callbackIDs);
     void validateCommand(const String&, uint64_t);
     void executeEditCommand(const String&, const String&);
@@ -1188,8 +1189,8 @@ private:
 #endif
 
 #if ENABLE(WEB_RTC)
-    void disableICECandidateFiltering() { m_page->rtcController().disableICECandidateFiltering(); }
-    void enableICECandidateFiltering() { m_page->rtcController().enableICECandidateFiltering(); }
+    void disableICECandidateFiltering();
+    void enableICECandidateFiltering();
 #if USE(LIBWEBRTC)
     void disableEnumeratingAllNetworkInterfaces() { m_page->libWebRTCProvider().disableEnumeratingAllNetworkInterfaces(); }
     void enableEnumeratingAllNetworkInterfaces() { m_page->libWebRTCProvider().enableEnumeratingAllNetworkInterfaces(); }
@@ -1547,6 +1548,10 @@ private:
 
 #if USE(OS_STATE)
     std::chrono::system_clock::time_point m_loadCommitTime;
+#endif
+
+#if ENABLE(WEB_RTC)
+    bool m_shouldDoICECandidateFiltering { true };
 #endif
 
     WebCore::UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { WebCore::UserInterfaceLayoutDirection::LTR };

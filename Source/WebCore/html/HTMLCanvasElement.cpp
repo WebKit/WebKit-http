@@ -37,6 +37,7 @@
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
+#include "GPUBasedCanvasRenderingContext.h"
 #include "GeometryUtilities.h"
 #include "GraphicsContext.h"
 #include "HTMLNames.h"
@@ -394,7 +395,7 @@ void HTMLCanvasElement::reset()
     setSurfaceSize(newSize);
 
     if (isGPUBased() && oldSize != size())
-        downcast<GPUBasedCanvasRenderingContext>(*m_context.get()).reshape(width(), height());
+        downcast<GPUBasedCanvasRenderingContext>(*m_context).reshape(width(), height());
 
     auto renderer = this->renderer();
     if (is<RenderHTMLCanvas>(renderer)) {
@@ -460,7 +461,7 @@ void HTMLCanvasElement::paint(GraphicsContext& context, const LayoutRect& r)
     }
 
     if (isGPUBased())
-        downcast<GPUBasedCanvasRenderingContext>(*m_context.get()).markLayerComposited();
+        downcast<GPUBasedCanvasRenderingContext>(*m_context).markLayerComposited();
 }
 
 bool HTMLCanvasElement::isGPUBased() const
