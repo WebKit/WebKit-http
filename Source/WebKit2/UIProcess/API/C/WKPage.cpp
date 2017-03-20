@@ -2705,11 +2705,6 @@ void WKPagePostMessageToInjectedBundle(WKPageRef pageRef, WKStringRef messageNam
     toImpl(pageRef)->postMessageToInjectedBundle(toImpl(messageNameRef)->string(), toImpl(messageBodyRef));
 }
 
-void WKPagePostSynchronousMessageToInjectedBundle(WKPageRef pageRef, WKStringRef messageNameRef, WKTypeRef messageBodyRef)
-{
-    toImpl(pageRef)->postSynchronousMessageToInjectedBundle(toImpl(messageNameRef)->string(), toImpl(messageBodyRef));
-}
-
 WKArrayRef WKPageCopyRelatedPages(WKPageRef pageRef)
 {
     Vector<RefPtr<API::Object>> relatedPages;

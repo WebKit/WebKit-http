@@ -1004,7 +1004,6 @@ public:
 #endif
 
     void postMessageToInjectedBundle(const String& messageName, API::Object* messageBody);
-    void postSynchronousMessageToInjectedBundle(const String& messageName, API::Object* messageBody);
 
 #if ENABLE(INPUT_TYPE_COLOR)
     void setColorPickerColor(const WebCore::Color&);

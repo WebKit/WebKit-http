@@ -1845,16 +1845,6 @@ void WebPage::postInjectedBundleMessage(const String& messageName, const UserDat
     injectedBundle->didReceiveMessageToPage(this, messageName, webProcess.transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPage::postSynchronousInjectedBundleMessage(const String& messageName, const UserData& userData)
-{
-    auto& webProcess = WebProcess::singleton();
-    InjectedBundle* injectedBundle = webProcess.injectedBundle();
-    if (!injectedBundle)
-        return;
-
-    injectedBundle->didReceiveMessageToPage(this, messageName, webProcess.transformHandlesToObjects(userData.object()).get());
-}
-
 #if !PLATFORM(IOS)
 
 void WebPage::setHeaderPageBanner(PageBanner* pageBanner)

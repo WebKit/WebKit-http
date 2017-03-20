@@ -4542,11 +4542,6 @@ void WebPageProxy::postMessageToInjectedBundle(const String& messageName, API::O
     process().send(Messages::WebPage::PostInjectedBundleMessage(messageName, UserData(process().transformObjectsToHandles(messageBody).get())), m_pageID);
 }
 
-void WebPageProxy::postSynchronousMessageToInjectedBundle(const String& messageName, API::Object* messageBody)
-{
-    process().sendSync(Messages::WebPage::PostSynchronousInjectedBundleMessage(messageName, UserData(process().transformObjectsToHandles(messageBody).get())), Messages::WebPage::PostSynchronousInjectedBundleMessage::Reply(), m_pageID);
-}
-
 #if PLATFORM(GTK)
 void WebPageProxy::failedToShowPopupMenu()
 {
