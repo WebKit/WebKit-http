@@ -50,8 +50,7 @@ void WebPage::platformEditorState(Frame&, EditorState&, IncludePostLayoutDataHin
 
 void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
 {
-    m_page->settings().setAllowRunningOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowRunningOfInsecureContentKey()));
-    m_page->settings().setAllowDisplayOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowDisplayOfInsecureContentKey()));
+    notImplemented();
 }
 
 bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&)

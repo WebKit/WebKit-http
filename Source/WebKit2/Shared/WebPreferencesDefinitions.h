@@ -169,8 +169,6 @@
     macro(MediaDataLoadsAutomatically, mediaDataLoadsAutomatically, Bool, bool, DEFAULT_MEDIA_DATA_LOADS_AUTOMATICALLY, "", "") \
     macro(AllowsPictureInPictureMediaPlayback, allowsPictureInPictureMediaPlayback, Bool, bool, DEFAULT_ALLOWS_PICTURE_IN_PICTURE_MEDIA_PLAYBACK, "", "") \
     macro(AllowsAirPlayForMediaPlayback, allowsAirPlayForMediaPlayback, Bool, bool, true, "", "") \
-    macro(AllowRunningOfInsecureContent, allowRunningOfInsecureContent, Bool, bool, false, "", "") \
-    macro(AllowDisplayOfInsecureContent, allowDisplayOfInsecureContent, Bool, bool, false, "", "") \
     macro(MediaControlsScaleWithPageZoom, mediaControlsScaleWithPageZoom, Bool, bool, DEFAULT_MEDIA_CONTROLS_SCALE_WITH_PAGE_ZOOM, "", "") \
     macro(InspectorStartsAttached, inspectorStartsAttached, Bool, bool, true, "", "") \
     macro(ShowsToolTipOverTruncatedText, showsToolTipOverTruncatedText, Bool, bool, false, "", "") \

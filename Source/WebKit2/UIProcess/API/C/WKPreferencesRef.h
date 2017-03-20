@@ -292,14 +292,6 @@ WK_EXPORT void WKPreferencesSetApplePayEnabled(WKPreferencesRef preferencesRef, 
 WK_EXPORT bool WKPreferencesGetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef);
 WK_EXPORT void WKPreferencesSetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef, bool allowed);
 
-// Defaults to false.
-WK_EXPORT void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
-WK_EXPORT bool WKPreferencesGetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef);
-
-// Defaults to false.
-WK_EXPORT void WKPreferencesSetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
-WK_EXPORT bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef);
-
 #ifdef __cplusplus
 }
 #endif

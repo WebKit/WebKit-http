@@ -1730,23 +1730,3 @@ bool WKPreferencesGetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPr
 {
     return toImpl(preferencesRef)->shouldSuppressKeyboardInputDuringProvisionalNavigation();
 }
-
-void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setAllowRunningOfInsecureContent(enabled);
-}
-
-bool WKPreferencesGetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->allowRunningOfInsecureContent();
-}
-
-void WKPreferencesSetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setAllowDisplayOfInsecureContent(enabled);
-}
-
-bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->allowDisplayOfInsecureContent();
-}
