@@ -29,24 +29,12 @@
 
 #include "ChildProcessMain.h"
 #include "NetworkProcessMainUnix.h"
-#include <WebCore/SoupNetworkSession.h>
 
 namespace WebKit {
 
-class NetworkProcessMain final: public ChildProcessMainBase {
-public:
-    bool platformInitialize() override
-    {
-#if PLATFORM(WPE)
-        WebCore::SoupNetworkSession::setProxySettingsFromEnvironment();
-#endif
-        return true;
-    }
-};
-
 int NetworkProcessMainUnix(int argc, char** argv)
 {
-    return ChildProcessMain<NetworkProcess, NetworkProcessMain>(argc, argv);
+    return ChildProcessMain<NetworkProcess, ChildProcessMainBase>(argc, argv);
 }
 
 } // namespace WebKit
