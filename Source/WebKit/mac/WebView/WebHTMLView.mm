@@ -138,6 +138,7 @@
 #import <wtf/MathExtras.h>
 #import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/RunLoop.h>
+#import <wtf/SystemTracing.h>
 
 #if !PLATFORM(IOS)
 #import "WebNSEventExtras.h"
@@ -2553,7 +2554,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
             
         NSDictionary *documentAttributes = [[NSDictionary alloc] initWithObjectsAndKeys:
             [[self class] _excludedElementsForAttributedStringConversion], NSExcludedElementsDocumentAttribute,
-            self, @"WebResourceHandler", nil];
+            nil];
         NSArray *s;
         
         BOOL wasDeferringCallbacks = [[self _webView] defersCallbacks];
@@ -4194,6 +4195,8 @@ static BOOL currentScrollIsBlit(NSView *clipView)
 - (void)drawRect:(NSRect)rect
 {
     LOG(View, "%@ drawing", self);
+    
+    TraceScope scope(WebHTMLViewPaintStart, WebHTMLViewPaintEnd);
 
 #if !PLATFORM(IOS)
     const NSRect *rects;
@@ -5629,7 +5632,7 @@ static RetainPtr<CFStringRef> fontNameForDescription(NSString *familyName, BOOL 
     // Find the font the same way the rendering code would later if it encountered this CSS.
     FontDescription fontDescription;
     fontDescription.setIsItalic(italic);
-    fontDescription.setWeight(bold ? FontWeight900 : FontWeight500);
+    fontDescription.setWeight(bold ? FontSelectionValue(900) : FontSelectionValue(500));
     RefPtr<Font> font = FontCache::singleton().fontForFamily(fontDescription, familyName);
     return adoptCF(CTFontCopyPostScriptName(font->getCTFont()));
 }
@@ -7211,7 +7214,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     [self _updateSecureInputState];
 
-    if (!coreFrame->editor().hasComposition() || coreFrame->editor().ignoreCompositionSelectionChange())
+    if (!coreFrame->editor().hasComposition() || coreFrame->editor().ignoreSelectionChanges())
         return;
 
     unsigned start;

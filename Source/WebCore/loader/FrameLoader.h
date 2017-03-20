@@ -81,6 +81,7 @@ struct FrameLoadRequest;
 struct WindowFeatures;
 
 WEBCORE_EXPORT bool isBackForwardLoadType(FrameLoadType);
+WEBCORE_EXPORT bool isReload(FrameLoadType);
 
 class FrameLoader {
     WTF_MAKE_NONCOPYABLE(FrameLoader);
@@ -119,7 +120,7 @@ public:
     WEBCORE_EXPORT void urlSelected(const URL&, const String& target, Event*, LockHistory, LockBackForwardList, ShouldSendReferrer, ShouldOpenExternalURLsPolicy, std::optional<NewFrameOpenerPolicy> = std::nullopt, const AtomicString& downloadAttribute = nullAtom);
     void submitForm(Ref<FormSubmission>&&);
 
-    WEBCORE_EXPORT void reload(bool endToEndReload = false, bool contentBlockersEnabled = true);
+    WEBCORE_EXPORT void reload(OptionSet<ReloadOption> = { });
     WEBCORE_EXPORT void reloadWithOverrideEncoding(const String& overrideEncoding);
 
     void open(CachedFrameBase&);
@@ -334,7 +335,7 @@ private:
     void continueFragmentScrollAfterNavigationPolicy(const ResourceRequest&, bool shouldContinue);
 
     bool shouldPerformFragmentNavigation(bool isFormSubmission, const String& httpMethod, FrameLoadType, const URL&);
-    void scrollToFragmentWithParentBoundary(const URL&);
+    void scrollToFragmentWithParentBoundary(const URL&, bool isNewNavigation = true);
 
     void checkLoadCompleteForThisFrame();
 
@@ -345,7 +346,8 @@ private:
     void setState(FrameState);
 
     void closeOldDataSources();
-    void prepareForCachedPageRestore();
+    void willRestoreFromCachedPage();
+    void didRestoreFromCachedPage();
 
     bool shouldReloadToHandleUnreachableURL(DocumentLoader*);
 

@@ -156,13 +156,13 @@ RenderElement::~RenderElement()
         view().unregisterForVisibleInViewportCallback(*this);
 }
 
-RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&& style)
+RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&& style, RendererCreationType creationType)
 {
     // Minimal support for content properties replacing an entire element.
     // Works only if we have exactly one piece of content and it's a URL.
     // Otherwise acts as if we didn't support this feature.
     const ContentData* contentData = style.contentData();
-    if (contentData && !contentData->next() && is<ImageContentData>(*contentData) && !element.isPseudoElement()) {
+    if (creationType == CreateAllRenderers && contentData && !contentData->next() && is<ImageContentData>(*contentData) && !element.isPseudoElement()) {
         Style::loadPendingResources(style, element.document(), &element);
         auto& styleImage = downcast<ImageContentData>(*contentData).image();
         auto image = createRenderer<RenderImage>(element, WTFMove(style), const_cast<StyleImage*>(&styleImage));
@@ -175,32 +175,15 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&
     case CONTENTS:
         return nullptr;
     case INLINE:
-        return createRenderer<RenderInline>(element, WTFMove(style));
+        if (creationType == CreateAllRenderers)
+            return createRenderer<RenderInline>(element, WTFMove(style));
+        FALLTHROUGH; // Fieldsets should make a block flow if display:inline is set.
     case BLOCK:
     case INLINE_BLOCK:
     case COMPACT:
         return createRenderer<RenderBlockFlow>(element, WTFMove(style));
     case LIST_ITEM:
         return createRenderer<RenderListItem>(element, WTFMove(style));
-    case TABLE:
-    case INLINE_TABLE:
-        return createRenderer<RenderTable>(element, WTFMove(style));
-    case TABLE_ROW_GROUP:
-    case TABLE_HEADER_GROUP:
-    case TABLE_FOOTER_GROUP:
-        return createRenderer<RenderTableSection>(element, WTFMove(style));
-    case TABLE_ROW:
-        return createRenderer<RenderTableRow>(element, WTFMove(style));
-    case TABLE_COLUMN_GROUP:
-    case TABLE_COLUMN:
-        return createRenderer<RenderTableCol>(element, WTFMove(style));
-    case TABLE_CELL:
-        return createRenderer<RenderTableCell>(element, WTFMove(style));
-    case TABLE_CAPTION:
-        return createRenderer<RenderTableCaption>(element, WTFMove(style));
-    case BOX:
-    case INLINE_BOX:
-        return createRenderer<RenderDeprecatedFlexibleBox>(element, WTFMove(style));
     case FLEX:
     case INLINE_FLEX:
     case WEBKIT_FLEX:
@@ -209,6 +192,34 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&
     case GRID:
     case INLINE_GRID:
         return createRenderer<RenderGrid>(element, WTFMove(style));
+    case BOX:
+    case INLINE_BOX:
+        return createRenderer<RenderDeprecatedFlexibleBox>(element, WTFMove(style));
+    default: {
+        if (creationType == OnlyCreateBlockAndFlexboxRenderers)
+            return createRenderer<RenderBlockFlow>(element, WTFMove(style));
+        switch (style.display()) {
+        case TABLE:
+        case INLINE_TABLE:
+            return createRenderer<RenderTable>(element, WTFMove(style));
+        case TABLE_CELL:
+            return createRenderer<RenderTableCell>(element, WTFMove(style));
+        case TABLE_CAPTION:
+            return createRenderer<RenderTableCaption>(element, WTFMove(style));
+        case TABLE_ROW_GROUP:
+        case TABLE_HEADER_GROUP:
+        case TABLE_FOOTER_GROUP:
+            return createRenderer<RenderTableSection>(element, WTFMove(style));
+        case TABLE_ROW:
+            return createRenderer<RenderTableRow>(element, WTFMove(style));
+        case TABLE_COLUMN_GROUP:
+        case TABLE_COLUMN:
+            return createRenderer<RenderTableCol>(element, WTFMove(style));
+        default:
+            break;
+        }
+        break;
+    }
     }
     ASSERT_NOT_REACHED();
     return nullptr;
@@ -554,7 +565,7 @@ void RenderElement::insertChildInternal(RenderObject* newChild, RenderObject* be
     }
 
     newChild->initializeFlowThreadStateOnInsertion();
-    if (!documentBeingDestroyed()) {
+    if (!renderTreeBeingDestroyed()) {
         if (notifyChildren == NotifyChildren)
             newChild->insertedIntoTree();
         if (is<RenderElement>(*newChild))
@@ -585,7 +596,7 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
     // So that we'll get the appropriate dirty bit set (either that a normal flow child got yanked or
     // that a positioned child got yanked). We also repaint, so that the area exposed when the child
     // disappears gets repainted properly.
-    if (!documentBeingDestroyed() && notifyChildren == NotifyChildren && oldChild.everHadLayout()) {
+    if (!renderTreeBeingDestroyed() && notifyChildren == NotifyChildren && oldChild.everHadLayout()) {
         oldChild.setNeedsLayoutAndPrefWidthsRecalc();
         // We only repaint |oldChild| if we have a RenderLayer as its visual overflow may not be tracked by its parent.
         if (oldChild.isBody())
@@ -600,15 +611,15 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
     else if (is<RenderLineBreak>(oldChild))
         downcast<RenderLineBreak>(oldChild).deleteInlineBoxWrapper();
     
-    if (!documentBeingDestroyed() && is<RenderFlexibleBox>(this) && !oldChild.isFloatingOrOutOfFlowPositioned() && oldChild.isBox())
+    if (!renderTreeBeingDestroyed() && is<RenderFlexibleBox>(this) && !oldChild.isFloatingOrOutOfFlowPositioned() && oldChild.isBox())
         downcast<RenderFlexibleBox>(this)->clearCachedChildIntrinsicContentLogicalHeight(downcast<RenderBox>(oldChild));
 
     // If oldChild is the start or end of the selection, then clear the selection to
     // avoid problems of invalid pointers.
-    if (!documentBeingDestroyed() && oldChild.isSelectionBorder())
+    if (!renderTreeBeingDestroyed() && oldChild.isSelectionBorder())
         frame().selection().setNeedsSelectionUpdate();
 
-    if (!documentBeingDestroyed() && notifyChildren == NotifyChildren)
+    if (!renderTreeBeingDestroyed() && notifyChildren == NotifyChildren)
         oldChild.willBeRemovedFromTree();
 
     oldChild.resetFlowThreadStateOnRemoval();
@@ -635,7 +646,7 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
 
     // rendererRemovedFromTree walks the whole subtree. We can improve performance
     // by skipping this step when destroying the entire tree.
-    if (!documentBeingDestroyed() && is<RenderElement>(oldChild))
+    if (!renderTreeBeingDestroyed() && is<RenderElement>(oldChild))
         RenderCounter::rendererRemovedFromTree(downcast<RenderElement>(oldChild));
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
@@ -810,6 +821,8 @@ void RenderElement::propagateStyleToAnonymousChildren(StylePropagationType propa
         if (elementChild.isInFlowPositioned() && downcast<RenderBlock>(elementChild).isAnonymousBlockContinuation())
             newStyle.setPosition(elementChild.style().position());
 
+        updateAnonymousChildStyle(elementChild, newStyle);
+        
         elementChild.setStyle(WTFMove(newStyle));
     }
 }
@@ -1000,13 +1013,8 @@ void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldS
     if (s_affectsParentBlock)
         handleDynamicFloatPositionChange();
 
-    if (s_noLongerAffectsParentBlock) {
+    if (s_noLongerAffectsParentBlock)
         removeAnonymousWrappersForInlinesIfNecessary();
-        // Fresh floats need to be reparented if they actually belong to the previous anonymous block.
-        // It copies the logic of RenderBlock::addChildIgnoringContinuation
-        if (style().isFloating() && previousSibling() && previousSibling()->isAnonymousBlock())
-            downcast<RenderBoxModelObject>(*parent()).moveChildTo(&downcast<RenderBoxModelObject>(*previousSibling()), this);
-    }
 
     SVGRenderSupport::styleChanged(*this, oldStyle);
 
@@ -1094,7 +1102,7 @@ void RenderElement::willBeRemovedFromTree()
 
 inline void RenderElement::clearLayoutRootIfNeeded() const
 {
-    if (documentBeingDestroyed())
+    if (renderTreeBeingDestroyed())
         return;
 
     if (view().frameView().layoutRoot() != this)
@@ -1119,13 +1127,16 @@ void RenderElement::willBeDestroyed()
 
     destroyLeftoverChildren();
 
+    if (isRegisteredForVisibleInViewportCallback())
+        unregisterForVisibleInViewportCallback();
+
     if (hasCounterNodeMap())
         RenderCounter::destroyCounterNodes(*this);
 
     RenderObject::willBeDestroyed();
 
 #if !ASSERT_DISABLED
-    if (!documentBeingDestroyed() && view().hasRenderNamedFlowThreads()) {
+    if (!renderTreeBeingDestroyed() && view().hasRenderNamedFlowThreads()) {
         // After remove, the object and the associated information should not be in any flow thread.
         for (auto& flowThread : *view().flowThreadController().renderNamedFlowThreadList()) {
             ASSERT(!flowThread->hasChildInfo(this));
@@ -1206,9 +1217,10 @@ void RenderElement::paintAsInlineBlock(PaintInfo& paintInfo, const LayoutPoint& 
     // Paint all phases atomically, as though the element established its own stacking context.
     // (See Appendix E.2, section 6.4 on inline block/table/replaced elements in the CSS2.1 specification.)
     // This is also used by other elements (e.g. flex items and grid items).
-    if (paintInfo.phase == PaintPhaseSelection) {
+    PaintPhase paintPhaseToUse = isExcludedAndPlacedInBorder() ? paintInfo.phase : PaintPhaseForeground;
+    if (paintInfo.phase == PaintPhaseSelection)
         paint(paintInfo, childPoint);
-    } else if (paintInfo.phase == PaintPhaseForeground) {
+    else if (paintInfo.phase == paintPhaseToUse) {
         paintPhase(*this, PaintPhaseBlockBackground, paintInfo, childPoint);
         paintPhase(*this, PaintPhaseChildBlockBackgrounds, paintInfo, childPoint);
         paintPhase(*this, PaintPhaseFloat, paintInfo, childPoint);
@@ -1216,7 +1228,7 @@ void RenderElement::paintAsInlineBlock(PaintInfo& paintInfo, const LayoutPoint& 
         paintPhase(*this, PaintPhaseOutline, paintInfo, childPoint);
 
         // Reset |paintInfo| to the original phase.
-        paintInfo.phase = PaintPhaseForeground;
+        paintInfo.phase = paintPhaseToUse;
     }
 }
 

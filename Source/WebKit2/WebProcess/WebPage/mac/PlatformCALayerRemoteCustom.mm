@@ -82,7 +82,7 @@ PlatformCALayerRemoteCustom::PlatformCALayerRemoteCustom(LayerType layerType, Pl
     m_platformLayer = customLayer;
     [customLayer web_disableAllActions];
 
-    m_providesContents = layerType == LayerTypeWebGLLayer;
+    m_providesContents = layerType == LayerTypeContentsProvidedLayer;
 
     properties().position = FloatPoint3D(customLayer.position.x, customLayer.position.y, customLayer.zPosition);
     properties().anchorPoint = FloatPoint3D(customLayer.anchorPoint.x, customLayer.anchorPoint.y, customLayer.anchorPointZ);
@@ -121,7 +121,7 @@ PassRefPtr<WebCore::PlatformCALayer> PlatformCALayerRemoteCustom::clone(Platform
         }
 
         copyContents = false;
-    } else if (layerType() == LayerTypeWebGLLayer) {
+    } else if (layerType() == LayerTypeContentsProvidedLayer) {
         clonedLayer = adoptNS([[CALayer alloc] init]);
         // FIXME: currently copying WebGL contents breaks the original layer.
         copyContents = false;

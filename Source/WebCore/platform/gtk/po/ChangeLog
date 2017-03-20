@@ -1,3 +1,36 @@
+2017-03-18  Yuri Chornoivan  <yurchor@ukr.net>
+
+        Update Ukrainian translation
+        https://bugs.webkit.org/show_bug.cgi?id=169812
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * uk.po:
+
+2017-03-13  Josef Andersson  <l10nl18nsweja@gmail.com>
+
+        Updated Swedish translation
+        https://bugs.webkit.org/show_bug.cgi?id=169549
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * sv.po:
+
+2017-03-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, restore inadvertently-removed non-breaking spaces in Polish translation
+
+        * pl.po:
+
+2017-03-02  Piotr Drąg  <piotrdrag@gmail.com>
+
+        [l10n] Updated Polish translation of WebKitGTK+ for 2.16
+        https://bugs.webkit.org/show_bug.cgi?id=169072
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * pl.po:
+
 2017-02-14  Rafael Fontenelle  <rafaelff@gnome.org>
 
         [GTK] [l10n] Updated Brazilian Portuguese translation of WebKitGTK+

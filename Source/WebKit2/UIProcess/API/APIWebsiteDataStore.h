@@ -26,7 +26,7 @@
 #ifndef APIWebsiteDataStore_h
 #define APIWebsiteDataStore_h
 
-#include "APIObject.h"
+#include "APIHTTPCookieStore.h"
 #include "WebsiteDataStore.h"
 #include <WebCore/SessionID.h>
 #include <wtf/text/WTFString.h>
@@ -35,9 +35,11 @@ namespace API {
 
 class WebsiteDataStore final : public ObjectImpl<Object::Type::WebsiteDataStore> {
 public:
-    static RefPtr<WebsiteDataStore> defaultDataStore();
+    static Ref<WebsiteDataStore> defaultDataStore();
     static Ref<WebsiteDataStore> createNonPersistentDataStore();
     static Ref<WebsiteDataStore> create(WebKit::WebsiteDataStore::Configuration);
+
+    explicit WebsiteDataStore(WebKit::WebsiteDataStore::Configuration);
     virtual ~WebsiteDataStore();
 
     bool isPersistent();
@@ -47,6 +49,7 @@ public:
     void registerSharedResourceLoadObserver();
 
     WebKit::WebsiteDataStore& websiteDataStore() { return *m_websiteDataStore; }
+    HTTPCookieStore& httpCookieStore();
 
     static String defaultApplicationCacheDirectory();
     static String defaultNetworkCacheDirectory();
@@ -58,17 +61,21 @@ public:
     static String defaultWebSQLDatabaseDirectory();
     static String defaultResourceLoadStatisticsDirectory();
 
-private:
-    WebsiteDataStore(WebKit::WebsiteDataStore::Configuration);
-    WebsiteDataStore();
-
-    static String tempDirectoryFileSystemRepresentation(const String& directoryName);
-    static String cacheDirectoryFileSystemRepresentation(const String& directoryName);
-    static String websiteDataDirectoryFileSystemRepresentation(const String& directoryName);
+    static String defaultJavaScriptConfigurationDirectory();
 
     static WebKit::WebsiteDataStore::Configuration defaultDataStoreConfiguration();
 
+private:
+    enum ShouldCreateDirectory { CreateDirectory, DontCreateDirectory };
+
+    WebsiteDataStore();
+
+    static String tempDirectoryFileSystemRepresentation(const String& directoryName, ShouldCreateDirectory shouldCreateDirectory = CreateDirectory);
+    static String cacheDirectoryFileSystemRepresentation(const String& directoryName);
+    static String websiteDataDirectoryFileSystemRepresentation(const String& directoryName);
+
     RefPtr<WebKit::WebsiteDataStore> m_websiteDataStore;
+    RefPtr<HTTPCookieStore> m_apiHTTPCookieStore;
 };
 
 }

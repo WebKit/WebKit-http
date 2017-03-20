@@ -81,7 +81,6 @@ public:
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Fill);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(FontFamily);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(FontSize);
-    DECLARE_PROPERTY_CUSTOM_HANDLERS(FontWeight);
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     DECLARE_PROPERTY_CUSTOM_HANDLERS(ImageResolution);
 #endif
@@ -139,6 +138,8 @@ public:
     static void applyValueWritingMode(StyleResolver&, CSSValue&);
     static void applyValueAlt(StyleResolver&, CSSValue&);
     static void applyValueWillChange(StyleResolver&, CSSValue&);
+
+    static void applyValueStrokeWidth(StyleResolver&, CSSValue&);
 
 private:
     static void resetEffectiveZoom(StyleResolver&);
@@ -1295,42 +1296,6 @@ inline void StyleBuilderCustom::applyValueWebkitSvgShadow(StyleResolver& styleRe
     svgStyle.setShadow(std::make_unique<ShadowData>(location, blur, 0, Normal, false, color.isValid() ? color : Color::transparent));
 }
 
-inline void StyleBuilderCustom::applyInitialFontWeight(StyleResolver& styleResolver)
-{
-    auto fontDescription = styleResolver.fontDescription();
-    fontDescription.setWeight(FontWeightNormal);
-    styleResolver.setFontDescription(fontDescription);
-}
-
-inline void StyleBuilderCustom::applyInheritFontWeight(StyleResolver& styleResolver)
-{
-    auto fontDescription = styleResolver.fontDescription();
-    fontDescription.setWeight(styleResolver.parentFontDescription().weight());
-    styleResolver.setFontDescription(fontDescription);
-}
-
-inline void StyleBuilderCustom::applyValueFontWeight(StyleResolver& styleResolver, CSSValue& value)
-{
-    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
-    auto fontDescription = styleResolver.fontDescription();
-    switch (primitiveValue.valueID()) {
-    case CSSValueInvalid:
-        ASSERT_NOT_REACHED();
-        break;
-    case CSSValueBolder:
-        fontDescription.setWeight(styleResolver.parentStyle()->fontDescription().weight());
-        fontDescription.setWeight(fontDescription.bolderWeight());
-        break;
-    case CSSValueLighter:
-        fontDescription.setWeight(styleResolver.parentStyle()->fontDescription().weight());
-        fontDescription.setWeight(fontDescription.lighterWeight());
-        break;
-    default:
-        fontDescription.setWeight(primitiveValue);
-    }
-    styleResolver.setFontDescription(fontDescription);
-}
-
 inline void StyleBuilderCustom::applyInitialColumnGap(StyleResolver& styleResolver)
 {
     styleResolver.style()->setHasNormalColumnGap();
@@ -1815,6 +1780,12 @@ inline void StyleBuilderCustom::applyValueWillChange(StyleResolver& styleResolve
         }
     }
     styleResolver.style()->setWillChange(WTFMove(willChange));
+}
+
+inline void StyleBuilderCustom::applyValueStrokeWidth(StyleResolver& styleResolver, CSSValue& value)
+{
+    styleResolver.style()->setStrokeWidth(StyleBuilderConverter::convertLength(styleResolver, value));
+    styleResolver.style()->setHasExplicitlySetStrokeWidth(true);
 }
 
 } // namespace WebCore

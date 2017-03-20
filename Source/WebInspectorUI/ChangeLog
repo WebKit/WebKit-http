@@ -1,3 +1,1669 @@
+2017-03-19  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r212910): Active call frame status icon has incorrect left margin
+        https://bugs.webkit.org/show_bug.cgi?id=169862
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline .item.call-frame .status):
+        (body[dir=ltr] .tree-outline .item.call-frame .status):
+        (body[dir=rtl] .tree-outline .item.call-frame .status):
+
+2017-03-18  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Empty attribute added to a DOM tree outline element should not add whitespace within the tag
+        https://bugs.webkit.org/show_bug.cgi?id=139623
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._attributeEditingCommitted):
+        If the `newText` after editing has no content, remove the element for that attribute.
+
+2017-03-18  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: add keyboard shortcut to clear timeline records
+        https://bugs.webkit.org/show_bug.cgi?id=132485
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        (WebInspector.TimelineRecordingContentView.prototype.handleClearShortcut):
+
+2017-03-17  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: wrong filename when saving resource from ResourceImageContentView
+        https://bugs.webkit.org/show_bug.cgi?id=54454
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype.get supportsSave):
+        (WebInspector.ResourceContentView.prototype.get saveData):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype.get supportsSave): Deleted.
+        Add save data getter to the parent class, so that both Images and Fonts can be saved.
+
+        * UserInterface/Views/Resource.js:
+        (WebInspector.Resource.prototype.canRequestContent):
+        Drive-by: remove unused function.
+
+2017-03-16  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: memory category timelines would look better with ruler tick-aligned guides
+        https://bugs.webkit.org/show_bug.cgi?id=158100
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/MemoryTimelineView.css:
+        (.timeline-view.memory > .content > .details):
+        (.timeline-view.memory > .content > .details > .timeline-ruler):
+        (body[dir=ltr] .timeline-view.memory > .content > .details > .timeline-ruler):
+        (body[dir=rtl] .timeline-view.memory > .content > .details > .timeline-ruler):
+        Make the TimelineRuler absolutely positioned so it can use the full height of the view,
+        providing enough space for the markers to be visible.
+
+2017-03-16  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Console Evaluation links in the Console should not show normally
+        https://bugs.webkit.org/show_bug.cgi?id=157483
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/CallFrame.js:
+        (WebInspector.CallFrame):
+        (WebInspector.CallFrame.prototype.get isConsoleEvaluation):
+        (WebInspector.CallFrame.fromDebuggerPayload):
+        (WebInspector.CallFrame.fromPayload):
+        Move console evaluation check to the constructor for consistency.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendLocationLink):
+        * UserInterface/Views/StackTraceView.js:
+        (WebInspector.StackTraceView):
+        Only add CallFrameView elements if the corresponding CallFame is not a console evaluation.
+
+2017-03-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r213691): Saving DOM breakpoints broken after refactoring
+        https://bugs.webkit.org/show_bug.cgi?id=169779
+
+        Reviewed by Joseph Pecoraro.
+
+        Use correct method: _saveBreakpoints -> _saveDOMBreakpoints.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WebInspector.DOMDebuggerManager.prototype.addDOMBreakpoint):
+        Remove check before saving to be consistent with similar code in
+        DebuggerManager and DOMDebuggerManager.
+
+2017-03-16  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: add "Save Selected" context menu item to Console
+        https://bugs.webkit.org/show_bug.cgi?id=151837
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.saveDataToFile):
+        Allow data to be saved without a provided URL.  It will default to localized "Untitled".
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent):
+
+2017-03-16  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: selected frame indicator is not positioned correctly
+        https://bugs.webkit.org/show_bug.cgi?id=169763
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype._updateFrameMarker):
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype._mouseClicked):
+        Treat the current mouse position (event.pageX) as a negative value when in RTL, meaning that
+        the delta movement from the starting position is flipped.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (body[dir=ltr] .timeline-ruler > .header > .divider,):
+        (body[dir=rtl] .timeline-ruler > .header > .divider,):
+        (.timeline-ruler > .header > .divider):
+        (.timeline-ruler > .header > .divider > .label):
+        (body[dir=ltr] .timeline-ruler > .header > .divider > .label):
+        (body[dir=rtl] .timeline-ruler > .header > .divider > .label):
+        (.timeline-ruler > .markers > .divider):
+        (.timeline-ruler > .markers > .marker):
+        (body[dir=ltr] .timeline-ruler > .markers > .marker):
+        (body[dir=rtl] .timeline-ruler > .markers > .marker):
+        (.timeline-ruler > .markers > .marker::before):
+        (body[dir=ltr] .timeline-ruler > .markers > .marker::before):
+        (body[dir=rtl] .timeline-ruler > .markers > .marker::before):
+        (body[dir=ltr] .timeline-ruler > .markers > .marker.current-time):
+        (body[dir=rtl] .timeline-ruler > .markers > .marker.current-time):
+        (.timeline-ruler > .markers > .marker.current-time::before):
+        (.timeline-ruler > .markers > .marker.current-time): Deleted.
+
+        (.timeline-ruler > .selection-handle):
+        (body[dir=ltr] .timeline-ruler > .selection-handle.left):
+        (body[dir=rtl] .timeline-ruler > .selection-handle.left):
+        (body[dir=ltr] .timeline-ruler > .selection-handle.right):
+        (body[dir=rtl] .timeline-ruler > .selection-handle.right):
+        Drive-by: add CSS variable for clarity.
+
+2017-03-16  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: filter mode icon in Debugger sidebar is misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=169766
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar > .navigation-bar > .item):
+        (body[dir=ltr] .filter-bar > .navigation-bar > .item):
+        (body[dir=rtl] .filter-bar > .navigation-bar > .item):
+
+2017-03-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Refactoring: remove DebuggerTreeElement class
+        https://bugs.webkit.org/show_bug.cgi?id=169697
+
+        Reviewed by Devin Rousso.
+
+        Remove unnecessary class DebuggerTreeElement from TreeElement class hierarchy.
+        The `sourceCodeLocation` property on IssueMessage and Breakpoint (the debugger
+        objects) can be tested for generically using TreeElement.prototype.representedObject.
+
+        * UserInterface/Main.html:
+        Remove file.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        * UserInterface/Views/IssueTreeElement.js:
+        Change base class to GeneralTreeElement.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._addBreakpoint):
+        (WebInspector.DebuggerSidebarPanel.prototype._compareTreeElements):
+        (WebInspector.DebuggerSidebarPanel.prototype._addIssue):
+        (WebInspector.DebuggerSidebarPanel.prototype._compareDebuggerTreeElements): Deleted.
+        Renamed to just "_compareTreeElements".
+
+        * UserInterface/Views/DebuggerTreeElement.js: Removed.
+
+2017-03-16  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: goto arrow for source locations is pointing wrong way in Timeline data grids
+        https://bugs.webkit.org/show_bug.cgi?id=169764
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DataGrid.css:
+        (body[dir=rtl] .data-grid td .go-to-arrow):
+
+2017-03-16  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: add FindBanner support for RTL layout
+        https://bugs.webkit.org/show_bug.cgi?id=168723
+
+        Reviewed by Timothy Hatcher.
+
+        Due to the large number of CSS tricks used by this widget, adding RTL
+        support involves changing a large number of rules. The important parts:
+
+        - Use '.segmented.{previous,next}-result' instead of '.segmented.
+        {left,right}', this makes the style rules way less confusing for RTL.
+
+        - Flip icons so icons look like "< >" but actions are reversed.
+
+        - Get rid of the weird expanding button divider. This is impossible
+        to mirror with the existing adjacent sibling combinator, and it does
+        not match the system appearance. Just replace the mini-divider with a
+        full divider and remove related dynamic rules that trigger on :active.
+
+        - Always keep the button divider between next/previous on the rightmost
+        button, to avoid subtle differences between LTR and RTL.
+
+        - Fix some mistakes where we weren't using --border-color and also
+        didn't adjust the handcoded border color for the inactive window case.
+
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner):
+        (body[dir=ltr] .find-banner > :first-child,):
+        (body[dir=ltr] .find-banner > :last-child,):
+        (.find-banner > input[type="search"]):
+        (body[dir=ltr] .find-banner > input[type="search"]):
+        (body[dir=rtl] .find-banner > input[type="search"]):
+        (.find-banner > button:active:not(:disabled)):
+        (.find-banner > button.segmented):
+        (.find-banner > button.segmented.previous-result):
+        (body[dir=ltr] .find-banner > button.segmented.previous-result):
+        (body[dir=rtl] .find-banner > button.segmented.previous-result):
+        (body[dir=ltr] .find-banner > button.segmented.previous-result > .glyph):
+        (body[dir=rtl] .find-banner > button.segmented.previous-result > .glyph):
+        (body[dir=ltr] .find-banner > button.segmented.previous-result:active:not(:disabled) > .glyph):
+        (body[dir=rtl] .find-banner > button.segmented.previous-result:active:not(:disabled) > .glyph):
+        (.find-banner > button.segmented.next-result):
+        (body[dir=ltr] .find-banner > button.segmented.next-result):
+        (body[dir=rtl] .find-banner > button.segmented.next-result):
+        (body[dir=ltr] .find-banner > button.segmented.next-result > .glyph):
+        (body[dir=rtl] .find-banner > button.segmented.next-result > .glyph):
+        (body[dir=ltr] .find-banner > button.segmented.next-result:active:not(:disabled) > .glyph):
+        (body[dir=rtl] .find-banner > button.segmented.next-result:active:not(:disabled) > .glyph):
+        (.find-banner.console-find-banner > input[type="search"]):
+        (body[dir=ltr] .find-banner.console-find-banner > input[type="search"]):
+        (body[dir=rtl] .find-banner.console-find-banner > input[type="search"]):
+        (body[dir=ltr] .find-banner.console-find-banner > input[type="search"]::-webkit-textfield-decoration-container):
+        (body[dir=rtl] .find-banner.console-find-banner > input[type="search"]::-webkit-textfield-decoration-container):
+        (.find-banner > :first-child): Deleted.
+        (.find-banner > :last-child): Deleted.
+        (.find-banner > button.segmented.left): Deleted.
+        (.find-banner > button:not(:active).segmented.right:before): Deleted.
+        (.find-banner > button.segmented.left:active + button.segmented.right,): Deleted.
+        (.find-banner > button.segmented.left:active + button.segmented.right:before): Deleted.
+        (.find-banner > button.segmented.left > .glyph): Deleted.
+        (.find-banner > button.segmented.left:active:not(:disabled) > .glyph): Deleted.
+        (.find-banner > button.segmented.right): Deleted.
+        (.find-banner > button.segmented.right > .glyph): Deleted.
+        (.find-banner > button.segmented.right:active:not(:disabled) > .glyph): Deleted.
+        (.find-banner.console-find-banner > input[type="search"]::-webkit-textfield-decoration-container): Deleted.
+
+        * UserInterface/Views/FindBanner.js:
+        (WebInspector.FindBanner):
+        Change left and right to logical names for the buttons, and inline
+        some style classes with single uses.
+
+2017-03-15  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Selecting text in the console does not do what I expect
+        https://bugs.webkit.org/show_bug.cgi?id=169570
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message-text > span > :matches(.console-message-enclosed, .console-message-preview, .console-message-preview-divider)):
+        (.console-message .console-message-location):
+        (.console-message-location.call-frame):
+        Prevent text selection on anything other than the message text.  The other information that
+        is not selectable can still be copied by selecting the message itself and copying.
+
+2017-03-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: Update Arrow Up icon to fit in with the rest of our iconography
+        https://bugs.webkit.org/show_bug.cgi?id=169696
+        <rdar://problem/31073748>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Images/ArrowUp.svg:
+        * UserInterface/Images/gtk/ArrowUp.svg:
+
+2017-03-15  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Add icons for SVG Image cluster path components
+        https://bugs.webkit.org/show_bug.cgi?id=169687
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/Image.svg: Added.
+        * UserInterface/Images/Source.svg: Added.
+        * UserInterface/Images/gtk/Image.svg: Added.
+        * UserInterface/Images/gtk/Source.svg: Added.
+
+        * UserInterface/Views/PathComponentIcons.css:
+        (.image-icon .icon):
+        (.source-icon .icon):
+
+        * UserInterface/Views/SVGImageResourceClusterContentView.js:
+        (WebInspector.SVGImageResourceClusterContentView):
+
+2017-03-15  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: flip Memory timelines
+        https://bugs.webkit.org/show_bug.cgi?id=169694
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/MemoryCategoryView.css:
+        (body[dir=rtl] .memory-category-view > .graph):
+
+2017-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: NetworkAgent may be unavailable
+        https://bugs.webkit.org/show_bug.cgi?id=169691
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshRequestAndResponse):
+        Check that NetworkAgent even exists. An augmented JSContext may have Resources
+        without having a NetworkAgent.
+
+2017-03-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r213622): Web Inspector: DataGrid headers should NOT be centered
+        https://bugs.webkit.org/show_bug.cgi?id=169645
+        <rdar://problem/31051520>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid th):
+        (body[dir=ltr] .data-grid th):
+        (body[dir=rtl] .data-grid th):
+
+2017-03-15  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: SVG image content view should toggle between image and source
+        https://bugs.webkit.org/show_bug.cgi?id=16079
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WebInspector.ResourceClusterContentView.prototype.get responseContentView):
+        Show the SVG cluster content view if the MIME type matches an SVG file.
+
+        * UserInterface/Views/SVGImageResourceClusterContentView.js: Added.
+        (WebInspector.SVGImageResourceClusterContentView):
+        (WebInspector.SVGImageResourceClusterContentView.prototype.get resource):
+        (WebInspector.SVGImageResourceClusterContentView.prototype.get selectionPathComponents):
+        (WebInspector.SVGImageResourceClusterContentView.prototype.shown):
+        (WebInspector.SVGImageResourceClusterContentView.prototype.closed):
+        (WebInspector.SVGImageResourceClusterContentView.prototype.saveToCookie):
+        (WebInspector.SVGImageResourceClusterContentView.prototype.restoreFromCookie):
+        (WebInspector.SVGImageResourceClusterContentView.prototype._pathComponentForContentView):
+        (WebInspector.SVGImageResourceClusterContentView.prototype._identifierForContentView):
+        (WebInspector.SVGImageResourceClusterContentView.prototype._showContentViewForIdentifier):
+        (WebInspector.SVGImageResourceClusterContentView.prototype._pathComponentSelected):
+
+2017-03-15  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for Timeline ruler selections/movement
+        https://bugs.webkit.org/show_bug.cgi?id=169588
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (body[dir=ltr] .timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .selection-handle.right):
+        (body[dir=rtl] .timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .selection-handle.left):
+        (body[dir=ltr] .timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .shaded-area.right):
+        (body[dir=rtl] .timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .shaded-area.left):
+        (.timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .selection-handle.right): Deleted.
+        (.timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .shaded-area.right): Deleted.
+        Fixes alignment of selection handles when in Frames view.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype._handleScrollEvent):
+        Support horizontal scrolling in timelines by treating the current scroll value as negative
+        when in RTL, flipping the scroll direction.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (body[dir=ltr] .timeline-ruler > .selection-handle.left):
+        (body[dir=rtl] .timeline-ruler > .selection-handle.left):
+        (body[dir=ltr] .timeline-ruler > .selection-handle.right):
+        (body[dir=rtl] .timeline-ruler > .selection-handle.right):
+        (body[dir=ltr] .timeline-ruler > .shaded-area.left):
+        (body[dir=rtl] .timeline-ruler > .shaded-area.left):
+        (body[dir=ltr] .timeline-ruler > .shaded-area.right):
+        (body[dir=rtl] .timeline-ruler > .shaded-area.right):
+        (.timeline-ruler > .selection-handle.left): Deleted.
+        (.timeline-ruler > .selection-handle.right): Deleted.
+        (.timeline-ruler > .shaded-area.left): Deleted.
+        (.timeline-ruler > .shaded-area.right): Deleted.
+        Flip the position alignment of the selection handles and shaded areas when in RTL.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._handleMouseDown):
+        (WebInspector.TimelineRuler.prototype._handleMouseMove):
+        (WebInspector.TimelineRuler.prototype._handleMouseUp):
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseDown):
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseMove):
+        Treat the current mouse position (event.pageX) as a negative value when in RTL, meaning that
+        the delta movement from the starting position is flipped.
+
+2017-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: REGRESSION: Elements Tab > Node Details Sidebar > Properties Section is spammed with TypeErrors
+        https://bugs.webkit.org/show_bug.cgi?id=153911
+        <rdar://problem/24520098>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.nodeResolved.inspectedPage_node_collectPrototypes):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.nodeResolved):
+        Update due to naming conventions for code that evalutes in the inspected page.
+
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.fillSection):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshProperties):
+        Create a more complete ObjectTreeView for the different sections.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateChildren):
+        PureAPI behaves the same as ClassAPI and just shows own properties.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.prototype.showOnlyProperties):
+        In only properties mode don't show the Prototype expander at the end.
+
+        (WebInspector.ObjectTreeView.prototype.setPrototypeNameOverride):
+        Allow a prototype name override at the top level. This will allow clients
+        to specify that the object at the top level is a Prototype object, so that
+        ObjectTreePropertyTreeElements can infer the right NativeFunctionParameter
+        information knowing that those properties are on a particular prototype.
+
+        (WebInspector.ObjectTreeView.prototype.update):
+        For the PureAPI use getOwnProperties instead of getDisplayableProperties.
+        This avoids the special handling we have for DOM native properties which
+        we bubble up to the top as value descriptors even though they are actually
+        accessor descriptors on prototypes.
+
+        (WebInspector.ObjectTreeView.prototype._updateProperties):
+        Pass the prototype name override onward for object properties.
+
+2017-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Exception when fetching computed styles can break future updates of section
+        https://bugs.webkit.org/show_bug.cgi?id=169638
+        <rdar://problem/30588688>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.refresh.wrap):
+        (WebInspector.DOMNodeStyles.prototype.refresh):
+        Gracefully handle exceptions. If an exception did happen we
+        would be unable to update these in the future.
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for Memory timeline
+        https://bugs.webkit.org/show_bug.cgi?id=169584
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/MemoryCategoryView.css:
+        (.memory-category-view > .details):
+        (body[dir=ltr] .memory-category-view > .details):
+        (body[dir=rtl] .memory-category-view > .details):
+
+        * UserInterface/Views/MemoryTimelineOverviewGraph.css:
+        (.timeline-overview-graph.memory > .legend):
+        (body[dir=ltr] .timeline-overview-graph.memory > .legend):
+        (body[dir=rtl] .timeline-overview-graph.memory > .legend):
+        (.timeline-overview-graph.memory .memory-pressure-event):
+        (body[dir=ltr] .timeline-overview-graph.memory .memory-pressure-event):
+        (body[dir=rtl] .timeline-overview-graph.memory .memory-pressure-event):
+
+        * UserInterface/Views/MemoryTimelineOverviewGraph.js:
+        (WebInspector.MemoryTimelineOverviewGraph.prototype.layout):
+        Rework the calculation for the marker offset to use "right" in RTL.
+
+        * UserInterface/Views/MemoryTimelineView.css:
+        (.timeline-view.memory > .content > .details > .timeline-ruler):
+        (body[dir=ltr] .timeline-view.memory > .content > .details > .timeline-ruler):
+        (body[dir=rtl] .timeline-view.memory > .content > .details > .timeline-ruler):
+        (.timeline-view.memory > .content > .overview > .divider):
+        (body[dir=ltr] .timeline-view.memory > .content > .overview > .divider):
+        (body[dir=rtl] .timeline-view.memory > .content > .overview > .divider):
+        (.timeline-view.memory .legend):
+        (body[dir=ltr] .timeline-view.memory .legend):
+        (body[dir=rtl] .timeline-view.memory .legend):
+        (.timeline-view.memory .legend > .row):
+        (.timeline-view.memory .legend > .row > .swatch):
+        (body[dir=ltr] .timeline-view.memory .legend > .row > .swatch):
+        (body[dir=rtl] .timeline-view.memory .legend > .row > .swatch):
+        (body[dir=ltr] .timeline-view.memory .legend > .row > :matches(.label, .size)):
+        (body[dir=rtl] .timeline-view.memory .legend > .row > :matches(.label, .size)):
+        (.timeline-view.memory .legend > .row > .label):
+        (.timeline-view.memory .legend > .row > .size):
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for Timeline graphs
+        https://bugs.webkit.org/show_bug.cgi?id=169585
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/HeapAllocationsTimelineOverviewGraph.js:
+        (WebInspector.HeapAllocationsTimelineOverviewGraph.prototype.layout):
+        Rework the calculation for the icon offset to use "right" in RTL.
+
+        * UserInterface/Views/MemoryTimelineOverviewGraph.css:
+        (body[dir=rtl] .timeline-overview-graph.memory > .stacked-line-chart):
+        Flip the chart when in RTL.
+
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar):
+        (body[dir=ltr] .timeline-record-bar > .segment.inactive):
+        (body[dir=rtl] .timeline-record-bar > .segment.inactive):
+        (body[dir=ltr] .timeline-record-bar.unfinished > .segment):
+        (body[dir=rtl] .timeline-record-bar.unfinished > .segment):
+        (body[dir=ltr] .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (body[dir=rtl] .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (body[dir=ltr] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (body[dir=rtl] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (.timeline-record-bar > .segment.inactive,): Deleted.
+        (.timeline-record-bar.has-inactive-segment > .segment:not(.inactive)): Deleted.
+        (:matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)): Deleted.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        Apply the position updates to "right" in RTL.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        (WebInspector.TimelineRecordFrame.prototype.refresh):
+        Apply the position updates to "right" in RTL.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.layout):
+        (WebInspector.TimelineRuler.prototype._updatePositionOfElement):
+        (WebInspector.TimelineRuler.prototype._updateMarkers):
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+        Apply the position updates to "right" in RTL.
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for DataGrid disclosure arrows and indentation
+        https://bugs.webkit.org/show_bug.cgi?id=169582
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DataGrid.css:
+        (body[dir=rtl] .data-grid tr.parent td.disclosure::before):
+        Flip the image in RTL.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._updateScrollbarPadding):
+        Rework the padding calculation for the scrollbar offset to use "right" in RTL.
+
+        * UserInterface/Views/DataGridNode.js:
+        (WebInspector.DataGridNode.prototype.get indentPadding):
+        (WebInspector.DataGridNode.prototype.createCell):
+        Rework the padding calculation for indenting (as a child) to use "right" in RTL.
+
+        (WebInspector.DataGridNode.prototype.isEventWithinDisclosureTriangle):
+        Calculate the position of the ::before triangle based on the layout direction.
+
+        (WebInspector.DataGridNode.prototype.get leftPadding): Deleted.
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: add support for TimelineOverview sidebar and container layout
+        https://bugs.webkit.org/show_bug.cgi?id=169583
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (body[dir=ltr] .timeline-overview > :matches(.navigation-bar.timelines, .tree-outline.timelines)):
+        (body[dir=rtl] .timeline-overview > :matches(.navigation-bar.timelines, .tree-outline.timelines)):
+        (body[dir=ltr] .timeline-overview:not(.frames) > :matches(.scroll-container, .timeline-ruler, .graphs-container)):
+        (body[dir=rtl] .timeline-overview:not(.frames) > :matches(.scroll-container, .timeline-ruler, .graphs-container)):
+        (.timeline-overview > .navigation-bar.timelines):
+        (.timeline-overview > .tree-outline.timelines):
+        (.timeline-overview > .scroll-container):
+        (.timeline-overview > .timeline-ruler):
+        (.timeline-overview > .graphs-container):
+        (.timeline-overview > .scroll-container > .scroll-width-sizer):
+        (body[dir=ltr] .timeline-overview > .scroll-container > .scroll-width-sizer):
+        (body[dir=rtl] .timeline-overview > .scroll-container > .scroll-width-sizer):
+        (.timeline-overview.frames > .graphs-container): Deleted.
+
+2017-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: More accurate Resource Timing data in Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=169577
+
+        Reviewed by Youenn Fablet.
+
+        * UserInterface/Models/ResourceTimingData.js:
+        (WebInspector.ResourceTimingData.prototype.get requestStart):
+        (WebInspector.ResourceTimingData.prototype.get responseStart):
+        Fallback to the startTime if available instead of using the
+        inaccurate WebContentProcess gathered timestamps.
+
+        (WebInspector.ResourceTimingData.prototype.markResponseEndTime):
+        Verify responseEnd compared to other times we may have.
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Remove unnecessary assert for Number.percentageString
+        https://bugs.webkit.org/show_bug.cgi?id=169589
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Utilities.js:
+        (Number.percentageString):
+
+2017-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: allow the user to copy locked CSS selectors in Style - Rules
+        https://bugs.webkit.org/show_bug.cgi?id=169587
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section:matches(.locked, .selector-locked) > .header > .selector):
+
+2017-03-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: color of outgoing message icon should match text color
+        https://bugs.webkit.org/show_bug.cgi?id=169512
+        <rdar://problem/30994284>
+
+        Reviewed by Devin Rousso.
+
+        Include SVG icon as an inline SVG element to make currentColor work.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Views/WebSocketContentView.css:
+        (.web-socket.content-view .outgoing .icon): Deleted.
+        * UserInterface/Views/WebSocketContentView.js:
+        (WebInspector.WebSocketContentView):
+        (WebInspector.WebSocketContentView.prototype.addFrame):
+        (WebInspector.WebSocketContentView.prototype._addRow):
+        (WebInspector.WebSocketContentView.prototype._timeStringFromTimestamp): Deleted.
+        * UserInterface/Views/WebSocketDataGridNode.js: Added.
+        (WebInspector.WebSocketDataGridNode.prototype.createCellContent):
+        (WebInspector.WebSocketDataGridNode.prototype._timeStringFromTimestamp):
+        (WebInspector.WebSocketDataGridNode):
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners detail section is unhelpful, default should show listeners by element rather than by event
+        https://bugs.webkit.org/show_bug.cgi?id=167077
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Views/EventListenerSection.js: Removed.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode.prototype.eventListeners): Renamed to getEventListeners.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.css: Added.
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter):
+        (body[dir=ltr] .sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter):
+        (body[dir=rtl] .sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter:hover):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter:active):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners.collapsed > .header > .filter):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter > select):
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.createOption):
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.createEventListenerSection):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByEvent):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByNode):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.eventListenersCallback):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners):
+        Add a filter to the Event Listeners section that changes the way in which event listeners
+        are grouped.  Currently supports two methods:
+         - Group by Event
+         - Group by Node
+
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup):
+        Add ability to display the event type.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section):
+        Drive-by fix: CSS variable was named incorrectly.
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners section is missing 'once', 'passive' event listener flags
+        https://bugs.webkit.org/show_bug.cgi?id=167080
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup):
+        (WebInspector.EventListenerSectionGroup.prototype._type): Deleted.
+
+2017-03-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add "goto arrow" to DOMNodeTreeElements in the Debugger tab
+        https://bugs.webkit.org/show_bug.cgi?id=168752
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/DOMUtilities.js:
+        (WebInspector.linkifyNodeReference):
+        (WebInspector.linkifyNodeReferenceElement):
+        Expose linkifying an existing element.
+
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WebInspector.DOMNodeTreeElement):
+        (WebInspector.DOMNodeTreeElement.prototype.populateContextMenu):
+        Add "Reveal in DOM Tree" context menu item.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node:not(:hover, .selected) .status .go-to-arrow):
+        Hide the go-to arrow unless hovering or selected.
+
+2017-03-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: RTL: fix broken font content view
+        https://bugs.webkit.org/show_bug.cgi?id=169513
+
+        Reviewed by Brian Burg.
+
+        Add RTL support to the Font content view.
+
+        * UserInterface/Views/FontResourceContentView.css:
+        (.content-view.resource.font .preview > .line > .metric):
+        (body[dir=ltr] .content-view.resource.font .preview > .line > .metric):
+        (body[dir=rtl] .content-view.resource.font .preview > .line > .metric):
+        Compensate for the flipped z-order of the content and metric elements in
+        RTL by pushing metrics below the content.
+
+2017-03-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Only show "Break on..." menu if backend supports DOM breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=169488
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DOMBreakpointTreeController.js:
+        (WebInspector.DOMBreakpointTreeController.appendBreakpointContextMenuItems):
+        Added assert to catch future cases where UI is being added when
+        backend support doesn't exist.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu):
+        Check for backend support.
+
+2017-03-10  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: popover with compositing reasons in Layers sidebar has hard to read layout
+        https://bugs.webkit.org/show_bug.cgi?id=167081
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.css:
+        (.layer-tree-popover):
+        (.layer-tree-popover p):
+        (.layer-tree-popover ul):
+        (body[dir=ltr] .layer-tree-popover ul):
+        (body[dir=rtl] .layer-tree-popover ul):
+        Show `list-item-style` and make the <p> element stand out more (larger and bold).
+
+2017-03-10  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: in Resources tab navigation bar, can't save the same file from context menu item more than once
+        https://bugs.webkit.org/show_bug.cgi?id=165665
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WebInspector.appendContextMenuItemsForSourceCode):
+        Force the "Save As" dialog to appear when saving, as otherwise subsequent clicks on "Save"
+        in the context menu will just override the previously saved file.
+
+2017-03-10  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: REGRESSION(r213149): scope bar items in elements sidebar have wrong padding/margin
+        https://bugs.webkit.org/show_bug.cgi?id=169204
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Sidebar.css:
+        (.sidebar > .navigation-bar):
+        Replace `align-content` with `align-items`, as the former causes the child elements to fill
+        as much vertical space as possible instead of only using the space necessary for its content.
+
+        * UserInterface/Views/ScopeRadioButtonNavigationItem.css:
+        (.scope-radio-button-navigation-item > .arrows):
+        Drive-by fix: ensure that the up/down arrows are not clickable, which would prevent the
+        <select> from showing.
+
+2017-03-09  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add XHR breakpoints UI
+        https://bugs.webkit.org/show_bug.cgi?id=168763
+        <rdar://problem/30952439>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New UI strings.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        Plumbing for XHR breakpoints. Like DOM breakpoints, they are tracked
+        per-page. Unlike DOM breakpoints, they have no separate "resolved"
+        state, and are simply added/removed as the main frame changes.
+
+        (WebInspector.DOMDebuggerManager):
+        (WebInspector.DOMDebuggerManager.prototype.get allRequestsBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype.get xhrBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype.isBreakpointRemovable):
+        (WebInspector.DOMDebuggerManager.prototype.removeDOMBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype.addXHRBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype.removeXHRBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._speculativelyResolveBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype._detachXHRBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._updateXHRBreakpoint.breakpointUpdated):
+        (WebInspector.DOMDebuggerManager.prototype._updateXHRBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._resolveXHRBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._saveXHRBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype._domBreakpointDisabledStateDidChange):
+        (WebInspector.DOMDebuggerManager.prototype._xhrBreakpointDisabledStateDidChange):
+        (WebInspector.DOMDebuggerManager.prototype._mainResourceDidChange):
+        (WebInspector.DOMDebuggerManager.prototype._saveBreakpoints): Deleted.
+        Renamed `saveDOMBreakpoints`.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._pauseReasonFromPayload):
+        Plumbing for XHR breakpoint pause reason.
+
+        * UserInterface/Controllers/XHRBreakpointTreeController.js: Added.
+        Creates the "All Requests" breakpoint, handles DOMDebuggerManager messages,
+        and updates an associated tree outline as XHR breakpoints are added and removed.
+
+        (WebInspector.XHRBreakpointTreeController):
+        (WebInspector.XHRBreakpointTreeController.prototype.revealAndSelect):
+        (WebInspector.XHRBreakpointTreeController.prototype.disconnect):
+        (WebInspector.XHRBreakpointTreeController.prototype._xhrBreakpointAdded):
+        (WebInspector.XHRBreakpointTreeController.prototype._xhrBreakpointRemoved):
+        (WebInspector.XHRBreakpointTreeController.prototype._mainResourceDidChange):
+        (WebInspector.XHRBreakpointTreeController.prototype._reset):
+
+        * UserInterface/Main.html:
+        New files.
+
+        * UserInterface/Models/XHRBreakpoint.js: Added.
+        New model class. XHR breakpoints have an associated URL, which is matched
+        against the request URL when deciding whether to break. An empty URL matches
+        all XMLHttpRequests.
+
+        (WebInspector.XHRBreakpoint):
+        (WebInspector.XHRBreakpoint.prototype.get documentURL):
+        (WebInspector.XHRBreakpoint.prototype.get url):
+        (WebInspector.XHRBreakpoint.prototype.get disabled):
+        (WebInspector.XHRBreakpoint.prototype.set disabled):
+        (WebInspector.XHRBreakpoint.prototype.get serializableInfo):
+        (WebInspector.XHRBreakpoint.prototype.saveIdentityToCookie):
+
+        * UserInterface/Test.html:
+        New files.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.createFromRepresentedObject):
+        Plumbing for new represented object type, to prevent runtime assertion.
+
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WebInspector.DOMBreakpointTreeElement):
+        Reuse BreakpointTreeElement styles.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype.saveStateToCookie):
+        (WebInspector.DebuggerSidebarPanel.prototype.restoreStateFromCookie):
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        (WebInspector.DebuggerSidebarPanel.prototype._addXHRBreakpointButtonClicked):
+        (WebInspector.DebuggerSidebarPanel.prototype.willDismissPopover):
+
+        * UserInterface/Views/InputPopover.css: Added.
+        (.popover .input-popover-content):
+        (.popover .input-popover-content > .editor):
+        (.popover .input-popover-content > .editor > .CodeMirror):
+        (.popover .input-popover-content > .editor > .CodeMirror-scroll):
+
+        * UserInterface/Views/InputPopover.js: Added.
+        New general purpose popover class. Style and structure lifted from
+        the Popover implementation used by the Probe Expressions UI. A follow-up
+        has been filed to switch that UI over to this new class:
+        https://bugs.webkit.org/show_bug.cgi?id=169428.
+
+        (WebInspector.InputPopover):
+        (WebInspector.InputPopover.prototype.get value):
+        (WebInspector.InputPopover.prototype.get result):
+        (WebInspector.InputPopover.prototype.show):
+        (WebInspector.InputPopover.prototype._presentOverTargetElement):
+
+        * UserInterface/Views/XHRBreakpointTreeElement.js: Added.
+        Tree element class for XHR breakpoints. Behaves identically to
+        script and DOM breakpoint tree elements.
+
+        (WebInspector.XHRBreakpointTreeElement):
+        Reuse BreakpointTreeElement styles.
+        (WebInspector.XHRBreakpointTreeElement.prototype.onattach):
+        (WebInspector.XHRBreakpointTreeElement.prototype.ondetach):
+        (WebInspector.XHRBreakpointTreeElement.prototype.ondelete):
+        (WebInspector.XHRBreakpointTreeElement.prototype.onenter):
+        (WebInspector.XHRBreakpointTreeElement.prototype.onspace):
+        (WebInspector.XHRBreakpointTreeElement.prototype.populateContextMenu):
+        (WebInspector.XHRBreakpointTreeElement.prototype._statusImageElementClicked):
+        (WebInspector.XHRBreakpointTreeElement.prototype._statusImageElementFocused):
+        (WebInspector.XHRBreakpointTreeElement.prototype._statusImageElementMouseDown):
+        (WebInspector.XHRBreakpointTreeElement.prototype._toggleBreakpoint):
+        (WebInspector.XHRBreakpointTreeElement.prototype._updateStatus):
+
+2017-03-09  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION (r196271): Web Inspector: DOM element loses focus/active selection after committing an inline attribute editor in DOMTreeOutline
+        https://bugs.webkit.org/show_bug.cgi?id=168119
+        <rdar://problem/30466013>
+
+        Reviewed by Brian Burg.
+
+        Fix a regression caused by http://trac.webkit.org/changeset/196271, which
+        updated WebInspector.isEventTargetAnEditableField to detect the editing
+        scenarios used by DOMTreeElement and DataGrid. This subtly changed the
+        behavior of WebInspector._focusChanged, which expected all editable fields
+        to be backed by a CodeMirror instance.
+
+        * UserInterface/Base/Main.js:
+
+2017-03-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show HTTP protocol version and other Network Load Metrics (IP Address, Priority, Connection ID)
+        https://bugs.webkit.org/show_bug.cgi?id=29687
+        <rdar://problem/19281586>
+
+        Reviewed by Matt Baker and Brian Burg.
+
+        These columns are available in the Network DataGrids, but are
+        initially hidden. They can be shown by right clicking on the
+        table header and showing these columns. We are going to rework
+        the default list of visible columns later.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New localized strings for data grid headers and Low/Medium/High.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidFinishLoading):
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WebInspector.NetworkObserver.prototype.loadingFinished):
+        Pass metrics on to the Resource.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.displayNameForType):
+        (WebInspector.Resource.responseSourceFromPayload):
+        (WebInspector.Resource.networkPriorityFromPayload):
+        (WebInspector.Resource.connectionIdentifierFromPayload):
+        (WebInspector.Resource.prototype.get protocol):
+        (WebInspector.Resource.prototype.get priority):
+        (WebInspector.Resource.prototype.get remoteAddress):
+        (WebInspector.Resource.prototype.get connectionIdentifier):
+        (WebInspector.Resource.prototype.updateWithMetrics):
+        Include metrics accessors and default values.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        Add metrics columns if the backend may be sending them.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.get data):
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.ResourceTimelineDataGridNode.prototype._displayNameForPriority):
+        (WebInspector.ResourceTimelineDataGridNode.prototype._cachedCellContent):
+        Display strings for new columns.
+
+        * UserInterface/Views/TimelineDataGridNode.js:
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        Avoid assertions if Graph column is unavailable.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype.createSettings):
+        (WebInspector.DataGrid.prototype.setColumnVisible):
+        Better support for restoring user preference of initially
+        hidden columns which the user may have shown.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshRequestAndResponse):
+        Show the Protocol and Priority in the Resources sidebar.
+
+2017-03-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Show individual messages in the content pane for a WebSocket
+        https://bugs.webkit.org/show_bug.cgi?id=169011
+
+        Reviewed by Joseph Pecoraro.
+
+        When selecting a Web Socket in Network panel or Resources, display a table
+        of all messages that have been sent and received.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.webSocketWillSendHandshakeRequest):
+        Add a walltime parameter.
+
+        (WebInspector.FrameResourceManager.prototype._webSocketFrameReceivedOrSent):
+        Fix a bug: masked messages are outgoing, not incoming.
+
+        * UserInterface/Images/ArrowUp.svg: Added.
+        * UserInterface/Images/gtk/ArrowUp.svg: Added.
+        Add an icon for outgoing messages.
+
+        * UserInterface/Main.html:
+        * UserInterface/Models/WebSocketResource.js:
+        (WebInspector.WebSocketResource):
+        (WebInspector.WebSocketResource.prototype.get walltime):
+        (WebInspector.WebSocketResource.prototype.addFrame):
+        (WebInspector.WebSocketResource.prototype._walltimeForWebSocketTimestamp):
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WebInspector.NetworkObserver.prototype.webSocketWillSendHandshakeRequest):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameSent):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameError):
+        (WebInspector.NetworkObserver):
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype.treeElementAddedOrChanged):
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WebInspector.ResourceClusterContentView.prototype.get responseContentView):
+        * UserInterface/Views/WebSocketContentView.css: Added.
+        (.web-socket.content-view > .data-grid):
+        (.web-socket.content-view > .data-grid table.data):
+        (.web-socket.content-view > .data-grid td.data-column,):
+        (body[dir=ltr] .web-socket.content-view > .data-grid .data-column > div):
+        (body[dir=rtl] .web-socket.content-view > .data-grid .data-column > div):
+        (.web-socket.content-view .icon):
+        (body[dir=ltr] .web-socket.content-view .icon):
+        (body[dir=rtl] .web-socket.content-view .icon):
+        (.web-socket.content-view .outgoing .icon):
+        (.web-socket.content-view .data-grid.variable-height-rows table.data tr:nth-child(odd)):
+        (.web-socket.content-view .data-grid table.data tr.revealed):
+        (.web-socket.content-view .data-grid.variable-height-rows table.data tr.outgoing):
+        (.web-socket.content-view .data-grid.variable-height-rows table.data tr.non-text-frame):
+
+        * UserInterface/Views/WebSocketContentView.js: Added.
+        (WebInspector.WebSocketContentView):
+        Only show Time column when walltime is available.
+
+        (WebInspector.WebSocketContentView.textForOpcode):
+        (WebInspector.WebSocketContentView.prototype.shown):
+        (WebInspector.WebSocketContentView.prototype.hidden):
+        (WebInspector.WebSocketContentView.prototype.addFrame):
+        (WebInspector.WebSocketContentView.prototype._updateFrames):
+        Only render frames that haven't been rendered yet.
+
+        (WebInspector.WebSocketContentView.prototype._addRow):
+        (WebInspector.WebSocketContentView.prototype._timeStringFromTimestamp):
+
+2017-03-09  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: DOMTreeManager dispatches DocumentUpdated twice when the document is cleared
+        https://bugs.webkit.org/show_bug.cgi?id=168984
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._setDocument):
+        Compare old and new document values before dispatching message.
+
+2017-03-09  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add settings for controlling Styles sidebar intelligence
+        https://bugs.webkit.org/show_bug.cgi?id=169181
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        Add three new settings:
+         - stylesShowInlineWarnings
+         - stylesInsertNewline
+         - stylesSelectOnFirstClick
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseDown):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseUp):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createInlineSwatches.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded):
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings > .separator): Added.
+        (.content-view.settings > .setting-container):
+        (.content-view.settings > .setting-container.combined):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.layout.createContainer):
+        (WebInspector.SettingsTabContentView.prototype.layout.createSeparator): Added.
+        (WebInspector.SettingsTabContentView.prototype.layout):
+
+2017-03-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add DOM breakpoints UI for node/subtree modification events
+        https://bugs.webkit.org/show_bug.cgi?id=168101
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New UI strings.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Add new manager.
+
+        * UserInterface/Controllers/DOMBreakpointTreeController.js: Added.
+        Handles messages from DOMDebuggerManager, and updates an associated
+        tree outline as DOM breakpoints are added and removed.
+        (WebInspector.DOMBreakpointTreeController):
+        (WebInspector.DOMBreakpointTreeController.appendBreakpointContextMenuItems):
+        (WebInspector.DOMBreakpointTreeController.prototype.disconnect):
+        (WebInspector.DOMBreakpointTreeController.prototype._addBreakpointTreeElement):
+        (WebInspector.DOMBreakpointTreeController.prototype._removeBreakpointTreeElement):
+        (WebInspector.DOMBreakpointTreeController.prototype._domBreakpointAdded):
+        (WebInspector.DOMBreakpointTreeController.prototype._domBreakpointRemoved):
+        (WebInspector.DOMBreakpointTreeController.prototype._domBreakpointResolvedStateDidChange):
+        (WebInspector.DOMBreakpointTreeController.prototype._mainResourceDidChange):
+
+        * UserInterface/Controllers/DOMDebuggerManager.js: Added.
+        New frontend manager for the DOMDebugger domain. A DOM breakpoint is
+        described by a location (URL and node path) and type. The manager keeps
+        all known DOM breakpoints in memory, and considers a breakpoint to be
+        "resolved" once its location is pushed to the frontend.
+
+        Breakpoints located within a child frame are still associated with the
+        main frame. Whenever a the main resource of a child frame changes, all
+        unresolved breakpoints associated with the main frame are speculatively
+        resolved.
+
+        (WebInspector.DOMDebuggerManager):
+        (WebInspector.DOMDebuggerManager.prototype.get supported):
+        (WebInspector.DOMDebuggerManager.prototype.get domBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype.domBreakpointsForNode):
+        (WebInspector.DOMDebuggerManager.prototype.addDOMBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype.removeDOMBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._detachDOMBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._detachBreakpointsForFrame):
+        (WebInspector.DOMDebuggerManager.prototype._speculativelyResolveBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype._resolveDOMBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._updateDOMBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._saveBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype._domBreakpointDisabledStateDidChange):
+        (WebInspector.DOMDebuggerManager.prototype._childFrameWasRemoved):
+        (WebInspector.DOMDebuggerManager.prototype._mainFrameDidChange):
+        (WebInspector.DOMDebuggerManager.prototype._mainResourceDidChange):
+        (WebInspector.DOMDebuggerManager.prototype._nodeInserted):
+        (WebInspector.DOMDebuggerManager.prototype._nodeRemoved):
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._pauseReasonFromPayload):
+        Plumbing for DOM breakpoint pause reason.
+
+        * UserInterface/Images/DOMBreakpoint.svg: Added.
+        New art. Visually very similar to a script breakpoint, with some
+        tweaks to make it suitable for display in the DOM tree gutter.
+
+        * UserInterface/Main.html:
+        New files.
+
+        * UserInterface/Models/DOMBreakpoint.js: Added.
+        New model class. DOM breakpoints are either associated with a DOM node
+        when created, or constructed from a cookie and resolved in the future.
+
+        (WebInspector.DOMBreakpoint):
+        (WebInspector.DOMBreakpoint.prototype.get type):
+        (WebInspector.DOMBreakpoint.prototype.get url):
+        (WebInspector.DOMBreakpoint.prototype.get path):
+        (WebInspector.DOMBreakpoint.prototype.get disabled):
+        (WebInspector.DOMBreakpoint.prototype.set disabled):
+        (WebInspector.DOMBreakpoint.prototype.get domNodeIdentifier):
+        (WebInspector.DOMBreakpoint.prototype.set domNodeIdentifier):
+        (WebInspector.DOMBreakpoint.prototype.get serializableInfo):
+        (WebInspector.DOMBreakpoint.prototype.saveIdentityToCookie):
+
+        * UserInterface/Protocol/Legacy/10.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/10.3/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.3/InspectorBackendCommands.js:
+        The DOMDebugger should not be enabled for legacy backends, since legacy
+        backend support was never tested and may have issues.
+
+        * UserInterface/Test.html:
+        New files.
+
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+        Add new manager.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.createFromRepresentedObject):
+        (WebInspector.ContentView.resolvedRepresentedObjectForRepresentedObject):
+        Plumbing for additional represented object types. DOMNode is included
+        because the Debugger sidebar panel shows DOM breakpoint tree elements
+        as children of a DOM node tree element.
+
+        * UserInterface/Views/DOMBreakpointTreeElement.css: Added.
+        (.item.dom-breakpoint .icon):
+        (.item.dom-breakpoint.breakpoint-paused-icon .icon):
+        (.item.dom-breakpoint .status img):
+        (.item.dom-breakpoint .status > img.disabled):
+        Styles for "Pause Reason" and "DOM Breakpoints" sections.
+
+        * UserInterface/Views/DOMBreakpointTreeElement.js: Added.
+        Tree element class for DOM breakpoints. Includes a breakpoint status
+        element and context menu for delete/disable actions, similar to script
+        breakpoint tree elements.
+
+        (WebInspector.DOMBreakpointTreeElement):
+        (WebInspector.DOMBreakpointTreeElement.displayNameForType):
+        (WebInspector.DOMBreakpointTreeElement.prototype.onattach):
+        (WebInspector.DOMBreakpointTreeElement.prototype.ondetach):
+        (WebInspector.DOMBreakpointTreeElement.prototype.ondelete):
+        (WebInspector.DOMBreakpointTreeElement.prototype.onenter):
+        (WebInspector.DOMBreakpointTreeElement.prototype.onspace):
+        (WebInspector.DOMBreakpointTreeElement.prototype.populateContextMenu):
+        (WebInspector.DOMBreakpointTreeElement.prototype._statusImageElementClicked):
+        (WebInspector.DOMBreakpointTreeElement.prototype._statusImageElementFocused):
+        (WebInspector.DOMBreakpointTreeElement.prototype._statusImageElementMouseDown):
+        (WebInspector.DOMBreakpointTreeElement.prototype._toggleBreakpoint):
+        (WebInspector.DOMBreakpointTreeElement.prototype._updateStatus):
+
+        * UserInterface/Views/DOMNodeTreeElement.js: Added.
+        Tree element class for DOM nodes, which serves as a parent for DOM
+        breakpoint tree elements. Includes context menu for bulk delete/disable
+        of all child breakpoints.
+
+        (WebInspector.DOMNodeTreeElement):
+        (WebInspector.DOMNodeTreeElement.prototype.ondelete):
+        (WebInspector.DOMNodeTreeElement.prototype.populateContextMenu):
+
+        * UserInterface/Views/DOMTreeContentView.css:
+        Styles for DOM breakpoint gutter and breakpoint indicators, including
+        "left pointing" breakpoints for RTL mode.
+
+        (.content-view.dom-tree.show-gutter .tree-outline.dom):
+        (body[dir=ltr] .content-view.dom-tree.show-gutter .tree-outline.dom):
+        (body[dir=rtl] .content-view.dom-tree.show-gutter .tree-outline.dom):
+        (.content-view.dom-tree .tree-outline.dom li .status-image):
+        (body[dir=ltr] .content-view.dom-tree .tree-outline.dom li .status-image):
+        (body[dir=rtl] .content-view.dom-tree .tree-outline.dom li .status-image):
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint):
+        (body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li.selected .status-image.breakpoint):
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.disabled):
+        (.content-view.dom-tree .tree-outline.dom.breakpoints-disabled li .status-image.breakpoint):
+        (.content-view.dom-tree .tree-outline.dom.breakpoints-disabled li .status-image.breakpoint.disabled):
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        Add support for DOM breakpoint gutter and breakpoint indicators.
+        Breakpoint indicator elements are part of the DOM tree element, and are
+        updated whenever there a breakpoint's disabled or resolved state changes.
+
+        (WebInspector.DOMTreeContentView):
+        (WebInspector.DOMTreeContentView.prototype.get breakpointGutterEnabled):
+        (WebInspector.DOMTreeContentView.prototype.set breakpointGutterEnabled):
+        (WebInspector.DOMTreeContentView.prototype.shown):
+        (WebInspector.DOMTreeContentView.prototype.closed):
+        (WebInspector.DOMTreeContentView.prototype._domTreeElementAdded):
+        (WebInspector.DOMTreeContentView.prototype._domBreakpointAddedOrRemoved):
+        (WebInspector.DOMTreeContentView.prototype._domBreakpointDisabledStateDidChange):
+        (WebInspector.DOMTreeContentView.prototype._domBreakpointResolvedStateDidChange):
+        (WebInspector.DOMTreeContentView.prototype._updateBreakpointStatus):
+        (WebInspector.DOMTreeContentView.prototype._restoreBreakpointsAfterUpdate):
+        (WebInspector.DOMTreeContentView.prototype._breakpointsEnabledDidChange):
+
+        * UserInterface/Views/DOMTreeElement.js:
+        Add support for breakpoint status element and content menu.
+        (WebInspector.DOMTreeElement):
+        (WebInspector.DOMTreeElement.prototype.get breakpointStatus):
+        (WebInspector.DOMTreeElement.prototype.set breakpointStatus):
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu):
+        (WebInspector.DOMTreeElement.prototype.updateTitle):
+        (WebInspector.DOMTreeElement.prototype._updateBreakpointStatus):
+        (WebInspector.DOMTreeElement.prototype._statusImageContextmenu):
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node .titles):
+        (.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node .icon):
+        Styles for DOM node tree elements.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        Add new DOM Breakpoints section, and support for the "DOM" pause reason.
+
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype.closed):
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        (WebInspector.DebuggerSidebarPanel.prototype._domBreakpointAddedOrRemoved):
+
+        * UserInterface/Views/FrameDOMTreeContentView.js:
+        (WebInspector.FrameDOMTreeContentView.prototype._rootDOMNodeAvailable):
+        Restore DOM breakpoints once the root node is available.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Fill and stroke colors for resolved, unresolved, and disabled breakpoints.
+
+        * Versions/Inspector-iOS-10.0.json:
+        * Versions/Inspector-iOS-10.3.json:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/Inspector-iOS-8.0.json:
+        * Versions/Inspector-iOS-9.0.json:
+        * Versions/Inspector-iOS-9.3.json:
+
+2017-03-08  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: table header columns and cells don't line up, dragging seems backwards
+        https://bugs.webkit.org/show_bug.cgi?id=168289
+
+        Reviewed by Brian Burg.
+
+        Changed the algorithm used to position columns when in RTL to use right offsets instead of
+        left offsets.  This also applies to the resizer elements between columns.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid):
+        (.data-grid th):
+        (body[dir=ltr] .data-grid :matches(th, td):not(:last-child)):
+        (body[dir=rtl] .data-grid :matches(th, td):not(:last-child)):
+        (.data-grid th:matches(.sort-ascending, .sort-descending)):
+        (body[dir=ltr] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child)):
+        (body[dir=rtl] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child)):
+        (.data-grid .right div):
+        (body[dir=ltr] .data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child):
+        (body[dir=rtl] .data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child):
+        (.data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child::after):
+        (body[dir=ltr] .data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child::after):
+        (body[dir=rtl] .data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child::after):
+        (.data-grid th.sort-ascending > div:first-child::after):
+        (.data-grid th.sort-descending > div:first-child::after):
+        (.data-grid tr.parent td.disclosure::before):
+        (body[dir=ltr] .data-grid tr.parent td.disclosure::before):
+        (body[dir=rtl] .data-grid tr.parent td.disclosure::before):
+        (.data-grid td .icon):
+        (body[dir=ltr] .data-grid td .icon):
+        (body[dir=rtl] .data-grid td .icon):
+        (.data-grid td .go-to-arrow):
+        (body[dir=ltr] .data-grid td .go-to-arrow):
+        (body[dir=rtl] .data-grid td .go-to-arrow):
+        (.data-grid .resizer):
+        (body[dir=ltr] .data-grid .resizer):
+        (body[dir=rtl] .data-grid .resizer):
+        (.data-grid table:matches(.header, .data)):
+        (body[dir=ltr] .data-grid table:matches(.header, .data)):
+        (body[dir=rtl] .data-grid table:matches(.header, .data)):
+        (body[dir=ltr] .data-grid :matches(th, td):first-child):
+        (body[dir=rtl] .data-grid :matches(th, td):first-child):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        (.data-grid :matches(th, td):not(:last-child)): Deleted.
+        (.data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child)): Deleted.
+        (.data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child): Deleted.
+        (.data-grid table.header, .data-grid table.data): Deleted.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._positionResizerElements):
+        (WebInspector.DataGrid.prototype._positionHeaderViews):
+        (WebInspector.DataGrid.prototype.resizerDragging):
+
+2017-03-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to see where Resources came from (Memory Cache, Disk Cache)
+        https://bugs.webkit.org/show_bug.cgi?id=164892
+        <rdar://problem/29320562>
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New localized strings for memory/disk cache information.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.markResourceRequestAsServedFromMemoryCache):
+        Make this legacy path more explicit.
+
+        (WebInspector.FrameResourceManager.prototype.resourceRequestWasServedFromMemoryCache):
+        Make this memory cache path more explicit.
+
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidReceiveResponse):
+        Pass the resource's response source onward.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.responseSourceFromPayload):
+        (WebInspector.Resource.prototype.get responseSource):
+        (WebInspector.Resource.prototype.hasResponse):
+        (WebInspector.Resource.prototype.updateForResponse):
+        (WebInspector.Resource.prototype.markAsCached):
+        (WebInspector.Resource.prototype.legacyMarkServedFromMemoryCache):
+        (WebInspector.Resource.prototype.legacyMarkServedFromDiskCache):
+        Include a WebInspector.ResponseSource enum.
+        Update a Resource's responseSource state where appropriate.
+
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WebInspector.NetworkObserver.prototype.requestServedFromCache):
+        Mark legacy path.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        Tweak default column sizes to make Cached and graph columns a little larger.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.ResourceTimelineDataGridNode.prototype._cachedCellContent):
+        Update "Cached" column data with more information if available.
+
+        * UserInterface/Views/NetworkGridContentView.css:
+        (.content-view.network-grid > .data-grid .cache-type):
+        (.content-view.network-grid > .data-grid:matches(:focus, .force-focus) tr.selected .cache-type):
+        Style the cache type a secondary color.
+
+2017-03-08  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: add a "create breakpoint" context menu item for linkified source locations
+        https://bugs.webkit.org/show_bug.cgi?id=47442
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.isShowingResourcesTab): Added.
+        (WebInspector.linkifyElement):
+        Now calls WebInspector.appendContextMenuItemsForSourceCode on "contextmenu" events for the
+        created element.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.breakpointForSourceCodeLocation):
+        Returns the first breakpoint (since there should only be one) that matches the given location.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WebInspector.appendContextMenuItemsForSourceCode):
+        Rework parameters to also accept a WebInspector.SourceCodeLocation, thereby allowing the
+        setting of breakpoints so long as the associated WebInspector.SourceCode is a script.
+
+        * UserInterface/Views/Main.css:
+        (.resource-link, .go-to-link):
+        Prevent link from being selected.
+
+2017-03-08  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: Switching back to System Direction doesn't change the dock side
+        https://bugs.webkit.org/show_bug.cgi?id=169323
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.setLayoutDirection):
+        Change the dock side based on the resolved layout direction, not the current setting value.
+
+2017-03-08  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION (r212998): Web Inspector: DetailsSections with options have broken layout
+        https://bugs.webkit.org/show_bug.cgi?id=169350
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section):
+        Fix negative margin.
+        (body[dir=ltr] .details-section > .header > :matches(label, .node-link, .go-to-arrow),):
+        (body[dir=ltr] .details-section > .header::before,):
+        (body[dir=ltr] .details-section > .header > :matches(label, .node-link, .go-to-arrow, .options > .navigation-bar),): Deleted.
+        It looks like :matches doesn't accept compound selectors in its selector list.
+
+2017-03-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOM Tree broken if an element has a "debounce" attribute
+        https://bugs.webkit.org/show_bug.cgi?id=169336
+        <rdar://problem/30899430>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode):
+        (WebInspector.DOMNode.prototype.getAttribute):
+        (WebInspector.DOMNode.prototype.removeAttribute.mycallback):
+        (WebInspector.DOMNode.prototype.removeAttribute):
+        Convert the attributes map to an actual Map to avoid name collisions
+        with Object.prototype properties.
+
+2017-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Drop non-standard MessageEvent.webkitInitMessageEvent()
+        https://bugs.webkit.org/show_bug.cgi?id=169295
+
+        Reviewed by Joseph Pecoraro.
+
+        Drop MessageEvent.webkitInitMessageEvent and update parameters for various
+        init*Event() operations to match the current implementation.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2017-03-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Show Web Socket connections in Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=167520
+
+        Reviewed by Joseph Pecoraro.
+
+        Show Web Socket connections in Network and Resources tabs. Display HTTP headers
+        of Web Socket handshake request in the details sidebar.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.initialize):
+        (WebInspector.FrameResourceManager.prototype.webSocketCreated):
+        (WebInspector.FrameResourceManager.prototype.webSocketWillSendHandshakeRequest):
+        webSocketWillSendHandshakeRequest doesn't receive a request URL as one of its parameters.
+        Store URLs received from webSocketCreated method in _webSocketIdentifierToURL map.
+
+        (WebInspector.FrameResourceManager.prototype.webSocketHandshakeResponseReceived):
+        (WebInspector.FrameResourceManager.prototype.webSocketFrameReceived):
+        (WebInspector.FrameResourceManager.prototype.webSocketFrameSent):
+        (WebInspector.FrameResourceManager.prototype.webSocketClosed):
+        Mark resource as finished when Web Socket handshake is complete or Web Socket is closed.
+        This may change in the future.
+
+        (WebInspector.FrameResourceManager.prototype._webSocketFrameReceivedOrSent):
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/WebSocketResource.js: Added.
+        (WebInspector.WebSocketResource):
+        (WebInspector.WebSocketResource.prototype.set readyState):
+        (WebInspector.WebSocketResource.prototype.get readyState):
+        (WebInspector.WebSocketResource.prototype.get frames):
+        (WebInspector.WebSocketResource.prototype.addFrame):
+        Introduce WebSocketResource model to store WebSocket frames (incoming and outgoing messages)
+        and readyState.
+
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WebInspector.NetworkObserver.prototype.webSocketCreated):
+        (WebInspector.NetworkObserver.prototype.webSocketWillSendHandshakeRequest):
+        (WebInspector.NetworkObserver.prototype.webSocketHandshakeResponseReceived):
+        (WebInspector.NetworkObserver.prototype.webSocketClosed):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameReceived):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameError):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameSent):
+        (WebInspector.NetworkObserver):
+        Add corresponding methods for the newly added FrameResourceManager methods.
+
+        * UserInterface/Test.html:
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype.treeElementAddedOrChanged):
+        Don't show the go to arrow for WebSocket items since WebSocketContentView isn't implemented
+        yet.
+
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WebInspector.ResourceClusterContentView.prototype.get responseContentView):
+        Don't show any content views for WebSocket items.
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype.ondblclick):
+        Don't open WebSocket URL in a new browser tab.
+
+2017-03-02  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Should be able to push nodes in an iframe subtree to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=169086
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype._selectedNodeDidChange):
+        Use the URL of the main frame instead of the content frame URL.
+
+2017-03-01  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Annotators should not be enabled if the TextEditor is not visible
+        https://bugs.webkit.org/show_bug.cgi?id=169059
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._addResource):
+        (WebInspector.DebuggerSidebarPanel.prototype._addScript):
+        Only call `showDefaultContentViewForTreeElement` if the panel has been added to a sidebar.
+
+        It is not valid to simply check whether the panel is visible, as the sidebar can be collapsed.
+        In that case, we still want to display the content view, so we instead check that the panel
+        has been added to a sidebar, meaning that it is ready to be displayed in the current tab.
+
+2017-02-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: expose the Layout Direction setting in Production builds, keep using LTR by default
+        https://bugs.webkit.org/show_bug.cgi?id=168999
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.layout):
+        Remove the WebInspector.isDebugUIEnabled() check around the Layout Direction setting.
+
+2017-02-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: It is possible to get the New Tab button in addition to the seven expected tabs
+        https://bugs.webkit.org/show_bug.cgi?id=168976
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar.collapsed:not(.hide-titles) > .item:not(.pinned):hover > .icon):
+        (.tab-bar.collapsed:not(.hide-titles) > .item:hover > .close):
+        (.tab-bar.collapsed:not(.hide-titles) > .item:not(.pinned, .default-tab):hover > .icon): Deleted.
+        (.tab-bar.collapsed:not(.hide-titles) > .item:not(.default-tab):hover > .close): Deleted.
+
+2017-02-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: CSS variable uses that are unresolved should have an error or warning icon
+        https://bugs.webkit.org/show_bug.cgi?id=168352
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createInlineSwatches.update):
+        Insert a warning icon if the variable is not found in the computed style.
+
 2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: RTL: add support for Color Picker

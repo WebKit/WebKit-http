@@ -31,10 +31,6 @@
 #import "WebCoreSystemInterface.h"
 #import <wtf/BlockObjCExceptions.h>
 
-namespace WebCore {
-static NSHTTPCookieStorage *cookieStorage(const NetworkStorageSession&);
-}
-
 #if !USE(CFURLCONNECTION)
 
 #import "Cookie.h"
@@ -232,9 +228,7 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, 
     rawCookies.reserveCapacity(count);
     for (NSUInteger i = 0; i < count; ++i) {
         NSHTTPCookie *cookie = (NSHTTPCookie *)[cookies objectAtIndex:i];
-        NSTimeInterval expires = [[cookie expiresDate] timeIntervalSince1970] * 1000;
-        rawCookies.uncheckedAppend(Cookie([cookie name], [cookie value], [cookie domain], [cookie path], expires,
-            [cookie isHTTPOnly], [cookie isSecure], [cookie isSessionOnly]));
+        rawCookies.uncheckedAppend({ cookie });
     }
 
     END_BLOCK_OBJC_EXCEPTIONS;
@@ -256,38 +250,6 @@ void deleteCookie(const NetworkStorageSession& session, const URL& url, const St
         if ([[cookie name] isEqualToString:cookieNameString])
             wkDeleteHTTPCookie(cookieStorage.get(), cookie);
     }
-
-    END_BLOCK_OBJC_EXCEPTIONS;
-}
-
-void addCookie(const NetworkStorageSession& session, const URL& url, const Cookie& cookie)
-{
-    BEGIN_BLOCK_OBJC_EXCEPTIONS;
-
-    RetainPtr<CFHTTPCookieStorageRef> cookieStorage = session.cookieStorage();
-
-    // FIXME: existing APIs do not provide a way to set httpOnly without parsing headers from scratch.
-
-    NSURL *originURL = url;
-    NSHTTPCookie *httpCookie = [NSHTTPCookie cookieWithProperties:@{
-        NSHTTPCookieName: cookie.name,
-        NSHTTPCookieValue: cookie.value,
-        NSHTTPCookieDomain: cookie.domain,
-        NSHTTPCookiePath: cookie.path,
-        NSHTTPCookieOriginURL: originURL,
-        NSHTTPCookieSecure: @(cookie.secure),
-        NSHTTPCookieDiscard: @(cookie.session),
-        NSHTTPCookieExpires: [NSDate dateWithTimeIntervalSince1970:cookie.expires / 1000.0],
-    }];
-
-#if !USE(CFURLCONNECTION)
-    if (!cookieStorage) {
-        [WebCore::cookieStorage(session) setCookie:httpCookie];
-        return;
-    }
-#endif // !USE(CFURLCONNECTION)
-
-    CFHTTPCookieStorageSetCookie(cookieStorage.get(), [httpCookie _CFHTTPCookie]);
 
     END_BLOCK_OBJC_EXCEPTIONS;
 }
@@ -315,15 +277,6 @@ void deleteAllCookies(const NetworkStorageSession& session)
 
 namespace WebCore {
 
-static NSHTTPCookieStorage *cookieStorage(const NetworkStorageSession& session)
-{
-    auto cookieStorage = session.cookieStorage();
-    if (!cookieStorage || [NSHTTPCookieStorage sharedHTTPCookieStorage]._cookieStorage == cookieStorage)
-        return [NSHTTPCookieStorage sharedHTTPCookieStorage];
-
-    return [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:cookieStorage.get()] autorelease];
-}
-
 void deleteCookiesForHostnames(const NetworkStorageSession& session, const Vector<String>& hostnames)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
@@ -348,7 +301,7 @@ void deleteCookiesForHostnames(const NetworkStorageSession& session, const Vecto
             wkDeleteHTTPCookie(cookieStorage.get(), cookie.get());
     }
 
-    [WebCore::cookieStorage(session) _saveCookies];
+    [session.nsCookieStorage() _saveCookies];
 
     END_BLOCK_OBJC_EXCEPTIONS;
 }
@@ -361,7 +314,7 @@ void deleteAllCookiesModifiedSince(const NetworkStorageSession& session, std::ch
     NSTimeInterval timeInterval = std::chrono::duration_cast<std::chrono::duration<double>>(timePoint.time_since_epoch()).count();
     NSDate *date = [NSDate dateWithTimeIntervalSince1970:timeInterval];
 
-    NSHTTPCookieStorage *storage = cookieStorage(session);
+    auto *storage = session.nsCookieStorage();
 
     [storage removeCookiesSinceDate:date];
     [storage _saveCookies];

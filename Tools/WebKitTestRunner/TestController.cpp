@@ -678,6 +678,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetNeedsSiteSpecificQuirks(preferences, options.needsSiteSpecificQuirks);
     WKPreferencesSetIntersectionObserverEnabled(preferences, options.enableIntersectionObserver);
     WKPreferencesSetModernMediaControlsEnabled(preferences, options.enableModernMediaControls);
+    WKPreferencesSetCredentialManagementEnabled(preferences, options.enableCredentialManagement);
 
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
     WKPreferencesSetDefaultTextEncodingName(preferences, defaultTextEncoding);
@@ -718,6 +719,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKCookieManagerDeleteAllCookies(WKContextGetCookieManager(m_context.get()));
 
     WKPreferencesSetMockCaptureDevicesEnabled(preferences, true);
+    
+    WKPreferencesSetLargeImageAsyncDecodingEnabled(preferences, false);
 
     platformResetPreferencesToConsistentValues();
 }
@@ -764,7 +767,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     // some other code doing this, it should probably be responsible for cleanup too.
     resetPreferencesToConsistentValues(options);
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) && !PLATFORM(WPE)
     WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
 #endif
 
@@ -1003,6 +1006,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableModernMediaControls = parseBooleanTestHeaderValue(value);
         if (key == "enablePointerLock")
             testOptions.enablePointerLock = parseBooleanTestHeaderValue(value);
+        if (key == "enableCredentialManagement")
+            testOptions.enableCredentialManagement = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -2268,6 +2273,11 @@ void TestController::statisticsFireDataModificationHandler()
     WKResourceLoadStatisticsManagerFireDataModificationHandler();
 }
     
+void TestController::statisticsFireShouldPartitionCookiesHandler(WKStringRef hostName, bool value)
+{
+    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandler(hostName, value);
+}
+
 void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
 {
     WKResourceLoadStatisticsManagerSetNotifyPagesWhenDataRecordsWereScanned(value);
@@ -2282,6 +2292,12 @@ void TestController::setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double s
 {
     WKResourceLoadStatisticsManagerSetMinimumTimeBetweeenDataRecordsRemoval(seconds);
 }
+
+void TestController::statisticsClearInMemoryAndPersistentStore()
+{
+    WKResourceLoadStatisticsManagerClearInMemoryAndPersistentStore();
+}
+
 void TestController::statisticsResetToConsistentState()
 {
     WKResourceLoadStatisticsManagerResetToConsistentState();

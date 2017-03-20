@@ -287,6 +287,7 @@ webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Pass Timeout ]
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 # A lot of the disk-cache tests are flaky on mac-wk2
+webkit.org/b/169359 http/tests/cache/disk-cache/disk-cache-remove-several-pending-writes.html [ Pass Failure ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Pass Failure Timeout ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-no-body.html [ Pass Failure Timeout ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation.html [ Pass Failure Timeout ]
@@ -551,7 +552,6 @@ webkit.org/b/162638 [ Sierra+ ] fast/scrolling/rtl-scrollbars-alternate-iframe-b
 webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure ]
 webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-main-frame.html [ Failure ]
 
-webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
 webkit.org/b/159447 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-entry.html [ Pass Failure ]
 
 webkit.org/b/167607 [ Debug ] http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts.html [ Pass Timeout ]
@@ -602,7 +602,7 @@ webkit.org/b/163136 http/tests/xmlhttprequest/auth-reject-protection-space.html 
 
 webkit.org/b/163139 http/tests/loading/basic-auth-load-URL-with-consecutive-slashes.html [ Pass Failure ]
 
-webkit.org/b/162975 [ Debug ] http/tests/cache/disk-cache/memory-cache-revalidation-updates-disk-cache.html [ Pass Failure ]
+webkit.org/b/162975 http/tests/cache/disk-cache/memory-cache-revalidation-updates-disk-cache.html [ Pass Failure ]
 
 webkit.org/b/161653 [ Debug ] storage/indexeddb/key-generator.html [ Pass Timeout ]
 
@@ -611,6 +611,7 @@ webkit.org/b/163453 [ Sierra Release ] http/tests/security/contentSecurityPolicy
 webkit.org/b/163702 platform/mac-wk2/plugins/muted-state.html [ Failure ]
 
 webkit.org/b/164870 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Pass Failure ]
+webkit.org/b/164870 [ ElCapitan Release ] imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Pass Failure ]
 
 webkit.org/b/165352 fast/dom/Window/window-resize-contents.html [ Pass Timeout ]
 
@@ -637,3 +638,50 @@ webkit.org/b/168336 [ Debug ] imported/w3c/web-platform-tests/streams/readable-s
 webkit.org/b/168089 [ Release ] animations/trigger-container-scroll-empty.html [ Pass Failure ]
 
 webkit.org/b/168391 [ ElCapitan Debug ] storage/indexeddb/modern/idbcursor-continue-primary-key-1.html [ Pass Timeout ]
+
+
+webkit.org/b/168380 [ ElCapitan Debug ] imported/w3c/web-platform-tests/IndexedDB/idb-binary-key-roundtrip.htm [ Pass Failure ]
+
+# Skipped because Mac doesn't have a key to show the context menu
+fast/events/context-activated-by-key-event.html [ Skip ]
+
+# <rdar://problem/30735372>
+[ Release ] fast/events/constructors/media-stream-event-constructor.html [ Skip ]
+[ Release ] fast/mediastream/RTCIceCandidate.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-add-removeTrack.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-addTransceiver.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-createAnswer.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-createOffer.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-datachannel.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-getConfiguration.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-have-local-offer.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-have-local-pranswer.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-have-remote-offer.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-have-remote-pranswer.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-inspect-answer.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-inspect-offer.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-localDescription.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-overloaded-operations.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-remoteDescription.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection-stable.html [ Skip ]
+[ Release ] fast/mediastream/RTCPeerConnection.html [ Skip ]
+[ Release ] fast/mediastream/RTCSessionDescription.html [ Skip ]
+[ Release ] fast/mediastream/RTCTrackEvent-constructor.html [ Skip ]
+[ Release ] imported/w3c/web-platform-tests/webrtc/RTCDataChannelEvent-constructor.html [ Skip ]
+[ Release ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnectionIceEvent-constructor.html [ Skip ]
+[ Release ] imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor.html [ Skip ]
+[ Release ] imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Skip ]
+[ Release ] js/dom/global-constructors-attributes.html [ Skip ]
+
+webkit.org/b/168933 fast/regions/inline-block-inside-anonymous-overflow-with-covered-controls.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/168346 [ Sierra Debug ] editing/selection/move-by-word-visually-multi-space.html [ Pass Timeout ]
+
+webkit.org/b/169481 [ Debug ] webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]
+
+webkit.org/b/169621 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html [ Pass Failure ]
+webkit.org/b/169760 imported/w3c/web-platform-tests/IndexedDB/fire-success-event-exception.html [ Pass Failure ]
+
+webkit.org/b/169640 imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-javascript.html [ Failure ]
+
+webkit.org/b/169719 fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html [ Pass Failure ]

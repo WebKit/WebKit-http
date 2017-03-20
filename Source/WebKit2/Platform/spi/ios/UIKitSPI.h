@@ -80,6 +80,10 @@
 #import <UIKit/UIPreviewItemController.h>
 #endif
 
+#if ENABLE(DATA_INTERACTION)
+#import <UIKit/UIItemProvider_Private.h>
+#endif
+
 #else
 
 #if HAVE(LINK_PREVIEW)
@@ -310,6 +314,10 @@ typedef enum {
 @property (nonatomic) CGFloat horizontalScrollDecelerationFactor;
 @property (nonatomic) CGFloat verticalScrollDecelerationFactor;
 @property (nonatomic, readonly) BOOL _isInterruptingDeceleration;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+@property (nonatomic, setter=_setEdgesScrollingContentIntoSafeArea:) UIRectEdge _edgesScrollingContentIntoSafeArea;
+@property (nonatomic, readonly) UIEdgeInsets _systemContentInset;
+#endif
 @end
 
 @interface NSString (UIKitDetails)
@@ -451,6 +459,9 @@ typedef NS_ENUM (NSInteger, _UIBackdropMaskViewFlags) {
 - (void)setSize:(CGSize)size;
 @property (nonatomic, assign, setter=_setBackdropMaskViewFlags:) NSInteger _backdropMaskViewFlags;
 - (void)_populateArchivedSubviews:(NSMutableSet *)encodedViews;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+- (void)safeAreaInsetsDidChange;
+#endif
 @end
 
 @interface UIWebSelectionView : UIView
@@ -858,6 +869,11 @@ typedef enum {
 - (UIScrollView *)_scroller;
 - (CGPoint)accessibilityConvertPointFromSceneReferenceCoordinates:(CGPoint)point;
 - (CGRect)accessibilityConvertRectToSceneReferenceCoordinates:(CGRect)rect;
+@end
+
+@interface UIPeripheralHost (IPI)
+- (void)_beginIgnoringReloadInputViews;
+- (void)_endIgnoringReloadInputViews;
 @end
 
 @interface UIResponder ()

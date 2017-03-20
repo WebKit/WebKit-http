@@ -40,6 +40,9 @@
 #import "WebActionDisablingCALayerDelegate.h"
 #import "WebCoreCALayerExtras.h"
 #import "WebGLLayer.h"
+#if ENABLE(WEBGPU)
+#import "WebGPULayer.h"
+#endif
 #import "WebLayer.h"
 #import "WebSystemBackdropLayer.h"
 #import "WebTiledBackingLayer.h"
@@ -193,7 +196,12 @@ PlatformCALayer::LayerType PlatformCALayerCocoa::layerTypeForPlatformLayer(Platf
         return LayerTypeAVPlayerLayer;
 
     if ([layer isKindOfClass:[WebGLLayer class]])
-        return LayerTypeWebGLLayer;
+        return LayerTypeContentsProvidedLayer;
+
+#if ENABLE(WEBGPU)
+    if ([layer isKindOfClass:[WebGPULayer class]])
+        return LayerTypeContentsProvidedLayer;
+#endif
 
     return LayerTypeCustom;
 }
@@ -246,8 +254,8 @@ PlatformCALayerCocoa::PlatformCALayerCocoa(LayerType layerType, PlatformCALayerC
     case LayerTypeAVPlayerLayer:
         layerClass = getAVPlayerLayerClass();
         break;
-    case LayerTypeWebGLLayer:
-        // We don't create PlatformCALayerCocoas wrapped around WebGLLayers.
+    case LayerTypeContentsProvidedLayer:
+        // We don't create PlatformCALayerCocoas wrapped around WebGLLayers or WebGPULayers.
         ASSERT_NOT_REACHED();
         break;
     case LayerTypeShapeLayer:
@@ -284,7 +292,7 @@ void PlatformCALayerCocoa::commonInit()
     [m_layer setValue:[NSValue valueWithPointer:this] forKey:platformCALayerPointer];
     
     // Clear all the implicit animations on the CALayer
-    if (m_layerType == LayerTypeAVPlayerLayer || m_layerType == LayerTypeWebGLLayer || m_layerType == LayerTypeScrollingLayer || m_layerType == LayerTypeCustom)
+    if (m_layerType == LayerTypeAVPlayerLayer || m_layerType == LayerTypeContentsProvidedLayer || m_layerType == LayerTypeScrollingLayer || m_layerType == LayerTypeCustom)
         [m_layer web_disableAllActions];
     else
         [m_layer setDelegate:[WebActionDisablingCALayerDelegate shared]];
@@ -995,7 +1003,7 @@ void PlatformCALayerCocoa::updateCustomAppearance(GraphicsLayer::CustomAppearanc
 }
 
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
-static NSString *layerContentsFormat(bool wantsDeepColor, bool supportsSubpixelAntialiasedFonts)
+static NSString *layerContentsFormat(bool acceleratesDrawing, bool wantsDeepColor, bool supportsSubpixelAntialiasedFonts)
 {
 #if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300
     if (wantsDeepColor)
@@ -1005,10 +1013,11 @@ static NSString *layerContentsFormat(bool wantsDeepColor, bool supportsSubpixelA
 #endif
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-    if (supportsSubpixelAntialiasedFonts)
+    if (supportsSubpixelAntialiasedFonts && acceleratesDrawing)
         return kCAContentsFormatRGBA8ColorRGBA8LinearGlyphMask;
 #else
     UNUSED_PARAM(supportsSubpixelAntialiasedFonts);
+    UNUSED_PARAM(acceleratesDrawing);
 #endif
 
     return nil;
@@ -1020,7 +1029,7 @@ void PlatformCALayerCocoa::updateContentsFormat()
     if (m_layerType == LayerTypeWebLayer || m_layerType == LayerTypeTiledBackingTileLayer) {
         BEGIN_BLOCK_OBJC_EXCEPTIONS
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
-        if (NSString *formatString = layerContentsFormat(wantsDeepColorBackingStore(), supportsSubpixelAntialiasedText()))
+        if (NSString *formatString = layerContentsFormat(acceleratesDrawing(), wantsDeepColorBackingStore(), supportsSubpixelAntialiasedText()))
             [m_layer setContentsFormat:formatString];
 #endif
         END_BLOCK_OBJC_EXCEPTIONS
@@ -1189,6 +1198,20 @@ PassRefPtr<PlatformCALayer> PlatformCALayerCocoa::createCompatibleLayer(Platform
 void PlatformCALayerCocoa::enumerateRectsBeingDrawn(CGContextRef context, void (^block)(CGRect))
 {
     wkCALayerEnumerateRectsBeingDrawnWithBlock(m_layer.get(), context, block);
+}
+
+unsigned PlatformCALayerCocoa::backingStoreBytesPerPixel() const
+{
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300
+    if (wantsDeepColorBackingStore())
+        return isOpaque() ? 4 : 5;
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    if (!isOpaque() && supportsSubpixelAntialiasedText())
+        return 8;
+#endif
+    return 4;
 }
 
 AVPlayerLayer *PlatformCALayerCocoa::avPlayerLayer() const

@@ -1,3 +1,656 @@
+2017-03-17  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Time channel attack on SVG Filters
+        https://bugs.webkit.org/show_bug.cgi?id=118689
+
+        Reviewed by Simon Fraser.
+
+        Performing arithmetic operations on subnormal floating-point numbers is
+        very expensive. Normalizing the floating-point number to the minimum normal
+        value should accelerate the calculations and there won't be a noticeable
+        difference in the result since all the subnormal values and the minimum
+        normal value are all very close to zero.
+
+        * wtf/MathExtras.h:
+        (normalizedFloat):
+
+2017-03-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Air should be powerful enough to support Tmp-splitting
+        https://bugs.webkit.org/show_bug.cgi?id=169515
+
+        Reviewed by Saam Barati.
+        
+        Teach IndexMap how to handle types that don't have a default constructor. This makes it
+        easy to create a IndexMap<BasicBlock, InsertionSet>, which is a super powerful
+        construct.
+
+        * wtf/IndexMap.h:
+        (WTF::IndexMap::IndexMap):
+        (WTF::IndexMap::resize):
+        (WTF::IndexMap::clear):
+
+2017-03-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the system tracing points
+        https://bugs.webkit.org/show_bug.cgi?id=169790
+
+        Reviewed by Zalan Bujtas.
+
+        Use a more cohesive set of system trace points that give a good overview of what
+        WebKit is doing. Added points for resource loading, render tree building, sync messages
+        to the web process, async image decode, WASM and fetching cookies.
+
+        * wtf/SystemTracing.h:
+
+2017-03-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [UNIX] Implement currentSearchLocaleID() and currentTextBreakLocaleID()
+        https://bugs.webkit.org/show_bug.cgi?id=169745
+
+        Reviewed by Yusuke Suzuki.
+
+        Add a common implementation for Unix based ports using setlocale.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/text/gtk/TextBreakIteratorInternalICUGtk.cpp: Removed.
+        * wtf/text/unix/TextBreakIteratorInternalICUUnix.cpp: Renamed from Source/WTF/wtf/text/jsconly/TextBreakIteratorInternalICUJSCOnly.cpp.
+        (WTF::currentSearchLocaleID):
+        (WTF::currentTextBreakLocaleID):
+
+2017-03-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] MainThread implementation is not GTK+ specific
+        https://bugs.webkit.org/show_bug.cgi?id=169736
+
+        Reviewed by Yusuke Suzuki.
+
+        It's implemented in MainThreadGLib.cpp for glib based ports, so ifdefs in MainThread should not be
+        PLATFORM(GTK) but USE(GLIB).
+
+        * wtf/MainThread.cpp:
+        * wtf/MainThread.h:
+
+2017-03-15  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake][JSCOnly] Fix build with GLib event loop
+        https://bugs.webkit.org/show_bug.cgi?id=169730
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/MainThread.cpp:
+        * wtf/PlatformJSCOnly.cmake: WorkQueueGLib was removed in r199713.
+
+2017-03-15  Dean Jackson  <dino@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=169669
+
+        Reviewed by Antoine Quint.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2017-03-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix some typos in this benchmark.
+
+        Rubber stamped by Saam Barati.
+
+        * benchmarks/HashSetDFGReplay.cpp:
+        (main):
+
+2017-03-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Record the HashSet/HashMap operations in DFG/FTL/B3 and replay them in a benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=169590
+
+        Reviewed by Saam Barati.
+        
+        This adds LoggingHashSet and LoggingHashMap, which are drop-in replacements for HashSet and
+        HashMap that log everything that they do, so that you can replay it later.
+        
+        This also adds a benchmark (HashSetDFGReplay) based on doing a recording of some of the HashSets
+        in the DFG compiler.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks/HashSetDFGReplay.cpp: Added.
+        (benchmark):
+        (main):
+        * wtf/CMakeLists.txt:
+        * wtf/GlobalVersion.cpp: Added.
+        (WTF::newGlobalVersion):
+        * wtf/GlobalVersion.h: Added.
+        * wtf/HashMap.h:
+        (WTF::X>::swap):
+        * wtf/HashSet.h:
+        (WTF::V>::addVoid):
+        * wtf/LoggingHashID.h: Added.
+        (WTF::LoggingHashID::LoggingHashID):
+        (WTF::LoggingHashID::dump):
+        * wtf/LoggingHashMap.h: Added.
+        * wtf/LoggingHashSet.h: Added.
+        * wtf/LoggingHashTraits.h: Added.
+        (WTF::LoggingHashKeyTraits::print):
+        (WTF::LoggingHashValueTraits::print):
+
+2017-03-13  Jer Noble  <jer.noble@apple.com>
+
+        Make classes used by Media Stream encode/decode friendly
+        https://bugs.webkit.org/show_bug.cgi?id=169567
+
+        Reviewed by Eric Carlson.
+
+        * wtf/MediaTime.h:
+        (WTF::MediaTime::encode):
+        (WTF::MediaTime::decode):
+
+2017-03-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add secondsAs<T> methods to Seconds to convert it to integers with clamp
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Carlos Garcia Campos.
+
+        When using the usual static_cast, infinity becomes 0 accidentally.
+        It is not intended value when using Seconds for timeout value.
+        Instead, we use clampToAccepting64 to convert Seconds to
+        integer values to pass them to the system functions.
+
+        * wtf/MathExtras.h:
+        (clampToAccepting64):
+        * wtf/Seconds.h:
+        (WTF::Seconds::minutesAs):
+        (WTF::Seconds::secondsAs):
+        (WTF::Seconds::millisecondsAs):
+        (WTF::Seconds::microsecondsAs):
+        (WTF::Seconds::nanosecondsAs):
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::dispatchAfter):
+        (WTF::RunLoop::TimerBase::updateReadyTime):
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][Linux] Implement VMTrap in Linux ports
+        https://bugs.webkit.org/show_bug.cgi?id=169436
+
+        Reviewed by Mark Lam.
+
+        Enable VMTrap mechanism for Linux and FreeBSD.
+
+        * wtf/Platform.h:
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up RunLoop and WorkQueue with Seconds and Function
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Sam Weinig.
+
+        This patch modernizes RunLoop and WorkQueue.
+
+        1. Use Ref<> aggressively
+        2. Use Seconds instead of chrono times
+        3. Use Function<> instead of std::function
+
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        (WTF::WorkQueue::concurrentApply):
+        * wtf/generic/MainThreadGeneric.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::EarliestSchedule::operator()):
+        (WTF::RunLoop::populateTasks):
+        (WTF::RunLoop::runImpl):
+        (WTF::RunLoop::schedule):
+        (WTF::RunLoop::scheduleAndWakeUp):
+        (WTF::RunLoop::dispatchAfter):
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::RunLoop::dispatchAfter):
+        (WTF::RunLoop::TimerBase::updateReadyTime):
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::performWorkOnRegisteredWorkThread):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2017-03-13  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Only report background WebProcesses as unresponsive in the background after 90 seconds
+        https://bugs.webkit.org/show_bug.cgi?id=169425
+        <rdar://problem/30954003>
+
+        Reviewed by Andreas Kling.
+
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::TimerBase::startRepeating):
+        (WTF::RunLoop::TimerBase::startOneShot):
+        Add overloads to RunLoop::Timer that take Seconds in parameter,
+        for convenience.
+
+        * wtf/Seconds.h:
+        (WTF::Seconds::fromHours):
+        (WTF::seconds_literals::operator _h):
+        Allow _h suffix for initializing Seconds type to hours.
+
+2017-03-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r213645): It made JSC tests super slow and timeout on AArch64 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=169510
+
+        Unreviewed, disable LL_SC on Linux to unbreak this platform.
+
+        * wtf/Atomics.h:
+        * wtf/Platform.h:
+
+2017-03-10  Filip Pizlo  <fpizlo@apple.com>
+
+        The JITs should be able to emit fast TLS loads
+        https://bugs.webkit.org/show_bug.cgi?id=169483
+
+        Reviewed by Keith Miller.
+
+        Consolidated what we know about fast TLS in FastTLS.h.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FastTLS.h: Added.
+        (WTF::loadFastTLS):
+        (WTF::fastTLSOffsetForKey):
+        * wtf/Platform.h:
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::createAndRegisterForGetspecificDirect):
+        * wtf/WTFThreadData.h:
+        (WTF::wtfThreadData):
+
+2017-03-10  Mark Lam  <mark.lam@apple.com>
+
+        Turn ENABLE(MASM_PROBE) on by default for OS(DARWIN) release builds.
+        https://bugs.webkit.org/show_bug.cgi?id=169493
+
+        Reviewed by Saam Barati.
+
+        MASM_PROBE was already enabled for debug builds.  This change makes it so that we
+        don't have to rebuild the world every time we need to use it on a release build.
+
+        * wtf/Platform.h:
+
+2017-03-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed AArch64 Linux buildfix after r213645.
+        https://bugs.webkit.org/show_bug.cgi?id=169300
+
+        * wtf/Atomics.h: intptr_t and int64_t are typedefs for long int on Linux.
+        They are different types only on Darwin platforms.
+
+2017-03-09  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Rest - Implementing Object Rest Destructuring
+        https://bugs.webkit.org/show_bug.cgi?id=167962
+
+        Reviewed by Keith Miller.
+
+        * wtf/HashSet.h:
+        (WTF::=):
+
+2017-03-09  Youenn Fablet  <youenn@apple.com>
+
+        Activate VideoToolbox when WebRTC is enabled on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=169423
+
+        Reviewed by Jon Lee.
+
+        * wtf/Platform.h: Activate VIDEOTOOLBOX if WEBRTC is enabled.
+
+2017-03-09  Filip Pizlo  <fpizlo@apple.com>
+
+        std::isnan/isinf/isfinite should work with WTF time classes
+        https://bugs.webkit.org/show_bug.cgi?id=164991
+
+        Reviewed by Darin Adler.
+        
+        The consensus view (see comments in https://bugs.webkit.org/show_bug.cgi?id=152045) of how
+        to check if something is NaN is to use std::isnan(). To be able to do that for time
+        classes, they need to provide their own isnan() overhload. This also provides isinf()
+        overloads.
+
+        * wtf/MonotonicTime.h:
+        (std::isnan):
+        (std::isinf):
+        * wtf/Seconds.h:
+        (std::isnan):
+        (std::isinf):
+        * wtf/TimeWithDynamicClockType.h:
+        (std::isnan):
+        (std::isinf):
+        * wtf/WallTime.h:
+        (std::isnan):
+        (std::isinf):
+
+2017-03-09  Mark Lam  <mark.lam@apple.com>
+
+        Use const AbstractLocker& (instead of const LockHolder&) in more places.
+        https://bugs.webkit.org/show_bug.cgi?id=169424
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/RunLoop.h:
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::wakeUp):
+        (WTF::RunLoop::schedule):
+
+2017-03-09  Mark Lam  <mark.lam@apple.com>
+
+        Make the VM Traps mechanism non-polling for the DFG and FTL.
+        https://bugs.webkit.org/show_bug.cgi?id=168920
+        <rdar://problem/30738588>
+
+        Reviewed by Filip Pizlo.
+
+        Make StackBounds more useful for checking if a pointer is within stack bounds.
+
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::isInAllocatedMemory):
+        * wtf/MetaAllocator.h:
+        * wtf/Platform.h:
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::emptyBounds):
+        (WTF::StackBounds::StackBounds):
+        (WTF::StackBounds::isEmpty):
+        (WTF::StackBounds::contains):
+
+2017-03-07  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should make it super easy to do ARM concurrency tricks
+        https://bugs.webkit.org/show_bug.cgi?id=169300
+
+        Reviewed by Mark Lam.
+        
+        This adds Atomic<>::loadLink and Atomic<>::storeCond, available only when HAVE(LL_SC).
+        
+        It abstracts loadLink/storeCond behind prepare/attempt. You can write prepare/attempt
+        loops whenever your loop fits into the least common denominator of LL/SC and CAS.
+        
+        This modifies Atomic<>::transaction to use prepare/attempt. So, if you write your loop
+        using Atomic<>::transaction, then you get LL/SC for free.
+
+        Depending on the kind of transaction you are doing, you may not want to perform an LL
+        until you have a chance to just load the current value. Atomic<>::transaction() assumes
+        that you do not care to have any ordering guarantees in that case. If you think that
+        the transaction has a good chance of aborting this way, you want
+        Atomic<>::transaction() to first do a plain load. But if you don't think that such an
+        abort is likely, then you want to go straight to the LL. The API supports this concept
+        via TransactionAbortLikelihood.
+        
+        Additionally, this redoes the depend/consume API to be dead simple. Dependency is
+        unsigned. You get a dependency on a loaded value by just saying
+        dependency(loadedValue). You consume the dependency by using it as a bonus index to
+        some pointer dereference. This is made easy with the consume<T*>(ptr, dependency)
+        helper. In those cases where you want to pass around both a computed value and a
+        dependency, there's DependencyWith<T>. But you won't need it in most cases. The loaded
+        value or any value computed from the loaded value is a fine input to dependency()!
+        
+        This change updates a bunch of hot paths to use the new APIs. Using transaction() gives
+        us optimal LL/SC loops for object marking and lock acquisition.
+        
+        This change also updates a bunch of hot paths to use dependency()/consume().
+        
+        This is a significant Octane/splay speed-up on ARM.
+
+        * wtf/Atomics.h:
+        (WTF::hasFence):
+        (WTF::Atomic::prepare):
+        (WTF::Atomic::attempt):
+        (WTF::Atomic::transaction):
+        (WTF::Atomic::transactionRelaxed):
+        (WTF::nullDependency):
+        (WTF::dependency):
+        (WTF::DependencyWith::DependencyWith):
+        (WTF::dependencyWith):
+        (WTF::consume):
+        (WTF::Atomic::tryTransactionRelaxed): Deleted.
+        (WTF::Atomic::tryTransaction): Deleted.
+        (WTF::zeroWithConsumeDependency): Deleted.
+        (WTF::consumeLoad): Deleted.
+        * wtf/Bitmap.h:
+        (WTF::WordType>::get):
+        (WTF::WordType>::concurrentTestAndSet):
+        (WTF::WordType>::concurrentTestAndClear):
+        * wtf/LockAlgorithm.h:
+        (WTF::LockAlgorithm::lockFast):
+        (WTF::LockAlgorithm::unlockFast):
+        (WTF::LockAlgorithm::unlockSlow):
+        * wtf/Platform.h:
+
+2017-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Simplify the PaymentCoordinator interface
+        https://bugs.webkit.org/show_bug.cgi?id=169382
+        Part of rdar://problem/28880714.
+
+        Reviewed by Tim Horton.
+
+        * wtf/EnumTraits.h:
+        Fix a build warning.
+
+2017-03-06  Andreas Kling  <akling@apple.com>
+
+        [iOS] Report domains crashing under memory pressure via enhanced privacy logging.
+        <https://webkit.org/b/169133>
+        <rdar://problem/29964017>
+
+        Reviewed by Antti Koivisto.
+
+        Add a mechanism for getting a callback when the memory pressure status changes.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::beginSimulatedMemoryPressure):
+        (WTF::MemoryPressureHandler::endSimulatedMemoryPressure):
+        (WTF::MemoryPressureHandler::setUnderMemoryPressure):
+        (WTF::MemoryPressureHandler::memoryPressureStatusChanged):
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::setMemoryPressureStatusChangedCallback):
+        (WTF::MemoryPressureHandler::setUnderMemoryPressure): Deleted.
+
+2017-03-03  Jer Noble  <jer.noble@apple.com>
+
+        [Win64] '__int128_t': undeclared identifier in MediaTime.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=169123
+
+        Reviewed by Alex Christensen.
+
+        Don't perform the 128-bit optimized path on Windows, where the __int128_t intrinsic isn't available.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::setTimeScale):
+
+2017-03-03  Keith Miller  <keith_miller@apple.com>
+
+        WASM should support faster loads.
+        https://bugs.webkit.org/show_bug.cgi?id=162693
+
+        Reviewed by Saam Barati.
+
+        Add new forms of dataLog that take a boolean which describes if the log should happen. This makes cases where we have a static const bool for printing nicer since you can do:
+
+        dataLogIf(verbose, things, to, print);
+
+        instead of:
+
+        if (verbose)
+            dataLog(things, to, print);
+
+        Also, add a operator! to Ref that has the same semantics as C++ refs.
+
+        * wtf/DataLog.h:
+        (WTF::dataLogLn):
+        (WTF::dataLogIf):
+        (WTF::dataLogLnIf):
+        * wtf/Ref.h:
+        (WTF::Ref::operator!):
+
+2017-03-02  Jer Noble  <jer.noble@apple.com>
+
+        Sufficently large timeValue and timeScale arguments to MediaTime will cause wrapping in toTimeScale().
+        https://bugs.webkit.org/show_bug.cgi?id=169098
+
+        Reviewed by Keith Miller.
+
+        Use a non-standard but Clang & GCC supported __int128_t type extension to do the 128-bit math rather than
+        rolling our own. Since this is only available in 64-bit builds, for 32-bit, just fix the underlying 128-bit
+        math.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::setTimeScale):
+
+2017-03-01  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Removed unused WTF_COMPILER_SUPPORTS_CXX_USER_LITERALS macro
+        https://bugs.webkit.org/show_bug.cgi?id=168969
+
+        Reviewed by Darin Adler.
+
+        * wtf/Compiler.h:
+
+2017-03-01  Tomas Popela  <tpopela@redhat.com>
+
+        [WTF] va_list is not ended in StringPrintStream
+        https://bugs.webkit.org/show_bug.cgi?id=169035
+
+        Reviewed by Michael Saboff.
+
+        Also fix whitespace errors while touching this file.
+
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::vprintf):
+        (WTF::StringPrintStream::increaseSize):
+
+2017-03-01  Andreas Kling  <akling@apple.com>
+
+        Move MemoryPressureHandler to WTF
+        <https://webkit.org/b/168908>
+
+        Reviewed by Sam Weinig.
+
+        Move MemoryPressureHandler down to WTF so it can be used from JavaScriptCore.
+
+        I had to do a blind rewrite of the Windows memory checking timer since it can
+        no longer use WebCore::Timer. I also moved the Win32Handle helper class to WTF.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MemoryPressureHandler.cpp: Renamed from Source/WebCore/platform/MemoryPressureHandler.cpp.
+        (WTF::MemoryPressureHandler::singleton):
+        (WTF::MemoryPressureHandler::MemoryPressureHandler):
+        (WTF::MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor):
+        (WTF::toString):
+        (WTF::thresholdForPolicy):
+        (WTF::policyForFootprint):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::beginSimulatedMemoryPressure):
+        (WTF::MemoryPressureHandler::endSimulatedMemoryPressure):
+        (WTF::MemoryPressureHandler::releaseMemory):
+        (WTF::MemoryPressureHandler::ReliefLogger::logMemoryUsageChange):
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        (WTF::MemoryPressureHandler::platformReleaseMemory):
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+        (WTF::MemoryPressureHandler::platformInitialize):
+        * wtf/MemoryPressureHandler.h: Renamed from Source/WebCore/platform/MemoryPressureHandler.h.
+        (WTF::MemoryPressureHandler::setMemoryKillCallback):
+        (WTF::MemoryPressureHandler::setProcessIsEligibleForMemoryKillCallback):
+        (WTF::MemoryPressureHandler::setLowMemoryHandler):
+        (WTF::MemoryPressureHandler::isUnderMemoryPressure):
+        (WTF::MemoryPressureHandler::setUnderMemoryPressure):
+        (WTF::MemoryPressureHandler::ReliefLogger::ReliefLogger):
+        (WTF::MemoryPressureHandler::ReliefLogger::~ReliefLogger):
+        (WTF::MemoryPressureHandler::ReliefLogger::logString):
+        (WTF::MemoryPressureHandler::ReliefLogger::setLoggingEnabled):
+        (WTF::MemoryPressureHandler::ReliefLogger::loggingEnabled):
+        (WTF::MemoryPressureHandler::ReliefLogger::MemoryUsage::MemoryUsage):
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm: Renamed from Source/WebCore/platform/cocoa/MemoryPressureHandlerCocoa.mm.
+        (WTF::MemoryPressureHandler::platformReleaseMemory):
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+        * wtf/linux/CurrentProcessMemoryStatus.cpp: Renamed from Source/WebCore/platform/linux/CurrentProcessMemoryStatus.cpp.
+        (WTF::systemPageSize):
+        (WTF::currentProcessMemoryStatus):
+        * wtf/linux/CurrentProcessMemoryStatus.h: Renamed from Source/WebCore/platform/linux/CurrentProcessMemoryStatus.h.
+        * wtf/linux/MemoryPressureHandlerLinux.cpp: Renamed from Source/WebCore/platform/linux/MemoryPressureHandlerLinux.cpp.
+        (WTF::MemoryPressureHandler::EventFDPoller::EventFDPoller):
+        * wtf/win/MemoryPressureHandlerWin.cpp: Renamed from Source/WebCore/platform/win/MemoryPressureHandlerWin.cpp.
+        (WTF::MemoryPressureHandler::platformInitialize):
+        (WTF::MemoryPressureHandler::windowsMeasurementTimerFired):
+        (WTF::MemoryPressureHandler::platformReleaseMemory):
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+        * wtf/win/Win32Handle.h: Renamed from Source/WebCore/platform/win/Win32Handle.h.
+        (WTF::Win32Handle::Win32Handle):
+        (WTF::Win32Handle::~Win32Handle):
+        (WTF::Win32Handle::clear):
+        (WTF::Win32Handle::isValid):
+        (WTF::Win32Handle::get):
+        (WTF::Win32Handle::release):
+        (WTF::Win32Handle::operator=):
+
+2017-02-28  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Throttle requestAnimationFrame to 30fps in low power mode
+        https://bugs.webkit.org/show_bug.cgi?id=168837
+        <rdar://problem/30700929>
+
+        Reviewed by Simon Fraser.
+
+        Add support for operator -= on WTF::OptionSet for convenience:
+            set -= Enum::A;
+        looks much better than:
+            set = set - Enum::A;
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::operator-=):
+
+2017-02-28  Michael Saboff  <msaboff@apple.com>
+
+        Add ability to configure JSC options from a file
+        https://bugs.webkit.org/show_bug.cgi?id=168914
+
+        Reviewed by Filip Pizlo.
+
+        Added the ability to set options and DataLog file location via a configuration file.
+        The pathname can include the printf style "%pid", which will be replaced with the
+        current process id.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        (WTF::setDataFile):
+        * wtf/DataLog.h:
+
 2017-02-27  Andy Estes  <aestes@apple.com>
 
         [iOS] Enable file replacement

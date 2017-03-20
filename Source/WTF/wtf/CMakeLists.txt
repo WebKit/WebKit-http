@@ -30,12 +30,14 @@ set(WTF_HEADERS
     DisallowCType.h
     DoublyLinkedList.h
     FastMalloc.h
+    FastTLS.h
     FeatureDefines.h
     FilePrintStream.h
     FlipBytes.h
     Forward.h
     FunctionDispatcher.h
     GetPtr.h
+    GlobalVersion.h
     GraphNodeWorklist.h
     GregorianDateTime.h
     HashCountedSet.h
@@ -59,12 +61,17 @@ set(WTF_HEADERS
     LockAlgorithm.h
     LockedPrintStream.h
     Locker.h
+    LoggingHashID.h
+    LoggingHashMap.h
+    LoggingHashSet.h
+    LoggingHashTraits.h
     MD5.h
     MainThread.h
     MallocPtr.h
     MathExtras.h
     MediaTime.h
     MemoryFootprint.h
+    MemoryPressureHandler.h
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
@@ -198,6 +205,7 @@ set(WTF_SOURCES
     FastMalloc.cpp
     FilePrintStream.cpp
     FunctionDispatcher.cpp
+    GlobalVersion.cpp
     GregorianDateTime.cpp
     HashTable.cpp
     Lock.cpp
@@ -206,6 +214,7 @@ set(WTF_SOURCES
     MainThread.cpp
     MediaTime.cpp
     MemoryFootprint.cpp
+    MemoryPressureHandler.cpp
     MetaAllocator.cpp
     MonotonicTime.cpp
     NumberOfCores.cpp

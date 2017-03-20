@@ -44,12 +44,12 @@ String AutomationSessionClient::sessionIdentifier() const {
     return emptyString(); 
 }
 
-void AutomationSessionClient::didDisconnectFromRemote(WebKit::WebAutomationSession*) { 
+void AutomationSessionClient::didDisconnectFromRemote(WebKit::WebAutomationSession&) { 
 }
 
-WebKit::WebPageProxy* AutomationSessionClient::didRequestNewWindow(WebKit::WebAutomationSession* webAutomationSession) { 
+WebKit::WebPageProxy* AutomationSessionClient::didRequestNewWindow(WebKit::WebAutomationSession& webAutomationSession) { 
 
-    for (auto& process : webAutomationSession->processPool()->processes()) {
+    for (auto& process : webAutomationSession.processPool()->processes()) {
         for (auto* page : process->pages()) {
             ASSERT(page);
             if (!page->isControlledByAutomation())
@@ -60,23 +60,23 @@ WebKit::WebPageProxy* AutomationSessionClient::didRequestNewWindow(WebKit::WebAu
     return nullptr; 
 }
 
-bool AutomationSessionClient::isShowingJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) { 
+bool AutomationSessionClient::isShowingJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) { 
     return false; 
 }
 
-void AutomationSessionClient::dismissCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) { 
+void AutomationSessionClient::dismissCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) { 
     notImplemented();
 }
 
-void AutomationSessionClient::acceptCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) { 
+void AutomationSessionClient::acceptCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) { 
     notImplemented();
 }
 
-String AutomationSessionClient::messageOfCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) { 
+String AutomationSessionClient::messageOfCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) { 
     return String(); 
 }
 
-void AutomationSessionClient::setUserInputForCurrentJavaScriptPromptOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*, const String&) { 
+void AutomationSessionClient::setUserInputForCurrentJavaScriptPromptOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&, const String&) { 
     notImplemented();
 }
 

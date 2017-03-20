@@ -55,6 +55,8 @@ class WebPlaybackSessionModelMediaElement;
 #endif
 }
 
+@class UIImage;
+@class WebUITextIndicatorData;
 @class WebImmediateActionController;
 @class WebInspector;
 @class WebNodeHighlight;
@@ -283,6 +285,12 @@ private:
     WTF::Lock pendingFixedPositionLayoutRectMutex;
     CGRect pendingFixedPositionLayoutRect;
 #endif
+    
+#if ENABLE(DATA_INTERACTION)
+    WebUITextIndicatorData *textIndicatorData;
+    RetainPtr<WebUITextIndicatorData> dataOperationTextIndicator;
+#endif
+
 
 #if !PLATFORM(IOS)
     // WebKit has both a global plug-in database and a separate, per WebView plug-in database. Dashboard uses the per WebView database.

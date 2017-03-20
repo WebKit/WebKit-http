@@ -50,6 +50,9 @@ public:
 
     static const UIDNA& internationalDomainNameTranscoder();
 
+    WEBCORE_EXPORT static bool isSpecialScheme(const String& scheme);
+    WEBCORE_EXPORT static std::optional<String> maybeCanonicalizeScheme(const String& scheme);
+
 private:
     static std::optional<uint16_t> defaultPortForProtocol(StringView);
     friend std::optional<uint16_t> defaultPortForProtocol(StringView);
@@ -104,6 +107,7 @@ private:
     void appendToASCIIBuffer(const LChar* characters, size_t size) { appendToASCIIBuffer(reinterpret_cast<const char*>(characters), size); }
     template<typename CharacterType> void encodeQuery(const Vector<UChar>& source, const TextEncoding&, CodePointIterator<CharacterType>);
     void copyASCIIStringUntil(const String&, size_t length);
+    bool copyBaseWindowsDriveLetter(const URL&);
     StringView parsedDataView(size_t start, size_t length);
     UChar parsedDataView(size_t position);
 

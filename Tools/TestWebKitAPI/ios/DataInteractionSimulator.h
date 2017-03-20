@@ -23,15 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if 0
+#if ENABLE(DATA_INTERACTION)
 
 #import "TestWKWebView.h"
 #import <UIKit/UIItemProvider.h>
 #import <UIKit/UIKit.h>
+#import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/_WKTestingDelegate.h>
 #import <wtf/BlockPtr.h>
 
-@class MockDataInteractionInfo;
+@class MockDataOperationSession;
 @class MockDataInteractionSession;
 
 extern NSString * const DataInteractionEnterEventName;
@@ -48,10 +49,10 @@ typedef NS_ENUM(NSInteger, DataInteractionPhase) {
     DataInteractionPerforming = 4
 };
 
-@interface DataInteractionSimulator : NSObject<_WKTestingDelegate> {
+@interface DataInteractionSimulator : NSObject<_WKTestingDelegate, WKUIDelegatePrivate> {
     RetainPtr<TestWKWebView> _webView;
     RetainPtr<MockDataInteractionSession> _dataInteractionSession;
-    RetainPtr<MockDataInteractionInfo> _dataInteractionInfo;
+    RetainPtr<MockDataOperationSession> _dataOperationSession;
     RetainPtr<NSMutableArray> _observedEventNames;
     RetainPtr<UIItemProvider> _externalItemProvider;
     RetainPtr<NSArray *> _finalSelectionRects;
@@ -66,6 +67,7 @@ typedef NS_ENUM(NSInteger, DataInteractionPhase) {
 - (instancetype)initWithWebView:(TestWKWebView *)webView;
 - (void)runFrom:(CGPoint)startLocation to:(CGPoint)endLocation;
 
+@property (nonatomic) BlockPtr<NSArray *(NSArray *)> convertItemProvidersBlock;
 @property (nonatomic, strong) UIItemProvider *externalItemProvider;
 @property (nonatomic, readonly) NSArray *observedEventNames;
 @property (nonatomic, readonly) NSArray *finalSelectionRects;

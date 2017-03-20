@@ -34,6 +34,7 @@
 #include "NetworkingContext.h"
 #include "PlatformCookieJar.h"
 #include "PlatformStrategies.h"
+#include <wtf/SystemTracing.h>
 
 namespace WebCore {
 
@@ -55,6 +56,8 @@ inline NetworkStorageSession& storageSession(const Document& document)
 
 String cookies(const Document& document, const URL& url)
 {
+    TraceScope scope(FetchCookiesStart, FetchCookiesEnd);
+
     return platformStrategies()->cookiesStrategy()->cookiesForDOM(storageSession(document), document.firstPartyForCookies(), url);
 }
 
@@ -81,11 +84,6 @@ bool getRawCookies(const Document& document, const URL& url, Vector<Cookie>& coo
 void deleteCookie(const Document& document, const URL& url, const String& cookieName)
 {
     platformStrategies()->cookiesStrategy()->deleteCookie(storageSession(document), url, cookieName);
-}
-
-void addCookie(const Document& document, const URL& url, const Cookie& cookie)
-{
-    platformStrategies()->cookiesStrategy()->addCookie(storageSession(document), url, cookie);
 }
 
 }

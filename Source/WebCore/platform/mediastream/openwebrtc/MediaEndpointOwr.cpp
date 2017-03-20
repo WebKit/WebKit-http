@@ -354,15 +354,15 @@ Ref<RealtimeMediaSource> MediaEndpointOwr::createMutedRemoteSource(const String&
     RefPtr<RealtimeMediaSourceOwr> source;
 
     switch (type) {
-    case RealtimeMediaSource::Audio:
+    case RealtimeMediaSource::Type::Audio:
         name = "remote audio";
         source = adoptRef(new RealtimeAudioSourceOwr(nullptr, id, type, name));
         break;
-    case RealtimeMediaSource::Video:
+    case RealtimeMediaSource::Type::Video:
         name = "remote video";
         source = adoptRef(new RealtimeVideoSourceOwr(nullptr, id, type, name));
         break;
-    case RealtimeMediaSource::None:
+    case RealtimeMediaSource::Type::None:
         ASSERT_NOT_REACHED();
     }
 
@@ -445,19 +445,19 @@ void MediaEndpointOwr::processIceTransportStateChange(OwrSession* session)
     if (owrIceState == OWR_ICE_STATE_READY && !transceiver.gotEndOfRemoteCandidates())
         return;
 
-    MediaEndpoint::IceTransportState transportState;
+    RTCIceTransportState transportState;
     switch (owrIceState) {
     case OWR_ICE_STATE_CONNECTING:
-        transportState = MediaEndpoint::IceTransportState::Checking;
+        transportState = RTCIceTransportState::Checking;
         break;
     case OWR_ICE_STATE_CONNECTED:
-        transportState = MediaEndpoint::IceTransportState::Connected;
+        transportState = RTCIceTransportState::Connected;
         break;
     case OWR_ICE_STATE_READY:
-        transportState = MediaEndpoint::IceTransportState::Completed;
+        transportState = RTCIceTransportState::Completed;
         break;
     case OWR_ICE_STATE_FAILED:
-        transportState = MediaEndpoint::IceTransportState::Failed;
+        transportState = RTCIceTransportState::Failed;
         break;
     default:
         return;

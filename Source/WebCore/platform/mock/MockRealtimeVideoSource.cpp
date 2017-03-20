@@ -32,6 +32,7 @@
 #include "MockRealtimeVideoSource.h"
 
 #if ENABLE(MEDIA_STREAM)
+#include "CaptureDevice.h"
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
 #include "IntRect.h"
@@ -46,6 +47,15 @@
 #include <wtf/text/StringView.h>
 
 namespace WebCore {
+
+class MockRealtimeVideoSourceFactory : public RealtimeMediaSource::CaptureFactory {
+public:
+    RefPtr<RealtimeMediaSource> createMediaSourceForCaptureDeviceWithConstraints(const CaptureDevice& captureDevice, const MediaConstraints* constraints, String&) final {
+        if (captureDevice.type() == CaptureDevice::DeviceType::Video)
+            return MockRealtimeVideoSource::create(captureDevice.label(), constraints);
+        return nullptr;
+    }
+};
 
 #if !PLATFORM(MAC) && !PLATFORM(IOS)
 RefPtr<MockRealtimeVideoSource> MockRealtimeVideoSource::create(const String& name, const MediaConstraints* constraints)
@@ -65,8 +75,14 @@ RefPtr<MockRealtimeVideoSource> MockRealtimeVideoSource::createMuted(const Strin
 }
 #endif
 
+RealtimeMediaSource::CaptureFactory& MockRealtimeVideoSource::factory()
+{
+    NeverDestroyed<MockRealtimeVideoSourceFactory> factory;
+    return factory.get();
+}
+
 MockRealtimeVideoSource::MockRealtimeVideoSource(const String& name)
-    : MockRealtimeMediaSource(createCanonicalUUIDString(), RealtimeMediaSource::Video, name)
+    : MockRealtimeMediaSource(createCanonicalUUIDString(), RealtimeMediaSource::Type::Video, name)
     , m_timer(RunLoop::current(), this, &MockRealtimeVideoSource::generateFrame)
 {
     setFrameRate(30);
@@ -149,7 +165,7 @@ bool MockRealtimeVideoSource::applySize(const IntSize& size)
     fontDescription.setOneFamily("Courier");
     fontDescription.setSpecifiedSize(m_baseFontSize);
     fontDescription.setComputedSize(m_baseFontSize);
-    fontDescription.setWeight(FontWeight500);
+    fontDescription.setWeight(FontSelectionValue(500));
 
     m_timeFont = FontCascade(fontDescription, 0, 0);
     m_timeFont.update(nullptr);
@@ -355,26 +371,6 @@ ImageBuffer* MockRealtimeVideoSource::imageBuffer() const
     m_imageBuffer->context().setStrokeThickness(1);
 
     return m_imageBuffer.get();
-}
-
-void MockRealtimeVideoSource::paintCurrentFrameInContext(GraphicsContext& context, const FloatRect& rect)
-{
-    if (context.paintingDisabled() || !imageBuffer())
-        return;
-
-    GraphicsContextStateSaver stateSaver(context);
-    context.setImageInterpolationQuality(InterpolationLow);
-    IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
-
-    context.drawImage(*m_imageBuffer->copyImage(DontCopyBackingStore), rect);
-}
-
-RefPtr<Image> MockRealtimeVideoSource::currentFrameImage()
-{
-    if (!imageBuffer())
-        return nullptr;
-
-    return m_imageBuffer->copyImage(DontCopyBackingStore);
 }
 
 } // namespace WebCore

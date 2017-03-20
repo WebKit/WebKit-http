@@ -646,10 +646,11 @@ namespace JSC {
 
     class PropertyNode : public ParserArenaFreeable {
     public:
-        enum Type { Constant = 1, Getter = 2, Setter = 4, Computed = 8, Shorthand = 16 };
+        enum Type { Constant = 1, Getter = 2, Setter = 4, Computed = 8, Shorthand = 16, Spread = 32 };
         enum PutType { Unknown, KnownDirect };
 
         PropertyNode(const Identifier&, ExpressionNode*, Type, PutType, SuperBinding, bool isClassProperty);
+        PropertyNode(ExpressionNode*, Type, PutType, SuperBinding, bool isClassProperty);
         PropertyNode(ExpressionNode* propertyName, ExpressionNode*, Type, PutType, SuperBinding, bool isClassProperty);
 
         ExpressionNode* expressionName() const { return m_expression; }
@@ -665,7 +666,7 @@ namespace JSC {
         const Identifier* m_name;
         ExpressionNode* m_expression;
         ExpressionNode* m_assign;
-        unsigned m_type : 5;
+        unsigned m_type : 6;
         unsigned m_needsSuperBinding : 1;
         unsigned m_putType : 1;
         unsigned m_isClassProperty: 1;
@@ -745,6 +746,18 @@ namespace JSC {
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
         
         bool isSpreadExpression() const override { return true; }
+        ExpressionNode* m_expression;
+    };
+    
+    class ObjectSpreadExpressionNode : public ExpressionNode, public ThrowableExpressionData {
+    public:
+        ObjectSpreadExpressionNode(const JSTokenLocation&, ExpressionNode*);
+        
+        ExpressionNode* expression() const { return m_expression; }
+        
+    private:
+        RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+        
         ExpressionNode* m_expression;
     };
 
@@ -1867,22 +1880,6 @@ namespace JSC {
         ModuleNameNode* m_moduleName { nullptr };
     };
 
-    class FunctionParameters : public ParserArenaDeletable {
-    public:
-        FunctionParameters();
-        ALWAYS_INLINE unsigned size() const { return m_patterns.size(); }
-        ALWAYS_INLINE std::pair<DestructuringPatternNode*, ExpressionNode*> at(unsigned index) { return m_patterns[index]; }
-        ALWAYS_INLINE void append(DestructuringPatternNode* pattern, ExpressionNode* defaultValue) 
-        { 
-            ASSERT(pattern); 
-            m_patterns.append(std::make_pair(pattern, defaultValue));
-        }
-
-    private:
-
-        Vector<std::pair<DestructuringPatternNode*, ExpressionNode*>, 3> m_patterns;
-    };
-
     class FunctionMetadataNode final : public Node, public ParserArenaDeletable {
     public:
         using ParserArenaDeletable::operator new;
@@ -1891,7 +1888,7 @@ namespace JSC {
             ParserArena&, const JSTokenLocation& start, const JSTokenLocation& end, 
             unsigned startColumn, unsigned endColumn, int functionKeywordStart, 
             int functionNameStart, int parametersStart, bool isInStrictContext, 
-            ConstructorKind, SuperBinding, unsigned parameterCount, unsigned functionLength,
+            ConstructorKind, SuperBinding, unsigned parameterCount,
             SourceParseMode, bool isArrowFunctionBodyExpression);
 
         void finishParsing(const SourceCode&, const Identifier&, FunctionMode);
@@ -1911,7 +1908,6 @@ namespace JSC {
         unsigned startColumn() const { return m_startColumn; }
         unsigned endColumn() const { return m_endColumn; }
         unsigned parameterCount() const { return m_parameterCount; }
-        unsigned functionLength() const { return m_functionLength; }
         SourceParseMode parseMode() const { return m_parseMode; }
 
         void setEndPosition(JSTextPosition);
@@ -1948,7 +1944,6 @@ namespace JSC {
         SourceCode m_classSource;
         int m_startStartOffset;
         unsigned m_parameterCount;
-        unsigned m_functionLength;
         int m_lastLine;
         SourceParseMode m_parseMode;
         unsigned m_isInStrictContext : 1;
@@ -2129,19 +2124,28 @@ namespace JSC {
         Vector<Entry> m_targetPatterns;
     };
     
-    class ObjectPatternNode : public DestructuringPatternNode, public ParserArenaDeletable {
+    class ObjectPatternNode : public DestructuringPatternNode, public ThrowableExpressionData, public ParserArenaDeletable {
     public:
         using ParserArenaDeletable::operator new;
         
         ObjectPatternNode();
-        void appendEntry(const JSTokenLocation&, const Identifier& identifier, bool wasString, DestructuringPatternNode* pattern, ExpressionNode* defaultValue)
+        enum class BindingType {
+            Element,
+            RestElement
+        };
+        void appendEntry(const JSTokenLocation&, const Identifier& identifier, bool wasString, DestructuringPatternNode* pattern, ExpressionNode* defaultValue, BindingType bindingType)
         {
-            m_targetPatterns.append(Entry{ identifier, nullptr, wasString, pattern, defaultValue });
+            m_targetPatterns.append(Entry{ identifier, nullptr, wasString, pattern, defaultValue, bindingType });
         }
 
-        void appendEntry(const JSTokenLocation&, ExpressionNode* propertyExpression, DestructuringPatternNode* pattern, ExpressionNode* defaultValue)
+        void appendEntry(const JSTokenLocation&, ExpressionNode* propertyExpression, DestructuringPatternNode* pattern, ExpressionNode* defaultValue, BindingType bindingType)
         {
-            m_targetPatterns.append(Entry{ Identifier(), propertyExpression, false, pattern, defaultValue });
+            m_targetPatterns.append(Entry{ Identifier(), propertyExpression, false, pattern, defaultValue, bindingType });
+        }
+        
+        void setContainsRestElement(bool containsRestElement)
+        {
+            m_containsRestElement = containsRestElement;
         }
 
     private:
@@ -2154,7 +2158,9 @@ namespace JSC {
             bool wasString;
             DestructuringPatternNode* pattern;
             ExpressionNode* defaultValue;
+            BindingType bindingType;
         };
+        bool m_containsRestElement { false };
         Vector<Entry> m_targetPatterns;
     };
 
@@ -2226,6 +2232,36 @@ namespace JSC {
 
         DestructuringPatternNode* m_bindings;
         ExpressionNode* m_initializer;
+    };
+
+    class FunctionParameters : public ParserArenaDeletable {
+    public:
+        FunctionParameters();
+        ALWAYS_INLINE unsigned size() const { return m_patterns.size(); }
+        ALWAYS_INLINE std::pair<DestructuringPatternNode*, ExpressionNode*> at(unsigned index) { return m_patterns[index]; }
+        ALWAYS_INLINE void append(DestructuringPatternNode* pattern, ExpressionNode* defaultValue)
+        {
+            ASSERT(pattern);
+
+            // http://www.ecma-international.org/ecma-262/6.0/index.html#sec-functiondeclarationinstantiation
+            // This implements IsSimpleParameterList in the Ecma 2015 spec.
+            // If IsSimpleParameterList is false, we will create a strict-mode like arguments object.
+            // IsSimpleParameterList is false if the argument list contains any default parameter values,
+            // a rest parameter, or any destructuring patterns.
+            // If we do have default parameters, destructuring parameters, or a rest parameter, our parameters will be allocated in a different scope.
+
+            bool hasDefaultParameterValue = defaultValue;
+            bool isSimpleParameter = !hasDefaultParameterValue && pattern->isBindingNode();
+            m_isSimpleParameterList &= isSimpleParameter;
+
+            m_patterns.append(std::make_pair(pattern, defaultValue));
+        }
+        ALWAYS_INLINE bool isSimpleParameterList() const { return m_isSimpleParameterList; }
+
+    private:
+
+        Vector<std::pair<DestructuringPatternNode*, ExpressionNode*>, 3> m_patterns;
+        bool m_isSimpleParameterList { true };
     };
 
     class FuncDeclNode : public StatementNode {

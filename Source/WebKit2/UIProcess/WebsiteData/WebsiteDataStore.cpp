@@ -30,6 +30,7 @@
 #include "APIWebsiteDataRecord.h"
 #include "NetworkProcessMessages.h"
 #include "StorageManager.h"
+#include "WebCookieManagerProxy.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
 #include "WebResourceLoadStatisticsStore.h"
@@ -39,6 +40,7 @@
 #include <WebCore/DatabaseTracker.h>
 #include <WebCore/HTMLMediaElement.h>
 #include <WebCore/OriginLock.h>
+#include <WebCore/ResourceLoadObserver.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/RunLoop.h>
@@ -102,6 +104,27 @@ WebsiteDataStore::~WebsiteDataStore()
         for (auto& processPool : WebProcessPool::allProcessPools())
             processPool->sendToNetworkingProcess(Messages::NetworkProcess::DestroyPrivateBrowsingSession(m_sessionID));
     }
+}
+
+WebProcessPool* WebsiteDataStore::processPoolForCookieStorageOperations()
+{
+    auto pools = processPools(1, false);
+    return pools.isEmpty() ? nullptr : pools.begin()->get();
+}
+
+void WebsiteDataStore::resolveDirectoriesIfNecessary()
+{
+    if (m_hasResolvedDirectories)
+        return;
+    m_hasResolvedDirectories = true;
+
+    m_resolvedConfiguration.applicationCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.applicationCacheDirectory);
+    m_resolvedConfiguration.mediaCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaCacheDirectory);
+    m_resolvedConfiguration.mediaKeysStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaKeysStorageDirectory);
+    m_resolvedConfiguration.webSQLDatabaseDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.webSQLDatabaseDirectory);
+
+    if (!m_configuration.javaScriptConfigurationDirectory.isEmpty())
+        m_resolvedConfiguration.javaScriptConfigurationDirectory = resolvePathForSandboxExtension(m_configuration.javaScriptConfigurationDirectory);
 }
 
 void WebsiteDataStore::cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage)
@@ -757,6 +780,9 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, std::chr
     }
 #endif
 
+    if (dataTypes.contains(WebsiteDataType::WebsiteDataTypeResourceLoadStatistics))
+        WebCore::ResourceLoadObserver::sharedObserver().clearInMemoryAndPersistentStore(modifiedSince);
+
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
 }
@@ -1023,6 +1049,9 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
     }
 #endif
 
+    if (dataTypes.contains(WebsiteDataType::WebsiteDataTypeResourceLoadStatistics))
+        WebCore::ResourceLoadObserver::sharedObserver().clearInMemoryAndPersistentStore();
+
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
 }
@@ -1035,6 +1064,14 @@ void WebsiteDataStore::removeDataForTopPrivatelyOwnedDomains(OptionSet<WebsiteDa
         });
     });
 }
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+void WebsiteDataStore::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)
+{
+    for (auto& processPool : processPools())
+        processPool->sendToNetworkingProcess(Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd));
+}
+#endif
 
 void WebsiteDataStore::webPageWasAdded(WebPageProxy& webPageProxy)
 {
@@ -1078,7 +1115,23 @@ void WebsiteDataStore::webProcessDidCloseConnection(WebProcessProxy& webProcessP
         m_storageManager->processDidCloseConnection(webProcessProxy, connection);
 }
 
-HashSet<RefPtr<WebProcessPool>> WebsiteDataStore::processPools() const
+bool WebsiteDataStore::isAssociatedProcessPool(WebProcessPool& processPool) const
+{
+    if (auto dataStore = processPool.websiteDataStore()) {
+        if (&dataStore->websiteDataStore() == this)
+            return true;
+    } else if (&API::WebsiteDataStore::defaultDataStore()->websiteDataStore() == this) {
+        // If a process pool doesn't have an explicit data store and this is the default WebsiteDataStore,
+        // add that process pool to the set.
+        // FIXME: This behavior is weird and necessitated by the fact that process pools don't always
+        // have a data store; they should.
+        return true;
+    }
+
+    return false;
+}
+
+HashSet<RefPtr<WebProcessPool>> WebsiteDataStore::processPools(size_t count, bool ensureAPoolExists) const
 {
     HashSet<RefPtr<WebProcessPool>> processPools;
     for (auto& process : processes())
@@ -1087,16 +1140,17 @@ HashSet<RefPtr<WebProcessPool>> WebsiteDataStore::processPools() const
     if (processPools.isEmpty()) {
         // Check if we're one of the legacy data stores.
         for (auto& processPool : WebProcessPool::allProcessPools()) {
-            if (auto dataStore = processPool->websiteDataStore()) {
-                if (&dataStore->websiteDataStore() == this) {
-                    processPools.add(processPool);
-                    break;
-                }
-            }
+            if (!isAssociatedProcessPool(*processPool))
+                continue;
+
+            processPools.add(processPool);
+
+            if (processPools.size() == count)
+                break;
         }
     }
 
-    if (processPools.isEmpty()) {
+    if (processPools.isEmpty() && count && ensureAPoolExists) {
         auto processPool = WebProcessPool::create(API::ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration(m_configuration));
         processPools.add(processPool.ptr());
     }
@@ -1200,8 +1254,15 @@ void WebsiteDataStore::registerSharedResourceLoadObserver()
 {
     if (!m_resourceLoadStatistics)
         return;
-
+    
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    m_resourceLoadStatistics->registerSharedResourceLoadObserver(
+        [this] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd) {
+            this->shouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd);
+        });
+#else
     m_resourceLoadStatistics->registerSharedResourceLoadObserver();
+#endif
 }
 
 }

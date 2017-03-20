@@ -148,10 +148,10 @@ bool ImageSource::isAllDataReceived()
     return isDecoderAvailable() ? m_decoder->isAllDataReceived() : m_frameCache->frameCount();
 }
 
-bool ImageSource::isAsyncDecodingRequired()
+bool ImageSource::shouldUseAsyncDecoding()
 {
     // FIXME: figure out the best heuristic for enabling async image decoding.
-    return size().area() * sizeof(RGBA32) >= 100 * KB;
+    return size().area() * sizeof(RGBA32) >= (frameCount() > 1 ? 100 * KB : 500 * KB);
 }
 
 SubsamplingLevel ImageSource::maximumSubsamplingLevel()
@@ -191,11 +191,10 @@ NativeImagePtr ImageSource::createFrameImageAtIndex(size_t index, SubsamplingLev
     return isDecoderAvailable() ? m_decoder->createFrameImageAtIndex(index, subsamplingLevel) : nullptr;
 }
 
-NativeImagePtr ImageSource::frameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel, const GraphicsContext* targetContext)
+NativeImagePtr ImageSource::frameImageAtIndex(size_t index, const std::optional<SubsamplingLevel>& subsamplingLevel, const std::optional<IntSize>& sizeForDrawing, const GraphicsContext* targetContext)
 {
     setDecoderTargetContext(targetContext);
-
-    return m_frameCache->frameImageAtIndex(index, subsamplingLevel);
+    return m_frameCache->frameImageAtIndex(index, subsamplingLevel, sizeForDrawing);
 }
 
 void ImageSource::dump(TextStream& ts)

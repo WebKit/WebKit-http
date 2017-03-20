@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,7 +53,11 @@ public:
     virtual bool is2d() const { return false; }
     virtual bool isWebGL1() const { return false; }
     virtual bool isWebGL2() const { return false; }
-    bool is3d() const { return isWebGL1() || isWebGL2(); }
+    bool isWebGL() const { return isWebGL1() || isWebGL2(); }
+#if ENABLE(WEBGPU)
+    virtual bool isWebGPU() const { return false; }
+#endif
+    virtual bool isGPUBased() const { return false; }
     virtual bool isAccelerated() const { return false; }
 
     virtual void paintRenderingResultsToCanvas() {}

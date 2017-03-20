@@ -64,6 +64,7 @@ set(JavaScriptCore_SOURCES
     API/OpaqueJSString.cpp
 
     assembler/ARMAssembler.cpp
+    assembler/AbstractMacroAssembler.cpp
     assembler/LinkBuffer.cpp
     assembler/MacroAssembler.cpp
     assembler/MacroAssemblerARM.cpp
@@ -76,12 +77,13 @@ set(JavaScriptCore_SOURCES
     b3/air/AirAllocateStack.cpp
     b3/air/AirArg.cpp
     b3/air/AirBasicBlock.cpp
+    b3/air/AirBlockInsertionSet.cpp
+    b3/air/AirBreakCriticalEdges.cpp
     b3/air/AirCCallSpecial.cpp
     b3/air/AirCCallingConvention.cpp
     b3/air/AirCode.cpp
     b3/air/AirCustom.cpp
     b3/air/AirDisassembler.cpp
-    b3/air/AirDumpAsJS.cpp
     b3/air/AirEliminateDeadCode.cpp
     b3/air/AirEmitShuffle.cpp
     b3/air/AirFixObviousSpills.cpp
@@ -110,6 +112,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirValidate.cpp
 
     b3/B3ArgumentRegValue.cpp
+    b3/B3AtomicValue.cpp
     b3/B3Bank.cpp
     b3/B3BasicBlock.cpp
     b3/B3BlockInsertionSet.cpp
@@ -194,6 +197,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
+    bytecode/BytecodeDumper.cpp
     bytecode/BytecodeGeneratorification.cpp
     bytecode/BytecodeIntrinsicRegistry.cpp
     bytecode/BytecodeLivenessAnalysis.cpp
@@ -498,11 +502,9 @@ set(JavaScriptCore_SOURCES
     heap/HeapSnapshot.cpp
     heap/HeapSnapshotBuilder.cpp
     heap/HeapTimer.cpp
-    heap/HeapVerifier.cpp
     heap/IncrementalSweeper.cpp
     heap/JITStubRoutineSet.cpp
     heap/LargeAllocation.cpp
-    heap/LiveObjectList.cpp
     heap/MachineStackMarker.cpp
     heap/MarkStack.cpp
     heap/MarkedAllocator.cpp
@@ -690,6 +692,7 @@ set(JavaScriptCore_SOURCES
     runtime/CommonSlowPathsExceptions.cpp
     runtime/CompilationResult.cpp
     runtime/Completion.cpp
+    runtime/ConfigFile.cpp
     runtime/ConsoleClient.cpp
     runtime/ConsoleObject.cpp
     runtime/ConstantMode.cpp
@@ -913,19 +916,23 @@ set(JavaScriptCore_SOURCES
     runtime/WeakSetConstructor.cpp
     runtime/WeakSetPrototype.cpp
 
+    tools/CellList.cpp
     tools/CodeProfile.cpp
     tools/CodeProfiling.cpp
     tools/FunctionOverrides.cpp
     tools/FunctionWhitelist.cpp
+    tools/HeapVerifier.cpp
     tools/JSDollarVM.cpp
     tools/JSDollarVMPrototype.cpp
     tools/SigillCrashAnalyzer.cpp
+    tools/StackTrace.cpp
     tools/VMInspector.cpp
 
     wasm/JSWebAssembly.cpp
     wasm/WasmB3IRGenerator.cpp
     wasm/WasmBinding.cpp
     wasm/WasmCallingConvention.cpp
+    wasm/WasmFaultSignalHandler.cpp
     wasm/WasmFormat.cpp
     wasm/WasmMemory.cpp
     wasm/WasmMemoryInformation.cpp
@@ -936,6 +943,7 @@ set(JavaScriptCore_SOURCES
     wasm/WasmValidate.cpp
 
     wasm/js/JSWebAssemblyCallee.cpp
+    wasm/js/JSWebAssemblyCodeBlock.cpp
     wasm/js/JSWebAssemblyCompileError.cpp
     wasm/js/JSWebAssemblyInstance.cpp
     wasm/js/JSWebAssemblyLinkError.cpp
@@ -961,6 +969,7 @@ set(JavaScriptCore_SOURCES
     wasm/js/WebAssemblyTableConstructor.cpp
     wasm/js/WebAssemblyTablePrototype.cpp
     wasm/js/WebAssemblyToJSCallee.cpp
+    wasm/js/WebAssemblyWrapperFunction.cpp
 
     yarr/RegularExpression.cpp
     yarr/YarrCanonicalizeUCS2.cpp
@@ -1240,6 +1249,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     profiler
     replay
     runtime
+    wasm
     yarr
 
     collector/handles

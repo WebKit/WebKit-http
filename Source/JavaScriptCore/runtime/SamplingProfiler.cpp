@@ -51,7 +51,7 @@
 #include <wtf/RefPtr.h>
 #include <wtf/text/StringBuilder.h>
 
-#if OS(DARWIN)
+#if OS(DARWIN) || OS(LINUX)
 #include <cxxabi.h>
 #include <dlfcn.h>
 #endif
@@ -81,7 +81,7 @@ ALWAYS_INLINE static void reportStats()
 
 class FrameWalker {
 public:
-    FrameWalker(VM& vm, ExecState* callFrame, const LockHolder& codeBlockSetLocker, const LockHolder& machineThreadsLocker)
+    FrameWalker(VM& vm, ExecState* callFrame, const AbstractLocker& codeBlockSetLocker, const AbstractLocker& machineThreadsLocker)
         : m_vm(vm)
         , m_callFrame(callFrame)
         , m_vmEntryFrame(vm.topVMEntryFrame)
@@ -190,8 +190,8 @@ protected:
     VM& m_vm;
     ExecState* m_callFrame;
     VMEntryFrame* m_vmEntryFrame;
-    const LockHolder& m_codeBlockSetLocker;
-    const LockHolder& m_machineThreadsLocker;
+    const AbstractLocker& m_codeBlockSetLocker;
+    const AbstractLocker& m_machineThreadsLocker;
     bool m_bailingOut { false };
     size_t m_depth { 0 };
 };
@@ -200,7 +200,7 @@ class CFrameWalker : public FrameWalker {
 public:
     typedef FrameWalker Base;
 
-    CFrameWalker(VM& vm, void* machineFrame, ExecState* callFrame, const LockHolder& codeBlockSetLocker, const LockHolder& machineThreadsLocker)
+    CFrameWalker(VM& vm, void* machineFrame, ExecState* callFrame, const AbstractLocker& codeBlockSetLocker, const AbstractLocker& machineThreadsLocker)
         : Base(vm, callFrame, codeBlockSetLocker, machineThreadsLocker)
         , m_machineFrame(machineFrame)
     {
@@ -296,7 +296,7 @@ SamplingProfiler::~SamplingProfiler()
 {
 }
 
-void SamplingProfiler::createThreadIfNecessary(const LockHolder&)
+void SamplingProfiler::createThreadIfNecessary(const AbstractLocker&)
 {
     ASSERT(m_lock.isLocked());
 
@@ -334,7 +334,7 @@ void SamplingProfiler::timerLoop()
     }
 }
 
-void SamplingProfiler::takeSample(const LockHolder&, std::chrono::microseconds& stackTraceProcessingTime)
+void SamplingProfiler::takeSample(const AbstractLocker&, std::chrono::microseconds& stackTraceProcessingTime)
 {
     ASSERT(m_lock.isLocked());
     if (m_vm.entryScope) {
@@ -659,21 +659,21 @@ void SamplingProfiler::start()
     start(locker);
 }
 
-void SamplingProfiler::start(const LockHolder& locker)
+void SamplingProfiler::start(const AbstractLocker& locker)
 {
     ASSERT(m_lock.isLocked());
     m_isPaused = false;
     createThreadIfNecessary(locker);
 }
 
-void SamplingProfiler::pause(const LockHolder&)
+void SamplingProfiler::pause(const AbstractLocker&)
 {
     ASSERT(m_lock.isLocked());
     m_isPaused = true;
     reportStats();
 }
 
-void SamplingProfiler::noticeCurrentThreadAsJSCExecutionThread(const LockHolder&)
+void SamplingProfiler::noticeCurrentThreadAsJSCExecutionThread(const AbstractLocker&)
 {
     ASSERT(m_lock.isLocked());
     m_jscExecutionThread = m_vm.heap.machineThreads().machineThreadForCurrentThread();
@@ -700,7 +700,7 @@ void SamplingProfiler::noticeVMEntry()
     createThreadIfNecessary(locker);
 }
 
-void SamplingProfiler::clearData(const LockHolder&)
+void SamplingProfiler::clearData(const AbstractLocker&)
 {
     ASSERT(m_lock.isLocked());
     m_stackTraces.clear();
@@ -746,7 +746,7 @@ String SamplingProfiler::StackFrame::displayName(VM& vm)
     }
 
     if (frameType == FrameType::Unknown || frameType == FrameType::C) {
-#if OS(DARWIN)
+#if OS(DARWIN) || OS(LINUX)
         if (frameType == FrameType::C) {
             const char* mangledName = nullptr;
             const char* cxaDemangled = nullptr;
@@ -858,7 +858,7 @@ String SamplingProfiler::StackFrame::url()
     return url;
 }
 
-Vector<SamplingProfiler::StackTrace> SamplingProfiler::releaseStackTraces(const LockHolder& locker)
+Vector<SamplingProfiler::StackTrace> SamplingProfiler::releaseStackTraces(const AbstractLocker& locker)
 {
     ASSERT(m_lock.isLocked());
     {

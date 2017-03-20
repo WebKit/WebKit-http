@@ -48,6 +48,7 @@
 #include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/SystemTracing.h>
 #include <wtf/text/CString.h>
 
 #if PLATFORM(IOS)
@@ -176,8 +177,10 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
         return;
     }
 
-    if (newRequest.requester() != ResourceRequestBase::Requester::Main)
+    if (newRequest.requester() != ResourceRequestBase::Requester::Main) {
+        TracePoint(SubresourceLoadWillStart);
         ResourceLoadObserver::sharedObserver().logSubresourceLoading(m_frame.get(), newRequest, redirectResponse);
+    }
 
     ASSERT(!newRequest.isNull());
     if (!redirectResponse.isNull()) {
@@ -301,12 +304,14 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
         if (response.httpStatusCode() == 304) {
             // 304 Not modified / Use local copy
             // Existing resource is ok, just use it updating the expiration time.
-            m_resource->setResponse(response);
-            MemoryCache::singleton().revalidationSucceeded(*m_resource, response);
+            ResourceResponse revalidationResponse = response;
+            revalidationResponse.setSource(ResourceResponse::Source::MemoryCacheAfterValidation);
+            m_resource->setResponse(revalidationResponse);
+            MemoryCache::singleton().revalidationSucceeded(*m_resource, revalidationResponse);
             if (m_frame && m_frame->page())
                 m_frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), emptyString(), DiagnosticLoggingResultPass, ShouldSample::Yes);
             if (!reachedTerminalState())
-                ResourceLoader::didReceiveResponse(response);
+                ResourceLoader::didReceiveResponse(revalidationResponse);
             return;
         }
         // Did not get 304 response, continue as a regular resource load.
@@ -460,6 +465,7 @@ static void logResourceLoaded(Frame* frame, CachedResource::Type type)
         resourceType = DiagnosticLoggingKeys::otherKey();
         break;
     }
+    
     frame->page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceLoadedKey(), resourceType, ShouldSample::Yes);
 }
 
@@ -550,15 +556,20 @@ void SubresourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMe
     }
 #endif
 
+    if (m_resource->type() != CachedResource::MainResource)
+        TracePoint(SubresourceLoadDidEnd);
+
     m_state = Finishing;
     m_resource->finishLoading(resourceData());
 
     if (wasCancelled())
         return;
+
     m_resource->finish();
     ASSERT(!reachedTerminalState());
-    didFinishLoadingOnePart(m_resource->response().deprecatedNetworkLoadMetrics());
+    didFinishLoadingOnePart(networkLoadMetrics);
     notifyDone();
+
     if (reachedTerminalState())
         return;
     releaseResources();
@@ -579,6 +590,10 @@ void SubresourceLoader::didFail(const ResourceError& error)
     Ref<SubresourceLoader> protectedThis(*this);
     CachedResourceHandle<CachedResource> protectResource(m_resource);
     m_state = Finishing;
+
+    if (m_resource->type() != CachedResource::MainResource)
+        TracePoint(SubresourceLoadDidEnd);
+
     if (m_resource->resourceToRevalidate())
         MemoryCache::singleton().revalidationFailed(*m_resource);
     m_resource->setResourceError(error);
@@ -623,6 +638,9 @@ void SubresourceLoader::didCancel(const ResourceError&)
 {
     if (m_state == Uninitialized)
         return;
+
+    if (m_resource->type() != CachedResource::MainResource)
+        TracePoint(SubresourceLoadDidEnd);
 
     m_resource->cancelLoad();
     notifyDone();

@@ -51,6 +51,9 @@ typedef uint32_t WKPluginUnavailabilityReason;
 enum {
     kWKAutoplayEventDidPreventFromAutoplaying,
     kWKAutoplayEventDidPlayMediaPreventedFromAutoplaying,
+    kWKAutoplayEventDidEndMediaPlaybackWithoutUserInterference,
+    kWKAutoplayEventUserDidInterfereWithPlayback,
+    kWKAutoplayEventUserNeverPlayedMediaPreventedFromPlaying,
 };
 typedef uint32_t WKAutoplayEvent;
 

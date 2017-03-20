@@ -202,34 +202,34 @@ WebFormSubmissionListenerProxy& WebFrameProxy::setUpFormSubmissionListenerProxy(
     return *static_cast<WebFormSubmissionListenerProxy*>(m_activeListener.get());
 }
 
-void WebFrameProxy::getWebArchive(std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
+void WebFrameProxy::getWebArchive(Function<void (API::Data*, CallbackBase::Error)>&& callbackFunction)
 {
     if (!m_page) {
         callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
 
-    m_page->getWebArchiveOfFrame(this, callbackFunction);
+    m_page->getWebArchiveOfFrame(this, WTFMove(callbackFunction));
 }
 
-void WebFrameProxy::getMainResourceData(std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
+void WebFrameProxy::getMainResourceData(Function<void (API::Data*, CallbackBase::Error)>&& callbackFunction)
 {
     if (!m_page) {
         callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
 
-    m_page->getMainResourceDataOfFrame(this, callbackFunction);
+    m_page->getMainResourceDataOfFrame(this, WTFMove(callbackFunction));
 }
 
-void WebFrameProxy::getResourceData(API::URL* resourceURL, std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
+void WebFrameProxy::getResourceData(API::URL* resourceURL, Function<void (API::Data*, CallbackBase::Error)>&& callbackFunction)
 {
     if (!m_page) {
         callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
 
-    m_page->getResourceDataFromFrame(this, resourceURL, callbackFunction);
+    m_page->getResourceDataFromFrame(this, resourceURL, WTFMove(callbackFunction));
 }
 
 void WebFrameProxy::setUnreachableURL(const String& unreachableURL)
@@ -248,11 +248,8 @@ bool WebFrameProxy::didHandleContentFilterUnblockNavigation(const WebCore::Resou
     RefPtr<WebPageProxy> page { m_page };
     ASSERT(page);
     m_contentFilterUnblockHandler.requestUnblockAsync([page](bool unblocked) {
-        if (unblocked) {
-            const bool reloadFromOrigin = false;
-            const bool contentBlockersEnabled = true;
-            page->reload(reloadFromOrigin, contentBlockersEnabled);
-        }
+        if (unblocked)
+            page->reload({ });
     });
     return true;
 }

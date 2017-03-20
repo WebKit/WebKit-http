@@ -82,6 +82,17 @@ void RealtimeIncomingVideoSource::startProducingData()
         m_videoTrack->AddOrUpdateSink(this, rtc::VideoSinkWants());
 }
 
+void RealtimeIncomingVideoSource::setSourceTrack(rtc::scoped_refptr<webrtc::VideoTrackInterface>&& track)
+{
+    ASSERT(!m_videoTrack);
+    ASSERT(track);
+
+    m_muted = false;
+    m_videoTrack = track;
+    if (m_isProducingData)
+        m_videoTrack->AddOrUpdateSink(this, rtc::VideoSinkWants());
+}
+
 void RealtimeIncomingVideoSource::stopProducingData()
 {
     if (!m_isProducingData)
@@ -92,13 +103,40 @@ void RealtimeIncomingVideoSource::stopProducingData()
         m_videoTrack->RemoveSink(this);
 }
 
+CVPixelBufferRef RealtimeIncomingVideoSource::pixelBufferFromVideoFrame(const webrtc::VideoFrame& frame)
+{
+    if (muted() || !enabled()) {
+        if (!m_blackFrame || m_blackFrameWidth != frame.width() || m_blackFrameHeight != frame.height()) {
+            CVPixelBufferRef pixelBuffer = nullptr;
+            auto status = CVPixelBufferCreate(kCFAllocatorDefault, frame.width(), frame.height(), kCVPixelFormatType_420YpCbCr8Planar, nullptr, &pixelBuffer);
+            ASSERT_UNUSED(status, status == noErr);
+
+            m_blackFrame = pixelBuffer;
+            m_blackFrameWidth = frame.width();
+            m_blackFrameHeight = frame.height();
+
+            status = CVPixelBufferLockBaseAddress(pixelBuffer, 0);
+            ASSERT(status == noErr);
+            void* data = CVPixelBufferGetBaseAddress(pixelBuffer);
+            size_t yLength = frame.width() * frame.height();
+            memset(data, 0, yLength);
+            memset(static_cast<uint8_t*>(data) + yLength, 128, yLength / 2);
+
+            status = CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+            ASSERT(!status);
+        }
+        return m_blackFrame.get();
+    }
+    auto buffer = frame.video_frame_buffer();
+    return static_cast<CVPixelBufferRef>(buffer->native_handle());
+}
+
 void RealtimeIncomingVideoSource::OnFrame(const webrtc::VideoFrame& frame)
 {
     if (!m_isProducingData)
         return;
 
-    auto buffer = frame.video_frame_buffer();
-    CVPixelBufferRef pixelBuffer = static_cast<CVPixelBufferRef>(buffer->native_handle());
+    auto pixelBuffer = pixelBufferFromVideoFrame(frame);
 
     // FIXME: Convert timing information from VideoFrame to CMSampleTimingInfo.
     // For the moment, we will pretend that frames should be rendered asap.
@@ -148,52 +186,6 @@ void RealtimeIncomingVideoSource::processNewSample(CMSampleBufferRef sample, uns
     }
 
     videoSampleAvailable(MediaSampleAVFObjC::create(sample));
-}
-
-static inline void drawImage(ImageBuffer& imageBuffer, CGImageRef image, const FloatRect& rect)
-{
-    auto& context = imageBuffer.context();
-    GraphicsContextStateSaver stateSaver(context);
-    context.translate(rect.x(), rect.y() + rect.height());
-    context.scale(FloatSize(1, -1));
-    context.setImageInterpolationQuality(InterpolationLow);
-    IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
-    CGContextDrawImage(context.platformContext(), CGRectMake(0, 0, paintRect.width(), paintRect.height()), image);
-}
-
-RefPtr<Image> RealtimeIncomingVideoSource::currentFrameImage()
-{
-    if (!m_buffer)
-        return nullptr;
-
-    FloatRect rect(0, 0, m_currentSettings.width(), m_currentSettings.height());
-    auto imageBuffer = ImageBuffer::create(rect.size(), Unaccelerated);
-
-    auto pixelBuffer = static_cast<CVPixelBufferRef>(CMSampleBufferGetImageBuffer(m_buffer.get()));
-    drawImage(*imageBuffer, m_conformer.createImageFromPixelBuffer(pixelBuffer).get(), rect);
-
-    return ImageBuffer::sinkIntoImage(WTFMove(imageBuffer));
-}
-
-void RealtimeIncomingVideoSource::paintCurrentFrameInContext(GraphicsContext& context, const FloatRect& rect)
-{
-    if (context.paintingDisabled())
-        return;
-
-    if (!m_buffer)
-        return;
-
-    // FIXME: Can we optimize here the painting?
-    FloatRect fullRect(0, 0, m_currentSettings.width(), m_currentSettings.height());
-    auto imageBuffer = ImageBuffer::create(fullRect.size(), Unaccelerated);
-
-    auto pixelBuffer = static_cast<CVPixelBufferRef>(CMSampleBufferGetImageBuffer(m_buffer.get()));
-    drawImage(*imageBuffer, m_conformer.createImageFromPixelBuffer(pixelBuffer).get(), fullRect);
-
-    GraphicsContextStateSaver stateSaver(context);
-    context.setImageInterpolationQuality(InterpolationLow);
-    IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
-    context.drawImage(*imageBuffer->copyImage(DontCopyBackingStore), rect);
 }
 
 RefPtr<RealtimeMediaSourceCapabilities> RealtimeIncomingVideoSource::capabilities() const

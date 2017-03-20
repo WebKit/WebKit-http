@@ -1,3 +1,530 @@
+2017-03-19  Alexey Proskuryakov  <ap@apple.com>
+
+        WebHTMLView is useless as WebResourceHandler
+        https://bugs.webkit.org/show_bug.cgi?id=169857
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _documentFragmentFromPasteboard:forType:inContext:subresources:]):
+        WebHTMLView doesnt implement any of WebResourceHandler methods.
+
+2017-03-17  Michael Saboff  <msaboff@apple.com>
+
+        Use USE_INTERNAL_SDK to compute ENABLE_FAST_JIT_PERMISSIONS instead of HAVE_INTERNAL_SDK
+        https://bugs.webkit.org/show_bug.cgi?id=169817
+
+        Reviewed by Filip Pizlo.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-17  Antti Koivisto  <antti@apple.com>
+
+        Add a reload policy where only expired subresources are revalidated
+        https://bugs.webkit.org/show_bug.cgi?id=169756
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebFrame.mm:
+        (toWebFrameLoadType):
+        (-[WebFrame reload]):
+        (-[WebFrame reloadFromOrigin]):
+
+2017-03-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK1] Support animated transitions when performing a data interaction operation
+        https://bugs.webkit.org/show_bug.cgi?id=169805
+        <rdar://problem/31045767>
+
+        Reviewed by Beth Dakin and Megan Gardner.
+
+        Adds WebKit1 support for animated transitions when performing a data interaction operation. See per-method changes
+        for more details.
+
+        * DOM/DOMElement.h:
+        * DOM/DOMElement.mm:
+        (-[DOMElement boundsInRootViewSpace]):
+
+        Introduce -[DOMElement boundsInRootViewSpace], which returns the bounds of the element in root view coordinates.
+
+        * WebCoreSupport/WebDragClient.h:
+        (): Deleted.
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::didConcludeEditDrag):
+
+        Add boilerplate plumbing.
+
+        * WebView/WebView.mm:
+        (-[WebUITextIndicatorData initWithImage:textIndicatorData:scale:]):
+
+        Add contentImageWithoutSelection and contentImageWithoutSelectionRectInRootViewCoordinates to WebUITextIndicatorData.
+
+        (floatRectsForCGRectArray):
+        (-[WebView _createImageWithPlatterForImage:boundingRect:contentScaleFactor:clippingRects:]):
+
+        Introduces a SPI helper method in WebView that clients can use to generate an image of a text platter given an
+        image of some text, as well as clipping rects to apply to the image.
+
+        (-[WebView _dataOperationTextIndicator]):
+
+        Add SPI to fetch the text indicator used to drive animations for the current data operation.
+
+        (-[WebView _didConcludeEditDataInteraction]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2017-03-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the system tracing points
+        https://bugs.webkit.org/show_bug.cgi?id=169790
+
+        Reviewed by Zalan Bujtas.
+
+        Use a more cohesive set of system trace points that give a good overview of what
+        WebKit is doing. Added points for resource loading, render tree building, sync messages
+        to the web process, async image decode, WASM and fetching cookies.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView drawRect:]):
+
+2017-03-16  Youenn Fablet  <youenn@apple.com>
+
+        Wrap legacy WebRTC API in runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=169646
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webRTCLegacyAPIEnabled]):
+        (-[WebPreferences setWebRTCLegacyAPIEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-14  Megan Gardner  <megan_gardner@apple.com>
+
+        Correctly export WebItemProviderPasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=169578
+
+        Reviewed by Tim Horton.
+
+        * MigrateHeaders.make:
+
+2017-03-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Data interaction tests occasionally hit assertions in debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=169002
+        <rdar://problem/30994806>
+
+        Reviewed by Tim Horton.
+
+        Renames setIgnoreCompositionSelectionChange to setIgnoreSelectionChanges. See WebCore ChangeLog for more details.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateSelectionForInputManager]):
+        * WebView/WebView.mm:
+        (-[WebView updateTextTouchBar]):
+
+2017-03-13  Anders Carlsson  <andersca@apple.com>
+
+        Fix build warnings.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+        (-[WebInspectorWindowController webView:runOpenPanelForFileButtonWithResultListener:allowMultipleFiles:]):
+
+2017-03-11  Brady Eidson  <beidson@apple.com>
+
+        Cleanup "addCookie" and its sole user.
+        https://bugs.webkit.org/show_bug.cgi?id=169486
+
+        Reviewed by Brian Burg.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::addCookie): Deleted.
+
+2017-03-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix watch and tv builds after r213294
+        https://bugs.webkit.org/show_bug.cgi?id=169508
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * WebView/WebNotification.h:
+        Don't assume we have already included something that includes NSObject.h.
+
+2017-03-09  Daniel Bates  <dabates@apple.com>
+
+        Guard Credential Management implementation behind a runtime enabled feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=169364
+        <rdar://problem/30957425>
+
+        Reviewed by Brent Fulgham.
+
+        Add WebKit preference for Credential Management (disabled by default).
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences credentialManagementEnabled]): Added.
+        (-[WebPreferences setCredentialManagementEnabled:]): Added.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-09  Anders Carlsson  <andersca@apple.com>
+
+        Add delegate support to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=169427
+        Part of rdar://problem/28880714.
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add feature define.
+
+2017-03-08  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix DataInteraction guards
+        https://bugs.webkit.org/show_bug.cgi?id=169404
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebDragClient.mm:
+
+2017-03-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add plumbing for WebCore to notify WebKit2 when an edit drag has concluded
+        https://bugs.webkit.org/show_bug.cgi?id=169392
+        <rdar://problem/30882974>
+
+        Reviewed by Tim Horton.
+
+        Add a stub implementation of WebDragClient::didConcludeEditDrag.
+
+        * WebCoreSupport/WebDragClient.h:
+
+2017-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Simplify the PaymentCoordinator interface
+        https://bugs.webkit.org/show_bug.cgi?id=169382
+        Part of rdar://problem/28880714.
+
+        Reviewed by Tim Horton.
+
+        Update for PaymentCoordinatorClient changes.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::completeShippingMethodSelection):
+        (WebPaymentCoordinatorClient::completeShippingContactSelection):
+        (WebPaymentCoordinatorClient::completePaymentMethodSelection):
+        (WebPaymentCoordinatorClient::completePaymentSession):
+
+2017-03-08  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix for dependency fix
+        https://bugs.webkit.org/show_bug.cgi?id=169369
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebViewPrivate.h:
+
+2017-03-07  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix Project Dependency
+        https://bugs.webkit.org/show_bug.cgi?id=169340
+
+        Unreviewed Dependency Fix.
+
+        * WebView/WebViewPrivate.h:
+
+2017-03-07  Alexey Proskuryakov  <ap@apple.com>
+
+        WebKitLegacy should re-export symbols from WebCore on watchos and tvos
+        https://bugs.webkit.org/show_bug.cgi?id=169341
+        <rdar://problem/30913788>
+
+        Reviewed by Dan Bernstein.
+
+        * MigrateHeaders.make:
+
+2017-03-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Have fixedPositionCreatesStackingContext be on by default everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=169334
+
+        Reviewed by Zalan Bujtas.
+
+        It makes no sense to have web-exposed CSS functionality be different based on setting,
+        and other browser are now aligned with having position:fixed create stacking context.
+
+        So remove the fixedPositionCreatesStackingContext setting and have StyleResolver::adjustRenderStyle()
+        always force stacking context for position:fixed.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Initialize the subpixelAntialiasedLayerTextEnabled Setting in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=169230
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable SubpixelAntialiasedLayerTextEnabled by default on some versions of macOS
+        https://bugs.webkit.org/show_bug.cgi?id=169329
+
+        Reviewed by Tim Horton.
+
+        If the macOS version is > 101300, enable subpixelAntialiasedLayerTextEnabled.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2017-03-07  Megan Gardner  <megan_gardner@apple.com>
+
+        Additional DataInteraction Support
+        https://bugs.webkit.org/show_bug.cgi?id=169316
+        <rdar://problem/30884234>
+
+        Reviewed by Wenson Hsieh.
+
+        Add stub implementations to WebView for methods that handle data interaction
+
+        * WebView/WebView.mm:
+        (-[WebView _enteredDataInteraction:client:global:operation:]):
+        (-[WebView _updatedDataInteraction:client:global:operation:]):
+        (-[WebView _exitedDataInteraction:client:global:operation:]):
+        (-[WebView _performDataInteraction:client:global:operation:]):
+        (-[WebView _endedDataInteraction:global:]):
+        * WebView/WebViewPrivate.h:
+
+2017-03-07  Dean Jackson  <dino@apple.com>
+
+        Some platforms won't be able to create a GPUDevice
+        https://bugs.webkit.org/show_bug.cgi?id=169314
+        <rdar://problems/30907521>
+
+        Reviewed by Jon Lee.
+
+        Disable WEB_GPU on the iOS Simulator.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-07  Maureen Daum  <mdaum@apple.com>
+
+        Correctly check for an empty database file.
+        <rdar://problem/30542242> Removing Website Data not working (WebSQL directories being left behind)
+        https://bugs.webkit.org/show_bug.cgi?id=169256
+
+        Reviewed by Brady Eidson.
+
+        Check if the folder for an origin's WebSQL databases is empty after trying to delete
+        all of its files. Currently we check if the deletedDatabaseFileCount matches the number
+        of files that were in the folder. However, when we delete the actual database file in
+        DatabaseTracker::deleteDatabaseFileIfEmpty(), the shm and wal files get deleted along with
+        the database file, but deletedDatabaseFileCount only gets incremented once.
+
+        * Storage/WebDatabaseManager.mm:
+        (+[WebDatabaseManager removeEmptyDatabaseFiles]):
+        Delete the folder if it is empty.
+
+2017-03-06  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix to add
+        -isystem $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+        for objective C++ files.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2017-03-06  Michael Saboff  <msaboff@apple.com>
+
+        Take advantage of fast permissions switching of JIT memory for devices that support it
+        https://bugs.webkit.org/show_bug.cgi?id=169155
+
+        Reviewed by Saam Barati.
+
+        Updated the Xcode config files to match what is in the JavaScriptCore ones.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Expand font-weight and font-stretch to take any number
+        https://bugs.webkit.org/show_bug.cgi?id=168889
+
+        Reviewed by Simon Fraser.
+
+        Migrate off old enum types.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::populate):
+        * WebView/WebHTMLView.mm:
+        (fontNameForDescription):
+        * WebView/WebView.mm:
+        (-[WebView updateTextTouchBar]):
+
+2017-03-03  Dean Jackson  <dino@apple.com>
+
+        Add WebGPU compile flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=169161
+        <rdar://problem/30846689>
+
+        Reviewed by Tim Horton.
+
+        Add ENABLE_WEBGPU, an experimental feature flag, a RuntimeEnabledFeature,
+        and an InternalSetting.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webGPUEnabled]):
+        (-[WebPreferences setWebGPUEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix
+        rdar://problem/30825660
+
+        Suggested by Dan Bernstein.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2017-03-02  Sam Weinig  <sam@webkit.org>
+
+        Rename htmlediting.h/cpp to Editing.h/cpp
+        https://bugs.webkit.org/show_bug.cgi?id=169103
+
+        Reviewed by Alex Christensen.
+
+        * DOM/DOMUIKitExtensions.mm:
+        * WebView/WebFrame.mm:
+        * WebView/WebView.mm:
+
+2017-03-02  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix 32-bit
+        https://bugs.webkit.org/show_bug.cgi?id=169114
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebView.mm:
+
+2017-03-02  Megan Gardner  <megan_gardner@apple.com>
+
+        More guard fixing
+        https://bugs.webkit.org/show_bug.cgi?id=169112
+
+        Reviewed by Alex Christensen.
+
+        Fixed an internal build.
+
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+
+2017-03-02  Megan Gardner  <megan_gardner@apple.com>
+
+        Data Interaction build fixes
+        https://bugs.webkit.org/show_bug.cgi?id=169096
+
+        Reviewed by Tim Horton.
+
+        Guards weren't all correct, also missed a selector name change.
+
+        * WebView/WebView.mm:
+        (-[WebView _setDataInteractionData:textIndicator:atClientPosition:anchorPoint:action:]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]):
+
+2017-03-02  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-01  Megan Gardner  <megan_gardner@apple.com>
+
+        Data interaction support for WK1
+        https://bugs.webkit.org/show_bug.cgi?id=169062
+
+        Reviewed by Wenson Hsieh.
+
+        Support for data interaction in WebKit1
+
+        * WebCoreSupport/WebDragClient.mm:
+        * WebView/WebView.mm:
+        (-[WebUITextIndicatorData initWithImage:TextIndicatorData:scale:]):
+        (-[WebUITextIndicatorData initWithImage:scale:]):
+        (-[WebUITextIndicatorData dealloc]):
+        (-[WebView _requestStartDataInteraction:globalPosition:]):
+        (-[WebView _setDataInteractionData:textIndicator:atClientPosition:anchorPoint:action:]):
+        (-[WebView _getDataInteractionData]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]):
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2017-03-02  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Activate ICE candidate privacy policy
+        https://bugs.webkit.org/show_bug.cgi?id=168975
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences enumeratingAllNetworkInterfacesEnabled]):
+        (-[WebPreferences setEnumeratingAllNetworkInterfacesEnabled:]):
+        (-[WebPreferences iceCandidateFilteringEnabled]):
+        (-[WebPreferences setIceCandidateFilteringEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+
+2017-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r213259.
+
+        Broke an internal build
+
+        Reverted changeset:
+
+        "Continue enabling WebRTC"
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+        http://trac.webkit.org/changeset/213259
+
+2017-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2017-02-27  Alex Christensen  <achristensen@webkit.org>
 
         Begin enabling WebRTC on 64-bit

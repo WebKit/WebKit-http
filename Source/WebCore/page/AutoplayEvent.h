@@ -30,6 +30,9 @@ namespace WebCore {
 enum class AutoplayEvent {
     DidPreventMediaFromPlaying,
     DidPlayMediaPreventedFromPlaying,
+    DidEndMediaPlaybackWithoutUserInterference,
+    UserDidInterfereWithPlayback,
+    UserNeverPlayedMediaPreventedFromPlaying,
 };
 
 } // namespace WebCore

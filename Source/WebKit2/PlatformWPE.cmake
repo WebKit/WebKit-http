@@ -39,9 +39,7 @@ list(APPEND DatabaseProcess_SOURCES
 )
 
 list(APPEND WebKit2_SOURCES
-    DatabaseProcess/wpe/DatabaseProcessMainWPE.cpp
-
-    NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
+    NetworkProcess/CustomProtocols/soup/LegacyCustomProtocolManagerSoup.cpp
 
     NetworkProcess/Downloads/wpe/DownloadSoupErrorsWPE.cpp
 
@@ -123,8 +121,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/LegacySessionStateCodingNone.cpp
     UIProcess/WebResourceLoadStatisticsManager.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
-    UIProcess/WebTextChecker.cpp
-    UIProcess/WebTextCheckerClient.cpp
 
     UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp
 
@@ -170,7 +166,8 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
 
-    WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp
+    WebProcess/WebPage/AcceleratedSurface.cpp
+
     WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
     WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
@@ -188,6 +185,9 @@ list(APPEND WebKit2_SOURCES
     WebProcess/soup/WebProcessSoup.cpp
 
     WebProcess/wpe/WebProcessMainWPE.cpp
+
+    # FIXME-GWSHARE:
+    DatabaseProcess/gtk/DatabaseProcessMainGtk.cpp
 )
 
 list(APPEND WebKit2_MESSAGES_IN_FILES

@@ -79,12 +79,6 @@ class MacOSInlineMediaControls extends MacOSMediaControls
         this._volumeSliderContainer.x = this.rightContainer.x + this.muteButton.x;
     }
 
-    showTracksPanel()
-    {
-        super.showTracksPanel();
-        this.tracksPanel.rightX = this.rightContainer.width - this.tracksButton.x - this.tracksButton.width;
-    }
-
     // Protected
 
     handleEvent(event)
@@ -95,12 +89,6 @@ class MacOSInlineMediaControls extends MacOSMediaControls
             this._volumeSliderContainer.visible = this._volumeSliderContainer.element.contains(event.relatedTarget);
         else
             super.handleEvent(event);
-    }
-
-    controlsBarVisibilityDidChange(controlsBar)
-    {
-        if (controlsBar.visible)
-            this.layout();
     }
 
     layoutTraitsDidChange()

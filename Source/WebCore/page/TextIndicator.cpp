@@ -71,7 +71,7 @@ RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextInd
     Ref<Frame> protector(*frame);
 
 #if PLATFORM(IOS)
-    frame->editor().setIgnoreCompositionSelectionChange(true);
+    frame->editor().setIgnoreSelectionChanges(true);
     frame->selection().setUpdateAppearanceEnabled(true);
 #endif
 
@@ -93,7 +93,7 @@ RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextInd
     frame->selection().setSelection(oldSelection);
 
 #if PLATFORM(IOS)
-    frame->editor().setIgnoreCompositionSelectionChange(false, Editor::RevealSelection::No);
+    frame->editor().setIgnoreSelectionChanges(false, Editor::RevealSelection::No);
     frame->selection().setUpdateAppearanceEnabled(false);
 #endif
 
@@ -150,7 +150,7 @@ static SnapshotOptions snapshotOptionsForTextIndicatorOptions(TextIndicatorOptio
     return snapshotOptions;
 }
 
-static RefPtr<Image> takeSnapshot(Frame& frame, IntRect rect, SnapshotOptions options, float& scaleFactor, Vector<FloatRect>& clipRectsInDocumentCoordinates)
+static RefPtr<Image> takeSnapshot(Frame& frame, IntRect rect, SnapshotOptions options, float& scaleFactor, const Vector<FloatRect>& clipRectsInDocumentCoordinates)
 {
     std::unique_ptr<ImageBuffer> buffer = snapshotFrameRectWithClip(frame, rect, clipRectsInDocumentCoordinates, options);
     if (!buffer)
@@ -159,7 +159,7 @@ static RefPtr<Image> takeSnapshot(Frame& frame, IntRect rect, SnapshotOptions op
     return ImageBuffer::sinkIntoImage(WTFMove(buffer), Unscaled);
 }
 
-static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapshotRect, Vector<FloatRect>& clipRectsInDocumentCoordinates)
+static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapshotRect, const Vector<FloatRect>& clipRectsInDocumentCoordinates)
 {
     SnapshotOptions snapshotOptions = snapshotOptionsForTextIndicatorOptions(data.options);
 
@@ -171,6 +171,13 @@ static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapsho
         float snapshotScaleFactor;
         data.contentImageWithHighlight = takeSnapshot(frame, snapshotRect, SnapshotOptionsNone, snapshotScaleFactor, clipRectsInDocumentCoordinates);
         ASSERT(!data.contentImageWithHighlight || data.contentImageScaleFactor == snapshotScaleFactor);
+    }
+
+    if (data.options & TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection) {
+        float snapshotScaleFactor;
+        auto snapshotRect = frame.view()->visibleContentRect();
+        data.contentImageWithoutSelection = takeSnapshot(frame, snapshotRect, SnapshotOptionsPaintEverythingExcludingSelection, snapshotScaleFactor, { });
+        data.contentImageWithoutSelectionRectInRootViewCoordinates = frame.view()->contentsToRootView(snapshotRect);
     }
     
     return true;

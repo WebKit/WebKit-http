@@ -158,7 +158,7 @@ void RenderRubyRun::removeChild(RenderObject& child)
 {
     // If the child is a ruby text, then merge the ruby base with the base of
     // the right sibling run, if possible.
-    if (!beingDestroyed() && !documentBeingDestroyed() && child.isRubyText()) {
+    if (!beingDestroyed() && !renderTreeBeingDestroyed() && child.isRubyText()) {
         RenderRubyBase* base = rubyBase();
         RenderObject* rightNeighbour = nextSibling();
         if (base && is<RenderRubyRun>(rightNeighbour)) {
@@ -178,7 +178,7 @@ void RenderRubyRun::removeChild(RenderObject& child)
 
     RenderBlockFlow::removeChild(child);
 
-    if (!beingDestroyed() && !documentBeingDestroyed()) {
+    if (!beingDestroyed() && !renderTreeBeingDestroyed()) {
         // Check if our base (if any) is now empty. If so, destroy it.
         RenderBlock* base = rubyBase();
         if (base && !base->firstChild()) {
@@ -213,17 +213,19 @@ RenderRubyRun* RenderRubyRun::staticCreateRubyRun(const RenderObject* parentRuby
     return renderer;
 }
 
-RenderObject* RenderRubyRun::layoutSpecialExcludedChild(bool relayoutChildren)
+void RenderRubyRun::layoutExcludedChildren(bool relayoutChildren)
 {
+    RenderBlockFlow::layoutExcludedChildren(relayoutChildren);
+
     StackStats::LayoutCheckPoint layoutCheckPoint;
     // Don't bother positioning the RenderRubyRun yet.
     RenderRubyText* rt = rubyText();
     if (!rt)
-        return 0;
+        return;
+    rt->setIsExcludedFromNormalLayout(true);
     if (relayoutChildren)
         rt->setChildNeedsLayout(MarkOnlyThis);
     rt->layoutIfNeeded();
-    return rt;
 }
 
 void RenderRubyRun::layout()

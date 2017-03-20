@@ -93,15 +93,12 @@ public:
     void stopProducingData();
     bool isProducingData() const;
 
-    RefPtr<Image> currentFrameImage();
-    void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&);
-
     bool hasVideo() const;
     bool hasAudio() const;
     bool muted() const;
 
-    bool hasLocalVideoSource() const;
-    bool hasLocalAudioSource() const;
+    bool hasCaptureVideoSource() const;
+    bool hasCaptureAudioSource() const;
 
     FloatSize intrinsicSize() const;
 

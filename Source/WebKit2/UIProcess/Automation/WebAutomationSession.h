@@ -52,8 +52,12 @@ class IntRect;
 struct Cookie;
 }
 
-#if USE(APPKIT)
+#if PLATFORM(COCOA)
 OBJC_CLASS NSArray;
+typedef unsigned short unichar;
+#endif
+
+#if USE(APPKIT)
 OBJC_CLASS NSEvent;
 #endif
 
@@ -169,8 +173,12 @@ private:
     // Get base64 encoded PNG data from a bitmap.
     std::optional<String> platformGetBase64EncodedPNGData(const ShareableBitmap::Handle&);
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
+    // The type parameter of the NSArray argument is platform-dependent.
     void sendSynthesizedEventsToPage(WebPageProxy&, NSArray *eventsToSend);
+
+    std::optional<unichar> charCodeForVirtualKey(Inspector::Protocol::Automation::VirtualKey) const;
+    std::optional<unichar> charCodeIgnoringModifiersForVirtualKey(Inspector::Protocol::Automation::VirtualKey) const;
 #endif
 
     WebProcessPool* m_processPool { nullptr };
@@ -214,6 +222,12 @@ private:
     HashMap<uint64_t, RefPtr<Inspector::AutomationBackendDispatcherHandler::DeleteSingleCookieCallback>> m_deleteCookieCallbacks;
 
     Inspector::FrontendChannel* m_remoteChannel { nullptr };
+
+#if PLATFORM(IOS)
+    // Keep track of currently active modifiers across multiple keystrokes.
+    // We don't synthesize platform keyboard events on iOS, so we need to track it ourselves.
+    unsigned m_currentModifiers { 0 };
+#endif
 };
 
 } // namespace WebKit

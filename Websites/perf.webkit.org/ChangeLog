@@ -1,3 +1,685 @@
+2017-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the file uploading capability to the perf dashboard.
+        https://bugs.webkit.org/show_bug.cgi?id=169737
+
+        Reviewed by Chris Dumez.
+
+        Added /privileged-api/upload-file to upload a file, and /api/uploaded-file/ to download the file
+        and retrieve its meta data based on its SHA256. We treat two files with the identical SHA256 as
+        identical since anyone who can upload a file using this mechanism can execute arbitrary code in
+        our bots anyway. This is important for avoiding uploading a large darwinup roots multiple times
+        to the server, saving both user's time/bandwidth and server's disk space.
+
+        * config.json: Added uploadDirectory, uploadFileLimitInMB, and uploadUserQuotaInMB as options.
+        * init-database.sql: Added uploaded_files table.
+
+        * public/api/uploaded-file.php: Added.
+        (main): /api/uploaded-file/N would download uploaded_file with id=N. /api/uploaded-file/?sha256=X
+        would return the meta data for uploaded_file with sha256=X.
+        (stream_file_content): Streams the file content in 64KB chunks. We support Range & If-Range HTTP
+        request headers so that browsers can pause and resume downloading of a large root file.
+        (parse_range_header): Parses Range HTTP request header.
+
+        * public/include/json-header.php:
+        (remote_user_name): Use the default argument of NULL.
+
+        * public/include/manifest-generator.php:
+        (ManifestGenerator::generate): Include the maximum upload size in the manifest file to let the
+        frontend code preemptively check the file size before attempting to submit a file.
+
+        * public/include/uploaded-file-helpers.php: Added.
+        (format_uploaded_file):
+        (uploaded_file_path_for_row):
+
+        * public/privileged-api/upload-file-form.html: Added. For debugging purposes.
+        (fetchCSRFfToken):
+        (upload):
+
+        * public/privileged-api/upload-file.php: Added.
+        (main):
+        (query_total_file_size):
+        (create_uploaded_file_from_form_data):
+
+        * public/shared/common-remote.js:
+        (CommonRemoteAPI.prototype.postFormData): Added.
+        (CommonRemoteAPI.prototype.postFormDataWithStatus): Added.
+        (CommonRemoteAPI.prototype.sendHttpRequestWithFormData): Added.
+        (CommonRemoteAPI.prototype._asJSON): Throw an exception instead of calling a non-existent reject.
+
+        * public/v3/models/uploaded-file.js: Added.
+        (UploadedFile): Added.
+        (UploadedFile.uploadFile): Added.
+        (UploadedFile.fetchUnloadedFileWithIdenticalHash): Added. Finds the file with the same SHA256 in
+        the server to avoid uploading a large custom root multiple times.
+        (UploadedFile._computeSHA256Hash): Added.
+
+        * public/v3/privileged-api.js:
+        (PrivilegedAPI.prototype.sendRequest): Added the options dictionary as a third argument. For now,
+        only support useFormData boolean.
+
+        * public/v3/remote.js:
+        (BrowserRemoteAPI.prototype.sendHttpRequestWithFormData): Added.
+
+        * server-tests/api-manifest.js: Updated per the inclusion of fileUploadSizeLimit in the manifest.
+        * server-tests/api-uploaded-file.js: Added.
+        * server-tests/privileged-api-upload-file-tests.js: Added.
+
+        * server-tests/resources/temporary-file.js: Added.
+        (TemporaryFile): Added. A helper class for creating a temporary file to upload.
+        (TemporaryFile.makeTemporaryFileOfSizeInMB):
+        (TemporaryFile.makeTemporaryFile):
+        (TemporaryFile.inject):
+
+        * server-tests/resources/test-server.conf: Set upload_max_filesize and post_max_size for testing.
+        * server-tests/resources/test-server.js:
+        (TestServer.prototype.testConfig): Use uploadFileLimitInMB and uploadUserQuotaInMB of 2MB and 5MB.
+        (TestServer.prototype._ensureDataDirectory): Create a directory to store uploaded files inside
+        the data directory. In a production server, we can place it outside ServerRoot / DocumentRoot.
+        (TestServer.prototype.cleanDataDirectory): Delete the aforementioned directory as needed.
+
+        * tools/js/database.js:
+        (tableToPrefixMap): Added uploaded_files.
+
+        * tools/js/remote.js:
+        (NodeRemoteAPI.prototype.sendHttpRequest): Added a dictionary to specify request headers and
+        a callback to process the response as arguments. Fixed the bug that any 2xx code other than 200
+        was resulting in a rejected promise. Also include the response headers in the result for tests.
+        Finally, when content is a function, call that instead of writing the content since FormData
+        requires a custom logic.
+        (NodeRemoteAPI.prototype.sendHttpRequestWithFormData): Added.
+
+        * tools/js/v3-models.js: Include uploaded-file.js.
+
+        * tools/run-tests.py:
+        (main): Add form-data as a new dependency.
+
+2017-03-15  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix unit test and bug fix for 'pull-os-versions.js' script.
+        https://bugs.webkit.org/show_bug.cgi?id=169701
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix unit tests warnings on node-6.10.0.
+        Fix 'pull-os-versions.js' does not fetch new builds and report.
+
+        * server-tests/tools-os-build-fetcher-tests.js:
+        (then):
+        (beforeEach):
+        (afterEach):
+        * tools/pull-os-versions.js:
+        (syncLoop):
+
+2017-03-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        In-browser and node.js implementations of RemoteAPI should share some code
+        https://bugs.webkit.org/show_bug.cgi?id=169695
+
+        Rubber-stamped by Antti Koivisto.
+
+        Extracted CommonRemoteAPI out of RemoteAPI implementations for node.js and browser. 
+
+        * public/shared/common-remote.js: Added.
+        (CommonRemoteAPI): Added.
+        (CommonRemoteAPI.prototype.postJSON): Extracted from RemoteAPI.
+        (CommonRemoteAPI.prototype.postJSONWithStatus): Ditto.
+        (CommonRemoteAPI.prototype.getJSON): Ditto.
+        (CommonRemoteAPI.prototype.getJSONWithStatus): Ditto.
+        (CommonRemoteAPI.prototype.sendHttpRequest): Added. Needs to implemented by a subclass.
+        (CommonRemoteAPI.prototype._asJSON): Added.
+        (CommonRemoteAPI.prototype._checkStatus): Added.
+
+        * public/v3/index.html: Include common-remote.js.
+
+        * public/v3/privileged-api.js:
+        (PrivilegedAPI): Use class now that we don't include data.js.
+        (PrivilegedAPI.sendRequest): Modernized the code.
+        (PrivilegedAPI.requestCSRFToken): Ditto.
+
+        * public/v3/remote.js:
+        (BrowserRemoteAPI): Renamed from RemoteAPI. window.RemoteAPI is now an instance of this class.
+        (BrowserRemoteAPI.prototype.sendHttpRequest): Moved from RemoteAPI.sendHttpRequest.
+        (BrowserRemoteAPI.prototype.sendHttpRequest):
+
+        * server-tests/privileged-api-create-analysis-task-tests.js: Updated tests since NodeJSRemoteAPI
+        now throws the JSON status as an error to be consistent with BrowserRemoteAPI.
+        * server-tests/privileged-api-create-test-group-tests.js: Ditto.
+        * server-tests/privileged-api-upate-run-status.js: Ditto.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.syncOnce): Just use postJSONWithStatus instead of manually
+        checking the status.
+
+        * tools/js/remote.js:
+        (NodeRemoteAPI): Renamed from RemoteAPI. Still exported as RemoteAPI.
+        (NodeRemoteAPI.prototype.constructor):
+        (NodeRemoteAPI.prototype.sendHttpRequest): Modernized the code.
+
+2017-03-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix server tests after r213998 and r213969
+        https://bugs.webkit.org/show_bug.cgi?id=169690
+
+        Reviewed by Antti Koivisto.
+
+        Fixed the existing server tests.
+
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask.prototype._updateRemoteState): Use the relative path from the root so that it works inside tests.
+        (AnalysisTask.prototype.associateBug): Ditto.
+        (AnalysisTask.prototype.dissociateBug): Ditto.
+        (AnalysisTask.prototype.associateCommit): Ditto.
+        (AnalysisTask.prototype.dissociateCommit): Ditto.
+        (AnalysisTask._fetchSubset): Ditto.
+        (AnalysisTask.fetchAll): Ditto.
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.updateName): Ditto.
+        (TestGroup.prototype.updateHiddenFlag): Ditto.
+        (TestGroup.createAndRefetchTestGroups): Ditto.
+        (TestGroup.cachedFetch): Ditto.
+        * server-tests/api-manifest.js: Reverted an inadvertant change in r213969.
+        * tools/js/database.js:
+        (tableToPrefixMap): Added analysis_strategies.
+        * unit-tests/analysis-task-tests.js: Updated expectations per changes to AnalysisTask.
+
+2017-03-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add tests for privileged-api/create-analysis-task and privileged-api/create-test-group
+        https://bugs.webkit.org/show_bug.cgi?id=169688
+
+        Rubber-stamped by Antti Koivisto.
+
+        Added tests for privileged-api/create-analysis-task and privileged-api/create-test-group, and fixed newly found bugs.
+
+        * public/privileged-api/create-analysis-task.php:
+        (main): Fixed the bug that we were not explicitly checking whether start_run and end_run were integers or not.
+        Also return InvalidTimeRange when start and end times are identical as that makes no sense for an analysis task.
+
+        * public/privileged-api/create-test-group.php:
+        (main): Fixed a bug that we were not explicitly checking task and repetitionCount to be an integer.
+        (ensure_commit_sets): Fixed the bug that the number of commit sets weren't checked. 
+
+        * server-tests/privileged-api-create-analysis-task-tests.js: Added.
+        * server-tests/privileged-api-create-test-group-tests.js: Added.
+
+        * server-tests/resources/common-operations.js:
+        (prepareServerTest): Increase the timeout from 1s to 5s.
+
+        * server-tests/resources/mock-data.js:
+        (MockData.addMockData): Use a higher database ID of 20 for a mock build_slave to avoid a conflict with auto-generated IDs.
+
+2017-03-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make unit tests return a promise instead of manually calling done
+        https://bugs.webkit.org/show_bug.cgi?id=169663
+
+        Reviewed by Antti Koivisto.
+
+        Make the existing unit tests always reutrn a promise instead of manually calling "done" callback as done
+        in r213969. The promise tests are a lot more stable and less error prone.
+
+        Also use MockRemoteAPI.waitForRequest() instead of chaining two resolved promises where appropriate.
+
+        * unit-tests/analysis-task-tests.js:
+        * unit-tests/buildbot-syncer-tests.js:
+        * unit-tests/checkconfig.js:
+        * unit-tests/privileged-api-tests.js:
+
+2017-03-15  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Rewrite 'pull-os-versions' script in Javascript to add support for reporting os revisions with sub commits.
+        https://bugs.webkit.org/show_bug.cgi?id=169542
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend '/api/commits/<repository>/last-reported' to accept a range and return last reported commits in given range.
+        Rewrite 'pull-os-versions' in JavaScript and add unit tests for it.
+        Instead of writing query manually while searching criteria contains null columns, use the methods provided in 'db.php'.
+        Add '.gitignore' file to ommit files generated by while running tests/instances locally.
+
+        * .gitignore: Added.
+        * public/api/commits.php:
+        * public/api/report-commits.php:
+        * public/include/commit-log-fetcher.php:
+        * public/include/db.php: 'null_columns' of prepare_params should be a reference.
+        * public/include/report-processor.php:
+        * server-tests/api-commits.js:
+        (then):
+        * server-tests/api-report-commits-tests.js:
+        * server-tests/resources/mock-logger.js: Added.
+        (MockLogger):
+        (MockLogger.prototype.log):
+        (MockLogger.prototype.error):
+        * server-tests/resources/mock-subprocess.js: Added.
+        (MockSubprocess.call):
+        (MockSubprocess.waitingForInvocation):
+        (MockSubprocess.inject):
+        (MockSubprocess.reset):
+        * server-tests/tools-buildbot-triggerable-tests.js:
+        (MockLogger): Deleted.
+        (MockLogger.prototype.log): Deleted.
+        (MockLogger.prototype.error): Deleted.
+        * server-tests/tools-os-build-fetcher-tests.js: Added.
+        (beforeEach):
+        (return.waitingForInvocationPromise.then):
+        (then):
+        (string_appeared_here.return.waitingForInvocationPromise.then):
+        (return.addSlaveForReport.emptyReport.then):
+        * tools/js/os-build-fetcher.js: Added.
+        (OSBuildFetcher):
+        (OSBuildFetcher.prototype._fetchAvailableBuilds):
+        (OSBuildFetcher.prototype._computeOrder):
+        (OSBuildFetcher.prototype._commitsForAvailableBuilds.return.this._subprocess.call.then.):
+        (OSBuildFetcher.prototype._commitsForAvailableBuilds):
+        (OSBuildFetcher.prototype._addSubCommitsForBuild):
+        (OSBuildFetcher.prototype._submitCommits):
+        (OSBuildFetcher.prototype.fetchAndReportNewBuilds):
+        * tools/js/subprocess.js: Added.
+        (const.childProcess.require.string_appeared_here.Subprocess.prototype.call):
+        (const.childProcess.require.string_appeared_here.Subprocess):
+        * tools/pull-os-versions.js: Added.
+        (main):
+        (syncLoop):
+        * tools/sync-commits.py:
+        (Repository.fetch_commits_and_submit):
+
+2017-03-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make server tests return a promise instead of manually calling done
+        https://bugs.webkit.org/show_bug.cgi?id=169648
+
+        Rubber-stamped by Chris Dumez.
+
+        Make the existing server tests always reutrn a promise instead of manually calling "done" callback.
+        The promise tests are a lot more stable and less error prone.
+
+        Also use arrow functions everywhere and use prepareServerTest, renamed from connectToDatabaseInEveryTest,
+        in more tests instead of manually connecting to database in every test, and reset v3 models.
+
+        * server-tests/admin-platforms-tests.js:
+        * server-tests/admin-reprocess-report-tests.js:
+        * server-tests/api-build-requests-tests.js:
+        * server-tests/api-manifest.js:
+        * server-tests/api-measurement-set-tests.js:
+        (.postReports): Deleted. Not used in any test.
+        * server-tests/api-report-commits-tests.js:
+        * server-tests/api-report-tests.js:
+        * server-tests/api-update-triggerable.js:
+        * server-tests/privileged-api-upate-run-status.js:
+        * server-tests/resources/common-operations.js:
+        (prepareServerTest): Renamed from connectToDatabaseInEveryTest. Increase the timeout and reset v3 models.
+        * server-tests/tools-buildbot-triggerable-tests.js:
+
+2017-03-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename RootSet to CommitSet
+        https://bugs.webkit.org/show_bug.cgi?id=169580
+
+        Rubber-stamped by Chris Dumez.
+
+        Renamed root_sets to commit_sets and roots to commit_set_relationships in the database schema, and renamed
+        related classes in public/v3/ and tools accordingly.
+
+        RootSet, MeasurementRootSet, and CustomRootSet are respectively renamed to CommitSet, MeasurementCommitSet,
+        and CustomCommitSet.
+
+        In order to migrate the database, run:
+        ```
+        BEGIN;
+        ALTER TABLE root_sets RENAME TO commit_sets;
+        ALTER TABLE commit_sets RENAME COLUMN rootset_id TO commitset_id;
+        ALTER TABLE roots RENAME TO commit_set_relationships;
+        ALTER TABLE commit_set_relationships RENAME COLUMN root_set TO commitset_set;
+        ALTER TABLE commit_set_relationships RENAME COLUMN root_commit TO commitset_commit;
+        ALTER TABLE build_requests RENAME COLUMN request_root_set TO request_commit_set;
+        END;
+        ```
+
+        * browser-tests/index.html:
+        * init-database.sql:
+        * public/api/build-requests.php:
+        (main):
+        * public/api/test-groups.php:
+        (main):
+        (format_test_group):
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::__construct):
+        (BuildRequestsFetcher::results_internal):
+        (BuildRequestsFetcher::commit_sets): Renamed from root_sets.
+        (BuildRequestsFetcher::commits): Renamed from roots.
+        (BuildRequestsFetcher::fetch_commits_for_set_if_needed): Renamed from fetch_roots_for_set_if_needed.
+        * public/privileged-api/create-test-group.php:
+        (main):
+        (ensure_commit_sets): Renamed from commit_sets_from_root_sets.
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.prototype.buildRowGroups):
+        (AnalysisResultsViewer.prototype._collectCommitSetsInTestGroups): Renamed from _collectRootSetsInTestGroups.
+        (AnalysisResultsViewer.prototype._buildRowsForPointsAndTestGroups):
+        (AnalysisResultsViewer.prototype._buildRowsForPointsAndTestGroups):
+        (AnalysisResultsViewer.CommitSetInTestGroup): Renamed from RootSetInTestGroup.
+        (AnalysisResultsViewer.CommitSetInTestGroup.prototype.constructor):
+        (AnalysisResultsViewer.CommitSetInTestGroup.prototype.commitSet): Renamed from rootSet.
+        (AnalysisResultsViewer.CommitSetInTestGroup.prototype.succeedingCommitSet): Renamed from succeedingRootSet.
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.constructor):
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.addRowIndex):
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.isComplete):
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.startRowIndex):
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.endRowIndex):
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype._computeTestGroupStatus):
+        * public/v3/components/chart-revision-range.js:
+        (ChartRevisionRange.prototype._revisionForPoint):
+        (ChartRevisionRange.prototype._computeRevisionList):
+        * public/v3/components/customizable-test-group-form.js:
+        (CustomizableTestGroupForm.prototype.constructor):
+        (CustomizableTestGroupForm.prototype.setCommitSetMap): Renamed from setRootSetMap.
+        (CustomizableTestGroupForm.prototype._submitted):
+        (CustomizableTestGroupForm.prototype._computeCommitSetMap): Renamed from _computeRootSetMap.
+        (CustomizableTestGroupForm.prototype.render): Renamed from render.
+        (CustomizableTestGroupForm.prototype._constructRevisionRadioButtons):
+        * public/v3/components/results-table.js:
+        (ResultsTable.prototype.render):
+        (ResultsTable.prototype._createRevisionListCells):
+        (ResultsTable.prototype._computeRepositoryList):
+        (ResultsTableRow.prototype.constructor):
+        (ResultsTableRow.prototype.commitSet): Renamed from rootSet.
+        * public/v3/components/test-group-results-table.js:
+        (TestGroupResultsTable.prototype.buildRowGroups):
+        * public/v3/index.html:
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.constructor):
+        (BuildRequest.prototype.updateSingleton):
+        (BuildRequest.prototype.commitSet): Renamed from rootSet.
+        (BuildRequest.constructBuildRequestsFromData):
+        * public/v3/models/commit-set.js: Renamed from public/v3/models/root-set.js.
+        (CommitSet): Renamed from RootSet.
+        (CommitSet.containsMultipleCommitsForRepository):
+        (MeasurementCommitSet): Renamed from MeasurementRootSet.
+        (MeasurementCommitSet.prototype.namedStaticMap):
+        (MeasurementCommitSet.prototype.ensureNamedStaticMap):
+        (MeasurementCommitSet.namedStaticMap):
+        (MeasurementCommitSet.ensureNamedStaticMap):
+        (MeasurementCommitSet.ensureSingleton):
+        (CustomCommitSet): Renamed from CustomRootSet.
+        * public/v3/models/measurement-adaptor.js:
+        (MeasurementAdaptor.prototype.applyTo):
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.constructor):
+        (TestGroup.prototype.addBuildRequest):
+        (TestGroup.prototype.repetitionCount):
+        (TestGroup.prototype.requestedCommitSets): Renamed from requestedRootSets.
+        (TestGroup.prototype.requestsForCommitSet): Renamed from requestsForRootSet.
+        (TestGroup.prototype.labelForCommitSet): Renamed from labelForRootSet.
+        (TestGroup.prototype.didSetResult):
+        (TestGroup.prototype.compareTestResults):
+        (TestGroup.prototype._valuesForCommitSet): Renamed from _valuesForRootSet.
+        (TestGroup.prototype.createAndRefetchTestGroups):
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype.render):
+        (AnalysisTaskPage.prototype._retryCurrentTestGroup):
+        (AnalysisTaskPage.prototype._createNewTestGroupFromChart):
+        (AnalysisTaskPage.prototype._createNewTestGroupFromViewer):
+        (AnalysisTaskPage.prototype._createTestGroupAfterVerifyingCommitSetList):
+        * server-tests/api-build-requests-tests.js:
+        * server-tests/resources/mock-data.js:
+        (MockData.resetV3Models):
+        (MockData.addMockData):
+        (MockData.addAnotherMockTestGroup):
+        * tools/detect-changes.js:
+        (createAnalysisTaskAndNotify):
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype._propertiesForBuildRequest):
+        (BuildbotSyncer.prototype._revisionSetFromCommitSetWithExclusionList):
+        * tools/js/database.js:
+        (tableToPrefixMap):
+        * tools/js/v3-models.js:
+        * tools/sync-buildbot.js:
+        (syncLoop):
+        * tools/sync-with-buildbot.py: Deleted. No longer used.
+        * unit-tests/analysis-task-tests.js:
+        * unit-tests/build-request-tests.js:
+        (sampleBuildRequestData):
+        * unit-tests/buildbot-syncer-tests.js:
+        (sampleCommitSetData):
+        * unit-tests/measurement-adaptor-tests.js:
+        * unit-tests/measurement-set-tests.js:
+        * unit-tests/resources/mock-v3-models.js:
+        (MockModels.inject):
+        * unit-tests/test-groups-tests.js:
+        (sampleTestGroup):
+
+2017-03-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Database's query functions should support querying for a row with NULL value
+        https://bugs.webkit.org/show_bug.cgi?id=169504
+
+        Reviewed by Antti Koivisto.
+
+        Add the support for calling select_* with one of column values set to NULL.
+        This feature is useful in webkit.org/b/146374 and webkit.org/b/168962.
+
+        * public/include/db.php:
+        (Database::prepare_params): Added $null_columns as an optional argument.
+        (Database::select_conditions_with_null_columns): Added. Builds up a query string by appending AND x is NULL
+        to match columns whose value must be NULL.
+        (Database::_select_update_or_insert_row):
+        (Database::select_rows):
+
+2017-03-13  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Add the ability to report a commit with sub-commits.
+        https://bugs.webkit.org/show_bug.cgi?id=168962
+
+        Reviewed by Ryosuke Niwa.
+
+        Introduce 'commit_ownerships' which records ownership between commits.
+        On existing production server, run ```
+            CREATE TABLE commit_ownerships (
+                commit_owner integer NOT NULL REFERENCES commits ON DELETE CASCADE,
+                commit_ownee integer NOT NULL REFERENCES commits ON DELETE CASCADE,
+                PRIMARY KEY (commit_owner, commit_ownee)
+            );
+            ALTER TABLE repositories RENAME repository_parent TO repository_owner;
+            ALTER TABLE repositories DROP repository_name_must_be_unique;
+            CREATE UNIQUE INDEX repository_name_owner_unique_index ON repositories (repository_owner, repository_name) WHERE repository_owner IS NOT NULL;
+            CREATE UNIQUE INDEX repository_name_unique_index ON repositories (repository_name) WHERE repository_owner IS NULL;
+        ``` to update database.
+        Add unit-tests to cover this change.
+
+        * init-database.sql:
+        * public/api/report-commits.php:
+        * public/include/commit-log-fetcher.php:
+        * public/include/db.php:
+        * public/include/manifest-generator.php:
+        * public/include/report-processor.php:
+        * public/v3/models/repository.js:
+        (Repository):
+        (Repository.prototype.owner):
+        * server-tests/admin-reprocess-report-tests.js:
+        (addBuilderForReport.simpleReportWithRevisions.0.then):
+        (then):
+        * server-tests/api-manifest.js:
+        (then):
+        * server-tests/api-report-commits-tests.js:
+        (addSlaveForReport.sameRepositoryNameInSubCommitAndMajorCommit.then):
+        (then):
+        (addSlaveForReport.systemVersionCommitWithSubcommits.then):
+        (addSlaveForReport.multipleSystemVersionCommitsWithSubcommits.then):
+        (addSlaveForReport.systemVersionCommitWithEmptySubcommits.then):
+        (addSlaveForReport.systemVersionCommitAndSubcommitWithTimestamp.then):
+        * tools/js/database.js:
+
+2017-03-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update ReadMe.md to use directory format for backing up & restoring the database
+        https://bugs.webkit.org/show_bug.cgi?id=169263
+
+        Reviewed by Joseph Pecoraro.
+
+        Update ReadMe.md's instruction to backup and restore the database to use directory format instead of
+        piping it to gzip. The new command will backup and restore the database with multiple concurrent processes
+        with a custom compression level.
+
+        * ReadMe.md:
+
+2017-03-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make baseline data points selectable
+        https://bugs.webkit.org/show_bug.cgi?id=169069
+        <rdar://problem/29209427>
+
+        Reviewed by Antti Koivisto.
+
+        Add the capability to select data points other than "current" configuration type.
+
+        This patch refactors the way the "chart status" is computed. Before this patch, ChartStatusView was
+        responsible for determining two data points for which to compute the status, and computing the status
+        between two data points. ChartPaneStatusView which inherits from ChartStatusView and used in the charts
+        page relied upon ChartStatusView to compute these values, and computed the list of revision ranges for
+        each relevant repository between the data points. ChartPane then had callbacks on ChartPaneStatusView
+        to know whenever these values changed. Because of this entangled mess, ChartStatusView had to be aware
+        of InteractiveTimeSeriesChart even though only ChartPaneStatusView could be used with it.
+
+        This patch dramatically simplifies the situation by adding referencePoints() on TimeSeriesChart and
+        InteractiveTimeSeriesChart which returns the current point, the previous point if there is any, and
+        their time series view. It also extracts ChartStatusEvaluator which computes the current status values
+        and ChartRevisionRange which computes a list of revision differences both based on the referencePoints.
+        As a result, ChartPaneStatusView no longer inherits from ChartStatusView, and ChartStatusView has been
+        renamed to DashboardChartStatusView to reflect its purpose. Furthermore, ChartPane which used to rely on
+        ChartPaneStatusView's revisionCallback to update the commit log viewer simply uses another instance of
+        ChartRevisionRange, eliminating the need for the callback.
+
+        To implement these classes easily, this patch also introduces a new class, LazilyEvaluatedFunction to
+        memoize the return value of a function when called with the same arguments. Delaying the computation of
+        a value and avoiding the work when the values are the same is a very common pattern in the perf dashboard
+        so I expect this class would be used in a lot more places in the future.
+
+        * browser-tests/chart-revision-range-tests.js: Added. Tests for ChartRevisionRange.
+        * browser-tests/chart-status-evaluator-tests.js: Added. Tests for ChartStatusEvaluator.
+
+        * browser-tests/index.html:
+        (BrowsingContext):
+        (BrowsingContext.importScripts): Fixed the bug that calling importScripts twice results in MockRemoteAPI
+        being loaded twice.
+        (ChartTest.importChartScripts): Import more model objects.
+        (ChartTest.sampleCluster): Made this a getter.
+        (ChartTest.makeModelObjectsForSampleCluster):
+        (ChartTest.makeSampleCluster): Added. Cutomizes the valus of baseline / target based on options.
+        (ChartTest.respondWithSampleCluster): Now takes an options argument for makeSampleCluster.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase): Added _openRepository to keep track of the currently open repository instead of relying
+        on _mainChartStatus or _commitLogViewer to keep track of it.
+        (ChartPaneBase.prototype.configure):  The callback for when the user clicked on a repository name in
+        ChartPaneStatusView has been replaced by "openRepository" action.
+        (ChartPaneBase.prototype.setOpenRepository): Moved from ChartPane.
+        (ChartPaneBase.prototype._mainSelectionDidChange):
+        (ChartPaneBase.prototype._indicatorDidChange):
+        (ChartPaneBase.prototype._didFetchData):
+        (ChartPaneBase.prototype._updateCommitLogViewer): Renamed from _updateStatus.
+        (ChartPaneBase.prototype.openNewRepository): Renamed from _requestOpeningCommitViewer. Fixed a bug that
+        clicking on the repository name inside ChartPaneStatusView would not focus the pane, which resulted in
+        arrow keys to be ignored instead of moving the main chart's indicator or the currently open repository.
+        (ChartPaneBase.prototype._keyup):
+        (ChartPaneBase.prototype._moveOpenRepository): Moved from ChartPaneStatusView's
+        moveRepositoryWithNotification. Used when changing the open repository by up/down arrow keys.
+
+        * public/v3/components/chart-revision-range.js: Added. Extracted from ChartPaneStatusView.
+        (ChartRevisionRange): Added.
+        (ChartRevisionRange.prototype.revisionList): Added.
+        (ChartRevisionRange.prototype.rangeForRepository): Added.
+        (ChartRevisionRange._revisionForPoint): Added. Extracted from ChartPaneStatusView's
+        _updateRevisionListForNewCurrentRepository.
+        (ChartRevisionRange._computeRevisionList): Ditto from computeChartStatusLabels.
+
+        * public/v3/components/chart-status-evaluator.js: Added.
+        (ChartStatusEvaluator): Added.
+        (ChartStatusEvaluator.prototype.status): Added.
+        (ChartStatusEvaluator.computeChartStatus): Added. Extracted from ChartStatusView's updateStatusIfNeeded.
+
+        * public/v3/components/chart-status-view.js: Removed.
+        (ChartStatusView): Deleted. Split into ChartStatusEvaluator and DashboardChartStatusView.
+
+        * public/v3/components/chart-styles.js:
+        (ChartStyles.baselineStyle): Make baseline data points interactive. This single line change is what
+        enables the user to interact with the data points. The rest of changes in this patch mostly deals with
+        the status text such as "5% worse than baseline" and the list of revisions shown in the commit log viewer
+        which would have shown the wrong range without these changes.
+
+        * public/v3/components/dashboard-chart-status-view.js: Added. Extracted from ChartStatusView.
+        (DashboardChartStatusView): Added.
+        (DashboardChartStatusView.prototype.render): Added.
+        (DashboardChartStatusView.htmlTemplate): Added.
+        (DashboardChartStatusView.cssTemplate): Added.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.referencePoints): Added. Return the first point and the last point
+        as the reference points when there is a selection. Only report the previous point if they are distinct as
+        showing a range of revisions from a data point to itself makes no sense. When there is a indicator simply
+        return it and its previous point as reference points. Otherwise return null unlike TimeSeriesChart's
+        referencePoints which always returns the latest point as the reference point.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype.referencePoints): Added. Return the latest point as the reference point. It
+        never returns the previous point even if there were more data points as there is no way for the user to
+        specify which data points to compare.
+
+        * public/v3/index.html: Include newly added files.
+
+        * public/v3/lazily-evaluated-function.js: Added.
+        (LazilyEvaluatedFunction): Added.
+        (LazilyEvaluatedFunction.prototype.evaluate): Added.
+
+        * public/v3/models/commit-log.js:
+        (CommitLog.prototype.diff): Fixed a bug that computing the diff of two Subversion-like revisions results
+        in "from" field to be unexpectedly an integer instead of a string.
+
+        * public/v3/models/metric.js:
+        (Metric): Moved the code to compute the unit from the metric name from v2's RunsData class. This makes
+        writing tests easier since it eliminates the need to load v2's data.js.
+        (Metric.prototype.unit):
+        (Metric.prototype.isSmallerBetter): Ditto for determining whether the unit is smaller-is-better.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskChartPane.prototype._updateStatus): Deleted the unused code.
+
+        * public/v3/pages/chart-pane-status-view.js:
+        (ChartPaneStatusView): No longer inherits from ChartStatusView. Uses ChartStatusEvaluator and
+        ChartRevisionRange to to compute the chart status and the list of revision changes.
+        (ChartPaneStatusView.prototype.pointsRangeForAnalysis): Deleted.
+        (ChartPaneStatusView.prototype.render): Split it into _renderStatus and _renderBuildRevisionTable using
+        LazilyEvaluatedFunction.
+        (ChartPaneStatusView.prototype._renderStatus): Added.
+        (ChartPaneStatusView.prototype._renderBuildRevisionTable): Added.
+        (ChartPaneStatusView.prototype.setCurrentRepository): _updateRevisionListForNewCurrentRepository has been
+        moved into ChartRevisionRange. Just enqueue itself to re-render.
+        (ChartPaneStatusView.prototype._setRevisionRange): Deleted.
+        (ChartPaneStatusView.prototype.moveRepositoryWithNotification): Deleted.
+        (ChartPaneStatusView.prototype.updateRevisionList): Deleted.
+        (ChartPaneStatusView.prototype._updateRevisionListForNewCurrentRepository): Deleted.
+        (ChartPaneStatusView.prototype.computeChartStatusLabels): Deleted.
+        (ChartPaneStatusView.htmlTemplate):
+        (ChartPaneStatusView.cssTemplate):
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype.openNewRepository): Overrides the one in ChartPaneBase, which has been renamed from
+        _requestOpeningCommitViewer.
+        (ChartPane.prototype._analyzeRange):
+        (ChartPane.prototype._renderActionToolbar): Use the main chart's selection directly to determine whether
+        an analysis task can be created for the currenty selected range.
+
+        * public/v3/pages/dashboard-page.js:
+        (DashboardPage.prototype._createChartForCell):
+
+        * unit-tests/lazily-evaluated-function-tests.js: Added. Tests for LazilyEvaluatedFunction.
+
+2017-03-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r212853. Make creating an analysis task work again.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype.render):
+
 2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
 
         Fix tests after r213119 and r213120.

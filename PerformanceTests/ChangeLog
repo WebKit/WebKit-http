@@ -1,3 +1,86 @@
+2017-03-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add helpers to run Six Speed to run-jsc-benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=169351
+
+        Reviewed by Saam Barati.
+
+        * SixSpeed/wrappers/wrapper.js: Added.
+        (assertEqual):
+        (test):
+        (jscRun):
+
+2017-03-08  Jon Davis  <jond@apple.com>
+
+        Fixed ARES-6 animations for other browsers
+
+        Rubber stamped by Saam Barati.
+
+        * ARES-6/styles.css:
+        (.swoop):
+        (.logo):
+
+2017-03-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Revise the ARES-6 explainer text
+        https://bugs.webkit.org/show_bug.cgi?id=169287
+
+        Reviewed by Saam Barati.
+        
+        Just did some copy-editing.
+
+        * ARES-6/about.html:
+
+2017-03-06  Jon Davis  <jond@apple.com>
+
+        Refined the ARES-6 experience
+        https://bugs.webkit.org/show_bug.cgi?id=169205
+
+        Reviewed by Saam Barati.
+
+        * ARES-6/about.html: Copied from PerformanceTests/ARES-6/index.html.
+        * ARES-6/driver.js:
+        (Driver.prototype.start):
+        (Driver.prototype._updateIterations):
+        (Driver):
+        * ARES-6/index.html:
+        * ARES-6/stats.js:
+        (Stats.prototype.toString.span.span):
+        * ARES-6/styles.css:
+        (body):
+        (.swoop):
+        (p):
+        (.logo):
+        (.start):
+        (.test):
+        (.test:nth-child(odd)):
+        (.overall):
+        (.about h2):
+        (.button):
+        (.button:hover):
+        (.button.return:before):
+        (@keyframes fade-in):
+        (@keyframes scale-in):
+        (@keyframes flicker-in):
+        (@keyframes wipe-in):
+        (.flip): Deleted.
+        (.testing, .about): Deleted.
+        (.testing): Deleted.
+        (.about): Deleted.
+        (#about:target): Deleted.
+
+2017-03-06  Jeremy Jones  <jeremyj@apple.com>
+
+        StandardCanPlayThrough.html does not work on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=169207
+
+        Reviewed by Jer Noble.
+
+        On iOS only, add muted=true and autoplay=allowed. The loading policy on iOS requires these attributes to load enough
+        data to trigger canPlayThrough.
+
+        * Media/StandardCanPlayThrough.html:
+
 2017-02-13  Zalan Bujtas <zalan@apple.com>
 
         Simple line layout: Add performance test with text-rendering: optimizeSpeed

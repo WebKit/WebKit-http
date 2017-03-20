@@ -60,7 +60,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyModule(ExecState* exec
     auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->WebAssemblyModuleStructure());
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     throwScope.release();
-    return JSValue::encode(WebAssemblyModuleConstructor::createModule(exec, structure));
+    return JSValue::encode(WebAssemblyModuleConstructor::createModule(exec, exec->argument(0), structure));
 }
 
 static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyModule(ExecState* state)
@@ -70,41 +70,18 @@ static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyModule(ExecState* state)
     return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(state, scope, "WebAssembly.Module"));
 }
 
-JSValue WebAssemblyModuleConstructor::createModule(ExecState* state, Structure* structure)
+JSValue WebAssemblyModuleConstructor::createModule(ExecState* state, JSValue buffer, Structure* structure)
 {
     VM& vm = state->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     size_t byteOffset;
     size_t byteSize;
-    uint8_t* base = getWasmBufferFromValue(state, state->argument(0), byteOffset, byteSize);
+    uint8_t* base = getWasmBufferFromValue(state, buffer, byteOffset, byteSize);
     RETURN_IF_EXCEPTION(scope, { });
 
-    Wasm::Plan plan(&vm, base + byteOffset, byteSize);
-    // On failure, a new WebAssembly.CompileError is thrown.
-    plan.run();
-    if (plan.failed())
-        return throwException(state, scope, createJSWebAssemblyCompileError(state, vm, plan.errorMessage()));
-
-    // On success, a new WebAssembly.Module object is returned with [[Module]] set to the validated Ast.module.
-
-    // The export symbol table is the same for all Instances of a Module.
-    SymbolTable* exportSymbolTable = SymbolTable::create(vm);
-    for (auto& exp : plan.exports()) {
-        auto offset = exportSymbolTable->takeNextScopeOffset(NoLockingNecessary);
-        exportSymbolTable->set(NoLockingNecessary, exp.field.impl(), SymbolTableEntry(VarOffset(offset)));
-    }
-
-    // Only wasm-internal functions have a callee, stubs to JS do not.
-    unsigned calleeCount = plan.internalFunctionCount();
-    JSWebAssemblyModule* result = JSWebAssemblyModule::create(vm, structure, plan.takeModuleInformation(), plan.takeCallLinkInfos(), plan.takeWasmExitStubs(), exportSymbolTable, calleeCount);
-    plan.initializeCallees(state->jsCallee()->globalObject(), 
-        [&] (unsigned calleeIndex, JSWebAssemblyCallee* jsEntrypointCallee, JSWebAssemblyCallee* wasmEntrypointCallee) {
-            result->setJSEntrypointCallee(vm, calleeIndex, jsEntrypointCallee);
-            result->setWasmEntrypointCallee(vm, calleeIndex, wasmEntrypointCallee);
-        });
-
-    return result;
+    scope.release();
+    return JSWebAssemblyModule::create(vm, state, structure, base + byteOffset, byteSize);
 }
 
 WebAssemblyModuleConstructor* WebAssemblyModuleConstructor::create(VM& vm, Structure* structure, WebAssemblyModulePrototype* thisPrototype)

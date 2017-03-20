@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if HAVE(ACCESSIBILITY)
-
 #include "AccessibilityTextMarker.h"
 #include "AccessibilityTextMarkerRange.h"
 #include "JSWrappable.h"
@@ -319,7 +317,7 @@ private:
     void getUIElementsWithAttribute(JSStringRef, Vector<RefPtr<AccessibilityUIElement> >&) const;
 #endif
 
-#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
     void getChildren(Vector<RefPtr<AccessibilityUIElement> >&);
     void getChildrenWithRange(Vector<RefPtr<AccessibilityUIElement> >&, unsigned location, unsigned length);
 #endif
@@ -331,5 +329,3 @@ private:
 };
     
 } // namespace WTR
-
-#endif // HAVE(ACCESSIBILITY)

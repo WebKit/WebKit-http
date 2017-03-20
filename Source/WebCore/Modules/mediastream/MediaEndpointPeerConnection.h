@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015, 2016 Ericsson AB. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +35,7 @@
 
 #include "MediaEndpoint.h"
 #include "PeerConnectionBackend.h"
+#include "RTCEnums.h"
 #include "RTCSessionDescription.h"
 #include <wtf/Function.h>
 
@@ -62,7 +64,7 @@ private:
     Vector<RefPtr<MediaStream>> getRemoteStreams() const final;
 
     Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) final;
-    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromise<void>&&) final;
+    void replaceTrack(RTCRtpSender&, Ref<MediaStreamTrack>&&, DOMPromise<void>&&) final;
 
     void emulatePlatformEvent(const String& action) final;
 
@@ -84,7 +86,7 @@ private:
 
     void addIceCandidateTask(RTCIceCandidate&);
 
-    void replaceTrackTask(RTCRtpSender&, const String& mid, RefPtr<MediaStreamTrack>&&, DOMPromise<void>&);
+    void replaceTrackTask(RTCRtpSender&, const String& mid, Ref<MediaStreamTrack>&&, DOMPromise<void>&);
 
     bool localDescriptionTypeValidForState(RTCSessionDescription::SdpType) const;
     bool remoteDescriptionTypeValidForState(RTCSessionDescription::SdpType) const;
@@ -97,7 +99,7 @@ private:
     void gotDtlsFingerprint(const String& fingerprint, const String& fingerprintFunction) final;
     void gotIceCandidate(const String& mid, IceCandidate&&) final;
     void doneGatheringCandidates(const String& mid) final;
-    void iceTransportStateChanged(const String& mid, MediaEndpoint::IceTransportState) final;
+    void iceTransportStateChanged(const String& mid, RTCIceTransportState) final;
 
     std::unique_ptr<RTCDataChannelHandler> createDataChannelHandler(const String&, const RTCDataChannelInit&) final;
 

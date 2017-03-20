@@ -33,6 +33,7 @@
 #import "DataTransfer.h"
 #import "DocumentFragment.h"
 #import "DocumentLoader.h"
+#import "Editing.h"
 #import "Editor.h"
 #import "EditorClient.h"
 #import "File.h"
@@ -64,7 +65,6 @@
 #import "TypingCommand.h"
 #import "UUID.h"
 #import "WebNSAttributedStringExtras.h"
-#import "htmlediting.h"
 #import "markup.h"
 
 namespace WebCore {
@@ -258,7 +258,7 @@ String Editor::userVisibleString(const URL& url)
 
 void Editor::selectionWillChange()
 {
-    if (!hasComposition() || ignoreCompositionSelectionChange() || m_frame.selection().isNone())
+    if (!hasComposition() || ignoreSelectionChanges() || m_frame.selection().isNone())
         return;
 
     cancelComposition();
@@ -492,7 +492,7 @@ void Editor::applyFontStyles(const String& fontFamily, double fontSize, unsigned
     Ref<MutableStyleProperties> style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyFontFamily, cssValuePool.createFontFamilyValue(fontFamily));
     style->setProperty(CSSPropertyFontStyle, (fontTraits & NSFontItalicTrait) ? CSSValueItalic : CSSValueNormal);
-    style->setProperty(CSSPropertyFontWeight, cssValuePool.createValue(fontTraits & NSFontBoldTrait ? FontWeightBold : FontWeightNormal));
+    style->setProperty(CSSPropertyFontWeight, (fontTraits & NSFontBoldTrait) ? CSSValueBold : CSSValueNormal);
     style->setProperty(CSSPropertyFontSize, cssValuePool.createValue(fontSize, CSSPrimitiveValue::CSS_PX));
     applyStyleToSelection(style.ptr(), EditActionSetFont);
 }

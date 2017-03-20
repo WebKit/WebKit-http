@@ -28,9 +28,10 @@ enum MediaStreamTrackState { "new", "live", "ended" };
 [
     ActiveDOMObject,
     Conditional=MEDIA_STREAM,
+    CustomToJSObject,
+    ExportToWrappedFunction,
     PrivateIdentifier,
     PublicIdentifier,
-    SkipVTableValidation,
 ] interface MediaStreamTrack : EventTarget {
     readonly attribute DOMString kind;
     readonly attribute DOMString id;
@@ -40,7 +41,6 @@ enum MediaStreamTrackState { "new", "live", "ended" };
     attribute EventHandler onmute;
     attribute EventHandler onunmute;
     readonly attribute boolean _readonly;
-    readonly attribute boolean remote;
     readonly attribute MediaStreamTrackState readyState;
     attribute EventHandler onended;
 

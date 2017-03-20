@@ -22,7 +22,7 @@
 
 #if USE(COORDINATED_GRAPHICS)
 #include "GraphicsContext.h"
-#include "MemoryPressureHandler.h"
+#include <wtf/MemoryPressureHandler.h>
 #include "TiledBackingStoreClient.h"
 #include <wtf/CheckedArithmetic.h>
 

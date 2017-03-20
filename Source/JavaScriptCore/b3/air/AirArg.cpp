@@ -102,6 +102,7 @@ unsigned Arg::jsHash() const
     case RelCond:
     case ResCond:
     case DoubleCond:
+    case StatusCond:
     case WidthArg:
         result += static_cast<unsigned>(m_offset);
         break;
@@ -109,6 +110,9 @@ unsigned Arg::jsHash() const
     case BitImm64:
         result += static_cast<unsigned>(m_offset);
         result += static_cast<unsigned>(m_offset >> 32);
+        break;
+    case SimpleAddr:
+        result += m_base.internalValue();
         break;
     case Addr:
         result += m_offset;
@@ -150,6 +154,9 @@ void Arg::dump(PrintStream& out) const
     case BitImm64:
         out.printf("$0x%llx", static_cast<long long unsigned>(m_offset));
         return;
+    case SimpleAddr:
+        out.print("(", base(), ")");
+        return;
     case Addr:
         if (offset())
             out.print(offset());
@@ -181,6 +188,9 @@ void Arg::dump(PrintStream& out) const
         return;
     case DoubleCond:
         out.print(asDoubleCondition());
+        return;
+    case StatusCond:
+        out.print(asStatusCondition());
         return;
     case Special:
         out.print(pointerDump(special()));
@@ -220,6 +230,9 @@ void printInternal(PrintStream& out, Arg::Kind kind)
     case Arg::BitImm64:
         out.print("BitImm64");
         return;
+    case Arg::SimpleAddr:
+        out.print("SimpleAddr");
+        return;
     case Arg::Addr:
         out.print("Addr");
         return;
@@ -241,11 +254,28 @@ void printInternal(PrintStream& out, Arg::Kind kind)
     case Arg::DoubleCond:
         out.print("DoubleCond");
         return;
+    case Arg::StatusCond:
+        out.print("StatusCond");
+        return;
     case Arg::Special:
         out.print("Special");
         return;
     case Arg::WidthArg:
         out.print("WidthArg");
+        return;
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void printInternal(PrintStream& out, Arg::Temperature temperature)
+{
+    switch (temperature) {
+    case Arg::Cold:
+        out.print("Cold");
+        return;
+    case Arg::Warm:
+        out.print("Warm");
         return;
     }
 
@@ -284,6 +314,9 @@ void printInternal(PrintStream& out, Arg::Role role)
         return;
     case Arg::EarlyDef:
         out.print("EarlyDef");
+        return;
+    case Arg::EarlyZDef:
+        out.print("EarlyZDef");
         return;
     case Arg::Scratch:
         out.print("Scratch");

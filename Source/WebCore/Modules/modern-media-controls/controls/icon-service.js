@@ -47,7 +47,7 @@ const Icons = {
 };
 
 const IconsWithFullscreenVariants = [Icons.Airplay, Icons.Tracks, Icons.Pause, Icons.EnterPiP, Icons.Play, Icons.VolumeDown, Icons.VolumeUp];
-const IconsWithCompactVariants = [Icons.Play, Icons.Pause, Icons.SkipBack, Icons.Volume, Icons.VolumeMuted, Icons.EnterFullscreen];
+const IconsWithCompactVariants = [Icons.Play, Icons.Pause, Icons.SkipBack, Icons.Volume, Icons.VolumeMuted, Icons.Airplay, Icons.EnterPiP, Icons.Tracks, Icons.EnterFullscreen];
 
 const iconService = new class IconService {
 
@@ -89,10 +89,12 @@ const iconService = new class IconService {
         else
             throw "Could not identify icon's platform from layout traits.";
 
-        if (layoutTraits & LayoutTraits.Fullscreen && IconsWithFullscreenVariants.includes(iconName))
-            iconName += "-fullscreen";
-        else if (layoutTraits & LayoutTraits.Compact && IconsWithCompactVariants.includes(iconName))
-            iconName += "-compact";
+        if (layoutTraits & LayoutTraits.macOS) {
+            if (layoutTraits & LayoutTraits.Fullscreen && IconsWithFullscreenVariants.includes(iconName))
+                iconName += "-fullscreen";
+            else if (layoutTraits & LayoutTraits.Compact && IconsWithCompactVariants.includes(iconName))
+                iconName += "-compact";
+        }
 
         const fileName = `${iconName}@${window.devicePixelRatio}x`;
 

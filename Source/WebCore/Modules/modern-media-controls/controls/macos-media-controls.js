@@ -49,6 +49,13 @@ class MacOSMediaControls extends MediaControls
         this.tracksButton.element.blur();
         this.controlsBar.userInteractionEnabled = false;
         this.tracksPanel.presentInParent(this);
+
+        const controlsBounds = this.element.getBoundingClientRect();
+        const controlsBarBounds = this.controlsBar.element.getBoundingClientRect();
+        const tracksButtonBounds = this.tracksButton.element.getBoundingClientRect();
+        this.tracksPanel.rightX = this.width - (tracksButtonBounds.right - controlsBounds.left);
+        this.tracksPanel.bottomY = this.height - (controlsBarBounds.top - controlsBounds.top) + 1;
+        this.tracksPanel.maxHeight = this.height - this.tracksPanel.bottomY - 10;
     }
 
     hideTracksPanel()

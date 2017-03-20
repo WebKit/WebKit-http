@@ -49,6 +49,8 @@ public:
     static Ref<RealtimeIncomingVideoSource> create(rtc::scoped_refptr<webrtc::VideoTrackInterface>&&, String&&);
     ~RealtimeIncomingVideoSource() { stopProducingData(); }
 
+    void setSourceTrack(rtc::scoped_refptr<webrtc::VideoTrackInterface>&&);
+
 private:
     RealtimeIncomingVideoSource(rtc::scoped_refptr<webrtc::VideoTrackInterface>&&, String&&, CFMutableDictionaryRef);
 
@@ -63,15 +65,14 @@ private:
     RealtimeMediaSourceSupportedConstraints& supportedConstraints();
 
     void processNewSample(CMSampleBufferRef, unsigned, unsigned);
-    RefPtr<Image> currentFrameImage() final;
-
-    void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) final;
 
     bool isProducingData() const final { return m_isProducingData && m_buffer; }
     bool applySize(const IntSize&) final { return true; }
 
     // rtc::VideoSinkInterface
     void OnFrame(const webrtc::VideoFrame&) final;
+
+    CVPixelBufferRef pixelBufferFromVideoFrame(const webrtc::VideoFrame&);
 
     RefPtr<Image> m_currentImage;
     RealtimeMediaSourceSettings m_currentSettings;
@@ -82,6 +83,9 @@ private:
     rtc::scoped_refptr<webrtc::VideoTrackInterface> m_videoTrack;
     RetainPtr<CMSampleBufferRef> m_buffer;
     PixelBufferConformerCV m_conformer;
+    RetainPtr<CVPixelBufferRef> m_blackFrame;
+    int m_blackFrameWidth { 0 };
+    int m_blackFrameHeight { 0 };
 };
 
 } // namespace WebCore

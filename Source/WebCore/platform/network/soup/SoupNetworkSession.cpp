@@ -292,7 +292,7 @@ void SoupNetworkSession::setProxies(const Vector<WebCore::Proxy>& proxies)
 #endif
 }
 
-#if PLATFORM(EFL) || PLATFORM(WPE)
+#if PLATFORM(WPE)
 void SoupNetworkSession::setProxySettingsFromEnvironment()
 {
 // FIXME: This function should not exist at all and we don't want to accidentally use it in other ports.

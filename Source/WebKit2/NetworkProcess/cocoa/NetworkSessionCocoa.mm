@@ -29,9 +29,9 @@
 #if USE(NETWORK_SESSION)
 
 #import "AuthenticationManager.h"
-#import "CustomProtocolManager.h"
 #import "DataReference.h"
 #import "Download.h"
+#import "LegacyCustomProtocolManager.h"
 #import "Logging.h"
 #import "NetworkCache.h"
 #import "NetworkLoad.h"
@@ -51,6 +51,12 @@
 #import <WebCore/WebCoreURLResponse.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+@interface NSURLSessionTaskTransactionMetrics (WKDetails)
+@property (copy, readonly) NSUUID* _connectionIdentifier;
+@end
+#endif
 
 using namespace WebKit;
 
@@ -78,6 +84,15 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
     case WebKit::AuthenticationChallengeDisposition::RejectProtectionSpace:
         return NSURLSessionAuthChallengeRejectProtectionSpace;
     }
+}
+
+static WebCore::NetworkLoadPriority toNetworkLoadPriority(float priority)
+{
+    if (priority <= NSURLSessionTaskPriorityLow)
+        return WebCore::NetworkLoadPriority::Low;
+    if (priority >= NSURLSessionTaskPriorityHigh)
+        return WebCore::NetworkLoadPriority::High;
+    return WebCore::NetworkLoadPriority::Medium;
 }
 
 @interface WKNetworkSessionDelegate : NSObject <NSURLSessionDataDelegate> {
@@ -290,7 +305,14 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
         networkLoadMetrics.responseStart = Seconds(responseStartInterval);
         networkLoadMetrics.responseEnd = Seconds(responseEndInterval);
         networkLoadMetrics.markComplete();
+
         networkLoadMetrics.protocol = String(m.networkProtocolName);
+        networkLoadMetrics.priority = toNetworkLoadPriority(task.priority);
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+        networkLoadMetrics.remoteAddress = String(m._remoteAddressAndPort);
+        if ([m respondsToSelector:@selector(_connectionIdentifier)])
+            networkLoadMetrics.connectionIdentifier = String([m._connectionIdentifier UUIDString]);
+#endif
     }
 }
 
@@ -407,9 +429,15 @@ static NSURLSessionConfiguration *configurationForSessionID(const WebCore::Sessi
     return [NSURLSessionConfiguration defaultSessionConfiguration];
 }
 
-static CustomProtocolManager*& globalCustomProtocolManager()
+static bool& globalAllowsCellularAccess()
 {
-    static CustomProtocolManager* customProtocolManager { nullptr };
+    static bool allowsCellularAccess { true };
+    return allowsCellularAccess;
+}
+
+static LegacyCustomProtocolManager*& globalLegacyCustomProtocolManager()
+{
+    static LegacyCustomProtocolManager* customProtocolManager { nullptr };
     return customProtocolManager;
 }
 
@@ -443,10 +471,10 @@ static String& globalCTDataConnectionServiceType()
 static bool sessionsCreated = false;
 #endif
 
-void NetworkSessionCocoa::setCustomProtocolManager(CustomProtocolManager* customProtocolManager)
+void NetworkSessionCocoa::setLegacyCustomProtocolManager(LegacyCustomProtocolManager* customProtocolManager)
 {
     ASSERT(!sessionsCreated);
-    globalCustomProtocolManager() = customProtocolManager;
+    globalLegacyCustomProtocolManager() = customProtocolManager;
 }
     
 void NetworkSessionCocoa::setSourceApplicationAuditTokenData(RetainPtr<CFDataRef>&& data)
@@ -466,6 +494,11 @@ void NetworkSessionCocoa::setSourceApplicationSecondaryIdentifier(const String& 
     ASSERT(!sessionsCreated);
     globalSourceApplicationSecondaryIdentifier() = identifier;
 }
+    
+void NetworkSessionCocoa::setAllowsCellularAccess(bool value)
+{
+    globalAllowsCellularAccess() = value;
+}
 
 #if PLATFORM(IOS)
 void NetworkSessionCocoa::setCTDataConnectionServiceType(const String& type)
@@ -475,7 +508,7 @@ void NetworkSessionCocoa::setCTDataConnectionServiceType(const String& type)
 }
 #endif
 
-Ref<NetworkSession> NetworkSessionCocoa::create(WebCore::SessionID sessionID, CustomProtocolManager* customProtocolManager)
+Ref<NetworkSession> NetworkSessionCocoa::create(WebCore::SessionID sessionID, LegacyCustomProtocolManager* customProtocolManager)
 {
     return adoptRef(*new NetworkSessionCocoa(sessionID, customProtocolManager));
 }
@@ -483,11 +516,11 @@ Ref<NetworkSession> NetworkSessionCocoa::create(WebCore::SessionID sessionID, Cu
 NetworkSession& NetworkSessionCocoa::defaultSession()
 {
     ASSERT(isMainThread());
-    static NetworkSession* session = &NetworkSessionCocoa::create(WebCore::SessionID::defaultSessionID(), globalCustomProtocolManager()).leakRef();
+    static NetworkSession* session = &NetworkSessionCocoa::create(WebCore::SessionID::defaultSessionID(), globalLegacyCustomProtocolManager()).leakRef();
     return *session;
 }
 
-NetworkSessionCocoa::NetworkSessionCocoa(WebCore::SessionID sessionID, CustomProtocolManager* customProtocolManager)
+NetworkSessionCocoa::NetworkSessionCocoa(WebCore::SessionID sessionID, LegacyCustomProtocolManager* customProtocolManager)
     : NetworkSession(sessionID)
 {
     relaxAdoptionRequirement();
@@ -498,6 +531,9 @@ NetworkSessionCocoa::NetworkSessionCocoa(WebCore::SessionID sessionID, CustomPro
 
     NSURLSessionConfiguration *configuration = configurationForSessionID(m_sessionID);
 
+    if (!globalAllowsCellularAccess())
+        configuration.allowsCellularAccess = NO;
+    
     if (NetworkCache::singleton().isEnabled())
         configuration.URLCache = nil;
     

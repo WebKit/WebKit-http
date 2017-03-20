@@ -179,25 +179,10 @@ static ActiveMachineThreadsManager& activeMachineThreadsManager()
     return *manager;
 }
     
-static inline PlatformThread getCurrentPlatformThread()
-{
-#if OS(DARWIN)
-    return pthread_mach_thread_np(pthread_self());
-#elif OS(WINDOWS)
-    return GetCurrentThreadId();
-#elif USE(PTHREADS)
-    return pthread_self();
-#endif
-}
-
-MachineThreads::MachineThreads(Heap* heap)
+MachineThreads::MachineThreads()
     : m_registeredThreads(0)
     , m_threadSpecificForMachineThreads(0)
-#if !ASSERT_DISABLED
-    , m_heap(heap)
-#endif
 {
-    UNUSED_PARAM(heap);
     threadSpecificKeyCreate(&m_threadSpecificForMachineThreads, removeThread);
     activeMachineThreadsManager().add(this);
 }
@@ -218,7 +203,7 @@ MachineThreads::~MachineThreads()
 Thread* MachineThreads::Thread::createForCurrentThread()
 {
     auto stackBounds = wtfThreadData().stack();
-    return new Thread(getCurrentPlatformThread(), stackBounds.origin(), stackBounds.end());
+    return new Thread(currentPlatformThread(), stackBounds.origin(), stackBounds.end());
 }
 
 bool MachineThreads::Thread::operator==(const PlatformThread& other) const
@@ -234,8 +219,6 @@ bool MachineThreads::Thread::operator==(const PlatformThread& other) const
 
 void MachineThreads::addCurrentThread()
 {
-    ASSERT(!m_heap->vm()->hasExclusiveThread() || m_heap->vm()->exclusiveThread() == std::this_thread::get_id());
-
     if (threadSpecificGet(m_threadSpecificForMachineThreads)) {
 #ifndef NDEBUG
         LockHolder lock(m_registeredThreadsMutex);
@@ -256,7 +239,7 @@ void MachineThreads::addCurrentThread()
 Thread* MachineThreads::machineThreadForCurrentThread()
 {
     LockHolder lock(m_registeredThreadsMutex);
-    PlatformThread platformThread = getCurrentPlatformThread();
+    PlatformThread platformThread = currentPlatformThread();
     for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
         if (*thread == platformThread)
             return thread;
@@ -288,7 +271,7 @@ void THREAD_SPECIFIC_CALL MachineThreads::removeThread(void* p)
             return;
 #endif
 
-        machineThreads->removeThreadIfFound(getCurrentPlatformThread());
+        machineThreads->removeThreadIfFound(currentPlatformThread());
     }
 }
 
@@ -381,7 +364,7 @@ bool MachineThreads::Thread::suspend()
     ASSERT(threadIsSuspended);
     return threadIsSuspended;
 #elif USE(PTHREADS)
-    ASSERT_WITH_MESSAGE(getCurrentPlatformThread() != platformThread, "Currently we don't support suspend the current thread itself.");
+    ASSERT_WITH_MESSAGE(currentPlatformThread() != platformThread, "Currently we don't support suspend the current thread itself.");
     {
         // During suspend, suspend or resume should not be executed from the other threads.
         // We use global lock instead of per thread lock.
@@ -478,6 +461,9 @@ size_t MachineThreads::Thread::getRegisters(Thread::Registers& registers)
     regs.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL;
     GetThreadContext(platformThreadHandle, &regs);
     return sizeof(CONTEXT);
+#elif ((OS(FREEBSD) || defined(__GLIBC__)) && ENABLE(JIT))
+    regs = suspendedMachineContext;
+    return sizeof(Registers::PlatformRegisters);
 #elif USE(PTHREADS)
     pthread_attr_init(&regs.attribute);
 #if HAVE(PTHREAD_NP_H) || OS(NETBSD)
@@ -489,7 +475,6 @@ size_t MachineThreads::Thread::getRegisters(Thread::Registers& registers)
     // FIXME: this function is non-portable; other POSIX systems may have different np alternatives
     pthread_getattr_np(platformThread, &regs.attribute);
 #endif
-    regs.machineContext = suspendedMachineContext;
     return 0;
 #else
 #error Need a way to get thread registers on this platform
@@ -498,88 +483,9 @@ size_t MachineThreads::Thread::getRegisters(Thread::Registers& registers)
 
 void* MachineThreads::Thread::Registers::stackPointer() const
 {
-#if OS(DARWIN)
-
-#if __DARWIN_UNIX03
-
-#if CPU(X86)
-    return reinterpret_cast<void*>(regs.__esp);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>(regs.__rsp);
-#elif CPU(PPC) || CPU(PPC64)
-    return reinterpret_cast<void*>(regs.__r1);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>(regs.__sp);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>(regs.__sp);
-#else
-#error Unknown Architecture
-#endif
-
-#else // !__DARWIN_UNIX03
-
-#if CPU(X86)
-    return reinterpret_cast<void*>(regs.esp);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>(regs.rsp);
-#elif CPU(PPC) || CPU(PPC64)
-    return reinterpret_cast<void*>(regs.r1);
-#else
-#error Unknown Architecture
-#endif
-
-#endif // __DARWIN_UNIX03
-
-// end OS(DARWIN)
-#elif OS(WINDOWS)
-
-#if CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.Sp);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.IntSp);
-#elif CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.Esp);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.Rsp);
-#else
-#error Unknown Architecture
-#endif
-
+#if OS(DARWIN) || OS(WINDOWS) || ((OS(FREEBSD) || defined(__GLIBC__)) && ENABLE(JIT))
+    return MachineContext::stackPointer(regs);
 #elif USE(PTHREADS)
-
-#if OS(FREEBSD) && ENABLE(JIT)
-
-#if CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_esp);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_rsp);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.__gregs[_REG_SP]);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_gpregs.gp_sp);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_regs[29]);
-#else
-#error Unknown Architecture
-#endif
-
-#elif defined(__GLIBC__) && ENABLE(JIT)
-
-#if CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_ESP]);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_RSP]);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.arm_sp);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.sp);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[29]);
-#else
-#error Unknown Architecture
-#endif
-
-#else
     void* stackBase = 0;
     size_t stackSize = 0;
 #if OS(OPENBSD)
@@ -593,8 +499,6 @@ void* MachineThreads::Thread::Registers::stackPointer() const
     (void)rc; // FIXME: Deal with error code somehow? Seems fatal.
     ASSERT(stackBase);
     return static_cast<char*>(stackBase) + stackSize;
-#endif
-
 #else
 #error Need a way to get the stack pointer for another thread on this platform
 #endif
@@ -603,82 +507,8 @@ void* MachineThreads::Thread::Registers::stackPointer() const
 #if ENABLE(SAMPLING_PROFILER)
 void* MachineThreads::Thread::Registers::framePointer() const
 {
-#if OS(DARWIN)
-
-#if __DARWIN_UNIX03
-
-#if CPU(X86)
-    return reinterpret_cast<void*>(regs.__ebp);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>(regs.__rbp);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>(regs.__r[11]);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>(regs.__x[29]);
-#else
-#error Unknown Architecture
-#endif
-
-#else // !__DARWIN_UNIX03
-
-#if CPU(X86)
-    return reinterpret_cast<void*>(regs.esp);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>(regs.rsp);
-#else
-#error Unknown Architecture
-#endif
-
-#endif // __DARWIN_UNIX03
-
-// end OS(DARWIN)
-#elif OS(WINDOWS)
-
-#if CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.R11);
-#elif CPU(MIPS)
-#error Dont know what to do with mips. Do we even need this?
-#elif CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.Ebp);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.Rbp);
-#else
-#error Unknown Architecture
-#endif
-
-#elif OS(FREEBSD)
-
-#if CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_ebp);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_rbp);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.__gregs[_REG_FP]);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_gpregs.gp_x[29]);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_regs[30]);
-#else
-#error Unknown Architecture
-#endif
-
-#elif defined(__GLIBC__)
-
-// The following sequence depends on glibc's sys/ucontext.h.
-#if CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_EBP]);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_RBP]);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.arm_fp);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.regs[29]);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[30]);
-#else
-#error Unknown Architecture
-#endif
-
+#if OS(DARWIN) || OS(WINDOWS) || (OS(FREEBSD) || defined(__GLIBC__))
+    return MachineContext::framePointer(regs);
 #else
 #error Need a way to get the frame pointer for another thread on this platform
 #endif
@@ -686,172 +516,18 @@ void* MachineThreads::Thread::Registers::framePointer() const
 
 void* MachineThreads::Thread::Registers::instructionPointer() const
 {
-#if OS(DARWIN)
-
-#if __DARWIN_UNIX03
-
-#if CPU(X86)
-    return reinterpret_cast<void*>(regs.__eip);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>(regs.__rip);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>(regs.__pc);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>(regs.__pc);
-#else
-#error Unknown Architecture
-#endif
-
-#else // !__DARWIN_UNIX03
-#if CPU(X86)
-    return reinterpret_cast<void*>(regs.eip);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>(regs.rip);
-#else
-#error Unknown Architecture
-#endif
-
-#endif // __DARWIN_UNIX03
-
-// end OS(DARWIN)
-#elif OS(WINDOWS)
-
-#if CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.Pc);
-#elif CPU(MIPS)
-#error Dont know what to do with mips. Do we even need this?
-#elif CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.Eip);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.Rip);
-#else
-#error Unknown Architecture
-#endif
-
-#elif OS(FREEBSD)
-
-#if CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_eip);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_rip);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.__gregs[_REG_PC]);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_gpregs.gp_elr);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_pc);
-#else
-#error Unknown Architecture
-#endif
-
-#elif defined(__GLIBC__)
-
-// The following sequence depends on glibc's sys/ucontext.h.
-#if CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_EIP]);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_RIP]);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.arm_pc);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.pc);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.pc);
-#else
-#error Unknown Architecture
-#endif
-
+#if OS(DARWIN) || OS(WINDOWS) || (OS(FREEBSD) || defined(__GLIBC__))
+    return MachineContext::instructionPointer(regs);
 #else
 #error Need a way to get the instruction pointer for another thread on this platform
 #endif
 }
+
 void* MachineThreads::Thread::Registers::llintPC() const
 {
     // LLInt uses regT4 as PC.
-#if OS(DARWIN)
-
-#if __DARWIN_UNIX03
-
-#if CPU(X86)
-    static_assert(LLInt::LLIntPC == X86Registers::esi, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>(regs.__esi);
-#elif CPU(X86_64)
-    static_assert(LLInt::LLIntPC == X86Registers::r8, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>(regs.__r8);
-#elif CPU(ARM)
-    static_assert(LLInt::LLIntPC == ARMRegisters::r8, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>(regs.__r[8]);
-#elif CPU(ARM64)
-    static_assert(LLInt::LLIntPC == ARM64Registers::x4, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>(regs.__x[4]);
-#else
-#error Unknown Architecture
-#endif
-
-#else // !__DARWIN_UNIX03
-#if CPU(X86)
-    static_assert(LLInt::LLIntPC == X86Registers::esi, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>(regs.esi);
-#elif CPU(X86_64)
-    static_assert(LLInt::LLIntPC == X86Registers::r8, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>(regs.r8);
-#else
-#error Unknown Architecture
-#endif
-
-#endif // __DARWIN_UNIX03
-
-// end OS(DARWIN)
-#elif OS(WINDOWS)
-
-#if CPU(ARM)
-    static_assert(LLInt::LLIntPC == ARMRegisters::r8, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>((uintptr_t) regs.R8);
-#elif CPU(MIPS)
-#error Dont know what to do with mips. Do we even need this?
-#elif CPU(X86)
-    static_assert(LLInt::LLIntPC == X86Registers::esi, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>((uintptr_t) regs.Esi);
-#elif CPU(X86_64)
-    static_assert(LLInt::LLIntPC == X86Registers::r10, "Wrong LLInt PC.");
-    return reinterpret_cast<void*>((uintptr_t) regs.R10);
-#else
-#error Unknown Architecture
-#endif
-
-#elif OS(FREEBSD)
-
-#if CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_esi);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_r8);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.__gregs[_REG_R8]);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_gpregs.gp_x[4]);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.mc_regs[12]);
-#else
-#error Unknown Architecture
-#endif
-
-#elif defined(__GLIBC__)
-
-// The following sequence depends on glibc's sys/ucontext.h.
-#if CPU(X86)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_ESI]);
-#elif CPU(X86_64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_R8]);
-#elif CPU(ARM)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.arm_r8);
-#elif CPU(ARM64)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.regs[4]);
-#elif CPU(MIPS)
-    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[12]);
-#else
-#error Unknown Architecture
-#endif
-
+#if OS(DARWIN) || OS(WINDOWS) || (OS(FREEBSD) || defined(__GLIBC__))
+    return MachineContext::llintInstructionPointer(regs);
 #else
 #error Need a way to get the LLIntPC for another thread on this platform
 #endif
@@ -861,7 +537,7 @@ void* MachineThreads::Thread::Registers::llintPC() const
 void MachineThreads::Thread::freeRegisters(Thread::Registers& registers)
 {
     Thread::Registers::PlatformRegisters& regs = registers.regs;
-#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
+#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !((OS(FREEBSD) || defined(__GLIBC__)) && ENABLE(JIT))
     pthread_attr_destroy(&regs.attribute);
 #else
     UNUSED_PARAM(regs);
@@ -945,7 +621,7 @@ void MachineThreads::tryCopyOtherThreadStack(Thread* thread, void* buffer, size_
     thread->freeRegisters(registers);
 }
 
-bool MachineThreads::tryCopyOtherThreadStacks(LockHolder&, void* buffer, size_t capacity, size_t* size)
+bool MachineThreads::tryCopyOtherThreadStacks(const AbstractLocker&, void* buffer, size_t capacity, size_t* size)
 {
     // Prevent two VMs from suspending each other's threads at the same time,
     // which can cause deadlock: <rdar://problem/20300842>.
@@ -954,14 +630,14 @@ bool MachineThreads::tryCopyOtherThreadStacks(LockHolder&, void* buffer, size_t 
 
     *size = 0;
 
-    PlatformThread currentPlatformThread = getCurrentPlatformThread();
+    PlatformThread platformThread = currentPlatformThread();
     int numberOfThreads = 0; // Using 0 to denote that we haven't counted the number of threads yet.
     int index = 1;
     Thread* threadsToBeDeleted = nullptr;
 
     Thread* previousThread = nullptr;
     for (Thread* thread = m_registeredThreads; thread; index++) {
-        if (*thread != currentPlatformThread) {
+        if (*thread != platformThread) {
             bool success = thread->suspend();
 #if OS(DARWIN)
             if (!success) {
@@ -1005,12 +681,12 @@ bool MachineThreads::tryCopyOtherThreadStacks(LockHolder&, void* buffer, size_t 
     }
 
     for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
-        if (*thread != currentPlatformThread)
+        if (*thread != platformThread)
             tryCopyOtherThreadStack(thread, buffer, capacity, size);
     }
 
     for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
-        if (*thread != currentPlatformThread)
+        if (*thread != platformThread)
             thread->resume();
     }
 

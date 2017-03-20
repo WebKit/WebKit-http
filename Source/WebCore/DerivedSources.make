@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2008, 2012, 2014-2015 Apple Inc. All rights reserved.
+# Copyright (C) 2006-2008, 2012, 2014-2015, 2017 Apple Inc. All rights reserved.
 # Copyright (C) 2006 Samuel Weinig <sam.weinig@gmail.com>
 # Copyright (C) 2009 Cameron McCormack <cam@mcc.id.au>
 #
@@ -79,18 +79,23 @@ VPATH = \
 
 JS_BINDING_IDLS = \
     $(WebCore)/Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayError.idl \
     $(WebCore)/Modules/applepay/ApplePayLineItem.idl \
     $(WebCore)/Modules/applepay/ApplePayPayment.idl \
     $(WebCore)/Modules/applepay/ApplePayPaymentAuthorizedEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayPaymentAuthorizationResult.idl \
     $(WebCore)/Modules/applepay/ApplePayPaymentContact.idl \
     $(WebCore)/Modules/applepay/ApplePayPaymentMethod.idl \
     $(WebCore)/Modules/applepay/ApplePayPaymentMethodSelectedEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayPaymentMethodUpdate.idl \
     $(WebCore)/Modules/applepay/ApplePayPaymentPass.idl \
     $(WebCore)/Modules/applepay/ApplePayPaymentRequest.idl \
     $(WebCore)/Modules/applepay/ApplePaySession.idl \
     $(WebCore)/Modules/applepay/ApplePayShippingContactSelectedEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayShippingContactUpdate.idl \
     $(WebCore)/Modules/applepay/ApplePayShippingMethod.idl \
     $(WebCore)/Modules/applepay/ApplePayShippingMethodSelectedEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayShippingMethodUpdate.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
     $(WebCore)/Modules/credentials/BasicCredential.idl \
     $(WebCore)/Modules/credentials/CredentialData.idl \
@@ -156,6 +161,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediasource/TextTrackMediaSource.idl \
     $(WebCore)/Modules/mediasource/VideoPlaybackQuality.idl \
     $(WebCore)/Modules/mediasource/VideoTrackMediaSource.idl \
+    $(WebCore)/Modules/mediastream/CanvasCaptureMediaStreamTrack.idl \
     $(WebCore)/Modules/mediastream/DOMURLMediaStream.idl \
     $(WebCore)/Modules/mediastream/DoubleRange.idl \
     $(WebCore)/Modules/mediastream/LongRange.idl \
@@ -171,6 +177,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/NavigatorUserMedia.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedError.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedErrorEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCAnswerOptions.idl \
     $(WebCore)/Modules/mediastream/RTCConfiguration.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFSender.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
@@ -178,12 +185,20 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCDataChannelEvent.idl \
     $(WebCore)/Modules/mediastream/RTCIceCandidate.idl \
     $(WebCore)/Modules/mediastream/RTCIceCandidateEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCIceConnectionState.idl \
+    $(WebCore)/Modules/mediastream/RTCIceGatheringState.idl \
     $(WebCore)/Modules/mediastream/RTCIceServer.idl \
+    $(WebCore)/Modules/mediastream/RTCIceTransport.idl \
+    $(WebCore)/Modules/mediastream/RTCIceTransportState.idl \
+    $(WebCore)/Modules/mediastream/RTCOfferAnswerOptions.idl \
+    $(WebCore)/Modules/mediastream/RTCOfferOptions.idl \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
     $(WebCore)/Modules/mediastream/RTCRtpReceiver.idl \
     $(WebCore)/Modules/mediastream/RTCRtpSender.idl \
     $(WebCore)/Modules/mediastream/RTCRtpTransceiver.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpTransceiverDirection.idl \
     $(WebCore)/Modules/mediastream/RTCSessionDescription.idl \
+    $(WebCore)/Modules/mediastream/RTCSignalingState.idl \
     $(WebCore)/Modules/mediastream/RTCStatsReport.idl \
     $(WebCore)/Modules/mediastream/RTCTrackEvent.idl \
     $(WebCore)/Modules/notifications/DOMWindowNotifications.idl \
@@ -272,8 +287,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/SubtleCrypto.idl \
     $(WebCore)/crypto/WebKitSubtleCrypto.idl \
     $(WebCore)/crypto/parameters/AesCbcCfbParams.idl \
-    $(WebCore)/crypto/parameters/AesKeyGenParams.idl \
+    $(WebCore)/crypto/parameters/AesGcmParams.idl \
+    $(WebCore)/crypto/parameters/AesKeyParams.idl \
+    $(WebCore)/crypto/parameters/EcKeyParams.idl \
+    $(WebCore)/crypto/parameters/EcdhKeyDeriveParams.idl \
     $(WebCore)/crypto/parameters/HmacKeyParams.idl \
+    $(WebCore)/crypto/parameters/Pbkdf2Params.idl \
     $(WebCore)/crypto/parameters/RsaHashedImportParams.idl \
     $(WebCore)/crypto/parameters/RsaHashedKeyGenParams.idl \
     $(WebCore)/crypto/parameters/RsaKeyGenParams.idl \
@@ -403,6 +422,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/WheelEvent.idl \
     $(WebCore)/dom/XMLDocument.idl \
     $(WebCore)/fileapi/Blob.idl \
+    $(WebCore)/fileapi/BlobCallback.idl \
     $(WebCore)/fileapi/BlobLineEndings.idl \
     $(WebCore)/fileapi/BlobPropertyBag.idl \
     $(WebCore)/fileapi/File.idl \
@@ -551,6 +571,25 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/canvas/WebGLUniformLocation.idl \
     $(WebCore)/html/canvas/WebGLVertexArrayObject.idl \
     $(WebCore)/html/canvas/WebGLVertexArrayObjectOES.idl \
+    $(WebCore)/html/canvas/WebGPUBuffer.idl \
+    $(WebCore)/html/canvas/WebGPUCommandBuffer.idl \
+    $(WebCore)/html/canvas/WebGPUCommandQueue.idl \
+    $(WebCore)/html/canvas/WebGPUDepthStencilDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPUDepthStencilState.idl \
+    $(WebCore)/html/canvas/WebGPUDrawable.idl \
+    $(WebCore)/html/canvas/WebGPUFunction.idl \
+    $(WebCore)/html/canvas/WebGPULibrary.idl \
+    $(WebCore)/html/canvas/WebGPURenderCommandEncoder.idl \
+    $(WebCore)/html/canvas/WebGPURenderingContext.idl \
+    $(WebCore)/html/canvas/WebGPURenderPassAttachmentDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPassColorAttachmentDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPassDepthAttachmentDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPassDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPipelineColorAttachmentDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPipelineDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPipelineState.idl \
+    $(WebCore)/html/canvas/WebGPUTexture.idl \
+    $(WebCore)/html/canvas/WebGPUTextureDescriptor.idl \
     $(WebCore)/html/track/AudioTrack.idl \
     $(WebCore)/html/track/AudioTrackList.idl \
     $(WebCore)/html/track/DataCue.idl \

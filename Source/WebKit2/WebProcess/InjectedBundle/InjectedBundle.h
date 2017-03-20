@@ -36,7 +36,7 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(GTK) || PLATFORM(WPE)
+#if USE(GLIB)
 typedef struct _GModule GModule;
 #endif
 
@@ -61,7 +61,7 @@ namespace WebKit {
 
 #if USE(FOUNDATION)
 typedef NSBundle *PlatformBundle;
-#elif PLATFORM(GTK) || PLATFORM(WPE)
+#elif USE(GLIB)
 typedef ::GModule* PlatformBundle;
 #endif
 

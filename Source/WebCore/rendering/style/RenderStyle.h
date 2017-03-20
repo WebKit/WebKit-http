@@ -323,7 +323,9 @@ public:
     
     EOverflow overflowX() const { return m_nonInheritedFlags.overflowX(); }
     EOverflow overflowY() const { return m_nonInheritedFlags.overflowY(); }
-
+    EOverflow overflowInlineDirection() const { return isHorizontalWritingMode() ? overflowX() : overflowY(); }
+    EOverflow overflowBlockDirection() const { return isHorizontalWritingMode() ? overflowY() : overflowX(); }
+    
     EVisibility visibility() const { return static_cast<EVisibility>(m_inheritedFlags.visibility); }
     EVerticalAlign verticalAlign() const { return m_nonInheritedFlags.verticalAlign(); }
     const Length& verticalAlignLength() const { return m_boxData->verticalAlign(); }
@@ -1055,6 +1057,7 @@ public:
     void setJustifyContentPosition(ContentPosition position) { m_rareNonInheritedData.access().justifyContent.setPosition(position); }
     void setJustifyItems(const StyleSelfAlignmentData& data) { SET_VAR(m_rareNonInheritedData, justifyItems, data); }
     void setJustifySelf(const StyleSelfAlignmentData& data) { SET_VAR(m_rareNonInheritedData, justifySelf, data); }
+    void setJustifySelfPosition(ItemPosition position) { m_rareNonInheritedData.access().justifySelf.setPosition(position); }
 
 #if ENABLE(CSS_BOX_DECORATION_BREAK)
     void setBoxDecorationBreak(EBoxDecorationBreak b) { SET_VAR(m_boxData, m_boxDecorationBreak, b); }
@@ -1254,6 +1257,11 @@ public:
     void setStrokeWidth(Length&& w) { SET_VAR(m_rareInheritedData, strokeWidth, WTFMove(w)); }
     bool hasVisibleStroke() const { return svgStyle().hasStroke() && !strokeWidth().isZero(); }
 
+    float computedStrokeWidth(const IntSize& viewportSize) const;
+    void setHasExplicitlySetStrokeWidth(bool v) { SET_VAR(m_rareInheritedData, hasSetStrokeWidth, static_cast<unsigned>(v)); }
+    bool hasExplicitlySetStrokeWidth() const { return m_rareInheritedData->hasSetStrokeWidth; };
+    bool hasPositiveStrokeWidth() const;
+    
     
     const SVGRenderStyle& svgStyle() const { return m_svgStyle; }
     SVGRenderStyle& accessSVGStyle() { return m_svgStyle.access(); }
@@ -1645,8 +1653,9 @@ public:
     static Isolation initialIsolation() { return IsolationAuto; }
 #endif
 
-    bool isPlaceholderStyle() const { return m_rareNonInheritedData->isPlaceholderStyle; }
-    void setIsPlaceholderStyle() { SET_VAR(m_rareNonInheritedData, isPlaceholderStyle, true); }
+    // Indicates the style is likely to change due to a pending stylesheet load.
+    bool isNotFinal() const { return m_rareNonInheritedData->isNotFinal; }
+    void setIsNotFinal() { SET_VAR(m_rareNonInheritedData, isNotFinal, true); }
 
     void setVisitedLinkColor(const Color&);
     void setVisitedLinkBackgroundColor(const Color& v) { SET_VAR(m_rareNonInheritedData, visitedLinkBackgroundColor, v); }

@@ -90,9 +90,9 @@
 #include "MallocStatistics.h"
 #include "MediaPlayer.h"
 #include "MediaProducer.h"
+#include "MediaStreamTrack.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
-#include "MemoryPressureHandler.h"
 #include "MockLibWebRTCPeerConnection.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
@@ -112,8 +112,10 @@
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
 #include "ResourceLoadObserver.h"
+#include "SMILTimeContainer.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGPathStringBuilder.h"
+#include "SVGSVGElement.h"
 #include "SchemeRegistry.h"
 #include "ScriptedAnimationController.h"
 #include "ScrollingCoordinator.h"
@@ -146,6 +148,7 @@
 #include <inspector/InspectorValues.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
+#include <wtf/MemoryPressureHandler.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
@@ -374,6 +377,10 @@ Ref<Internals> Internals::create(Document& document)
 
 Internals::~Internals()
 {
+#if ENABLE(MEDIA_STREAM)
+    if (m_track)
+        m_track->source().removeObserver(*this);
+#endif
 }
 
 void Internals::resetToConsistentState(Page& page)
@@ -436,6 +443,7 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     page.setShowAllPlugins(false);
+    page.setLowPowerModeEnabledOverrideForTesting(std::nullopt);
 
 #if USE(QUICK_LOOK)
     MockQuickLookHandleClient::singleton().setPassword("");
@@ -459,6 +467,12 @@ Internals::Internals(Document& document)
 #if ENABLE(WEB_RTC)
     enableMockMediaEndpoint();
     useMockRTCPeerConnectionFactory(String());
+#if USE(LIBWEBRTC)
+    if (document.page()) {
+        document.page()->libWebRTCProvider().enableEnumeratingAllNetworkInterfaces();
+        document.page()->rtcController().disableICECandidateFiltering();
+    }
+#endif
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -513,6 +527,21 @@ bool Internals::areSVGAnimationsPaused() const
         return false;
 
     return document->accessSVGExtensions().areAnimationsPaused();
+}
+
+ExceptionOr<double> Internals::svgAnimationsInterval(SVGSVGElement& element) const
+{
+    auto* document = contextDocument();
+    if (!document)
+        return 0;
+
+    if (!document->svgExtensions())
+        return 0;
+
+    if (document->accessSVGExtensions().areAnimationsPaused())
+        return 0;
+
+    return element.timeContainer().animationFrameDelay().value();
 }
 
 String Internals::address(Node& node)
@@ -715,6 +744,19 @@ void Internals::resetImageAnimation(HTMLImageElement& element)
     image->resetAnimation();
 }
 
+void Internals::setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement& element, bool value)
+{
+    auto* cachedImage = element.cachedImage();
+    if (!cachedImage)
+        return;
+
+    auto* image = cachedImage->image();
+    if (!is<BitmapImage>(image))
+        return;
+
+    downcast<BitmapImage>(*image).setClearDecoderAfterAsyncFrameRequestForTesting(value);
+}
+
 void Internals::clearPageCache()
 {
     PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
@@ -770,6 +812,15 @@ ExceptionOr<bool> Internals::animationsAreSuspended() const
         return Exception { INVALID_ACCESS_ERR };
 
     return document->frame()->animation().animationsAreSuspendedForDocument(document);
+}
+
+double Internals::animationsInterval() const
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return INFINITY;
+
+    return document->frame()->animation().animationInterval().value();
 }
 
 ExceptionOr<void> Internals::suspendAnimations() const
@@ -1005,10 +1056,14 @@ unsigned Internals::deferredKeyframesRulesCount(StyleSheet& styleSheet)
 
 ExceptionOr<bool> Internals::isTimerThrottled(int timeoutId)
 {
-    DOMTimer* timer = scriptExecutionContext()->findTimeout(timeoutId);
+    auto* timer = scriptExecutionContext()->findTimeout(timeoutId);
     if (!timer)
         return Exception { NOT_FOUND_ERR };
-    return timer->m_throttleState == DOMTimer::ShouldThrottle;
+
+    if (timer->intervalClampedToMinimum() > timer->m_originalInterval)
+        return true;
+
+    return !!timer->alignedFireTime(0_s);
 }
 
 bool Internals::isRequestAnimationFrameThrottled() const
@@ -1017,6 +1072,14 @@ bool Internals::isRequestAnimationFrameThrottled() const
     if (!scriptedAnimationController)
         return false;
     return scriptedAnimationController->isThrottled();
+}
+
+double Internals::requestAnimationFrameInterval() const
+{
+    auto* scriptedAnimationController = contextDocument()->scriptedAnimationController();
+    if (!scriptedAnimationController)
+        return INFINITY;
+    return scriptedAnimationController->interval().value();
 }
 
 bool Internals::areTimersThrottled() const
@@ -1129,16 +1192,25 @@ void Internals::enableMockSpeechSynthesizer()
 
 void Internals::enableMockMediaEndpoint()
 {
+    if (!LibWebRTCProvider::webRTCAvailable())
+        return;
+
     MediaEndpoint::create = MockMediaEndpoint::create;
 }
 
 void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
 {
+    if (!LibWebRTCProvider::webRTCAvailable())
+        return;
+
     connection.emulatePlatformEvent(action);
 }
 
 void Internals::useMockRTCPeerConnectionFactory(const String& testCase)
 {
+    if (!LibWebRTCProvider::webRTCAvailable())
+        return;
+
 #if USE(LIBWEBRTC)
     Document* document = contextDocument();
     LibWebRTCProvider* provider = (document && document->page()) ? &document->page()->libWebRTCProvider() : nullptr;
@@ -1146,6 +1218,19 @@ void Internals::useMockRTCPeerConnectionFactory(const String& testCase)
 #else
     UNUSED_PARAM(testCase);
 #endif
+}
+
+void Internals::setICECandidateFiltering(bool enabled)
+{
+    Document* document = contextDocument();
+    auto* page = document->page();
+    if (!page)
+        return;
+    auto& rtcController = page->rtcController();
+    if (enabled)
+        rtcController.enableICECandidateFiltering();
+    else
+        rtcController.disableICECandidateFiltering();
 }
 
 #endif
@@ -1288,6 +1373,24 @@ ExceptionOr<void> Internals::setMarkedTextMatchesAreHighlighted(bool flag)
 void Internals::invalidateFontCache()
 {
     FontCache::singleton().invalidate();
+}
+
+void Internals::setFontSmoothingEnabled(bool enabled)
+{
+    WebCore::FontCascade::setShouldUseSmoothing(enabled);
+}
+
+ExceptionOr<void> Internals::setLowPowerModeEnabled(bool isEnabled)
+{
+    auto* document = contextDocument();
+    if (!document)
+        return Exception { INVALID_ACCESS_ERR };
+    auto* page = document->page();
+    if (!page)
+        return Exception { INVALID_ACCESS_ERR };
+
+    page->setLowPowerModeEnabledOverrideForTesting(isEnabled);
+    return { };
 }
 
 ExceptionOr<void> Internals::setScrollViewPosition(int x, int y)
@@ -2064,6 +2167,23 @@ ExceptionOr<String> Internals::layerTreeAsText(Document& document, unsigned shor
     return document.frame()->layerTreeAsText(toLayerTreeFlags(flags));
 }
 
+ExceptionOr<uint64_t> Internals::layerIDForElement(Element& element)
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return Exception { INVALID_ACCESS_ERR };
+
+    if (!element.renderer() || !element.renderer()->hasLayer())
+        return Exception { NOT_FOUND_ERR };
+
+    auto& layerModelObject = downcast<RenderLayerModelObject>(*element.renderer());
+    if (!layerModelObject.layer()->isComposited())
+        return Exception { NOT_FOUND_ERR };
+    
+    auto* backing = layerModelObject.layer()->backing();
+    return backing->graphicsLayer()->primaryLayerID();
+}
+
 ExceptionOr<String> Internals::repaintRectsAsText() const
 {
     Document* document = contextDocument();
@@ -2718,7 +2838,16 @@ void Internals::setUsesMockScrollAnimator(bool enabled)
 
 void Internals::forceReload(bool endToEnd)
 {
-    frame()->loader().reload(endToEnd);
+    OptionSet<ReloadOption> reloadOptions;
+    if (endToEnd)
+        reloadOptions |= ReloadOption::FromOrigin;
+
+    frame()->loader().reload(reloadOptions);
+}
+
+void Internals::reloadExpiredOnly()
+{
+    frame()->loader().reload(ReloadOption::ExpiredOnly);
 }
 
 void Internals::enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight)
@@ -3722,5 +3851,13 @@ void Internals::simulateWebGLContextChanged(WebGLRenderingContextBase& context)
 }
 #endif
 
+
+#if ENABLE(MEDIA_STREAM)
+void Internals::observeMediaStreamTrack(MediaStreamTrack& track)
+{
+    m_track = &track;
+    m_track->source().addObserver(*this);
+}
+#endif
 
 } // namespace WebCore

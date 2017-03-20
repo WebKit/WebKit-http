@@ -34,6 +34,7 @@ WebInspector.NetworkObserver = class NetworkObserver
 
     requestServedFromCache(requestId)
     {
+        // COMPATIBILITY (iOS 10.3): The backend no longer sends this.
         WebInspector.frameResourceManager.markResourceRequestAsServedFromMemoryCache(requestId);
     }
 
@@ -47,9 +48,9 @@ WebInspector.NetworkObserver = class NetworkObserver
         WebInspector.frameResourceManager.resourceRequestDidReceiveData(requestId, dataLength, encodedDataLength, timestamp);
     }
 
-    loadingFinished(requestId, timestamp, sourceMapURL)
+    loadingFinished(requestId, timestamp, sourceMapURL, metrics)
     {
-        WebInspector.frameResourceManager.resourceRequestDidFinishLoading(requestId, timestamp, sourceMapURL);
+        WebInspector.frameResourceManager.resourceRequestDidFinishLoading(requestId, timestamp, sourceMapURL, metrics);
     }
 
     loadingFailed(requestId, timestamp, errorText, canceled)
@@ -62,37 +63,37 @@ WebInspector.NetworkObserver = class NetworkObserver
         WebInspector.frameResourceManager.resourceRequestWasServedFromMemoryCache(requestId, frameId, loaderId, resource, timestamp, initiator);
     }
 
-    webSocketWillSendHandshakeRequest(requestId, timestamp, request)
+    webSocketCreated(requestId, url)
     {
-        // FIXME: Not implemented.
+        WebInspector.frameResourceManager.webSocketCreated(requestId, url);
+    }
+
+    webSocketWillSendHandshakeRequest(requestId, timestamp, walltime, request)
+    {
+        WebInspector.frameResourceManager.webSocketWillSendHandshakeRequest(requestId, timestamp, walltime, request);
     }
 
     webSocketHandshakeResponseReceived(requestId, timestamp, response)
     {
-        // FIXME: Not implemented.
-    }
-
-    webSocketCreated(requestId, url)
-    {
-        // FIXME: Not implemented.
+        WebInspector.frameResourceManager.webSocketHandshakeResponseReceived(requestId, timestamp, response);
     }
 
     webSocketClosed(requestId, timestamp)
     {
-        // FIXME: Not implemented.
+        WebInspector.frameResourceManager.webSocketClosed(requestId, timestamp);
     }
 
     webSocketFrameReceived(requestId, timestamp, response)
     {
-        // FIXME: Not implemented.
-    }
-
-    webSocketFrameError(requestId, timestamp, errorMessage)
-    {
-        // FIXME: Not implemented.
+        WebInspector.frameResourceManager.webSocketFrameReceived(requestId, timestamp, response);
     }
 
     webSocketFrameSent(requestId, timestamp, response)
+    {
+        WebInspector.frameResourceManager.webSocketFrameSent(requestId, timestamp, response);
+    }
+
+    webSocketFrameError(requestId, timestamp, errorMessage)
     {
         // FIXME: Not implemented.
     }

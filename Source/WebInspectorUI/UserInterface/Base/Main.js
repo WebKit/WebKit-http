@@ -135,6 +135,7 @@ WebInspector.loaded = function()
     this.probeManager = new WebInspector.ProbeManager;
     this.workerManager = new WebInspector.WorkerManager;
     this.replayManager = new WebInspector.ReplayManager;
+    this.domDebuggerManager = new WebInspector.DOMDebuggerManager;
 
     // Enable the Console Agent after creating the singleton managers.
     ConsoleAgent.enable();
@@ -873,15 +874,15 @@ WebInspector.saveDataToFile = function(saveData, forceSaveAs)
         return;
     }
 
-    console.assert(saveData.url);
     console.assert(saveData.content);
-    if (!saveData.url || !saveData.content)
+    if (!saveData.content)
         return;
 
-    let suggestedName = parseURL(saveData.url).lastPathComponent;
+    let url = saveData.url || "";
+    let suggestedName = parseURL(url).lastPathComponent;
     if (!suggestedName) {
         suggestedName = WebInspector.UIString("Untitled");
-        let dataURLTypeMatch = /^data:([^;]+)/.exec(saveData.url);
+        let dataURLTypeMatch = /^data:([^;]+)/.exec(url);
         if (dataURLTypeMatch)
             suggestedName += WebInspector.fileExtensionForMIMEType(dataURLTypeMatch[1]) || "";
     }
@@ -1025,6 +1026,11 @@ WebInspector.showResourcesTab = function()
     if (!tabContentView)
         tabContentView = new WebInspector.ResourcesTabContentView;
     this.tabBrowser.showTabForContentView(tabContentView);
+};
+
+WebInspector.isShowingResourcesTab = function()
+{
+    return this.tabBrowser.selectedTabContentView instanceof WebInspector.ResourcesTabContentView;
 };
 
 WebInspector.showStorageTab = function()
@@ -1322,8 +1328,8 @@ WebInspector._focusChanged = function(event)
         if (codeMirrorEditorElement && codeMirrorEditorElement !== this.currentFocusElement) {
             this.previousFocusElement = this.currentFocusElement;
             this.currentFocusElement = codeMirrorEditorElement;
+            return;
         }
-        return;
     }
 
     var selection = window.getSelection();
@@ -2176,7 +2182,7 @@ WebInspector.resolvedLayoutDirection = function()
         layoutDirection = InspectorFrontendHost.userInterfaceLayoutDirection();
 
     return layoutDirection;
-}
+};
 
 WebInspector.setLayoutDirection = function(value)
 {
@@ -2188,10 +2194,10 @@ WebInspector.setLayoutDirection = function(value)
 
     WebInspector.settings.layoutDirection.value = value;
 
-    if (value === WebInspector.LayoutDirection.RTL && this._dockConfiguration === WebInspector.DockConfiguration.Right)
+    if (WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL && this._dockConfiguration === WebInspector.DockConfiguration.Right)
         this._dockLeft();
 
-    if (value === WebInspector.LayoutDirection.LTR && this._dockConfiguration === WebInspector.DockConfiguration.Left)
+    if (WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.LTR && this._dockConfiguration === WebInspector.DockConfiguration.Left)
         this._dockRight();
 
     window.location.reload();
@@ -2353,6 +2359,10 @@ WebInspector.linkifyElement = function(linkElement, sourceCodeLocation) {
     }
 
     linkElement.addEventListener("click", showSourceCodeLocation.bind(this));
+    linkElement.addEventListener("contextmenu", (event) => {
+        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
+        WebInspector.appendContextMenuItemsForSourceCode(contextMenu, sourceCodeLocation);
+    });
 };
 
 WebInspector.sourceCodeForURL = function(url)

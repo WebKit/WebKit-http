@@ -27,6 +27,6 @@ namespace WebCore {
 
 class IntSize;
 
-bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize&, Vector<char>& jpegData, std::optional<double> quality = std::nullopt);
+bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize&, Vector<uint8_t>& jpegData, std::optional<double> quality = std::nullopt);
 
 }

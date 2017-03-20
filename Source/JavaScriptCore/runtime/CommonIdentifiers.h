@@ -36,6 +36,7 @@
     macro(BYTES_PER_ELEMENT) \
     macro(Boolean) \
     macro(Collator) \
+    macro(Credential) \
     macro(CustomElementRegistry) \
     macro(Date) \
     macro(DateTimeFormat) \
@@ -85,6 +86,7 @@
     macro(Number) \
     macro(NumberFormat) \
     macro(Object) \
+    macro(PasswordCredential) \
     macro(PerformanceEntry) \
     macro(PerformanceEntryList) \
     macro(PerformanceMark) \
@@ -102,6 +104,7 @@
     macro(Request) \
     macro(RTCDTMFToneChangeEvent) \
     macro(RTCIceCandidate) \
+    macro(RTCIceTransport) \
     macro(RTCPeerConnection) \
     macro(RTCRtpReceiver) \
     macro(RTCRtpSender) \
@@ -112,6 +115,7 @@
     macro(SetIterator)\
     macro(ShadowRoot) \
     macro(SharedArrayBuffer) \
+    macro(SiteBoundCredential) \
     macro(StaticRange) \
     macro(String) \
     macro(Symbol) \
@@ -123,6 +127,25 @@
     macro(WeakSet)\
     macro(WebGL2RenderingContext) \
     macro(WebGLVertexArrayObject) \
+    macro(WebGPUBuffer) \
+    macro(WebGPUCommandBuffer) \
+    macro(WebGPUCommandQueue) \
+    macro(WebGPUDepthStencilDescriptor) \
+    macro(WebGPUDepthStencilState) \
+    macro(WebGPUDrawable) \
+    macro(WebGPUFunction) \
+    macro(WebGPULibrary) \
+    macro(WebGPURenderCommandEncoder) \
+    macro(WebGPURenderPassAttachmentDescriptor) \
+    macro(WebGPURenderPassColorAttachmentDescriptor) \
+    macro(WebGPURenderPassDepthAttachmentDescriptor) \
+    macro(WebGPURenderPassDescriptor) \
+    macro(WebGPURenderPipelineColorAttachmentDescriptor) \
+    macro(WebGPURenderPipelineDescriptor) \
+    macro(WebGPURenderPipelineState) \
+    macro(WebGPURenderingContext) \
+    macro(WebGPUTexture) \
+    macro(WebGPUTextureDescriptor) \
     macro(WebSocket) \
     macro(__defineGetter__) \
     macro(__defineSetter__) \

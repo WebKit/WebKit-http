@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2011, 2013, 2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -86,6 +86,9 @@ namespace WTF {
         // and an isNewEntry bool that indicates if it is a new or existing entry in the set.
         AddResult add(const ValueType&);
         AddResult add(ValueType&&);
+        
+        void addVoid(const ValueType&);
+        void addVoid(ValueType&&);
 
         // An alternate version of add() that finds the object by hashing and comparing
         // with some other type, to avoid the cost of type conversion if the object is already
@@ -120,6 +123,9 @@ namespace WTF {
 
         template<typename OtherCollection>
         bool operator==(const OtherCollection&) const;
+        
+        template<typename OtherCollection>
+        bool operator!=(const OtherCollection&) const;
 
     private:
         HashTableType m_impl;
@@ -221,6 +227,18 @@ namespace WTF {
     inline auto HashSet<T, U, V>::add(ValueType&& value) -> AddResult
     {
         return m_impl.add(WTFMove(value));
+    }
+
+    template<typename T, typename U, typename V>
+    inline void HashSet<T, U, V>::addVoid(const ValueType& value)
+    {
+        m_impl.add(value);
+    }
+
+    template<typename T, typename U, typename V>
+    inline void HashSet<T, U, V>::addVoid(ValueType&& value)
+    {
+        m_impl.add(WTFMove(value));
     }
 
     template<typename Value, typename HashFunctions, typename Traits>
@@ -361,6 +379,13 @@ namespace WTF {
                 return false;
         }
         return true;
+    }
+    
+    template<typename T, typename U, typename V>
+    template<typename OtherCollection>
+    inline bool HashSet<T, U, V>::operator!=(const OtherCollection& otherCollection) const
+    {
+        return !(*this == otherCollection);
     }
 
 } // namespace WTF

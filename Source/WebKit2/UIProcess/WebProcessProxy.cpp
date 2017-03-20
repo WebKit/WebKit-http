@@ -29,7 +29,6 @@
 #include "APIFrameHandle.h"
 #include "APIPageGroupHandle.h"
 #include "APIPageHandle.h"
-#include "BackgroundProcessResponsivenessTimer.h"
 #include "DataReference.h"
 #include "DownloadProxyMap.h"
 #include "Logging.h"
@@ -63,6 +62,7 @@
 #if PLATFORM(COCOA)
 #include "ObjCObjectGraph.h"
 #include "PDFPlugin.h"
+#include "UserMediaCaptureManagerProxy.h"
 #endif
 
 #if ENABLE(SEC_ITEM_SHIM)
@@ -89,23 +89,29 @@ static WebProcessProxy::WebPageProxyMap& globalPageMap()
     return pageMap;
 }
 
-Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool)
+Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool, WebsiteDataStore* websiteDataStore)
 {
-    return adoptRef(*new WebProcessProxy(processPool));
+    return adoptRef(*new WebProcessProxy(processPool, websiteDataStore));
 }
 
-WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
+WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore* websiteDataStore)
     : ChildProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
     , m_responsivenessTimer(*this)
+    , m_backgroundResponsivenessTimer(*this)
     , m_processPool(processPool)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
     , m_numberOfTimesSuddenTerminationWasDisabled(0)
     , m_throttler(*this)
     , m_isResponsive(NoOrMaybe::Maybe)
     , m_visiblePageCounter([this](RefCounterEvent) { updateBackgroundResponsivenessTimer(); })
-    , m_backgroundResponsivenessTimer(std::make_unique<BackgroundProcessResponsivenessTimer>(*this))
+    , m_websiteDataStore(websiteDataStore)
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
+    , m_userMediaCaptureManagerProxy(std::make_unique<UserMediaCaptureManagerProxy>(*this))
+#endif
 {
     WebPasteboardProxy::singleton().addWebProcessProxy(*this);
+
+
 
     connect();
 }
@@ -176,6 +182,7 @@ void WebProcessProxy::shutDown()
     }
 
     m_responsivenessTimer.invalidate();
+    m_backgroundResponsivenessTimer.invalidate();
     m_tokenForHoldingLockedFiles = nullptr;
 
     Vector<RefPtr<WebFrameProxy>> frames;
@@ -740,6 +747,11 @@ RefPtr<API::UserInitiatedAction> WebProcessProxy::userInitiatedActivity(uint64_t
     return result.iterator->value;
 }
 
+bool WebProcessProxy::isResponsive() const
+{
+    return m_responsivenessTimer.isResponsive() && m_backgroundResponsivenessTimer.isResponsive();
+}
+
 void WebProcessProxy::didDestroyUserGestureToken(uint64_t identifier)
 {
     ASSERT(UserInitiatedActionMap::isValidKey(identifier));
@@ -1096,10 +1108,47 @@ void WebProcessProxy::didReceiveMainThreadPing()
         callback(isWebProcessResponsive);
 }
 
+void WebProcessProxy::didReceiveBackgroundResponsivenessPing()
+{
+    m_backgroundResponsivenessTimer.didReceiveBackgroundResponsivenessPong();
+}
+
+void WebProcessProxy::processTerminated()
+{
+    m_responsivenessTimer.processTerminated();
+    m_backgroundResponsivenessTimer.processTerminated();
+}
+
+static Vector<RefPtr<WebPageProxy>> pagesCopy(WTF::IteratorRange<WebProcessProxy::WebPageProxyMap::const_iterator::Values> pages)
+{
+    Vector<RefPtr<WebPageProxy>> vector;
+    for (auto& page : pages)
+        vector.append(page);
+    return vector;
+}
+
+void WebProcessProxy::didExceedBackgroundCPULimit()
+{
+    for (auto& page : pages()) {
+        if (page->isViewVisible())
+            return;
+
+        if (page->isPlayingAudio()) {
+            RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() WebProcess has exceeded the background CPU limit but we are not terminating it because there is audio playing", this);
+            return;
+        }
+    }
+
+    RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() Terminating background WebProcess that has exceeded the background CPU limit", this);
+
+    // We only terminate the process here. We will call processDidCrash() once one of the pages becomes visible again (see WebPageProxy::dispatchActivityStateChange()).
+    for (auto& page : pagesCopy(pages()))
+        page->terminateProcess(WebPageProxy::TerminationReason::ResourceExhaustionWhileInBackground);
+}
+
 void WebProcessProxy::updateBackgroundResponsivenessTimer()
 {
-    if (m_backgroundResponsivenessTimer)
-        m_backgroundResponsivenessTimer->updateState();
+    m_backgroundResponsivenessTimer.updateState();
 }
 
 #if !PLATFORM(COCOA)

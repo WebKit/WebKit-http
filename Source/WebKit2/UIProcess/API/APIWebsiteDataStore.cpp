@@ -31,13 +31,13 @@
 
 namespace API {
 
-RefPtr<WebsiteDataStore> WebsiteDataStore::defaultDataStore()
+Ref<WebsiteDataStore> WebsiteDataStore::defaultDataStore()
 {
     WebKit::InitializeWebKit2();
 
     static WebsiteDataStore* defaultDataStore = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration())).leakRef();
 
-    return defaultDataStore;
+    return *defaultDataStore;
 }
 
 Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistentDataStore()
@@ -62,6 +62,14 @@ WebsiteDataStore::WebsiteDataStore(WebKit::WebsiteDataStore::Configuration confi
 
 WebsiteDataStore::~WebsiteDataStore()
 {
+}
+
+HTTPCookieStore& WebsiteDataStore::httpCookieStore()
+{
+    if (!m_apiHTTPCookieStore)
+        m_apiHTTPCookieStore = HTTPCookieStore::create(*this);
+
+    return *m_apiHTTPCookieStore;
 }
 
 bool WebsiteDataStore::isPersistent()
@@ -147,6 +155,12 @@ String WebsiteDataStore::defaultResourceLoadStatisticsDirectory()
 String WebsiteDataStore::defaultMediaCacheDirectory()
 {
     // FIXME: Implement. https://bugs.webkit.org/show_bug.cgi?id=156369 and https://bugs.webkit.org/show_bug.cgi?id=156370
+    return String();
+}
+
+String WebsiteDataStore::defaultJavaScriptConfigurationDirectory()
+{
+    // FIXME: Implement.
     return String();
 }
 #endif

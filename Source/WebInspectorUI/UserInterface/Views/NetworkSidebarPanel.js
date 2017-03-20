@@ -168,7 +168,7 @@ WebInspector.NetworkSidebarPanel = class NetworkSidebarPanel extends WebInspecto
         closeButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._treeElementCloseButtonClicked, this);
         fragment.appendChild(closeButton.element);
 
-        var goToButton = new WebInspector.TreeElementStatusButton(WebInspector.createGoToArrowButton());
+        let goToButton = new WebInspector.TreeElementStatusButton(WebInspector.createGoToArrowButton());
         goToButton[WebInspector.NetworkSidebarPanel.TreeElementSymbol] = treeElement;
         goToButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._treeElementGoToArrowWasClicked, this);
         fragment.appendChild(goToButton.element);

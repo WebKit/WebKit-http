@@ -34,6 +34,7 @@
 namespace WTF {
 
 WTF_EXPORT_PRIVATE PrintStream& dataFile();
+WTF_EXPORT_PRIVATE void setDataFile(const char* path);
 
 WTF_EXPORT_PRIVATE void dataLogFV(const char* format, va_list) WTF_ATTRIBUTE_PRINTF(1, 0);
 WTF_EXPORT_PRIVATE void dataLogF(const char* format, ...) WTF_ATTRIBUTE_PRINTF(1, 2);
@@ -48,13 +49,29 @@ void dataLog(const Types&... values)
 template<typename... Types>
 void dataLogLn(const Types&... values)
 {
-    dataFile().print(values..., "\n");
+    dataLog(values..., "\n");
+}
+
+template<typename... Types>
+void dataLogIf(bool shouldLog, const Types&... values)
+{
+    if (shouldLog)
+        dataLog(values...);
+}
+
+template<typename... Types>
+void dataLogLnIf(bool shouldLog, const Types&... values)
+{
+    if (shouldLog)
+        dataLogLn(values...);
 }
 
 } // namespace WTF
 
 using WTF::dataLog;
 using WTF::dataLogLn;
+using WTF::dataLogIf;
+using WTF::dataLogLnIf;
 using WTF::dataLogF;
 using WTF::dataLogFString;
 

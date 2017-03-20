@@ -225,7 +225,7 @@ my @features = (
       define => "ENABLE_FONT_LOAD_EVENTS", default => 0, value => \$fontLoadEventsSupport },
 
     { option => "ftl-jit", desc => "Toggle FTLJIT support",
-      define => "ENABLE_FTL_JIT", default => (isX86_64() && (isGtk() || isEfl() || isWPE())) , value => \$ftlJITSupport },
+      define => "ENABLE_FTL_JIT", default => (isX86_64() && (isGtk() || isJSCOnly() || isWPE())) , value => \$ftlJITSupport },
 
     { option => "ftpdir", desc => "Toggle FTP Directory support",
       define => "ENABLE_FTPDIR", default => 1, value => \$ftpDirSupport },
@@ -402,7 +402,7 @@ my @features = (
       define => "ENABLE_WEB_TIMING", default => 1, value => \$webTimingSupport },
 
     { option => "webassembly", desc => "Toggle WebAssembly support",
-      define => "ENABLE_WEBASSEMBLY", default => 0, value => \$webAssemblySupport },
+      define => "ENABLE_WEBASSEMBLY", default => (isX86_64() && (isGtk() || isJSCOnly() || isWPE())) , value => \$webAssemblySupport },
 
     { option => "webgl", desc => "Toggle WebGL support",
       define => "ENABLE_WEBGL", default => (isAppleCocoaWebKit() || isGtk() || isEfl() || isWPE()), value => \$webglSupport },

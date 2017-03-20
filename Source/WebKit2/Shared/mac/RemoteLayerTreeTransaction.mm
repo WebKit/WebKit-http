@@ -893,7 +893,7 @@ CString RemoteLayerTreeTransaction::description() const
             case PlatformCALayer::LayerTypeAVPlayerLayer:
                 ts << " (context-id " << createdLayer.hostingContextID << ")";
                 break;
-            case PlatformCALayer::LayerTypeWebGLLayer:
+            case PlatformCALayer::LayerTypeContentsProvidedLayer:
                 ts << " (context-id " << createdLayer.hostingContextID << ")";
                 break;
             case PlatformCALayer::LayerTypeCustom:

@@ -30,6 +30,7 @@
 #include "ContextDestructionObserver.h"
 #include "ExceptionOr.h"
 #include "PageConsoleClient.h"
+#include "RealtimeMediaSource.h"
 #include <runtime/Float32Array.h>
 
 #if ENABLE(MEDIA_SESSION)
@@ -57,6 +58,7 @@ class InspectorStubFrontend;
 class InternalSettings;
 class MallocStatistics;
 class MediaSession;
+class MediaStreamTrack;
 class MemoryInfo;
 class MockCDMFactory;
 class MockContentFilterSettings;
@@ -66,6 +68,7 @@ class Page;
 class Range;
 class RenderedDocumentMarker;
 class RTCPeerConnection;
+class SVGSVGElement;
 class SerializedScriptValue;
 class SourceBuffer;
 class StyleSheet;
@@ -74,7 +77,11 @@ class TypeConversions;
 class WebGLRenderingContextBase;
 class XMLHttpRequest;
 
-class Internals final : public RefCounted<Internals>, private ContextDestructionObserver {
+class Internals final : public RefCounted<Internals>,  private ContextDestructionObserver
+#if ENABLE(MEDIA_STREAM)
+    , private RealtimeMediaSource::Observer
+#endif
+    {
 public:
     static Ref<Internals> create(Document&);
     virtual ~Internals();
@@ -108,6 +115,7 @@ public:
     unsigned imageFrameIndex(HTMLImageElement&);
     void setImageFrameDecodingDuration(HTMLImageElement&, float duration);
     void resetImageAnimation(HTMLImageElement&);
+    void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement&, bool);
 
     void clearPageCache();
     unsigned pageCacheSize() const;
@@ -130,6 +138,7 @@ public:
     // DOMTimers throttling testing.
     ExceptionOr<bool> isTimerThrottled(int timeoutId);
     bool isRequestAnimationFrameThrottled() const;
+    double requestAnimationFrameInterval() const;
     bool areTimersThrottled() const;
 
     enum EventThrottlingBehavior { Responsive, Unresponsive };
@@ -146,6 +155,7 @@ public:
     ExceptionOr<void> resumeAnimations() const;
     ExceptionOr<bool> pauseAnimationAtTimeOnElement(const String& animationName, double pauseTime, Element&);
     ExceptionOr<bool> pauseAnimationAtTimeOnPseudoElement(const String& animationName, double pauseTime, Element&, const String& pseudoId);
+    double animationsInterval() const;
 
     // CSS Transition testing.
     ExceptionOr<bool> pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element&);
@@ -174,6 +184,9 @@ public:
     ExceptionOr<void> setMarkedTextMatchesAreHighlighted(bool);
 
     void invalidateFontCache();
+    void setFontSmoothingEnabled(bool);
+    
+    ExceptionOr<void> setLowPowerModeEnabled(bool);
 
     ExceptionOr<void> setScrollViewPosition(int x, int y);
     
@@ -254,6 +267,7 @@ public:
     InternalSettings* settings() const;
     unsigned workerThreadCount() const;
     bool areSVGAnimationsPaused() const;
+    ExceptionOr<double> svgAnimationsInterval(SVGSVGElement&) const;
 
     ExceptionOr<void> setDeviceProximity(const String& eventType, double value, double min, double max);
 
@@ -267,6 +281,7 @@ public:
         LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32,
     };
     ExceptionOr<String> layerTreeAsText(Document&, unsigned short flags) const;
+    ExceptionOr<uint64_t> layerIDForElement(Element&);
     ExceptionOr<String> repaintRectsAsText() const;
     ExceptionOr<String> scrollingStateTreeAsText() const;
     ExceptionOr<String> mainThreadScrollingReasons() const;
@@ -373,6 +388,7 @@ public:
     String toolTipFromElement(Element&) const;
 
     void forceReload(bool endToEnd);
+    void reloadExpiredOnly();
 
     void enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight);
 
@@ -394,9 +410,9 @@ public:
 
 #if ENABLE(WEB_RTC)
     void enableMockMediaEndpoint();
-    void enableMockRTCPeerConnectionHandler();
     void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
     void useMockRTCPeerConnectionFactory(const String&);
+    void setICECandidateFiltering(bool);
 #endif
 
     String getImageSourceURL(Element&);
@@ -536,12 +552,28 @@ public:
     void simulateWebGLContextChanged(WebGLRenderingContextBase&);
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+    unsigned long trackAudioSampleCount() const { return m_trackAudioSampleCount; }
+    unsigned long trackVideoSampleCount() const { return m_trackVideoSampleCount; }
+    void observeMediaStreamTrack(MediaStreamTrack&);
+#endif
+
 private:
     explicit Internals(Document&);
     Document* contextDocument() const;
     Frame* frame() const;
 
     ExceptionOr<RenderedDocumentMarker*> markerAt(Node&, const String& markerType, unsigned index);
+
+    // RealtimeMediaSource::Observer API
+#if ENABLE(MEDIA_STREAM)
+    void videoSampleAvailable(MediaSample&) final { m_trackVideoSampleCount++; }
+    void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final { m_trackAudioSampleCount++; }
+
+    unsigned long m_trackVideoSampleCount { 0 };
+    unsigned long m_trackAudioSampleCount { 0 };
+    RefPtr<MediaStreamTrack> m_track;
+#endif
 
     std::unique_ptr<InspectorStubFrontend> m_inspectorFrontend;
 };

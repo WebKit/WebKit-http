@@ -181,19 +181,23 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, 
     rawCookies.reserveCapacity(count);
 
     for (CFIndex i = 0; i < count; i++) {
-       CFHTTPCookieRef cookie = (CFHTTPCookieRef)CFArrayGetValueAtIndex(cookiesCF.get(), i);
-       String name = cookieName(cookie).get();
-       String value = cookieValue(cookie).get();
-       String domain = cookieDomain(cookie).get();
-       String path = cookiePath(cookie).get();
+        CFHTTPCookieRef cookie = (CFHTTPCookieRef)CFArrayGetValueAtIndex(cookiesCF.get(), i);
+        String name = cookieName(cookie).get();
+        String value = cookieValue(cookie).get();
+        String domain = cookieDomain(cookie).get();
+        String path = cookiePath(cookie).get();
 
-       double expires = (cookieExpirationTime(cookie) + kCFAbsoluteTimeIntervalSince1970) * 1000;
+        double expires = (cookieExpirationTime(cookie) + kCFAbsoluteTimeIntervalSince1970) * 1000;
 
-       bool httpOnly = CFHTTPCookieIsHTTPOnly(cookie);
-       bool secure = CFHTTPCookieIsSecure(cookie);
-       bool session = false;    // FIXME: Need API for if a cookie is a session cookie.
+        bool httpOnly = CFHTTPCookieIsHTTPOnly(cookie);
+        bool secure = CFHTTPCookieIsSecure(cookie);
+        bool session = false; // FIXME: Need API for if a cookie is a session cookie.
 
-       rawCookies.uncheckedAppend(Cookie(name, value, domain, path, expires, httpOnly, secure, session));
+        String comment;
+        URL commentURL;
+        Vector<uint16_t> ports;
+
+        rawCookies.uncheckedAppend(Cookie(name, value, domain, path, expires, httpOnly, secure, session, comment, commentURL, ports));
     }
 
     return true;
@@ -216,12 +220,6 @@ void deleteCookie(const NetworkStorageSession& session, const URL& url, const St
             break;
         }
     }
-}
-
-void addCookie(const NetworkStorageSession&, const URL&, const Cookie&)
-{
-    // FIXME: implement this command. <https://webkit.org/b/156298>
-    notImplemented();
 }
 
 void getHostnamesWithCookies(const NetworkStorageSession& session, HashSet<String>& hostnames)

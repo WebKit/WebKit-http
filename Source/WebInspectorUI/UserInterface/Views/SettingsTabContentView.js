@@ -76,7 +76,10 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
             let container = this.element.createChild("div", "setting-container");
 
             let titleContainer = container.createChild("div", "setting-name");
-            titleContainer.textContent = title;
+            if (title)
+                titleContainer.textContent = title;
+            else
+                container.classList.add("combined");
 
             let valueControllerContainer = container.createChild("div", "setting-value-controller");
             let labelElement = valueControllerContainer.createChild("label");
@@ -92,6 +95,11 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
                 setting.value = checkbox.checked;
             });
             return checkbox;
+        };
+
+        let createSeparator = () => {
+            let separatorElement = this.element.appendChild(document.createElement("div"));
+            separatorElement.classList.add("separator");
         };
 
         createContainer(WebInspector.UIString("Prefer indent using:"), (valueControllerContainer) => {
@@ -156,7 +164,30 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
             valueControllerContainer.append(WebInspector.UIString("Visible"));
         });
 
-        this.element.appendChild(document.createElement("br"));
+        createSeparator();
+
+        createContainer(WebInspector.UIString("Styles Editing:"), (valueControllerContainer) => {
+            let checkbox = createCheckbox(WebInspector.settings.stylesShowInlineWarnings);
+            valueControllerContainer.appendChild(checkbox);
+
+            valueControllerContainer.append(WebInspector.UIString("Show inline warnings"));
+        });
+
+        createContainer(null, (valueControllerContainer) => {
+            let checkbox = createCheckbox(WebInspector.settings.stylesInsertNewline);
+            valueControllerContainer.appendChild(checkbox);
+
+            valueControllerContainer.append(WebInspector.UIString("Automatically insert newline"));
+        });
+
+        createContainer(null, (valueControllerContainer) => {
+            let checkbox = createCheckbox(WebInspector.settings.stylesSelectOnFirstClick);
+            valueControllerContainer.appendChild(checkbox);
+
+            valueControllerContainer.append(WebInspector.UIString("Select text on first click"));
+        });
+
+        createSeparator();
 
         createContainer(WebInspector.UIString("Network:"), (valueControllerContainer) => {
             let checkbox = createCheckbox(WebInspector.settings.clearNetworkOnNavigate);
@@ -165,7 +196,7 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
             valueControllerContainer.append(WebInspector.UIString("Clear when page navigates"));
         });
 
-        this.element.appendChild(document.createElement("br"));
+        createSeparator();
 
         createContainer(WebInspector.UIString("Console:"), (valueControllerContainer) => {
             let checkbox = createCheckbox(WebInspector.settings.clearLogOnNavigate);
@@ -174,7 +205,7 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
             valueControllerContainer.append(WebInspector.UIString("Clear when page navigates"));
         });
 
-        this.element.appendChild(document.createElement("br"));
+        createSeparator();
 
         createContainer(WebInspector.UIString("Zoom:"), (valueControllerContainer) => {
             let select = valueControllerContainer.createChild("select");
@@ -191,30 +222,28 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
             });
         });
 
-        if (WebInspector.isDebugUIEnabled()) {
-            this.element.appendChild(document.createElement("br"));
+        createSeparator();
 
-            createContainer(WebInspector.unlocalizedString("Layout Direction:"), (valueControllerContainer) => {
-                let selectElement = valueControllerContainer.appendChild(document.createElement("select"));
-                selectElement.addEventListener("change", (event) => {
-                    WebInspector.setLayoutDirection(selectElement.value);
-                });
-
-                let currentLayoutDirection = WebInspector.settings.layoutDirection.value;
-                let options = new Map([
-                    [WebInspector.LayoutDirection.System, WebInspector.unlocalizedString("System Default")],
-                    [WebInspector.LayoutDirection.LTR, WebInspector.unlocalizedString("Left to Right (LTR)")],
-                    [WebInspector.LayoutDirection.RTL, WebInspector.unlocalizedString("Right to Left (RTL)")],
-                ]);
-
-                for (let [key, value] of options) {
-                    let optionElement = selectElement.appendChild(document.createElement("option"));
-                    optionElement.value = key;
-                    optionElement.textContent = value;
-                    optionElement.selected = currentLayoutDirection === key;
-                }
+        createContainer(WebInspector.UIString("Layout Direction:"), (valueControllerContainer) => {
+            let selectElement = valueControllerContainer.appendChild(document.createElement("select"));
+            selectElement.addEventListener("change", (event) => {
+                WebInspector.setLayoutDirection(selectElement.value);
             });
-        }
+
+            let currentLayoutDirection = WebInspector.settings.layoutDirection.value;
+            let options = new Map([
+                [WebInspector.LayoutDirection.System, WebInspector.UIString("System Default")],
+                [WebInspector.LayoutDirection.LTR, WebInspector.UIString("Left to Right (LTR)")],
+                [WebInspector.LayoutDirection.RTL, WebInspector.UIString("Right to Left (RTL)")],
+            ]);
+
+            for (let [key, value] of options) {
+                let optionElement = selectElement.appendChild(document.createElement("option"));
+                optionElement.value = key;
+                optionElement.textContent = value;
+                optionElement.selected = currentLayoutDirection === key;
+            }
+        });
     }
 };
 

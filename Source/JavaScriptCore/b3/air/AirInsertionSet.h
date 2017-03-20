@@ -41,11 +41,11 @@ typedef WTF::Insertion<Inst> Insertion;
 class InsertionSet {
 public:
     InsertionSet(Code& code)
-        : m_code(code)
+        : m_code(&code)
     {
     }
 
-    Code& code() { return m_code; }
+    Code& code() { return *m_code; }
 
     template<typename T>
     void appendInsertion(T&& insertion)
@@ -76,7 +76,7 @@ public:
     void execute(BasicBlock*);
 
 private:
-    Code& m_code;
+    Code* m_code; // Pointer so that this can be copied.
     Vector<Insertion, 8> m_insertions;
 };
 

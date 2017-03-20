@@ -31,7 +31,6 @@
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/BlobPart.h>
 #include <WebCore/CertificateInfo.h>
-#include <WebCore/Cookie.h>
 #include <WebCore/Credential.h>
 #include <WebCore/Cursor.h>
 #include <WebCore/DatabaseDetails.h>
@@ -1287,41 +1286,6 @@ bool ArgumentCoder<CompositionUnderline>::decode(Decoder& decoder, CompositionUn
     return true;
 }
 
-
-void ArgumentCoder<Cookie>::encode(Encoder& encoder, const Cookie& cookie)
-{
-    encoder << cookie.name;
-    encoder << cookie.value;
-    encoder << cookie.domain;
-    encoder << cookie.path;
-    encoder << cookie.expires;
-    encoder << cookie.httpOnly;
-    encoder << cookie.secure;
-    encoder << cookie.session;
-}
-
-bool ArgumentCoder<Cookie>::decode(Decoder& decoder, Cookie& cookie)
-{
-    if (!decoder.decode(cookie.name))
-        return false;
-    if (!decoder.decode(cookie.value))
-        return false;
-    if (!decoder.decode(cookie.domain))
-        return false;
-    if (!decoder.decode(cookie.path))
-        return false;
-    if (!decoder.decode(cookie.expires))
-        return false;
-    if (!decoder.decode(cookie.httpOnly))
-        return false;
-    if (!decoder.decode(cookie.secure))
-        return false;
-    if (!decoder.decode(cookie.session))
-        return false;
-
-    return true;
-}
-
 void ArgumentCoder<DatabaseDetails>::encode(Encoder& encoder, const DatabaseDetails& details)
 {
     encoder << details.name();
@@ -2102,12 +2066,14 @@ void ArgumentCoder<TextIndicatorData>::encode(Encoder& encoder, const TextIndica
     encoder << textIndicatorData.selectionRectInRootViewCoordinates;
     encoder << textIndicatorData.textBoundingRectInRootViewCoordinates;
     encoder << textIndicatorData.textRectsInBoundingRectCoordinates;
+    encoder << textIndicatorData.contentImageWithoutSelectionRectInRootViewCoordinates;
     encoder << textIndicatorData.contentImageScaleFactor;
     encoder.encodeEnum(textIndicatorData.presentationTransition);
     encoder << static_cast<uint64_t>(textIndicatorData.options);
 
     encodeOptionalImage(encoder, textIndicatorData.contentImage.get());
     encodeOptionalImage(encoder, textIndicatorData.contentImageWithHighlight.get());
+    encodeOptionalImage(encoder, textIndicatorData.contentImageWithoutSelection.get());
 }
 
 bool ArgumentCoder<TextIndicatorData>::decode(Decoder& decoder, TextIndicatorData& textIndicatorData)
@@ -2119,6 +2085,9 @@ bool ArgumentCoder<TextIndicatorData>::decode(Decoder& decoder, TextIndicatorDat
         return false;
 
     if (!decoder.decode(textIndicatorData.textRectsInBoundingRectCoordinates))
+        return false;
+
+    if (!decoder.decode(textIndicatorData.contentImageWithoutSelectionRectInRootViewCoordinates))
         return false;
 
     if (!decoder.decode(textIndicatorData.contentImageScaleFactor))
@@ -2136,6 +2105,9 @@ bool ArgumentCoder<TextIndicatorData>::decode(Decoder& decoder, TextIndicatorDat
         return false;
 
     if (!decodeOptionalImage(decoder, textIndicatorData.contentImageWithHighlight))
+        return false;
+
+    if (!decodeOptionalImage(decoder, textIndicatorData.contentImageWithoutSelection))
         return false;
 
     return true;
@@ -2396,45 +2368,16 @@ bool ArgumentCoder<ResourceLoadStatistics>::decode(Decoder& decoder, WebCore::Re
 #if ENABLE(MEDIA_STREAM)
 void ArgumentCoder<MediaConstraintsData>::encode(Encoder& encoder, const WebCore::MediaConstraintsData& constraint)
 {
-    encoder << constraint.mandatoryConstraints;
-
-    auto& advancedConstraints = constraint.advancedConstraints;
-    encoder << static_cast<uint64_t>(advancedConstraints.size());
-    for (const auto& advancedConstraint : advancedConstraints)
-        encoder << advancedConstraint;
-
-    encoder << constraint.isValid;
+    encoder << constraint.mandatoryConstraints
+        << constraint.advancedConstraints
+        << constraint.isValid;
 }
 
 bool ArgumentCoder<MediaConstraintsData>::decode(Decoder& decoder, WebCore::MediaConstraintsData& constraints)
 {
-    MediaTrackConstraintSetMap mandatoryConstraints;
-    if (!decoder.decode(mandatoryConstraints))
-        return false;
-
-    uint64_t advancedCount;
-    if (!decoder.decode(advancedCount))
-        return false;
-
-    Vector<MediaTrackConstraintSetMap> advancedConstraints;
-    advancedConstraints.reserveInitialCapacity(advancedCount);
-    for (size_t i = 0; i < advancedCount; ++i) {
-        MediaTrackConstraintSetMap map;
-        if (!decoder.decode(map))
-            return false;
-
-        advancedConstraints.uncheckedAppend(WTFMove(map));
-    }
-
-    bool isValid;
-    if (!decoder.decode(isValid))
-        return false;
-
-    constraints.mandatoryConstraints = WTFMove(mandatoryConstraints);
-    constraints.advancedConstraints = WTFMove(advancedConstraints);
-    constraints.isValid = isValid;
-
-    return true;
+    return decoder.decode(constraints.mandatoryConstraints)
+        && decoder.decode(constraints.advancedConstraints)
+        && decoder.decode(constraints.isValid);
 }
 
 void ArgumentCoder<CaptureDevice>::encode(Encoder& encoder, const WebCore::CaptureDevice& device)

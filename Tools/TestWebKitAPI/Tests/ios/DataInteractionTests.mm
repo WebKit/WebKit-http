@@ -25,13 +25,15 @@
 
 #include "config.h"
 
-#if 0
+#if ENABLE(DATA_INTERACTION)
 
 #import "DataInteractionSimulator.h"
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
+#import "WKWebViewConfigurationExtras.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <UIKit/UIItemProvider_Private.h>
+#import <WebKit/WKWebViewConfigurationPrivate.h>
 
 @implementation TestWKWebView (DataInteractionTests)
 

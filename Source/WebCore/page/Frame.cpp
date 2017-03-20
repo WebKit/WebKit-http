@@ -41,6 +41,7 @@
 #include "ChromeClient.h"
 #include "DOMWindow.h"
 #include "DocumentType.h"
+#include "Editing.h"
 #include "Editor.h"
 #include "EditorClient.h"
 #include "Event.h"
@@ -103,7 +104,6 @@
 #include "XLinkNames.h"
 #include "XMLNSNames.h"
 #include "XMLNames.h"
-#include "htmlediting.h"
 #include "markup.h"
 #include "npruntime_impl.h"
 #include "runtime_root.h"
@@ -255,14 +255,9 @@ void Frame::setView(RefPtr<FrameView>&& view)
     if (m_eventHandler)
         m_eventHandler->clear();
 
-    bool hadLivingRenderTree = m_doc ? m_doc->hasLivingRenderTree() : false;
-    if (hadLivingRenderTree)
-        m_doc->destroyRenderTree();
+    RELEASE_ASSERT(!m_doc || !m_doc->hasLivingRenderTree());
 
     m_view = WTFMove(view);
-
-    if (hadLivingRenderTree && m_view)
-        m_doc->didBecomeCurrentDocumentInView();
     
     // Only one form submission is allowed per view of a part.
     // Since this part may be getting reused as a result of being
@@ -979,7 +974,7 @@ void Frame::setPageAndTextZoomFactors(float pageZoomFactor, float textZoomFactor
     m_pageZoomFactor = pageZoomFactor;
     m_textZoomFactor = textZoomFactor;
 
-    document->recalcStyle(Style::Force);
+    document->resolveStyle(Document::ResolveStyleType::Rebuild);
 
     for (RefPtr<Frame> child = tree().firstChild(); child; child = child->tree().nextSibling())
         child->setPageAndTextZoomFactors(m_pageZoomFactor, m_textZoomFactor);

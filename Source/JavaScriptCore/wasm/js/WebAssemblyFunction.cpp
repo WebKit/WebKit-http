@@ -41,6 +41,7 @@
 #include "VM.h"
 #include "WasmFormat.h"
 #include "WasmMemory.h"
+#include <wtf/SystemTracing.h>
 
 namespace JSC {
 
@@ -56,6 +57,8 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
     Wasm::SignatureIndex signatureIndex = wasmFunction->signatureIndex();
     const Wasm::Signature* signature = Wasm::SignatureInformation::get(&vm, signatureIndex);
 
+    // Make sure that the memory we think we are going to run with matches the one we expect.
+    ASSERT(wasmFunction->instance()->codeBlock()->isSafeToRun(wasmFunction->instance()->memory()));
     {
         // Check if we have a disallowed I64 use.
 
@@ -73,6 +76,8 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
             return JSValue::encode(throwException(exec, scope, error));
         }
     }
+
+    TraceScope traceScope(WebAssemblyExecuteStart, WebAssemblyExecuteEnd);
 
     Vector<JSValue> boxedArgs;
     for (unsigned argIndex = 0; argIndex < signature->argumentCount(); ++argIndex) {

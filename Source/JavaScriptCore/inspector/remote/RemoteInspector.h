@@ -96,6 +96,8 @@ public:
     void setParentProcessInfomationIsDelayed();
 #endif
 
+    void updateTargetListing(unsigned targetIdentifier);
+
 private:
     RemoteInspector();
 
@@ -115,7 +117,6 @@ private:
     void pushListingsNow();
     void pushListingsSoon();
 
-    void updateTargetListing(unsigned targetIdentifier);
     void updateTargetListing(const RemoteControllableTarget&);
 
     void updateHasActiveDebugSession();

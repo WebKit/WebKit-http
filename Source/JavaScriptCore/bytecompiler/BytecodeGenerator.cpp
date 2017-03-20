@@ -254,15 +254,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     // If IsSimpleParameterList is false, we will create a strict-mode like arguments object.
     // IsSimpleParameterList is false if the argument list contains any default parameter values,
     // a rest parameter, or any destructuring patterns.
-    bool isSimpleParameterList = true;
     // If we do have default parameters, destructuring parameters, or a rest parameter, our parameters will be allocated in a different scope.
-    for (size_t i = 0; i < parameters.size(); i++) {
-        std::pair<DestructuringPatternNode*, ExpressionNode*> parameter = parameters.at(i);
-        bool hasDefaultParameterValue = !!parameter.second;
-        auto pattern = parameter.first;
-        bool isSimpleParameter = !hasDefaultParameterValue && pattern->isBindingNode();
-        isSimpleParameterList &= isSimpleParameter;
-    }
+    bool isSimpleParameterList = parameters.isSimpleParameterList();
 
     SourceParseMode parseMode = codeBlock->parseMode();
 
@@ -270,7 +263,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     bool shouldCaptureSomeOfTheThings = m_shouldEmitDebugHooks || functionNode->needsActivation() || containsArrowOrEvalButNotInArrowBlock;
 
     bool shouldCaptureAllOfTheThings = m_shouldEmitDebugHooks || codeBlock->usesEval();
-    bool needsArguments = (functionNode->usesArguments() || codeBlock->usesEval() || (functionNode->usesArrowFunction() && !codeBlock->isArrowFunction() && isArgumentsUsedInInnerArrowFunction()));
+    bool needsArguments = ((functionNode->usesArguments() && !codeBlock->isArrowFunction()) || codeBlock->usesEval() || (functionNode->usesArrowFunction() && !codeBlock->isArrowFunction() && isArgumentsUsedInInnerArrowFunction()));
 
     if (isGeneratorOrAsyncFunctionBodyParseMode(parseMode)) {
         // Generator and AsyncFunction never provides "arguments". "arguments" reference will be resolved in an upper generator function scope.
@@ -983,10 +976,12 @@ void BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeSta
             std::pair<DestructuringPatternNode*, ExpressionNode*> parameter = parameters.at(i);
             if (parameter.first->isRestParameter())
                 continue;
-            RefPtr<RegisterID> parameterValue = &registerFor(virtualRegisterForArgument(1 + i));
-            emitMove(temp.get(), parameterValue.get());
+            if ((i + 1) < m_parameters.size())
+                emitMove(temp.get(), &m_parameters[i + 1]);
+            else
+                emitGetArgument(temp.get(), i);
             if (parameter.second) {
-                RefPtr<RegisterID> condition = emitIsUndefined(newTemporary(), parameterValue.get());
+                RefPtr<RegisterID> condition = emitIsUndefined(newTemporary(), temp.get());
                 Ref<Label> skipDefaultParameterBecauseNotUndefined = newLabel();
                 emitJumpIfFalse(condition.get(), skipDefaultParameterBecauseNotUndefined.get());
                 emitNode(temp.get(), parameter.second);
@@ -1031,6 +1026,12 @@ void BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeSta
     }
 }
 
+bool BytecodeGenerator::needsDerivedConstructorInArrowFunctionLexicalEnvironment()
+{
+    ASSERT(m_codeBlock->isClassContext() || !(isConstructor() && constructorKind() == ConstructorKind::Extends));
+    return m_codeBlock->isClassContext() && isSuperUsedInInnerArrowFunction();
+}
+
 void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable* functionSymbolTable, bool canReuseLexicalEnvironment)
 {
     ASSERT(!m_arrowFunctionContextLexicalEnvironmentRegister);
@@ -1053,7 +1054,7 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
             functionSymbolTable->set(NoLockingNecessary, propertyNames().builtinNames().newTargetLocalPrivateName().impl(), SymbolTableEntry(VarOffset(offset)));
         }
         
-        if (isConstructor() && constructorKind() == ConstructorKind::Extends && isSuperUsedInInnerArrowFunction()) {
+        if (needsDerivedConstructorInArrowFunctionLexicalEnvironment()) {
             offset = functionSymbolTable->takeNextScopeOffset(NoLockingNecessary);
             functionSymbolTable->set(NoLockingNecessary, propertyNames().builtinNames().derivedConstructorPrivateName().impl(), SymbolTableEntry(VarOffset(offset)));
         }
@@ -1075,7 +1076,7 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
         addTarget.iterator->value.setIsLet();
     }
 
-    if (isConstructor() && constructorKind() == ConstructorKind::Extends && isSuperUsedInInnerArrowFunction()) {
+    if (needsDerivedConstructorInArrowFunctionLexicalEnvironment()) {
         auto derivedConstructor = environment.add(propertyNames().builtinNames().derivedConstructorPrivateName());
         derivedConstructor.iterator->value.setIsCaptured();
         derivedConstructor.iterator->value.setIsLet();
@@ -1094,7 +1095,8 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
 RegisterID* BytecodeGenerator::initializeNextParameter()
 {
     VirtualRegister reg = virtualRegisterForArgument(m_codeBlock->numParameters());
-    RegisterID& parameter = registerFor(reg);
+    m_parameters.grow(m_parameters.size() + 1);
+    auto& parameter = registerFor(reg);
     parameter.setIndex(reg.offset());
     m_codeBlock->addParameter();
     return &parameter;
@@ -1104,14 +1106,23 @@ void BytecodeGenerator::initializeParameters(FunctionParameters& parameters)
 {
     // Make sure the code block knows about all of our parameters, and make sure that parameters
     // needing destructuring are noted.
-    m_parameters.grow(parameters.size() + 1); // reserve space for "this"
     m_thisRegister.setIndex(initializeNextParameter()->index()); // this
+
+    bool nonSimpleArguments = false;
     for (unsigned i = 0; i < parameters.size(); ++i) {
-        auto pattern = parameters.at(i).first;
+        auto parameter = parameters.at(i);
+        auto pattern = parameter.first;
         if (pattern->isRestParameter()) {
             RELEASE_ASSERT(!m_restParameter);
             m_restParameter = static_cast<RestParameterNode*>(pattern);
-        } else
+            nonSimpleArguments = true;
+            continue;
+        }
+        if (parameter.second) {
+            nonSimpleArguments = true;
+            continue;
+        }
+        if (!nonSimpleArguments)
             initializeNextParameter();
     }
 }
@@ -1274,8 +1285,7 @@ void BytecodeGenerator::emitLoopHint()
 
 void BytecodeGenerator::emitCheckTraps()
 {
-    if (vm()->watchdog() || vm()->needAsynchronousTerminationSupport())
-        emitOpcode(op_check_traps);
+    emitOpcode(op_check_traps);
 }
 
 void BytecodeGenerator::retrieveLastBinaryOp(int& dstIndex, int& src1Index, int& src2Index)
@@ -1919,6 +1929,27 @@ RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, JSValue v, SourceCodeRe
     if (dst)
         return emitMove(dst, constantID);
     return constantID;
+}
+
+RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, IdentifierSet& set)
+{
+    for (const auto& entry : m_codeBlock->constantIdentifierSets()) {
+        if (entry.first != set)
+            continue;
+        
+        return &m_constantPoolRegisters[entry.second];
+    }
+    
+    unsigned index = m_nextConstantOffset;
+    m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
+    ++m_nextConstantOffset;
+    m_codeBlock->addSetConstant(set);
+    RegisterID* m_setRegister = &m_constantPoolRegisters[index];
+    
+    if (dst)
+        return emitMove(dst, m_setRegister);
+    
+    return m_setRegister;
 }
 
 RegisterID* BytecodeGenerator::emitLoadGlobalObject(RegisterID* dst)
@@ -4550,13 +4581,11 @@ void BytecodeGenerator::emitPutNewTargetToArrowFunctionContextScope()
     
 void BytecodeGenerator::emitPutDerivedConstructorToArrowFunctionContextScope()
 {
-    if ((isConstructor() && constructorKind() == ConstructorKind::Extends) || m_codeBlock->isClassContext()) {
-        if (isSuperUsedInInnerArrowFunction()) {
-            ASSERT(m_arrowFunctionContextLexicalEnvironmentRegister);
-            
-            Variable protoScope = variable(propertyNames().builtinNames().derivedConstructorPrivateName());
-            emitPutToScope(m_arrowFunctionContextLexicalEnvironmentRegister, protoScope, &m_calleeRegister, DoNotThrowIfNotFound, InitializationMode::Initialization);
-        }
+    if (needsDerivedConstructorInArrowFunctionLexicalEnvironment()) {
+        ASSERT(m_arrowFunctionContextLexicalEnvironmentRegister);
+
+        Variable protoScope = variable(propertyNames().builtinNames().derivedConstructorPrivateName());
+        emitPutToScope(m_arrowFunctionContextLexicalEnvironmentRegister, protoScope, &m_calleeRegister, DoNotThrowIfNotFound, InitializationMode::Initialization);
     }
 }
 

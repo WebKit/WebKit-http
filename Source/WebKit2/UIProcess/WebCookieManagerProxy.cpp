@@ -29,10 +29,14 @@
 #include "APIArray.h"
 #include "APIWebCookie.h"
 #include "APISecurityOrigin.h"
+#include "NetworkProcessMessages.h"
 #include "WebCookieManagerMessages.h"
 #include "WebCookieManagerProxyMessages.h"
 #include "WebProcessPool.h"
+#include <WebCore/Cookie.h>
 #include <WebCore/SecurityOriginData.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
@@ -57,6 +61,7 @@ WebCookieManagerProxy::WebCookieManagerProxy(WebProcessPool* processPool)
 
 WebCookieManagerProxy::~WebCookieManagerProxy()
 {
+    ASSERT(m_cookieObservers.isEmpty());
 }
 
 void WebCookieManagerProxy::initializeClient(const WKCookieManagerClientBase* client)
@@ -70,18 +75,35 @@ void WebCookieManagerProxy::processPoolDestroyed()
 {
     invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::OwnerWasInvalidated);
     invalidateCallbackMap(m_httpCookieAcceptPolicyCallbacks, CallbackBase::Error::OwnerWasInvalidated);
+    invalidateCallbackMap(m_voidCallbacks, CallbackBase::Error::OwnerWasInvalidated);
+    invalidateCallbackMap(m_getCookiesCallbacks, CallbackBase::Error::OwnerWasInvalidated);
+
+    Vector<Observer*> observers;
+    for (auto& observerSet : m_cookieObservers.values()) {
+        for (auto* observer : observerSet)
+            observers.append(observer);
+    }
+
+    for (auto* observer : observers)
+        observer->managerDestroyed();
+
+    ASSERT(m_cookieObservers.isEmpty());
 }
 
 void WebCookieManagerProxy::processDidClose(WebProcessProxy*)
 {
     invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::ProcessExited);
     invalidateCallbackMap(m_httpCookieAcceptPolicyCallbacks, CallbackBase::Error::ProcessExited);
+    invalidateCallbackMap(m_voidCallbacks, CallbackBase::Error::ProcessExited);
+    invalidateCallbackMap(m_getCookiesCallbacks, CallbackBase::Error::ProcessExited);
 }
 
 void WebCookieManagerProxy::processDidClose(NetworkProcessProxy*)
 {
     invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::ProcessExited);
     invalidateCallbackMap(m_httpCookieAcceptPolicyCallbacks, CallbackBase::Error::ProcessExited);
+    invalidateCallbackMap(m_voidCallbacks, CallbackBase::Error::ProcessExited);
+    invalidateCallbackMap(m_getCookiesCallbacks, CallbackBase::Error::ProcessExited);
 }
 
 void WebCookieManagerProxy::refWebContextSupplement()
@@ -94,7 +116,7 @@ void WebCookieManagerProxy::derefWebContextSupplement()
     API::Object::deref();
 }
 
-void WebCookieManagerProxy::getHostnamesWithCookies(WebCore::SessionID sessionID, std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
+void WebCookieManagerProxy::getHostnamesWithCookies(SessionID sessionID, Function<void (API::Array*, CallbackBase::Error)>&& callbackFunction)
 {
     auto callback = ArrayCallback::create(WTFMove(callbackFunction));
     uint64_t callbackID = callback->callbackID();
@@ -114,52 +136,142 @@ void WebCookieManagerProxy::didGetHostnamesWithCookies(const Vector<String>& hos
     callback->performCallbackWithReturnValue(API::Array::createStringArray(hostnames).ptr());
 }
 
-void WebCookieManagerProxy::deleteCookiesForHostname(WebCore::SessionID sessionID, const String& hostname)
+void WebCookieManagerProxy::deleteCookiesForHostname(SessionID sessionID, const String& hostname)
 {
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::DeleteCookiesForHostname(sessionID, hostname));
 }
 
-void WebCookieManagerProxy::deleteAllCookies(WebCore::SessionID sessionID)
+void WebCookieManagerProxy::deleteAllCookies(SessionID sessionID)
 {
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::DeleteAllCookies(sessionID));
 }
 
-void WebCookieManagerProxy::deleteAllCookiesModifiedSince(WebCore::SessionID sessionID, std::chrono::system_clock::time_point time)
+void WebCookieManagerProxy::deleteCookie(SessionID sessionID, const Cookie& cookie, Function<void (CallbackBase::Error)>&& callbackFunction)
 {
-    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::DeleteAllCookiesModifiedSince(sessionID, time));
+    auto callback = VoidCallback::create(WTFMove(callbackFunction));
+    uint64_t callbackID = callback->callbackID();
+    m_voidCallbacks.set(callbackID, WTFMove(callback));
+
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::DeleteCookie(sessionID, cookie, callbackID));
 }
 
-void WebCookieManagerProxy::addCookie(WebCore::SessionID sessionID, const WebCore::Cookie& cookie, const String& hostname)
+void WebCookieManagerProxy::deleteAllCookiesModifiedSince(SessionID sessionID, std::chrono::system_clock::time_point time, Function<void (CallbackBase::Error)>&& callbackFunction)
 {
-    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::AddCookie(sessionID, cookie, hostname));
+    auto callback = VoidCallback::create(WTFMove(callbackFunction));
+    uint64_t callbackID = callback->callbackID();
+    m_voidCallbacks.set(callbackID, WTFMove(callback));
+
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::DeleteAllCookiesModifiedSince(sessionID, time, callbackID));
 }
 
-void WebCookieManagerProxy::startObservingCookieChanges(WebCore::SessionID sessionID)
+void WebCookieManagerProxy::setCookie(SessionID sessionID, const Cookie& cookie, Function<void (CallbackBase::Error)>&& callbackFunction)
+{
+    auto callback = VoidCallback::create(WTFMove(callbackFunction));
+    uint64_t callbackID = callback->callbackID();
+    m_voidCallbacks.set(callbackID, WTFMove(callback));
+
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookie(sessionID, cookie, callbackID));
+}
+
+void WebCookieManagerProxy::setCookies(SessionID sessionID, const Vector<Cookie>& cookies, const URL& url, const URL& mainDocumentURL, Function<void (CallbackBase::Error)>&& callbackFunction)
+{
+    auto callback = VoidCallback::create(WTFMove(callbackFunction));
+    uint64_t callbackID = callback->callbackID();
+    m_voidCallbacks.set(callbackID, WTFMove(callback));
+
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies(sessionID, cookies, url, mainDocumentURL, callbackID));
+}
+
+void WebCookieManagerProxy::getAllCookies(SessionID sessionID, Function<void (const Vector<Cookie>&, CallbackBase::Error)>&& callbackFunction)
+{
+    auto callback = GetCookiesCallback::create(WTFMove(callbackFunction));
+    uint64_t callbackID = callback->callbackID();
+    m_getCookiesCallbacks.set(callbackID, WTFMove(callback));
+
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetAllCookies(sessionID, callbackID));
+}
+
+void WebCookieManagerProxy::getCookies(SessionID sessionID, const URL& url, Function<void (const Vector<Cookie>&, CallbackBase::Error)>&& callbackFunction)
+{
+    auto callback = GetCookiesCallback::create(WTFMove(callbackFunction));
+    uint64_t callbackID = callback->callbackID();
+    m_getCookiesCallbacks.set(callbackID, WTFMove(callback));
+
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies(sessionID, url, callbackID));
+}
+
+void WebCookieManagerProxy::didSetCookies(uint64_t callbackID)
+{
+    m_voidCallbacks.take(callbackID)->performCallback();
+}
+
+void WebCookieManagerProxy::didGetCookies(const Vector<Cookie>& cookies, uint64_t callbackID)
+{
+    m_getCookiesCallbacks.take(callbackID)->performCallbackWithReturnValue(cookies);
+}
+
+void WebCookieManagerProxy::didDeleteCookies(uint64_t callbackID)
+{
+    m_voidCallbacks.take(callbackID)->performCallback();
+}
+
+void WebCookieManagerProxy::startObservingCookieChanges(SessionID sessionID)
 {
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::StartObservingCookieChanges(sessionID));
 }
 
-void WebCookieManagerProxy::stopObservingCookieChanges(WebCore::SessionID sessionID)
+void WebCookieManagerProxy::stopObservingCookieChanges(SessionID sessionID)
 {
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::StopObservingCookieChanges(sessionID));
 }
 
+
 void WebCookieManagerProxy::setCookieObserverCallback(WebCore::SessionID sessionID, std::function<void ()>&& callback)
 {
     if (callback)
-        m_cookieObservers.set(sessionID, WTFMove(callback));
+        m_legacyCookieObservers.set(sessionID, WTFMove(callback));
     else
-        m_cookieObservers.remove(sessionID);
+        m_legacyCookieObservers.remove(sessionID);
 }
 
-void WebCookieManagerProxy::cookiesDidChange(WebCore::SessionID sessionID)
+void WebCookieManagerProxy::registerObserver(WebCore::SessionID sessionID, Observer& observer)
+{
+    auto result = m_cookieObservers.set(sessionID, HashSet<Observer*>());
+    result.iterator->value.add(&observer);
+
+    if (result.isNewEntry)
+        startObservingCookieChanges(sessionID);
+}
+
+void WebCookieManagerProxy::unregisterObserver(WebCore::SessionID sessionID, Observer& observer)
+{
+    auto iterator = m_cookieObservers.find(sessionID);
+    if (iterator == m_cookieObservers.end())
+        return;
+
+    iterator->value.remove(&observer);
+    if (!iterator->value.isEmpty())
+        return;
+
+    m_cookieObservers.remove(iterator);
+    stopObservingCookieChanges(sessionID);
+}
+
+void WebCookieManagerProxy::cookiesDidChange(SessionID sessionID)
 {
     m_client.cookiesDidChange(this);
-    if (auto callback = m_cookieObservers.get(sessionID))
+    if (auto callback = m_legacyCookieObservers.get(sessionID))
         callback();
+
+    auto iterator = m_cookieObservers.find(sessionID);
+    if (iterator == m_cookieObservers.end())
+        return;
+
+    for (auto* observer : iterator->value)
+        observer->cookiesDidChange();
 }
 
-void WebCookieManagerProxy::setHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy policy)
+void WebCookieManagerProxy::setHTTPCookieAcceptPolicy(SessionID, HTTPCookieAcceptPolicy policy, Function<void (CallbackBase::Error)>&& callbackFunction)
 {
 #if PLATFORM(COCOA)
     if (!processPool()->isUsingTestingNetworkSession())
@@ -172,11 +284,16 @@ void WebCookieManagerProxy::setHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy pol
     // The policy is not sent to newly created processes (only Soup does that via setInitialHTTPCookieAcceptPolicy()). This is not a serious problem, because:
     // - When testing, we only have one WebProcess and one NetworkProcess, and WebKitTestRunner never restarts them;
     // - When not testing, Cocoa has the policy persisted, and thus new processes use it (even for ephemeral sessions).
-    processPool()->sendToAllProcesses(Messages::WebCookieManager::SetHTTPCookieAcceptPolicy(policy));
-    processPool()->sendToNetworkingProcess(Messages::WebCookieManager::SetHTTPCookieAcceptPolicy(policy));
+    processPool()->sendToAllProcesses(Messages::WebCookieManager::SetHTTPCookieAcceptPolicy(policy, 0));
+
+    auto callback = VoidCallback::create(WTFMove(callbackFunction));
+    uint64_t callbackID = callback->callbackID();
+    m_voidCallbacks.set(callbackID, WTFMove(callback));
+
+    processPool()->sendToNetworkingProcess(Messages::WebCookieManager::SetHTTPCookieAcceptPolicy(policy, callbackID));
 }
 
-void WebCookieManagerProxy::getHTTPCookieAcceptPolicy(std::function<void (HTTPCookieAcceptPolicy, CallbackBase::Error)> callbackFunction)
+void WebCookieManagerProxy::getHTTPCookieAcceptPolicy(SessionID, Function<void (HTTPCookieAcceptPolicy, CallbackBase::Error)>&& callbackFunction)
 {
     auto callback = HTTPCookieAcceptPolicyCallback::create(WTFMove(callbackFunction));
 
@@ -188,30 +305,38 @@ void WebCookieManagerProxy::getHTTPCookieAcceptPolicy(std::function<void (HTTPCo
 
 void WebCookieManagerProxy::didGetHTTPCookieAcceptPolicy(uint32_t policy, uint64_t callbackID)
 {
-    RefPtr<HTTPCookieAcceptPolicyCallback> callback = m_httpCookieAcceptPolicyCallbacks.take(callbackID);
-    if (!callback) {
-        // FIXME: Log error or assert.
-        return;
-    }
-
-    callback->performCallbackWithReturnValue(policy);
+    m_httpCookieAcceptPolicyCallbacks.take(callbackID)->performCallbackWithReturnValue(policy);
 }
 
-void WebCookieManagerProxy::setCookies(WebCore::SessionID sessionID, const Vector<WebCore::Cookie>& cookies)
+void WebCookieManagerProxy::didSetHTTPCookieAcceptPolicy(uint64_t callbackID)
 {
-    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies(sessionID, cookies));
+    m_voidCallbacks.take(callbackID)->performCallback();
 }
 
-void WebCookieManagerProxy::getCookies(WebCore::SessionID sessionID, std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
+void WebCookieManagerProxy::setCookieStoragePartitioningEnabled(bool enabled)
+{
+#if PLATFORM(COCOA)
+    processPool()->sendToNetworkingProcess(Messages::NetworkProcess::SetCookieStoragePartitioningEnabled(enabled));
+#else
+    UNUSED_PARAM(enabled);
+#endif
+}
+
+void WebCookieManagerProxy::setCookies2(WebCore::SessionID sessionID, const Vector<WebCore::Cookie>& cookies)
+{
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies2(sessionID, cookies));
+}
+
+void WebCookieManagerProxy::getCookies2(WebCore::SessionID sessionID, Function<void (API::Array*, CallbackBase::Error)>&& callbackFunction)
 {
     RefPtr<ArrayCallback> callback = ArrayCallback::create(WTFMove(callbackFunction));
     uint64_t callbackID = callback->callbackID();
     m_arrayCallbacks.set(callbackID, callback.release());
 
-    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies(sessionID, callbackID));
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies2(sessionID, callbackID));
 }
 
-void WebCookieManagerProxy::didGetCookies(Vector<WebCore::Cookie> cookies, uint64_t callbackID)
+void WebCookieManagerProxy::didGetCookies2(Vector<WebCore::Cookie> cookies, uint64_t callbackID)
 {
     RefPtr<ArrayCallback> callback = m_arrayCallbacks.take(callbackID);
     if (!callback)

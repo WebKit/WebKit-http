@@ -49,9 +49,10 @@ enum class ContentExtensionError {
     JSONInvalidTriggerFlagsArray,
     JSONInvalidObjectInTriggerFlagsArray,
     JSONInvalidStringInTriggerFlagsArray,
-    JSONInvalidDomainList,
+    JSONInvalidConditionList,
     JSONDomainNotLowerCaseASCII,
-    JSONUnlessAndIfDomain,
+    JSONMultipleConditions,
+    JSONTopURLAndDomainConditions,
     JSONTooManyRules,
     
     JSONInvalidAction,

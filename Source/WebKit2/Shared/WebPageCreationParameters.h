@@ -42,6 +42,7 @@
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/SessionID.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
+#include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
@@ -145,11 +146,14 @@ struct WebPageCreationParameters {
     WebCore::LayoutMilestones observedLayoutMilestones;
 
     String overrideContentSecurityPolicy;
+    std::optional<double> backgroundCPULimit;
+
+    HashMap<String, uint64_t> urlSchemeHandlers;
 
 #if ENABLE(WEB_RTC)
-    bool disableICECandidateFiltering { false };
+    bool iceCandidateFilteringEnabled { true };
 #if USE(LIBWEBRTC)
-    bool enableEnumeratingAllNetworkInterfaces { false };
+    bool enumeratingAllNetworkInterfacesEnabled { false };
 #endif
 #endif
 };

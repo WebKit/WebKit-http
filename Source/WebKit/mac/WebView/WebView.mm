@@ -133,6 +133,7 @@
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/DragController.h>
 #import <WebCore/DragData.h>
+#import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
@@ -175,6 +176,7 @@
 #import <WebCore/PageCache.h>
 #import <WebCore/PageConfiguration.h>
 #import <WebCore/PageGroup.h>
+#import <WebCore/PathUtilities.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/ProgressTracker.h>
 #import <WebCore/RenderView.h>
@@ -190,6 +192,7 @@
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/Settings.h>
 #import <WebCore/SocketProvider.h>
+#import <WebCore/SoftLinking.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/ThreadCheck.h>
@@ -201,7 +204,6 @@
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreView.h>
 #import <WebCore/Widget.h>
-#import <WebCore/htmlediting.h>
 #import <WebKitLegacy/DOM.h>
 #import <WebKitLegacy/DOMExtensions.h>
 #import <WebKitLegacy/DOMPrivate.h>
@@ -238,7 +240,6 @@
 #import <WebCore/AVKitSPI.h>
 #import <WebCore/LookupSPI.h>
 #import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
-#import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
 #import <WebCore/WebVideoFullscreenController.h>
@@ -317,6 +318,20 @@
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 #import <WebCore/WebPlaybackSessionInterfaceMac.h>
 #import <WebCore/WebPlaybackSessionModelMediaElement.h>
+#endif
+
+#if ENABLE(DATA_INTERACTION)
+#import <UIKit/UIBezierPath.h>
+#import <UIKit/UIColor.h>
+#import <UIKit/UIImage.h>
+SOFT_LINK_FRAMEWORK(UIKit)
+SOFT_LINK_CLASS(UIKit, UIBezierPath)
+SOFT_LINK_CLASS(UIKit, UIColor)
+SOFT_LINK_CLASS(UIKit, UIImage)
+SOFT_LINK(UIKit, UIGraphicsBeginImageContextWithOptions, void, (CGSize size, BOOL opaque, CGFloat scale), (size, opaque, scale))
+SOFT_LINK(UIKit, UIGraphicsGetCurrentContext, CGContextRef, (void), ())
+SOFT_LINK(UIKit, UIGraphicsGetImageFromCurrentImageContext, UIImage *, (void), ())
+SOFT_LINK(UIKit, UIGraphicsEndImageContext, void, (void), ())
 #endif
 
 #if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
@@ -610,6 +625,80 @@ private:
 };
 
 } // namespace WebKit
+
+#if ENABLE(DATA_INTERACTION)
+
+@implementation WebUITextIndicatorData
+
+@synthesize dataInteractionImage=_dataInteractionImage;
+@synthesize selectionRectInRootViewCoordinates=_selectionRectInRootViewCoordinates;
+@synthesize textBoundingRectInRootViewCoordinates=_textBoundingRectInRootViewCoordinates;
+@synthesize textRectsInBoundingRectCoordinates=_textRectsInBoundingRectCoordinates;
+@synthesize contentImageWithHighlight=_contentImageWithHighlight;
+@synthesize contentImageWithoutSelection=_contentImageWithoutSelection;
+@synthesize contentImageWithoutSelectionRectInRootViewCoordinates=_contentImageWithoutSelectionRectInRootViewCoordinates;
+@synthesize contentImage=_contentImage;
+
+@end
+
+@implementation WebUITextIndicatorData (WebUITextIndicatorInternal)
+
+- (WebUITextIndicatorData *)initWithImage:(CGImageRef)image textIndicatorData:(const TextIndicatorData&)indicatorData scale:(CGFloat)scale
+{
+    if (!(self = [super init]))
+        return nil;
+    
+    _dataInteractionImage = [[[getUIImageClass() alloc] initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored] retain];
+    _selectionRectInRootViewCoordinates = indicatorData.selectionRectInRootViewCoordinates;
+    _textBoundingRectInRootViewCoordinates = indicatorData.textBoundingRectInRootViewCoordinates;
+    
+    NSMutableArray *textRectsInBoundingRectCoordinates = [NSMutableArray array];
+    for (auto rect : indicatorData.textRectsInBoundingRectCoordinates)
+        [textRectsInBoundingRectCoordinates addObject:[NSValue valueWithCGRect:rect]];
+    _textRectsInBoundingRectCoordinates = [[NSArray arrayWithArray:textRectsInBoundingRectCoordinates] retain];
+    _contentImageScaleFactor = indicatorData.contentImageScaleFactor;
+    if (indicatorData.contentImageWithHighlight)
+        _contentImageWithHighlight = [[[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored] retain];
+    if (indicatorData.contentImage)
+        _contentImage = [[[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImage.get()->nativeImage().get() scale:scale orientation:UIImageOrientationUp] retain];
+
+    if (indicatorData.contentImageWithoutSelection) {
+        auto nativeImage = indicatorData.contentImageWithoutSelection.get()->nativeImage();
+        if (nativeImage) {
+            _contentImageWithoutSelection = [[[getUIImageClass() alloc] initWithCGImage:nativeImage.get() scale:scale orientation:UIImageOrientationUp] retain];
+            _contentImageWithoutSelectionRectInRootViewCoordinates = indicatorData.contentImageWithoutSelectionRectInRootViewCoordinates;
+        }
+    }
+
+    return self;
+}
+
+- (WebUITextIndicatorData *)initWithImage:(CGImageRef)image scale:(CGFloat)scale
+{
+    if (!(self = [super init]))
+        return nil;
+    
+    _dataInteractionImage = [[getUIImageClass() alloc] initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
+    
+    return self;
+}
+
+- (void)dealloc
+{
+    [_dataInteractionImage release];
+    [_textRectsInBoundingRectCoordinates release];
+    [_contentImageWithHighlight release];
+    [_contentImageWithoutSelection release];
+    [_contentImage release];
+    
+    [super dealloc];
+}
+
+@end
+#elif !PLATFORM(MAC)
+@implementation WebUITextIndicatorData
+@end
+#endif // ENABLE(DATA_INTERACTION)
 
 @interface WebView (WebFileInternal)
 #if !PLATFORM(IOS)
@@ -1710,7 +1799,126 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         }
     });
 }
-#endif // PLATFORM(IOS)
+#endif
+
+#if ENABLE(DATA_INTERACTION) && defined(__cplusplus)
+- (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
+{
+    return _private->page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(IntPoint(clientPosition), IntPoint(globalPosition));
+}
+
+- (void)_setDataInteractionData:(CGImageRef)image textIndicator:(std::optional<TextIndicatorData>)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action
+{
+    if (indicatorData)
+        _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image textIndicatorData:indicatorData.value() scale:_private->page->deviceScaleFactor()] retain];
+    else
+        _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image scale:_private->page->deviceScaleFactor()] retain];
+}
+
+- (WebUITextIndicatorData *)_dataOperationTextIndicator
+{
+    return _private->dataOperationTextIndicator.get();
+}
+
+- (WebUITextIndicatorData *)_getDataInteractionData
+{
+    return _private->textIndicatorData;
+}
+
+static Vector<FloatRect> floatRectsForCGRectArray(NSArray<NSValue *> *rectValues)
+{
+    Vector<FloatRect> rects;
+    for (NSValue *rectValue in rectValues)
+        rects.append(rectValue.CGRectValue);
+    return rects;
+}
+
+- (UIImage *)_createImageWithPlatterForImage:(UIImage *)image boundingRect:(CGRect)boundingRect contentScaleFactor:(CGFloat)contentScaleFactor clippingRects:(NSArray<NSValue *> *)clippingRects
+{
+    if (!_private->page)
+        return nil;
+
+    if (!image)
+        return nil;
+
+    CGFloat imageScaleFactor = contentScaleFactor / _private->page->deviceScaleFactor();
+    CGRect imagePaintBounds = CGRectMake(0, 0, CGRectGetWidth(boundingRect) * imageScaleFactor, CGRectGetHeight(boundingRect) * imageScaleFactor);
+    UIGraphicsBeginImageContextWithOptions(imagePaintBounds.size, NO, _private->page->deviceScaleFactor());
+    CGContextRef newContext = UIGraphicsGetCurrentContext();
+
+    auto scaledClippingRects = floatRectsForCGRectArray(clippingRects);
+    for (auto& textBoundingRect : scaledClippingRects)
+        textBoundingRect.scale(imageScaleFactor);
+
+    if (!scaledClippingRects.isEmpty()) {
+        auto webcorePath = PathUtilities::pathWithShrinkWrappedRects(scaledClippingRects, 6 * imageScaleFactor);
+        [[getUIBezierPathClass() bezierPathWithCGPath:webcorePath.ensurePlatformPath()] addClip];
+    }
+
+    // FIXME: This should match the background color of the text, or if the background cannot be captured as a single color, we should fall back
+    // to a default representation, e.g. black text on a white background.
+    CGContextSetFillColorWithColor(newContext, [[getUIColorClass() whiteColor] CGColor]);
+    for (auto textBoundingRect : scaledClippingRects)
+        CGContextFillRect(newContext, textBoundingRect);
+
+    CGContextTranslateCTM(newContext, 0, CGRectGetHeight(imagePaintBounds));
+    CGContextScaleCTM(newContext, 1, -1);
+    CGContextDrawImage(newContext, imagePaintBounds, image.CGImage);
+
+    UIImage *previewImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return [previewImage retain];
+}
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebViewAdditions.mm>)
+#include <WebKitAdditions/WebViewAdditions.mm>
+#endif
+
+#else
+- (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
+{
+    return NO;
+}
+- (void)_setDataInteractionData:(CGImageRef)image textIndicator:(TextIndicatorData&)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action
+{
+}
+- (WebUITextIndicatorData *)_getDataInteractionData
+{
+    return nil;
+}
+- (uint64_t)_enteredDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return 0;
+}
+
+- (uint64_t)_updatedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return 0;
+}
+- (void)_exitedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+}
+- (void)_performDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+}
+- (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)globalPosition
+{
+}
+
+- (WebUITextIndicatorData *)_dataOperationTextIndicator
+{
+    return nil;
+}
+
+#if PLATFORM(IOS)
+- (UIImage *)_createImageWithPlatterForImage:(UIImage *)image boundingRect:(CGRect)boundingRect contentScaleFactor:(CGFloat)contentScaleFactor clippingRects:(NSArray<NSValue *> *)clippingRects
+{
+    return nil;
+}
+#endif
+
+#endif // ENABLE(DATA_INTERACTION) && defined(__cplusplus)
 
 static NSMutableSet *knownPluginMIMETypes()
 {
@@ -2586,6 +2794,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setShowRepaintCounter([preferences showRepaintCounter]);
     settings.setWebGLEnabled([preferences webGLEnabled]);
     settings.setSubpixelCSSOMElementMetricsEnabled([preferences subpixelCSSOMElementMetricsEnabled]);
+    settings.setSubpixelAntialiasedLayerTextEnabled([preferences subpixelAntialiasedLayerTextEnabled]);
 
     settings.setForceSoftwareWebGLRendering([preferences forceSoftwareWebGLRendering]);
     settings.setForceWebGLUsesLowPower([preferences forceLowPowerGPUForWebGL]);
@@ -2651,7 +2860,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setPlugInSnapshottingEnabled([preferences plugInSnapshottingEnabled]);
     settings.setHttpEquivEnabled([preferences httpEquivEnabled]);
 
-    settings.setFixedPositionCreatesStackingContext(true);
 #if PLATFORM(MAC)
     settings.setAcceleratedCompositingForFixedPositionEnabled(true);
 #endif
@@ -2743,6 +2951,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
 #if ENABLE(WEB_RTC)
     RuntimeEnabledFeatures::sharedFeatures().setPeerConnectionEnabled([preferences peerConnectionEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setWebRTCLegacyAPIEnabled([preferences webRTCLegacyAPIEnabled]);
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -2779,6 +2988,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled([preferences webGL2Enabled]);
 #endif
 
+#if ENABLE(WEBGPU)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled([preferences webGPUEnabled]);
+#endif
+
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     RuntimeEnabledFeatures::sharedFeatures().setDownloadAttributeEnabled([preferences downloadAttributeEnabled]);
 #endif
@@ -2800,6 +3013,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setUserTimingEnabled(preferences.userTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(preferences.resourceTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(preferences.linkPreloadEnabled);
+    RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(preferences.credentialManagementEnabled);
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -9487,7 +9701,7 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
     }
 
     if ([NSSpellChecker isAutomaticTextCompletionEnabled] && !_private->_isCustomizingTouchBar) {
-        BOOL shouldShowCandidateList = !coreFrame->selection().selection().isRange() || coreFrame->editor().ignoreCompositionSelectionChange();
+        BOOL shouldShowCandidateList = !coreFrame->selection().selection().isRange() || coreFrame->editor().ignoreSelectionChanges();
         [self.candidateList updateWithInsertionPointVisibility:shouldShowCandidateList];
     }
 
@@ -9513,8 +9727,8 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
         if (!selection.isNone()) {
             Node* nodeToRemove;
             if (auto* style = Editor::styleForSelectionStart(coreFrame, nodeToRemove)) {
-                [_private->_textTouchBarItemController setTextIsBold:(style->fontCascade().weight() >= FontWeightBold)];
-                [_private->_textTouchBarItemController setTextIsItalic:(style->fontCascade().italic() == FontItalicOn)];
+                [_private->_textTouchBarItemController setTextIsBold:isFontWeightBold(style->fontCascade().weight())];
+                [_private->_textTouchBarItemController setTextIsItalic:isItalic(style->fontCascade().italic())];
 
                 RefPtr<EditingStyle> typingStyle = coreFrame->selection().typingStyle();
                 if (typingStyle && typingStyle->style()) {

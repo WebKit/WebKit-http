@@ -251,6 +251,17 @@
         "category": "html"
     },
     {
+        "name": "DeviceOrientation Events",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "description": "DOM events that provide information about the physical orientation and motion of a hosting device.",
+        "url": "https://w3c.github.io/deviceorientation/spec-source-orientation.html",
+        "keywords": ["device orientation", "devicemotion", "acceleration", "rotation"],
+        "comment": "compassHeading and compassAccuracy are only available on iOS devices"
+    },
+    {
         "name": "Encoding",
         "status": {
             "status": "Done",
@@ -287,6 +298,15 @@
         "url": "http://dev.w3.org/fxtf/filters-2/",
         "keywords": ["css filters", "filter effects", "filters"],
         "category": "css"
+    },
+    {
+        "name": "Geolocation API",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "description": "An API that provides scripted access to geographical location information associated with the hosting device.",
+        "url": "https://www.w3.org/TR/geolocation-API/"
     },
     {
         "name": "Geometry Interfaces",
@@ -693,7 +713,7 @@
     {
         "name": "CSS Shapes Level 1",
         "status": {
-            "status": "In Development",
+            "status": "Done",
             "enabled-by-default": true
         },
         "url": "http://www.w3.org/TR/css-shapes-1/",
@@ -776,7 +796,7 @@
         }
     },
     {
-        "name": "Filter Effects backdrop-filter propery",
+        "name": "Filter Effects backdrop-filter property",
         "status": {
             "status": "Done",
             "enabled-by-default": true
@@ -788,7 +808,7 @@
     {
         "name": "Force Click Events",
         "status": {
-            "status": "Prototyping",
+            "status": "Done",
             "enabled-by-default": true
         },
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=142836",
@@ -917,22 +937,6 @@
         "specification": "CSS Positioned Layout Module Level 3",
         "description": "Sticky positioning provides a way to position element out of the normal flow when scrolling. Unlike solutions based on JavaScript, the change of position is synchronized with scrolling.",
         "comment": "The feature is prefixed with <em>-webkit-</em>. There are some remaining issues to resolve in the specification."
-    },
-    {
-        "name": "Preload",
-        "status": {
-            "status": "In Development",
-            "enabled-by-default": false
-        },
-        "url": "http://w3c.github.io/preload/",
-        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=158720",
-        "specification": "Preload",
-        "description": "Provides a declarative fetch primitive that initiates an early fetch and separates fetching from resource execution.",
-        "contact": {
-            "name": "Yoav Weiss",
-            "twitter": "@yoavweiss",
-            "email": "yoav@yoav.ws"
-        }
     },
     {
         "name": "Readable Streams",
@@ -1071,7 +1075,7 @@
     {
         "name": "ViewportAPI",
         "status": {
-        	"status": "Under Consideration"
+            "status": "Under Consideration"
         },
         "url": "https://github.com/WICG/ViewportAPI",
         "description": "A proposal to add explicit APIs to the Web for querying and setting the visual viewport.",

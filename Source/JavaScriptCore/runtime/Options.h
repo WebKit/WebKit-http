@@ -103,6 +103,7 @@ typedef const char* optionString;
 #define JSC_OPTIONS(v) \
     v(bool, validateOptions, false, Normal, "crashes if mis-typed JSC options were passed to the VM") \
     v(unsigned, dumpOptions, 0, Normal, "dumps JSC options (0 = None, 1 = Overridden only, 2 = All, 3 = Verbose)") \
+    v(optionString, configFile, nullptr, Normal, "file to configure JSC options and logging location") \
     \
     v(bool, useLLInt,  true, Normal, "allows the LLINT to be used if true") \
     v(bool, useJIT,    true, Normal, "allows the baseline JIT to be used if true") \
@@ -131,6 +132,7 @@ typedef const char* optionString;
     v(bool, dumpBytecodeLivenessResults, false, Normal, nullptr) \
     v(bool, validateBytecode, false, Normal, nullptr) \
     v(bool, forceDebuggerBytecodeGeneration, false, Normal, nullptr) \
+    v(bool, dumpBytecodesBeforeGeneratorification, false, Normal, nullptr) \
     \
     v(bool, useFunctionDotArguments, true, Normal, nullptr) \
     v(bool, useTailCalls, true, Normal, nullptr) \
@@ -406,6 +408,7 @@ typedef const char* optionString;
     v(bool, useSigillCrashAnalyzer, false, Configurable, "logs data about SIGILL crashes") \
     \
     v(unsigned, watchdog, 0, Normal, "watchdog timeout (0 = Disabled, N = a timeout period of N milliseconds)") \
+    v(bool, usePollingTraps, false, Normal, "use polling (instead of signalling) VM traps") \
     \
     v(bool, useICStats, false, Normal, nullptr) \
     \
@@ -414,9 +417,6 @@ typedef const char* optionString;
     v(bool, dumpModuleRecord, false, Normal, nullptr) \
     v(bool, dumpModuleLoadingState, false, Normal, nullptr) \
     v(bool, exposeInternalModuleLoader, false, Normal, "expose the internal module loader object to the global space for debugging") \
-    \
-    v(bool, dumpAirAsJSBeforeAllocateStack, false, Normal, nullptr) \
-    v(bool, dumpAirAfterAllocateStack, false, Normal, nullptr) \
     \
     v(bool, useSuperSampler, false, Normal, nullptr) \
     \
@@ -428,6 +428,8 @@ typedef const char* optionString;
     \
     v(bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
     v(bool, simulateWebAssemblyLowMemory, false, Normal, "If true, the Memory object won't mmap the full 'maximum' range and instead will allocate the minimum required amount.") \
+    v(bool, useWebAssemblyFastMemory, true, Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.")
+
 
 enum OptionEquivalence {
     SameOption,

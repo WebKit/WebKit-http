@@ -328,6 +328,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     m_testRunner->setCustomElementsEnabled(true);
 
     m_testRunner->setWebGL2Enabled(true);
+    m_testRunner->setWebGPUEnabled(true);
 
     m_testRunner->setFetchAPIEnabled(true);
 
@@ -344,6 +345,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
 
     m_testRunner->setMediaStreamEnabled(true);
     m_testRunner->setPeerConnectionEnabled(true);
+    m_testRunner->setWebRTCLegacyAPIEnabled(true);
 
     if (m_timeout > 0)
         m_testRunner->setCustomTimeout(m_timeout);
@@ -370,9 +372,7 @@ void InjectedBundle::done()
 
     m_testRunner->invalidateWaitToDumpWatchdogTimer();
 
-#if HAVE(ACCESSIBILITY)
     m_accessibilityController->resetToConsistentState();
-#endif
 
     WKRetainPtr<WKStringRef> doneMessageName(AdoptWK, WKStringCreateWithUTF8CString("Done"));
     WKRetainPtr<WKMutableDictionaryRef> doneMessageBody(AdoptWK, WKMutableDictionaryCreate());

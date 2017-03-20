@@ -45,6 +45,7 @@ endif
 
 ifneq ($(PLATFORM_NAME), macosx)
 HEADERS += \
+    $(PRIVATE_HEADERS_DIR)/AbstractPasteboard.h \
     $(PRIVATE_HEADERS_DIR)/KeyEventCodesIOS.h \
     $(PRIVATE_HEADERS_DIR)/WAKAppKitStubs.h \
     $(PRIVATE_HEADERS_DIR)/WAKResponder.h \
@@ -57,6 +58,7 @@ HEADERS += \
     $(PRIVATE_HEADERS_DIR)/WebCoreThreadMessage.h \
     $(PRIVATE_HEADERS_DIR)/WebCoreThreadRun.h \
     $(PRIVATE_HEADERS_DIR)/WebEvent.h \
+    $(PRIVATE_HEADERS_DIR)/WebItemProviderPasteboard.h \
 #
 endif
 
@@ -74,7 +76,7 @@ WEBCORE_HEADER_MIGRATE_CMD = sed -E $(WEBCORE_HEADER_REPLACE_RULES) $< > $@
 $(PRIVATE_HEADERS_DIR)/% : % MigrateHeaders.make
 	$(WEBCORE_HEADER_MIGRATE_CMD)
 
-ifneq (,$(findstring iphone,$(PLATFORM_NAME)))
+ifneq ($(PLATFORM_NAME), macosx)
 REEXPORT_FILE = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKitLegacy/ReexportedWebCoreSymbols_$(CURRENT_ARCH).exp
 
 all : $(REEXPORT_FILE)

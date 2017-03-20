@@ -841,6 +841,12 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, int depth)
             else
                 logString.appendLiteral("background");
         }
+        
+        if (backing->paintsSubpixelAntialiasedText()) {
+            if (prependSpace)
+                logString.appendLiteral(", ");
+            logString.appendLiteral("texty");
+        }
 
         logString.appendLiteral("] ");
     }
@@ -1117,7 +1123,7 @@ void RenderLayerCompositor::layerWasAdded(RenderLayer&, RenderLayer&)
 
 void RenderLayerCompositor::layerWillBeRemoved(RenderLayer& parent, RenderLayer& child)
 {
-    if (!child.isComposited() || parent.renderer().documentBeingDestroyed())
+    if (!child.isComposited() || parent.renderer().renderTreeBeingDestroyed())
         return;
 
     removeFromScrollCoordinatedLayers(child);
@@ -1770,7 +1776,7 @@ void RenderLayerCompositor::scrollingLayerDidChange(RenderLayer& layer)
 
 void RenderLayerCompositor::fixedRootBackgroundLayerChanged()
 {
-    if (m_renderView.documentBeingDestroyed())
+    if (m_renderView.renderTreeBeingDestroyed())
         return;
 
     if (m_renderView.layer()->isComposited())
@@ -2930,11 +2936,7 @@ bool RenderLayerCompositor::documentUsesTiledBacking() const
     if (!backing)
         return false;
 
-#if USE(TILED_BACKING_STORE)
-    return true;
-#else
     return backing->isMainFrameLayerWithTiledBacking();
-#endif
 }
 
 bool RenderLayerCompositor::isMainFrameCompositor() const

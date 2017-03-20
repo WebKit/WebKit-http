@@ -33,6 +33,7 @@
 #include "ImageOrientation.h"
 #include "ImageSource.h"
 #include "IntSize.h"
+#include "URL.h"
 
 #if USE(CG) || USE(APPKIT)
 #include <wtf/RetainPtr.h>
@@ -81,10 +82,11 @@ public:
     IntSize sizeRespectingOrientation() const { return m_source.sizeRespectingOrientation(); }
     Color singlePixelSolidColor() const override { return m_source.singlePixelSolidColor(); }
 
-    bool frameIsBeingDecodedAtIndex(size_t index) const { return m_source.frameIsBeingDecodedAtIndex(index); }
+    bool frameIsBeingDecodedAtIndex(size_t index, const std::optional<IntSize>& sizeForDrawing) const { return m_source.frameIsBeingDecodedAtIndex(index, sizeForDrawing); }
+    bool frameHasDecodedNativeImage(size_t index) const { return m_source.frameHasDecodedNativeImage(index); }
     bool frameIsCompleteAtIndex(size_t index) const { return m_source.frameIsCompleteAtIndex(index); }
     bool frameHasAlphaAtIndex(size_t index) const { return m_source.frameHasAlphaAtIndex(index); }
-    bool frameHasValidNativeImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel) const { return m_source.frameHasValidNativeImageAtIndex(index, subsamplingLevel); }
+    bool frameHasValidNativeImageAtIndex(size_t index, const std::optional<SubsamplingLevel>& subsamplingLevel, const std::optional<IntSize>& sizeForDrawing) const { return m_source.frameHasValidNativeImageAtIndex(index, subsamplingLevel, sizeForDrawing); }
     SubsamplingLevel frameSubsamplingLevelAtIndex(size_t index) const { return m_source.frameSubsamplingLevelAtIndex(index); }
 
     float frameDurationAtIndex(size_t index) const { return m_source.frameDurationAtIndex(index); }
@@ -94,8 +96,11 @@ public:
     bool currentFrameKnownToBeOpaque() const override { return !frameHasAlphaAtIndex(currentFrame()); }
     ImageOrientation orientationForCurrentFrame() const override { return frameOrientationAtIndex(currentFrame()); }
 
-    bool isAsyncDecodingForcedForTesting() const { return m_frameDecodingDurationForTesting > 0; }
+    bool shouldUseAsyncDecodingForTesting() const { return m_frameDecodingDurationForTesting > 0; }
     void setFrameDecodingDurationForTesting(float duration) { m_frameDecodingDurationForTesting = duration; }
+    bool shouldUseAsyncDecodingForLargeImage();
+    bool shouldUseAsyncDecodingForAnimatedImage();
+    void setClearDecoderAfterAsyncFrameRequestForTesting(bool value) { m_clearDecoderAfterAsyncFrameRequestForTesting = value; }
 
     // Accessors for native image formats.
 #if USE(APPKIT)
@@ -127,8 +132,9 @@ protected:
     WEBCORE_EXPORT BitmapImage(NativeImagePtr&&, ImageObserver* = nullptr);
     WEBCORE_EXPORT BitmapImage(ImageObserver* = nullptr);
 
-    NativeImagePtr frameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* = nullptr);
+    NativeImagePtr frameImageAtIndex(size_t, const std::optional<SubsamplingLevel>& = { }, const std::optional<IntSize>& sizeForDrawing = { }, const GraphicsContext* = nullptr);
 
+    String sourceURL() const { return imageObserver() ? imageObserver()->sourceUrl().string() : emptyString(); }
     bool allowSubsampling() const { return imageObserver() && imageObserver()->allowSubsampling(); }
     bool allowLargeImageAsyncDecoding() const { return imageObserver() && imageObserver()->allowLargeImageAsyncDecoding(); }
     bool allowAnimatedImageAsyncDecoding() const { return imageObserver() && imageObserver()->allowAnimatedImageAsyncDecoding(); }
@@ -197,6 +203,7 @@ private:
 
     size_t m_currentFrame { 0 }; // The index of the current frame of animation.
     SubsamplingLevel m_currentSubsamplingLevel { SubsamplingLevel::Default };
+    IntSize m_sizeForDrawing;
     std::unique_ptr<Timer> m_frameTimer;
     RepetitionCount m_repetitionsComplete { RepetitionCountNone }; // How many repetitions we've finished.
     double m_desiredFrameStartTime { 0 }; // The system time at which we hope to see the next call to startAnimation().
@@ -204,6 +211,7 @@ private:
 
     float m_frameDecodingDurationForTesting { 0 };
     double m_desiredFrameDecodeTimeForTesting { 0 };
+    bool m_clearDecoderAfterAsyncFrameRequestForTesting { false };
 #if !LOG_DISABLED
     size_t m_lateFrameCount { 0 };
     size_t m_earlyFrameCount { 0 };

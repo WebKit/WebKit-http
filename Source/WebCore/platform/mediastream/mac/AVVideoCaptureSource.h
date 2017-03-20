@@ -47,6 +47,8 @@ class AVVideoCaptureSource : public AVMediaCaptureSource {
 public:
     static RefPtr<AVMediaCaptureSource> create(AVCaptureDevice*, const AtomicString&, const MediaConstraints*, String&);
 
+    WEBCORE_EXPORT static CaptureFactory& factory();
+
     int32_t width() const { return m_width; }
     int32_t height() const { return m_height; }
 
@@ -75,12 +77,7 @@ private:
     bool updateFramerate(CMSampleBufferRef);
 
     void captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef, AVCaptureConnection*) final;
-    void processNewFrame(RetainPtr<CMSampleBufferRef>);
-
-    void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) final;
-
-    RetainPtr<CGImageRef> currentFrameCGImage();
-    RefPtr<Image> currentFrameImage() final;
+    void processNewFrame(RetainPtr<CMSampleBufferRef>, RetainPtr<AVCaptureConnection>);
 
     RetainPtr<NSString> m_pendingPreset;
     RetainPtr<CMSampleBufferRef> m_buffer;

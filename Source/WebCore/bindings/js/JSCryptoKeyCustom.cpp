@@ -29,8 +29,10 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CryptoKeyAES.h"
+#include "CryptoKeyEC.h"
 #include "CryptoKeyHMAC.h"
 #include "CryptoKeyRSA.h"
+#include "CryptoKeyRaw.h"
 #include "JSCryptoAlgorithmBuilder.h"
 #include <heap/HeapInlines.h>
 #include <runtime/JSCJSValueInlines.h>
@@ -52,6 +54,12 @@ JSValue JSCryptoKey::algorithm(JSC::ExecState& state) const
         auto& aesAlgorithm = downcast<AesKeyAlgorithm>(*algorithm);
         builder.add("name", aesAlgorithm.name());
         builder.add("length", aesAlgorithm.length());
+        break;
+    }
+    case KeyAlgorithmClass::EC: {
+        auto& ecAlgorithm = downcast<EcKeyAlgorithm>(*algorithm);
+        builder.add("name", ecAlgorithm.name());
+        builder.add("namedCurve", ecAlgorithm.namedCurve());
         break;
     }
     case KeyAlgorithmClass::HMAC: {
@@ -78,6 +86,11 @@ JSValue JSCryptoKey::algorithm(JSC::ExecState& state) const
         builder.add("name", rsaAlgorithm.name());
         builder.add("modulusLength", rsaAlgorithm.modulusLength());
         builder.add("publicExponent", rsaAlgorithm.publicExponent());
+        break;
+    }
+    case KeyAlgorithmClass::Raw: {
+        auto& rawAlgorithm = downcast<RawKeyAlgorithm>(*algorithm);
+        builder.add("name", rawAlgorithm.name());
         break;
     }
     }

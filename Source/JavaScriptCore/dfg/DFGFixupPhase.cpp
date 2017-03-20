@@ -1250,6 +1250,14 @@ private:
                 fixEdge<CellUse>(node->child1());
             break;
         }
+        
+        case GetByIdWithThis: {
+            if (node->child1()->shouldSpeculateCell() && node->child2()->shouldSpeculateCell()) {
+                fixEdge<CellUse>(node->child1());
+                fixEdge<CellUse>(node->child2());
+            }
+            break;
+        }
 
         case PutById:
         case PutByIdFlush:
@@ -1877,7 +1885,6 @@ private:
         case ExitOK:
         case BottomValue:
         case TypeOf:
-        case GetByIdWithThis:
         case PutByIdWithThis:
         case PutByValWithThis:
         case GetByValWithThis:
@@ -2226,6 +2233,16 @@ private:
         
         if (node->child1()->shouldSpeculateCell()) {
             fixEdge<CellUse>(node->child1());
+            return;
+        }
+
+        // ToString(Symbol) throws an error. So if the child1 can include Symbols,
+        // we need to care about it in the clobberize. In the following case,
+        // since NotCellUse edge filter is used and this edge filters Symbols,
+        // we can say that ToString never throws an error!
+        if (node->child1()->shouldSpeculateNotCell()) {
+            fixEdge<NotCellUse>(node->child1());
+            node->clearFlags(NodeMustGenerate);
             return;
         }
     }

@@ -93,10 +93,12 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder.encodeEnum(userInterfaceLayoutDirection);
     encoder.encodeEnum(observedLayoutMilestones);
     encoder << overrideContentSecurityPolicy;
+    encoder << backgroundCPULimit;
+    encoder << urlSchemeHandlers;
 #if ENABLE(WEB_RTC)
-    encoder << disableICECandidateFiltering;
+    encoder << iceCandidateFilteringEnabled;
 #if USE(LIBWEBRTC)
-    encoder << enableEnumeratingAllNetworkInterfaces;
+    encoder << enumeratingAllNetworkInterfacesEnabled;
 #endif
 #endif
 }
@@ -221,11 +223,17 @@ bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationPar
     if (!decoder.decode(parameters.overrideContentSecurityPolicy))
         return false;
 
+    if (!decoder.decode(parameters.backgroundCPULimit))
+        return false;
+
+    if (!decoder.decode(parameters.urlSchemeHandlers))
+        return false;
+
 #if ENABLE(WEB_RTC)
-    if (!decoder.decode(parameters.disableICECandidateFiltering))
+    if (!decoder.decode(parameters.iceCandidateFilteringEnabled))
         return false;
 #if USE(LIBWEBRTC)
-    if (!decoder.decode(parameters.enableEnumeratingAllNetworkInterfaces))
+    if (!decoder.decode(parameters.enumeratingAllNetworkInterfacesEnabled))
         return false;
 #endif
 #endif

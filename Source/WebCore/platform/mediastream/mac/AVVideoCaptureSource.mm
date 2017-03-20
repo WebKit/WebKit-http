@@ -103,7 +103,20 @@ using namespace WebCore;
 
 namespace WebCore {
 
+#if PLATFORM(MAC)
 const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8Planar;
+#else
+const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
+#endif
+
+class AVVideoCaptureSourceFactory : public RealtimeMediaSource::CaptureFactory {
+public:
+    RefPtr<RealtimeMediaSource> createMediaSourceForCaptureDeviceWithConstraints(const CaptureDevice& captureDevice, const MediaConstraints* constraints, String& invalidConstraint) final {
+        AVCaptureDeviceTypedef *device = [getAVCaptureDeviceClass() deviceWithUniqueID:captureDevice.persistentId()];
+        ASSERT(!device || (captureDevice.type() == CaptureDevice::DeviceType::Video));
+        return device ? AVVideoCaptureSource::create(device, emptyString(), constraints, invalidConstraint) : nullptr;
+    }
+};
 
 RefPtr<AVMediaCaptureSource> AVVideoCaptureSource::create(AVCaptureDeviceTypedef* device, const AtomicString& id, const MediaConstraints* constraints, String& invalidConstraint)
 {
@@ -119,8 +132,14 @@ RefPtr<AVMediaCaptureSource> AVVideoCaptureSource::create(AVCaptureDeviceTypedef
     return source;
 }
 
+RealtimeMediaSource::CaptureFactory& AVVideoCaptureSource::factory()
+{
+    static NeverDestroyed<AVVideoCaptureSourceFactory> factory;
+    return factory.get();
+}
+
 AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, const AtomicString& id)
-    : AVMediaCaptureSource(device, id, RealtimeMediaSource::Video)
+    : AVMediaCaptureSource(device, id, Type::Video)
 {
 }
 
@@ -398,7 +417,7 @@ bool AVVideoCaptureSource::updateFramerate(CMSampleBufferRef sampleBuffer)
     return frameRate != m_frameRate;
 }
 
-void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBuffer)
+void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBuffer, RetainPtr<AVCaptureConnectionType> connection)
 {
     // Ignore frames delivered when the session is not running, we want to hang onto the last image
     // delivered before it stopped.
@@ -413,8 +432,27 @@ void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBu
     m_buffer = sampleBuffer;
     m_lastImage = nullptr;
 
+    MediaSample::VideoOrientation orientation = MediaSample::VideoOrientation::Unknown;
+    switch ([connection videoOrientation]) {
+    case AVCaptureVideoOrientationPortrait:
+        orientation = MediaSample::VideoOrientation::Portrait;
+        break;
+    case AVCaptureVideoOrientationPortraitUpsideDown:
+        orientation = MediaSample::VideoOrientation::PortraitUpsideDown;
+        break;
+    case AVCaptureVideoOrientationLandscapeRight:
+        orientation = MediaSample::VideoOrientation::LandscapeRight;
+        break;
+    case AVCaptureVideoOrientationLandscapeLeft:
+        orientation = MediaSample::VideoOrientation::LandscapeLeft;
+        break;
+    }
+
     bool settingsChanged = false;
     CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
+    if (orientation == MediaSample::VideoOrientation::LandscapeRight || orientation == MediaSample::VideoOrientation::LandscapeLeft)
+        std::swap(dimensions.width, dimensions.height);
+
     if (dimensions.width != m_width || dimensions.height != m_height) {
         m_width = dimensions.width;
         m_height = dimensions.height;
@@ -424,70 +462,17 @@ void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBu
     if (settingsChanged)
         settingsDidChange();
 
-    videoSampleAvailable(MediaSampleAVFObjC::create(m_buffer.get()));
+    videoSampleAvailable(MediaSampleAVFObjC::create(m_buffer.get(), orientation, [connection isVideoMirrored]));
 }
 
-void AVVideoCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutputType*, CMSampleBufferRef sampleBuffer, AVCaptureConnectionType*)
+void AVVideoCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutputType*, CMSampleBufferRef sampleBuffer, AVCaptureConnectionType* captureConnection)
 {
     RetainPtr<CMSampleBufferRef> buffer = sampleBuffer;
+    RetainPtr<AVCaptureConnectionType> connection = captureConnection;
 
-    scheduleDeferredTask([this, buffer] {
-        this->processNewFrame(buffer);
+    scheduleDeferredTask([this, buffer, connection] {
+        this->processNewFrame(buffer, connection);
     });
-}
-
-RefPtr<Image> AVVideoCaptureSource::currentFrameImage()
-{
-    if (!currentFrameCGImage())
-        return nullptr;
-
-    FloatRect imageRect(0, 0, m_width, m_height);
-    std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(imageRect.size(), Unaccelerated);
-
-    if (!imageBuffer)
-        return nullptr;
-
-    paintCurrentFrameInContext(imageBuffer->context(), imageRect);
-
-    return ImageBuffer::sinkIntoImage(WTFMove(imageBuffer));
-}
-
-RetainPtr<CGImageRef> AVVideoCaptureSource::currentFrameCGImage()
-{
-    if (m_lastImage)
-        return m_lastImage;
-
-    if (!m_buffer)
-        return nullptr;
-
-    CVPixelBufferRef pixelBuffer = static_cast<CVPixelBufferRef>(CMSampleBufferGetImageBuffer(m_buffer.get()));
-    ASSERT(CVPixelBufferGetPixelFormatType(pixelBuffer) == videoCaptureFormat);
-
-    if (!m_pixelBufferConformer) {
-#if USE(VIDEOTOOLBOX)
-        NSDictionary *attributes = @{ (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA) };
-#else
-        NSDictionary *attributes = nil;
-#endif
-        m_pixelBufferConformer = std::make_unique<PixelBufferConformerCV>((CFDictionaryRef)attributes);
-    }
-
-    m_lastImage = m_pixelBufferConformer->createImageFromPixelBuffer(pixelBuffer);
-
-    return m_lastImage;
-}
-
-void AVVideoCaptureSource::paintCurrentFrameInContext(GraphicsContext& context, const FloatRect& rect)
-{
-    if (context.paintingDisabled() || !currentFrameCGImage())
-        return;
-
-    GraphicsContextStateSaver stateSaver(context);
-    context.translate(rect.x(), rect.y() + rect.height());
-    context.scale(FloatSize(1, -1));
-    context.setImageInterpolationQuality(InterpolationLow);
-    IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
-    CGContextDrawImage(context.platformContext(), CGRectMake(0, 0, paintRect.width(), paintRect.height()), m_lastImage.get());
 }
 
 NSString* AVVideoCaptureSource::bestSessionPresetForVideoDimensions(std::optional<int> width, std::optional<int> height) const

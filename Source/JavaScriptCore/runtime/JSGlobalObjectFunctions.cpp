@@ -735,7 +735,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState* exec)
     thisObject->setPrototype(vm, exec, value, shouldThrowIfCantSet);
     return JSValue::encode(jsUndefined());
 }
-    
+
 EncodedJSValue JSC_HOST_CALL globalFuncBuiltinLog(ExecState* exec)
 {
     dataLog(exec->argument(0).toWTFString(exec), "\n");
@@ -757,14 +757,14 @@ EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState* exec)
     auto* specifier = exec->uncheckedArgument(0).toString(exec);
     if (Exception* exception = catchScope.exception()) {
         catchScope.clearException();
-        promise->reject(exec, exception);
+        promise->reject(exec, exception->value());
         return JSValue::encode(promise->promise());
     }
 
     auto* internalPromise = globalObject->moduleLoader()->importModule(exec, specifier, sourceOrigin);
     if (Exception* exception = catchScope.exception()) {
         catchScope.clearException();
-        promise->reject(exec, exception);
+        promise->reject(exec, exception->value());
         return JSValue::encode(promise->promise());
     }
     promise->resolve(exec, internalPromise);

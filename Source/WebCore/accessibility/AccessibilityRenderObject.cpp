@@ -36,6 +36,7 @@
 #include "AccessibilitySpinButton.h"
 #include "AccessibilityTable.h"
 #include "CachedImage.h"
+#include "Editing.h"
 #include "ElementIterator.h"
 #include "FloatRect.h"
 #include "Frame.h"
@@ -67,7 +68,6 @@
 #include "Page.h"
 #include "ProgressTracker.h"
 #include "RenderButton.h"
-#include "RenderFieldset.h"
 #include "RenderFileUploadControl.h"
 #include "RenderHTMLCanvas.h"
 #include "RenderImage.h"
@@ -98,7 +98,6 @@
 #include "TextControlInnerElements.h"
 #include "TextIterator.h"
 #include "VisibleUnits.h"
-#include "htmlediting.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/unicode/CharacterNames.h>
@@ -1081,7 +1080,7 @@ AccessibilityObject* AccessibilityRenderObject::titleUIElement() const
     
     // if isFieldset is true, the renderer is guaranteed to be a RenderFieldset
     if (isFieldset())
-        return axObjectCache()->getOrCreate(downcast<RenderFieldset>(*m_renderer).findLegend(RenderFieldset::IncludeFloatingOrOutOfFlow));
+        return axObjectCache()->getOrCreate(downcast<RenderBlock>(*m_renderer).findFieldsetLegend(RenderBlock::FieldsetIncludeFloatingOrOutOfFlow));
     
     if (isFigure())
         return captionForFigure();
@@ -3501,7 +3500,7 @@ bool AccessibilityRenderObject::hasBoldFont() const
     if (!m_renderer)
         return false;
     
-    return m_renderer->style().fontDescription().weight() >= FontWeightBold;
+    return isFontWeightBold(m_renderer->style().fontDescription().weight());
 }
 
 bool AccessibilityRenderObject::hasItalicFont() const
@@ -3509,7 +3508,7 @@ bool AccessibilityRenderObject::hasItalicFont() const
     if (!m_renderer)
         return false;
     
-    return m_renderer->style().fontDescription().italic() == FontItalicOn;
+    return isItalic(m_renderer->style().fontDescription().italic());
 }
 
 bool AccessibilityRenderObject::hasPlainText() const
@@ -3519,8 +3518,8 @@ bool AccessibilityRenderObject::hasPlainText() const
     
     const RenderStyle& style = m_renderer->style();
     
-    return style.fontDescription().weight() == FontWeightNormal
-        && style.fontDescription().italic() == FontItalicOff
+    return style.fontDescription().weight() == normalWeightValue()
+        && style.fontDescription().italic() == normalItalicValue()
         && style.textDecorationsInEffect() == TextDecorationNone;
 }
 

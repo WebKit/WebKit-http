@@ -54,6 +54,8 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << webSQLDatabaseDirectoryExtensionHandle;
     encoder << mediaCacheDirectory;
     encoder << mediaCacheDirectoryExtensionHandle;
+    encoder << javaScriptConfigurationDirectory;
+    encoder << javaScriptConfigurationDirectoryExtensionHandle;
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     encoder << uiProcessCookieStorageIdentifier;
 #endif
@@ -66,6 +68,7 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << mediaKeyStorageDirectoryExtensionHandle;
 #if ENABLE(MEDIA_STREAM)
     encoder << audioCaptureExtensionHandle;
+    encoder << shouldCaptureAudioInUIProcess;
 #endif
     encoder << shouldUseTestingNetworkSession;
     encoder << urlSchemesRegisteredAsEmptyDocument;
@@ -164,6 +167,10 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     if (!decoder.decode(parameters.mediaCacheDirectoryExtensionHandle))
         return false;
+    if (!decoder.decode(parameters.javaScriptConfigurationDirectory))
+        return false;
+    if (!decoder.decode(parameters.javaScriptConfigurationDirectoryExtensionHandle))
+        return false;
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     if (!decoder.decode(parameters.uiProcessCookieStorageIdentifier))
         return false;
@@ -182,6 +189,8 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
 #if ENABLE(MEDIA_STREAM)
     if (!decoder.decode(parameters.audioCaptureExtensionHandle))
+        return false;
+    if (!decoder.decode(parameters.shouldCaptureAudioInUIProcess))
         return false;
 #endif
     if (!decoder.decode(parameters.shouldUseTestingNetworkSession))

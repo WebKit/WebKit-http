@@ -38,14 +38,14 @@ public:
     virtual ~AutomationSessionClient();
 
     String sessionIdentifier() const override;
-    WebKit::WebPageProxy* didRequestNewWindow(WebKit::WebAutomationSession*) override;
-    void didDisconnectFromRemote(WebKit::WebAutomationSession *) override;
+    WebKit::WebPageProxy* didRequestNewWindow(WebKit::WebAutomationSession&) override;
+    void didDisconnectFromRemote(WebKit::WebAutomationSession&) override;
 
-    bool isShowingJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) override;
-    void dismissCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) override;
-    void acceptCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) override;
-    String messageOfCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) override;
-    void setUserInputForCurrentJavaScriptPromptOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*, const String&) override;
+    bool isShowingJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) override;
+    void dismissCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) override;
+    void acceptCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) override;
+    String messageOfCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) override;
+    void setUserInputForCurrentJavaScriptPromptOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&, const String&) override;
 
 private:
     struct {

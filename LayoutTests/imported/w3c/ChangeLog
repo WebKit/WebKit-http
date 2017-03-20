@@ -1,3 +1,1211 @@
+2017-03-19  Chris Dumez  <cdumez@apple.com>
+
+        Implement self.origin
+        https://bugs.webkit.org/show_bug.cgi?id=168023
+
+        Reviewed by Sam Weinig.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/self-origin.any-expected.txt:
+        * web-platform-tests/html/dom/self-origin.sub-expected.txt:
+        Rebaseline several WPT tests now that more checks are passing.
+
+        * web-platform-tests/html/webappapis/the-windoworworkerglobalscope-mixin/Worker_Self_Origin-expected.txt: Added.
+        * web-platform-tests/html/webappapis/the-windoworworkerglobalscope-mixin/Worker_Self_Origin.html: Added.
+        * web-platform-tests/html/webappapis/the-windoworworkerglobalscope-mixin/support/WorkerSelfOriginSharedWorker.js: Added.
+        (onconnect):
+        * web-platform-tests/html/webappapis/the-windoworworkerglobalscope-mixin/support/WorkerSelfOriginWorker.js: Added.
+        * web-platform-tests/html/webappapis/the-windoworworkerglobalscope-mixin/support/w3c-import.log: Added.
+        * web-platform-tests/html/webappapis/the-windoworworkerglobalscope-mixin/w3c-import.log: Added.
+        Import test coverage for self.origin in workers.
+
+2017-03-18  Jon Lee  <jonlee@apple.com>
+
+        Add support for ImplementedAs, Clamp, EnforceRange, TreatNullAs for dictionary members
+        https://bugs.webkit.org/show_bug.cgi?id=169731
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline tests. The results seem to show a problem in the original tests.
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_gcm.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_gcm-expected.txt:
+
+2017-03-18  Chris Dumez  <cdumez@apple.com>
+
+        innerText setter inserts empty text node if value starts with newline
+        https://bugs.webkit.org/show_bug.cgi?id=169600
+
+        Reviewed by Ryosuke Niwa.
+
+        Re-sync tests with upstream to gain test coverage.
+
+        * web-platform-tests/innerText/getter-expected.txt:
+        * web-platform-tests/innerText/getter-tests.js:
+        * web-platform-tests/innerText/setter-expected.txt:
+        * web-platform-tests/innerText/setter-tests.js:
+        * web-platform-tests/innerText/setter.html:
+
+2017-03-18  Chris Dumez  <cdumez@apple.com>
+
+        Allow setting the prototype of cross-origin objects, as long as they don't change
+        https://bugs.webkit.org/show_bug.cgi?id=169787
+
+        Reviewed by Mark Lam.
+
+        Import test coverage from W3C web-platform-tests.
+
+        * web-platform-tests/common/domain-setter.sub.html: Added.
+        * web-platform-tests/common/test-setting-immutable-prototype.js: Added.
+        (self.testSettingImmutablePrototypeToNewValueOnly.test):
+        (self.testSettingImmutablePrototypeToNewValueOnly):
+        (self.testSettingImmutablePrototype.else.test):
+        (self.testSettingImmutablePrototype):
+        * web-platform-tests/common/w3c-import.log:
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-cross-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-cross-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-goes-cross-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-goes-cross-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-same-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-same-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-same-origin-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-prototype-setting-same-origin.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/w3c-import.log:
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/w3c-import.log: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-cross-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-cross-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-goes-cross-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-goes-cross-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-same-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-same-origin-domain.sub.html: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-same-origin-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-windowproxy-exotic-object/windowproxy-prototype-setting-same-origin.html: Added.
+
+2017-03-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Support SPKI/PKCS8 for Elliptic Curve
+        https://bugs.webkit.org/show_bug.cgi?id=169318
+        <rdar://problem/31081956>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/import_export/ec_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_ec_importKey-expected.txt:
+
+2017-03-14  Youenn Fablet  <youenn@apple.com>
+
+        Import web-platform-tests/cors
+        https://bugs.webkit.org/show_bug.cgi?id=169565
+
+        Reviewed by Sam Weinig.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/cors/304-expected.txt: Added.
+        * web-platform-tests/cors/304.htm: Added.
+        * web-platform-tests/cors/OWNERS: Added.
+        * web-platform-tests/cors/README.md: Added.
+        * web-platform-tests/cors/allow-headers-expected.txt: Added.
+        * web-platform-tests/cors/allow-headers.htm: Added.
+        * web-platform-tests/cors/basic-expected.txt: Added.
+        * web-platform-tests/cors/basic.htm: Added.
+        * web-platform-tests/cors/credentials-flag-expected.txt: Added.
+        * web-platform-tests/cors/credentials-flag.htm: Added.
+        * web-platform-tests/cors/late-upload-events-expected.txt: Added.
+        * web-platform-tests/cors/late-upload-events.htm: Added.
+        * web-platform-tests/cors/origin-expected.txt: Added.
+        * web-platform-tests/cors/origin.htm: Added.
+        * web-platform-tests/cors/preflight-cache-expected.txt: Added.
+        * web-platform-tests/cors/preflight-cache.htm: Added.
+        * web-platform-tests/cors/preflight-failure-expected.txt: Added.
+        * web-platform-tests/cors/preflight-failure.htm: Added.
+        * web-platform-tests/cors/redirect-origin-expected.txt: Added.
+        * web-platform-tests/cors/redirect-origin.htm: Added.
+        * web-platform-tests/cors/redirect-preflight-2-expected.txt: Added.
+        * web-platform-tests/cors/redirect-preflight-2.htm: Added.
+        * web-platform-tests/cors/redirect-preflight-expected.txt: Added.
+        * web-platform-tests/cors/redirect-preflight.htm: Added.
+        * web-platform-tests/cors/redirect-userinfo-expected.txt: Added.
+        * web-platform-tests/cors/redirect-userinfo.htm: Added.
+        * web-platform-tests/cors/remote-origin-expected.txt: Added.
+        * web-platform-tests/cors/remote-origin.htm: Added.
+        * web-platform-tests/cors/request-headers-expected.txt: Added.
+        * web-platform-tests/cors/request-headers.htm: Added.
+        * web-platform-tests/cors/resources/304.py: Added.
+        (error):
+        (main):
+        * web-platform-tests/cors/resources/checkandremove.py: Added.
+        (main):
+        * web-platform-tests/cors/resources/cors-cookie.py: Added.
+        (main):
+        * web-platform-tests/cors/resources/cors-headers.asis: Added.
+        * web-platform-tests/cors/resources/cors-makeheader.py: Added.
+        (main):
+        * web-platform-tests/cors/resources/preflight.py: Added.
+        (main):
+        * web-platform-tests/cors/resources/remote-xhrer.html: Added.
+        * web-platform-tests/cors/resources/status.py: Added.
+        (main):
+        * web-platform-tests/cors/resources/w3c-import.log: Added.
+        * web-platform-tests/cors/response-headers-expected.txt: Added.
+        * web-platform-tests/cors/response-headers.htm: Added.
+        * web-platform-tests/cors/simple-requests-expected.txt: Added.
+        * web-platform-tests/cors/simple-requests.htm: Added.
+        * web-platform-tests/cors/status-async-expected.txt: Added.
+        * web-platform-tests/cors/status-async.htm: Added.
+        * web-platform-tests/cors/status-expected.txt: Added.
+        * web-platform-tests/cors/status-preflight-expected.txt: Added.
+        * web-platform-tests/cors/status-preflight.htm: Added.
+        * web-platform-tests/cors/status.htm: Added.
+        * web-platform-tests/cors/support.js: Added.
+        (dirname):
+        * web-platform-tests/cors/w3c-import.log: Added.
+
+2017-03-13  Youenn Fablet  <youenn@apple.com>
+
+        Sync web-platform-tests up to revision a5b95cb31914507088a4eda16f7674bbc6f3313f
+        https://bugs.webkit.org/show_bug.cgi?id=169523
+
+        Reviewed by Alex Christensen.
+
+        * csswg-test/LICENSE.md: Added.
+        * csswg-test/README.md:
+        * csswg-test/build-css-testsuites.sh: Added.
+        * csswg-test/config.default.json: Added.
+        * csswg-test/css-grid-1/grid-items/w3c-import.log:
+        * csswg-test/css-grid-1/grid-model/w3c-import.log:
+        * csswg-test/css-scoping-1/OWNERS: Added.
+        * csswg-test/css-scoping-1/css-scoping-shadow-slot-style-expected.html: Added.
+        * csswg-test/css-scoping-1/css-scoping-shadow-slot-style.html: Added.
+        * csswg-test/css-scoping-1/w3c-import.log:
+        * csswg-test/lint: Added.
+        * csswg-test/lint.whitelist: Added.
+        * csswg-test/manifest: Added.
+        * csswg-test/requirements.txt: Added.
+        * csswg-test/serve: Added.
+        * csswg-test/serve.py: Added.
+        (main):
+        * csswg-test/w3c-import.log:
+        * resources/TestRepositories:
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/IndexedDB/abort-in-initial-upgradeneeded.html:
+        * web-platform-tests/IndexedDB/close-in-upgradeneeded.html:
+        * web-platform-tests/IndexedDB/event-dispatch-active-flag-expected.txt: Added.
+        * web-platform-tests/IndexedDB/event-dispatch-active-flag.html: Added.
+        * web-platform-tests/IndexedDB/fire-error-event-exception-expected.txt: Added.
+        * web-platform-tests/IndexedDB/fire-error-event-exception.html: Added.
+        * web-platform-tests/IndexedDB/fire-success-event-exception-expected.txt: Added.
+        * web-platform-tests/IndexedDB/fire-success-event-exception.html: Added.
+        * web-platform-tests/IndexedDB/fire-upgradeneeded-event-exception-expected.txt: Added.
+        * web-platform-tests/IndexedDB/fire-upgradeneeded-event-exception.html: Added.
+        * web-platform-tests/IndexedDB/idb-binary-key-roundtrip.htm:
+        * web-platform-tests/IndexedDB/idbcursor_continue_objectstore.htm:
+        * web-platform-tests/IndexedDB/idbfactory-deleteDatabase-opaque-origin-expected.txt: Added.
+        * web-platform-tests/IndexedDB/idbfactory-deleteDatabase-opaque-origin.html: Added.
+        * web-platform-tests/IndexedDB/idbfactory-open-error-properties-expected.txt: Added.
+        * web-platform-tests/IndexedDB/idbfactory-open-error-properties.html: Added.
+        * web-platform-tests/IndexedDB/idbfactory-open-opaque-origin-expected.txt: Added.
+        * web-platform-tests/IndexedDB/idbfactory-open-opaque-origin.html: Added.
+        * web-platform-tests/IndexedDB/idbfactory_deleteDatabase4-expected.txt:
+        * web-platform-tests/IndexedDB/idbfactory_deleteDatabase4.htm:
+        * web-platform-tests/IndexedDB/idbindex_get.htm:
+        * web-platform-tests/IndexedDB/idbindex_get4.htm:
+        * web-platform-tests/IndexedDB/idbindex_getKey4.htm:
+        * web-platform-tests/IndexedDB/idbobjectstore_createIndex13.htm:
+        * web-platform-tests/IndexedDB/idbobjectstore_get4.htm:
+        * web-platform-tests/IndexedDB/idbobjectstore_getKey.html:
+        * web-platform-tests/IndexedDB/key-conversion-exceptions.htm:
+        * web-platform-tests/IndexedDB/keygenerator-explicit-expected.txt: Added.
+        * web-platform-tests/IndexedDB/keygenerator-explicit.html: Added.
+        * web-platform-tests/IndexedDB/keygenerator-inject-expected.txt: Added.
+        * web-platform-tests/IndexedDB/keygenerator-inject.html: Added.
+        * web-platform-tests/IndexedDB/keypath_invalid.htm:
+        * web-platform-tests/IndexedDB/support.js:
+        (auto_fail):
+        (createdb_for_multiple_tests):
+        (indexeddb_test):
+        (is_transaction_active):
+        (spin):
+        (keep_alive):
+        * web-platform-tests/IndexedDB/transaction-abort-request-error-expected.txt: Added.
+        * web-platform-tests/IndexedDB/transaction-abort-request-error.html: Added.
+        * web-platform-tests/IndexedDB/transaction-deactivation-timing-expected.txt: Added.
+        * web-platform-tests/IndexedDB/transaction-deactivation-timing.html: Added.
+        * web-platform-tests/IndexedDB/transaction-lifetime-blocked.htm:
+        * web-platform-tests/IndexedDB/transaction-lifetime.htm:
+        * web-platform-tests/IndexedDB/upgrade-transaction-deactivation-timing-expected.txt: Added.
+        * web-platform-tests/IndexedDB/upgrade-transaction-deactivation-timing.html: Added.
+        * web-platform-tests/IndexedDB/w3c-import.log:
+        * web-platform-tests/IndexedDB/writer-starvation.htm:
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/symmetric_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_symmetric_importKey-expected.txt:
+        * web-platform-tests/XMLHttpRequest/OWNERS:
+        * web-platform-tests/XMLHttpRequest/README.md: Added.
+        * web-platform-tests/XMLHttpRequest/abort-after-receive.htm:
+        * web-platform-tests/XMLHttpRequest/abort-after-timeout.htm:
+        * web-platform-tests/XMLHttpRequest/anonymous-mode-unsupported-expected.txt:
+        * web-platform-tests/XMLHttpRequest/anonymous-mode-unsupported.htm:
+        * web-platform-tests/XMLHttpRequest/data-uri-expected.txt:
+        * web-platform-tests/XMLHttpRequest/data-uri.htm:
+        * web-platform-tests/XMLHttpRequest/event-abort.htm:
+        * web-platform-tests/XMLHttpRequest/event-load.htm:
+        * web-platform-tests/XMLHttpRequest/event-loadend.htm:
+        * web-platform-tests/XMLHttpRequest/event-loadstart-upload-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/event-loadstart-upload.htm: Copied from LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-progress.htm.
+        * web-platform-tests/XMLHttpRequest/event-loadstart.htm:
+        * web-platform-tests/XMLHttpRequest/event-progress.htm:
+        * web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm:
+        * web-platform-tests/XMLHttpRequest/event-timeout.htm:
+        * web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin.htm:
+        * web-platform-tests/XMLHttpRequest/event-upload-progress.htm:
+        * web-platform-tests/XMLHttpRequest/getallresponseheaders-cl-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/getallresponseheaders-cl.htm: Added.
+        * web-platform-tests/XMLHttpRequest/getallresponseheaders-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/getallresponseheaders.htm: Added.
+        * web-platform-tests/XMLHttpRequest/getresponseheader-case-insensitive.htm:
+        * web-platform-tests/XMLHttpRequest/loadstart-and-state-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/loadstart-and-state.html: Added.
+        * web-platform-tests/XMLHttpRequest/open-after-setrequestheader-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-after-setrequestheader.htm:
+        * web-platform-tests/XMLHttpRequest/open-during-abort-event-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/open-during-abort-event.htm: Added.
+        * web-platform-tests/XMLHttpRequest/open-during-abort-processing-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/open-during-abort-processing.htm: Added.
+        * web-platform-tests/XMLHttpRequest/open-referer-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-referer.htm:
+        * web-platform-tests/XMLHttpRequest/open-send-during-abort-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/open-send-during-abort.htm: Added.
+        * web-platform-tests/XMLHttpRequest/open-url-redirected-worker-origin-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/open-url-redirected-worker-origin.htm: Added.
+        * web-platform-tests/XMLHttpRequest/overridemimetype-blob-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/overridemimetype-blob.html: Added.
+        * web-platform-tests/XMLHttpRequest/overridemimetype-invalid-mime-type-expected.txt:
+        * web-platform-tests/XMLHttpRequest/overridemimetype-invalid-mime-type.htm:
+        * web-platform-tests/XMLHttpRequest/resources/corsenabled.py:
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/delay.py:
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/echo-headers.py: Added.
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/header-content-length.asis: Added.
+        * web-platform-tests/XMLHttpRequest/resources/headers-basic.asis: Added.
+        * web-platform-tests/XMLHttpRequest/resources/headers.asis: Added.
+        * web-platform-tests/XMLHttpRequest/resources/inspect-headers.py:
+        (get_response):
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/redirect.py:
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/w3c-import.log:
+        * web-platform-tests/XMLHttpRequest/responsetext-decoding-expected.txt:
+        * web-platform-tests/XMLHttpRequest/responsetext-decoding.htm:
+        * web-platform-tests/XMLHttpRequest/send-accept-language-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-accept-language.htm:
+        * web-platform-tests/XMLHttpRequest/send-data-formdata-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-data-formdata.htm:
+        * web-platform-tests/XMLHttpRequest/send-network-error-sync-events.sub-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-network-error-sync-events.sub.htm:
+        * web-platform-tests/XMLHttpRequest/send-redirect-to-cors.htm:
+        * web-platform-tests/XMLHttpRequest/send-sync-blocks-async.htm:
+        * web-platform-tests/XMLHttpRequest/send-sync-timeout.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-allow-empty-value-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-allow-empty-value.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-allow-whitespace-in-value-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-allow-whitespace-in-value.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-case-insensitive-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-case-insensitive.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-header-forbidden-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-header-forbidden.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-open-setrequestheader-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-open-setrequestheader.htm:
+        * web-platform-tests/XMLHttpRequest/status-error.htm:
+        * web-platform-tests/XMLHttpRequest/template-element-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/template-element.html: Added.
+        * web-platform-tests/XMLHttpRequest/timeout-multiple-fetches-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/timeout-multiple-fetches.html: Added.
+        * web-platform-tests/XMLHttpRequest/w3c-import.log:
+        * web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-reused-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-reused.html: Added.
+        * web-platform-tests/check_stability.py:
+        (replace_streams.on_write):
+        (replace_streams):
+        (Firefox.install):
+        (setup_log_handler.LogHandler.__init__):
+        (setup_log_handler.LogHandler):
+        (setup_log_handler.LogHandler.find_or_create_test):
+        (setup_log_handler.LogHandler.find_or_create_subtest):
+        (setup_log_handler.LogHandler.test_status):
+        (setup_log_handler.LogHandler.test_end):
+        (err_string):
+        (process_results):
+        (write_inconsistent):
+        (write_results):
+        * web-platform-tests/common/get-host-info.sub.js:
+        (get_host_info):
+        * web-platform-tests/dom/OWNERS:
+        * web-platform-tests/dom/lists/DOMTokenList-coverage-for-attributes-expected.txt:
+        * web-platform-tests/dom/lists/DOMTokenList-coverage-for-attributes.html:
+        * web-platform-tests/dom/nodes/Element-matches-expected.txt:
+        * web-platform-tests/dom/nodes/Element-matches.html:
+        * web-platform-tests/dom/nodes/Element-matches.js:
+        (interfaceCheckMatches):
+        (runSpecialMatchesTests):
+        (runInvalidSelectorTestMatches):
+        (runMatchesTest):
+        * web-platform-tests/dom/nodes/Element-webkitMatchesSelector-expected.txt: Added.
+        * web-platform-tests/dom/nodes/Element-webkitMatchesSelector.html: Copied from LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-matches.html.
+        * web-platform-tests/dom/nodes/Node-lookupNamespaceURI-expected.txt:
+        * web-platform-tests/dom/nodes/Node-lookupNamespaceURI.html:
+        * web-platform-tests/dom/nodes/w3c-import.log:
+        * web-platform-tests/encrypted-media/content/video_512x288_h264-360k_multikey_key1_dashinit.mp4: Added.
+        * web-platform-tests/fetch/OWNERS:
+        * web-platform-tests/fetch/README.md: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-referrer-redirected-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer-redirected-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer.js:
+        (testReferrer):
+        * web-platform-tests/fetch/api/basic/request-upload-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-upload-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-upload.js:
+        (testUpload):
+        * web-platform-tests/fetch/api/basic/w3c-import.log:
+        * web-platform-tests/fetch/api/cors/cors-expose-star-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-expose-star-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-expose-star-worker.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-expose-star.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-expose-star.js: Added.
+        (sharedHeaders.string_appeared_here.promise_test):
+        (string_appeared_here.promise_test):
+        * web-platform-tests/fetch/api/cors/cors-preflight-star-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-star-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-star-worker.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-star.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-star.js: Added.
+        (origin.location.origin.preflightTest):
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials.js:
+        (corsRedirectCredentials):
+        * web-platform-tests/fetch/api/cors/w3c-import.log:
+        * web-platform-tests/fetch/api/headers/headers-combine-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-combine.html:
+        * web-platform-tests/fetch/api/headers/headers-record-expected.txt: Added.
+        * web-platform-tests/fetch/api/headers/headers-record.html: Added.
+        * web-platform-tests/fetch/api/headers/w3c-import.log:
+        * web-platform-tests/fetch/api/policies/nested-policy.js: Added.
+        * web-platform-tests/fetch/api/policies/nested-policy.js.headers: Added.
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https-expected.txt: Added.
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https.html: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin.html.
+        * web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https-expected.txt: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https.html: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin.html.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https-expected.txt: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https.html: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin.html.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.js:
+        * web-platform-tests/fetch/api/policies/referrer-origin.html:
+        * web-platform-tests/fetch/api/policies/referrer-origin.js:
+        (promise_test):
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https-expected.txt: Added.
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https.html: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin.html.
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url.js:
+        * web-platform-tests/fetch/api/policies/w3c-import.log:
+        * web-platform-tests/fetch/api/request/request-cache-default-conditional-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-default-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-force-cache-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-no-cache-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-no-store-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-reload-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache.js:
+        * web-platform-tests/fetch/api/request/request-headers-expected.txt:
+        * web-platform-tests/fetch/api/request/request-headers.html:
+        * web-platform-tests/fetch/api/request/request-keepalive-quota-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-keepalive-quota.html: Added.
+        * web-platform-tests/fetch/api/request/resources/cache.py:
+        (main):
+        * web-platform-tests/fetch/api/request/w3c-import.log:
+        * web-platform-tests/fetch/api/resources/preflight.py:
+        (main):
+        * web-platform-tests/fetch/api/response/response-idl-expected.txt:
+        * web-platform-tests/fetch/api/response/response-idl.html:
+        * web-platform-tests/fetch/api/response/response-trailer-expected.txt: Added.
+        * web-platform-tests/fetch/api/response/response-trailer.html: Added.
+        * web-platform-tests/fetch/api/response/w3c-import.log:
+        * web-platform-tests/fetch/w3c-import.log:
+        * web-platform-tests/html/OWNERS:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/browsing_context_name_cross_origin-0.html: Added.
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/browsing_context_name_cross_origin-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/browsing_context_name_cross_origin.html:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/w3c-import.log:
+        * web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-with-colon.sub-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-with-colon.sub.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-stringifier-expected.txt:
+        * web-platform-tests/html/browsers/history/the-location-interface/location-stringifier.html:
+        * web-platform-tests/html/browsers/history/the-location-interface/location-tojson-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-tojson.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/resources/post-your-protocol.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/resources/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/offline/w3c-import.log.
+        * web-platform-tests/html/browsers/history/the-location-interface/w3c-import.log:
+        * web-platform-tests/html/browsers/offline/no-appcache-in-shared-workers-historical-expected.txt: Added.
+        * web-platform-tests/html/browsers/offline/no-appcache-in-shared-workers-historical.html: Added.
+        * web-platform-tests/html/browsers/offline/no-appcache-in-shared-workers-historical.js: Added.
+        (test):
+        * web-platform-tests/html/browsers/offline/w3c-import.log:
+        * web-platform-tests/html/browsers/the-window-object/support/noopener-target.html:
+        * web-platform-tests/html/browsers/the-window-object/window-open-noopener-expected.txt:
+        * web-platform-tests/html/browsers/the-window-object/window-open-noopener.html:
+        * web-platform-tests/html/browsers/windows/browsing-context-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/browsing-context-window-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/browsing-context-window.html: Added.
+        * web-platform-tests/html/browsers/windows/browsing-context.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/resources/frameElement-nested-frame.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/resources/frameElement-window-post.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/resources/post-to-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/resources/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/windows/nested-browsing-contexts/w3c-import.log.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/w3c-import.log:
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-parent-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-parent-null-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-parent-null.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-parent.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-top-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-top-null-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-top-null.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-top.html: Added.
+        * web-platform-tests/html/browsers/windows/noreferrer-cross-origin-close-manual.sub.html:
+        * web-platform-tests/html/browsers/windows/noreferrer-cross-origin-window-name-manual.sub.html: Added.
+        * web-platform-tests/html/browsers/windows/noreferrer-null-opener-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/noreferrer-null-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/noreferrer-window-name.html:
+        * web-platform-tests/html/browsers/windows/resources/browsing-context-window.html: Added.
+        * web-platform-tests/html/browsers/windows/resources/echo-window-name.html: Added.
+        * web-platform-tests/html/browsers/windows/resources/nested-post-to-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/resources/noreferrer-window-name.html: Added.
+        * web-platform-tests/html/browsers/windows/resources/post-to-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/resources/target-cross-origin.sub.html: Added.
+        * web-platform-tests/html/browsers/windows/resources/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/windows/w3c-import.log.
+        * web-platform-tests/html/browsers/windows/resources/window-close-button.html: Added.
+        * web-platform-tests/html/browsers/windows/resources/window-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/targeting-multiple-cross-origin-manual.sub.html:
+        * web-platform-tests/html/browsers/windows/w3c-import.log:
+        * web-platform-tests/html/dom/elements/elements-in-the-dom/historical-expected.txt:
+        * web-platform-tests/html/dom/elements/elements-in-the-dom/historical.html:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/dom/interfaces.worker-expected.txt: Added.
+        * web-platform-tests/html/dom/interfaces.worker.html: Added.
+        * web-platform-tests/html/dom/interfaces.worker.js: Added.
+        (doTest):
+        (fetchData):
+        (promise_test):
+        * web-platform-tests/html/dom/reflection.js:
+        * web-platform-tests/html/dom/resources/self-origin-subframe.html: Added.
+        * web-platform-tests/html/dom/resources/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/w3c-import.log.
+        * web-platform-tests/html/dom/self-origin.any-expected.txt: Added.
+        * web-platform-tests/html/dom/self-origin.any.html: Added.
+        * web-platform-tests/html/dom/self-origin.any.js: Added.
+        (test):
+        * web-platform-tests/html/dom/self-origin.sub-expected.txt: Added.
+        * web-platform-tests/html/dom/self-origin.sub.html: Added.
+        * web-platform-tests/html/dom/self-origin.worker-expected.txt: Added.
+        * web-platform-tests/html/dom/self-origin.worker.html: Added.
+        * web-platform-tests/html/dom/w3c-import.log:
+        * web-platform-tests/html/semantics/document-metadata/styling/LinkStyle.html:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/w3c-import.log.
+        * web-platform-tests/html/semantics/embedded-content/resources/should-load.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/resources/should-not-load.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/resources/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/w3c-import.log.
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/size.attributes.parse.whitespace.html:
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.null-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.null.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-ignored-in-media-element.html:
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-in-object-fallback-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-in-object-fallback-2.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation_by_user_activation_without_user_gesture-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation_by_user_activation_without_user_gesture.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/iframe-that-performs-top-navigation-without-user-gesture-failed.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/iframe-that-performs-top-navigation.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/navigation-changed-iframe.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/Image-constructor-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/Image-constructor.html:
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/object-ignored-in-media-element-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/object-ignored-in-media-element.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/object-in-object-fallback-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/object-in-object-fallback-2.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-expected.txt:
+        * web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application.html:
+        * web-platform-tests/html/semantics/forms/textfieldselection/textfieldselection-setSelectionRange-expected.txt:
+        * web-platform-tests/html/semantics/forms/textfieldselection/textfieldselection-setSelectionRange.html:
+        * web-platform-tests/html/semantics/forms/the-input-element/valueMode-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/valueMode.html:
+        * web-platform-tests/html/semantics/forms/the-select-element/common-HTMLOptionsCollection-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-select-element/common-HTMLOptionsCollection.html:
+        * web-platform-tests/html/semantics/forms/the-select-element/selected-index-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-select-element/selected-index.html:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/data-url-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/data-url.html:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/tFoot-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/tFoot.html:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/tHead-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/tHead.html:
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/insertCell-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/insertCell.html:
+        * web-platform-tests/html/syntax/parsing-html-fragments/w3c-import.log:
+        * web-platform-tests/html/syntax/parsing/test.js:
+        (init_tests):
+        * web-platform-tests/html/webappapis/scripting/events/body-exposed-window-event-handlers-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/body-exposed-window-event-handlers.html:
+        * web-platform-tests/html/webappapis/scripting/events/compile-event-handler-settings-objects-expected.txt: Added.
+        * web-platform-tests/html/webappapis/scripting/events/compile-event-handler-settings-objects.html: Added.
+        * web-platform-tests/html/webappapis/scripting/events/event-handler-onauxclick.html:
+        * web-platform-tests/html/webappapis/scripting/events/event-handler-processing-algorithm-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/event-handler-processing-algorithm.html:
+        * web-platform-tests/html/webappapis/scripting/events/resources/compiled-event-handler-settings-objects-support.html: Added.
+        * web-platform-tests/html/webappapis/scripting/events/resources/open-window.html: Added.
+        * web-platform-tests/html/webappapis/scripting/events/resources/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/offline/w3c-import.log.
+        * web-platform-tests/html/webappapis/scripting/events/w3c-import.log:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-cross-origin-setTimeout.html:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-setInterval.html:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-setTimeout.html:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/runtime-error-cross-origin-setTimeout.html:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/runtime-error-in-setInterval.html:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/runtime-error-in-setTimeout.html:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/support/syntax-error-in-setInterval.js:
+        (step_timeout):
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/support/undefined-variable-in-setInterval.js:
+        (step_timeout):
+        * web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID-expected.txt:
+        * web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.worker-expected.txt:
+        * web-platform-tests/lint.whitelist:
+        * web-platform-tests/media/CanvasTest.ttf: Added.
+        * web-platform-tests/media/w3c-import.log:
+        * web-platform-tests/streams/piping/general.js:
+        (false.promise_test):
+        * web-platform-tests/streams/piping/pipe-through.js:
+        (promise_test):
+        (test):
+        * web-platform-tests/streams/readable-byte-streams/general-expected.txt:
+        * web-platform-tests/streams/readable-byte-streams/general.dedicatedworker-expected.txt:
+        * web-platform-tests/streams/readable-byte-streams/general.js:
+        (test):
+        * web-platform-tests/streams/readable-streams/bad-underlying-sources.js:
+        (promise_test):
+        * web-platform-tests/streams/readable-streams/brand-checks-expected.txt:
+        * web-platform-tests/streams/readable-streams/brand-checks.dedicatedworker-expected.txt:
+        * web-platform-tests/streams/readable-streams/brand-checks.js:
+        (test):
+        (fakeReadableStream):
+        * web-platform-tests/streams/readable-streams/cancel.js:
+        (promise_test):
+        * web-platform-tests/streams/readable-streams/default-reader-expected.txt: Added.
+        * web-platform-tests/streams/readable-streams/default-reader.dedicatedworker-expected.txt: Added.
+        * web-platform-tests/streams/readable-streams/default-reader.dedicatedworker.html: Added.
+        * web-platform-tests/streams/readable-streams/default-reader.html: Added.
+        * web-platform-tests/streams/readable-streams/default-reader.js: Added.
+        (test):
+        (promise_test):
+        (promise_test.t.const.rs.new.ReadableStream.start):
+        (promise_test.t.const.rs.new.ReadableStream.cancel):
+        * web-platform-tests/streams/readable-streams/default-reader.serviceworker.https-expected.txt: Added.
+        * web-platform-tests/streams/readable-streams/default-reader.serviceworker.https.html: Added.
+        * web-platform-tests/streams/readable-streams/default-reader.sharedworker-expected.txt: Added.
+        * web-platform-tests/streams/readable-streams/default-reader.sharedworker.html: Added.
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size-expected.txt: Added.
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.dedicatedworker-expected.txt: Added.
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.dedicatedworker.html: Added.
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.html: Added.
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.js: Added.
+        (promise_test):
+        (setupTestStream):
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.serviceworker.https-expected.txt: Added.
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.serviceworker.https.html: Added.
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.sharedworker-expected.txt: Added.
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.sharedworker.html: Added.
+        * web-platform-tests/streams/readable-streams/garbage-collection-expected.txt:
+        * web-platform-tests/streams/readable-streams/garbage-collection.dedicatedworker-expected.txt:
+        * web-platform-tests/streams/readable-streams/garbage-collection.js:
+        (promise_test):
+        * web-platform-tests/streams/readable-streams/general-expected.txt:
+        * web-platform-tests/streams/readable-streams/general.dedicatedworker-expected.txt:
+        * web-platform-tests/streams/readable-streams/general.js:
+        (promise_test):
+        (test):
+        * web-platform-tests/streams/readable-streams/pipe-through.js:
+        (test):
+        * web-platform-tests/streams/readable-streams/w3c-import.log:
+        * web-platform-tests/url/OWNERS:
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-origin-expected.txt:
+        * web-platform-tests/url/a-element-origin-xhtml-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/failure-expected.txt: Added.
+        * web-platform-tests/url/failure.html: Added.
+        * web-platform-tests/url/setters_tests.json:
+        * web-platform-tests/url/url-constructor-expected.txt:
+        * web-platform-tests/url/url-origin-expected.txt:
+        * web-platform-tests/url/url-setters-expected.txt:
+        * web-platform-tests/url/urltestdata.json:
+        * web-platform-tests/url/w3c-import.log:
+        * web-platform-tests/w3c-import.log:
+        * web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription-expected.txt: Added.
+        * web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html: Added.
+        * web-platform-tests/webrtc/rtcpeerconnection/w3c-import.log:
+
+2017-03-12  Javier Fernandez  <jfernandez@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=169534
+
+        Unreviewed GTK+ gardening.
+
+        Rebaseline tests:
+           - imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-case-insensitive.html
+
+        * web-platform-tests/XMLHttpRequest/getresponseheader-case-insensitive-expected.txt:
+
+2017-03-12  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBRequest respond() (closed stream state)
+        https://bugs.webkit.org/show_bug.cgi?id=168781
+
+        Reviewed by Youenn Fablet.
+
+        Updated WPT expectations for readable byte streams tests.
+
+        * web-platform-tests/streams/readable-byte-streams/general-expected.txt:
+        * web-platform-tests/streams/readable-byte-streams/general.dedicatedworker-expected.txt:
+
+2017-03-11  Youenn Fablet  <youenn@apple.com>
+
+        XMLHttpRequest: make setRequestHeader() use `, ` as separator (including a space)
+        https://bugs.webkit.org/show_bug.cgi?id=169285
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/XMLHttpRequest/setrequestheader-case-insensitive.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed.htm:
+        * web-platform-tests/fetch/api/headers/headers-combine.html:
+
+2017-03-10  Antti Koivisto  <antti@apple.com>
+
+        imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html is unreliable
+        https://bugs.webkit.org/show_bug.cgi?id=169465
+
+        Reviewed by Zalan Bujtas.
+
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute-expected.txt:
+
+2017-03-09  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Implement PBKDF2 in WebCrypto
+        https://bugs.webkit.org/show_bug.cgi?id=143458
+        <rdar://problem/27311703>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/symmetric_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_symmetric_importKey-expected.txt:
+
+2017-03-08  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for non-standard document.all.tags()
+        https://bugs.webkit.org/show_bug.cgi?id=169337
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline web platform test now that one more check is passing.
+
+        * web-platform-tests/html/infrastructure/common-dom-interfaces/collections/htmlallcollection-expected.txt:
+
+2017-03-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for history.scrollRestoration
+        https://bugs.webkit.org/show_bug.cgi?id=147782
+        rdar://problem/22614568
+
+        Reviewed by Sam Weinig.
+        
+        New passing baselines.
+
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-basic-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-cross-origin-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-samedoc-expected.txt:
+
+2017-03-07  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Implement ECDH ImportKey/ExportKey operations
+        https://bugs.webkit.org/show_bug.cgi?id=169257
+        <rdar://problem/23789585>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/import_export/ec_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_ec_importKey-expected.txt:
+
+2017-03-07  Alex Christensen  <achristensen@webkit.org>
+
+        [URLParser] Fix file URLs that are just file:// and a Windows drive letter
+        https://bugs.webkit.org/show_bug.cgi?id=169242
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2017-03-07  Youenn Fablet  <youenn@apple.com>
+
+        W3C importer should be able to update the import expectations file
+        https://bugs.webkit.org/show_bug.cgi?id=168037
+
+        Reviewed by Ryosuke Niwa.
+
+        * resources/import-expectations.json:
+
+2017-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Align initEvent / initCustomEvent / initMessageEvent with the latest specification
+        https://bugs.webkit.org/show_bug.cgi?id=169176
+
+        Reviewed by Alex Christensen.
+
+        Re-sync web-platform tests from upstream after:
+        - https://github.com/w3c/web-platform-tests/pull/5043
+        - https://github.com/w3c/web-platform-tests/pull/5044
+
+        * web-platform-tests/dom/events/CustomEvent-expected.txt:
+        * web-platform-tests/dom/events/CustomEvent.html:
+        * web-platform-tests/dom/events/Event-initEvent-expected.txt:
+        * web-platform-tests/dom/events/Event-initEvent.html:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/interfaces.html:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/dom/resources/interfaces.idl: Copied from LayoutTests/imported/w3c/web-platform-tests/html/dom/interfaces.html.
+        * web-platform-tests/html/dom/resources/untested-interfaces.idl: Added.
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor-expected.txt: Removed.
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.html: Removed.
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https.html:
+
+2017-03-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Implement ECDH GenerateKey operation
+        https://bugs.webkit.org/show_bug.cgi?id=169093
+        <rdar://problem/23789585>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/successes_ECDH.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDH-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDH-expected.txt:
+
+2017-03-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix URLs relative to file URLs with paths beginning with Windows drive letters
+        https://bugs.webkit.org/show_bug.cgi?id=169178
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2017-03-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Import W3C Test Suite
+        https://bugs.webkit.org/show_bug.cgi?id=169196
+
+        Reviewed by Youenn Fablet.
+
+        This patch imports the CSS Grid Layout test suite from csswg-test repository:
+        https://github.com/w3c/csswg-test/tree/master/css-grid-1
+
+        * csswg-test/css-grid-1/OWNERS: Added.
+        * csswg-test/css-grid-1/README.md: Added.
+        * csswg-test/css-grid-1/grid-definition/fr-unit-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/fr-unit-with-percentage-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/fr-unit-with-percentage.html: Added.
+        * csswg-test/css-grid-1/grid-definition/fr-unit.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-flexible-lengths-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-flexible-lengths-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-grid-template-areas-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-grid-template-areas-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-grid-template-columns-rows-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-grid-template-columns-rows-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-named-grid-lines-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-named-grid-lines-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-repeat-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-support-repeat-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-template-columns-rows-resolved-values-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-inline-template-columns-rows-resolved-values-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-auto-tracks-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-auto-tracks.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-basic-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-basic.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-repeat-notation-expected.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-layout-repeat-notation.html: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-flexible-lengths-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-flexible-lengths-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-grid-template-areas-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-grid-template-areas-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-grid-template-columns-rows-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-grid-template-columns-rows-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-named-grid-lines-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-named-grid-lines-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-repeat-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-support-repeat-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-template-columns-rows-resolved-values-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-definition/grid-template-columns-rows-resolved-values-001.xht: Added.
+        * csswg-test/css-grid-1/grid-definition/support/testing-utils.js: Added.
+        (checkGridTemplateRows):
+        (testGridTemplateColumnsRows):
+        (testGridTemplateAreas):
+        (TestingUtils):
+        * csswg-test/css-grid-1/grid-definition/support/w3c-import.log: Added.
+        * csswg-test/css-grid-1/grid-definition/w3c-import.log: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-inline-blocks-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-items-inline-blocks-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-auto-placement-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-order-property-painting-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-006-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-006.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-001.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-002.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-003.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-item-containing-block-004.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-inline-blocks-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-inline-blocks-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-sizing-alignment-001-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-items-sizing-alignment-001.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-grid-in-grid-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-grid-in-grid.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-z-order-a-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-z-order-a.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-z-order-b-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-layout-z-order-b.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-005-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-006-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-006.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-007-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-007.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-008-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-008.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-009-expected.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-009.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-010-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-010.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-011-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-011.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-012-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-012.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-013-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-013.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-014-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-014.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-015-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-015.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-016-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-016.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-017-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-017.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-018-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-minimum-size-grid-items-018.html: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-auto-placement-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-order-property-painting-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-002.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-003.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-004-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-004.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-005-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-005.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-006-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-006.xht: Added.
+        * csswg-test/css-grid-1/grid-items/ref-filled-green-100px-square-image.html: Added.
+        * csswg-test/css-grid-1/grid-items/support/100x100-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/100x50-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/200x200-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/50x100-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/50x50-green.png: Added.
+        * csswg-test/css-grid-1/grid-items/support/w3c-import.log: Added.
+        * csswg-test/css-grid-1/grid-items/w3c-import.log: Added.
+        * csswg-test/css-grid-1/grid-layout-properties-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-layout-properties.html: Added.
+        * csswg-test/css-grid-1/grid-model/display-grid-expected.html: Added.
+        * csswg-test/css-grid-1/grid-model/display-grid.html: Added.
+        * csswg-test/css-grid-1/grid-model/display-inline-grid-expected.html: Added.
+        * csswg-test/css-grid-1/grid-model/display-inline-grid.html: Added.
+        * csswg-test/css-grid-1/grid-model/grid-computed-value-display-floated-items-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-model/grid-computed-value-display-floated-items-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-display-grid-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-display-grid-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-display-inline-grid-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-display-inline-grid-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-002.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-letter-003.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-002.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-first-line-003.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-float-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-float-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-floats-no-intrude-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-floats-no-intrude-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-002.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-letter-003.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-002-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-002.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-003-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-first-line-003.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-float-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-float-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-floats-no-intrude-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-floats-no-intrude-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-margins-no-collapse-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-margins-no-collapse-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-multicol-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-multicol-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-vertical-align-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-inline-vertical-align-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-margins-no-collapse-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-margins-no-collapse-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-multicol-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-multicol-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-support-display-001-expected.txt: Added.
+        * csswg-test/css-grid-1/grid-model/grid-support-display-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-vertical-align-001-expected.xht: Added.
+        * csswg-test/css-grid-1/grid-model/grid-vertical-align-001.xht: Added.
+        * csswg-test/css-grid-1/grid-model/w3c-import.log: Added.
+        * csswg-test/css-grid-1/implicit-grids/grid-support-grid-auto-columns-rows-001-expected.html: Added.
+        * csswg-test/css-grid-1/implicit-grids/grid-support-grid-auto-columns-rows-001.html: Added.
+        * csswg-test/css-grid-1/implicit-grids/w3c-import.log: Added.
+        * csswg-test/css-grid-1/layout-algorithm/grid-layout-free-space-unit-expected.html: Added.
+        * csswg-test/css-grid-1/layout-algorithm/grid-layout-free-space-unit.html: Added.
+        * csswg-test/css-grid-1/layout-algorithm/w3c-import.log: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-grid-span-expected.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-grid-span.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-lines-expected.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-lines-shorthands-expected.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-lines-shorthands.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-lines.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-placement-shorthands-expected.html: Added.
+        * csswg-test/css-grid-1/placement/grid-layout-placement-shorthands.html: Added.
+        * csswg-test/css-grid-1/placement/w3c-import.log: Added.
+        * csswg-test/css-grid-1/test-plan/index.html: Added.
+        * csswg-test/css-grid-1/test-plan/w3c-import.log: Added.
+        * csswg-test/css-grid-1/w3c-import.log: Added.
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+
+2017-03-04  Chris Dumez  <cdumez@apple.com>
+
+        Rebaseline W3C test after r213412.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2017-03-03  Andy Estes  <aestes@apple.com>
+
+        Add support for canvas.toBlob
+        https://bugs.webkit.org/show_bug.cgi?id=148878
+        <rdar://problem/22590406>
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.jpeg-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.png-expected.txt:
+
+2017-03-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r213344.
+
+        This changed caused LayoutTest crashes under GuardMalloc.
+
+        Reverted changeset:
+
+        "Add support for canvas.toBlob"
+        https://bugs.webkit.org/show_bug.cgi?id=148878
+        http://trac.webkit.org/changeset/213344
+
+2017-03-02  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebCrypto API support for AES-GCM
+        https://bugs.webkit.org/show_bug.cgi?id=157175
+        <rdar://problem/27311691>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_gcm.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_gcm-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/failures_AES-GCM.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/successes_AES-GCM.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-GCM-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-GCM-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/symmetric_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_symmetric_importKey-expected.txt:
+
+2017-03-02  Andy Estes  <aestes@apple.com>
+
+        Add support for canvas.toBlob
+        https://bugs.webkit.org/show_bug.cgi?id=148878
+        <rdar://problem/22590406>
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.jpeg-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.png-expected.txt:
+
+2017-03-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r213301.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "WebCrypto API support for AES-GCM"
+        https://bugs.webkit.org/show_bug.cgi?id=157175
+        http://trac.webkit.org/changeset/213301
+
+2017-02-22  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebCrypto API support for AES-GCM
+        https://bugs.webkit.org/show_bug.cgi?id=157175
+        <rdar://problem/27311691>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_gcm.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_gcm-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/failures_AES-GCM.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/successes_AES-GCM.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-GCM-expected.txt:
+        * web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-GCM-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/symmetric_importKey.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/import_export/test_symmetric_importKey-expected.txt:
+
 2017-02-24  Joseph Pecoraro  <pecoraro@apple.com>
 
         [Resource Timing] Media elements initiated loads should set the initiatorType to their element name (video/audio)

@@ -7,6 +7,10 @@ fast/viewport/ios/ipad/width-is-device-width.html [ Pass ]
 
 editing/input/focus-change-with-marked-text.html [ Pass ]
 
+# Skip WebRTC for now in WK1
+imported/w3c/web-platform-tests/webrtc [ Skip ]
+webrtc [ Skip ]
+
 # <rdar://problem/6501130> LayoutTests: Enable editing tests after we support editing
 editing/deleting/4922367.html
 editing/deleting/5126166.html
@@ -557,7 +561,6 @@ compositing/overflow/overflow-scrollbar-layers.html [ Failure ]
 compositing/overflow/overflow-scrollbar-layer-positions.html [ Failure ]
 compositing/overflow/scrollbar-painting.html [ Failure ]
 compositing/overflow/scroll-ancestor-update.html [ Failure ]
-compositing/regions/transformed-layer-inside-transformed-layer.html [ ImageOnlyFailure ]
 compositing/repaint/fixed-background-scroll.html [ Failure ]
 compositing/repaint/invalidations-on-composited-layers.html [ Failure ]
 compositing/repaint/resize-repaint.html [ Failure ]
@@ -1327,6 +1330,7 @@ webkit.org/b/155495 compositing/visible-rect/animated-from-none.html [ Failure P
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-backslash.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
@@ -1335,6 +1339,7 @@ webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]
+webkit.org/b/156069 http/tests/download/anchor-download-no-value.html [ Skip ]
 
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]

@@ -6,6 +6,7 @@
 # Platform-specific tests. Skipped here, then re-enabled on the appropriate platform.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
+compositing/ios [ Skip ]
 css3/touch-action [ Skip ]
 accessibility/ios-simulator [ Skip ]
 accessibility/gtk [ Skip ]
@@ -25,6 +26,7 @@ fast/viewport/ios [ Skip ]
 fast/visual-viewport/ios/ [ Skip ]
 fast/events/ios [ Skip ]
 fast/events/touch/ios [ Skip ]
+fast/history/ios [ Skip ]
 fast/scrolling/ios [ Skip ]
 scrollingcoordinator/ios [ Skip ]
 fast/content-observation [ Skip ]
@@ -32,6 +34,9 @@ media/mac [ Skip ]
 media/ios [ Skip ]
 media/controls/ipad [ Skip ]
 fast/text-autosizing [ Skip ]
+
+# window.showModalDialog is only tested in DumpRenderTree on Mac.
+editing/execCommand/show-modal-dialog-during-execCommand.html [ Skip ]
 
 fast/shadow-dom/touch-event-on-text-assigned-to-slot.html [ Skip ]
 
@@ -218,7 +223,7 @@ webkit.org/b/132791 svg/as-object/sizing/svg-in-object-placeholder-height-auto.h
 
 webkit.org/b/133057 fast/table/border-collapsing/collapsed-borders-adjoining-sections.html [ ImageOnlyFailure ]
 
-webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Failure ]
+webkit.org/b/169075 editing/selection/extend-by-character-007.html [ Failure ]
 
 # CSS Font Loading is not yet enabled on all platforms
 webkit.org/b/135390 fast/css/fontloader-download-error.html [ Skip ]
@@ -268,6 +273,8 @@ webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap.html [ ImageOnlyFa
 # grid layout tests
 webkit.org/b/165062 fast/css-grid-layout/grid-baseline.html [ ImageOnlyFailure ]
 webkit.org/b/165062 fast/css-grid-layout/grid-baseline-margins.html [ ImageOnlyFailure ]
+webkit.org/b/149891 imported/w3c/csswg-test/css-grid-1/grid-layout-properties.html [ Failure ]
+webkit.org/b/169271 imported/w3c/csswg-test/css-grid-1/grid-items/grid-items-sizing-alignment-001.html [ ImageOnlyFailure ]
 
 # nth-child tests takes long time and Debug build sometimes timeouts because there are many test cases.
 webkit.org/b/137149 fast/selectors/nth-child-of-basics.html [ Slow ]
@@ -295,6 +302,20 @@ webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflectio
 webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflection-text.html  [ Skip ]
 webkit.org/b/162517 [ Debug ] imported/w3c/web-platform-tests/html/the-xhtml-syntax/parsing-xhtml-documents/xhtml-mathml-dtd-entity-support.htm [ Skip ]
 
+# Tests that are flaky due to console log / error messages
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/basic.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/credentials-flag.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/preflight-cache.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/preflight-failure.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-origin.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-preflight.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-preflight-2.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/simple-requests.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/simple-requests.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/status-preflight.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/status-async.htm [ Failure ]
+webkit.org/b/169565 imported/w3c/web-platform-tests/cors/304.htm [ Failure ]
+
 # WPT tests that fail after doing full test repository reimport and need further investigation
 imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-document.htm [ Pass Failure Timeout ]
 imported/w3c/web-platform-tests/dom/nodes/Document-createElement-namespace.html [ Pass Failure ]
@@ -313,8 +334,6 @@ webkit.org/b/168357 imported/w3c/web-platform-tests/resource-timing/rt-initiator
 webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-frames.html [ Pass Failure ]
 webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-workers.html [ Pass Failure ]
 imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass Failure ]
-
-webkit.org/b/161176 [ Debug ] imported/w3c/web-platform-tests/url/url-setters.html [ Skip ]
 
 webkit.org/b/157068 imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Skip ]
 webkit.org/b/157145 imported/w3c/web-platform-tests/fetch/nosniff/stylesheet.html [ Failure Pass ]
@@ -688,26 +707,34 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
-# WebRTC backend not enabled by default on Mac/iOS.
-# GTK enables some of this tests on their TestExpectations file.
-webrtc [ Skip ]
+webrtc/peer-connection-audio-mute2.html [ Pass Failure ]
+webrtc/peer-connection-remote-audio-mute2.html [ Pass Failure ]
+webrtc/peer-connection-remote-audio-mute.html [ Pass Failure ]
 fast/mediastream/getUserMedia-webaudio.html [ Skip ]
-fast/mediastream/RTCPeerConnection-AddRemoveStream.html [ Skip ]
 fast/mediastream/RTCPeerConnection-closed-state.html [ Skip ]
 fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html [ Skip ]
 fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
-fast/mediastream/RTCPeerConnection-onnegotiationneeded.html [ Skip ]
 fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
 fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
 fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Pass Failure ]
 
-# See webkit.org/b/168736
-fast/mediastream/RTCPeerConnection-addIceCandidate.html [ Failure  ]
-fast/mediastream/RTCPeerConnection-addTrack-reuse-sender.html [ Failure  ]
-fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html [ Failure  ]
-imported/w3c/web-platform-tests/webrtc/datachannel-emptystring.html [ Failure  ]
-imported/w3c/web-platform-tests/webrtc/no-media-call.html [ Failure  ]
-imported/w3c/web-platform-tests/webrtc/promises-call.html [ Failure  ]
+# Need updating wptserve
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/open-url-redirected-worker-origin.htm [ Skip ]
+imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.html [ Skip ]
+imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.worker.html [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/anonymous-mode-unsupported.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/open-after-setrequestheader.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/open-referer.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/send-accept-language.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-empty-value.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-whitespace-in-value.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-case-insensitive.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-header-forbidden.htm [ Skip ]
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-open-setrequestheader.htm [ Skip ]
+imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Skip ]
+imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-attributes-body-window.html [ Skip ]
 
 # Only iOS WK1 has testRunner.setPagePaused.
 fast/dom/timer-fire-after-page-pause.html [ Skip ]
@@ -948,9 +975,10 @@ webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Sk
 # This test is just way too slow.
 workers/bomb-with-v8.html [ Skip ]
 
-# WebCryptoAPI tests that take too long to complete, need to scale down. webkit.org/b/159638
+# WebCryptoAPI tests that take too long to complete
 imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Skip ]
-imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.worker.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.worker.html [ Slow ]
+imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2.html [ Slow ]
 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.worker.html [ Skip ]
 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.worker.html [ Slow ]
 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSA-OAEP.html [ Skip ]
@@ -1048,6 +1076,7 @@ webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 webkit.org/b/168175 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/same-url.html [ Pass Failure ]
 webkit.org/b/168175 imported/w3c/web-platform-tests/html/browsers/offline/browser-state/navigator_online_online.html [ Pass Failure ]
 webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Timeout Pass ]
+webkit.org/b/169264 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-samedoc.html [ Failure ]
 
 webkit.org/b/168066 performance-api/performance-now-api.html [ Pass Failure ]
 webkit.org/b/168005 performance-api/performance-now-time-origin-in-worker.html [ Pass Failure ]
@@ -1199,3 +1228,7 @@ fast/table/colspanMinWidth-vertical.html [ Skip ]
 
 ### END OF -disabled tests
 ########################################
+
+webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Failure ]
+
+webkit.org/b/169625 imported/w3c/web-platform-tests/cors/status.htm [ Pass Failure ]

@@ -199,19 +199,19 @@ bool MediaStreamPrivate::hasAudio() const
     return false;
 }
 
-bool MediaStreamPrivate::hasLocalVideoSource() const
+bool MediaStreamPrivate::hasCaptureVideoSource() const
 {
     for (auto& track : m_trackSet.values()) {
-        if (track->type() == RealtimeMediaSource::Type::Video && !track->remote())
+        if (track->type() == RealtimeMediaSource::Type::Video && track->isCaptureTrack())
             return true;
     }
     return false;
 }
 
-bool MediaStreamPrivate::hasLocalAudioSource() const
+bool MediaStreamPrivate::hasCaptureAudioSource() const
 {
     for (auto& track : m_trackSet.values()) {
-        if (track->type() == RealtimeMediaSource::Type::Audio && !track->remote())
+        if (track->type() == RealtimeMediaSource::Type::Audio && track->isCaptureTrack())
             return true;
     }
     return false;
@@ -237,30 +237,6 @@ FloatSize MediaStreamPrivate::intrinsicSize() const
     }
 
     return size;
-}
-
-void MediaStreamPrivate::paintCurrentFrameInContext(GraphicsContext& context, const FloatRect& rect)
-{
-    if (context.paintingDisabled())
-        return;
-
-    if (active() && m_activeVideoTrack)
-        m_activeVideoTrack->paintCurrentFrameInContext(context, rect);
-    else {
-        GraphicsContextStateSaver stateSaver(context);
-        context.translate(rect.x(), rect.y() + rect.height());
-        context.scale(FloatSize(1, -1));
-        IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
-        context.fillRect(paintRect, Color::black);
-    }
-}
-
-RefPtr<Image> MediaStreamPrivate::currentFrameImage()
-{
-    if (!active() || !m_activeVideoTrack)
-        return nullptr;
-
-    return m_activeVideoTrack->source().currentFrameImage();
 }
 
 void MediaStreamPrivate::updateActiveVideoTrack()

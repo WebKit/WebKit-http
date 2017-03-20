@@ -59,6 +59,10 @@
 
 using namespace WebCore;
 
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebDragClientAdditionsWebKit1.mm>)
+#import <WebKitAdditions/WebDragClientAdditionsWebKit1.mm>
+#endif
+
 WebDragClient::WebDragClient(WebView* webView)
     : m_webView(webView) 
 {
@@ -70,6 +74,10 @@ WebDragClient::WebDragClient(WebView* webView)
 bool WebDragClient::useLegacyDragClient()
 {
     return false;
+}
+
+void WebDragClient::didConcludeEditDrag()
+{
 }
 
 static WebHTMLView *getTopHTMLView(Frame* frame)
@@ -175,12 +183,17 @@ void WebDragClient::declareAndWriteAttachment(const String& pasteboardName, Elem
 }
 #endif
 
-#else
+#elif !ENABLE(DATA_INTERACTION)
 
 bool WebDragClient::useLegacyDragClient()
 {
     return false;
 }
+
+void WebDragClient::didConcludeEditDrag()
+{
+}
+
 WebCore::DragDestinationAction WebDragClient::actionMaskForDrag(const WebCore::DragData&)
 {
     return DragDestinationActionNone;

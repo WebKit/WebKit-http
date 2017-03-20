@@ -257,6 +257,7 @@ public:
         m_origin = NodeOrigin(CodeOrigin(0), CodeOrigin(0), true);
         for (unsigned i = codeBlock()->numParameters(); i--;) {
             Node* node = m_graph.m_arguments[i];
+            m_out.setOrigin(node);
             VirtualRegister operand = virtualRegisterForArgument(i);
             
             LValue jsValue = m_out.load64(addressFor(operand));
@@ -1022,7 +1023,8 @@ private:
             compileMaterializeCreateActivation();
             break;
         case CheckTraps:
-            compileCheckTraps();
+            if (Options::usePollingTraps())
+                compileCheckTraps();
             break;
         case CreateRest:
             compileCreateRest();
@@ -2867,10 +2869,40 @@ private:
 
     void compileGetByIdWithThis()
     {
-        LValue base = lowJSValue(m_node->child1());
-        LValue thisValue = lowJSValue(m_node->child2());
-        LValue result = vmCall(Int64, m_out.operation(operationGetByIdWithThis), m_callFrame, base, thisValue, m_out.constIntPtr(m_graph.identifiers()[m_node->identifierNumber()]));
-        setJSValue(result);
+        if (m_node->child1().useKind() == CellUse && m_node->child2().useKind() == CellUse)
+            setJSValue(getByIdWithThis(lowCell(m_node->child1()), lowCell(m_node->child2())));
+        else {
+            LValue base = lowJSValue(m_node->child1());
+            LValue thisValue = lowJSValue(m_node->child2());
+            
+            LBasicBlock baseCellCase = m_out.newBlock();
+            LBasicBlock notCellCase = m_out.newBlock();
+            LBasicBlock thisValueCellCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+            
+            m_out.branch(
+                isCell(base, provenType(m_node->child1())), unsure(baseCellCase), unsure(notCellCase));
+            
+            LBasicBlock lastNext = m_out.appendTo(baseCellCase, thisValueCellCase);
+            
+            m_out.branch(
+                isCell(thisValue, provenType(m_node->child2())), unsure(thisValueCellCase), unsure(notCellCase));
+            
+            m_out.appendTo(thisValueCellCase, notCellCase);
+            ValueFromBlock cellResult = m_out.anchor(getByIdWithThis(base, thisValue));
+            m_out.jump(continuation);
+
+            m_out.appendTo(notCellCase, continuation);
+            ValueFromBlock notCellResult = m_out.anchor(vmCall(
+                Int64, m_out.operation(operationGetByIdWithThis),
+                m_callFrame, base, thisValue,
+                m_out.constIntPtr(m_graph.identifiers()[m_node->identifierNumber()])));
+            m_out.jump(continuation);
+            
+            m_out.appendTo(continuation, lastNext);
+            setJSValue(m_out.phi(Int64, cellResult, notCellResult));
+        }
+        
     }
 
     void compileGetByValWithThis()
@@ -4424,6 +4456,7 @@ private:
             for (unsigned i = 0; i < m_node->numChildren(); ++i) {
                 if (bitVector->get(i)) {
                     Edge use = m_graph.varArgChild(m_node, i);
+                    CheckValue* lengthCheck = nullptr;
                     if (use->op() == PhantomSpread) {
                         RELEASE_ASSERT(use->child1()->op() == PhantomCreateRest);
                         InlineCallFrame* inlineCallFrame = use->child1()->origin.semantic.inlineCallFrame;
@@ -4431,11 +4464,13 @@ private:
                         LValue spreadLength = cachedSpreadLengths.ensure(inlineCallFrame, [&] () {
                             return getSpreadLengthFromInlineCallFrame(inlineCallFrame, numberOfArgumentsToSkip);
                         }).iterator->value;
-                        length = m_out.add(length, spreadLength);
+                        lengthCheck = m_out.speculateAdd(length, spreadLength);
                     } else {
                         LValue fixedArray = lowCell(use);
-                        length = m_out.add(length, m_out.load32(fixedArray, m_heaps.JSFixedArray_size));
+                        lengthCheck = m_out.speculateAdd(length, m_out.load32(fixedArray, m_heaps.JSFixedArray_size));
                     }
+                    blessSpeculation(lengthCheck, Overflow, noValue(), nullptr, m_origin);
+                    length = lengthCheck;
                 }
             }
 
@@ -4901,10 +4936,13 @@ private:
         }
             
         case CellUse:
+        case NotCellUse:
         case UntypedUse: {
             LValue value;
             if (m_node->child1().useKind() == CellUse)
                 value = lowCell(m_node->child1());
+            else if (m_node->child1().useKind() == NotCellUse)
+                value = lowNotCell(m_node->child1());
             else
                 value = lowJSValue(m_node->child1());
             
@@ -4915,6 +4953,8 @@ private:
             LValue isCellPredicate;
             if (m_node->child1().useKind() == CellUse)
                 isCellPredicate = m_out.booleanTrue;
+            else if (m_node->child1().useKind() == NotCellUse)
+                isCellPredicate = m_out.booleanFalse;
             else
                 isCellPredicate = this->isCell(value, provenType(m_node->child1()));
             m_out.branch(isCellPredicate, unsure(isCell), unsure(notString));
@@ -6395,10 +6435,6 @@ private:
                     exceptions->append(jit.emitExceptionCheck(AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
                 };
 
-                auto adjustStack = [&] (GPRReg amount) {
-                    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), amount, CCallHelpers::stackPointerRegister);
-                };
-
                 CCallHelpers::JumpList slowCase;
                 unsigned originalStackHeight = params.proc().frameSize();
 
@@ -6417,6 +6453,9 @@ private:
                     jit.negPtr(scratchGPR1);
                     jit.lshiftPtr(CCallHelpers::Imm32(3), scratchGPR1);
                     jit.addPtr(GPRInfo::callFrameRegister, scratchGPR1);
+
+                    // Before touching stack values, we should update the stack pointer to protect them from signal stack.
+                    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), scratchGPR1, CCallHelpers::stackPointerRegister);
 
                     jit.store32(scratchGPR2, CCallHelpers::Address(scratchGPR1, CallFrameSlot::argumentCount * static_cast<int>(sizeof(Register)) + PayloadOffset));
 
@@ -6464,8 +6503,6 @@ private:
                     
                     dontThrow.link(&jit);
                 }
-
-                adjustStack(scratchGPR1);
                 
                 ASSERT(calleeGPR == GPRInfo::regT0);
                 jit.store64(calleeGPR, CCallHelpers::calleeFrameSlot(CallFrameSlot::callee));
@@ -6705,10 +6742,6 @@ private:
                     exceptions->append(jit.emitExceptionCheck(AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
                 };
 
-                auto adjustStack = [&] (GPRReg amount) {
-                    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), amount, CCallHelpers::stackPointerRegister);
-                };
-
                 unsigned originalStackHeight = params.proc().frameSize();
 
                 if (forwarding) {
@@ -6720,6 +6753,8 @@ private:
                         inlineCallFrame = node->child3()->origin.semantic.inlineCallFrame;
                     else
                         inlineCallFrame = node->origin.semantic.inlineCallFrame;
+
+                    // emitSetupVarargsFrameFastCase modifies the stack pointer if it succeeds.
                     emitSetupVarargsFrameFastCase(jit, scratchGPR2, scratchGPR1, scratchGPR2, scratchGPR3, inlineCallFrame, data->firstVarArgOffset, slowCase);
 
                     CCallHelpers::Jump done = jit.jump();
@@ -6729,8 +6764,6 @@ private:
                     jit.abortWithReason(DFGVarargsThrowingPathDidNotThrow);
                     
                     done.link(&jit);
-
-                    adjustStack(scratchGPR2);
                 } else {
                     jit.move(CCallHelpers::TrustedImm32(originalStackHeight / sizeof(EncodedJSValue)), scratchGPR1);
                     jit.setupArgumentsWithExecState(argumentsGPR, scratchGPR1, CCallHelpers::TrustedImm32(data->firstVarArgOffset));
@@ -6744,7 +6777,7 @@ private:
                     jit.setupArgumentsWithExecState(scratchGPR2, argumentsGPR, CCallHelpers::TrustedImm32(data->firstVarArgOffset), scratchGPR1);
                     callWithExceptionCheck(bitwise_cast<void*>(operationSetupVarargsFrame));
                     
-                    adjustStack(GPRInfo::returnValueGPR);
+                    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), GPRInfo::returnValueGPR, CCallHelpers::stackPointerRegister);
 
                     calleeLateRep.emitRestore(jit, GPRInfo::regT0);
 
@@ -8077,6 +8110,7 @@ private:
                         stubInfo->codeOrigin = node->origin.semantic;
                         stubInfo->patch.baseGPR = static_cast<int8_t>(baseGPR);
                         stubInfo->patch.valueGPR = static_cast<int8_t>(resultGPR);
+                        stubInfo->patch.thisGPR = static_cast<int8_t>(InvalidGPRReg);
                         stubInfo->patch.usedRegisters = params.unavailableRegisters();
 
                         CCallHelpers::PatchableJump jump = jit.patchableJump();
@@ -8985,6 +9019,7 @@ private:
 
     void compileCheckTraps()
     {
+        ASSERT(Options::usePollingTraps());
         LBasicBlock needTrapHandling = m_out.newBlock();
         LBasicBlock continuation = m_out.newBlock();
         
@@ -9747,6 +9782,74 @@ private:
                             exceptions.get(), optimizationFunction, params[0].gpr(),
                             CCallHelpers::TrustedImmPtr(generator->stubInfo()), params[1].gpr(),
                             CCallHelpers::TrustedImmPtr(uid)).call();
+                        jit.jump().linkTo(done, &jit);
+
+                        generator->reportSlowPathCall(slowPathBegin, slowPathCall);
+
+                        jit.addLinkTask(
+                            [=] (LinkBuffer& linkBuffer) {
+                                generator->finalize(linkBuffer);
+                            });
+                    });
+            });
+
+        return patchpoint;
+    }
+    
+    LValue getByIdWithThis(LValue base, LValue thisValue)
+    {
+        Node* node = m_node;
+        UniquedStringImpl* uid = m_graph.identifiers()[node->identifierNumber()];
+
+        B3::PatchpointValue* patchpoint = m_out.patchpoint(Int64);
+        patchpoint->appendSomeRegister(base);
+        patchpoint->appendSomeRegister(thisValue);
+        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
+
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
+
+        State* state = &m_ftlState;
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+
+                CallSiteIndex callSiteIndex =
+                    state->jitCode->common.addUniqueCallSiteIndex(node->origin.semantic);
+
+                // This is the direct exit target for operation calls.
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+
+                // This is the exit for call IC's created by the getById for getters. We don't have
+                // to do anything weird other than call this, since it will associate the exit with
+                // the callsite index.
+                exceptionHandle->scheduleExitCreationForUnwind(params, callSiteIndex);
+
+                auto generator = Box<JITGetByIdWithThisGenerator>::create(
+                    jit.codeBlock(), node->origin.semantic, callSiteIndex,
+                    params.unavailableRegisters(), uid, JSValueRegs(params[0].gpr()),
+                    JSValueRegs(params[1].gpr()), JSValueRegs(params[2].gpr()), AccessType::GetWithThis);
+
+                generator->generateFastPath(jit);
+                CCallHelpers::Label done = jit.label();
+
+                params.addLatePath(
+                    [=] (CCallHelpers& jit) {
+                        AllowMacroScratchRegisterUsage allowScratch(jit);
+
+                        J_JITOperation_ESsiJJI optimizationFunction = operationGetByIdWithThisOptimize;
+
+                        generator->slowPathJump().link(&jit);
+                        CCallHelpers::Label slowPathBegin = jit.label();
+                        CCallHelpers::Call slowPathCall = callOperation(
+                            *state, params.unavailableRegisters(), jit, node->origin.semantic,
+                            exceptions.get(), optimizationFunction, params[0].gpr(),
+                            CCallHelpers::TrustedImmPtr(generator->stubInfo()), params[1].gpr(),
+                            params[2].gpr(), CCallHelpers::TrustedImmPtr(uid)).call();
                         jit.jump().linkTo(done, &jit);
 
                         generator->reportSlowPathCall(slowPathBegin, slowPathCall);
@@ -11852,7 +11955,9 @@ private:
                 terminate(Uncountable);
                 return m_out.int32Zero;
             }
-            return m_out.constInt32(value.asInt32());
+            LValue result = m_out.constInt32(value.asInt32());
+            result->setOrigin(B3::Origin(edge.node()));
+            return result;
         }
         
         LoweredNodeValue value = m_int32Values.get(edge.node());
@@ -11967,7 +12072,9 @@ private:
                 terminate(Uncountable);
                 return m_out.intPtrZero;
             }
-            return frozenPointer(value);
+            LValue result = frozenPointer(value);
+            result->setOrigin(B3::Origin(edge.node()));
+            return result;
         }
         
         LoweredNodeValue value = m_jsValueValues.get(edge.node());
@@ -12060,7 +12167,9 @@ private:
                 terminate(Uncountable);
                 return m_out.booleanFalse;
             }
-            return m_out.constBool(value.asBoolean());
+            LValue result = m_out.constBool(value.asBoolean());
+            result->setOrigin(B3::Origin(edge.node()));
+            return result;
         }
         
         LoweredNodeValue value = m_booleanValues.get(edge.node());
@@ -12100,8 +12209,11 @@ private:
         DFG_ASSERT(m_graph, m_node, !isDouble(edge.useKind()));
         DFG_ASSERT(m_graph, m_node, edge.useKind() != Int52RepUse);
         
-        if (edge->hasConstant())
-            return m_out.constInt64(JSValue::encode(edge->asJSValue()));
+        if (edge->hasConstant()) {
+            LValue result = m_out.constInt64(JSValue::encode(edge->asJSValue()));
+            result->setOrigin(B3::Origin(edge.node()));
+            return result;
+        }
 
         LoweredNodeValue value = m_jsValueValues.get(edge.node());
         if (isValid(value))
@@ -12123,6 +12235,13 @@ private:
         
         DFG_CRASH(m_graph, m_node, "Value not defined");
         return 0;
+    }
+
+    LValue lowNotCell(Edge edge)
+    {
+        LValue result = lowJSValue(edge, ManualOperandSpeculation);
+        FTL_TYPE_CHECK(jsValueValue(result), edge, ~SpecCell, isCell(result));
+        return result;
     }
     
     LValue lowStorage(Edge edge)
@@ -12527,6 +12646,13 @@ private:
     void speculateCell(Edge edge)
     {
         lowCell(edge);
+    }
+
+    void speculateNotCell(Edge edge)
+    {
+        if (!m_interpreter.needsTypeCheck(edge))
+            return;
+        lowNotCell(edge);
     }
     
     void speculateCellOrOther(Edge edge)
@@ -13044,15 +13170,6 @@ private:
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
-    }
-    
-    void speculateNotCell(Edge edge)
-    {
-        if (!m_interpreter.needsTypeCheck(edge))
-            return;
-        
-        LValue value = lowJSValue(edge, ManualOperandSpeculation);
-        typeCheck(jsValueValue(value), edge, ~SpecCell, isCell(value));
     }
     
     void speculateOther(Edge edge)

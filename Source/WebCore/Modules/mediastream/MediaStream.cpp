@@ -158,12 +158,12 @@ MediaStreamTrack* MediaStream::getTrackById(String id)
 
 MediaStreamTrackVector MediaStream::getAudioTracks() const
 {
-    return trackVectorForType(RealtimeMediaSource::Audio);
+    return trackVectorForType(RealtimeMediaSource::Type::Audio);
 }
 
 MediaStreamTrackVector MediaStream::getVideoTracks() const
 {
-    return trackVectorForType(RealtimeMediaSource::Video);
+    return trackVectorForType(RealtimeMediaSource::Type::Video);
 }
 
 MediaStreamTrackVector MediaStream::getTracks() const
@@ -205,6 +205,12 @@ void MediaStream::didAddTrack(MediaStreamTrackPrivate& trackPrivate)
 void MediaStream::didRemoveTrack(MediaStreamTrackPrivate& trackPrivate)
 {
     internalRemoveTrack(trackPrivate.id(), StreamModifier::Platform);
+}
+
+void MediaStream::addTrackFromPlatform(Ref<MediaStreamTrack>&& track)
+{
+    m_private->addTrack(&track->privateTrack(), MediaStreamPrivate::NotifyClientOption::Notify);
+    internalAddTrack(WTFMove(track), StreamModifier::Platform);
 }
 
 bool MediaStream::internalAddTrack(Ref<MediaStreamTrack>&& trackToAdd, StreamModifier streamModifier)
@@ -314,13 +320,13 @@ MediaProducer::MediaStateFlags MediaStream::mediaState() const
 
     if (m_private->hasAudio()) {
         state |= HasAudioOrVideo;
-        if (m_private->hasLocalAudioSource() && m_private->isProducingData())
+        if (m_private->hasCaptureAudioSource() && m_private->isProducingData())
             state |= HasActiveAudioCaptureDevice;
     }
 
     if (m_private->hasVideo()) {
         state |= HasAudioOrVideo;
-        if (m_private->hasLocalVideoSource() && m_private->isProducingData())
+        if (m_private->hasCaptureVideoSource() && m_private->isProducingData())
             state |= HasActiveVideoCaptureDevice;
     }
 

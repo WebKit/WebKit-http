@@ -303,6 +303,8 @@ public:
 
     double percentLoaded() const;
 
+    bool shouldForceControlsDisplay() const;
+
 #if ENABLE(VIDEO_TRACK)
     ExceptionOr<TextTrack&> addTextTrack(const String& kind, const String& label, const String& language);
 
@@ -755,7 +757,12 @@ private:
     bool stoppedDueToErrors() const;
     bool pausedForUserInteraction() const;
     bool couldPlayIfEnoughData() const;
+    void dispatchPlayPauseEventsIfNeedsQuirks();
     SuccessOr<MediaPlaybackDenialReason> canTransitionFromAutoplayToPlay() const;
+
+    enum class PlaybackWithoutUserGesture { None, Started, Prevented };
+    void setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture);
+    void userDidInterfereWithAutoplay();
 
     MediaTime minTimeSeekable() const;
     MediaTime maxTimeSeekable() const;
@@ -1001,7 +1008,6 @@ private:
     bool m_creatingControls : 1;
     bool m_receivedLayoutSizeChanged : 1;
     bool m_hasEverNotifiedAboutPlaying : 1;
-    bool m_preventedFromPlayingWithoutUserGesture : 1;
 
     bool m_hasEverHadAudio : 1;
     bool m_hasEverHadVideo : 1;
@@ -1017,6 +1023,9 @@ private:
     bool m_tracksAreReady : 1;
     bool m_haveVisibleTextTrack : 1;
     bool m_processingPreferenceChange : 1;
+
+    PlaybackWithoutUserGesture m_playbackWithoutUserGesture;
+    std::optional<MediaTime> m_playbackWithoutUserGestureStartedTime;
 
     String m_subtitleTrackLanguage;
     MediaTime m_lastTextTrackUpdateTime { -1, 1 };

@@ -125,15 +125,7 @@ normal
 bold
 bolder
 lighter
-100
-200
-300
-400
-500
-600
-700
-800
-900
+
 //
 // CSS_PROP_FONT_SIZE:
 //
@@ -688,9 +680,12 @@ min-intrinsic
 //
 // CSS3 intrinsic dimension keywords
 //
+min-content
 -webkit-min-content
+max-content
 -webkit-max-content
 -webkit-fill-available
+fit-content
 -webkit-fit-content
 
 //
@@ -1265,7 +1260,6 @@ span
 
 // grid-template-{columns|rows}
 minmax
-fit-content
 
 // grid-auto-flow
 auto-flow

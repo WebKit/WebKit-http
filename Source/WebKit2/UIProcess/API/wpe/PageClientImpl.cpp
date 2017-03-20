@@ -53,6 +53,11 @@ void PageClientImpl::requestScroll(const WebCore::FloatPoint&, const WebCore::In
 {
 }
 
+WebCore::FloatPoint PageClientImpl::viewScrollPosition()
+{
+    return { };
+}
+
 WebCore::IntSize PageClientImpl::viewSize()
 {
     return m_view.size();

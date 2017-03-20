@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WebProcessPool.h"
 
-#import "CustomProtocolManagerClient.h"
+#import "LegacyCustomProtocolManagerClient.h"
 #import "NetworkProcessCreationParameters.h"
 #import "NetworkProcessMessages.h"
 #import "NetworkProcessProxy.h"
@@ -147,7 +147,7 @@ void WebProcessPool::platformInitialize()
     WebKit::WebMemoryPressureHandler::singleton();
 #endif
 
-    setCustomProtocolManagerClient(std::make_unique<CustomProtocolManagerClient>());
+    setLegacyCustomProtocolManagerClient(std::make_unique<LegacyCustomProtocolManagerClient>());
 
     if (m_websiteDataStore)
         m_websiteDataStore->registerSharedResourceLoadObserver();
@@ -258,6 +258,8 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     // FIXME: Remove this and related parameter when <rdar://problem/29448368> is fixed.
     if (mediaStreamEnabled || webRTCEnabled)
         SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.audioCaptureExtensionHandle);
+
+    parameters.shouldCaptureAudioInUIProcess = m_defaultPageGroup->preferences().shouldCaptureAudioInUIProcess();
 #endif
 }
 
@@ -294,6 +296,10 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     RetainPtr<CFDataRef> cookieStorageData = adoptCF(CFHTTPCookieStorageCreateIdentifyingData(kCFAllocatorDefault, [[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]));
+
+    static int i = 0;
+    [(NSData *)cookieStorageData.get() writeToFile:[NSString stringWithFormat:@"/Volumes/Data/FujiUser/dump%i.plist", i++] atomically:NO];
+
     ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
     parameters.uiProcessCookieStorageIdentifier.append(CFDataGetBytePtr(cookieStorageData.get()), CFDataGetLength(cookieStorageData.get()));
 #endif
@@ -471,6 +477,33 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 
     return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
 }
+
+String WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory()
+{
+#if PLATFORM(IOS)
+    String path = pathForProcessContainer();
+    if (path.isEmpty())
+        path = NSHomeDirectory();
+    
+    path = path + "/Library/WebKit/JavaScriptCoreDebug";
+    path = stringByResolvingSymlinksInPath(path);
+
+    return path;
+#else
+    RetainPtr<NSString> javaScriptConfigPath = @"~/Library/WebKit/JavaScriptCoreDebug";
+    
+    return stringByResolvingSymlinksInPath([javaScriptConfigPath stringByStandardizingPath]);
+#endif
+}
+
+#if PLATFORM(IOS)
+void WebProcessPool::setJavaScriptConfigurationFileEnabledFromDefaults()
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+
+    setJavaScriptConfigurationFileEnabled([defaults boolForKey:@"WebKitJavaScriptCoreUseConfigFile"]);
+}
+#endif
 
 bool WebProcessPool::isNetworkCacheEnabled()
 {

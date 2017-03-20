@@ -47,7 +47,6 @@
 #include "JSAsyncFunction.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
-#include "JSFixedArray.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSLexicalEnvironment.h"
@@ -1497,7 +1496,9 @@ LLINT_SLOW_PATH_DECL(slow_path_throw)
 LLINT_SLOW_PATH_DECL(slow_path_handle_traps)
 {
     LLINT_BEGIN_NO_SET_PC();
+    ASSERT(vm.needTrapHandling());
     vm.handleTraps(exec);
+    UNUSED_PARAM(pc);
     LLINT_RETURN_TWO(throwScope.exception(), exec);
 }
 

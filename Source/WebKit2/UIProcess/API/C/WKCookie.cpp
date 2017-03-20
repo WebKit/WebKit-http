@@ -53,7 +53,8 @@ WKCookieRef WKCookieCreate(WKStringRef name,
                                         expires,
                                         httpOnly,
                                         secure,
-                                        session)).leakRef());
+                                        session,
+                                        String(), WebCore::URL(), Vector<uint16_t>{ })).leakRef());
 }
 
 WKStringRef WKCookieGetName(WKCookieRef cookie)

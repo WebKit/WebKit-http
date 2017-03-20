@@ -53,7 +53,7 @@ public:
     void startObservingCookieChanges();
     void stopObservingCookieChanges();
     void setCookies(const Vector<WebCore::Cookie>&);
-    void getCookies(std::function<void (API::Array*, WebKit::CallbackBase::Error)>);
+    void getCookies(Function<void (API::Array*, WebKit::CallbackBase::Error)>&&);
 
 private:
     HTTPCookieStorage(WebKit::WebPageProxy&);

@@ -26,7 +26,7 @@
 #include "config.h"
 #include "DataInteractionSimulator.h"
 
-#if 0
+#if ENABLE(DATA_INTERACTION)
 
 #import "PlatformUtilities.h"
 #import <UIKit/UIItemProvider_Private.h>
@@ -59,6 +59,7 @@ static NSArray *dataInteractionEventNames()
     if (self = [super init]) {
         _webView = webView;
         [_webView _setTestingDelegate:self];
+        [_webView setUIDelegate:self];
     }
     return self;
 }
@@ -67,6 +68,9 @@ static NSArray *dataInteractionEventNames()
 {
     if ([_webView _testingDelegate] == self)
         [_webView _setTestingDelegate:nil];
+
+    if ([_webView UIDelegate] == self)
+        [_webView setUIDelegate:nil];
 
     [super dealloc];
 }
@@ -79,7 +83,7 @@ static NSArray *dataInteractionEventNames()
     _observedEventNames = adoptNS([[NSMutableArray alloc] init]);
     _finalSelectionRects = @[ ];
     _dataInteractionSession = nil;
-    _dataInteractionInfo = nil;
+    _dataOperationSession = nil;
 }
 
 - (NSArray *)observedEventNames
@@ -103,7 +107,7 @@ static NSArray *dataInteractionEventNames()
     _endLocation = endLocation;
 
     if (self.externalItemProvider) {
-        _dataInteractionInfo = adoptNS([[MockDataInteractionInfo alloc] initWithProvider:self.externalItemProvider location:_startLocation window:[_webView window]]);
+        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProvider:self.externalItemProvider location:_startLocation window:[_webView window]]);
         _phase = DataInteractionBegan;
         [self _advanceProgress];
     } else {
@@ -131,11 +135,11 @@ static NSArray *dataInteractionEventNames()
     _currentProgress += progressIncrementStep;
     CGPoint locationInWindow = self._currentLocation;
     [_dataInteractionSession setMockLocationInWindow:locationInWindow];
-    [_dataInteractionInfo setMockLocationInWindow:locationInWindow];
+    [_dataOperationSession setMockLocationInWindow:locationInWindow];
 
     if (_currentProgress >= 1) {
-        [_webView _simulateDataInteractionPerformOperation:_dataInteractionInfo.get()];
-        [_webView _simulateDataInteractionEnded:_dataInteractionInfo.get()];
+        [_webView _simulateDataInteractionPerformOperation:_dataOperationSession.get()];
+        [_webView _simulateDataInteractionEnded:_dataOperationSession.get()];
         if (_dataInteractionSession)
             [_webView _simulateDataInteractionSessionDidEnd:_dataInteractionSession.get()];
 
@@ -160,7 +164,7 @@ static NSArray *dataInteractionEventNames()
             [itemProviders addObject:item.itemProvider];
 #endif
 
-        _dataInteractionInfo = adoptNS([[MockDataInteractionInfo alloc] initWithProvider:itemProviders.firstObject location:self._currentLocation window:[_webView window]]);
+        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProvider:itemProviders.firstObject location:self._currentLocation window:[_webView window]]);
 #if HAS_DATA_INTERACTION_ITEMS
         [_dataInteractionSession setItems:items];
 #endif
@@ -169,11 +173,11 @@ static NSArray *dataInteractionEventNames()
         break;
     }
     case DataInteractionBegan:
-        [_webView _simulateDataInteractionEntered:_dataInteractionInfo.get()];
+        [_webView _simulateDataInteractionEntered:_dataOperationSession.get()];
         _phase = DataInteractionEntered;
         break;
     case DataInteractionEntered:
-        [_webView _simulateDataInteractionUpdated:_dataInteractionInfo.get()];
+        [_webView _simulateDataInteractionUpdated:_dataOperationSession.get()];
         break;
     default:
         break;
@@ -210,6 +214,13 @@ static NSArray *dataInteractionEventNames()
 - (void)webViewDidPerformDataInteractionControllerOperation:(WKWebView *)webView
 {
     _isDoneWithCurrentRun = true;
+}
+
+#pragma mark - WKUIDelegatePrivate
+
+- (NSArray<UIItemProvider *>*)_webView:(WKWebView *)webView adjustedDataInteractionItemProviders:(NSArray<UIItemProvider *>*)originalItemProviders
+{
+    return self.convertItemProvidersBlock ? self.convertItemProvidersBlock(originalItemProviders) : originalItemProviders;
 }
 
 @end

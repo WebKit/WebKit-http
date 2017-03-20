@@ -32,9 +32,9 @@
 #include "RealtimeOutgoingVideoSource.h"
 
 #include <webrtc/api/jsep.h>
-#include <webrtc/api/peerconnectionfactory.h>
 #include <webrtc/api/peerconnectioninterface.h>
-#include <webrtc/api/rtcstatscollector.h>
+#include <webrtc/pc/peerconnectionfactory.h>
+#include <webrtc/pc/rtcstatscollector.h>
 
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -74,6 +74,12 @@ public:
 
     RefPtr<RTCSessionDescription> localDescription() const;
     RefPtr<RTCSessionDescription> remoteDescription() const;
+    RefPtr<RTCSessionDescription> currentLocalDescription() const;
+    RefPtr<RTCSessionDescription> currentRemoteDescription() const;
+    RefPtr<RTCSessionDescription> pendingLocalDescription() const;
+    RefPtr<RTCSessionDescription> pendingRemoteDescription() const;
+
+    void addTrack(MediaStreamTrack&, const Vector<String>&);
 
 private:
     LibWebRTCMediaEndpoint(LibWebRTCPeerConnectionBackend&, LibWebRTCProvider&);
@@ -83,6 +89,7 @@ private:
     void OnAddStream(rtc::scoped_refptr<webrtc::MediaStreamInterface>) final;
     void OnRemoveStream(rtc::scoped_refptr<webrtc::MediaStreamInterface>) final;
     void OnDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface>) final;
+    void OnAddTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface>, const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&) final;
     void OnRenegotiationNeeded() final;
     void OnIceConnectionChange(webrtc::PeerConnectionInterface::IceConnectionState) final;
     void OnIceGatheringChange(webrtc::PeerConnectionInterface::IceGatheringState) final;
@@ -95,8 +102,12 @@ private:
     void setLocalSessionDescriptionFailed(const std::string&);
     void setRemoteSessionDescriptionSucceeded();
     void setRemoteSessionDescriptionFailed(const std::string&);
-    void addStream(webrtc::MediaStreamInterface&);
+    void addRemoteStream(webrtc::MediaStreamInterface&);
+    void addRemoteTrack(const webrtc::RtpReceiverInterface&, const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&);
+    void removeRemoteStream(webrtc::MediaStreamInterface&);
     void addDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface>&&);
+
+    MediaStream& mediaStreamFromRTCStream(webrtc::MediaStreamInterface*);
 
     int AddRef() const { ref(); return static_cast<int>(refCount()); }
     int Release() const { deref(); return static_cast<int>(refCount()); }
@@ -163,6 +174,7 @@ private:
     CreateSessionDescriptionObserver m_createSessionDescriptionObserver;
     SetLocalSessionDescriptionObserver m_setLocalSessionDescriptionObserver;
     SetRemoteSessionDescriptionObserver m_setRemoteSessionDescriptionObserver;
+    HashMap<webrtc::MediaStreamInterface*, MediaStream*> m_streams;
 
     bool m_isInitiator { false };
 };

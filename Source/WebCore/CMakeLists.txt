@@ -221,6 +221,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediasource/SourceBufferList.idl
     Modules/mediasource/VideoPlaybackQuality.idl
 
+    Modules/mediastream/CanvasCaptureMediaStreamTrack.idl
     Modules/mediastream/DOMURLMediaStream.idl
     Modules/mediastream/DoubleRange.idl
     Modules/mediastream/LongRange.idl
@@ -236,6 +237,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/NavigatorUserMedia.idl
     Modules/mediastream/OverconstrainedError.idl
     Modules/mediastream/OverconstrainedErrorEvent.idl
+    Modules/mediastream/RTCAnswerOptions.idl
     Modules/mediastream/RTCConfiguration.idl
     Modules/mediastream/RTCDTMFSender.idl
     Modules/mediastream/RTCDTMFToneChangeEvent.idl
@@ -243,12 +245,20 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCDataChannelEvent.idl
     Modules/mediastream/RTCIceCandidate.idl
     Modules/mediastream/RTCIceCandidateEvent.idl
+    Modules/mediastream/RTCIceConnectionState.idl
+    Modules/mediastream/RTCIceGatheringState.idl
     Modules/mediastream/RTCIceServer.idl
+    Modules/mediastream/RTCIceTransport.idl
+    Modules/mediastream/RTCIceTransportState.idl
+    Modules/mediastream/RTCOfferAnswerOptions.idl
+    Modules/mediastream/RTCOfferOptions.idl
     Modules/mediastream/RTCPeerConnection.idl
     Modules/mediastream/RTCRtpReceiver.idl
     Modules/mediastream/RTCRtpSender.idl
     Modules/mediastream/RTCRtpTransceiver.idl
+    Modules/mediastream/RTCRtpTransceiverDirection.idl
     Modules/mediastream/RTCSessionDescription.idl
+    Modules/mediastream/RTCSignalingState.idl
     Modules/mediastream/RTCStatsReport.idl
     Modules/mediastream/RTCTrackEvent.idl
 
@@ -344,8 +354,12 @@ set(WebCore_NON_SVG_IDL_FILES
     crypto/WebKitSubtleCrypto.idl
 
     crypto/parameters/AesCbcCfbParams.idl
-    crypto/parameters/AesKeyGenParams.idl
+    crypto/parameters/AesGcmParams.idl
+    crypto/parameters/AesKeyParams.idl
+    crypto/parameters/EcKeyParams.idl
+    crypto/parameters/EcdhKeyDeriveParams.idl
     crypto/parameters/HmacKeyParams.idl
+    crypto/parameters/Pbkdf2Params.idl
     crypto/parameters/RsaHashedImportParams.idl
     crypto/parameters/RsaHashedKeyGenParams.idl
     crypto/parameters/RsaKeyGenParams.idl
@@ -478,6 +492,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/XMLDocument.idl
 
     fileapi/Blob.idl
+    fileapi/BlobCallback.idl
     fileapi/BlobLineEndings.idl
     fileapi/BlobPropertyBag.idl
     fileapi/File.idl
@@ -585,6 +600,25 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/CanvasProxy.idl
     html/canvas/CanvasRenderingContext2D.idl
     html/canvas/DOMPath.idl
+    html/canvas/WebGPUBuffer.idl
+    html/canvas/WebGPUCommandBuffer.idl
+    html/canvas/WebGPUCommandQueue.idl
+    html/canvas/WebGPUDepthStencilDescriptor.idl
+    html/canvas/WebGPUDepthStencilState.idl
+    html/canvas/WebGPUDrawable.idl
+    html/canvas/WebGPUFunction.idl
+    html/canvas/WebGPULibrary.idl
+    html/canvas/WebGPURenderCommandEncoder.idl
+    html/canvas/WebGPURenderPassAttachmentDescriptor.idl
+    html/canvas/WebGPURenderPassColorAttachmentDescriptor.idl
+    html/canvas/WebGPURenderPassDepthAttachmentDescriptor.idl
+    html/canvas/WebGPURenderPassDescriptor.idl
+    html/canvas/WebGPURenderPipelineColorAttachmentDescriptor.idl
+    html/canvas/WebGPURenderPipelineDescriptor.idl
+    html/canvas/WebGPURenderPipelineState.idl
+    html/canvas/WebGPURenderingContext.idl
+    html/canvas/WebGPUTexture.idl
+    html/canvas/WebGPUTextureDescriptor.idl
 
     inspector/CommandLineAPIHost.idl
     inspector/InspectorFrontendHost.idl
@@ -913,6 +947,7 @@ set(WebCore_SOURCES
     Modules/mediasource/SourceBufferList.cpp
     Modules/mediasource/VideoPlaybackQuality.cpp
 
+    Modules/mediastream/CanvasCaptureMediaStreamTrack.cpp
     Modules/mediastream/DOMURLMediaStream.cpp
     Modules/mediastream/MediaConstraintsImpl.cpp
     Modules/mediastream/MediaDeviceInfo.cpp
@@ -1169,6 +1204,7 @@ set(WebCore_SOURCES
     bindings/js/JSLocationCustom.cpp
     bindings/js/JSMainThreadExecState.cpp
     bindings/js/JSMediaKeySessionCustom.cpp
+    bindings/js/JSMediaStreamTrackCustom.cpp
     bindings/js/JSMessageChannelCustom.cpp
     bindings/js/JSMessageEventCustom.cpp
     bindings/js/JSMessagePortCustom.cpp
@@ -1199,6 +1235,8 @@ set(WebCore_SOURCES
     bindings/js/JSWebGL2RenderingContextCustom.cpp
     bindings/js/JSWebGLRenderingContextBaseCustom.cpp
     bindings/js/JSWebGLRenderingContextCustom.cpp
+    bindings/js/JSWebGPURenderPassAttachmentDescriptorCustom.cpp
+    bindings/js/JSWebGPURenderingContextCustom.cpp
     bindings/js/JSWebKitSubtleCryptoCustom.cpp
     bindings/js/JSWorkerCustom.cpp
     bindings/js/JSWorkerGlobalScopeBase.cpp
@@ -1561,6 +1599,7 @@ set(WebCore_SOURCES
     editing/DictationAlternative.cpp
     editing/DictationCommand.cpp
     editing/EditCommand.cpp
+    editing/Editing.cpp
     editing/EditingStyle.cpp
     editing/Editor.cpp
     editing/EditorCommand.cpp
@@ -1604,12 +1643,12 @@ set(WebCore_SOURCES
     editing/VisibleSelection.cpp
     editing/VisibleUnits.cpp
     editing/WrapContentsInDummySpanCommand.cpp
-    editing/htmlediting.cpp
     editing/markup.cpp
 
     fileapi/AsyncFileStream.cpp
     fileapi/Blob.cpp
     fileapi/BlobBuilder.cpp
+    fileapi/BlobCallback.cpp
     fileapi/BlobURL.cpp
     fileapi/File.cpp
     fileapi/FileException.cpp
@@ -1786,6 +1825,27 @@ set(WebCore_SOURCES
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
     html/canvas/DOMPath.cpp
+    html/canvas/WebGPUBuffer.cpp
+    html/canvas/WebGPUCommandBuffer.cpp
+    html/canvas/WebGPUCommandQueue.cpp
+    html/canvas/WebGPUDepthStencilDescriptor.cpp
+    html/canvas/WebGPUDepthStencilState.cpp
+    html/canvas/WebGPUDrawable.cpp
+    html/canvas/WebGPUEnums.cpp
+    html/canvas/WebGPUFunction.cpp
+    html/canvas/WebGPULibrary.cpp
+    html/canvas/WebGPUObject.cpp
+    html/canvas/WebGPURenderCommandEncoder.cpp
+    html/canvas/WebGPURenderPassAttachmentDescriptor.cpp
+    html/canvas/WebGPURenderPassColorAttachmentDescriptor.cpp
+    html/canvas/WebGPURenderPassDepthAttachmentDescriptor.cpp
+    html/canvas/WebGPURenderPassDescriptor.cpp
+    html/canvas/WebGPURenderPipelineColorAttachmentDescriptor.cpp
+    html/canvas/WebGPURenderPipelineDescriptor.cpp
+    html/canvas/WebGPURenderPipelineState.cpp
+    html/canvas/WebGPURenderingContext.cpp
+    html/canvas/WebGPUTexture.cpp
+    html/canvas/WebGPUTextureDescriptor.cpp
 
     html/forms/FileIconLoader.cpp
 
@@ -2114,7 +2174,6 @@ set(WebCore_SOURCES
     platform/LowPowerModeNotifier.cpp
     platform/MIMETypeRegistry.cpp
     platform/MainThreadSharedTimer.cpp
-    platform/MemoryPressureHandler.cpp
     platform/NotImplemented.cpp
     platform/PasteboardWriterData.cpp
     platform/PlatformSpeechSynthesisUtterance.cpp
@@ -2207,6 +2266,7 @@ set(WebCore_SOURCES
     platform/graphics/FontCascade.cpp
     platform/graphics/FontCascadeFonts.cpp
     platform/graphics/FontDescription.cpp
+    platform/graphics/FontSelectionAlgorithm.cpp
     platform/graphics/FontTaggedSettings.cpp
     platform/graphics/FontGenericFamilies.cpp
     platform/graphics/FontPlatformData.cpp
@@ -2282,6 +2342,26 @@ set(WebCore_SOURCES
     platform/graphics/filters/SourceGraphic.cpp
     platform/graphics/filters/SpotLightSource.cpp
 
+    platform/graphics/gpu/GPUBuffer.cpp
+    platform/graphics/gpu/GPUCommandBuffer.cpp
+    platform/graphics/gpu/GPUCommandQueue.cpp
+    platform/graphics/gpu/GPUDepthStencilDescriptor.cpp
+    platform/graphics/gpu/GPUDepthStencilState.cpp
+    platform/graphics/gpu/GPUDevice.cpp
+    platform/graphics/gpu/GPUDrawable.cpp
+    platform/graphics/gpu/GPUFunction.cpp
+    platform/graphics/gpu/GPULibrary.cpp
+    platform/graphics/gpu/GPURenderCommandEncoder.cpp
+    platform/graphics/gpu/GPURenderPassAttachmentDescriptor.cpp
+    platform/graphics/gpu/GPURenderPassColorAttachmentDescriptor.cpp
+    platform/graphics/gpu/GPURenderPassDepthAttachmentDescriptor.cpp
+    platform/graphics/gpu/GPURenderPassDescriptor.cpp
+    platform/graphics/gpu/GPURenderPipelineColorAttachmentDescriptor.cpp
+    platform/graphics/gpu/GPURenderPipelineDescriptor.cpp
+    platform/graphics/gpu/GPURenderPipelineState.cpp
+    platform/graphics/gpu/GPUTexture.cpp
+    platform/graphics/gpu/GPUTextureDescriptor.cpp
+
     platform/graphics/opentype/OpenTypeMathData.cpp
 
     platform/graphics/transforms/AffineTransform.cpp
@@ -2308,6 +2388,8 @@ set(WebCore_SOURCES
     platform/mediastream/RealtimeMediaSourceCenter.cpp
     platform/mediastream/RealtimeMediaSourceSettings.cpp
     platform/mediastream/SDPProcessorScriptResource.cpp
+
+    platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
 
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
@@ -2350,6 +2432,7 @@ set(WebCore_SOURCES
     platform/network/ResourceRequestBase.cpp
     platform/network/ResourceResponseBase.cpp
     platform/network/SocketStreamHandle.cpp
+    platform/network/SocketStreamHandleImpl.cpp
     platform/network/SynchronousLoaderClient.cpp
 
     platform/sql/SQLiteAuthorizer.cpp
@@ -2426,7 +2509,6 @@ set(WebCore_SOURCES
     rendering/RenderDetailsMarker.cpp
     rendering/RenderElement.cpp
     rendering/RenderEmbeddedObject.cpp
-    rendering/RenderFieldset.cpp
     rendering/RenderFileUploadControl.cpp
     rendering/RenderFlexibleBox.cpp
     rendering/RenderFlowThread.cpp
@@ -3424,6 +3506,7 @@ endif ()
 set(WebCoreTestSupport_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/testing"
+    "${WEBCORE_DIR}/testing/js"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
 )
 

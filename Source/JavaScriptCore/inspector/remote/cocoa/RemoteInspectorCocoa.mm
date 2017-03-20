@@ -445,26 +445,6 @@ void RemoteInspector::pushListingsSoon()
     });
 }
 
-#pragma mark - Update Listing with lock
-
-void RemoteInspector::updateTargetListing(unsigned targetIdentifier)
-{
-    auto target = m_targetMap.get(targetIdentifier);
-    if (!target)
-        return;
-
-    updateTargetListing(*target);
-}
-
-void RemoteInspector::updateTargetListing(const RemoteControllableTarget& target)
-{
-    RetainPtr<NSDictionary> targetListing = listingForTarget(target);
-    if (!targetListing)
-        return;
-
-    m_targetListingMap.set(target.targetIdentifier(), targetListing);
-}
-
 #pragma mark - Received XPC Messages
 
 void RemoteInspector::receivedSetupMessage(NSDictionary *userInfo)
@@ -511,8 +491,6 @@ void RemoteInspector::receivedSetupMessage(NSDictionary *userInfo)
         ASSERT_NOT_REACHED();
 
     updateHasActiveDebugSession();
-    updateTargetListing(*target);
-    pushListingsSoon();
 }
 
 void RemoteInspector::receivedDataMessage(NSDictionary *userInfo)
@@ -551,8 +529,6 @@ void RemoteInspector::receivedDidCloseMessage(NSDictionary *userInfo)
     m_targetConnectionMap.remove(targetIdentifier);
 
     updateHasActiveDebugSession();
-    updateTargetListing(targetIdentifier);
-    pushListingsSoon();
 }
 
 void RemoteInspector::receivedGetListingMessage(NSDictionary *)
@@ -627,13 +603,10 @@ void RemoteInspector::receivedConnectionDiedMessage(NSDictionary *userInfo)
         return;
 
     auto connection = it->value;
-    unsigned targetIdentifier = connection->targetIdentifier().value_or(0);
     connection->close();
     m_targetConnectionMap.remove(it);
 
     updateHasActiveDebugSession();
-    updateTargetListing(targetIdentifier);
-    pushListingsSoon();
 }
 
 void RemoteInspector::receivedAutomaticInspectionConfigurationMessage(NSDictionary *userInfo)

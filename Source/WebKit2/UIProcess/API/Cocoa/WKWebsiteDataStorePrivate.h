@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,15 +29,23 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class WKHTTPCookieStore;
+@class _WKWebsiteDataStoreConfiguration;
+
 typedef NS_OPTIONS(NSUInteger, _WKWebsiteDataStoreFetchOptions) {
     _WKWebsiteDataStoreFetchOptionComputeSizes = 1 << 0,
 } WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
 @interface WKWebsiteDataStore (WKPrivate)
 
+- (instancetype)_initWithConfiguration:(_WKWebsiteDataStoreConfiguration *)configuration;
+
 - (void)_fetchDataRecordsOfTypes:(NSSet<NSString *> *)dataTypes withOptions:(_WKWebsiteDataStoreFetchOptions)options completionHandler:(void (^)(NSArray<WKWebsiteDataRecord *> *))completionHandler;
 
 @property (nonatomic, setter=_setResourceLoadStatisticsEnabled:) BOOL _resourceLoadStatisticsEnabled WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+
+/*! @abstract Returns the cookie store representing HTTP cookies in this website data store. */
+@property (nonatomic, readonly) WKHTTPCookieStore *_httpCookieStore WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 

@@ -38,8 +38,12 @@ public:
     enum class Class {
         None,
         AesCbcCfbParams,
-        AesKeyGenParams,
+        AesGcmParams,
+        AesKeyParams,
+        EcKeyParams,
+        EcdhKeyDeriveParams,
         HmacKeyParams,
+        Pbkdf2Params,
         RsaHashedKeyGenParams,
         RsaHashedImportParams,
         RsaKeyGenParams,

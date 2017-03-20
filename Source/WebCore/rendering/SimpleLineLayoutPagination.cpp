@@ -44,8 +44,8 @@ static PaginatedLine computeLineTopAndBottomWithOverflow(const RenderBlockFlow& 
 {
     // FIXME: Add visualOverflowForDecorations.
     auto& fontMetrics = flow.style().fontCascade().fontMetrics();
-    auto ascent = fontMetrics.floatAscent();
-    auto descent = fontMetrics.floatDescent();
+    auto ascent = fontMetrics.ascent();
+    auto descent = fontMetrics.descent();
     auto lineHeight = lineHeightFromFlow(flow);
     LayoutUnit offset = flow.borderAndPaddingBefore();
     for (auto& strut : struts) {
@@ -63,18 +63,20 @@ static PaginatedLine computeLineTopAndBottomWithOverflow(const RenderBlockFlow& 
     return { topPosition, bottomPosition, bottomPosition - topPosition };
 }
 
-static unsigned computeLineBreakIndex(unsigned breakCandidate, unsigned lineCount, unsigned widows, const Layout::SimpleLineStruts& struts)
+static unsigned computeLineBreakIndex(unsigned breakCandidate, unsigned lineCount, int orphansNeeded, int widowsNeeded,
+    const Layout::SimpleLineStruts& struts)
 {
     // First line does not fit the current page.
     if (!breakCandidate)
         return breakCandidate;
     
-    auto remainingLineCount = lineCount - breakCandidate;
-    if (widows <= remainingLineCount)
+    int widowsOnTheNextPage = lineCount - breakCandidate;
+    if (widowsNeeded <= widowsOnTheNextPage)
         return breakCandidate;
-    
     // Only break after the first line with widows.
-    auto lineBreak = std::max<int>(lineCount - widows, 1);
+    auto lineBreak = std::max<int>(lineCount - widowsNeeded, 1);
+    if (orphansNeeded > lineBreak)
+        return breakCandidate;
     // Break on current page only.
     if (struts.isEmpty())
         return lineBreak;
@@ -94,17 +96,22 @@ static LayoutUnit computeOffsetAfterLineBreak(LayoutUnit lineBreakPosition, bool
 static void setPageBreakForLine(unsigned lineBreakIndex, PaginatedLines& lines, RenderBlockFlow& flow, Layout::SimpleLineStruts& struts,
     bool atTheTopOfColumnOrPage)
 {
-    if (!lineBreakIndex) {
-        // When the first line does not fit the current page, just add a page break in front and set the strut on the block.
-        auto line = lines.first();
-        auto remainingLogicalHeight = flow.pageRemainingLogicalHeightForOffset(line.top, RenderBlockFlow::ExcludePageBoundary);
-        flow.setPageBreak(line.top, line.height - remainingLogicalHeight);
-        flow.setPaginationStrut(remainingLogicalHeight);
+    auto line = lines.at(lineBreakIndex);
+    auto remainingLogicalHeight = flow.pageRemainingLogicalHeightForOffset(line.top, RenderBlockFlow::ExcludePageBoundary);
+    auto& style = flow.style();
+    auto firstLineDoesNotFit = !lineBreakIndex && line.height < flow.pageLogicalHeightForOffset(line.top);
+    auto orphanDoesNotFit = !style.hasAutoOrphans() && style.orphans() > (short)lineBreakIndex;
+    if (firstLineDoesNotFit || orphanDoesNotFit) {
+        auto firstLine = lines.first();
+        auto firstLineOverflowRect = computeOverflow(flow, LayoutRect(0, firstLine.top, 0, firstLine.height));
+        auto firstLineUpperOverhang = std::max<LayoutUnit>(-firstLineOverflowRect.y(), 0);
+        flow.setPaginationStrut(line.top + remainingLogicalHeight + firstLineUpperOverhang);
         return;
     }
-    auto beforeLineBreak = lines.at(lineBreakIndex - 1);
-    auto spaceShortage = flow.pageRemainingLogicalHeightForOffset(beforeLineBreak.top, RenderBlockFlow::ExcludePageBoundary) - beforeLineBreak.height;
-    flow.setPageBreak(beforeLineBreak.bottom, spaceShortage);
+    if (atTheTopOfColumnOrPage)
+        flow.setPageBreak(line.top, line.height);
+    else
+        flow.setPageBreak(line.top, line.height - remainingLogicalHeight);
     struts.append({ lineBreakIndex, computeOffsetAfterLineBreak(lines[lineBreakIndex].top, !lineBreakIndex, atTheTopOfColumnOrPage, flow) });
 }
 
@@ -127,6 +134,7 @@ void adjustLinePositionsForPagination(SimpleLineLayout::Layout& simpleLines, Ren
         return;
     unsigned lineIndex = 0;
     auto widows = flow.style().hasAutoWidows() ? 1 : std::max<int>(flow.style().widows(), 1);
+    auto orphans = flow.style().hasAutoOrphans() ? 1 : std::max<int>(flow.style().orphans(), 1);
     PaginatedLines lines;
     for (unsigned runIndex = 0; runIndex < simpleLines.runCount(); ++runIndex) {
         auto& run = simpleLines.runAt(runIndex);
@@ -138,11 +146,11 @@ void adjustLinePositionsForPagination(SimpleLineLayout::Layout& simpleLines, Ren
         auto remainingHeight = flow.pageRemainingLogicalHeightForOffset(line.top, RenderBlockFlow::ExcludePageBoundary);
         auto atTheTopOfColumnOrPage = flow.pageLogicalHeightForOffset(line.top) == remainingHeight;
         if (line.height > remainingHeight || (atTheTopOfColumnOrPage && lineIndex)) {
-            auto lineBreakIndex = computeLineBreakIndex(lineIndex, lineCount, widows, struts);
+            auto lineBreakIndex = computeLineBreakIndex(lineIndex, lineCount, orphans, widows, struts);
             // Are we still at the top of the column/page?
             atTheTopOfColumnOrPage = atTheTopOfColumnOrPage ? lineIndex == lineBreakIndex : false;
             setPageBreakForLine(lineBreakIndex, lines, flow, struts, atTheTopOfColumnOrPage);
-            // Recompute line positions that we already visited but window break pushed them to a new page.
+            // Recompute line positions that we already visited but widow break pushed them to a new page.
             for (auto i = lineBreakIndex; i < lines.size(); ++i)
                 lines.at(i) = computeLineTopAndBottomWithOverflow(flow, i, struts);
         }

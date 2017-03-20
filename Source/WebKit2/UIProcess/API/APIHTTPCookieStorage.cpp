@@ -62,12 +62,12 @@ void HTTPCookieStorage::stopObservingCookieChanges()
 
 void HTTPCookieStorage::setCookies(const Vector<WebCore::Cookie>& cookies)
 {
-    m_webPage.process().processPool().supplement<WebKit::WebCookieManagerProxy>()->setCookies(m_webPage.sessionID(), cookies);
+    m_webPage.process().processPool().supplement<WebKit::WebCookieManagerProxy>()->setCookies2(m_webPage.sessionID(), cookies);
 }
 
-void HTTPCookieStorage::getCookies(std::function<void (API::Array*, WebKit::CallbackBase::Error)> callbackFunction)
+void HTTPCookieStorage::getCookies(Function<void (API::Array*, WebKit::CallbackBase::Error)>&& callbackFunction)
 {
-    m_webPage.process().processPool().supplement<WebKit::WebCookieManagerProxy>()->getCookies(m_webPage.sessionID(), WTFMove(callbackFunction));
+    m_webPage.process().processPool().supplement<WebKit::WebCookieManagerProxy>()->getCookies2(m_webPage.sessionID(), WTFMove(callbackFunction));
 }
 
 } // namespace API

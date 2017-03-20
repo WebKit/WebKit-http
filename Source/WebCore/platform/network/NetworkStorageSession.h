@@ -27,6 +27,7 @@
 
 #include "CredentialStorage.h"
 #include "SessionID.h"
+#include <wtf/HashSet.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
@@ -40,11 +41,17 @@
 typedef struct _SoupCookieJar SoupCookieJar;
 #endif
 
+#ifdef __OBJC__
+#include <objc/objc.h>
+#endif
+
 namespace WebCore {
 
 class NetworkingContext;
 class ResourceRequest;
 class SoupNetworkSession;
+
+struct Cookie;
 
 class NetworkStorageSession {
     WTF_MAKE_NONCOPYABLE(NetworkStorageSession); WTF_MAKE_FAST_ALLOCATED;
@@ -60,6 +67,10 @@ public:
     SessionID sessionID() const { return m_sessionID; }
     CredentialStorage& credentialStorage() { return m_credentialStorage; }
 
+#ifdef __OBJC__
+    NSHTTPCookieStorage *nsCookieStorage() const;
+#endif
+
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     NetworkStorageSession(SessionID, RetainPtr<CFURLStorageSessionRef>);
 
@@ -67,6 +78,10 @@ public:
     CFURLStorageSessionRef platformSession() { return m_platformSession.get(); }
     WEBCORE_EXPORT RetainPtr<CFHTTPCookieStorageRef> cookieStorage() const;
     WEBCORE_EXPORT static void setCookieStoragePartitioningEnabled(bool);
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    WEBCORE_EXPORT bool shouldPartitionCookiesForHost(const String&);
+    WEBCORE_EXPORT void setShouldPartitionCookiesForHosts(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd);
+#endif
 #elif USE(SOUP)
     NetworkStorageSession(SessionID, std::unique_ptr<SoupNetworkSession>&&);
     ~NetworkStorageSession();
@@ -84,6 +99,13 @@ public:
 
     NetworkingContext* context() const;
 #endif
+
+    WEBCORE_EXPORT void setCookie(const Cookie&);
+    WEBCORE_EXPORT void setCookies(const Vector<Cookie>&, const URL&, const URL& mainDocumentURL);
+    WEBCORE_EXPORT void deleteCookie(const Cookie&);
+    WEBCORE_EXPORT Vector<Cookie> getAllCookies();
+    WEBCORE_EXPORT Vector<Cookie> getCookies(const URL&);
+    WEBCORE_EXPORT void flushCookieStore();
 
 private:
     static HashMap<SessionID, std::unique_ptr<NetworkStorageSession>>& globalSessionMap();
@@ -106,6 +128,10 @@ private:
 #endif
 
     CredentialStorage m_credentialStorage;
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    HashSet<String> m_topPrivatelyControlledDomainsForCookiePartitioning;
+#endif
 };
 
 WEBCORE_EXPORT String cookieStoragePartition(const ResourceRequest&);

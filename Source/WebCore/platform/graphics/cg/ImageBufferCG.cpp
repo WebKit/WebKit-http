@@ -483,22 +483,36 @@ static bool encodeImage(CGImageRef image, CFStringRef uti, std::optional<double>
     return CGImageDestinationFinalize(destination.get());
 }
 
-static String dataURL(CGImageRef image, const String& mimeType, std::optional<double> quality)
+static String dataURL(CFDataRef data, const String& mimeType)
 {
-    auto uti = utiFromMIMEType(mimeType);
-    ASSERT(uti);
-
-    auto data = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
-    if (!encodeImage(image, uti.get(), quality, data.get()))
-        return ASCIILiteral("data:,");
-
     Vector<char> base64Data;
-    base64Encode(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()), base64Data);
+    base64Encode(CFDataGetBytePtr(data), CFDataGetLength(data), base64Data);
 
     return "data:" + mimeType + ";base64," + base64Data;
 }
 
+static Vector<uint8_t> dataVector(CFDataRef cfData)
+{
+    Vector<uint8_t> data;
+    data.append(CFDataGetBytePtr(cfData), CFDataGetLength(cfData));
+    return data;
+}
+
 String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, CoordinateSystem) const
+{
+    if (auto data = toCFData(mimeType, quality))
+        return dataURL(data.get(), mimeType);
+    return ASCIILiteral("data:,");
+}
+
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
+{
+    if (auto data = toCFData(mimeType, quality))
+        return dataVector(data.get());
+    return { };
+}
+
+RetainPtr<CFDataRef> ImageBuffer::toCFData(const String& mimeType, std::optional<double> quality) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
@@ -508,21 +522,21 @@ String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> qual
     auto uti = utiFromMIMEType(mimeType);
     ASSERT(uti);
 
-    RefPtr<Uint8ClampedArray> premultipliedData;
     RetainPtr<CGImageRef> image;
+    RefPtr<Uint8ClampedArray> premultipliedData;
 
     if (CFEqual(uti.get(), jpegUTI())) {
         // JPEGs don't have an alpha channel, so we have to manually composite on top of black.
-        premultipliedData = getPremultipliedImageData(IntRect(IntPoint(0, 0), logicalSize()));
+        premultipliedData = getPremultipliedImageData(IntRect(IntPoint(), logicalSize()));
         if (!premultipliedData)
-            return ASCIILiteral("data:,");
+            return nullptr;
 
-        auto dataProvider = adoptCF(CGDataProviderCreateWithData(0, premultipliedData->data(), 4 * logicalSize().width() * logicalSize().height(), 0));
+        size_t dataSize = 4 * logicalSize().width() * logicalSize().height();
+        auto dataProvider = adoptCF(CGDataProviderCreateWithData(nullptr, premultipliedData->data(), dataSize, nullptr));
         if (!dataProvider)
-            return ASCIILiteral("data:,");
+            return nullptr;
 
-        image = adoptCF(CGImageCreate(logicalSize().width(), logicalSize().height(), 8, 32, 4 * logicalSize().width(),
-            sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast, dataProvider.get(), 0, false, kCGRenderingIntentDefault));
+        image = adoptCF(CGImageCreate(logicalSize().width(), logicalSize().height(), 8, 32, 4 * logicalSize().width(), sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast, dataProvider.get(), 0, false, kCGRenderingIntentDefault));
     } else if (m_resolutionScale == 1) {
         image = copyNativeImage(CopyBackingStore);
         image = createCroppedImageIfNecessary(image.get(), internalSize());
@@ -536,10 +550,14 @@ String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> qual
         image = adoptCF(CGBitmapContextCreateImage(context.get()));
     }
 
-    return dataURL(image.get(), mimeType, quality);
+    auto cfData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
+    if (!encodeImage(image.get(), uti.get(), quality, cfData.get()))
+        return nullptr;
+
+    return WTFMove(cfData);
 }
 
-String dataURL(const ImageData& source, const String& mimeType, std::optional<double> quality)
+static RetainPtr<CFDataRef> cfData(const ImageData& source, const String& mimeType, std::optional<double> quality)
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
@@ -554,7 +572,7 @@ String dataURL(const ImageData& source, const String& mimeType, std::optional<do
         // JPEGs don't have an alpha channel, so we have to manually composite on top of black.
         size_t size = 4 * source.width() * source.height();
         if (!premultipliedData.tryReserveCapacity(size))
-            return ASCIILiteral("data:,");
+            return nullptr;
 
         premultipliedData.resize(size);
         unsigned char *buffer = premultipliedData.data();
@@ -577,11 +595,29 @@ String dataURL(const ImageData& source, const String& mimeType, std::optional<do
 
     auto dataProvider = adoptCF(CGDataProviderCreateWithData(0, data, 4 * source.width() * source.height(), 0));
     if (!dataProvider)
-        return ASCIILiteral("data:,");
+        return nullptr;
 
-    auto image = adoptCF(CGImageCreate(source.width(), source.height(), 8, 32, 4 * source.width(),
-        sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | dataAlphaInfo, dataProvider.get(), 0, false, kCGRenderingIntentDefault));
-    return dataURL(image.get(), mimeType, quality);
+    auto image = adoptCF(CGImageCreate(source.width(), source.height(), 8, 32, 4 * source.width(), sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | dataAlphaInfo, dataProvider.get(), 0, false, kCGRenderingIntentDefault));
+
+    auto cfData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
+    if (!encodeImage(image.get(), uti.get(), quality, cfData.get()))
+        return nullptr;
+
+    return WTFMove(cfData);
+}
+
+String dataURL(const ImageData& source, const String& mimeType, std::optional<double> quality)
+{
+    if (auto data = cfData(source, mimeType, quality))
+        return dataURL(data.get(), mimeType);
+    return ASCIILiteral("data:,");
+}
+
+Vector<uint8_t> data(const ImageData& source, const String& mimeType, std::optional<double> quality)
+{
+    if (auto data = cfData(source, mimeType, quality))
+        return dataVector(data.get());
+    return { };
 }
 
 } // namespace WebCore

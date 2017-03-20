@@ -334,10 +334,22 @@ webrtc [ Pass ]
 # GTK uses OWR instead of libwebrtc
 webrtc/libwebrtc [ Skip ]
 # Some WebRTC features like datachannel are still not implemented
-webrtc/datachannel/basic.html [ Timeout ]
+webrtc/datachannel [ Skip ]
 webrtc/no-port-zero-in-upd-candidates.html [ Timeout ]
 webrtc/video-disabled-black.html [ Failure ]
 webrtc/video.html [ Failure ]
+webrtc/audio-peer-connection-webaudio.html [ Failure ]
+webrtc/peer-connection-audio-mute.html [ Failure ]
+webrtc/peer-connection-audio-mute2.html [ Failure ]
+webrtc/peer-connection-remote-audio-mute.html [ Failure ]
+webrtc/peer-connection-remote-audio-mute2.html [ Failure ]
+webrtc/video-mute.html [ Failure ]
+webrtc/video-remote-mute.html [ Failure ]
+imported/w3c/web-platform-tests/webrtc/datachannel-emptystring.html [ Failure ]
+imported/w3c/web-platform-tests/webrtc/no-media-call.html [ Failure ]
+imported/w3c/web-platform-tests/webrtc/promises-call.html [ Failure ]
+imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html [ Failure ]
+webkit.org/b/169110 webrtc/audio-peer-connection-webaudio.html [ Timeout ]
 # The MediaStream implementation is also still not completed
 webkit.org/b/79203 fast/mediastream/mock-media-source-webaudio.html [ Timeout ]
 webkit.org/b/79203 fast/mediastream/getUserMedia-webaudio.html [ Failure ]
@@ -352,6 +364,13 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-ice.html [ Timeout ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stats.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-statsSelector.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid.html [ Timeout Pass ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html [ Failure ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html [ Failure ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid.html [ Failure ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html [ Failure ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-setRemoteDescription-offer.html [ Failure ]
+webkit.org/b/79203 fast/mediastream/RTCRtpSender-replaceTrack.html [ Failure ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-closed-state.html [ Crash ]
 webkit.org/b/79203 webaudio/mediastreamaudiosourcenode.html [ Failure ]
 webkit.org/b/151344 fast/mediastream/MediaStream-add-ended-tracks.html [ Timeout ]
 webkit.org/b/151344 fast/mediastream/MediaStream-add-remove-tracks.html [ Failure ]
@@ -455,21 +474,40 @@ webkit.org/b/133320 crypto/webkitSubtle/hmac-sign-verify-empty-key.html [ Pass ]
 webkit.org/b/133320 crypto/webkitSubtle/hmac-sign-verify.html [ Pass ]
 
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_cbc.worker.html [ Failure ]
+webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_gcm.worker.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/rsa.worker.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_cbc.html [ Failure ]
+webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_gcm.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_rsa_oaep.html [ Failure ]
+webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_AES-GCM.worker.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-OAEP.worker.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSASSA-PKCS1-v1_5.worker.html [ Failure ]
+webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_AES-GCM.worker.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.worker.html [ Failure ]
+webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_AES-GCM.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_RSA-OAEP.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_RSASSA-PKCS1-v1_5.html [ Failure ]
+webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_AES-GCM.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.worker.html [ Failure ]
+webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/symmetric_importKey.worker.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.html [ Failure ]
+webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_symmetric_importKey.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/rsa_pkcs.worker.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/rsa_pss.worker.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pkcs.html [ Failure ]
 webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pss.html [ Failure ]
+# We don't support ECDH functions
+webkit.org/b/169272 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.worker.html [ Skip ]
+webkit.org/b/169272 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_ECDH.worker.html [ Skip ]
+webkit.org/b/169272 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDH.html [ Skip ]
+webkit.org/b/169272 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDH.html [ Skip ]
+webkit.org/b/169272 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/ec_importKey.worker.html [ Skip ]
+webkit.org/b/169272 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_ec_importKey.html [ Skip ]
+# We don't support PBKDF2
+webkit.org/b/169528 imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.worker.html [ Skip ]
+webkit.org/b/169528 imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2.html [ Skip ]
+
 
 # GTK does not implement setAutomaticLinkDetectionEnabled
 editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
@@ -807,6 +845,8 @@ webkit.org/b/161960 fast/dom/HTMLLinkElement/prefetch-beforeload.html [ Failure 
 webkit.org/b/162815 fast/text/variations/ [ Skip ]
 webkit.org/b/162815 animations/font-variations/ [ Skip ]
 
+webkit.org/b/169531 fast/text/font-selection-font-face-parse.html [ Skip ]
+
 webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
 webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media/clearkey-check-initdata-type.html [ Pass ]
 webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media/clearkey-events.html [ Pass ]
@@ -910,6 +950,14 @@ plugins/form-value.html [ Skip ]
 # We don't have LastResource font.
 fast/text/font-weight-download-2.html [ Failure ]
 
+# Require FILE_REPLACEMENT.
+fast/files/filereader-zip-bundle-using-open-panel.html [ Skip ]
+http/tests/local/fileapi/upload-zip-bundle-as-blob-using-open-panel.html [ Skip ]
+
+# RAF throttling requires REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR.
+fast/animation/request-animation-frame-throttling-detached-iframe.html [ Failure ]
+fast/animation/request-animation-frame-throttling-lowPowerMode.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1009,6 +1057,11 @@ webkit.org/b/168171 http/tests/loading/resourceLoadStatistics [ Crash ]
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html [ Crash ]
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating_index.html [ Crash ]
 webkit.org/b/167576 storage/indexeddb/modern/index-3-private.html [ Crash ]
+
+webkit.org/b/169811 fast/mediacapturefromelement/CanvasCaptureMediaStream-capture-out-of-DOM-element.html [ Crash ]
+webkit.org/b/169811 fast/mediacapturefromelement/CanvasCaptureMediaStream-webgl-events.html [ Crash ]
+webkit.org/b/169811 fast/mediastream/captureStream/canvas2d-heavy-drawing.html [ Crash ]
+webkit.org/b/169811 fast/mediastream/captureStream/canvas2d.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -1133,7 +1186,7 @@ webkit.org/b/114735 svg/filters/filter-hidden-content.svg [ Failure Pass ]
 webkit.org/b/116960 perf/adding-radio-buttons.html [ Failure Pass ]
 webkit.org/b/116961 perf/show-hide-table-rows.html [ Failure Pass ]
 
-webkit.org/b/116976 media/video-played-collapse.html [ Failure Pass ]
+webkit.org/b/116976 media/video-played-collapse.html [ Failure Pass Crash ]
 
 webkit.org/b/116977 media/event-attributes.html [ Crash Failure Timeout Pass ]
 
@@ -1545,6 +1598,8 @@ webkit.org/b/163532 plugins/js-from-destroy.html [ Failure Pass ]
 
 webkit.org/b/168780 fast/forms/input-first-letter-edit.html [ ImageOnlyFailure Pass ]
 
+webkit.org/b/116277 media/video-buffered.html [ Pass Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1859,6 +1914,8 @@ webkit.org/b/168568 http/tests/xmlhttprequest/resetting-timeout-to-zero.html [ T
 webkit.org/b/168568 http/tests/xmlhttprequest/timeout-greater-than-default-network-timeout.html [ Timeout ]
 
 webkit.org/b/168569 http/tests/appcache/main-resource-fallback-for-network-error-crash.html [ Timeout ]
+
+webkit.org/b/169211 fast/parser/adoption-agency-unload-iframe-4.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -2345,9 +2402,13 @@ webkit.org/b/116153 fast/css/text-overflow-ellipsis-full-truncate-rtl.html [ Ima
 webkit.org/b/116806 fast/css/text-overflow-ellipsis-behind-floats.html [ ImageOnlyFailure ]
 
 webkit.org/b/117582 fast/flexbox/clear-overflow-before-scroll-update.html [ Failure ]
+webkit.org/b/169007 css3/flexbox/flex-item-contains-strict.html [ Failure ]
+webkit.org/b/169007 css3/flexbox/overflow-auto-resizes-correctly.html [ Failure ]
 
 webkit.org/b/118220 http/tests/cache/partitioned-cache.html [ Failure ]
 webkit.org/b/118220 http/tests/cache/partitioned-cache-iframe.html [ Failure ]
+
+webkit.org/b/169010 tables/mozilla/bugs/bug32205-5.html [ Failure ]
 
 webkit.org/b/118221 fast/text/complex-first-glyph-with-initial-advance.html [ ImageOnlyFailure ]
 
@@ -2926,10 +2987,12 @@ webkit.org/b/168373 media/video-background-playback.html [ Failure ]
 webkit.org/b/168373 media/video-concurrent-playback.html [ Failure ]
 webkit.org/b/132055 media/track/track-datacue.html [ Failure ]
 
+# [GTK] Some reftest fail with only one or two pixel differences in diff image
 webkit.org/b/168426 fast/html/marquee-scroll.html [ ImageOnlyFailure ]
 webkit.org/b/168426 fast/multicol/columns-on-body.html [ ImageOnlyFailure ]
 webkit.org/b/168426 imported/blink/animations/display-inline-style-adjust.html [ ImageOnlyFailure ]
 webkit.org/b/168426 fast/html/details-comment-crash.html [ ImageOnlyFailure ]
+webkit.org/b/168426 fast/forms/button-set-display-flex-justifyContent-center.html [ ImageOnlyFailure ]
 
 webkit.org/b/136109 fast/multicol/mixed-opacity-fixed-test.html [ ImageOnlyFailure ]
 
@@ -2969,6 +3032,9 @@ webkit.org/b/168572 js/dom/regress-157246.html [ Failure ]
 
 webkit.org/b/168719 fast/css/paint-order-shadow.html [ ImageOnlyFailure ]
 
+webkit.org/b/169075 editing/selection/regional-indicators.html [ Failure ]
+webkit.org/b/169075 editing/deleting/skip-virama-001.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2990,8 +3056,6 @@ imported/w3c/css/css-color-3/t422-rgba-onscreen-multiple-boxes-c.xht [ Pass ]
 imported/w3c/css/css-color-3/t425-hsla-onscreen-multiple-boxes-c.xht [ Pass ]
 
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-represent-nothing-02.html [ Pass ]
-
-webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Pass ]
 
 fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]
 

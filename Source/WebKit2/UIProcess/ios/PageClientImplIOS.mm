@@ -137,6 +137,14 @@ void PageClientImpl::requestScroll(const FloatPoint& scrollPosition, const IntPo
     [m_webView _scrollToContentScrollPosition:scrollPosition scrollOrigin:scrollOrigin];
 }
 
+WebCore::FloatPoint PageClientImpl::viewScrollPosition()
+{
+    if (UIScrollView *scroller = [m_contentView _scroller])
+        return scroller.contentOffset;
+
+    return { };
+}
+
 IntSize PageClientImpl::viewSize()
 {
     if (UIScrollView *scroller = [m_contentView _scroller])
@@ -220,6 +228,11 @@ void PageClientImpl::toolTipChanged(const String&, const String&)
 void PageClientImpl::didNotHandleTapAsClick(const WebCore::IntPoint& point)
 {
     [m_contentView _didNotHandleTapAsClick:point];
+}
+    
+void PageClientImpl::didCompleteSyntheticClick()
+{
+    [m_contentView _didCompleteSyntheticClick];
 }
 
 bool PageClientImpl::decidePolicyForGeolocationPermissionRequest(WebFrameProxy& frame, API::SecurityOrigin& origin, GeolocationPermissionRequestProxy& request)
@@ -521,12 +534,12 @@ void PageClientImpl::couldNotRestorePageState()
     [m_webView _couldNotRestorePageState];
 }
 
-void PageClientImpl::restorePageState(const WebCore::FloatPoint& scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale)
+void PageClientImpl::restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale)
 {
     [m_webView _restorePageScrollPosition:scrollPosition scrollOrigin:scrollOrigin previousObscuredInset:obscuredInsetOnSave scale:scale];
 }
 
-void PageClientImpl::restorePageCenterAndScale(const WebCore::FloatPoint& center, double scale)
+void PageClientImpl::restorePageCenterAndScale(std::optional<WebCore::FloatPoint> center, double scale)
 {
     [m_webView _restorePageStateToUnobscuredCenter:center scale:scale];
 }
@@ -646,11 +659,6 @@ void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String& 
 {
     RetainPtr<NSData> data = adoptNS([[NSData alloc] initWithBytes:dataReference.data() length:dataReference.size()]);
     [m_webView _didFinishLoadingDataForCustomContentProviderWithSuggestedFilename:suggestedFilename data:data.get()];
-}
-
-void PageClientImpl::zoomToRect(FloatRect rect, double minimumScale, double maximumScale)
-{
-    [m_contentView _zoomToRect:rect withOrigin:rect.center() fitEntireRect:YES minimumScale:minimumScale maximumScale:maximumScale minimumScrollDistance:0];
 }
 
 void PageClientImpl::overflowScrollViewWillStartPanGesture()
@@ -777,6 +785,11 @@ void PageClientImpl::startDataInteractionWithImage(const IntPoint& clientPositio
 {
     [m_contentView _startDataInteractionWithImage:ShareableBitmap::create(image)->makeCGImageCopy() withIndicatorData:indicatorData atClientPosition:CGPointMake(clientPosition.x(), clientPosition.y()) anchorPoint:anchorPoint action:action];
 }
+
+void PageClientImpl::didConcludeEditDataInteraction(std::optional<TextIndicatorData> data)
+{
+    [m_contentView _didConcludeEditDataInteraction:data];
+}
 #endif
 
 void PageClientImpl::handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime)
@@ -795,8 +808,11 @@ void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName,
         ASSERT(fileName == String { passwordView.documentName });
         [passwordView showPasswordFailureAlert];
         passwordView.userDidEnterPassword = passwordHandler;
-    } else
-        [m_webView _showPasswordViewWithDocumentName:fileName passwordHandler:passwordHandler];
+        return;
+    }
+
+    [m_webView _showPasswordViewWithDocumentName:fileName passwordHandler:passwordHandler];
+    NavigationState::fromWebPage(*m_webView->_page).didRequestPasswordForQuickLookDocument();
 }
 #endif
 

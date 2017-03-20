@@ -23,11 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "AbstractPasteboard.h"
+#import <WebCore/AbstractPasteboard.h>
 
-#if ENABLE(DATA_INTERACTION)
+#if TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
 
-OBJC_CLASS UIItemProvider;
+@class UIItemProvider;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -45,8 +45,10 @@ WEBCORE_EXPORT @interface WebItemProviderPasteboard : NSObject<AbstractPasteboar
 - (void)incrementPendingOperationCount;
 - (void)decrementPendingOperationCount;
 
+- (void)enumerateItemProvidersWithBlock:(void (^)(UIItemProvider *itemProvider, NSUInteger index, BOOL *stop))block;
+
 @end
 
 NS_ASSUME_NONNULL_END
 
-#endif // ENABLE(DATA_INTERACTION)
+#endif // TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000

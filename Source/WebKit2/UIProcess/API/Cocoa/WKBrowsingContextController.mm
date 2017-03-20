@@ -187,16 +187,12 @@ static HashMap<WebPageProxy*, WKBrowsingContextController *>& browsingContextCon
 
 - (void)reload
 {
-    const bool reloadFromOrigin = false;
-    const bool contentBlockersEnabled = true;
-    _page->reload(reloadFromOrigin, contentBlockersEnabled);
+    _page->reload({ });
 }
 
 - (void)reloadFromOrigin
 {
-    const bool reloadFromOrigin = true;
-    const bool contentBlockersEnabled = true;
-    _page->reload(reloadFromOrigin, contentBlockersEnabled);
+    _page->reload(WebCore::ReloadOption::FromOrigin);
 }
 
 - (NSString *)applicationNameForUserAgent
@@ -779,7 +775,7 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 
 - (BOOL)_webProcessIsResponsive
 {
-    return _page->process().responsivenessTimer().isResponsive();
+    return _page->process().isResponsive();
 }
 
 @end

@@ -45,7 +45,7 @@ class ControlsVisibilitySupport extends MediaControllerSupport
 
     get mediaEvents()
     {
-        return ["loadedmetadata", "play", "pause"];
+        return ["loadedmetadata", "play", "pause", "webkitfullscreenchange"];
     }
 
     get tracksToMonitor()
@@ -63,7 +63,8 @@ class ControlsVisibilitySupport extends MediaControllerSupport
     _updateControls()
     {
         const media = this.mediaController.media;
-        const shouldShowControls = !!media.controls;
+        const host = this.mediaController.host;
+        const shouldShowControls = !!(media.controls || (host && host.shouldForceControlsDisplay) || media.webkitDisplayingFullscreen);
         const isVideo = media instanceof HTMLVideoElement && media.videoTracks.length > 0;
 
         const controls = this.mediaController.controls;

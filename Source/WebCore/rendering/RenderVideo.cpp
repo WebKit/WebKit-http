@@ -224,7 +224,7 @@ void RenderVideo::updateFromElement()
 
 void RenderVideo::updatePlayer()
 {
-    if (documentBeingDestroyed())
+    if (renderTreeBeingDestroyed())
         return;
 
     bool intrinsicSizeChanged;
@@ -255,11 +255,6 @@ void RenderVideo::updatePlayer()
 LayoutUnit RenderVideo::computeReplacedLogicalWidth(ShouldComputePreferred shouldComputePreferred) const
 {
     return RenderReplaced::computeReplacedLogicalWidth(shouldComputePreferred);
-}
-
-LayoutUnit RenderVideo::computeReplacedLogicalHeight() const
-{
-    return RenderReplaced::computeReplacedLogicalHeight();
 }
 
 LayoutUnit RenderVideo::minimumReplacedHeight() const 

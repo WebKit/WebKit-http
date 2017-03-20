@@ -30,7 +30,7 @@
 
 namespace WebCore {
 
-bool operator==(const AudioStreamBasicDescription&, const AudioStreamBasicDescription&);
+WEBCORE_EXPORT bool operator==(const AudioStreamBasicDescription&, const AudioStreamBasicDescription&);
 inline bool operator!=(const AudioStreamBasicDescription& a, const AudioStreamBasicDescription& b) { return !(a == b); }
 
 class CAAudioStreamDescription final : public AudioStreamDescription {
@@ -76,6 +76,9 @@ public:
     const AudioStreamBasicDescription& streamDescription() const { return m_streamDescription; }
     AudioStreamBasicDescription& streamDescription() { return m_streamDescription; }
 
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static bool decode(Decoder&, CAAudioStreamDescription&);
+
 private:
     void calculateFormat();
 
@@ -83,6 +86,18 @@ private:
     mutable PlatformDescription m_platformDescription;
     mutable PCMFormat m_format { None };
 };
+
+template<class Encoder>
+void CAAudioStreamDescription::encode(Encoder& encoder) const
+{
+    encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(&m_streamDescription), sizeof(m_streamDescription), 1);
+}
+
+template<class Decoder>
+bool CAAudioStreamDescription::decode(Decoder& decoder, CAAudioStreamDescription& description)
+{
+    return decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(&description.m_streamDescription), sizeof(description.m_streamDescription), 1);
+}
 
 inline CAAudioStreamDescription toCAAudioStreamDescription(const AudioStreamDescription& description)
 {

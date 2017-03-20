@@ -23,21 +23,12 @@
 import logging
 
 from webkitpy.common.net.jsctestresults import JSCTestResults
+from webkitpy.tool.bot.abstracttestresultsreader import AbstractTestResultsReader
 
 _log = logging.getLogger(__name__)
 
 
-class JSCTestResultsReader(object):
-    def __init__(self, host, results_directory):
-        self._host = host
-        self._results_directory = results_directory
-
-    def _read_file_contents(self, path):
-        try:
-            return self._host.filesystem.read_text_file(path)
-        except (IOError, KeyError):
-            return None
-
+class JSCTestResultsReader(AbstractTestResultsReader):
     def results(self):
         results_path = self._host.filesystem.join(self._results_directory, 'jsc_test_results.json')
         contents = self._read_file_contents(results_path)

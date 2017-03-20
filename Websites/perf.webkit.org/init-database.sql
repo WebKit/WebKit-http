@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS builds CASCADE;
 DROP TABLE IF EXISTS committers CASCADE;
 DROP TABLE IF EXISTS commits CASCADE;
 DROP TABLE IF EXISTS build_commits CASCADE;
+DROP TABLE IF EXISTS commit_ownerships CASCADE;
 DROP TABLE IF EXISTS build_slaves CASCADE;
 DROP TABLE IF EXISTS builders CASCADE;
 DROP TABLE IF EXISTS repositories CASCADE;
@@ -23,10 +24,11 @@ DROP TYPE IF EXISTS analysis_task_result_type CASCADE;
 DROP TABLE IF EXISTS build_triggerables CASCADE;
 DROP TABLE IF EXISTS triggerable_configurations CASCADE;
 DROP TABLE IF EXISTS triggerable_repositories CASCADE;
+DROP TABLE IF EXISTS uploaded_files CASCADE;
 DROP TABLE IF EXISTS bugs CASCADE;
 DROP TABLE IF EXISTS analysis_test_groups CASCADE;
-DROP TABLE IF EXISTS root_sets CASCADE;
-DROP TABLE IF EXISTS roots CASCADE;
+DROP TABLE IF EXISTS commit_sets CASCADE;
+DROP TABLE IF EXISTS commit_set_relationships CASCADE;
 DROP TABLE IF EXISTS build_requests CASCADE;
 DROP TYPE IF EXISTS build_request_status_type CASCADE;
 
@@ -38,11 +40,15 @@ CREATE TABLE platforms (
 
 CREATE TABLE repositories (
     repository_id serial PRIMARY KEY,
-    repository_parent integer REFERENCES repositories ON DELETE CASCADE,
+    repository_owner integer REFERENCES repositories ON DELETE CASCADE,
     repository_name varchar(64) NOT NULL,
     repository_url varchar(1024),
-    repository_blame_url varchar(1024),
-    CONSTRAINT repository_name_must_be_unique UNIQUE(repository_parent, repository_name));
+    repository_blame_url varchar(1024));
+
+CREATE UNIQUE INDEX repository_name_owner_unique_index ON repositories (repository_owner, repository_name)
+    WHERE repository_owner IS NOT NULL;
+CREATE UNIQUE INDEX repository_name_unique_index ON repositories (repository_name)
+    WHERE repository_owner IS NULL;
 
 CREATE TABLE bug_trackers (
     tracker_id serial PRIMARY KEY,
@@ -97,6 +103,12 @@ CREATE TABLE commits (
     CONSTRAINT commit_in_repository_must_be_unique UNIQUE(commit_repository, commit_revision));
 CREATE INDEX commit_time_index ON commits(commit_time);
 CREATE INDEX commit_order_index ON commits(commit_order);
+
+CREATE TABLE commit_ownerships (
+    commit_owner integer NOT NULL REFERENCES commits ON DELETE CASCADE,
+    commit_owned integer NOT NULL REFERENCES commits ON DELETE CASCADE,
+    PRIMARY KEY (commit_owner, commit_owned)
+);
 
 CREATE TABLE build_commits (
     commit_build integer NOT NULL REFERENCES builds ON DELETE CASCADE,
@@ -230,6 +242,19 @@ CREATE TABLE triggerable_configurations (
     trigconfig_triggerable integer REFERENCES build_triggerables NOT NULL,
     CONSTRAINT triggerable_must_be_unique_for_test_and_platform UNIQUE(trigconfig_test, trigconfig_platform));
 
+CREATE TABLE uploaded_files (
+    file_id serial PRIMARY KEY,
+    file_created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    file_deleted_at timestamp,
+    file_mime varchar(64),
+    file_filename varchar(1024) NOT NULL,
+    file_extension varchar(16),
+    file_author varchar(256),
+    file_size bigint NOT NULL,
+    file_sha256 char(64) NOT NULL);
+CREATE INDEX file_author_index ON uploaded_files(file_author);
+CREATE UNIQUE INDEX file_sha256_index ON uploaded_files(file_sha256) WHERE file_deleted_at is NULL;
+
 CREATE TABLE analysis_test_groups (
     testgroup_id serial PRIMARY KEY,
     testgroup_task integer REFERENCES analysis_tasks NOT NULL,
@@ -240,12 +265,12 @@ CREATE TABLE analysis_test_groups (
     CONSTRAINT testgroup_name_must_be_unique_for_each_task UNIQUE(testgroup_task, testgroup_name));
 CREATE INDEX testgroup_task_index ON analysis_test_groups(testgroup_task);
 
-CREATE TABLE root_sets (
-    rootset_id serial PRIMARY KEY);
+CREATE TABLE commit_sets (
+    commitset_id serial PRIMARY KEY);
 
-CREATE TABLE roots (
-    root_set integer REFERENCES root_sets NOT NULL,
-    root_commit integer REFERENCES commits NOT NULL);
+CREATE TABLE commit_set_relationships (
+    commitset_set integer REFERENCES commit_sets NOT NULL,
+    commitset_commit integer REFERENCES commits NOT NULL);
 
 CREATE TYPE build_request_status_type as ENUM ('pending', 'scheduled', 'running', 'failed', 'completed', 'canceled');
 CREATE TABLE build_requests (
@@ -255,7 +280,7 @@ CREATE TABLE build_requests (
     request_test integer REFERENCES tests NOT NULL,
     request_group integer REFERENCES analysis_test_groups NOT NULL,
     request_order integer NOT NULL,
-    request_root_set integer REFERENCES root_sets NOT NULL,
+    request_commit_set integer REFERENCES commit_sets NOT NULL,
     request_status build_request_status_type NOT NULL DEFAULT 'pending',
     request_url varchar(1024),
     request_build integer REFERENCES builds,

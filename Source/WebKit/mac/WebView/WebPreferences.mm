@@ -491,7 +491,14 @@ public:
         [NSNumber numberWithBool:NO],   WebKitJavaScriptCanAccessClipboardPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitXSSAuditorEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAcceleratedCompositingEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO],   WebKitSubpixelAntialiasedLayerTextEnabledPreferenceKey,
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#define DEFAULT_SUBPIXEL_ANTIALIASED_LAYER_TEXT_ENABLED YES
+#else
+#define DEFAULT_SUBPIXEL_ANTIALIASED_LAYER_TEXT_ENABLED NO
+#endif
+        [NSNumber numberWithBool:DEFAULT_SUBPIXEL_ANTIALIASED_LAYER_TEXT_ENABLED], WebKitSubpixelAntialiasedLayerTextEnabledPreferenceKey,
+
         [NSNumber numberWithBool:NO],   WebKitDisplayListDrawingEnabledPreferenceKey,
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
         [NSNumber numberWithBool:YES],  WebKitAcceleratedDrawingEnabledPreferenceKey,
@@ -619,6 +626,9 @@ public:
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
+#if ENABLE(WEBGPU)
+        [NSNumber numberWithBool:NO], WebKitWebGPUEnabledPreferenceKey,
+#endif
 #if ENABLE(FETCH_API)
         [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
 #endif
@@ -645,12 +655,14 @@ public:
 #endif
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:NO], WebKitPeerConnectionEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitWebRTCLegacyAPIEnabledPreferenceKey,
 #endif
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
 #endif
         @NO, WebKitUserTimingEnabledPreferenceKey,
         @NO, WebKitResourceTimingEnabledPreferenceKey,
+        @NO, WebKitCredentialManagementEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -2062,6 +2074,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:forceLowPower forKey:WebKitForceWebGLUsesLowPowerPreferenceKey];
 }
 
+- (BOOL)webGPUEnabled
+{
+    return [self _boolValueForKey:WebKitWebGPUEnabledPreferenceKey];
+}
+
+- (void)setWebGPUEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitWebGPUEnabledPreferenceKey];
+}
+
 - (BOOL)accelerated2dCanvasEnabled
 {
     return [self _boolValueForKey:WebKitAccelerated2dCanvasEnabledPreferenceKey];
@@ -2754,6 +2776,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitPeerConnectionEnabledPreferenceKey];
 }
 
+- (BOOL)webRTCLegacyAPIEnabled
+{
+    return [self _boolValueForKey:WebKitWebRTCLegacyAPIEnabledPreferenceKey];
+}
+
+- (void)setWebRTCLegacyAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitWebRTCLegacyAPIEnabledPreferenceKey];
+}
+
 - (BOOL)linkPreloadEnabled
 {
     return [self _boolValueForKey:WebKitLinkPreloadEnabledPreferenceKey];
@@ -2832,6 +2864,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
+}
+
+- (BOOL)enumeratingAllNetworkInterfacesEnabled
+{
+    return [self _boolValueForKey:WebKitEnumeratingAllNetworkInterfacesEnabledPreferenceKey];
+}
+
+- (void)setEnumeratingAllNetworkInterfacesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitEnumeratingAllNetworkInterfacesEnabledPreferenceKey];
+}
+
+- (BOOL)iceCandidateFilteringEnabled
+{
+    return [self _boolValueForKey:WebKitICECandidateFilteringEnabledPreferenceKey];
+}
+
+- (void)setIceCandidateFilteringEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitICECandidateFilteringEnabledPreferenceKey];
 }
 
 - (BOOL)mediaCaptureRequiresSecureConnection
@@ -2952,6 +3004,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setResourceTimingEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitResourceTimingEnabledPreferenceKey];
+}
+
+- (BOOL)credentialManagementEnabled
+{
+    return [self _boolValueForKey:WebKitCredentialManagementEnabledPreferenceKey];
+}
+
+- (void)setCredentialManagementEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCredentialManagementEnabledPreferenceKey];
 }
 
 #if PLATFORM(IOS)
