@@ -108,8 +108,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/LegacySessionStateCodingNone.cpp
     UIProcess/WebResourceLoadStatisticsManager.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
-    UIProcess/WebTextChecker.cpp
-    UIProcess/WebTextCheckerClient.cpp
 
     UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp
 
