@@ -151,6 +151,7 @@ list(APPEND WebCore_SOURCES
     platform/glib/KeyedEncoderGlib.cpp
     platform/glib/MainThreadSharedTimerGLib.cpp
     platform/glib/SharedBufferGlib.cpp
+    platform/glib/SSLKeyGeneratorGLib.cpp
 
     platform/graphics/cairo/GraphicsContextCairo.cpp
 
@@ -171,7 +172,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/PlatformPasteboardWPE.cpp
     platform/wpe/PlatformScreenWPE.cpp
     platform/wpe/RenderThemeWPE.cpp
-    platform/wpe/SSLKeyGeneratorWPE.cpp
     platform/wpe/ScrollbarThemeWPE.cpp
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
