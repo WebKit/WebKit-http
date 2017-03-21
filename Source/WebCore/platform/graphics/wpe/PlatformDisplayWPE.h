@@ -30,13 +30,16 @@
 
 #include "PlatformDisplay.h"
 
+#define __GBM__ 1
+#include <EGL/eglplatform.h>
+
 struct wpe_renderer_backend_egl;
 struct wpe_renderer_backend_egl_target;
+struct wpe_renderer_backend_egl_offscreen_target;
 
 namespace WebCore {
 
 class GLContext;
-class GLContextWPE;
 class IntSize;
 
 class PlatformDisplayWPE final : public PlatformDisplay {
@@ -59,7 +62,7 @@ public:
         ~EGLTarget();
 
         void initialize(const IntSize&);
-        std::unique_ptr<GLContextWPE> createGLContext() const;
+        EGLNativeWindowType nativeWindow() const;
 
         void resize(const IntSize&);
 
@@ -72,9 +75,19 @@ public:
         struct wpe_renderer_backend_egl_target* m_backend;
     };
 
-    std::unique_ptr<EGLTarget> createEGLTarget(EGLTarget::Client&, int);
+    class EGLOffscreenTarget {
+    public:
+        EGLOffscreenTarget(const PlatformDisplayWPE&);
+        ~EGLOffscreenTarget();
 
-    std::unique_ptr<GLContextWPE> createOffscreenContext(PlatformDisplay&, bool);
+        EGLNativeWindowType nativeWindow() const;
+
+    private:
+        struct wpe_renderer_backend_egl_offscreen_target* m_target;
+    };
+
+    std::unique_ptr<EGLTarget> createEGLTarget(EGLTarget::Client&, int);
+    std::unique_ptr<EGLOffscreenTarget> createEGLOffscreenTarget();
 
 private:
     Type type() const override { return PlatformDisplay::Type::WPE; }
