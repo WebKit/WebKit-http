@@ -54,6 +54,9 @@ const DRM_CONST_STRING* g_rgpdstrRights[1] = {&g_dstrWMDRM_RIGHT_PLAYBACK};
 
 PlayreadySession::PlayreadySession()
     : m_key()
+    , m_poAppContext(nullptr)
+    , m_pbOpaqueBuffer(nullptr)
+    , m_pbRevocationBuffer(nullptr)
     , m_eKeyState(KEY_INIT)
     , m_fCommit(FALSE)
 {
@@ -65,6 +68,7 @@ PlayreadySession::PlayreadySession()
     m_cbOpaqueBuffer = MINIMUM_APPCONTEXT_OPAQUE_BUFFER_SIZE;
 
     ChkMem(m_poAppContext = (DRM_APP_CONTEXT *)Oem_MemAlloc(SIZEOF(DRM_APP_CONTEXT)));
+    ZEROMEM(m_poAppContext, SIZEOF(DRM_APP_CONTEXT));
 
     // Initialize DRM app context.
     ChkDR(Drm_Initialize(m_poAppContext,
