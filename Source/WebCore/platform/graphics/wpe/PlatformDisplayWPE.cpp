@@ -28,8 +28,9 @@
 
 #if PLATFORM(WPE)
 
-#include "GLContextWPE.h"
+#include "GLContextEGL.h"
 #include "IntSize.h"
+#include <EGL/egl.h>
 #include <wpe/renderer-backend-egl.h>
 
 namespace WebCore {
@@ -59,24 +60,9 @@ std::unique_ptr<PlatformDisplayWPE::EGLTarget> PlatformDisplayWPE::createEGLTarg
     return std::make_unique<EGLTarget>(*this, client, hostFd);
 }
 
-std::unique_ptr<GLContextWPE> PlatformDisplayWPE::createOffscreenContext(PlatformDisplay& platformDisplay, bool isSharing)
+std::unique_ptr<PlatformDisplayWPE::EGLOffscreenTarget> PlatformDisplayWPE::createEGLOffscreenTarget()
 {
-    struct OffscreenContextData final : public GLContextWPE::Data {
-    public:
-        virtual ~OffscreenContextData()
-        {
-            wpe_renderer_backend_egl_offscreen_target_destroy(surface);
-        }
-
-        wpe_renderer_backend_egl_offscreen_target* surface;
-    };
-
-    auto contextData = std::make_unique<OffscreenContextData>();
-    contextData->surface = wpe_renderer_backend_egl_offscreen_target_create();
-    wpe_renderer_backend_egl_offscreen_target_initialize(contextData->surface, m_backend);
-
-    EGLNativeWindowType nativeWindow = wpe_renderer_backend_egl_offscreen_target_get_native_window(contextData->surface);
-    return GLContextWPE::createContext(platformDisplay, nativeWindow, isSharing, WTFMove(contextData));
+    return std::make_unique<EGLOffscreenTarget>(*this);
 }
 
 PlatformDisplayWPE::EGLTarget::EGLTarget(const PlatformDisplayWPE& display, PlatformDisplayWPE::EGLTarget::Client& client, int hostFd)
@@ -107,9 +93,9 @@ void PlatformDisplayWPE::EGLTarget::initialize(const IntSize& size)
         std::max(0, size.width()), std::max(0, size.height()));
 }
 
-std::unique_ptr<GLContextWPE> PlatformDisplayWPE::EGLTarget::createGLContext() const
+EGLNativeWindowType PlatformDisplayWPE::EGLTarget::nativeWindow() const
 {
-    return GLContextWPE::createContext(const_cast<PlatformDisplayWPE&>(m_display), wpe_renderer_backend_egl_target_get_native_window(m_backend), false);
+    return wpe_renderer_backend_egl_target_get_native_window(m_backend);
 }
 
 void PlatformDisplayWPE::EGLTarget::resize(const IntSize& size)
@@ -125,6 +111,22 @@ void PlatformDisplayWPE::EGLTarget::frameWillRender()
 void PlatformDisplayWPE::EGLTarget::frameRendered()
 {
     wpe_renderer_backend_egl_target_frame_rendered(m_backend);
+}
+
+PlatformDisplayWPE::EGLOffscreenTarget::EGLOffscreenTarget(const PlatformDisplayWPE& display)
+{
+    m_target = wpe_renderer_backend_egl_offscreen_target_create();
+    wpe_renderer_backend_egl_offscreen_target_initialize(m_target, display.m_backend);
+}
+
+PlatformDisplayWPE::EGLOffscreenTarget::~EGLOffscreenTarget()
+{
+    wpe_renderer_backend_egl_offscreen_target_destroy(m_target);
+}
+
+EGLNativeWindowType PlatformDisplayWPE::EGLOffscreenTarget::nativeWindow() const
+{
+    return wpe_renderer_backend_egl_offscreen_target_get_native_window(m_target);
 }
 
 } // namespace WebCore

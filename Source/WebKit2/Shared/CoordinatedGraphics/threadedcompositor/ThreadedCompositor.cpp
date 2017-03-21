@@ -41,10 +41,6 @@
 #include <GL/gl.h>
 #endif
 
-#if PLATFORM(WPE)
-#include <WebCore/GLContextWPE.h>
-#endif
-
 using namespace WebCore;
 
 namespace WebKit {
@@ -103,12 +99,13 @@ void ThreadedCompositor::createGLContext()
 #endif
 
 #if PLATFORM(WPE)
-    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
-    m_target = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createEGLTarget(*this, m_compositingManager.releaseConnectionFd());
+    auto& platformDisplay = PlatformDisplay::sharedDisplay();
+    RELEASE_ASSERT(is<PlatformDisplayWPE>(platformDisplay));
+    m_target = downcast<PlatformDisplayWPE>(platformDisplay).createEGLTarget(*this, m_compositingManager.releaseConnectionFd());
     ASSERT(m_target);
     m_target->initialize(m_viewportSize);
 
-    m_context = m_target->createGLContext();
+    m_context = GLContext::createContextForWindow(m_target->nativeWindow(), &platformDisplay);
     if (!m_context)
         return;
 

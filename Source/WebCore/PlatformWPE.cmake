@@ -155,9 +155,11 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/cairo/GraphicsContextCairo.cpp
 
+    platform/graphics/egl/GLContextEGL.cpp
+    platform/graphics/egl/GLContextEGLWPE.cpp
+
     platform/graphics/freetype/FontPlatformDataFreeType.cpp
 
-    platform/graphics/wpe/GLContextWPE.cpp
     platform/graphics/wpe/IconWPE.cpp
     platform/graphics/wpe/ImageWPE.cpp
 

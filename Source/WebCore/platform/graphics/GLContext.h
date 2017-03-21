@@ -22,7 +22,6 @@
 
 #include "GraphicsContext3D.h"
 #include "PlatformDisplay.h"
-#include <memory>
 #include <wtf/Noncopyable.h>
 
 #if USE(EGL)
