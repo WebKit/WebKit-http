@@ -54,6 +54,9 @@ const DRM_CONST_STRING* g_rgpdstrRights[1] = {&g_dstrWMDRM_RIGHT_PLAYBACK};
 
 PlayreadySession::PlayreadySession()
     : m_key()
+    , m_poAppContext(nullptr)
+    , m_pbOpaqueBuffer(nullptr)
+    , m_pbRevocationBuffer(nullptr)
     , m_eKeyState(KEY_INIT)
     , m_fCommit(FALSE)
 {
@@ -65,6 +68,7 @@ PlayreadySession::PlayreadySession()
     m_cbOpaqueBuffer = MINIMUM_APPCONTEXT_OPAQUE_BUFFER_SIZE;
 
     ChkMem(m_poAppContext = (DRM_APP_CONTEXT *)Oem_MemAlloc(SIZEOF(DRM_APP_CONTEXT)));
+    ZEROMEM(m_poAppContext, SIZEOF(DRM_APP_CONTEXT));
 
     // Initialize DRM app context.
     ChkDR(Drm_Initialize(m_poAppContext,
@@ -145,13 +149,14 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
                                   initData->byteLength()));
     GST_DEBUG("init data set on DRM context");
 
-    if (DRM_SUCCEEDED(Drm_Reader_Bind(m_poAppContext, g_rgpdstrRights, NO_OF(g_rgpdstrRights), _PolicyCallback, NULL, &m_oDecryptContext))) {
-        GST_DEBUG("Play rights already acquired!");
-        m_eKeyState = KEY_READY;
-        systemCode = dr;
-        errorCode = 0;
-        return nullptr;
-    }
+    // FIXME: Revert once re-use of key is fixed
+    //if (DRM_SUCCEEDED(Drm_Reader_Bind(m_poAppContext, g_rgpdstrRights, NO_OF(g_rgpdstrRights), _PolicyCallback, NULL, &m_oDecryptContext))) {
+    //    GST_DEBUG("Play rights already acquired!");
+    //    m_eKeyState = KEY_READY;
+    //    systemCode = dr;
+    //    errorCode = 0;
+    //    return nullptr;
+    //}
     GST_DEBUG("DRM reader bound");
 
     // Try to figure out the size of the license acquisition
