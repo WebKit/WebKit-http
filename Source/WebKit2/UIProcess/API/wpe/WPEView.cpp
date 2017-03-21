@@ -33,6 +33,7 @@
 #include "NativeWebWheelEvent.h"
 #include "WebPageGroup.h"
 #include "WebProcessPool.h"
+#include <stdlib.h>
 #include <wpe/view-backend.h>
 
 using namespace WebKit;
@@ -70,6 +71,12 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
     m_backend = backend;
     if (!m_backend)
         m_backend = wpe_view_backend_create();
+
+    if (!m_backend) {
+        fprintf(stderr, "WPEView: failed to create backend\n");
+        abort();
+    }
+
     m_compositingManagerProxy.initialize();
 
     static struct wpe_view_backend_client s_backendClient = {
