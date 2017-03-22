@@ -79,32 +79,6 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
     m_pageClient.updateTextInputState();
 }
 
-void WebPageProxy::registerApplicationScheme(const String& scheme)
-{
-    process().send(Messages::WebPage::RegisterApplicationScheme(scheme), m_pageID);
-}
-
-void WebPageProxy::resolveApplicationSchemeRequest(QtNetworkRequestData request)
-{
-#if HAVE(QTQUICK)
-    RefPtr<QtRefCountedNetworkRequestData> requestData = adoptRef(new QtRefCountedNetworkRequestData(request));
-    m_applicationSchemeRequests.add(requestData);
-    static_cast<QtPageClient*>(m_pageClient)->handleApplicationSchemeRequest(requestData);
-#endif
-}
-
-void WebPageProxy::sendApplicationSchemeReply(const QQuickNetworkReply* reply)
-{
-#if HAVE(QTQUICK)
-    RefPtr<QtRefCountedNetworkRequestData> requestData = reply->networkRequestData();
-    if (m_applicationSchemeRequests.contains(requestData)) {
-        RefPtr<QtRefCountedNetworkReplyData> replyData = reply->networkReplyData();
-        process().send(Messages::WebPage::ApplicationSchemeReply(replyData->data()), pageID());
-        m_applicationSchemeRequests.remove(requestData);
-    }
-#endif
-}
-
 void WebPageProxy::authenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password)
 {
     m_pageClient.handleAuthenticationRequiredRequest(hostname, realm, prefilledUsername, username, password);

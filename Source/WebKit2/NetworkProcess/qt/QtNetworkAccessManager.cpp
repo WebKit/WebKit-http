@@ -27,9 +27,6 @@
 #include "config.h"
 #include "QtNetworkAccessManager.h"
 
-#include "QtNetworkReply.h"
-#include "SharedMemory.h"
-#include "WebFrameNetworkingContext.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcess.h"
@@ -62,23 +59,6 @@ WebPage* QtNetworkAccessManager::obtainOriginatingWebPage(const QNetworkRequest&
 
     qulonglong pageID = originatingObject->property("pageID").toULongLong();
     return m_webProcess->webPage(pageID);
-}
-
-QNetworkReply* QtNetworkAccessManager::createRequest(Operation operation, const QNetworkRequest& request, QIODevice* outData)
-{
-    WebPage* webPage = obtainOriginatingWebPage(request);
-    if (webPage && m_applicationSchemes.contains(webPage, request.url().scheme().toLower())) {
-        QtNetworkReply* reply = new QtNetworkReply(request, this);
-        webPage->receivedApplicationSchemeRequest(request, reply);
-        return reply;
-    }
-
-    return QNetworkAccessManager::createRequest(operation, request, outData);
-}
-
-void QtNetworkAccessManager::registerApplicationScheme(const WebPage* page, const QString& scheme)
-{
-    m_applicationSchemes.insert(page, scheme.toLower());
 }
 
 void QtNetworkAccessManager::onProxyAuthenticationRequired(const QNetworkProxy& proxy, QAuthenticator* authenticator)

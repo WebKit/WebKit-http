@@ -41,10 +41,6 @@ class QtNetworkAccessManager : public QNetworkAccessManager {
     Q_OBJECT
 public:
     QtNetworkAccessManager();
-    void registerApplicationScheme(const WebPage*, const QString& scheme);
-
-protected:
-    QNetworkReply* createRequest(Operation, const QNetworkRequest&, QIODevice* outgoingData = 0) override;
 
 private Q_SLOTS:
     void onAuthenticationRequired(QNetworkReply *, QAuthenticator *);
@@ -54,7 +50,6 @@ private Q_SLOTS:
 private:
     WebPage* obtainOriginatingWebPage(const QNetworkRequest&);
 
-    QMultiHash<const WebPage*, QString> m_applicationSchemes;
     WebProcess* m_webProcess { nullptr };
 };
 

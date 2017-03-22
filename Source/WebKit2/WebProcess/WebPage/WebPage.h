@@ -80,10 +80,6 @@
 
 #if PLATFORM(QT)
 #include "ArgumentCodersQt.h"
-#include "QtNetworkAccessManager.h"
-#include "QtNetworkReply.h"
-#include "QtNetworkReplyData.h"
-#include "QtNetworkRequestData.h"
 #include "TapHighlightController.h"
 #endif
 
@@ -805,9 +801,6 @@ public:
 #endif
 
 #if PLATFORM(QT)
-    void registerApplicationScheme(const String& scheme);
-    void applicationSchemeReply(const QtNetworkReplyData&);
-    void receivedApplicationSchemeRequest(const QNetworkRequest&, QtNetworkReply*);
     void setUserScripts(const Vector<String>&);
 #endif
     void wheelEvent(const WebWheelEvent&);
@@ -1438,10 +1431,6 @@ private:
     WebCore::FloatPoint m_pendingSyntheticClickLocation;
     WebCore::FloatRect m_previousExposedContentRect;
     WebCore::Timer m_volatilityTimer;
-#endif
-
-#if PLATFORM(QT)
-    HashMap<String, QtNetworkReply*> m_applicationSchemeReplies;
 #endif
 
     HashSet<String, ASCIICaseInsensitiveHash> m_mimeTypesWithCustomContentProviders;

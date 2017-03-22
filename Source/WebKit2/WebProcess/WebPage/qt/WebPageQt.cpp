@@ -301,32 +301,6 @@ PassRefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
     return 0;
 }
 
-void WebPage::registerApplicationScheme(const String& scheme)
-{
-    notImplemented();
-//    QtNetworkAccessManager* qnam = qobject_cast<QtNetworkAccessManager*>(WebProcess::singleton().networkAccessManager());
-//    if (!qnam)
-//        return;
-//    qnam->registerApplicationScheme(this, QString(scheme));
-}
-
-void WebPage::receivedApplicationSchemeRequest(const QNetworkRequest& request, QtNetworkReply* reply)
-{
-    QtNetworkRequestData requestData(request, reply);
-    m_applicationSchemeReplies.add(requestData.m_replyUuid, reply);
-    send(Messages::WebPageProxy::ResolveApplicationSchemeRequest(requestData));
-}
-
-void WebPage::applicationSchemeReply(const QtNetworkReplyData& replyData)
-{
-    if (!m_applicationSchemeReplies.contains(replyData.m_replyUuid))
-        return;
-
-    QtNetworkReply* networkReply = m_applicationSchemeReplies.take(replyData.m_replyUuid);
-    networkReply->setReplyData(replyData);
-    networkReply->finalize();
-}
-
 void WebPage::selectedIndex(int32_t newIndex)
 {
     changeSelectedIndex(newIndex);
