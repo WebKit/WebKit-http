@@ -3,6 +3,8 @@ set(WebKit2_NetworkProcess_OUTPUT_NAME QtWebNetworkProcess)
 set(WebKit2_PluginProcess_OUTPUT_NAME QtWebPluginProcess)
 set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebDatabaseProcess)
 
+file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
+
 if (SHARED_CORE)
     set(WebKit2_LIBRARY_TYPE SHARED)
 else ()
