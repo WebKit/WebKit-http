@@ -887,9 +887,6 @@ class Port(object):
             'SYSTEMROOT',
             'WEBKIT_LIBRARIES',
 
-            # WPE:
-            'WAYLAND_DISPLAY',
-
             # Most ports (?):
             'WEBKIT_TESTFONTS',
             'WEBKIT_OUTPUTDIR',
