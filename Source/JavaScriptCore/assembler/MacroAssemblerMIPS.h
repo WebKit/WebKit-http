@@ -3006,6 +3006,11 @@ public:
         breakpoint();
     }
 
+    void storeFence()
+    {
+        m_assembler.sync();
+    }
+
     void abortWithReason(AbortReason reason, intptr_t misc)
     {
         move(TrustedImm32(misc), immTempRegister);
