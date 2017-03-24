@@ -100,7 +100,7 @@ public:
 
     bool hasPendingActivity() const final;
 
-    static const MediaTime& currentTimeFudgeFactor();
+    const MediaTime& currentTimeFudgeFactor();
 
 private:
     explicit MediaSource(ScriptExecutionContext&);

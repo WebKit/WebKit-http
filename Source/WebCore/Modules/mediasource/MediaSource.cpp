@@ -336,9 +336,13 @@ ExceptionOr<void> MediaSource::clearLiveSeekableRange()
 
 const MediaTime& MediaSource::currentTimeFudgeFactor()
 {
-    // Allow hasCurrentTime() to be off by as much as the length of two 24fps video frames
-    static NeverDestroyed<MediaTime> fudgeFactor(2002, 24000);
-    return fudgeFactor;
+    const MediaTime* fudgeFactor = &MediaTime::zeroTime();
+    for (auto& sourceBuffer : *m_sourceBuffers) {
+        const MediaTime* sourceBufferFudgeFactor = &sourceBuffer->currentTimeFudgeFactor();
+        if (sourceBufferFudgeFactor > fudgeFactor)
+            fudgeFactor = sourceBufferFudgeFactor;
+    }
+    return *fudgeFactor;
 }
 
 bool MediaSource::hasBufferedTime(const MediaTime& time)

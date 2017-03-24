@@ -126,6 +126,15 @@ SourceBuffer::~SourceBuffer()
     m_private->setClient(nullptr);
 }
 
+// Allow hasCurrentTime() to be off by as much as the length of two 24fps video frames
+MediaTime& SourceBuffer::currentTimeFudgeFactor() const
+{
+    static NeverDestroyed<MediaTime> fudgeFactorVideo(2002, 24000);
+    static NeverDestroyed<MediaTime> fudgeFactorAudio(MediaTime::createWithDouble(0.03));
+
+    return (hasAudio())?fudgeFactorAudio:fudgeFactorVideo;
+}
+
 ExceptionOr<Ref<TimeRanges>> SourceBuffer::buffered() const
 {
     // Section 3.1 buffered attribute steps.
@@ -1708,11 +1717,11 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
         // disjoint ranges separated by less than a "fudge factor".
         auto presentationEndTime = presentationTimestamp + frameDuration;
         auto nearestToPresentationStartTime = trackBuffer.buffered.nearest(presentationTimestamp);
-        if (nearestToPresentationStartTime.isValid() && (presentationTimestamp - nearestToPresentationStartTime).isBetween(MediaTime::zeroTime(), MediaSource::currentTimeFudgeFactor()))
+        if (nearestToPresentationStartTime.isValid() && (presentationTimestamp - nearestToPresentationStartTime).isBetween(MediaTime::zeroTime(), currentTimeFudgeFactor()))
             presentationTimestamp = nearestToPresentationStartTime;
 
         auto nearestToPresentationEndTime = trackBuffer.buffered.nearest(presentationEndTime);
-        if (nearestToPresentationStartTime.isValid() && (nearestToPresentationEndTime - presentationEndTime).isBetween(MediaTime::zeroTime(), MediaSource::currentTimeFudgeFactor()))
+        if (nearestToPresentationStartTime.isValid() && (nearestToPresentationEndTime - presentationEndTime).isBetween(MediaTime::zeroTime(), currentTimeFudgeFactor()))
             presentationEndTime = nearestToPresentationEndTime;
 
         trackBuffer.buffered.add(presentationTimestamp, presentationEndTime);
@@ -1929,7 +1938,7 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, AtomicString 
         currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleOnOrAfterPresentationTime(time);
 
     if (currentSamplePTSIterator == trackBuffer.samples.presentationOrder().end()
-        || (currentSamplePTSIterator->first - time) > MediaSource::currentTimeFudgeFactor())
+        || (currentSamplePTSIterator->first - time) > currentTimeFudgeFactor())
         return;
 
     // Seach backward for the previous sync sample.

@@ -80,6 +80,7 @@ public:
     ExceptionOr<void> remove(const MediaTime&, const MediaTime&);
 
     const TimeRanges& bufferedInternal() const { ASSERT(m_buffered); return *m_buffered; }
+    MediaTime& currentTimeFudgeFactor() const;
 
     void abortIfUpdating();
     void removedFromMediaSource();
