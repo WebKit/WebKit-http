@@ -71,6 +71,11 @@ public:
         RawKeyDown,
         Char,
 
+#if ENABLE(QT_GESTURE_EVENTS)
+        // WebGestureEvent
+        GestureSingleTap,
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
         // WebTouchEvent
         TouchStart,
@@ -289,6 +294,31 @@ private:
     bool m_isKeypad;
     bool m_isSystemKey;
 };
+
+
+#if ENABLE(QT_GESTURE_EVENTS)
+// FIXME: Move this class to its own header file.
+class WebGestureEvent : public WebEvent {
+public:
+    WebGestureEvent() { }
+    WebGestureEvent(Type, const WebCore::IntPoint& position, const WebCore::IntPoint& globalPosition, Modifiers, double timestamp, const WebCore::IntSize& area);
+
+    const WebCore::IntPoint position() const { return m_position; }
+    const WebCore::IntPoint globalPosition() const { return m_globalPosition; }
+    const WebCore::IntSize area() const { return m_area; }
+
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, WebGestureEvent&);
+
+private:
+    static bool isGestureEventType(Type);
+
+    WebCore::IntPoint m_position;
+    WebCore::IntPoint m_globalPosition;
+    WebCore::IntSize m_area;
+};
+#endif // ENABLE(QT_GESTURE_EVENTS)
+
 
 #if ENABLE(TOUCH_EVENTS)
 #if PLATFORM(IOS)

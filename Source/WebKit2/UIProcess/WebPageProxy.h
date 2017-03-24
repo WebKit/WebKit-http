@@ -224,6 +224,10 @@ struct PlatformPopupMenuData;
 struct PrintInfo;
 struct WebPopupItem;
 
+#if ENABLE(QT_GESTURE_EVENTS)
+class WebGestureEvent;
+#endif
+
 #if ENABLE(VIBRATION)
 class WebVibrationProxy;
 #endif
@@ -628,6 +632,10 @@ public:
 
 #if ENABLE(MAC_GESTURE_EVENTS)
     void handleGestureEvent(const NativeWebGestureEvent&);
+#endif
+
+#if ENABLE(QT_GESTURE_EVENTS)
+    void handleGestureEvent(const WebGestureEvent&);
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -1689,6 +1697,9 @@ private:
     DownloadID m_syncNavigationActionPolicyDownloadID;
     bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
 
+#if ENABLE(QT_GESTURE_EVENTS)
+    Deque<WebGestureEvent> m_gestureEventQueue;
+#endif
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
     Deque<NativeWebWheelEvent> m_wheelEventQueue;
     Deque<std::unique_ptr<Vector<NativeWebWheelEvent>>> m_currentlyProcessedWheelEvents;

@@ -31,6 +31,7 @@
 #include "QtFallbackWebPopup.h"
 #include "QtPlatformPlugin.h"
 #include "UndoStepQt.h"
+#include "WebEventConversion.h"
 
 #include "qwebframe.h"
 #include "qwebframe_p.h"
@@ -975,7 +976,7 @@ bool QWebPagePrivate::gestureEvent(QGestureEvent* event)
         return false;
     // QGestureEvents can contain updates for multiple gestures.
     bool handled = false;
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     // QGestureEvent lives in Widgets, we'll need a dummy struct to mule the info it contains to the "other side"
     QGestureEventFacade gestureFacade;
 
@@ -999,7 +1000,7 @@ bool QWebPagePrivate::gestureEvent(QGestureEvent* event)
         frame->handleGestureEvent(&gestureFacade);
         handled = true;
     }
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)
 
     event->setAccepted(handled);
     return handled;

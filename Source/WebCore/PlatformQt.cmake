@@ -26,7 +26,10 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
     "${WEBCORE_DIR}/Modules/gamepad"
     "${WEBCORE_DIR}/bridge/qt"
+    "${WEBCORE_DIR}/dom/qt"
+    "${WEBCORE_DIR}/editing/qt"
     "${WEBCORE_DIR}/history/qt"
+    "${WEBCORE_DIR}/page/qt"
     "${WEBCORE_DIR}/platform/qt"
     "${WEBCORE_DIR}/platform/audio/qt"
     "${WEBCORE_DIR}/platform/graphics/egl"
@@ -53,10 +56,13 @@ list(APPEND WebCore_SOURCES
     bridge/qt/qt_pixmapruntime.cpp
     bridge/qt/qt_runtime.cpp
 
+    dom/qt/GestureEvent.cpp
+
     editing/qt/EditorQt.cpp
 
     page/qt/DragControllerQt.cpp
     page/qt/EventHandlerQt.cpp
+    page/qt/TouchAdjustment.cpp
 
     platform/KillRingNone.cpp
 

@@ -45,6 +45,26 @@ using namespace WebCore;
 namespace WebKit {
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
+
+#if ENABLE(TOUCH_ADJUSTMENT)
+void WebPage::findZoomableAreaForPoint(const IntPoint& point, const IntSize& area)
+{
+    Node* node = 0;
+    IntRect zoomableArea;
+    bool foundAreaForTouchPoint = m_mainFrame->coreFrame()->eventHandler().bestZoomableAreaForTouchPoint(point, IntSize(area.width() / 2, area.height() / 2), zoomableArea, node);
+
+    if (!foundAreaForTouchPoint)
+        return;
+
+    ASSERT(node);
+
+    if (node->document().view())
+        zoomableArea = node->document().view()->contentsToWindow(zoomableArea);
+
+    send(Messages::WebPageProxy::DidFindZoomableArea(point, zoomableArea));
+}
+
+#else
 void WebPage::findZoomableAreaForPoint(const IntPoint& point, const IntSize& area)
 {
     UNUSED_PARAM(area);
@@ -85,6 +105,8 @@ void WebPage::findZoomableAreaForPoint(const IntPoint& point, const IntSize& are
 
     send(Messages::WebPageProxy::DidFindZoomableArea(point, zoomableArea));
 }
+#endif // ENABLE(TOUCH_ADJUSTMENT)
+
 #endif
 
 } // namespace WebKit

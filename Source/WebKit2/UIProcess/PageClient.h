@@ -66,6 +66,10 @@ class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebPopupMenuProxy;
 
+#if ENABLE(QT_GESTURE_EVENTS)
+class WebGestureEvent;
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
 class NativeWebTouchEvent;
 #endif
@@ -223,6 +227,9 @@ public:
 #endif
     
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) = 0;
+#if ENABLE(QT_GESTURE_EVENTS)
+    virtual void doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled) = 0;
+#endif
 #if ENABLE(TOUCH_EVENTS)
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) = 0;
 #endif

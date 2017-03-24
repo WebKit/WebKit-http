@@ -1929,6 +1929,19 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
+#if ENABLE(QT_GESTURE_EVENTS)
+void WebPageProxy::handleGestureEvent(const WebGestureEvent& event)
+{
+    if (!isValid())
+        return;
+
+    m_gestureEventQueue.append(event);
+
+    m_process->responsivenessTimer().start();
+    m_process->send(Messages::EventDispatcher::GestureEvent(m_pageID, event), 0);
+}
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
 
 bool WebPageProxy::shouldStartTrackingTouchEvents(const WebTouchEvent& touchStartEvent) const
@@ -4588,6 +4601,9 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     case WebEvent::KeyUp:
     case WebEvent::RawKeyDown:
     case WebEvent::Char:
+#if ENABLE(QT_GESTURE_EVENTS)
+    case WebEvent::GestureSingleTap:
+#endif
 #if ENABLE(TOUCH_EVENTS)
     case WebEvent::TouchStart:
     case WebEvent::TouchMove:
@@ -4613,6 +4629,16 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         break;
     case WebEvent::MouseDown:
         break;
+#if ENABLE(QT_GESTURE_EVENTS)
+    case WebEvent::GestureSingleTap: {
+        WebGestureEvent event = m_gestureEventQueue.first();
+        MESSAGE_CHECK(type == event.type());
+
+        m_gestureEventQueue.removeFirst();
+        m_pageClient.doneWithGestureEvent(event, handled);
+        break;
+    }
+#endif
     case WebEvent::MouseUp:
         m_currentlyProcessedMouseDownEvent = nullptr;
         break;
@@ -5147,6 +5173,9 @@ void WebPageProxy::resetStateAfterProcessExited()
     m_pendingLearnOrIgnoreWordMessageCount = 0;
 
     // Can't expect DidReceiveEvent notifications from a crashed web process.
+#if ENABLE(QT_GESTURE_EVENTS)
+    m_gestureEventQueue.clear();
+#endif
     m_keyEventQueue.clear();
     m_wheelEventQueue.clear();
     m_currentlyProcessedWheelEvents.clear();

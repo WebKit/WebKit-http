@@ -105,6 +105,15 @@
 #include "StyleCachedImageSet.h"
 #endif
 
+#if ENABLE(QT_GESTURE_EVENTS)
+#include "PlatformGestureEvent.h"
+#include "ScrollAnimator.h"
+#endif
+
+#if ENABLE(TOUCH_ADJUSTMENT)
+#include "TouchAdjustment.h"
+#endif
+
 #if ENABLE(IOS_TOUCH_EVENTS)
 #include "PlatformTouchEventIOS.h"
 #endif
@@ -347,7 +356,7 @@ static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, Wh
     return false;
 }
 
-#if (ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS))
+#if (ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)) || ENABLE(QT_GESTURE_EVENTS)
 static inline bool shouldGesturesTriggerActive()
 {
     // If the platform we're on supports GestureTapDown and GestureTapCancel then we'll
@@ -2704,6 +2713,169 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEv
 #endif
 }
 
+#if ENABLE(QT_GESTURE_EVENTS)
+bool EventHandler::handleGestureEvent(const PlatformGestureEvent& gestureEvent)
+{
+    Node* eventTarget = 0;
+    Scrollbar* scrollbar = 0;
+
+    IntPoint adjustedPoint = gestureEvent.position();
+    HitTestRequest::HitTestRequestType hitType = HitTestRequest::TouchEvent;
+    if (gestureEvent.type() == PlatformEvent::GestureTap) {
+        // The mouseup event synthesized for this gesture will clear the active state of the
+        // targeted node, so performing a ReadOnly hit test here is fine.
+        hitType |= HitTestRequest::ReadOnly;
+    } else
+        hitType |= HitTestRequest::Active | HitTestRequest::ReadOnly;
+
+    if (!shouldGesturesTriggerActive())
+        hitType |= HitTestRequest::ReadOnly;
+
+    if ((!scrollbar && !eventTarget) || !(hitType & HitTestRequest::ReadOnly)) {
+        IntPoint hitTestPoint = m_frame.view()->windowToContents(adjustedPoint);
+        HitTestResult result = hitTestResultAtPoint(hitTestPoint, hitType | HitTestRequest::AllowFrameScrollbars);
+        eventTarget = result.targetNode();
+        if (!scrollbar)
+            scrollbar = result.scrollbar();
+    }
+
+    if (scrollbar) {
+        bool eventSwallowed = scrollbar->gestureEvent(gestureEvent);
+        if (eventSwallowed)
+            return true;
+    }
+
+    if (eventTarget) {
+        bool eventSwallowed = eventTarget->dispatchGestureEvent(gestureEvent);
+        if (eventSwallowed)
+            return true;
+    }
+
+    // FIXME: A more general scroll system (https://bugs.webkit.org/show_bug.cgi?id=80596) will
+    // eliminate the need for this.
+    TemporaryChange<PlatformEvent::Type> baseEventType(m_baseEventType, gestureEvent.type());
+
+    switch (gestureEvent.type()) {
+    case PlatformEvent::GestureTap:
+        return handleGestureTap(gestureEvent);
+    case PlatformEvent::GestureLongPress:
+        return handleGestureLongPress(gestureEvent);
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
+    return false;
+}
+
+bool EventHandler::handleGestureTap(const PlatformGestureEvent& gestureEvent)
+{
+    // FIXME: Refactor this code to not hit test multiple times. We use the adjusted position to ensure that the correct node is targeted by the later redundant hit tests.
+    IntPoint adjustedPoint = gestureEvent.position();
+#if ENABLE(TOUCH_ADJUSTMENT)
+    adjustGesturePosition(gestureEvent, adjustedPoint);
+#endif
+
+    PlatformMouseEvent fakeMouseMove(adjustedPoint, gestureEvent.globalPosition(),
+        NoButton, PlatformEvent::MouseMoved, /* clickCount */ 0,
+        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp(), ForceAtClick);
+    mouseMoved(fakeMouseMove);
+
+    int tapCount = 1;
+
+    bool defaultPrevented = false;
+    PlatformMouseEvent fakeMouseDown(adjustedPoint, gestureEvent.globalPosition(),
+        LeftButton, PlatformEvent::MousePressed, tapCount,
+        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp(), ForceAtClick);
+    defaultPrevented |= handleMousePressEvent(fakeMouseDown);
+
+    PlatformMouseEvent fakeMouseUp(adjustedPoint, gestureEvent.globalPosition(),
+        LeftButton, PlatformEvent::MouseReleased, tapCount,
+        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp(), ForceAtClick);
+    defaultPrevented |= handleMouseReleaseEvent(fakeMouseUp);
+
+    return defaultPrevented;
+}
+
+bool EventHandler::handleGestureLongPress(const PlatformGestureEvent& gestureEvent)
+{
+    return handleGestureForTextSelectionOrContextMenu(gestureEvent);
+}
+
+bool EventHandler::handleGestureForTextSelectionOrContextMenu(const PlatformGestureEvent& gestureEvent)
+{
+#if ENABLE(CONTEXT_MENUS)
+    return sendContextMenuEventForGesture(gestureEvent);
+#else
+    return false;
+#endif
+}
+#endif // ENABLE(QT_GESTURE_EVENTS)
+
+#if ENABLE(TOUCH_ADJUSTMENT)
+bool EventHandler::shouldApplyTouchAdjustment(const PlatformGestureEvent& event) const
+{
+    if (!m_frame.settings().touchAdjustmentEnabled())
+        return false;
+    return !event.area().isEmpty();
+}
+
+
+bool EventHandler::bestClickableNodeForTouchPoint(const IntPoint& touchCenter, const IntSize& touchRadius, IntPoint& targetPoint, Node*& targetNode)
+{
+    IntPoint hitTestPoint = m_frame.view()->windowToContents(touchCenter);
+    HitTestResult result = hitTestResultAtPoint(hitTestPoint, HitTestRequest::ReadOnly | HitTestRequest::Active, touchRadius);
+
+    IntRect touchRect(touchCenter - touchRadius, touchRadius + touchRadius);
+
+    // FIXME: Should be able to handle targetNode being a shadow DOM node to avoid performing uncessary hit tests
+    // in the case where further processing on the node is required. Returning the shadow ancestor prevents a
+    // regression in touchadjustment/html-label.html. Some refinement is required to testing/internals to
+    // handle targetNode being a shadow DOM node. 
+    bool success = findBestClickableCandidate(targetNode, targetPoint, touchCenter, touchRect, result.rectBasedTestResult());
+    if (success && targetNode)
+        targetNode = targetNode->deprecatedShadowAncestorNode();
+    return success;
+}
+
+bool EventHandler::bestContextMenuNodeForTouchPoint(const IntPoint& touchCenter, const IntSize& touchRadius, IntPoint& targetPoint, Node*& targetNode)
+{
+    IntPoint hitTestPoint = m_frame.view()->windowToContents(touchCenter);
+    HitTestResult result = hitTestResultAtPoint(hitTestPoint, HitTestRequest::ReadOnly | HitTestRequest::Active, touchRadius);
+
+    IntRect touchRect(touchCenter - touchRadius, touchRadius + touchRadius);
+    return findBestContextMenuCandidate(targetNode, targetPoint, touchCenter, touchRect, result.rectBasedTestResult());
+}
+
+bool EventHandler::bestZoomableAreaForTouchPoint(const IntPoint& touchCenter, const IntSize& touchRadius, IntRect& targetArea, Node*& targetNode)
+{
+    IntPoint hitTestPoint = m_frame.view()->windowToContents(touchCenter);
+    HitTestResult result = hitTestResultAtPoint(hitTestPoint, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent, touchRadius);
+
+    IntRect touchRect(touchCenter - touchRadius, touchRadius + touchRadius);
+    return findBestZoomableArea(targetNode, targetArea, touchCenter, touchRect, result.rectBasedTestResult());
+}
+
+bool EventHandler::adjustGesturePosition(const PlatformGestureEvent& gestureEvent, IntPoint& adjustedPoint)
+{
+    if (!shouldApplyTouchAdjustment(gestureEvent))
+        return false;
+
+    Node* targetNode = 0;
+    switch (gestureEvent.type()) {
+    case PlatformEvent::GestureTap:
+        bestClickableNodeForTouchPoint(gestureEvent.position(), IntSize(gestureEvent.area().width() / 2, gestureEvent.area().height() / 2), adjustedPoint, targetNode);
+        break;
+    case PlatformEvent::GestureLongPress:
+        bestContextMenuNodeForTouchPoint(gestureEvent.position(), IntSize(gestureEvent.area().width() / 2, gestureEvent.area().height() / 2), adjustedPoint, targetNode);
+        break;
+    default:
+        // FIXME: Implement handling for other types as needed.
+        ASSERT_NOT_REACHED();
+    }
+    return targetNode;
+}
+#endif
+
 #if ENABLE(CONTEXT_MENUS)
 bool EventHandler::sendContextMenuEvent(const PlatformMouseEvent& event)
 {
@@ -2811,6 +2983,29 @@ bool EventHandler::sendContextMenuEventForKey()
 
     return !dispatchMouseEvent(eventNames().contextmenuEvent, targetNode, true, 0, platformMouseEvent, false);
 }
+
+#if ENABLE(QT_GESTURE_EVENTS)
+bool EventHandler::sendContextMenuEventForGesture(const PlatformGestureEvent& event)
+{
+#if OS(WINDOWS)
+    PlatformEvent::Type eventType = PlatformEvent::MouseReleased;
+#else
+    PlatformEvent::Type eventType = PlatformEvent::MousePressed;
+#endif
+
+    IntPoint adjustedPoint = event.position();
+#if ENABLE(TOUCH_ADJUSTMENT)
+    adjustGesturePosition(event, adjustedPoint);
+#endif
+    PlatformMouseEvent mouseEvent(adjustedPoint, event.globalPosition(), RightButton, eventType, 1, false, false, false, false, WTF::currentTime(), ForceAtClick);
+    // To simulate right-click behavior, we send a right mouse down and then
+    // context menu event.
+    handleMousePressEvent(mouseEvent);
+    return sendContextMenuEvent(mouseEvent);
+    // We do not need to send a corresponding mouse release because in case of
+    // right-click, the context menu takes capture and consumes all events.
+}
+#endif // ENABLE(QT_GESTURE_EVENTS)
 #endif // ENABLE(CONTEXT_MENUS)
 
 void EventHandler::scheduleHoverStateUpdate()

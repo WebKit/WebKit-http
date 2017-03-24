@@ -2368,7 +2368,7 @@ void WebPage::touchEvent(const WebTouchEvent& touchEvent)
 }
 #endif
 
-#if ENABLE(MAC_GESTURE_EVENTS)
+#if ENABLE(MAC_GESTURE_EVENTS) || ENABLE(QT_GESTURE_EVENTS)
 static bool handleGestureEvent(const WebGestureEvent& event, Page* page)
 {
     if (!page->mainFrame().view())

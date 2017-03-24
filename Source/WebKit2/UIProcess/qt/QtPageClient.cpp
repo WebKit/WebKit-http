@@ -251,7 +251,7 @@ void QtPageClient::handleWillSetInputMethodState()
     m_eventHandler->handleWillSetInputMethodState();
 }
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 void QtPageClient::doneWithGestureEvent(const WebGestureEvent& event, bool wasEventHandled)
 {
     ASSERT(m_eventHandler);

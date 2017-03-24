@@ -665,8 +665,10 @@ http/tests/media/track/track-webvtt-slow-loading-2.html [ Timeout Pass ]
 http/tests/navigation/navigation-interrupted-by-fragment.html [ Timeout Pass ]
 svg/animations/svglengthlist-animation-3.html [ Pass Failure ]
 
+fast/events/touch/inserted-fragment-touch-target.html [ Timeout Pass ]
 fast/events/touch/moved-touch-target.html [ Timeout Pass ]
 fast/events/touch/touch-inside-iframe.html [ Timeout Pass ]
+fast/events/touch/touch-inside-iframe-scrolled.html [ Timeout Pass ]
 fast/events/onunload-back-to-page-cache.html [ Missing Pass ]
 
   perf/clone-with-focus.html [ Failure Pass ]
@@ -1235,6 +1237,12 @@ fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
 # FIXME when plugin tests are enabled
 fullscreen/full-screen-plugin.html [ Skip ]
 
+# ============================================================================= #
+# Touch Adjustment
+# ============================================================================= #
+
+#473
+touchadjustment/focusout-on-touch.html [ Failure ]
 
 # ============================================================================= #
 # Failing WebGL Tests
@@ -1334,12 +1342,10 @@ fullscreen/full-screen-plugin.html [ Skip ]
   fast/events/touch/gesture/gesture-tap-active-state-iframe.html [ Skip ]
   fast/events/touch/gesture/long-press-on-draggable-element-in-iframe-triggers-drag.html [ Skip ]
   fast/events/touch/gesture/long-press-on-draggable-element-in-nested-iframes-triggers-drag.html [ Skip ]
-  fast/events/touch/inserted-fragment-touch-target.html [ Skip ]
   fast/events/touch/ios/touch-event-in-scaled-document.html [ Skip ]
   fast/events/touch/ios/touch-event-rtl.html [ Skip ]
   fast/events/touch/ios/touch-event.html [ Skip ]
   fast/events/touch/touch-active-state.html [ Skip ]
-  fast/events/touch/touch-inside-iframe-scrolled.html [ Skip ]
   fast/events/touch/zoomed-touch-event-pageXY.html [ Skip ]
   fast/events/wheel-event-destroys-frame.html [ Skip ]
 

@@ -93,7 +93,7 @@ public:
     void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&) override;
     void updateTextInputState() override;
     void handleWillSetInputMethodState() override;
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     void doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled) override;
 #endif
 #if ENABLE(TOUCH_EVENTS)

@@ -576,7 +576,7 @@ void EventSender::gestureTap(int x, int y)
     m_gestures.clear();
     m_gestures.append(&m_tapGesture);
     QGestureEvent event(m_gestures);
-    sendEvent(m_page, &event);
+    sendEvent(m_page->view(), &event);
 }
 
 void EventSender::gestureLongPress(int x, int y)
@@ -585,7 +585,7 @@ void EventSender::gestureLongPress(int x, int y)
     m_gestures.clear();
     m_gestures.append(&m_tapAndHoldGesture);
     QGestureEvent event(m_gestures);
-    sendEvent(m_page, &event);
+    sendEvent(m_page->view(), &event);
 }
 #endif
 

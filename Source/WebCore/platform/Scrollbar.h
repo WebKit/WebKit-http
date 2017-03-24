@@ -40,6 +40,10 @@ class PlatformMouseEvent;
 class ScrollableArea;
 class ScrollbarTheme;
 
+#if ENABLE(QT_GESTURE_EVENTS)
+class PlatformGestureEvent;
+#endif
+
 class Scrollbar : public Widget {
 public:
     // Must be implemented by platforms that can't simply use the Scrollbar base class.  Right now the only platform that is not using the base class is GTK.
@@ -95,6 +99,10 @@ public:
     bool shouldParticipateInHitTesting();
 
     bool isWindowActive() const;
+
+#if ENABLE(QT_GESTURE_EVENTS)
+    bool gestureEvent(const PlatformGestureEvent&);
+#endif
 
     // These methods are used for platform scrollbars to give :hover feedback.  They will not get called
     // when the mouse went down in a scrollbar, since it is assumed the scrollbar will start

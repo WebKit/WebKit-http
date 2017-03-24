@@ -35,6 +35,10 @@
 #include "ScrollbarTheme.h"
 #include <algorithm>
 
+#if ENABLE(QT_GESTURE_EVENTS)
+#include "PlatformGestureEvent.h"
+#endif
+
 #if PLATFORM(GTK)
 // The position of the scrollbar thumb affects the appearance of the steppers, so
 // when the thumb moves, we have to invalidate them for painting.
@@ -318,6 +322,24 @@ void Scrollbar::setPressedPart(ScrollbarPart part)
     else if (m_hoveredPart != NoPart)  // When we no longer have a pressed part, we can start drawing a hovered state on the hovered part.
         theme().invalidatePart(*this, m_hoveredPart);
 }
+
+#if ENABLE(QT_GESTURE_EVENTS)
+bool Scrollbar::gestureEvent(const PlatformGestureEvent& evt)
+{
+    bool handled = false;
+    switch (evt.type()) {
+    case PlatformEvent::GestureTap:
+        if (m_pressedPart != ThumbPart && m_pressedPart != NoPart)
+            handled = m_scrollableArea.scroll(pressedPartScrollDirection(), pressedPartScrollGranularity());
+        break;
+    default:
+        break;
+    }
+    setPressedPart(NoPart);
+    m_pressedPos = 0;
+    return handled;
+}
+#endif
 
 #if !PLATFORM(IOS)
 bool Scrollbar::mouseMoved(const PlatformMouseEvent& evt)

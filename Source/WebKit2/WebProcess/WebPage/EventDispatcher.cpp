@@ -144,7 +144,7 @@ void EventDispatcher::wheelEvent(uint64_t pageID, const WebWheelEvent& wheelEven
     }); 
 }
 
-#if ENABLE(MAC_GESTURE_EVENTS)
+#if ENABLE(MAC_GESTURE_EVENTS) || ENABLE(QT_GESTURE_EVENTS)
 void EventDispatcher::gestureEvent(uint64_t pageID, const WebKit::WebGestureEvent& gestureEvent)
 {
     RefPtr<EventDispatcher> eventDispatcher = this;
@@ -224,7 +224,7 @@ void EventDispatcher::dispatchWheelEvent(uint64_t pageID, const WebWheelEvent& w
     webPage->wheelEvent(wheelEvent);
 }
 
-#if ENABLE(MAC_GESTURE_EVENTS)
+#if ENABLE(MAC_GESTURE_EVENTS) || ENABLE(QT_GESTURE_EVENTS)
 void EventDispatcher::dispatchGestureEvent(uint64_t pageID, const WebGestureEvent& gestureEvent)
 {
     ASSERT(RunLoop::isMain());

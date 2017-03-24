@@ -22,7 +22,7 @@
 #include "config.h"
 #include "WebEventConversion.h"
 
-//#include "PlatformGestureEvent.h" FIXME: GestureEvents were removed in r157316
+#include "PlatformGestureEvent.h"
 #include "PlatformMouseEvent.h"
 #include "PlatformTouchEvent.h"
 #include "PlatformTouchPoint.h"
@@ -240,7 +240,7 @@ WebKitPlatformTouchPoint::WebKitPlatformTouchPoint(const QTouchEvent::TouchPoint
 }
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class WebKitPlatformGestureEvent : public PlatformGestureEvent {
 public:
     WebKitPlatformGestureEvent(QGestureEventFacade*);
@@ -281,7 +281,7 @@ PlatformTouchEvent convertTouchEvent(QTouchEvent* event)
 }
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 PlatformGestureEvent convertGesture(QGestureEventFacade* event)
 {
     return WebKitPlatformGestureEvent(event);

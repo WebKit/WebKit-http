@@ -64,7 +64,7 @@
 #include <QFileInfo>
 #include <QNetworkRequest>
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 #include "PlatformGestureEvent.h"
 #include "WebEventConversion.h"
 #endif
@@ -165,7 +165,7 @@ bool QWebFrameAdapter::hasView() const
     return frame && frame->view();
 }
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 void QWebFrameAdapter::handleGestureEvent(QGestureEventFacade* gestureEvent)
 {
     ASSERT(frame && frame->view());
