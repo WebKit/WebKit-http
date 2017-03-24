@@ -67,3 +67,7 @@ include_directories(SYSTEM ${QtTestBrowser_SYSTEM_INCLUDE_DIRECTORIES})
 add_executable(QtTestBrowser ${QtTestBrowser_SOURCES})
 target_link_libraries(QtTestBrowser ${QtTestBrowser_LIBRARIES})
 set_target_properties(QtTestBrowser PROPERTIES FOLDER "Tools")
+
+if (${CMAKE_BUILD_TYPE} MATCHES "Release")
+    set_target_properties(QtTestBrowser PROPERTIES WIN32_EXECUTABLE ON)
+endif ()
