@@ -35,7 +35,7 @@ use FindBin;
 
 my $file = "qtwebkit-libs-win";
 my $zipFile = "$file.zip";
-my $winQtLibsURL = "https://dl.dropboxusercontent.com/u/30021413/$zipFile";
+my $winQtLibsURL = "https://github.com/Vitallium/qtwebkit-libs-win/releases/download/2015/$zipFile";
 my $command = "$FindBin::Bin/update-webkit-dependency";
 
 system("perl", $command, $winQtLibsURL, ".") == 0 or die;
