@@ -3041,13 +3041,6 @@ public:
         breakpoint();
     }
 
-    void storeFence()
-    {
-        // FIXME: We should actually implement this. The only current caller is related to
-        // concurrent GC, which is disabled on 32-bit systems.
-        // https://bugs.webkit.org/show_bug.cgi?id=164733
-    }
-
     void abortWithReason(AbortReason reason, intptr_t misc)
     {
         move(TrustedImm32(misc), immTempRegister);
