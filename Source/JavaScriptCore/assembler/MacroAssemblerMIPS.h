@@ -3076,11 +3076,6 @@ public:
         return 0;
     }
 
-    static ptrdiff_t patchableJumpSize()
-    {
-        return MIPSAssembler::patchableJumpSize();
-    }
-
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
     static bool canJumpReplacePatchableBranch32WithPatch() { return false; }
 
