@@ -53,7 +53,7 @@ void WebURLSchemeHandler::startTask(WebPageProxy& page, uint64_t resourceIdentif
     auto result = m_tasks.add(resourceIdentifier, WebURLSchemeHandlerTask::create(*this, page, resourceIdentifier, request));
     ASSERT(result.isNewEntry);
 
-    platformStartTask(page, result.iterator->value);
+    platformStartTask(page, *result.iterator->value);
 }
 
 void WebURLSchemeHandler::stopTask(WebPageProxy& page, uint64_t resourceIdentifier)
@@ -64,7 +64,7 @@ void WebURLSchemeHandler::stopTask(WebPageProxy& page, uint64_t resourceIdentifi
 
     iterator->value->stop();
 
-    platformStopTask(page, iterator->value);
+    platformStopTask(page, *iterator->value);
 
     m_tasks.remove(iterator);
 }

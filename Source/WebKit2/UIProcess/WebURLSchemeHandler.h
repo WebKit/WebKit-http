@@ -57,7 +57,7 @@ private:
 
     uint64_t m_identifier;
 
-    HashMap<uint64_t, Ref<WebURLSchemeHandlerTask>> m_tasks;
+    HashMap<uint64_t, RefPtr<WebURLSchemeHandlerTask>> m_tasks;
 
 }; // class WebURLSchemeHandler
 

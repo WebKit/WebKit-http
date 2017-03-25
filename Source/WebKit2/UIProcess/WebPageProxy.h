@@ -1854,8 +1854,8 @@ private:
     std::unique_ptr<NodeAssistanceArguments> m_deferredNodeAssistanceArguments;
 #endif
 
-    HashMap<String, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByScheme;
-    HashMap<uint64_t, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByIdentifier;
+    HashMap<String, RefPtr<WebURLSchemeHandler>> m_urlSchemeHandlersByScheme;
+    HashMap<uint64_t, RefPtr<WebURLSchemeHandler>> m_urlSchemeHandlersByIdentifier;
 };
 
 } // namespace WebKit

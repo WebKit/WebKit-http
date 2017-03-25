@@ -183,18 +183,18 @@
 // Instead of URLParser class added later
 namespace URLParser
 {
-static std::optional<String> maybeCanonicalizeScheme(const String& scheme)
+static WTF::Optional<String> maybeCanonicalizeScheme(const String& scheme)
 {
     if (scheme.isEmpty())
-        return std::nullopt;
+        return WTF::Nullopt;
 
     if (!isASCIIAlpha(scheme[0]))
-        return std::nullopt;
+        return WTF::Nullopt;
 
     for (size_t i = 1; i < scheme.length(); ++i) {
         if (isASCIIAlphanumeric(scheme[i]) || scheme[i] == '+' || scheme[i] == '-' || scheme[i] == '.')
             continue;
-        return std::nullopt;
+        return WTF::Nullopt;
     }
 
     return scheme.convertToASCIILowercase();
@@ -6273,7 +6273,7 @@ void WebPageProxy::setURLSchemeHandlerForScheme(Ref<WebURLSchemeHandler>&& handl
     ASSERT(canonicalizedScheme);
 //    ASSERT(!URLParser::isSpecialScheme(canonicalizedScheme.value()));
 
-    auto schemeResult = m_urlSchemeHandlersByScheme.add(canonicalizedScheme.value(), handler.get());
+    auto schemeResult = m_urlSchemeHandlersByScheme.add(canonicalizedScheme.value(), handler.ptr());
     ASSERT_UNUSED(schemeResult, schemeResult.isNewEntry);
 
     auto identifier = handler->identifier();

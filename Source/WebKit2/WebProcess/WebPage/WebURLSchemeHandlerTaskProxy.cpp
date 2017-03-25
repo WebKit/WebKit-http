@@ -29,7 +29,6 @@
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 #include "WebURLSchemeHandlerProxy.h"
-#include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceLoader.h>
 #include <wtf/CurrentTime.h>
@@ -82,7 +81,7 @@ void WebURLSchemeHandlerTaskProxy::didComplete(const ResourceError& error)
         return;
 
     if (error.isNull())
-        m_coreLoader->didFinishLoading(NetworkLoadMetrics());
+        m_coreLoader->didFinishLoading(0);
     else
         m_coreLoader->didFail(error);
 
