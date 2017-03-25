@@ -68,6 +68,14 @@ static RefPtr<MediaConstraints> parseOptions(const Dictionary& options, const St
     return MediaConstraintsImpl::create();
 }
 
+void UserMediaRequest::enumerateDevices(Document* document, MediaDevices::EnumerateDevicePromise&& promise, ExceptionCode& ec)
+{
+    // FIXME(146426): Implement this.
+    UNUSED_PARAM(document);
+    UNUSED_PARAM(promise);
+    UNUSED_PARAM(ec);
+}
+    
 void UserMediaRequest::start(Document* document, const Dictionary& options, MediaDevices::Promise&& promise, ExceptionCode& ec)
 {
     if (!options.isObject()) {
@@ -135,8 +143,10 @@ void UserMediaRequest::constraintsValidated(const Vector<RefPtr<RealtimeMediaSou
     });
 }
 
-void UserMediaRequest::userMediaAccessGranted()
+void UserMediaRequest::userMediaAccessGranted(const String& videoDeviceUID, const String& audioDeviceUID)
 {
+    m_chosenVideoDeviceUID = videoDeviceUID;
+    m_chosenAudioDeviceUID = audioDeviceUID;
     RefPtr<UserMediaRequest> protectedThis(this);
     callOnMainThread([protectedThis] {
         // 3 - the user granted access, ask platform to create the media stream descriptors.

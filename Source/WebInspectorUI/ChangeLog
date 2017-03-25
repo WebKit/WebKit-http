@@ -1,3 +1,190 @@
+2015-08-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Hide child rows for filtered tasks in the Rendering Frames data grid
+        https://bugs.webkit.org/show_bug.cgi?id=147960
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WebInspector.RenderingFrameTimelineRecord.taskTypeForTimelineRecord):
+        New static method for mapping TimelineRecords to rendering frame tasks.
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask):
+        Refactored to use taskTypeForTimelineRecord.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        Task filtering is applied to children of the frame record only. Parent frame
+        record is hidden by default, and visible by virtue of having unfiltered children.
+
+2015-08-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Clearing frames timeline doesn't remove current time marker
+        https://bugs.webkit.org/show_bug.cgi?id=147650
+
+        Reviewed by Timothy Hatcher.
+
+        The rendering frames timeline offsets all markers by 1px to align them on frame
+        boundaries, which causes the current time marker to be visible even with left: 0px.
+        We can exclude the current time marker without it being noticable during recording.
+
+        * UserInterface/Views/TimelineOverview.css:
+
+2015-08-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r188325): Web Inspector: Fix vertical spacing in CodeMirror
+        https://bugs.webkit.org/show_bug.cgi?id=147971
+
+        r188325 inceased line-height by 2px. Remove top and bottom 1px padding
+        to compensate for line-height changes.
+
+        In the feature we may highlight the backgroud of text tokens (e.g. for the
+        heatmap profiler) so we would want to get rid of the gaps between the lines
+        (caused by the paddind) regardless of this regression.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.CodeMirror pre):
+
+2015-08-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Sometimes CSS resources don't update after editing via Styles panel
+        https://bugs.webkit.org/show_bug.cgi?id=143244
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/SourceCode.js:
+        (WebInspector.SourceCode.prototype._processContent):
+        This code is brittle and we should move off of putting the
+        possibly stale content in the Promise result.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype._contentAvailable):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._contentAvailable):
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype.requestScriptSyntaxTree):
+        Use the current source code's content.
+
+2015-08-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix Poor Class Names
+        https://bugs.webkit.org/show_bug.cgi?id=147958
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ClusterContentView.js:
+        * UserInterface/Views/ResourceContentView.js:
+
+2015-08-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Opening the Elements tab without a selected sidebar panel causes a crash
+        https://bugs.webkit.org/show_bug.cgi?id=147965
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        If the saved setting for the selectedPanel does not exist, default to the rules panel.
+
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._switchPanels):
+        Only save the new navigationItem info if the selectedPanel exists.
+
+2015-08-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove clamp and adopt Number.constrain
+        https://bugs.webkit.org/show_bug.cgi?id=147952
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        Removed clamp function.
+
+        * UserInterface/Views/BezierEditor.js:
+        (WebInspector.BezierEditor.prototype._updateControlPointsForMouseEvent):
+        * UserInterface/Views/ProfileNodeDataGridNode.js:
+        (WebInspector.ProfileNodeDataGridNode.prototype.updateRangeTimes):
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.updateRangeTimes):
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+        Replaced instances of clamp with Number.constrain.
+
+2015-08-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOM Node should have context menu to scroll it into view on the inspected page
+        https://bugs.webkit.org/show_bug.cgi?id=147913
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._updateChildren.set continue):
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu):
+        Add a context menu item to scroll into view for element nodes.
+
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView.resolvedNode.scrollIntoView):
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView.resolvedNode):
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView):
+        Call scrollIntoViewIfNeeded on the real Node.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.populateContextMenu):
+        Remove unused parameter.
+
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+        Add context menu for Nodes in ObjectTrees.
+
+2015-08-12  Dan Bernstein  <mitz@apple.com>
+
+        Removed the executable bit from non-executable source.
+
+        * UserInterface/External/CodeMirror/LICENSE: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/clojure.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/closebrackets.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/codemirror.css: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/codemirror.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/coffeescript.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/comment.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/css.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/htmlmixed.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/javascript.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/livescript.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/matchbrackets.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/overlay.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/placeholder.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/runmode.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/sass.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/searchcursor.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/sql.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/xml.js: Removed property svn:executable.
+
+2015-08-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TimelineView data not cleared when recording is reset
+        https://bugs.webkit.org/show_bug.cgi?id=147916
+
+        Reviewed by Timothy Hatcher.
+
+        Each derived timeline view maintains a separate array of timeline records. These weren't
+        cleared on reset, so switching to a timeline view after clearing the recording caused
+        the view to populate its tree outline.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.set columns):
+        (WebInspector.LayoutTimelineView):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.set columns):
+        (WebInspector.NetworkTimelineView):
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.reset):
+        (WebInspector.OverviewTimelineView.prototype._processPendingRepresentedObjects):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype.reset):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.reset):
+
 2015-08-11  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Dragging a timeline ruler handle when both handles clamped is broken
