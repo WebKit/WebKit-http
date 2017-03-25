@@ -149,17 +149,17 @@ Page* ChromeClientHaiku::createWindow(Frame* /*frame*/, const FrameLoadRequest& 
     BRect windowFrame;
     // If any frame property of the features is set, the windowFrame will be valid and
     // starts of as an offseted copy of the window frame where this page is embedded.
-    if (features.xSet || features.ySet || features.widthSet || features.heightSet)
+    if (features.x || features.y || features.width || features.height)
     	windowFrame = m_webPage->windowFrame().OffsetByCopy(10, 10);
 
-    if (features.xSet)
-    	windowFrame.OffsetTo(features.x, windowFrame.top);
-    if (features.ySet)
-    	windowFrame.OffsetTo(windowFrame.left, features.y);
-    if (features.widthSet)
-        windowFrame.right = windowFrame.left + features.width - 1;
-    if (features.heightSet)
-        windowFrame.bottom = windowFrame.top + features.height - 1;
+    if (features.x)
+    	windowFrame.OffsetTo(*features.x, windowFrame.top);
+    if (features.y)
+    	windowFrame.OffsetTo(windowFrame.left, *features.y);
+    if (features.width)
+        windowFrame.right = windowFrame.left + *features.width - 1;
+    if (features.height)
+        windowFrame.bottom = windowFrame.top + *features.height - 1;
 
 //printf("  frame: "); windowFrame.PrintToStream();
 
