@@ -31,6 +31,8 @@
 #include "config.h"
 #include "MainThread.h"
 
+#include "WorkQueue.h"
+
 #include <Application.h>
 #include <Handler.h>
 
@@ -39,6 +41,7 @@ namespace WTF {
 class MainThreadHandler : public BHandler {
 public:
     static const uint32 kDispatchCommand = 'dpch';
+    static const uint32 kWorkQueueDispatch = 'wqdp';
 
     MainThreadHandler()
         : BHandler("WebCore main thread handler")
@@ -49,7 +52,11 @@ public:
     {
         if (message->what == kDispatchCommand)
             dispatchFunctionsFromMainThread();
-        else
+        else if (message->what == kWorkQueueDispatch) {
+            WorkQueue* wq = nullptr;
+            message->FindPointer("queue", (void**)&wq);
+            wq->performWork(message);
+        } else
             BHandler::MessageReceived(message);
     }
 };

@@ -1,6 +1,7 @@
 LIST(APPEND WTF_SOURCES
     haiku/MainThreadHaiku.cpp
     haiku/RunLoopHaiku.cpp
+    haiku/WorkQueueHaiku.cpp
 
     OSAllocatorPosix.cpp
     ThreadIdentifierDataPthreads.cpp

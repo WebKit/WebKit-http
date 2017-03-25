@@ -36,6 +36,9 @@
 
 #if OS(DARWIN)
 #include <dispatch/dispatch.h>
+#elif OS(HAIKU)
+#include <Message.h>
+#include <set>
 #endif
 
 #if PLATFORM(GTK)
@@ -81,6 +84,10 @@ public:
     void unregisterSocketEventHandler(int);
 #endif
 
+#if OS(HAIKU)
+    void performWork(BMessage* message);
+#endif
+
 private:
     explicit WorkQueue(const char* name, Type, QOS);
 
@@ -120,6 +127,9 @@ private:
     HashMap<HANDLE, RefPtr<HandleWorkItem>> m_handles;
 
     HANDLE m_timerQueue;
+#elif OS(HAIKU)
+    struct WorkItemHaiku;
+    std::set<WorkItemHaiku*> m_workItems;
 #endif
 };
 
