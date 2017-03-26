@@ -41,7 +41,6 @@ namespace WebCore {
         virtual void inspectedPageDestroyed() override;
 
         virtual Inspector::FrontendChannel* openLocalFrontend(WebCore::InspectorController*) override;
-        virtual void closeLocalFrontend() override;
         virtual void bringFrontendToFront() override;
 
         virtual void highlight() override;

@@ -46,11 +46,6 @@ Inspector::FrontendChannel* InspectorClientHaiku::openLocalFrontend(WebCore::Ins
     return NULL;
 }
 
-void InspectorClientHaiku::closeLocalFrontend()
-{
-    notImplemented();
-}
-
 void InspectorClientHaiku::bringFrontendToFront()
 {
     notImplemented();

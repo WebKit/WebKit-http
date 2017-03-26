@@ -64,7 +64,7 @@ void BitmapTextureImageBuffer::updateContents(TextureMapper*, GraphicsLayer* sou
 
 void BitmapTextureImageBuffer::didReset()
 {
-    m_image = ImageBuffer::create(contentSize());
+    m_image = ImageBuffer::create(contentSize(), UnacceleratedNonPlatformBuffer /* TODO make sure we never need a platform buffer (ie BBitmap+BView) */);
 }
 
 void BitmapTextureImageBuffer::updateContents(Image* image, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag)
