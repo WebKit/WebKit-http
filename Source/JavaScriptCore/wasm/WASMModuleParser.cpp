@@ -49,18 +49,19 @@
 
 namespace JSC {
 
-WASMModuleParser::WASMModuleParser(VM& vm, JSGlobalObject* globalObject, const SourceCode& source)
+WASMModuleParser::WASMModuleParser(VM& vm, JSGlobalObject* globalObject, const SourceCode& source, JSObject* imports)
     : m_vm(vm)
     , m_globalObject(vm, globalObject)
     , m_source(source)
+    , m_imports(vm, imports)
     , m_reader(static_cast<WebAssemblySourceProvider*>(source.provider())->data())
 {
 }
 
-JSWASMModule* WASMModuleParser::parse(String& errorMessage)
+JSWASMModule* WASMModuleParser::parse(ExecState* exec, String& errorMessage)
 {
     m_module.set(m_vm, JSWASMModule::create(m_vm, m_globalObject->wasmModuleStructure()));
-    parseModule();
+    parseModule(exec);
     if (!m_errorMessage.isNull()) {
         errorMessage = m_errorMessage;
         return nullptr;
@@ -68,7 +69,7 @@ JSWASMModule* WASMModuleParser::parse(String& errorMessage)
     return m_module.get();
 }
 
-void WASMModuleParser::parseModule()
+void WASMModuleParser::parseModule(ExecState* exec)
 {
     uint32_t magicNumber;
     READ_UINT32_OR_FAIL(magicNumber, "Cannot read the magic number.");
@@ -81,9 +82,9 @@ void WASMModuleParser::parseModule()
     PROPAGATE_ERROR();
     parseSignatureSection();
     PROPAGATE_ERROR();
-    parseFunctionImportSection();
+    parseFunctionImportSection(exec);
     PROPAGATE_ERROR();
-    parseGlobalSection();
+    parseGlobalSection(exec);
     PROPAGATE_ERROR();
     parseFunctionDeclarationSection();
     PROPAGATE_ERROR();
@@ -143,7 +144,7 @@ void WASMModuleParser::parseSignatureSection()
     }
 }
 
-void WASMModuleParser::parseFunctionImportSection()
+void WASMModuleParser::parseFunctionImportSection(ExecState* exec)
 {
     uint32_t numberOfFunctionImports;
     uint32_t numberOfFunctionImportSignatures;
@@ -151,6 +152,7 @@ void WASMModuleParser::parseFunctionImportSection()
     READ_COMPACT_UINT32_OR_FAIL(numberOfFunctionImportSignatures, "Cannot read the number of function import signatures.");
     m_module->functionImports().reserveInitialCapacity(numberOfFunctionImports);
     m_module->functionImportSignatures().reserveInitialCapacity(numberOfFunctionImportSignatures);
+    m_module->importedFunctions().reserveInitialCapacity(numberOfFunctionImports);
 
     for (uint32_t functionImportIndex = 0; functionImportIndex < numberOfFunctionImports; ++functionImportIndex) {
         WASMFunctionImport functionImport;
@@ -168,11 +170,18 @@ void WASMModuleParser::parseFunctionImportSection()
             functionImportSignature.functionImportIndex = functionImportIndex;
             m_module->functionImportSignatures().uncheckedAppend(functionImportSignature);
         }
+
+        JSValue value;
+        getImportedValue(exec, functionImport.functionName, value);
+        PROPAGATE_ERROR();
+        FAIL_IF_FALSE(value.isFunction(), "\"" + functionImport.functionName + "\" is not a function.");
+        JSFunction* function = jsCast<JSFunction*>(value.asCell());
+        m_module->importedFunctions().uncheckedAppend(WriteBarrier<JSFunction>(m_vm, m_module.get(), function));
     }
     FAIL_IF_FALSE(m_module->functionImportSignatures().size() == numberOfFunctionImportSignatures, "The number of function import signatures is incorrect.");
 }
 
-void WASMModuleParser::parseGlobalSection()
+void WASMModuleParser::parseGlobalSection(ExecState* exec)
 {
     uint32_t numberOfInternalI32GlobalVariables;
     uint32_t numberOfInternalF32GlobalVariables;
@@ -191,26 +200,49 @@ void WASMModuleParser::parseGlobalSection()
 
     Vector<WASMType>& globalVariableTypes = m_module->globalVariableTypes();
     globalVariableTypes.reserveInitialCapacity(numberOfGlobalVariables);
-    for (uint32_t i = 0; i < numberOfInternalI32GlobalVariables; ++i)
+    Vector<JSWASMModule::GlobalVariable>& globalVariables = m_module->globalVariables();
+    globalVariables.reserveInitialCapacity(numberOfGlobalVariables);
+    for (uint32_t i = 0; i < numberOfInternalI32GlobalVariables; ++i) {
         globalVariableTypes.uncheckedAppend(WASMType::I32);
-    for (uint32_t i = 0; i < numberOfInternalF32GlobalVariables; ++i)
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0));
+    }
+    for (uint32_t i = 0; i < numberOfInternalF32GlobalVariables; ++i) {
         globalVariableTypes.uncheckedAppend(WASMType::F32);
-    for (uint32_t i = 0; i < numberOfInternalF64GlobalVariables; ++i)
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0.0f));
+    }
+    for (uint32_t i = 0; i < numberOfInternalF64GlobalVariables; ++i) {
         globalVariableTypes.uncheckedAppend(WASMType::F64);
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0.0));
+    }
     for (uint32_t i = 0; i < numberOfImportedI32GlobalVariables; ++i) {
         String importName;
         READ_STRING_OR_FAIL(importName, "Cannot read the import name of an int32 global variable.");
         globalVariableTypes.uncheckedAppend(WASMType::I32);
+        JSValue value;
+        getImportedValue(exec, importName, value);
+        PROPAGATE_ERROR();
+        FAIL_IF_FALSE(value.isPrimitive() && !value.isSymbol(), "\"" + importName + "\" is not a primitive or is a Symbol.");
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(value.toInt32(exec)));
     }
     for (uint32_t i = 0; i < numberOfImportedF32GlobalVariables; ++i) {
         String importName;
         READ_STRING_OR_FAIL(importName, "Cannot read the import name of a float32 global variable.");
         globalVariableTypes.uncheckedAppend(WASMType::F32);
+        JSValue value;
+        getImportedValue(exec, importName, value);
+        PROPAGATE_ERROR();
+        FAIL_IF_FALSE(value.isPrimitive() && !value.isSymbol(), "\"" + importName + "\" is not a primitive or is a Symbol.");
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(static_cast<float>(value.toNumber(exec))));
     }
     for (uint32_t i = 0; i < numberOfImportedF64GlobalVariables; ++i) {
         String importName;
         READ_STRING_OR_FAIL(importName, "Cannot read the import name of a float64 global variable.");
         globalVariableTypes.uncheckedAppend(WASMType::F64);
+        JSValue value;
+        getImportedValue(exec, importName, value);
+        PROPAGATE_ERROR();
+        FAIL_IF_FALSE(value.isPrimitive() && !value.isSymbol(), "\"" + importName + "\" is not a primitive or is a Symbol.");
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(value.toNumber(exec)));
     }
 }
 
@@ -310,10 +342,22 @@ void WASMModuleParser::parseExportSection()
     }
 }
 
-JSWASMModule* parseWebAssembly(ExecState* exec, const SourceCode& source, String& errorMessage)
+void WASMModuleParser::getImportedValue(ExecState* exec, const String& importName, JSValue& value)
 {
-    WASMModuleParser moduleParser(exec->vm(), exec->lexicalGlobalObject(), source);
-    return moduleParser.parse(errorMessage);
+    FAIL_IF_FALSE(m_imports, "Accessing property of non-object.");
+    Identifier identifier = Identifier::fromString(&m_vm, importName);
+    PropertySlot slot(m_imports.get());
+    if (!m_imports->getPropertySlot(exec, identifier, slot))
+        FAIL_WITH_MESSAGE("Can't find a property named \"" + importName + '"');
+    FAIL_IF_FALSE(slot.isValue(), "\"" + importName + "\" is not a data property.");
+    // We only retrieve data properties. So, this does not cause any user-observable effect.
+    value = slot.getValue(exec, identifier);
+}
+
+JSWASMModule* parseWebAssembly(ExecState* exec, const SourceCode& source, JSObject* imports, String& errorMessage)
+{
+    WASMModuleParser moduleParser(exec->vm(), exec->lexicalGlobalObject(), source, imports);
+    return moduleParser.parse(exec, errorMessage);
 }
 
 } // namespace JSC

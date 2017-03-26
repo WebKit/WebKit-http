@@ -158,6 +158,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
     for (auto& constantRegister : m_linkTimeConstantRegisters)
         constantRegister = nullptr;
 
+    allocateCalleeSaveSpace();
+
     m_codeBlock->setNumParameters(1); // Allocate space for "this"
 
     emitOpcode(op_enter);
@@ -191,13 +193,20 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     , m_vm(&vm)
     , m_isBuiltinFunction(codeBlock->isBuiltinFunction())
     , m_usesNonStrictEval(codeBlock->usesEval() && !codeBlock->isStrictMode())
-    , m_inTailPosition(Options::enableTailCalls() && constructorKind() == ConstructorKind::None && isStrictMode())
+    // FIXME: We should be able to have tail call elimination with the profiler
+    // enabled. This is currently not possible because the profiler expects
+    // op_will_call / op_did_call pairs before and after a call, which are not
+    // compatible with tail calls (we have no way of emitting op_did_call).
+    // https://bugs.webkit.org/show_bug.cgi?id=148819
+    , m_inTailPosition(Options::enableTailCalls() && constructorKind() == ConstructorKind::None && isStrictMode() && !m_shouldEmitProfileHooks)
 {
     for (auto& constantRegister : m_linkTimeConstantRegisters)
         constantRegister = nullptr;
 
     if (m_isBuiltinFunction)
         m_shouldEmitDebugHooks = false;
+
+    allocateCalleeSaveSpace();
     
     SymbolTable* functionSymbolTable = SymbolTable::create(*m_vm);
     functionSymbolTable->setUsesNonStrictEval(m_usesNonStrictEval);
@@ -493,6 +502,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
     for (auto& constantRegister : m_linkTimeConstantRegisters)
         constantRegister = nullptr;
 
+    allocateCalleeSaveSpace();
+
     m_codeBlock->setNumParameters(1);
 
     emitOpcode(op_enter);
@@ -536,6 +547,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ModuleProgramNode* moduleProgramNod
 
     if (m_isBuiltinFunction)
         m_shouldEmitDebugHooks = false;
+
+    allocateCalleeSaveSpace();
 
     SymbolTable* moduleEnvironmentSymbolTable = SymbolTable::create(*m_vm);
     moduleEnvironmentSymbolTable->setUsesNonStrictEval(m_usesNonStrictEval);
@@ -2095,11 +2108,11 @@ RegisterID* BytecodeGenerator::emitPutById(RegisterID* base, const Identifier& p
     instructions().append(base->index());
     instructions().append(propertyIndex);
     instructions().append(value->index());
-    instructions().append(0);
-    instructions().append(0);
-    instructions().append(0);
-    instructions().append(0);
-    instructions().append(0);
+    instructions().append(0); // old structure
+    instructions().append(0); // offset
+    instructions().append(0); // new structure
+    instructions().append(0); // structure chain
+    instructions().append(PutByIdNone); // is not direct
 
     return value;
 }
@@ -2117,11 +2130,11 @@ RegisterID* BytecodeGenerator::emitDirectPutById(RegisterID* base, const Identif
     instructions().append(base->index());
     instructions().append(propertyIndex);
     instructions().append(value->index());
-    instructions().append(0);
-    instructions().append(0);
-    instructions().append(0);
-    instructions().append(0);
-    instructions().append(putType == PropertyNode::KnownDirect || property != m_vm->propertyNames->underscoreProto);
+    instructions().append(0); // old structure
+    instructions().append(0); // offset
+    instructions().append(0); // new structure
+    instructions().append(0); // structure chain (unused if direct)
+    instructions().append((putType == PropertyNode::KnownDirect || property != m_vm->propertyNames->underscoreProto) ? PutByIdIsDirect : PutByIdNone);
     return value;
 }
 
@@ -2505,10 +2518,7 @@ RegisterID* BytecodeGenerator::emitCall(RegisterID* dst, RegisterID* func, Expec
 
 RegisterID* BytecodeGenerator::emitCallInTailPosition(RegisterID* dst, RegisterID* func, ExpectedFunction expectedFunction, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
-    // FIXME: We should be emitting a new op_tail_call here when
-    // m_inTailPosition is false
-    // https://bugs.webkit.org/show_bug.cgi?id=148661
-    return emitCall(op_call, dst, func, expectedFunction, callArguments, divot, divotStart, divotEnd);
+    return emitCall(m_inTailPosition ? op_tail_call : op_call, dst, func, expectedFunction, callArguments, divot, divotStart, divotEnd);
 }
 
 RegisterID* BytecodeGenerator::emitCallEval(RegisterID* dst, RegisterID* func, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
@@ -2593,7 +2603,7 @@ ExpectedFunction BytecodeGenerator::emitExpectedFunctionSnippet(RegisterID* dst,
 
 RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, RegisterID* func, ExpectedFunction expectedFunction, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
-    ASSERT(opcodeID == op_call || opcodeID == op_call_eval);
+    ASSERT(opcodeID == op_call || opcodeID == op_call_eval || opcodeID == op_tail_call);
     ASSERT(func->refCount());
 
     if (m_shouldEmitProfileHooks)
@@ -2609,7 +2619,7 @@ RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, Regi
             RefPtr<RegisterID> argumentRegister;
             argumentRegister = expression->emitBytecode(*this, callArguments.argumentRegister(0));
             RefPtr<RegisterID> thisRegister = emitMove(newTemporary(), callArguments.thisRegister());
-            return emitCallVarargs(dst, func, callArguments.thisRegister(), argumentRegister.get(), newTemporary(), 0, callArguments.profileHookRegister(), divot, divotStart, divotEnd);
+            return emitCallVarargs(opcodeID == op_tail_call ? op_tail_call_varargs : op_call_varargs, dst, func, callArguments.thisRegister(), argumentRegister.get(), newTemporary(), 0, callArguments.profileHookRegister(), divot, divotStart, divotEnd);
         }
         for (; n; n = n->m_next)
             emitNode(callArguments.argumentRegister(argument++), n);
@@ -2662,10 +2672,7 @@ RegisterID* BytecodeGenerator::emitCallVarargs(RegisterID* dst, RegisterID* func
 
 RegisterID* BytecodeGenerator::emitCallVarargsInTailPosition(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
-    // FIXME: We should be emitting a new op_tail_call here when
-    // m_inTailPosition is false
-    // https://bugs.webkit.org/show_bug.cgi?id=148661
-    return emitCallVarargs(op_call_varargs, dst, func, thisRegister, arguments, firstFreeRegister, firstVarArgOffset, profileHookRegister, divot, divotStart, divotEnd);
+    return emitCallVarargs(m_inTailPosition ? op_tail_call_varargs : op_call_varargs, dst, func, thisRegister, arguments, firstFreeRegister, firstVarArgOffset, profileHookRegister, divot, divotStart, divotEnd);
 }
 
 RegisterID* BytecodeGenerator::emitConstructVarargs(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
@@ -3062,6 +3069,17 @@ LabelScopePtr BytecodeGenerator::continueTarget(const Identifier& name)
             return result; // may be null.
     }
     return LabelScopePtr::null();
+}
+
+void BytecodeGenerator::allocateCalleeSaveSpace()
+{
+    size_t virtualRegisterCountForCalleeSaves = CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters();
+
+    for (size_t i = 0; i < virtualRegisterCountForCalleeSaves; i++) {
+        RegisterID* localRegister = addVar();
+        localRegister->ref();
+        m_localRegistersForCalleeSaveRegisters.append(localRegister);
+    }
 }
 
 void BytecodeGenerator::allocateAndEmitScope()

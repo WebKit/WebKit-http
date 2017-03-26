@@ -105,9 +105,9 @@ void XMLDocumentParser::insert(const SegmentedString&)
     ASSERT_NOT_REACHED();
 }
 
-void XMLDocumentParser::append(PassRefPtr<StringImpl> inputSource)
+void XMLDocumentParser::append(RefPtr<StringImpl>&& inputSource)
 {
-    SegmentedString source(inputSource);
+    SegmentedString source(WTF::move(inputSource));
     if (m_sawXSLTransform || !m_sawFirstElement)
         m_originalSourceForTransform.append(source);
 
@@ -158,7 +158,7 @@ void XMLDocumentParser::exitText()
     if (!m_leafTextNode)
         return;
 
-    m_leafTextNode->appendData(toString(m_bufferedText.data(), m_bufferedText.size()), IGNORE_EXCEPTION);
+    m_leafTextNode->appendData(toString(m_bufferedText.data(), m_bufferedText.size()));
     Vector<xmlChar> empty;
     m_bufferedText.swap(empty);
 

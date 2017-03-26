@@ -69,6 +69,17 @@ void InlineFlowBox::setHasBadChildList()
 
 #endif
 
+RenderBlockFlow* InlineFlowBox::anonymousInlineBlock() const
+{
+    if (!m_hasAnonymousInlineBlock || !firstChild())
+        return nullptr;
+    if (is<InlineFlowBox>(*firstChild()))
+        return downcast<InlineFlowBox>(*firstChild()).anonymousInlineBlock();
+    if (firstChild()->renderer().isAnonymousInlineBlock())
+        return &downcast<RenderBlockFlow>(firstChild()->renderer());
+    return nullptr;
+}
+
 LayoutUnit InlineFlowBox::getFlowSpacingLogicalWidth()
 {
     LayoutUnit totalWidth = marginBorderPaddingLogicalLeft() + marginBorderPaddingLogicalRight();
@@ -112,7 +123,11 @@ void InlineFlowBox::addToLine(InlineBox* child)
     } else if (is<InlineFlowBox>(*child)) {
         if (downcast<InlineFlowBox>(*child).hasTextDescendants())
             setHasTextDescendantsOnAncestors(this);
+        if (downcast<InlineFlowBox>(*child).hasAnonymousInlineBlock())
+            setHasAnonymousInlineBlock(true);
     }
+    if (child->renderer().isAnonymousInlineBlock())
+        setHasAnonymousInlineBlock(true);
 
     if (descendantsHaveSameLineHeightAndBaseline() && !child->renderer().isOutOfFlowPositioned()) {
         const RenderStyle& parentStyle = lineStyle();
@@ -647,6 +662,11 @@ void InlineFlowBox::placeBoxesInBlockDirection(LayoutUnit top, LayoutUnit maxHei
             child->setLogicalTop(child->logicalTop() + top + posAdjust);
         }
         
+        if (child->renderer().isAnonymousInlineBlock()) {
+            const auto& box = downcast<RenderBox>(child->renderer());
+            child->setLogicalTop(box.logicalTop());
+        }
+
         LayoutUnit newLogicalTop = child->logicalTop();
         LayoutUnit newLogicalTopIncludingMargins = newLogicalTop;
         LayoutUnit boxHeight = child->logicalHeight();
@@ -722,7 +742,7 @@ void InlineFlowBox::placeBoxesInBlockDirection(LayoutUnit top, LayoutUnit maxHei
     }
 
     if (isRootBox) {
-        if (strictMode || hasTextChildren() || (descendantsHaveSameLineHeightAndBaseline() && hasTextDescendants())) {
+        if (!hasAnonymousInlineBlock() && (strictMode || hasTextChildren() || (descendantsHaveSameLineHeightAndBaseline() && hasTextDescendants()))) {
             if (!setLineTop) {
                 setLineTop = true;
                 lineTop = pixelSnappedLogicalTop();

@@ -35,6 +35,7 @@
 #include "ClientRectList.h"
 #include "ContainerNodeAlgorithms.h"
 #include "DOMTokenList.h"
+#include "Dictionary.h"
 #include "DocumentSharedObjectPool.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
@@ -312,38 +313,37 @@ void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouse
     EventDispatcher::dispatchSimulatedClick(this, underlyingEvent, eventOptions, visualOptions);
 }
 
-RefPtr<Node> Element::cloneNodeInternal(Document& targetDocument, CloningOperation type)
+Ref<Node> Element::cloneNodeInternal(Document& targetDocument, CloningOperation type)
 {
     switch (type) {
     case CloningOperation::OnlySelf:
     case CloningOperation::SelfWithTemplateContent:
         return cloneElementWithoutChildren(targetDocument);
     case CloningOperation::Everything:
-        return cloneElementWithChildren(targetDocument);
+        break;
     }
-    ASSERT_NOT_REACHED();
-    return nullptr;
+    return cloneElementWithChildren(targetDocument);
 }
 
-RefPtr<Element> Element::cloneElementWithChildren(Document& targetDocument)
+Ref<Element> Element::cloneElementWithChildren(Document& targetDocument)
 {
-    RefPtr<Element> clone = cloneElementWithoutChildren(targetDocument);
-    cloneChildNodes(clone.get());
-    return clone.release();
+    Ref<Element> clone = cloneElementWithoutChildren(targetDocument);
+    cloneChildNodes(clone);
+    return clone;
 }
 
-RefPtr<Element> Element::cloneElementWithoutChildren(Document& targetDocument)
+Ref<Element> Element::cloneElementWithoutChildren(Document& targetDocument)
 {
-    RefPtr<Element> clone = cloneElementWithoutAttributesAndChildren(targetDocument);
+    Ref<Element> clone = cloneElementWithoutAttributesAndChildren(targetDocument);
     // This will catch HTML elements in the wrong namespace that are not correctly copied.
     // This is a sanity check as HTML overloads some of the DOM methods.
     ASSERT(isHTMLElement() == clone->isHTMLElement());
 
     clone->cloneDataFromElement(*this);
-    return clone.release();
+    return clone;
 }
 
-RefPtr<Element> Element::cloneElementWithoutAttributesAndChildren(Document& targetDocument)
+Ref<Element> Element::cloneElementWithoutAttributesAndChildren(Document& targetDocument)
 {
     return targetDocument.createElement(tagQName(), false);
 }
@@ -761,7 +761,7 @@ Element* Element::bindingsOffsetParent()
     Element* element = offsetParent();
     if (!element || !element->isInShadowTree())
         return element;
-    return element->containingShadowRoot()->type() == ShadowRoot::UserAgentShadowRoot ? 0 : element;
+    return element->containingShadowRoot()->type() == ShadowRoot::Type::UserAgent ? nullptr : element;
 }
 
 Element* Element::offsetParent()
@@ -1347,8 +1347,10 @@ void Element::classAttributeChanged(const AtomicString& newClassString)
         elementData()->clearClass();
     }
 
-    if (hasRareData())
-        elementRareData()->clearClassListValueForQuirksMode();
+    if (hasRareData()) {
+        if (auto* classList = elementRareData()->classList())
+            classList->attributeValueChanged(newClassString);
+    }
 
     if (shouldInvalidateStyle)
         setNeedsStyleRecalc();
@@ -1467,24 +1469,6 @@ void Element::setPrefix(const AtomicString& prefix, ExceptionCode& ec)
     m_tagName.setPrefix(prefix.isEmpty() ? AtomicString() : prefix);
 }
 
-URL Element::baseURI() const
-{
-    const AtomicString& baseAttribute = getAttribute(baseAttr);
-    URL base(URL(), baseAttribute);
-    if (!base.protocol().isEmpty())
-        return base;
-
-    ContainerNode* parent = parentNode();
-    if (!parent)
-        return base;
-
-    const URL& parentBase = parent->baseURI();
-    if (parentBase.isNull())
-        return base;
-
-    return URL(parentBase, baseAttribute);
-}
-
 const AtomicString& Element::imageSourceURL() const
 {
     return fastGetAttribute(srcAttr);
@@ -1515,9 +1499,6 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
 
     if (!insertionPoint.isInTreeScope())
         return InsertionDone;
-
-    if (hasRareData())
-        elementRareData()->clearClassListValueForQuirksMode();
 
     TreeScope* newScope = &insertionPoint.treeScope();
     HTMLDocument* newDocument = !wasInDocument && inDocument() && is<HTMLDocument>(newScope->documentScope()) ? &downcast<HTMLDocument>(newScope->documentScope()) : nullptr;
@@ -1633,7 +1614,6 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 
     shadowRoot.setHost(this);
     shadowRoot.setParentTreeScope(&treeScope());
-    shadowRoot.distributor().didShadowBoundaryChange(this);
 
     NodeVector postInsertionNotificationTargets;
     ChildNodeInsertionNotifier(*this).notify(shadowRoot, postInsertionNotificationTargets);
@@ -1646,6 +1626,9 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
     setNeedsStyleRecalc(ReconstructRenderTree);
 
     InspectorInstrumentation::didPushShadowRoot(*this, shadowRoot);
+
+    if (shadowRoot.type() == ShadowRoot::Type::UserAgent)
+        didAddUserAgentShadowRoot(&shadowRoot);
 }
 
 void Element::removeShadowRoot()
@@ -1664,8 +1647,6 @@ void Element::removeShadowRoot()
     oldRoot->setParentTreeScope(&document());
 
     ChildNodeRemovalNotifier(*this).notify(*oldRoot);
-
-    oldRoot->distributor().invalidateDistribution(this);
 }
 
 RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
@@ -1677,10 +1658,49 @@ RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
     return nullptr;
 }
 
+RefPtr<ShadowRoot> Element::attachShadow(const Dictionary& dictionary, ExceptionCode& ec)
+{
+    String mode;
+    dictionary.get("mode", mode);
+
+    auto type = ShadowRoot::Type::Closed;
+    if (mode == "open")
+        type = ShadowRoot::Type::Open;
+    else if (mode != "closed") {
+        ec = TypeError;
+        return nullptr;
+    }
+
+    // FIXME: The current spec allows attachShadow on non-HTML elements.
+    if (!is<HTMLElement>(this) || downcast<HTMLElement>(this)->canHaveUserAgentShadowRoot()) {
+        ec = NOT_SUPPORTED_ERR;
+        return nullptr;
+    }
+
+    if (shadowRoot()) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    addShadowRoot(ShadowRoot::create(document(), type));
+
+    return shadowRoot();
+}
+
+ShadowRoot* Element::bindingShadowRoot() const
+{
+    ShadowRoot* root = shadowRoot();
+    if (!root)
+        return nullptr;
+    if (root->type() != ShadowRoot::Type::Open)
+        return nullptr;
+    return root;
+}
+
 ShadowRoot* Element::userAgentShadowRoot() const
 {
     if (ShadowRoot* shadowRoot = this->shadowRoot()) {
-        ASSERT(shadowRoot->type() == ShadowRoot::UserAgentShadowRoot);
+        ASSERT(shadowRoot->type() == ShadowRoot::Type::UserAgent);
         return shadowRoot;
     }
     return nullptr;
@@ -1690,9 +1710,8 @@ ShadowRoot& Element::ensureUserAgentShadowRoot()
 {
     ShadowRoot* shadowRoot = userAgentShadowRoot();
     if (!shadowRoot) {
-        addShadowRoot(ShadowRoot::create(document(), ShadowRoot::UserAgentShadowRoot));
+        addShadowRoot(ShadowRoot::create(document(), ShadowRoot::Type::UserAgent));
         shadowRoot = userAgentShadowRoot();
-        didAddUserAgentShadowRoot(shadowRoot);
     }
     return *shadowRoot;
 }
@@ -1815,8 +1834,10 @@ void Element::childrenChanged(const ChildChange& change)
         checkForSiblingStyleChanges(*this, checkType, change.previousSiblingElement, change.nextSiblingElement);
     }
 
-    if (ShadowRoot* shadowRoot = this->shadowRoot())
-        shadowRoot->invalidateDistribution();
+    if (ShadowRoot* shadowRoot = this->shadowRoot()) {
+        if (auto* distributor = shadowRoot->distributor())
+            distributor->invalidateDistribution(this);
+    }
 }
 
 void Element::removeAllEventListeners()
@@ -2288,9 +2309,7 @@ void Element::mergeWithNextTextNode(Text& node, ExceptionCode& ec)
 
     Ref<Text> textNode(node);
     Ref<Text> textNext(downcast<Text>(*next));
-    textNode->appendData(textNext->data(), ec);
-    if (ec)
-        return;
+    textNode->appendData(textNext->data());
     textNext->remove(ec);
 }
 
@@ -2319,7 +2338,7 @@ void Element::setOuterHTML(const String& html, ExceptionCode& ec)
     if (ec)
         return;
     
-    parent->replaceChild(fragment.release(), this, ec);
+    parent->replaceChild(fragment.releaseNonNull(), *this, ec);
     RefPtr<Node> node = next ? next->previousSibling() : nullptr;
     if (!ec && is<Text>(node.get()))
         mergeWithNextTextNode(downcast<Text>(*node), ec);
@@ -2338,7 +2357,7 @@ void Element::setInnerHTML(const String& html, ExceptionCode& ec)
             container = downcast<HTMLTemplateElement>(*this).content();
 #endif
 
-        replaceChildrenWithFragment(*container, fragment.release(), ec);
+        replaceChildrenWithFragment(*container, fragment.releaseNonNull(), ec);
     }
 }
 
@@ -2655,7 +2674,7 @@ DOMTokenList& Element::classList()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.classList())
-        data.setClassList(std::make_unique<ClassList>(*this));
+        data.setClassList(std::make_unique<AttributeDOMTokenList>(*this, HTMLNames::classAttr));
     return *data.classList();
 }
 

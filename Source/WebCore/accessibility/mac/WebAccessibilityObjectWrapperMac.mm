@@ -248,6 +248,10 @@ using namespace HTMLNames;
 #define NSAccessibilityDOMIdentifierAttribute @"AXDOMIdentifier"
 #define NSAccessibilityDOMClassListAttribute @"AXDOMClassList"
 
+#ifndef NSAccessibilityARIACurrentAttribute
+#define NSAccessibilityARIACurrentAttribute @"AXARIACurrent"
+#endif
+
 // Search
 #ifndef NSAccessibilityImmediateDescendantsOnly
 #define NSAccessibilityImmediateDescendantsOnly @"AXImmediateDescendantsOnly"
@@ -1696,6 +1700,10 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, const Visibl
     if ([additionalAttributes count])
         objectAttributes = [objectAttributes arrayByAddingObjectsFromArray:additionalAttributes];
     
+    // Only expose AXARIACurrent attribute when the element is set to be current item.
+    if (m_object->ariaCurrentState() != ARIACurrentFalse)
+        [objectAttributes arrayByAddingObjectsFromArray:@[ NSAccessibilityARIACurrentAttribute ]];
+    
     return objectAttributes;
 }
 
@@ -2870,6 +2878,26 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if ([attributeName isEqualToString: NSAccessibilitySelectedAttribute])
         return [NSNumber numberWithBool:m_object->isSelected()];
     
+    if ([attributeName isEqualToString: NSAccessibilityARIACurrentAttribute]) {
+        switch (m_object->ariaCurrentState()) {
+        case ARIACurrentFalse:
+            return @"false";
+        case ARIACurrentPage:
+            return @"page";
+        case ARIACurrentStep:
+            return @"step";
+        case ARIACurrentLocation:
+            return @"location";
+        case ARIACurrentTime:
+            return @"time";
+        case ARIACurrentDate:
+            return @"date";
+        default:
+        case ARIACurrentTrue:
+            return @"true";
+        }
+    }
+    
     if ([attributeName isEqualToString: NSAccessibilityServesAsTitleForUIElementsAttribute] && m_object->isMenuButton()) {
         AccessibilityObject* uiElement = downcast<AccessibilityRenderObject>(*m_object).menuForMenuButton();
         if (uiElement)
@@ -3393,7 +3421,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
 
 - (void)accessibilitySetValue:(id)value forAttribute:(NSString*)attributeName
 {
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     // In case anything we do by changing values causes an alert or other modal
     // behaviors, we need to return now, so that VoiceOver doesn't hang indefinitely.
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -3579,7 +3607,7 @@ static RenderObject* rendererForView(NSView* view)
     if (!document)
         return nil;
     
-    PassRefPtr<Range> textRange = TextIterator::rangeFromLocationAndLength(document->documentElement(), textIndex, 0);
+    RefPtr<Range> textRange = TextIterator::rangeFromLocationAndLength(document->documentElement(), textIndex, 0);
     if (!textRange || !textRange->boundaryPointsValid())
         return nil;
     

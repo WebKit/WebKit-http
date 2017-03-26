@@ -1194,8 +1194,8 @@ webkit.org/b/142142 media/video-volume-slider-drag.html [ Skip ]
 webkit.org/b/17022 [ MountainLion Mavericks ] fast/images/animated-png.html [ Skip ]
 
 # Pre-Capitan does not support asynchronous attribute setting.
-[ Mavericks Yosemite ] accessibility/mac/setting-attributes-is-asynchronous.html [ Skip ]
-[ Mavericks Yosemite ] accessibility/mac/focus-setting-selection-syncronizing-not-clearing.html [ Skip ]
+[ Mavericks ] accessibility/mac/setting-attributes-is-asynchronous.html [ Skip ]
+[ Mavericks ] accessibility/mac/focus-setting-selection-syncronizing-not-clearing.html [ Skip ]
 
 # OS X 10.10.3+ has the necessary glyphs.
 webkit.org/b/142548 [ Yosemite+ ] editing/selection/extend-by-character-007.html [ Pass ]
@@ -1229,16 +1229,13 @@ http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
 
 [ Yosemite ] fast/canvas/webgl/oes-texture-half-float-linear.html [ Pass Failure ]
 
-# <rdar://problem/21857102>
-[ ElCapitan+ ] fast/canvas/canvas-too-large-to-draw.html [ Crash ]
-
 webkit.org/b/147763 [ Mavericks Yosemite ] accessibility/mac/loaded-notification.html [ Skip ]
 
 # Language-specific font fallback is disabled on certain versions of OS X
 webkit.org/b/147390 [ Mavericks Yosemite ElCapitan ] fast/text/fallback-language-han.html [ ImageOnlyFailure ]
 
 # This test relies on iOS-specific font fallback.
-[ Mavericks Yosemite ElCapitan ] fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
+[ Mavericks Yosemite ElCapitan ] fast/text/international/system-language/arabic-glyph-cache-fill-combine.html [ Pass ImageOnlyFailure ]
 
 # Started to fail after r188390
 webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Failure ]
@@ -1287,3 +1284,12 @@ webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validat
 
 # Colorspaces on CA OpenGL layers not available in Mavericks and Yosemite
 [ Mavericks Yosemite ] fast/canvas/webgl/match-page-color-space.html [ Skip ]
+
+# Mocking the system language relies on Bootstrap XPC messages, which are not supported in Mavericks.
+[ Mavericks ] fast/text/international/system-language [ Pass Failure ImageOnlyFailure ]
+# Han quotes are not different on Mavericks nor Yosemite.
+[ Mavericks Yosemite ] fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure ]
+
+webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
+
+webkit.org/b/148695 fast/shadow-dom [ Pass ]

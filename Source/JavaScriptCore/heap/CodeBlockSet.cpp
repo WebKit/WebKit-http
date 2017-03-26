@@ -64,7 +64,7 @@ void CodeBlockSet::promoteYoungCodeBlocks()
 void CodeBlockSet::clearMarksForFullCollection()
 {
     for (CodeBlock* codeBlock : m_oldCodeBlocks)
-        clearMarks(codeBlock);
+        codeBlock->clearMarks();
 
     // We promote after we clear marks on the old generation CodeBlocks because
     // none of the young generations CodeBlocks need to be cleared.
@@ -79,7 +79,8 @@ void CodeBlockSet::clearMarksForEdenCollection(const Vector<const JSCell*>& reme
         if (!executable)
             continue;
         executable->forEachCodeBlock([this](CodeBlock* codeBlock) {
-            clearMarks(codeBlock);
+            codeBlock->clearMarks();
+            m_remembered.add(codeBlock);
         });
     }
 }
@@ -98,8 +99,6 @@ void CodeBlockSet::deleteUnmarkedAndUnreferenced(HeapOperation collectionType)
     for (;;) {
         for (CodeBlock* codeBlock : set) {
             if (!codeBlock->hasOneRef())
-                continue;
-            if (codeBlock->m_isStronglyReferenced)
                 continue;
             codeBlock->deref();
             toRemove.append(codeBlock);
@@ -133,11 +132,18 @@ void CodeBlockSet::traceMarked(SlotVisitor& visitor)
 {
     if (verbose)
         dataLog("Tracing ", m_currentlyExecuting.size(), " code blocks.\n");
-    for (CodeBlock* codeBlock : m_currentlyExecuting) {
-        ASSERT(codeBlock->m_mayBeExecuting);
-        ASSERT(codeBlock->m_isStronglyReferenced);
-        codeBlock->visitAggregate(visitor);
-    }
+
+    // We strongly visit the currently executing set because jettisoning code
+    // is not valuable once it's on the stack. We're past the point where
+    // jettisoning would avoid the cost of OSR exit.
+    for (const RefPtr<CodeBlock>& codeBlock : m_currentlyExecuting)
+        codeBlock->visitStrongly(visitor);
+
+    // We strongly visit the remembered set because jettisoning old code during
+    // Eden GC is unsound. There might be an old object with a strong reference
+    // to the code.
+    for (const RefPtr<CodeBlock>& codeBlock : m_remembered)
+        codeBlock->visitStrongly(visitor);
 }
 
 void CodeBlockSet::rememberCurrentlyExecutingCodeBlocks(Heap* heap)
@@ -145,12 +151,13 @@ void CodeBlockSet::rememberCurrentlyExecutingCodeBlocks(Heap* heap)
 #if ENABLE(GGC)
     if (verbose)
         dataLog("Remembering ", m_currentlyExecuting.size(), " code blocks.\n");
-    for (CodeBlock* codeBlock : m_currentlyExecuting) {
-        ASSERT(codeBlock->m_mayBeExecuting);
-        ASSERT(codeBlock->m_isStronglyReferenced);
+    for (const RefPtr<CodeBlock>& codeBlock : m_currentlyExecuting)
         heap->addToRememberedSet(codeBlock->ownerExecutable());
-    }
+
+    // It's safe to clear these RefPtr sets because we won't delete the CodeBlocks
+    // in them until the next GC, and we'll recompute them at that time.
     m_currentlyExecuting.clear();
+    m_remembered.clear();
 #else
     UNUSED_PARAM(heap);
 #endif // ENABLE(GGC)
@@ -168,8 +175,8 @@ void CodeBlockSet::dump(PrintStream& out) const
         out.print(comma, pointerDump(codeBlock));
     out.print("], currentlyExecuting = [");
     comma = CommaPrinter();
-    for (CodeBlock* codeBlock : m_currentlyExecuting)
-        out.print(comma, pointerDump(codeBlock));
+    for (const RefPtr<CodeBlock>& codeBlock : m_currentlyExecuting)
+        out.print(comma, pointerDump(codeBlock.get()));
     out.print("]}");
 }
 

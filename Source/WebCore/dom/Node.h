@@ -182,7 +182,7 @@ public:
     Node* pseudoAwareFirstChild() const;
     Node* pseudoAwareLastChild() const;
 
-    virtual URL baseURI() const;
+    URL baseURI() const;
     
     void getSubresourceURLs(ListHashSet<URL>&) const;
 
@@ -201,8 +201,8 @@ public:
         SelfWithTemplateContent,
         Everything,
     };
-    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) = 0;
-    RefPtr<Node> cloneNode(bool deep) { return cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
+    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) = 0;
+    Ref<Node> cloneNode(bool deep) { return cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
 
     virtual const AtomicString& localName() const;
     virtual const AtomicString& namespaceURI() const;
@@ -521,7 +521,7 @@ public:
     virtual EventTargetInterface eventTargetInterface() const override;
     virtual ScriptExecutionContext* scriptExecutionContext() const override final; // Implemented in Document.h
 
-    virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
+    virtual bool addEventListener(const AtomicString& eventType, RefPtr<EventListener>&&, bool useCapture) override;
     virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
 
     using EventTarget::dispatchEvent;

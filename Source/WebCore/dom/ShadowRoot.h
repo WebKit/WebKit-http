@@ -28,7 +28,6 @@
 #define ShadowRoot_h
 
 #include "ContainerNode.h"
-#include "ContentDistributor.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "Element.h"
@@ -37,13 +36,17 @@
 
 namespace WebCore {
 
-class ShadowRoot final : public DocumentFragment, public TreeScope {
+class ContentDistributor;
+
+class ShadowRoot : public DocumentFragment, public TreeScope {
 public:
-    enum ShadowRootType {
-        UserAgentShadowRoot = 0,
+    enum class Type : uint8_t {
+        UserAgent = 0,
+        Closed,
+        Open,
     };
 
-    static Ref<ShadowRoot> create(Document& document, ShadowRootType type)
+    static Ref<ShadowRoot> create(Document& document, Type type)
     {
         return adoptRef(*new ShadowRoot(document, type));
     }
@@ -61,32 +64,29 @@ public:
 
     Element* activeElement() const;
 
-    ShadowRootType type() const { return static_cast<ShadowRootType>(m_type); }
+    Type type() const { return m_type; }
 
     PassRefPtr<Node> cloneNode(bool, ExceptionCode&);
 
-    ContentDistributor& distributor() { return m_distributor; }
-    void invalidateDistribution() { m_distributor.invalidateDistribution(m_host); }
-
     virtual void removeAllEventListeners() override;
 
-private:
-    ShadowRoot(Document&, ShadowRootType);
+    virtual ContentDistributor* distributor() { return nullptr; }
 
-    virtual bool childTypeAllowed(NodeType) const override;
-    virtual void childrenChanged(const ChildChange&) override;
-
-    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override;
+protected:
+    ShadowRoot(Document&, Type);
 
     // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
     bool isOrphan() const { return !m_host; }
 
-    unsigned m_resetStyleInheritance : 1;
-    unsigned m_type : 1;
+private:
+    virtual bool childTypeAllowed(NodeType) const override;
+
+    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+
+    bool m_resetStyleInheritance : 1;
+    Type m_type;
 
     Element* m_host;
-
-    ContentDistributor m_distributor;
 };
 
 inline Element* ShadowRoot::activeElement() const

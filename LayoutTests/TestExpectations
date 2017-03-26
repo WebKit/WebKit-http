@@ -40,7 +40,6 @@ quicklook [ Skip ]
 # End platform-specific tests.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
-
 # pending functional patch and per-port verification
 webkit.org/b/109954 css3/line-break [ Skip ]
 
@@ -203,11 +202,7 @@ webkit.org/b/136754 css3/flexbox/csswg/flex-flexitem-percentage-prescation.html 
 webkit.org/b/136754 css3/flexbox/csswg/flex-items-flexibility.html [ ImageOnlyFailure ]
 webkit.org/b/136754 css3/flexbox/csswg/flex-lines/multi-line-wrap-reverse-column-reverse.html [ ImageOnlyFailure ]
 webkit.org/b/136754 css3/flexbox/csswg/flex-lines/multi-line-wrap-with-column-reverse.html [ ImageOnlyFailure ]
-webkit.org/b/136754 css3/flexbox/csswg/flex-margin-no-collapse.html [ ImageOnlyFailure ]
 webkit.org/b/136754 css3/flexbox/csswg/flexbox-flex-wrap-flexing.html [ ImageOnlyFailure ]
-webkit.org/b/136754 css3/flexbox/csswg/flexbox_flex-0-0-0.html [ ImageOnlyFailure ]
-webkit.org/b/136754 css3/flexbox/csswg/flexbox_flex-0-1-0.html [ ImageOnlyFailure ]
-webkit.org/b/136754 css3/flexbox/csswg/flexbox_flex-0-N-0.html [ ImageOnlyFailure ]
 webkit.org/b/136754 css3/flexbox/csswg/flexbox_flex-natural-mixed-basis-auto.html [ ImageOnlyFailure ]
 webkit.org/b/136754 css3/flexbox/csswg/flexbox_generated-container.html [ ImageOnlyFailure ]
 webkit.org/b/136754 css3/flexbox/csswg/flexbox_justifycontent-center-overflow.html [ ImageOnlyFailure ]
@@ -571,6 +566,8 @@ webkit.org/b/114280 svg/animations/smil-leak-element-instances-noBaseValRef.svg 
 webkit.org/b/114280 svg/animations/smil-leak-element-instances.svg [ Pass Failure ]
 webkit.org/b/114280 svg/animations/smil-leak-elements.svg [ Pass Failure ]
 
+webkit.org/b/149072 svg/animations/svgboolean-animation-1.html [ Pass Failure ]
+
 webkit.org/b/143085 media/track/track-mode.html [ Pass Timeout ]
 
 # In ES6, Object type restrictions on a first parameter of several Object.* functions are relaxed.
@@ -677,3 +674,7 @@ webkit.org/b/148884 imported/w3c/web-platform-tests/html/semantics/forms/textfie
 webkit.org/b/148922 svg/as-object/svg-in-object-dynamic-attribute-change.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/148925 svg/dom/svg-root-lengths.html [ Pass Failure ]
+
+webkit.org/b/149082 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html [ Pass Failure ]
+
+webkit.org/b/148695 fast/shadow-dom [ Failure ]

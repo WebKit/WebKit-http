@@ -62,7 +62,7 @@ static HashSet<Structure*>& liveStructureSet = *(new HashSet<Structure*>);
 #endif
 
 class SingleSlotTransitionWeakOwner final : public WeakHandleOwner {
-    void finalize(Handle<Unknown>, void* context) override
+    void finalize(JSCell*&, void* context) override
     {
         StructureTransitionTable* table = reinterpret_cast<StructureTransitionTable*>(context);
         ASSERT(table->isUsingSingleSlot());
@@ -82,7 +82,7 @@ inline Structure* StructureTransitionTable::singleTransition() const
     ASSERT(isUsingSingleSlot());
     if (WeakImpl* impl = this->weakImpl()) {
         if (impl->state() == WeakImpl::Live)
-            return jsCast<Structure*>(impl->jsValue().asCell());
+            return jsCast<Structure*>(impl->cell());
     }
     return nullptr;
 }
@@ -92,7 +92,7 @@ inline void StructureTransitionTable::setSingleTransition(Structure* structure)
     ASSERT(isUsingSingleSlot());
     if (WeakImpl* impl = this->weakImpl())
         WeakSet::deallocate(impl);
-    WeakImpl* impl = WeakSet::allocate(structure, &singleSlotTransitionWeakOwner(), this);
+    WeakImpl* impl = WeakSet::allocate(*structure, &singleSlotTransitionWeakOwner(), this);
     m_data = reinterpret_cast<intptr_t>(impl) | UsingSingleSlotFlag;
 }
 
@@ -208,6 +208,7 @@ Structure::Structure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, co
     setStaticFunctionsReified(false);
     setHasRareData(false);
     setTransitionWatchpointIsLikelyToBeFired(false);
+    setHasBeenDictionary(false);
  
     ASSERT(inlineCapacity <= JSFinalObject::maxInlineCapacity());
     ASSERT(static_cast<PropertyOffset>(inlineCapacity) < firstOutOfLineOffset);
@@ -239,6 +240,7 @@ Structure::Structure(VM& vm)
     setStaticFunctionsReified(false);
     setHasRareData(false);
     setTransitionWatchpointIsLikelyToBeFired(false);
+    setHasBeenDictionary(false);
  
     TypeInfo typeInfo = TypeInfo(CellType, StructureFlags);
     m_blob = StructureIDBlob(vm.heap.structureIDTable().allocateID(this), 0, typeInfo);
@@ -268,6 +270,7 @@ Structure::Structure(VM& vm, Structure* previous, DeferredStructureTransitionWat
     setDidTransition(true);
     setStaticFunctionsReified(previous->staticFunctionsReified());
     setHasRareData(false);
+    setHasBeenDictionary(previous->hasBeenDictionary());
  
     TypeInfo typeInfo = previous->typeInfo();
     m_blob = StructureIDBlob(vm.heap.structureIDTable().allocateID(this), previous->indexingTypeIncludingHistory(), typeInfo);
@@ -537,7 +540,7 @@ Structure* Structure::toDictionaryTransition(VM& vm, Structure* structure, Dicti
     transition->m_offset = structure->m_offset;
     transition->setDictionaryKind(kind);
     transition->pin();
-    transition->setTransitionWatchpointIsLikelyToBeFired(true);
+    transition->setHasBeenDictionary(true);
 
     transition->checkOffsetConsistency();
     return transition;
@@ -1156,6 +1159,8 @@ void Structure::dump(PrintStream& out) const
 
     switch (dictionaryKind()) {
     case NoneDictionaryKind:
+        if (hasBeenDictionary())
+            out.print(", Has been dictionary");
         break;
     case CachedDictionaryKind:
         out.print(", Dictionary");
@@ -1164,6 +1169,11 @@ void Structure::dump(PrintStream& out) const
         out.print(", UncacheableDictionary");
         break;
     }
+
+    if (transitionWatchpointSetIsStillValid())
+        out.print(", Leaf");
+    else if (transitionWatchpointIsLikelyToBeFired())
+        out.print(", Shady leaf");
     
     out.print("]");
 }

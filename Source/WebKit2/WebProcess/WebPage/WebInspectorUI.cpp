@@ -30,13 +30,10 @@
 #include "WebInspectorProxyMessages.h"
 #include "WebPage.h"
 #include "WebProcess.h"
-#include <JavaScriptCore/ScriptValue.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/DOMWrapperWorld.h>
 #include <WebCore/InspectorController.h>
-#include <WebCore/MainFrame.h>
 #include <WebCore/NotImplemented.h>
-#include <WebCore/ScriptController.h>
 #include <WebCore/ScriptGlobalObject.h>
 #include <WebCore/ScriptState.h>
 
@@ -44,20 +41,14 @@ using namespace WebCore;
 
 namespace WebKit {
 
-Ref<WebInspectorUI> WebInspectorUI::create(WebPage* page)
+Ref<WebInspectorUI> WebInspectorUI::create(WebPage& page)
 {
     return adoptRef(*new WebInspectorUI(page));
 }
 
-WebInspectorUI::WebInspectorUI(WebPage* page)
+WebInspectorUI::WebInspectorUI(WebPage& page)
     : m_page(page)
-    , m_inspectedPageIdentifier(0)
-    , m_underTest(false)
-    , m_frontendLoaded(false)
-    , m_dockSide(DockSide::Undocked)
-#if PLATFORM(COCOA)
-    , m_hasLocalizedStringsURL(false)
-#endif
+    , m_frontendAPIDispatcher(page)
 {
 }
 
@@ -76,10 +67,10 @@ void WebInspectorUI::establishConnection(IPC::Attachment encodedConnectionIdenti
         return;
 
     m_inspectedPageIdentifier = inspectedPageIdentifier;
-    m_frontendLoaded = false;
+    m_frontendAPIDispatcher.reset();
     m_underTest = underTest;
 
-    m_page->corePage()->inspectorController().setInspectorFrontendClient(this);
+    m_page.corePage()->inspectorController().setInspectorFrontendClient(this);
 
     m_backendConnection = IPC::Connection::createClientConnection(connectionIdentifier, *this);
     m_backendConnection->open();
@@ -90,15 +81,14 @@ void WebInspectorUI::windowObjectCleared()
     if (m_frontendHost)
         m_frontendHost->disconnectClient();
 
-    m_frontendHost = InspectorFrontendHost::create(this, m_page->corePage());
-    ScriptGlobalObject::set(execStateFromPage(mainThreadNormalWorld(), m_page->corePage()), ASCIILiteral("InspectorFrontendHost"), m_frontendHost.get());
+    m_frontendHost = InspectorFrontendHost::create(this, m_page.corePage());
+    ScriptGlobalObject::set(execStateFromPage(mainThreadNormalWorld(), m_page.corePage()), ASCIILiteral("InspectorFrontendHost"), m_frontendHost.get());
 }
 
 void WebInspectorUI::frontendLoaded()
 {
-    m_frontendLoaded = true;
+    m_frontendAPIDispatcher.frontendLoaded();
 
-    evaluatePendingExpressions();
     bringToFront();
 }
 
@@ -109,9 +99,9 @@ void WebInspectorUI::startWindowDrag()
 
 void WebInspectorUI::moveWindowBy(float x, float y)
 {
-    FloatRect frameRect = m_page->corePage()->chrome().windowRect();
+    FloatRect frameRect = m_page.corePage()->chrome().windowRect();
     frameRect.move(x, y);
-    m_page->corePage()->chrome().setWindowRect(frameRect);
+    m_page.corePage()->chrome().setWindowRect(frameRect);
 }
 
 void WebInspectorUI::bringToFront()
@@ -167,12 +157,12 @@ void WebInspectorUI::setDockSide(DockSide side)
 
     m_dockSide = side;
 
-    evaluateCommandOnLoad(ASCIILiteral("setDockSide"), ASCIILiteral(sideString));
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setDockSide"), String(ASCIILiteral(sideString)));
 }
 
 void WebInspectorUI::setDockingUnavailable(bool unavailable)
 {
-    evaluateCommandOnLoad(ASCIILiteral("setDockingUnavailable"), unavailable);
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setDockingUnavailable"), unavailable);
 }
 
 void WebInspectorUI::changeAttachedWindowHeight(unsigned height)
@@ -213,82 +203,48 @@ void WebInspectorUI::inspectedURLChanged(const String& urlString)
 
 void WebInspectorUI::showConsole()
 {
-    evaluateCommandOnLoad(ASCIILiteral("showConsole"));
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("showConsole"));
 }
 
 void WebInspectorUI::showResources()
 {
-    evaluateCommandOnLoad(ASCIILiteral("showResources"));
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("showResources"));
 }
 
 void WebInspectorUI::showMainResourceForFrame(const String& frameIdentifier)
 {
-    evaluateCommandOnLoad(ASCIILiteral("showMainResourceForFrame"), frameIdentifier);
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("showMainResourceForFrame"), frameIdentifier);
 }
 
 void WebInspectorUI::startPageProfiling()
 {
-    evaluateCommandOnLoad(ASCIILiteral("setTimelineProfilingEnabled"), true);
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setTimelineProfilingEnabled"), true);
 }
 
 void WebInspectorUI::stopPageProfiling()
 {
-    evaluateCommandOnLoad(ASCIILiteral("setTimelineProfilingEnabled"), false);
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setTimelineProfilingEnabled"), false);
 }
 
 void WebInspectorUI::didSave(const String& url)
 {
-    evaluateCommandOnLoad(ASCIILiteral("savedURL"), url);
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("savedURL"), url);
 }
 
 void WebInspectorUI::didAppend(const String& url)
 {
-    evaluateCommandOnLoad(ASCIILiteral("appendedToURL"), url);
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("appendedToURL"), url);
 }
 
 void WebInspectorUI::sendMessageToFrontend(const String& message)
 {
-    evaluateExpressionOnLoad(makeString("InspectorFrontendAPI.dispatchMessageAsync(", message, ")"));
+    m_frontendAPIDispatcher.dispatchMessageAsync(message);
 }
 
 void WebInspectorUI::sendMessageToBackend(const String& message)
 {
     if (m_backendConnection)
         m_backendConnection->send(Messages::WebInspector::SendMessageToBackend(message), 0);
-}
-
-void WebInspectorUI::evaluateCommandOnLoad(const String& command, const String& argument)
-{
-    if (argument.isNull())
-        evaluateExpressionOnLoad(makeString("InspectorFrontendAPI.dispatch([\"", command, "\"])"));
-    else
-        evaluateExpressionOnLoad(makeString("InspectorFrontendAPI.dispatch([\"", command, "\", \"", argument, "\"])"));
-}
-
-void WebInspectorUI::evaluateCommandOnLoad(const String& command, bool argument)
-{
-    evaluateExpressionOnLoad(makeString("InspectorFrontendAPI.dispatch([\"", command, "\", ", ASCIILiteral(argument ? "true" : "false"), "])"));
-}
-
-void WebInspectorUI::evaluateExpressionOnLoad(const String& expression)
-{
-    if (m_frontendLoaded) {
-        ASSERT(m_queue.isEmpty());
-        m_page->corePage()->mainFrame().script().executeScript(expression);
-        return;
-    }
-
-    m_queue.append(expression);
-}
-
-void WebInspectorUI::evaluatePendingExpressions()
-{
-    ASSERT(m_frontendLoaded);
-
-    for (const String& expression : m_queue)
-        m_page->corePage()->mainFrame().script().executeScript(expression);
-
-    m_queue.clear();
 }
 
 } // namespace WebKit

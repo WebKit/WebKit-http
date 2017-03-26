@@ -1,3 +1,259 @@
+2015-09-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix common typo "supress" => "suppress"
+        https://bugs.webkit.org/show_bug.cgi?id=149199
+
+        Reviewed by Gyuyoung Kim.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGridNode.prototype.select):
+        (WebInspector.DataGridNode.prototype.deselect):
+        * UserInterface/Views/SearchBar.js:
+        (WebInspector.SearchBar):
+
+2015-09-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Turn off line wrapping in resource text editors
+        https://bugs.webkit.org/show_bug.cgi?id=149121
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+
+2015-09-15  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Picking unchanged for font-size does not reset back to the unchanged value
+        https://bugs.webkit.org/show_bug.cgi?id=148351
+
+        Reviewed by Brian Burg.
+
+        Visual number editors now save any new values in the special placeholder element
+        to display it whenever the "Unchanged" option is selected by the user.
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox.prototype.set value):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set units):
+        (WebInspector.VisualStyleNumberInputBox.prototype._setNumberInputIsEditable):
+        (WebInspector.VisualStyleNumberInputBox.prototype._keywordChanged):
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputKeyDown.adjustValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputKeyDown):
+
+2015-09-15  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: command-click in NewTabContentView should open new tab without switching to it
+        https://bugs.webkit.org/show_bug.cgi?id=149173
+
+        Reviewed by Joseph Pecoraro.
+
+        To allow a user to quickly restore tabs, it should be possible to command-click
+        all the tabs that are desired without going back through the [+] tab button.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.createNewTabWithType): Renamed.
+
+            Use an options object and split creating the tab from deleting the
+            replaced tab and showing the new tab. Add better error checking.
+
+        (WebInspector.createNewTab): Deleted.
+        * UserInterface/Views/NewTabContentView.js:
+        (WebInspector.NewTabContentView):
+        (WebInspector.NewTabContentView.prototype._createNewTabWithType): Renamed.
+
+            If the meta key is pressed, don't switch to the new tab or remove this view
+            unless there are no more tabs that can be created beyond the current one.
+
+        (WebInspector.NewTabContentView.prototype._allowableTabTypes): Added.
+        (WebInspector.NewTabContentView.prototype._createNewTab): Deleted.
+
+2015-09-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Watch Expressions uncaught exceptions on page reload
+        https://bugs.webkit.org/show_bug.cgi?id=149150
+
+        Reviewed by Brian Burg.
+
+        Instead of waiting 50ms to Resume, when the page navigates
+        Resume immediately. This ensures nobody is using a stale
+        activeCallFrame after the navigation.
+
+        Also clean up the manager a bit by removing some deletes.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.restoreBreakpointsSoon):
+        (WebInspector.DebuggerManager.prototype.reset):
+        (WebInspector.DebuggerManager.prototype.debuggerDidPause):
+        (WebInspector.DebuggerManager.prototype.debuggerDidResume):
+        (WebInspector.DebuggerManager.prototype._mainResourceDidChange):
+        (WebInspector.DebuggerManager.prototype._didResumeInternal):
+        (WebInspector.DebuggerManager.prototype._associateBreakpointsWithSourceCode):
+        (WebInspector.DebuggerManager.prototype.debuggerDidResume.delayedWork): Deleted.
+
+2015-09-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Closing the final inspector tab should be allowed
+        https://bugs.webkit.org/show_bug.cgi?id=149130
+
+        Reviewed by Brian Burg.
+
+        Previously we did not allow closing the last inspector tab. Now, we
+        will allow closing all inspector tabs, and when the last is closed,
+        present an unclosable New Tab tab, which would then be used to create
+        a new tab.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        If we have no tabs to restore, show the New Tab tab.
+
+        (WebInspector._openDefaultTab):
+        When the last tab is closed, the tab bar requests we open a default tab.
+        Open the New Tab tab.
+
+        (WebInspector.TabBar.prototype._handleClick):
+        Disallow closing the single default tab.
+
+        (WebInspector._newTabItemClicked):
+        (WebInspector.showNewTabTab):
+        Share logic for showing the New Tab tab.
+
+        * UserInterface/Views/NewTabContentView.js:
+        (WebInspector.NewTabContentView):
+        Mark the new tab's tab bar item as the "default" tab bar item. It gets
+        special behavior when it is the single normal tab (cannot be closed).
+
+        * UserInterface/Views/TabBar.css:
+        (body:not(.window-inactive) .tab-bar > .item:hover > .close):
+        (body:not(.window-inactive) .tab-bar.single-tab > .item.default-tab:hover > .close):
+        (.tab-bar.single-tab > .item.default-tab > .close):
+        (body:not(.window-inactive) .tab-bar:not(.single-tab) > .item:not(.hide-close-button):hover > .close): Deleted.
+        (.tab-bar > .item.hide-close-button > .close): Deleted.
+        Update styles to only disable the close button on the
+        "default-tab" when it is the "single-tab" open. Otherwise
+        always allow closing tabs.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype.removeTabBarItem):
+        (WebInspector.TabBar.prototype.hasNormalTab):
+        (WebInspector.TabBar.prototype._openDefaultTab):
+        When removing the last normal tab, send an event to open
+        the default tab.
+
+        * UserInterface/Views/TabBarItem.js:
+        (WebInspector.TabBarItem.prototype.get default):
+        (WebInspector.TabBarItem.prototype.get isDefaultTab):
+        (WebInspector.TabBarItem.prototype.set isDefaultTab):
+        (WebInspector.TabBarItem.prototype.get hideCloseButton): Deleted.
+        (WebInspector.TabBarItem.prototype.set hideCloseButton): Deleted.
+        Switch to marking a tab bar item as the default tab. This tab
+        will be allowed when it is the single remaining tab. Currently
+        the default tab is always the "New Tab" tab.
+
+2015-09-15  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: new tab content view should disallow split console
+        https://bugs.webkit.org/show_bug.cgi?id=149164
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NewTabContentView.js:
+        (WebInspector.NewTabContentView.prototype.get supportsSplitContentBrowser):
+
+2015-09-14  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: tab bar stutters when moving mouse after closing tab
+        https://bugs.webkit.org/show_bug.cgi?id=149138
+
+        Reviewed by Joseph Pecoraro.
+
+        The tab bar lacked the 'static-layout' class between when the Promise microtask
+        ran and the beginning of the requestAnimationFrame. This caused a flash of
+        tabs that are way too wide.
+
+        Re-add the static-layout class immediately after measuring the 'after' tab size.
+        This code should probably just manually compute tab sizes since flexbox
+        layout is quite slow and our measurement code here forces layout several times.
+
+        * UserInterface/Views/TabBar.js:
+
+2015-09-14  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: backend command promises are not rejected when a protocol error occurs
+        https://bugs.webkit.org/show_bug.cgi?id=141403
+
+        Reviewed by Joseph Pecoraro.
+
+        Fix a few corner cases for how InspectorBackend delivers command failures.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Command.prototype.deliverFailure): Added.
+        (InspectorBackend.Command.prototype._invokeWithArguments):
+
+            If argument-checking fails, return a rejected promise or invoke the supplied callback
+            on a zero-delay setTimeout to ensure that the reply is asynchronous.
+
+2015-09-14  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: middle-clicking a tab in the tab bar should close it
+        https://bugs.webkit.org/show_bug.cgi?id=149135
+
+        Reviewed by Joseph Pecoraro.
+
+        This matches the behavior of the tab bar in Safari and other browsers.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype._handleMouseDown):
+        (WebInspector.TabBar.prototype._handleClick):
+
+2015-09-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Border under the styles filter field is clipped
+        https://bugs.webkit.org/show_bug.cgi?id=149115
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content + .options-container > .filter-bar):
+
+2015-09-11  Nan Wang  <n_wang@apple.com>
+
+        AX: ARIA 1.1 @aria-current
+        https://bugs.webkit.org/show_bug.cgi?id=146012
+
+        Reviewed by Chris Fleizach.
+
+        Added support for ARIA 1.1 aria-current.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/DOMNode.js:
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+
+2015-09-10  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Styles sidebar says Media: all when it should say Media: screen
+        https://bugs.webkit.org/show_bug.cgi?id=148436
+
+        Reviewed by Timothy Hatcher.
+
+        Removed filter that prevented "Media: screen" from being displayed.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.insertMediaOrInheritanceLabel):
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.filteredMediaList): Deleted.
+
+2015-09-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Prefer calling ContentViewContainer.updateLayout directly
+        https://bugs.webkit.org/show_bug.cgi?id=149041
+
+        Reviewed by Timothy Hatcher.
+
+        Cleaned up two places where a parent view duplicated logic encapsulated by ContentViewContainer.
+
+        * UserInterface/Views/ClusterContentView.js:
+        (WebInspector.ClusterContentView.prototype.updateLayout):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype.updateLayout):
+
 2015-09-08  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: REGRESSION (r189189): Missing breakpoint context menu for debugger sidebar tree elements

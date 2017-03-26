@@ -173,6 +173,7 @@ typedef int32_t JIT_OPERATION (*Z_JITOperation_E)(ExecState*);
 typedef int32_t JIT_OPERATION (*Z_JITOperation_EC)(ExecState*, JSCell*);
 typedef int32_t JIT_OPERATION (*Z_JITOperation_EGC)(ExecState*, JSGlobalObject*, JSCell*);
 typedef int32_t JIT_OPERATION (*Z_JITOperation_ESJss)(ExecState*, size_t, JSString*);
+typedef int32_t JIT_OPERATION (*Z_JITOperation_EJ)(ExecState*, EncodedJSValue);
 typedef int32_t JIT_OPERATION (*Z_JITOperation_EJZ)(ExecState*, EncodedJSValue, int32_t);
 typedef int32_t JIT_OPERATION (*Z_JITOperation_EJZZ)(ExecState*, EncodedJSValue, int32_t, int32_t);
 typedef size_t JIT_OPERATION (*S_JITOperation_ECC)(ExecState*, JSCell*, JSCell*);
@@ -236,6 +237,7 @@ typedef char* JIT_OPERATION (*P_JITOperation_EStPS)(ExecState*, Structure*, void
 typedef char* JIT_OPERATION (*P_JITOperation_EStSS)(ExecState*, Structure*, size_t, size_t);
 typedef char* JIT_OPERATION (*P_JITOperation_EStZ)(ExecState*, Structure*, int32_t);
 typedef char* JIT_OPERATION (*P_JITOperation_EZZ)(ExecState*, int32_t, int32_t);
+typedef SlowPathReturnType JIT_OPERATION (*Sprt_JITOperation_ECli)(ExecState*, CallLinkInfo*);
 typedef StringImpl* JIT_OPERATION (*T_JITOperation_EJss)(ExecState*, JSString*);
 typedef JSString* JIT_OPERATION (*Jss_JITOperation_EZ)(ExecState*, int32_t);
 
@@ -277,9 +279,9 @@ void JIT_OPERATION operationDirectPutByValOptimize(ExecState*, EncodedJSValue, E
 void JIT_OPERATION operationPutByValGeneric(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue, ByValInfo*) WTF_INTERNAL;
 void JIT_OPERATION operationDirectPutByValGeneric(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue, ByValInfo*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationCallEval(ExecState*, ExecState*) WTF_INTERNAL;
-char* JIT_OPERATION operationLinkCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationLinkPolymorphicCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationVirtualCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
+SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
+SlowPathReturnType JIT_OPERATION operationLinkPolymorphicCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
+SlowPathReturnType JIT_OPERATION operationVirtualCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
 
 size_t JIT_OPERATION operationCompareLess(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 size_t JIT_OPERATION operationCompareLessEq(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;

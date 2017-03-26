@@ -36,6 +36,7 @@ class WASMFunctionSyntaxChecker {
 public:
     typedef int Expression;
     typedef int Statement;
+    typedef int ExpressionList;
     typedef int JumpTarget;
     enum class JumpCondition { Zero, NonZero };
 
@@ -54,6 +55,11 @@ public:
         m_tempStackTop--;
     }
 
+    void buildSetGlobal(uint32_t, int, WASMType)
+    {
+        m_tempStackTop--;
+    }
+
     void buildReturn(int, WASMExpressionType returnType)
     {
         if (returnType != WASMExpressionType::Void)
@@ -61,6 +67,13 @@ public:
     }
 
     int buildImmediateI32(uint32_t)
+    {
+        m_tempStackTop++;
+        updateTempStackHeight();
+        return UNUSED;
+    }
+
+    int buildImmediateF32(uint32_t)
     {
         m_tempStackTop++;
         updateTempStackHeight();
@@ -81,7 +94,19 @@ public:
         return UNUSED;
     }
 
+    int buildGetGlobal(uint32_t, WASMType)
+    {
+        m_tempStackTop++;
+        updateTempStackHeight();
+        return UNUSED;
+    }
+
     int buildUnaryI32(int, WASMOpExpressionI32)
+    {
+        return UNUSED;
+    }
+
+    int buildUnaryF32(int, WASMOpExpressionF32)
     {
         return UNUSED;
     }
@@ -92,11 +117,55 @@ public:
         return UNUSED;
     }
 
+    int buildBinaryF32(int, int, WASMOpExpressionF32)
+    {
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
     int buildRelationalI32(int, int, WASMOpExpressionI32)
     {
         m_tempStackTop--;
         return UNUSED;
     }
+
+    int buildRelationalF32(int, int, WASMOpExpressionI32)
+    {
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
+    int buildRelationalF64(int, int, WASMOpExpressionI32)
+    {
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
+    int buildCallInternal(uint32_t, int, const WASMSignature& signature, WASMExpressionType returnType)
+    {
+        size_t argumentCount = signature.arguments.size();
+        updateTempStackHeightForCall(argumentCount);
+        m_tempStackTop -= argumentCount;
+        if (returnType != WASMExpressionType::Void) {
+            m_tempStackTop++;
+            updateTempStackHeight();
+        }
+        return UNUSED;
+    }
+
+    int buildCallImport(uint32_t, int, const WASMSignature& signature, WASMExpressionType returnType)
+    {
+        size_t argumentCount = signature.arguments.size();
+        updateTempStackHeightForCall(argumentCount);
+        m_tempStackTop -= argumentCount;
+        if (returnType != WASMExpressionType::Void) {
+            m_tempStackTop++;
+            updateTempStackHeight();
+        }
+        return UNUSED;
+    }
+
+    void appendExpressionList(int&, int) { }
 
     void linkTarget(const int&) { }
     void jumpToTarget(const int&) { }
@@ -117,6 +186,11 @@ public:
     int breakLabelTarget(uint32_t) { return UNUSED; }
     int continueLabelTarget(uint32_t) { return UNUSED; }
 
+    void buildSwitch(int, const Vector<int64_t>&, const Vector<int>&, const int&)
+    {
+        m_tempStackTop--;
+    }
+
     unsigned stackHeight()
     {
         return m_numberOfLocals + m_tempStackHeight;
@@ -127,6 +201,14 @@ private:
     {
         if (m_tempStackTop > m_tempStackHeight)
             m_tempStackHeight = m_tempStackTop;
+    }
+
+    void updateTempStackHeightForCall(size_t argumentCount)
+    {
+        // Boxed arguments + this argument + call frame header + maximum padding.
+        m_tempStackTop += argumentCount + 1 + JSStack::CallFrameHeaderSize + 1;
+        updateTempStackHeight();
+        m_tempStackTop -= argumentCount + 1 + JSStack::CallFrameHeaderSize + 1;
     }
 
     unsigned m_numberOfLocals;

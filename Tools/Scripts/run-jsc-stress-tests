@@ -226,7 +226,7 @@ if $remoteConfigFile
 end
 
 unless jscArg
-    $stderr.puts "Error: must specify -jsc <path>"
+    $stderr.puts "Error: must specify --jsc <path>"
     exit 1
 end
 
@@ -785,6 +785,10 @@ def runMiscFTLNoCJITTest(*options)
     run("misc-ftl-no-cjit", *(FTL_OPTIONS + NO_CJIT_OPTIONS + options))
 end
 
+def runDFGMaximalFlushPhase
+    run("dfg-maximal-flush-validate-no-cjit", "--validateGraph=true", "--enableMaximalFlushInsertionPhase=true", *NO_CJIT_OPTIONS)
+end
+
 def defaultRun
     runDefault
     runAlwaysTriggerCopyPhase
@@ -799,6 +803,7 @@ def defaultRun
         runFTLEager
         runFTLEagerNoCJITValidate
         runFTLNoCJITSmallPool
+        runDFGMaximalFlushPhase
     end
 end
 
@@ -814,12 +819,17 @@ def defaultQuickRun
     end
 end
 
-def defaultSpotCheck
+def defaultSpotCheckNoMaximalFlush
     defaultQuickRun
     runFTLNoCJITNoSimpleOpt
     runFTLNoCJITOSRValidation
     runNoCJITNoAccessInlining
     runFTLNoCJITNoAccessInlining
+end
+
+def defaultSpotCheck
+    defaultSpotCheckNoMaximalFlush
+    runDFGMaximalFlushPhase
 end
 
 # This is expected to not do eager runs because eager runs can have a lot of recompilations

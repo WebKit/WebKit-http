@@ -240,7 +240,7 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(const CheckingCon
                 if (context.element->shadowPseudoId() != context.selector->value())
                     return MatchResult::fails(Match::SelectorFailsLocally);
 
-                if (context.selector->pseudoElementType() == CSSSelector::PseudoElementWebKitCustom && root->type() != ShadowRoot::UserAgentShadowRoot)
+                if (context.selector->pseudoElementType() == CSSSelector::PseudoElementWebKitCustom && root->type() != ShadowRoot::Type::UserAgent)
                     return MatchResult::fails(Match::SelectorFailsLocally);
             } else
                 return MatchResult::fails(Match::SelectorFailsLocally);
@@ -353,7 +353,7 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(const CheckingCon
         nextContext.elementStyle = nullptr;
         for (; nextContext.element; nextContext.element = nextContext.element->previousElementSibling()) {
             if (context.resolvingMode == Mode::ResolvingStyle)
-                context.element->setAffectsNextSiblingElementStyle();
+                nextContext.element->setAffectsNextSiblingElementStyle();
 
             PseudoIdSet ignoreDynamicPseudo;
             unsigned indirectAdjacentSpecificity = 0;

@@ -255,6 +255,7 @@ protected:
     WriteBarrier<Structure> m_nullPrototypeObjectStructure;
     WriteBarrier<Structure> m_calleeStructure;
     WriteBarrier<Structure> m_functionStructure;
+    WriteBarrier<Structure> m_boundFunctionStructure;
     WriteBarrier<Structure> m_arrowFunctionStructure;
     WriteBarrier<Structure> m_nativeStdFunctionStructure;
     WriteBarrier<Structure> m_namedFunctionStructure;
@@ -305,6 +306,12 @@ protected:
     std::unique_ptr<Inspector::JSGlobalObjectInspectorController> m_inspectorController;
     std::unique_ptr<JSGlobalObjectDebuggable> m_inspectorDebuggable;
 #endif
+
+#if ENABLE(INTL)
+    HashSet<String> m_intlCollatorAvailableLocales;
+    HashSet<String> m_intlDateTimeFormatAvailableLocales;
+    HashSet<String> m_intlNumberFormatAvailableLocales;
+#endif // ENABLE(INTL)
 
     RefPtr<WatchpointSet> m_masqueradesAsUndefinedWatchpoint;
     RefPtr<WatchpointSet> m_havingABadTimeWatchpoint;
@@ -489,6 +496,7 @@ public:
     Structure* errorStructure() const { return m_errorStructure.get(); }
     Structure* calleeStructure() const { return m_calleeStructure.get(); }
     Structure* functionStructure() const { return m_functionStructure.get(); }
+    Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(); }
     Structure* arrowFunctionStructure() const { return m_arrowFunctionStructure.get(); }
     Structure* nativeStdFunctionStructure() const { return m_nativeStdFunctionStructure.get(); }
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(); }
@@ -522,6 +530,12 @@ public:
     Inspector::JSGlobalObjectInspectorController& inspectorController() const { return *m_inspectorController.get(); }
     JSGlobalObjectDebuggable& inspectorDebuggable() { return *m_inspectorDebuggable.get(); }
 #endif
+
+#if ENABLE(INTL)
+    const HashSet<String>& intlCollatorAvailableLocales();
+    const HashSet<String>& intlDateTimeFormatAvailableLocales();
+    const HashSet<String>& intlNumberFormatAvailableLocales();
+#endif // ENABLE(INTL)
 
     void setConsoleClient(ConsoleClient* consoleClient) { m_consoleClient = consoleClient; }
     ConsoleClient* consoleClient() const { return m_consoleClient; }

@@ -335,7 +335,7 @@ public:
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void webkitShowPlaybackTargetPicker();
-    virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
+    virtual bool addEventListener(const AtomicString& eventType, RefPtr<EventListener>&&, bool useCapture) override;
     virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
 
     virtual void wirelessRoutesAvailableDidChange() override;
@@ -486,6 +486,9 @@ private:
     void createMediaPlayer();
 
     virtual bool alwaysCreateUserAgentShadowRoot() const override { return true; }
+
+    // FIXME: Shadow DOM spec says we should be able to create shadow root on audio and video elements
+    virtual bool canHaveUserAgentShadowRoot() const override final { return true; }
 
     virtual bool hasCustomFocusLogic() const override;
     virtual bool supportsFocus() const override;

@@ -38,24 +38,17 @@ namespace WebCore {
 
 struct SameSizeAsShadowRoot : public DocumentFragment, public TreeScope {
     unsigned countersAndFlags[1];
-    ContentDistributor distributor;
     void* host;
 };
 
 COMPILE_ASSERT(sizeof(ShadowRoot) == sizeof(SameSizeAsShadowRoot), shadowroot_should_stay_small);
 
-enum ShadowRootUsageOriginType {
-    ShadowRootUsageOriginWeb = 0,
-    ShadowRootUsageOriginNotWeb,
-    ShadowRootUsageOriginMax
-};
-
-ShadowRoot::ShadowRoot(Document& document, ShadowRootType type)
+ShadowRoot::ShadowRoot(Document& document, Type type)
     : DocumentFragment(document, CreateShadowRoot)
     , TreeScope(*this, document)
     , m_resetStyleInheritance(false)
     , m_type(type)
-    , m_host(0)
+    , m_host(nullptr)
 {
 }
 
@@ -92,7 +85,7 @@ void ShadowRoot::setInnerHTML(const String& markup, ExceptionCode& ec)
     }
 
     if (RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(markup, host(), AllowScriptingContent, ec))
-        replaceChildrenWithFragment(*this, fragment.release(), ec);
+        replaceChildrenWithFragment(*this, fragment.releaseNonNull(), ec);
 }
 
 bool ShadowRoot::childTypeAllowed(NodeType type) const
@@ -122,18 +115,10 @@ void ShadowRoot::setResetStyleInheritance(bool value)
     }
 }
 
-void ShadowRoot::childrenChanged(const ChildChange& change)
+Ref<Node> ShadowRoot::cloneNodeInternal(Document&, CloningOperation)
 {
-    if (isOrphan())
-        return;
-
-    ContainerNode::childrenChanged(change);
-    invalidateDistribution();
-}
-
-RefPtr<Node> ShadowRoot::cloneNodeInternal(Document&, CloningOperation)
-{
-    return nullptr; // ShadowRoots should never be cloned.
+    RELEASE_ASSERT_NOT_REACHED();
+    return *static_cast<Node*>(nullptr); // ShadowRoots should never be cloned.
 }
 
 void ShadowRoot::removeAllEventListeners()

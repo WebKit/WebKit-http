@@ -29,7 +29,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/avfoundation/WebMediaSessionManagerMac.cpp
 
     platform/graphics/avfoundation/cf/CDMSessionAVFoundationCF.cpp
-    platform/graphics/avfoundation/cf/ImbandTextTrackPrivateLegacyAVCF.cpp
+    platform/graphics/avfoundation/cf/InbandTextTrackPrivateLegacyAVCF.cpp
     platform/graphics/avfoundation/cf/InbandTextTrackPrivateAVCF.cpp
     platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.cpp
     platform/graphics/avfoundation/cf/WebCoreAVCFResourceLoader.cpp
@@ -49,6 +49,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/ca/win/PlatformCAFiltersWin.cpp
     platform/graphics/ca/win/PlatformCALayerWin.cpp
     platform/graphics/ca/win/PlatformCALayerWinInternal.cpp
+    platform/graphics/ca/win/WebTiledBackingLayerWin.cpp
     platform/graphics/ca/win/WKCACFViewLayerTreeHost.cpp
 
     platform/graphics/cg/BitmapImageCG.cpp

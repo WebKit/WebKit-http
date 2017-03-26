@@ -50,6 +50,7 @@
 #include "DFGLICMPhase.h"
 #include "DFGLivenessAnalysisPhase.h"
 #include "DFGLoopPreHeaderCreationPhase.h"
+#include "DFGMaximalFlushInsertionPhase.h"
 #include "DFGMovHintRemovalPhase.h"
 #include "DFGOSRAvailabilityAnalysisPhase.h"
 #include "DFGOSREntrypointCreationPhase.h"
@@ -241,6 +242,8 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         finalizer = std::make_unique<FailedFinalizer>(*this);
         return FailPath;
     }
+
+    codeBlock->setCalleeSaveRegisters(RegisterSet::dfgCalleeSaveRegisters());
     
     // By this point the DFG bytecode parser will have potentially mutated various tables
     // in the CodeBlock. This is a good time to perform an early shrink, which is more
@@ -255,6 +258,9 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         dataLog("Graph after parsing:\n");
         dfg.dump();
     }
+
+    if (Options::enableMaximalFlushInsertionPhase())
+        performMaximalFlushInsertion(dfg);
     
     performCPSRethreading(dfg);
     performUnification(dfg);
@@ -595,25 +601,31 @@ CompilationKey Plan::key()
     return CompilationKey(codeBlock->alternative(), mode);
 }
 
-void Plan::clearCodeBlockMarks(CodeBlockSet& codeBlocks)
+void Plan::clearCodeBlockMarks()
 {
-    codeBlocks.clearMarks(codeBlock.get());
-    codeBlocks.clearMarks(codeBlock->alternative());
-    codeBlocks.clearMarks(profiledDFGCodeBlock.get());
+    // Compilation writes lots of values to a CodeBlock without performing
+    // an explicit barrier. So, we need to be pessimistic and assume that
+    // all our CodeBlocks must be visited during GC.
+
+    codeBlock->clearMarks();
+    codeBlock->alternative()->clearMarks();
+    if (profiledDFGCodeBlock)
+        profiledDFGCodeBlock->clearMarks();
 }
 
-void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor, CodeBlockSet& codeBlocks)
+void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor)
 {
     if (!isKnownToBeLiveDuringGC())
         return;
     
     for (unsigned i = mustHandleValues.size(); i--;)
         visitor.appendUnbarrieredValue(&mustHandleValues[i]);
-    
-    codeBlocks.mark(codeBlock.get());
-    codeBlocks.mark(codeBlock->alternative());
-    codeBlocks.mark(profiledDFGCodeBlock.get());
-    
+
+    codeBlock->visitStrongly(visitor);
+    codeBlock->alternative()->visitStrongly(visitor);
+    if (profiledDFGCodeBlock)
+        profiledDFGCodeBlock->visitStrongly(visitor);
+
     weakReferences.visitChildren(visitor);
     transitions.visitChildren(visitor);
 }

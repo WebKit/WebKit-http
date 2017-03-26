@@ -16,9 +16,10 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+#import "config.h"
+
 #if !PLATFORM(IOS)
 
-#import "config.h"
 #import "RenderThemeMac.h"
 
 #import "BitmapImage.h"
@@ -338,7 +339,7 @@ static FontWeight toFontWeight(NSInteger appKitFontWeight)
     return fontWeights[appKitFontWeight - 1];
 }
 
-void RenderThemeMac::updateCachedSystemFontDescription(CSSValueID cssValueId, FontDescription& fontDescription) const
+void RenderThemeMac::updateCachedSystemFontDescription(CSSValueID cssValueId, FontCascadeDescription& fontDescription) const
 {
     NSFont* font;
     // System-font-ness can't be encapsulated by simply a font name. Instead, we must use a token
@@ -823,7 +824,7 @@ void RenderThemeMac::setSizeFromFont(RenderStyle& style, const IntSize* sizes) c
 
 void RenderThemeMac::setFontFromControlSize(StyleResolver&, RenderStyle& style, NSControlSize controlSize) const
 {
-    FontDescription fontDescription;
+    FontCascadeDescription fontDescription;
     fontDescription.setIsAbsoluteSize(true);
 
     NSFont* font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:controlSize]];

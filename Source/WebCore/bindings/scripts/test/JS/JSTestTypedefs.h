@@ -72,8 +72,8 @@ protected:
 
 class JSTestTypedefsOwner : public JSC::WeakHandleOwner {
 public:
-    virtual bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&);
-    virtual void finalize(JSC::Handle<JSC::Unknown>, void* context);
+    bool isReachableFromOpaqueRoots(JSC::JSCell&, void* context, JSC::SlotVisitor&) override;
+    void finalize(JSC::JSCell*&, void* context) override;
 };
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestTypedefs*)
@@ -84,6 +84,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestTypedefs*)
 
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestTypedefs*);
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestTypedefs& impl) { return toJS(exec, globalObject, &impl); }
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, TestTypedefs*);
 
 
 } // namespace WebCore

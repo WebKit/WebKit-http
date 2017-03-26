@@ -226,13 +226,15 @@ public:
 
     virtual TiledBacking* tiledBacking() = 0;
 
+    virtual void drawTextAtPoint(CGContextRef, CGFloat x, CGFloat y, const char* text, size_t length) const;
+
+    static void flipContext(CGContextRef, CGFloat height);
+
 #if PLATFORM(WIN)
     virtual PlatformCALayer* rootLayer() const = 0;
     virtual void setNeedsLayout() = 0;
     virtual void setNeedsCommit() = 0;
-#ifndef NDEBUG
-    virtual void printTree() const = 0;
-#endif // NDEBUG
+    virtual String layerTreeAsString() const = 0;
 #endif // PLATFORM(WIN)
 
 #if PLATFORM(IOS)

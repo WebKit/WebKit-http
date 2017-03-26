@@ -219,6 +219,8 @@ webkit.org/b/141122 editing/selection/programmatic-selection-on-mac-is-direction
 
 webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeout ]
 
+webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-cancel.html [ Pass Failure ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -573,6 +575,12 @@ imported/w3c/indexeddb/interfaces.html [ Pass Timeout ]
 
 # Flaky tests from initial import of w3c IndexedDB tests
 imported/w3c/indexeddb/transaction-lifetime.htm [ Pass Failure ]
+imported/w3c/indexeddb/idbobjectstore_deleteIndex.htm [ Pass Failure ]
+imported/w3c/indexeddb/idbcursor-direction.htm [ Pass Failure ]
+imported/w3c/indexeddb/idbcursor-key.htm [ Pass Failure ]
+
+# Don't run Modern IDB tests while the feature is under development
+storage/indexeddb/modern [ Skip ]
 
 ### END OF (3) Unclassified failures
 ########################################

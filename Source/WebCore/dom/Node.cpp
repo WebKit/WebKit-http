@@ -429,38 +429,54 @@ Element* Node::nextElementSibling() const
 
 bool Node::insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& ec)
 {
+    if (!newChild) {
+        ec = TypeError;
+        return false;
+    }
     if (!is<ContainerNode>(*this)) {
         ec = HIERARCHY_REQUEST_ERR;
         return false;
     }
-    return downcast<ContainerNode>(*this).insertBefore(newChild, refChild, ec);
+    return downcast<ContainerNode>(*this).insertBefore(*newChild, refChild, ec);
 }
 
 bool Node::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& ec)
 {
+    if (!newChild || !oldChild) {
+        ec = TypeError;
+        return false;
+    }
     if (!is<ContainerNode>(*this)) {
         ec = HIERARCHY_REQUEST_ERR;
         return false;
     }
-    return downcast<ContainerNode>(*this).replaceChild(newChild, oldChild, ec);
+    return downcast<ContainerNode>(*this).replaceChild(*newChild, *oldChild, ec);
 }
 
 bool Node::removeChild(Node* oldChild, ExceptionCode& ec)
 {
+    if (!oldChild) {
+        ec = TypeError;
+        return false;
+    }
     if (!is<ContainerNode>(*this)) {
         ec = NOT_FOUND_ERR;
         return false;
     }
-    return downcast<ContainerNode>(*this).removeChild(oldChild, ec);
+    return downcast<ContainerNode>(*this).removeChild(*oldChild, ec);
 }
 
 bool Node::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec)
 {
+    if (!newChild) {
+        ec = TypeError;
+        return false;
+    }
     if (!is<ContainerNode>(*this)) {
         ec = HIERARCHY_REQUEST_ERR;
         return false;
     }
-    return downcast<ContainerNode>(*this).appendChild(newChild, ec);
+    return downcast<ContainerNode>(*this).appendChild(*newChild, ec);
 }
 
 static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const Vector<NodeOrString>& nodeOrStringVector)
@@ -515,7 +531,7 @@ void Node::before(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
     else
         viablePreviousSibling = parent->firstChild();
 
-    parent->insertBefore(node.release(), viablePreviousSibling.get(), ec);
+    parent->insertBefore(node.releaseNonNull(), viablePreviousSibling.get(), ec);
 }
 
 void Node::after(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
@@ -531,7 +547,7 @@ void Node::after(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
     if (ec || !node)
         return;
 
-    parent->insertBefore(node.release(), viableNextSibling.get(), ec);
+    parent->insertBefore(node.releaseNonNull(), viableNextSibling.get(), ec);
 }
 
 void Node::replaceWith(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
@@ -544,19 +560,22 @@ void Node::replaceWith(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode&
     auto viableNextSibling = firstFollowingSiblingNotInNodeSet(*this, nodeSet);
 
     auto node = convertNodesOrStringsIntoNode(*this, WTF::move(nodeOrStringVector), ec);
-    if (ec || !node)
+    if (ec)
         return;
 
-    if (parentNode() == parent)
-        parent->replaceChild(node.release(), this, ec);
-    else
-        parent->insertBefore(node.release(), viableNextSibling.get(), ec);
+    if (parentNode() == parent) {
+        if (node)
+            parent->replaceChild(node.releaseNonNull(), *this, ec);
+        else
+            parent->removeChild(*this);
+    } else if (node)
+        parent->insertBefore(node.releaseNonNull(), viableNextSibling.get(), ec);
 }
 
 void Node::remove(ExceptionCode& ec)
 {
     if (ContainerNode* parent = parentNode())
-        parent->removeChild(this, ec);
+        parent->removeChild(*this, ec);
 }
 
 void Node::normalize()
@@ -604,7 +623,7 @@ void Node::normalize()
 
             // Both non-empty text nodes. Merge them.
             unsigned offset = text->length();
-            text->appendData(nextText->data(), IGNORE_EXCEPTION);
+            text->appendData(nextText->data());
             document().textNodesMerged(nextText.get(), offset);
             nextText->remove(IGNORE_EXCEPTION);
         }
@@ -1055,7 +1074,7 @@ ShadowRoot* Node::containingShadowRoot() const
 bool Node::isInUserAgentShadowTree() const
 {
     auto* shadowRoot = containingShadowRoot();
-    return shadowRoot && shadowRoot->type() == ShadowRoot::UserAgentShadowRoot;
+    return shadowRoot && shadowRoot->type() == ShadowRoot::Type::UserAgent;
 }
 
 Node* Node::nonBoundaryShadowTreeRootNode()
@@ -1146,7 +1165,7 @@ Document* Node::ownerDocument() const
 
 URL Node::baseURI() const
 {
-    return parentNode() ? parentNode()->baseURI() : URL();
+    return document().baseURL();
 }
 
 bool Node::isEqualNode(Node* other) const
@@ -1867,11 +1886,9 @@ void Node::didMoveToNewDocument(Document* oldDocument)
     }
 }
 
-static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, PassRefPtr<EventListener> prpListener, bool useCapture)
+static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
 {
-    RefPtr<EventListener> listener = prpListener;
-
-    if (!targetNode->EventTarget::addEventListener(eventType, listener, useCapture))
+    if (!targetNode->EventTarget::addEventListener(eventType, listener.copyRef(), useCapture))
         return false;
 
     targetNode->document().addListenerTypeIfNeeded(eventType);
@@ -1889,7 +1906,7 @@ static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eve
     // This code was added to address <rdar://problem/5846492> Onorientationchange event not working for document.body.
     // Forward this call to addEventListener() to the window since these are window-only events.
     if (eventType == eventNames().orientationchangeEvent || eventType == eventNames().resizeEvent)
-        targetNode->document().domWindow()->addEventListener(eventType, listener, useCapture);
+        targetNode->document().domWindow()->addEventListener(eventType, WTF::move(listener), useCapture);
 
 #if ENABLE(TOUCH_EVENTS)
     if (eventNames().isTouchEventType(eventType))
@@ -1905,9 +1922,9 @@ static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eve
     return true;
 }
 
-bool Node::addEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
+bool Node::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
 {
-    return tryAddEventListener(this, eventType, listener, useCapture);
+    return tryAddEventListener(this, eventType, WTF::move(listener), useCapture);
 }
 
 static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& eventType, EventListener* listener, bool useCapture)

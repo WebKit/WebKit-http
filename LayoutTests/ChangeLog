@@ -1,3 +1,1080 @@
+2015-09-16  Brady Eidson  <beidson@apple.com>
+
+        Have window.indexedDB.deleteDatabase return an IDBOpenDBRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=149229
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/wk2/TestExpectations:
+        * storage/indexeddb/modern/deletedatabase-null-name-exception-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-null-name-exception.html: Added.
+        * storage/indexeddb/modern/deletedatabase-request-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-request.html: Added.
+
+2015-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop dom/xhtml/level3/core/nodegetbaseuri03.xhtml test.
+
+        This test is outdated and we have more recent DOM tests covering
+        the newly expected behavior.
+
+        * dom/xhtml/level3/core/nodegetbaseuri03.js: Removed.
+        * dom/xhtml/level3/core/nodegetbaseuri03.xhtml: Removed.
+
+2015-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Add initial support for [Unforgeable] IDL extended attribute
+        https://bugs.webkit.org/show_bug.cgi?id=149147
+
+        Reviewed by Darin Adler.
+
+        New test that verifies that well-known [Unforgeable] attributes
+        are on the instance rather than the prototype and that they are
+        non-configurable.
+
+        * fast/dom/unforgeable-attributes-expected.txt: Added.
+        * fast/dom/unforgeable-attributes.html: Added.
+
+2015-09-16  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Glitch selecting long text.
+        https://bugs.webkit.org/show_bug.cgi?id=149204
+        rdar://problem/22646472
+
+        Reviewed by Antti Koivisto.
+
+        When long text is split into multiple RenderText objects, we ignore renderer boundaries while
+        collecting wrapping positions (so that we don't end up wrapping unbreakable fragments at the end of each renderer).
+        This patch ensures that fragments with hypen character ignore renderer boundaries too.
+
+        * fast/text/multiple-renderers-with-hypen-on-boundary-expected.html: Added.
+        * fast/text/multiple-renderers-with-hypen-on-boundary.html: Added.
+
+2015-09-16  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/events/mouse-cursor-change.html is flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=149216
+
+        Reviewed by Darin Adler.
+
+        * fast/events/mouse-cursor-change.html: Increase the timeout. I don't see a way to make
+        this test 100% reliable, but this change makes it work in my local testing.
+
+2015-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline W3C html/dom test for iOS after r189842.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-16  Alexey Proskuryakov  <ap@apple.com>
+
+        More test result fixing after r189841.
+
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2015-09-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html as flaky, because it is.
+
+        It was already marked as flaky on mac-wk2.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2015-09-16  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: No VO typing feedback in some text fields
+        https://bugs.webkit.org/show_bug.cgi?id=149177
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/ax-value-with-search-expected.txt: Added.
+        * accessibility/ax-value-with-search.html: Added.
+
+2015-09-16  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Grid container's height should include scrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=149210
+
+        Reviewed by Sergio Villar Senin.
+
+        Add test to check both height and width (which was already working as
+        expected) with margins, borders, paddings and scrollbars.
+
+        * fast/css-grid-layout/grid-container-margin-border-padding-scrollbar-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-margin-border-padding-scrollbar.html: Added.
+
+2015-09-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Mac rebaseline after r189841.
+
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+
+2015-09-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189847.
+        https://bugs.webkit.org/show_bug.cgi?id=149208
+
+        Asserts on all the tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Simple line layout: Glitch selecting long text."
+        https://bugs.webkit.org/show_bug.cgi?id=149204
+        http://trac.webkit.org/changeset/189847
+
+2015-09-15  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Glitch selecting long text.
+        https://bugs.webkit.org/show_bug.cgi?id=149204
+        rdar://problem/22646472
+
+        Reviewed by Antti Koivisto.
+
+        When long text is split into multiple RenderText objects, we ignore renderer boundaries while
+        collecting wrapping positions (so that we don't end up wrapping unbreakable fragments at the end of each renderer).
+        This patch ensures that fragments with hypen character ignore renderer boundaries too.
+
+        * fast/text/multiple-renderers-with-hypen-on-boundary-expected.html: Added.
+        * fast/text/multiple-renderers-with-hypen-on-boundary.html: Added.
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        Document.createElement(localName) does not handle correctly missing or null parameter
+        https://bugs.webkit.org/show_bug.cgi?id=149184
+        <rdar://problem/22565070>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update / rebaseline existing tests now that our behavior has changed.
+
+        * fast/dom/Document/createElementNS-namespace-err-expected.txt:
+        * fast/dom/Document/script-tests/createElementNS-namespace-err.js:
+        * fast/dom/dom-method-document-change.html:
+        * fast/dom/element-removed-while-inserting-parent-crash.html:
+        * fast/inspector-support/uncaught-dom3-exception-expected.txt:
+
+2015-09-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add ShadowRoot interface and Element.prototype.attachShadow
+        https://bugs.webkit.org/show_bug.cgi?id=149187
+
+        Reviewed by Antti Koivisto.
+
+        Add new tests for Shadow DOM with failing expectations on all platforms but Mac.
+
+        * TestExpectations:
+        * fast/shadow-dom: Added.
+        * fast/shadow-dom/Element-interface-attachShadow-expected.txt: Added.
+        * fast/shadow-dom/Element-interface-attachShadow.html: Added.
+        * fast/shadow-dom/Element-interface-shadowRoot-attribute-expected.txt: Added.
+        * fast/shadow-dom/Element-interface-shadowRoot-attribute.html: Added.
+        * fast/shadow-dom/ShadowRoot-interface-expected.txt: Added.
+        * fast/shadow-dom/ShadowRoot-interface.html: Added.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/TestExpectations:
+        * platform/mac/js/dom/constructor-length-expected.txt:
+
+2015-09-15  Jinyoung Hur  <hur.ims@navercorp.com>
+
+        [WebGL] Only require that the stencil value and write masks have as many bits set as the stencil buffer is deep
+        https://bugs.webkit.org/show_bug.cgi?id=149174
+
+        Reviewed by Dean Jackson.
+
+        Copied the stencil mask related tests from the webgl/1.0.2/resources/webgl_test_files/conformance/state/gl-get-calls.html.
+
+        It seems that there is a difference in the way that glGetIntegerV returns an unsigned int type value among 
+        OpenGL implementatios. Some return the whole bits of value(e.g., 0xffffffff -> 0xffffffff), whereas some(e.g., ANGLE) 
+        return a max-int-clamped value(e.g., 0xffffffff -> 0x7fffffff).
+
+        It would be good to make this test independent on the OpenGL implementations.
+
+        * fast/canvas/webgl/gl-get-calls-expected.txt:
+        * fast/canvas/webgl/gl-get-calls.html:
+
+2015-09-15  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed gardening 16th Sep.
+
+        Mark fast/css, fast/form tests to failure. Besides some tests of imported/w3c/web-platform-tests/html
+        are marked to pass on EFL port.
+
+        * platform/efl/TestExpectations:
+
+2015-09-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        Style invalidation affecting siblings does not work with inline-style changes
+        https://bugs.webkit.org/show_bug.cgi?id=149189
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/style-attribute-invalidation-propagates-to-counted-siblings-expected.txt: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-counted-siblings.html: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-direct-siblings-expected.txt: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-direct-siblings.html: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-indirect-siblings-expected.txt: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-indirect-siblings.html: Added.
+
+2015-09-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r155554): Nested isolates can cause an infinite loop when laying out bidi runs
+        https://bugs.webkit.org/show_bug.cgi?id=149153
+
+        Reviewed by David Hyatt.
+
+        * fast/text/international/unicode-bidi-isolate-nested-crash-expected.html: Added.
+        * fast/text/international/unicode-bidi-isolate-nested-crash.html: Added.
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        Element.getAttributeNS() should return null if the attribute does not exist
+        https://bugs.webkit.org/show_bug.cgi?id=149180
+        <rdar://problem/22561011>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline / update existing tests now that our behavior has changed.
+
+        * fast/dom/Element/attribute-uppercase-expected.txt:
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug1075702-expected.txt:
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug1075702.html:
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-1-expected.txt:
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-2-expected.txt:
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline several W3C HTML tests on iOS after r189762.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt:
+
+2015-09-14  David Hyatt  <hyatt@apple.com>
+
+        2015-09-14  David Hyatt  <hyatt@apple.com>
+
+        [New Block-Inside-Inline Model] Implement margin collapsing across contiguous anonymous inline blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=149132
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/block/inside-inlines/new-model/margin-collapse: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/001-expected.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/001.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/002-expected.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/002.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/003-expected.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/003.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/004-expected.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/004.html: Added.
+
+2015-09-15  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement supportedLocalesOf on Intl Constructors
+        https://bugs.webkit.org/show_bug.cgi?id=147599
+
+        Reviewed by Benjamin Poulain.
+
+        * js/intl-collator-expected.txt: Added tests for supportedLocalesOf
+        * js/intl-datetimeformat-expected.txt: Added tests for supportedLocalesOf
+        * js/intl-numberformat-expected.txt: Added tests for supportedLocalesOf
+        * js/script-tests/intl-collator.js: Added tests for supportedLocalesOf
+        * js/script-tests/intl-datetimeformat.js: Added tests for supportedLocalesOf
+        * js/script-tests/intl-numberformat.js: Added tests for supportedLocalesOf
+
+2015-09-15  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed gardening.
+
+        * platform/win/TestExpectations:
+        Fix Windows tests after r189769.
+
+2015-09-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Layout Test http/tests/media/media-document-referer.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=145257
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/media/media-document-referer.html: Increase the timeout, one second is not much.
+
+        * platform/gtk/TestExpectations: Fingers crossed, this will help Gtk as well.
+
+2015-09-14  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed, EFL gardening on 15th Sep.
+
+        Mark tests of css1/box_properties to flaky and tests of editing, fast are set to timeout.
+
+        * platform/efl/TestExpectations:
+
+2015-09-14  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/events/frame-scroll-fake-mouse-move.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=149140
+
+        Reviewed by Darin Adler.
+
+        * fast/events/frame-scroll-fake-mouse-move.html:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Drop non-standard [IsIndex] WebKit IDL extended attribute
+        https://bugs.webkit.org/show_bug.cgi?id=149122
+        <rdar://problem/22547139>
+
+        Reviewed by Darin Adler.
+
+        * dom/html/level1/core/hc_characterdataindexsizeerrdeletedatacountnegative-expected.txt:
+        * dom/html/level1/core/hc_characterdataindexsizeerrreplacedatacountnegative-expected.txt:
+        * dom/html/level1/core/hc_characterdataindexsizeerrsubstringcountnegative-expected.txt:
+        * dom/xhtml/level1/core/hc_characterdataindexsizeerrdeletedatacountnegative-expected.txt:
+        * dom/xhtml/level1/core/hc_characterdataindexsizeerrreplacedatacountnegative-expected.txt:
+        * dom/xhtml/level1/core/hc_characterdataindexsizeerrsubstringcountnegative-expected.txt:
+        Rebaseline outdated DOM tests that are now failing.
+
+        * svg/custom/getSubStringLength-expected.txt:
+        * svg/custom/script-tests/getSubStringLength.js:
+        * svg/custom/script-tests/selectSubString.js:
+        * svg/custom/selectSubString-expected.txt:
+        Update existing SVG tests that were expecting an exception if the nchars
+        parameter in the SVGTextContentElement API is negative. I have verified
+        that Chrome and Firefox do not throw for these either.
+
+2015-09-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add tests for control characters being rendered visibly
+        https://bugs.webkit.org/show_bug.cgi?id=149142
+
+        Reviewed by Alexey Proskuryakov.
+
+        According to [1] and [2], all browsers are migrating to rendering control characters. This patch
+        adds tests for this behavior. Because we do not implement the behavior yet [3], these tests are
+        marked as failing.
+
+        [1] http://logs.csswg.org/irc.w3.org/css/2015-02-08/#e520447
+        [2] https://lists.w3.org/Archives/Public/www-style/2015Sep/0076.html
+        [3] https://bugs.webkit.org/show_bug.cgi?id=149128
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+        * fast/text/control-characters/visible-control-characters-1-expected-mismatch.html: Added.
+        * fast/text/control-characters/visible-control-characters-1.html: Added.
+        * fast/text/control-characters/visible-control-characters-2-expected-mismatch.html: Added.
+        * fast/text/control-characters/visible-control-characters-2.html: Added.
+        * fast/text/control-characters/visible-control-characters-3-expected-mismatch.html: Added.
+        * fast/text/control-characters/visible-control-characters-3.html: Added.
+        * fast/text/control-characters/visible-control-characters-2-expected-mismatch.xhtml: Added.
+        * fast/text/control-characters/visible-control-characters-2.xhtml: Added.
+        * fast/text/control-characters/visible-control-characters-3-expected-mismatch.xhtml: Added.
+        * fast/text/control-characters/visible-control-characters-3.xhtml: Added.
+
+2015-09-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        WebKitTestRunner declarative language setting is broken for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=149119
+
+        Unreviewed.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Document.createNodeIterator(null) / Document.createTreeWalker(null) should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=149126
+        <rdar://problem/22564891>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update existing tests to add test coverage for this case.
+
+        * fast/dom/createNodeIterator-parameters-expected.txt:
+        * fast/dom/createNodeIterator-parameters.html:
+        * fast/dom/createTreeWalker-parameters-expected.txt:
+        * fast/dom/createTreeWalker-parameters.html:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        window.HTMLDetailsElement should exist
+        https://bugs.webkit.org/show_bug.cgi?id=149139
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test now that HTMLDetailsElement is exposed on the global
+        Window object.
+
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2015-09-14  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: backend command promises are not rejected when a protocol error occurs
+        https://bugs.webkit.org/show_bug.cgi?id=141403
+
+        Reviewed by Joseph Pecoraro.
+
+        Expand coverage of an existing protocol layer test to cover success and failure modes.
+
+        * inspector/protocol/inspector-backend-invocation-return-value-expected.txt:
+        * inspector/protocol/inspector-backend-invocation-return-value.html:
+
+2015-09-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r189670
+
+        Unreviewed.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Disable PICTURE_SIZES on AppleWin
+        https://bugs.webkit.org/show_bug.cgi?id=149125
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/win/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/srcset/parse-a-srcset-attribute-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/srcset/select-an-image-source-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/update-the-source-set-expected.txt: Removed.
+
+2015-09-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Unreviewed, skip fast/text/international/system-language for now.
+        WebKitTestRunner declarative language setting is broken for iOS.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Unreviewed, expect css3/flexbox/image-percent-max-height.html to fail on iOS.
+        The test is already expected to fail on mac, windows and gtk.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html on iOS.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip fast/text/international/system-language where unsupported.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-09-09  Sergio Villar Senin  <svillar@igalia.com>
+
+        min-width/height should default to auto for grid items
+        https://bugs.webkit.org/show_bug.cgi?id=146021
+
+        Reviewed by Darin Adler.
+
+        Based on Blink's r194408, r194863 and r194887 by <rego@igalia.com>.
+
+        Apart from the original tests this includes some extra ones to
+        verify that we behave correctly with vertical writing modes.
+
+        * fast/css-grid-layout/min-width-height-auto-expected.txt: Added.
+        * fast/css-grid-layout/min-width-height-auto-overflow-expected.html: Added.
+        * fast/css-grid-layout/min-width-height-auto-overflow.html: Added.
+        * fast/css-grid-layout/min-width-height-auto.html: Added.
+        * fast/css/auto-min-size-expected.txt:
+        * fast/css/auto-min-size.html:
+
+2015-09-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Percentage columns should remove scrollbar's width
+        https://bugs.webkit.org/show_bug.cgi?id=149116
+
+        Reviewed by Sergio Villar Senin.
+
+        Added test to check the behavior for both columns and rows.
+        Note that rows (height) were already working fine.
+
+        * fast/css-grid-layout/grid-percent-track-scrollbar-expected.txt: Added.
+        * fast/css-grid-layout/grid-percent-track-scrollbar.html: Added.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] pipe-to writable stream tests
+        https://bugs.webkit.org/show_bug.cgi?id=148296
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/pipe-to-expected.txt: Added.
+        * streams/reference-implementation/pipe-to.html: Added.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add readable stream templated tests for writable streams
+        https://bugs.webkit.org/show_bug.cgi?id=148304
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/readable-stream-templated-expected.txt: Added new expectations.
+        * streams/reference-implementation/readable-stream-templated.html: New writable stream tests.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add pipe-to-options writable stream tests
+        https://bugs.webkit.org/show_bug.cgi?id=148297
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/pipe-to-options-expected.txt: Added.
+        * streams/reference-implementation/pipe-to-options.html: Added.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add tests about abort on writable streams
+        https://bugs.webkit.org/show_bug.cgi?id=148298
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/writable-stream-abort-expected.txt: Added.
+        * streams/reference-implementation/writable-stream-abort.html: Added.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add general writable streams tests
+        https://bugs.webkit.org/show_bug.cgi?id=148299
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/writable-stream-expected.txt: Added.
+        * streams/reference-implementation/writable-stream.html: Added.
+
+2015-09-14  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] Layout Test media/video-volume-slider.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=149032
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations: media/video-volume-slider.html is removed.
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        Document.adoptNode() should be able to explicitly adopt a DocumentType node
+        https://bugs.webkit.org/show_bug.cgi?id=149097
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline DOM3 tests, those seem to be outdated now.
+
+        * dom/xhtml/level3/core/documentadoptnode10-expected.txt:
+        * dom/xhtml/level3/core/documentadoptnode11-expected.txt:
+        * dom/xhtml/level3/core/documentadoptnode12-expected.txt:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        document.lastModified should use the user's local time zone
+        https://bugs.webkit.org/show_bug.cgi?id=149092
+
+        Reviewed by Ryosuke Niwa.
+
+        Update test so that it converts document.lastModified to UTF before
+        printing it. This is so that we can consistent layout tests results, no
+        matter the system's timezone.
+
+        * http/tests/misc/last-modified-parsing-expected.txt:
+        * http/tests/resources/last-modified.php:
+
+2015-09-13  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening.
+
+        Mark fast/text/international/system-language/system-font-punctuation.html to *Missing* since r188377.
+        Additionally some tests have been passed since r188693. Removed the tests in TestExpectation.
+
+        * platform/efl/TestExpectations:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        Node.baseURI should not return null for detached nodes
+        https://bugs.webkit.org/show_bug.cgi?id=149104
+        <rdar://problem/22559535>
+
+        Reviewed by Sam Weinig.
+
+        * dom/xhtml/level3/core/nodegetbaseuri03-expected.txt:
+        Rebaseline outdated DOM3 test.
+
+        * svg/custom/image-base-uri-expected.txt: Removed.
+        * svg/custom/image-base-uri.svg: Removed.
+        Drop outdated SVG test. SVG2 no longer support xml:base.
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        CharacterData API parameters should not be optional
+        https://bugs.webkit.org/show_bug.cgi?id=149101
+        <rdar://problem/22546954>
+
+        Reviewed by Sam Weinig.
+
+        Update existing test to reflect our web-exposed behavior change.
+
+        * fast/dom/non-numeric-values-numeric-parameters-expected.txt:
+        * fast/dom/script-tests/non-numeric-values-numeric-parameters.js:
+
+2015-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Another test fix after r189670.
+
+        Unreviewed.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test fix after r189670.
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+
+2015-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Add system-language-specific tests
+        https://bugs.webkit.org/show_bug.cgi?id=148775
+
+        Reviewed by Alexey Proskuryakov.
+
+        This patch adds (or rewrites) tests to take advantage of our new ability to mock
+        the system language for testing (https://bugs.webkit.org/show_bug.cgi?id=148671).
+
+        It tests these patches:
+        https://bugs.webkit.org/show_bug.cgi?id=148164
+        https://bugs.webkit.org/show_bug.cgi?id=147504
+        https://bugs.webkit.org/show_bug.cgi?id=147862
+        https://bugs.webkit.org/show_bug.cgi?id=147964
+
+        * fast/text/international/system-language/arabic-glyph-cache-fill-combine-expected.html: Renamed from LayoutTests/fast/text/arabic-glyph-cache-fill-combine-expected.html.
+        * fast/text/international/system-language/arabic-glyph-cache-fill-combine.html: Renamed from LayoutTests/fast/text/arabic-glyph-cache-fill-combine.html.
+        * fast/text/international/system-language/han-quotes-expected-mismatch.html: Added.
+        * fast/text/international/system-language/han-quotes.html: Added.
+        * fast/text/international/system-language/hindi-system-font-punctuation-expected.html: Renamed from LayoutTests/fast/text/hindi-system-font-punctuation-expected.html.
+        * fast/text/international/system-language/hindi-system-font-punctuation.html: Renamed from LayoutTests/fast/text/hindi-system-font-punctuation.html.
+        * fast/text/international/system-language/system-font-punctuation.html: Renamed from LayoutTests/fast/text/system-font-punctuation.html.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/fast/text/international/system-language/system-font-punctuation-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/text/system-font-punctuation-expected.txt.
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/text/international/system-language/system-font-punctuation-expected.txt: Renamed from LayoutTests/platform/mac/fast/text/system-font-punctuation-expected.txt.
+        * platform/win/TestExpectations:
+        * platform/win/fast/text/international/system-language/system-font-punctuation-expected.txt: Renamed from LayoutTests/platform/win/fast/text/system-font-punctuation-expected.txt.
+
+2015-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Allow testing with the system language
+        https://bugs.webkit.org/show_bug.cgi?id=148671
+
+        Reviewed by Anders Carlsson and Alexey Proskuryakov.
+
+        Add a test for the declarative form of setting the system language.
+
+        * fast/text/international/system-language/declarative-language-expected.txt: Added.
+        * fast/text/international/system-language/declarative-language.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-09-12  Chris Dumez  <cdumez@apple.com>
+
+        window.EventTarget should exist
+        https://bugs.webkit.org/show_bug.cgi?id=149085
+        <rdar://problem/22546774>
+
+        Reviewed by Sam Weinig.
+
+        Update / rebaseline existing test as window.EventTarget now exists.
+
+        * fast/dom/dom-constructors-expected.txt:
+        * fast/dom/dom-constructors.html:
+
+2015-09-12  Chris Dumez  <cdumez@apple.com>
+
+        ChildNode.replaceWith() without argument should replace the node with an empty DocumentFragment
+        https://bugs.webkit.org/show_bug.cgi?id=149073
+        <rdar://problem/22547801>
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix / rebaseline test now that our behavior has changed.
+
+        * fast/dom/ChildNode-replaceWith-expected.txt:
+        * fast/dom/ChildNode-replaceWith.html:
+
+2015-09-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark http/tests/cache/disk-cache/disk-cache-cancel.html as flaky for 
+        https://bugs.webkit.org/show_bug.cgi?id=149087
+
+        * platform/wk2/TestExpectations:
+
+2015-09-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVGColor custom text format is different from the CSS color custom text format
+        https://bugs.webkit.org/show_bug.cgi?id=148879
+
+        Reviewed by Daniel Bates.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/parse-color-int-or-percent-crash.html:
+        * platform/mac/svg/webarchive/svg-script-subresouces-expected.txt:
+        * svg/css/case-sensitive-tags-expected.txt:
+        * svg/css/case-sensitive-tags.html:
+        * svg/css/getComputedStyle-basic-expected.txt:
+        * svg/css/script-tests/svg-attribute-parser-mode.js:
+        * svg/css/svg-attribute-parser-mode-expected.txt:
+        * svg/dom/SVGColor-expected.txt:
+        * svg/dom/SVGPaint-expected.txt:
+        * svg/dom/SVGStyleElement/disable-svg-style-element-expected.txt:
+        * svg/dom/SVGStyleElement/script-tests/disable-svg-style-element.js:
+        * svg/dom/script-tests/SVGColor.js:
+        * svg/dom/script-tests/SVGPaint.js:
+        * svg/webarchive/svg-script-subresouces-expected.webarchive:
+        * transitions/svg-transitions-expected.txt:
+        Fix expected results for existing tests
+        
+        * svg/css/computed-style-rgb-color-expected.txt: Added.
+        * svg/css/computed-style-rgb-color.html: Added.
+        Ensure that the correct format is returned when getComputedStyle() is
+        called for an SVG color.        
+
+2015-09-11  Nan Wang  <n_wang@apple.com>
+
+        AX: ARIA 1.1 @aria-current
+        https://bugs.webkit.org/show_bug.cgi?id=146012
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-current-expected.txt: Added.
+        * accessibility/aria-current.html: Added.
+        * inspector/dom/getAccessibilityPropertiesForNode_ariaCurrent-expected.txt: Added.
+        * inspector/dom/getAccessibilityPropertiesForNode_ariaCurrent.html: Added.
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-09-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html as flaky for
+        https://bugs.webkit.org/show_bug.cgi?id=149082
+
+        * TestExpectations:
+
+2015-09-11  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Update test for bug 148971
+        https://bugs.webkit.org/show_bug.cgi?id=149076
+
+        Reviewed by Chris Dumez.
+
+        * platform/win/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt: Updated.
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        DOMTokenList update steps for classList don't follow the spec
+        https://bugs.webkit.org/show_bug.cgi?id=148589
+        <rdar://problem/22547443>
+
+        Reviewed by Ryosuke Niwa and Darin Adler.
+
+        Update / rebaseline existing tests as our behavior changed.
+
+        * fast/dom/HTMLElement/class-list-expected.txt:
+        * fast/dom/HTMLElement/class-list-quirks-expected.txt:
+        * fast/dom/HTMLElement/script-tests/class-list.js:
+        * fast/dom/HTMLOutputElement/dom-settable-token-list-expected.txt:
+        * fast/dom/HTMLOutputElement/htmloutputelement-expected.txt:
+        * fast/dom/HTMLOutputElement/htmloutputelement.html:
+        * fast/dom/HTMLOutputElement/script-tests/dom-settable-token-list.js:
+        * fast/dom/rel-list-expected.txt:
+        * fast/dom/rel-list.html:
+
+2015-09-11  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed gardening to make Windows bot green.
+
+        * platform/win/TestExpectations:
+        imported/w3c/web-platform-tests/html/dom/interfaces.html is newly imported and fails on Windows.
+
+2015-09-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark svg/animations/svgboolean-animation-1 as flaky for
+        https://bugs.webkit.org/show_bug.cgi?id=149072
+
+        * TestExpectations:
+
+2015-09-11  Tim Horton  <timothy_horton@apple.com>
+
+        fast/hidpi/image-set-without-specified-width.html flakily tries to install multiple callbacks for the same event
+        https://bugs.webkit.org/show_bug.cgi?id=149067
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/hidpi/image-set-without-specified-width.html:
+        Wait until we've successfully set the deviceScaleFactor
+        before reloading the page; otherwise, we can end up trying to set it
+        again after the reload (and depending on how long it takes the callback
+        to return, again, and again, and again...)
+
+2015-09-11  Alexey Proskuryakov  <ap@apple.com>
+
+        El Capitan test result gardening.
+
+        * platform/mac/TestExpectations: Remove a test that should pass now.
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        Element.tagName should be upper-case for HTML elements in HTML documents
+        https://bugs.webkit.org/show_bug.cgi?id=148843
+        <rdar://problem/22559081>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update / rebaseline test now that our behavior has changed.
+
+        * fast/dom/Node/initial-values-expected.txt:
+        * fast/dom/Node/script-tests/initial-values.js:
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        document.body = "text" should throw a TypeError, not a HierarchyRequestError
+        https://bugs.webkit.org/show_bug.cgi?id=149057
+        <rdar://problem/22567157>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test as we now throw a different exception.
+
+        * fast/dom/setter-type-enforcement-expected.txt:
+
+2015-09-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189595.
+        https://bugs.webkit.org/show_bug.cgi?id=149052
+
+        The tests still fail (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Spurious output on Windows tests: AQMEIOManager::FindIOUnit:
+        error -1"
+        https://bugs.webkit.org/show_bug.cgi?id=142929
+        http://trac.webkit.org/changeset/189595
+
+2015-09-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Mavericks: Text cursor does not move along with VoiceOver cursor for text fields
+        https://bugs.webkit.org/show_bug.cgi?id=148891
+
+        Reviewed by Alexey Proskuryakov.
+
+        Mark accessibility focus tests as passing on Yosemite.
+
+        * platform/mac/TestExpectations:
+
+2015-09-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Spurious output on Windows tests: AQMEIOManager::FindIOUnit: error -1
+        https://bugs.webkit.org/show_bug.cgi?id=142929
+
+        Reviewed by Brent Fulgham.
+
+        * platform/win/TestExpectations: Unskip some newly added tests that are affected.
+        We still skip the whole media directory - updating the results and unskipping those
+        tests would be a separate project.
+
+2015-09-10  David Hyatt  <hyatt@apple.com>
+
+        [New Block-Inside-Inline Model] Self-collapsing block check needs to account for anonymous inline blocks
+        https://bugs.webkit.org/show_bug.cgi?id=149042
+
+        Reviewed by Dean Jackson.
+
+        * fast/block/inside-inlines/new-model/self-collapsing-test-expected.html: Added.
+        * fast/block/inside-inlines/new-model/self-collapsing-test.html: Added.
+        * fast/block/inside-inlines/self-collapsing-test-expected.html: Added.
+        * fast/block/inside-inlines/self-collapsing-test.html: Added.
+
+2015-09-10  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Update windows platform expected results for bug 148810.
+        https://bugs.webkit.org/show_bug.cgi?id=149038
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/win/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt: Updated.
+
+2015-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Node.appendChild(null) / replaceChild(null, null) / removeChild(null) / insertBefore(null, ref) should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=148971
+        <rdar://problem/22560883>
+        <rdar://problem/22559225>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update / rebaseline tests now that we throw a different exception type.
+
+        * fast/dom/Document/replaceChild-null-oldChild-expected.txt:
+        * fast/dom/Document/script-tests/replaceChild-null-oldChild.js:
+        * fast/dom/Node/fragment-mutation-expected.txt:
+        * fast/dom/Node/fragment-mutation.html:
+        * fast/dom/incompatible-operations-expected.txt:
+        * fast/dom/incompatible-operations.html:
+        * fast/dom/move-nodes-across-documents.html:
+        * fast/dom/processing-instruction-appendChild-exceptions-expected.txt:
+        * fast/dom/processing-instruction-appendChild-exceptions.xhtml:
+        * fast/dom/setter-type-enforcement-expected.txt:
+        * fast/dom/timer-clear-interval-in-handler-and-generate-error-expected.txt:
+        * fast/inspector-support/uncaught-dom8-exception.html:
+
+2015-09-10  Brady Eidson  <beidson@apple.com>
+
+        Mark some more W3C IDB tests as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=148713
+
+        Reviewed by NOBODY.
+
+        * platform/wk2/TestExpectations:
+
+2015-09-10  Daniel Bates  <dabates@apple.com>
+
+        Write a test to ensure we don't regress processing of tasks when page defers loading
+        https://bugs.webkit.org/show_bug.cgi?id=135882
+        <rdar://problem/22550497>
+
+        Reviewed by Darin Adler.
+
+        Add a test to ensure we do not regress <https://bugs.webkit.org/show_bug.cgi?id=135688>.
+
+        * storage/websql/success-callback-when-page-defers-loading-expected.txt: Added.
+        * storage/websql/success-callback-when-page-defers-loading.html: Added.
+
+2015-09-10  Sergio Villar Senin  <svillar@igalia.com>
+
+        min-width/height should default to auto for flexbox items
+        https://bugs.webkit.org/show_bug.cgi?id=146020
+
+        Reviewed by David Hyatt.
+
+        Based on Blink's r193665, r194062, r194887 and r195930 by <cbiesinger@chromium.org>.
+
+        * TestExpectations: Removed passing flexbox tests.
+        * css3/flexbox/csswg/flex-flow-007.html: Added min-height: 0px.
+        * css3/flexbox/flexbox-baseline.html: Ditto.
+        * css3/flexbox/min-size-auto-expected.txt: Added.
+        * css3/flexbox/min-size-auto.html: Added.
+        * css3/flexbox/preferred-widths-orthogonal.html: Added min-height: 0px.
+        * fast/css/auto-min-size-expected.txt: Check default computed
+        styles for min-width/height for flex items.
+        * fast/css/auto-min-size.html: Ditto.
+
+2015-09-10  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] Volume bar is broken
+        https://bugs.webkit.org/show_bug.cgi?id=145639
+
+        Reviewed by Philippe Normand.
+
+        Unblock relevant tests. media/click-volume-bar-not-pausing.html, media/volume-bar-empty-when-muted.html
+
+        * platform/gtk/TestExpectations:
+
+2015-09-09  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Document.characterSet should return "UTF-8" by default.
+        https://bugs.webkit.org/show_bug.cgi?id=148810
+        <rdar://problem/22548727>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update the tests which test the default encoding of document.
+
+        * dom/xhtml/level3/core/documentgetinputencoding02-expected.txt: Obsolete test.
+
+2015-09-09  Benjamin Poulain  <bpoulain@apple.com>
+
+        CSS general sibling selectors does not work without CSS JIT
+        https://bugs.webkit.org/show_bug.cgi?id=148987
+        rdar://problem/22559860
+
+        Reviewed by Andreas Kling.
+
+        There are multiple variations of the same tests to test
+        cases where we JIT and cases without JIT. 
+
+        * fast/css/indirect-adjacent-style-invalidation-1-expected.txt: Added.
+        * fast/css/indirect-adjacent-style-invalidation-1.html: Added.
+        * fast/css/indirect-adjacent-style-invalidation-2-expected.txt: Added.
+        * fast/css/indirect-adjacent-style-invalidation-2.html: Added.
+        * fast/css/indirect-adjacent-style-invalidation-3-expected.txt: Added.
+        * fast/css/indirect-adjacent-style-invalidation-3.html: Added.
+
+2015-09-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        ASSERTION FAILED: typesettingFeatures & (Kerning | Ligatures) in WebCore::applyFontTransforms
+        https://bugs.webkit.org/show_bug.cgi?id=146194
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/softbank-emoji-no-ligatures-nor-kerning-expected.html: Added
+        * fast/text/softbank-emoji-no-ligatures-nor-kerning.html: Added
+
+2015-09-09  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Percentage columns shouldn't include border and padding
+        https://bugs.webkit.org/show_bug.cgi?id=148978
+
+        Reviewed by Sergio Villar Senin.
+
+        * fast/css-grid-layout/grid-percent-track-margin-border-padding-expected.txt: Added.
+        * fast/css-grid-layout/grid-percent-track-margin-border-padding.html: Added.
+
+2015-09-09  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Mark http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html as flaky on Windows
+
+        This test is marked as flaky on gtk and mak-wk2. It fails on Windows more
+        than it fails on any other platform.
+
+        * platform/win/TestExpectations:
+
+2015-09-09  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/dom/rtl-scroll-to-leftmost-and-resize.html is a flaky timeout - IPC drops messages
+        https://bugs.webkit.org/show_bug.cgi?id=148951
+
+        Reviewed by Anders Carlsson.
+
+        * platform/mac-wk2/TestExpectations: Unmark the test (it still fails per platform/mac
+        expectations, which is unrelated).
+
+2015-09-09  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        http/tests/xmlhttprequest/ontimeout-response-getters.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148997
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/xmlhttprequest/ontimeout-response-getters.html: Augmenting http response delay to trigger XHR timeout.
+
 2015-09-08  Andy Estes  <aestes@apple.com>
 
         [iOS] Add layout tests for QuickLook

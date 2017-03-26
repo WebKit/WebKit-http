@@ -129,6 +129,7 @@
 #include "SVGElement.h"
 #include "SVGElementFactory.h"
 #include "SVGNames.h"
+#include "SVGTitleElement.h"
 #include "SchemeRegistry.h"
 #include "ScopedEventQueue.h"
 #include "ScriptController.h"
@@ -148,7 +149,6 @@
 #include "StyleSheetList.h"
 #include "SubresourceLoader.h"
 #include "TextNodeTraversal.h"
-#include "TextResourceDecoder.h"
 #include "TransformSource.h"
 #include "TreeWalker.h"
 #include "VisitedLinkState.h"
@@ -161,6 +161,7 @@
 #include "XPathResult.h"
 #include "htmlediting.h"
 #include <JavaScriptCore/Profile.h>
+#include <ctime>
 #include <inspector/ScriptCallStack.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/TemporaryChange.h>
@@ -452,7 +453,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_frameElementsShouldIgnoreScrolling(false)
     , m_updateFocusAppearanceRestoresSelection(false)
     , m_ignoreDestructiveWriteCount(0)
-    , m_titleSetExplicitly(false)
     , m_markers(std::make_unique<DocumentMarkerController>())
     , m_updateFocusAppearanceTimer(*this, &Document::updateFocusAppearanceTimerFired)
     , m_cssTarget(nullptr)
@@ -985,7 +985,6 @@ RefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
     switch (source->nodeType()) {
     case ENTITY_NODE:
     case DOCUMENT_NODE:
-    case DOCUMENT_TYPE_NODE:
     case XPATH_NAMESPACE_NODE:
         ec = NOT_SUPPORTED_ERR;
         return nullptr;
@@ -1009,7 +1008,7 @@ RefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
             }
         }
         if (source->parentNode()) {
-            source->parentNode()->removeChild(source.get(), ec);
+            source->parentNode()->removeChild(*source, ec);
             if (ec)
                 return nullptr;
         }
@@ -1248,11 +1247,12 @@ void Document::setVisualUpdatesAllowedByClient(bool visualUpdatesAllowedByClient
         setVisualUpdatesAllowed(true);
 }
 
-AtomicString Document::encoding() const
+String Document::characterSetWithUTF8Fallback() const
 {
-    if (TextResourceDecoder* d = decoder())
-        return d->encoding().domName();
-    return String();
+    AtomicString name = encoding();
+    if (!name.isNull())
+        return name;
+    return UTF8Encoding().domName();
 }
 
 String Document::defaultCharset() const
@@ -1309,11 +1309,6 @@ void Document::setDocumentURI(const String& uri)
     // This property is read-only from JavaScript, but writable from Objective-C.
     m_documentURI = uri;
     updateBaseURL();
-}
-
-URL Document::baseURI() const
-{
-    return m_baseURL;
 }
 
 void Document::setContent(const String& content)
@@ -1528,17 +1523,31 @@ void Document::updateTitle(const StringWithDirection& title)
         loader->setTitle(m_title);
 }
 
+void Document::updateTitleFromTitleElement()
+{
+    if (!m_titleElement) {
+        updateTitle(StringWithDirection());
+        return;
+    }
+
+    if (is<HTMLTitleElement>(*m_titleElement))
+        updateTitle(downcast<HTMLTitleElement>(*m_titleElement).textWithDirection());
+    else if (is<SVGTitleElement>(*m_titleElement)) {
+        // FIXME: does SVG have a title text direction?
+        updateTitle(StringWithDirection(downcast<SVGTitleElement>(*m_titleElement).textContent(), LTR));
+    }
+}
+
 void Document::setTitle(const String& title)
 {
-    // Title set by JavaScript -- overrides any title elements.
-    m_titleSetExplicitly = true;
     if (!isHTMLDocument() && !isXHTMLDocument())
         m_titleElement = nullptr;
     else if (!m_titleElement) {
-        if (HTMLElement* headElement = head()) {
-            m_titleElement = createElement(titleTag, false);
-            headElement->appendChild(m_titleElement, ASSERT_NO_EXCEPTION);
-        }
+        auto* headElement = head();
+        if (!headElement)
+            return;
+        m_titleElement = createElement(titleTag, false);
+        headElement->appendChild(*m_titleElement, ASSERT_NO_EXCEPTION);
     }
 
     // The DOM API has no method of specifying direction, so assume LTR.
@@ -1548,35 +1557,42 @@ void Document::setTitle(const String& title)
         downcast<HTMLTitleElement>(*m_titleElement).setText(title);
 }
 
-void Document::setTitleElement(const StringWithDirection& title, Element* titleElement)
+void Document::updateTitleElement(Element* newTitleElement)
 {
-    if (titleElement != m_titleElement) {
-        if (m_titleElement || m_titleSetExplicitly) {
-            // Only allow the first title element to change the title -- others have no effect.
-            return;
-        }
-        m_titleElement = titleElement;
-    }
+    // Only allow the first title element in tree order to change the title -- others have no effect.
+    if (m_titleElement) {
+        if (isHTMLDocument() || isXHTMLDocument())
+            m_titleElement = descendantsOfType<HTMLTitleElement>(*this).first();
+        else if (isSVGDocument())
+            m_titleElement = descendantsOfType<SVGTitleElement>(*this).first();
+    } else
+        m_titleElement = newTitleElement;
 
-    updateTitle(title);
+    updateTitleFromTitleElement();
 }
 
-void Document::removeTitle(Element* titleElement)
+void Document::titleElementAdded(Element& titleElement)
 {
-    if (m_titleElement != titleElement)
+    if (m_titleElement == &titleElement)
         return;
 
-    m_titleElement = nullptr;
-    m_titleSetExplicitly = false;
+    updateTitleElement(&titleElement);
+}
 
-    // Update title based on first title element in the head, if one exists.
-    if (HTMLElement* headElement = head()) {
-        if (auto firstTitle = childrenOfType<HTMLTitleElement>(*headElement).first())
-            setTitleElement(firstTitle->textWithDirection(), firstTitle);
-    }
+void Document::titleElementRemoved(Element& titleElement)
+{
+    if (m_titleElement != &titleElement)
+        return;
 
-    if (!m_titleElement)
-        updateTitle(StringWithDirection());
+    updateTitleElement(nullptr);
+}
+
+void Document::titleElementTextChanged(Element& titleElement)
+{
+    if (m_titleElement != &titleElement)
+        return;
+
+    updateTitleFromTitleElement();
 }
 
 void Document::registerForVisibilityStateChangedCallbacks(Element* element)
@@ -1696,14 +1712,52 @@ Ref<Range> Document::createRange()
     return Range::create(*this);
 }
 
-RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned long whatToShow, PassRefPtr<NodeFilter> filter, bool expandEntityReferences)
+RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, bool expandEntityReferences, ExceptionCode& ec)
 {
-    return NodeIterator::create(root, whatToShow, filter, expandEntityReferences);
+    if (!root) {
+        ec = TypeError;
+        return nullptr;
+    }
+    return NodeIterator::create(root, whatToShow, WTF::move(filter), expandEntityReferences);
 }
 
-RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, PassRefPtr<NodeFilter> filter, bool expandEntityReferences)
+RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, ExceptionCode& ec)
 {
-    return TreeWalker::create(root, whatToShow, filter, expandEntityReferences);
+    return createNodeIterator(root, whatToShow, WTF::move(filter), false, ec);
+}
+
+RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned long whatToShow, ExceptionCode& ec)
+{
+    return createNodeIterator(root, whatToShow, nullptr, false, ec);
+}
+
+RefPtr<NodeIterator> Document::createNodeIterator(Node* root, ExceptionCode& ec)
+{
+    return createNodeIterator(root, 0xFFFFFFFF, nullptr, false, ec);
+}
+
+RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, bool expandEntityReferences, ExceptionCode& ec)
+{
+    if (!root) {
+        ec = TypeError;
+        return nullptr;
+    }
+    return TreeWalker::create(root, whatToShow, WTF::move(filter), expandEntityReferences);
+}
+
+RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, ExceptionCode& ec)
+{
+    return createTreeWalker(root, whatToShow, WTF::move(filter), false, ec);
+}
+
+RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, ExceptionCode& ec)
+{
+    return createTreeWalker(root, whatToShow, nullptr, false, ec);
+}
+
+RefPtr<TreeWalker> Document::createTreeWalker(Node* root, ExceptionCode& ec)
+{
+    return createTreeWalker(root, 0xFFFFFFFF, nullptr, false, ec);
 }
 
 void Document::scheduleForcedStyleRecalc()
@@ -2509,11 +2563,10 @@ void Document::setBodyOrFrameset(PassRefPtr<HTMLElement> prpNewBody, ExceptionCo
         newBody = downcast<HTMLElement>(node.get());
     }
 
-    HTMLElement* b = bodyOrFrameset();
-    if (!b)
-        documentElement()->appendChild(newBody.release(), ec);
+    if (auto* body = bodyOrFrameset())
+        documentElement()->replaceChild(newBody.releaseNonNull(), *body, ec);
     else
-        documentElement()->replaceChild(newBody.release(), b, ec);
+        documentElement()->appendChild(newBody.releaseNonNull(), ec);
 }
 
 HTMLHeadElement* Document::head()
@@ -3317,90 +3370,78 @@ bool Document::childTypeAllowed(NodeType type) const
     return false;
 }
 
-bool Document::canReplaceChild(Node* newChild, Node* oldChild)
+bool Document::canAcceptChild(const Node& newChild, const Node* refChild, AcceptChildOperation operation) const
 {
-    if (!oldChild)
-        // ContainerNode::replaceChild will raise a NOT_FOUND_ERR.
+    if (operation == AcceptChildOperation::Replace && refChild->nodeType() == newChild.nodeType())
         return true;
 
-    if (oldChild->nodeType() == newChild->nodeType())
+    switch (newChild.nodeType()) {
+    case ATTRIBUTE_NODE:
+    case CDATA_SECTION_NODE:
+    case DOCUMENT_NODE:
+    case ENTITY_NODE:
+    case ENTITY_REFERENCE_NODE:
+    case TEXT_NODE:
+    case XPATH_NAMESPACE_NODE:
+        return false;
+    case COMMENT_NODE:
+    case PROCESSING_INSTRUCTION_NODE:
         return true;
-
-    int numDoctypes = 0;
-    int numElements = 0;
-
-    // First, check how many doctypes and elements we have, not counting
-    // the child we're about to remove.
-    for (Node* c = firstChild(); c; c = c->nextSibling()) {
-        if (c == oldChild)
-            continue;
-        
-        switch (c->nodeType()) {
-        case DOCUMENT_TYPE_NODE:
-            numDoctypes++;
-            break;
-        case ELEMENT_NODE:
-            numElements++;
-            break;
-        default:
-            break;
-        }
-    }
-    
-    // Then, see how many doctypes and elements might be added by the new child.
-    if (newChild->isDocumentFragment()) {
-        for (Node* c = newChild->firstChild(); c; c = c->nextSibling()) {
-            switch (c->nodeType()) {
-            case ATTRIBUTE_NODE:
-            case CDATA_SECTION_NODE:
-            case DOCUMENT_FRAGMENT_NODE:
-            case DOCUMENT_NODE:
-            case ENTITY_NODE:
-            case ENTITY_REFERENCE_NODE:
-            case TEXT_NODE:
-            case XPATH_NAMESPACE_NODE:
+    case DOCUMENT_FRAGMENT_NODE: {
+        bool hasSeenElementChild = false;
+        for (auto* node = downcast<DocumentFragment>(newChild).firstChild(); node; node = node->nextSibling()) {
+            if (is<Element>(*node)) {
+                if (hasSeenElementChild)
+                    return false;
+                hasSeenElementChild = true;
+            }
+            if (!canAcceptChild(*node, refChild, operation))
                 return false;
-            case COMMENT_NODE:
-            case PROCESSING_INSTRUCTION_NODE:
-                break;
-            case DOCUMENT_TYPE_NODE:
-                numDoctypes++;
-                break;
-            case ELEMENT_NODE:
-                numElements++;
-                break;
+        }
+        break;
+    }
+    case DOCUMENT_TYPE_NODE: {
+        auto* existingDocType = childrenOfType<DocumentType>(*this).first();
+        if (operation == AcceptChildOperation::Replace) {
+            //  parent has a doctype child that is not child, or an element is preceding child.
+            if (existingDocType && existingDocType != refChild)
+                return false;
+            if (refChild->previousElementSibling())
+                return false;
+        } else {
+            ASSERT(operation == AcceptChildOperation::InsertOrAdd);
+            if (existingDocType)
+                return false;
+            if ((refChild && refChild->previousElementSibling()) || (!refChild && firstElementChild()))
+                return false;
+        }
+        break;
+    }
+    case ELEMENT_NODE: {
+        auto* existingElementChild = firstElementChild();
+        if (operation == AcceptChildOperation::Replace) {
+            if (existingElementChild && existingElementChild != refChild)
+                return false;
+            for (auto* child = refChild->nextSibling(); child; child = child->nextSibling()) {
+                if (is<DocumentType>(*child))
+                    return false;
+            }
+        } else {
+            ASSERT(operation == AcceptChildOperation::InsertOrAdd);
+            if (existingElementChild)
+                return false;
+            for (auto* child = refChild; child; child = child->nextSibling()) {
+                if (is<DocumentType>(*child))
+                    return false;
             }
         }
-    } else {
-        switch (newChild->nodeType()) {
-        case ATTRIBUTE_NODE:
-        case CDATA_SECTION_NODE:
-        case DOCUMENT_FRAGMENT_NODE:
-        case DOCUMENT_NODE:
-        case ENTITY_NODE:
-        case ENTITY_REFERENCE_NODE:
-        case TEXT_NODE:
-        case XPATH_NAMESPACE_NODE:
-            return false;
-        case COMMENT_NODE:
-        case PROCESSING_INSTRUCTION_NODE:
-            return true;
-        case DOCUMENT_TYPE_NODE:
-            numDoctypes++;
-            break;
-        case ELEMENT_NODE:
-            numElements++;
-            break;
-        }                
+        break;
     }
-        
-    if (numElements > 1 || numDoctypes > 1)
-        return false;
-    
+    }
     return true;
 }
 
-RefPtr<Node> Document::cloneNodeInternal(Document&, CloningOperation type)
+Ref<Node> Document::cloneNodeInternal(Document&, CloningOperation type)
 {
     Ref<Document> clone = cloneDocumentWithoutChildren();
     clone->cloneDataFromDocument(*this);
@@ -3409,7 +3450,7 @@ RefPtr<Node> Document::cloneNodeInternal(Document&, CloningOperation type)
     case CloningOperation::SelfWithTemplateContent:
         break;
     case CloningOperation::Everything:
-        cloneChildNodes(clone.ptr());
+        cloneChildNodes(clone);
         break;
     }
     return WTF::move(clone);
@@ -4237,34 +4278,30 @@ void Document::setDomain(const String& newDomain, ExceptionCode& ec)
 // http://www.whatwg.org/specs/web-apps/current-work/#dom-document-lastmodified
 String Document::lastModified() const
 {
-    DateComponents date;
-    bool foundDate = false;
-    if (m_frame) {
-        auto lastModifiedDate = loader() ? loader()->response().lastModified() : Nullopt;
-        if (lastModifiedDate) {
-            using namespace std::chrono;
-            date.setMillisecondsSinceEpochForDateTime(duration_cast<milliseconds>(lastModifiedDate.value().time_since_epoch()).count());
-            foundDate = true;
-        }
-    }
+    using namespace std::chrono;
+    Optional<system_clock::time_point> dateTime;
+    if (m_frame && loader())
+        dateTime = loader()->response().lastModified();
+
     // FIXME: If this document came from the file system, the HTML5
-    // specificiation tells us to read the last modification date from the file
+    // specification tells us to read the last modification date from the file
     // system.
-    if (!foundDate) {
-        double fallbackDate = currentTimeMS();
+    if (!dateTime) {
+        dateTime = system_clock::now();
 #if ENABLE(WEB_REPLAY)
         InputCursor& cursor = inputCursor();
         if (cursor.isCapturing())
-            cursor.appendInput<DocumentLastModifiedDate>(fallbackDate);
+            cursor.appendInput<DocumentLastModifiedDate>(duration_cast<milliseconds>(dateTime.value().time_since_epoch()).count());
         else if (cursor.isReplaying()) {
             if (DocumentLastModifiedDate* input = cursor.fetchInput<DocumentLastModifiedDate>())
-                fallbackDate = input->fallbackValue();
+                dateTime = system_clock::time_point(milliseconds(static_cast<long long>(input->fallbackValue())));
         }
 #endif
-        date.setMillisecondsSinceEpochForDateTime(fallbackDate);
     }
 
-    return String::format("%02d/%02d/%04d %02d:%02d:%02d", date.month() + 1, date.monthDay(), date.fullYear(), date.hour(), date.minute(), date.second());
+    auto ctime = system_clock::to_time_t(dateTime.value());
+    auto localDateTime = std::localtime(&ctime);
+    return String::format("%02d/%02d/%04d %02d:%02d:%02d", localDateTime->tm_mon + 1, localDateTime->tm_mday, 1900 + localDateTime->tm_year, localDateTime->tm_hour, localDateTime->tm_min, localDateTime->tm_sec);
 }
 
 void Document::setCookieURL(const URL& url)

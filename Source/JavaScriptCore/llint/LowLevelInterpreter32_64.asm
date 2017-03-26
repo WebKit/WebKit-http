@@ -302,7 +302,8 @@ _handleUncaughtException:
     loadp Callee + PayloadOffset[cfr], t3
     andp MarkedBlockMask, t3
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
-    loadp VM::callFrameForThrow[t3], cfr
+    restoreCalleeSavesFromVMCalleeSavesBuffer(t3, t0)
+    loadp VM::callFrameForCatch[t3], cfr
 
     loadp CallerFrame[cfr], cfr
 
@@ -591,7 +592,6 @@ macro functionArityCheck(doneLabel, slowPath)
     btpz t3, .proceedInline
     
     loadp CommonSlowPaths::ArityCheckData::paddedStackSpace[r1], a0
-    loadp CommonSlowPaths::ArityCheckData::returnPC[r1], a1
     call t3
     if ASSERT_ENABLED
         loadp ReturnPC[cfr], t0
@@ -602,13 +602,27 @@ macro functionArityCheck(doneLabel, slowPath)
 .proceedInline:
     loadi CommonSlowPaths::ArityCheckData::paddedStackSpace[r1], t1
     btiz t1, .continue
-
-    // Move frame up "t1 * 2" slots
-    lshiftp 1, t1
-    negi t1
-    move cfr, t3
     loadi PayloadOffset + ArgumentCount[cfr], t2
     addi CallFrameHeaderSlots, t2
+
+    // Check if there are some unaligned slots we can use
+    move t1, t3
+    andi StackAlignmentSlots - 1, t3
+    btiz t3, .noExtraSlot
+.fillExtraSlots:
+    move 0, t0
+    storei t0, PayloadOffset[cfr, t2, 8]
+    move UndefinedTag, t0
+    storei t0, TagOffset[cfr, t2, 8]
+    addi 1, t2
+    bsubinz 1, t3, .fillExtraSlots
+    andi ~(StackAlignmentSlots - 1), t1
+    btiz t1, .continue
+
+.noExtraSlot:
+    // Move frame up t1 slots
+    negi t1
+    move cfr, t3
 .copyLoop:
     loadi PayloadOffset[t3], t0
     storei t0, PayloadOffset[t3, t1, 8]
@@ -1323,37 +1337,23 @@ end
 # to take fast path on the new cache. At worst we take slow path, which is what
 # we would have been doing anyway.
 
-macro getById(getPropertyStorage)
+_llint_op_get_by_id:
     traceExecution()
     loadi 8[PC], t0
     loadi 16[PC], t1
     loadConstantOrVariablePayload(t0, CellTag, t3, .opGetByIdSlow)
     loadi 20[PC], t2
-    getPropertyStorage(
-        t3,
-        t0,
-        macro (propertyStorage, scratch)
-            bpneq JSCell::m_structureID[t3], t1, .opGetByIdSlow
-            loadi 4[PC], t1
-            loadi TagOffset[propertyStorage, t2], scratch
-            loadi PayloadOffset[propertyStorage, t2], t2
-            storei scratch, TagOffset[cfr, t1, 8]
-            storei t2, PayloadOffset[cfr, t1, 8]
-            valueProfile(scratch, t2, 32, t1)
-            dispatch(9)
-        end)
+    bineq JSCell::m_structureID[t3], t1, .opGetByIdSlow
+    loadPropertyAtVariableOffset(t2, t3, t0, t1)
+    loadi 4[PC], t2
+    storei t0, TagOffset[cfr, t2, 8]
+    storei t1, PayloadOffset[cfr, t2, 8]
+    valueProfile(t0, t1, 32, t2)
+    dispatch(9)
 
-    .opGetByIdSlow:
-        callSlowPath(_llint_slow_path_get_by_id)
-        dispatch(9)
-end
-
-_llint_op_get_by_id:
-    getById(withInlineStorage)
-
-
-_llint_op_get_by_id_out_of_line:
-    getById(withOutOfLineStorage)
+.opGetByIdSlow:
+    callSlowPath(_llint_slow_path_get_by_id)
+    dispatch(9)
 
 
 _llint_op_get_array_length:
@@ -1379,100 +1379,57 @@ _llint_op_get_array_length:
     dispatch(9)
 
 
-macro putById(getPropertyStorage)
+_llint_op_put_by_id:
     traceExecution()
     writeBarrierOnOperands(1, 3)
     loadi 4[PC], t3
-    loadi 16[PC], t1
     loadConstantOrVariablePayload(t3, CellTag, t0, .opPutByIdSlow)
-    loadi 12[PC], t2
-    getPropertyStorage(
-        t0,
-        t3,
-        macro (propertyStorage, scratch)
-            bpneq JSCell::m_structureID[t0], t1, .opPutByIdSlow
-            loadi 20[PC], t1
-            loadConstantOrVariable2Reg(t2, scratch, t2)
-            storei scratch, TagOffset[propertyStorage, t1]
-            storei t2, PayloadOffset[propertyStorage, t1]
-            dispatch(9)
-        end)
+    loadi JSCell::m_structureID[t0], t2
+    bineq t2, 16[PC], .opPutByIdSlow
 
-    .opPutByIdSlow:
-        callSlowPath(_llint_slow_path_put_by_id)
-        dispatch(9)
-end
+    # At this point, we have:
+    # t2 -> currentStructureID
+    # t0 -> object base
 
-_llint_op_put_by_id:
-    putById(withInlineStorage)
+    loadi 24[PC], t1
 
+    btiz t1, .opPutByIdNotTransition
 
-_llint_op_put_by_id_out_of_line:
-    putById(withOutOfLineStorage)
+    # This is the transition case. t1 holds the new Structure*. t2 holds the old Structure*.
+    # If we have a chain, we need to check it. t0 is the base. We may clobber t1 to use it as
+    # scratch.
+    loadp 28[PC], t3
+    btpz t3, .opPutByIdTransitionDirect
 
+    loadp StructureChain::m_vector[t3], t3
+    assert(macro (ok) btpnz t3, ok end)
 
-macro putByIdTransition(additionalChecks, getPropertyStorage)
-    traceExecution()
-    writeBarrierOnOperand(1)
-    loadi 4[PC], t3
-    loadi 16[PC], t1
-    loadConstantOrVariablePayload(t3, CellTag, t0, .opPutByIdSlow)
-    loadi 12[PC], t2
-    bpneq JSCell::m_structureID[t0], t1, .opPutByIdSlow
-    additionalChecks(t1, t3, .opPutByIdSlow)
+    loadp Structure::m_prototype[t2], t2
+    btpz t2, .opPutByIdTransitionChainDone
+.opPutByIdTransitionChainLoop:
+    loadp [t3], t1
+    bpneq t1, JSCell::m_structureID[t2], .opPutByIdSlow
+    addp 4, t3
+    loadp Structure::m_prototype[t1], t2
+    btpnz t2, .opPutByIdTransitionChainLoop
+
+.opPutByIdTransitionChainDone:
+    loadi 24[PC], t1
+
+.opPutByIdTransitionDirect:
+    storei t1, JSCell::m_structureID[t0]
+
+.opPutByIdNotTransition:
+    # The only thing live right now is t0, which holds the base.
+    loadi 12[PC], t1
+    loadConstantOrVariable(t1, t2, t3)
     loadi 20[PC], t1
-    getPropertyStorage(
-        t0,
-        t3,
-        macro (propertyStorage, scratch)
-            addp t1, propertyStorage, t3
-            loadConstantOrVariable2Reg(t2, t1, t2)
-            storei t1, TagOffset[t3]
-            loadi 24[PC], t1
-            storei t2, PayloadOffset[t3]
-            storep t1, JSCell::m_structureID[t0]
-            dispatch(9)
-        end)
+    storePropertyAtVariableOffset(t1, t0, t2, t3)
+    dispatch(9)
 
-    .opPutByIdSlow:
-        callSlowPath(_llint_slow_path_put_by_id)
-        dispatch(9)
-end
-
-macro noAdditionalChecks(oldStructure, scratch, slowPath)
-end
-
-macro structureChainChecks(oldStructure, scratch, slowPath)
-    const protoCell = oldStructure   # Reusing the oldStructure register for the proto
-
-    loadp 28[PC], scratch
-    assert(macro (ok) btpnz scratch, ok end)
-    loadp StructureChain::m_vector[scratch], scratch
-    assert(macro (ok) btpnz scratch, ok end)
-    bieq Structure::m_prototype + TagOffset[oldStructure], NullTag, .done
-.loop:
-    loadi Structure::m_prototype + PayloadOffset[oldStructure], protoCell
-    loadp JSCell::m_structureID[protoCell], oldStructure
-    bpneq oldStructure, [scratch], slowPath
-    addp 4, scratch
-    bineq Structure::m_prototype + TagOffset[oldStructure], NullTag, .loop
-.done:
-end
-
-_llint_op_put_by_id_transition_direct:
-    putByIdTransition(noAdditionalChecks, withInlineStorage)
-
-
-_llint_op_put_by_id_transition_direct_out_of_line:
-    putByIdTransition(noAdditionalChecks, withOutOfLineStorage)
-
-
-_llint_op_put_by_id_transition_normal:
-    putByIdTransition(structureChainChecks, withInlineStorage)
-
-
-_llint_op_put_by_id_transition_normal_out_of_line:
-    putByIdTransition(structureChainChecks, withOutOfLineStorage)
+.opPutByIdSlow:
+    callSlowPath(_llint_slow_path_put_by_id)
+    dispatch(9)
 
 
 _llint_op_get_by_val:
@@ -1821,7 +1778,7 @@ macro arrayProfileForCall()
 .done:
 end
 
-macro doCall(slowPath)
+macro doCall(slowPath, prepareCall)
     loadi 8[PC], t0
     loadi 20[PC], t1
     loadp LLIntCallLinkInfo::callee[t1], t2
@@ -1836,13 +1793,13 @@ macro doCall(slowPath)
     storei PC, ArgumentCount + TagOffset[cfr]
     storei t2, ArgumentCount + PayloadOffset[t3]
     storei CellTag, Callee + TagOffset[t3]
-    addp CallerFrameAndPCSize, t3
-    callTargetFunction(t1, t3)
+    move t3, sp
+    prepareCall(LLIntCallLinkInfo::machineCodeTarget[t1], t2, t3, t4)
+    callTargetFunction(LLIntCallLinkInfo::machineCodeTarget[t1])
 
 .opCallSlow:
-    slowPathForCall(slowPath)
+    slowPathForCall(slowPath, prepareCall)
 end
-
 
 _llint_op_ret:
     traceExecution()
@@ -1878,7 +1835,8 @@ _llint_op_catch:
     loadp Callee + PayloadOffset[cfr], t3
     andp MarkedBlockMask, t3
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
-    loadp VM::callFrameForThrow[t3], cfr
+    restoreCalleeSavesFromVMCalleeSavesBuffer(t3, t0)
+    loadp VM::callFrameForCatch[t3], cfr
     restoreStackPointerAfterCall()
 
     loadi VM::targetInterpreterPCForThrow[t3], PC
@@ -1916,6 +1874,7 @@ _llint_throw_from_slow_path_trampoline:
     loadp Callee[cfr], t1
     andp MarkedBlockMask, t1
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t1], t1
+    copyCalleeSavesToVMCalleeSavesBuffer(t1, t2)
     jmp VM::targetMachinePCForThrow[t1]
 
 

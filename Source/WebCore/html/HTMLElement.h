@@ -89,6 +89,7 @@ public:
 
     virtual bool isHTMLUnknownElement() const { return false; }
     virtual bool isTextControlInnerTextElement() const { return false; }
+    virtual bool canHaveUserAgentShadowRoot() const { return false; }
 
     virtual bool willRespondToMouseMoveEvents() override;
     virtual bool willRespondToMouseWheelEvents() override;
@@ -130,7 +131,7 @@ private:
 
     virtual HTMLFormElement* virtualForm() const;
 
-    Node* insertAdjacent(const String& where, Node* newChild, ExceptionCode&);
+    Node* insertAdjacent(const String& where, Ref<Node>&& newChild, ExceptionCode&);
     Ref<DocumentFragment> textToFragment(const String&, ExceptionCode&);
 
     void dirAttributeChanged(const AtomicString&);

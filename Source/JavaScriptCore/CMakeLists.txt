@@ -80,6 +80,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CallEdge.cpp
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
+    bytecode/CallMode.cpp
     bytecode/CallVariant.cpp
     bytecode/CodeBlock.cpp
     bytecode/CodeBlockHash.cpp
@@ -104,10 +105,10 @@ set(JavaScriptCore_SOURCES
     bytecode/ObjectPropertyCondition.cpp
     bytecode/ObjectPropertyConditionSet.cpp
     bytecode/Opcode.cpp
-    bytecode/PolymorphicGetByIdList.cpp
-    bytecode/PolymorphicPutByIdList.cpp
+    bytecode/PolymorphicAccess.cpp
     bytecode/PreciseJumpTargets.cpp
     bytecode/PropertyCondition.cpp
+    bytecode/PutByIdFlags.cpp
     bytecode/PutByIdStatus.cpp
     bytecode/PutByIdVariant.cpp
     bytecode/ReduceWhitespace.cpp
@@ -204,6 +205,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLivenessAnalysisPhase.cpp
     dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
+    dfg/DFGMaximalFlushInsertionPhase.cpp
     dfg/DFGMayExit.cpp
     dfg/DFGMinifiedGraph.cpp
     dfg/DFGMinifiedNode.cpp
@@ -356,8 +358,6 @@ set(JavaScriptCore_SOURCES
     interpreter/ProtoCallFrame.cpp
     interpreter/StackVisitor.cpp
 
-    jit/AccessorCallJITStubRoutine.cpp
-    jit/ArityCheckFailReturnThunks.cpp
     jit/AssemblyHelpers.cpp
     jit/BinarySwitch.cpp
     jit/ExecutableAllocationFuzz.cpp
@@ -385,6 +385,8 @@ set(JavaScriptCore_SOURCES
     jit/JITToDFGDeferredCompilationCallback.cpp
     jit/PolymorphicCallStubRoutine.cpp
     jit/Reg.cpp
+    jit/RegisterAtOffset.cpp
+    jit/RegisterAtOffsetList.cpp
     jit/RegisterPreservationWrapperGenerator.cpp
     jit/RegisterSet.cpp
     jit/Repatch.cpp
@@ -903,7 +905,6 @@ if (ENABLE_FTL_JIT)
         ftl/FTLOperations.cpp
         ftl/FTLOutput.cpp
         ftl/FTLRecoveryOpcode.cpp
-        ftl/FTLRegisterAtOffset.cpp
         ftl/FTLSaveRestore.cpp
         ftl/FTLSlowPathCall.cpp
         ftl/FTLSlowPathCallKey.cpp
@@ -951,6 +952,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     llint
     parser
     profiler
+    replay
     runtime
     yarr
 

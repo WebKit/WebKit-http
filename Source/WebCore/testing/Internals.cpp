@@ -305,6 +305,8 @@ void Internals::resetToConsistentState(Page* page)
 
     page->setPageScaleFactor(1, IntPoint(0, 0));
     page->setPagination(Pagination());
+
+    page->setDefersLoading(false);
     
     page->mainFrame().setTextZoomFactor(1.0f);
     
@@ -768,8 +770,12 @@ String Internals::shadowRootType(const Node* root, ExceptionCode& ec) const
     }
 
     switch (downcast<ShadowRoot>(*root).type()) {
-    case ShadowRoot::UserAgentShadowRoot:
+    case ShadowRoot::Type::UserAgent:
         return String("UserAgentShadowRoot");
+    case ShadowRoot::Type::Closed:
+        return String("ClosedShadowRoot");
+    case ShadowRoot::Type::Open:
+        return String("OpenShadowRoot");
     default:
         ASSERT_NOT_REACHED();
         return String("Unknown");
@@ -2933,6 +2939,15 @@ bool Internals::isPagePlayingAudio()
         return false;
 
     return !!(document->page()->mediaState() & MediaProducer::IsPlayingAudio);
+}
+
+void Internals::setPageDefersLoading(bool defersLoading)
+{
+    Document* document = contextDocument();
+    if (!document)
+        return;
+    if (Page* page = document->page())
+        page->setDefersLoading(defersLoading);
 }
 
 RefPtr<File> Internals::createFile(const String& path)

@@ -128,7 +128,7 @@ typedef const char* optionString;
     v(bool, forceProfilerBytecodeGeneration, false, nullptr) \
     \
     v(bool, enableFunctionDotArguments, true, nullptr) \
-    v(bool, enableTailCalls, true, nullptr) \
+    v(bool, enableTailCalls, false, nullptr) \
     \
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false, "dumps disassembly of all JIT compiled code upon compilation") \
@@ -188,6 +188,7 @@ typedef const char* optionString;
     v(bool, clobberAllRegsInFTLICSlowPath, !ASSERT_DISABLED, nullptr) \
     v(bool, assumeAllRegsInFTLICAreLive, false, nullptr) \
     v(bool, enableAccessInlining, true, nullptr) \
+    v(unsigned, maxAccessVariantListSize, 8, nullptr) \
     v(bool, enablePolyvariantDevirtualization, true, nullptr) \
     v(bool, enablePolymorphicAccessInlining, true, nullptr) \
     v(bool, enablePolymorphicCallInlining, true, nullptr) \
@@ -237,6 +238,8 @@ typedef const char* optionString;
     \
     v(bool, enablePolyvariantCallInlining, true, nullptr) \
     v(bool, enablePolyvariantByIdInlining, true, nullptr) \
+    \
+    v(bool, enableMaximalFlushInsertionPhase, false, "Setting to true enables the DFG's MaximalFlushInsertionPhase to run.") \
     \
     v(unsigned, maximumBinaryStringSwitchCaseLength, 50, nullptr) \
     v(unsigned, maximumBinaryStringSwitchTotalLength, 2000, nullptr) \

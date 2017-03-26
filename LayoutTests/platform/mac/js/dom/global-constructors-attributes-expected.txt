@@ -338,6 +338,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'EventSource').hasOwnProperty('get'
 PASS Object.getOwnPropertyDescriptor(global, 'EventSource').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'EventSource').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'EventSource').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'EventTarget').value is EventTarget
+PASS Object.getOwnPropertyDescriptor(global, 'EventTarget').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'EventTarget').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'EventTarget').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'EventTarget').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'File').value is File
 PASS Object.getOwnPropertyDescriptor(global, 'File').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'File').hasOwnProperty('set') is false
@@ -443,6 +448,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'HTMLDListElement').hasOwnProperty(
 PASS Object.getOwnPropertyDescriptor(global, 'HTMLDListElement').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'HTMLDListElement').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'HTMLDListElement').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'HTMLDetailsElement').value is HTMLDetailsElement
+PASS Object.getOwnPropertyDescriptor(global, 'HTMLDetailsElement').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'HTMLDetailsElement').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'HTMLDetailsElement').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'HTMLDetailsElement').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'HTMLDirectoryElement').value is HTMLDirectoryElement
 PASS Object.getOwnPropertyDescriptor(global, 'HTMLDirectoryElement').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'HTMLDirectoryElement').hasOwnProperty('set') is false
@@ -1743,6 +1753,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'Selection').hasOwnProperty('get') 
 PASS Object.getOwnPropertyDescriptor(global, 'Selection').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'Selection').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'Selection').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'ShadowRoot').value is ShadowRoot
+PASS Object.getOwnPropertyDescriptor(global, 'ShadowRoot').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ShadowRoot').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ShadowRoot').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'ShadowRoot').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'SpeechSynthesisEvent').value is SpeechSynthesisEvent
 PASS Object.getOwnPropertyDescriptor(global, 'SpeechSynthesisEvent').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SpeechSynthesisEvent').hasOwnProperty('set') is false

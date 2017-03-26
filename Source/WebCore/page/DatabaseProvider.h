@@ -31,6 +31,7 @@
 
 namespace WebCore {
 
+class IDBConnectionManager;
 class IDBFactoryBackendInterface;
 
 class WEBCORE_EXPORT DatabaseProvider : public RefCounted<DatabaseProvider> {
@@ -39,6 +40,8 @@ public:
 
 #if ENABLE(INDEXED_DATABASE)
     IDBFactoryBackendInterface* idbFactoryBackend();
+
+    virtual bool supportsModernIDB() const = 0;
 #endif
 
 private:

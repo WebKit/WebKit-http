@@ -69,8 +69,8 @@ protected:
 
 class JSTestNondeterministicOwner : public JSC::WeakHandleOwner {
 public:
-    virtual bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&);
-    virtual void finalize(JSC::Handle<JSC::Unknown>, void* context);
+    bool isReachableFromOpaqueRoots(JSC::JSCell&, void* context, JSC::SlotVisitor&) override;
+    void finalize(JSC::JSCell*&, void* context) override;
 };
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestNondeterministic*)
@@ -81,6 +81,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestNondeterministic
 
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestNondeterministic*);
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestNondeterministic& impl) { return toJS(exec, globalObject, &impl); }
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, TestNondeterministic*);
 
 
 } // namespace WebCore

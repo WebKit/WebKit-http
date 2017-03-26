@@ -405,9 +405,6 @@ webkit.org/b/85465 compositing/filters [ Skip ]
 # CSS image-resolution is not yet enabled.
 webkit.org/b/85262 fast/css/image-resolution
 
-# Some CSS properties not supported on EFL
-fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
-
 # Perf tests are really slow in debug builds and there are few benefits in running them.
 [ Debug ] perf [ WontFix ]
 
@@ -720,7 +717,6 @@ webkit.org/b/131729 http/tests/globalhistory/history-delegate-basic-302-redirect
 webkit.org/b/131729 http/tests/globalhistory/history-delegate-basic-title.html [ Failure ]
 webkit.org/b/131729 http/tests/globalhistory/history-delegate-pushstate.html [ Failure ]
 webkit.org/b/131729 http/tests/globalhistory/history-delegate-replacestate.html [ Failure ]
-webkit.org/b/131729 http/tests/loading/sizes/preload-image-sizes-2x.html [ Failure ]
 webkit.org/b/131729 http/tests/misc/acid3.html [ Failure Pass ]
 webkit.org/b/131729 http/tests/misc/image-blocked-src-change.html [ Failure Pass ]
 webkit.org/b/131729 http/tests/misc/slow-loading-image-in-pattern.html [ Failure ]
@@ -1040,6 +1036,38 @@ webkit.org/b/146495 http/tests/security/contentSecurityPolicy/directive-parsing-
 webkit.org/b/146495 js/dom/create-lots-of-workers.html [ Crash Timeout Pass Failure ]
 webkit.org/b/146495 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Timeout Pass ]
 
+# box properties tests have been flaky since r188693.
+webkit.org/b/148470 css1/box_properties/border.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_bottom.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_bottom_width.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_left.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_left_width.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_right_inline.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_right_width.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_style.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_top.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_top_width.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/border_width.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/clear.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/clear_float.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/float_elements_in_series.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/float_margin.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/float_on_text_elements.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/height.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/margin.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/margin_bottom.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/margin_inline.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/margin_left.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/margin_right.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/margin_top.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/padding.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/padding_bottom.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/padding_inline.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/padding_left.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/padding_right.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/padding_top.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/148470 css1/box_properties/width.html [ Failure ImageOnlyFailure Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1247,6 +1275,16 @@ imported/w3c/css/css-multicol-1/multicol-table-cell-vertical-align-001.xht [ Pas
 imported/w3c/css/css-multicol-1/multicol-width-ems-001.xht [ Pass ]
 imported/w3c/css/css-multicol-1/multicol-width-small-001.xht [ Pass ]
 imported/w3c/css/css-multicol-1/multicol-zero-height-001.xht [ Pass ]
+imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre-N-between-Rs.html [ Pass ]
+imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-N-between-Rs.html [ Pass ]
+imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-N-between-Rs.html [ Pass ]
+imported/w3c/web-platform-tests/html/dom/elements/global-attributes/style-01.html [ Pass ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-represent-nothing-01.html [ Pass ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-represent-nothing-02.html [ Pass ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html [ Pass ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_initially_paused.html [ Pass ]
+imported/w3c/web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol.html [ Pass ]
+imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-wbr-element/wbr-element.html [ Pass ]
 css3/conditional/w3c/at-supports-010.html [ Pass ]
 css3/conditional/w3c/at-supports-014.html [ Pass ]
 fast/borders/border-painting-dashed.html [ Pass ]
@@ -1461,9 +1499,6 @@ webkit.org/b/85463 editing/inserting/typing-space-to-trigger-smart-link.html
 webkit.org/b/85463 editing/inserting/smart-link-when-caret-is-moved-before-URL.html
 editing/inserting/smart-quote-with-all-configurations.html
 
-# Tests failing due to rounding problems in colors inside pixman
-webkit.org/b/49964 fast/canvas/canvas-fillPath-shadow.html [ Failure ]
-
 # Failing after r119268 on GTK and EFL
 webkit.org/b/88138 http/tests/media/video-buffered.html [ Failure ]
 
@@ -1565,8 +1600,6 @@ Bug(EFL) fast/dynamic/012.html [ Failure ]
 Bug(EFL) fast/dynamic/layer-hit-test-crash.html [ Failure ]
 Bug(EFL) fast/layers/layer-visibility-sublayer.html [ Failure ]
 Bug(EFL) fast/layers/layer-visibility.html [ Failure ]
-Bug(EFL) fast/repaint/invisible-objects.html [ Failure ]
-Bug(EFL) fast/repaint/layer-hide-when-needs-layout.html [ Failure ]
 Bug(EFL) fast/text/whitespace/019.html [ Failure ]
 Bug(EFL) fast/text/whitespace/023.html [ Failure ]
 Bug(EFL) fast/text/whitespace/028.html [ Failure ]
@@ -1688,7 +1721,6 @@ webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html [ Failure ]
 # Border-fit should happen at layout time rather than paint time
 webkit.org/b/111606 fast/borders/border-fit-2.html [ Failure ]
 webkit.org/b/111606 fast/borders/border-fit.html [ Failure ]
-webkit.org/b/111606 fast/repaint/border-fit-lines.html [ Failure ]
 
 # Started failing on EFL afrer r145025.
 webkit.org/b/111860 fast/forms/number/number-validation-message.html [ Failure ]
@@ -2026,7 +2058,6 @@ webkit.org/b/133860 fast/regions/auto-size/autosize-region-window-resize.html [ 
 webkit.org/b/133974 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-svg.html [ ImageOnlyFailure Pass ]
 
 webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-2x.html [ Failure ]
-webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-js-change.html [ Failure ]
 
 webkit.org/b/135504 svg/css/parse-height.html [ Failure ]
 webkit.org/b/135504 svg/css/parse-length.html [ Failure ]
@@ -2066,7 +2097,6 @@ webkit.org/b/136406 compositing/contents-scale/scaled-ancestor.html [ Failure ]
 webkit.org/b/136406 compositing/contents-scale/simple-scale.html [ Failure ]
 webkit.org/b/136406 compositing/contents-scale/z-translate.html [ Failure ]
 webkit.org/b/136406 compositing/fixed-image-loading.html [ Failure ]
-webkit.org/b/136406 compositing/geometry/ancestor-overflow-change.html [ Failure ]
 webkit.org/b/136406 compositing/images/direct-image-object-fit.html [ Failure ]
 webkit.org/b/136406 compositing/layer-creation/fixed-position-change-out-of-view-in-view.html [ Failure ]
 webkit.org/b/136406 compositing/layer-creation/overlap-animation-container.html [ Failure ]
@@ -2179,7 +2209,6 @@ webkit.org/b/131044 media/controls-without-preload.html [ Failure ]
 webkit.org/b/131044 media/media-controls-invalid-url.html [ Failure ]
 webkit.org/b/131044 media/media-controls-timeline-updates.html [ Failure ]
 webkit.org/b/131044 media/media-preload-no-delay-loadevent.html [ Failure ]
-webkit.org/b/131044 media/media-volume-slider-rendered-normal.html [ Failure ]
 webkit.org/b/131044 media/track/track-cue-rendering-snap-to-lines-not-set.html [ Failure ]
 webkit.org/b/131044 media/track/track-long-word-container-sizing.html [ Failure ]
 webkit.org/b/131044 media/track/video/video-track-mkv-theora-language.html [ Failure ]
@@ -2296,9 +2325,6 @@ webkit.org/b/146887 accessibility/table-with-missing-aria-role-rows.html [ Failu
 
 # This test hardcodes the result of a platform-dependent font lookup algorithm.
 fast/text/fallback-language-han.html [ Skip ]
-
-# This test relies on iOS-specific font fallback.
-fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
 
 # This test uses an MPEG-4 video
 media/video-seek-to-current-time.html [ Skip ]
@@ -2548,3 +2574,39 @@ webkit.org/b/148470 svg/text/select-x-list-with-tspans-2.svg [ Failure ]
 webkit.org/b/148470 svg/text/select-x-list-with-tspans-3.svg [ Failure ]
 webkit.org/b/148470 svg/text/select-x-list-with-tspans-4.svg [ Failure ]
 webkit.org/b/148470 svg/text/selection-doubleclick.svg [ Failure ]
+
+# Mocking the system language is not implemented in EFL.
+fast/text/international/system-language [ Failure ]
+fast/text/international/system-language/system-font-punctuation.html [ Missing ]
+# This test relies on iOS-specific font fallback.
+fast/text/international/system-language/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
+
+webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
+
+# Below tests have been timeout since r188693.
+webkit.org/b/148470 editing/spelling/design-mode-spellcheck-off.html [ Timeout ]
+webkit.org/b/148470 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Timeout ]
+webkit.org/b/148470 fast/dom/HTMLAnchorElement/anchor-nodownload.html [ Timeout ]
+webkit.org/b/148470 fast/events/focus-change-crash2.html [ Timeout ]
+webkit.org/b/148470 fast/events/popup-allowed-from-gesture-initiated-form-submit.html [ Timeout ]
+webkit.org/b/148470 fast/events/touch/basic-single-touch-events.html [ Timeout ]
+webkit.org/b/148470 fast/forms/formmethod-attribute-input-2.html [ Timeout ]
+webkit.org/b/148470 fast/forms/range/range-type-change-onchange.html [ Timeout ]
+webkit.org/b/148470 fast/forms/submit-while-you-submit.html [ Timeout ]
+webkit.org/b/148470 fast/forms/type-after-focus-rule-shrink-width.html [ Timeout ]
+webkit.org/b/148470 fast/frames/focus-controller-crash-change-event.html [ Timeout ]
+webkit.org/b/148470 fast/history/gesture-before-onload-form-submit.html [ Timeout ]
+webkit.org/b/148470 fast/history/gesture-before-onload-location-href.html [ Timeout ]
+webkit.org/b/148470 fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Timeout ]
+webkit.org/b/148470 fast/replaced/no-focus-ring-iframe.html [ Timeout ]
+webkit.org/b/148470 fullscreen/video-cursor-auto-hide.html [ Timeout ]
+webkit.org/b/148470 http/tests/navigation/no-referrer-subframe.html [ Timeout ]
+
+webkit.org/b/149201 fast/css/text-overflow-ellipsis-text-align-center.html [ Failure ]
+webkit.org/b/149201 fast/css/text-overflow-ellipsis-text-align-left.html [ Failure ]
+webkit.org/b/149201 fast/css/text-overflow-ellipsis-text-align-right.html [ Failure ]
+
+webkit.org/b/149202 fast/forms/indeterminate-progress-inline-height.html [ Failure ]
+webkit.org/b/149202 fast/forms/input-appearance-spinbutton-up.html [ Failure ]
+webkit.org/b/149202 fast/forms/input-appearance-spinbutton.html [ Failure ]
+webkit.org/b/149202 fast/forms/listbox-scrollbar-hit-test.html [ Failure ]

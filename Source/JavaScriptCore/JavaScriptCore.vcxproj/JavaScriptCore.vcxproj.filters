@@ -162,6 +162,9 @@
     <ClCompile Include="..\bytecode\CallLinkStatus.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
+    <ClCompile Include="..\bytecode\CallMode.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
     <ClCompile Include="..\bytecode\CodeBlock.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
@@ -198,7 +201,10 @@
     <ClCompile Include="..\bytecode\Opcode.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
-    <ClCompile Include="..\bytecode\PolymorphicPutByIdList.cpp">
+    <ClCompile Include="..\bytecode\PolymorphicAccess.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bytecode\PutByIdFlags.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
     <ClCompile Include="..\bytecode\PutByIdStatus.cpp">
@@ -1491,9 +1497,6 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorProtocolObjects.cpp">
       <Filter>Derived Sources</Filter>
     </ClCompile>
-    <ClCompile Include="..\jit\ArityCheckFailReturnThunks.cpp">
-      <Filter>jit</Filter>
-    </ClCompile>
     <ClCompile Include="..\jit\RegisterPreservationWrapperGenerator.cpp">
       <Filter>jit</Filter>
     </ClCompile>
@@ -1626,9 +1629,6 @@
     <ClCompile Include="..\llvm\LLVMAPI.cpp">
       <Filter>llvm</Filter>
     </ClCompile>
-    <ClCompile Include="..\jit\AccessorCallJITStubRoutine.cpp">
-      <Filter>jit</Filter>
-    </ClCompile>
     <ClCompile Include="..\inspector\ConsoleMessage.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -1695,9 +1695,6 @@
     <ClCompile Include="..\inspector\JSJavaScriptCallFramePrototype.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\bytecode\PolymorphicGetByIdList.cpp">
-      <Filter>bytecode</Filter>
-    </ClCompile>
     <ClCompile Include="..\profiler\ProfilerJettisonReason.cpp">
       <Filter>profiler</Filter>
     </ClCompile>
@@ -1744,6 +1741,9 @@
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGMayExit.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGMaximalFlushInsertionPhase.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGPureValue.cpp">
@@ -2037,6 +2037,9 @@
     <ClInclude Include="..\bytecode\CallLinkStatus.h">
       <Filter>bytecode</Filter>
     </ClInclude>
+    <ClInclude Include="..\bytecode\CallMode.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
     <ClInclude Include="..\bytecode\CallReturnOffsetToBytecodeOffset.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -2097,7 +2100,10 @@
     <ClInclude Include="..\bytecode\Operands.h">
       <Filter>bytecode</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\PolymorphicPutByIdList.h">
+    <ClInclude Include="..\bytecode\PolymorphicAccess.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bytecode\PutByIdFlags.h">
       <Filter>bytecode</Filter>
     </ClInclude>
     <ClInclude Include="..\bytecode\PutByIdStatus.h">
@@ -4034,9 +4040,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataViewPrototype.lut.h" />
-    <ClInclude Include="..\jit\ArityCheckFailReturnThunks.h">
-      <Filter>jit</Filter>
-    </ClInclude>
     <ClInclude Include="..\jit\RegisterPreservationWrapperGenerator.h">
       <Filter>jit</Filter>
     </ClInclude>
@@ -4205,9 +4208,6 @@
     <ClInclude Include="..\llvm\LLVMHeaders.h">
       <Filter>llvm</Filter>
     </ClInclude>
-    <ClInclude Include="..\jit\AccessorCallJITStubRoutine.h">
-      <Filter>jit</Filter>
-    </ClInclude>
     <ClInclude Include="..\assembler\AbortReason.h">
       <Filter>assembler</Filter>
     </ClInclude>
@@ -4286,9 +4286,6 @@
     <ClInclude Include="..\runtime\JSCInlines.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\PolymorphicGetByIdList.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
     <ClInclude Include="..\profiler\ProfilerJettisonReason.h">
       <Filter>profiler</Filter>
     </ClInclude>
@@ -4338,6 +4335,9 @@
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGMayExit.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dfg\DFGMaximalFlushInsertionPhase.h">
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGPureValue.h">

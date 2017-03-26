@@ -80,6 +80,7 @@ namespace JSC {
 
 class ExecState;
 class LLIntOffsetsExtractor;
+class RegisterAtOffsetList;
 class TypeLocation;
 class JSModuleEnvironment;
 
@@ -156,7 +157,9 @@ public:
     // https://bugs.webkit.org/show_bug.cgi?id=123677
     CodeBlock* baselineVersion();
 
+    void clearMarks();
     void visitAggregate(SlotVisitor&);
+    void visitStrongly(SlotVisitor&);
 
     void dumpSource();
     void dumpSource(PrintStream&);
@@ -208,7 +211,7 @@ public:
     void getByValInfoMap(ByValInfoMap& result);
     
 #if ENABLE(JIT)
-    StructureStubInfo* addStubInfo();
+    StructureStubInfo* addStubInfo(AccessType);
     Bag<StructureStubInfo>::iterator stubInfoBegin() { return m_stubInfos.begin(); }
     Bag<StructureStubInfo>::iterator stubInfoEnd() { return m_stubInfos.end(); }
     
@@ -350,11 +353,7 @@ public:
     
     CodeType codeType() const
     {
-#if ENABLE(WEBASSEMBLY)
-        if (m_ownerExecutable->isWebAssemblyExecutable())
-            return FunctionCode;
-#endif
-        return m_unlinkedCode->codeType();
+        return m_codeType;
     }
 
     PutPropertySlot::Context putByIdContext() const
@@ -729,6 +728,10 @@ public:
     JS_EXPORT_PRIVATE unsigned reoptimizationRetryCounter() const;
     void countReoptimization();
 #if ENABLE(JIT)
+    static unsigned numberOfLLIntBaselineCalleeSaveRegisters() { return RegisterSet::llintBaselineCalleeSaveRegisters().numberOfSetRegisters(); }
+    static size_t llintBaselineCalleeSaveSpaceAsVirtualRegisters();
+    size_t calleeSaveSpaceAsVirtualRegisters();
+
     unsigned numberOfDFGCompiles();
 
     int32_t codeTypeThresholdMultiplier() const;
@@ -814,7 +817,14 @@ public:
     uint32_t exitCountThresholdForReoptimizationFromLoop();
     bool shouldReoptimizeNow();
     bool shouldReoptimizeFromLoopNow();
+
+    void setCalleeSaveRegisters(RegisterSet);
+    void setCalleeSaveRegisters(std::unique_ptr<RegisterAtOffsetList>);
+    
+    RegisterAtOffsetList* calleeSaveRegisters() const { return m_calleeSaveRegisters.get(); }
 #else // No JIT
+    static unsigned numberOfLLIntBaselineCalleeSaveRegisters() { return 0; }
+    static size_t llintBaselineCalleeSaveSpaceAsVirtualRegisters() { return 0; };
     void optimizeAfterWarmUp() { }
     unsigned numberOfDFGCompiles() { return 0; }
 #endif
@@ -823,6 +833,8 @@ public:
     void updateAllValueProfilePredictions();
     void updateAllArrayPredictions();
     void updateAllPredictions();
+
+    void setInstallTime(std::chrono::steady_clock::time_point installTime) { m_installTime = installTime; }
 
     unsigned frameRegisterCount();
     int stackPointerOffset();
@@ -853,6 +865,7 @@ public:
     
     // FIXME: Make these remaining members private.
 
+    int m_numLocalRegistersForCalleeSaves;
     int m_numCalleeRegisters;
     int m_numVars;
     bool m_isConstructor : 1;
@@ -906,6 +919,8 @@ public:
 protected:
     virtual void visitWeakReferences(SlotVisitor&) override;
     virtual void finalizeUnconditionally() override;
+    void finalizeLLIntInlineCaches();
+    void finalizeBaselineJITInlineCaches();
 
 #if ENABLE(DFG_JIT)
     void tallyFrequentExitSites();
@@ -954,7 +969,7 @@ private:
     enum CacheDumpMode { DumpCaches, DontDumpCaches };
     void printCallOp(PrintStream&, ExecState*, int location, const Instruction*&, const char* op, CacheDumpMode, bool& hasPrintedProfiling, const CallLinkInfoMap&);
     void printPutByIdOp(PrintStream&, ExecState*, int location, const Instruction*&, const char* op);
-    void printPutByIdCacheStatus(PrintStream&, ExecState*, int location, const StubInfoMap&);
+    void printPutByIdCacheStatus(PrintStream&, int location, const StubInfoMap&);
     void printLocationAndOp(PrintStream&, ExecState*, int location, const Instruction*&, const char* op);
     void printLocationOpAndRegisterOperand(PrintStream&, ExecState*, int location, const Instruction*& it, const char* op, int operand);
 
@@ -963,13 +978,22 @@ private:
     void dumpArrayProfiling(PrintStream&, const Instruction*&, bool& hasPrintedProfiling);
     void dumpRareCaseProfile(PrintStream&, const char* name, RareCaseProfile*, bool& hasPrintedProfiling);
         
-    bool shouldImmediatelyAssumeLivenessDuringScan();
+    bool shouldVisitStrongly();
+    bool shouldJettisonDueToWeakReference();
+    bool shouldJettisonDueToOldAge();
     
     void propagateTransitions(SlotVisitor&);
     void determineLiveness(SlotVisitor&);
         
     void stronglyVisitStrongReferences(SlotVisitor&);
     void stronglyVisitWeakReferences(SlotVisitor&);
+    void visitOSRExitTargets(SlotVisitor&);
+
+    std::chrono::milliseconds timeSinceInstall()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - m_installTime);
+    }
 
     void createRareDataIfNecessary()
     {
@@ -1000,19 +1024,19 @@ private:
     bool m_isStrictMode;
     bool m_needsActivation;
 
-    bool m_mayBeExecuting;
-    bool m_isStronglyReferenced;
     Atomic<bool> m_visitAggregateHasBeenCalled;
+    Atomic<bool> m_visitStronglyHasBeenCalled;
 
     RefPtr<SourceProvider> m_source;
     unsigned m_sourceOffset;
     unsigned m_firstLineColumnOffset;
-    unsigned m_codeType;
+    CodeType m_codeType;
 
     Vector<LLIntCallLinkInfo> m_llintCallLinkInfos;
     SentinelLinkedList<LLIntCallLinkInfo, BasicRawSentinelNode<LLIntCallLinkInfo>> m_incomingLLIntCalls;
     RefPtr<JITCode> m_jitCode;
 #if ENABLE(JIT)
+    std::unique_ptr<RegisterAtOffsetList> m_calleeSaveRegisters;
     Bag<StructureStubInfo> m_stubInfos;
     Bag<ByValInfo> m_byValInfos;
     Bag<CallLinkInfo> m_callLinkInfos;
@@ -1052,7 +1076,9 @@ private:
     uint32_t m_osrExitCounter;
     uint16_t m_optimizationDelayCounter;
     uint16_t m_reoptimizationRetryCounter;
-    
+
+    std::chrono::steady_clock::time_point m_installTime;
+
     mutable CodeBlockHash m_hash;
 
     std::unique_ptr<BytecodeLivenessAnalysis> m_livenessAnalysis;
@@ -1206,14 +1232,10 @@ inline Register& ExecState::uncheckedR(VirtualRegister reg)
     return uncheckedR(reg.offset());
 }
 
-inline void CodeBlockSet::clearMarks(CodeBlock* codeBlock)
+inline void CodeBlock::clearMarks()
 {
-    if (!codeBlock)
-        return;
-
-    codeBlock->m_mayBeExecuting = false;
-    codeBlock->m_isStronglyReferenced = false;
-    codeBlock->m_visitAggregateHasBeenCalled.store(false, std::memory_order_relaxed);
+    m_visitStronglyHasBeenCalled.store(false, std::memory_order_relaxed);
+    m_visitAggregateHasBeenCalled.store(false, std::memory_order_relaxed);
 }
 
 inline void CodeBlockSet::mark(void* candidateCodeBlock)
@@ -1239,21 +1261,14 @@ inline void CodeBlockSet::mark(CodeBlock* codeBlock)
     if (!codeBlock)
         return;
     
-    if (codeBlock->m_mayBeExecuting)
-        return;
-    
-    codeBlock->m_mayBeExecuting = true;
-
-    // We might not have cleared the marks for this CodeBlock, but we need to visit it.
-    codeBlock->m_visitAggregateHasBeenCalled.store(false, std::memory_order_relaxed);
-
-    // For simplicity, we don't attempt to jettison code blocks during GC if
-    // they are executing. Instead we strongly mark their weak references to
-    // allow them to continue to execute soundly.
-    codeBlock->m_isStronglyReferenced = true;
+    // Force GC to visit all CodeBlocks on the stack, including old CodeBlocks
+    // that have not executed a barrier. This is overkill, but we have always
+    // done this, and it might help us recover gracefully if we forget to execute
+    // a barrier when a CodeBlock needs it.
+    codeBlock->clearMarks();
 
 #if ENABLE(GGC)
-    m_currentlyExecuting.append(codeBlock);
+    m_currentlyExecuting.add(codeBlock);
 #endif
 }
 
@@ -1265,13 +1280,13 @@ template <typename Functor> inline void ScriptExecutable::forEachCodeBlock(Funct
             codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
         break;
     }
-        
+
     case EvalExecutableType: {
         if (CodeBlock* codeBlock = jsCast<EvalExecutable*>(this)->m_evalCodeBlock.get())
             codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
         break;
     }
-        
+
     case FunctionExecutableType: {
         Functor f(std::forward<Functor>(functor));
         FunctionExecutable* executable = jsCast<FunctionExecutable*>(this);
@@ -1281,6 +1296,13 @@ template <typename Functor> inline void ScriptExecutable::forEachCodeBlock(Funct
             codeBlock->forEachRelatedCodeBlock(f);
         break;
     }
+
+    case ModuleProgramExecutableType: {
+        if (CodeBlock* codeBlock = jsCast<ModuleProgramExecutable*>(this)->m_moduleProgramCodeBlock.get())
+            codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
+        break;
+    }
+
     default:
         RELEASE_ASSERT_NOT_REACHED();
     }

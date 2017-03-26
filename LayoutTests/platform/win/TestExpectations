@@ -618,6 +618,9 @@ animations/trigger-parsing.html [ Skip ]
 animations/trigger-container-scroll-simple.html [ Skip ]
 animations/trigger-container-scroll-boundaries.html [ Skip ]
 
+# TODO aria-current is not supported
+webkit.org/b/149018 accessibility/aria-current.html [ Skip ]
+
 ################################################################################
 ###########    End Missing Functionality Prevents Testing         ##############
 ################################################################################
@@ -726,6 +729,7 @@ http/tests/misc/frame-default-enc-same-domain.html [ Skip ]
 
 # Sensitive to load timing or PHP behavior
 webkit.org/b/44873 http/tests/css/css-image-loading.html [ Skip ]
+webkit.org/b/149007 http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html [ Pass Failure ]
 http/tests/css/link-css-disabled-value-with-slow-loading-sheet-in-error.html [ Pass Failure ] # Flaky
 
 # Assertion failure in replaySavedEvents http://webkit.org/b/21796
@@ -2723,6 +2727,7 @@ fast/events/shadow-event-path.html [ Failure ]
 fast/events/pageshow-pagehide-on-back-uncached.html [ Skip ]
 
 # Newly imported W3C tests that are failing on Windows only.
+imported/w3c/web-platform-tests/html/dom/interfaces.html [ Skip ]
 imported/w3c/web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_css.html [ Skip ]
 imported/w3c/web-platform-tests/dom/nodes/Document-URL.sub.html [ Skip ]
 
@@ -3170,8 +3175,9 @@ fast/inline/padding-ellipsis-right.html [ ImageOnlyFailure ]
 # This test hardcodes the result of a platform-dependent font lookup algorithm.
 fast/text/fallback-language-han.html [ Skip ]
 
-# This test relies on iOS-specific font fallback.
-fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
+# Changing system language is not supported.
+fast/text/international/system-language [ Skip ]
+webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
 fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]

@@ -33,6 +33,9 @@
 #include "DateInstanceCache.h"
 #include "ExecutableAllocator.h"
 #include "FunctionHasExecutedCache.h"
+#if ENABLE(JIT)
+#include "GPRInfo.h"
+#endif
 #include "Heap.h"
 #include "Intrinsic.h"
 #include "JITThunks.h"
@@ -72,7 +75,6 @@
 
 namespace JSC {
 
-class ArityCheckFailReturnThunks;
 class BuiltinExecutables;
 class CodeBlock;
 class CodeCache;
@@ -90,6 +92,7 @@ class LLIntOffsetsExtractor;
 class LegacyProfiler;
 class NativeExecutable;
 class RegExpCache;
+class RegisterAtOffsetList;
 class ScriptExecutable;
 class SourceProvider;
 class SourceProviderCache;
@@ -357,14 +360,26 @@ public:
     SourceProviderCacheMap sourceProviderCacheMap;
     Interpreter* interpreter;
 #if ENABLE(JIT)
+#if NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
+    intptr_t calleeSaveRegistersBuffer[NUMBER_OF_CALLEE_SAVES_REGISTERS];
+
+    static ptrdiff_t calleeSaveRegistersBufferOffset()
+    {
+        return OBJECT_OFFSETOF(VM, calleeSaveRegistersBuffer);
+    }
+#endif // NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
+
     std::unique_ptr<JITThunks> jitStubs;
     MacroAssemblerCodeRef getCTIStub(ThunkGenerator generator)
     {
         return jitStubs->ctiStub(this, generator);
     }
     NativeExecutable* getHostFunction(NativeFunction, Intrinsic);
+    
+    std::unique_ptr<RegisterAtOffsetList> allCalleeSaveRegisterOffsets;
+    
+    RegisterAtOffsetList* getAllCalleeSaveRegisterOffsets() { return allCalleeSaveRegisterOffsets.get(); }
 
-    std::unique_ptr<ArityCheckFailReturnThunks> arityCheckFailReturnThunks;
 #endif // ENABLE(JIT)
     std::unique_ptr<CommonSlowPaths::ArityCheckData> arityCheckData;
 #if ENABLE(FTL_JIT)
@@ -377,9 +392,9 @@ public:
         return OBJECT_OFFSETOF(VM, m_exception);
     }
 
-    static ptrdiff_t callFrameForThrowOffset()
+    static ptrdiff_t callFrameForCatchOffset()
     {
-        return OBJECT_OFFSETOF(VM, callFrameForThrow);
+        return OBJECT_OFFSETOF(VM, callFrameForCatch);
     }
 
     static ptrdiff_t targetMachinePCForThrowOffset()
@@ -441,7 +456,7 @@ public:
     JSValue hostCallReturnValue;
     unsigned varargsLength;
     ExecState* newCallFrameReturnValue;
-    ExecState* callFrameForThrow;
+    ExecState* callFrameForCatch;
     void* targetMachinePCForThrow;
     Instruction* targetInterpreterPCForThrow;
     uint32_t osrExitIndex;

@@ -70,6 +70,8 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebPage"
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/battery"
+    "${WEBCORE_DIR}/Modules/indexeddb"
+    "${WEBCORE_DIR}/Modules/indexeddb/legacy"
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/networkinfo"
     "${WEBCORE_DIR}/Modules/notifications"
@@ -623,6 +625,7 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebDocumentLoader.cpp
     WebProcess/WebPage/WebFrame.cpp
     WebProcess/WebPage/WebInspector.cpp
+    WebProcess/WebPage/WebInspectorFrontendAPIDispatcher.cpp
     WebProcess/WebPage/WebInspectorUI.cpp
     WebProcess/WebPage/WebOpenPanelResultListener.cpp
     WebProcess/WebPage/WebPage.cpp

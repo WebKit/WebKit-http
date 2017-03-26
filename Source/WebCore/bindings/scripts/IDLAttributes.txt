@@ -72,7 +72,6 @@ ImplementationNamespace=*
 ImplementedAs=*
 InitializedByEventConstructor
 InterfaceName=*
-IsIndex
 IsWeakCallback
 JSCustomDefineOwnProperty
 JSCustomDefineOwnPropertyOnPrototype
@@ -89,6 +88,7 @@ JSLegacyParent=*
 MasqueradesAsUndefined
 NamedConstructor=*
 NewImpurePropertyFiresWatchpoints
+NewObject
 NoInterfaceObject
 Nondeterministic
 NotEnumerable
@@ -100,7 +100,6 @@ ObjCLegacyUnnamedParameters
 ObjCPolymorphic
 ObjCProtocol
 ObjCUseDefaultView
-OperationsNotDeletable
 OverrideBuiltins
 PassContext
 RaisesException
@@ -109,7 +108,6 @@ Replaceable
 ReplaceableConstructor
 ReportExtraMemoryCost
 RequiresExistingAtomicString
-ReturnNewObject
 SetterRaisesException
 SkipVTableValidation
 StrictTypeChecking
@@ -120,6 +118,7 @@ TreatReturnedNullStringAs=Null|Undefined
 TreatUndefinedAs=NullString
 TypedArray=*
 URL
+Unforgeable
 WindowEventHandler
 
 # PLATFORM(IOS)
