@@ -29,9 +29,9 @@
 #ifndef IDBCallbacks_h
 #define IDBCallbacks_h
 
-#include "IDBDatabaseError.h"
-#include "IDBKey.h"
-#include "IDBKeyPath.h"
+//#include "IDBDatabaseError.h"
+//#include "IDBKey.h"
+//#include "IDBKeyPath.h"
 #include <wtf/RefCounted.h>
 
 #if ENABLE(INDEXED_DATABASE)

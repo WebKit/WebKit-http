@@ -25,7 +25,7 @@
 
 #include "WebDatabaseProvider.h"
 
-#include <WebCore/Modules/indexeddb/IDBFactoryBackendInterface.h>
+#include <WebCore/Modules/indexeddb/legacy/IDBFactoryBackendInterface.h>
 #include <wtf/NeverDestroyed.h>
 
 WebDatabaseProvider& WebDatabaseProvider::singleton()
