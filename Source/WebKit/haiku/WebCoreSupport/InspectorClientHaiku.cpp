@@ -40,7 +40,7 @@ void InspectorClientHaiku::inspectorDestroyed()
     delete this;
 }
 
-InspectorFrontendChannel* InspectorClientHaiku::openInspectorFrontend(WebCore::InspectorController*)
+Inspector::FrontendChannel* InspectorClientHaiku::openInspectorFrontend(WebCore::InspectorController*)
 {
     notImplemented();
     return NULL;

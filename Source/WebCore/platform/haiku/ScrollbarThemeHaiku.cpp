@@ -42,7 +42,7 @@ static int buttonWidth(int scrollbarWidth, int thickness)
 
 namespace WebCore {
 
-ScrollbarTheme* ScrollbarTheme::nativeTheme()
+ScrollbarTheme& ScrollbarTheme::nativeTheme()
 {
 	// FIXME: If the ScrollView is embedded in the main frame, we don't want to
 	// draw the outer frame, since that is already drawn be the suroundings.
@@ -50,7 +50,7 @@ ScrollbarTheme* ScrollbarTheme::nativeTheme()
 	// the other hand, it looks better with most web sites anyway, since they also
 	// draw an outer frame around a scroll area.
     static ScrollbarThemeHaiku theme(false);
-    return &theme;
+    return theme;
 }
 
 ScrollbarThemeHaiku::ScrollbarThemeHaiku(bool drawOuterFrame)

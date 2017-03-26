@@ -40,7 +40,7 @@ namespace WebCore {
     public:
         virtual void inspectorDestroyed() override;
 
-        virtual InspectorFrontendChannel* openInspectorFrontend(WebCore::InspectorController*) override;
+        virtual Inspector::FrontendChannel* openInspectorFrontend(WebCore::InspectorController*) override;
         virtual void closeInspectorFrontend() override;
         virtual void bringFrontendToFront() override;
 
