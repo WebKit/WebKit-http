@@ -75,4 +75,14 @@ JSRetainPtr<JSStringRef> TestRunner::pathToLocalResource(JSStringRef url)
     return JSStringCreateWithUTF8CString(fullPathToUrl.utf8().data());
 }
 
+JSRetainPtr<JSStringRef> TestRunner::inspectorTestStubURL()
+{
+    StringBuilder builder;
+    builder.append("file://");
+    builder.append(WebCore::inspectorResourcePath());
+    builder.appendLiteral("/TestStub.html");
+
+    return JSStringCreateWithUTF8CString(builder.toString().utf8().data());
+}
+
 }

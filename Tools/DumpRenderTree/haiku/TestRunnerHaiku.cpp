@@ -504,6 +504,12 @@ void TestRunner::evaluateInWebInspector(JSStringRef script)
     notImplemented();
 }
 
+JSStringRef TestRunner::inspectorTestStubURL()
+{
+    notImplemented();
+    return nullptr;
+}
+
 void TestRunner::evaluateScriptInIsolatedWorldAndReturnValue(unsigned, JSObjectRef, JSStringRef)
 {
     notImplemented();

@@ -1,10 +1,24 @@
 list(APPEND WebCore_INCLUDE_DIRECTORIES
+  "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
+  "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
+  "${JAVASCRIPTCORE_DIR}"
+  "${JAVASCRIPTCORE_DIR}/API"
+  "${JAVASCRIPTCORE_DIR}/assembler"
+  "${JAVASCRIPTCORE_DIR}/bytecode"
+  "${JAVASCRIPTCORE_DIR}/dfg"
+  "${JAVASCRIPTCORE_DIR}/disassembler"
+  "${JAVASCRIPTCORE_DIR}/interpreter"
+  "${JAVASCRIPTCORE_DIR}/jit"
+  "${JAVASCRIPTCORE_DIR}/llint"
+  "${JAVASCRIPTCORE_DIR}/profiler"
+  "${JAVASCRIPTCORE_DIR}/runtime"
   "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
   "${WEBCORE_DIR}/platform/haiku"
   "${WEBCORE_DIR}/platform/graphics/haiku"
   "${WEBCORE_DIR}/platform/graphics/opentype"
   "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
   "${WEBCORE_DIR}/platform/network/haiku"
+  "${WTF_DIR}"
 )
 
 list(APPEND WebCore_SOURCES
@@ -150,7 +164,7 @@ list(APPEND WebCore_SOURCES
   platform/network/haiku/CredentialStorageHaiku.cpp
   platform/network/haiku/SocketStreamHandleHaiku.cpp
   platform/network/NetworkStorageSessionStub.cpp
-  
+
   platform/posix/FileSystemPOSIX.cpp
 
   platform/text/haiku/TextBreakIteratorInternalICUHaiku.cpp
@@ -263,7 +277,7 @@ if (WTF_USE_3D_GRAPHICS)
     else ()
         list(APPEND WebCore_SOURCES
             platform/graphics/OpenGLShims.cpp
-            
+
             platform/graphics/opengl/Extensions3DOpenGL.cpp
             platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
         )

@@ -215,26 +215,26 @@ void SocketStreamHandle::AsyncHandleRead(void* object)
 int32 SocketStreamHandle::AsyncReadThread(void* data)
 {
     Packet p;
-	p.handle = (SocketStreamHandle*)data;
-	p.readBuffer = new char[kReadBufferSize];
-    
+    p.handle = (SocketStreamHandle*)data;
+    p.readBuffer = new char[kReadBufferSize];
+
     p.sem = create_sem(0, "AsyncRead");
-	while(liveObjects.find(p.handle) != liveObjects.end()
+    while(liveObjects.find(p.handle) != liveObjects.end()
         && p.handle->socket->IsConnected())
-	{
+    {
         p.length = p.handle->socket->Read(p.readBuffer,kReadBufferSize);
 
-	    if(isMainThread())
-	    {
-		    AsyncHandleRead(&p);
-	    } else {
-	        callOnMainThread(AsyncHandleRead, &p);
+        if(isMainThread())
+        {
+            AsyncHandleRead(&p);
+        } else {
+            callOnMainThread([&]{AsyncHandleRead(&p);});
             acquire_sem(p.sem);
         }
-	}
+    }
     delete_sem(p.sem);
     delete p.readBuffer;
-	return 0;
+    return 0;
 }
 
 

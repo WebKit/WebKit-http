@@ -1,10 +1,12 @@
 LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source"
+    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${WEBKIT_DIR}/Storage"
     "${WEBKIT_DIR}/haiku"
     "${WEBKIT_DIR}/haiku/API"
     "${WEBKIT_DIR}/haiku/WebCoreSupport"
+    "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/accessibility"
@@ -46,6 +48,7 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/svg/animation"
     "${WEBCORE_DIR}/svg/properties"
     "${WEBCORE_DIR}/style"
+    "${WTF_DIR}"
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
     ${SQLITE_INCLUDE_DIR}
