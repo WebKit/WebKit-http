@@ -29,6 +29,7 @@
 #import "PlatformWebView.h"
 #import "PoseAsClass.h"
 #import "TestInvocation.h"
+#import "TestRunnerWKWebView.h"
 #import "WebKitTestRunnerPasteboard.h"
 #import <WebKit/WKContextPrivate.h>
 #import <WebKit/WKPageGroup.h>
@@ -77,11 +78,6 @@ void TestController::initializeTestPluginDirectory()
     m_testPluginDirectory.adopt(WKStringCreateWithCFString((CFStringRef)[[NSBundle mainBundle] bundlePath]));
 }
 
-static bool shouldUseThreadedScrolling(const TestInvocation& test)
-{
-    return test.urlContains("tiled-drawing/");
-}
-
 void TestController::platformResetPreferencesToConsistentValues()
 {
 }
@@ -97,7 +93,7 @@ void TestController::platformResetStateToConsistentValues()
 
 void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions& options, const TestInvocation& test) const
 {
-    options.useThreadedScrolling = shouldUseThreadedScrolling(test);
+    options.useThreadedScrolling = true;
     options.useRemoteLayerTree = shouldUseRemoteLayerTree();
     options.shouldShowWebView = shouldShowWebView();
 }

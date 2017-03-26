@@ -1,3 +1,215 @@
+2015-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Range's setStartBefore() / setStartAfter() / setEndBefore() / setEndAfter() do not match the specification
+        https://bugs.webkit.org/show_bug.cgi?id=149490
+
+        Reviewed by Andreas Kling.
+
+        Rebaseline several W3C DOM tests now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-selectNode-expected.txt:
+        * web-platform-tests/dom/ranges/Range-surroundContents-expected.txt:
+
+2015-09-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Event fired on a detached node does not bubble up
+        https://bugs.webkit.org/show_bug.cgi?id=149488
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined a test now that one more test case passes.
+
+        * web-platform-tests/dom/events/EventTarget-dispatchEvent-expected.txt:
+
+2015-09-22  Chris Dumez  <cdumez@apple.com>
+
+        Range.surroundContents() should check for partially contained non-Text nodes first
+        https://bugs.webkit.org/show_bug.cgi?id=149476
+
+        Reviewed by Darin Adler.
+
+        Rebaseline existing W3C DOM test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-surroundContents-expected.txt:
+
+2015-09-22  Chris Dumez  <cdumez@apple.com>
+
+        Range.intersectsNode() does not behave according to the specification when start / end are equal
+        https://bugs.webkit.org/show_bug.cgi?id=148774
+        <rdar://problem/22571418>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C Range test now that another check is passing.
+
+        * web-platform-tests/dom/ranges/Range-intersectsNode-expected.txt:
+
+2015-09-22  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for legacy EntityReference DOM Node type
+        https://bugs.webkit.org/show_bug.cgi?id=149348
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C DOM test now that more checks are passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+
+2015-09-21  Chris Dumez  <cdumez@apple.com>
+
+        time element should use HTMLTimeElement interface
+        https://bugs.webkit.org/show_bug.cgi?id=148840
+        <rdar://problem/22586690>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C HTML test now that more checks are passing.
+
+        * web-platform-tests/html/semantics/text-level-semantics/the-time-element/001-expected.txt:
+
+2015-09-21  Chris Dumez  <cdumez@apple.com>
+
+        Update HTMLTableRowElement.rowIndex to behave according to the specification
+        https://bugs.webkit.org/show_bug.cgi?id=148842
+        <rdar://problem/22586914>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C HTML test now that one more check is passing.
+
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/rowIndex-expected.txt:
+
+2015-09-21  Chris Dumez  <cdumez@apple.com>
+
+        [JS Bindings] prototype.constructor should be writable
+        https://bugs.webkit.org/show_bug.cgi?id=149412
+        <rdar://problem/22545096>
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline W3C DOM / HTML tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-21  Chris Dumez  <cdumez@apple.com>
+
+        DOMTokenList.add() / remove() should run the update steps even if tokens were not modified
+        https://bugs.webkit.org/show_bug.cgi?id=148780
+        <rdar://problem/22571794>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C DOM test now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/MutationObserver-attributes-expected.txt:
+
+2015-09-21  Chris Dumez  <cdumez@apple.com>
+
+        Range.cloneContents() / extractContents should throw a HierarchyRequestError when encountering a doctype
+        https://bugs.webkit.org/show_bug.cgi?id=148770
+        <rdar://problem/22570898>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C DOM test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-cloneContents-expected.txt:
+
+2015-09-19  Chris Dumez  <cdumez@apple.com>
+
+        Get rid of custom bindings for HTMLLinkElement.sizes setter
+        https://bugs.webkit.org/show_bug.cgi?id=149382
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        Rebaseline test. Our bindings generator does not move attributes that have
+        a custom setter from the instance to the prototype. Now that the 'sizes'
+        attribute no longer has a custom setter, it has moved to the prototype,
+        where it is expected to be.
+
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for Entity Node type
+        https://bugs.webkit.org/show_bug.cgi?id=149239
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C DOM test now that a new check is passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+
+2015-09-17  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] Add support for default parameter values
+        https://bugs.webkit.org/show_bug.cgi?id=149263
+        <rdar://problem/22545600>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more NodeIterator / TreeWalker
+        checks are passing.
+
+        * web-platform-tests/dom/traversal/NodeIterator-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-basic-expected.txt:
+
+2015-09-17  Zalan Bujtas  <zalan@apple.com>
+
+        CSS WG multicol-1 tests failures with 1px differences due to baseline difference.
+        https://bugs.webkit.org/show_bug.cgi?id=149245
+
+        Reviewed by Ryosuke Niwa.
+
+        Turn off font-aliasing for multicol tests where the reference tests' inline content
+        end up on a different baseline (fractional difference). (It's not considered a bug, they don't
+        necessarily match.)
+
+        * css/css-multicol-1/multicol-basic-001-expected.html:
+        * css/css-multicol-1/multicol-basic-001.html:
+        * css/css-multicol-1/multicol-basic-002-expected.html:
+        * css/css-multicol-1/multicol-basic-002.html:
+        * css/css-multicol-1/multicol-basic-003-expected.html:
+        * css/css-multicol-1/multicol-basic-003.html:
+        * css/css-multicol-1/multicol-basic-004-expected.html:
+        * css/css-multicol-1/multicol-basic-004.html:
+        * css/css-multicol-1/multicol-rule-002-expected.xht:
+        * css/css-multicol-1/multicol-rule-002.xht:
+        * css/css-multicol-1/multicol-rule-px-001-expected.xht:
+        * css/css-multicol-1/multicol-rule-px-001.xht:
+        * css/css-multicol-1/multicol-rule-stacking-001-expected.xht:
+        * css/css-multicol-1/multicol-rule-stacking-001.xht:
+        * css/css-multicol-1/multicol-shorthand-001-expected.xht:
+        * css/css-multicol-1/multicol-shorthand-001.xht:
+        * css/css-multicol-1/multicol-span-all-block-sibling-003-expected.xht:
+        * css/css-multicol-1/multicol-span-all-block-sibling-003.xht:
+        * css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001-expected.xht:
+        * css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht:
+
+2015-09-17  Chris Dumez  <cdumez@apple.com>
+
+        Range.deleteContents cannot delete DocType
+        https://bugs.webkit.org/show_bug.cgi?id=148773
+        <rdar://problem/22571280>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C DOM test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-deleteContents-expected.txt:
+
+2015-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Element's attribute NS API should treat defined undefined namespace as null
+        https://bugs.webkit.org/show_bug.cgi?id=149238
+        <rdar://problem/22562204>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C DOM test that one more check is passing.
+
+        * web-platform-tests/dom/nodes/attributes-expected.txt:
+
 2015-09-15  Chris Dumez  <cdumez@apple.com>
 
         Document.createElement(localName) does not handle correctly missing or null parameter

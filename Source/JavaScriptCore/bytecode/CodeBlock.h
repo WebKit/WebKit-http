@@ -43,7 +43,6 @@
 #include "CodeType.h"
 #include "CompactJITCodeMap.h"
 #include "DFGCommon.h"
-#include "DFGCommonData.h"
 #include "DFGExitProfile.h"
 #include "DeferredCompilationCallback.h"
 #include "EvalCodeCache.h"
@@ -126,7 +125,6 @@ public:
     static ptrdiff_t offsetOfNumParameters() { return OBJECT_OFFSETOF(CodeBlock, m_numParameters); }
 
     CodeBlock* alternative() { return m_alternative.get(); }
-    PassRefPtr<CodeBlock> releaseAlternative() { return m_alternative.release(); }
     void setAlternative(PassRefPtr<CodeBlock> alternative) { m_alternative = alternative; }
 
     template <typename Functor> void forEachRelatedCodeBlock(Functor&& functor)
@@ -196,6 +194,7 @@ public:
         AnyHandler
     };
     HandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler = RequiredHandler::AnyHandler);
+    HandlerInfo* handlerForIndex(unsigned, RequiredHandler = RequiredHandler::AnyHandler);
     unsigned lineNumberForBytecodeOffset(unsigned bytecodeOffset);
     unsigned columnNumberForBytecodeOffset(unsigned bytecodeOffset);
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
@@ -265,9 +264,6 @@ public:
 
     unsigned instructionCount() const { return m_instructions.size(); }
 
-    // Exactly equivalent to codeBlock->ownerExecutable()->installCode(codeBlock);
-    void install();
-    
     // Exactly equivalent to codeBlock->ownerExecutable()->newReplacementCodeBlockFor(codeBlock->specializationKind())
     PassRefPtr<CodeBlock> newReplacement();
     
@@ -497,10 +493,7 @@ public:
     bool hasExpressionInfo() { return m_unlinkedCode->hasExpressionInfo(); }
 
 #if ENABLE(DFG_JIT)
-    Vector<CodeOrigin, 0, UnsafeVectorOverflow>& codeOrigins()
-    {
-        return m_jitCode->dfgCommon()->codeOrigins;
-    }
+    Vector<CodeOrigin, 0, UnsafeVectorOverflow>& codeOrigins();
     
     // Having code origins implies that there has been some inlining.
     bool hasCodeOrigins()
@@ -548,22 +541,8 @@ public:
     // Constant Pool
 #if ENABLE(DFG_JIT)
     size_t numberOfIdentifiers() const { return m_unlinkedCode->numberOfIdentifiers() + numberOfDFGIdentifiers(); }
-    size_t numberOfDFGIdentifiers() const
-    {
-        if (!JITCode::isOptimizingJIT(jitType()))
-            return 0;
-
-        return m_jitCode->dfgCommon()->dfgIdentifiers.size();
-    }
-
-    const Identifier& identifier(int index) const
-    {
-        size_t unlinkedIdentifiers = m_unlinkedCode->numberOfIdentifiers();
-        if (static_cast<unsigned>(index) < unlinkedIdentifiers)
-            return m_unlinkedCode->identifier(index);
-        ASSERT(JITCode::isOptimizingJIT(jitType()));
-        return m_jitCode->dfgCommon()->dfgIdentifiers[index - unlinkedIdentifiers];
-    }
+    size_t numberOfDFGIdentifiers() const;
+    const Identifier& identifier(int index) const;
 #else
     size_t numberOfIdentifiers() const { return m_unlinkedCode->numberOfIdentifiers(); }
     const Identifier& identifier(int index) const { return m_unlinkedCode->identifier(index); }
@@ -834,8 +813,6 @@ public:
     void updateAllArrayPredictions();
     void updateAllPredictions();
 
-    void setInstallTime(std::chrono::steady_clock::time_point installTime) { m_installTime = installTime; }
-
     unsigned frameRegisterCount();
     int stackPointerOffset();
 
@@ -916,6 +893,18 @@ public:
         EvalCodeCache m_evalCodeCache;
     };
 
+    void clearExceptionHandlers()
+    {
+        if (m_rareData)
+            m_rareData->m_exceptionHandlers.clear();
+    }
+
+    void appendExceptionHandler(const HandlerInfo& handler)
+    {
+        createRareDataIfNecessary(); // We may be handling the exception of an inlined call frame.
+        m_rareData->m_exceptionHandlers.append(handler);
+    }
+
 protected:
     virtual void visitWeakReferences(SlotVisitor&) override;
     virtual void finalizeUnconditionally() override;
@@ -989,10 +978,10 @@ private:
     void stronglyVisitWeakReferences(SlotVisitor&);
     void visitOSRExitTargets(SlotVisitor&);
 
-    std::chrono::milliseconds timeSinceInstall()
+    std::chrono::milliseconds timeSinceCreation()
     {
         return std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - m_installTime);
+            std::chrono::steady_clock::now() - m_creationTime);
     }
 
     void createRareDataIfNecessary()
@@ -1077,7 +1066,7 @@ private:
     uint16_t m_optimizationDelayCounter;
     uint16_t m_reoptimizationRetryCounter;
 
-    std::chrono::steady_clock::time_point m_installTime;
+    std::chrono::steady_clock::time_point m_creationTime;
 
     mutable CodeBlockHash m_hash;
 
@@ -1267,9 +1256,7 @@ inline void CodeBlockSet::mark(CodeBlock* codeBlock)
     // a barrier when a CodeBlock needs it.
     codeBlock->clearMarks();
 
-#if ENABLE(GGC)
     m_currentlyExecuting.add(codeBlock);
-#endif
 }
 
 template <typename Functor> inline void ScriptExecutable::forEachCodeBlock(Functor&& functor)

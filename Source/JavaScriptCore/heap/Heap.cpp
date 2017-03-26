@@ -335,9 +335,8 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_extraMemorySize(0)
     , m_deprecatedExtraMemorySize(0)
     , m_machineThreads(this)
-    , m_sharedData(vm)
-    , m_slotVisitor(m_sharedData)
-    , m_copyVisitor(m_sharedData)
+    , m_slotVisitor(*this)
+    , m_copyVisitor(*this)
     , m_handleSet(vm)
     , m_isSafeToCollect(false)
     , m_writeBarrierBuffer(256)
@@ -346,13 +345,8 @@ Heap::Heap(VM* vm, HeapType heapType)
     // schedule the timer if we've never done a collection.
     , m_lastFullGCLength(0.01)
     , m_lastEdenGCLength(0.01)
-    , m_lastCodeDiscardTime(WTF::monotonicallyIncreasingTime())
     , m_fullActivityCallback(GCActivityCallback::createFullTimer(this))
-#if ENABLE(GGC)
     , m_edenActivityCallback(GCActivityCallback::createEdenTimer(this))
-#else
-    , m_edenActivityCallback(m_fullActivityCallback)
-#endif
 #if USE(CF)
     , m_sweeper(std::make_unique<IncrementalSweeper>(this, CFRunLoopGetCurrent()))
 #else
@@ -363,6 +357,21 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_delayedReleaseRecursionCount(0)
 #endif
 {
+    {
+        // Grab the lock so the new GC threads can be properly initialized before they start running.
+        std::unique_lock<Lock> lock(m_phaseMutex);
+        for (unsigned i = 1; i < Options::numberOfGCMarkers(); ++i) {
+            m_numberOfActiveGCThreads++;
+            GCThread* newThread = new GCThread(*this, std::make_unique<SlotVisitor>(*this), std::make_unique<CopyVisitor>(*this));
+            ThreadIdentifier threadID = createThread(GCThread::gcThreadStartFunc, newThread, "JavaScriptCore::Marking");
+            newThread->initializeThreadID(threadID);
+            m_gcThreads.append(newThread);
+        }
+        
+        // Wait for all the GCThreads to get to the right place.
+        m_activityConditionVariable.wait(lock, [this] { return !m_numberOfActiveGCThreads; });
+    }
+    
     m_storageSpace.init();
     if (Options::verifyHeap())
         m_verifier = std::make_unique<HeapVerifier>(this, Options::numberOfGCCyclesToRecordForVerification());
@@ -372,6 +381,21 @@ Heap::~Heap()
 {
     for (WeakBlock* block : m_logicallyEmptyWeakBlocks)
         WeakBlock::destroy(block);
+
+    // Destroy our marking threads.
+    {
+        std::lock_guard<Lock> markingLock(m_markingMutex);
+        std::lock_guard<Lock> phaseLock(m_phaseMutex);
+        ASSERT(m_currentPhase == NoPhase);
+        m_parallelMarkersShouldExit = true;
+        m_gcThreadsShouldWait = false;
+        m_currentPhase = Exit;
+        m_phaseConditionVariable.notifyAll();
+    }
+    for (unsigned i = 0; i < m_gcThreads.size(); ++i) {
+        waitForThreadCompletion(m_gcThreads[i]->threadID());
+        delete m_gcThreads[i];
+    }
 }
 
 bool Heap::isPagedOut(double deadline)
@@ -510,6 +534,13 @@ void Heap::didFinishIterating()
     m_objectSpace.didFinishIterating();
 }
 
+void Heap::completeAllDFGPlans()
+{
+#if ENABLE(DFG_JIT)
+    DFG::completeAllPlansForVM(*m_vm);
+#endif
+}
+
 void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, MachineThreads::RegisterState& calleeSavedRegisters)
 {
     SamplingRegion samplingRegion("Garbage Collection: Marking");
@@ -517,12 +548,8 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
     GCPHASE(MarkRoots);
     ASSERT(isValidThreadState(m_vm));
 
-#if ENABLE(GGC)
     Vector<const JSCell*> rememberedSet(m_slotVisitor.markStack().size());
     m_slotVisitor.markStack().fillVector(rememberedSet);
-#else
-    Vector<const JSCell*> rememberedSet;
-#endif
 
 #if ENABLE(DFG_JIT)
     DFG::clearCodeBlockMarks(*m_vm);
@@ -541,7 +568,13 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
 
     clearLivenessData();
 
-    m_sharedData.didStartMarking();
+    if (m_operationInProgress == FullCollection)
+        m_opaqueRoots.clear();
+    {
+        std::lock_guard<Lock> lock(m_markingMutex);
+        m_parallelMarkersShouldExit = false;
+        startNextPhase(Mark);
+    }
     m_slotVisitor.didStartMarking();
     HeapRootVisitor heapRootVisitor(m_slotVisitor);
 
@@ -565,7 +598,13 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
     visitWeakHandles(heapRootVisitor);
 
     clearRememberedSet(rememberedSet);
-    m_sharedData.didFinishMarking();
+    {
+        std::lock_guard<Lock> lock(m_markingMutex);
+        m_parallelMarkersShouldExit = true;
+        m_markingConditionVariable.notifyAll();
+    }
+    ASSERT(m_currentPhase == Mark);
+    endCurrentPhase();
     updateObjectCounts(gcStartTime);
     resetVisitors();
 }
@@ -581,14 +620,37 @@ void Heap::copyBackingStores()
     }
 
     if (m_storageSpace.shouldDoCopyPhase()) {
-        m_sharedData.didStartCopying();
+        {
+            LockHolder locker(m_copyLock);
+            if (m_operationInProgress == EdenCollection) {
+                // Reset the vector to be empty, but don't throw away the backing store.
+                m_blocksToCopy.shrink(0);
+                for (CopiedBlock* block = m_storageSpace.m_newGen.fromSpace->head(); block; block = block->next())
+                    m_blocksToCopy.append(block);
+            } else {
+                ASSERT(m_operationInProgress == FullCollection);
+                WTF::copyToVector(m_storageSpace.m_blockSet, m_blocksToCopy);
+            }
+            m_copyIndex = 0;
+        }
+        
+        // We do this here so that we avoid a race condition where the main thread can 
+        // blow through all of the copying work before the GCThreads fully wake up. 
+        // The GCThreads then request a block from the CopiedSpace when the copying phase 
+        // has completed, which isn't allowed.
+        for (size_t i = 0; i < m_gcThreads.size(); i++)
+            m_gcThreads[i]->copyVisitor()->startCopying();
+        
+        startNextPhase(Copy);
+        
         m_copyVisitor.startCopying();
         m_copyVisitor.copyFromShared();
         m_copyVisitor.doneCopying();
         // We need to wait for everybody to finish and return their CopiedBlocks 
         // before signaling that the phase is complete.
         m_storageSpace.doneCopying();
-        m_sharedData.didFinishCopying();
+        ASSERT(m_currentPhase == Copy);
+        endCurrentPhase();
     } else
         m_storageSpace.doneCopying();
 }
@@ -755,10 +817,8 @@ void Heap::traceCodeBlocksAndJITStubRoutines()
 
 void Heap::converge()
 {
-#if ENABLE(PARALLEL_GC)
     GCPHASE(Convergence);
     m_slotVisitor.drainFromShared(SlotVisitor::MasterDrain);
-#endif
 }
 
 void Heap::visitWeakHandles(HeapRootVisitor& visitor)
@@ -777,22 +837,16 @@ void Heap::visitWeakHandles(HeapRootVisitor& visitor)
         {
             ParallelModeEnabler enabler(m_slotVisitor);
             m_slotVisitor.donateAndDrain();
-#if ENABLE(PARALLEL_GC)
             m_slotVisitor.drainFromShared(SlotVisitor::MasterDrain);
-#endif
         }
     }
 }
 
 void Heap::clearRememberedSet(Vector<const JSCell*>& rememberedSet)
 {
-#if ENABLE(GGC)
     GCPHASE(ClearRememberedSet);
     for (auto* cell : rememberedSet)
         const_cast<JSCell*>(cell)->setRemembered(false);
-#else
-    UNUSED_PARAM(rememberedSet);
-#endif
 }
 
 void Heap::updateObjectCounts(double gcStartTime)
@@ -801,9 +855,7 @@ void Heap::updateObjectCounts(double gcStartTime)
 
     if (Options::logGC() == GCLogging::Verbose) {
         size_t visitCount = m_slotVisitor.visitCount();
-#if ENABLE(PARALLEL_GC)
-        visitCount += m_sharedData.childVisitCount();
-#endif
+        visitCount += threadVisitCount();
         dataLogF("\nNumber of live Objects after GC %lu, took %.6f secs\n", static_cast<unsigned long>(visitCount), WTF::monotonicallyIncreasingTime() - gcStartTime);
     }
     
@@ -818,19 +870,23 @@ void Heap::updateObjectCounts(double gcStartTime)
     
     m_totalBytesVisited += m_slotVisitor.bytesVisited();
     m_totalBytesCopied += m_slotVisitor.bytesCopied();
-#if ENABLE(PARALLEL_GC)
-    m_totalBytesVisited += m_sharedData.childBytesVisited();
-    m_totalBytesCopied += m_sharedData.childBytesCopied();
-#endif
+    m_totalBytesVisited += threadBytesVisited();
+    m_totalBytesCopied += threadBytesCopied();
 }
 
 void Heap::resetVisitors()
 {
     m_slotVisitor.reset();
-#if ENABLE(PARALLEL_GC)
-    m_sharedData.resetChildren();
-#endif
-    m_sharedData.reset();
+
+    for (GCThread* thread : m_gcThreads)
+        thread->slotVisitor()->reset();
+
+    ASSERT(m_sharedMarkStack.isEmpty());
+    m_weakReferenceHarvesters.removeAll();
+    if (m_shouldHashCons) {
+        m_vm->resetNewStringsSinceLastHashCons();
+        m_shouldHashCons = false;
+    }
 }
 
 size_t Heap::objectCount()
@@ -892,26 +948,11 @@ std::unique_ptr<TypeCountSet> Heap::objectTypeCounts()
 
 void Heap::deleteAllCodeBlocks()
 {
-    // If JavaScript is running, it's not safe to delete JavaScript code, since
+    // If JavaScript is running, it's not safe to delete all JavaScript code, since
     // we'll end up returning to deleted code.
-    if (m_vm->entryScope)
-        return;
-    
-    // If we have things on any worklist, then don't delete code. This is kind of
-    // a weird heuristic. It's definitely not safe to throw away code that is on
-    // the worklist. But this change was made in a hurry so we just avoid throwing
-    // away any code if there is any code on any worklist. I suspect that this
-    // might not actually be too dumb: if there is code on worklists then that
-    // means that we are running some hot JS code right now. Maybe causing
-    // recompilations isn't a good idea.
-#if ENABLE(DFG_JIT)
-    for (unsigned i = DFG::numberOfWorklists(); i--;) {
-        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i)) {
-            if (worklist->isActiveForVM(*vm()))
-                return;
-        }
-    }
-#endif // ENABLE(DFG_JIT)
+    RELEASE_ASSERT(!m_vm->entryScope);
+
+    completeAllDFGPlans();
 
     for (ExecutableBase* current : m_executables) {
         if (!current->isFunctionExecutable())
@@ -983,8 +1024,6 @@ void Heap::collectAndSweep(HeapOperation collectionType)
     sweepAllLogicallyEmptyWeakBlocks();
 }
 
-static double minute = 60.0;
-
 NEVER_INLINE void Heap::collect(HeapOperation collectionType)
 {
     void* stackTop;
@@ -1035,7 +1074,6 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
         m_verifier->gatherLiveObjects(HeapVerifier::Phase::BeforeMarking);
     }
 
-    deleteOldCode(gcStartTime);
     flushOldStructureIDTables();
     stopAllocation();
     flushWriteBarrierBuffer();
@@ -1123,19 +1161,6 @@ void Heap::willStartCollection(HeapOperation collectionType)
 
     if (m_edenActivityCallback)
         m_edenActivityCallback->willCollect();
-}
-
-void Heap::deleteOldCode(double gcStartTime)
-{
-    if (m_operationInProgress == EdenCollection)
-        return;
-
-    GCPHASE(DeleteOldCode);
-    if (gcStartTime - m_lastCodeDiscardTime > minute) {
-        m_vm->regExpCache()->deleteAllCode();
-        deleteAllCodeBlocks();
-        m_lastCodeDiscardTime = WTF::monotonicallyIncreasingTime();
-    }
 }
 
 void Heap::flushOldStructureIDTables()
@@ -1383,14 +1408,15 @@ bool Heap::isValidAllocation(size_t)
 
 void Heap::addFinalizer(JSCell* cell, Finalizer finalizer)
 {
-    WeakSet::allocate(*cell, &m_finalizerOwner, reinterpret_cast<void*>(finalizer)); // Balanced by FinalizerOwner::finalize().
+    WeakSet::allocate(cell, &m_finalizerOwner, reinterpret_cast<void*>(finalizer)); // Balanced by FinalizerOwner::finalize().
 }
 
-void Heap::FinalizerOwner::finalize(JSCell*& cell, void* context)
+void Heap::FinalizerOwner::finalize(Handle<Unknown> handle, void* context)
 {
+    HandleSlot slot = handle.slot();
     Finalizer finalizer = reinterpret_cast<Finalizer>(context);
-    finalizer(cell);
-    WeakSet::deallocate(WeakImpl::asWeakImpl(&cell));
+    finalizer(slot->asCell());
+    WeakSet::deallocate(WeakImpl::asWeakImpl(slot));
 }
 
 void Heap::addExecutable(ExecutableBase* executable)
@@ -1450,17 +1476,12 @@ void Heap::zombifyDeadObjects()
 
 void Heap::flushWriteBarrierBuffer(JSCell* cell)
 {
-#if ENABLE(GGC)
     m_writeBarrierBuffer.flush(*this);
     m_writeBarrierBuffer.add(cell);
-#else
-    UNUSED_PARAM(cell);
-#endif
 }
 
 bool Heap::shouldDoFullCollection(HeapOperation requestedCollectionType) const
 {
-#if ENABLE(GGC)
     if (Options::alwaysDoFullCollection())
         return true;
 
@@ -1477,10 +1498,6 @@ bool Heap::shouldDoFullCollection(HeapOperation requestedCollectionType) const
     }
     RELEASE_ASSERT_NOT_REACHED();
     return false;
-#else
-    UNUSED_PARAM(requestedCollectionType);
-    return true;
-#endif
 }
 
 void Heap::addLogicallyEmptyWeakBlock(WeakBlock* block)
@@ -1518,6 +1535,50 @@ bool Heap::sweepNextLogicallyEmptyWeakBlock()
     }
 
     return true;
+}
+
+size_t Heap::threadVisitCount()
+{       
+    unsigned long result = 0;
+    for (unsigned i = 0; i < m_gcThreads.size(); ++i)
+        result += m_gcThreads[i]->slotVisitor()->visitCount();
+    return result;
+}
+
+size_t Heap::threadBytesVisited()
+{       
+    size_t result = 0;
+    for (unsigned i = 0; i < m_gcThreads.size(); ++i)
+        result += m_gcThreads[i]->slotVisitor()->bytesVisited();
+    return result;
+}
+
+size_t Heap::threadBytesCopied()
+{       
+    size_t result = 0;
+    for (unsigned i = 0; i < m_gcThreads.size(); ++i)
+        result += m_gcThreads[i]->slotVisitor()->bytesCopied();
+    return result;
+}
+
+void Heap::startNextPhase(GCPhase phase)
+{
+    std::lock_guard<Lock> lock(m_phaseMutex);
+    ASSERT(!m_gcThreadsShouldWait);
+    ASSERT(m_currentPhase == NoPhase);
+    m_gcThreadsShouldWait = true;
+    m_currentPhase = phase;
+    m_phaseConditionVariable.notifyAll();
+}
+
+void Heap::endCurrentPhase()
+{
+    ASSERT(m_gcThreadsShouldWait);
+    std::unique_lock<Lock> lock(m_phaseMutex);
+    m_currentPhase = NoPhase;
+    m_gcThreadsShouldWait = false;
+    m_phaseConditionVariable.notifyAll();
+    m_activityConditionVariable.wait(lock, [this] { return !m_numberOfActiveGCThreads; });
 }
 
 } // namespace JSC

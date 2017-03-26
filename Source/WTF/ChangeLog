@@ -1,3 +1,100 @@
+2015-09-22  Andy Estes  <aestes@apple.com>
+
+        Disable QuickLook on tvOS
+        https://bugs.webkit.org/show_bug.cgi?id=149492
+        <rdar://problem/22741586>
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h: Stopped enabling QuickLook on tvOS.
+
+2015-09-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Get rid of ENABLE(PARALLEL_GC)
+        https://bugs.webkit.org/show_bug.cgi?id=149436
+
+        Reviewed by Mark Lam.
+
+        We always enable parallel GC everywhere but Windows, and it doesn't look like it was disabled
+        there for any good reason. So, get rid of the flag.
+
+        * wtf/MainThread.cpp:
+        (WTF::canAccessThreadLocalDataForThread):
+        (WTF::initializeGCThreads):
+        (WTF::registerGCThread):
+        (WTF::isMainThreadOrGCThread):
+        * wtf/Platform.h:
+
+2015-09-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Get rid of ENABLE(GGC)
+        https://bugs.webkit.org/show_bug.cgi?id=149472
+
+        Reviewed by Mark Hahnenberg and Mark Lam.
+
+        * wtf/Platform.h:
+
+2015-09-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Always use the compiler's CAS implementation and get rid of ENABLE(COMPARE_AND_SWAP)
+        https://bugs.webkit.org/show_bug.cgi?id=149438
+
+        Reviewed by Mark Lam.
+
+        * wtf/Atomics.h: Make weakCompareAndSwap() just forward to the system CAS via WTF::Atomic.
+        (WTF::weakCompareAndSwap):
+        (WTF::weakCompareAndSwapUIntPtr): Deleted.
+        (WTF::weakCompareAndSwapSize): Deleted.
+        * wtf/Bitmap.h: Small changes to use the new API.
+        (WTF::WordType>::concurrentTestAndSet):
+        * wtf/Platform.h: Remove ENABLE(COMPARE_AND_SWAP)
+
+2015-09-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove old GCC cruft from wtf/StdLibExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=149401
+
+        Reviewed by Alex Christensen.
+
+        * wtf/StdLibExtras.h:
+
+2015-09-21  Andy Estes  <aestes@apple.com>
+
+        Disable Parental Controls on the Apple TV platform
+        https://bugs.webkit.org/show_bug.cgi?id=149421
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h:
+
+2015-09-21  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should infer property types
+        https://bugs.webkit.org/show_bug.cgi?id=148610
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/HashTable.h:
+        (WTF::HashTableAddResult::HashTableAddResult): Make it possible to say "HashMap::AddResult result" without assigning anything to it yet.
+        * wtf/PrintStream.h:
+        (WTF::printInternal): Beef up printing of some common WTF types, in particular RefPtr<UniquedStringImpl>.
+
+2015-09-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove XHR_TIMEOUT compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=149260
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/FeatureDefines.h:
+
+2015-09-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, revert unintended change.
+
+        * benchmarks/LockSpeedTest.cpp:
+        (main):
+
 2015-09-15  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add ShadowRoot interface and Element.prototype.attachShadow

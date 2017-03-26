@@ -1617,6 +1617,7 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_osrExitCounter(0)
     , m_optimizationDelayCounter(0)
     , m_reoptimizationRetryCounter(0)
+    , m_creationTime(std::chrono::steady_clock::now())
     , m_hash(other.m_hash)
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
@@ -1672,6 +1673,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     , m_osrExitCounter(0)
     , m_optimizationDelayCounter(0)
     , m_reoptimizationRetryCounter(0)
+    , m_creationTime(std::chrono::steady_clock::now())
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
 #endif
@@ -2150,6 +2152,7 @@ CodeBlock::CodeBlock(WebAssemblyExecutable* ownerExecutable, VM& vm, JSGlobalObj
     , m_osrExitCounter(0)
     , m_optimizationDelayCounter(0)
     , m_reoptimizationRetryCounter(0)
+    , m_creationTime(std::chrono::steady_clock::now())
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CannotCompile)
 #endif
@@ -2272,6 +2275,9 @@ void CodeBlock::visitAggregate(SlotVisitor& visitor)
         return;
     }
     
+    if (!JITCode::isOptimizingJIT(jitType()))
+        return;
+
     // There are two things that we use weak reference harvesters for: DFG fixpoint for
     // jettisoning, and trying to find structures that would be live based on some
     // inline cache. So it makes sense to register them regardless.
@@ -2291,27 +2297,24 @@ void CodeBlock::visitAggregate(SlotVisitor& visitor)
     
     propagateTransitions(visitor);
     determineLiveness(visitor);
-#else // ENABLE(DFG_JIT)
-    RELEASE_ASSERT_NOT_REACHED();
 #endif // ENABLE(DFG_JIT)
 }
 
 bool CodeBlock::shouldVisitStrongly()
 {
-#if ENABLE(DFG_JIT)
+    if (Options::forceCodeBlockLiveness())
+        return true;
+
+    if (shouldJettisonDueToOldAge())
+        return false;
+
     // Interpreter and Baseline JIT CodeBlocks don't need to be jettisoned when
     // their weak references go stale. So if a basline JIT CodeBlock gets
     // scanned, we can assume that this means that it's live.
     if (!JITCode::isOptimizingJIT(jitType()))
         return true;
 
-    if (Options::forceDFGCodeBlockLiveness())
-        return true;
-
     return false;
-#else
-    return true;
-#endif
 }
 
 bool CodeBlock::isKnownToBeLiveDuringGC()
@@ -2339,6 +2342,8 @@ bool CodeBlock::isKnownToBeLiveDuringGC()
 
 bool CodeBlock::shouldJettisonDueToWeakReference()
 {
+    if (!JITCode::isOptimizingJIT(jitType()))
+        return false;
     return !isKnownToBeLiveDuringGC();
 }
 
@@ -2347,10 +2352,7 @@ bool CodeBlock::shouldJettisonDueToOldAge()
     if (m_visitStronglyHasBeenCalled.load(std::memory_order_relaxed))
         return false;
 
-    if (!JITCode::isOptimizingJIT(jitType()))
-        return false;
-
-    if (timeSinceInstall() < JITCode::timeToLive(jitType()))
+    if (timeSinceCreation() < JITCode::timeToLive(jitType()))
         return false;
 
     return true;
@@ -2739,17 +2741,20 @@ CallLinkInfo* CodeBlock::getCallLinkInfoForBytecodeIndex(unsigned index)
 
 void CodeBlock::visitOSRExitTargets(SlotVisitor& visitor)
 {
-    // OSR exits, once compiled, link themselves directly to their targets.
-    // We need to keep those targets alive in order to keep OSR exit from
-    // jumping to an invalid destination.
+    // We strongly visit OSR exits targets because we don't want to deal with
+    // the complexity of generating an exit target CodeBlock on demand and
+    // guaranteeing that it matches the details of the CodeBlock we compiled
+    // the OSR exit against.
 
     alternative()->visitStrongly(visitor);
 
 #if ENABLE(DFG_JIT)
     DFG::CommonData* dfgCommon = m_jitCode->dfgCommon();
     if (dfgCommon->inlineCallFrames) {
-        for (auto* inlineCallFrame : *dfgCommon->inlineCallFrames)
+        for (auto* inlineCallFrame : *dfgCommon->inlineCallFrames) {
+            ASSERT(inlineCallFrame->baselineCodeBlock());
             inlineCallFrame->baselineCodeBlock()->visitStrongly(visitor);
+        }
     }
 #endif
 }
@@ -2852,7 +2857,11 @@ bool CodeBlock::hasOptimizedReplacement()
 HandlerInfo* CodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler requiredHandler)
 {
     RELEASE_ASSERT(bytecodeOffset < instructions().size());
+    return handlerForIndex(bytecodeOffset, requiredHandler);
+}
 
+HandlerInfo* CodeBlock::handlerForIndex(unsigned index, RequiredHandler requiredHandler)
+{
     if (!m_rareData)
         return 0;
     
@@ -2864,7 +2873,8 @@ HandlerInfo* CodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset, Requir
 
         // Handlers are ordered innermost first, so the first handler we encounter
         // that contains the source address is the correct handler to use.
-        if (handler.start <= bytecodeOffset && handler.end > bytecodeOffset)
+        // This index used is either the BytecodeOffset or a CallSiteIndex.
+        if (handler.start <= index && handler.end > index)
             return &handler;
     }
 
@@ -2967,11 +2977,6 @@ void CodeBlock::linkIncomingCall(ExecState* callerFrame, LLIntCallLinkInfo* inco
     m_incomingLLIntCalls.push(incoming);
 }
 
-void CodeBlock::install()
-{
-    ownerScriptExecutable()->installCode(this);
-}
-
 PassRefPtr<CodeBlock> CodeBlock::newReplacement()
 {
     return ownerScriptExecutable()->newReplacementCodeBlockFor(specializationKind());
@@ -3035,6 +3040,11 @@ DFG::CapabilityLevel WebAssemblyCodeBlock::capabilityLevelInternal()
 
 void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mode, const FireDetail* detail)
 {
+#if !ENABLE(DFG_JIT)
+    UNUSED_PARAM(mode);
+    UNUSED_PARAM(detail);
+#endif
+
     RELEASE_ASSERT(reason != Profiler::NotJettisoned);
     
 #if ENABLE(DFG_JIT)
@@ -3069,19 +3079,20 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
             }
         }
     }
+#endif // ENABLE(DFG_JIT)
 
     DeferGCForAWhile deferGC(*m_heap);
-    RELEASE_ASSERT(JITCode::isOptimizingJIT(jitType()));
-    
-    if (Profiler::Compilation* compilation = jitCode()->dfgCommon()->compilation.get())
-        compilation->setJettisonReason(reason, detail);
     
     // We want to accomplish two things here:
     // 1) Make sure that if this CodeBlock is on the stack right now, then if we return to it
     //    we should OSR exit at the top of the next bytecode instruction after the return.
     // 2) Make sure that if we call the owner executable, then we shouldn't call this CodeBlock.
 
+#if ENABLE(DFG_JIT)
     if (reason != Profiler::JettisonDueToOldAge) {
+        if (Profiler::Compilation* compilation = jitCode()->dfgCommon()->compilation.get())
+            compilation->setJettisonReason(reason, detail);
+        
         // This accomplishes (1), and does its own book-keeping about whether it has already happened.
         if (!jitCode()->dfgCommon()->invalidate()) {
             // We've already been invalidated.
@@ -3102,24 +3113,26 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
             dataLog("    Did count reoptimization for ", *this, "\n");
     }
     
-    // This accomplishes (2).
     if (this != replacement()) {
         // This means that we were never the entrypoint. This can happen for OSR entry code
         // blocks.
         return;
     }
-    alternative()->optimizeAfterWarmUp();
+
+    if (alternative())
+        alternative()->optimizeAfterWarmUp();
 
     if (reason != Profiler::JettisonDueToOldAge)
         tallyFrequentExitSites();
+#endif // ENABLE(DFG_JIT)
 
-    alternative()->install();
+    // This accomplishes (2).
+    ownerScriptExecutable()->installCode(
+        m_globalObject->vm(), alternative(), codeType(), specializationKind());
+
+#if ENABLE(DFG_JIT)
     if (DFG::shouldShowDisassembly())
         dataLog("    Did install baseline version of ", *this, "\n");
-#else // ENABLE(DFG_JIT)
-    UNUSED_PARAM(mode);
-    UNUSED_PARAM(detail);
-    UNREACHABLE_FOR_PLATFORM();
 #endif // ENABLE(DFG_JIT)
 }
 
@@ -3588,6 +3601,30 @@ ArrayProfile* CodeBlock::getOrAddArrayProfile(unsigned bytecodeOffset)
         return result;
     return addArrayProfile(bytecodeOffset);
 }
+
+#if ENABLE(DFG_JIT)
+Vector<CodeOrigin, 0, UnsafeVectorOverflow>& CodeBlock::codeOrigins()
+{
+    return m_jitCode->dfgCommon()->codeOrigins;
+}
+
+size_t CodeBlock::numberOfDFGIdentifiers() const
+{
+    if (!JITCode::isOptimizingJIT(jitType()))
+        return 0;
+    
+    return m_jitCode->dfgCommon()->dfgIdentifiers.size();
+}
+
+const Identifier& CodeBlock::identifier(int index) const
+{
+    size_t unlinkedIdentifiers = m_unlinkedCode->numberOfIdentifiers();
+    if (static_cast<unsigned>(index) < unlinkedIdentifiers)
+        return m_unlinkedCode->identifier(index);
+    ASSERT(JITCode::isOptimizingJIT(jitType()));
+    return m_jitCode->dfgCommon()->dfgIdentifiers[index - unlinkedIdentifiers];
+}
+#endif // ENABLE(DFG_JIT)
 
 void CodeBlock::updateAllPredictionsAndCountLiveness(unsigned& numberOfLiveNonArgumentValueProfiles, unsigned& numberOfSamplesInProfiles)
 {

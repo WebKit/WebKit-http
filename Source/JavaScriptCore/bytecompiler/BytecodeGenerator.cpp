@@ -1251,6 +1251,8 @@ RegisterID* BytecodeGenerator::addConstantValue(JSValue v, SourceCodeRepresentat
 
     int index = m_nextConstantOffset;
 
+    if (sourceCodeRepresentation == SourceCodeRepresentation::Double && v.isInt32())
+        v = jsDoubleNumber(v.asNumber());
     EncodedJSValueWithRepresentation valueMapKey { JSValue::encode(v), sourceCodeRepresentation };
     JSValueMap::AddResult result = m_jsValueMap.add(valueMapKey, m_nextConstantOffset);
     if (result.isNewEntry) {
@@ -2112,7 +2114,7 @@ RegisterID* BytecodeGenerator::emitPutById(RegisterID* base, const Identifier& p
     instructions().append(0); // offset
     instructions().append(0); // new structure
     instructions().append(0); // structure chain
-    instructions().append(PutByIdNone); // is not direct
+    instructions().append(static_cast<int>(PutByIdNone)); // is not direct
 
     return value;
 }
@@ -2134,7 +2136,7 @@ RegisterID* BytecodeGenerator::emitDirectPutById(RegisterID* base, const Identif
     instructions().append(0); // offset
     instructions().append(0); // new structure
     instructions().append(0); // structure chain (unused if direct)
-    instructions().append((putType == PropertyNode::KnownDirect || property != m_vm->propertyNames->underscoreProto) ? PutByIdIsDirect : PutByIdNone);
+    instructions().append(static_cast<int>((putType == PropertyNode::KnownDirect || property != m_vm->propertyNames->underscoreProto) ? PutByIdIsDirect : PutByIdNone));
     return value;
 }
 
@@ -2501,6 +2503,7 @@ RegisterID* BytecodeGenerator::emitNewArrowFunctionExpression(RegisterID* dst, A
 RegisterID* BytecodeGenerator::emitNewDefaultConstructor(RegisterID* dst, ConstructorKind constructorKind, const Identifier& name)
 {
     UnlinkedFunctionExecutable* executable = m_vm->builtinExecutables()->createDefaultConstructor(constructorKind, name);
+    executable->setInvalidTypeProfilingOffsets();
 
     unsigned index = m_codeBlock->addFunctionExpr(executable);
 

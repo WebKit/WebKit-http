@@ -2817,3 +2817,27 @@ http/tests/security/mixedContent/websocket/insecure-websocket-in-main-frame.html
 webkit.org/b/126898 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
+
+webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-rule-002.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-rule-px-001.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-rule-stacking-001.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-shorthand-001.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-span-all-block-sibling-003.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht [ ImageOnlyFailure ]
+
+# Flaky tests ( these tests were affected by https://bugs.webkit.org/show_bug.cgi?id=149320 )
+
+css3/line-break-language-sensitive/line-break-loose-centered.html [ ImageOnlyFailure Pass ]
+css3/line-break-language-sensitive/line-break-loose-postfixes.html [ ImageOnlyFailure Pass ]
+css3/line-break-language-sensitive/line-break-loose-sound-marks.html [ ImageOnlyFailure Pass ]
+css3/line-break-language-sensitive/line-break-normal-sound-marks.html [ ImageOnlyFailure Pass ]
+
+# Enable "aria-current" test for iOS
+webkit.org/b/149297 accessibility/aria-current.html [ Pass ]
+
+# More flaky tests (Sept 18, 2015)
+
+fast/forms/select-element-focus-ring.html [ Failure Pass ]
+animations/keyframe-multiple-timing-functions-transform.html [ Failure Pass ]
+streams/reference-implementation/readable-stream-cancel.html [ Failure Pass ]
+compositing/visible-rect/coverage-scrolling.html [ Failure Pass ]

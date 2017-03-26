@@ -261,6 +261,13 @@ fast/css/draggable-region-parser.html
 # Font feature settings is not implemented.
 css3/font-feature-settings-rendering.html
 
+webkit.org/b/149246 [ Mavericks ] css3/font-feature-settings-rendering-2.html
+
+# This feature is disabled on Mavericks.
+[ Mavericks ] http/tests/navigation/page-cache-pending-image-load.html [ Skip ]
+[ Mavericks ] http/tests/navigation/page-cache-pending-image-load-cache-partition.html [ Skip ]
+[ Mavericks ] http/tests/navigation/page-cache-xhr.html [ Skip ]
+
 webkit.org/b/68278 http/tests/history/back-with-fragment-change.php [ Failure ]
 
 # Skip because this platform does not support a paging mouse wheel event
@@ -1190,6 +1197,9 @@ webkit.org/b/142142 fullscreen/video-controls-override.html [ Skip ]
 webkit.org/b/142142 http/tests/media/hls/video-controls-live-stream.html [ Skip ]
 webkit.org/b/142142 media/video-volume-slider-drag.html [ Skip ]
 
+# Fails when an actual AppleTV is nearby.
+webkit.org/b/148912 media/controls/airplay-picker.html [ Pass Failure ]
+
 # Mavericks and prior do not support APNG.
 webkit.org/b/17022 [ MountainLion Mavericks ] fast/images/animated-png.html [ Skip ]
 
@@ -1293,3 +1303,9 @@ webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validat
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-with-rules.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-host-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/shadow-layout-after-slot-changes.html [ ImageOnlyFailure ]

@@ -1,3 +1,76 @@
+2015-09-22  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Add a file of pointer-lock to cmake ports
+        https://bugs.webkit.org/show_bug.cgi?id=149453
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsEfl.cmake: Add a ENABLE_POINTER_LOCK.
+
+2015-09-22  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Allow to enable OpenMP support.
+        https://bugs.webkit.org/show_bug.cgi?id=149457
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsCommon.cmake: Add the option USE_OPENMP that
+        will enable the support for OpenMP. Currently this is only used as
+        an alternative implementation to native threads for the parallelization
+        of the SVG filters. But name the option with a generic name (USE_OPENMP)
+        as it could be also used to enable future features that depend on OpenMP.
+
+2015-09-22  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Build break when DEVELOPER_MODE is OFF
+        https://bugs.webkit.org/show_bug.cgi?id=149448
+
+        Reviewed by Gyuyoung Kim.
+
+        Since r187191, DatabaseProcessMainUnix is missing in symbol filter.
+
+        * Source/cmake/eflsymbols.filter:
+
+2015-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        Disable PICTURE_SIZES in Windows CMake build like r189745.
+        https://bugs.webkit.org/show_bug.cgi?id=149125
+
+        * Source/cmake/OptionsWin.cmake:
+        Do the same thing as r189745.
+
+2015-09-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Removing XHR_TIMEOUT guard
+
+        Remove XHR_TIMEOUT compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=149260
+
+        Reviewed by Benjamin Poulain.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-09-18  Alex Christensen  <achristensen@webkit.org>
+
+        Fix tests on Windows after switching to CMake.
+        https://bugs.webkit.org/show_bug.cgi?id=149339
+
+        Reviewed by Brent Fulgham.
+
+        * Source/PlatformWin.cmake: Added to copy WebInspectorUI.
+
+2015-09-17  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows EWS build after r189934.
+
+        * Source/cmake/OptionsWin.cmake:
+        Use WEBKIT_LIBRARIES environment variable if it exists.
+        We have the WebKitLibraries directory separate from the repository copy on the EWS bots.
+
 2015-09-15  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add ShadowRoot interface and Element.prototype.attachShadow

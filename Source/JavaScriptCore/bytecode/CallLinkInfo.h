@@ -40,6 +40,8 @@ namespace JSC {
 
 #if ENABLE(JIT)
 
+struct CallFrameShuffleData;
+
 class CallLinkInfo : public BasicRawSentinelNode<CallLinkInfo> {
 public:
     enum CallType { None, Call, CallVarargs, Construct, ConstructVarargs, TailCall, TailCallVarargs };
@@ -72,25 +74,9 @@ public:
         }
     }
 
-    CallLinkInfo()
-        : m_registerPreservationMode(static_cast<unsigned>(RegisterPreservationNotRequired))
-        , m_hasSeenShouldRepatch(false)
-        , m_hasSeenClosure(false)
-        , m_clearedByGC(false)
-        , m_allowStubs(true)
-        , m_callType(None)
-        , m_maxNumArguments(0)
-        , m_slowPathCount(0)
-    {
-    }
+    CallLinkInfo();
         
-    ~CallLinkInfo()
-    {
-        clearStub();
-
-        if (isOnList())
-            remove();
-    }
+    ~CallLinkInfo();
     
     static CodeSpecializationKind specializationKindFor(CallType callType)
     {
@@ -135,11 +121,6 @@ public:
         return isVarargsCallType(static_cast<CallType>(m_callType));
     }
 
-    RegisterPreservationMode registerPreservationMode() const
-    {
-        return static_cast<RegisterPreservationMode>(m_registerPreservationMode);
-    }
-
     bool isLinked() { return m_stub || m_callee; }
     void unlink(VM&);
 
@@ -169,7 +150,6 @@ public:
         CodeLocationNearCall callReturnLocation, CodeLocationDataLabelPtr hotPathBegin,
         CodeLocationNearCall hotPathOther, unsigned calleeGPR)
     {
-        m_registerPreservationMode = static_cast<unsigned>(RegisterPreservationNotRequired);
         m_callType = callType;
         m_codeOrigin = codeOrigin;
         m_callReturnLocation = callReturnLocation;
@@ -338,6 +318,13 @@ public:
 
     void visitWeak(VM&);
 
+    void setFrameShuffleData(const CallFrameShuffleData&);
+
+    const CallFrameShuffleData* frameShuffleData()
+    {
+        return m_frameShuffleData.get();
+    }
+
 private:
     CodeLocationNearCall m_callReturnLocation;
     CodeLocationDataLabelPtr m_hotPathBegin;
@@ -346,7 +333,7 @@ private:
     WriteBarrier<JSFunction> m_lastSeenCallee;
     RefPtr<PolymorphicCallStubRoutine> m_stub;
     RefPtr<JITStubRoutine> m_slowStub;
-    unsigned m_registerPreservationMode : 1; // Real type is RegisterPreservationMode
+    std::unique_ptr<CallFrameShuffleData> m_frameShuffleData;
     bool m_hasSeenShouldRepatch : 1;
     bool m_hasSeenClosure : 1;
     bool m_clearedByGC : 1;

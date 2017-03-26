@@ -304,6 +304,7 @@ _handleUncaughtException:
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
     restoreCalleeSavesFromVMCalleeSavesBuffer(t3, t0)
     loadp VM::callFrameForCatch[t3], cfr
+    storep 0, VM::callFrameForCatch[t3]
 
     loadp CallerFrame[cfr], cfr
 
@@ -493,60 +494,54 @@ macro storeStructureWithTypeInfo(cell, structure, scratch)
 end
 
 macro writeBarrierOnOperand(cellOperand)
-    if GGC
-        loadisFromInstruction(cellOperand, t1)
-        loadConstantOrVariablePayload(t1, CellTag, t2, .writeBarrierDone)
-        skipIfIsRememberedOrInEden(t2, t1, t3, 
-            macro(gcData)
-                btbnz gcData, .writeBarrierDone
-                push cfr, PC
-                # We make two extra slots because cCall2 will poke.
-                subp 8, sp
-                move t2, a1 # t2 can be a0 on x86
-                move cfr, a0
-                cCall2Void(_llint_write_barrier_slow)
-                addp 8, sp
-                pop PC, cfr
-            end
-        )
-    .writeBarrierDone:
-    end
+    loadisFromInstruction(cellOperand, t1)
+    loadConstantOrVariablePayload(t1, CellTag, t2, .writeBarrierDone)
+    skipIfIsRememberedOrInEden(t2, t1, t3, 
+        macro(gcData)
+            btbnz gcData, .writeBarrierDone
+            push cfr, PC
+            # We make two extra slots because cCall2 will poke.
+            subp 8, sp
+            move t2, a1 # t2 can be a0 on x86
+            move cfr, a0
+            cCall2Void(_llint_write_barrier_slow)
+            addp 8, sp
+            pop PC, cfr
+        end
+    )
+.writeBarrierDone:
 end
 
 macro writeBarrierOnOperands(cellOperand, valueOperand)
-    if GGC
-        loadisFromInstruction(valueOperand, t1)
-        loadConstantOrVariableTag(t1, t0)
-        bineq t0, CellTag, .writeBarrierDone
-    
-        writeBarrierOnOperand(cellOperand)
-    .writeBarrierDone:
-    end
+    loadisFromInstruction(valueOperand, t1)
+    loadConstantOrVariableTag(t1, t0)
+    bineq t0, CellTag, .writeBarrierDone
+
+    writeBarrierOnOperand(cellOperand)
+.writeBarrierDone:
 end
 
 macro writeBarrierOnGlobal(valueOperand, loadHelper)
-    if GGC
-        loadisFromInstruction(valueOperand, t1)
-        loadConstantOrVariableTag(t1, t0)
-        bineq t0, CellTag, .writeBarrierDone
+    loadisFromInstruction(valueOperand, t1)
+    loadConstantOrVariableTag(t1, t0)
+    bineq t0, CellTag, .writeBarrierDone
 
-        loadHelper(t3)
-    
-        skipIfIsRememberedOrInEden(t3, t1, t2,
-            macro(gcData)
-                btbnz gcData, .writeBarrierDone
-                push cfr, PC
-                # We make two extra slots because cCall2 will poke.
-                subp 8, sp
-                move cfr, a0
-                move t3, a1
-                cCall2Void(_llint_write_barrier_slow)
-                addp 8, sp
-                pop PC, cfr
-            end
-        )
-    .writeBarrierDone:
-    end
+    loadHelper(t3)
+
+    skipIfIsRememberedOrInEden(t3, t1, t2,
+        macro(gcData)
+            btbnz gcData, .writeBarrierDone
+            push cfr, PC
+            # We make two extra slots because cCall2 will poke.
+            subp 8, sp
+            move cfr, a0
+            move t3, a1
+            cCall2Void(_llint_write_barrier_slow)
+            addp 8, sp
+            pop PC, cfr
+        end
+    )
+.writeBarrierDone:
 end
 
 macro writeBarrierOnGlobalObject(valueOperand)
@@ -1390,17 +1385,91 @@ _llint_op_put_by_id:
     # At this point, we have:
     # t2 -> currentStructureID
     # t0 -> object base
+    # We will lose currentStructureID in the shenanigans below.
 
+    loadi 12[PC], t1
+    loadConstantOrVariable(t1, t2, t3)
+    loadi 32[PC], t1
+
+    # At this point, we have:
+    # t0 -> object base
+    # t1 -> put by id flags
+    # t2 -> value tag
+    # t3 -> value payload
+
+    btinz t1, PutByIdPrimaryTypeMask, .opPutByIdTypeCheckObjectWithStructureOrOther
+
+    # We have one of the non-structure type checks. Find out which one.
+    andi PutByIdSecondaryTypeMask, t1
+    bilt t1, PutByIdSecondaryTypeString, .opPutByIdTypeCheckLessThanString
+
+    # We are one of the following: String, Object, ObjectOrOther, Top
+    bilt t1, PutByIdSecondaryTypeObjectOrOther, .opPutByIdTypeCheckLessThanObjectOrOther
+
+    # We are either ObjectOrOther or Top.
+    bieq t1, PutByIdSecondaryTypeTop, .opPutByIdDoneCheckingTypes
+
+    # Check if we are ObjectOrOther.
+    bieq t2, CellTag, .opPutByIdTypeCheckObject
+.opPutByIdTypeCheckOther:
+    bieq t2, NullTag, .opPutByIdDoneCheckingTypes
+    bieq t2, UndefinedTag, .opPutByIdDoneCheckingTypes
+    jmp .opPutByIdSlow
+
+.opPutByIdTypeCheckLessThanObjectOrOther:
+    # We are either String or Object.
+    bineq t2, CellTag, .opPutByIdSlow
+    bieq t1, PutByIdSecondaryTypeObject, .opPutByIdTypeCheckObject
+    bbeq JSCell::m_type[t3], StringType, .opPutByIdDoneCheckingTypes
+    jmp .opPutByIdSlow
+.opPutByIdTypeCheckObject:
+    bbaeq JSCell::m_type[t3], ObjectType, .opPutByIdDoneCheckingTypes
+    jmp .opPutByIdSlow
+
+.opPutByIdTypeCheckLessThanString:
+    # We are one of the following: Bottom, Boolean, Other, Int32, Number.
+    bilt t1, PutByIdSecondaryTypeInt32, .opPutByIdTypeCheckLessThanInt32
+
+    # We are either Int32 or Number.
+    bieq t1, PutByIdSecondaryTypeNumber, .opPutByIdTypeCheckNumber
+
+    bieq t2, Int32Tag, .opPutByIdDoneCheckingTypes
+    jmp .opPutByIdSlow
+
+.opPutByIdTypeCheckNumber:
+    bib t2, LowestTag + 1, .opPutByIdDoneCheckingTypes
+    jmp .opPutByIdSlow
+
+.opPutByIdTypeCheckLessThanInt32:
+    # We are one of the following: Bottom, Boolean, Other
+    bineq t1, PutByIdSecondaryTypeBoolean, .opPutByIdTypeCheckBottomOrOther
+    bieq t2, BooleanTag, .opPutByIdDoneCheckingTypes
+    jmp .opPutByIdSlow
+
+.opPutByIdTypeCheckBottomOrOther:
+    bieq t1, PutByIdSecondaryTypeOther, .opPutByIdTypeCheckOther
+    jmp .opPutByIdSlow
+
+.opPutByIdTypeCheckObjectWithStructureOrOther:
+    bieq t2, CellTag, .opPutByIdTypeCheckObjectWithStructure
+    btinz t1, PutByIdPrimaryTypeObjectWithStructureOrOther, .opPutByIdTypeCheckOther
+    jmp .opPutByIdSlow
+
+.opPutByIdTypeCheckObjectWithStructure:
+    andi PutByIdSecondaryTypeMask, t1
+    bineq t1, JSCell::m_structureID[t3], .opPutByIdSlow
+
+.opPutByIdDoneCheckingTypes:
     loadi 24[PC], t1
 
     btiz t1, .opPutByIdNotTransition
 
-    # This is the transition case. t1 holds the new Structure*. t2 holds the old Structure*.
-    # If we have a chain, we need to check it. t0 is the base. We may clobber t1 to use it as
-    # scratch.
+    # This is the transition case. t1 holds the new Structure*. If we have a chain, we need to
+    # check it. t0 is the base. We may clobber t1 to use it as scratch.
     loadp 28[PC], t3
     btpz t3, .opPutByIdTransitionDirect
 
+    loadi 16[PC], t2 # Need old structure again.
     loadp StructureChain::m_vector[t3], t3
     assert(macro (ok) btpnz t3, ok end)
 
@@ -1837,9 +1906,20 @@ _llint_op_catch:
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
     restoreCalleeSavesFromVMCalleeSavesBuffer(t3, t0)
     loadp VM::callFrameForCatch[t3], cfr
+    storep 0, VM::callFrameForCatch[t3]
     restoreStackPointerAfterCall()
 
     loadi VM::targetInterpreterPCForThrow[t3], PC
+
+    callSlowPath(_llint_slow_path_check_if_exception_is_uncatchable_and_notify_profiler)
+    bpeq r1, 0, .isCatchableException
+    jmp _llint_throw_from_slow_path_trampoline
+
+.isCatchableException:
+    loadp Callee + PayloadOffset[cfr], t3
+    andp MarkedBlockMask, t3
+    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+
     loadi VM::m_exception[t3], t0
     storei 0, VM::m_exception[t3]
     loadi 4[PC], t2

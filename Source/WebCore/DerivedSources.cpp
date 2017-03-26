@@ -149,8 +149,6 @@
 #include "JSDOMWindow.cpp"
 #include "JSDOMWindowCSS.cpp"
 #include "JSElement.cpp"
-#include "JSEntity.cpp"
-#include "JSEntityReference.cpp"
 #include "JSErrorEvent.cpp"
 #include "JSEvent.cpp"
 #include "JSEventException.cpp"
@@ -232,6 +230,7 @@
 #include "JSHTMLQuoteElement.cpp"
 #include "JSHTMLScriptElement.cpp"
 #include "JSHTMLSelectElement.cpp"
+#include "JSHTMLSlotElement.cpp"
 #include "JSHTMLSourceElement.cpp"
 #include "JSHTMLSpanElement.cpp"
 #include "JSHTMLStyleElement.cpp"
@@ -245,6 +244,7 @@
 #include "JSHTMLTemplateElement.cpp"
 #endif
 #include "JSHTMLTextAreaElement.cpp"
+#include "JSHTMLTimeElement.cpp"
 #include "JSHTMLTitleElement.cpp"
 #include "JSHTMLUnknownElement.cpp"
 #include "JSHTMLUListElement.cpp"
@@ -309,6 +309,7 @@
 #include "JSReadableStream.cpp"
 #include "JSReadableStreamController.cpp"
 #include "JSReadableStreamReader.cpp"
+#include "ReadableStreamBuiltins.cpp"
 #endif
 #include "JSRect.cpp"
 #include "JSRequestAnimationFrameCallback.cpp"

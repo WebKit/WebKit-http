@@ -14,6 +14,7 @@ function asmModule(global, imports, buffer) {
     var imul = global.Math.imul;
     var sum = imports.sum;
     var max = imports.max;
+    var g = 0;
 
     function fibonacci(x) {
         x = x | 0;
@@ -36,6 +37,48 @@ function asmModule(global, imports, buffer) {
         return (imul(x, y) / (gcd(x, y) | 0)) | 0;
     }
 
+    function setG(x) {
+        x = x | 0;
+        g = x;
+    }
+
+    function testCallStatement(x) {
+        x = x | 0;
+        setG(x);
+        return g | 0;
+    }
+
+    function addSubMulDiv(i, x, y) {
+        i = i | 0;
+        x = x | 0;
+        y = y | 0;
+        return addSubMulDivTable[i & 3](x, y) | 0;
+    }
+
+    function add(x, y) {
+        x = x | 0;
+        y = y | 0;
+        return (x + y) | 0;
+    }
+
+    function sub(x, y) {
+        x = x | 0;
+        y = y | 0;
+        return (x - y) | 0;
+    }
+
+    function mul(x, y) {
+        x = x | 0;
+        y = y | 0;
+        return imul(x, y);
+    }
+
+    function div(x, y) {
+        x = x | 0;
+        y = y | 0;
+        return ((x | 0) / (y | 0)) | 0;
+    }
+
     function callSum(x, y) {
         x = x | 0;
         y = y | 0;
@@ -48,10 +91,16 @@ function asmModule(global, imports, buffer) {
         return max(x | 0, y | 0) | 0;
     }
 
+    var addSubMulDivTable = [add, sub, mul, div];
+
     return {
         fibonacci: fibonacci,
         gcd: gcd,
         lcm: lcm,
+        testCallStatement: testCallStatement,
+
+        addSubMulDiv: addSubMulDiv,
+
         callSum: callSum,
         callMax: callMax,
     };
@@ -67,6 +116,15 @@ var module = loadWebAssembly("wasm/calls.wasm", imports);
 shouldBe(module.fibonacci(10), 89);
 shouldBe(module.gcd(15, 25), 5);
 shouldBe(module.lcm(15, 25), 75);
+shouldBe(module.testCallStatement(42), 42);
+
+shouldBe(module.addSubMulDiv(0, 6, 2), 8);
+shouldBe(module.addSubMulDiv(1, 6, 2), 4);
+shouldBe(module.addSubMulDiv(2, 6, 2), 12);
+shouldBe(module.addSubMulDiv(3, 6, 2), 3);
+shouldBe(module.addSubMulDiv(4, 6, 2), 8);
+shouldBe(module.addSubMulDiv(10, 6, 2), 12);
+shouldBe(module.addSubMulDiv(-1, 6, 2), 3);
 
 shouldBe(module.callSum(1, 2), 3);
 shouldBe(module.callMax(1, 2), 2);

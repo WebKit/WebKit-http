@@ -32,6 +32,7 @@
 #include "CCallHelpers.h"
 #include "JIT.h"
 #include "JITOperations.h"
+#include "JSArrayBuffer.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
 
@@ -71,11 +72,43 @@ static uint32_t JIT_OPERATION operationUnsignedMod(uint32_t left, uint32_t right
 }
 #endif
 
+#if !USE(JSVALUE64)
+static double JIT_OPERATION operationConvertUnsignedInt32ToDouble(uint32_t value)
+{
+    return static_cast<double>(value);
+}
+#endif
+
+static size_t sizeOfMemoryType(WASMMemoryType memoryType)
+{
+    switch (memoryType) {
+    case WASMMemoryType::I8:
+        return 1;
+    case WASMMemoryType::I16:
+        return 2;
+    case WASMMemoryType::I32:
+    case WASMMemoryType::F32:
+        return 4;
+    case WASMMemoryType::F64:
+        return 8;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+}
+
 class WASMFunctionCompiler : private CCallHelpers {
 public:
     typedef int Expression;
     typedef int Statement;
     typedef int ExpressionList;
+    struct MemoryAddress {
+        MemoryAddress(void*) { }
+        MemoryAddress(int, uint32_t offset)
+            : offset(offset)
+        {
+        }
+        uint32_t offset;
+    };
     struct JumpTarget {
         Label label;
         JumpList jumpList;
@@ -91,37 +124,47 @@ public:
 
     void startFunction(const Vector<WASMType>& arguments, uint32_t numberOfI32LocalVariables, uint32_t numberOfF32LocalVariables, uint32_t numberOfF64LocalVariables)
     {
+        m_calleeSaveSpace = WTF::roundUpToMultipleOf(sizeof(StackSlot), RegisterSet::webAssemblyCalleeSaveRegisters().numberOfSetRegisters() * sizeof(void*));
+        m_codeBlock->setCalleeSaveRegisters(RegisterSet::webAssemblyCalleeSaveRegisters());
+
         emitFunctionPrologue();
         emitPutImmediateToCallFrameHeader(m_codeBlock, JSStack::CodeBlock);
 
         m_beginLabel = label();
 
-        addPtr(TrustedImm32(-WTF::roundUpToMultipleOf(stackAlignmentRegisters(), m_stackHeight) * sizeof(StackSlot) - maxFrameExtentForSlowPathCall), GPRInfo::callFrameRegister, GPRInfo::regT1);
+        addPtr(TrustedImm32(-m_calleeSaveSpace - WTF::roundUpToMultipleOf(stackAlignmentRegisters(), m_stackHeight) * sizeof(StackSlot) - maxFrameExtentForSlowPathCall), GPRInfo::callFrameRegister, GPRInfo::regT1);
         m_stackOverflow = branchPtr(Above, AbsoluteAddress(m_vm->addressOfStackLimit()), GPRInfo::regT1);
 
         move(GPRInfo::regT1, stackPointerRegister);
         checkStackPointerAlignment();
 
+        emitSaveCalleeSaves();
+        emitMaterializeTagCheckRegisters();
+
         m_numberOfLocals = arguments.size() + numberOfI32LocalVariables + numberOfF32LocalVariables + numberOfF64LocalVariables;
 
         unsigned localIndex = 0;
         for (size_t i = 0; i < arguments.size(); ++i) {
+            // FIXME: No need to do type conversion if the caller is a WebAssembly function.
+            // https://bugs.webkit.org/show_bug.cgi?id=149310
             Address address(GPRInfo::callFrameRegister, CallFrame::argumentOffset(i) * sizeof(Register));
+#if USE(JSVALUE64)
+            JSValueRegs valueRegs(GPRInfo::regT0);
+#else
+            JSValueRegs valueRegs(GPRInfo::regT1, GPRInfo::regT0);
+#endif
+            loadValue(address, valueRegs);
             switch (arguments[i]) {
             case WASMType::I32:
-#if USE(JSVALUE64)
-                loadValueAndConvertToInt32(address, GPRInfo::regT0);
-#else
-                loadValueAndConvertToInt32(address, GPRInfo::regT0, GPRInfo::regT1);
-#endif
+                convertValueToInt32(valueRegs, GPRInfo::regT0);
                 store32(GPRInfo::regT0, localAddress(localIndex++));
                 break;
             case WASMType::F32:
             case WASMType::F64:
 #if USE(JSVALUE64)
-                loadValueAndConvertToDouble(address, FPRInfo::fpRegT0, GPRInfo::regT0, GPRInfo::regT1);
+                convertValueToDouble(valueRegs, FPRInfo::fpRegT0, GPRInfo::regT1);
 #else
-                loadValueAndConvertToDouble(address, FPRInfo::fpRegT0, GPRInfo::regT0, GPRInfo::regT1, GPRInfo::regT2, FPRInfo::fpRegT1);
+                convertValueToDouble(valueRegs, FPRInfo::fpRegT0, GPRInfo::regT2, FPRInfo::fpRegT1);
 #endif
                 if (arguments[i] == WASMType::F32)
                     convertDoubleToFloat(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
@@ -135,8 +178,15 @@ public:
             store32(TrustedImm32(0), localAddress(localIndex++));
         for (uint32_t i = 0; i < numberOfF32LocalVariables; ++i)
             store32(TrustedImm32(0), localAddress(localIndex++));
-        for (uint32_t i = 0; i < numberOfF64LocalVariables; ++i)
+        for (uint32_t i = 0; i < numberOfF64LocalVariables; ++i) {
+#if USE(JSVALUE64)
             store64(TrustedImm64(0), localAddress(localIndex++));
+#else
+            store32(TrustedImm32(0), localAddress(localIndex));
+            store32(TrustedImm32(0), localAddress(localIndex).withOffset(4));
+            localIndex++;
+#endif
+        }
 
         m_codeBlock->setNumParameters(1 + arguments.size());
     }
@@ -146,7 +196,13 @@ public:
         ASSERT(!m_tempStackTop);
 
         // FIXME: Remove these if the last statement is a return statement.
-        move(TrustedImm64(JSValue::encode(jsUndefined())), GPRInfo::returnValueGPR);
+#if USE(JSVALUE64)
+        JSValueRegs returnValueRegs(GPRInfo::returnValueGPR);
+#else
+        JSValueRegs returnValueRegs(GPRInfo::returnValueGPR2, GPRInfo::returnValueGPR);
+#endif
+        moveTrustedValue(jsUndefined(), returnValueRegs);
+        emitRestoreCalleeSaves();
         emitFunctionEpilogue();
         ret();
 
@@ -169,8 +225,17 @@ public:
             appendCallWithExceptionCheck(operationThrowDivideError);
         }
 
+        if (!m_outOfBoundsErrorJumpList.empty()) {
+            m_outOfBoundsErrorJumpList.link(this);
+
+            setupArgumentsExecState();
+            appendCallWithExceptionCheck(operationThrowOutOfBoundsAccessError);
+        }
+
         if (!m_exceptionChecks.empty()) {
             m_exceptionChecks.link(this);
+
+            copyCalleeSavesToVMCalleeSavesBuffer();
 
             // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
             move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
@@ -204,26 +269,27 @@ public:
         m_codeBlock->capabilityLevel();
     }
 
-    void buildSetLocal(uint32_t localIndex, int, WASMType type)
+    int buildSetLocal(WASMOpKind opKind, uint32_t localIndex, int, WASMType type)
     {
         switch (type) {
         case WASMType::I32:
         case WASMType::F32:
             load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::regT0);
-            m_tempStackTop--;
             store32(GPRInfo::regT0, localAddress(localIndex));
             break;
         case WASMType::F64:
             loadDouble(temporaryAddress(m_tempStackTop - 1), FPRInfo::fpRegT0);
-            m_tempStackTop--;
             storeDouble(FPRInfo::fpRegT0, localAddress(localIndex));
             break;
         default:
             ASSERT_NOT_REACHED();
         }
+        if (opKind == WASMOpKind::Statement)
+            m_tempStackTop--;
+        return UNUSED;
     }
 
-    void buildSetGlobal(uint32_t globalIndex, int, WASMType type)
+    int buildSetGlobal(WASMOpKind opKind, uint32_t globalIndex, int, WASMType type)
     {
         move(TrustedImmPtr(&m_module->globalVariables()[globalIndex]), GPRInfo::regT0);
         switch (type) {
@@ -239,11 +305,18 @@ public:
         default:
             ASSERT_NOT_REACHED();
         }
-        m_tempStackTop--;
+        if (opKind == WASMOpKind::Statement)
+            m_tempStackTop--;
+        return UNUSED;
     }
 
     void buildReturn(int, WASMExpressionType returnType)
     {
+#if USE(JSVALUE64)
+        JSValueRegs returnValueRegs(GPRInfo::returnValueGPR);
+#else
+        JSValueRegs returnValueRegs(GPRInfo::returnValueGPR2, GPRInfo::returnValueGPR);
+#endif
         switch (returnType) {
         case WASMExpressionType::I32:
             load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::returnValueGPR);
@@ -259,19 +332,16 @@ public:
             loadDouble(temporaryAddress(m_tempStackTop - 1), FPRInfo::fpRegT0);
             if (returnType == WASMExpressionType::F32)
                 convertFloatToDouble(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
-#if USE(JSVALUE64)
-            boxDouble(FPRInfo::fpRegT0, GPRInfo::returnValueGPR);
-#else
-            boxDouble(FPRInfo::fpRegT0, GPRInfo::returnValueGPR2, GPRInfo::returnValueGPR);
-#endif
+            convertDoubleToValue(FPRInfo::fpRegT0, returnValueRegs);
             m_tempStackTop--;
             break;
         case WASMExpressionType::Void:
-            move(TrustedImm64(JSValue::encode(jsUndefined())), GPRInfo::returnValueGPR);
+            moveTrustedValue(jsUndefined(), returnValueRegs);
             break;
         default:
             ASSERT_NOT_REACHED();
         }
+        emitRestoreCalleeSaves();
         emitFunctionEpilogue();
         ret();
     }
@@ -341,6 +411,192 @@ public:
         return UNUSED;
     }
 
+    int buildConvertType(int, WASMExpressionType fromType, WASMExpressionType toType, WASMTypeConversion conversion)
+    {
+        switch (fromType) {
+        case WASMExpressionType::I32:
+            load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::regT0);
+            ASSERT(toType == WASMExpressionType::F32 || toType == WASMExpressionType::F64);
+            if (conversion == WASMTypeConversion::ConvertSigned)
+                convertInt32ToDouble(GPRInfo::regT0, FPRInfo::fpRegT0);
+            else {
+                ASSERT(conversion == WASMTypeConversion::ConvertUnsigned);
+#if USE(JSVALUE64)
+                convertInt64ToDouble(GPRInfo::regT0, FPRInfo::fpRegT0);
+#else
+                callOperation(operationConvertUnsignedInt32ToDouble, GPRInfo::regT0, FPRInfo::fpRegT0);
+#endif
+            }
+            if (toType == WASMExpressionType::F32)
+                convertDoubleToFloat(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
+            storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop - 1));
+            break;
+        case WASMExpressionType::F32:
+            loadDouble(temporaryAddress(m_tempStackTop - 1), FPRInfo::fpRegT0);
+            switch (toType) {
+            case WASMExpressionType::I32:
+                ASSERT(conversion == WASMTypeConversion::ConvertSigned);
+                convertFloatToDouble(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
+                truncateDoubleToInt32(FPRInfo::fpRegT0, GPRInfo::regT0);
+                store32(GPRInfo::regT0, temporaryAddress(m_tempStackTop - 1));
+                break;
+            case WASMExpressionType::F64:
+                ASSERT(conversion == WASMTypeConversion::Promote);
+                convertFloatToDouble(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
+                storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop - 1));
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+            }
+            break;
+        case WASMExpressionType::F64:
+            loadDouble(temporaryAddress(m_tempStackTop - 1), FPRInfo::fpRegT0);
+            switch (toType) {
+            case WASMExpressionType::I32:
+                ASSERT(conversion == WASMTypeConversion::ConvertSigned);
+                truncateDoubleToInt32(FPRInfo::fpRegT0, GPRInfo::regT0);
+                store32(GPRInfo::regT0, temporaryAddress(m_tempStackTop - 1));
+                break;
+            case WASMExpressionType::F32:
+                ASSERT(conversion == WASMTypeConversion::Demote);
+                convertDoubleToFloat(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
+                storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop - 1));
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+            }
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+        return UNUSED;
+    }
+
+    int buildLoad(const MemoryAddress& memoryAddress, WASMExpressionType expressionType, WASMMemoryType memoryType, MemoryAccessConversion conversion)
+    {
+        const ArrayBuffer* arrayBuffer = m_module->arrayBuffer()->impl();
+        move(TrustedImmPtr(arrayBuffer->data()), GPRInfo::regT0);
+        load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::regT1);
+        if (memoryAddress.offset)
+            add32(TrustedImm32(memoryAddress.offset), GPRInfo::regT1, GPRInfo::regT1);
+        and32(TrustedImm32(~(sizeOfMemoryType(memoryType) - 1)), GPRInfo::regT1);
+
+        ASSERT(arrayBuffer->byteLength() < (unsigned)(1 << 31));
+        if (arrayBuffer->byteLength() >= sizeOfMemoryType(memoryType))
+            m_outOfBoundsErrorJumpList.append(branch32(Above, GPRInfo::regT1, TrustedImm32(arrayBuffer->byteLength() - sizeOfMemoryType(memoryType))));
+        else
+            m_outOfBoundsErrorJumpList.append(jump());
+
+        BaseIndex address = BaseIndex(GPRInfo::regT0, GPRInfo::regT1, TimesOne);
+
+        switch (expressionType) {
+        case WASMExpressionType::I32:
+            switch (memoryType) {
+            case WASMMemoryType::I8:
+                if (conversion == MemoryAccessConversion::SignExtend)
+                    load8SignedExtendTo32(address, GPRInfo::regT0);
+                else {
+                    ASSERT(conversion == MemoryAccessConversion::ZeroExtend);
+                    load8(address, GPRInfo::regT0);
+                }
+                break;
+            case WASMMemoryType::I16:
+                if (conversion == MemoryAccessConversion::SignExtend)
+                    load16SignedExtendTo32(address, GPRInfo::regT0);
+                else {
+                    ASSERT(conversion == MemoryAccessConversion::ZeroExtend);
+                    load16(address, GPRInfo::regT0);
+                }
+                break;
+            case WASMMemoryType::I32:
+                load32(address, GPRInfo::regT0);
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+            }
+            store32(GPRInfo::regT0, temporaryAddress(m_tempStackTop - 1));
+            break;
+        case WASMExpressionType::F32:
+            ASSERT(memoryType == WASMMemoryType::F32 && conversion == MemoryAccessConversion::NoConversion);
+            load32(address, GPRInfo::regT0);
+            store32(GPRInfo::regT0, temporaryAddress(m_tempStackTop - 1));
+            break;
+        case WASMExpressionType::F64:
+            ASSERT(memoryType == WASMMemoryType::F64 && conversion == MemoryAccessConversion::NoConversion);
+            loadDouble(address, FPRInfo::fpRegT0);
+            storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop - 1));
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+        return UNUSED;
+    }
+
+    int buildStore(WASMOpKind opKind, const MemoryAddress& memoryAddress, WASMExpressionType expressionType, WASMMemoryType memoryType, int)
+    {
+        const ArrayBuffer* arrayBuffer = m_module->arrayBuffer()->impl();
+        move(TrustedImmPtr(arrayBuffer->data()), GPRInfo::regT0);
+        load32(temporaryAddress(m_tempStackTop - 2), GPRInfo::regT1);
+        if (memoryAddress.offset)
+            add32(TrustedImm32(memoryAddress.offset), GPRInfo::regT1, GPRInfo::regT1);
+        and32(TrustedImm32(~(sizeOfMemoryType(memoryType) - 1)), GPRInfo::regT1);
+
+        ASSERT(arrayBuffer->byteLength() < (1u << 31));
+        if (arrayBuffer->byteLength() >= sizeOfMemoryType(memoryType))
+            m_outOfBoundsErrorJumpList.append(branch32(Above, GPRInfo::regT1, TrustedImm32(arrayBuffer->byteLength() - sizeOfMemoryType(memoryType))));
+        else
+            m_outOfBoundsErrorJumpList.append(jump());
+
+        BaseIndex address = BaseIndex(GPRInfo::regT0, GPRInfo::regT1, TimesOne);
+
+        switch (expressionType) {
+        case WASMExpressionType::I32:
+            load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::regT2);
+            switch (memoryType) {
+            case WASMMemoryType::I8:
+                store8(GPRInfo::regT2, address);
+                break;
+            case WASMMemoryType::I16:
+                store16(GPRInfo::regT2, address);
+                break;
+            case WASMMemoryType::I32:
+                store32(GPRInfo::regT2, address);
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+            }
+            break;
+        case WASMExpressionType::F32:
+            ASSERT(memoryType == WASMMemoryType::F32);
+            load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::regT2);
+            store32(GPRInfo::regT2, address);
+            break;
+        case WASMExpressionType::F64:
+            ASSERT(memoryType == WASMMemoryType::F64);
+            loadDouble(temporaryAddress(m_tempStackTop - 1), FPRInfo::fpRegT0);
+            storeDouble(FPRInfo::fpRegT0, address);
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+        m_tempStackTop -= 2;
+
+        if (opKind == WASMOpKind::Expression) {
+            switch (expressionType) {
+            case WASMExpressionType::I32:
+            case WASMExpressionType::F32:
+                store32(GPRInfo::regT2, temporaryAddress(m_tempStackTop++));
+                break;
+            case WASMExpressionType::F64:
+                storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop++));
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+            }
+        }
+        return UNUSED;
+    }
+
     int buildUnaryI32(int, WASMOpExpressionI32 op)
     {
         load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::regT0);
@@ -402,6 +658,73 @@ public:
             convertFloatToDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT1);
             sqrtDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT0);
             convertDoubleToFloat(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+        storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop - 1));
+        return UNUSED;
+    }
+
+    int buildUnaryF64(int, WASMOpExpressionF64 op)
+    {
+        loadDouble(temporaryAddress(m_tempStackTop - 1), FPRInfo::fpRegT1);
+        switch (op) {
+        case WASMOpExpressionF64::Negate:
+            negateDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT0);
+            break;
+        case WASMOpExpressionF64::Abs:
+            absDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT0);
+            break;
+        case WASMOpExpressionF64::Sqrt:
+            sqrtDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT0);
+            break;
+        case WASMOpExpressionF64::Ceil:
+        case WASMOpExpressionF64::Floor:
+        case WASMOpExpressionF64::Cos:
+        case WASMOpExpressionF64::Sin:
+        case WASMOpExpressionF64::Tan:
+        case WASMOpExpressionF64::ACos:
+        case WASMOpExpressionF64::ASin:
+        case WASMOpExpressionF64::ATan:
+        case WASMOpExpressionF64::Exp:
+        case WASMOpExpressionF64::Ln:
+            D_JITOperation_D operation;
+            switch (op) {
+            case WASMOpExpressionF64::Ceil:
+                operation = ceil;
+                break;
+            case WASMOpExpressionF64::Floor:
+                operation = floor;
+                break;
+            case WASMOpExpressionF64::Cos:
+                operation = cos;
+                break;
+            case WASMOpExpressionF64::Sin:
+                operation = sin;
+                break;
+            case WASMOpExpressionF64::Tan:
+                operation = tan;
+                break;
+            case WASMOpExpressionF64::ACos:
+                operation = acos;
+                break;
+            case WASMOpExpressionF64::ASin:
+                operation = asin;
+                break;
+            case WASMOpExpressionF64::ATan:
+                operation = atan;
+                break;
+            case WASMOpExpressionF64::Exp:
+                operation = exp;
+                break;
+            case WASMOpExpressionF64::Ln:
+                operation = log;
+                break;
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+            }
+            callOperation(operation, FPRInfo::fpRegT1, FPRInfo::fpRegT0);
             break;
         default:
             ASSERT_NOT_REACHED();
@@ -517,6 +840,50 @@ public:
             RELEASE_ASSERT_NOT_REACHED();
         }
         convertDoubleToFloat(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
+        m_tempStackTop--;
+        storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop - 1));
+        return UNUSED;
+    }
+
+    int buildBinaryF64(int, int, WASMOpExpressionF64 op)
+    {
+        loadDouble(temporaryAddress(m_tempStackTop - 2), FPRInfo::fpRegT0);
+        loadDouble(temporaryAddress(m_tempStackTop - 1), FPRInfo::fpRegT1);
+        switch (op) {
+        case WASMOpExpressionF64::Add:
+            addDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT0);
+            break;
+        case WASMOpExpressionF64::Sub:
+            subDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT0);
+            break;
+        case WASMOpExpressionF64::Mul:
+            mulDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT0);
+            break;
+        case WASMOpExpressionF64::Div:
+            divDouble(FPRInfo::fpRegT1, FPRInfo::fpRegT0);
+            break;
+        case WASMOpExpressionF64::Mod:
+        case WASMOpExpressionF64::ATan2:
+        case WASMOpExpressionF64::Pow:
+            D_JITOperation_DD operation;
+            switch (op) {
+            case WASMOpExpressionF64::Mod:
+                operation = fmod;
+                break;
+            case WASMOpExpressionF64::ATan2:
+                operation = atan2;
+                break;
+            case WASMOpExpressionF64::Pow:
+                operation = pow;
+                break;
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+            }
+            callOperation(operation, FPRInfo::fpRegT0, FPRInfo::fpRegT1, FPRInfo::fpRegT0);
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
         m_tempStackTop--;
         storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop - 1));
         return UNUSED;
@@ -643,12 +1010,77 @@ public:
         return UNUSED;
     }
 
+    int buildMinOrMaxI32(int, int, WASMOpExpressionI32 op)
+    {
+        load32(temporaryAddress(m_tempStackTop - 2), GPRInfo::regT0);
+        load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::regT1);
+        RelationalCondition condition;
+        switch (op) {
+        case WASMOpExpressionI32::SMin:
+            condition = LessThanOrEqual;
+            break;
+        case WASMOpExpressionI32::UMin:
+            condition = BelowOrEqual;
+            break;
+        case WASMOpExpressionI32::SMax:
+            condition = GreaterThanOrEqual;
+            break;
+        case WASMOpExpressionI32::UMax:
+            condition = AboveOrEqual;
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+        Jump useLeft = branch32(condition, GPRInfo::regT0, GPRInfo::regT1);
+        store32(GPRInfo::regT1, temporaryAddress(m_tempStackTop - 2));
+        useLeft.link(this);
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
+    int buildMinOrMaxF64(int, int, WASMOpExpressionF64 op)
+    {
+        loadDouble(temporaryAddress(m_tempStackTop - 2), FPRInfo::fpRegT0);
+        loadDouble(temporaryAddress(m_tempStackTop - 1), FPRInfo::fpRegT1);
+        DoubleCondition condition;
+        switch (op) {
+        case WASMOpExpressionF64::Min:
+            condition = DoubleLessThanOrEqual;
+            break;
+        case WASMOpExpressionF64::Max:
+            condition = DoubleGreaterThanOrEqual;
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+        Jump useLeft = branchDouble(condition, FPRInfo::fpRegT0, FPRInfo::fpRegT1);
+        storeDouble(FPRInfo::fpRegT1, temporaryAddress(m_tempStackTop - 2));
+        useLeft.link(this);
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
     int buildCallInternal(uint32_t functionIndex, int, const WASMSignature& signature, WASMExpressionType returnType)
     {
         boxArgumentsAndAdjustStackPointer(signature.arguments);
 
         JSFunction* function = m_module->functions()[functionIndex].get();
         move(TrustedImmPtr(function), GPRInfo::regT0);
+
+        callAndUnboxResult(returnType);
+        return UNUSED;
+    }
+
+    int buildCallIndirect(uint32_t functionPointerTableIndex, int, int, const WASMSignature& signature, WASMExpressionType returnType)
+    {
+        boxArgumentsAndAdjustStackPointer(signature.arguments);
+
+        const Vector<JSFunction*>& functions = m_module->functionPointerTables()[functionPointerTableIndex].functions;
+        move(TrustedImmPtr(functions.data()), GPRInfo::regT0);
+        load32(temporaryAddress(m_tempStackTop - 1), GPRInfo::regT1);
+        m_tempStackTop--;
+        and32(TrustedImm32(functions.size() - 1), GPRInfo::regT1);
+        loadPtr(BaseIndex(GPRInfo::regT0, GPRInfo::regT1, timesPtr()), GPRInfo::regT0);
 
         callAndUnboxResult(returnType);
         return UNUSED;
@@ -666,6 +1098,11 @@ public:
     }
 
     void appendExpressionList(int&, int) { }
+
+    void discard(int)
+    {
+        m_tempStackTop--;
+    }
 
     void linkTarget(JumpTarget& target)
     {
@@ -769,16 +1206,18 @@ private:
         double doubleValue;
     };
 
+    enum class FloatingPointPrecision { Single, Double };
+
     Address localAddress(unsigned localIndex) const
     {
         ASSERT(localIndex < m_numberOfLocals);
-        return Address(GPRInfo::callFrameRegister, -(localIndex + 1) * sizeof(StackSlot));
+        return Address(GPRInfo::callFrameRegister, -m_calleeSaveSpace - (localIndex + 1) * sizeof(StackSlot));
     }
 
     Address temporaryAddress(unsigned temporaryIndex) const
     {
         ASSERT(m_numberOfLocals + temporaryIndex < m_stackHeight);
-        return Address(GPRInfo::callFrameRegister, -(m_numberOfLocals + temporaryIndex + 1) * sizeof(StackSlot));
+        return Address(GPRInfo::callFrameRegister, -m_calleeSaveSpace - (m_numberOfLocals + temporaryIndex + 1) * sizeof(StackSlot));
     }
 
     void appendCall(const FunctionPtr& function)
@@ -806,20 +1245,27 @@ private:
     }
 
 #if CPU(X86)
-    void appendCallSetResult(const FunctionPtr& function, FPRReg result)
+    void appendCallSetResult(const FunctionPtr& function, FPRReg result, FloatingPointPrecision precision)
     {
         appendCall(function);
-        m_assembler.fstpl(0, stackPointerRegister);
+        switch (precision) {
+        case FloatingPointPrecision::Single:
+            m_assembler.fstps(0, stackPointerRegister);
+            break;
+        case FloatingPointPrecision::Double:
+            m_assembler.fstpl(0, stackPointerRegister);
+            break;
+        }
         loadDouble(stackPointerRegister, result);
     }
 #elif CPU(ARM) && !CPU(ARM_HARDFP)
-    void appendCallSetResult(const FunctionPtr& function, FPRReg result)
+    void appendCallSetResult(const FunctionPtr& function, FPRReg result, FloatingPointPrecision)
     {
         appendCall(function);
         m_assembler.vmov(result, GPRInfo::returnValueGPR, GPRInfo::returnValueGPR2);
     }
 #else // CPU(X86_64) || (CPU(ARM) && CPU(ARM_HARDFP)) || CPU(ARM64) || CPU(MIPS) || CPU(SH4)
-    void appendCallSetResult(const FunctionPtr& function, FPRReg result)
+    void appendCallSetResult(const FunctionPtr& function, FPRReg result, FloatingPointPrecision)
     {
         appendCall(function);
         moveDouble(FPRInfo::returnValueFPR, result);
@@ -836,9 +1282,17 @@ private:
     void callOperation(D_JITOperation_EJ operation, GPRReg src, FPRReg dst)
     {
         setupArgumentsWithExecState(src);
-        appendCallSetResult(operation, dst);
+        appendCallSetResult(operation, dst, FloatingPointPrecision::Double);
     }
 #else
+    // EncodedJSValue in JSVALUE32_64 is a 64-bit integer. When being compiled in ARM EABI, it must be aligned even-numbered register (r0, r2 or [sp]).
+    // To avoid assemblies from using wrong registers, let's occupy r1 or r3 with a dummy argument when necessary.
+#if (COMPILER_SUPPORTS(EABI) && CPU(ARM)) || CPU(MIPS)
+#define EABI_32BIT_DUMMY_ARG      TrustedImm32(0),
+#else
+#define EABI_32BIT_DUMMY_ARG
+#endif
+
     void callOperation(Z_JITOperation_EJ operation, GPRReg srcTag, GPRReg srcPayload, GPRReg dst)
     {
         setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG srcPayload, srcTag);
@@ -848,14 +1302,20 @@ private:
     void callOperation(D_JITOperation_EJ operation, GPRReg srcTag, GPRReg srcPayload, FPRReg dst)
     {
         setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG srcPayload, srcTag);
-        appendCallSetResult(operation, dst);
+        appendCallSetResult(operation, dst, FloatingPointPrecision::Double);
     }
 #endif
 
     void callOperation(float JIT_OPERATION (*operation)(float), FPRegisterID src, FPRegisterID dst)
     {
         setupArguments(src);
-        appendCallSetResult(operation, dst);
+        appendCallSetResult(operation, dst, FloatingPointPrecision::Single);
+    }
+
+    void callOperation(D_JITOperation_D operation, FPRegisterID src, FPRegisterID dst)
+    {
+        setupArguments(src);
+        appendCallSetResult(operation, dst, FloatingPointPrecision::Double);
     }
 
     void callOperation(int32_t JIT_OPERATION (*operation)(int32_t, int32_t), GPRReg src1, GPRReg src2, GPRReg dst)
@@ -870,15 +1330,32 @@ private:
         appendCallSetResult(operation, dst);
     }
 
+    void callOperation(D_JITOperation_DD operation, FPRegisterID src1, FPRegisterID src2, FPRegisterID dst)
+    {
+        setupArguments(src1, src2);
+        appendCallSetResult(operation, dst, FloatingPointPrecision::Double);
+    }
+
+    void callOperation(double JIT_OPERATION (*operation)(uint32_t), GPRReg src, FPRegisterID dst)
+    {
+        setupArguments(src);
+        appendCallSetResult(operation, dst, FloatingPointPrecision::Double);
+    }
+
     void boxArgumentsAndAdjustStackPointer(const Vector<WASMType>& arguments)
     {
         size_t argumentCount = arguments.size();
-        int stackOffset = -WTF::roundUpToMultipleOf(stackAlignmentRegisters(), m_numberOfLocals + m_tempStackTop + argumentCount + 1 + JSStack::CallFrameHeaderSize);
+        int stackOffset = -m_calleeSaveSpace - WTF::roundUpToMultipleOf(stackAlignmentRegisters(), m_numberOfLocals + m_tempStackTop + argumentCount + 1 + JSStack::CallFrameHeaderSize);
 
         storeTrustedValue(jsUndefined(), Address(GPRInfo::callFrameRegister, (stackOffset + CallFrame::thisArgumentOffset()) * sizeof(Register)));
 
         for (size_t i = 0; i < argumentCount; ++i) {
             Address address(GPRInfo::callFrameRegister, (stackOffset + CallFrame::argumentOffset(i)) * sizeof(Register));
+#if USE(JSVALUE64)
+            JSValueRegs valueRegs(GPRInfo::regT0);
+#else
+            JSValueRegs valueRegs(GPRInfo::regT1, GPRInfo::regT0);
+#endif
             switch (arguments[i]) {
             case WASMType::I32:
                 load32(temporaryAddress(m_tempStackTop - argumentCount + i), GPRInfo::regT0);
@@ -889,6 +1366,14 @@ private:
                 store32(GPRInfo::regT0, address.withOffset(PayloadOffset));
                 store32(TrustedImm32(JSValue::Int32Tag), address.withOffset(TagOffset));
 #endif
+                break;
+            case WASMType::F32:
+            case WASMType::F64:
+                loadDouble(temporaryAddress(m_tempStackTop - argumentCount + i), FPRInfo::fpRegT0);
+                if (arguments[i] == WASMType::F32)
+                    convertFloatToDouble(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
+                convertDoubleToValue(FPRInfo::fpRegT0, valueRegs);
+                storeValue(valueRegs, address);
                 break;
             default:
                 ASSERT_NOT_REACHED();
@@ -906,8 +1391,8 @@ private:
 #if USE(JSVALUE64)
         store64(GPRInfo::regT0, Address(stackPointerRegister, JSStack::Callee * static_cast<int>(sizeof(Register)) - sizeof(CallerFrameAndPC)));
 #else
-        store32(regT0, Address(stackPointerRegister, JSStack::Callee * static_cast<int>(sizeof(Register)) + PayloadOffset - sizeof(CallerFrameAndPC)));
-        store32(TrustedImm32(CellTag), Address(stackPointerRegister, JSStack::Callee * static_cast<int>(sizeof(Register)) + TagOffset - sizeof(CallerFrameAndPC)));
+        store32(GPRInfo::regT0, Address(stackPointerRegister, JSStack::Callee * static_cast<int>(sizeof(Register)) + PayloadOffset - sizeof(CallerFrameAndPC)));
+        store32(TrustedImm32(JSValue::CellTag), Address(stackPointerRegister, JSStack::Callee * static_cast<int>(sizeof(Register)) + TagOffset - sizeof(CallerFrameAndPC)));
 #endif
 
         DataLabelPtr addressOfLinkedFunctionCheck;
@@ -926,12 +1411,31 @@ private:
         m_callCompilationInfo.last().callReturnLocation = emitNakedCall(m_vm->getCTIStub(linkCallThunkGenerator).code());
 
         end.link(this);
-        addPtr(TrustedImm32(-WTF::roundUpToMultipleOf(stackAlignmentRegisters(), m_stackHeight) * sizeof(StackSlot) - maxFrameExtentForSlowPathCall), GPRInfo::callFrameRegister, stackPointerRegister);
+        addPtr(TrustedImm32(-m_calleeSaveSpace - WTF::roundUpToMultipleOf(stackAlignmentRegisters(), m_stackHeight) * sizeof(StackSlot) - maxFrameExtentForSlowPathCall), GPRInfo::callFrameRegister, stackPointerRegister);
         checkStackPointerAlignment();
 
+        // FIXME: No need to do type conversion if the callee is a WebAssembly function.
+        // https://bugs.webkit.org/show_bug.cgi?id=149310
+#if USE(JSVALUE64)
+        JSValueRegs valueRegs(GPRInfo::returnValueGPR);
+#else
+        JSValueRegs valueRegs(GPRInfo::returnValueGPR2, GPRInfo::returnValueGPR);
+#endif
         switch (returnType) {
         case WASMExpressionType::I32:
-            store32(GPRInfo::returnValueGPR, temporaryAddress(m_tempStackTop++));
+            convertValueToInt32(valueRegs, GPRInfo::regT0);
+            store32(GPRInfo::regT0, temporaryAddress(m_tempStackTop++));
+            break;
+        case WASMExpressionType::F32:
+        case WASMExpressionType::F64:
+#if USE(JSVALUE64)
+            convertValueToDouble(valueRegs, FPRInfo::fpRegT0, GPRInfo::nonPreservedNonReturnGPR);
+#else
+            convertValueToDouble(valueRegs, FPRInfo::fpRegT0, GPRInfo::nonPreservedNonReturnGPR, FPRInfo::fpRegT1);
+#endif
+            if (returnType == WASMExpressionType::F32)
+                convertDoubleToFloat(FPRInfo::fpRegT0, FPRInfo::fpRegT0);
+            storeDouble(FPRInfo::fpRegT0, temporaryAddress(m_tempStackTop++));
             break;
         case WASMExpressionType::Void:
             break;
@@ -941,73 +1445,77 @@ private:
     }
 
 #if USE(JSVALUE64)
-    void loadValueAndConvertToInt32(Address address, GPRReg dst)
+    void convertValueToInt32(JSValueRegs valueRegs, GPRReg dst)
     {
-        JSValueRegs tempRegs(dst);
-        loadValue(address, tempRegs);
-        Jump checkJSInt32 = branchIfInt32(tempRegs);
+        Jump checkJSInt32 = branchIfInt32(valueRegs);
 
-        callOperation(operationConvertJSValueToInt32, dst, dst);
+        callOperation(operationConvertJSValueToInt32, valueRegs.gpr(), valueRegs.gpr());
 
         checkJSInt32.link(this);
+        move(valueRegs.gpr(), dst);
     }
 
-    void loadValueAndConvertToDouble(Address address, FPRReg dst, GPRReg scratch1, GPRReg scratch2)
+    void convertValueToDouble(JSValueRegs valueRegs, FPRReg dst, GPRReg scratch)
     {
-        JSValueRegs tempRegs(scratch1);
-        loadValue(address, tempRegs);
-        Jump checkJSInt32 = branchIfInt32(tempRegs);
-        Jump checkJSNumber = branchIfNumber(tempRegs, scratch2);
+        Jump checkJSInt32 = branchIfInt32(valueRegs);
+        Jump checkJSNumber = branchIfNumber(valueRegs, scratch);
         JumpList end;
 
-        callOperation(operationConvertJSValueToDouble, tempRegs.gpr(), dst);
+        callOperation(operationConvertJSValueToDouble, valueRegs.gpr(), dst);
         end.append(jump());
 
         checkJSInt32.link(this);
-        convertInt32ToDouble(tempRegs.gpr(), dst);
+        convertInt32ToDouble(valueRegs.gpr(), dst);
         end.append(jump());
 
         checkJSNumber.link(this);
-        unboxDoubleWithoutAssertions(tempRegs.gpr(), dst);
+        unboxDoubleWithoutAssertions(valueRegs.gpr(), dst);
         end.link(this);
     }
 #else
-    void loadValueAndConvertToInt32(Address address, GPRReg dst, GPRReg scratch)
+    void convertValueToInt32(JSValueRegs valueRegs, GPRReg dst)
     {
-        JSValueRegs tempRegs(scratch, dst);
-        loadValue(address, tempRegs);
-        Jump checkJSInt32 = branchIfInt32(tempRegs);
+        Jump checkJSInt32 = branchIfInt32(valueRegs);
 
-        callOperation(operationConvertJSValueToInt32, tempRegs.tagGPR(), tempRegs.payloadGPR(), dst);
+        callOperation(operationConvertJSValueToInt32, valueRegs.tagGPR(), valueRegs.payloadGPR(), valueRegs.payloadGPR());
 
         checkJSInt32.link(this);
+        move(valueRegs.payloadGPR(), dst);
     }
 
-    void loadValueAndConvertToDouble(Address address, FPRReg dst, GPRReg scratch1, GPRReg scratch2, GPRReg scratch3, FPRReg fpScratch)
+    void convertValueToDouble(JSValueRegs valueRegs, FPRReg dst, GPRReg scratch, FPRReg fpScratch)
     {
-        JSValueRegs tempRegs(scratch2, scratch1);
-        loadValue(address, tempRegs);
-        Jump checkJSInt32 = branchIfInt32(tempRegs);
-        Jump checkJSNumber = branchIfNumber(tempRegs, scratch3);
+        Jump checkJSInt32 = branchIfInt32(valueRegs);
+        Jump checkJSNumber = branchIfNumber(valueRegs, scratch);
         JumpList end;
 
-        callOperation(operationConvertJSValueToDouble, tempRegs.tagGPR(), tempRegs.payloadGPR(), dst);
+        callOperation(operationConvertJSValueToDouble, valueRegs.tagGPR(), valueRegs.payloadGPR(), dst);
         end.append(jump());
 
         checkJSInt32.link(this);
-        convertInt32ToDouble(tempRegs.payloadGPR(), dst);
+        convertInt32ToDouble(valueRegs.payloadGPR(), dst);
         end.append(jump());
 
         checkJSNumber.link(this);
-        unboxDouble(tempRegs.tagGPR(), tempRegs.payloadGPR(), dst, fpScratch)
+        unboxDouble(valueRegs.tagGPR(), valueRegs.payloadGPR(), dst, fpScratch);
         end.link(this);
     }
 #endif
+
+    void convertDoubleToValue(FPRReg fpr, JSValueRegs valueRegs)
+    {
+#if USE(JSVALUE64)
+        boxDouble(fpr, valueRegs.gpr());
+#else
+        boxDouble(fpr, valueRegs.tagGPR(), valueRegs.payloadGPR());
+#endif
+    }
 
     JSWASMModule* m_module;
     unsigned m_stackHeight;
     unsigned m_numberOfLocals;
     unsigned m_tempStackTop { 0 };
+    unsigned m_calleeSaveSpace;
 
     Vector<JumpTarget> m_breakTargets;
     Vector<JumpTarget> m_continueTargets;
@@ -1017,6 +1525,7 @@ private:
     Label m_beginLabel;
     Jump m_stackOverflow;
     JumpList m_divideErrorJumpList;
+    JumpList m_outOfBoundsErrorJumpList;
     JumpList m_exceptionChecks;
 
     Vector<std::pair<Call, void*>> m_calls;

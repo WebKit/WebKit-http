@@ -105,6 +105,17 @@ void JIT_OPERATION operationThrowDivideError(ExecState* exec)
     ErrorHandlingScope errorScope(*vm);
     vm->throwException(callerFrame, createError(callerFrame, ASCIILiteral("Division by zero or division overflow.")));
 }
+
+void JIT_OPERATION operationThrowOutOfBoundsAccessError(ExecState* exec)
+{
+    VM* vm = &exec->vm();
+    VMEntryFrame* vmEntryFrame = vm->topVMEntryFrame;
+    CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
+
+    NativeCallFrameTracerWithRestore tracer(vm, vmEntryFrame, callerFrame);
+    ErrorHandlingScope errorScope(*vm);
+    vm->throwException(callerFrame, createError(callerFrame, ASCIILiteral("Out-of-bounds access.")));
+}
 #endif
 
 int32_t JIT_OPERATION operationCallArityCheck(ExecState* exec)
@@ -767,7 +778,7 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
     MacroAssemblerCodePtr codePtr;
     CodeBlock* codeBlock = 0;
     if (executable->isHostFunction()) {
-        codePtr = executable->entrypointFor(*vm, kind, MustCheckArity, callLinkInfo->registerPreservationMode());
+        codePtr = executable->entrypointFor(kind, MustCheckArity);
 #if ENABLE(WEBASSEMBLY)
     } else if (executable->isWebAssemblyExecutable()) {
         WebAssemblyExecutable* webAssemblyExecutable = static_cast<WebAssemblyExecutable*>(executable);
@@ -779,7 +790,7 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
             arity = MustCheckArity;
         else
             arity = ArityCheckNotRequired;
-        codePtr = webAssemblyExecutable->entrypointFor(*vm, kind, arity, callLinkInfo->registerPreservationMode());
+        codePtr = webAssemblyExecutable->entrypointFor(kind, arity);
 #endif
     } else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
@@ -804,7 +815,7 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
             arity = MustCheckArity;
         else
             arity = ArityCheckNotRequired;
-        codePtr = functionExecutable->entrypointFor(*vm, kind, arity, callLinkInfo->registerPreservationMode());
+        codePtr = functionExecutable->entrypointFor(kind, arity);
     }
     if (!callLinkInfo->seenOnce())
         callLinkInfo->setSeen();
@@ -856,7 +867,9 @@ inline SlowPathReturnType virtualForWithFunction(
 #if ENABLE(WEBASSEMBLY)
             if (!isCall(kind)) {
                 exec->vm().throwException(exec, createNotAConstructorError(exec, function));
-                return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
+                return encodeResult(
+                    vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress(),
+                    reinterpret_cast<void*>(KeepTheFrame));
             }
 
             WebAssemblyExecutable* webAssemblyExecutable = static_cast<WebAssemblyExecutable*>(executable);
@@ -865,7 +878,7 @@ inline SlowPathReturnType virtualForWithFunction(
         }
     }
     return encodeResult(executable->entrypointFor(
-        *vm, kind, MustCheckArity, callLinkInfo->registerPreservationMode()).executableAddress(),
+        kind, MustCheckArity).executableAddress(),
         reinterpret_cast<void*>(callLinkInfo->callMode() == CallMode::Tail ? ReuseTheFrame : KeepTheFrame));
 }
 
@@ -2131,6 +2144,22 @@ JSCell* JIT_OPERATION operationToIndexString(ExecState* exec, int32_t index)
 void JIT_OPERATION operationProcessTypeProfilerLog(ExecState* exec)
 {
     exec->vm().typeProfilerLog()->processLogEntries(ASCIILiteral("Log Full, called from inside baseline JIT"));
+}
+
+int32_t JIT_OPERATION operationCheckIfExceptionIsUncatchableAndNotifyProfiler(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    RELEASE_ASSERT(!!vm.exception());
+
+    if (LegacyProfiler* profiler = vm.enabledProfiler())
+        profiler->exceptionUnwind(exec);
+
+    if (isTerminatedExecutionException(vm.exception())) {
+        genericUnwind(&vm, exec);
+        return 1;
+    } else
+        return 0;
 }
 
 } // extern "C"

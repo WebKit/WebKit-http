@@ -421,12 +421,14 @@
     <ClCompile Include="..\dfg\DFGFixupPhase.cpp" />
     <ClCompile Include="..\dfg\DFGFlushedAt.cpp" />
     <ClCompile Include="..\dfg\DFGFlushFormat.cpp" />
+    <ClCompile Include="..\dfg\DFGLiveCatchVariablePreservationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGFrozenValue.cpp" />
     <ClCompile Include="..\dfg\DFGFunctionWhitelist.cpp" />
     <ClCompile Include="..\dfg\DFGGraph.cpp" />
     <ClCompile Include="..\dfg\DFGGraphSafepoint.cpp" />
     <ClCompile Include="..\dfg\DFGHeapLocation.cpp" />
     <ClCompile Include="..\dfg\DFGInPlaceAbstractState.cpp" />
+    <ClCompile Include="..\dfg\DFGInferredTypeCheck.cpp" />
     <ClCompile Include="..\dfg\DFGInsertionSet.cpp" />
     <ClCompile Include="..\dfg\DFGIntegerCheckCombiningPhase.cpp" />
     <ClCompile Include="..\dfg\DFGIntegerRangeOptimizationPhase.cpp" />
@@ -564,7 +566,6 @@
     <ClCompile Include="..\heap\GCActivityCallback.cpp" />
     <ClCompile Include="..\heap\GCLogging.cpp" />
     <ClCompile Include="..\heap\GCThread.cpp" />
-    <ClCompile Include="..\heap\GCThreadSharedData.cpp" />
     <ClCompile Include="..\heap\HandleSet.cpp" />
     <ClCompile Include="..\heap\HandleStack.cpp" />
     <ClCompile Include="..\heap\Heap.cpp" />
@@ -620,6 +621,11 @@
     <ClCompile Include="..\interpreter\StackVisitor.cpp" />
     <ClCompile Include="..\jit\AssemblyHelpers.cpp" />
     <ClCompile Include="..\jit\BinarySwitch.cpp" />
+    <ClCompile Include="..\jit\CachedRecovery.cpp" />
+    <ClCompile Include="..\jit\CallFrameShuffleData.cpp" />
+    <ClCompile Include="..\jit\CallFrameShuffler.cpp" />
+    <ClCompile Include="..\jit\CallFrameShuffler32_64.cpp" />
+    <ClCompile Include="..\jit\CallFrameShuffler64.cpp" />
     <ClCompile Include="..\jit\ExecutableAllocationFuzz.cpp" />
     <ClCompile Include="..\jit\ExecutableAllocator.cpp" />
     <ClCompile Include="..\jit\ExecutableAllocatorFixedVMPool.cpp" />
@@ -649,7 +655,6 @@
     <ClCompile Include="..\jit\Reg.cpp" />
     <ClCompile Include="..\jit\RegisterAtOffset.cpp" />
     <ClCompile Include="..\jit\RegisterAtOffsetList.cpp" />
-    <ClCompile Include="..\jit\RegisterPreservationWrapperGenerator.cpp" />
     <ClCompile Include="..\jit\RegisterSet.cpp" />
     <ClCompile Include="..\jit\Repatch.cpp" />
     <ClCompile Include="..\jit\ScratchRegisterAllocator.cpp" />
@@ -745,6 +750,8 @@
     <ClCompile Include="..\runtime\Identifier.cpp" />
     <ClCompile Include="..\runtime\IndexingType.cpp" />
     <ClCompile Include="..\runtime\InferredValue.cpp" />
+    <ClCompile Include="..\runtime\InferredType.cpp" />
+    <ClCompile Include="..\runtime\InferredTypeTable.cpp" />
     <ClCompile Include="..\runtime\InitializeThreading.cpp" />
     <ClCompile Include="..\runtime\InspectorInstrumentationObject.cpp" />
     <ClCompile Include="..\runtime\InternalFunction.cpp" />
@@ -1132,6 +1139,7 @@
     <ClInclude Include="..\dfg\DFGCSEPhase.h" />
     <ClInclude Include="..\dfg\DFGDCEPhase.h" />
     <ClInclude Include="..\dfg\DFGDesiredIdentifiers.h" />
+    <ClInclude Include="..\dfg\DFGDesiredInferredType.h" />
     <ClInclude Include="..\dfg\DFGDesiredTransitions.h" />
     <ClInclude Include="..\dfg\DFGDesiredWatchpoints.h" />
     <ClInclude Include="..\dfg\DFGDesiredWeakReferences.h" />
@@ -1150,6 +1158,7 @@
     <ClInclude Include="..\dfg\DFGFixupPhase.h" />
     <ClInclude Include="..\dfg\DFGFlushedAt.h" />
     <ClInclude Include="..\dfg\DFGFlushFormat.h" />
+    <ClInclude Include="..\dfg\DFGLiveCatchVariablePreservationPhase.h" />
     <ClInclude Include="..\dfg\DFGForAllKills.h" />
     <ClInclude Include="..\dfg\DFGFPRInfo.h" />
     <ClInclude Include="..\dfg\DFGFrozenValue.h" />
@@ -1160,6 +1169,7 @@
     <ClInclude Include="..\dfg\DFGGraphSafepoint.h" />
     <ClInclude Include="..\dfg\DFGHeapLocation.h" />
     <ClInclude Include="..\dfg\DFGInPlaceAbstractState.h" />
+    <ClInclude Include="..\dfg\DFGInferredTypeCheck.h" />
     <ClInclude Include="..\dfg\DFGInsertionSet.h" />
     <ClInclude Include="..\dfg\DFGIntegerCheckCombiningPhase.h" />
     <ClInclude Include="..\dfg\DFGIntegerRangeOptimizationPhase.h" />
@@ -1211,6 +1221,7 @@
     <ClInclude Include="..\dfg\DFGPredictionInjectionPhase.h" />
     <ClInclude Include="..\dfg\DFGPredictionPropagationPhase.h" />
     <ClInclude Include="..\dfg\DFGPromotedHeapLocation.h" />
+    <ClInclude Include="..\dfg\DFGPropertyTypeKey.h" />
     <ClInclude Include="..\dfg\DFGPureValue.h" />
     <ClInclude Include="..\dfg\DFGPutStackSinkingPhase.h" />
     <ClInclude Include="..\dfg\DFGRegisterBank.h" />
@@ -1332,7 +1343,6 @@
     <ClInclude Include="..\heap\GCSegmentedArrayInlines.h" />
     <ClInclude Include="..\heap\GCAssertions.h" />
     <ClInclude Include="..\heap\GCThread.h" />
-    <ClInclude Include="..\heap\GCThreadSharedData.h" />
     <ClInclude Include="..\heap\Handle.h" />
     <ClInclude Include="..\heap\HandleBlock.h" />
     <ClInclude Include="..\heap\HandleBlockInlines.h" />
@@ -1420,6 +1430,9 @@
     <ClInclude Include="..\interpreter\StackVisitor.h" />
     <ClInclude Include="..\jit\AssemblyHelpers.h" />
     <ClInclude Include="..\jit\BinarySwitch.h" />
+    <ClInclude Include="..\jit\CachedRecovery.h" />
+    <ClInclude Include="..\jit\CallFrameShuffleData.h" />
+    <ClInclude Include="..\jit\CallFrameShuffler.h" />
     <ClInclude Include="..\jit\CCallHelpers.h" />
     <ClInclude Include="..\jit\CompactJITCodeMap.h" />
     <ClInclude Include="..\jit\ExecutableAllocationFuzz.h" />
@@ -1451,7 +1464,6 @@
     <ClInclude Include="..\jit\RegisterAtOffset.h" />
     <ClInclude Include="..\jit\RegisterAtOffsetList.h" />
     <ClInclude Include="..\jit\RegisterMap.h" />
-    <ClInclude Include="..\jit\RegisterPreservationWrapperGenerator.h" />
     <ClInclude Include="..\jit\RegisterSet.h" />
     <ClInclude Include="..\jit\Repatch.h" />
     <ClInclude Include="..\jit\ScratchRegisterAllocator.h" />
@@ -1583,6 +1595,8 @@
     <ClInclude Include="..\runtime\IndexingHeaderInlines.h" />
     <ClInclude Include="..\runtime\IndexingType.h" />
     <ClInclude Include="..\runtime\InferredValue.h" />
+    <ClInclude Include="..\runtime\InferredType.h" />
+    <ClInclude Include="..\runtime\InferredTypeTable.h" />
     <ClInclude Include="..\runtime\InitializeThreading.h" />
     <ClInclude Include="..\runtime\Int16Array.h" />
     <ClInclude Include="..\runtime\Int32Array.h" />

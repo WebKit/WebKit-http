@@ -48,6 +48,7 @@
 #include "DFGInvalidationPointInjectionPhase.h"
 #include "DFGJITCompiler.h"
 #include "DFGLICMPhase.h"
+#include "DFGLiveCatchVariablePreservationPhase.h"
 #include "DFGLivenessAnalysisPhase.h"
 #include "DFGLoopPreHeaderCreationPhase.h"
 #include "DFGMaximalFlushInsertionPhase.h"
@@ -258,6 +259,8 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         dataLog("Graph after parsing:\n");
         dfg.dump();
     }
+
+    performLiveCatchVariablePreservationPhase(dfg);
 
     if (Options::enableMaximalFlushInsertionPhase())
         performMaximalFlushInsertion(dfg);
@@ -625,6 +628,13 @@ void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor)
     codeBlock->alternative()->visitStrongly(visitor);
     if (profiledDFGCodeBlock)
         profiledDFGCodeBlock->visitStrongly(visitor);
+
+    if (inlineCallFrames) {
+        for (auto* inlineCallFrame : *inlineCallFrames) {
+            ASSERT(inlineCallFrame->baselineCodeBlock());
+            inlineCallFrame->baselineCodeBlock()->visitStrongly(visitor);
+        }
+    }
 
     weakReferences.visitChildren(visitor);
     transitions.visitChildren(visitor);

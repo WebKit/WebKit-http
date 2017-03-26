@@ -1112,7 +1112,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(snapshotSize), WebCore::ColorSpaceDeviceRGB);
     CARenderServerRenderLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform);
 
-    return WebKit::ViewSnapshot::create(nullptr);
+    return WebKit::ViewSnapshot::create(WTF::move(surface));
 #else
     uint32_t slotID = [WebKit::ViewSnapshotStore::snapshottingContext() createImageSlot:snapshotSize hasAlpha:YES];
 
@@ -1596,7 +1596,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [self _updateVisibleContentRects];
 }
 
-// Unobscured content rect where the user can interact. When the keyboard is up, this should be the area above or bellow the keyboard, wherever there is enough space.
+// Unobscured content rect where the user can interact. When the keyboard is up, this should be the area above or below the keyboard, wherever there is enough space.
 - (CGRect)_contentRectForUserInteraction
 {
     // FIXME: handle split keyboard.
@@ -3018,6 +3018,21 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (CGFloat)_viewportMetaTagWidth
 {
     return _viewportMetaTagWidth;
+}
+
+- (CGRect)_contentVisibleRect
+{
+    return [self convertRect:[self bounds] toView:self._currentContentView];
+}
+
+- (CGPoint)_convertPointFromContentsToView:(CGPoint)point
+{
+    return [self convertPoint:point fromView:self._currentContentView];
+}
+
+- (CGPoint)_convertPointFromViewToContents:(CGPoint)point
+{
+    return [self convertPoint:point toView:self._currentContentView];
 }
 
 - (_WKWebViewPrintFormatter *)_webViewPrintFormatter

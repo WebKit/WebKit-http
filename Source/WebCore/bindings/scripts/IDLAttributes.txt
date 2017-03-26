@@ -24,7 +24,7 @@ CPPPureInterface
 CachedAttribute
 CallbackNeedsOperatorEqual
 Callback=FunctionOnly
-CallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack
+CallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow
 CheckSecurity
 CheckSecurityForNode
 Clamp
@@ -73,6 +73,7 @@ ImplementedAs=*
 InitializedByEventConstructor
 InterfaceName=*
 IsWeakCallback
+JSBuiltin
 JSCustomDefineOwnProperty
 JSCustomDefineOwnPropertyOnPrototype
 JSCustomFinalize
@@ -102,6 +103,7 @@ ObjCProtocol
 ObjCUseDefaultView
 OverrideBuiltins
 PassContext
+PutForwards=*
 RaisesException
 Reflect=*
 Replaceable
@@ -109,6 +111,7 @@ ReplaceableConstructor
 ReportExtraMemoryCost
 RequiresExistingAtomicString
 SetterRaisesException
+SetterCallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow
 SkipVTableValidation
 StrictTypeChecking
 SuppressToJSObject

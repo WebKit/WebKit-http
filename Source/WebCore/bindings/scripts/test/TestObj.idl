@@ -92,6 +92,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     sequence<ScriptProfile> methodReturningSequence(long longArg);
 
     void methodWithEnumArg(TestEnumType enumArg);
+    void methodWithOptionalEnumArgAndDefaultValue(optional TestEnumType enumArg = "EnumValue1");
     [RaisesException] TestObj methodThatRequiresAllArgsAndThrows(DOMString strArg, TestObj objArg);
 
     void serializedValue(SerializedScriptValue serializedArg);
@@ -104,6 +105,9 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     [GetterRaisesException] attribute DOMString stringAttrWithGetterException;
     [SetterRaisesException] attribute DOMString stringAttrWithSetterException;
 
+    // Strict type checking.
+    [StrictTypeChecking] attribute TestObj strictTypeCheckingAttribute;
+
     // 'Custom' extended attribute
     [Custom] attribute long            customAttr;
     [Custom] void customMethod();
@@ -112,6 +116,10 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     // 'CustomBinding' extended attribute
     [CustomBinding] void customBindingMethod();
     [CustomBinding] void customBindingMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
+
+    // 'JSBuiltin' extended attribute
+    [JSBuiltin] void jsBuiltinMethod();
+    [JSBuiltin] void jsBuiltinMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
 
     void addEventListener(DOMString type, EventListener listener, optional boolean useCapture);
     void removeEventListener(DOMString type, EventListener listener, optional boolean useCapture);
@@ -129,6 +137,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     [CallWith=ScriptArguments&CallStack] void withScriptArgumentsAndCallStack();
 
     [CallWith=ScriptState] attribute long withScriptStateAttribute;
+    [CallWith=ScriptState, SetterCallWith=ActiveWindow&FirstWindow] attribute long withCallWithAndSetterCallWithAttribute;
     [CallWith=ScriptExecutionContext] attribute TestObj withScriptExecutionContextAttribute;
     [CallWith=ScriptState, GetterRaisesException] attribute TestObj withScriptStateAttributeRaises;
     [CallWith=ScriptExecutionContext, GetterRaisesException] attribute TestObj withScriptExecutionContextAttributeRaises;
@@ -137,11 +146,13 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     [CallWith=  ScriptExecutionContext  &  ScriptState  ] attribute TestObj withScriptExecutionContextAndScriptStateWithSpacesAttribute;
     [CallWith=ScriptArguments&CallStack] attribute TestObj withScriptArgumentsAndCallStackAttribute;
 
-    // 'Optional' extended attribute
+    // Optional parameters.
     void    methodWithOptionalArg(optional long opt);
+    void    methodWithOptionalArgAndDefaultValue(optional long opt = 666);
     void    methodWithNonOptionalArgAndOptionalArg(long nonOpt, optional long opt);
     void    methodWithNonOptionalArgAndTwoOptionalArgs(long nonOpt, optional long opt1, optional long opt2);
     void    methodWithOptionalString(optional DOMString str);
+    void    methodWithOptionalStringAndDefaultValue(optional DOMString str = "foo");
     void    methodWithOptionalStringIsUndefined([Default=Undefined] optional DOMString str);
     void    methodWithOptionalStringIsNullString([Default=NullString] optional DOMString str);
 
@@ -292,6 +303,10 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     Promise testPromiseFunctionWithFloatArgument(float a);
     [RaisesException] Promise testPromiseFunctionWithException();
     Promise testPromiseFunctionWithOptionalIntArgument(optional long a);
+
+    // PutForwards
+    [PutForwards=name] readonly attribute TestNode putForwardsAttribute;
+    [PutForwards=name] readonly attribute TestNode? putForwardsNullableAttribute;
 };
 
 // The following comment should not generate any code.

@@ -400,6 +400,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLQuoteElement.idl \
     $(WebCore)/html/HTMLScriptElement.idl \
     $(WebCore)/html/HTMLSelectElement.idl \
+    $(WebCore)/html/HTMLSlotElement.idl \
     $(WebCore)/html/HTMLSourceElement.idl \
     $(WebCore)/html/HTMLSpanElement.idl \
     $(WebCore)/html/HTMLStyleElement.idl \
@@ -411,6 +412,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLTableSectionElement.idl \
     $(WebCore)/html/HTMLTemplateElement.idl \
     $(WebCore)/html/HTMLTextAreaElement.idl \
+    $(WebCore)/html/HTMLTimeElement.idl \
     $(WebCore)/html/HTMLTitleElement.idl \
     $(WebCore)/html/HTMLTrackElement.idl \
     $(WebCore)/html/HTMLUListElement.idl \
@@ -790,6 +792,7 @@ all : \
     $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) \
     $(JS_DOM_HEADERS) \
     $(WEB_DOM_HEADERS) \
+    $(WEBCORE_JS_BUILTINS) \
     \
     CSSGrammar.cpp \
     CSSPropertyNames.cpp \
@@ -1244,6 +1247,16 @@ WebReplayInputs.h : $(INPUT_GENERATOR_SPECIFICATIONS) $(INPUT_GENERATOR_SCRIPTS)
 
 -include $(JS_DOM_HEADERS:.h=.dep)
 
+# WebCore JS Builtins
+
+WEBCORE_JS_BUILTINS = \
+    $(WebCore)/Modules/streams/ReadableStream.js
+
+all : $(WEBCORE_JS_BUILTINS:%.js=%Builtins.cpp)
+
+%Builtins.cpp: %.js
+	$(PYTHON) $(WebCore)/generate-js-builtins --input $< --webcore_dir $(WebCore)
+
 # ------------------------
 
 # Mac-specific rules
@@ -1294,6 +1307,6 @@ ifeq ($(OS),Windows_NT)
 all : WebCoreHeaderDetection.h
 
 WebCoreHeaderDetection.h : $(WebCore)/AVFoundationSupport.py DerivedSources.make
-	$(PYTHON) $(WebCore)/AVFoundationSupport.py > $@
+	$(PYTHON) $(WebCore)/AVFoundationSupport.py $(WEBKIT_LIBRARIES) > $@
 
 endif # Windows_NT

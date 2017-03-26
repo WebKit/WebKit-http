@@ -489,43 +489,34 @@ bool Range::boundaryPointsValid() const
 
 void Range::deleteContents(ExceptionCode& ec)
 {
-    checkDeleteExtract(ec);
-    if (ec)
-        return;
-
     processContents(Delete, ec);
 }
 
 bool Range::intersectsNode(Node* refNode, ExceptionCode& ec) const
 {
-    // http://developer.mozilla.org/en/docs/DOM:range.intersectsNode
-    // Returns a bool if the node intersects the range.
-
     if (!refNode) {
         ec = TypeError;
         return false;
     }
 
-    if (!refNode->inDocument() || &refNode->document() != &ownerDocument()) {
-        // Firefox doesn't throw an exception for these cases; it returns false.
+    if (!refNode->inDocument() || &refNode->document() != &ownerDocument())
         return false;
-    }
 
     ContainerNode* parentNode = refNode->parentNode();
-    unsigned nodeIndex = refNode->computeNodeIndex();
-    
     if (!parentNode)
         return true;
 
-    if (comparePoint(parentNode, nodeIndex, ec) < 0 && // starts before start
-        comparePoint(parentNode, nodeIndex + 1, ec) < 0) { // ends before start
-        return false;
-    } else if (comparePoint(parentNode, nodeIndex, ec) > 0 && // starts after end
-               comparePoint(parentNode, nodeIndex + 1, ec) > 0) { // ends after end
-        return false;
-    }
-    
-    return true; // all other cases
+    unsigned nodeIndex = refNode->computeNodeIndex();
+
+    // If (parent, offset) is before end and (parent, offset + 1) is after start, return true.
+    // Otherwise, return false.
+    short compareFirst = comparePoint(parentNode, nodeIndex, ec);
+    short compareSecond = comparePoint(parentNode, nodeIndex + 1, ec);
+
+    bool isFirstBeforeEnd = m_start == m_end ? compareFirst < 0 : compareFirst <= 0;
+    bool isSecondAfterStart = m_start == m_end ? compareSecond > 0 : compareSecond >= 0;
+
+    return isFirstBeforeEnd && isSecondAfterStart;
 }
 
 static inline Node* highestAncestorUnderCommonRoot(Node* node, Node* commonRoot)
@@ -572,8 +563,6 @@ static inline unsigned lengthOfContentsInNode(Node* node)
         return downcast<CharacterData>(*node).length();
     case Node::ELEMENT_NODE:
     case Node::ATTRIBUTE_NODE:
-    case Node::ENTITY_REFERENCE_NODE:
-    case Node::ENTITY_NODE:
     case Node::DOCUMENT_NODE:
     case Node::DOCUMENT_TYPE_NODE:
     case Node::DOCUMENT_FRAGMENT_NODE:
@@ -694,7 +683,7 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
     ASSERT(startOffset <= endOffset);
 
     // This switch statement must be consistent with that of lengthOfContentsInNode.
-    RefPtr<Node> result;   
+    RefPtr<Node> result;
     switch (container->nodeType()) {
     case Node::TEXT_NODE:
     case Node::CDATA_SECTION_NODE:
@@ -734,8 +723,6 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
         break;
     case Node::ELEMENT_NODE:
     case Node::ATTRIBUTE_NODE:
-    case Node::ENTITY_REFERENCE_NODE:
-    case Node::ENTITY_NODE:
     case Node::DOCUMENT_NODE:
     case Node::DOCUMENT_TYPE_NODE:
     case Node::DOCUMENT_FRAGMENT_NODE:
@@ -752,8 +739,13 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
         Vector<RefPtr<Node>> nodes;
         for (unsigned i = startOffset; n && i; i--)
             n = n->nextSibling();
-        for (unsigned i = startOffset; n && i < endOffset; i++, n = n->nextSibling())
+        for (unsigned i = startOffset; n && i < endOffset; i++, n = n->nextSibling()) {
+            if (action != Delete && n->isDocumentTypeNode()) {
+                ec = HIERARCHY_REQUEST_ERR;
+                return nullptr;
+            }
             nodes.append(n);
+        }
 
         processNodes(action, nodes, container, result, ec);
         break;
@@ -836,10 +828,6 @@ RefPtr<Node> Range::processAncestorsAndTheirSiblings(ActionType action, Node* co
 
 RefPtr<DocumentFragment> Range::extractContents(ExceptionCode& ec)
 {
-    checkDeleteExtract(ec);
-    if (ec)
-        return nullptr;
-
     return processContents(Extract, ec);
 }
 
@@ -855,13 +843,6 @@ void Range::insertNode(PassRefPtr<Node> prpNewNode, ExceptionCode& ec)
     ec = 0;
     if (!newNode) {
         ec = TypeError;
-        return;
-    }
-
-    // NO_MODIFICATION_ALLOWED_ERR: Raised if an ancestor container of either boundary-point of
-    // the Range is read-only.
-    if (containedByReadOnly()) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
         return;
     }
 
@@ -913,7 +894,6 @@ void Range::insertNode(PassRefPtr<Node> prpNewNode, ExceptionCode& ec)
     // INVALID_NODE_TYPE_ERR: Raised if newNode is an Attr, Entity, ShadowRoot or Document node.
     switch (newNodeType) {
     case Node::ATTRIBUTE_NODE:
-    case Node::ENTITY_NODE:
     case Node::DOCUMENT_NODE:
         ec = INVALID_NODE_TYPE_ERR;
         return;
@@ -1012,7 +992,6 @@ Node* Range::checkNodeWOffset(Node* n, int offset, ExceptionCode& ec) const
 {
     switch (n->nodeType()) {
         case Node::DOCUMENT_TYPE_NODE:
-        case Node::ENTITY_NODE:
             ec = INVALID_NODE_TYPE_ERR;
             return nullptr;
         case Node::CDATA_SECTION_NODE:
@@ -1026,7 +1005,6 @@ Node* Range::checkNodeWOffset(Node* n, int offset, ExceptionCode& ec) const
         case Node::DOCUMENT_FRAGMENT_NODE:
         case Node::DOCUMENT_NODE:
         case Node::ELEMENT_NODE:
-        case Node::ENTITY_REFERENCE_NODE:
         case Node::XPATH_NAMESPACE_NODE: {
             if (!offset)
                 return nullptr;
@@ -1038,53 +1016,6 @@ Node* Range::checkNodeWOffset(Node* n, int offset, ExceptionCode& ec) const
     }
     ASSERT_NOT_REACHED();
     return nullptr;
-}
-
-void Range::checkNodeBA(Node* n, ExceptionCode& ec) const
-{
-    // INVALID_NODE_TYPE_ERR: Raised if the root container of refNode is not an
-    // Attr, Document, DocumentFragment or ShadowRoot node, or part of a SVG shadow DOM tree,
-    // or if refNode is a Document, DocumentFragment, ShadowRoot, Attr, or Entity node.
-
-    switch (n->nodeType()) {
-        case Node::ATTRIBUTE_NODE:
-        case Node::DOCUMENT_FRAGMENT_NODE:
-        case Node::DOCUMENT_NODE:
-        case Node::ENTITY_NODE:
-            ec = INVALID_NODE_TYPE_ERR;
-            return;
-        case Node::CDATA_SECTION_NODE:
-        case Node::COMMENT_NODE:
-        case Node::DOCUMENT_TYPE_NODE:
-        case Node::ELEMENT_NODE:
-        case Node::ENTITY_REFERENCE_NODE:
-        case Node::PROCESSING_INSTRUCTION_NODE:
-        case Node::TEXT_NODE:
-        case Node::XPATH_NAMESPACE_NODE:
-            break;
-    }
-
-    Node* root = n;
-    while (ContainerNode* parent = root->parentNode())
-        root = parent;
-
-    switch (root->nodeType()) {
-        case Node::ATTRIBUTE_NODE:
-        case Node::DOCUMENT_NODE:
-        case Node::DOCUMENT_FRAGMENT_NODE:
-            break;
-        case Node::CDATA_SECTION_NODE:
-        case Node::COMMENT_NODE:
-        case Node::DOCUMENT_TYPE_NODE:
-        case Node::ELEMENT_NODE:
-        case Node::ENTITY_NODE:
-        case Node::ENTITY_REFERENCE_NODE:
-        case Node::PROCESSING_INSTRUCTION_NODE:
-        case Node::TEXT_NODE:
-        case Node::XPATH_NAMESPACE_NODE:
-            ec = INVALID_NODE_TYPE_ERR;
-            return;
-    }
 }
 
 Ref<Range> Range::cloneRange() const
@@ -1099,10 +1030,10 @@ void Range::setStartAfter(Node* refNode, ExceptionCode& ec)
         return;
     }
 
-    ec = 0;
-    checkNodeBA(refNode, ec);
-    if (ec)
+    if (!refNode->parentNode()) {
+        ec = INVALID_NODE_TYPE_ERR;
         return;
+    }
 
     setStart(refNode->parentNode(), refNode->computeNodeIndex() + 1, ec);
 }
@@ -1114,10 +1045,10 @@ void Range::setEndBefore(Node* refNode, ExceptionCode& ec)
         return;
     }
 
-    ec = 0;
-    checkNodeBA(refNode, ec);
-    if (ec)
+    if (!refNode->parentNode()) {
+        ec = INVALID_NODE_TYPE_ERR;
         return;
+    }
 
     setEnd(refNode->parentNode(), refNode->computeNodeIndex(), ec);
 }
@@ -1129,10 +1060,10 @@ void Range::setEndAfter(Node* refNode, ExceptionCode& ec)
         return;
     }
 
-    ec = 0;
-    checkNodeBA(refNode, ec);
-    if (ec)
+    if (!refNode->parentNode()) {
+        ec = INVALID_NODE_TYPE_ERR;
         return;
+    }
 
     setEnd(refNode->parentNode(), refNode->computeNodeIndex() + 1, ec);
 }
@@ -1144,35 +1075,12 @@ void Range::selectNode(Node* refNode, ExceptionCode& ec)
         return;
     }
 
-    // INVALID_NODE_TYPE_ERR: Raised if an ancestor of refNode is an Entity, or
-    // DocumentType node or if refNode is a Document, DocumentFragment, ShadowRoot, Attr, or Entity
-    // node.
-    for (ContainerNode* anc = refNode->parentNode(); anc; anc = anc->parentNode()) {
-        switch (anc->nodeType()) {
-            case Node::ATTRIBUTE_NODE:
-            case Node::CDATA_SECTION_NODE:
-            case Node::COMMENT_NODE:
-            case Node::DOCUMENT_FRAGMENT_NODE:
-            case Node::DOCUMENT_NODE:
-            case Node::ELEMENT_NODE:
-            case Node::ENTITY_REFERENCE_NODE:
-            case Node::PROCESSING_INSTRUCTION_NODE:
-            case Node::TEXT_NODE:
-            case Node::XPATH_NAMESPACE_NODE:
-                break;
-            case Node::DOCUMENT_TYPE_NODE:
-            case Node::ENTITY_NODE:
-                ec = INVALID_NODE_TYPE_ERR;
-                return;
-        }
-    }
-
+    // INVALID_NODE_TYPE_ERR: Raised if refNode is a Document, DocumentFragment or Attr node.
     switch (refNode->nodeType()) {
         case Node::CDATA_SECTION_NODE:
         case Node::COMMENT_NODE:
         case Node::DOCUMENT_TYPE_NODE:
         case Node::ELEMENT_NODE:
-        case Node::ENTITY_REFERENCE_NODE:
         case Node::PROCESSING_INSTRUCTION_NODE:
         case Node::TEXT_NODE:
         case Node::XPATH_NAMESPACE_NODE:
@@ -1180,7 +1088,6 @@ void Range::selectNode(Node* refNode, ExceptionCode& ec)
         case Node::ATTRIBUTE_NODE:
         case Node::DOCUMENT_FRAGMENT_NODE:
         case Node::DOCUMENT_NODE:
-        case Node::ENTITY_NODE:
             ec = INVALID_NODE_TYPE_ERR;
             return;
     }
@@ -1202,26 +1109,9 @@ void Range::selectNodeContents(Node* refNode, ExceptionCode& ec)
         return;
     }
 
-    // INVALID_NODE_TYPE_ERR: Raised if refNode or an ancestor of refNode is an Entity,
-    // or DocumentType node.
-    for (Node* n = refNode; n; n = n->parentNode()) {
-        switch (n->nodeType()) {
-            case Node::ATTRIBUTE_NODE:
-            case Node::CDATA_SECTION_NODE:
-            case Node::COMMENT_NODE:
-            case Node::DOCUMENT_FRAGMENT_NODE:
-            case Node::DOCUMENT_NODE:
-            case Node::ELEMENT_NODE:
-            case Node::ENTITY_REFERENCE_NODE:
-            case Node::PROCESSING_INSTRUCTION_NODE:
-            case Node::TEXT_NODE:
-            case Node::XPATH_NAMESPACE_NODE:
-                break;
-            case Node::DOCUMENT_TYPE_NODE:
-            case Node::ENTITY_NODE:
-                ec = INVALID_NODE_TYPE_ERR;
-                return;
-        }
+    if (refNode->isDocumentTypeNode()) {
+        ec = INVALID_NODE_TYPE_ERR;
+        return;
     }
 
     if (&ownerDocument() != &refNode->document())
@@ -1240,6 +1130,19 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
         return;
     }
 
+    // INVALID_STATE_ERR: Raised if the Range partially selects a non-Text node.
+    // https://dom.spec.whatwg.org/#dom-range-surroundcontents (step 1).
+    Node* startNonTextContainer = &startContainer();
+    if (startNonTextContainer->nodeType() == Node::TEXT_NODE)
+        startNonTextContainer = startNonTextContainer->parentNode();
+    Node* endNonTextContainer = &endContainer();
+    if (endNonTextContainer->nodeType() == Node::TEXT_NODE)
+        endNonTextContainer = endNonTextContainer->parentNode();
+    if (startNonTextContainer != endNonTextContainer) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+
     // INVALID_NODE_TYPE_ERR: Raised if node is an Attr, Entity, DocumentType,
     // Document, or DocumentFragment node.
     switch (newParent->nodeType()) {
@@ -1247,24 +1150,15 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
         case Node::DOCUMENT_FRAGMENT_NODE:
         case Node::DOCUMENT_NODE:
         case Node::DOCUMENT_TYPE_NODE:
-        case Node::ENTITY_NODE:
             ec = INVALID_NODE_TYPE_ERR;
             return;
         case Node::CDATA_SECTION_NODE:
         case Node::COMMENT_NODE:
         case Node::ELEMENT_NODE:
-        case Node::ENTITY_REFERENCE_NODE:
         case Node::PROCESSING_INSTRUCTION_NODE:
         case Node::TEXT_NODE:
         case Node::XPATH_NAMESPACE_NODE:
             break;
-    }
-
-    // NO_MODIFICATION_ALLOWED_ERR: Raised if an ancestor container of either boundary-point of
-    // the Range is read-only.
-    if (containedByReadOnly()) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return;
     }
 
     // Raise a HIERARCHY_REQUEST_ERR if startContainer() doesn't accept children like newParent.
@@ -1287,19 +1181,6 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
 
     // FIXME: Do we need a check if the node would end up with a child node of a type not
     // allowed by the type of node?
-
-    // INVALID_STATE_ERR: Raised if the Range partially selects a non-Text node.
-    // https://dom.spec.whatwg.org/#dom-range-surroundcontents (step 1).
-    Node* startNonTextContainer = &startContainer();
-    if (startNonTextContainer->nodeType() == Node::TEXT_NODE)
-        startNonTextContainer = startNonTextContainer->parentNode();
-    Node* endNonTextContainer = &endContainer();
-    if (endNonTextContainer->nodeType() == Node::TEXT_NODE)
-        endNonTextContainer = endNonTextContainer->parentNode();
-    if (startNonTextContainer != endNonTextContainer) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
 
     ec = 0;
     while (Node* n = newParent->firstChild()) {
@@ -1326,49 +1207,12 @@ void Range::setStartBefore(Node* refNode, ExceptionCode& ec)
         return;
     }
 
-    ec = 0;
-    checkNodeBA(refNode, ec);
-    if (ec)
+    if (!refNode->parentNode()) {
+        ec = INVALID_NODE_TYPE_ERR;
         return;
+    }
 
     setStart(refNode->parentNode(), refNode->computeNodeIndex(), ec);
-}
-
-void Range::checkDeleteExtract(ExceptionCode& ec)
-{
-    ec = 0;
-    if (!commonAncestorContainer())
-        return;
-
-    Node* pastLast = pastLastNode();
-    for (Node* n = firstNode(); n != pastLast; n = NodeTraversal::next(*n)) {
-        if (n->isReadOnlyNode()) {
-            ec = NO_MODIFICATION_ALLOWED_ERR;
-            return;
-        }
-        if (n->nodeType() == Node::DOCUMENT_TYPE_NODE) {
-            ec = HIERARCHY_REQUEST_ERR;
-            return;
-        }
-    }
-
-    if (containedByReadOnly()) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return;
-    }
-}
-
-bool Range::containedByReadOnly() const
-{
-    for (Node* n = &startContainer(); n; n = n->parentNode()) {
-        if (n->isReadOnlyNode())
-            return true;
-    }
-    for (Node* n = &endContainer(); n; n = n->parentNode()) {
-        if (n->isReadOnlyNode())
-            return true;
-    }
-    return false;
 }
 
 Node* Range::firstNode() const

@@ -424,6 +424,20 @@
     WebCore::raiseOnDOMError(ec);
 }
 
+- (DOMTestObj *)strictTypeCheckingAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return kit(WTF::getPtr(IMPL->strictTypeCheckingAttribute()));
+}
+
+- (void)setStrictTypeCheckingAttribute:(DOMTestObj *)newStrictTypeCheckingAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    ASSERT(newStrictTypeCheckingAttribute);
+
+    IMPL->setStrictTypeCheckingAttribute(core(newStrictTypeCheckingAttribute));
+}
+
 - (int)customAttr
 {
     WebCore::JSMainThreadNullState state;
@@ -446,6 +460,18 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->setWithScriptStateAttribute(newWithScriptStateAttribute);
+}
+
+- (int)withCallWithAndSetterCallWithAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->withCallWithAndSetterCallWithAttribute();
+}
+
+- (void)setWithCallWithAndSetterCallWithAttribute:(int)newWithCallWithAndSetterCallWithAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setWithCallWithAndSetterCallWithAttribute(newWithCallWithAndSetterCallWithAttribute);
 }
 
 - (DOMTestObj *)withScriptExecutionContextAttribute
@@ -804,6 +830,18 @@
     return IMPL->attribute();
 }
 
+- (DOMTestNode *)putForwardsAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return kit(WTF::getPtr(IMPL->putForwardsAttribute()));
+}
+
+- (DOMTestNode *)putForwardsNullableAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return kit(WTF::getPtr(IMPL->putForwardsNullableAttribute(isNull)));
+}
+
 - (void)voidMethod
 {
     WebCore::JSMainThreadNullState state;
@@ -870,6 +908,12 @@
     IMPL->methodWithEnumArg(core(enumArg));
 }
 
+- (void)methodWithOptionalEnumArgAndDefaultValue:(DOMTestEnumType *)enumArg
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->methodWithOptionalEnumArgAndDefaultValue(core(enumArg));
+}
+
 - (DOMTestObj *)methodThatRequiresAllArgsAndThrows:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
@@ -909,6 +953,18 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->customMethodWithArgs(longArg, strArg, core(objArg));
+}
+
+- (void)jsBuiltinMethod
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->jsBuiltinMethod();
+}
+
+- (void)jsBuiltinMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->jsBuiltinMethodWithArgs(longArg, strArg, core(objArg));
 }
 
 - (void)addEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture
@@ -993,6 +1049,12 @@
     IMPL->methodWithOptionalArg(opt);
 }
 
+- (void)methodWithOptionalArgAndDefaultValue:(int)opt
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->methodWithOptionalArgAndDefaultValue(opt);
+}
+
 - (void)methodWithNonOptionalArgAndOptionalArg:(int)nonOpt opt:(int)opt
 {
     WebCore::JSMainThreadNullState state;
@@ -1009,6 +1071,12 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->methodWithOptionalString(str);
+}
+
+- (void)methodWithOptionalStringAndDefaultValue:(NSString *)str
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->methodWithOptionalStringAndDefaultValue(str);
 }
 
 - (void)methodWithOptionalStringIsUndefined:(NSString *)str

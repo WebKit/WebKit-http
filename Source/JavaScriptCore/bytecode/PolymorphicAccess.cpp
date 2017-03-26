@@ -625,6 +625,11 @@ void AccessCase::generate(AccessGenerationState& state)
 
                 done.link(&jit);
 
+                jit.addPtr(
+                    CCallHelpers::TrustedImm32(
+                        jit.codeBlock()->stackPointerOffset() * sizeof(Register)),
+                    GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
+
                 state.callbacks.append(
                     [=, &vm] (LinkBuffer& linkBuffer) {
                         m_rareData->callLinkInfo->setCallLocations(
@@ -686,6 +691,15 @@ void AccessCase::generate(AccessGenerationState& state)
     }
 
     case Replace: {
+        if (InferredType* type = structure()->inferredTypeFor(ident.impl())) {
+            if (verbose)
+                dataLog("Have type: ", type->descriptor(), "\n");
+            state.failAndRepatch.append(
+                jit.branchIfNotType(
+                    valueRegs, scratchGPR, type->descriptor(), CCallHelpers::DoNotHaveTagRegisters));
+        } else if (verbose)
+            dataLog("Don't have type.\n");
+        
         if (isInlineOffset(m_offset)) {
             jit.storeValue(
                 valueRegs,
@@ -709,6 +723,15 @@ void AccessCase::generate(AccessGenerationState& state)
         RELEASE_ASSERT(GPRInfo::numberOfRegisters >= 6 || !structure()->outOfLineCapacity() || structure()->outOfLineCapacity() == newStructure()->outOfLineCapacity());
         RELEASE_ASSERT(!structure()->couldHaveIndexingHeader());
 
+        if (InferredType* type = newStructure()->inferredTypeFor(ident.impl())) {
+            if (verbose)
+                dataLog("Have type: ", type->descriptor(), "\n");
+            state.failAndRepatch.append(
+                jit.branchIfNotType(
+                    valueRegs, scratchGPR, type->descriptor(), CCallHelpers::DoNotHaveTagRegisters));
+        } else if (verbose)
+            dataLog("Don't have type.\n");
+        
         CCallHelpers::JumpList slowPath;
 
         ScratchRegisterAllocator allocator(stubInfo.patch.usedRegisters);
@@ -803,7 +826,6 @@ void AccessCase::generate(AccessGenerationState& state)
         if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity())
             scratchBuffer = vm.scratchBufferForSize(allocator.desiredScratchBufferSizeForCall());
 
-#if ENABLE(GGC)
         if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
             CCallHelpers::Call callFlushWriteBarrierBuffer;
             CCallHelpers::Jump ownerIsRememberedOrInEden = jit.jumpIfIsRememberedOrInEden(baseGPR);
@@ -846,7 +868,6 @@ void AccessCase::generate(AccessGenerationState& state)
                     linkBuffer.link(callFlushWriteBarrierBuffer, operationFlushWriteBarrierBuffer);
                 });
         }
-#endif // ENABLE(GGC)
         
         allocator.restoreReusedRegistersByPopping(jit, numberOfPaddingBytes);
         state.succeed();

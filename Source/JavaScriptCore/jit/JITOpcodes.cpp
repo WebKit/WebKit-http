@@ -501,9 +501,16 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
 
     move(TrustedImmPtr(m_vm), regT3);
     load64(Address(regT3, VM::callFrameForCatchOffset()), callFrameRegister);
+    storePtr(TrustedImmPtr(nullptr), Address(regT3, VM::callFrameForCatchOffset()));
 
     addPtr(TrustedImm32(stackPointerOffsetFor(codeBlock()) * sizeof(Register)), callFrameRegister, stackPointerRegister);
 
+    callOperationNoExceptionCheck(operationCheckIfExceptionIsUncatchableAndNotifyProfiler);
+    Jump isCatchableException = branchTest32(Zero, returnValueGPR);
+    jumpToExceptionHandler();
+    isCatchableException.link(this);
+
+    move(TrustedImmPtr(m_vm), regT3);
     load64(Address(regT3, VM::exceptionOffset()), regT0);
     store64(TrustedImm64(JSValue::encode(JSValue())), Address(regT3, VM::exceptionOffset()));
     emitPutVirtualRegister(currentInstruction[1].u.operand);
@@ -988,8 +995,10 @@ void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
     store64(TrustedImm64(JSValue::encode(jsUndefined())), Address(callFrameRegister, sizeof(Register) * dst));
 #else
     emitLoadPayload(currentInstruction[2].u.operand, regT0);
-    if (isArrowFunction)
-        emitLoadPayload(currentInstruction[4].u.operand, regT1);
+    if (isArrowFunction) {
+        int value = currentInstruction[4].u.operand;
+        emitLoad(value, regT3, regT2);
+    }
     notUndefinedScope = branch32(NotEqual, tagFor(currentInstruction[2].u.operand), TrustedImm32(JSValue::UndefinedTag));
     emitStore(dst, jsUndefined());
 #endif
@@ -998,7 +1007,11 @@ void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
         
     FunctionExecutable* function = m_codeBlock->functionExpr(currentInstruction[3].u.operand);
     if (isArrowFunction)
+#if USE(JSVALUE64)
         callOperation(operationNewArrowFunction, dst, regT0, function, regT1);
+#else 
+        callOperation(operationNewArrowFunction, dst, regT0, function, regT3, regT2);
+#endif
     else
         callOperation(operationNewFunction, dst, regT0, function);
     done.link(this);

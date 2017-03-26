@@ -68,8 +68,7 @@ WebInspector.TypeTokenAnnotator = class TypeTokenAnnotator extends WebInspector.
             nodesWithUpdatedTypes.forEach(this._insertTypeToken, this);
 
             var totalTime = Date.now() - startTime;
-            var timeoutTime = Math.max(100, Math.min(2000, 8 * totalTime));
-
+            var timeoutTime = Number.constrain(8 * totalTime, 500, 2000);
             this._timeoutIdentifier = setTimeout(function timeoutUpdate() {
                 this._timeoutIdentifier = null;
                 this.insertAnnotations();
@@ -96,7 +95,7 @@ WebInspector.TypeTokenAnnotator = class TypeTokenAnnotator extends WebInspector.
             return;
         }
 
-        console.assert(node.type === WebInspector.ScriptSyntaxTree.NodeType.FunctionDeclaration || node.type === WebInspector.ScriptSyntaxTree.NodeType.FunctionExpression);
+        console.assert(node.type === WebInspector.ScriptSyntaxTree.NodeType.FunctionDeclaration || node.type === WebInspector.ScriptSyntaxTree.NodeType.FunctionExpression || node.type === WebInspector.ScriptSyntaxTree.NodeType.ArrowFunctionExpression);
 
         var functionReturnType = node.attachments.returnTypes;
         if (!functionReturnType || !functionReturnType.valid)
@@ -149,6 +148,7 @@ WebInspector.TypeTokenAnnotator = class TypeTokenAnnotator extends WebInspector.
         var isMultiLineComment = false;
         var isSingleLineComment = false;
         var shouldIgnore = false;
+        const isArrowFunction = node.type === WebInspector.ScriptSyntaxTree.NodeType.ArrowFunctionExpression;
 
         function isLineTerminator(char)
         {
@@ -158,7 +158,10 @@ WebInspector.TypeTokenAnnotator = class TypeTokenAnnotator extends WebInspector.
             return char === "\n" || char === "\r" || char === "\u2028" || char === "\u2029";
         }
 
-        while ((sourceString[offset] !== ")" || shouldIgnore) && offset < sourceString.length) {
+        while (((!isArrowFunction && sourceString[offset] !== ")")
+                || (isArrowFunction && sourceString[offset] !== ">")
+                || shouldIgnore)
+               && offset < sourceString.length) {
             if (isSingleLineComment && isLineTerminator(sourceString[offset])) {
                 isSingleLineComment = false;
                 shouldIgnore = false;

@@ -33,7 +33,6 @@
 #include "DocumentFragment.h"
 #include "DocumentType.h"
 #include "Entity.h"
-#include "EntityReference.h"
 #include "ExceptionCode.h"
 #include "HTMLAudioElement.h"
 #include "HTMLCanvasElement.h"
@@ -51,13 +50,12 @@
 #include "JSDocument.h"
 #include "JSDocumentFragment.h"
 #include "JSDocumentType.h"
-#include "JSEntity.h"
-#include "JSEntityReference.h"
 #include "JSEventListener.h"
 #include "JSHTMLElement.h"
 #include "JSHTMLElementWrapperFactory.h"
 #include "JSProcessingInstruction.h"
 #include "JSSVGElementWrapperFactory.h"
+#include "JSShadowRoot.h"
 #include "JSText.h"
 #include "Node.h"
 #include "ProcessingInstruction.h"
@@ -75,11 +73,11 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static inline bool isReachableFromDOM(Node& node, SlotVisitor& visitor)
+static inline bool isReachableFromDOM(Node* node, SlotVisitor& visitor)
 {
-    if (!node.inDocument()) {
-        if (is<Element>(node)) {
-            auto& element = downcast<Element>(node);
+    if (!node->inDocument()) {
+        if (is<Element>(*node)) {
+            auto& element = downcast<Element>(*node);
 
             // If a wrapper is the last reference to an image element
             // that is loading but not in the document, the wrapper is observable
@@ -100,56 +98,56 @@ static inline bool isReachableFromDOM(Node& node, SlotVisitor& visitor)
 
         // If a node is firing event listeners, its wrapper is observable because
         // its wrapper is responsible for marking those event listeners.
-        if (node.isFiringEventListeners())
+        if (node->isFiringEventListeners())
             return true;
     }
 
-    return visitor.containsOpaqueRoot(root(&node));
+    return visitor.containsOpaqueRoot(root(node));
 }
 
-bool JSNodeOwner::isReachableFromOpaqueRoots(JSC::JSCell& cell, void*, SlotVisitor& visitor)
+bool JSNodeOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
 {
-    auto& jsNode = jsCast<JSNode&>(cell);
-    return isReachableFromDOM(jsNode.impl(), visitor);
+    JSNode* jsNode = jsCast<JSNode*>(handle.slot()->asCell());
+    return isReachableFromDOM(&jsNode->impl(), visitor);
 }
 
-JSValue JSNode::insertBefore(ExecState* exec)
+JSValue JSNode::insertBefore(ExecState& state)
 {
     ExceptionCode ec = 0;
-    bool ok = impl().insertBefore(JSNode::toWrapped(exec->argument(0)), JSNode::toWrapped(exec->argument(1)), ec);
-    setDOMException(exec, ec);
+    bool ok = impl().insertBefore(JSNode::toWrapped(state.argument(0)), JSNode::toWrapped(state.argument(1)), ec);
+    setDOMException(&state, ec);
     if (ok)
-        return exec->argument(0);
+        return state.argument(0);
     return jsNull();
 }
 
-JSValue JSNode::replaceChild(ExecState* exec)
+JSValue JSNode::replaceChild(ExecState& state)
 {
     ExceptionCode ec = 0;
-    bool ok = impl().replaceChild(JSNode::toWrapped(exec->argument(0)), JSNode::toWrapped(exec->argument(1)), ec);
-    setDOMException(exec, ec);
+    bool ok = impl().replaceChild(JSNode::toWrapped(state.argument(0)), JSNode::toWrapped(state.argument(1)), ec);
+    setDOMException(&state, ec);
     if (ok)
-        return exec->argument(1);
+        return state.argument(1);
     return jsNull();
 }
 
-JSValue JSNode::removeChild(ExecState* exec)
+JSValue JSNode::removeChild(ExecState& state)
 {
     ExceptionCode ec = 0;
-    bool ok = impl().removeChild(JSNode::toWrapped(exec->argument(0)), ec);
-    setDOMException(exec, ec);
+    bool ok = impl().removeChild(JSNode::toWrapped(state.argument(0)), ec);
+    setDOMException(&state, ec);
     if (ok)
-        return exec->argument(0);
+        return state.argument(0);
     return jsNull();
 }
 
-JSValue JSNode::appendChild(ExecState* exec)
+JSValue JSNode::appendChild(ExecState& state)
 {
     ExceptionCode ec = 0;
-    bool ok = impl().appendChild(JSNode::toWrapped(exec->argument(0)), ec);
-    setDOMException(exec, ec);
+    bool ok = impl().appendChild(JSNode::toWrapped(state.argument(0)), ec);
+    setDOMException(&state, ec);
     if (ok)
-        return exec->argument(0);
+        return state.argument(0);
     return jsNull();
 }
 
@@ -189,9 +187,6 @@ static ALWAYS_INLINE JSValue createWrapperInline(ExecState* exec, JSDOMGlobalObj
         case Node::CDATA_SECTION_NODE:
             wrapper = CREATE_DOM_WRAPPER(globalObject, CDATASection, node);
             break;
-        case Node::ENTITY_NODE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, Entity, node);
-            break;
         case Node::PROCESSING_INSTRUCTION_NODE:
             wrapper = CREATE_DOM_WRAPPER(globalObject, ProcessingInstruction, node);
             break;
@@ -205,16 +200,18 @@ static ALWAYS_INLINE JSValue createWrapperInline(ExecState* exec, JSDOMGlobalObj
             wrapper = CREATE_DOM_WRAPPER(globalObject, DocumentType, node);
             break;
         case Node::DOCUMENT_FRAGMENT_NODE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, DocumentFragment, node);
-            break;
-        case Node::ENTITY_REFERENCE_NODE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, EntityReference, node);
+#if ENABLE(SHADOW_DOM)
+            if (node->isShadowRoot())
+                wrapper = CREATE_DOM_WRAPPER(globalObject, ShadowRoot, node);
+            else
+#endif
+                wrapper = CREATE_DOM_WRAPPER(globalObject, DocumentFragment, node);
             break;
         default:
             wrapper = CREATE_DOM_WRAPPER(globalObject, Node, node);
     }
 
-    return wrapper;    
+    return wrapper;
 }
 
 JSValue createWrapper(ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)

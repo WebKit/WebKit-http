@@ -1,3 +1,413 @@
+2015-09-22  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Add a file of pointer-lock to cmake ports
+        https://bugs.webkit.org/show_bug.cgi?id=149453
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::navigateToPDFLinkWithSimulatedClick): Fix a build break.
+
+2015-09-22  Anders Carlsson  <andersca@apple.com>
+
+        URL of page visited in private browsing still appears in Activity Monitor after page is closed
+        https://bugs.webkit.org/show_bug.cgi?id=149475
+        rdar://problem/22684521
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::close):
+        Make sure to call updateActivePages after removing the page from the page map.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::updateActivePages):
+        Don't include pages that have private browsing enabled.
+
+2015-09-22  Tim Horton  <timothy_horton@apple.com>
+
+        Make it more obvious when using an unaccelerated image buffer, and fix a few callers who do
+        https://bugs.webkit.org/show_bug.cgi?id=149428
+
+        Reviewed by Simon Fraser and Darin Adler.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::create):
+
+2015-09-22  Andreas Kling  <akling@apple.com>
+
+        [WK2][NetworkCache] New entry bodies remain in dirty memory after being written to disk.
+        <https://webkit.org/b/149463>
+
+        Reviewed by Antti Koivisto.
+
+        Call msync(MS_ASYNC) on cache entry bodies after writing their data to a
+        memory-mapped file. This turns the previously dirty memory into clean memory,
+        reducing our effective footprint.
+
+        I previously believed this would happen automatically when the kernel finds
+        itself under memory pressure, around the same time as it starts dropping
+        volatile pages. Turns out that's not the case. Even under considerable pressure,
+        we never flush this memory to file. So let's take care of it ourselves.
+
+        If this ends up generating more IO activity than we're comfortable with on some
+        scenario, we can look at throttling.
+
+        * NetworkProcess/cache/NetworkCacheData.cpp:
+        (WebKit::NetworkCache::Data::mapToFile):
+
+2015-09-22  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for legacy EntityReference DOM Node type
+        https://bugs.webkit.org/show_bug.cgi?id=149348
+
+        Reviewed by Darin Adler.
+
+        Drop handling EntityReference Nodes.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
+        (WebKit::WKDOMNodeClass): Deleted.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::isAssistableElement):
+
+2015-09-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189616.
+        https://bugs.webkit.org/show_bug.cgi?id=149456
+
+        suspected cause of multiple regressions (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Weak should only accept cell pointees."
+        https://bugs.webkit.org/show_bug.cgi?id=148955
+        http://trac.webkit.org/changeset/189616
+
+2015-09-21  Timothy Horton  <timothy_horton@apple.com>
+
+        Allow DataDetectors to pre-filter telephone number menu items
+        https://bugs.webkit.org/show_bug.cgi?id=149444
+        <rdar://problem/19286320>
+
+        Reviewed by Sam Weinig.
+
+        * Platform/mac/MenuUtilities.mm:
+        (WebKit::menuItemForTelephoneNumber):
+        (WebKit::menuForTelephoneNumber):
+        Let DataDetectors know what kind of items we want, so that they can avoid
+        some unnecessary work in cases where we were just going to throw away the items anyway.
+
+2015-09-21  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [Threaded Compositor] Modified to use reference of GraphicsContext instead of pointer
+        https://bugs.webkit.org/show_bug.cgi?id=149399
+
+        Reviewed by Darin Adler.
+
+        This fixes build failure after r189144
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::paintToSurface):
+        (WebKit::ThreadSafeCoordinatedSurface::beginPaint):
+        (WebKit::ThreadSafeCoordinatedSurface::endPaint):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.h:
+
+2015-09-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add the ability for tests to run script in the UI process in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=149356
+
+        Reviewed by Tim Horton.
+
+        Expose a few private functions for testing.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2015-09-21  Tim Horton  <timothy_horton@apple.com>
+
+        Layout milestones aren't synchronized with UI-side compositing transactions
+        https://bugs.webkit.org/show_bug.cgi?id=149362
+
+        Reviewed by Anders Carlsson.
+        
+        Because layout milestones are primarily used to synchronize things with
+        the displayed layout/rendering of the page, they should fire at the same
+        time as the contents of the view change.
+
+        However, with UI-side compositing, the layer tree transaction will
+        most likely come in *after* the layout milestones associated with its
+        contents fire, breaking this synchronization.
+
+        Instead, put the layout milestones inside the transaction and fire them
+        immediately after it is committed in the UI process.
+
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        (WebKit::RemoteLayerTreeTransaction::setCallbackIDs):
+        (WebKit::RemoteLayerTreeTransaction::newlyReachedLayoutMilestones):
+        (WebKit::RemoteLayerTreeTransaction::setNewlyReachedLayoutMilestones):
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::RemoteLayerTreeTransaction):
+        (WebKit::RemoteLayerTreeTransaction::encode):
+        (WebKit::RemoteLayerTreeTransaction::decode):
+        Add LayoutMilestones to the transaction.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::didLayout):
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::renderingProgressDidChange):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        (WKPageSetPageNavigationClient):
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::renderingProgressDidChange):
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didCommitLayerTree):
+        Remove the UserData parameter from didLayout/renderingProgressDidChange,
+        except for at the API level where we'll always pass null.
+        Nobody uses UserData on didLayout, and we'll assert if any client sets it
+        (and it won't get passed through to the UI process).
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didLayoutForCustomContentProvider):
+        Just call didLayout with the relevant milestones instead of reimplementing it.
+
+        (WebKit::WebPageProxy::didLayout):
+        * UIProcess/WebPageProxy.h:
+        Make didLayout public.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidLayout):
+        Let WebPage handle dispatching didLayout.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::dispatchDidLayout):
+        * WebProcess/WebPage/WebPage.h:
+        Let the DrawingArea handle dispatching didLayout.
+        If it doesn't want to handle it, we'll just do the normal thing
+        and dispatch an async message.
+
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        If we reach a new layout milestone, dispatch didLayout client/delegate callbacks.
+
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::dispatchDidLayout):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+        (WebKit::RemoteLayerTreeDrawingArea::dispatchDidLayout):
+        Queue up milestones as we reach them, and send them in the transaction.
+
+2015-09-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove XHR_TIMEOUT compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=149260
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-09-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] WebEditorClient::supportsGlobalSelection returns true under Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=149375
+
+        Reviewed by Darin Adler.
+
+        WebEditorClient::supportsGlobalSelection should return false when running under Wayland,
+        since Wayland does not have any equivalent for PRIMARY or the concept of a global selection.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::supportsGlobalSelection):
+
+2015-09-19  Dan Bernstein  <mitz@apple.com>
+
+        Attempted build fix.
+
+        * mac/postprocess-framework-headers.sh: Fixed an overzealous regular expression.
+
+2015-09-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189908.
+        https://bugs.webkit.org/show_bug.cgi?id=149368
+
+        Broke run-webkit-tests --pixel (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "printing does not use minimum page zoom factor"
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+        http://trac.webkit.org/changeset/189908
+
+2015-09-18  Andy Estes  <aestes@apple.com>
+
+        [iOS] did{Start,Finish}LoadForQuickLookDocumentInMainFrame is never called on WKNavigationDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=149360
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didStartLoadForQuickLookDocumentInMainFrame): Called on m_navigationDelegate if non-null.
+        (WebKit::WebPageProxy::didFinishLoadForQuickLookDocumentInMainFrame): Ditto.
+
+2015-09-18  Beth Dakin  <bdakin@apple.com>
+
+        Snapshots broken on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=149354
+
+        Reviewed by Tim Horton.
+
+        We need to send the IOSurface to ViewSnapshot::create() for this to work.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _takeViewSnapshot]):
+
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for Entity Node type
+        https://bugs.webkit.org/show_bug.cgi?id=149239
+
+        Reviewed by Darin Adler.
+
+        Stop handling the Entity node type.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
+
+2015-09-17  Brian Burg  <bburg@apple.com>
+
+        ASSERT(!m_frontendRouter->hasLocalFrontend()) when running Web Inspector tests
+        https://bugs.webkit.org/show_bug.cgi?id=149006
+        <rdar://problem/22654257>
+        <rdar://problem/22631369>
+
+        Reviewed by Joseph Pecoraro.
+
+        Stop using InspectorController to close the frontend page. Go through
+        the FrontendClient instead. Reduce redundant code paths.
+
+        This change seems to fix some recent crashes that were seen when
+        closing Safari with Web Inspector open. These were caused by the frontend
+        channel not being disconnected at the right time.
+
+        * WebProcess/WebCoreSupport/WebInspectorClient.cpp:
+        (WebKit::WebInspectorClient::inspectedPageDestroyed):
+        (WebKit::WebInspectorClient::closeLocalFrontend): Deleted.
+        * WebProcess/WebCoreSupport/WebInspectorClient.h:
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::close):
+        * WebProcess/WebPage/WebInspectorUI.cpp:
+        (WebKit::WebInspectorUI::establishConnection):
+
+            Save a pointer to the frontend's InspectorController since we may
+            need to use it while the page is being destructed and its getter
+            is no longer accessible.
+
+        (WebKit::WebInspectorUI::closeWindow):
+
+            Explicitly remove the frontend client when closing the frontend.
+
+        * WebProcess/WebPage/WebInspectorUI.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::inspector):
+
+            Allow clients to specify whether an inspector should be eagerly created.
+            Without this, we may accidentally create an instance during teardown.
+
+        * WebProcess/WebPage/WebPage.h:
+
+2015-09-18  Emanuele Aina  <emanuele.aina@collabora.com>
+
+        Fix build with --no-indexed-database after r189831
+        https://bugs.webkit.org/show_bug.cgi?id=149342
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebProcess/Databases/WebDatabaseProvider.h:
+        Add ENABLE(INDEXED_DATABASE) guard around supportsModernIDB().
+
+2015-09-17  Beth Dakin  <bdakin@apple.com>
+
+        Heavy taps on links are sometimes interpreted as the preview gesture
+        https://bugs.webkit.org/show_bug.cgi?id=149304
+        -and corresponding-
+        rdar://problem/22689258
+
+        Reviewed by Tim Horton.
+
+        If the preview gesture starts and stop and less than 250 milliseconds have 
+        passed, then call _attemptClickAtLocation to treat it as a normal tap.
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _interactionShouldBeginFromPreviewItemController:forPosition:]):
+        (-[WKContentView _interactionStartedFromPreviewItemController:]):
+        (-[WKContentView _interactionStoppedFromPreviewItemController:]):
+
+2015-09-17  Tim Horton  <timothy_horton@apple.com>
+
+        After restoring tabs, swipes back to fast loading pages hang for 3 seconds
+        https://bugs.webkit.org/show_bug.cgi?id=148764
+        <rdar://problem/22568860>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::endSwipeGesture):
+        Don't wait for the render tree size threshold if we don't have one.
+
+2015-09-17  Timothy Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r189287): 2.5% PLT regression
+        https://bugs.webkit.org/show_bug.cgi?id=149277
+        <rdar://problem/22657219>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _takeViewSnapshot]):
+        Don't take an extra unused snapshot.
+
+2015-09-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Crash in WebKit::BackingStore::createBackend running under Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=147453
+
+        Reviewed by Carlos Garcia Campos.
+
+        Except when running on X11, this function always crashes if called before the web view is
+        realized, as gdk_window_create_similar_surface will return null in that case. Avoid this by
+        simply realizing the widget before calling that.
+
+        Thanks to Carlos Garnacho for some debugging help.
+
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::BackingStore::createBackend):
+
+2015-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        printing does not use minimum page zoom factor
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+
+        Reviewed by Darin Adler.
+
+        Add kWKSnapshotOptionsPrinting flag to indicate the snapshot
+        should be generated in printing mode.
+
+        * Shared/API/c/WKImage.h:
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toSnapshotOptions):
+        * Shared/ImageOptions.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::numberOfPages): Pass the frame as a
+        reference instead of a pointer.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::scaledSnapshotWithOptions): In case of printing,
+        calculate the bitmap height based on the number of pages.
+        (WebKit::WebPage::snapshotAtSize): In case of printing, use
+        PrintContext::spoolAllPagesWithBoundaries() and return.
+
 2015-09-16  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Fix common typo "supress" => "suppress"

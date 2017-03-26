@@ -37,6 +37,8 @@
 namespace WebCore {
 
 class ContentDistributor;
+class HTMLSlotElement;
+class SlotAssignment;
 
 class ShadowRoot : public DocumentFragment, public TreeScope {
 public:
@@ -52,6 +54,8 @@ public:
     }
 
     virtual ~ShadowRoot();
+
+    StyleResolver& styleResolver();
 
     bool resetStyleInheritance() const { return m_resetStyleInheritance; }
     void setResetStyleInheritance(bool);
@@ -72,6 +76,18 @@ public:
 
     virtual ContentDistributor* distributor() { return nullptr; }
 
+#if ENABLE(SHADOW_DOM)
+    HTMLSlotElement* findAssignedSlot(const Node&);
+
+    void addSlotElementByName(const AtomicString&, HTMLSlotElement&);
+    void removeSlotElementByName(const AtomicString&, HTMLSlotElement&);
+
+    void invalidateSlotAssignments();
+    void invalidateDefaultSlotAssignments();
+
+    const Vector<Node*>* assignedNodesForSlot(const HTMLSlotElement&);
+#endif
+
 protected:
     ShadowRoot(Document&, Type);
 
@@ -83,10 +99,16 @@ private:
 
     virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
 
-    bool m_resetStyleInheritance : 1;
+    bool m_resetStyleInheritance;
     Type m_type;
 
+    std::unique_ptr<StyleResolver> m_styleResolver;
+
     Element* m_host;
+
+#if ENABLE(SHADOW_DOM)
+    std::unique_ptr<SlotAssignment> m_slotAssignments;
+#endif
 };
 
 inline Element* ShadowRoot::activeElement() const

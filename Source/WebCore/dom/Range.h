@@ -160,9 +160,6 @@ private:
     void setDocument(Document&);
 
     Node* checkNodeWOffset(Node*, int offset, ExceptionCode&) const;
-    void checkNodeBA(Node*, ExceptionCode&) const;
-    void checkDeleteExtract(ExceptionCode&);
-    bool containedByReadOnly() const;
 
     enum ActionType { Delete, Extract, Clone };
     RefPtr<DocumentFragment> processContents(ActionType, ExceptionCode&);

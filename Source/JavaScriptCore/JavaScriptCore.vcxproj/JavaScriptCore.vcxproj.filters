@@ -282,9 +282,6 @@
     <ClCompile Include="..\heap\GCThread.cpp">
       <Filter>heap</Filter>
     </ClCompile>
-    <ClCompile Include="..\heap\GCThreadSharedData.cpp">
-      <Filter>heap</Filter>
-    </ClCompile>
     <ClCompile Include="..\heap\HandleSet.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -394,6 +391,21 @@
       <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="..\jit\HostCallReturnValue.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\CachedRecovery.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\CallFrameShuffleData.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\CallFrameShuffler.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\CallFrameShuffler32_64.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\CallFrameShuffler64.cpp">
       <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="..\jit\JIT.cpp">
@@ -1242,6 +1254,9 @@
     <ClCompile Include="..\dfg\DFGFlushFormat.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
+    <ClCompile Include="..\dfg\DFGLiveCatchVariablePreservationPhase.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
     <ClCompile Include="..\dfg\DFGFunctionWhitelist.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
@@ -1249,6 +1264,9 @@
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGInPlaceAbstractState.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGInferredTypeCheck.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGInvalidationPointInjectionPhase.cpp">
@@ -1496,9 +1514,6 @@
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorProtocolObjects.cpp">
       <Filter>Derived Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="..\jit\RegisterPreservationWrapperGenerator.cpp">
-      <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCBuiltins.cpp">
       <Filter>Derived Sources</Filter>
@@ -1851,6 +1866,8 @@
     <ClCompile Include="..\runtime\DirectArguments.cpp" />
     <ClCompile Include="..\runtime\DirectArgumentsOffset.cpp" />
     <ClCompile Include="..\runtime\InferredValue.cpp" />
+    <ClCompile Include="..\runtime\InferredType.cpp" />
+    <ClCompile Include="..\runtime\InferredTypeTable.cpp" />
     <ClCompile Include="..\runtime\ScopeOffset.cpp" />
     <ClCompile Include="..\runtime\ScopedArguments.cpp" />
     <ClCompile Include="..\runtime\ScopedArgumentsTable.cpp" />
@@ -2248,9 +2265,6 @@
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\GCThread.h">
-      <Filter>heap</Filter>
-    </ClInclude>
-    <ClInclude Include="..\heap\GCThreadSharedData.h">
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\Handle.h">
@@ -3661,6 +3675,9 @@
     <ClInclude Include="..\dfg\DFGDesiredIdentifiers.h">
       <Filter>dfg</Filter>
     </ClInclude>
+    <ClInclude Include="..\dfg\DFGDesiredInferredType.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
     <ClInclude Include="..\dfg\DFGDesiredTransitions.h">
       <Filter>dfg</Filter>
     </ClInclude>
@@ -3706,6 +3723,9 @@
     <ClInclude Include="..\dfg\DFGFlushFormat.h">
       <Filter>dfg</Filter>
     </ClInclude>
+    <ClInclude Include="..\dfg\DFGLiveCatchVariablePreservationPhase.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
     <ClInclude Include="..\dfg\DFGFPRInfo.h">
       <Filter>dfg</Filter>
     </ClInclude>
@@ -3722,6 +3742,9 @@
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGInPlaceAbstractState.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dfg\DFGInferredTypeCheck.h">
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGInvalidationPointInjectionPhase.h">
@@ -4040,9 +4063,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataViewPrototype.lut.h" />
-    <ClInclude Include="..\jit\RegisterPreservationWrapperGenerator.h">
-      <Filter>jit</Filter>
-    </ClInclude>
     <ClInclude Include="..\ftl\FTLAbbreviatedTypes.h">
       <Filter>ftl</Filter>
     </ClInclude>
@@ -4409,6 +4429,9 @@
     <ClInclude Include="..\dfg\DFGPromotedHeapLocation.h">
       <Filter>dfg</Filter>
     </ClInclude>
+    <ClInclude Include="..\dfg\DFGPropertyTypeKey.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
     <ClInclude Include="..\ftl\FTLExitPropertyValue.h">
       <Filter>ftl</Filter>
     </ClInclude>
@@ -4452,6 +4475,8 @@
     <ClInclude Include="..\runtime\GenericArgumentsInlines.h" />
     <ClInclude Include="..\runtime\GenericOffset.h" />
     <ClInclude Include="..\runtime\InferredValue.h" />
+    <ClInclude Include="..\runtime\InferredType.h" />
+    <ClInclude Include="..\runtime\InferredTypeTable.h" />
     <ClInclude Include="..\runtime\ScopeOffset.h" />
     <ClInclude Include="..\runtime\ScopedArguments.h" />
     <ClInclude Include="..\runtime\ScopedArgumentsTable.h" />

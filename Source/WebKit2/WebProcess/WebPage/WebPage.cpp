@@ -1004,6 +1004,8 @@ void WebPage::close()
     // The WebPage can be destroyed by this call.
     WebProcess::singleton().removeWebPage(m_pageID);
 
+    WebProcess::singleton().updateActivePages();
+
     if (isRunningModal)
         RunLoop::main().stop();
 }
@@ -1127,7 +1129,11 @@ void WebPage::navigateToPDFLinkWithSimulatedClick(const String& url, IntPoint do
         return;
 
     const int singleClick = 1;
-    RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventNames().clickEvent, true, true, currentTime(), nullptr, singleClick, screenPoint.x(), screenPoint.y(), documentPoint.x(), documentPoint.y(), false, false, false, false, 0, nullptr, 0, nullptr);
+    RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventNames().clickEvent, true, true, currentTime(), nullptr, singleClick, screenPoint.x(), screenPoint.y(), documentPoint.x(), documentPoint.y(),
+#if ENABLE(POINTER_LOCK)
+        0, 0,
+#endif
+        false, false, false, false, 0, nullptr, 0, nullptr);
 
     mainFrame->loader().urlSelected(mainFrameDocument->completeURL(url), emptyString(), mouseEvent.get(), LockHistory::No, LockBackForwardList::No, ShouldSendReferrer::MaybeSendReferrer, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
 }
@@ -2929,11 +2935,11 @@ void WebPage::didFlushLayerTreeAtTime(std::chrono::milliseconds timestamp)
 }
 #endif
 
-WebInspector* WebPage::inspector()
+WebInspector* WebPage::inspector(LazyCreationPolicy behavior)
 {
     if (m_isClosed)
         return nullptr;
-    if (!m_inspector)
+    if (!m_inspector && behavior == LazyCreationPolicy::CreateIfNeeded)
         m_inspector = WebInspector::create(this);
     return m_inspector.get();
 }
@@ -5017,6 +5023,21 @@ void WebPage::removeAllUserContent()
         return;
 
     m_userContentController->userContentController().removeAllUserContent();
+}
+
+void WebPage::dispatchDidLayout(WebCore::LayoutMilestones milestones)
+{
+    RefPtr<API::Object> userData;
+    injectedBundleLoaderClient().didLayout(this, milestones, userData);
+
+    // Clients should not set userData for this message, and it won't be passed through.
+    ASSERT(!userData);
+
+    // The drawing area might want to defer dispatch of didLayout to the UI process.
+    if (m_drawingArea && m_drawingArea->dispatchDidLayout(milestones))
+        return;
+
+    send(Messages::WebPageProxy::DidLayout(milestones));
 }
 
 } // namespace WebKit

@@ -26,6 +26,9 @@
 #ifndef TestInvocation_h
 #define TestInvocation_h
 
+#include "JSWrappable.h"
+#include "UIScriptContext.h"
+#include <JavaScriptCore/JSRetainPtr.h>
 #include <WebKit/WKRetainPtr.h>
 #include <string>
 #include <wtf/Noncopyable.h>
@@ -33,7 +36,7 @@
 
 namespace WTR {
 
-class TestInvocation {
+class TestInvocation : public UIScriptContextDelegate {
     WTF_MAKE_NONCOPYABLE(TestInvocation);
 public:
     explicit TestInvocation(const std::string& pathOrURL);
@@ -60,6 +63,9 @@ public:
     void didEndSwipe();
     void didRemoveSwipeSnapshot();
 
+    bool shouldMakeViewportFlexible() const;
+    bool shouldUseFixedLayout() const;
+
 private:
     void dumpResults();
     static void dump(const char* textToStdout, const char* textToStderr = 0, bool seenError = false);
@@ -69,8 +75,12 @@ private:
 
     static void forceRepaintDoneCallback(WKErrorRef, void* context);
 
-    bool shouldLogFrameLoadDelegates();
-    bool shouldLogHistoryClientCallbacks();
+    bool shouldLogFrameLoadDelegates() const;
+    bool shouldLogHistoryClientCallbacks() const;
+
+    void runUISideScript(WKStringRef, unsigned callbackID);
+    // UIScriptContextDelegate
+    void uiScriptDidComplete(WKStringRef result, unsigned callbackID) override;
 
     WKRetainPtr<WKURLRef> m_url;
     WTF::String m_urlString;
@@ -92,6 +102,8 @@ private:
     WKRetainPtr<WKArrayRef> m_repaintRects;
     std::string m_errorMessage;
     bool m_webProcessIsUnresponsive;
+    
+    std::unique_ptr<UIScriptContext> m_UIScriptContext;
 
 };
 

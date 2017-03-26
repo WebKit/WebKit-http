@@ -242,6 +242,53 @@ RenderGrid::~RenderGrid()
 {
 }
 
+static inline bool defaultAlignmentIsStretch(ItemPosition position)
+{
+    return position == ItemPositionStretch || position == ItemPositionAuto;
+}
+
+static inline bool defaultAlignmentChangedToStretchInRowAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle)
+{
+    return !defaultAlignmentIsStretch(oldStyle.justifyItemsPosition()) && defaultAlignmentIsStretch(newStyle.justifyItemsPosition());
+}
+
+static inline bool defaultAlignmentChangedFromStretchInColumnAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle)
+{
+    return defaultAlignmentIsStretch(oldStyle.alignItemsPosition()) && !defaultAlignmentIsStretch(newStyle.alignItemsPosition());
+}
+
+static inline bool selfAlignmentChangedToStretchInRowAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle, const RenderStyle& childStyle)
+{
+    return RenderStyle::resolveJustification(oldStyle, childStyle, ItemPositionStretch) != ItemPositionStretch
+        && RenderStyle::resolveJustification(newStyle, childStyle, ItemPositionStretch) == ItemPositionStretch;
+}
+
+static inline bool selfAlignmentChangedFromStretchInColumnAxis(const RenderStyle& oldStyle, const RenderStyle& newStyle, const RenderStyle& childStyle)
+{
+    return RenderStyle::resolveAlignment(oldStyle, childStyle, ItemPositionStretch) == ItemPositionStretch
+        && RenderStyle::resolveAlignment(newStyle, childStyle, ItemPositionStretch) != ItemPositionStretch;
+}
+
+void RenderGrid::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
+{
+    RenderBlock::styleDidChange(diff, oldStyle);
+    if (!oldStyle || diff != StyleDifferenceLayout)
+        return;
+
+    const RenderStyle& newStyle = style();
+    if (defaultAlignmentChangedToStretchInRowAxis(*oldStyle, newStyle) || defaultAlignmentChangedFromStretchInColumnAxis(*oldStyle, newStyle)) {
+        // Grid items that were not previously stretched in row-axis need to be relayed out so we can compute new available space.
+        // Grid items that were previously stretching in column-axis need to be relayed out so we can compute new available space.
+        // This is only necessary for stretching since other alignment values don't change the size of the box.
+        for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+            if (child->isOutOfFlowPositioned())
+                continue;
+            if (selfAlignmentChangedToStretchInRowAxis(*oldStyle, newStyle, child->style()) || selfAlignmentChangedFromStretchInColumnAxis(*oldStyle, newStyle, child->style()))
+                child->setChildNeedsLayout(MarkOnlyThis);
+        }
+    }
+}
+
 void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
 {
     ASSERT(needsLayout());
@@ -422,11 +469,10 @@ LayoutUnit RenderGrid::computeUsedBreadthOfMinLength(GridTrackSizingDirection di
         return 0;
 
     const Length& trackLength = gridLength.length();
-    ASSERT(!trackLength.isAuto());
     if (trackLength.isSpecified())
         return computeUsedBreadthOfSpecifiedLength(direction, trackLength);
 
-    ASSERT(trackLength.isMinContent() || trackLength.isMaxContent());
+    ASSERT(trackLength.isMinContent() || trackLength.isAuto() || trackLength.isMaxContent());
     return 0;
 }
 
@@ -436,14 +482,13 @@ LayoutUnit RenderGrid::computeUsedBreadthOfMaxLength(GridTrackSizingDirection di
         return usedBreadth;
 
     const Length& trackLength = gridLength.length();
-    ASSERT(!trackLength.isAuto());
     if (trackLength.isSpecified()) {
         LayoutUnit computedBreadth = computeUsedBreadthOfSpecifiedLength(direction, trackLength);
         ASSERT(computedBreadth != infinity);
         return computedBreadth;
     }
 
-    ASSERT(trackLength.isMinContent() || trackLength.isMaxContent());
+    ASSERT(trackLength.isMinContent() || trackLength.isAuto() || trackLength.isMaxContent());
     return infinity;
 }
 
@@ -551,6 +596,25 @@ LayoutUnit RenderGrid::logicalContentHeightForChild(RenderBox& child, Vector<Gri
         child.setOverrideContainingBlockContentLogicalHeight(Nullopt);
     child.layoutIfNeeded();
     return child.logicalHeight() + child.marginLogicalHeight();
+}
+
+LayoutUnit RenderGrid::minSizeForChild(RenderBox& child, GridTrackSizingDirection direction, Vector<GridTrack>& columnTracks)
+{
+    bool hasOrthogonalWritingMode = child.isHorizontalWritingMode() != isHorizontalWritingMode();
+    // FIXME: Properly support orthogonal writing mode.
+    if (hasOrthogonalWritingMode)
+        return { };
+
+    const Length& childMinSize = direction == ForColumns ? child.style().logicalMinWidth() : child.style().logicalMinHeight();
+    if (childMinSize.isAuto()) {
+        // FIXME: Implement intrinsic aspect ratio support (transferred size in specs).
+        return minContentForChild(child, direction, columnTracks);
+    }
+
+    if (direction == ForColumns)
+        return child.computeLogicalWidthInRegionUsing(MinSize, childMinSize, contentLogicalWidth(), this, nullptr);
+
+    return child.computeContentAndScrollbarLogicalHeightUsing(MinSize, childMinSize, child.logicalHeight()).valueOr(0);
 }
 
 LayoutUnit RenderGrid::minContentForChild(RenderBox& child, GridTrackSizingDirection direction, Vector<GridTrack>& columnTracks)
@@ -669,6 +733,7 @@ void RenderGrid::resolveContentBasedTrackSizingFunctions(GridTrackSizingDirectio
     while (it != end) {
         GridItemsSpanGroupRange spanGroupRange = { it, std::upper_bound(it, end, *it) };
         resolveContentBasedTrackSizingFunctionsForItems<ResolveIntrinsicMinimums>(direction, sizingData, spanGroupRange);
+        resolveContentBasedTrackSizingFunctionsForItems<ResolveContentBasedMinimums>(direction, sizingData, spanGroupRange);
         resolveContentBasedTrackSizingFunctionsForItems<ResolveMaxContentMinimums>(direction, sizingData, spanGroupRange);
         resolveContentBasedTrackSizingFunctionsForItems<ResolveIntrinsicMaximums>(direction, sizingData, spanGroupRange);
         resolveContentBasedTrackSizingFunctionsForItems<ResolveMaxContentMaximums>(direction, sizingData, spanGroupRange);
@@ -691,10 +756,12 @@ void RenderGrid::resolveContentBasedTrackSizingFunctionsForNonSpanningItems(Grid
         track.setBaseSize(std::max(track.baseSize(), minContentForChild(gridItem, direction, columnTracks)));
     else if (trackSize.hasMaxContentMinTrackBreadth())
         track.setBaseSize(std::max(track.baseSize(), maxContentForChild(gridItem, direction, columnTracks)));
+    else if (trackSize.hasAutoMinTrackBreadth())
+        track.setBaseSize(std::max(track.baseSize(), minSizeForChild(gridItem, direction, columnTracks)));
 
     if (trackSize.hasMinContentMaxTrackBreadth())
         track.setGrowthLimit(std::max(track.growthLimit(), minContentForChild(gridItem, direction, columnTracks)));
-    else if (trackSize.hasMaxContentMaxTrackBreadth())
+    else if (trackSize.hasMaxContentOrAutoMaxTrackBreadth())
         track.setGrowthLimit(std::max(track.growthLimit(), maxContentForChild(gridItem, direction, columnTracks)));
 }
 
@@ -702,6 +769,7 @@ const LayoutUnit& RenderGrid::trackSizeForTrackSizeComputationPhase(TrackSizeCom
 {
     switch (phase) {
     case ResolveIntrinsicMinimums:
+    case ResolveContentBasedMinimums:
     case ResolveMaxContentMinimums:
     case MaximizeTracks:
         return track.baseSize();
@@ -718,13 +786,15 @@ bool RenderGrid::shouldProcessTrackForTrackSizeComputationPhase(TrackSizeComputa
 {
     switch (phase) {
     case ResolveIntrinsicMinimums:
+        return trackSize.hasIntrinsicMinTrackBreadth();
+    case ResolveContentBasedMinimums:
         return trackSize.hasMinOrMaxContentMinTrackBreadth();
     case ResolveMaxContentMinimums:
         return trackSize.hasMaxContentMinTrackBreadth();
     case ResolveIntrinsicMaximums:
         return trackSize.hasMinOrMaxContentMaxTrackBreadth();
     case ResolveMaxContentMaximums:
-        return trackSize.hasMaxContentMaxTrackBreadth();
+        return trackSize.hasMaxContentOrAutoMaxTrackBreadth();
     case MaximizeTracks:
         ASSERT_NOT_REACHED();
         return false;
@@ -738,7 +808,8 @@ bool RenderGrid::trackShouldGrowBeyondGrowthLimitsForTrackSizeComputationPhase(T
 {
     switch (phase) {
     case ResolveIntrinsicMinimums:
-        return trackSize.hasMinContentMinTrackBreadthAndMinOrMaxContentMaxTrackBreadth();
+    case ResolveContentBasedMinimums:
+        return trackSize.hasAutoOrMinContentMinTrackBreadthAndIntrinsicMaxTrackBreadth();
     case ResolveMaxContentMinimums:
         return trackSize.hasMaxContentMinTrackBreadthAndMaxContentMaxTrackBreadth();
     case ResolveIntrinsicMaximums:
@@ -757,6 +828,7 @@ void RenderGrid::markAsInfinitelyGrowableForTrackSizeComputationPhase(TrackSizeC
 {
     switch (phase) {
     case ResolveIntrinsicMinimums:
+    case ResolveContentBasedMinimums:
     case ResolveMaxContentMinimums:
         return;
     case ResolveIntrinsicMaximums:
@@ -779,6 +851,7 @@ void RenderGrid::updateTrackSizeForTrackSizeComputationPhase(TrackSizeComputatio
 {
     switch (phase) {
     case ResolveIntrinsicMinimums:
+    case ResolveContentBasedMinimums:
     case ResolveMaxContentMinimums:
         track.setBaseSize(track.plannedSize());
         return;
@@ -798,6 +871,8 @@ LayoutUnit RenderGrid::currentItemSizeForTrackSizeComputationPhase(TrackSizeComp
 {
     switch (phase) {
     case ResolveIntrinsicMinimums:
+        return minSizeForChild(gridItem, direction, columnTracks);
+    case ResolveContentBasedMinimums:
     case ResolveIntrinsicMaximums:
         return minContentForChild(gridItem, direction, columnTracks);
     case ResolveMaxContentMinimums:

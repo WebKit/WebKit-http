@@ -1,3 +1,680 @@
+2015-09-22  Andy Estes  <aestes@apple.com>
+
+        ContentFiltering.AllowDownloadAfterAddData is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148885
+        <rdar://problem/22729563>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The AllowDownload* tests were relying on -_downloadDidStart: being called before -webView:didFinishNavigation:,
+        but there is no guarantee of this. For tests that should allow a download, spin the runloop until
+        -_downloadDidStart: is called. The test will now timeout on failure, but will no longer produce false failures.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm:
+        (downloadTest):
+
+2015-09-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Mavericks: Media tests start to time out after a few days of bot uptime
+        https://bugs.webkit.org/show_bug.cgi?id=149468
+
+        Reviewed by Chris Dumez.
+
+        * Scripts/webkitpy/port/base.py:
+        * Scripts/webkitpy/port/driver.py:
+        * Scripts/webkitpy/port/mac.py:
+
+2015-09-22  Nan Wang  <n_wang@apple.com>
+
+        Unreviewed, add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-09-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove 'nullable' to fix older iOS builds.
+
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView scrollViewDidEndZooming:withView:atScale:]):
+
+2015-09-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Show tiled drawing debug overlay on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=149426
+
+        Reviewed by Dean Jackson.
+
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.rc: Add new menu option.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibResource.h: Ditto.
+        * MiniBrowser/win/Common.cpp:
+        (::ToggleMenuItem): Recognize new menu item and toggle the 'showTiledScrollingIndicator'
+        flag if needed.
+        * MiniBrowser/win/MiniBrowser.h: Update to use new IWebPreferencesPrivate3 class.
+
+2015-09-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Use command-line argument to launch in regular or High DPI mode.
+        https://bugs.webkit.org/show_bug.cgi?id=149417
+
+        Reviewed by Dean Jackson.
+
+        * MiniBrowser/win/Common.cpp:
+        (parseCommandLine): Ignore the '--highDPI' argument. It's used at the
+        very start of execution, before the MiniBrowser.dll is loaded.
+        * win/DLLLauncher/DLLLauncherMain.cpp:
+        (shouldUseHighDPI): Check for '--highDPI', and use this mode if
+        present. On WinCairo, always use High DPI.
+
+2015-09-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        32-bit Mac build fix attempt after r190065.
+
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+
+2015-09-21  Alexey Proskuryakov  <ap@apple.com>
+
+        [OS X] Update for Xcode 7.0 on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=149389
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.h:
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.h:
+        Removed unneeded declarations - conforming to a protocol is sufficient.
+
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.mm:
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.mm:
+        Changed the definitions to be compiled whenever the SDK requires it (so we will have
+        dead code compiled in when building for 10.10 with 10.11 SDK, somewhat unfortunately).
+
+2015-09-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add the ability for tests to run script in the UI process in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=149356
+
+        Reviewed by Tim Horton.
+
+        This change adds testRunner.runUIScript(script, callback), which allows a test
+        to execute script in a JSContext which runs in the UI process. That context
+        has bindings exposed through the UIScriptController interface; currently one test
+        function, and some iOS-specific functions are included. UIScriptController can be
+        async with a callback, and runUIScript() itself is asynchronous. When the UI 
+        script is complete, it calls uiController.uiScriptComplete(result), where 'result'
+        is a string passed back to the web process, and given to the runUIScript()
+        callback function.
+        
+        Thanks to Gyuyoung Kim for help with the Gtk/Efl build.
+
+        * WebKitTestRunner/DerivedSources.make: Build UIScriptController.idl.
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl: Add runUIScript().
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage): When the UI-side script is
+        complete, call back into TestRunner.
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::nextUIScriptCallbackID):
+        (WTR::TestRunner::runUIScript): Post a message to the injected bundle to run the UI script.
+        (WTR::TestRunner::runUIScriptCallback): When the UI script is done, execute its callback function.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/PlatformWebView.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader):
+        (WTR::TestController::testOptionsForTest): Support "useFlexibleViewport" as a test argument.
+        (WTR::shouldUseFixedLayout): Deleted. Moved to a TestInvocation function.
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::shouldUseFixedLayout):
+        (WTR::TestInvocation::shouldUseThreadedScrolling):
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        (WTR::TestInvocation::runUISideScript): Run the UI-side script!
+        (WTR::TestInvocation::uiScriptDidComplete): Send a message back to the injected bundle.
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h: Copied from Tools/WebKitTestRunner/TestOptions.h.
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm: Added.
+        (-[TestRunnerWKWebView dragImage:at:offset:event:pasteboard:source:slideBack:]):
+        (-[TestRunnerWKWebView zoomToScale:animated:completionHandler:]):
+        (-[TestRunnerWKWebView scrollViewDidEndZooming:withView:atScale:]):
+        (-[TestRunnerWKWebView onDidEndZooming:]): Allow a test to hook into the end of zooming.
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::PlatformWebView): Make a TestRunnerWKWebView on iOS.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm: Added.
+        (WTR::UIScriptController::doAsyncTask):
+        (WTR::UIScriptController::zoomToScale):
+        (WTR::UIScriptController::zoomScale):
+        (WTR::UIScriptController::minimumZoomScale):
+        (WTR::UIScriptController::maximumZoomScale):
+        (WTR::UIScriptController::contentVisibleRect):
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (-[TestRunnerWKWebView dragImage:at:offset:event:pasteboard:source:slideBack:]): Deleted.
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::updatePlatformSpecificTestOptionsForTest):
+        (WTR::shouldUseThreadedScrolling): Deleted. Moved to TestInvocation.
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.h:
+        * WebKitTestRunner/uiscriptcontext/UIScriptContext.cpp: Added. Owns the JS context in the UI process.
+        (UIScriptContext::UIScriptContext):
+        (UIScriptContext::~UIScriptContext):
+        (UIScriptContext::runUIScript): Entrypoint to running the UI script. If the script didn't do anything
+        asynchronous, call the callback.
+        (UIScriptContext::nextTaskCallbackID):
+        (UIScriptContext::prepareForAsyncTask): Do setup for one async task (i.e. a UIScriptController function
+        that has a callback). Has to store the callbackID of the script, so code called from the completion
+        callback knows which UI script invoked it.
+        (UIScriptContext::asyncTaskComplete): Called when one task is finished.
+        (UIScriptContext::uiScriptComplete):
+        (UIScriptContext::objectFromRect): Make a JS object from a rect.
+        * WebKitTestRunner/uiscriptcontext/UIScriptContext.h: Copied from Tools/WebKitTestRunner/TestOptions.h.
+        (WTR::UIScriptContext::hasOutstandingAsyncTasks):
+        * WebKitTestRunner/uiscriptcontext/UIScriptController.cpp: Copied from Tools/WebKitTestRunner/TestOptions.h.
+        (WTR::UIScriptController::UIScriptController):
+        (WTR::UIScriptController::makeWindowObject):
+        (WTR::UIScriptController::wrapperClass):
+        (WTR::UIScriptController::doAsyncTask):
+        (WTR::UIScriptController::zoomToScale):
+        (WTR::UIScriptController::zoomScale):
+        (WTR::UIScriptController::minimumZoomScale):
+        (WTR::UIScriptController::maximumZoomScale):
+        (WTR::UIScriptController::contentVisibleRect):
+        (WTR::UIScriptController::uiScriptComplete):
+        * WebKitTestRunner/uiscriptcontext/UIScriptController.h: Copied from Tools/WebKitTestRunner/TestOptions.h.
+        (WTR::UIScriptController::create):
+        * WebKitTestRunner/uiscriptcontext/bindings/UIScriptController.idl: Copied from Tools/WebKitTestRunner/TestOptions.h.
+
+2015-09-21  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on threaded scrolling by default in the tests
+        https://bugs.webkit.org/show_bug.cgi?id=149377
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::updatePlatformSpecificTestOptionsForTest):
+        (WTR::shouldUseThreadedScrolling): Deleted.
+        Turn on threaded scrolling by default.
+
+2015-09-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] run-gtk-tests doesn't provide feedback about crashing google tests
+        https://bugs.webkit.org/show_bug.cgi?id=149252
+
+        Reviewed by Darin Adler.
+
+        In case of glib tests the test runner notifies about tests
+        crashing, but for google tests we don't get any feedback, which
+        means that in case of a test crashing we get a list of **PASS**
+        messages and at the summary we are notified that the test suite
+        has failed, but it's impossible to know which test cases have failed.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner._run_google_test): Add a **CRASH** message if test
+        case crashed.
+
+2015-09-20  Alexey Proskuryakov  <ap@apple.com>
+
+        WebKitTestRunner can leak user content script results between tests
+        https://bugs.webkit.org/show_bug.cgi?id=149391
+
+        Reviewed by Sam Weinig.
+
+        Move WKBundlePageRemoveAllUserContent call so that it's executed before loading
+        about:blank, and thus about:blank doesn't have unintended side effects.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::resetAfterTest):
+
+2015-09-20  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac, iOS] AccessibilityController doesn't uninstall global notification handler
+        https://bugs.webkit.org/show_bug.cgi?id=149384
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/ios/AccessibilityControllerIOS.mm:
+        (AccessibilityController::addNotificationListener): Fixed a leak, and cleaned up the code.
+        (AccessibilityController::platformResetToConsistentState): Actually remove the handler,
+        regardless of whether someone else holds a reference (we also call -stopListening in
+        -dealloc).
+
+        * DumpRenderTree/mac/AccessibilityControllerMac.mm:
+        (AccessibilityController::platformResetToConsistentState):
+        (AccessibilityController::addNotificationListener):
+        Ditto.
+
+2015-09-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove XHR_TIMEOUT compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=149260
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-09-19  Dan Bernstein  <mitz@apple.com>
+
+        Attempted build fix.
+
+        * WebKitTestRunner/Configurations/WebKitTestRunnerApp.xcconfig:
+
+2015-09-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189908.
+        https://bugs.webkit.org/show_bug.cgi?id=149368
+
+        Broke run-webkit-tests --pixel (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "printing does not use minimum page zoom factor"
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+        http://trac.webkit.org/changeset/189908
+
+2015-09-18  Andy Estes  <aestes@apple.com>
+
+        [iOS] did{Start,Finish}LoadForQuickLookDocumentInMainFrame is never called on WKNavigationDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=149360
+
+        Reviewed by Tim Horton.
+
+        Added an API test.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/QuickLook.mm: Added.
+        (-[QuickLookNavigationDelegate _webView:didStartLoadForQuickLookDocumentInMainFrameWithFileName:uti:]):
+        (-[QuickLookNavigationDelegate _webView:didFinishLoadForQuickLookDocumentInMainFrame:]):
+        (-[QuickLookNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+        * TestWebKitAPI/ios/pages.pages: Added.
+
+2015-09-18  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement ARIA 1.1 @aria-current on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=149297
+
+        Reviewed by Chris Fleizach.
+
+        Added support to test aria-current on iOS.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::stringAttributeValue):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::stringAttributeValue):
+
+2015-09-18  Alexey Proskuryakov  <ap@apple.com>
+
+        iOS WebKitTestRunner frequently crashes in WKContextGetIconDatabase
+        https://bugs.webkit.org/show_bug.cgi?id=149352
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::~TestController):
+        m_context can be null. This may indicate a bug in webkitpy too, but
+        WebKitTestRunner should handle this situation nicely, there is nothing intrinsically
+        wrong with opening and immediately closing it.
+
+2015-09-18  Daniel Bates  <dabates@apple.com>
+
+        isGitSVNDirectory() returns true when Git is not installed
+        https://bugs.webkit.org/show_bug.cgi?id=149351
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fixes an issue where VCSUtils::isGitSVNDirectory() returns true for any arbitrary directory if
+        Git is not installed on the machine.
+
+        * Scripts/VCSUtils.pm:
+        (isGitSVNDirectory): Ensure that `git config --get svn-remote.svn.fetch 2>& 1` exits with
+        status code 0 (success).
+
+2015-09-18  Alex Christensen  <achristensen@webkit.org>
+
+        Prevent build-webkit from building four times on Windows 
+        https://bugs.webkit.org/show_bug.cgi?id=149336
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/build-webkit:
+        Move the Windows code out of the for loop iterating over each subdirectory to be build.
+        They're built all at once.
+        * Scripts/webkitdirs.pm:
+        (buildVisualStudioProject):
+        (cmakeGeneratedBuildfile):
+        Don't generate the Visual Studio solution if it already exists.
+        It will run CMake again if necessary.
+
+2015-09-17  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] WTR fails to set the key window in the UIKit sense
+        https://bugs.webkit.org/show_bug.cgi?id=149325
+
+        Reviewed by Tim Horton.
+
+        -[WebKitTestRunnerWindow isKeyWindow] just returned _platformWebView->windowIsKey().
+        This causes UIKit to bypass code that actually sets the key window, resulting in
+        [UIAppliation sharedApplication].keyWindow always being nil.
+
+        Fix by PlatformWebView::setWindowIsKey() actually call -makeKeyWindow, and having
+        -[WebKitTestRunnerWindow isKeyWindow] call super.
+
+        * WebKitTestRunner/PlatformWebView.h:
+        (WTR::PlatformWebView::setWindowIsKey): Deleted.
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::setWindowIsKey):
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::setWindowIsKey):
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (-[WebKitTestRunnerWindow isKeyWindow]):
+        (WTR::PlatformWebView::PlatformWebView):
+        (WTR::PlatformWebView::~PlatformWebView):
+        (WTR::PlatformWebView::setWindowIsKey):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::setWindowIsKey):
+
+2015-09-17  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] When loading viewport tests, use the normal web page viewport configuration
+        https://bugs.webkit.org/show_bug.cgi?id=149321
+
+        Reviewed by Tim Horton.
+        
+        InjectedBundlePage::platformDidStartProvisionalLoadForFrame() unconditionally 
+        enabled the "testing" viewport configuration, which disables page scaling.
+        
+        If we're running viewport tests, we want the normal web page configuration.
+        Do that by passing a flag in the dictionary sent to InjectedBundle::beginTesting(),
+        based on whether the test is in a "viewport" directory.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/cocoa/InjectedBundlePageCocoa.mm:
+        (WTR::InjectedBundlePage::platformDidStartProvisionalLoadForFrame): Deleted.
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::shouldLogFrameLoadDelegates):
+        (WTR::TestInvocation::shouldLogHistoryClientCallbacks):
+        (WTR::TestInvocation::shouldMakeViewportFlexible):
+        (WTR::TestInvocation::invoke):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformConfigureViewForTest):
+        (WTR::shouldMakeViewportFlexible): Deleted.
+
+2015-09-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Give iOS WebKitTestRunner a launch storyboard
+        https://bugs.webkit.org/show_bug.cgi?id=149314
+
+        Reviewed by Dan Bates.
+        
+        Add a launch storyboard to iOS WebKitTestRunner so that Springboard recognizes
+        that it's been built for specific device configurations, and puts the window
+        at the top of the screen. This simplifies coordinate conversions in a future patch.
+
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/WebKitTestRunnerApp/WebKitTestRunnerApp-Info.plist:
+        * WebKitTestRunner/ios/Launch.storyboard: Added.
+
+2015-09-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update licence in r189890
+        https://bugs.webkit.org/show_bug.cgi?id=149306
+
+        Reviewed by Dean Jackson.
+
+        * FontWithFeatures/FontWithFeatures/FontCreator.cpp:
+        * FontWithFeatures/FontWithFeatures/FontCreator.h:
+        * FontWithFeatures/FontWithFeatures/main.cpp:
+
+2015-09-17  Mark Lam  <mark.lam@apple.com>
+
+        Add the ability to skip JIT stress tests in run-javascriptcore-tests.
+        https://bugs.webkit.org/show_bug.cgi?id=149285
+
+        Reviewed by Saam Barati.
+
+        Just need to add an option to pass --no-jit to run-jsc-stress-test.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2015-09-17  Alex Christensen  <achristensen@webkit.org>
+
+        Switch AppleWin build to use CMake
+        https://bugs.webkit.org/show_bug.cgi?id=149163
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/build-webkit:
+        * Scripts/run-api-tests:
+        (runTest):
+        (listAllTests):
+        (prepareEnvironmentForRunningTestTool):
+        (testToolPaths):
+        (testToolPath): Deleted.
+        Run the API tests as separate executables on Windows.
+        It used to be TestWebKitAPI.exe, and it is now TestWTF.exe, TestWebCore.exe, and TestWebKit.exe.
+        * Scripts/webkitdirs.pm:
+        (checkRequiredSystemConfig):
+        (jhbuildWrapperPrefixIfNeeded):
+        (generateBuildSystemFromCMakeProject):
+        Fix configuration quirks.
+
+2015-09-17  Dean Johnson  <dean_johnson@apple.com>
+
+        Added toggle options for hiding and showing certain platform families on the dashboard.
+        https://bugs.webkit.org/show_bug.cgi?id=148403
+
+        Reviewed by David Kilzer.
+
+        This patch removes "hiddenPlatforms" from use in the code and local storage. We also removed
+        individual hide/show buttons for platforms because we've added toggle options to hide/show entire
+        families. Examples of these are "mac", "ios", and "linux". "Show All Platforms" was also removed
+        in lieu of an "all" button in the toggle menu.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (parsePlatformFamily): Helper function to parse out a platform family.
+        (initPlatformsByFamily): Initializes platformsByFamily, which organizes platforms on the
+        page by platformsByFamily[<family>] = <list of platforms belonging to that family>.
+        (updateToggleButtons): Updates the status of the toggle buttons.
+        (updateHiddenPlatforms): Changed to work with the new implementation of hiding/showing platforms.
+        (documentReady): Added creation of toggle buttons.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsMain.js:
+        (unhiddenQueues): Updated to search by platform family instead of the individual platform name.
+        (documentReady): Changed hiddenPlatforms => hiddenPlatformFamilies.
+        (updateHiddenPlatforms): Deleted. After removing the individual hide button code, 
+        this did the exact same thing as the updateHiddenPlatforms in Scripts/Main.js so it was removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/QueueView.js:
+        (QueueView): Updated to use hiddenPlatformFamilies.
+        (QueueView.prototype._updateHiddenState): Updated to use hiddenPlatformFamilies.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Settings.js:
+        (Settings.prototype.toggleHiddenPlatformFamily): Renamed function and some variables.
+        (Settings.prototype.clearHiddenPlatformFamilies): Now uses hiddenPlatformFamilies for events.
+        (Settings.prototype.toggleHiddenPlatform): Deleted.
+        (Settings.prototype.clearHiddenPlatforms): Deleted.
+        (Settings.prototype.toggleShowPlatformFamily): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (div.cellButton, div.accessibilityButton, div.platformFamilyToggleButton):
+        (div.cellButton.unhide, div.accessibilityButton.unhide, div.platformFamilyToggleButton.unhide):
+        (.settings-visible div.settingsWrapper.hide, .settings-visible div.settingsWrapper):
+        (table.queue-grid tr.headers th):
+        (div.settingsWrapper.hide):
+        (div.settingsWrapper):
+        (div.familyToggleWrapper):
+        (div.platformFamilyToggleButton):
+        (div.platformFamilyShowToggleButton:not(:last-child)):
+        (div.familyShown):
+        (div.accessibilityButton):
+        (div.cellButton, div.accessibilityButton): Added platformFamilyToggleButton class.
+        (div.cellButton.unhide, div.accessibilityButton.unhide): Added platformFamilyToggleButton class.
+        (.settings-visible div.accessibilityButton.hide, .settings-visible div.accessibilityButton.unhide): Added
+        platformFamilyToggleButton and settingsWrapper class.
+        (.accessibilityButton): Deleted.
+
+2015-09-17  Tim Horton  <timothy_horton@apple.com>
+
+        Add a test ensuring that scrolling in the middle of a page can't start a swipe gesture
+        https://bugs.webkit.org/show_bug.cgi?id=148904
+
+        Reviewed by Myles Maxfield.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::parseBooleanTestHeaderValue):
+        (WTR::updateViewOptionsFromTestHeader):
+        Check for the key "useThreadedScrolling".
+        Add some code to check for "true" and "false" for boolean options.
+
+        (WTR::TestController::viewOptionsForTest):
+        Apply the test's overrides last, even after the platform's.
+
+2015-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        printing does not use minimum page zoom factor
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+
+        Reviewed by Darin Adler.
+
+        WebKitTestRunner always takes the snapshots from the UI process
+        (expect for IOS), so in the case of printing, the layout in the
+        web view is not the expected one. When printing, we need to take
+        the snapshot in the web process and ensure it's rendered with a
+        PrintContext.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::dump): When dumping pixels, pass
+        kWKSnapshotOptionsPrinting option to
+        WKBundlePageCreateSnapshotWithOptions() when printing. When not
+        printing, don't even create the snapshot, since it will be ignored
+        by the UI process that always creates its own from the WebView (expect for IOS platform)
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::dumpResults): Use always the snapshot image
+        received from the web process if any when comparing pixel
+        results. Now we only receive a snapshot from the web process in
+        case of printing, or when platform is IOS. Otherwhise, generate
+        the snapshot from the WebView as usual.
+        * WebKitTestRunner/TestInvocation.h: Add SnapshotResultType enum
+        parameter to dumpPixelsAndCompareWithExpected, since the snapshot
+        is created by the caller now, but the CG implementation needs to
+        know if it's a Web or UI process snapshot.
+        * WebKitTestRunner/cairo/TestInvocationCairo.cpp:
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected): Create a
+        cairo surface for the given image.
+        * WebKitTestRunner/cg/TestInvocationCG.cpp:
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected): Create a
+        CGContext for the given image.
+
+2015-09-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Create a font which can be used for testing font features
+        https://bugs.webkit.org/show_bug.cgi?id=149237
+
+        Reviewed by Simon Fraser.
+
+        This patch adds a new project in the Tools/ directory which generates a font which can
+        be used for testing font features. This is a standalone project consisting of two files:
+        1. A file which actually generates the byte vector representing the font. This file has
+        a single public function: std::vector<uint8_t> generateFont(). This file is not platform
+        specific, and only relies on the C++ STL.
+        2. A file with a main() which calls generateFont() and writes out the font, as well as
+        uses the font to render some demonstration text into a .png file. This file is platform
+        specific.
+
+        The font itself only supports the following characters:
+        ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+        However, the shape of these letters are either an X or a check mark.
+
+        The letter "A" always is a check mark.
+        The letter "B" always is an X.
+        Without any font features turned on, the rest of the letters are shown as X.
+
+        Each font feature has an letter associated with it. When the font feature is enabled,
+        that letter is shown as a check mark. For example, when "smcp" is enabled, "J" is shown
+        as a check mark.
+
+        Here are the mappings of font features to letters:
+        liga: C
+        clig: D
+        dlig: E
+        hlig: F
+        calt: G
+        subs: H
+        sups: I
+        smcp: J
+        c2sc: K
+        pcap: L
+        c2pc: M
+        unic: N
+        titl: O
+        onum: P
+        pnum: Q
+        tnum: R
+        frac: S
+        afrc: T
+        ordn: U
+        zero: V
+        hist: W
+        jp78: X
+        jp83: Y
+        jp90: Z
+        jp04: a
+        smpl: b
+        trad: c
+        fwid: d
+        pwid: e
+        ruby: f
+
+        * FontWithFeatures/FontWithFeatures.xcodeproj/project.pbxproj: Added.
+        * FontWithFeatures/FontWithFeatures/FontCreator.cpp: Added.
+        (integralLog2):
+        (roundDownToPowerOfTwo):
+        (isFourByteAligned):
+        (clampTo):
+        (append32):
+        (writeCFFEncodedNumber):
+        (CFFBuilder::CFFBuilder):
+        (CFFBuilder::takeResult):
+        (CFFBuilder::moveTo):
+        (CFFBuilder::lineTo):
+        (CFFBuilder::curveToCubic):
+        (CFFBuilder::closePath):
+        (CFFBuilder::writePoint):
+        (generateBoxCharString):
+        (generateCheckCharString):
+        (generateXCharString):
+        (charStringForGlyph):
+        (Generator::generate):
+        (Generator::Placeholder::Placeholder):
+        (Generator::Placeholder::populate):
+        (Generator::Placeholder::~Placeholder):
+        (Generator::placeholder):
+        (Generator::append16):
+        (Generator::append32):
+        (Generator::append32BitCode):
+        (Generator::overwrite16):
+        (Generator::overwrite32):
+        (Generator::appendCFFTable):
+        (Generator::appendSubstitutionSubtable):
+        (Generator::appendScriptSubtable):
+        (Generator::appendGSUBTable):
+        (Generator::appendOS2Table):
+        (Generator::appendFormat12CMAPTable):
+        (Generator::appendFormat4CMAPTable):
+        (Generator::appendCMAPTable):
+        (Generator::appendHEADTable):
+        (Generator::appendHHEATable):
+        (Generator::appendHMTXTable):
+        (Generator::appendMAXPTable):
+        (Generator::appendNAMETable):
+        (Generator::appendPOSTTable):
+        (Generator::calculateChecksum):
+        (Generator::appendTable):
+        (generateFont):
+        * FontWithFeatures/FontWithFeatures/FontCreator.h: Added.
+        * FontWithFeatures/FontWithFeatures/main.cpp: Added.
+        (drawTextWithFeature):
+        (main):
+
 2015-09-16  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r189875 and r189878.

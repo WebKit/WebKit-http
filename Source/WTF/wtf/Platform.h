@@ -527,9 +527,6 @@
 
 #if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
 #define HAVE_AVKIT 1
-#endif
-
-#if !PLATFORM(WATCHOS)
 #define HAVE_PARENTAL_CONTROLS 1
 #endif
 
@@ -562,7 +559,10 @@
 #endif
 #define USE_UIKIT_EDITING 1
 #define USE_WEB_THREAD 1
+
+#if !PLATFORM(APPLETV)
 #define USE_QUICK_LOOK 1
+#endif
 
 #if defined(TARGET_OS_IOS) && TARGET_OS_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
 #define HAVE_APP_LINKS 1
@@ -823,15 +823,6 @@
 #define ENABLE_FTL_JIT 0
 #endif
 
-/* Generational collector for JSC */
-#if !defined(ENABLE_GGC)
-#if CPU(X86_64) || CPU(X86) || CPU(ARM64) || CPU(ARM)
-#define ENABLE_GGC 1
-#else
-#define ENABLE_GGC 0
-#endif /* CPU(X86_64) || CPU(X86) || CPU(ARM64) || CPU(ARM) */
-#endif /* !defined(ENABLE_GGC) */
-
 /* Counts uses of write barriers using sampling counters. Be sure to also
    set ENABLE_SAMPLING_COUNTERS to 1. */
 #if !defined(ENABLE_WRITE_BARRIER_PROFILING)
@@ -1012,14 +1003,6 @@
 
 #if !defined(USE_IMLANG_FONT_LINK2)
 #define USE_IMLANG_FONT_LINK2 1
-#endif
-
-#if !defined(ENABLE_COMPARE_AND_SWAP) && (OS(WINDOWS) || (COMPILER(GCC_OR_CLANG) && (CPU(X86) || CPU(X86_64) || CPU(ARM_THUMB2) || CPU(ARM64))))
-#define ENABLE_COMPARE_AND_SWAP 1
-#endif
-
-#if !defined(ENABLE_PARALLEL_GC) && (OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(HAIKU)) && ENABLE(COMPARE_AND_SWAP)
-#define ENABLE_PARALLEL_GC 1
 #endif
 
 #if !defined(ENABLE_GC_VALIDATION) && !defined(NDEBUG)

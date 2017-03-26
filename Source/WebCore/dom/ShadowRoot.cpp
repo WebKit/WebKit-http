@@ -31,6 +31,7 @@
 #include "InsertionPoint.h"
 #include "RenderElement.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SlotAssignment.h"
 #include "StyleResolver.h"
 #include "markup.h"
 
@@ -38,7 +39,11 @@ namespace WebCore {
 
 struct SameSizeAsShadowRoot : public DocumentFragment, public TreeScope {
     unsigned countersAndFlags[1];
+    void* styleResolver;
     void* host;
+#if ENABLE(SHADOW_DOM)
+    void* slotAssignment;
+#endif
 };
 
 COMPILE_ASSERT(sizeof(ShadowRoot) == sizeof(SameSizeAsShadowRoot), shadowroot_should_stay_small);
@@ -64,6 +69,14 @@ ShadowRoot::~ShadowRoot()
     // runs so we don't go through TreeScopeAdopter for each child with a
     // destructed tree scope in each descendant.
     removeDetachedChildren();
+}
+
+StyleResolver& ShadowRoot::styleResolver()
+{
+    if (m_styleResolver)
+        return *m_styleResolver;
+
+    return document().ensureStyleResolver();
 }
 
 PassRefPtr<Node> ShadowRoot::cloneNode(bool, ExceptionCode& ec)
@@ -96,7 +109,6 @@ bool ShadowRoot::childTypeAllowed(NodeType type) const
     case COMMENT_NODE:
     case TEXT_NODE:
     case CDATA_SECTION_NODE:
-    case ENTITY_REFERENCE_NODE:
         return true;
     default:
         return false;
@@ -127,5 +139,48 @@ void ShadowRoot::removeAllEventListeners()
     for (Node* node = firstChild(); node; node = NodeTraversal::next(*node))
         node->removeAllEventListeners();
 }
+
+#if ENABLE(SHADOW_DOM)
+
+HTMLSlotElement* ShadowRoot::findAssignedSlot(const Node& node)
+{
+    if (!m_slotAssignments)
+        return nullptr;
+    return m_slotAssignments->findAssignedSlot(node, *this);
+}
+
+void ShadowRoot::addSlotElementByName(const AtomicString& name, HTMLSlotElement& slot)
+{
+    if (!m_slotAssignments)
+        m_slotAssignments = std::make_unique<SlotAssignment>();
+
+    return m_slotAssignments->addSlotElementByName(name, slot);
+}
+
+void ShadowRoot::removeSlotElementByName(const AtomicString& name, HTMLSlotElement& slot)
+{
+    return m_slotAssignments->removeSlotElementByName(name, slot);
+}
+
+void ShadowRoot::invalidateSlotAssignments()
+{
+    if (m_slotAssignments)
+        m_slotAssignments->invalidate(*this);
+}
+
+void ShadowRoot::invalidateDefaultSlotAssignments()
+{
+    if (m_slotAssignments)
+        m_slotAssignments->invalidateDefaultSlot(*this);
+}
+
+const Vector<Node*>* ShadowRoot::assignedNodesForSlot(const HTMLSlotElement& slot)
+{
+    if (!m_slotAssignments)
+        return nullptr;
+    return m_slotAssignments->assignedNodesForSlot(slot, *this);
+}
+
+#endif
 
 }

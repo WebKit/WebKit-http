@@ -94,7 +94,7 @@ void ContainerNode::removeDetachedChildren()
             child->updateAncestorConnectedSubframeCountForRemoval();
     }
     // FIXME: We should be able to ASSERT(!attached()) here: https://bugs.webkit.org/show_bug.cgi?id=107801
-    removeDetachedChildrenInContainer<Node, ContainerNode>(*this);
+    removeDetachedChildrenInContainer(*this);
 }
 
 static inline void destroyRenderTreeIfNeeded(Node& child)
@@ -131,7 +131,7 @@ void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)
 
         // FIXME: We need a no mutation event version of adoptNode.
         RefPtr<Node> adoptedChild = document().adoptNode(&child.get(), ASSERT_NO_EXCEPTION);
-        parserAppendChild(adoptedChild.get());
+        parserAppendChild(*adoptedChild);
         // FIXME: Together with adoptNode above, the tree scope might get updated recursively twice
         // (if the document changed or oldParent was in a shadow tree, AND *this is in a shadow tree).
         // Can we do better?
@@ -180,7 +180,6 @@ static inline ExceptionCode checkAcceptChild(ContainerNode& newParent, Node& new
 {
     // Use common case fast path if possible.
     if ((newChild.isElementNode() || newChild.isTextNode()) && newParent.isElementNode()) {
-        ASSERT(!newParent.isReadOnlyNode());
         ASSERT(!newParent.isDocumentTypeNode());
         ASSERT(isChildTypeAllowed(newParent, newChild));
         if (containsConsideringHostElements(newChild, newParent))
@@ -193,8 +192,6 @@ static inline ExceptionCode checkAcceptChild(ContainerNode& newParent, Node& new
     if (newChild.isPseudoElement())
         return HIERARCHY_REQUEST_ERR;
 
-    if (newParent.isReadOnlyNode())
-        return NO_MODIFICATION_ALLOWED_ERR;
     if (containsConsideringHostElements(newChild, newParent))
         return HIERARCHY_REQUEST_ERR;
 
@@ -209,7 +206,6 @@ static inline ExceptionCode checkAcceptChild(ContainerNode& newParent, Node& new
 
 static inline bool checkAcceptChildGuaranteedNodeTypes(ContainerNode& newParent, Node& newChild, ExceptionCode& ec)
 {
-    ASSERT(!newParent.isReadOnlyNode());
     ASSERT(!newParent.isDocumentTypeNode());
     ASSERT(isChildTypeAllowed(newParent, newChild));
     if (newChild.contains(&newParent)) {
@@ -323,12 +319,25 @@ void ContainerNode::insertBeforeCommon(Node& nextChild, Node& newChild)
     newChild.setNextSibling(&nextChild);
 }
 
+void ContainerNode::appendChildCommon(Node& child)
+{
+    child.setParentNode(this);
+
+    if (m_lastChild) {
+        child.setPreviousSibling(m_lastChild);
+        m_lastChild->setNextSibling(&child);
+    } else
+        m_firstChild = &child;
+
+    m_lastChild = &child;
+}
+
 void ContainerNode::notifyChildInserted(Node& child, ChildChangeSource source)
 {
     ChildListMutationScope(*this).childAdded(child);
 
     NodeVector postInsertionNotificationTargets;
-    ChildNodeInsertionNotifier(*this).notify(child, postInsertionNotificationTargets);
+    notifyChildNodeInserted(*this, child, postInsertionNotificationTargets);
 
     ChildChange change;
     change.type = child.isElementNode() ? ElementInserted : child.isTextNode() ? TextInserted : NonContentsChildChanged;
@@ -344,7 +353,7 @@ void ContainerNode::notifyChildInserted(Node& child, ChildChangeSource source)
 
 void ContainerNode::notifyChildRemoved(Node& child, Node* previousSibling, Node* nextSibling, ChildChangeSource source)
 {
-    ChildNodeRemovalNotifier(*this).notify(child);
+    notifyChildNodeRemoved(*this, child);
 
     ChildChange change;
     change.type = is<Element>(child) ? ElementRemoved : is<Text>(child) ? TextRemoved : NonContentsChildChanged;
@@ -355,27 +364,25 @@ void ContainerNode::notifyChildRemoved(Node& child, Node* previousSibling, Node*
     childrenChanged(change);
 }
 
-void ContainerNode::parserInsertBefore(PassRefPtr<Node> newChild, Node* nextChild)
+void ContainerNode::parserInsertBefore(Ref<Node>&& newChild, Node& nextChild)
 {
-    ASSERT(newChild);
-    ASSERT(nextChild);
-    ASSERT(nextChild->parentNode() == this);
+    ASSERT(nextChild.parentNode() == this);
     ASSERT(!newChild->isDocumentFragment());
 #if ENABLE(TEMPLATE_ELEMENT)
     ASSERT(!hasTagName(HTMLNames::templateTag));
 #endif
 
-    if (nextChild->previousSibling() == newChild || nextChild == newChild) // nothing to do
+    if (nextChild.previousSibling() == newChild.ptr() || &nextChild == newChild.ptr()) // nothing to do
         return;
 
     if (&document() != &newChild->document())
-        document().adoptNode(newChild.get(), ASSERT_NO_EXCEPTION);
+        document().adoptNode(newChild.ptr(), ASSERT_NO_EXCEPTION);
 
-    insertBeforeCommon(*nextChild, *newChild.get());
+    insertBeforeCommon(nextChild, newChild);
 
     newChild->updateAncestorConnectedSubframeCountForInsertion();
 
-    notifyChildInserted(*newChild, ChildChangeSourceParser);
+    notifyChildInserted(newChild, ChildChangeSourceParser);
 
     newChild->setNeedsStyleRecalc(ReconstructRenderTree);
 }
@@ -450,7 +457,7 @@ bool ContainerNode::replaceChild(Ref<Node>&& newChild, Node& oldChild, Exception
             if (next)
                 insertBeforeCommon(*next, child.get());
             else
-                appendChildToContainer(child.ptr(), *this);
+                appendChildCommon(child);
         }
 
         updateTreeAfterInsertion(child.get());
@@ -509,12 +516,6 @@ bool ContainerNode::removeChild(Node& oldChild, ExceptionCode& ec)
     Ref<ContainerNode> protect(*this);
 
     ec = 0;
-
-    // NO_MODIFICATION_ALLOWED_ERR: Raised if this node is readonly.
-    if (isReadOnlyNode()) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return false;
-    }
 
     // NOT_FOUND_ERR: Raised if oldChild is not a child of this node.
     if (oldChild.parentNode() != this) {
@@ -636,9 +637,9 @@ void ContainerNode::removeChildren()
         WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
         {
             NoEventDispatchAssertion assertNoEventDispatch;
-            while (RefPtr<Node> n = m_firstChild) {
-                removeBetween(0, m_firstChild->nextSibling(), *m_firstChild);
-                ChildNodeRemovalNotifier(*this).notify(*n);
+            while (RefPtr<Node> child = m_firstChild) {
+                removeBetween(0, child->nextSibling(), *child);
+                notifyChildNodeRemoved(*this, *child);
             }
         }
 
@@ -700,7 +701,7 @@ bool ContainerNode::appendChild(Ref<Node>&& newChild, ExceptionCode& ec)
         // Append child to the end of the list
         {
             NoEventDispatchAssertion assertNoEventDispatch;
-            appendChildToContainer(child.ptr(), *this);
+            appendChildCommon(child);
         }
 
         updateTreeAfterInsertion(child.get());
@@ -710,9 +711,8 @@ bool ContainerNode::appendChild(Ref<Node>&& newChild, ExceptionCode& ec)
     return true;
 }
 
-void ContainerNode::parserAppendChild(PassRefPtr<Node> newChild)
+void ContainerNode::parserAppendChild(Ref<Node>&& newChild)
 {
-    ASSERT(newChild);
     ASSERT(!newChild->parentNode()); // Use appendChild if you need to handle reparenting (and want DOM mutation events).
     ASSERT(!newChild->isDocumentFragment());
 #if ENABLE(TEMPLATE_ELEMENT)
@@ -720,18 +720,18 @@ void ContainerNode::parserAppendChild(PassRefPtr<Node> newChild)
 #endif
 
     if (&document() != &newChild->document())
-        document().adoptNode(newChild.get(), ASSERT_NO_EXCEPTION);
+        document().adoptNode(newChild.ptr(), ASSERT_NO_EXCEPTION);
 
     {
         NoEventDispatchAssertion assertNoEventDispatch;
         // FIXME: This method should take a PassRefPtr.
-        appendChildToContainer(newChild.get(), *this);
-        treeScope().adoptIfNeeded(newChild.get());
+        appendChildCommon(newChild);
+        treeScope().adoptIfNeeded(newChild.ptr());
     }
 
     newChild->updateAncestorConnectedSubframeCountForInsertion();
 
-    notifyChildInserted(*newChild, ChildChangeSourceParser);
+    notifyChildInserted(newChild, ChildChangeSourceParser);
 
     newChild->setNeedsStyleRecalc(ReconstructRenderTree);
 }

@@ -285,10 +285,16 @@ sub SkipFunction {
     my $functionReturnType = $prefix eq "set_" ? "void" : $function->signature->type;
     my $isCustomFunction = $function->signature->extendedAttributes->{"Custom"} || $function->signature->extendedAttributes->{"CustomBinding"};
     my $callWith = $function->signature->extendedAttributes->{"CallWith"};
-    my $isUnsupportedCallWith = $codeGenerator->ExtendedAttributeContains($callWith, "ScriptArguments") || $codeGenerator->ExtendedAttributeContains($callWith, "CallStack");
+    my $isUnsupportedCallWith = $codeGenerator->ExtendedAttributeContains($callWith, "ScriptArguments") || $codeGenerator->ExtendedAttributeContains($callWith, "CallStack") || $codeGenerator->ExtendedAttributeContains($callWith, "FirstWindow") || $codeGenerator->ExtendedAttributeContains($callWith, "ActiveWindow");
 
     # Static methods are unsupported
     return 1 if $function->isStatic;
+
+    # FIXME: This is skipped because I don't know how to fix the build any better way.
+    # https://bugs.webkit.org/show_bug.cgi?id=149348
+    if ($functionName eq "webkit_dom_document_create_entity_reference") {
+        return 1;
+    }
 
     if (($isCustomFunction || $isUnsupportedCallWith) &&
         $functionName ne "webkit_dom_node_replace_child" &&
@@ -370,6 +376,10 @@ sub SkipFunction {
     }
 
     if ($function->signature->type eq "Date") {
+        return 1;
+    }
+
+    if ($function->signature->extendedAttributes->{"JSBuiltin"}) {
         return 1;
     }
 
@@ -479,6 +489,8 @@ sub IsPropertyWriteable {
     if ($property->signature->extendedAttributes->{"CustomSetter"}) {
         return 0;
     }
+
+    return 0 if $property->signature->extendedAttributes->{"CallWith"} || $property->signature->extendedAttributes->{"SetterCallWith"};
 
     return 1;
 }
@@ -1448,7 +1460,9 @@ sub GenerateFunctions {
         # FIXME: We are not generating setters for 'Replaceable'
         # attributes now, but we should somehow.
         my $custom = $attribute->signature->extendedAttributes->{"CustomSetter"};
-        if ($attribute->isReadOnly || $attribute->signature->extendedAttributes->{"Replaceable"} || $custom) {
+        if ($attribute->isReadOnly || $attribute->signature->extendedAttributes->{"Replaceable"}
+            || $attribute->signature->extendedAttributes->{"CallWith"}
+            || $attribute->signature->extendedAttributes->{"SetterCallWith"} || $custom) {
             next TOP;
         }
         

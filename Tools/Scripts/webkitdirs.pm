@@ -1418,7 +1418,7 @@ sub checkRequiredSystemConfig
             print "most likely fail. The latest Xcode is available from the App Store.\n";
             print "*************************************************************\n";
         }
-    } elsif (isGtk() or isEfl() or isWindows() or isHaiku()) {
+    } elsif (isGtk() or isEfl() or isWindows() or isCygwin() or isHaiku()) {
         my @cmds = qw(bison gperf flex);
         my @missing = ();
         my $oldPath = $ENV{PATH};
@@ -1696,7 +1696,6 @@ sub buildVisualStudioProject
     my $warningLogging = "/flp1:LogFile=" . $warningLogFile . ";WarningsOnly";
 
     my @command = ($vcBuildPath, "/verbosity:minimal", $project, $action, $config, $platform, "/fl", $errorLogging, "/fl1", $warningLogging);
-
     print join(" ", @command), "\n";
     return system @command;
 }
@@ -1743,7 +1742,7 @@ sub isCachedArgumentfileOutOfDate($@)
 
 sub jhbuildWrapperPrefixIfNeeded()
 {
-    if (isWindows()) {
+    if (isWindows() || isCygwin()) {
         return ();
     }
     if (-e getJhbuildPath()) {
@@ -1832,6 +1831,8 @@ sub cmakeGeneratedBuildfile(@)
     my ($willUseNinja) = @_;
     if ($willUseNinja) {
         return File::Spec->catfile(baseProductDir(), configuration(), "build.ninja")
+    } elsif (isWindows() || isCygwin()) {
+        return File::Spec->catfile(baseProductDir(), configuration(), "WebKit.sln")
     } else {
         return File::Spec->catfile(baseProductDir(), configuration(), "Makefile")
     }
@@ -1879,12 +1880,13 @@ sub generateBuildSystemFromCMakeProject
     push @args, @cmakeArgs if @cmakeArgs;
     push @args, $additionalCMakeArgs if $additionalCMakeArgs;
 
-    push @args, '"' . sourceDir() . '"';
+    my $cmakeSourceDir = isCygwin() ? windowsSourceDir() : sourceDir();
+    push @args, '"' . $cmakeSourceDir . '"';
 
     # Compiler options to keep floating point values consistent
     # between 32-bit and 64-bit architectures.
     determineArchitecture();
-    if ($architecture ne "x86_64" && !isARM() && !isCrossCompilation() && !isWindows() && !isHaiku()) {
+    if ($architecture ne "x86_64" && !isARM() && !isCrossCompilation() && !isWindows() && !isCygwin() && !isHaiku()) {
         $ENV{'CXXFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CXXFLAGS'} || "");
     }
 

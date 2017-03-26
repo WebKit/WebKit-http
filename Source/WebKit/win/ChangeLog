@@ -1,3 +1,78 @@
+2015-09-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Show tiled drawing debug overlay on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=149426
+
+        Reviewed by Dean Jackson.
+
+        * Interfaces/IWebPreferencesPrivate.idl: Add new IWebPreferencesPrivate3 API version
+        so we can add new methods this cycle.
+        * WebPreferenceKeysPrivate.h: Add key for 'WebKitShowTiledScrollingIndicator'
+        * WebPreferences.cpp:
+        (WebPreferences::QueryInterface): Recognize the new IWebPreferencesPrivate3 API.
+        (WebPreferences::showTiledScrollingIndicator): Added.
+        (WebPreferences::setShowTiledScrollingIndicator): Ditto.
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged): Update to recognize 'showTiledScrollingIndicator'.
+        (WebView::setAcceleratedCompositing): Link the CACFLayerTreeHost to the WebCore Page object
+        so that it can see settings information.
+
+2015-09-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Use tiled drawing for main background layer
+        https://bugs.webkit.org/show_bug.cgi?id=149347
+        <rdar://problem/22759632>
+
+        Reviewed by Alex Christensen.
+
+        Instruct WebCore to use tiled drawing for the root layer
+        of the display.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::shouldUseTiledBackingForFrameView): Added.
+        * WebCoreSupport/WebChromeClient.h:
+
+2015-09-17  Brian Burg  <bburg@apple.com>
+
+        ASSERT(!m_frontendRouter->hasLocalFrontend()) when running Web Inspector tests
+        https://bugs.webkit.org/show_bug.cgi?id=149006
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::destroyInspectorView):
+
+            Disconnect the FrontendClient from the frontend page's inspector controller.
+            Do this teardown before releasing the frontend, otherwise we can't use it.
+
+        (WebInspectorFrontendClient::onClose):
+        (WebInspectorClient::inspectedPageDestroyed): Deleted.
+        (WebInspectorClient::closeLocalFrontend): Deleted.
+        * WebCoreSupport/WebInspectorClient.h: Drive-by cleanup for class declarations.
+        * WebInspector.cpp:
+        (WebInspector::close):
+
+            Go through the frontend instead of InspectorController.
+
+2015-09-17  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win][HighDPI] Windowed plugins have incorrect placement.
+        https://bugs.webkit.org/show_bug.cgi?id=149090
+
+        Reviewed by Alex Christensen.
+
+        We have to scale plugin dimensions with device scale factor.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::windowClipRect):
+        * Plugins/PluginView.h:
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::updatePluginWidget):
+        (WebCore::PluginView::setNPWindowRect):
+        (WebCore::PluginView::snapshot):
+        (WebCore::PluginView::deviceScaleFactor):
+
 2015-09-15  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Provide a means for viewing the layer tree

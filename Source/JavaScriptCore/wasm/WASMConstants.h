@@ -49,6 +49,11 @@ namespace JSC {
 
 static const uint32_t wasmMagicNumber = 0x6d736177;
 
+enum class WASMOpKind {
+    Statement,
+    Expression
+};
+
 enum class WASMOpStatement : uint8_t {
     SetLocal,
     SetGlobal,
@@ -256,6 +261,13 @@ enum class WASMOpExpressionF64WithImmediate : uint8_t {
     NumberOfWASMOpExpressionF64WithImmediates
 };
 
+enum class WASMOpExpressionVoid : uint8_t {
+    CallInternal,
+    CallIndirect,
+    CallImport,
+    NumberOfWASMOpExpressionVoids
+};
+
 enum class WASMVariableTypes : uint8_t {
     I32 = 1 << 0,
     F32 = 1 << 1,
@@ -283,6 +295,24 @@ enum class WASMExportFormat : uint8_t {
     Record,
     NumberOfExportFormats
 };
+
+enum class WASMTypeConversion {
+    ConvertSigned,
+    ConvertUnsigned,
+    Promote,
+    Demote,
+};
+
+enum class WASMMemoryType {
+    I8,
+    I16,
+    I32,
+    F32,
+    F64
+};
+
+enum class MemoryAccessOffsetMode { NoOffset, WithOffset };
+enum class MemoryAccessConversion { NoConversion, SignExtend, ZeroExtend };
 
 static const uint8_t hasImmediateInOpFlag = 0x80;
 

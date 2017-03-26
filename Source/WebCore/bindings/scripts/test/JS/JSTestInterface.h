@@ -60,24 +60,24 @@ public:
 
     // Custom attributes
 #if ENABLE(Condition22) || ENABLE(Condition23)
-    JSC::JSValue implementsStr3(JSC::ExecState*) const;
+    JSC::JSValue implementsStr3(JSC::ExecState&) const;
 #endif
 #if ENABLE(Condition22) || ENABLE(Condition23)
-    void setImplementsStr3(JSC::ExecState*, JSC::JSValue);
+    void setImplementsStr3(JSC::ExecState&, JSC::JSValue);
 #endif
 #if ENABLE(Condition11) || ENABLE(Condition12)
-    JSC::JSValue supplementalStr3(JSC::ExecState*) const;
+    JSC::JSValue supplementalStr3(JSC::ExecState&) const;
 #endif
 #if ENABLE(Condition11) || ENABLE(Condition12)
-    void setSupplementalStr3(JSC::ExecState*, JSC::JSValue);
+    void setSupplementalStr3(JSC::ExecState&, JSC::JSValue);
 #endif
 
     // Custom functions
 #if ENABLE(Condition22) || ENABLE(Condition23)
-    JSC::JSValue implementsMethod3(JSC::ExecState*);
+    JSC::JSValue implementsMethod3(JSC::ExecState&);
 #endif
 #if ENABLE(Condition11) || ENABLE(Condition12)
-    JSC::JSValue supplementalMethod3(JSC::ExecState*);
+    JSC::JSValue supplementalMethod3(JSC::ExecState&);
 #endif
     TestInterface& impl() const { return *m_impl; }
     void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }
@@ -99,8 +99,8 @@ protected:
 
 class JSTestInterfaceOwner : public JSC::WeakHandleOwner {
 public:
-    bool isReachableFromOpaqueRoots(JSC::JSCell&, void* context, JSC::SlotVisitor&) override;
-    void finalize(JSC::JSCell*&, void* context) override;
+    virtual bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&);
+    virtual void finalize(JSC::Handle<JSC::Unknown>, void* context);
 };
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestInterface*)
@@ -110,7 +110,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestInterface*)
 }
 
 WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestInterface*);
-inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestInterface& impl) { return toJS(exec, globalObject, &impl); }
+inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestInterface& impl) { return toJS(state, globalObject, &impl); }
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, TestInterface*);
 
 

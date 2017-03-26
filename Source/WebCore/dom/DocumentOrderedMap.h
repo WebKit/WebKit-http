@@ -33,6 +33,7 @@
 
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringImpl.h>
 
@@ -84,6 +85,9 @@ private:
         Element* element;
         unsigned count;
         Vector<Element*> orderedList;
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
+        HashSet<Element*> registeredElements;
+#endif
     };
 
     typedef HashMap<const AtomicStringImpl*, MapEntry> Map;

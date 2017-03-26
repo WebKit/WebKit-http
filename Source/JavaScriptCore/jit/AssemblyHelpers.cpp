@@ -55,6 +55,78 @@ Vector<BytecodeAndMachineOffset>& AssemblyHelpers::decodedCodeMapFor(CodeBlock* 
     return result.iterator->value;
 }
 
+AssemblyHelpers::JumpList AssemblyHelpers::branchIfNotType(
+    JSValueRegs regs, GPRReg tempGPR, const InferredType::Descriptor& descriptor, TagRegistersMode mode)
+{
+    AssemblyHelpers::JumpList result;
+
+    switch (descriptor.kind()) {
+    case InferredType::Bottom:
+        result.append(jump());
+        break;
+
+    case InferredType::Boolean:
+        result.append(branchIfNotBoolean(regs, tempGPR));
+        break;
+
+    case InferredType::Other:
+        result.append(branchIfNotOther(regs, tempGPR));
+        break;
+
+    case InferredType::Int32:
+        result.append(branchIfNotInt32(regs, mode));
+        break;
+
+    case InferredType::Number:
+        result.append(branchIfNotNumber(regs, tempGPR, mode));
+        break;
+
+    case InferredType::String:
+        result.append(branchIfNotCell(regs, mode));
+        result.append(branchIfNotString(regs.payloadGPR()));
+        break;
+
+    case InferredType::ObjectWithStructure:
+        result.append(branchIfNotCell(regs, mode));
+        result.append(
+            branchStructure(
+                NotEqual,
+                Address(regs.payloadGPR(), JSCell::structureIDOffset()),
+                descriptor.structure()));
+        break;
+
+    case InferredType::ObjectWithStructureOrOther: {
+        Jump ok = branchIfOther(regs, tempGPR);
+        result.append(branchIfNotCell(regs, mode));
+        result.append(
+            branchStructure(
+                NotEqual,
+                Address(regs.payloadGPR(), JSCell::structureIDOffset()),
+                descriptor.structure()));
+        ok.link(this);
+        break;
+    }
+
+    case InferredType::Object:
+        result.append(branchIfNotCell(regs, mode));
+        result.append(branchIfNotObject(regs.payloadGPR()));
+        break;
+
+    case InferredType::ObjectOrOther: {
+        Jump ok = branchIfOther(regs, tempGPR);
+        result.append(branchIfNotCell(regs, mode));
+        result.append(branchIfNotObject(regs.payloadGPR()));
+        ok.link(this);
+        break;
+    }
+
+    case InferredType::Top:
+        break;
+    }
+
+    return result;
+}
+
 void AssemblyHelpers::purifyNaN(FPRReg fpr)
 {
     MacroAssembler::Jump notNaN = branchDouble(DoubleEqual, fpr, fpr);
@@ -271,6 +343,20 @@ AssemblyHelpers::Jump AssemblyHelpers::emitExceptionCheck(ExceptionCheckKind kin
     result.link(this);
     
     return realJump.m_jump;
+}
+
+AssemblyHelpers::Jump AssemblyHelpers::emitNonPatchableExceptionCheck()
+{
+    callExceptionFuzz();
+
+    Jump result;
+#if USE(JSVALUE64)
+    result = branchTest64(NonZero, AbsoluteAddress(vm()->addressOfException()));
+#elif USE(JSVALUE32_64)
+    result = branch32(NotEqual, AbsoluteAddress(vm()->addressOfException()), TrustedImm32(0));
+#endif
+    
+    return result;
 }
 
 void AssemblyHelpers::emitStoreStructureWithTypeInfo(AssemblyHelpers& jit, TrustedImmPtr structure, RegisterID dest)

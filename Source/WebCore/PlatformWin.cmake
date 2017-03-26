@@ -9,6 +9,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/ForwardingHeaders"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/API"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/assembler"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/builtins"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/bytecode"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/bytecompiler"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/dfg"
@@ -179,6 +180,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     Modules/geolocation
     Modules/indexeddb
+    Modules/indexeddb/legacy
     Modules/notifications
     Modules/webdatabase
 
@@ -247,12 +249,10 @@ else ()
     include(PlatformAppleWin.cmake)
 endif ()
 
-# FIXME: This should test if AVF headers are available.
-# https://bugs.webkit.org/show_bug.cgi?id=135861
 add_custom_command(
     OUTPUT "${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreHeaderDetection.h"
     WORKING_DIRECTORY "${DERIVED_SOURCES_WEBCORE_DIR}"
-    COMMAND echo /* Identifying AVFoundation Support */ > WebCoreHeaderDetection.h
+    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/AVFoundationSupport.py ${WEBKIT_LIBRARIES_DIR} > WebCoreHeaderDetection.h
     VERBATIM)
 
 make_directory(${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WebKit.resources/en.lproj)
@@ -261,6 +261,12 @@ file(COPY
     "${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js"
     DESTINATION
     ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WebKit.resources/en.lproj
+)
+file(COPY
+    "${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.css"
+    "${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.js"
+    DESTINATION
+    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WebKit.resources
 )
 if (WTF_PLATFORM_WIN_CAIRO AND EXISTS ${WEBKIT_LIBRARIES_DIR}/cacert.pem)
     make_directory(${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WebKit.resources/certificates)

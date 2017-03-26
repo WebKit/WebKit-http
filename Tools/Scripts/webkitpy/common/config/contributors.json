@@ -2634,7 +2634,6 @@
       },
       "Sukolsak Sakshuwong": {
          "emails" : [
-            "ssakshuwong@apple.com",
             "sukolsak@gmail.com"
          ],
          "expertise" : "JavaScript/ECMAScript, WebAssembly",
@@ -4555,6 +4554,15 @@
          "expertise" : "Text layout and rendering",
          "nicks" : [
             "litherum"
+         ]
+      },
+      "Nan Wang" : {
+         "emails" : [
+            "n_wang@apple.com"
+         ],
+         "expertise" : "Accessibility",
+         "nicks" : [
+            "n_wang"
          ]
       },
       "Nate Chapin" : {

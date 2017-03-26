@@ -324,7 +324,7 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         case CompilationSuccessful:
             if (Options::verboseOSR())
                 dataLogF("    JIT compilation successful.\n");
-            codeBlock->install();
+            codeBlock->ownerScriptExecutable()->installCode(codeBlock);
             codeBlock->jitSoon();
             return true;
         default:
@@ -357,9 +357,7 @@ static SlowPathReturnType entryOSR(ExecState* exec, Instruction*, CodeBlock* cod
     if (kind == Prologue)
         LLINT_RETURN_TWO(codeBlock->jitCode()->executableAddress(), 0);
     ASSERT(kind == ArityCheck);
-    LLINT_RETURN_TWO(codeBlock->jitCode()->addressForCall(
-        *codeBlock->vm(), codeBlock->ownerExecutable(), MustCheckArity,
-        RegisterPreservationNotRequired).executableAddress(), 0);
+    LLINT_RETURN_TWO(codeBlock->jitCode()->addressForCall(MustCheckArity).executableAddress(), 0);
 }
 #else // ENABLE(JIT)
 static SlowPathReturnType entryOSR(ExecState* exec, Instruction*, CodeBlock* codeBlock, const char*, EntryKind)
@@ -633,6 +631,8 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
         pc[5].u.pointer = nullptr; // offset
         pc[6].u.pointer = nullptr; // new structure
         pc[7].u.pointer = nullptr; // structure chain
+        pc[8].u.putByIdFlags =
+            static_cast<PutByIdFlags>(pc[8].u.putByIdFlags & PutByIdPersistentFlagsMask);
         
         JSCell* baseCell = baseValue.asCell();
         Structure* structure = baseCell->structure();
@@ -660,12 +660,18 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
                             pc[7].u.structureChain.set(
                                 vm, codeBlock->ownerExecutable(), chain);
                         }
+                        pc[8].u.putByIdFlags = static_cast<PutByIdFlags>(
+                            pc[8].u.putByIdFlags |
+                            structure->inferredTypeDescriptorFor(ident.impl()).putByIdFlags());
                     }
                 }
             } else {
                 structure->didCachePropertyReplacement(vm, slot.cachedOffset());
                 pc[4].u.structureID = structure->id();
                 pc[5].u.operand = slot.cachedOffset();
+                pc[8].u.putByIdFlags = static_cast<PutByIdFlags>(
+                    pc[8].u.putByIdFlags |
+                    structure->inferredTypeDescriptorFor(ident.impl()).putByIdFlags());
             }
         }
     }
@@ -1142,7 +1148,7 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
 #endif
 
     if (executable->isHostFunction()) {
-        codePtr = executable->entrypointFor(vm, kind, MustCheckArity, RegisterPreservationNotRequired);
+        codePtr = executable->entrypointFor(kind, MustCheckArity);
     } else if (!isWebAssemblyExecutable) {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
 
@@ -1159,7 +1165,7 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
             arity = MustCheckArity;
         else
             arity = ArityCheckNotRequired;
-        codePtr = functionExecutable->entrypointFor(vm, kind, arity, RegisterPreservationNotRequired);
+        codePtr = functionExecutable->entrypointFor(kind, arity);
     } else {
 #if ENABLE(WEBASSEMBLY)
         WebAssemblyExecutable* webAssemblyExecutable = static_cast<WebAssemblyExecutable*>(executable);
@@ -1171,7 +1177,7 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
             arity = MustCheckArity;
         else
             arity = ArityCheckNotRequired;
-        codePtr = webAssemblyExecutable->entrypointFor(vm, kind, arity, RegisterPreservationNotRequired);
+        codePtr = webAssemblyExecutable->entrypointFor(kind, arity);
 #endif
     }
     
@@ -1452,6 +1458,19 @@ LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
     CommonSlowPaths::tryCachePutToScopeGlobal(exec, codeBlock, pc, scope, getPutInfo, slot, ident);
 
     LLINT_END();
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_check_if_exception_is_uncatchable_and_notify_profiler)
+{
+    LLINT_BEGIN();
+    RELEASE_ASSERT(!!vm.exception());
+
+    if (LegacyProfiler* profiler = vm.enabledProfiler())
+        profiler->exceptionUnwind(exec);
+
+    if (isTerminatedExecutionException(vm.exception()))
+        LLINT_RETURN_TWO(pc, bitwise_cast<void*>(static_cast<uintptr_t>(1)));
+    LLINT_RETURN_TWO(pc, 0);
 }
 
 extern "C" SlowPathReturnType llint_throw_stack_overflow_error(VM* vm, ProtoCallFrame* protoFrame)

@@ -251,6 +251,7 @@ void JIT_OPERATION operationVMHandleException(ExecState*) WTF_INTERNAL;
 void JIT_OPERATION operationThrowStackOverflowError(ExecState*, CodeBlock*) WTF_INTERNAL;
 #if ENABLE(WEBASSEMBLY)
 void JIT_OPERATION operationThrowDivideError(ExecState*) WTF_INTERNAL;
+void JIT_OPERATION operationThrowOutOfBoundsAccessError(ExecState*) WTF_INTERNAL;
 #endif
 int32_t JIT_OPERATION operationCallArityCheck(ExecState*) WTF_INTERNAL;
 int32_t JIT_OPERATION operationConstructArityCheck(ExecState*) WTF_INTERNAL;
@@ -356,6 +357,8 @@ void JIT_OPERATION operationOSRWriteBarrier(ExecState*, JSCell*);
 void JIT_OPERATION operationInitGlobalConst(ExecState*, Instruction*);
 
 void JIT_OPERATION operationExceptionFuzz(ExecState*);
+
+int32_t JIT_OPERATION operationCheckIfExceptionIsUncatchableAndNotifyProfiler(ExecState*);
 
 EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState*, EncodedJSValue, JSCell*);
 EncodedJSValue JIT_OPERATION operationHasIndexedProperty(ExecState*, JSCell*, int32_t);

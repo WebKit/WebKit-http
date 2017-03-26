@@ -40,7 +40,9 @@ BitmapTexture::~BitmapTexture()
 
 void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag updateContentsFlag)
 {
-    std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(targetRect.size());
+    // Making an unconditionally unaccelerated buffer here is OK because this code
+    // isn't used by any platforms that respect the accelerated bit.
+    std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(targetRect.size(), Unaccelerated);
 
     if (!imageBuffer)
         return;

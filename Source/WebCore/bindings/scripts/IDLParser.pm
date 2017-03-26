@@ -82,6 +82,7 @@ struct( domSignature => {
     isNullable => '$', # Is variable type Nullable (T?)
     isVariadic => '$', # Is variable variadic (long... numbers)
     isOptional => '$', # Is variable optional (optional T)
+    default => '$', # Default value for parameters
 });
 
 # Used to represent string constants
@@ -299,13 +300,15 @@ sub unquoteString
 sub typeHasNullableSuffix
 {
     my $type = shift;
-    return $type =~ /\?$/;
+    return $type ? $type =~ /\?$/ : 0;
 }
 
 sub typeRemoveNullableSuffix
 {
     my $type = shift;
-    $type =~ s/\?//g;
+    if ($type) {
+        $type =~ s/\?//g;
+    }
     return $type;
 }
 
@@ -1433,7 +1436,7 @@ sub parseOptionalOrRequiredArgument
         $paramDataNode->type(identifierRemoveNullablePrefix(typeRemoveNullableSuffix($type)));
         $paramDataNode->isOptional(1);
         $paramDataNode->name($self->parseArgumentName());
-        $self->parseDefault();
+        $paramDataNode->default($self->parseDefault());
         return $paramDataNode;
     }
     if ($next->type() == IdentifierToken || $next->value() =~ /$nextExceptionField_1/) {

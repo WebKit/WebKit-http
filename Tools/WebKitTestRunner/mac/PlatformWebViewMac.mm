@@ -27,6 +27,7 @@
 #import "PlatformWebView.h"
 
 #import "TestController.h"
+#import "TestRunnerWKWebView.h"
 #import "WebKitTestRunnerDraggingInfo.h"
 #import <WebKit/WKImageCG.h>
 #import <WebKit/WKPreferencesPrivate.h>
@@ -52,21 +53,6 @@ enum {
 }
 @property (nonatomic, assign) PlatformWebView* platformWebView;
 @end
-
-#if WK_API_ENABLED
-@interface TestRunnerWKWebView : WKWebView
-@end
-
-@implementation TestRunnerWKWebView
-
-- (void)dragImage:(NSImage *)anImage at:(NSPoint)viewLocation offset:(NSSize)initialOffset event:(NSEvent *)event pasteboard:(NSPasteboard *)pboard source:(id)sourceObj slideBack:(BOOL)slideFlag
-{
-    RetainPtr<WebKitTestRunnerDraggingInfo> draggingInfo = adoptNS([[WebKitTestRunnerDraggingInfo alloc] initWithImage:anImage offset:initialOffset pasteboard:pboard source:sourceObj]);
-    [self draggingUpdated:draggingInfo.get()];
-}
-
-@end
-#endif
 
 @implementation WebKitTestRunnerWindow
 @synthesize platformWebView = _platformWebView;
@@ -143,6 +129,11 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
         [m_window orderBack:nil];
     [m_window setReleasedWhenClosed:NO];
 #endif
+}
+
+void PlatformWebView::setWindowIsKey(bool isKey)
+{
+    m_windowIsKey = isKey;
 }
 
 void PlatformWebView::resizeTo(unsigned width, unsigned height)

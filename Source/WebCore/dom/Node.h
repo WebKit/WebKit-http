@@ -54,6 +54,7 @@ class FloatPoint;
 class Frame;
 class HTMLInputElement;
 class HTMLQualifiedName;
+class HTMLSlotElement;
 class IntRect;
 class KeyboardEvent;
 class MathMLQualifiedName;
@@ -124,8 +125,6 @@ public:
         ATTRIBUTE_NODE = 2,
         TEXT_NODE = 3,
         CDATA_SECTION_NODE = 4,
-        ENTITY_REFERENCE_NODE = 5,
-        ENTITY_NODE = 6,
         PROCESSING_INSTRUCTION_NODE = 7,
         COMMENT_NODE = 8,
         DOCUMENT_NODE = 9,
@@ -134,6 +133,8 @@ public:
         XPATH_NAMESPACE_NODE = 13,
     };
     enum DeprecatedNodeType {
+        ENTITY_REFERENCE_NODE = 5,
+        ENTITY_NODE = 6,
         NOTATION_NODE = 12,
     };
     enum DocumentPosition {
@@ -287,6 +288,10 @@ public:
     ShadowRoot* containingShadowRoot() const;
     ShadowRoot* shadowRoot() const;
 
+#if ENABLE(SHADOW_DOM)
+    HTMLSlotElement* assignedSlot() const;
+#endif
+
     // Returns null, a child of ShadowRoot, or a legacy shadow root.
     Node* nonBoundaryShadowTreeRootNode();
 
@@ -412,7 +417,6 @@ public:
     bool isInShadowTree() const { return getFlag(IsInShadowTreeFlag); }
     bool isInTreeScope() const { return getFlag(static_cast<NodeFlags>(InDocumentFlag | IsInShadowTreeFlag)); }
 
-    bool isReadOnlyNode() const { return nodeType() == ENTITY_REFERENCE_NODE; }
     bool isDocumentTypeNode() const { return nodeType() == DOCUMENT_TYPE_NODE; }
     virtual bool childTypeAllowed(NodeType) const { return false; }
     unsigned countChildNodes() const;

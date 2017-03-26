@@ -58,13 +58,13 @@ public:
 
 
     // Custom attributes
-    JSC::JSValue customAttr(JSC::ExecState*) const;
-    void setCustomAttr(JSC::ExecState*, JSC::JSValue);
+    JSC::JSValue customAttr(JSC::ExecState&) const;
+    void setCustomAttr(JSC::ExecState&, JSC::JSValue);
 
     // Custom functions
-    JSC::JSValue customMethod(JSC::ExecState*);
-    JSC::JSValue customMethodWithArgs(JSC::ExecState*);
-    static JSC::JSValue classMethod2(JSC::ExecState*);
+    JSC::JSValue customMethod(JSC::ExecState&);
+    JSC::JSValue customMethodWithArgs(JSC::ExecState&);
+    static JSC::JSValue classMethod2(JSC::ExecState&);
     TestObj& impl() const { return *m_impl; }
     void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }
 
@@ -85,8 +85,8 @@ protected:
 
 class JSTestObjOwner : public JSC::WeakHandleOwner {
 public:
-    bool isReachableFromOpaqueRoots(JSC::JSCell&, void* context, JSC::SlotVisitor&) override;
-    void finalize(JSC::JSCell*&, void* context) override;
+    virtual bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&);
+    virtual void finalize(JSC::Handle<JSC::Unknown>, void* context);
 };
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestObj*)
@@ -96,7 +96,7 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestObj*)
 }
 
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestObj*);
-inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestObj& impl) { return toJS(exec, globalObject, &impl); }
+inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestObj& impl) { return toJS(state, globalObject, &impl); }
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, TestObj*);
 
 // Functions
