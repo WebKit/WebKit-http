@@ -37,26 +37,32 @@
 
 namespace WebCore {
 
-bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned bufferLength, const Font* fontData)
+bool GlyphPage::fill(UChar* buffer, unsigned bufferLength, const Font* fontData)
 {
-    bool haveGlyphs = false;
+    bool haveGlyphs[bufferLength];
+    bool hasOneGlyph = false;
+
+    const BFont* font = fontData->platformData().font();
+
+    // Unfortunately our API expects utf-8 as input...
+    StringView v(buffer, bufferLength);
+    font->GetHasGlyphs(v.utf8().data(), bufferLength, haveGlyphs);
+
     UTF16UChar32Iterator iterator(buffer, bufferLength);
-    for (unsigned i = 0; i < length; i++) {
+    for (unsigned i = 0;; i++) {
         UChar32 character = iterator.next();
         if (character == iterator.end())
             break;
 
-        // TODO find the glyph in the given fontData for the character.
-        // (at least check that the font can display it...)
-        if (!character)
-            setGlyphDataForIndex(offset + i, 0, 0);
+        if (!haveGlyphs[i])
+            setGlyphForIndex(i, 0);
         else {
-            haveGlyphs = true;
-            setGlyphDataForIndex(offset + i, character, fontData);
+            hasOneGlyph = true;
+            setGlyphForIndex(i, character);
         }
     }
 
-    return haveGlyphs;
+    return hasOneGlyph;
 }
 
 } // namespace WebCore
