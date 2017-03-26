@@ -149,6 +149,7 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/qt/BackingStoreQt.cpp
     UIProcess/qt/PageViewportControllerClientQt.cpp
+    UIProcess/qt/QrcSchemeHandler.cpp
     UIProcess/qt/QtDialogRunner.cpp
     UIProcess/qt/QtDownloadManager.cpp
     UIProcess/qt/QtGestureRecognizer.cpp

@@ -29,6 +29,7 @@
 #include "CoordinatedLayerTreeHostProxy.h"
 #include "DownloadProxy.h"
 #include "PageViewportControllerClientQt.h"
+#include "QrcSchemeHandler.h"
 #include "QtDialogRunner.h"
 #include "QtDownloadManager.h"
 #include "QtWebContext.h"
@@ -403,6 +404,7 @@ void QQuickWebViewPrivate::initialize(WKPageConfigurationRef configurationRef)
     preferences.setWebGLEnabled(true);
     preferences.setForceCompositingMode(true);
 
+    webPageProxy->setURLSchemeHandlerForScheme(QrcSchemeHandler::create(), ASCIILiteral("qrc"));
 
     q_ptr->setAcceptedMouseButtons(Qt::MouseButtonMask);
     q_ptr->setAcceptHoverEvents(true);
@@ -947,6 +949,7 @@ void QQuickWebViewPrivate::updateUserStyleSheets()
 
 void QQuickWebViewPrivate::updateSchemeDelegates()
 {
+    webPageProxy->setURLSchemeHandlerForScheme(QrcSchemeHandler::create(), ASCIILiteral("qrc"));
 
     QQmlListProperty<QQuickUrlSchemeDelegate> schemes = experimental->schemeDelegates();
     for (int i = 0, numSchemes = experimental->schemeDelegates_Count(&schemes); i < numSchemes; ++i) {
