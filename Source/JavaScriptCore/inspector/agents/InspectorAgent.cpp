@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2010, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
@@ -32,15 +32,17 @@
 #include "InspectorAgent.h"
 
 #include "InspectorEnvironment.h"
+#include "InspectorFrontendRouter.h"
 #include "InspectorValues.h"
 #include "ScriptValue.h"
 
 namespace Inspector {
 
-InspectorAgent::InspectorAgent(InspectorEnvironment& environment)
+InspectorAgent::InspectorAgent(AgentContext& context)
     : InspectorAgentBase(ASCIILiteral("Inspector"))
-    , m_environment(environment)
-    , m_enabled(false)
+    , m_environment(context.environment)
+    , m_frontendDispatcher(std::make_unique<InspectorFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(InspectorBackendDispatcher::create(context.backendDispatcher, this))
 {
 }
 
@@ -48,17 +50,12 @@ InspectorAgent::~InspectorAgent()
 {
 }
 
-void InspectorAgent::didCreateFrontendAndBackend(FrontendChannel* frontendChannel, BackendDispatcher* backendDispatcher)
+void InspectorAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<InspectorFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = InspectorBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorAgent::willDestroyFrontendAndBackend(DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     m_pendingEvaluateTestCommands.clear();
 
     ErrorString unused;
@@ -77,12 +74,8 @@ void InspectorAgent::enable(ErrorString&)
         m_frontendDispatcher->activateExtraDomains(m_pendingExtraDomainsData);
 #endif
 
-    for (auto& testCommand : m_pendingEvaluateTestCommands) {
-        if (!m_frontendDispatcher)
-            break;
-
+    for (auto& testCommand : m_pendingEvaluateTestCommands)
         m_frontendDispatcher->evaluateForTestInFrontend(testCommand);
-    }
 
     m_pendingEvaluateTestCommands.clear();
 }
@@ -99,7 +92,7 @@ void InspectorAgent::initialized(ErrorString&)
 
 void InspectorAgent::inspect(RefPtr<Protocol::Runtime::RemoteObject>&& objectToInspect, RefPtr<InspectorObject>&& hints)
 {
-    if (m_enabled && m_frontendDispatcher) {
+    if (m_enabled) {
         m_frontendDispatcher->inspect(objectToInspect, hints);
         m_pendingInspectData.first = nullptr;
         m_pendingInspectData.second = nullptr;
@@ -112,7 +105,7 @@ void InspectorAgent::inspect(RefPtr<Protocol::Runtime::RemoteObject>&& objectToI
 
 void InspectorAgent::evaluateForTestInFrontend(const String& script)
 {
-    if (m_enabled && m_frontendDispatcher)
+    if (m_enabled)
         m_frontendDispatcher->evaluateForTestInFrontend(script);
     else
         m_pendingEvaluateTestCommands.append(script);

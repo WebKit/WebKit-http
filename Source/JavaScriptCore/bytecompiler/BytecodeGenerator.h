@@ -39,6 +39,7 @@
 #include "Interpreter.h"
 #include "ParserError.h"
 #include "RegisterID.h"
+#include "SetForScope.h"
 #include "SymbolTable.h"
 #include "Debugger.h"
 #include "Nodes.h"
@@ -269,6 +270,7 @@ namespace JSC {
         BytecodeGenerator(VM&, ProgramNode*, UnlinkedProgramCodeBlock*, DebuggerMode, ProfilerMode, const VariableEnvironment*);
         BytecodeGenerator(VM&, FunctionNode*, UnlinkedFunctionCodeBlock*, DebuggerMode, ProfilerMode, const VariableEnvironment*);
         BytecodeGenerator(VM&, EvalNode*, UnlinkedEvalCodeBlock*, DebuggerMode, ProfilerMode, const VariableEnvironment*);
+        BytecodeGenerator(VM&, ModuleProgramNode*, UnlinkedModuleProgramCodeBlock*, DebuggerMode, ProfilerMode, const VariableEnvironment*);
 
         ~BytecodeGenerator();
         
@@ -358,6 +360,12 @@ namespace JSC {
 
         void emitNode(RegisterID* dst, StatementNode* n)
         {
+            SetForScope<bool> tailPositionPoisoner(m_inTailPosition, false);
+            return emitNodeInTailPosition(dst, n);
+        }
+
+        void emitNodeInTailPosition(RegisterID* dst, StatementNode* n)
+        {
             // Node::emitCode assumes that dst, if provided, is either a local or a referenced temporary.
             ASSERT(!dst || dst == ignoredResult() || !dst->isTemporary() || dst->refCount());
             if (!m_vm->isSafeToRecurse()) {
@@ -369,10 +377,21 @@ namespace JSC {
 
         void emitNode(StatementNode* n)
         {
-            emitNode(0, n);
+            emitNode(nullptr, n);
+        }
+
+        void emitNodeInTailPosition(StatementNode* n)
+        {
+            emitNodeInTailPosition(nullptr, n);
         }
 
         RegisterID* emitNode(RegisterID* dst, ExpressionNode* n)
+        {
+            SetForScope<bool> tailPositionPoisoner(m_inTailPosition, false);
+            return emitNodeInTailPosition(dst, n);
+        }
+
+        RegisterID* emitNodeInTailPosition(RegisterID* dst, ExpressionNode* n)
         {
             // Node::emitCode assumes that dst, if provided, is either a local or a referenced temporary.
             ASSERT(!dst || dst == ignoredResult() || !dst->isTemporary() || dst->refCount());
@@ -383,7 +402,12 @@ namespace JSC {
 
         RegisterID* emitNode(ExpressionNode* n)
         {
-            return emitNode(0, n);
+            return emitNode(nullptr, n);
+        }
+
+        RegisterID* emitNodeInTailPosition(ExpressionNode* n)
+        {
+            return emitNodeInTailPosition(nullptr, n);
         }
 
         void emitNodeInConditionContext(ExpressionNode* n, Label* trueTarget, Label* falseTarget, FallThroughMode fallThroughMode)
@@ -514,11 +538,15 @@ namespace JSC {
         void emitPutGetterById(RegisterID* base, const Identifier& property, unsigned propertyDescriptorOptions, RegisterID* getter);
         void emitPutSetterById(RegisterID* base, const Identifier& property, unsigned propertyDescriptorOptions, RegisterID* setter);
         void emitPutGetterSetter(RegisterID* base, const Identifier& property, unsigned attributes, RegisterID* getter, RegisterID* setter);
+        void emitPutGetterByVal(RegisterID* base, RegisterID* property, unsigned propertyDescriptorOptions, RegisterID* getter);
+        void emitPutSetterByVal(RegisterID* base, RegisterID* property, unsigned propertyDescriptorOptions, RegisterID* setter);
         
         ExpectedFunction expectedFunctionForIdentifier(const Identifier&);
         RegisterID* emitCall(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
+        RegisterID* emitCallInTailPosition(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
         RegisterID* emitCallEval(RegisterID* dst, RegisterID* func, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
         RegisterID* emitCallVarargs(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
+        RegisterID* emitCallVarargsInTailPosition(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
 
         enum PropertyDescriptorOption {
             PropertyConfigurable = 1,
@@ -545,7 +573,7 @@ namespace JSC {
         RegisterID* emitResolveConstantLocal(RegisterID* dst, const Variable&);
         RegisterID* emitResolveScope(RegisterID* dst, const Variable&);
         RegisterID* emitGetFromScope(RegisterID* dst, RegisterID* scope, const Variable&, ResolveMode);
-        RegisterID* emitPutToScope(RegisterID* scope, const Variable&, RegisterID* value, ResolveMode);
+        RegisterID* emitPutToScope(RegisterID* scope, const Variable&, RegisterID* value, ResolveMode, InitializationMode);
         RegisterID* initializeVariable(const Variable&, RegisterID* value);
 
         PassRefPtr<Label> emitLabel(Label*);
@@ -635,6 +663,9 @@ namespace JSC {
         enum class ScopeRegisterType { Var, Block };
         void pushLexicalScopeInternal(VariableEnvironment&, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType, ScopeRegisterType);
         void popLexicalScopeInternal(VariableEnvironment&, TDZRequirement);
+        template<typename LookUpVarKindFunctor>
+        bool instantiateLexicalVariables(const VariableEnvironment&, SymbolTable*, ScopeRegisterType, LookUpVarKindFunctor);
+        void emitPrefillStackTDZVariables(const VariableEnvironment&, SymbolTable*);
         void emitPopScope(RegisterID* dst, RegisterID* scope);
         RegisterID* emitGetParentScope(RegisterID* dst, RegisterID* scope);
         void emitPushFunctionNameScope(const Identifier& property, RegisterID* value, bool isCaptured);
@@ -829,6 +860,7 @@ namespace JSC {
         bool m_expressionTooDeep { false };
         bool m_isBuiltinFunction { false };
         bool m_usesNonStrictEval { false };
+        bool m_inTailPosition { false };
     };
 
 }

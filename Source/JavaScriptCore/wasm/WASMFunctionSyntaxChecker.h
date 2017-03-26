@@ -28,12 +28,110 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#define UNUSED 0
+
 namespace JSC {
 
 class WASMFunctionSyntaxChecker {
 public:
     typedef int Expression;
     typedef int Statement;
+    typedef int JumpTarget;
+    enum class JumpCondition { Zero, NonZero };
+
+    void startFunction(const Vector<WASMType>& arguments, uint32_t numberOfI32LocalVariables, uint32_t numberOfF32LocalVariables, uint32_t numberOfF64LocalVariables)
+    {
+        m_numberOfLocals = arguments.size() + numberOfI32LocalVariables + numberOfF32LocalVariables + numberOfF64LocalVariables;
+    }
+
+    void endFunction()
+    {
+        ASSERT(!m_tempStackTop);
+    }
+
+    void buildSetLocal(uint32_t, int, WASMType)
+    {
+        m_tempStackTop--;
+    }
+
+    void buildReturn(int, WASMExpressionType returnType)
+    {
+        if (returnType != WASMExpressionType::Void)
+            m_tempStackTop--;
+    }
+
+    int buildImmediateI32(uint32_t)
+    {
+        m_tempStackTop++;
+        updateTempStackHeight();
+        return UNUSED;
+    }
+
+    int buildImmediateF64(uint32_t)
+    {
+        m_tempStackTop++;
+        updateTempStackHeight();
+        return UNUSED;
+    }
+
+    int buildGetLocal(uint32_t, WASMType)
+    {
+        m_tempStackTop++;
+        updateTempStackHeight();
+        return UNUSED;
+    }
+
+    int buildUnaryI32(int, WASMOpExpressionI32)
+    {
+        return UNUSED;
+    }
+
+    int buildBinaryI32(int, int, WASMOpExpressionI32)
+    {
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
+    int buildRelationalI32(int, int, WASMOpExpressionI32)
+    {
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
+    void linkTarget(const int&) { }
+    void jumpToTarget(const int&) { }
+    void jumpToTargetIf(JumpCondition, int, const int&)
+    {
+        m_tempStackTop--;
+    }
+
+    void startLoop() { }
+    void endLoop() { }
+    void startSwitch() { }
+    void endSwitch() { }
+    void startLabel() { }
+    void endLabel() { }
+
+    int breakTarget() { return UNUSED; }
+    int continueTarget() { return UNUSED; }
+    int breakLabelTarget(uint32_t) { return UNUSED; }
+    int continueLabelTarget(uint32_t) { return UNUSED; }
+
+    unsigned stackHeight()
+    {
+        return m_numberOfLocals + m_tempStackHeight;
+    }
+
+private:
+    void updateTempStackHeight()
+    {
+        if (m_tempStackTop > m_tempStackHeight)
+            m_tempStackHeight = m_tempStackTop;
+    }
+
+    unsigned m_numberOfLocals;
+    unsigned m_tempStackTop { 0 };
+    unsigned m_tempStackHeight { 0 };
 };
 
 } // namespace JSC

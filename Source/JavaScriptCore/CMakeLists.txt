@@ -87,6 +87,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CodeOrigin.cpp
     bytecode/CodeType.cpp
     bytecode/ComplexGetStatus.cpp
+    bytecode/DataFormat.cpp
     bytecode/DFGExitProfile.cpp
     bytecode/DeferredCompilationCallback.cpp
     bytecode/DeferredSourceDump.cpp
@@ -323,6 +324,7 @@ set(JavaScriptCore_SOURCES
     inspector/InjectedScriptManager.cpp
     inspector/InjectedScriptModule.cpp
     inspector/InspectorAgentRegistry.cpp
+    inspector/InspectorFrontendRouter.cpp
     inspector/InspectorBackendDispatcher.cpp
     inspector/InspectorValues.cpp
     inspector/JSGlobalObjectConsoleClient.cpp
@@ -525,6 +527,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSDateMath.cpp
     runtime/JSEnvironmentRecord.cpp
     runtime/JSFunction.cpp
+    runtime/JSGlobalLexicalEnvironment.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectDebuggable.cpp
     runtime/JSGlobalObjectFunctions.cpp
@@ -537,6 +540,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSLock.cpp
     runtime/JSMap.cpp
     runtime/JSMapIterator.cpp
+    runtime/JSModuleEnvironment.cpp
+    runtime/JSModuleNamespaceObject.cpp
     runtime/JSModuleRecord.cpp
     runtime/JSNativeStdFunction.cpp
     runtime/JSNotAnObject.cpp
@@ -906,7 +911,6 @@ if (ENABLE_FTL_JIT)
         ftl/FTLState.cpp
         ftl/FTLThunks.cpp
         ftl/FTLUnwindInfo.cpp
-        ftl/FTLValueFormat.cpp
         ftl/FTLValueRange.cpp
 
         llvm/InitializeLLVM.cpp

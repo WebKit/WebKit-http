@@ -30,7 +30,6 @@
 #include "DFGThunks.h"
 #include "JSCInlines.h"
 #include "Repatch.h"
-#include "RepatchBuffer.h"
 #include <wtf/ListDump.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -46,7 +45,7 @@ void CallLinkInfo::clearStub()
     m_stub = nullptr;
 }
 
-void CallLinkInfo::unlink(RepatchBuffer& repatchBuffer)
+void CallLinkInfo::unlink(VM& vm)
 {
     if (!isLinked()) {
         // We could be called even if we're not linked anymore because of how polymorphic calls
@@ -55,14 +54,14 @@ void CallLinkInfo::unlink(RepatchBuffer& repatchBuffer)
         return;
     }
     
-    unlinkFor(repatchBuffer, *this);
+    unlinkFor(vm, *this);
 
     // It will be on a list if the callee has a code block.
     if (isOnList())
         remove();
 }
 
-void CallLinkInfo::visitWeak(RepatchBuffer& repatchBuffer)
+void CallLinkInfo::visitWeak(VM& vm)
 {
     auto handleSpecificCallee = [&] (JSFunction* callee) {
         if (Heap::isMarked(callee->executable()))
@@ -73,26 +72,26 @@ void CallLinkInfo::visitWeak(RepatchBuffer& repatchBuffer)
     
     if (isLinked()) {
         if (stub()) {
-            if (!stub()->visitWeak(repatchBuffer)) {
+            if (!stub()->visitWeak(vm)) {
                 if (Options::verboseOSR()) {
                     dataLog(
-                        "Clearing closure call from ", *repatchBuffer.codeBlock(), " to ",
+                        "Clearing closure call to ",
                         listDump(stub()->variants()), ", stub routine ", RawPointer(stub()),
                         ".\n");
                 }
-                unlink(repatchBuffer);
+                unlink(vm);
                 m_clearedByGC = true;
             }
         } else if (!Heap::isMarked(m_callee.get())) {
             if (Options::verboseOSR()) {
                 dataLog(
-                    "Clearing call from ", *repatchBuffer.codeBlock(), " to ",
+                    "Clearing call to ",
                     RawPointer(m_callee.get()), " (",
                     m_callee.get()->executable()->hashFor(specializationKind()),
                     ").\n");
             }
             handleSpecificCallee(m_callee.get());
-            unlink(repatchBuffer);
+            unlink(vm);
         }
     }
     if (haveLastSeenCallee() && !Heap::isMarked(lastSeenCallee())) {

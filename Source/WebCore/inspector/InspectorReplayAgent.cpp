@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011-2013 University of Washington. All rights reserved.
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -156,9 +156,11 @@ static Ref<Inspector::Protocol::Replay::SessionSegment> buildInspectorObjectForS
         .release();
 }
 
-InspectorReplayAgent::InspectorReplayAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent)
-    : InspectorAgentBase(ASCIILiteral("Replay"), instrumentingAgents)
-    , m_page(*pageAgent->page())
+InspectorReplayAgent::InspectorReplayAgent(PageAgentContext& context)
+    : InspectorAgentBase(ASCIILiteral("Replay"), context)
+    , m_frontendDispatcher(std::make_unique<Inspector::ReplayFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(Inspector::ReplayBackendDispatcher::create(context.backendDispatcher, this))
+    , m_page(context.inspectedPage)
 {
 }
 
@@ -173,12 +175,9 @@ WebCore::SessionState InspectorReplayAgent::sessionState() const
     return m_page.replayController().sessionState();
 }
 
-void InspectorReplayAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorReplayAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<Inspector::ReplayFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = Inspector::ReplayBackendDispatcher::create(backendDispatcher, this);
-
-    m_instrumentingAgents->setInspectorReplayAgent(this);
+    m_instrumentingAgents.setInspectorReplayAgent(this);
     ASSERT(sessionState() == WebCore::SessionState::Inactive);
 
     // Keep track of the (default) session currently loaded by ReplayController,
@@ -192,10 +191,7 @@ void InspectorReplayAgent::didCreateFrontendAndBackend(Inspector::FrontendChanne
 
 void InspectorReplayAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
-    m_instrumentingAgents->setInspectorReplayAgent(nullptr);
+    m_instrumentingAgents.setInspectorReplayAgent(nullptr);
 
     // Drop references to all sessions and segments.
     m_sessionsMap.clear();

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,7 +34,6 @@
 
 #include "CommandLineAPIHost.h"
 #include "InspectorClient.h"
-#include "InspectorForwarding.h"
 #include "InspectorInstrumentation.h"
 #include "InspectorTimelineAgent.h"
 #include "InstrumentingAgents.h"
@@ -47,7 +47,9 @@
 #include "WorkerRuntimeAgent.h"
 #include "WorkerThread.h"
 #include <inspector/InspectorBackendDispatcher.h>
+#include <inspector/InspectorFrontendChannel.h>
 #include <inspector/InspectorFrontendDispatchers.h>
+#include <inspector/InspectorFrontendRouter.h>
 #include <wtf/Stopwatch.h>
 
 using namespace Inspector;
@@ -56,7 +58,7 @@ namespace WebCore {
 
 namespace {
 
-class PageInspectorProxy : public InspectorFrontendChannel {
+class PageInspectorProxy : public FrontendChannel {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit PageInspectorProxy(WorkerGlobalScope& workerGlobalScope)
@@ -79,22 +81,40 @@ WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGl
     : m_workerGlobalScope(workerGlobalScope)
     , m_instrumentingAgents(InstrumentingAgents::create(*this))
     , m_injectedScriptManager(std::make_unique<WebInjectedScriptManager>(*this, WebInjectedScriptHost::create()))
-    , m_runtimeAgent(nullptr)
     , m_executionStopwatch(Stopwatch::create())
+    , m_frontendRouter(FrontendRouter::create())
+    , m_backendDispatcher(BackendDispatcher::create(m_frontendRouter.copyRef()))
 {
-    auto runtimeAgent = std::make_unique<WorkerRuntimeAgent>(m_injectedScriptManager.get(), &workerGlobalScope);
+    AgentContext baseContext = {
+        *this,
+        *m_injectedScriptManager,
+        m_frontendRouter.get(),
+        m_backendDispatcher.get()
+    };
+
+    WebAgentContext webContext = {
+        baseContext,
+        m_instrumentingAgents.get()
+    };
+
+    WorkerAgentContext workerContext = {
+        webContext,
+        workerGlobalScope,
+    };
+
+    auto runtimeAgent = std::make_unique<WorkerRuntimeAgent>(workerContext);
     m_runtimeAgent = runtimeAgent.get();
     m_instrumentingAgents->setWorkerRuntimeAgent(m_runtimeAgent);
     m_agents.append(WTF::move(runtimeAgent));
 
-    auto consoleAgent = std::make_unique<WorkerConsoleAgent>(m_injectedScriptManager.get());
+    auto consoleAgent = std::make_unique<WorkerConsoleAgent>(workerContext);
     m_instrumentingAgents->setWebConsoleAgent(consoleAgent.get());
 
-    auto debuggerAgent = std::make_unique<WorkerDebuggerAgent>(m_injectedScriptManager.get(), m_instrumentingAgents.get(), &workerGlobalScope);
+    auto debuggerAgent = std::make_unique<WorkerDebuggerAgent>(workerContext);
     m_runtimeAgent->setScriptDebugServer(&debuggerAgent->scriptDebugServer());
     m_agents.append(WTF::move(debuggerAgent));
 
-    m_agents.append(std::make_unique<InspectorTimelineAgent>(m_instrumentingAgents.get(), nullptr, InspectorTimelineAgent::WorkerInspector, nullptr));
+    m_agents.append(std::make_unique<InspectorTimelineAgent>(workerContext, nullptr, InspectorTimelineAgent::WorkerInspector, nullptr));
     m_agents.append(WTF::move(consoleAgent));
 
     if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost()) {
@@ -109,33 +129,35 @@ WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGl
  
 WorkerInspectorController::~WorkerInspectorController()
 {
+    ASSERT(!m_frontendRouter->hasFrontends());
+    ASSERT(!m_forwardingChannel);
+
     m_instrumentingAgents->reset();
-    disconnectFrontend(Inspector::DisconnectReason::InspectedTargetDestroyed);
 }
 
 void WorkerInspectorController::connectFrontend()
 {
-    ASSERT(!m_frontendChannel);
-    m_frontendChannel = std::make_unique<PageInspectorProxy>(m_workerGlobalScope);
-    m_backendDispatcher = BackendDispatcher::create(m_frontendChannel.get());
-    m_agents.didCreateFrontendAndBackend(m_frontendChannel.get(), m_backendDispatcher.get());
+    ASSERT(!m_frontendRouter->hasFrontends());
+    ASSERT(!m_forwardingChannel);
+
+    m_forwardingChannel = std::make_unique<PageInspectorProxy>(m_workerGlobalScope);
+    m_frontendRouter->connectFrontend(m_forwardingChannel.get());
+    m_agents.didCreateFrontendAndBackend(&m_frontendRouter.get(), &m_backendDispatcher.get());
 }
 
 void WorkerInspectorController::disconnectFrontend(Inspector::DisconnectReason reason)
 {
-    if (!m_frontendChannel)
-        return;
+    ASSERT(m_frontendRouter->hasFrontends());
+    ASSERT(m_forwardingChannel);
 
     m_agents.willDestroyFrontendAndBackend(reason);
-    m_backendDispatcher->clearFrontend();
-    m_backendDispatcher = nullptr;
-    m_frontendChannel = nullptr;
+    m_frontendRouter->disconnectFrontend(m_forwardingChannel.get());
+    m_forwardingChannel = nullptr;
 }
 
 void WorkerInspectorController::dispatchMessageFromFrontend(const String& message)
 {
-    if (m_backendDispatcher)
-        m_backendDispatcher->dispatch(message);
+    m_backendDispatcher->dispatch(message);
 }
 
 void WorkerInspectorController::resume()

@@ -350,7 +350,7 @@
       },
       "Basile Clement" : {
         "emails" : [
-            "basile_clement@apple.com"
+            "cbasile06+webkit@gmail.com"
         ],
         "nicks" : [
             "elarnon"
@@ -1293,6 +1293,14 @@
             "jasonliu"
          ]
       },
+      "Jason Marcell" : {
+         "emails" : [
+            "jmarcell@apple.com"
+         ],
+         "nicks" : [
+            "jmarcell"
+         ]
+      },
       "Javier Fernandez" : {
          "emails" : [
             "jfernandez@igalia.com"
@@ -1574,6 +1582,15 @@
          ],
          "nicks" : [
             "silverroots"
+         ]
+      },
+      "Keith Miller" : {
+         "emails" : [
+            "keith_miller@apple.com"
+         ],
+         "nicks" : [
+            "keith_miller",
+            "keith_miller_"
          ]
       },
       "Keishi Hattori" : {

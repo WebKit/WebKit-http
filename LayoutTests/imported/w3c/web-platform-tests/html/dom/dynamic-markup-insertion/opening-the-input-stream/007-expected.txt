@@ -1,0 +1,4 @@
+
+
+PASS Unregistering event handlers after document.open 
+

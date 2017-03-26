@@ -1,3 +1,82 @@
+2015-09-08  Daniel Bates  <dabates@apple.com>
+
+        Convert manual test added in http://trac.webkit.org/changeset/70321 to an automated test
+        https://bugs.webkit.org/show_bug.cgi?id=74729
+        <rdar://problem/22550195>
+
+        Reviewed by Jon Honeycutt.
+
+        * ManualTests/compositing/resources/composited-subframe.html: Removed.
+        * ManualTests/compositing/show-composited-iframe-on-back-button.html: Removed.
+
+2015-09-06  Andy Estes  <aestes@apple.com>
+
+        WebKit.xcworkspace should be be able to build iOS platforms
+        https://bugs.webkit.org/show_bug.cgi?id=148881
+
+        Reviewed by Daniel Bates.
+
+        Since we don't want to create platform-specific schemes, all projects in the workspace's schemes need to build
+        for all supported platforms.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Tools.xcscheme: Removed the DumpRenderTree target since its All
+        target was already included. Removed the WebKitTestRunner target and replaced it with its All target.
+
+2015-09-04  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        [iOS] Need a test for bug #145539: Uploading an animated GIF from the
+        photo library uploads a JPEG
+        https://bugs.webkit.org/show_bug.cgi?id=148849
+
+        Reviewed by Daniel Bates.
+
+        * ManualTests/ios/image-file-uploads-as-original-type.html: Added.
+        On the Mac, file upload tests use EventSender::beginDragWithFiles. This
+        functionality doesn't exist on iOS, so we'll add a manual test.
+        This tests that the first few bytes of the selected file are "GIF".
+
+2015-09-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Follow-up patch for r189343.
+        https://bugs.webkit.org/show_bug.cgi?id=148795
+
+        Rubber-stamped by Csaba Osztrogonác.
+
+        * Source/cmake/WebKitCommon.cmake: Relax the Ruby version requirement
+        to 1.9, since this seems to be enough to fix the build failure.
+        And 2.0 may cause problems for developers using some distributions like Ubuntu.
+
+2015-09-04  Emanuele Aina  <emanuele.aina@collabora.com>
+
+        [CMake] Trigger the memory-reduction tricks on armhf too
+        https://bugs.webkit.org/show_bug.cgi?id=146640
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsCommon.cmake:
+        Activate --no-keep-memory even on armhf to reduce the amount of memory
+        needed during linking, to avoid out-of-memory failures as much as
+        possible.
+
+2015-09-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r189293): JavaScriptCore/offlineasm/x86.rb -- Build failure with ruby < 2.0
+        https://bugs.webkit.org/show_bug.cgi?id=148795
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * Source/cmake/WebKitCommon.cmake: Require now at least Ruby 2.0
+
+2015-09-02  Alex Christensen  <achristensen@webkit.org>
+
+        Make bison grammar compatible with bison 2.1
+        https://bugs.webkit.org/show_bug.cgi?id=148731
+
+        Reviewed by Tim Horton.
+
+        * Source/cmake/WebKitCommon.cmake:
+        Support bison 2.1.
+
 2015-08-31  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [CMake] Build with Debug Fission on by default on Debug builds.

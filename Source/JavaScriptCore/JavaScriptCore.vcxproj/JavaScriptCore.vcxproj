@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
@@ -326,6 +326,7 @@
     <ClCompile Include="..\bytecode\CodeOrigin.cpp" />
     <ClCompile Include="..\bytecode\CodeType.cpp" />
     <ClCompile Include="..\bytecode\ComplexGetStatus.cpp" />
+    <ClCompile Include="..\bytecode\DataFormat.cpp" />
     <ClCompile Include="..\bytecode\DeferredCompilationCallback.cpp" />
     <ClCompile Include="..\bytecode\DeferredSourceDump.cpp" />
     <ClCompile Include="..\bytecode\DFGExitProfile.cpp" />
@@ -551,7 +552,6 @@
     <ClCompile Include="..\ftl\FTLState.cpp" />
     <ClCompile Include="..\ftl\FTLThunks.cpp" />
     <ClCompile Include="..\ftl\FTLUnwindInfo.cpp" />
-    <ClCompile Include="..\ftl\FTLValueFormat.cpp" />
     <ClCompile Include="..\ftl\FTLValueRange.cpp" />
     <ClCompile Include="..\heap\CodeBlockSet.cpp" />
     <ClCompile Include="..\heap\ConservativeRoots.cpp" />
@@ -595,6 +595,7 @@
     <ClCompile Include="..\inspector\InjectedScriptModule.cpp" />
     <ClCompile Include="..\inspector\InspectorAgentRegistry.cpp" />
     <ClCompile Include="..\inspector\InspectorBackendDispatcher.cpp" />
+    <ClCompile Include="..\inspector\InspectorFrontendRouter.cpp" />
     <ClCompile Include="..\inspector\InspectorValues.cpp" />
     <ClCompile Include="..\inspector\JSInjectedScriptHost.cpp" />
     <ClCompile Include="..\inspector\JSInjectedScriptHostPrototype.cpp" />
@@ -778,6 +779,7 @@
     <ClCompile Include="..\runtime\JSFunction.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObject.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObjectFunctions.cpp" />
+    <ClCompile Include="..\runtime\JSGlobalLexicalEnvironment.cpp" />
     <ClCompile Include="..\runtime\JSInternalPromise.cpp" />
     <ClCompile Include="..\runtime\JSInternalPromiseConstructor.cpp" />
     <ClCompile Include="..\runtime\JSInternalPromiseDeferred.cpp" />
@@ -786,6 +788,8 @@
     <ClCompile Include="..\runtime\JSLock.cpp" />
     <ClCompile Include="..\runtime\JSMap.cpp" />
     <ClCompile Include="..\runtime\JSMapIterator.cpp" />
+    <ClCompile Include="..\runtime\JSModuleEnvironment.cpp" />
+    <ClCompile Include="..\runtime\JSModuleNamespaceObject.cpp" />
     <ClCompile Include="..\runtime\JSModuleRecord.cpp" />
     <ClCompile Include="..\runtime\JSNativeStdFunction.cpp" />
     <ClCompile Include="..\runtime\JSNotAnObject.cpp" />
@@ -992,7 +996,6 @@
     <ClInclude Include="..\assembler\MacroAssemblerX86Common.h" />
     <ClInclude Include="..\assembler\MacroAssemblerX86_64.h" />
     <ClInclude Include="..\assembler\MaxFrameExtentForSlowPathCall.h" />
-    <ClInclude Include="..\assembler\RepatchBuffer.h" />
     <ClInclude Include="..\assembler\X86Assembler.h" />
     <ClInclude Include="..\bindings\ScriptFunctionCall.h" />
     <ClInclude Include="..\bindings\ScriptObject.h" />
@@ -1302,7 +1305,6 @@
     <ClInclude Include="..\ftl\FTLThunks.h" />
     <ClInclude Include="..\ftl\FTLTypedPointer.h" />
     <ClInclude Include="..\ftl\FTLUnwindInfo.h" />
-    <ClInclude Include="..\ftl\FTLValueFormat.h" />
     <ClInclude Include="..\ftl\FTLValueFromBlock.h" />
     <ClInclude Include="..\ftl\FTLValueRange.h" />
     <ClInclude Include="..\ftl\FTLWeight.h" />
@@ -1384,6 +1386,7 @@
     <ClInclude Include="..\inspector\InspectorBackendDispatcher.h" />
     <ClInclude Include="..\inspector\InspectorEnvironment.h" />
     <ClInclude Include="..\inspector\InspectorFrontendChannel.h" />
+    <ClInclude Include="..\inspector\InspectorFrontendRouter.h" />
     <ClInclude Include="..\inspector\InspectorValues.h" />
     <ClInclude Include="..\inspector\JSInjectedScriptHost.h" />
     <ClInclude Include="..\inspector\JSInjectedScriptHostPrototype.h" />
@@ -1445,6 +1448,7 @@
     <ClInclude Include="..\jit\SetupVarargsFrame.h" />
     <ClInclude Include="..\jit\PolymorphicCallStubRoutine.h" />
     <ClInclude Include="..\jit\Reg.h" />
+    <ClInclude Include="..\jit\RegisterMap.h" />
     <ClInclude Include="..\jit\RegisterPreservationWrapperGenerator.h" />
     <ClInclude Include="..\jit\RegisterSet.h" />
     <ClInclude Include="..\jit\Repatch.h" />
@@ -1570,6 +1574,7 @@
     <ClInclude Include="..\runtime\GenericOffset.h" />
     <ClInclude Include="..\runtime\GenericTypedArrayView.h" />
     <ClInclude Include="..\runtime\GenericTypedArrayViewInlines.h" />
+    <ClInclude Include="..\runtime\GetPutInfo.h" />
     <ClInclude Include="..\runtime\GetterSetter.h" />
     <ClInclude Include="..\runtime\Identifier.h" />
     <ClInclude Include="..\runtime\IndexingHeader.h" />
@@ -1629,6 +1634,7 @@
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototypeInlines.h" />
     <ClInclude Include="..\runtime\JSGlobalObject.h" />
     <ClInclude Include="..\runtime\JSGlobalObjectFunctions.h" />
+    <ClInclude Include="..\runtime\JSGlobalLexicalEnvironment.h" />
     <ClInclude Include="..\runtime\JSJob.h" />
     <ClInclude Include="..\runtime\JSInt16Array.h" />
     <ClInclude Include="..\runtime\JSInt32Array.h" />
@@ -1640,6 +1646,8 @@
     <ClInclude Include="..\runtime\JSLock.h" />
     <ClInclude Include="..\runtime\JSMap.h" />
     <ClInclude Include="..\runtime\JSMapIterator.h" />
+    <ClInclude Include="..\runtime\JSModuleEnvironment.h" />
+    <ClInclude Include="..\runtime\JSModuleNamespaceObject.h" />
     <ClInclude Include="..\runtime\JSModuleRecord.h" />
     <ClInclude Include="..\runtime\JSNativeStdFunction.h" />
     <ClInclude Include="..\runtime\JSNotAnObject.h" />
@@ -1798,6 +1806,7 @@
     <ClInclude Include="..\wasm\JSWASMModule.h" />
     <ClInclude Include="..\wasm\WASMConstants.h" />
     <ClInclude Include="..\wasm\WASMFormat.h" />
+    <ClInclude Include="..\wasm\WASMFunctionCompiler.h" />
     <ClInclude Include="..\wasm\WASMFunctionParser.h" />
     <ClInclude Include="..\wasm\WASMFunctionSyntaxChecker.h" />
     <ClInclude Include="..\wasm\WASMModuleParser.h" />

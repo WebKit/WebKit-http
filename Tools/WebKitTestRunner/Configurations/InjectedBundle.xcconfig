@@ -26,7 +26,6 @@
 LD_RUNPATH_SEARCH_PATHS = "@loader_path/../../..";
 PRODUCT_NAME = WebKitTestRunnerInjectedBundle;
 
-INSTALL_PATH = $(SYSTEM_LIBRARY_DIR)/Frameworks/WebKit.framework/Versions/A/Resources;
 SKIP_INSTALL = NO;
 
 OTHER_LDFLAGS_BASE = -l$(WEBKIT_SYSTEM_INTERFACE_LIBRARY) -framework CoreText -framework QuartzCore;

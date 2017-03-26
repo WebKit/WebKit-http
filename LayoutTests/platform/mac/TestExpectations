@@ -13,6 +13,8 @@ fast/scrolling/latching [ Pass ]
 fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
 fast/forms/search/search-results-hidden-crash.html [ Pass ]
 
+fast/url/user-visible [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -240,13 +242,6 @@ webkit.org/b/60206 http/tests/navigation/response204.html
 
 # Styled scope element is not yet enabled.
 webkit.org/b/49142 fast/css/style-scoped
-
-# ENABLE(SHADOW_DOM) is disabled.
-fast/dom/shadow
-fast/dom/HTMLTemplateElement/cycles-in-shadow.html
-editing/shadow
-accessibility/corresponding-control-deleted-crash.html
-editing/text-iterator/basic-iteration-shadowdom.html
 
 # JSC does not support setIsolatedWorldSecurityOrigin
 webkit.org/b/61540 http/tests/security/isolatedWorld/cross-origin-xhr.html
@@ -488,9 +483,6 @@ webkit.org/b/93589 svg/dom/SVGScriptElement/script-change-externalResourcesRequi
 
 [ Mavericks ] http/tests/multipart/invalid-image-data-standalone.html [ Skip ]
 
-# Needs ENABLE_SHADOW_DOM
-webkit.org/b/76439 [ Debug ] fast/dom/shadow/content-element-api.html [ Failure ]
-
 # ENABLE(CUSTOM_ELEMENTS) is disabled.
 fast/dom/custom
 
@@ -718,8 +710,9 @@ webkit.org/b/123250 plugins/destroy-during-npp-new-object-with-fallback-content.
 webkit.org/b/123369 svg/css/parent-shadow-offscreen.svg [ ImageOnlyFailure ]
 webkit.org/b/123369 svg/css/root-shadow-offscreen.svg [ ImageOnlyFailure ]
 
-# webkit.org/b/100846, webkit.org/b/136715
+# webkit.org/b/100846, webkit.org/b/136715, webkit.org/b/148642, webkit.org/b/148654
 inspector/debugger
+inspector/dom-debugger/node-removed.html
 
 webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
 
@@ -1197,16 +1190,20 @@ webkit.org/b/142142 fullscreen/video-controls-override.html [ Skip ]
 webkit.org/b/142142 http/tests/media/hls/video-controls-live-stream.html [ Skip ]
 webkit.org/b/142142 media/video-volume-slider-drag.html [ Skip ]
 
-# Test uses Yosemite blurs
-[ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]
-
 # Mavericks and prior do not support APNG.
 webkit.org/b/17022 [ MountainLion Mavericks ] fast/images/animated-png.html [ Skip ]
+
+# Pre-Capitan does not support asynchronous attribute setting.
+[ Mavericks Yosemite ] accessibility/mac/setting-attributes-is-asynchronous.html [ Skip ]
+[ Mavericks Yosemite ] accessibility/mac/focus-setting-selection-syncronizing-not-clearing.html [ Skip ]
 
 # OS X 10.10.3+ has the necessary glyphs.
 webkit.org/b/142548 [ Yosemite+ ] editing/selection/extend-by-character-007.html [ Pass ]
 
-media/accessiblity-describes-video.html [ Pass Failure ]
+# No support for non-HLS Media Selection Group
+[ Mavericks ] media/accessiblity-describes-video.html [ Skip ]
+
+[ Yosemite+ ] media/accessiblity-describes-video.html [ Pass Failure ]
 
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
@@ -1268,7 +1265,25 @@ webkit.org/b/148636 inspector/dom/content-flow-list.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-node-region-info.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/getAccessibilityPropertiesForNode.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
+webkit.org/b/148636 inspector/indexeddb/requestDatabaseNames.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-get-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
+
+# Resource priorities are not enabled.
+webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Skip ]
+
+# No support for Filters Level 2
+[ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]
+[ Mavericks ] compositing/media-controls-bar-appearance-big.html [ Skip ]
+[ Mavericks ] fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
+
+# Reftests have different expected results in Mavericks and Yosemite
+[ Mavericks ] fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
+[ Mavericks ] fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
+[ Mavericks ] fast/ruby/ruby-expansion-cjk-3.html [ ImageOnlyFailure ]
+[ Mavericks ] fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
+
+# Colorspaces on CA OpenGL layers not available in Mavericks and Yosemite
+[ Mavericks Yosemite ] fast/canvas/webgl/match-page-color-space.html [ Skip ]

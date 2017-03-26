@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2010, 2013 Apple Inc. All rights reserved.
- * Copyright (C) 2010-2011 Google Inc. All rights reserved.
+ * Copyright (C) 2010, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,7 +65,7 @@ public:
 
     virtual ~InspectorDebuggerAgent();
 
-    virtual void didCreateFrontendAndBackend(FrontendChannel*, BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(DisconnectReason) override;
 
     virtual void enable(ErrorString&) override;
@@ -109,9 +109,9 @@ public:
     virtual ScriptDebugServer& scriptDebugServer() = 0;
 
 protected:
-    InspectorDebuggerAgent(InjectedScriptManager*);
+    InspectorDebuggerAgent(AgentContext&);
 
-    InjectedScriptManager* injectedScriptManager() const { return m_injectedScriptManager; }
+    InjectedScriptManager& injectedScriptManager() const { return m_injectedScriptManager; }
     virtual InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) = 0;
 
     virtual void startListeningScriptDebugServer() = 0;
@@ -154,11 +154,11 @@ private:
     typedef HashMap<String, RefPtr<InspectorObject>> BreakpointIdentifierToBreakpointMap;
     typedef HashMap<JSC::BreakpointID, String> DebugServerBreakpointIDToBreakpointIdentifier;
 
-    InjectedScriptManager* m_injectedScriptManager;
+    InjectedScriptManager& m_injectedScriptManager;
     std::unique_ptr<DebuggerFrontendDispatcher> m_frontendDispatcher;
     RefPtr<DebuggerBackendDispatcher> m_backendDispatcher;
-    Listener* m_listener {nullptr};
-    JSC::ExecState* m_pausedScriptState {nullptr};
+    Listener* m_listener { nullptr };
+    JSC::ExecState* m_pausedScriptState { nullptr };
     Deprecated::ScriptValue m_currentCallStack;
     ScriptsMap m_scripts;
     BreakpointIdentifierToDebugServerBreakpointIDsMap m_breakpointIdentifierToDebugServerBreakpointIDs;
@@ -167,10 +167,10 @@ private:
     JSC::BreakpointID m_continueToLocationBreakpointID;
     DebuggerFrontendDispatcher::Reason m_breakReason;
     RefPtr<InspectorObject> m_breakAuxData;
-    bool m_enabled {false};
-    bool m_javaScriptPauseScheduled {false};
-    bool m_hasExceptionValue {false};
-    bool m_didPauseStopwatch {false};
+    bool m_enabled { false };
+    bool m_javaScriptPauseScheduled { false };
+    bool m_hasExceptionValue { false };
+    bool m_didPauseStopwatch { false };
     RefPtr<WTF::Stopwatch> m_stopwatch;
 };
 

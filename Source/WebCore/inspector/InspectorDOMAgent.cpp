@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  * Copyright (C) 2009 Joseph Pecoraro
  *
@@ -64,6 +64,7 @@
 #include "HitTestResult.h"
 #include "InspectorHistory.h"
 #include "InspectorNodeFinder.h"
+#include "InspectorOverlay.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
@@ -201,17 +202,13 @@ String InspectorDOMAgent::toErrorString(const ExceptionCode& ec)
     return "";
 }
 
-InspectorDOMAgent::InspectorDOMAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InjectedScriptManager* injectedScriptManager, InspectorOverlay* overlay)
-    : InspectorAgentBase(ASCIILiteral("DOM"), instrumentingAgents)
+InspectorDOMAgent::InspectorDOMAgent(WebAgentContext& context, InspectorPageAgent* pageAgent, InspectorOverlay* overlay)
+    : InspectorAgentBase(ASCIILiteral("DOM"), context)
+    , m_injectedScriptManager(context.injectedScriptManager)
+    , m_frontendDispatcher(std::make_unique<Inspector::DOMFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(Inspector::DOMBackendDispatcher::create(context.backendDispatcher, this))
     , m_pageAgent(pageAgent)
-    , m_injectedScriptManager(injectedScriptManager)
     , m_overlay(overlay)
-    , m_domListener(0)
-    , m_lastNodeId(1)
-    , m_lastBackendNodeId(-1)
-    , m_searchingForNode(false)
-    , m_suppressAttributeModifiedEvent(false)
-    , m_documentRequested(false)
 {
 }
 
@@ -221,16 +218,13 @@ InspectorDOMAgent::~InspectorDOMAgent()
     ASSERT(!m_searchingForNode);
 }
 
-void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<Inspector::DOMFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = Inspector::DOMBackendDispatcher::create(backendDispatcher, this);
-
     m_history = std::make_unique<InspectorHistory>();
     m_domEditor = std::make_unique<DOMEditor>(m_history.get());
 
-    m_instrumentingAgents->setInspectorDOMAgent(this);
-    m_document = m_pageAgent->mainFrame()->document();
+    m_instrumentingAgents.setInspectorDOMAgent(this);
+    m_document = m_pageAgent->mainFrame().document();
 
     if (m_nodeToFocus)
         focusNode();
@@ -238,9 +232,6 @@ void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* 
 
 void InspectorDOMAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     m_history.reset();
     m_domEditor.reset();
 
@@ -248,7 +239,7 @@ void InspectorDOMAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReaso
     setSearchingForNode(unused, false, 0);
     hideHighlight(unused);
 
-    m_instrumentingAgents->setInspectorDOMAgent(0);
+    m_instrumentingAgents.setInspectorDOMAgent(0);
     m_documentRequested = false;
     reset();
 }
@@ -1006,7 +997,7 @@ void InspectorDOMAgent::focusNode()
         return;
 
     JSC::ExecState* scriptState = mainWorldExecState(frame);
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(scriptState);
     if (injectedScript.hasNoValue())
         return;
 
@@ -1126,10 +1117,10 @@ void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const Inspec
 
 void InspectorDOMAgent::highlightNode(ErrorString& errorString, const InspectorObject& highlightInspectorObject, const int* nodeId, const String* objectId)
 {
-    Node* node = 0;
-    if (nodeId) {
+    Node* node = nullptr;
+    if (nodeId)
         node = assertNode(errorString, *nodeId);
-    } else if (objectId) {
+    else if (objectId) {
         node = nodeForObjectId(*objectId);
         if (!node)
             errorString = ASCIILiteral("Node for given objectId not found");
@@ -1146,10 +1137,13 @@ void InspectorDOMAgent::highlightNode(ErrorString& errorString, const InspectorO
     m_overlay->highlightNode(node, *highlightConfig);
 }
 
-void InspectorDOMAgent::highlightFrame(ErrorString&, const String& frameId, const InspectorObject* color, const InspectorObject* outlineColor)
+void InspectorDOMAgent::highlightFrame(ErrorString& errorString, const String& frameId, const InspectorObject* color, const InspectorObject* outlineColor)
 {
-    Frame* frame = m_pageAgent->frameForId(frameId);
-    if (frame && frame->ownerElement()) {
+    Frame* frame = m_pageAgent->assertFrame(errorString, frameId);
+    if (!frame)
+        return;
+
+    if (frame->ownerElement()) {
         auto highlightConfig = std::make_unique<HighlightConfig>();
         highlightConfig->showInfo = true; // Always show tooltips for frames.
         highlightConfig->content = parseColor(color);
@@ -1482,7 +1476,7 @@ Ref<Inspector::Protocol::DOM::EventListener> InspectorDOMAgent::buildObjectForEv
         .setHandlerBody(body)
         .release();
     if (objectGroupId && handler && state) {
-        InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(state);
+        InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(state);
         if (!injectedScript.hasNoValue())
             value->setHandler(injectedScript.wrapObject(Deprecated::ScriptValue(state->vm(), handler), *objectGroupId));
     }
@@ -2072,7 +2066,7 @@ Node* InspectorDOMAgent::nodeForPath(const String& path)
 
 Node* InspectorDOMAgent::nodeForObjectId(const String& objectId)
 {
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(objectId);
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue())
         return nullptr;
 
@@ -2112,7 +2106,7 @@ RefPtr<Inspector::Protocol::Runtime::RemoteObject> InspectorDOMAgent::resolveNod
         return 0;
 
     JSC::ExecState* scriptState = mainWorldExecState(frame);
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(scriptState);
     if (injectedScript.hasNoValue())
         return 0;
 

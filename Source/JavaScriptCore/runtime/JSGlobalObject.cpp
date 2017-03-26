@@ -84,6 +84,8 @@
 #include "JSLock.h"
 #include "JSMap.h"
 #include "JSMapIterator.h"
+#include "JSModuleEnvironment.h"
+#include "JSModuleNamespaceObject.h"
 #include "JSModuleRecord.h"
 #include "JSNativeStdFunction.h"
 #include "JSONObject.h"
@@ -262,13 +264,13 @@ void JSGlobalObject::init(VM& vm)
     m_functionPrototype.set(vm, this, FunctionPrototype::create(vm, FunctionPrototype::createStructure(vm, this, jsNull()))); // The real prototype will be set once ObjectPrototype is created.
     m_calleeStructure.set(vm, this, JSCallee::createStructure(vm, this, jsNull()));
 
+    m_globalLexicalEnvironment.set(vm, this, JSGlobalLexicalEnvironment::create(vm, JSGlobalLexicalEnvironment::createStructure(vm, this), this));
     // Need to create the callee structure (above) before creating the callee.
-    m_globalCallee.set(vm, this, JSCallee::create(vm, this, this));
+    m_globalCallee.set(vm, this, JSCallee::create(vm, this, globalScope()));
     exec->setCallee(m_globalCallee.get());
 
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_arrowFunctionStructure.set(vm, this, JSArrowFunction::createStructure(vm, this, m_functionPrototype.get()));
-    m_boundFunctionStructure.set(vm, this, JSBoundFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_nativeStdFunctionStructure.set(vm, this, JSNativeStdFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_namedFunctionStructure.set(vm, this, Structure::addPropertyTransition(vm, m_functionStructure.get(), vm.propertyNames->name, DontDelete | ReadOnly | DontEnum, m_functionNameOffset));
     m_internalFunctionStructure.set(vm, this, InternalFunction::createStructure(vm, this, m_functionPrototype.get()));
@@ -312,6 +314,7 @@ void JSGlobalObject::init(VM& vm)
     m_typedArrays[toIndex(TypeDataView)].structure.set(vm, this, JSDataView::createStructure(vm, this, m_typedArrays[toIndex(TypeDataView)].prototype.get()));
     
     m_lexicalEnvironmentStructure.set(vm, this, JSLexicalEnvironment::createStructure(vm, this));
+    m_moduleEnvironmentStructure.set(vm, this, JSModuleEnvironment::createStructure(vm, this));
     m_strictEvalActivationStructure.set(vm, this, StrictEvalActivation::createStructure(vm, this, jsNull()));
     m_debuggerScopeStructure.set(m_vm, this, DebuggerScope::createStructure(m_vm, this));
     m_withScopeStructure.set(vm, this, JSWithScope::createStructure(vm, this, jsNull()));
@@ -348,6 +351,7 @@ void JSGlobalObject::init(VM& vm)
     m_regExpMatchesArrayStructure.set(vm, this, createRegExpMatchesArrayStructure(vm, *this));
 
     m_moduleRecordStructure.set(vm, this, JSModuleRecord::createStructure(vm, this, m_objectPrototype.get()));
+    m_moduleNamespaceObjectStructure.set(vm, this, JSModuleNamespaceObject::createStructure(vm, this, jsNull()));
     
 #if ENABLE(WEBASSEMBLY)
     m_wasmModuleStructure.set(vm, this, JSWASMModule::createStructure(vm, this));
@@ -552,7 +556,9 @@ void JSGlobalObject::put(JSCell* cell, ExecState* exec, PropertyName propertyNam
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(cell);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
 
-    if (symbolTablePut(thisObject, exec, propertyName, value, slot.isStrictMode()))
+    bool shouldThrowReadOnlyError = slot.isStrictMode();
+    bool ignoreReadOnlyErrors = false;
+    if (symbolTablePutTouchWatchpointSet(thisObject, exec, propertyName, value, shouldThrowReadOnlyError, ignoreReadOnlyErrors))
         return;
     Base::put(thisObject, exec, propertyName, value, slot);
 }
@@ -579,7 +585,7 @@ void JSGlobalObject::addGlobalVar(const Identifier& ident)
     newEntry.prepareToWatch();
     symbolTable()->add(locker, ident.impl(), newEntry);
     
-    ScopeOffset offsetForAssert = addVariables(1);
+    ScopeOffset offsetForAssert = addVariables(1, jsUndefined());
     RELEASE_ASSERT(offsetForAssert == offset);
 }
 
@@ -754,6 +760,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     visitor.append(&thisObject->m_globalThis);
 
+    visitor.append(&thisObject->m_globalLexicalEnvironment);
     visitor.append(&thisObject->m_globalCallee);
     visitor.append(&thisObject->m_regExpConstructor);
     visitor.append(&thisObject->m_errorConstructor);
@@ -791,6 +798,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_withScopeStructure);
     visitor.append(&thisObject->m_strictEvalActivationStructure);
     visitor.append(&thisObject->m_lexicalEnvironmentStructure);
+    visitor.append(&thisObject->m_moduleEnvironmentStructure);
     visitor.append(&thisObject->m_directArgumentsStructure);
     visitor.append(&thisObject->m_scopedArgumentsStructure);
     visitor.append(&thisObject->m_outOfBandArgumentsStructure);
@@ -811,7 +819,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_errorStructure);
     visitor.append(&thisObject->m_calleeStructure);
     visitor.append(&thisObject->m_functionStructure);
-    visitor.append(&thisObject->m_boundFunctionStructure);
     visitor.append(&thisObject->m_arrowFunctionStructure);
     visitor.append(&thisObject->m_nativeStdFunctionStructure);
     visitor.append(&thisObject->m_namedFunctionStructure);
@@ -819,6 +826,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_regExpStructure);
     visitor.append(&thisObject->m_regExpMatchesArrayStructure);
     visitor.append(&thisObject->m_moduleRecordStructure);
+    visitor.append(&thisObject->m_moduleNamespaceObjectStructure);
     visitor.append(&thisObject->m_consoleStructure);
     visitor.append(&thisObject->m_dollarVMStructure);
     visitor.append(&thisObject->m_internalFunctionStructure);
@@ -855,7 +863,7 @@ ExecState* JSGlobalObject::globalExec()
 
 void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
 {
-    ScopeOffset startOffset = addVariables(count);
+    ScopeOffset startOffset = addVariables(count, jsUndefined());
 
     for (int i = 0; i < count; ++i) {
         GlobalPropertyInfo& global = globals[i];
@@ -921,6 +929,25 @@ UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame,
     ProfilerMode profilerMode = hasProfiler() ? ProfilerOn : ProfilerOff;
     UnlinkedEvalCodeBlock* unlinkedCodeBlock = vm().codeCache()->getEvalCodeBlock(
         vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, thisTDZMode, debuggerMode, profilerMode, error, variablesUnderTDZ);
+
+    if (hasDebugger())
+        debugger()->sourceParsed(callFrame, executable->source().provider(), error.line(), error.message());
+
+    if (error.isValid()) {
+        throwVMError(callFrame, error.toErrorObject(this, executable->source()));
+        return nullptr;
+    }
+
+    return unlinkedCodeBlock;
+}
+
+UnlinkedModuleProgramCodeBlock* JSGlobalObject::createModuleProgramCodeBlock(CallFrame* callFrame, ModuleProgramExecutable* executable)
+{
+    ParserError error;
+    DebuggerMode debuggerMode = hasDebugger() ? DebuggerOn : DebuggerOff;
+    ProfilerMode profilerMode = hasProfiler() ? ProfilerOn : ProfilerOff;
+    UnlinkedModuleProgramCodeBlock* unlinkedCodeBlock = vm().codeCache()->getModuleProgramCodeBlock(
+        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, debuggerMode, profilerMode, error);
 
     if (hasDebugger())
         debugger()->sourceParsed(callFrame, executable->source().provider(), error.line(), error.message());

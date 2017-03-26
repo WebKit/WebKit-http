@@ -103,6 +103,7 @@ class UnlinkedCodeBlock;
 class UnlinkedEvalCodeBlock;
 class UnlinkedFunctionExecutable;
 class UnlinkedProgramCodeBlock;
+class UnlinkedModuleProgramCodeBlock;
 class VirtualRegister;
 class VMEntryScope;
 class Watchdog;
@@ -282,6 +283,7 @@ public:
 #if ENABLE(WEBASSEMBLY)
     Strong<Structure> webAssemblyExecutableStructure;
 #endif
+    Strong<Structure> moduleProgramExecutableStructure;
     Strong<Structure> regExpStructure;
     Strong<Structure> symbolStructure;
     Strong<Structure> symbolTableStructure;
@@ -293,6 +295,7 @@ public:
     Strong<Structure> unlinkedProgramCodeBlockStructure;
     Strong<Structure> unlinkedEvalCodeBlockStructure;
     Strong<Structure> unlinkedFunctionCodeBlockStructure;
+    Strong<Structure> unlinkedModuleProgramCodeBlockStructure;
     Strong<Structure> propertyTableStructure;
     Strong<Structure> weakMapDataStructure;
     Strong<Structure> inferredValueStructure;
@@ -374,16 +377,6 @@ public:
         return OBJECT_OFFSETOF(VM, m_exception);
     }
 
-    static ptrdiff_t vmEntryFrameForThrowOffset()
-    {
-        return OBJECT_OFFSETOF(VM, vmEntryFrameForThrow);
-    }
-
-    static ptrdiff_t topVMEntryFrameOffset()
-    {
-        return OBJECT_OFFSETOF(VM, topVMEntryFrame);
-    }
-
     static ptrdiff_t callFrameForThrowOffset()
     {
         return OBJECT_OFFSETOF(VM, callFrameForThrow);
@@ -448,7 +441,6 @@ public:
     JSValue hostCallReturnValue;
     unsigned varargsLength;
     ExecState* newCallFrameReturnValue;
-    VMEntryFrame* vmEntryFrameForThrow;
     ExecState* callFrameForThrow;
     void* targetMachinePCForThrow;
     Instruction* targetInterpreterPCForThrow;

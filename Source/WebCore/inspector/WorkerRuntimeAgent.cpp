@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -46,22 +47,19 @@ using namespace Inspector;
 
 namespace WebCore {
 
-WorkerRuntimeAgent::WorkerRuntimeAgent(InjectedScriptManager* injectedScriptManager, WorkerGlobalScope* workerGlobalScope)
-    : InspectorRuntimeAgent(injectedScriptManager)
-    , m_workerGlobalScope(workerGlobalScope)
-    , m_paused(false)
+WorkerRuntimeAgent::WorkerRuntimeAgent(WorkerAgentContext& context)
+    : InspectorRuntimeAgent(context)
+    , m_backendDispatcher(Inspector::RuntimeBackendDispatcher::create(context.backendDispatcher, this))
+    , m_workerGlobalScope(context.workerGlobalScope)
 {
 }
 
-void WorkerRuntimeAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher* backendDispatcher)
+void WorkerRuntimeAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_backendDispatcher = Inspector::RuntimeBackendDispatcher::create(backendDispatcher, this);
 }
 
 void WorkerRuntimeAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason reason)
 {
-    m_backendDispatcher = nullptr;
-
     InspectorRuntimeAgent::willDestroyFrontendAndBackend(reason);
 }
 
@@ -72,8 +70,8 @@ InjectedScript WorkerRuntimeAgent::injectedScriptForEval(ErrorString& error, con
         return InjectedScript();
     }
 
-    JSC::ExecState* scriptState = execStateFromWorkerGlobalScope(m_workerGlobalScope);
-    return injectedScriptManager()->injectedScriptFor(scriptState);
+    JSC::ExecState* scriptState = execStateFromWorkerGlobalScope(&m_workerGlobalScope);
+    return injectedScriptManager().injectedScriptFor(scriptState);
 }
 
 void WorkerRuntimeAgent::muteConsole()

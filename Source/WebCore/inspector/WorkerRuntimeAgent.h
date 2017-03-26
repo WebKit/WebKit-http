@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,6 +32,7 @@
 #ifndef WorkerRuntimeAgent_h
 #define WorkerRuntimeAgent_h
 
+#include "InspectorWebAgentBase.h"
 #include <inspector/agents/InspectorRuntimeAgent.h>
 
 namespace WebCore {
@@ -40,10 +42,10 @@ typedef String ErrorString;
 
 class WorkerRuntimeAgent final : public Inspector::InspectorRuntimeAgent {
 public:
-    WorkerRuntimeAgent(Inspector::InjectedScriptManager*, WorkerGlobalScope*);
+    WorkerRuntimeAgent(WorkerAgentContext&);
     virtual ~WorkerRuntimeAgent() { }
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     virtual void run(ErrorString&) override;
@@ -55,9 +57,11 @@ private:
     virtual Inspector::InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) override;
     virtual void muteConsole() override;
     virtual void unmuteConsole() override;
-    WorkerGlobalScope* m_workerGlobalScope;
+
     RefPtr<Inspector::RuntimeBackendDispatcher> m_backendDispatcher;
-    bool m_paused;
+    WorkerGlobalScope& m_workerGlobalScope;
+
+    bool m_paused { false };
 };
 
 } // namespace WebCore

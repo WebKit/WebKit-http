@@ -6,6 +6,12 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 tiled-drawing [ Pass ]
+swipe [ Pass ]
+
+fast/events/cancelled-force-click-link-navigation.html [ Pass ]
+fast/events/force-click-link-selection-behavior.html [ Pass ]
+fast/events/force-click-on-link-navigation.html [ Pass ]
+fast/events/force-click-text-selection-behavior.html [ Failure ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -183,10 +189,6 @@ webkit.org/b/95043 http/tests/security/local-user-CSS-from-remote.html [ Failure
 # All spatial navigation tests fail on Mac WK2
 webkit.org/b/96438 fast/spatial-navigation
 
-# ENABLE(SHADOW_DOM) is disabled.
-webkit.org/b/76359 editing/shadow [ Skip ]
-webkit.org/b/76359 fast/dom/shadow [ Skip ]
-
 # fast/events/controlclick-no-onclick.html fails or times out on Mac WK2
 webkit.org/b/105948 fast/events/controlclick-no-onclick.html [ Skip ]
 
@@ -268,6 +270,8 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 webkit.org/b/147075 [ Release Yosemite ] http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure ]
 
+webkit.org/b/148951 fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Pass Failure Timeout ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -285,11 +289,6 @@ editing/spelling/spellcheck-async-mutation.html [ Skip ]
 editing/spelling/spellcheck-async.html [ Skip ]
 editing/spelling/spellcheck-queue.html [ Skip ]
 editing/spelling/spelling-insert-html.html [ Skip ]
-
-# These should work on 10.10.3 and later, but our bots need to get the 10.10.3 SDK first. 
-fast/events/mouse-force-changed.html [ Skip ]
-fast/events/mouse-force-down.html [ Skip ]
-fast/events/mouse-force-up.html [ Skip ]
 
 ### END OF (2) Classified failures without bug reports (yet)
 ########################################
@@ -518,8 +517,6 @@ webkit.org/b/138736 http/tests/appcache/auth.html [ Skip ]
 ### START OF (7) New WebKit2-only failures in Yosemite
 
 media/video-background-tab-playback.html [ Pass Failure ]
-
-webkit.org/b/138097 [ Yosemite ] inspector/debugger/setPauseOnExceptions-uncaught.html [ Pass Failure Timeout ]
 
 webkit.org/b/139979 [ Yosemite+ ] fast/regions/layers/region-removed-during-animation.html [ Pass ImageOnlyFailure ]
 

@@ -32,9 +32,27 @@
         "category": "css"
     },
     {
+        "name": "CSS Painting API Level 1",
+        "status": {
+            "status": "Under consideration"
+        },
+        "url": "https://drafts.css-houdini.org/css-paint-api/",
+        "keywords": ["css", "houdini"],
+        "category": "css"
+    },
+    {
         "name": "CSS Positioned Layout Module Level 3",
         "url": "http://dev.w3.org/csswg/css-position/",
         "keywords": ["css positioning"],
+        "category": "css"
+    },
+    {
+        "name": "CSS Properties and Values API Level 1",
+        "status": {
+            "status": "Under consideration"
+        },
+        "url": "https://drafts.css-houdini.org/css-properties-values-api/",
+        "keywords": ["css", "houdini"],
         "category": "css"
     },
     {
@@ -152,12 +170,22 @@
         }
     },
     {
-        "name": "WebGL",
+        "name": "WebGL 1",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "url": "https://www.khronos.org/registry/webgl/specs/1.0/",
+        "keywords": ["webgl"],
+        "category": "html"
+    },
+    {
+        "name": "WebGL 2",
         "status": {
             "status": "In Development",
             "enabled-by-default": true
         },
-        "url": "https://www.khronos.org/registry/webgl/specs/1.0/",
+        "url": "https://www.khronos.org/registry/webgl/specs/2.0/",
         "keywords": ["webgl"],
         "category": "html"
     },

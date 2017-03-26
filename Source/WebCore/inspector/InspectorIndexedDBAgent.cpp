@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -64,6 +65,7 @@
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
 #include <inspector/InspectorFrontendDispatchers.h>
+#include <inspector/InspectorFrontendRouter.h>
 #include <inspector/InspectorValues.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
@@ -564,9 +566,10 @@ public:
 
 } // namespace
 
-InspectorIndexedDBAgent::InspectorIndexedDBAgent(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager, InspectorPageAgent* pageAgent)
-    : InspectorAgentBase(ASCIILiteral("IndexedDB"), instrumentingAgents)
-    , m_injectedScriptManager(injectedScriptManager)
+InspectorIndexedDBAgent::InspectorIndexedDBAgent(WebAgentContext& context, InspectorPageAgent* pageAgent)
+    : InspectorAgentBase(ASCIILiteral("IndexedDB"), context)
+    , m_injectedScriptManager(context.injectedScriptManager)
+    , m_backendDispatcher(Inspector::IndexedDBBackendDispatcher::create(context.backendDispatcher, this))
     , m_pageAgent(pageAgent)
 {
 }
@@ -575,15 +578,12 @@ InspectorIndexedDBAgent::~InspectorIndexedDBAgent()
 {
 }
 
-void InspectorIndexedDBAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorIndexedDBAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_backendDispatcher = Inspector::IndexedDBBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorIndexedDBAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_backendDispatcher = nullptr;
-
     ErrorString unused;
     disable(unused);
 }
@@ -666,7 +666,7 @@ void InspectorIndexedDBAgent::requestData(ErrorString& errorString, const String
     if (!idbFactory)
         return;
 
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldExecState(frame));
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(mainWorldExecState(frame));
 
     RefPtr<IDBKeyRange> idbKeyRange = keyRange ? idbKeyRangeFromKeyRange(keyRange) : nullptr;
     if (keyRange && !idbKeyRange) {

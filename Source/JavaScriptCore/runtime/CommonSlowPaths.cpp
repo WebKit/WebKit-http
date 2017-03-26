@@ -270,6 +270,12 @@ SLOW_PATH_DECL(slow_path_throw_tdz_error)
     THROW(createTDZError(exec));
 }
 
+SLOW_PATH_DECL(slow_path_throw_strict_mode_readonly_property_write_error)
+{
+    BEGIN();
+    THROW(createTypeError(exec, ASCIILiteral(StrictModeReadonlyPropertyWriteError)));
+}
+
 SLOW_PATH_DECL(slow_path_not)
 {
     BEGIN();
@@ -658,6 +664,40 @@ SLOW_PATH_DECL(slow_path_push_with_scope)
     int scopeReg = pc[3].u.operand;
     JSScope* currentScope = exec->uncheckedR(scopeReg).Register::scope();
     RETURN(JSWithScope::create(exec, newScope, currentScope));
+}
+
+SLOW_PATH_DECL(slow_path_resolve_scope)
+{
+    BEGIN();
+    const Identifier& ident = exec->codeBlock()->identifier(pc[3].u.operand);
+    JSScope* scope = exec->uncheckedR(pc[2].u.operand).Register::scope();
+    JSValue resolvedScope = JSScope::resolve(exec, scope, ident);
+
+    ResolveType resolveType = static_cast<ResolveType>(pc[4].u.operand);
+
+    // ModuleVar does not keep the scope register value alive in DFG.
+    ASSERT(resolveType != ModuleVar);
+
+    if (resolveType == UnresolvedProperty || resolveType == UnresolvedPropertyWithVarInjectionChecks) {
+        if (JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsDynamicCast<JSGlobalLexicalEnvironment*>(resolvedScope)) {
+            if (resolveType == UnresolvedProperty)
+                pc[4].u.operand = GlobalLexicalVar;
+            else
+                pc[4].u.operand = GlobalLexicalVarWithVarInjectionChecks;
+            pc[6].u.pointer = globalLexicalEnvironment;
+        } else if (JSGlobalObject* globalObject = jsDynamicCast<JSGlobalObject*>(resolvedScope)) {
+            if (globalObject->hasProperty(exec, ident)) {
+                if (resolveType == UnresolvedProperty)
+                    pc[4].u.operand = GlobalProperty;
+                else
+                    pc[4].u.operand = GlobalPropertyWithVarInjectionChecks;
+
+                pc[6].u.pointer = globalObject;
+            }
+        }
+    }
+
+    RETURN(resolvedScope);
 }
 
 } // namespace JSC

@@ -3285,9 +3285,6 @@
     <ClCompile Include="..\dom\Range.cpp">
       <Filter>dom</Filter>
     </ClCompile>
-    <ClCompile Include="..\dom\RangeException.cpp">
-      <Filter>dom</Filter>
-    </ClCompile>
     <ClCompile Include="..\dom\RegisteredEventListener.cpp">
       <Filter>dom</Filter>
     </ClCompile>
@@ -4402,9 +4399,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSNodeCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSNodeFilterCondition.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSNodeFilterCustom.cpp">
@@ -5698,9 +5692,6 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRange.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRangeException.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6749,9 +6740,6 @@
       <Filter>page\scrolling\coordinatedgraphics</Filter>
     </ClCompile>
     <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingStateNodeCoordinatedGraphics.cpp">
-      <Filter>page\scrolling\coordinatedgraphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingStateScrollingNodeCoordinatedGraphics.cpp">
       <Filter>page\scrolling\coordinatedgraphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\GraphicsLayerTransform.cpp">
@@ -10403,9 +10391,6 @@
     <ClInclude Include="..\dom\RangeBoundaryPoint.h">
       <Filter>dom</Filter>
     </ClInclude>
-    <ClInclude Include="..\dom\RangeException.h">
-      <Filter>dom</Filter>
-    </ClInclude>
     <ClInclude Include="..\dom\RegisteredEventListener.h">
       <Filter>dom</Filter>
     </ClInclude>
@@ -11498,9 +11483,6 @@
     <ClInclude Include="..\bindings\js\JSNodeCustom.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
-    <ClInclude Include="..\bindings\js\JSNodeFilterCondition.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
     <ClInclude Include="..\bindings\js\JSPluginElementFunctions.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
@@ -11931,9 +11913,6 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorDOMStorageAgent.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inspector\InspectorForwarding.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorFrontendClient.h">
@@ -13088,9 +13067,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRange.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRangeException.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRect.h">

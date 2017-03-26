@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2010, Google Inc. All rights reserved.
+ * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,7 +51,6 @@ class CSSStyleSheet;
 class ChangeRegionOversetTask;
 class Document;
 class Element;
-class InstrumentingAgents;
 class Node;
 class NodeList;
 class StyleResolver;
@@ -81,12 +81,12 @@ public:
         ContentSecurityPolicy* m_contentSecurityPolicy;
     };
 
-    InspectorCSSAgent(InstrumentingAgents*, InspectorDOMAgent*);
+    InspectorCSSAgent(WebAgentContext&, InspectorDOMAgent*);
     virtual ~InspectorCSSAgent();
 
     static CSSStyleRule* asCSSStyleRule(CSSRule&);
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
     virtual void discardAgent() override;
     virtual void enable(ErrorString&) override;
@@ -169,7 +169,7 @@ private:
 
     std::unique_ptr<Inspector::CSSFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::CSSBackendDispatcher> m_backendDispatcher;
-    InspectorDOMAgent* m_domAgent;
+    InspectorDOMAgent* m_domAgent { nullptr };
 
     IdToInspectorStyleSheet m_idToInspectorStyleSheet;
     CSSStyleSheetToInspectorStyleSheet m_cssStyleSheetToInspectorStyleSheet;
@@ -180,7 +180,7 @@ private:
     HashSet<int> m_namedFlowCollectionsRequested;
     std::unique_ptr<ChangeRegionOversetTask> m_changeRegionOversetTask;
 
-    int m_lastStyleSheetId;
+    int m_lastStyleSheetId { 1 };
     bool m_creatingViaInspectorStyleSheet { false };
 };
 

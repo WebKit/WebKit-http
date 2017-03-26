@@ -821,9 +821,10 @@ void SpeculativeJIT::emitCall(Node* node)
     info->setUpCall(callType, node->origin.semantic, calleePayloadGPR);
     m_jit.addJSCall(fastCall, slowCall, targetToCheck, info);
     
-    // If we were varargs, then after the calls are done, we need to reestablish our stack pointer.
-    if (isVarargs || isForwardVarargs)
-        m_jit.addPtr(TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, JITCompiler::stackPointerRegister);
+    // After the calls are done, we need to reestablish our stack
+    // pointer. We rely on this for varargs calls, calls with arity
+    // mismatch (the callframe is slided) and tail calls.
+    m_jit.addPtr(TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, JITCompiler::stackPointerRegister);
 }
 
 template<bool strict>
@@ -4110,6 +4111,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case GetGlobalLexicalVariable:
     case GetGlobalVar: {
         GPRTemporary resultPayload(this);
         GPRTemporary resultTag(this);
@@ -4122,7 +4124,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case PutGlobalVar: {
+    case PutGlobalVariable: {
         JSValueOperand value(this, node->child2());
 
         // FIXME: if we happen to have a spare register - and _ONLY_ if we happen to have

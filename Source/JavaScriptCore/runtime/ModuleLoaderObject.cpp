@@ -35,6 +35,7 @@
 #include "JSInternalPromise.h"
 #include "JSInternalPromiseDeferred.h"
 #include "JSMap.h"
+#include "JSModuleEnvironment.h"
 #include "JSModuleRecord.h"
 #include "ModuleAnalyzer.h"
 #include "Nodes.h"
@@ -274,6 +275,9 @@ EncodedJSValue JSC_HOST_CALL moduleLoaderObjectModuleDeclarationInstantiation(Ex
         dataLog("Loader [link] ", moduleRecord->moduleKey(), "\n");
 
     moduleRecord->link(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
     return JSValue::encode(jsUndefined());
 }
 

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2010, 2013 Apple Inc. All rights reserved.
- * Copyright (C) 2010-2011 Google Inc. All rights reserved.
+ * Copyright (C) 2010, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #include "ContentSearchUtilities.h"
 #include "InjectedScript.h"
 #include "InjectedScriptManager.h"
+#include "InspectorFrontendRouter.h"
 #include "InspectorValues.h"
 #include "RegularExpression.h"
 #include "ScriptDebugServer.h"
@@ -55,9 +56,11 @@ static String objectGroupForBreakpointAction(const ScriptBreakpointAction& actio
     return makeString(objectGroup, String::number(action.identifier));
 }
 
-InspectorDebuggerAgent::InspectorDebuggerAgent(InjectedScriptManager* injectedScriptManager)
+InspectorDebuggerAgent::InspectorDebuggerAgent(AgentContext& context)
     : InspectorAgentBase(ASCIILiteral("Debugger"))
-    , m_injectedScriptManager(injectedScriptManager)
+    , m_injectedScriptManager(context.injectedScriptManager)
+    , m_frontendDispatcher(std::make_unique<DebuggerFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(DebuggerBackendDispatcher::create(context.backendDispatcher, this))
     , m_continueToLocationBreakpointID(JSC::noBreakpointID)
 {
     // FIXME: make breakReason optional so that there was no need to init it with "other".
@@ -68,17 +71,12 @@ InspectorDebuggerAgent::~InspectorDebuggerAgent()
 {
 }
 
-void InspectorDebuggerAgent::didCreateFrontendAndBackend(FrontendChannel* frontendChannel, BackendDispatcher* backendDispatcher)
+void InspectorDebuggerAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<DebuggerFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = DebuggerBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorDebuggerAgent::willDestroyFrontendAndBackend(DisconnectReason reason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     bool skipRecompile = reason == DisconnectReason::InspectedTargetDestroyed;
     disable(skipRecompile);
 }
@@ -382,7 +380,7 @@ void InspectorDebuggerAgent::removeBreakpoint(ErrorString&, const String& breakp
 
         const BreakpointActions& breakpointActions = scriptDebugServer().getActionsForBreakpoint(breakpointID);
         for (auto& action : breakpointActions)
-            m_injectedScriptManager->releaseObjectGroup(objectGroupForBreakpointAction(action));
+            m_injectedScriptManager.releaseObjectGroup(objectGroupForBreakpointAction(action));
 
         scriptDebugServer().removeBreakpoint(breakpointID);
     }
@@ -462,7 +460,7 @@ void InspectorDebuggerAgent::getScriptSource(ErrorString& error, const String& s
 
 void InspectorDebuggerAgent::getFunctionDetails(ErrorString& errorString, const String& functionId, RefPtr<Inspector::Protocol::Debugger::FunctionDetails>& details)
 {
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(functionId);
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(functionId);
     if (injectedScript.hasNoValue()) {
         errorString = ASCIILiteral("Function object id is obsolete");
         return;
@@ -553,7 +551,7 @@ void InspectorDebuggerAgent::setPauseOnExceptions(ErrorString& errorString, cons
 
 void InspectorDebuggerAgent::evaluateOnCallFrame(ErrorString& errorString, const String& callFrameId, const String& expression, const String* const objectGroup, const bool* const includeCommandLineAPI, const bool* const doNotPauseOnExceptionsAndMuteConsole, const bool* const returnByValue, const bool* generatePreview, const bool* saveResult, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result, Inspector::Protocol::OptOutput<bool>* wasThrown, Inspector::Protocol::OptOutput<int>* savedResultIndex)
 {
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(callFrameId);
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(callFrameId);
     if (injectedScript.hasNoValue()) {
         errorString = ASCIILiteral("Inspected frame has gone");
         return;
@@ -661,7 +659,7 @@ void InspectorDebuggerAgent::didPause(JSC::ExecState* scriptState, const Depreca
     m_pausedScriptState = scriptState;
     m_currentCallStack = callFrames;
 
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(scriptState);
 
     // If a high level pause pause reason is not already set, try to infer a reason from the debugger.
     if (m_breakReason == DebuggerFrontendDispatcher::Reason::Other) {
@@ -712,7 +710,7 @@ void InspectorDebuggerAgent::didPause(JSC::ExecState* scriptState, const Depreca
     if (m_listener)
         m_listener->didPause();
 
-    RefPtr<Stopwatch> stopwatch = m_injectedScriptManager->inspectorEnvironment().executionStopwatch();
+    RefPtr<Stopwatch> stopwatch = m_injectedScriptManager.inspectorEnvironment().executionStopwatch();
     if (stopwatch && stopwatch->isActive()) {
         stopwatch->stop();
         m_didPauseStopwatch = true;
@@ -726,13 +724,13 @@ void InspectorDebuggerAgent::breakpointActionSound(int breakpointActionIdentifie
 
 void InspectorDebuggerAgent::breakpointActionProbe(JSC::ExecState* scriptState, const ScriptBreakpointAction& action, unsigned batchId, unsigned sampleId, const Deprecated::ScriptValue& sample)
 {
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(scriptState);
     RefPtr<Protocol::Runtime::RemoteObject> payload = injectedScript.wrapObject(sample, objectGroupForBreakpointAction(action), true);
     auto result = Protocol::Debugger::ProbeSample::create()
         .setProbeId(action.identifier)
         .setBatchId(batchId)
         .setSampleId(sampleId)
-        .setTimestamp(m_injectedScriptManager->inspectorEnvironment().executionStopwatch()->elapsedTime())
+        .setTimestamp(m_injectedScriptManager.inspectorEnvironment().executionStopwatch()->elapsedTime())
         .setPayload(payload.release())
         .release();
 
@@ -743,12 +741,12 @@ void InspectorDebuggerAgent::didContinue()
 {
     if (m_didPauseStopwatch) {
         m_didPauseStopwatch = false;
-        m_injectedScriptManager->inspectorEnvironment().executionStopwatch()->start();
+        m_injectedScriptManager.inspectorEnvironment().executionStopwatch()->start();
     }
 
     m_pausedScriptState = nullptr;
     m_currentCallStack = Deprecated::ScriptValue();
-    m_injectedScriptManager->releaseObjectGroup(InspectorDebuggerAgent::backtraceObjectGroup);
+    m_injectedScriptManager.releaseObjectGroup(InspectorDebuggerAgent::backtraceObjectGroup);
     clearBreakDetails();
     clearExceptionValue();
 
@@ -798,8 +796,7 @@ void InspectorDebuggerAgent::didClearGlobalObject()
     // pages have what breakpoints, as the mapping is only sent to DebuggerAgent once.
     clearDebuggerBreakpointState();
 
-    if (m_frontendDispatcher)
-        m_frontendDispatcher->globalObjectCleared();
+    m_frontendDispatcher->globalObjectCleared();
 }
 
 bool InspectorDebuggerAgent::assertPaused(ErrorString& errorString)
@@ -821,7 +818,7 @@ void InspectorDebuggerAgent::clearBreakDetails()
 void InspectorDebuggerAgent::clearExceptionValue()
 {
     if (m_hasExceptionValue) {
-        m_injectedScriptManager->clearExceptionValue();
+        m_injectedScriptManager.clearExceptionValue();
         m_hasExceptionValue = false;
     }
 }

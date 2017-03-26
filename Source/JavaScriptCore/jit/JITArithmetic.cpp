@@ -612,24 +612,26 @@ void JIT::emit_op_mod(Instruction* currentInstruction)
 
     // Make sure registers are correct for x86 IDIV instructions.
     ASSERT(regT0 == X86Registers::eax);
-    ASSERT(regT1 == X86Registers::edx);
-    ASSERT(regT2 == X86Registers::ecx);
+    auto edx = X86Registers::edx;
+    auto ecx = X86Registers::ecx;
+    ASSERT(regT4 != edx);
+    ASSERT(regT4 != ecx);
 
-    emitGetVirtualRegisters(op1, regT3, op2, regT2);
-    emitJumpSlowCaseIfNotImmediateInteger(regT3);
-    emitJumpSlowCaseIfNotImmediateInteger(regT2);
+    emitGetVirtualRegisters(op1, regT4, op2, ecx);
+    emitJumpSlowCaseIfNotImmediateInteger(regT4);
+    emitJumpSlowCaseIfNotImmediateInteger(ecx);
 
-    move(regT3, regT0);
-    addSlowCase(branchTest32(Zero, regT2));
-    Jump denominatorNotNeg1 = branch32(NotEqual, regT2, TrustedImm32(-1));
+    move(regT4, regT0);
+    addSlowCase(branchTest32(Zero, ecx));
+    Jump denominatorNotNeg1 = branch32(NotEqual, ecx, TrustedImm32(-1));
     addSlowCase(branch32(Equal, regT0, TrustedImm32(-2147483647-1)));
     denominatorNotNeg1.link(this);
     m_assembler.cdq();
-    m_assembler.idivl_r(regT2);
-    Jump numeratorPositive = branch32(GreaterThanOrEqual, regT3, TrustedImm32(0));
-    addSlowCase(branchTest32(Zero, regT1));
+    m_assembler.idivl_r(ecx);
+    Jump numeratorPositive = branch32(GreaterThanOrEqual, regT4, TrustedImm32(0));
+    addSlowCase(branchTest32(Zero, edx));
     numeratorPositive.link(this);
-    emitFastArithReTagImmediate(regT1, regT0);
+    emitFastArithReTagImmediate(edx, regT0);
     emitPutVirtualRegister(result);
 }
 

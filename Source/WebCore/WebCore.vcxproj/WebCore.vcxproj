@@ -3932,20 +3932,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRangeException.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -7282,7 +7268,6 @@
     <ClCompile Include="..\page\DragController.cpp" />
     <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingCoordinatorCoordinatedGraphics.cpp" />
     <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingStateNodeCoordinatedGraphics.cpp" />
-    <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingStateScrollingNodeCoordinatedGraphics.cpp" />
     <ClCompile Include="..\page\scrolling\ScrollingStateFixedNode.cpp" />
     <ClCompile Include="..\page\scrolling\ScrollingStateNode.cpp" />
     <ClCompile Include="..\page\scrolling\ScrollingStateScrollingNode.cpp" />
@@ -14557,20 +14542,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\dom\NodeFilter.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\dom\NodeFilterCondition.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -14770,20 +14741,6 @@
     </ClCompile>
     <ClCompile Include="..\dom\QualifiedName.cpp" />
     <ClCompile Include="..\dom\Range.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\dom\RangeException.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -18479,20 +18436,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSNodeFilterCondition.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSNodeFilterCustom.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -20059,7 +20002,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSProgressEvent.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRadioNodeList.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRange.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRangeException.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamController.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.h" />
@@ -20393,6 +20335,7 @@
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorBackendDispatcher.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorEnvironment.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorFrontendChannel.h" />
+    <ClInclude Include="..\ForwardingHeaders\inspector\InspectorFrontendRouter.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorBackendDispatchers.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorFrontendDispatchers.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorProtocolObjects.h" />
@@ -22115,7 +22058,6 @@
     <ClInclude Include="..\dom\QualifiedName.h" />
     <ClInclude Include="..\dom\Range.h" />
     <ClInclude Include="..\dom\RangeBoundaryPoint.h" />
-    <ClInclude Include="..\dom\RangeException.h" />
     <ClInclude Include="..\dom\RegisteredEventListener.h" />
     <ClInclude Include="..\dom\RenderedDocumentMarker.h" />
     <ClInclude Include="..\dom\ScopedEventQueue.h" />
@@ -22497,7 +22439,6 @@
     <ClInclude Include="..\bindings\js\JSMutationCallback.h" />
     <ClInclude Include="..\bindings\js\JSNodeCustom.h" />
     <ClInclude Include="..\bindings\js\JSNodeOrString.h" />
-    <ClInclude Include="..\bindings\js\JSNodeFilterCondition.h" />
     <ClInclude Include="..\bindings\js\JSPluginElementFunctions.h" />
     <ClInclude Include="..\bindings\js\JSWorkerGlobalScopeBase.h" />
     <ClInclude Include="..\bindings\js\ScheduledAction.h" />
@@ -22805,7 +22746,6 @@
     <ClInclude Include="..\inspector\InspectorDOMAgent.h" />
     <ClInclude Include="..\inspector\InspectorDOMDebuggerAgent.h" />
     <ClInclude Include="..\inspector\InspectorDOMStorageAgent.h" />
-    <ClInclude Include="..\inspector\InspectorForwarding.h" />
     <ClInclude Include="..\inspector\InspectorFrontendClient.h" />
     <ClInclude Include="..\inspector\InspectorFrontendClientLocal.h" />
     <ClInclude Include="..\inspector\InspectorFrontendHost.h" />

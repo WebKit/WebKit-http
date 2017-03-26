@@ -49,42 +49,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-JSValue JSInspectorFrontendHost::platform(ExecState* execState)
-{
-#if PLATFORM(MAC) || PLATFORM(IOS)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, platform, (ASCIILiteral("mac")));
-#elif OS(WINDOWS)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, platform, (ASCIILiteral("windows")));
-#elif OS(LINUX)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, platform, (ASCIILiteral("linux")));
-#elif OS(FREEBSD)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, platform, (ASCIILiteral("freebsd")));
-#elif OS(HAIKU)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, platform, (ASCIILiteral("haiku")));
-#elif OS(OPENBSD)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, platform, (ASCIILiteral("openbsd")));
-#elif OS(SOLARIS)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, platform, (ASCIILiteral("solaris")));
-#else
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, platform, (ASCIILiteral("unknown")));
-#endif
-    return jsStringWithCache(execState, platform);
-}
-
-JSValue JSInspectorFrontendHost::port(ExecState* execState)
-{
-#if PLATFORM(GTK)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, port, (ASCIILiteral("gtk")));
-#elif PLATFORM(HAIKU)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, port, (ASCIILiteral("haiku")));
-#elif PLATFORM(EFL)
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, port, (ASCIILiteral("efl")));
-#else
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, port, (ASCIILiteral("unknown")));
-#endif
-    return jsStringWithCache(execState, port);
-}
-
 #if ENABLE(CONTEXT_MENUS)
 static void populateContextMenuItems(ExecState* exec, JSArray* array, ContextMenu& menu)
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,24 +34,20 @@ using namespace JSC;
 
 namespace Inspector {
 
-JSGlobalObjectRuntimeAgent::JSGlobalObjectRuntimeAgent(InjectedScriptManager* injectedScriptManager, JSGlobalObject& globalObject)
-    : InspectorRuntimeAgent(injectedScriptManager)
-    , m_globalObject(globalObject)
+JSGlobalObjectRuntimeAgent::JSGlobalObjectRuntimeAgent(JSAgentContext& context)
+    : InspectorRuntimeAgent(context)
+    , m_frontendDispatcher(std::make_unique<RuntimeFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(RuntimeBackendDispatcher::create(context.backendDispatcher, this))
+    , m_globalObject(context.inspectedGlobalObject)
 {
 }
 
-void JSGlobalObjectRuntimeAgent::didCreateFrontendAndBackend(FrontendChannel* frontendChannel, BackendDispatcher* backendDispatcher)
+void JSGlobalObjectRuntimeAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<RuntimeFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = RuntimeBackendDispatcher::create(backendDispatcher, this);
 }
 
-void JSGlobalObjectRuntimeAgent::willDestroyFrontendAndBackend(DisconnectReason reason)
+void JSGlobalObjectRuntimeAgent::willDestroyFrontendAndBackend(DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
-    InspectorRuntimeAgent::willDestroyFrontendAndBackend(reason);
 }
 
 VM& JSGlobalObjectRuntimeAgent::globalVM()
@@ -64,7 +60,7 @@ InjectedScript JSGlobalObjectRuntimeAgent::injectedScriptForEval(ErrorString& er
     ASSERT_UNUSED(executionContextId, !executionContextId);
 
     JSC::ExecState* scriptState = m_globalObject.globalExec();
-    InjectedScript injectedScript = injectedScriptManager()->injectedScriptFor(scriptState);
+    InjectedScript injectedScript = injectedScriptManager().injectedScriptFor(scriptState);
     if (injectedScript.hasNoValue())
         errorString = ASCIILiteral("Internal error: main world execution context not found.");
 

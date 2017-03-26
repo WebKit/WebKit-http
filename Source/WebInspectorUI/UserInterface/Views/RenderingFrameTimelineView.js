@@ -42,13 +42,11 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         this._scopeBar = new WebInspector.ScopeBar("rendering-frame-scope-bar", scopeBarItems, scopeBarItems[0], true);
         this._scopeBar.addEventListener(WebInspector.ScopeBar.Event.SelectionChanged, this._scopeBarSelectionDidChange, this);
 
-        var columns = {location: {}, startTime: {}, scriptTime: {}, paintTime: {}, layoutTime: {}, otherTime: {}, totalTime: {}};
+        let columns = {totalTime: {}, scriptTime: {}, layoutTime: {}, paintTime: {}, otherTime: {}, startTime: {}, location: {}};
 
-        columns.location.title = WebInspector.UIString("Location");
-
-        columns.startTime.title = WebInspector.UIString("Start Time");
-        columns.startTime.width = "15%";
-        columns.startTime.aligned = "right";
+        columns.totalTime.title = WebInspector.UIString("Total Time");
+        columns.totalTime.width = "15%";
+        columns.totalTime.aligned = "right";
 
         columns.scriptTime.title = WebInspector.RenderingFrameTimelineRecord.displayNameForTaskType(WebInspector.RenderingFrameTimelineRecord.TaskType.Script);
         columns.scriptTime.width = "10%";
@@ -66,9 +64,11 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         columns.otherTime.width = "10%";
         columns.otherTime.aligned = "right";
 
-        columns.totalTime.title = WebInspector.UIString("Total Time");
-        columns.totalTime.width = "15%";
-        columns.totalTime.aligned = "right";
+        columns.startTime.title = WebInspector.UIString("Start Time");
+        columns.startTime.width = "15%";
+        columns.startTime.aligned = "right";
+
+        columns.location.title = WebInspector.UIString("Location");
 
         for (var column in columns)
             columns[column].sortable = true;
@@ -271,6 +271,11 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
                 var childTreeElement = null;
                 if (childRecord.type === WebInspector.TimelineRecord.Type.Layout) {
                     childTreeElement = new WebInspector.TimelineRecordTreeElement(childRecord, WebInspector.SourceCodeLocation.NameStyle.Short);
+                    if (childRecord.width && childRecord.height) {
+                        let subtitle = document.createElement("span");
+                        subtitle.textContent = WebInspector.UIString("%d \u2A09 %d").format(childRecord.width, childRecord.height);
+                        childTreeElement.subtitle = subtitle;
+                    }
                     var layoutDataGridNode = new WebInspector.LayoutTimelineDataGridNode(childRecord, this.zeroTime);
 
                     this._dataGrid.addRowInSortOrder(childTreeElement, layoutDataGridNode, entry.parentTreeElement);

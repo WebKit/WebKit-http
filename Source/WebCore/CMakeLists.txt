@@ -426,7 +426,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/ProcessingInstruction.idl
     dom/ProgressEvent.idl
     dom/Range.idl
-    dom/RangeException.idl
     dom/RequestAnimationFrameCallback.idl
     dom/SecurityPolicyViolationEvent.idl
     dom/StringCallback.idl
@@ -1167,7 +1166,6 @@ set(WebCore_SOURCES
     bindings/js/JSNamedNodeMapCustom.cpp
     bindings/js/JSNavigatorCustom.cpp
     bindings/js/JSNodeCustom.cpp
-    bindings/js/JSNodeFilterCondition.cpp
     bindings/js/JSNodeFilterCustom.cpp
     bindings/js/JSNodeIteratorCustom.cpp
     bindings/js/JSNodeOrString.cpp
@@ -1442,8 +1440,8 @@ set(WebCore_SOURCES
     dom/NameNodeList.cpp
     dom/NamedFlowCollection.cpp
     dom/NamedNodeMap.cpp
+    dom/NativeNodeFilter.cpp
     dom/Node.cpp
-    dom/NodeFilter.cpp
     dom/NodeFilterCondition.cpp
     dom/NodeIterator.cpp
     dom/NodeOrString.cpp
@@ -1461,7 +1459,6 @@ set(WebCore_SOURCES
     dom/PseudoElement.cpp
     dom/QualifiedName.cpp
     dom/Range.cpp
-    dom/RangeException.cpp
     dom/RegisteredEventListener.cpp
     dom/ScopedEventQueue.cpp
     dom/ScriptElement.cpp
@@ -2008,6 +2005,7 @@ set(WebCore_SOURCES
     page/PrintContext.cpp
     page/Screen.cpp
     page/SecurityOrigin.cpp
+    page/SecurityOriginData.cpp
     page/SecurityPolicy.cpp
     page/Settings.cpp
     page/SpatialNavigation.cpp

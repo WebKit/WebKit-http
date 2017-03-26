@@ -26,6 +26,7 @@
 #include "JSArray.h"
 #include "JSArrayBufferPrototype.h"
 #include "JSClassRef.h"
+#include "JSGlobalLexicalEnvironment.h"
 #include "JSProxy.h"
 #include "JSSegmentedVariableObject.h"
 #include "JSWeakObjectMapRefInternal.h"
@@ -78,6 +79,7 @@ class JSStack;
 class LLIntOffsetsExtractor;
 class Microtask;
 class ModuleLoaderObject;
+class ModuleProgramExecutable;
 class NativeErrorConstructor;
 class ObjectConstructor;
 class ProgramCodeBlock;
@@ -85,6 +87,7 @@ class ProgramExecutable;
 class RegExpConstructor;
 class RegExpPrototype;
 class SourceCode;
+class UnlinkedModuleProgramCodeBlock;
 class NullGetterFunction;
 class NullSetterFunction;
 enum class ThisTDZMode;
@@ -191,6 +194,7 @@ protected:
 
     WriteBarrier<JSObject> m_globalThis;
 
+    WriteBarrier<JSGlobalLexicalEnvironment> m_globalLexicalEnvironment;
     WriteBarrier<JSObject> m_globalCallee;
     WriteBarrier<RegExpConstructor> m_regExpConstructor;
     WriteBarrier<ErrorConstructor> m_errorConstructor;
@@ -230,6 +234,7 @@ protected:
     WriteBarrier<Structure> m_withScopeStructure;
     WriteBarrier<Structure> m_strictEvalActivationStructure;
     WriteBarrier<Structure> m_lexicalEnvironmentStructure;
+    WriteBarrier<Structure> m_moduleEnvironmentStructure;
     WriteBarrier<Structure> m_directArgumentsStructure;
     WriteBarrier<Structure> m_scopedArgumentsStructure;
     WriteBarrier<Structure> m_outOfBandArgumentsStructure;
@@ -250,7 +255,6 @@ protected:
     WriteBarrier<Structure> m_nullPrototypeObjectStructure;
     WriteBarrier<Structure> m_calleeStructure;
     WriteBarrier<Structure> m_functionStructure;
-    WriteBarrier<Structure> m_boundFunctionStructure;
     WriteBarrier<Structure> m_arrowFunctionStructure;
     WriteBarrier<Structure> m_nativeStdFunctionStructure;
     WriteBarrier<Structure> m_namedFunctionStructure;
@@ -263,6 +267,7 @@ protected:
     WriteBarrier<Structure> m_iteratorResultStructure;
     WriteBarrier<Structure> m_regExpMatchesArrayStructure;
     WriteBarrier<Structure> m_moduleRecordStructure;
+    WriteBarrier<Structure> m_moduleNamespaceObjectStructure;
 #if ENABLE(WEBASSEMBLY)
     WriteBarrier<Structure> m_wasmModuleStructure;
 #endif
@@ -383,16 +388,15 @@ public:
     JS_EXPORT_PRIVATE static void defineSetter(JSObject*, ExecState*, PropertyName, JSObject* setterFunc, unsigned attributes);
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
-    // We use this in the code generator as we perform symbol table
-    // lookups prior to initializing the properties
-    bool symbolTableHasProperty(PropertyName);
-
     void addVar(ExecState* exec, const Identifier& propertyName)
     {
         if (!hasProperty(exec, propertyName))
             addGlobalVar(propertyName);
     }
     void addFunction(ExecState*, const Identifier&);
+
+    JSScope* globalScope() { return m_globalLexicalEnvironment.get(); }
+    JSGlobalLexicalEnvironment* globalLexicalEnvironment() { return m_globalLexicalEnvironment.get(); }
 
     // The following accessors return pristine values, even if a script 
     // replaces the global object's associated property.
@@ -447,6 +451,7 @@ public:
     Structure* withScopeStructure() const { return m_withScopeStructure.get(); }
     Structure* strictEvalActivationStructure() const { return m_strictEvalActivationStructure.get(); }
     Structure* activationStructure() const { return m_lexicalEnvironmentStructure.get(); }
+    Structure* moduleEnvironmentStructure() const { return m_moduleEnvironmentStructure.get(); }
     Structure* directArgumentsStructure() const { return m_directArgumentsStructure.get(); }
     Structure* scopedArgumentsStructure() const { return m_scopedArgumentsStructure.get(); }
     Structure* outOfBandArgumentsStructure() const { return m_outOfBandArgumentsStructure.get(); }
@@ -484,7 +489,6 @@ public:
     Structure* errorStructure() const { return m_errorStructure.get(); }
     Structure* calleeStructure() const { return m_calleeStructure.get(); }
     Structure* functionStructure() const { return m_functionStructure.get(); }
-    Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(); }
     Structure* arrowFunctionStructure() const { return m_arrowFunctionStructure.get(); }
     Structure* nativeStdFunctionStructure() const { return m_nativeStdFunctionStructure.get(); }
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(); }
@@ -501,6 +505,7 @@ public:
     static ptrdiff_t iteratorResultStructureOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_iteratorResultStructure); }
     Structure* regExpMatchesArrayStructure() const { return m_regExpMatchesArrayStructure.get(); }
     Structure* moduleRecordStructure() const { return m_moduleRecordStructure.get(); }
+    Structure* moduleNamespaceObjectStructure() const { return m_moduleNamespaceObjectStructure.get(); }
 #if ENABLE(WEBASSEMBLY)
     Structure* wasmModuleStructure() const { return m_wasmModuleStructure.get(); }
 #endif
@@ -643,6 +648,7 @@ public:
 
     UnlinkedProgramCodeBlock* createProgramCodeBlock(CallFrame*, ProgramExecutable*, JSObject** exception);
     UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, ThisTDZMode, const VariableEnvironment*);
+    UnlinkedModuleProgramCodeBlock* createModuleProgramCodeBlock(CallFrame*, ModuleProgramExecutable*);
 
 protected:
     struct GlobalPropertyInfo {
@@ -688,12 +694,6 @@ inline bool JSGlobalObject::hasOwnPropertyForWrite(ExecState* exec, PropertyName
         return true;
     bool slotIsWriteable;
     return symbolTableGet(this, propertyName, slot, slotIsWriteable);
-}
-
-inline bool JSGlobalObject::symbolTableHasProperty(PropertyName propertyName)
-{
-    SymbolTableEntry entry = symbolTable()->inlineGet(propertyName.uid());
-    return !entry.isNull();
 }
 
 inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, unsigned initialLength = 0)

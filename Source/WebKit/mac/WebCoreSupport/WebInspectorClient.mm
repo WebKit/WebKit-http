@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2008, 2015 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,6 +58,7 @@
 SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 
 using namespace WebCore;
+using namespace Inspector;
 
 static const CGFloat minimumWindowWidth = 500;
 static const CGFloat minimumWindowHeight = 400;
@@ -87,7 +88,7 @@ static const CGFloat initialWindowHeight = 650;
 - (WebInspectorClient*)inspectorClient;
 - (void)setAttachedWindowHeight:(unsigned)height;
 - (void)setDockingUnavailable:(BOOL)unavailable;
-- (void)destroyInspectorView:(bool)notifyInspectorController;
+- (void)destroyInspectorView;
 @end
 
 
@@ -106,7 +107,7 @@ void WebInspectorClient::inspectorDestroyed()
     delete this;
 }
 
-InspectorFrontendChannel* WebInspectorClient::openInspectorFrontend(InspectorController* inspectorController)
+FrontendChannel* WebInspectorClient::openInspectorFrontend(InspectorController* inspectorController)
 {
     RetainPtr<WebInspectorWindowController> windowController = adoptNS([[WebInspectorWindowController alloc] initWithInspectedWebView:m_webView isUnderTest:inspectorController->isUnderTest()]);
     [windowController.get() setInspectorClient:this];
@@ -130,6 +131,7 @@ void WebInspectorClient::closeInspectorFrontend()
 
 void WebInspectorClient::bringFrontendToFront()
 {
+    ASSERT(m_frontendClient);
     m_frontendClient->bringToFront();
 }
 
@@ -252,12 +254,12 @@ void WebInspectorFrontendClient::bringToFront()
 
 void WebInspectorFrontendClient::closeWindow()
 {
-    [m_windowController.get() destroyInspectorView:true];
+    [m_windowController.get() destroyInspectorView];
 }
 
 void WebInspectorFrontendClient::disconnectFromBackend()
 {
-    [m_windowController.get() destroyInspectorView:false];
+    [m_windowController.get() destroyInspectorView];
 }
 
 void WebInspectorFrontendClient::attachWindow(DockSide)
@@ -522,7 +524,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (BOOL)windowShouldClose:(id)sender
 {
-    [self destroyInspectorView:true];
+    [self destroyInspectorView];
 
     return YES;
 }
@@ -676,7 +678,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     // Do nothing.
 }
 
-- (void)destroyInspectorView:(bool)notifyInspectorController
+- (void)destroyInspectorView
 {
     RetainPtr<WebInspectorWindowController> protect(self);
 
@@ -692,9 +694,9 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
     _visible = NO;
 
-    if (notifyInspectorController) {
-        if (Page* inspectedPage = [_inspectedWebView.get() page])
-            inspectedPage->inspectorController().disconnectFrontend(Inspector::DisconnectReason::InspectorDestroyed);
+    if (Page* inspectedPage = [_inspectedWebView.get() page]) {
+        inspectedPage->inspectorController().setInspectorFrontendClient(nullptr);
+        inspectedPage->inspectorController().disconnectFrontend(_inspectorClient);
     }
 
     [_webView close];

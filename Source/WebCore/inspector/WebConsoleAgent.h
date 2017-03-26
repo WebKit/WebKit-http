@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,14 +33,13 @@ namespace WebCore {
 class DOMWindow;
 class ResourceError;
 class ResourceResponse;
-class WebInjectedScriptManager;
 typedef String ErrorString;
 
 class WebConsoleAgent : public Inspector::InspectorConsoleAgent {
     WTF_MAKE_NONCOPYABLE(WebConsoleAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WebConsoleAgent(WebInjectedScriptManager*);
+    WebConsoleAgent(Inspector::AgentContext&);
     virtual ~WebConsoleAgent() { }
 
     virtual void setMonitoringXHREnabled(ErrorString&, bool enabled) override final;
@@ -52,7 +51,7 @@ public:
     void didFailLoading(unsigned long requestIdentifier, const ResourceError&);
 
 protected:
-    bool m_monitoringXHREnabled;
+    bool m_monitoringXHREnabled { false };
 };
 
 } // namespace WebCore

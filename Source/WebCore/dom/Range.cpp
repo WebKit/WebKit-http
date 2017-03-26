@@ -37,7 +37,6 @@
 #include "NodeWithIndex.h"
 #include "Page.h"
 #include "ProcessingInstruction.h"
-#include "RangeException.h"
 #include "RenderBoxModelObject.h"
 #include "RenderText.h"
 #include "ScopedEventQueue.h"
@@ -158,7 +157,7 @@ static inline bool checkForDifferentRootContainer(const RangeBoundaryPoint& star
 void Range::setStart(PassRefPtr<Node> refNode, int offset, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -182,7 +181,7 @@ void Range::setStart(PassRefPtr<Node> refNode, int offset, ExceptionCode& ec)
 void Range::setEnd(PassRefPtr<Node> refNode, int offset, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -226,21 +225,29 @@ void Range::collapse(bool toStart)
 bool Range::isPointInRange(Node* refNode, int offset, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = HIERARCHY_REQUEST_ERR;
+        ec = TypeError;
         return false;
     }
 
-    if (!refNode->inDocument() || &refNode->document() != &ownerDocument()) {
+    if (&refNode->document() != &ownerDocument()) {
         return false;
     }
 
     ec = 0;
     checkNodeWOffset(refNode, offset, ec);
-    if (ec)
+    if (ec) {
+        // DOM4 spec requires us to check whether refNode and start container have the same root first
+        // but we do it in the reverse order to avoid O(n) operation here in common case.
+        if (!commonAncestorContainer(refNode, &startContainer()))
+            ec = 0;
         return false;
+    }
 
-    return compareBoundaryPoints(refNode, offset, &startContainer(), m_start.offset(), ec) >= 0 && !ec
+    bool result = compareBoundaryPoints(refNode, offset, &startContainer(), m_start.offset(), ec) >= 0 && !ec
         && compareBoundaryPoints(refNode, offset, &endContainer(), m_end.offset(), ec) <= 0 && !ec;
+    ASSERT(!ec || ec == WRONG_DOCUMENT_ERR);
+    ec = 0;
+    return result;
 }
 
 short Range::comparePoint(Node* refNode, int offset, ExceptionCode& ec) const
@@ -250,19 +257,24 @@ short Range::comparePoint(Node* refNode, int offset, ExceptionCode& ec) const
     // refNode node and an offset within the node is before, same as, or after the range respectively.
 
     if (!refNode) {
-        ec = HIERARCHY_REQUEST_ERR;
+        ec = TypeError;
         return 0;
     }
 
-    if (!refNode->inDocument() || &refNode->document() != &ownerDocument()) {
+    if (&refNode->document() != &ownerDocument()) {
         ec = WRONG_DOCUMENT_ERR;
         return 0;
     }
 
     ec = 0;
     checkNodeWOffset(refNode, offset, ec);
-    if (ec)
+    if (ec) {
+        // DOM4 spec requires us to check whether refNode and start container have the same root first
+        // but we do it in the reverse order to avoid O(n) operation here in common case.
+        if (!refNode->inDocument() && !commonAncestorContainer(refNode, &startContainer()))
+            ec = WRONG_DOCUMENT_ERR;
         return 0;
+    }
 
     // compare to start, and point comes before
     if (compareBoundaryPoints(refNode, offset, &startContainer(), m_start.offset(), ec) < 0)
@@ -286,7 +298,7 @@ Range::CompareResults Range::compareNode(Node* refNode, ExceptionCode& ec) const
     // before and after(surrounds), or inside the range, respectively
 
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return NODE_BEFORE;
     }
 
@@ -324,7 +336,7 @@ Range::CompareResults Range::compareNode(Node* refNode, ExceptionCode& ec) const
 short Range::compareBoundaryPoints(CompareHow how, const Range* sourceRange, ExceptionCode& ec) const
 {
     if (!sourceRange) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return 0;
     }
 
@@ -490,7 +502,7 @@ bool Range::intersectsNode(Node* refNode, ExceptionCode& ec) const
     // Returns a bool if the node intersects the range.
 
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return false;
     }
 
@@ -502,12 +514,8 @@ bool Range::intersectsNode(Node* refNode, ExceptionCode& ec) const
     ContainerNode* parentNode = refNode->parentNode();
     unsigned nodeIndex = refNode->computeNodeIndex();
     
-    if (!parentNode) {
-        // if the node is the top document we should return NODE_BEFORE_AND_AFTER
-        // but we throw to match firefox behavior
-        ec = NOT_FOUND_ERR;
-        return false;
-    }
+    if (!parentNode)
+        return true;
 
     if (comparePoint(parentNode, nodeIndex, ec) < 0 && // starts before start
         comparePoint(parentNode, nodeIndex + 1, ec) < 0) { // ends before start
@@ -846,7 +854,7 @@ void Range::insertNode(PassRefPtr<Node> prpNewNode, ExceptionCode& ec)
 
     ec = 0;
     if (!newNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -907,11 +915,11 @@ void Range::insertNode(PassRefPtr<Node> prpNewNode, ExceptionCode& ec)
     case Node::ATTRIBUTE_NODE:
     case Node::ENTITY_NODE:
     case Node::DOCUMENT_NODE:
-        ec = RangeException::INVALID_NODE_TYPE_ERR;
+        ec = INVALID_NODE_TYPE_ERR;
         return;
     default:
         if (newNode->isShadowRoot()) {
-            ec = RangeException::INVALID_NODE_TYPE_ERR;
+            ec = INVALID_NODE_TYPE_ERR;
             return;
         }
         break;
@@ -1005,7 +1013,7 @@ Node* Range::checkNodeWOffset(Node* n, int offset, ExceptionCode& ec) const
     switch (n->nodeType()) {
         case Node::DOCUMENT_TYPE_NODE:
         case Node::ENTITY_NODE:
-            ec = RangeException::INVALID_NODE_TYPE_ERR;
+            ec = INVALID_NODE_TYPE_ERR;
             return nullptr;
         case Node::CDATA_SECTION_NODE:
         case Node::COMMENT_NODE:
@@ -1043,7 +1051,7 @@ void Range::checkNodeBA(Node* n, ExceptionCode& ec) const
         case Node::DOCUMENT_FRAGMENT_NODE:
         case Node::DOCUMENT_NODE:
         case Node::ENTITY_NODE:
-            ec = RangeException::INVALID_NODE_TYPE_ERR;
+            ec = INVALID_NODE_TYPE_ERR;
             return;
         case Node::CDATA_SECTION_NODE:
         case Node::COMMENT_NODE:
@@ -1074,7 +1082,7 @@ void Range::checkNodeBA(Node* n, ExceptionCode& ec) const
         case Node::PROCESSING_INSTRUCTION_NODE:
         case Node::TEXT_NODE:
         case Node::XPATH_NAMESPACE_NODE:
-            ec = RangeException::INVALID_NODE_TYPE_ERR;
+            ec = INVALID_NODE_TYPE_ERR;
             return;
     }
 }
@@ -1087,7 +1095,7 @@ Ref<Range> Range::cloneRange() const
 void Range::setStartAfter(Node* refNode, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -1102,7 +1110,7 @@ void Range::setStartAfter(Node* refNode, ExceptionCode& ec)
 void Range::setEndBefore(Node* refNode, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -1117,7 +1125,7 @@ void Range::setEndBefore(Node* refNode, ExceptionCode& ec)
 void Range::setEndAfter(Node* refNode, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -1132,7 +1140,7 @@ void Range::setEndAfter(Node* refNode, ExceptionCode& ec)
 void Range::selectNode(Node* refNode, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -1154,7 +1162,7 @@ void Range::selectNode(Node* refNode, ExceptionCode& ec)
                 break;
             case Node::DOCUMENT_TYPE_NODE:
             case Node::ENTITY_NODE:
-                ec = RangeException::INVALID_NODE_TYPE_ERR;
+                ec = INVALID_NODE_TYPE_ERR;
                 return;
         }
     }
@@ -1173,7 +1181,7 @@ void Range::selectNode(Node* refNode, ExceptionCode& ec)
         case Node::DOCUMENT_FRAGMENT_NODE:
         case Node::DOCUMENT_NODE:
         case Node::ENTITY_NODE:
-            ec = RangeException::INVALID_NODE_TYPE_ERR;
+            ec = INVALID_NODE_TYPE_ERR;
             return;
     }
 
@@ -1190,7 +1198,7 @@ void Range::selectNode(Node* refNode, ExceptionCode& ec)
 void Range::selectNodeContents(Node* refNode, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -1211,7 +1219,7 @@ void Range::selectNodeContents(Node* refNode, ExceptionCode& ec)
                 break;
             case Node::DOCUMENT_TYPE_NODE:
             case Node::ENTITY_NODE:
-                ec = RangeException::INVALID_NODE_TYPE_ERR;
+                ec = INVALID_NODE_TYPE_ERR;
                 return;
         }
     }
@@ -1228,7 +1236,7 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
     RefPtr<Node> newParent = passNewParent;
 
     if (!newParent) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -1240,7 +1248,7 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
         case Node::DOCUMENT_NODE:
         case Node::DOCUMENT_TYPE_NODE:
         case Node::ENTITY_NODE:
-            ec = RangeException::INVALID_NODE_TYPE_ERR;
+            ec = INVALID_NODE_TYPE_ERR;
             return;
         case Node::CDATA_SECTION_NODE:
         case Node::COMMENT_NODE:
@@ -1280,7 +1288,8 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
     // FIXME: Do we need a check if the node would end up with a child node of a type not
     // allowed by the type of node?
 
-    // BAD_BOUNDARYPOINTS_ERR: Raised if the Range partially selects a non-Text node.
+    // INVALID_STATE_ERR: Raised if the Range partially selects a non-Text node.
+    // https://dom.spec.whatwg.org/#dom-range-surroundcontents (step 1).
     Node* startNonTextContainer = &startContainer();
     if (startNonTextContainer->nodeType() == Node::TEXT_NODE)
         startNonTextContainer = startNonTextContainer->parentNode();
@@ -1288,7 +1297,7 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
     if (endNonTextContainer->nodeType() == Node::TEXT_NODE)
         endNonTextContainer = endNonTextContainer->parentNode();
     if (startNonTextContainer != endNonTextContainer) {
-        ec = RangeException::BAD_BOUNDARYPOINTS_ERR;
+        ec = INVALID_STATE_ERR;
         return;
     }
 
@@ -1313,7 +1322,7 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
 void Range::setStartBefore(Node* refNode, ExceptionCode& ec)
 {
     if (!refNode) {
-        ec = NOT_FOUND_ERR;
+        ec = TypeError;
         return;
     }
 

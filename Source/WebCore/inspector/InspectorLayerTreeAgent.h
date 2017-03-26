@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,17 +40,15 @@
 
 namespace WebCore {
 
-class InstrumentingAgents;
-
 typedef String ErrorString;
 
 class InspectorLayerTreeAgent final : public InspectorAgentBase, public Inspector::LayerTreeBackendDispatcherHandler {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit InspectorLayerTreeAgent(InstrumentingAgents*);
+    explicit InspectorLayerTreeAgent(WebAgentContext&);
     virtual ~InspectorLayerTreeAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
     void reset();
 

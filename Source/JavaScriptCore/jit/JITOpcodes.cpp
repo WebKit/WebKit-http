@@ -41,7 +41,6 @@
 #include "JSPropertyNameEnumerator.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
-#include "RepatchBuffer.h"
 #include "SlowPathCall.h"
 #include "TypeLocation.h"
 #include "TypeProfilerLog.h"
@@ -502,8 +501,6 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
     
     move(TrustedImmPtr(m_vm), regT3);
     load64(Address(regT3, VM::callFrameForThrowOffset()), callFrameRegister);
-    load64(Address(regT3, VM::vmEntryFrameForThrowOffset()), regT0);
-    store64(regT0, Address(regT3, VM::topVMEntryFrameOffset()));
 
     addPtr(TrustedImm32(stackPointerOffsetFor(codeBlock()) * sizeof(Register)), callFrameRegister, stackPointerRegister);
 
@@ -929,7 +926,7 @@ void JIT::emitSlow_op_loop_hint(Instruction*, Vector<SlowCaseEntry>::iterator& i
         callOperation(operationOptimize, m_bytecodeOffset);
         Jump noOptimizedEntry = branchTestPtr(Zero, returnValueGPR);
         if (!ASSERT_DISABLED) {
-            Jump ok = branchPtr(MacroAssembler::Above, regT0, TrustedImmPtr(bitwise_cast<void*>(static_cast<intptr_t>(1000))));
+            Jump ok = branchPtr(MacroAssembler::Above, returnValueGPR, TrustedImmPtr(bitwise_cast<void*>(static_cast<intptr_t>(1000))));
             abortWithReason(JITUnreasonableLoopHintJumpTarget);
             ok.link(this);
         }
@@ -1085,9 +1082,8 @@ void JIT::privateCompileHasIndexedProperty(ByValInfo* byValInfo, ReturnAddressPt
         m_codeBlock, patchBuffer,
         ("Baseline has_indexed_property stub for %s, return point %p", toCString(*m_codeBlock).data(), returnAddress.value()));
     
-    RepatchBuffer repatchBuffer(m_codeBlock);
-    repatchBuffer.relink(byValInfo->badTypeJump, CodeLocationLabel(byValInfo->stubRoutine->code().code()));
-    repatchBuffer.relinkCallerToFunction(returnAddress, FunctionPtr(operationHasIndexedPropertyGeneric));
+    MacroAssembler::repatchJump(byValInfo->badTypeJump, CodeLocationLabel(byValInfo->stubRoutine->code().code()));
+    MacroAssembler::repatchCall(CodeLocationCall(MacroAssemblerCodePtr(returnAddress)), FunctionPtr(operationHasIndexedPropertyGeneric));
 }
 
 void JIT::emit_op_has_indexed_property(Instruction* currentInstruction)

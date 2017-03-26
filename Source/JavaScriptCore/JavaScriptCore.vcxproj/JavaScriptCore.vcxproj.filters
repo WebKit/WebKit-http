@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="assembler">
@@ -172,6 +172,9 @@
       <Filter>bytecode</Filter>
     </ClCompile>
     <ClCompile Include="..\bytecode\CodeType.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bytecode\DataFormat.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
     <ClCompile Include="..\bytecode\ExecutionCounter.cpp">
@@ -717,6 +720,9 @@
     <ClCompile Include="..\runtime\JSGlobalObjectFunctions.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\JSGlobalLexicalEnvironment.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\JSJob.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -724,6 +730,12 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSMap.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSModuleEnvironment.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSModuleNamespaceObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSModuleRecord.cpp">
@@ -1596,9 +1608,6 @@
     <ClCompile Include="..\ftl\FTLUnwindInfo.cpp">
       <Filter>ftl</Filter>
     </ClCompile>
-    <ClCompile Include="..\ftl\FTLValueFormat.cpp">
-      <Filter>ftl</Filter>
-    </ClCompile>
     <ClCompile Include="..\ftl\FTLValueRange.cpp">
       <Filter>ftl</Filter>
     </ClCompile>
@@ -1996,9 +2005,6 @@
       <Filter>assembler</Filter>
     </ClInclude>
     <ClInclude Include="..\assembler\MaxFrameExtentForSlowPathCall.h">
-      <Filter>assembler</Filter>
-    </ClInclude>
-    <ClInclude Include="..\assembler\RepatchBuffer.h">
       <Filter>assembler</Filter>
     </ClInclude>
     <ClInclude Include="..\assembler\X86Assembler.h">
@@ -2757,6 +2763,9 @@
     <ClInclude Include="..\runtime\FunctionRareData.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\GetPutInfo.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\GetterSetter.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2863,6 +2872,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSGlobalObjectFunctions.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGlobalLexicalEnvironment.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSJob.h">
@@ -3505,6 +3517,12 @@
     <ClInclude Include="..\runtime\JSMap.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\JSModuleEnvironment.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSModuleNamespaceObject.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\JSModuleRecord.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3949,6 +3967,9 @@
     <ClInclude Include="..\jit\Repatch.h">
       <Filter>jit</Filter>
     </ClInclude>
+    <ClInclude Include="..\jit\RegisterMap.h">
+      <Filter>jit</Filter>
+    </ClInclude>
     <ClInclude Include="..\jit\RegisterSet.h">
       <Filter>jit</Filter>
     </ClInclude>
@@ -4155,9 +4176,6 @@
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLUnwindInfo.h">
-      <Filter>ftl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ftl\FTLValueFormat.h">
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLValueFromBlock.h">
@@ -4446,6 +4464,9 @@
       <Filter>wasm</Filter>
     </ClInclude>
     <ClInclude Include="..\wasm\WASMFormat.h">
+      <Filter>wasm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wasm\WASMFunctionCompiler.h">
       <Filter>wasm</Filter>
     </ClInclude>
     <ClInclude Include="..\wasm\WASMFunctionParser.h">

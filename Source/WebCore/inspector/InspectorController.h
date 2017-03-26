@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -44,6 +45,7 @@
 namespace Inspector {
 class BackendDispatcher;
 class FrontendChannel;
+class FrontendRouter;
 class InspectorAgent;
 class InspectorObject;
 
@@ -97,8 +99,9 @@ public:
     bool hasLocalFrontend() const;
     bool hasRemoteFrontend() const;
 
-    WEBCORE_EXPORT void connectFrontend(Inspector::FrontendChannel*, bool isAutomaticInspection);
-    WEBCORE_EXPORT void disconnectFrontend(Inspector::DisconnectReason);
+    WEBCORE_EXPORT void connectFrontend(Inspector::FrontendChannel*, bool isAutomaticInspection = false);
+    WEBCORE_EXPORT void disconnectFrontend(Inspector::FrontendChannel*);
+    WEBCORE_EXPORT void disconnectAllFrontends();
     void setProcessId(long);
 
     void inspect(Node*);
@@ -137,25 +140,26 @@ public:
 private:
     friend class InspectorInstrumentation;
 
-    RefPtr<InstrumentingAgents> m_instrumentingAgents;
+    Ref<InstrumentingAgents> m_instrumentingAgents;
     std::unique_ptr<WebInjectedScriptManager> m_injectedScriptManager;
+    Ref<Inspector::FrontendRouter> m_frontendRouter;
+    Ref<Inspector::BackendDispatcher> m_backendDispatcher;
     std::unique_ptr<InspectorOverlay> m_overlay;
-
-    Inspector::InspectorAgent* m_inspectorAgent;
-    InspectorDOMAgent* m_domAgent;
-    InspectorResourceAgent* m_resourceAgent;
-    InspectorPageAgent* m_pageAgent;
-    PageDebuggerAgent* m_debuggerAgent;
-    InspectorDOMDebuggerAgent* m_domDebuggerAgent;
-    InspectorTimelineAgent* m_timelineAgent;
-
-    RefPtr<Inspector::BackendDispatcher> m_backendDispatcher;
-    Inspector::FrontendChannel* m_frontendChannel { nullptr };
     Ref<WTF::Stopwatch> m_executionStopwatch;
+    Inspector::AgentRegistry m_agents;
+
     Page& m_page;
     InspectorClient* m_inspectorClient;
     InspectorFrontendClient* m_inspectorFrontendClient { nullptr };
-    Inspector::AgentRegistry m_agents;
+
+    Inspector::InspectorAgent* m_inspectorAgent { nullptr };
+    InspectorDOMAgent* m_domAgent { nullptr };
+    InspectorResourceAgent* m_resourceAgent { nullptr };
+    InspectorPageAgent* m_pageAgent { nullptr };
+    PageDebuggerAgent* m_debuggerAgent { nullptr };
+    InspectorDOMDebuggerAgent* m_domDebuggerAgent { nullptr };
+    InspectorTimelineAgent* m_timelineAgent { nullptr };
+
     Vector<InspectorInstrumentationCookie, 2> m_injectedScriptInstrumentationCookies;
     bool m_isUnderTest { false };
     bool m_isAutomaticInspection { false };

@@ -80,8 +80,8 @@ namespace JSC {
 
 class ExecState;
 class LLIntOffsetsExtractor;
-class RepatchBuffer;
 class TypeLocation;
+class JSModuleEnvironment;
 
 enum ReoptimizationMode { DontCountReoptimization, CountReoptimization };
 
@@ -215,8 +215,6 @@ public:
     // O(n) operation. Use getStubInfoMap() unless you really only intend to get one
     // stub info.
     StructureStubInfo* findStubInfo(CodeOrigin);
-
-    void resetStub(StructureStubInfo&);
 
     ByValInfo* addByValInfo();
 
@@ -981,10 +979,6 @@ private:
 
     void insertBasicBlockBoundariesForControlFlowProfiler(Vector<Instruction, 0, UnsafeVectorOverflow>&);
 
-#if ENABLE(JIT)
-    void resetStubInternal(RepatchBuffer&, StructureStubInfo&);
-    void resetStubDuringGCInternal(RepatchBuffer&, StructureStubInfo&);
-#endif
     WriteBarrier<UnlinkedCodeBlock> m_unlinkedCode;
     int m_numParameters;
     union {
@@ -1005,7 +999,9 @@ private:
 
     bool m_isStrictMode;
     bool m_needsActivation;
+
     bool m_mayBeExecuting;
+    bool m_isStronglyReferenced;
     Atomic<bool> m_visitAggregateHasBeenCalled;
 
     RefPtr<SourceProvider> m_source;
@@ -1102,10 +1098,29 @@ protected:
 #endif
 };
 
+class ModuleProgramCodeBlock : public GlobalCodeBlock {
+public:
+    ModuleProgramCodeBlock(CopyParsedBlockTag, ModuleProgramCodeBlock& other)
+        : GlobalCodeBlock(CopyParsedBlock, other)
+    {
+    }
+
+    ModuleProgramCodeBlock(ModuleProgramExecutable* ownerExecutable, UnlinkedModuleProgramCodeBlock* unlinkedCodeBlock, JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
+        : GlobalCodeBlock(ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, 0, firstLineColumnOffset)
+    {
+    }
+
+#if ENABLE(JIT)
+protected:
+    virtual CodeBlock* replacement() override;
+    virtual DFG::CapabilityLevel capabilityLevelInternal() override;
+#endif
+};
+
 class EvalCodeBlock : public GlobalCodeBlock {
 public:
     EvalCodeBlock(CopyParsedBlockTag, EvalCodeBlock& other)
-    : GlobalCodeBlock(CopyParsedBlock, other)
+        : GlobalCodeBlock(CopyParsedBlock, other)
     {
     }
         
@@ -1130,7 +1145,7 @@ private:
 class FunctionCodeBlock : public CodeBlock {
 public:
     FunctionCodeBlock(CopyParsedBlockTag, FunctionCodeBlock& other)
-    : CodeBlock(CopyParsedBlock, other)
+        : CodeBlock(CopyParsedBlock, other)
     {
     }
 
@@ -1191,6 +1206,16 @@ inline Register& ExecState::uncheckedR(VirtualRegister reg)
     return uncheckedR(reg.offset());
 }
 
+inline void CodeBlockSet::clearMarks(CodeBlock* codeBlock)
+{
+    if (!codeBlock)
+        return;
+
+    codeBlock->m_mayBeExecuting = false;
+    codeBlock->m_isStronglyReferenced = false;
+    codeBlock->m_visitAggregateHasBeenCalled.store(false, std::memory_order_relaxed);
+}
+
 inline void CodeBlockSet::mark(void* candidateCodeBlock)
 {
     // We have to check for 0 and -1 because those are used by the HashMap as markers.
@@ -1218,8 +1243,15 @@ inline void CodeBlockSet::mark(CodeBlock* codeBlock)
         return;
     
     codeBlock->m_mayBeExecuting = true;
+
     // We might not have cleared the marks for this CodeBlock, but we need to visit it.
     codeBlock->m_visitAggregateHasBeenCalled.store(false, std::memory_order_relaxed);
+
+    // For simplicity, we don't attempt to jettison code blocks during GC if
+    // they are executing. Instead we strongly mark their weak references to
+    // allow them to continue to execute soundly.
+    codeBlock->m_isStronglyReferenced = true;
+
 #if ENABLE(GGC)
     m_currentlyExecuting.append(codeBlock);
 #endif

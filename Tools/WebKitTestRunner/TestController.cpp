@@ -54,12 +54,15 @@
 #include <algorithm>
 #include <cstdio>
 #include <ctype.h>
+#include <fstream>
 #include <runtime/InitializeThreading.h>
 #include <stdlib.h>
 #include <string>
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
+#include <wtf/TemporaryChange.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
 #include <WebKit/WKContextPrivateMac.h>
@@ -291,9 +294,10 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfiguration
         didReceiveAuthenticationChallenge,
         processDidCrash,
         copyWebCryptoMasterKey,
-        0, // didBeginNavigationGesture
-        0, // willEndNavigationGesture
-        0, // didEndNavigationGesture
+        didBeginNavigationGesture,
+        willEndNavigationGesture,
+        didEndNavigationGesture,
+        didRemoveNavigationGestureSnapshot
     };
     WKPageSetPageNavigationClient(newPage, &pageNavigationClient.base);
 
@@ -535,9 +539,10 @@ void TestController::createWebViewWithOptions(const ViewOptions& options)
         didReceiveAuthenticationChallenge,
         processDidCrash,
         copyWebCryptoMasterKey,
-        0, // didBeginNavigationGesture
-        0, // willEndNavigationGesture
-        0, // didEndNavigationGesture
+        didBeginNavigationGesture,
+        willEndNavigationGesture,
+        didEndNavigationGesture,
+        didRemoveNavigationGestureSnapshot
     };
     WKPageSetPageNavigationClient(m_mainWebView->page(), &pageNavigationClient.base);
 
@@ -648,8 +653,7 @@ void TestController::resetPreferencesToConsistentValues()
 
 bool TestController::resetStateToConsistentValues()
 {
-    m_state = Resetting;
-
+    TemporaryChange<State> changeState(m_state, Resetting);
     m_beforeUnloadReturnValue = true;
 
     // This setting differs between the antique and modern Mac WebKit2 API.
@@ -742,6 +746,8 @@ bool TestController::resetStateToConsistentValues()
 
     m_shouldDecideNavigationPolicyAfterDelay = false;
 
+    setNavigationGesturesEnabled(false);
+
     WKPageLoadURL(m_mainWebView->page(), blankURL());
     runUntil(m_doneResetting, shortTimeout);
     return m_doneResetting;
@@ -783,11 +789,62 @@ const char* TestController::networkProcessName()
 static bool shouldUseFixedLayout(const TestInvocation& test)
 {
 #if ENABLE(CSS_DEVICE_ADAPTATION)
-        if (test.urlContains("device-adapt/") || test.urlContains("device-adapt\\"))
-            return true;
+    if (test.urlContains("device-adapt/") || test.urlContains("device-adapt\\"))
+        return true;
 #endif
 
     return false;
+}
+
+static std::string testPath(const WKURLRef url)
+{
+    auto scheme = adoptWK(WKURLCopyScheme(url));
+    if (WKStringIsEqualToUTF8CStringIgnoringCase(scheme.get(), "file")) {
+        auto path = adoptWK(WKURLCopyPath(url));
+        auto buffer = std::vector<char>(WKStringGetMaximumUTF8CStringSize(path.get()));
+        auto length = WKStringGetUTF8CString(path.get(), buffer.data(), buffer.size());
+        return std::string(buffer.data(), length);
+    }
+    return std::string();
+}
+
+static void updateViewOptionsFromTestHeader(ViewOptions& viewOptions, const TestInvocation& test)
+{
+    std::string filename = testPath(test.url());
+    if (filename.empty())
+        return;
+
+    std::string options;
+    std::ifstream testFile(filename.data());
+    if (!testFile.good())
+        return;
+    getline(testFile, options);
+    std::string beginString("webkit-test-runner [ ");
+    std::string endString(" ]");
+    size_t beginLocation = options.find(beginString);
+    if (beginLocation == std::string::npos)
+        return;
+    size_t endLocation = options.find(endString, beginLocation);
+    if (endLocation == std::string::npos) {
+        LOG_ERROR("Could not find end of test header in %s", filename.c_str());
+        return;
+    }
+    std::string pairString = options.substr(beginLocation + beginString.size(), endLocation - (beginLocation + beginString.size()));
+    size_t pairStart = 0;
+    while (pairStart < pairString.size()) {
+        size_t pairEnd = pairString.find(" ", pairStart);
+        if (pairEnd == std::string::npos)
+            pairEnd = pairString.size();
+        size_t equalsLocation = pairString.find("=", pairStart);
+        if (equalsLocation == std::string::npos) {
+            LOG_ERROR("Malformed option in test header (could not find '=' character) in %s", filename.c_str());
+            break;
+        }
+        auto key = pairString.substr(pairStart, equalsLocation - pairStart);
+        auto value = pairString.substr(equalsLocation + 1, pairEnd - (equalsLocation + 1));
+        // Options processing to modify viewOptions goes here.
+        pairStart = pairEnd + 1;
+    }
 }
 
 ViewOptions TestController::viewOptionsForTest(const TestInvocation& test) const
@@ -797,6 +854,8 @@ ViewOptions TestController::viewOptionsForTest(const TestInvocation& test) const
     viewOptions.useRemoteLayerTree = m_shouldUseRemoteLayerTree;
     viewOptions.shouldShowWebView = m_shouldShowWebView;
     viewOptions.useFixedLayout = shouldUseFixedLayout(test);
+
+    updateViewOptionsFromTestHeader(viewOptions, test);
 
     updatePlatformSpecificViewOptionsForTest(viewOptions, test);
 
@@ -1019,6 +1078,9 @@ void TestController::didReceiveKeyDownMessageFromInjectedBundle(WKDictionaryRef 
 void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody)
 {
     if (WKStringIsEqualToUTF8CString(messageName, "EventSender")) {
+        if (m_state != RunningTest)
+            return;
+
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
 
@@ -1077,6 +1139,23 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
             return;
         }
 
+        if (WKStringIsEqualToUTF8CString(subMessageName, "SwipeGestureWithWheelAndMomentumPhases")) {
+            WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
+            double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
+
+            WKRetainPtr<WKStringRef> yKey = adoptWK(WKStringCreateWithUTF8CString("Y"));
+            double y = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, yKey.get())));
+
+            WKRetainPtr<WKStringRef> phaseKey = adoptWK(WKStringCreateWithUTF8CString("Phase"));
+            int phase = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, phaseKey.get()))));
+            WKRetainPtr<WKStringRef> momentumKey = adoptWK(WKStringCreateWithUTF8CString("Momentum"));
+            int momentum = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, momentumKey.get()))));
+
+            m_eventSenderProxy->swipeGestureWithWheelAndMomentumPhases(x, y, phase, momentum);
+
+            return;
+        }
+
         ASSERT_NOT_REACHED();
     }
 
@@ -1089,6 +1168,9 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
 WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody)
 {
     if (WKStringIsEqualToUTF8CString(messageName, "EventSender")) {
+        if (m_state != RunningTest)
+            return nullptr;
+
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
 
@@ -1129,6 +1211,16 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
         }
 
 #if PLATFORM(MAC)
+        if (WKStringIsEqualToUTF8CString(subMessageName, "MouseForceClick")) {
+            m_eventSenderProxy->mouseForceClick();
+            return 0;
+        }
+
+        if (WKStringIsEqualToUTF8CString(subMessageName, "StartAndCancelMouseForceClick")) {
+            m_eventSenderProxy->startAndCancelMouseForceClick();
+            return 0;
+        }
+
         if (WKStringIsEqualToUTF8CString(subMessageName, "MouseForceDown")) {
             m_eventSenderProxy->mouseForceDown();
             return 0;
@@ -1310,6 +1402,26 @@ void TestController::processDidCrash(WKPageRef page, const void* clientInfo)
     static_cast<TestController*>(const_cast<void*>(clientInfo))->processDidCrash();
 }
 
+void TestController::didBeginNavigationGesture(WKPageRef page, const void *clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->didBeginNavigationGesture(page);
+}
+
+void TestController::willEndNavigationGesture(WKPageRef page, WKBackForwardListItemRef backForwardListItem, const void *clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->willEndNavigationGesture(page, backForwardListItem);
+}
+
+void TestController::didEndNavigationGesture(WKPageRef page, WKBackForwardListItemRef backForwardListItem, const void *clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->didEndNavigationGesture(page, backForwardListItem);
+}
+
+void TestController::didRemoveNavigationGestureSnapshot(WKPageRef page, const void *clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->didRemoveNavigationGestureSnapshot(page);
+}
+
 WKPluginLoadPolicy TestController::decidePolicyForPluginLoad(WKPageRef page, WKPluginLoadPolicy currentPluginLoadPolicy, WKDictionaryRef pluginInformation, WKStringRef* unavailabilityDescription, const void* clientInfo)
 {
     return static_cast<TestController*>(const_cast<void*>(clientInfo))->decidePolicyForPluginLoad(page, currentPluginLoadPolicy, pluginInformation, unavailabilityDescription);
@@ -1405,6 +1517,26 @@ void TestController::processDidCrash()
 
     if (m_shouldExitWhenWebProcessCrashes)
         exit(1);
+}
+
+void TestController::didBeginNavigationGesture(WKPageRef)
+{
+    m_currentInvocation->didBeginSwipe();
+}
+
+void TestController::willEndNavigationGesture(WKPageRef, WKBackForwardListItemRef)
+{
+    m_currentInvocation->willEndSwipe();
+}
+
+void TestController::didEndNavigationGesture(WKPageRef, WKBackForwardListItemRef)
+{
+    m_currentInvocation->didEndSwipe();
+}
+
+void TestController::didRemoveNavigationGestureSnapshot(WKPageRef)
+{
+    m_currentInvocation->didRemoveSwipeSnapshot();
 }
 
 void TestController::simulateWebNotificationClick(uint64_t notificationID)
@@ -1623,6 +1755,11 @@ void TestController::didUpdateHistoryTitle(WKStringRef title, WKURLRef URL, WKFr
 
     WKRetainPtr<WKStringRef> urlStringWK(AdoptWK, WKURLCopyString(URL));
     m_currentInvocation->outputText(String::format("WebView updated the title for history URL \"%s\" to \"%s\".\n", toSTD(urlStringWK).c_str(), toSTD(title).c_str()));
+}
+
+void TestController::setNavigationGesturesEnabled(bool value)
+{
+    m_mainWebView->setNavigationGesturesEnabled(value);
 }
 
 #if !PLATFORM(COCOA)

@@ -56,6 +56,7 @@ webkit.org/b/146622 [ Yosemite Debug ] webgl/1.0.2/conformance/more/functions/co
 
 # IndexedDB is not yet enabled in Mac WK1
 storage/indexeddb
+imported/w3c/indexeddb
 fast/history/page-cache-indexed-closed-db.html
 fast/history/page-cache-indexed-opened-db.html
 http/tests/security/cross-origin-indexeddb-allowed.html
@@ -76,8 +77,9 @@ editing/secure-input/reset-state-on-navigation.html [ Failure ]
 # Plug-in blocking callback doesn't exist in WebKit1.
 plugins/unavailable-plugin-indicator-obscurity.html
 
-# Color input is not yet enabled on Mac WK1.
-fast/forms/color/input-color-onchange-event.html [ Skip ]
+# Color input is not yet implemented on Mac WK1. Currently, using it erroneously triggers an ASSERT_NOT_REACHED.
+webkit.org/b/119094 fast/forms/color/input-color-onchange-event.html [ Skip ]
+webkit.org/b/119094 fast/forms/color/color-suggestion-picker-crash-on-set-value.html [ Skip ]
 
 # WK1 and WK2 mousemove events are subtly different in ways that break this test on WK1.
 fast/events/ghostly-mousemoves-in-subframe.html [ Skip ]
@@ -121,11 +123,6 @@ compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
 
 # Disk cache is WK2 only
 http/tests/cache/disk-cache
-
-# There is not yet support for force events in WK1.
-fast/events/mouse-force-changed.html [ Skip ]
-fast/events/mouse-force-down.html [ Skip ]
-fast/events/mouse-force-up.html [ Skip ]
 
 [ Yosemite+ ] fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
 

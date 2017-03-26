@@ -1,12 +1,14 @@
 <html>
 <head>
-  <script src="resources/repaint.js"></script>
   <script type="text/javascript" charset="utf-8">
-    function repaintTest()
-    {
-        var target = document.getElementById("square");
-        target.style.webkitTransform = "scale(0.5, 0.5)";
-    }
+        if (window.testRunner)
+            testRunner.waitUntilDone();
+        function runTest()
+        {
+            document.getElementById("square").style.webkitTransform = "scale(0.5, 0.5)";
+            if (window.testRunner)
+                testRunner.notifyDone();
+        }
   </script>
   <style type="text/css" media="screen">
     body {
@@ -27,7 +29,7 @@
     }
   </style>
 </head>
-<body onload="runRepaintTest()">
+<body onload="setTimeout(runTest, 0);">
 <div id="square"></div>
 <div id="overlay"></div>
 

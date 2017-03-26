@@ -900,10 +900,12 @@ RefPtr<ProcessingInstruction> Document::createProcessingInstruction(const String
         ec = INVALID_CHARACTER_ERR;
         return nullptr;
     }
-    if (isHTMLDocument()) {
-        ec = NOT_SUPPORTED_ERR;
+
+    if (data.contains("?>")) {
+        ec = INVALID_CHARACTER_ERR;
         return nullptr;
     }
+
     return ProcessingInstruction::create(*this, target, data);
 }
 
@@ -2079,7 +2081,7 @@ void Document::createStyleResolver()
     m_styleSheetCollection.combineCSSFeatureFlags();
 }
 
-void Document::fontsNeedUpdate(FontSelector*)
+void Document::fontsNeedUpdate(FontSelector&)
 {
     if (m_styleResolver)
         m_styleResolver->invalidateMatchedPropertiesCache();
@@ -2092,7 +2094,7 @@ CSSFontSelector& Document::fontSelector()
 {
     if (!m_fontSelector) {
         m_fontSelector = CSSFontSelector::create(*this);
-        m_fontSelector->registerForInvalidationCallbacks(this);
+        m_fontSelector->registerForInvalidationCallbacks(*this);
     }
     return *m_fontSelector;
 }
@@ -2104,7 +2106,7 @@ void Document::clearStyleResolver()
     // FIXME: It would be better if the FontSelector could survive this operation.
     if (m_fontSelector) {
         m_fontSelector->clearDocument();
-        m_fontSelector->unregisterForInvalidationCallbacks(this);
+        m_fontSelector->unregisterForInvalidationCallbacks(*this);
         m_fontSelector = nullptr;
     }
 }
@@ -2475,13 +2477,15 @@ HTMLBodyElement* Document::body() const
 
 HTMLElement* Document::bodyOrFrameset() const
 {
-    // If the document element contains both a frameset and a body, the frameset wins.
+    // Return the first body or frameset child of the html element.
     auto* element = documentElement();
     if (!element)
         return nullptr;
-    if (auto* frameset = childrenOfType<HTMLFrameSetElement>(*element).first())
-        return frameset;
-    return childrenOfType<HTMLBodyElement>(*element).first();
+    for (auto& child : childrenOfType<HTMLElement>(*element)) {
+        if (is<HTMLBodyElement>(child) || is<HTMLFrameSetElement>(child))
+            return &child;
+    }
+    return nullptr;
 }
 
 void Document::setBodyOrFrameset(PassRefPtr<HTMLElement> prpNewBody, ExceptionCode& ec)

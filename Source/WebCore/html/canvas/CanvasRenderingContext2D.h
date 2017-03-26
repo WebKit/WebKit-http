@@ -62,10 +62,10 @@ public:
     CanvasRenderingContext2D(HTMLCanvasElement*, bool usesCSSCompatibilityParseMode, bool usesDashboardCompatibilityMode);
     virtual ~CanvasRenderingContext2D();
 
-    const CanvasStyle& strokeStyle() const { return state().m_strokeStyle; }
+    const CanvasStyle& strokeStyle() const { return state().strokeStyle; }
     void setStrokeStyle(CanvasStyle);
 
-    const CanvasStyle& fillStyle() const { return state().m_fillStyle; }
+    const CanvasStyle& fillStyle() const { return state().fillStyle; }
     void setFillStyle(CanvasStyle);
 
     float lineWidth() const;
@@ -132,18 +132,18 @@ public:
 
     void beginPath();
 
-    void fill(const String& winding = "nonzero");
+    void fill(const String& winding = ASCIILiteral("nonzero"));
     void stroke();
-    void clip(const String& winding = "nonzero");
+    void clip(const String& winding = ASCIILiteral("nonzero"));
 
-    void fill(DOMPath*, const String& winding = "nonzero");
+    void fill(DOMPath*, const String& winding = ASCIILiteral("nonzero"));
     void stroke(DOMPath*);
-    void clip(DOMPath*, const String& winding = "nonzero");
+    void clip(DOMPath*, const String& winding = ASCIILiteral("nonzero"));
 
-    bool isPointInPath(const float x, const float y, const String& winding = "nonzero");
+    bool isPointInPath(const float x, const float y, const String& winding = ASCIILiteral("nonzero"));
     bool isPointInStroke(const float x, const float y);
 
-    bool isPointInPath(DOMPath*, const float x, const float y, const String& winding = "nonzero");
+    bool isPointInPath(DOMPath*, const float x, const float y, const String& winding = ASCIILiteral("nonzero"));
     bool isPointInStroke(DOMPath*, const float x, const float y);
 
     void clearRect(float x, float y, float width, float height);
@@ -222,8 +222,8 @@ public:
     void strokeText(const String& text, float x, float y, float maxWidth);
     Ref<TextMetrics> measureText(const String& text);
 
-    LineCap getLineCap() const { return state().m_lineCap; }
-    LineJoin getLineJoin() const { return state().m_lineJoin; }
+    LineCap getLineCap() const { return state().lineCap; }
+    LineJoin getLineJoin() const { return state().lineJoin; }
 
     bool imageSmoothingEnabled() const;
     void setImageSmoothingEnabled(bool);
@@ -235,43 +235,60 @@ private:
         LTR
     };
 
-    struct State final : FontSelectorClient {
+    class FontProxy : public FontSelectorClient {
+    public:
+        FontProxy() = default;
+        virtual ~FontProxy();
+        FontProxy(const FontProxy&);
+        FontProxy& operator=(const FontProxy&);
+
+        bool realized() const { return m_font.fontSelector(); }
+        void initialize(FontSelector&, RenderStyle&);
+        FontMetrics fontMetrics() const;
+        const FontDescription& fontDescription() const;
+        float width(const TextRun&) const;
+        void drawBidiText(GraphicsContext&, const TextRun&, const FloatPoint&, FontCascade::CustomFontNotReadyAction) const;
+
+    private:
+        void update(FontSelector&);
+        virtual void fontsNeedUpdate(FontSelector&) override;
+
+        FontCascade m_font;
+    };
+
+    struct State final {
         State();
-        virtual ~State();
 
         State(const State&);
         State& operator=(const State&);
 
-        virtual void fontsNeedUpdate(FontSelector*) override;
-
-        String m_unparsedStrokeColor;
-        String m_unparsedFillColor;
-        CanvasStyle m_strokeStyle;
-        CanvasStyle m_fillStyle;
-        float m_lineWidth;
-        LineCap m_lineCap;
-        LineJoin m_lineJoin;
-        float m_miterLimit;
-        FloatSize m_shadowOffset;
-        float m_shadowBlur;
-        RGBA32 m_shadowColor;
-        float m_globalAlpha;
-        CompositeOperator m_globalComposite;
-        BlendMode m_globalBlend;
-        AffineTransform m_transform;
-        bool m_hasInvertibleTransform;
-        Vector<float> m_lineDash;
-        float m_lineDashOffset;
-        bool m_imageSmoothingEnabled;
+        String unparsedStrokeColor;
+        String unparsedFillColor;
+        CanvasStyle strokeStyle;
+        CanvasStyle fillStyle;
+        float lineWidth;
+        LineCap lineCap;
+        LineJoin lineJoin;
+        float miterLimit;
+        FloatSize shadowOffset;
+        float shadowBlur;
+        RGBA32 shadowColor;
+        float globalAlpha;
+        CompositeOperator globalComposite;
+        BlendMode globalBlend;
+        AffineTransform transform;
+        bool hasInvertibleTransform;
+        Vector<float> lineDash;
+        float lineDashOffset;
+        bool imageSmoothingEnabled;
 
         // Text state.
-        TextAlign m_textAlign;
-        TextBaseline m_textBaseline;
-        Direction m_direction;
+        TextAlign textAlign;
+        TextBaseline textBaseline;
+        Direction direction;
 
-        String m_unparsedFont;
-        FontCascade m_font;
-        bool m_realizedFont;
+        String unparsedFont;
+        FontProxy font;
     };
 
     enum CanvasDidDrawOption {
@@ -308,7 +325,9 @@ private:
 
     void drawTextInternal(const String& text, float x, float y, bool fill, float maxWidth = 0, bool useMaxWidth = false);
 
-    const FontCascade& accessFont();
+    // The relationship between FontCascade and CanvasRenderingContext2D::FontProxy must hold certain invariants.
+    // Therefore, all font operations must pass through the State.
+    const FontProxy& fontProxy();
 
 #if ENABLE(DASHBOARD_SUPPORT)
     void clearPathForDashboardBackwardCompatibilityMode();
@@ -347,7 +366,7 @@ private:
     virtual bool is2d() const override { return true; }
     virtual bool isAccelerated() const override;
 
-    virtual bool hasInvertibleTransform() const override { return state().m_hasInvertibleTransform; }
+    virtual bool hasInvertibleTransform() const override { return state().hasInvertibleTransform; }
     TextDirection toTextDirection(Direction, RenderStyle** computedStyle = nullptr) const;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)

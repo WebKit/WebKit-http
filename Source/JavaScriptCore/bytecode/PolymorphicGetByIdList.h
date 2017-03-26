@@ -81,10 +81,8 @@ public:
     }
     
     bool doesCalls() const { return type() == Getter || type() == CustomGetter; }
-    bool isWatched() const { return type() == WatchedStub; }
-    bool isSimple() const { return !doesCalls() && !isWatched(); }
     
-    bool visitWeak(RepatchBuffer&) const;
+    bool visitWeak(VM&) const;
 
 private:
     friend class CodeBlock;
@@ -117,7 +115,7 @@ public:
     
     bool didSelfPatching() const; // Are any of the accesses SimpleInline?
     
-    bool visitWeak(RepatchBuffer&) const;
+    bool visitWeak(VM&) const;
 
 private:
     friend class CodeBlock;

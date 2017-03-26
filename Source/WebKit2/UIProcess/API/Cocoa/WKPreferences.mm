@@ -237,6 +237,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
     _preferences->setSimpleLineLayoutDebugBordersEnabled(simpleLineLayoutDebugBordersEnabled);
 }
 
+- (BOOL)_acceleratedDrawingEnabled
+{
+    return _preferences->acceleratedDrawingEnabled();
+}
+
+- (void)_setAcceleratedDrawingEnabled:(BOOL)acceleratedDrawingEnabled
+{
+    _preferences->setAcceleratedDrawingEnabled(acceleratedDrawingEnabled);
+}
+
 - (BOOL)_developerExtrasEnabled
 {
     return _preferences->developerExtrasEnabled();
@@ -265,6 +275,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setHiddenPageDOMTimerThrottlingEnabled:(BOOL)hiddenPageDOMTimerThrottlingEnabled
 {
     _preferences->setHiddenPageDOMTimerThrottlingEnabled(hiddenPageDOMTimerThrottlingEnabled);
+}
+
+- (BOOL)_pageVisibilityBasedProcessSuppressionEnabled
+{
+    return _preferences->pageVisibilityBasedProcessSuppressionEnabled();
+}
+
+- (void)_setPageVisibilityBasedProcessSuppressionEnabled:(BOOL)pageVisibilityBasedProcessSuppressionEnabled
+{
+    _preferences->setPageVisibilityBasedProcessSuppressionEnabled(pageVisibilityBasedProcessSuppressionEnabled);
 }
 
 - (BOOL)_allowFileAccessFromFileURLs

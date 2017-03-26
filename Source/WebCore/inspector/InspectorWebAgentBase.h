@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All Rights Reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,23 +27,55 @@
 #ifndef InspectorWebAgentBase_h
 #define InspectorWebAgentBase_h
 
-#include "InspectorForwarding.h"
 #include <inspector/InspectorAgentBase.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class InstrumentingAgents;
+class Page;
+class WorkerGlobalScope;
 
-class InspectorAgentBase : public Inspector::InspectorAgentBase {
-protected:
-    InspectorAgentBase(const String& name, InstrumentingAgents* instrumentingAgents)
-        : Inspector::InspectorAgentBase(name)
-        , m_instrumentingAgents(instrumentingAgents)
+// FIXME: move this to Inspector namespace when remaining agents move.
+struct WebAgentContext : public Inspector::AgentContext {
+    WebAgentContext(AgentContext& context, InstrumentingAgents& instrumentingAgents)
+        : AgentContext(context)
+        , instrumentingAgents(instrumentingAgents)
     {
     }
 
-    InstrumentingAgents* m_instrumentingAgents;
+    InstrumentingAgents& instrumentingAgents;
+};
+
+struct PageAgentContext : public WebAgentContext {
+    PageAgentContext(WebAgentContext& context, Page& inspectedPage)
+        : WebAgentContext(context)
+        , inspectedPage(inspectedPage)
+    {
+    }
+
+    Page& inspectedPage;
+};
+
+struct WorkerAgentContext : public WebAgentContext {
+    WorkerAgentContext(WebAgentContext& context, WorkerGlobalScope& workerGlobalScope)
+        : WebAgentContext(context)
+        , workerGlobalScope(workerGlobalScope)
+    {
+    }
+
+    WorkerGlobalScope& workerGlobalScope;
+};
+
+class InspectorAgentBase : public Inspector::InspectorAgentBase {
+protected:
+    InspectorAgentBase(const String& name, WebAgentContext& context)
+        : Inspector::InspectorAgentBase(name)
+        , m_instrumentingAgents(context.instrumentingAgents)
+    {
+    }
+
+    InstrumentingAgents& m_instrumentingAgents;
 };
     
 } // namespace WebCore

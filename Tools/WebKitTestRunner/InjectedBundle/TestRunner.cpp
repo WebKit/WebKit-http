@@ -509,13 +509,22 @@ enum {
     AddChromeInputFieldCallbackID = 1,
     RemoveChromeInputFieldCallbackID,
     FocusWebViewCallbackID,
-    SetBackingScaleFactorCallbackID
+    SetBackingScaleFactorCallbackID,
+    DidBeginSwipeCallbackID,
+    WillEndSwipeCallbackID,
+    DidEndSwipeCallbackID,
+    DidRemoveSwipeSnapshotCallbackID
 };
 
 static void cacheTestRunnerCallback(unsigned index, JSValueRef callback)
 {
     if (!callback)
         return;
+
+    if (callbackMap().contains(index)) {
+        InjectedBundle::singleton().outputText(String::format("FAIL: Tried to install a second TestRunner callback for the same event (id %d)\n\n", index));
+        return;
+    }
 
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::singleton().page()->page());
     JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
@@ -532,6 +541,18 @@ static void callTestRunnerCallback(unsigned index)
     JSObjectRef callback = JSValueToObject(context, callbackMap().take(index), 0);
     JSObjectCallAsFunction(context, callback, JSContextGetGlobalObject(context), 0, 0, 0);
     JSValueUnprotect(context, callback);
+}
+
+void TestRunner::clearTestRunnerCallbacks()
+{
+    for (auto& iter : callbackMap()) {
+        WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::singleton().page()->page());
+        JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
+        JSObjectRef callback = JSValueToObject(context, iter.value, 0);
+        JSValueUnprotect(context, callback);
+    }
+
+    callbackMap().clear();
 }
 
 void TestRunner::addChromeInputField(JSValueRef callback)
@@ -858,6 +879,53 @@ void TestRunner::setShouldDecideNavigationPolicyAfterDelay(bool value)
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetShouldDecideNavigationPolicyAfterDelay"));
     WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(value));
     WKBundlePagePostMessage(InjectedBundle::singleton().page()->page(), messageName.get(), messageBody.get());
+}
+
+void TestRunner::setNavigationGesturesEnabled(bool value)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetNavigationGesturesEnabled"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(value));
+    WKBundlePagePostMessage(InjectedBundle::singleton().page()->page(), messageName.get(), messageBody.get());
+}
+
+void TestRunner::installDidBeginSwipeCallback(JSValueRef callback)
+{
+    cacheTestRunnerCallback(DidBeginSwipeCallbackID, callback);
+}
+
+void TestRunner::installWillEndSwipeCallback(JSValueRef callback)
+{
+    cacheTestRunnerCallback(WillEndSwipeCallbackID, callback);
+}
+
+void TestRunner::installDidEndSwipeCallback(JSValueRef callback)
+{
+    cacheTestRunnerCallback(DidEndSwipeCallbackID, callback);
+}
+
+void TestRunner::installDidRemoveSwipeSnapshotCallback(JSValueRef callback)
+{
+    cacheTestRunnerCallback(DidRemoveSwipeSnapshotCallbackID, callback);
+}
+
+void TestRunner::callDidBeginSwipeCallback()
+{
+    callTestRunnerCallback(DidBeginSwipeCallbackID);
+}
+
+void TestRunner::callWillEndSwipeCallback()
+{
+    callTestRunnerCallback(WillEndSwipeCallbackID);
+}
+
+void TestRunner::callDidEndSwipeCallback()
+{
+    callTestRunnerCallback(DidEndSwipeCallbackID);
+}
+
+void TestRunner::callDidRemoveSwipeSnapshotCallback()
+{
+    callTestRunnerCallback(DidRemoveSwipeSnapshotCallbackID);
 }
 
 } // namespace WTR

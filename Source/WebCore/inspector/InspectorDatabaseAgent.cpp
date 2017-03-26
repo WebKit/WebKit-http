@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,6 +45,7 @@
 #include "SQLTransactionErrorCallback.h"
 #include "SQLValue.h"
 #include "VoidCallback.h"
+#include <inspector/InspectorFrontendRouter.h>
 #include <inspector/InspectorValues.h>
 #include <wtf/Vector.h>
 
@@ -201,7 +203,7 @@ void InspectorDatabaseAgent::didOpenDatabase(PassRefPtr<Database> database, cons
     RefPtr<InspectorDatabaseResource> resource = InspectorDatabaseResource::create(database, domain, name, version);
     m_resources.set(resource->id(), resource);
     // Resources are only bound while visible.
-    if (m_frontendDispatcher && m_enabled)
+    if (m_enabled)
         resource->bind(m_frontendDispatcher.get());
 }
 
@@ -210,29 +212,25 @@ void InspectorDatabaseAgent::clearResources()
     m_resources.clear();
 }
 
-InspectorDatabaseAgent::InspectorDatabaseAgent(InstrumentingAgents* instrumentingAgents)
-    : InspectorAgentBase(ASCIILiteral("Database"), instrumentingAgents)
-    , m_enabled(false)
+InspectorDatabaseAgent::InspectorDatabaseAgent(WebAgentContext& context)
+    : InspectorAgentBase(ASCIILiteral("Database"), context)
+    , m_frontendDispatcher(std::make_unique<Inspector::DatabaseFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(Inspector::DatabaseBackendDispatcher::create(context.backendDispatcher, this))
 {
-    m_instrumentingAgents->setInspectorDatabaseAgent(this);
+    m_instrumentingAgents.setInspectorDatabaseAgent(this);
 }
 
 InspectorDatabaseAgent::~InspectorDatabaseAgent()
 {
-    m_instrumentingAgents->setInspectorDatabaseAgent(nullptr);
+    m_instrumentingAgents.setInspectorDatabaseAgent(nullptr);
 }
 
-void InspectorDatabaseAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorDatabaseAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<Inspector::DatabaseFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = Inspector::DatabaseBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorDatabaseAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     ErrorString unused;
     disable(unused);
 }

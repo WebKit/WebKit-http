@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2010, Google Inc. All rights reserved.
+ * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -340,10 +341,11 @@ CSSStyleRule* InspectorCSSAgent::asCSSStyleRule(CSSRule& rule)
     return downcast<CSSStyleRule>(&rule);
 }
 
-InspectorCSSAgent::InspectorCSSAgent(InstrumentingAgents* instrumentingAgents, InspectorDOMAgent* domAgent)
-    : InspectorAgentBase(ASCIILiteral("CSS"), instrumentingAgents)
+InspectorCSSAgent::InspectorCSSAgent(WebAgentContext& context, InspectorDOMAgent* domAgent)
+    : InspectorAgentBase(ASCIILiteral("CSS"), context)
+    , m_frontendDispatcher(std::make_unique<CSSFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(CSSBackendDispatcher::create(context.backendDispatcher, this))
     , m_domAgent(domAgent)
-    , m_lastStyleSheetId(1)
 {
     m_domAgent->setDOMListener(this);
 }
@@ -354,17 +356,12 @@ InspectorCSSAgent::~InspectorCSSAgent()
     reset();
 }
 
-void InspectorCSSAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorCSSAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<CSSFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = CSSBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorCSSAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     resetNonPersistentData();
 }
 
@@ -395,7 +392,7 @@ void InspectorCSSAgent::resetNonPersistentData()
 
 void InspectorCSSAgent::enable(ErrorString&)
 {
-    m_instrumentingAgents->setInspectorCSSAgent(this);
+    m_instrumentingAgents.setInspectorCSSAgent(this);
 
     for (auto* document : m_domAgent->documents())
         activeStyleSheetsUpdated(*document);
@@ -403,7 +400,7 @@ void InspectorCSSAgent::enable(ErrorString&)
 
 void InspectorCSSAgent::disable(ErrorString&)
 {
-    m_instrumentingAgents->setInspectorCSSAgent(nullptr);
+    m_instrumentingAgents.setInspectorCSSAgent(nullptr);
 }
 
 void InspectorCSSAgent::documentDetached(Document& document)
@@ -1179,8 +1176,7 @@ void InspectorCSSAgent::didModifyDOMAttr(Element* element)
 
 void InspectorCSSAgent::styleSheetChanged(InspectorStyleSheet* styleSheet)
 {
-    if (m_frontendDispatcher)
-        m_frontendDispatcher->styleSheetChanged(styleSheet->id());
+    m_frontendDispatcher->styleSheetChanged(styleSheet->id());
 }
 
 void InspectorCSSAgent::resetPseudoStates()

@@ -39,7 +39,7 @@ namespace JSC {
 class Register;
     
 class JSLexicalEnvironment : public JSEnvironmentRecord {
-private:
+protected:
     JSLexicalEnvironment(VM&, Structure*, JSScope*, SymbolTable*);
     
 public:
@@ -75,12 +75,7 @@ public:
 
     DECLARE_INFO;
 
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject) { return Structure::create(vm, globalObject, jsNull(), TypeInfo(ActivationObjectType, StructureFlags), info()); }
-
-private:
-    bool symbolTableGet(PropertyName, PropertySlot&);
-    bool symbolTablePut(ExecState*, PropertyName, JSValue, bool shouldThrow);
-    bool symbolTablePutWithAttributes(VM&, PropertyName, JSValue, unsigned attributes);
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject) { return Structure::create(vm, globalObject, jsNull(), TypeInfo(ClosureObjectType, StructureFlags), info()); }
 };
 
 inline JSLexicalEnvironment::JSLexicalEnvironment(VM& vm, Structure* structure, JSScope* currentScope, SymbolTable* symbolTable)

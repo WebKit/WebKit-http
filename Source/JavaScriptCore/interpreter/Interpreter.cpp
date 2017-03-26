@@ -49,6 +49,7 @@
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSLexicalEnvironment.h"
+#include "JSModuleEnvironment.h"
 #include "JSNotAnObject.h"
 #include "JSStackInlines.h"
 #include "JSString.h"
@@ -97,6 +98,7 @@ String StackFrame::friendlySourceURL() const
     
     switch (codeType) {
     case StackFrameEvalCode:
+    case StackFrameModuleCode:
     case StackFrameFunctionCode:
     case StackFrameGlobalCode:
         if (!sourceURL.isEmpty())
@@ -117,6 +119,9 @@ String StackFrame::friendlyFunctionName(CallFrame* callFrame) const
     switch (codeType) {
     case StackFrameEvalCode:
         traceLine = "eval code";
+        break;
+    case StackFrameModuleCode:
+        traceLine = "module code";
         break;
     case StackFrameNativeCode:
         if (callee)
@@ -451,6 +456,8 @@ static StackFrameCodeType getStackFrameCodeType(StackVisitor& visitor)
     switch (visitor->codeType()) {
     case StackVisitor::Frame::Eval:
         return StackFrameEvalCode;
+    case StackVisitor::Frame::Module:
+        return StackFrameModuleCode;
     case StackVisitor::Frame::Function:
         return StackFrameFunctionCode;
     case StackVisitor::Frame::Global:
@@ -624,9 +631,8 @@ private:
 
 class UnwindFunctor {
 public:
-    UnwindFunctor(VMEntryFrame*& vmEntryFrame, CallFrame*& callFrame, bool isTermination, CodeBlock*& codeBlock, HandlerInfo*& handler)
-        : m_vmEntryFrame(vmEntryFrame)
-        , m_callFrame(callFrame)
+    UnwindFunctor(CallFrame*& callFrame, bool isTermination, CodeBlock*& codeBlock, HandlerInfo*& handler)
+        : m_callFrame(callFrame)
         , m_isTermination(isTermination)
         , m_codeBlock(codeBlock)
         , m_handler(handler)
@@ -636,7 +642,6 @@ public:
     StackVisitor::Status operator()(StackVisitor& visitor)
     {
         VM& vm = m_callFrame->vm();
-        m_vmEntryFrame = visitor->vmEntryFrame();
         m_callFrame = visitor->callFrame();
         m_codeBlock = visitor->codeBlock();
         unsigned bytecodeOffset = visitor->bytecodeOffset();
@@ -654,15 +659,22 @@ public:
     }
 
 private:
-    VMEntryFrame*& m_vmEntryFrame;
     CallFrame*& m_callFrame;
     bool m_isTermination;
     CodeBlock*& m_codeBlock;
     HandlerInfo*& m_handler;
 };
 
-NEVER_INLINE HandlerInfo* Interpreter::unwind(VMEntryFrame*& vmEntryFrame, CallFrame*& callFrame, Exception* exception)
+NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exception* exception, UnwindStart unwindStart)
 {
+    if (unwindStart == UnwindFromCallerFrame) {
+        if (callFrame->callerFrameOrVMEntryFrame() == vm.topVMEntryFrame)
+            return nullptr;
+
+        callFrame = callFrame->callerFrame();
+        vm.topCallFrame = callFrame;
+    }
+
     CodeBlock* codeBlock = callFrame->codeBlock();
     bool isTermination = false;
 
@@ -677,13 +689,13 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VMEntryFrame*& vmEntryFrame, CallF
     if (exceptionValue.isObject())
         isTermination = isTerminatedExecutionException(exception);
 
-    ASSERT(callFrame->vm().exception() && callFrame->vm().exception()->stack().size());
+    ASSERT(vm.exception() && vm.exception()->stack().size());
 
     Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger();
     if (debugger && debugger->needsExceptionCallbacks() && !exception->didNotifyInspectorOfThrow()) {
         // We need to clear the exception here in order to see if a new exception happens.
         // Afterwards, the values are put back to continue processing this error.
-        SuspendExceptionScope scope(&callFrame->vm());
+        SuspendExceptionScope scope(&vm);
         // This code assumes that if the debugger is enabled then there is no inlining.
         // If that assumption turns out to be false then we'll ignore the inlined call
         // frames.
@@ -706,13 +718,11 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VMEntryFrame*& vmEntryFrame, CallF
     exception->setDidNotifyInspectorOfThrow();
 
     // Calculate an exception handler vPC, unwinding call frames as necessary.
-    HandlerInfo* handler = 0;
-    VM& vm = callFrame->vm();
-    ASSERT(callFrame == vm.topCallFrame);
-    UnwindFunctor functor(vmEntryFrame, callFrame, isTermination, codeBlock, handler);
+    HandlerInfo* handler = nullptr;
+    UnwindFunctor functor(callFrame, isTermination, codeBlock, handler);
     callFrame->iterate(functor);
     if (!handler)
-        return 0;
+        return nullptr;
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->exceptionUnwind(callFrame);
@@ -751,7 +761,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
 {
     SamplingScope samplingScope(this);
 
-    JSScope* scope = thisObj->globalObject();
+    JSScope* scope = thisObj->globalObject()->globalScope();
     VM& vm = *scope->vm();
 
     ASSERT(!vm.exception());
@@ -1136,13 +1146,34 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
                 }
             }
         }
-        ASSERT(!variableObject->isNameScopeObject());
     }
 
     JSObject* compileError = eval->prepareForExecution(callFrame, nullptr, scope, CodeForCall);
     if (UNLIKELY(!!compileError))
         return checkedReturn(callFrame->vm().throwException(callFrame, compileError));
     EvalCodeBlock* codeBlock = eval->codeBlock();
+
+    // We can't declare a "var"/"function" that overwrites a global "let"/"const"/"class" in a sloppy-mode eval.
+    if (variableObject->isGlobalObject() && !eval->isStrictMode() && (numVariables || numFunctions)) {
+        JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalObject*>(variableObject)->globalLexicalEnvironment();
+        for (unsigned i = 0; i < numVariables; ++i) {
+            const Identifier& ident = codeBlock->variable(i);
+            PropertySlot slot(globalLexicalEnvironment);
+            if (JSGlobalLexicalEnvironment::getOwnPropertySlot(globalLexicalEnvironment, callFrame, ident, slot)) {
+                return checkedReturn(callFrame->vm().throwException(callFrame,
+                    createTypeError(callFrame, makeString("Can't create duplicate global variable in eval: '", String(ident.impl()), "'"))));
+            }
+        }
+
+        for (int i = 0; i < numFunctions; ++i) {
+            FunctionExecutable* function = codeBlock->functionDecl(i);
+            PropertySlot slot(globalLexicalEnvironment);
+            if (JSGlobalLexicalEnvironment::getOwnPropertySlot(globalLexicalEnvironment, callFrame, function->name(), slot)) {
+                return checkedReturn(callFrame->vm().throwException(callFrame,
+                    createTypeError(callFrame, makeString("Can't create duplicate global variable in eval: '", String(function->name().impl()), "'"))));
+            }
+        }
+    }
 
     if (numVariables || numFunctions) {
         BatchedTransitionOptimizer optimizer(vm, variableObject);
@@ -1184,6 +1215,54 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->didExecute(callFrame, eval->sourceURL(), eval->firstLine(), eval->startColumn());
+
+    return checkedReturn(result);
+}
+
+JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* callFrame, JSModuleEnvironment* scope)
+{
+    VM& vm = *scope->vm();
+    SamplingScope samplingScope(this);
+
+    ASSERT(scope->vm() == &callFrame->vm());
+    ASSERT(!vm.exception());
+    ASSERT(!vm.isCollectorBusy());
+    RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
+    if (vm.isCollectorBusy())
+        return jsNull();
+
+    VMEntryScope entryScope(vm, scope->globalObject());
+    if (!vm.isSafeToRecurse())
+        return checkedReturn(throwStackOverflowError(callFrame));
+
+    JSObject* compileError = executable->prepareForExecution(callFrame, nullptr, scope, CodeForCall);
+    if (UNLIKELY(!!compileError))
+        return checkedReturn(callFrame->vm().throwException(callFrame, compileError));
+    ModuleProgramCodeBlock* codeBlock = executable->codeBlock();
+
+    if (UNLIKELY(vm.watchdog && vm.watchdog->didFire(callFrame)))
+        return throwTerminatedExecutionException(callFrame);
+
+    ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
+
+    // The |this| of the module is always `undefined`.
+    // http://www.ecma-international.org/ecma-262/6.0/#sec-module-environment-records-hasthisbinding
+    // http://www.ecma-international.org/ecma-262/6.0/#sec-module-environment-records-getthisbinding
+    ProtoCallFrame protoCallFrame;
+    protoCallFrame.init(codeBlock, JSCallee::create(vm, scope->globalObject(), scope), jsUndefined(), 1);
+
+    if (LegacyProfiler* profiler = vm.enabledProfiler())
+        profiler->willExecute(callFrame, executable->sourceURL(), executable->firstLine(), executable->startColumn());
+
+    // Execute the code:
+    JSValue result;
+    {
+        SamplingTool::CallRecord callRecord(m_sampler.get());
+        result = executable->generatedJITCode()->execute(&vm, &protoCallFrame);
+    }
+
+    if (LegacyProfiler* profiler = vm.enabledProfiler())
+        profiler->didExecute(callFrame, executable->sourceURL(), executable->firstLine(), executable->startColumn());
 
     return checkedReturn(result);
 }

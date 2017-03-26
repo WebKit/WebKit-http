@@ -420,8 +420,10 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
 #endif
     preferences._allowFileAccessFromFileURLs = YES;
     preferences._javaScriptRuntimeFlags = 0;
-    if (isUnderTest())
+    if (isUnderTest()) {
         preferences._hiddenPageDOMTimerThrottlingEnabled = NO;
+        preferences._pageVisibilityBasedProcessSuppressionEnabled = NO;
+    }
 
     [configuration setProcessPool: ::WebKit::wrapper(inspectorProcessPool())];
     [configuration _setGroupIdentifier:inspectorPageGroupIdentifier()];
@@ -547,7 +549,7 @@ void WebInspectorProxy::platformDidClose()
 {
     if (m_inspectorWindow) {
         [m_inspectorWindow setDelegate:nil];
-        [m_inspectorWindow orderOut:nil];
+        [m_inspectorWindow close];
         m_inspectorWindow = nil;
     }
 
@@ -570,7 +572,7 @@ void WebInspectorProxy::platformHide()
 
     if (m_inspectorWindow) {
         [m_inspectorWindow setDelegate:nil];
-        [m_inspectorWindow orderOut:nil];
+        [m_inspectorWindow close];
         m_inspectorWindow = nil;
     }
 }
@@ -788,7 +790,7 @@ void WebInspectorProxy::platformAttach()
 
     if (m_inspectorWindow) {
         [m_inspectorWindow setDelegate:nil];
-        [m_inspectorWindow orderOut:nil];
+        [m_inspectorWindow close];
         m_inspectorWindow = nil;
     }
 

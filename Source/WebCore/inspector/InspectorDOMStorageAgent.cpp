@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,31 +54,26 @@ using namespace Inspector;
 
 namespace WebCore {
 
-InspectorDOMStorageAgent::InspectorDOMStorageAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent)
-    : InspectorAgentBase(ASCIILiteral("DOMStorage"), instrumentingAgents)
+InspectorDOMStorageAgent::InspectorDOMStorageAgent(WebAgentContext& context, InspectorPageAgent* pageAgent)
+    : InspectorAgentBase(ASCIILiteral("DOMStorage"), context)
+    , m_frontendDispatcher(std::make_unique<Inspector::DOMStorageFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(Inspector::DOMStorageBackendDispatcher::create(context.backendDispatcher, this))
     , m_pageAgent(pageAgent)
-    , m_enabled(false)
 {
-    m_instrumentingAgents->setInspectorDOMStorageAgent(this);
+    m_instrumentingAgents.setInspectorDOMStorageAgent(this);
 }
 
 InspectorDOMStorageAgent::~InspectorDOMStorageAgent()
 {
-    m_instrumentingAgents->setInspectorDOMStorageAgent(nullptr);
-    m_instrumentingAgents = nullptr;
+    m_instrumentingAgents.setInspectorDOMStorageAgent(nullptr);
 }
 
-void InspectorDOMStorageAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorDOMStorageAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<Inspector::DOMStorageFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = Inspector::DOMStorageBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorDOMStorageAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     ErrorString unused;
     disable(unused);
 }
@@ -165,7 +161,7 @@ RefPtr<Inspector::Protocol::DOMStorage::StorageId> InspectorDOMStorageAgent::sto
 
 void InspectorDOMStorageAgent::didDispatchDOMStorageEvent(const String& key, const String& oldValue, const String& newValue, StorageType storageType, SecurityOrigin* securityOrigin, Page*)
 {
-    if (!m_frontendDispatcher || !m_enabled)
+    if (!m_enabled)
         return;
 
     RefPtr<Inspector::Protocol::DOMStorage::StorageId> id = storageId(securityOrigin, storageType == LocalStorage);
@@ -200,8 +196,8 @@ RefPtr<StorageArea> InspectorDOMStorageAgent::findStorageArea(ErrorString& error
     }
 
     if (!isLocalStorage)
-        return m_pageAgent->page()->sessionStorage()->storageArea(targetFrame->document()->securityOrigin());
-    return m_pageAgent->page()->storageNamespaceProvider().localStorageArea(*targetFrame->document());
+        return m_pageAgent->page().sessionStorage()->storageArea(targetFrame->document()->securityOrigin());
+    return m_pageAgent->page().storageNamespaceProvider().localStorageArea(*targetFrame->document());
 }
 
 } // namespace WebCore

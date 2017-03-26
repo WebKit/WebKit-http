@@ -144,6 +144,11 @@ Controller.prototype = {
         }
     },
 
+    get idiom()
+    {
+        return "apple";
+    },
+
     UIString: function(developmentString, replaceString, replacementString)
     {
         var localized = UIStringTable[developmentString];
@@ -336,10 +341,10 @@ Controller.prototype = {
         this.listenFor(panel, 'click', this.handlePanelClick);
         this.listenFor(panel, 'dblclick', this.handlePanelClick);
         this.listenFor(panel, 'dragstart', this.handlePanelDragStart);
-        
+
         var panelBackgroundContainer = this.controls.panelBackgroundContainer = document.createElement('div');
         panelBackgroundContainer.setAttribute('pseudo', '-webkit-media-controls-panel-background-container');
-        
+
         var panelTint = this.controls.panelTint = document.createElement('div');
         panelTint.setAttribute('pseudo', '-webkit-media-controls-panel-tint');
         this.listenFor(panelTint, 'mousedown', this.handlePanelMouseDown);
@@ -401,7 +406,7 @@ Controller.prototype = {
 
         this.timelineContextName = "_webkit-media-controls-timeline-" + this.host.generateUUID();
         timeline.style.backgroundImage = '-webkit-canvas(' + this.timelineContextName + ')';
-        
+
         var thumbnailTrack = this.controls.thumbnailTrack = document.createElement('div');
         thumbnailTrack.classList.add(this.ClassNames.thumbnailTrack);
 
@@ -438,10 +443,10 @@ Controller.prototype = {
         var volumeBox = this.controls.volumeBox = document.createElement('div');
         volumeBox.setAttribute('pseudo', '-webkit-media-controls-volume-slider-container');
         volumeBox.classList.add(this.ClassNames.volumeBox);
-        
+
         var volumeBoxBackground = this.controls.volumeBoxBackground = document.createElement('div');
         volumeBoxBackground.setAttribute('pseudo', '-webkit-media-controls-volume-slider-container-background');
-        
+
         var volumeBoxTint = this.controls.volumeBoxTint = document.createElement('div');
         volumeBoxTint.setAttribute('pseudo', '-webkit-media-controls-volume-slider-container-tint');
 
@@ -458,7 +463,7 @@ Controller.prototype = {
 
         this.volumeContextName = "_webkit-media-controls-volume-" + this.host.generateUUID();
         volume.style.backgroundImage = '-webkit-canvas(' + this.volumeContextName + ')';
-        
+
         var captionButton = this.controls.captionButton = document.createElement('button');
         captionButton.setAttribute('pseudo', '-webkit-media-controls-toggle-closed-captions-button');
         captionButton.setAttribute('aria-label', this.UIString('Captions'));
@@ -483,10 +488,10 @@ Controller.prototype = {
 
         var inlinePlaybackPlaceholderText = this.controls.inlinePlaybackPlaceholderText = document.createElement('div');
         inlinePlaybackPlaceholderText.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-text');
-        
+
         var inlinePlaybackPlaceholderTextTop = this.controls.inlinePlaybackPlaceholderTextTop = document.createElement('p');
         inlinePlaybackPlaceholderTextTop.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-text-top');
-        
+
         var inlinePlaybackPlaceholderTextBottom = this.controls.inlinePlaybackPlaceholderTextBottom = document.createElement('p');
         inlinePlaybackPlaceholderTextBottom.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-text-bottom');
 
@@ -649,7 +654,7 @@ Controller.prototype = {
             this.controls.statusDisplay.innerText = this.UIString('Error');
         else if (this.isLive && this.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)
             this.controls.statusDisplay.innerText = this.UIString('Live Broadcast');
-        else if (this.video.networkState === HTMLMediaElement.NETWORK_LOADING)
+        else if (!this.isPlayable() && this.video.networkState === HTMLMediaElement.NETWORK_LOADING)
             this.controls.statusDisplay.innerText = this.UIString('Loading');
         else
             this.controls.statusDisplay.innerText = '';
@@ -2091,9 +2096,79 @@ Controller.prototype = {
 
     getCurrentControlsStatus: function ()
     {
-        return JSON.stringify({
+        var result = {
+            idiom: this.idiom,
             status: "ok"
+        };
+
+        var elements = [
+            {
+                name: "Show Controls",
+                object: this.showControlsButton,
+                extraProperties: ["hidden"]
+            },
+            {
+                name: "Status Display",
+                object: this.controls.statusDisplay,
+                styleValues: ["display"],
+                extraProperties: ["textContent"]
+            },
+            {
+                name: "Play Button",
+                object: this.controls.playButton
+            },
+            {
+                name: "Rewind Button",
+                object: this.controls.rewindButton
+            },
+            {
+                name: "Timeline Box",
+                object: this.controls.timelineBox
+            },
+            {
+                name: "Mute Box",
+                object: this.controls.muteBox
+            },
+            {
+                name: "Fullscreen Button",
+                object: this.controls.fullscreenButton
+            },
+            {
+                name: "AppleTV Device Picker",
+                object: this.controls.wirelessTargetPicker,
+                styleValues: ["display"],
+                extraProperties: ["hidden"],
+            },
+        ];
+
+        elements.forEach(function (element) {
+            var obj = element.object;
+            delete element.object;
+
+            element.computedStyle = {};
+            if (element.styleValues) {
+                var computedStyle = window.getComputedStyle(obj);
+                element.styleValues.forEach(function (propertyName) {
+                    element.computedStyle[propertyName] = computedStyle[propertyName];
+                });
+                delete element.styleValues;
+            }
+
+            element.bounds = obj.getBoundingClientRect();
+            element.className = obj.className;
+            element.ariaLabel = obj.getAttribute('aria-label');
+
+            if (element.extraProperties) {
+                element.extraProperties.forEach(function (property) {
+                    element[property] = obj[property];
+                });
+                delete element.extraProperties;
+            }
         });
+
+        result.elements = elements;
+
+        return JSON.stringify(result);
     }
 
 };

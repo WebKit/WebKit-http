@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2012, 2013, 2014, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Patrick Gansterer <paroga@paroga.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,6 @@
 #include "JSPropertyNameEnumerator.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
-#include "RepatchBuffer.h"
 #include "SlowPathCall.h"
 #include "TypeProfilerLog.h"
 #include "VirtualRegister.h"
@@ -148,7 +147,7 @@ void JIT::emit_op_mov(Instruction* currentInstruction)
 void JIT::emit_op_end(Instruction* currentInstruction)
 {
     ASSERT(returnValueGPR != callFrameRegister);
-    emitLoad(currentInstruction[1].u.operand, regT1, regT0);
+    emitLoad(currentInstruction[1].u.operand, regT1, returnValueGPR);
     emitFunctionEpilogue();
     ret();
 }
@@ -165,9 +164,9 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
     size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
     MarkedAllocator* allocator = &m_vm->heap.allocatorForObjectWithoutDestructor(allocationSize);
 
-    RegisterID resultReg = regT0;
+    RegisterID resultReg = returnValueGPR;
     RegisterID allocatorReg = regT1;
-    RegisterID scratchReg = regT2;
+    RegisterID scratchReg = regT3;
 
     move(TrustedImmPtr(allocator), allocatorReg);
     emitAllocateJSObject(allocatorReg, TrustedImmPtr(structure), resultReg, scratchReg);
@@ -804,8 +803,6 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
     move(TrustedImmPtr(m_vm), regT3);
     // operationThrow returns the callFrame for the handler.
     load32(Address(regT3, VM::callFrameForThrowOffset()), callFrameRegister);
-    load32(Address(regT3, VM::vmEntryFrameForThrowOffset()), regT0);
-    store32(regT0, Address(regT3, VM::topVMEntryFrameOffset()));
 
     addPtr(TrustedImm32(stackPointerOffsetFor(codeBlock()) * sizeof(Register)), callFrameRegister, stackPointerRegister);
 
@@ -1065,9 +1062,8 @@ void JIT::privateCompileHasIndexedProperty(ByValInfo* byValInfo, ReturnAddressPt
         m_codeBlock, patchBuffer,
         ("Baseline has_indexed_property stub for %s, return point %p", toCString(*m_codeBlock).data(), returnAddress.value()));
     
-    RepatchBuffer repatchBuffer(m_codeBlock);
-    repatchBuffer.relink(byValInfo->badTypeJump, CodeLocationLabel(byValInfo->stubRoutine->code().code()));
-    repatchBuffer.relinkCallerToFunction(returnAddress, FunctionPtr(operationHasIndexedPropertyGeneric));
+    MacroAssembler::repatchJump(byValInfo->badTypeJump, CodeLocationLabel(byValInfo->stubRoutine->code().code()));
+    MacroAssembler::repatchCall(CodeLocationCall(MacroAssemblerCodePtr(returnAddress)), FunctionPtr(operationHasIndexedPropertyGeneric));
 }
 
 void JIT::emit_op_has_indexed_property(Instruction* currentInstruction)

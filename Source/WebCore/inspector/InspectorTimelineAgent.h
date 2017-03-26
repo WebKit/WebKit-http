@@ -1,6 +1,7 @@
 /*
 * Copyright (C) 2012 Google Inc. All rights reserved.
 * Copyright (C) 2014 University of Washington.
+* Copyright (C) 2015 Apple Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -53,7 +54,6 @@ class FloatQuad;
 class Frame;
 class InspectorClient;
 class InspectorPageAgent;
-class InstrumentingAgents;
 class IntRect;
 class URL;
 class Page;
@@ -117,10 +117,10 @@ class InspectorTimelineAgent final
 public:
     enum InspectorType { PageInspector, WorkerInspector };
 
-    InspectorTimelineAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorType, InspectorClient*);
+    InspectorTimelineAgent(WebAgentContext&, InspectorPageAgent*, InspectorType, InspectorClient*);
     virtual ~InspectorTimelineAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     virtual void start(ErrorString&, const int* maxCallStackDepth = nullptr) override;
@@ -229,21 +229,19 @@ private:
     void clearRecordStack();
 
     void localToPageQuad(const RenderObject&, const LayoutRect&, FloatQuad*);
-    Page* page();
-
-    InspectorPageAgent* m_pageAgent;
-    PageScriptDebugServer* m_scriptDebugServer { nullptr };
 
     std::unique_ptr<Inspector::TimelineFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::TimelineBackendDispatcher> m_backendDispatcher;
+    InspectorPageAgent* m_pageAgent;
+
+    PageScriptDebugServer* m_scriptDebugServer { nullptr };
+    InspectorClient* m_client { nullptr };
 
     Vector<TimelineRecordEntry> m_recordStack;
-
     int m_id { 1 };
     int m_callStackDepth { 0 };
     int m_maxCallStackDepth { 5 };
     InspectorType m_inspectorType;
-    InspectorClient* m_client;
 
     Vector<TimelineRecordEntry> m_pendingConsoleProfileRecords;
 

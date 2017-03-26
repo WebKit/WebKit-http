@@ -1,3 +1,339 @@
+2015-09-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r189189): Missing breakpoint context menu for debugger sidebar tree elements
+        https://bugs.webkit.org/show_bug.cgi?id=148651
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Create BreakpointPopoverController singleton, expose as public property of global WebInspector object.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.oncontextmenu):
+        Use BreakpointPopoverController singleton.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        Don't create BreakpointPopoverController instance.
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu):
+        Use BreakpointPopoverController singleton.
+
+2015-09-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix inspector/codemirror tests.
+
+        Rubber-stamped by Brian Burg.
+
+        * UserInterface/Test.html:
+        Reorder includes to be more like Main.html. This ensures that CodeMirror
+        resources are loaded before Inspector sources use it, like CodeMirrorAdditions
+        which gets merged into TestCombined.js.
+
+2015-09-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Move PrettyPrinting tests into LayoutTests
+        https://bugs.webkit.org/show_bug.cgi?id=148698
+
+        Reviewed by Timothy Hatcher.
+
+        * Tools/PrettyPrinting/index.html:
+        Modify the relative path to the tests which are now in LayoutTests.
+
+        * UserInterface/Test.html:
+        Load CodeMirror and related resources for Formatting.
+
+2015-09-06  Andy Estes  <aestes@apple.com>
+
+        WebKit.xcworkspace should be be able to build iOS platforms
+        https://bugs.webkit.org/show_bug.cgi?id=148881
+
+        Reviewed by Daniel Bates.
+
+        Since we don't want to create platform-specific schemes, all projects in the workspace's schemes need to build
+        for all supported platforms.
+
+        * Configurations/Base.xcconfig: Included iphoneos and iphonesimulator in SUPPORTED_PLATFORMS.
+        * Configurations/WebInspectorUIFramework.xcconfig: Skipped installing on iOS.
+
+2015-09-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: combine Test.html resources to make tests run faster
+        https://bugs.webkit.org/show_bug.cgi?id=148726
+
+        Reviewed by Timothy Hatcher.
+
+        In an attempt to make inspector tests run faster, always combine resources
+        on the Test.html page. This cuts down from 110+ resource loads to 5 loads.
+
+        To avoid name clashes, add the 'Combined' suffix to files that would clash
+        with uncombined Test resources, and add the 'Test' prefix when combining
+        or minifying files that would clash with production minification. So, it
+        would be possible for Main.html and Test.html to have different minified
+        versions of CodeMirror or other external libraries if they use different
+        subsets.
+
+        Combining is unlikely to make debugging tests more difficult, since almost
+        all test code is marshalled and eval'd into existence anyway.
+
+        * Configurations/WebInspectorUIFramework.xcconfig:
+        * Scripts/combine-resources.pl: Drive-by spelling.
+        (concatenateFiles):
+        (concatinateFiles): Deleted.
+        * Scripts/copy-user-interface-resources-dryrun.rb:
+        * Scripts/copy-user-interface-resources.pl:
+
+            Drive-by spelling. Add a new code path for combining Test resources, which
+            doesn't require minification or handling CSS, images, or most externals.
+
+        * WebInspectorUI.vcxproj/build-webinspectorui.pl:
+
+            Always combine Test.html, but also ditto everything into place for
+            engineering builds.
+
+2015-09-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Test Runtime.saveResult and $n values
+        https://bugs.webkit.org/show_bug.cgi?id=148837
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+        Initialize the dump logging function different if we are in tests or not.
+        When in tests, using console.log as well as dumping system activity to
+        the system console results in an infinite loop of logging!
+
+        (InspectorBackendClass.prototype.dispatch):
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback):
+        Use the logging function we figured out earlier.
+
+2015-09-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Clean up and modernize DOMTreeManager
+        https://bugs.webkit.org/show_bug.cgi?id=148821
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype.requestDocument.onDocumentAvailable):
+        (WebInspector.DOMTreeManager.prototype.requestDocument):
+        (WebInspector.DOMTreeManager.prototype.pushNodeByPathToFrontend):
+        (WebInspector.DOMTreeManager.prototype._wrapClientCallback):
+        (WebInspector.DOMTreeManager.prototype._attributeModified):
+        (WebInspector.DOMTreeManager.prototype._attributeRemoved):
+        (WebInspector.DOMTreeManager.prototype._inlineStyleInvalidated):
+        (WebInspector.DOMTreeManager.prototype._loadNodeAttributes):
+        (WebInspector.DOMTreeManager.prototype.cancelSearch):
+        (WebInspector.DOMTreeManager.prototype.querySelector):
+        (WebInspector.DOMTreeManager.prototype.querySelectorAll):
+        (WebInspector.DOMTreeManager.prototype.highlightDOMNode):
+        (WebInspector.DOMTreeManager.prototype._buildHighlightConfig):
+        Cleanup and modernize where appropriate.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel.prototype.performSearch):
+        Callback is now required.
+
+2015-09-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Render Frames "Other" task filter checkbox misaligned with text
+        https://bugs.webkit.org/show_bug.cgi?id=148788
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ChartDetailsSectionRow.css:
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > .color-key):
+        Adjust "fake" checkbox margin to align with label text.
+
+2015-09-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expand Console domain test coverage
+        https://bugs.webkit.org/show_bug.cgi?id=148740
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        Add a few helpers for checking the RemoteObject type.
+
+2015-09-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189241.
+        https://bugs.webkit.org/show_bug.cgi?id=148703
+
+        These tests crash with assertions (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Move PrettyPrinting tests into LayoutTests"
+        https://bugs.webkit.org/show_bug.cgi?id=148698
+        http://trac.webkit.org/changeset/189241
+
+2015-09-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Move PrettyPrinting tests into LayoutTests
+        https://bugs.webkit.org/show_bug.cgi?id=148698
+
+        Reviewed by Timothy Hatcher.
+
+        * Tools/PrettyPrinting/index.html:
+        Modify the relative path to the tests which are now in LayoutTests.
+
+        * UserInterface/Test.html:
+        Load CodeMirror and related resources for Formatting.
+
+2015-09-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r187873): Location column icon is missing in timeline data grids
+        https://bugs.webkit.org/show_bug.cgi?id=148691
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.createCellContent):
+        Added "icon" class name. Was using removed class variable (class="undefined").
+
+2015-09-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Show layout/paint pixel area in the Rendering Frames tree outline
+        https://bugs.webkit.org/show_bug.cgi?id=148674
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New UI string.
+
+        * UserInterface/Views/RenderingFrameTimelineView.css:
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .navigation-sidebar-panel-content-tree-outline.rendering-frame .item:not(.paint-record):not(.layout-record) .subtitle):
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .navigation-sidebar-panel-content-tree-outline.rendering-frame .item .subtitle): Deleted.
+        Show subtitles for layout and paint records only. We still want to hide script record subtitles,
+        since that information is already in the 'Location' column.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype._processPendingRecords):
+        Add tree element subtitle for LayoutTimelineRecords that specify width and height.
+
+2015-09-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Reorder columns in the Rendering Frames data grid by importance
+        https://bugs.webkit.org/show_bug.cgi?id=148672
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+        Updated column order, rearranged the column object setup code to match.
+
+2015-09-01  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: rewrite inspector/console/command-line-api.html to use AsyncTestSuite
+        https://bugs.webkit.org/show_bug.cgi?id=148637
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Base/Object.js:
+        (WebInspector.Object.singleFireEventListener):
+        (WebInspector.Object.singleFireEventListener.let.wrappedCallback): Arrow.
+
+2015-09-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: New rule button in the style sidebar is blurry and too dark
+        https://bugs.webkit.org/show_bug.cgi?id=148108
+
+        Reviewed by Timothy Hatcher.
+
+        Added support for Plus and Minus icons on non-retina screens.
+        Also removed some CSS rules that no longer apply to anything.
+
+        * UserInterface/Images/Minus.svg:
+        * UserInterface/Images/NewTabPlus.svg:
+        * UserInterface/Images/Plus.svg: Removed.
+        * UserInterface/Images/Plus13.svg: Copied from Source/WebInspectorUI/UserInterface/Images/Plus.svg.
+        * UserInterface/Images/Plus15.svg: Copied from Source/WebInspectorUI/UserInterface/Images/Plus.svg.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content + .options-container):
+        (.sidebar > .panel.details.css-style > .content + .options-container > .new-rule):
+
+        * UserInterface/Views/ProbeDetailsSidebarPanel.css:
+        (.details-section.probe-set .options > .probe-add):
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules .new-rule): Deleted.
+        (.sidebar > .panel.details.css-style .rules > *:first-child:matches(.new-rule)): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .new-rule): Deleted.
+        (.sidebar > .panel.details.css-style > .content:not(.filter-in-progress) > .rules > .new-rule + .style-declaration-section): Deleted.
+        (.sidebar > .panel.details.css-style > .content:not(.filter-in-progress) > .rules > .new-rule + .label): Deleted.
+        (.sidebar > .panel.details.css-style .rules .new-rule img): Deleted.
+        (.sidebar > .panel.details.css-style .rules .new-rule:hover): Deleted.
+        (.sidebar > .panel.details.css-style .rules .new-rule:active): Deleted.
+        (@media (-webkit-min-device-pixel-ratio: 2)): Deleted.
+        Removed CSS rules that no longer apply.  The new rule button was moved to the Styles sidebar.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.css:
+        (.details-section.watch-expressions .options > .watch-expression-add):
+
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar > .item.new-tab-button > .icon):
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css:
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-controls > div):
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor):
+
+        * UserInterface/Views/VisualStyleSelectorSection.js:
+        (WebInspector.VisualStyleSelectorSection):
+
+2015-09-01  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add TestSuite hooks for per-testcase setup and teardown actions
+        https://bugs.webkit.org/show_bug.cgi?id=148641
+
+        Reviewed by Timothy Hatcher.
+
+        It should be possible to run setup and teardown actions for each test case.
+        The use case here is to add listeners, set up testcase-specific state, etc.
+        To match how test functions work in each suite, the sync and async implementations
+        take functions with no arguments and(resolve, reject), respectively.
+
+        * UserInterface/Test/TestSuite.js:
+        (TestSuite.prototype.addTestCase):
+        (TestSuite.messageFromThrownObject):
+        (TestSuite):
+        (AsyncTestSuite.prototype.runTestCases): Stick the extra functions in the chain.
+        (AsyncTestSuite):
+        (SyncTestSuite.prototype.runTestCases):
+        (SyncTestSuite):
+
+2015-09-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Visual style editor shouldn't allow alpha characters in numeric input fields
+        https://bugs.webkit.org/show_bug.cgi?id=148580
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox):
+        Added input element "changed" handler, renamed "keyup" handler to match "keydown" handler.
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputChanged):
+        Validate input in response to changed event.
+
+2015-08-31  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Command-Enter for selected JS in Debugger/Sources shouldn't change the focus
+        https://bugs.webkit.org/show_bug.cgi?id=148613
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleTabContentView.js:
+        (WebInspector.ConsoleTabContentView.prototype.shown):
+        Always focus on the console prompt when the console tab get selected.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.shown): Deleted.
+
 2015-08-31  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Debugger Popovers should work for object literal shorthand variables
