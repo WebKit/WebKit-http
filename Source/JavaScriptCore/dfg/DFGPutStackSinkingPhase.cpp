@@ -358,7 +358,7 @@ public:
                 if (verbose)
                     dataLog("Adding Phi for ", operand, " at ", pointerDump(block), "\n");
                 
-                Node* phiNode = m_graph.addNode(SpecHeapTop, Phi, NodeOrigin());
+                Node* phiNode = m_graph.addNode(SpecHeapTop, Phi, block->at(0)->origin.withInvalidExit());
                 phiNode->mergeFlags(resultFor(format));
                 return phiNode;
             });
@@ -461,7 +461,7 @@ public:
                         insertionSet.insertNode(
                             nodeIndex, SpecNone, PutStack, node->origin,
                             OpInfo(m_graph.m_stackAccessData.add(operand, format)),
-                            Edge(incoming, useKindFor(format)));
+                            Edge(incoming, uncheckedUseKindFor(format)));
                     
                         deferred.operand(operand) = DeadFlush;
                     };

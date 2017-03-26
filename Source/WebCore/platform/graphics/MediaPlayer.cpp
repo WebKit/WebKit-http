@@ -141,7 +141,7 @@ public:
 
     void setSize(const IntSize&) override { }
 
-    void paint(GraphicsContext*, const FloatRect&) override { }
+    void paint(GraphicsContext&, const FloatRect&) override { }
 
     bool canLoadPoster() const override { return false; }
     void setPoster(const String&) override { }
@@ -782,12 +782,12 @@ void MediaPlayer::setPreload(MediaPlayer::Preload preload)
     m_private->setPreload(preload);
 }
 
-void MediaPlayer::paint(GraphicsContext* p, const FloatRect& r)
+void MediaPlayer::paint(GraphicsContext& p, const FloatRect& r)
 {
     m_private->paint(p, r);
 }
 
-void MediaPlayer::paintCurrentFrameInContext(GraphicsContext* p, const FloatRect& r)
+void MediaPlayer::paintCurrentFrameInContext(GraphicsContext& p, const FloatRect& r)
 {
     m_private->paintCurrentFrameInContext(p, r);
 }

@@ -133,7 +133,7 @@ HRESULT FrameLoadDelegate::didStartProvisionalLoadForFrame(_In_opt_ IWebView*, _
     return S_OK; 
 }
 
-HRESULT FrameLoadDelegate::didReceiveServerRedirectForProvisionalLoadForFrame(_In_opt_ IWebView*, _In_opt_ IWebFrame*)
+HRESULT FrameLoadDelegate::didReceiveServerRedirectForProvisionalLoadForFrame(_In_opt_ IWebView*, _In_opt_ IWebFrame* frame)
 { 
     if (!done && gTestRunner->dumpFrameLoadCallbacks())
         printf("%s - didReceiveServerRedirectForProvisionalLoadForFrame\n", descriptionSuitableForTestResult(frame).c_str());
@@ -268,7 +268,7 @@ HRESULT FrameLoadDelegate::didFailLoadWithError(_In_opt_ IWebView*, _In_opt_ IWe
     return S_OK;
 }
 
-HRESULT FrameLoadDelegate::willPerformClientRedirectToURL(_In_opt_ IWebView*, _In_ BSTR url, double /*delaySeconds*/, DATE /*fireDate*/, _In_opt_ IWebFrame*)
+HRESULT FrameLoadDelegate::willPerformClientRedirectToURL(_In_opt_ IWebView*, _In_ BSTR url, double /*delaySeconds*/, DATE /*fireDate*/, _In_opt_ IWebFrame* frame)
 {
     if (!done && gTestRunner->dumpFrameLoadCallbacks())
         printf("%s - willPerformClientRedirectToURL: %S \n", descriptionSuitableForTestResult(frame).c_str(),

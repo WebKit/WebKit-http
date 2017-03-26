@@ -68,6 +68,16 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 }
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
+void clearSurface(cairo_surface_t* surface)
+{
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
+        return;
+
+    RefPtr<cairo_t> cr = adoptRef(cairo_create(surface));
+    cairo_set_operator(cr.get(), CAIRO_OPERATOR_CLEAR);
+    cairo_paint(cr.get());
+}
+
 PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t& texture)
 {
     GLContext::sharingContext()->makeContextCurrent();
@@ -91,7 +101,9 @@ PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t
     // Thread-awareness is a huge performance hit on non-Intel drivers.
     cairo_gl_device_set_thread_aware(device, FALSE);
 
-    return adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, texture, size.width(), size.height()));
+    auto surface = adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, texture, size.width(), size.height()));
+    clearSurface(surface.get());
+    return surface;
 }
 #endif
 
@@ -105,9 +117,12 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
         return;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-    if (renderingMode == Accelerated)
+    if (renderingMode == Accelerated) {
         m_data.m_surface = createCairoGLSurface(size, m_data.m_texture);
-    else
+        if (!m_data.m_surface || cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
+            renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
+    }
+    if (renderingMode == Unaccelerated)
 #else
     ASSERT_UNUSED(renderingMode, renderingMode != Accelerated);
 #endif
@@ -126,9 +141,9 @@ ImageBuffer::~ImageBuffer()
 {
 }
 
-GraphicsContext* ImageBuffer::context() const
+GraphicsContext& ImageBuffer::context() const
 {
-    return m_data.m_context.get();
+    return *m_data.m_context;
 }
 
 RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
@@ -145,20 +160,20 @@ BackingStoreCopy ImageBuffer::fastCopyImageMode()
     return DontCopyBackingStore;
 }
 
-void ImageBuffer::clip(GraphicsContext* context, const FloatRect& maskRect) const
+void ImageBuffer::clip(GraphicsContext& context, const FloatRect& maskRect) const
 {
-    context->platformContext()->pushImageMask(m_data.m_surface.get(), maskRect);
+    context.platformContext()->pushImageMask(m_data.m_surface.get(), maskRect);
 }
 
-void ImageBuffer::draw(GraphicsContext* destinationContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
+void ImageBuffer::draw(GraphicsContext& destinationContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
     CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
 {
-    BackingStoreCopy copyMode = destinationContext == context() ? CopyBackingStore : DontCopyBackingStore;
+    BackingStoreCopy copyMode = &destinationContext == &context() ? CopyBackingStore : DontCopyBackingStore;
     RefPtr<Image> image = copyImage(copyMode);
-    destinationContext->drawImage(image.get(), styleColorSpace, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription(), useLowQualityScale));
+    destinationContext.drawImage(image.get(), styleColorSpace, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription(), useLowQualityScale));
 }
 
-void ImageBuffer::drawPattern(GraphicsContext* context, const FloatRect& srcRect, const AffineTransform& patternTransform,
+void ImageBuffer::drawPattern(GraphicsContext& context, const FloatRect& srcRect, const AffineTransform& patternTransform,
     const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode)
 {
     if (RefPtr<Image> image = copyImage(DontCopyBackingStore))
@@ -380,7 +395,7 @@ String ImageBuffer::toDataURL(const String& mimeType, const double*, CoordinateS
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
-    cairo_surface_t* image = cairo_get_target(context()->platformContext()->cr());
+    cairo_surface_t* image = cairo_get_target(context().platformContext()->cr());
 
     Vector<char> encodedImage;
     if (!image || !encodeImage(image, mimeType, &encodedImage))

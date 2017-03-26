@@ -813,7 +813,7 @@
     <ClCompile Include="..\fileapi\WebKitBlobBuilder.cpp">
       <Filter>page</Filter>
     </ClCompile>
-    <ClCompile Include="..\page\WheelEventDeltaTracker.cpp">
+    <ClCompile Include="..\page\WheelEventDeltaFilter.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\WheelEventTestTrigger.cpp">
@@ -3333,7 +3333,7 @@
     <ClCompile Include="..\dom\StyledElement.cpp">
       <Filter>dom</Filter>
     </ClCompile>
-    <ClCompile Include="..\dom\TagNodeList.cpp">
+    <ClCompile Include="..\dom\TagCollection.cpp">
       <Filter>dom</Filter>
     </ClCompile>
     <ClCompile Include="..\dom\Text.cpp">
@@ -4429,9 +4429,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\ReadableJSStream.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSRequestAnimationFrameCallbackCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSSQLResultSetRowListCustom.cpp">
@@ -7844,7 +7841,7 @@
     <ClInclude Include="..\page\WebKitPoint.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClInclude Include="..\page\WheelEventDeltaTracker.h">
+    <ClInclude Include="..\page\WheelEventDeltaFilter.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\WheelEventTestTrigger.h">
@@ -10460,7 +10457,7 @@
     <ClInclude Include="..\dom\StyledElement.h">
       <Filter>dom</Filter>
     </ClInclude>
-    <ClInclude Include="..\dom\TagNodeList.h">
+    <ClInclude Include="..\dom\TagCollection.h">
       <Filter>dom</Filter>
     </ClInclude>
     <ClInclude Include="..\dom\TemplateContentDocumentFragment.h">

@@ -234,11 +234,15 @@ void FindController::findString(const String& string, FindOptions options, unsig
     else
         found = m_webPage->corePage()->findString(string, coreOptions);
 
-    if (found && !foundStringStartsAfterSelection) {
-        if (options & FindOptionsBackwards)
-            m_foundStringMatchIndex--;
-        else
-            m_foundStringMatchIndex++;
+    if (found) {
+        didFindString();
+
+        if (!foundStringStartsAfterSelection) {
+            if (options & FindOptionsBackwards)
+                m_foundStringMatchIndex--;
+            else
+                m_foundStringMatchIndex++;
+        }
     }
 
     RefPtr<WebPage> protectedWebPage = m_webPage;
@@ -268,7 +272,7 @@ void FindController::getImageForFindMatch(uint32_t matchIndex)
 {
     if (matchIndex >= m_findMatches.size())
         return;
-    Frame* frame = m_findMatches[matchIndex]->startContainer()->document().frame();
+    Frame* frame = m_findMatches[matchIndex]->startContainer().document().frame();
     if (!frame)
         return;
 
@@ -295,7 +299,7 @@ void FindController::selectFindMatch(uint32_t matchIndex)
 {
     if (matchIndex >= m_findMatches.size())
         return;
-    Frame* frame = m_findMatches[matchIndex]->startContainer()->document().frame();
+    Frame* frame = m_findMatches[matchIndex]->startContainer().document().frame();
     if (!frame)
         return;
     frame->selection().setSelection(VisibleSelection(*m_findMatches[matchIndex]));
@@ -345,6 +349,10 @@ void FindController::hideFindIndicator()
 }
 
 void FindController::willFindString()
+{
+}
+
+void FindController::didFindString()
 {
 }
 

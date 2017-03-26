@@ -418,6 +418,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(m_graph, SpecString | SpecBytecodeNumber);
         break;
     }
+
+    case StrCat: {
+        forNode(node).setType(m_graph, SpecString);
+        break;
+    }
         
     case ArithAdd: {
         JSValue left = forNode(node->child1()).value();
@@ -1569,7 +1574,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         clobberWorld(node->origin.semantic, clobberLimit);
         
-        forNode(node).setType(m_graph, (SpecHeapTop & ~SpecCell) | SpecString | SpecSymbol);
+        forNode(node).setType(m_graph, SpecHeapTop & ~SpecObject);
         break;
     }
         
@@ -2444,6 +2449,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case ZombieHint:
+    case ExitOK:
         break;
 
     case Unreachable:

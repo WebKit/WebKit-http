@@ -326,12 +326,9 @@ WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Obje
             this._recurseArray(node.body, callback, state);
             break;
         case WebInspector.ScriptSyntaxTree.NodeType.ClassDeclaration:
-            callback(node, state);
-            this._recurse(node.superClass, callback, state);
-            this._recurse(node.body, callback, state);
-            break;
         case WebInspector.ScriptSyntaxTree.NodeType.ClassExpression:
             callback(node, state);
+            this._recurse(node.id, callback, state);
             this._recurse(node.superClass, callback, state);
             this._recurse(node.body, callback, state);
             break;
@@ -369,15 +366,11 @@ WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Obje
             this._recurse(node.body, callback, state);
             break;
         case WebInspector.ScriptSyntaxTree.NodeType.FunctionDeclaration:
-            callback(node, state);
-            this._recurse(node.id, callback, state);
-            this._recurseArray(node.params, callback, state);
-            this._recurse(node.body, callback, state);
-            break;
         case WebInspector.ScriptSyntaxTree.NodeType.FunctionExpression:
             callback(node, state);
             this._recurse(node.id, callback, state);
             this._recurseArray(node.params, callback, state);
+            this._recurseArray(node.defaults, callback, state);
             this._recurse(node.body, callback, state);
             break;
         case WebInspector.ScriptSyntaxTree.NodeType.Identifier:
@@ -458,6 +451,19 @@ WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Obje
             this._recurse(node.test, callback, state);
             this._recurse(node.consequent, callback, state);
             this._recurse(node.alternate, callback, state);
+            break;
+        case WebInspector.ScriptSyntaxTree.NodeType.TaggedTemplateExpression:
+            callback(node, state);
+            this._recurse(node.tag, callback, state);
+            this._recurse(node.quasi, callback, state);
+            break;
+        case WebInspector.ScriptSyntaxTree.NodeType.TemplateElement:
+            callback(node, state);
+            break;
+        case WebInspector.ScriptSyntaxTree.NodeType.TemplateLiteral:
+            callback(node, state);
+            this._recurseArray(node.quasis, callback, state);
+            this._recurseArray(node.expressions, callback, state);
             break;
         case WebInspector.ScriptSyntaxTree.NodeType.ThisExpression:
             callback(node, state);
@@ -665,6 +671,7 @@ WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Obje
                 type: WebInspector.ScriptSyntaxTree.NodeType.FunctionDeclaration,
                 id: this._createInternalSyntaxTree(node.id),
                 params: node.params.map(this._createInternalSyntaxTree.bind(this)),
+                defaults: node.defaults.map(this._createInternalSyntaxTree.bind(this)),
                 body: this._createInternalSyntaxTree(node.body),
                 isGetterOrSetter: false // This is obvious, but is convenient none the less b/c Declarations and Expressions are often intertwined.
             };
@@ -674,6 +681,7 @@ WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Obje
                 type: WebInspector.ScriptSyntaxTree.NodeType.FunctionExpression,
                 id: this._createInternalSyntaxTree(node.id),
                 params: node.params.map(this._createInternalSyntaxTree.bind(this)),
+                defaults: node.defaults.map(this._createInternalSyntaxTree.bind(this)),
                 body: this._createInternalSyntaxTree(node.body),
                 isGetterOrSetter: false // If true, it is set in the Property AST node.
             };
@@ -731,9 +739,14 @@ WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Obje
                 kind: node.kind,
                 static: node.static
             };
+            if (result.kind === "get" || result.kind === "set") {
+                const length = result.key.range[1] - result.key.range[0];
+                result.value.getterOrSetterRange = node.range;
+                result.value.getterOrSetterRange[1] = node.range[0] + length;
+            } else
+                result.value.getterOrSetterRange = result.key.range;
             // FIXME: <https://webkit.org/b/143171> Web Inspector: Improve Type Profiler Support for ES6 Syntax
             result.value.isGetterOrSetter = true;
-            result.value.getterOrSetterRange = result.key.range;
             break;
         case "NewExpression":
             result = {
@@ -804,6 +817,27 @@ WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Obje
                 consequent: node.consequent.map(this._createInternalSyntaxTree.bind(this))
             };
             break;
+        case "TaggedTemplateExpression":
+            result = {
+                type: WebInspector.ScriptSyntaxTree.NodeType.TaggedTemplateExpression,
+                tag: this._createInternalSyntaxTree(node.tag),
+                quasi: this._createInternalSyntaxTree(node.quasi)
+            };
+            break;
+        case "TemplateElement":
+            result = {
+                type: WebInspector.ScriptSyntaxTree.NodeType.TemplateElement,
+                value: node.value,
+                tail: node.tail
+            };
+            break;
+        case "TemplateLiteral":
+            result = {
+                type: WebInspector.ScriptSyntaxTree.NodeType.TemplateLiteral,
+                quasis: node.quasis.map(this._createInternalSyntaxTree.bind(this)),
+                expressions: node.expressions.map(this._createInternalSyntaxTree.bind(this))
+            };
+            break;
         case "ThisExpression":
             result = {
                 type: WebInspector.ScriptSyntaxTree.NodeType.ThisExpression
@@ -843,7 +877,8 @@ WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Obje
         case "VariableDeclaration":
             result = {
                 type: WebInspector.ScriptSyntaxTree.NodeType.VariableDeclaration,
-                declarations: node.declarations.map(this._createInternalSyntaxTree.bind(this))
+                declarations: node.declarations.map(this._createInternalSyntaxTree.bind(this)),
+                kind: node.kind
             };
             break;
         case "VariableDeclarator":
@@ -926,6 +961,9 @@ WebInspector.ScriptSyntaxTree.NodeType = {
     SpreadElement: Symbol("spread-element"),
     SwitchCase: Symbol("switch-case"),
     SwitchStatement: Symbol("switch-statement"),
+    TaggedTemplateExpression: Symbol("tagged-template-expression"),
+    TemplateElement: Symbol("template-element"),
+    TemplateLiteral: Symbol("template-literal"),
     ThisExpression: Symbol("this-expression"),
     ThrowStatement: Symbol("throw-statement"),
     TryStatement: Symbol("try-statement"),

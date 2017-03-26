@@ -37,14 +37,14 @@ WebInspector.CSSObserver = class CSSObserver
         WebInspector.cssStyleManager.styleSheetChanged(styleSheetId);
     }
 
-    styleSheetAdded(header)
+    styleSheetAdded(styleSheetInfo)
     {
-        // FIXME: Not implemented. <rdar://problem/13213680>
+        WebInspector.cssStyleManager.styleSheetAdded(styleSheetInfo);
     }
 
-    styleSheetRemoved(header)
+    styleSheetRemoved(id)
     {
-        // FIXME: Not implemented. <rdar://problem/13213680>
+        WebInspector.cssStyleManager.styleSheetRemoved(id);
     }
 
     namedFlowCreated(namedFlow)
@@ -60,7 +60,7 @@ WebInspector.CSSObserver = class CSSObserver
     // COMPATIBILITY (iOS 7): regionLayoutUpdated was removed and replaced by regionOversetChanged.
     regionLayoutUpdated(namedFlow)
     {
-        WebInspector.domTreeManager.regionLayoutUpdated(namedFlow);
+        this.regionOversetChanged(namedFlow);
     }
 
     regionOversetChanged(namedFlow)

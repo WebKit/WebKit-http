@@ -29,9 +29,7 @@
 #if ENABLE(PDFKIT_PLUGIN)
 
 #import "ArgumentCoders.h"
-#import "AttributedString.h"
 #import "DataReference.h"
-#import "DictionaryPopupInfo.h"
 #import "PDFAnnotationTextWidgetDetails.h"
 #import "PDFKitImports.h"
 #import "PDFLayerControllerDetails.h"
@@ -1113,9 +1111,9 @@ void PDFPlugin::destroy()
     [m_contentLayer removeFromSuperlayer];
 }
 
-void PDFPlugin::updateControlTints(GraphicsContext* graphicsContext)
+void PDFPlugin::updateControlTints(GraphicsContext& graphicsContext)
 {
-    ASSERT(graphicsContext->updatingControlTints());
+    ASSERT(graphicsContext.updatingControlTints());
 
     if (m_horizontalScrollbar)
         m_horizontalScrollbar->invalidate();
@@ -1134,7 +1132,7 @@ void PDFPlugin::paintControlForLayerInContext(CALayer *layer, CGContextRef conte
     if (layer == m_scrollCornerLayer) {
         IntRect scrollCornerRect = this->scrollCornerRect();
         graphicsContext.translate(-scrollCornerRect.x(), -scrollCornerRect.y());
-        ScrollbarTheme::theme()->paintScrollCorner(0, &graphicsContext, scrollCornerRect);
+        ScrollbarTheme::theme()->paintScrollCorner(nullptr, graphicsContext, scrollCornerRect);
         return;
     }
     
@@ -1149,7 +1147,7 @@ void PDFPlugin::paintControlForLayerInContext(CALayer *layer, CGContextRef conte
         return;
     
     graphicsContext.translate(-scrollbar->x(), -scrollbar->y());
-    scrollbar->paint(&graphicsContext, scrollbar->frameRect());
+    scrollbar->paint(graphicsContext, scrollbar->frameRect());
 }
 
 RefPtr<ShareableBitmap> PDFPlugin::snapshot()
@@ -1720,7 +1718,7 @@ void PDFPlugin::showDefinitionForAttributedString(NSAttributedString *string, CG
 {
     DictionaryPopupInfo dictionaryPopupInfo;
     dictionaryPopupInfo.origin = convertFromPDFViewToRootView(IntPoint(point));
-    dictionaryPopupInfo.attributedString.string = string;
+    dictionaryPopupInfo.attributedString = string;
 
     webFrame()->page()->send(Messages::WebPageProxy::DidPerformDictionaryLookup(dictionaryPopupInfo));
 }
@@ -1937,7 +1935,7 @@ String PDFPlugin::lookupTextAtLocation(const WebCore::FloatPoint& locationInView
         return selection.string;
     }
     
-    NSString *lookupText = dictionaryLookupForPDFSelection(selection, options);
+    NSString *lookupText = DictionaryLookup::stringForPDFSelection(selection, options);
     if (!lookupText || !lookupText.length)
         return @"";
 

@@ -54,8 +54,11 @@
 #include <algorithm>
 #include <cstdio>
 #include <ctype.h>
+#include <runtime/InitializeThreading.h>
 #include <stdlib.h>
 #include <string>
+#include <wtf/MainThread.h>
+#include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
 
 #if PLATFORM(COCOA)
@@ -197,11 +200,11 @@ static void decidePolicyForUserMediaPermissionRequest(WKPageRef, WKFrameRef, WKS
     TestController::singleton().handleUserMediaPermissionRequest(permissionRequest);
 }
 
-WKPageRef TestController::createOtherPage(WKPageRef oldPpage, WKPageConfigurationRef configuration, WKNavigationActionRef navigationAction, WKWindowFeaturesRef windowFeatures, const void *clientInfo)
+WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfigurationRef configuration, WKNavigationActionRef navigationAction, WKWindowFeaturesRef windowFeatures, const void *clientInfo)
 {
     PlatformWebView* parentView = static_cast<PlatformWebView*>(const_cast<void*>(clientInfo));
 
-    PlatformWebView* view = new PlatformWebView(configuration, parentView->options());
+    PlatformWebView* view = platformCreateOtherPage(parentView, configuration, parentView->options());
     WKPageRef newPage = view->page();
 
     view->resizeTo(800, 600);
@@ -288,6 +291,9 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPpage, WKPageConfiguratio
         didReceiveAuthenticationChallenge,
         processDidCrash,
         copyWebCryptoMasterKey,
+        0, // didBeginNavigationGesture
+        0, // willEndNavigationGesture
+        0, // didEndNavigationGesture
     };
     WKPageSetPageNavigationClient(newPage, &pageNavigationClient.base);
 
@@ -310,9 +316,12 @@ const char* TestController::libraryPathForTesting()
     return platformLibraryPathForTesting();
 }
 
-
 void TestController::initialize(int argc, const char* argv[])
 {
+    JSC::initializeThreading();
+    WTF::initializeMainThread();
+    RunLoop::initializeMainRunLoop();
+
     platformInitialize();
 
     Options options;
@@ -358,6 +367,7 @@ void TestController::initialize(int argc, const char* argv[])
 
     auto configuration = adoptWK(WKContextConfigurationCreate());
     WKContextConfigurationSetInjectedBundlePath(configuration.get(), injectedBundlePath());
+    WKContextConfigurationSetFullySynchronousModeIsAllowedForTesting(configuration.get(), true);
 
     if (const char* dumpRenderTreeTemp = libraryPathForTesting()) {
         String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
@@ -371,8 +381,8 @@ void TestController::initialize(int argc, const char* argv[])
         WKContextConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "WebSQL").get());
         WKContextConfigurationSetMediaKeysStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "MediaKeys").get());
     }
+    m_context = platformAdjustContext(adoptWK(WKContextCreateWithConfiguration(configuration.get())).get(), configuration.get());
 
-    m_context = adoptWK(WKContextCreateWithConfiguration(configuration.get()));
     m_geolocationProvider = std::make_unique<GeolocationProviderMock>(m_context.get());
 
 #if PLATFORM(EFL)
@@ -434,6 +444,7 @@ void TestController::initialize(int argc, const char* argv[])
     m_configuration = adoptWK(WKPageConfigurationCreate());
     WKPageConfigurationSetContext(m_configuration.get(), m_context.get());
     WKPageConfigurationSetPageGroup(m_configuration.get(), m_pageGroup.get());
+    WKPageConfigurationSetUserContentController(m_configuration.get(), adoptWK(WKUserContentControllerCreate()).get());
 
     // Some preferences (notably mock scroll bars setting) currently cannot be re-applied to an existing view, so we need to set them now.
     resetPreferencesToConsistentValues();
@@ -441,7 +452,7 @@ void TestController::initialize(int argc, const char* argv[])
 
 void TestController::createWebViewWithOptions(const ViewOptions& options)
 {
-    m_mainWebView = std::make_unique<PlatformWebView>(m_configuration.get(), options);
+    platformCreateWebView(m_configuration.get(), options);
     WKPageUIClientV6 pageUIClient = {
         { 6, m_mainWebView.get() },
         0, // createNewPage_deprecatedForUseWithV0
@@ -524,6 +535,9 @@ void TestController::createWebViewWithOptions(const ViewOptions& options)
         didReceiveAuthenticationChallenge,
         processDidCrash,
         copyWebCryptoMasterKey,
+        0, // didBeginNavigationGesture
+        0, // willEndNavigationGesture
+        0, // didEndNavigationGesture
     };
     WKPageSetPageNavigationClient(m_mainWebView->page(), &pageNavigationClient.base);
 
@@ -567,7 +581,7 @@ void TestController::ensureViewSupportsOptionsForTest(const TestInvocation& test
 void TestController::resetPreferencesToConsistentValues()
 {
     // Reset preferences
-    WKPreferencesRef preferences = WKPageGroupGetPreferences(m_pageGroup.get());
+    WKPreferencesRef preferences = platformPreferences();
     WKPreferencesResetTestRunnerOverrides(preferences);
     WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(preferences, false);
     WKPreferencesSetOfflineWebApplicationCacheEnabled(preferences, true);
@@ -621,6 +635,11 @@ void TestController::resetPreferencesToConsistentValues()
     WKPreferencesSetHiddenPageCSSAnimationSuspensionEnabled(preferences, false);
 
     WKPreferencesSetAcceleratedDrawingEnabled(preferences, m_shouldUseAcceleratedDrawing);
+    // FIXME: We should be testing the default.
+    WKPreferencesSetStorageBlockingPolicy(preferences, kWKAllowAllStorage);
+
+    WKPreferencesSetMediaPlaybackAllowsInline(preferences, true);
+    WKPreferencesSetInlineMediaPlaybackRequiresPlaysInlineAttribute(preferences, false);
 
     WKCookieManagerDeleteAllCookies(WKContextGetCookieManager(m_context.get()));
 
@@ -632,6 +651,11 @@ bool TestController::resetStateToConsistentValues()
     m_state = Resetting;
 
     m_beforeUnloadReturnValue = true;
+
+    // This setting differs between the antique and modern Mac WebKit2 API.
+    // For now, maintain the antique behavior, because some tests depend on it!
+    // FIXME: We should be testing the default.
+    WKPageSetBackgroundExtendsBeyondPage(m_mainWebView->page(), false);
 
     WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("Reset"));
     WKRetainPtr<WKMutableDictionaryRef> resetMessageBody = adoptWK(WKMutableDictionaryCreate());
@@ -667,7 +691,7 @@ bool TestController::resetStateToConsistentValues()
     WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
 #endif
 
-    // in the case that a test using the chrome input field failed, be sure to clean up for the next test
+    // In the case that a test using the chrome input field failed, be sure to clean up for the next test.
     m_mainWebView->removeChromeInputField();
     m_mainWebView->focus();
 
@@ -709,12 +733,14 @@ bool TestController::resetStateToConsistentValues()
 
     m_shouldLogHistoryClientCallbacks = false;
 
-    WKPageGroupRemoveAllUserContentFilters(WKPageGetPageGroup(m_mainWebView->page()));
-
     setHidden(false);
+
+    platformResetStateToConsistentValues();
 
     // Reset main page back to about:blank
     m_doneResetting = false;
+
+    m_shouldDecideNavigationPolicyAfterDelay = false;
 
     WKPageLoadURL(m_mainWebView->page(), blankURL());
     runUntil(m_doneResetting, shortTimeout);
@@ -987,13 +1013,7 @@ void TestController::didReceiveKeyDownMessageFromInjectedBundle(WKDictionaryRef 
     WKRetainPtr<WKStringRef> locationKey = adoptWK(WKStringCreateWithUTF8CString("Location"));
     unsigned location = static_cast<unsigned>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, locationKey.get()))));
 
-    if (synchronous)
-        WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
-
     m_eventSenderProxy->keyDown(key, modifiers, location);
-
-    if (synchronous)
-        WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
 }
 
 void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody)
@@ -1013,7 +1033,6 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
             WKEventModifiers modifiers = static_cast<WKEventModifiers>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, modifiersKey.get()))));
 
             // Forward to WebProcess
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             if (WKStringIsEqualToUTF8CString(subMessageName, "MouseDown"))
                 m_eventSenderProxy->mouseDown(button, modifiers);
             else
@@ -1025,6 +1044,18 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         if (WKStringIsEqualToUTF8CString(subMessageName, "KeyDown")) {
             didReceiveKeyDownMessageFromInjectedBundle(messageBodyDictionary, false);
 
+            return;
+        }
+
+        if (WKStringIsEqualToUTF8CString(subMessageName, "MouseScrollBy")) {
+            WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
+            double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
+
+            WKRetainPtr<WKStringRef> yKey = adoptWK(WKStringCreateWithUTF8CString("Y"));
+            double y = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, yKey.get())));
+
+            // Forward to WebProcess
+            m_eventSenderProxy->mouseScrollBy(x, y);
             return;
         }
 
@@ -1041,7 +1072,6 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
             int momentum = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, momentumKey.get()))));
             
             // Forward to WebProcess
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             m_eventSenderProxy->mouseScrollByWithWheelAndMomentumPhases(x, y, phase, momentum);
 
             return;
@@ -1079,12 +1109,10 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
             WKEventModifiers modifiers = static_cast<WKEventModifiers>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, modifiersKey.get()))));
 
             // Forward to WebProcess
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             if (WKStringIsEqualToUTF8CString(subMessageName, "MouseDown"))
                 m_eventSenderProxy->mouseDown(button, modifiers);
             else
                 m_eventSenderProxy->mouseUp(button, modifiers);
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
@@ -1096,24 +1124,18 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
             double y = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, yKey.get())));
 
             // Forward to WebProcess
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->mouseMoveTo(x, y);
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
 #if PLATFORM(MAC)
         if (WKStringIsEqualToUTF8CString(subMessageName, "MouseForceDown")) {
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->mouseForceDown();
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
         if (WKStringIsEqualToUTF8CString(subMessageName, "MouseForceUp")) {
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->mouseForceUp();
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
@@ -1121,46 +1143,11 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
             WKRetainPtr<WKStringRef> forceKey = adoptWK(WKStringCreateWithUTF8CString("Force"));
             double force = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, forceKey.get())));
 
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->mouseForceChanged(force);
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 #endif // PLATFORM(MAC)
 
-        if (WKStringIsEqualToUTF8CString(subMessageName, "MouseScrollBy")) {
-            WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
-            double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
-
-            WKRetainPtr<WKStringRef> yKey = adoptWK(WKStringCreateWithUTF8CString("Y"));
-            double y = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, yKey.get())));
-
-            // Forward to WebProcess
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
-            m_eventSenderProxy->mouseScrollBy(x, y);
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
-            return 0;
-        }
-
-        if (WKStringIsEqualToUTF8CString(subMessageName, "MouseScrollByWithWheelAndMomentumPhases")) {
-            WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
-            double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
-            
-            WKRetainPtr<WKStringRef> yKey = adoptWK(WKStringCreateWithUTF8CString("Y"));
-            double y = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, yKey.get())));
-            
-            WKRetainPtr<WKStringRef> phaseKey = adoptWK(WKStringCreateWithUTF8CString("Phase"));
-            int phase = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, phaseKey.get()))));
-            WKRetainPtr<WKStringRef> momentumKey = adoptWK(WKStringCreateWithUTF8CString("Momentum"));
-            int momentum = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, momentumKey.get()))));
-
-            // Forward to WebProcess
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
-            m_eventSenderProxy->mouseScrollByWithWheelAndMomentumPhases(x, y, phase, momentum);
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
-            return 0;
-        }
-        
         if (WKStringIsEqualToUTF8CString(subMessageName, "ContinuousMouseScrollBy")) {
             WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
             double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
@@ -1172,9 +1159,7 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
             bool paged = static_cast<bool>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, pagedKey.get()))));
 
             // Forward to WebProcess
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->continuousMouseScrollBy(x, y, paged);
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
@@ -1235,30 +1220,22 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
         }
 
         if (WKStringIsEqualToUTF8CString(subMessageName, "TouchStart")) {
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->touchStart();
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
         if (WKStringIsEqualToUTF8CString(subMessageName, "TouchMove")) {
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->touchMove();
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
         if (WKStringIsEqualToUTF8CString(subMessageName, "TouchEnd")) {
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->touchEnd();
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
         if (WKStringIsEqualToUTF8CString(subMessageName, "TouchCancel")) {
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), true);
             m_eventSenderProxy->touchCancel();
-            WKPageSetShouldSendEventsSynchronously(mainWebView()->page(), false);
             return 0;
         }
 
@@ -1534,12 +1511,19 @@ void TestController::decidePolicyForNavigationAction(WKPageRef, WKNavigationActi
 
 void TestController::decidePolicyForNavigationAction(WKFramePolicyListenerRef listener)
 {
-    if (m_policyDelegateEnabled && !m_policyDelegatePermissive) {
-        WKFramePolicyListenerIgnore(listener);
-        return;
-    }
+    WKRetainPtr<WKFramePolicyListenerRef> retainedListener { listener };
+    const bool shouldIgnore { m_policyDelegateEnabled && !m_policyDelegatePermissive };
+    std::function<void()> decisionFunction = [shouldIgnore, retainedListener]() {
+        if (shouldIgnore)
+            WKFramePolicyListenerIgnore(retainedListener.get());
+        else
+            WKFramePolicyListenerUse(retainedListener.get());
+    };
 
-    WKFramePolicyListenerUse(listener);
+    if (m_shouldDecideNavigationPolicyAfterDelay)
+        RunLoop::main().dispatch(decisionFunction);
+    else
+        decisionFunction();
 }
 
 void TestController::decidePolicyForNavigationResponse(WKPageRef, WKNavigationResponseRef navigationResponse, WKFramePolicyListenerRef listener, WKTypeRef, const void* clientInfo)
@@ -1640,5 +1624,31 @@ void TestController::didUpdateHistoryTitle(WKStringRef title, WKURLRef URL, WKFr
     WKRetainPtr<WKStringRef> urlStringWK(AdoptWK, WKURLCopyString(URL));
     m_currentInvocation->outputText(String::format("WebView updated the title for history URL \"%s\" to \"%s\".\n", toSTD(urlStringWK).c_str(), toSTD(title).c_str()));
 }
+
+#if !PLATFORM(COCOA)
+void TestController::platformWillRunTest(const TestInvocation&)
+{
+}
+
+void TestController::platformCreateWebView(WKPageConfigurationRef configuration, const ViewOptions& options)
+{
+    m_mainWebView = std::make_unique<PlatformWebView>(configuration, options);
+}
+
+PlatformWebView* TestController::platformCreateOtherPage(PlatformWebView* parentView, WKPageConfigurationRef configuration, const ViewOptions& options)
+{
+    return new PlatformWebView(configuration, options);
+}
+
+WKContextRef TestController::platformAdjustContext(WKContextRef context, WKContextConfigurationRef contextConfiguration)
+{
+    return context;
+}
+
+void TestController::platformResetStateToConsistentValues()
+{
+
+}
+#endif
 
 } // namespace WTR

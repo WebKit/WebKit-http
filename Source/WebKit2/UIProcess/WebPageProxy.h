@@ -121,7 +121,7 @@
 
 #if ENABLE(MEDIA_SESSION)
 namespace WebCore {
-struct MediaSessionMetadata;
+class MediaSessionMetadata;
 }
 #endif
 
@@ -155,6 +155,7 @@ class ProtectionSpace;
 class RunLoopObserver;
 class SharedBuffer;
 class TextIndicator;
+struct DictionaryPopupInfo;
 struct FileChooserSettings;
 struct TextAlternativeWithRange;
 struct TextCheckingResult;
@@ -183,7 +184,7 @@ class RemoteScrollingCoordinatorProxy;
 class StringPairVector;
 class UserData;
 class ViewSnapshot;
-class VisitedLinkProvider;
+class VisitedLinkStore;
 class WebBackForwardList;
 class WebBackForwardListItem;
 class WebContextMenuProxy;
@@ -201,7 +202,6 @@ class WebWheelEvent;
 class WebsiteDataStore;
 struct AttributedString;
 struct ColorSpaceData;
-struct DictionaryPopupInfo;
 struct EditingRange;
 struct EditorState;
 struct PlatformPopupMenuData;
@@ -642,9 +642,6 @@ public:
     double pageScaleFactor() const;
     double viewScaleFactor() const { return m_viewScaleFactor; }
     void scaleView(double scale);
-#if PLATFORM(COCOA)
-    void scaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, std::function<void (const WebCore::MachSendRight&, CallbackBase::Error)>);
-#endif
     void setShouldScaleViewToFitDocument(bool);
     
     bool userContentExtensionsEnabled() { return m_userContentExtensionsEnabled; }
@@ -910,8 +907,6 @@ public:
     WebCore::IntRect visibleScrollerThumbRect() const { return m_visibleScrollerThumbRect; }
 
     uint64_t renderTreeSize() const { return m_renderTreeSize; }
-
-    void setShouldSendEventsSynchronously(bool sync) { m_shouldSendEventsSynchronously = sync; };
 
     void printMainFrame();
     
@@ -1267,8 +1262,7 @@ private:
     };
     void showContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, const UserData&);
     void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, ContextMenuClientEligibility, const UserData&);
-
-    void platformInitializeShareMenuItem(WebCore::ContextMenuItem&);
+    WebCore::ContextMenuItem platformInitializeShareMenuItem(const ContextMenuContextData&);
 #endif
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
@@ -1297,7 +1291,7 @@ private:
     void searchTheWeb(const String&);
 
     // Dictionary.
-    void didPerformDictionaryLookup(const DictionaryPopupInfo&);
+    void didPerformDictionaryLookup(const WebCore::DictionaryPopupInfo&);
 #endif
 
 #if PLATFORM(MAC)
@@ -1503,7 +1497,7 @@ private:
     WebProcessLifetimeTracker m_webProcessLifetimeTracker { *this };
 
     const RefPtr<WebUserContentControllerProxy> m_userContentController;
-    Ref<VisitedLinkProvider> m_visitedLinkProvider;
+    Ref<VisitedLinkStore> m_visitedLinkStore;
     Ref<WebsiteDataStore> m_websiteDataStore;
 
     RefPtr<WebFrameProxy> m_mainFrame;
@@ -1723,8 +1717,6 @@ private:
     uint64_t m_sessionRestorationRenderTreeSize;
     bool m_wantsSessionRestorationRenderTreeSizeThresholdEvent;
     bool m_hitRenderTreeSizeThreshold;
-
-    bool m_shouldSendEventsSynchronously;
 
     bool m_suppressVisibilityUpdates;
     bool m_autoSizingShouldExpandToViewHeight;

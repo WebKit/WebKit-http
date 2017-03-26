@@ -60,11 +60,12 @@ void TestController::platformInitialize()
     }
 }
 
-void TestController::platformDestroy()
+WKPreferencesRef TestController::platformPreferences()
 {
+    return WKPageGroupGetPreferences(m_pageGroup.get());
 }
 
-void TestController::platformWillRunTest(const TestInvocation&)
+void TestController::platformDestroy()
 {
 }
 

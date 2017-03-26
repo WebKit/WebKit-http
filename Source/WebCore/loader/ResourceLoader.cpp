@@ -32,6 +32,7 @@
 
 #include "ApplicationCacheHost.h"
 #include "AuthenticationChallenge.h"
+#include "DataURLDecoder.h"
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
 #include "DocumentLoader.h"
@@ -80,6 +81,17 @@ ResourceLoader::~ResourceLoader()
     ASSERT(m_reachedTerminalState);
 }
 
+void ResourceLoader::finishNetworkLoad()
+{
+    platformStrategies()->loaderStrategy()->resourceLoadScheduler()->remove(this);
+
+    if (m_handle) {
+        ASSERT(m_handle->client() == this);
+        m_handle->clearClient();
+        m_handle = nullptr;
+    }
+}
+
 void ResourceLoader::releaseResources()
 {
     ASSERT(!m_reachedTerminalState);
@@ -97,16 +109,9 @@ void ResourceLoader::releaseResources()
     // the resources to prevent a double dealloc of WebView <rdar://problem/4372628>
     m_reachedTerminalState = true;
 
-    platformStrategies()->loaderStrategy()->resourceLoadScheduler()->remove(this);
-    m_identifier = 0;
+    finishNetworkLoad();
 
-    if (m_handle) {
-        // Clear out the ResourceHandle's client so that it doesn't try to call
-        // us back after we release it, unless it has been replaced by someone else.
-        if (m_handle->client() == this)
-            m_handle->clearClient();
-        m_handle = nullptr;
-    }
+    m_identifier = 0;
 
     m_resourceData = nullptr;
     m_deferredRequest = ResourceRequest();
@@ -202,10 +207,15 @@ void ResourceLoader::start()
         return;
     }
 
-    if (!m_reachedTerminalState) {
-        FrameLoader& loader = m_request.url().protocolIsData() ? dataProtocolFrameLoader() : *frameLoader();
-        m_handle = ResourceHandle::create(loader.networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent() == SniffContent);
+    if (m_reachedTerminalState)
+        return;
+
+    if (m_request.url().protocolIsData()) {
+        loadDataURL();
+        return;
     }
+
+    m_handle = ResourceHandle::create(frameLoader()->networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent() == SniffContent);
 }
 
 void ResourceLoader::setDefersLoading(bool defers)
@@ -229,13 +239,31 @@ FrameLoader* ResourceLoader::frameLoader() const
     return &m_frame->loader();
 }
 
-// This function should only be called when frameLoader() is non-null.
-FrameLoader& ResourceLoader::dataProtocolFrameLoader() const
+void ResourceLoader::loadDataURL()
 {
-    FrameLoader* loader = frameLoader();
-    ASSERT(loader);
-    FrameLoader* dataProtocolLoader = loader->client().dataProtocolLoader();
-    return *(dataProtocolLoader ? dataProtocolLoader : loader);
+    auto url = m_request.url();
+    ASSERT(url.protocolIsData());
+
+    RefPtr<ResourceLoader> loader(this);
+    DataURLDecoder::decode(url, [loader, url] (Optional<DataURLDecoder::Result> decodeResult) {
+        if (loader->reachedTerminalState())
+            return;
+        if (!decodeResult) {
+            loader->didFail(ResourceError(errorDomainWebKitInternal, 0, url.string(), "Data URL decoding failed"));
+            return;
+        }
+        auto& result = decodeResult.value();
+        auto dataSize = result.data->size();
+
+        ResourceResponse dataResponse { url, result.mimeType, dataSize, result.charset };
+        loader->didReceiveResponse(dataResponse);
+
+        if (!loader->reachedTerminalState() && dataSize)
+            loader->didReceiveBuffer(result.data.get(), dataSize, DataPayloadWholeResource);
+
+        if (!loader->reachedTerminalState())
+            loader->didFinishLoading(currentTime());
+    });
 }
 
 void ResourceLoader::setDataBufferingPolicy(DataBufferingPolicy dataBufferingPolicy)
@@ -335,13 +363,23 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest& request, const Res
     else
         InspectorInstrumentation::willSendRequest(m_frame.get(), m_identifier, m_frame->loader().documentLoader(), request, redirectResponse);
 
-    if (!redirectResponse.isNull())
+    bool isRedirect = !redirectResponse.isNull();
+    if (isRedirect)
         platformStrategies()->loaderStrategy()->resourceLoadScheduler()->crossOriginRedirectReceived(this, request.url());
 
     m_request = request;
 
-    if (!redirectResponse.isNull() && !m_documentLoader->isCommitted())
-        frameLoader()->client().dispatchDidReceiveServerRedirectForProvisionalLoad();
+    if (isRedirect) {
+        auto& redirectURL = request.url();
+        if (!m_documentLoader->isCommitted())
+            frameLoader()->client().dispatchDidReceiveServerRedirectForProvisionalLoad();
+
+        if (redirectURL.protocolIsData()) {
+            // Handle data URL decoding locally.
+            finishNetworkLoad();
+            loadDataURL();
+        }
+    }
 }
 
 void ResourceLoader::willSendRequest(ResourceRequest&& request, const ResourceResponse& redirectResponse, std::function<void(ResourceRequest&&)>&& callback)

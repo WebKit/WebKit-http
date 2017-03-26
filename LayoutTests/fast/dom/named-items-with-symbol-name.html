@@ -15,15 +15,8 @@
 <script>
 description('This tests Symbol property names with a number of named items collections.');
 
-var querySelectorAllList = document.querySelectorAll('div');
-debug(String(querySelectorAllList));
-shouldBeTrue("querySelectorAllList.length === 4");
-shouldBeTrue("querySelectorAllList[Symbol()] === undefined");
-shouldBeTrue("querySelectorAllList[Symbol('div')] === undefined");
-shouldBeTrue("querySelectorAllList['Symbol(div)'] instanceof HTMLDivElement");
-
 var getElementsByTagNameList = document.getElementsByTagName('div');
-debug("\n" + String(getElementsByTagNameList));
+debug(String(getElementsByTagNameList));
 shouldBeTrue("getElementsByTagNameList.length === 4");
 shouldBeTrue("getElementsByTagNameList[Symbol()] === undefined");
 shouldBeTrue("getElementsByTagNameList[Symbol('div')] === undefined");

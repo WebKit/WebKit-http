@@ -495,7 +495,8 @@ private:
         case StringCharAt:
         case CallStringConstructor:
         case ToString:
-        case MakeRope: {
+        case MakeRope:
+        case StrCat: {
             changed |= setPrediction(SpecString);
             break;
         }
@@ -667,6 +668,7 @@ private:
         case ConstantStoragePointer:
         case MovHint:
         case ZombieHint:
+        case ExitOK:
         case LoadVarargs:
             break;
             

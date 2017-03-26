@@ -7341,7 +7341,7 @@
     <ClCompile Include="..\page\UserContentURLPattern.cpp" />
     <ClCompile Include="..\page\VisitedLinkStore.cpp" />
     <ClCompile Include="..\fileapi\WebKitBlobBuilder.cpp" />
-    <ClCompile Include="..\page\WheelEventDeltaTracker.cpp" />
+    <ClCompile Include="..\page\WheelEventDeltaFilter.cpp" />
     <ClCompile Include="..\page\WheelEventTestTrigger.cpp" />
     <ClCompile Include="..\page\WindowFeatures.cpp" />
     <ClCompile Include="..\page\WindowFocusAllowedIndicator.cpp" />
@@ -8820,6 +8820,7 @@
     <ClCompile Include="..\platform\network\CredentialBase.cpp" />
     <ClCompile Include="..\platform\network\CredentialStorage.cpp" />
     <ClCompile Include="..\platform\network\DataURL.cpp" />
+    <ClCompile Include="..\platform\network\DataURLDecoder.cpp" />
     <ClCompile Include="..\platform\network\DNSResolveQueue.cpp" />
     <ClCompile Include="..\platform\network\FormData.cpp" />
     <ClCompile Include="..\platform\network\FormDataBuilder.cpp" />
@@ -15020,7 +15021,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\dom\TagNodeList.cpp">
+    <ClCompile Include="..\dom\TagCollection.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -18604,20 +18605,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSRequestAnimationFrameCallbackCustom.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSSQLResultSetRowListCustom.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -20778,7 +20765,7 @@
     <ClInclude Include="..\page\VisitedLinkStore.h" />
     <ClInclude Include="..\fileapi\WebKitBlobBuilder.h" />
     <ClInclude Include="..\page\WebKitPoint.h" />
-    <ClInclude Include="..\page\WheelEventDeltaTracker.h" />
+    <ClInclude Include="..\page\WheelEventDeltaFilter.h" />
     <ClInclude Include="..\page\WheelEventTestTrigger.h" />
     <ClInclude Include="..\page\WindowFeatures.h" />
     <ClInclude Include="..\page\WindowFocusAllowedIndicator.h" />
@@ -21331,6 +21318,7 @@
     <ClInclude Include="..\platform\network\CredentialBase.h" />
     <ClInclude Include="..\platform\network\CredentialStorage.h" />
     <ClInclude Include="..\platform\network\DataURL.h" />
+    <ClInclude Include="..\platform\network\DataURLDecoder.h" />
     <ClInclude Include="..\platform\network\DNSResolveQueue.h" />
     <ClInclude Include="..\platform\network\FormData.h" />
     <ClInclude Include="..\platform\network\FormDataBuilder.h" />
@@ -22145,7 +22133,7 @@
     <ClInclude Include="..\dom\StaticNodeList.h" />
     <ClInclude Include="..\dom\StringCallback.h" />
     <ClInclude Include="..\dom\StyledElement.h" />
-    <ClInclude Include="..\dom\TagNodeList.h" />
+    <ClInclude Include="..\dom\TagCollection.h" />
     <ClInclude Include="..\dom\TemplateContentDocumentFragment.h" />
     <ClInclude Include="..\dom\Text.h" />
     <ClInclude Include="..\dom\TextEvent.h" />

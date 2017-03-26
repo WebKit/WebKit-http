@@ -63,6 +63,7 @@ set(JavaScriptCore_SOURCES
     assembler/MacroAssembler.cpp
     assembler/MacroAssemblerARM.cpp
     assembler/MacroAssemblerARMv7.cpp
+    assembler/MacroAssemblerPrinter.cpp
     assembler/MacroAssemblerX86Common.cpp
 
     bindings/ScriptFunctionCall.cpp
@@ -157,6 +158,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGCleanUpPhase.cpp
     dfg/DFGClobberSet.cpp
     dfg/DFGClobberize.cpp
+    dfg/DFGClobbersExitState.cpp
     dfg/DFGCombinedLiveness.cpp
     dfg/DFGCommon.cpp
     dfg/DFGCommonData.cpp
@@ -187,6 +189,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGGraphSafepoint.cpp
     dfg/DFGHeapLocation.cpp
     dfg/DFGInPlaceAbstractState.cpp
+    dfg/DFGInsertionSet.cpp
     dfg/DFGIntegerCheckCombiningPhase.cpp
     dfg/DFGIntegerRangeOptimizationPhase.cpp
     dfg/DFGInvalidationPointInjectionPhase.cpp
@@ -209,6 +212,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGNaturalLoops.cpp
     dfg/DFGNode.cpp
     dfg/DFGNodeFlags.cpp
+    dfg/DFGNodeOrigin.cpp
     dfg/DFGOSRAvailabilityAnalysisPhase.cpp
     dfg/DFGOSREntry.cpp
     dfg/DFGOSREntrypointCreationPhase.cpp
@@ -534,6 +538,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSMap.cpp
     runtime/JSMapIterator.cpp
     runtime/JSModuleRecord.cpp
+    runtime/JSNativeStdFunction.cpp
     runtime/JSNotAnObject.cpp
     runtime/JSONObject.cpp
     runtime/JSObject.cpp
@@ -571,6 +576,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ModuleLoaderObject.cpp
     runtime/NativeErrorConstructor.cpp
     runtime/NativeErrorPrototype.cpp
+    runtime/NativeStdFunctionCell.cpp
     runtime/NullGetterFunction.cpp
     runtime/NullSetterFunction.cpp
     runtime/NumberConstructor.cpp

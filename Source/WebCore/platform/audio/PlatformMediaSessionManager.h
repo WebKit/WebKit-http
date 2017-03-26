@@ -65,12 +65,9 @@ public:
     enum SessionRestrictionFlags {
         NoRestrictions = 0,
         ConcurrentPlaybackNotPermitted = 1 << 0,
-        InlineVideoPlaybackRestricted = 1 << 1,
-        MetadataPreloadingNotPermitted = 1 << 2,
-        AutoPreloadingNotPermitted = 1 << 3,
-        BackgroundProcessPlaybackRestricted = 1 << 4,
-        BackgroundTabPlaybackRestricted = 1 << 5,
-        InterruptedPlaybackNotPermitted = 1 << 6,
+        BackgroundProcessPlaybackRestricted = 1 << 1,
+        BackgroundTabPlaybackRestricted = 1 << 2,
+        InterruptedPlaybackNotPermitted = 1 << 3,
     };
     typedef unsigned SessionRestrictions;
 
@@ -81,9 +78,6 @@ public:
 
     virtual bool sessionWillBeginPlayback(PlatformMediaSession&);
     virtual void sessionWillEndPlayback(PlatformMediaSession&);
-
-    bool sessionRestrictsInlineVideoPlayback(const PlatformMediaSession&) const;
-
     virtual bool sessionCanLoadMedia(const PlatformMediaSession&) const;
 
 #if PLATFORM(IOS)

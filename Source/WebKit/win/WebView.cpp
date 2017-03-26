@@ -1254,7 +1254,7 @@ void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const In
         gc.save();
         gc.scale(FloatSize(scaleFactor, scaleFactor));
         gc.clip(logicalDirtyRect);
-        frameView->paint(&gc, logicalDirtyRect);
+        frameView->paint(gc, logicalDirtyRect);
         gc.restore();
         if (m_shouldInvertColors)
             gc.fillRect(logicalDirtyRect, Color::white, ColorSpaceDeviceRGB, CompositeDifference);
@@ -5771,7 +5771,7 @@ void WebView::prepareCandidateWindow(Frame* targetFrame, HIMC hInputContext)
     IntRect caret;
     if (RefPtr<Range> range = targetFrame->selection().selection().toNormalizedRange()) {
         ExceptionCode ec = 0;
-        RefPtr<Range> tempRange = range->cloneRange(ec);
+        RefPtr<Range> tempRange = range->cloneRange();
         caret = targetFrame->editor().firstRectForRange(tempRange.get());
     }
     caret = targetFrame->view()->contentsToWindow(caret);
@@ -6031,8 +6031,8 @@ LRESULT WebView::onIMERequestCharPosition(Frame* targetFrame, IMECHARPOSITION* c
     IntRect caret;
     if (RefPtr<Range> range = targetFrame->editor().hasComposition() ? targetFrame->editor().compositionRange() : targetFrame->selection().selection().toNormalizedRange()) {
         ExceptionCode ec = 0;
-        RefPtr<Range> tempRange = range->cloneRange(ec);
-        tempRange->setStart(tempRange->startContainer(ec), tempRange->startOffset(ec) + charPos->dwCharPos, ec);
+        RefPtr<Range> tempRange = range->cloneRange();
+        tempRange->setStart(&tempRange->startContainer(), tempRange->startOffset() + charPos->dwCharPos, ec);
         caret = targetFrame->editor().firstRectForRange(tempRange.get());
     }
     caret = targetFrame->view()->contentsToWindow(caret);
@@ -6989,7 +6989,7 @@ void WebView::paintContents(const GraphicsLayer*, GraphicsContext& context, Grap
     context.save();
     context.scale(FloatSize(scaleFactor, scaleFactor));
     context.clip(logicalClip);
-    frame->view()->paint(&context, enclosingIntRect(logicalClip));
+    frame->view()->paint(context, enclosingIntRect(logicalClip));
     context.restore();
 }
 
@@ -7331,9 +7331,6 @@ HRESULT WebView::firstRectForCharacterRangeForTesting(UINT location, UINT length
 
     if (!range)
         return E_FAIL;
-    
-    ASSERT(range->startContainer());
-    ASSERT(range->endContainer());
      
     IntRect rect = frame.editor().firstRectForRange(range.get());
     resultIntRect = frame.view()->contentsToWindow(rect);

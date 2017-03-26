@@ -42,6 +42,7 @@
 #include "JSInternalPromise.h"
 #include "JSInternalPromiseDeferred.h"
 #include "JSLock.h"
+#include "JSNativeStdFunction.h"
 #include "JSONObject.h"
 #include "JSProxy.h"
 #include "JSString.h"
@@ -64,7 +65,9 @@
 #include <wtf/StringPrintStream.h>
 #include <wtf/text/StringBuilder.h>
 
-#if !OS(WINDOWS)
+#if OS(WINDOWS)
+#include <direct.h>
+#else
 #include <unistd.h>
 #endif
 
@@ -102,10 +105,6 @@
 
 using namespace JSC;
 using namespace WTF;
-
-namespace JSC {
-WTF_IMPORT extern const struct HashTable globalObjectTable;
-}
 
 namespace {
 
@@ -475,6 +474,7 @@ static EncodedJSValue JSC_HOST_CALL functionCheckSyntax(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionReadline(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionPreciseTime(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionNeverInlineFunction(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionNoDFG(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionOptimizeNextInvocation(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionNumberOfDFGCompiles(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionReoptimizationRetryCount(ExecState*);
@@ -495,6 +495,7 @@ static EncodedJSValue JSC_HOST_CALL functionReturnTypeFor(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDumpBasicBlockExecutionRanges(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionHasBasicBlockExecuted(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionEnableExceptionFuzz(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionDrainMicrotasks(ExecState*);
 #if ENABLE(WEBASSEMBLY)
 static EncodedJSValue JSC_HOST_CALL functionLoadWebAssembly(ExecState*);
 #endif
@@ -632,6 +633,7 @@ protected:
         addFunction(vm, "preciseTime", functionPreciseTime, 0);
         addFunction(vm, "neverInlineFunction", functionNeverInlineFunction, 1);
         addFunction(vm, "noInline", functionNeverInlineFunction, 1);
+        addFunction(vm, "noDFG", functionNoDFG, 1);
         addFunction(vm, "numberOfDFGCompiles", functionNumberOfDFGCompiles, 1);
         addFunction(vm, "optimizeNextInvocation", functionOptimizeNextInvocation, 1);
         addFunction(vm, "reoptimizationRetryCount", functionReoptimizationRetryCount, 1);
@@ -645,12 +647,12 @@ protected:
         addFunction(vm, "getElement", functionGetElement, 1);
         addFunction(vm, "setElementRoot", functionSetElementRoot, 2);
         
-        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "DFGTrue"), 0, functionFalse1, DFGTrueIntrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "OSRExit"), 0, functionUndefined1, OSRExitIntrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "isFinalTier"), 0, functionFalse2, IsFinalTierIntrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "predictInt32"), 0, functionUndefined2, SetInt32HeapPredictionIntrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "isInt32"), 0, functionIsInt32, CheckInt32Intrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "fiatInt52"), 0, functionIdentity, FiatInt52Intrinsic, DontEnum | JSC::Function);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "DFGTrue"), 0, functionFalse1, DFGTrueIntrinsic, DontEnum);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "OSRExit"), 0, functionUndefined1, OSRExitIntrinsic, DontEnum);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "isFinalTier"), 0, functionFalse2, IsFinalTierIntrinsic, DontEnum);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "predictInt32"), 0, functionUndefined2, SetInt32HeapPredictionIntrinsic, DontEnum);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "isInt32"), 0, functionIsInt32, CheckInt32Intrinsic, DontEnum);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "fiatInt52"), 0, functionIdentity, FiatInt52Intrinsic, DontEnum);
         
         addFunction(vm, "effectful42", functionEffectful42, 0);
         addFunction(vm, "makeMasquerader", functionMakeMasquerader, 0);
@@ -670,7 +672,9 @@ protected:
         addFunction(vm, "hasBasicBlockExecuted", functionHasBasicBlockExecuted, 2);
 
         addFunction(vm, "enableExceptionFuzz", functionEnableExceptionFuzz, 0);
-        
+
+        addFunction(vm, "drainMicrotasks", functionDrainMicrotasks, 0);
+
 #if ENABLE(WEBASSEMBLY)
         addFunction(vm, "loadWebAssembly", functionLoadWebAssembly, 1);
 #endif
@@ -698,6 +702,8 @@ protected:
         putDirect(vm, identifier, JSFunction::create(vm, this, arguments, identifier.string(), function, NoIntrinsic, function));
     }
 
+    static JSInternalPromise* moduleLoaderResolve(JSGlobalObject*, ExecState*, JSValue, JSValue);
+
     static JSInternalPromise* moduleLoaderFetch(JSGlobalObject* globalObject, ExecState* exec, JSValue key)
     {
         JSInternalPromiseDeferred* deferred = JSInternalPromiseDeferred::create(exec, globalObject);
@@ -705,28 +711,148 @@ protected:
         if (exec->hadException()) {
             JSValue exception = exec->exception();
             exec->clearException();
-            deferred->reject(exec, exception);
-            return deferred->promise();
+            return deferred->reject(exec, exception);
         }
 
         // Here, now we consider moduleKey as the fileName.
         Vector<char> utf8;
-        if (!fillBufferWithContentsOfFile(moduleKey, utf8)) {
-            deferred->reject(exec, createError(exec, makeString("Could not open file '", moduleKey, "'.")));
-            return deferred->promise();
-        }
-        deferred->resolve(exec, jsString(exec, stringFromUTF(utf8.data())));
-        return deferred->promise();
+        if (!fillBufferWithContentsOfFile(moduleKey, utf8))
+            return deferred->reject(exec, createError(exec, makeString("Could not open file '", moduleKey, "'.")));
+
+        return deferred->resolve(exec, jsString(exec, stringFromUTF(utf8.data())));
     }
 };
 
-const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, &globalObjectTable, CREATE_METHOD_TABLE(GlobalObject) };
-const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, nullptr, &moduleLoaderFetch, nullptr, nullptr };
+const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, nullptr, CREATE_METHOD_TABLE(GlobalObject) };
+const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr };
 
 
 GlobalObject::GlobalObject(VM& vm, Structure* structure)
     : JSGlobalObject(vm, structure, &s_globalObjectMethodTable)
 {
+}
+
+static UChar pathSeparator()
+{
+#if OS(WINDOWS)
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
+struct DirectoryName {
+    // In unix, it is "/". In Windows, it becomes a drive letter like "C:\"
+    String rootName;
+
+    // If the directory name is "/home/WebKit", this becomes "home/WebKit". If the directory name is "/", this becomes "".
+    String queryName;
+};
+
+static bool extractDirectoryName(const String& absolutePathToFile, DirectoryName& directoryName)
+{
+    size_t firstSeparatorPosition = absolutePathToFile.find(pathSeparator());
+    if (firstSeparatorPosition == notFound)
+        return false;
+    directoryName.rootName = absolutePathToFile.substring(0, firstSeparatorPosition + 1); // Include the separator.
+    size_t lastSeparatorPosition = absolutePathToFile.reverseFind(pathSeparator());
+    ASSERT_WITH_MESSAGE(lastSeparatorPosition != notFound, "If the separator is not found, this function already returns when performing the forward search.");
+    if (firstSeparatorPosition == lastSeparatorPosition)
+        directoryName.queryName = StringImpl::empty();
+    else
+        directoryName.queryName = absolutePathToFile.substring(firstSeparatorPosition + 1, lastSeparatorPosition); // Not include the separator.
+    return true;
+}
+
+static bool currentWorkingDirectory(DirectoryName& directoryName)
+{
+#if OS(WINDOWS)
+    // https://msdn.microsoft.com/en-us/library/sf98bd4y.aspx
+    char* buffer = nullptr;
+    if (!(buffer = _getcwd(nullptr, 0)))
+        return false;
+    String directoryString = String::fromUTF8(buffer);
+    free(buffer);
+#else
+    auto buffer = std::make_unique<char[]>(PATH_MAX);
+    if (!getcwd(buffer.get(), PATH_MAX))
+        return false;
+    String directoryString = String::fromUTF8(buffer.get());
+#endif
+    if (directoryString.isEmpty())
+        return false;
+
+    if (directoryString[directoryString.length() - 1] == pathSeparator())
+        return extractDirectoryName(directoryString, directoryName);
+    // Append the seperator to represents the file name. extractDirectoryName only accepts the absolute file name.
+    return extractDirectoryName(makeString(directoryString, pathSeparator()), directoryName);
+}
+
+static String resolvePath(const DirectoryName& directoryName, const String& query)
+{
+    Vector<String> directoryPieces;
+    directoryName.queryName.split(pathSeparator(), false, directoryPieces);
+
+    Vector<String> queryPieces;
+    query.split(pathSeparator(), true, queryPieces);
+
+    // Only first '/' is recognized as the path from the root.
+    if (!queryPieces.isEmpty() && queryPieces[0].isEmpty())
+        directoryPieces.clear();
+
+    for (const auto& query : queryPieces) {
+        if (query == String(ASCIILiteral(".."))) {
+            if (!directoryPieces.isEmpty())
+                directoryPieces.removeLast();
+        } else if (!query.isEmpty() && query != String(ASCIILiteral(".")))
+            directoryPieces.append(query);
+    }
+
+    StringBuilder builder;
+    builder.append(directoryName.rootName);
+    for (size_t i = 0; i < directoryPieces.size(); ++i) {
+        builder.append(directoryPieces[i]);
+        if (i + 1 != directoryPieces.size())
+            builder.append(pathSeparator());
+    }
+    return builder.toString();
+}
+
+JSInternalPromise* GlobalObject::moduleLoaderResolve(JSGlobalObject* globalObject, ExecState* exec, JSValue keyValue, JSValue referrerValue)
+{
+    JSInternalPromiseDeferred* deferred = JSInternalPromiseDeferred::create(exec, globalObject);
+    const Identifier key = keyValue.toPropertyKey(exec);
+    if (exec->hadException()) {
+        JSValue exception = exec->exception();
+        exec->clearException();
+        return deferred->reject(exec, exception);
+    }
+
+    if (key.isSymbol())
+        return deferred->resolve(exec, keyValue);
+
+    DirectoryName directoryName;
+    if (referrerValue.isUndefined()) {
+        if (!currentWorkingDirectory(directoryName))
+            return deferred->reject(exec, createError(exec, ASCIILiteral("Could not resolve the current working directory.")));
+    } else {
+        const Identifier referrer = referrerValue.toPropertyKey(exec);
+        if (exec->hadException()) {
+            JSValue exception = exec->exception();
+            exec->clearException();
+            return deferred->reject(exec, exception);
+        }
+        if (referrer.isSymbol()) {
+            if (!currentWorkingDirectory(directoryName))
+                return deferred->reject(exec, createError(exec, ASCIILiteral("Could not resolve the current working directory.")));
+        } else {
+            // If the referrer exists, we assume that the referrer is the correct absolute path.
+            if (!extractDirectoryName(referrer.impl(), directoryName))
+                return deferred->reject(exec, createError(exec, makeString("Could not resolve the referrer name '", String(referrer.impl()), "'.")));
+        }
+    }
+
+    return deferred->resolve(exec, jsString(exec, resolvePath(directoryName, key.impl())));
 }
 
 EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
@@ -909,7 +1035,7 @@ EncodedJSValue JSC_HOST_CALL functionHeapSize(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL functionDeleteAllCompiledCode(ExecState* exec)
 {
     JSLockHolder lock(exec);
-    exec->heap()->deleteAllCompiledCode();
+    exec->heap()->deleteAllCodeBlocks();
     return JSValue::encode(jsUndefined());
 }
 
@@ -1054,6 +1180,11 @@ EncodedJSValue JSC_HOST_CALL functionPreciseTime(ExecState*)
 EncodedJSValue JSC_HOST_CALL functionNeverInlineFunction(ExecState* exec)
 {
     return JSValue::encode(setNeverInline(exec));
+}
+
+EncodedJSValue JSC_HOST_CALL functionNoDFG(ExecState* exec)
+{
+    return JSValue::encode(setNeverOptimize(exec));
 }
 
 EncodedJSValue JSC_HOST_CALL functionOptimizeNextInvocation(ExecState* exec)
@@ -1206,6 +1337,12 @@ EncodedJSValue JSC_HOST_CALL functionEnableExceptionFuzz(ExecState*)
     return JSValue::encode(jsUndefined());
 }
 
+EncodedJSValue JSC_HOST_CALL functionDrainMicrotasks(ExecState* exec)
+{
+    exec->vm().drainMicrotasks();
+    return JSValue::encode(jsUndefined());
+}
+
 #if ENABLE(WEBASSEMBLY)
 EncodedJSValue JSC_HOST_CALL functionLoadWebAssembly(ExecState* exec)
 {
@@ -1340,15 +1477,19 @@ int main(int argc, char** argv)
     jscExit(res);
 }
 
+static void dumpException(GlobalObject* globalObject, JSValue exception)
+{
+    printf("Exception: %s\n", exception.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
+    Identifier stackID = Identifier::fromString(globalObject->globalExec(), "stack");
+    JSValue stackValue = exception.get(globalObject->globalExec(), stackID);
+    if (!stackValue.isUndefinedOrNull())
+        printf("%s\n", stackValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
+}
+
 static void dumpException(GlobalObject* globalObject, NakedPtr<Exception> evaluationException)
 {
-    if (evaluationException) {
-        printf("Exception: %s\n", evaluationException->value().toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
-        Identifier stackID = Identifier::fromString(globalObject->globalExec(), "stack");
-        JSValue stackValue = evaluationException->value().get(globalObject->globalExec(), stackID);
-        if (!stackValue.isUndefinedOrNull())
-            printf("%s\n", stackValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
-    }
+    if (evaluationException)
+        dumpException(globalObject, evaluationException->value());
 }
 
 static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scripts, bool dump, bool module)
@@ -1361,18 +1502,37 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
         JSC::Options::dumpGeneratedBytecodes() = true;
 
     VM& vm = globalObject->vm();
+    bool success = true;
+
+#if ENABLE(ES6_MODULES)
+    JSFunction* errorHandler = JSNativeStdFunction::create(vm, globalObject, 1, String(), [&](ExecState* exec) {
+        success = false;
+        dumpException(globalObject, exec->argument(0));
+        return JSValue::encode(jsUndefined());
+    });
+#endif
 
 #if ENABLE(SAMPLING_FLAGS)
     SamplingFlags::start();
 #endif
 
-    bool success = true;
     for (size_t i = 0; i < scripts.size(); i++) {
+#if ENABLE(ES6_MODULES)
+        JSInternalPromise* promise = nullptr;
+#endif
         if (scripts[i].isFile) {
             fileName = scripts[i].argument;
-            if (!fillBufferWithContentsOfFile(fileName, scriptBuffer))
-                return false; // fail early so we can catch missing files
-            script = scriptBuffer.data();
+            if (module) {
+#if ENABLE(ES6_MODULES)
+                promise = evaluateModule(globalObject->globalExec(), fileName);
+#else
+                RELEASE_ASSERT_NOT_REACHED();
+#endif
+            } else {
+                if (!fillBufferWithContentsOfFile(fileName, scriptBuffer))
+                    return false; // fail early so we can catch missing files
+                script = scriptBuffer.data();
+            }
         } else {
             script = scripts[i].argument;
             fileName = ASCIILiteral("[Command Line]");
@@ -1382,10 +1542,10 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
 
         if (module) {
 #if ENABLE(ES6_MODULES)
-            NakedPtr<Exception> evaluationException;
-            evaluateModule(globalObject->globalExec(), jscSource(script, fileName), evaluationException);
-            dumpException(globalObject, evaluationException);
+            if (!promise)
+                promise = evaluateModule(globalObject->globalExec(), jscSource(script, fileName));
             globalObject->globalExec()->clearException();
+            promise->then(globalObject->globalExec(), nullptr, errorHandler);
             globalObject->vm().drainMicrotasks();
 #else
             RELEASE_ASSERT_NOT_REACHED();

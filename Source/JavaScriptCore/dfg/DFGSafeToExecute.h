@@ -89,6 +89,11 @@ public:
             if (m_state.forNode(edge).m_type & ~SpecString)
                 m_result = false;
             return;
+
+        case KnownPrimitiveUse:
+            if (m_state.forNode(edge).m_type & ~(SpecHeapTop & ~SpecObject))
+                m_result = false;
+            return;
             
         case LastUseKind:
             RELEASE_ASSERT_NOT_REACHED();
@@ -138,6 +143,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetStack:
     case MovHint:
     case ZombieHint:
+    case ExitOK:
     case Phantom:
     case Upsilon:
     case Phi:
@@ -234,6 +240,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case LogicalNot:
     case ToPrimitive:
     case ToString:
+    case StrCat:
     case CallStringConstructor:
     case NewStringObject:
     case MakeRope:

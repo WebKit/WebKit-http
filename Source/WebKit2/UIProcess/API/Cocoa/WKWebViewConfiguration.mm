@@ -40,6 +40,7 @@
 
 #if PLATFORM(IOS)
 #import "UIKitSPI.h"
+#import "WebKitSystemInterfaceIOS.h"
 #endif
 
 template<typename T> class LazyInitialized {
@@ -83,7 +84,7 @@ private:
     LazyInitialized<RetainPtr<WKProcessPool>> _processPool;
     LazyInitialized<RetainPtr<WKPreferences>> _preferences;
     LazyInitialized<RetainPtr<WKUserContentController>> _userContentController;
-    LazyInitialized<RetainPtr<_WKVisitedLinkProvider>> _visitedLinkProvider;
+    LazyInitialized<RetainPtr<_WKVisitedLinkStore>> _visitedLinkStore;
     LazyInitialized<RetainPtr<WKWebsiteDataStore>> _websiteDataStore;
     WebKit::WeakObjCPtr<WKWebView> _relatedWebView;
     WebKit::WeakObjCPtr<WKWebView> _alternateWebViewForNavigationGestures;
@@ -94,6 +95,9 @@ private:
 #if PLATFORM(IOS)
     LazyInitialized<RetainPtr<WKWebViewContentProviderRegistry>> _contentProviderRegistry;
     BOOL _alwaysRunsAtForegroundPriority;
+    BOOL _allowsInlineMediaPlayback;
+    BOOL _inlineMediaPlaybackRequiresPlaysInlineAttribute;
+    BOOL _mediaDataLoadsAutomatically;
 #endif
 }
 
@@ -105,6 +109,9 @@ private:
 #if PLATFORM(IOS)
     _requiresUserActionForMediaPlayback = YES;
     _allowsPictureInPictureMediaPlayback = YES;
+    _allowsInlineMediaPlayback = WKGetDeviceClass() == WKDeviceClassiPad;
+    _inlineMediaPlaybackRequiresPlaysInlineAttribute = !_allowsInlineMediaPlayback;
+    _mediaDataLoadsAutomatically = NO;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -127,7 +134,7 @@ private:
     configuration.preferences = self.preferences;
     configuration.userContentController = self.userContentController;
     configuration.websiteDataStore = self.websiteDataStore;
-    configuration._visitedLinkProvider = self._visitedLinkProvider;
+    configuration._visitedLinkStore = self._visitedLinkStore;
     configuration._relatedWebView = _relatedWebView.get().get();
     configuration._alternateWebViewForNavigationGestures = _alternateWebViewForNavigationGestures.get().get();
     configuration->_treatsSHA1SignedCertificatesAsInsecure = _treatsSHA1SignedCertificatesAsInsecure;
@@ -140,6 +147,8 @@ private:
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
+    configuration->_inlineMediaPlaybackRequiresPlaysInlineAttribute = self->_inlineMediaPlaybackRequiresPlaysInlineAttribute;
+    configuration->_mediaDataLoadsAutomatically = self->_mediaDataLoadsAutomatically;
     configuration->_allowsPictureInPictureMediaPlayback = self->_allowsPictureInPictureMediaPlayback;
     configuration->_alwaysRunsAtForegroundPriority = _alwaysRunsAtForegroundPriority;
     configuration->_requiresUserActionForMediaPlayback = self->_requiresUserActionForMediaPlayback;
@@ -211,14 +220,14 @@ static NSString *defaultApplicationNameForUserAgent()
     _applicationNameForUserAgent.set(adoptNS([applicationNameForUserAgent copy]));
 }
 
-- (_WKVisitedLinkProvider *)_visitedLinkProvider
+- (_WKVisitedLinkStore *)_visitedLinkStore
 {
-    return _visitedLinkProvider.get([] { return adoptNS([[_WKVisitedLinkProvider alloc] init]); });
+    return _visitedLinkStore.get([] { return adoptNS([[_WKVisitedLinkStore alloc] init]); });
 }
 
-- (void)_setVisitedLinkProvider:(_WKVisitedLinkProvider *)visitedLinkProvider
+- (void)_setVisitedLinkStore:(_WKVisitedLinkStore *)visitedLinkStore
 {
-    _visitedLinkProvider.set(visitedLinkProvider);
+    _visitedLinkStore.set(visitedLinkStore);
 }
 
 #pragma clang diagnostic push
@@ -232,6 +241,16 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setWebsiteDataStore:(_WKWebsiteDataStore *)websiteDataStore
 {
     self.websiteDataStore = websiteDataStore ? websiteDataStore->_dataStore.get() : nullptr;
+}
+
+-(_WKVisitedLinkProvider *)_visitedLinkProvider
+{
+    return (_WKVisitedLinkProvider *)self._visitedLinkStore;
+}
+
+- (void)_setVisitedLinkProvider:(_WKVisitedLinkProvider *)_visitedLinkProvider
+{
+    self._visitedLinkStore = _visitedLinkProvider;
 }
 
 #pragma clang diagnostic pop
@@ -262,8 +281,8 @@ static NSString *defaultApplicationNameForUserAgent()
     if (!self.websiteDataStore)
         [NSException raise:NSInvalidArgumentException format:@"configuration.websiteDataStore is nil"];
 
-    if (!self._visitedLinkProvider)
-        [NSException raise:NSInvalidArgumentException format:@"configuration._visitedLinkProvider is nil"];
+    if (!self._visitedLinkStore)
+        [NSException raise:NSInvalidArgumentException format:@"configuration._visitedLinkStore is nil"];
 
 #if PLATFORM(IOS)
     if (!self._contentProviderRegistry)
@@ -324,6 +343,26 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setAlwaysRunsAtForegroundPriority:(BOOL)alwaysRunsAtForegroundPriority
 {
     _alwaysRunsAtForegroundPriority = alwaysRunsAtForegroundPriority;
+}
+
+- (BOOL)_inlineMediaPlaybackRequiresPlaysInlineAttribute
+{
+    return _inlineMediaPlaybackRequiresPlaysInlineAttribute;
+}
+
+- (void)_setInlineMediaPlaybackRequiresPlaysInlineAttribute:(BOOL)requires
+{
+    _inlineMediaPlaybackRequiresPlaysInlineAttribute = requires;
+}
+
+- (BOOL)_mediaDataLoadsAutomatically
+{
+    return _mediaDataLoadsAutomatically;
+}
+
+- (void)_setMediaDataLoadsAutomatically:(BOOL)mediaDataLoadsAutomatically
+{
+    _mediaDataLoadsAutomatically = mediaDataLoadsAutomatically;
 }
 #endif
 

@@ -40,6 +40,7 @@
 #include <WebCore/Font.h>
 #include <WebCore/FontCascade.h>
 #include <WebCore/Frame.h>
+#include <WebCore/HTMLCollection.h>
 #include <WebCore/HTMLFormElement.h>
 #include <WebCore/HTMLInputElement.h>
 #include <WebCore/HTMLNames.h>
@@ -708,7 +709,10 @@ HRESULT DOMDocument::getElementsByTagName(_In_ BSTR tagName, _COM_Outptr_opt_ ID
         return E_FAIL;
 
     String tagNameString(tagName);
-    *result = DOMNodeList::createInstance(m_document->getElementsByTagName(tagNameString).get());
+    RefPtr<WebCore::NodeList> elements;
+    if (!tagNameString.isNull())
+        elements = m_document->getElementsByTagName(tagNameString);
+    *result = DOMNodeList::createInstance(elements.get());
     return *result ? S_OK : E_FAIL;
 }
 
@@ -749,7 +753,10 @@ HRESULT DOMDocument::getElementsByTagNameNS(_In_ BSTR namespaceURI, _In_ BSTR lo
 
     String namespaceURIString(namespaceURI);
     String localNameString(localName);
-    *result = DOMNodeList::createInstance(m_document->getElementsByTagNameNS(namespaceURIString, localNameString).get());
+    RefPtr<WebCore::NodeList> elements;
+    if (!localNameString.isNull())
+        elements = m_document->getElementsByTagNameNS(namespaceURIString, localNameString);
+    *result = DOMNodeList::createInstance(elements.get());
     return *result ? S_OK : E_FAIL;
 }
 
@@ -1599,7 +1606,7 @@ HRESULT DOMRange::startContainer(_COM_Outptr_opt_ IDOMNode** node)
     if (!m_range)
         return E_UNEXPECTED;
 
-    *node = DOMNode::createInstance(m_range->startContainer());
+    *node = DOMNode::createInstance(&m_range->startContainer());
 
     return S_OK;
 }
@@ -1625,7 +1632,7 @@ HRESULT DOMRange::endContainer(_COM_Outptr_opt_ IDOMNode** node)
     if (!m_range)
         return E_UNEXPECTED;
 
-    *node = DOMNode::createInstance(m_range->endContainer());
+    *node = DOMNode::createInstance(&m_range->endContainer());
 
     return S_OK;
 }
@@ -1651,8 +1658,7 @@ HRESULT DOMRange::collapsed(_Out_ BOOL* result)
     if (!m_range)
         return E_UNEXPECTED;
 
-    WebCore::ExceptionCode ec = 0;
-    *result = m_range->collapsed(ec);
+    *result = m_range->collapsed();
 
     return S_OK;
 }
@@ -1779,8 +1785,7 @@ HRESULT DOMRange::toString(__deref_opt_out BSTR* str)
     if (!m_range)
         return E_UNEXPECTED;
 
-    WebCore::ExceptionCode ec = 0;
-    *str = BString(m_range->toString(ec)).release();
+    *str = BString(m_range->toString()).release();
 
     return S_OK;
 }

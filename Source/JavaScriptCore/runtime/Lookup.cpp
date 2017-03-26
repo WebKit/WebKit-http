@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2008, 2012 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008, 2012, 2015 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -26,27 +26,6 @@
 #include "JSCInlines.h"
 
 namespace JSC {
-
-void HashTable::createTable() const
-{
-    ASSERT(!keys);
-    keys = static_cast<const char**>(fastMalloc(sizeof(char*) * numberOfValues));
-
-    for (int i = 0; i < numberOfValues; ++i) {
-        if (values[i].m_key)
-            keys[i] = values[i].m_key;
-        else
-            keys[i] = 0;
-    }
-}
-
-void HashTable::deleteTable() const
-{
-    if (keys) {
-        fastFree(keys);
-        keys = nullptr;
-    }
-}
 
 void reifyStaticAccessor(VM& vm, const HashTableValue& value, JSObject& thisObj, PropertyName propertyName)
 {
@@ -77,11 +56,11 @@ bool setUpStaticFunctionSlot(ExecState* exec, const HashTableValue* entry, JSObj
             return false;
 
         if (entry->attributes() & Builtin)
-            thisObj->putDirectBuiltinFunction(vm, thisObj->globalObject(), propertyName, entry->builtinGenerator()(vm), entry->attributes());
+            thisObj->putDirectBuiltinFunction(vm, thisObj->globalObject(), propertyName, entry->builtinGenerator()(vm), attributesForStructure(entry->attributes()));
         else if (entry->attributes() & Function) {
             thisObj->putDirectNativeFunction(
                 vm, thisObj->globalObject(), propertyName, entry->functionLength(),
-                entry->function(), entry->intrinsic(), entry->attributes());
+                entry->function(), entry->intrinsic(), attributesForStructure(entry->attributes()));
         } else {
             ASSERT(isAccessor);
             reifyStaticAccessor(vm, *entry, *thisObj, propertyName);

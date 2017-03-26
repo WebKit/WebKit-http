@@ -644,9 +644,9 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     }
     
     if (contentsOnly)
-        view->paintContents(&context, enclosingIntRect(rect));
+        view->paintContents(context, enclosingIntRect(rect));
     else
-        view->paint(&context, enclosingIntRect(rect));
+        view->paint(context, enclosingIntRect(rect));
 
     if (shouldFlatten)
         view->setPaintBehavior(oldBehavior);
@@ -868,7 +868,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     if (!document)
         return nil;
 
-    return kit(createFragmentFromMarkup(*document, markupString, baseURLString, DisallowScriptingContent).get());
+    return kit(createFragmentFromMarkup(*document, markupString, baseURLString, DisallowScriptingContent).ptr());
 }
 
 - (DOMDocumentFragment *)_documentFragmentWithNodesAsParagraphs:(NSArray *)nodes
@@ -1437,22 +1437,6 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 {
     Document *document = core(self)->document();
     return document->isTelephoneNumberParsingEnabled();
-}
-
-- (BOOL)mediaDataLoadsAutomatically
-{
-    WebCore::Frame *frame = core(self);
-    if (WebCore::Page* page = frame->page())
-        return page->settings().mediaDataLoadsAutomatically();
-
-    return NO;
-}
-
-- (void)setMediaDataLoadsAutomatically:(BOOL)flag
-{
-    WebCore::Frame *frame = core(self);
-    if (WebCore::Page* page = frame->page())
-        page->settings().setMediaDataLoadsAutomatically(flag);
 }
 
 - (DOMRange *)selectedDOMRange

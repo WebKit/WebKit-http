@@ -40,12 +40,11 @@ class JSGlobalObject;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
 class SourceCode;
+class WebAssemblyExecutable;
 namespace DFG {
 class SpeculativeJIT;
 class JITCompiler;
 }
-
-typedef std::function<EncodedJSValue (ExecState*)> NativeStdFunction;
 
 JS_EXPORT_PRIVATE EncodedJSValue JSC_HOST_CALL callHostFunctionAsConstructor(ExecState*);
 
@@ -70,9 +69,11 @@ public:
     JS_EXPORT_PRIVATE static JSFunction* create(VM&, JSGlobalObject*, int length, const String& name, NativeFunction, Intrinsic = NoIntrinsic, NativeFunction nativeConstructor = callHostFunctionAsConstructor);
     
     static JSFunction* createWithInvalidatedReallocationWatchpoint(VM&, FunctionExecutable*, JSScope*);
-    JS_EXPORT_PRIVATE static JSFunction* create(VM&, JSGlobalObject*, int length, const String& name, NativeStdFunction&&, Intrinsic = NoIntrinsic, NativeFunction nativeConstructor = callHostFunctionAsConstructor);
 
     static JSFunction* create(VM&, FunctionExecutable*, JSScope*);
+#if ENABLE(WEBASSEMBLY)
+    static JSFunction* create(VM&, WebAssemblyExecutable*, JSScope*);
+#endif
 
     static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*);
     static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*, const String& name);
@@ -143,6 +144,10 @@ protected:
     JSFunction(VM&, FunctionExecutable*, JSScope*);
     JSFunction(VM&, FunctionExecutable*, JSScope*, Structure*);
 
+#if ENABLE(WEBASSEMBLY)
+    JSFunction(VM&, WebAssemblyExecutable*, JSScope*);
+#endif
+
     void finishCreation(VM&, NativeExecutable*, int length, const String& name);
     using Base::finishCreation;
 
@@ -158,6 +163,9 @@ protected:
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
     static void visitChildren(JSCell*, SlotVisitor&);
+
+
+    static NativeExecutable* lookUpOrCreateNativeExecutable(VM&, NativeFunction, Intrinsic, NativeFunction nativeConstructor);
 
 private:
     static JSFunction* createImpl(VM& vm, FunctionExecutable* executable, JSScope* scope)

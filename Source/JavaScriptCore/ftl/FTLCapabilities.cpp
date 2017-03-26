@@ -51,6 +51,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetStack:
     case MovHint:
     case ZombieHint:
+    case ExitOK:
     case Phantom:
     case Flush:
     case PhantomLocal:
@@ -78,6 +79,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetGlobalVar:
     case PutGlobalVar:
     case ValueAdd:
+    case StrCat:
     case ArithAdd:
     case ArithClz32:
     case ArithSub:
@@ -420,6 +422,7 @@ CapabilityLevel canCompile(Graph& graph)
                 case ObjectOrOtherUse:
                 case StringUse:
                 case KnownStringUse:
+                case KnownPrimitiveUse:
                 case StringObjectUse:
                 case StringOrStringObjectUse:
                 case SymbolUse:

@@ -45,7 +45,7 @@ WebInspector.JavaScriptLogViewController = class JavaScriptLogViewController ext
 
         this._cleared = true;
         this._previousMessageView = null;
-        this._lastCommited = "";
+        this._lastCommitted = "";
         this._repeatCountWasInterrupted = false;
 
         this._sessions = [];
@@ -109,7 +109,7 @@ WebInspector.JavaScriptLogViewController = class JavaScriptLogViewController ext
         var consoleSession = new WebInspector.ConsoleSession;
 
         this._previousMessageView = null;
-        this._lastCommited = "";
+        this._lastCommitted = "";
         this._repeatCountWasInterrupted = false;
 
         this._sessions.push(consoleSession);
@@ -205,12 +205,6 @@ WebInspector.JavaScriptLogViewController = class JavaScriptLogViewController ext
             return;
         }
 
-        // COMPATIBILITY (iOS 6): RuntimeAgent.parse did not exist in iOS 6. Always commit.
-        if (!RuntimeAgent.parse) {
-            handler(true);
-            return;
-        }
-
         function parseFinished(error, result, message, range)
         {
             handler(result !== RuntimeAgent.SyntaxErrorType.Recoverable);
@@ -223,10 +217,10 @@ WebInspector.JavaScriptLogViewController = class JavaScriptLogViewController ext
     {
         console.assert(text);
 
-        if (this._lastCommited !== text) {
+        if (this._lastCommitted !== text) {
             let commandMessageView = new WebInspector.ConsoleCommandView(text);
             this._appendConsoleMessageView(commandMessageView, true);
-            this._lastCommited = text;
+            this._lastCommitted = text;
         }
 
         function printResult(result, wasThrown, savedResultIndex)
@@ -283,6 +277,9 @@ WebInspector.JavaScriptLogViewController = class JavaScriptLogViewController ext
 
         if (!repeatCountWasInterrupted)
             this._previousMessageView = messageView;
+
+        if (messageView.message && messageView.message.source !== WebInspector.ConsoleMessage.MessageSource.JS)
+            this._lastCommitted = "";
 
         var type = messageView instanceof WebInspector.ConsoleCommandView ? null : messageView.message.type;
         if (type === WebInspector.ConsoleMessage.MessageType.EndGroup) {

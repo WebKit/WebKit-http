@@ -605,11 +605,28 @@ void WKBundlePagePostMessage(WKBundlePageRef pageRef, WKStringRef messageNameRef
     toImpl(pageRef)->postMessage(toWTFString(messageNameRef), toImpl(messageBodyRef));
 }
 
-void WKBundlePagePostSynchronousMessage(WKBundlePageRef pageRef, WKStringRef messageNameRef, WKTypeRef messageBodyRef, WKTypeRef* returnDataRef)
+void WKBundlePagePostSynchronousMessageForTesting(WKBundlePageRef pageRef, WKStringRef messageNameRef, WKTypeRef messageBodyRef, WKTypeRef* returnDataRef)
 {
+    WebPage* page = toImpl(pageRef);
+    page->layoutIfNeeded();
+
     RefPtr<API::Object> returnData;
-    toImpl(pageRef)->postSynchronousMessage(toWTFString(messageNameRef), toImpl(messageBodyRef), returnData);
+    page->postSynchronousMessageForTesting(toWTFString(messageNameRef), toImpl(messageBodyRef), returnData);
     if (returnDataRef)
         *returnDataRef = toAPI(returnData.release().leakRef());
 }
 
+void WKBundlePageAddUserScript(WKBundlePageRef pageRef, WKStringRef source, _WKUserScriptInjectionTime injectionTime, WKUserContentInjectedFrames injectedFrames)
+{
+    toImpl(pageRef)->addUserScript(toWTFString(source), toUserContentInjectedFrames(injectedFrames), toUserScriptInjectionTime(injectionTime));
+}
+
+void WKBundlePageAddUserStyleSheet(WKBundlePageRef pageRef, WKStringRef source, WKUserContentInjectedFrames injectedFrames)
+{
+    toImpl(pageRef)->addUserStyleSheet(toWTFString(source), toUserContentInjectedFrames(injectedFrames));
+}
+
+void WKBundlePageRemoveAllUserContent(WKBundlePageRef pageRef)
+{
+    toImpl(pageRef)->removeAllUserContent();
+}

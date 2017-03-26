@@ -31,10 +31,12 @@
 #include "DFGDriver.h"
 #include "JIT.h"
 #include "JSCInlines.h"
+#include "JSWASMModule.h"
 #include "LLIntEntrypoint.h"
 #include "Parser.h"
 #include "ProfilerDatabase.h"
 #include "TypeProfiler.h"
+#include "WASMFunctionParser.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/Vector.h>
 #include <wtf/text/StringBuilder.h>
@@ -235,9 +237,14 @@ RefPtr<CodeBlock> ScriptExecutable::newCodeBlockFor(
     ParserError error;
     DebuggerMode debuggerMode = globalObject->hasDebugger() ? DebuggerOn : DebuggerOff;
     ProfilerMode profilerMode = globalObject->hasProfiler() ? ProfilerOn : ProfilerOff;
-    UnlinkedFunctionCodeBlock* unlinkedCodeBlock =
-    executable->m_unlinkedExecutable->codeBlockFor(*vm, executable->m_source, kind, debuggerMode, profilerMode, error, executable->isArrowFunction());
-    recordParse(executable->m_unlinkedExecutable->features(), executable->m_unlinkedExecutable->hasCapturedVariables(), firstLine(), lastLine(), startColumn(), endColumn()); 
+    UnlinkedFunctionCodeBlock* unlinkedCodeBlock = 
+        executable->m_unlinkedExecutable->unlinkedCodeBlockFor(
+            *vm, executable->m_source, kind, debuggerMode, profilerMode, error, 
+            executable->isArrowFunction());
+    recordParse(
+        executable->m_unlinkedExecutable->features(), 
+        executable->m_unlinkedExecutable->hasCapturedVariables(), firstLine(), 
+        lastLine(), startColumn(), endColumn()); 
     if (!unlinkedCodeBlock) {
         exception = vm->throwException(
             globalObject->globalExec(),
@@ -437,16 +444,6 @@ void EvalExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_unlinkedEvalCodeBlock);
 }
 
-void EvalExecutable::unlinkCalls()
-{
-#if ENABLE(JIT)
-    if (!m_jitCodeForCall)
-        return;
-    RELEASE_ASSERT(m_evalCodeBlock);
-    m_evalCodeBlock->unlinkCalls();
-#endif
-}
-
 void EvalExecutable::clearCode()
 {
     m_evalCodeBlock = nullptr;
@@ -466,16 +463,6 @@ JSObject* ProgramExecutable::checkSyntax(ExecState* exec)
         return 0;
     ASSERT(error.isValid());
     return error.toErrorObject(lexicalGlobalObject, m_source);
-}
-
-void ProgramExecutable::unlinkCalls()
-{
-#if ENABLE(JIT)
-    if (!m_jitCodeForCall)
-        return;
-    RELEASE_ASSERT(m_programCodeBlock);
-    m_programCodeBlock->unlinkCalls();
-#endif
 }
 
 JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callFrame, JSScope* scope)
@@ -557,30 +544,11 @@ void FunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_singletonFunction);
 }
 
-void FunctionExecutable::clearUnlinkedCodeForRecompilation()
-{
-    m_unlinkedExecutable->clearCodeForRecompilation();
-}
-
 void FunctionExecutable::clearCode()
 {
     m_codeBlockForCall = nullptr;
     m_codeBlockForConstruct = nullptr;
     Base::clearCode();
-}
-
-void FunctionExecutable::unlinkCalls()
-{
-#if ENABLE(JIT)
-    if (!!m_jitCodeForCall) {
-        RELEASE_ASSERT(m_codeBlockForCall);
-        m_codeBlockForCall->unlinkCalls();
-    }
-    if (!!m_jitCodeForConstruct) {
-        RELEASE_ASSERT(m_codeBlockForConstruct);
-        m_codeBlockForConstruct->unlinkCalls();
-    }
-#endif
 }
 
 FunctionExecutable* FunctionExecutable::fromGlobalCode(
@@ -595,6 +563,62 @@ FunctionExecutable* FunctionExecutable::fromGlobalCode(
 
     return unlinkedExecutable->link(exec.vm(), source, overrideLineNumber);
 }
+
+#if ENABLE(WEBASSEMBLY)
+const ClassInfo WebAssemblyExecutable::s_info = { "WebAssemblyExecutable", &ExecutableBase::s_info, 0, CREATE_METHOD_TABLE(WebAssemblyExecutable) };
+
+WebAssemblyExecutable::WebAssemblyExecutable(VM& vm, const SourceCode& source, JSWASMModule* module, unsigned functionIndex)
+    : ExecutableBase(vm, vm.webAssemblyExecutableStructure.get(), NUM_PARAMETERS_NOT_COMPILED)
+    , m_source(source)
+    , m_module(vm, this, module)
+    , m_functionIndex(functionIndex)
+{
+}
+
+void WebAssemblyExecutable::destroy(JSCell* cell)
+{
+    static_cast<WebAssemblyExecutable*>(cell)->WebAssemblyExecutable::~WebAssemblyExecutable();
+}
+
+void WebAssemblyExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
+{
+    WebAssemblyExecutable* thisObject = jsCast<WebAssemblyExecutable*>(cell);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    ExecutableBase::visitChildren(thisObject, visitor);
+    if (thisObject->m_codeBlockForCall)
+        thisObject->m_codeBlockForCall->visitAggregate(visitor);
+    visitor.append(&thisObject->m_module);
+}
+
+void WebAssemblyExecutable::clearCode()
+{
+    m_codeBlockForCall = nullptr;
+    Base::clearCode();
+}
+
+void WebAssemblyExecutable::prepareForExecution(ExecState* exec)
+{
+    if (hasJITCodeForCall())
+        return;
+
+    VM& vm = exec->vm();
+    DeferGC deferGC(vm.heap);
+
+    RefPtr<WebAssemblyCodeBlock> codeBlock = adoptRef(new WebAssemblyCodeBlock(
+        this, vm, exec->lexicalGlobalObject()));
+
+    WASMFunctionParser::compile(vm, codeBlock.get(), m_module.get(), m_source, m_functionIndex);
+
+    m_jitCodeForCall = codeBlock->jitCode();
+    m_jitCodeForCallWithArityCheck = MacroAssemblerCodePtr();
+    m_jitCodeForCallWithArityCheckAndPreserveRegs = MacroAssemblerCodePtr();
+    m_numParametersForCall = codeBlock->numParameters();
+
+    m_codeBlockForCall = codeBlock;
+
+    Heap::heap(this)->writeBarrier(this);
+}
+#endif
 
 void ExecutableBase::dump(PrintStream& out) const
 {

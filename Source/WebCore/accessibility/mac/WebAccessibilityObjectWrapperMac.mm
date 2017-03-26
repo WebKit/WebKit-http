@@ -233,6 +233,18 @@ using namespace HTMLNames;
 #define NSAccessibilityIsMultiSelectableAttribute @"AXIsMultiSelectable"
 #endif
 
+#ifndef NSAccessibilityDocumentURIAttribute
+#define NSAccessibilityDocumentURIAttribute @"AXDocumentURI"
+#endif
+
+#ifndef NSAccessibilityDocumentEncodingAttribute
+#define NSAccessibilityDocumentEncodingAttribute @"AXDocumentEncoding"
+#endif
+
+#ifndef NSAccessibilityAriaControlsAttribute
+#define NSAccessibilityAriaControlsAttribute @"AXARIAControls"
+#endif
+
 #define NSAccessibilityDOMIdentifierAttribute @"AXDOMIdentifier"
 #define NSAccessibilityDOMClassListAttribute @"AXDOMClassList"
 
@@ -1125,20 +1137,19 @@ static NSString* nsStringForReplacedNode(Node* replacedNode)
     TextIterator it(makeRange(startVisiblePosition, endVisiblePosition).get());
     while (!it.atEnd()) {
         // locate the node and starting offset for this range
-        int exception = 0;
-        Node* node = it.range()->startContainer(exception);
-        ASSERT(node == it.range()->endContainer(exception));
-        int offset = it.range()->startOffset(exception);
+        Node& node = it.range()->startContainer();
+        ASSERT(&node == &it.range()->endContainer());
+        int offset = it.range()->startOffset();
         
         // non-zero length means textual node, zero length means replaced node (AKA "attachments" in AX)
         if (it.text().length()) {
             // Add the text of the list marker item if necessary.
-            String listMarkerText = m_object->listMarkerTextForNodeAndPosition(node, VisiblePosition(it.range()->startPosition()));
+            String listMarkerText = m_object->listMarkerTextForNodeAndPosition(&node, VisiblePosition(it.range()->startPosition()));
             if (!listMarkerText.isEmpty())
-                AXAttributedStringAppendText(attrString, node, listMarkerText);
-            AXAttributedStringAppendText(attrString, node, it.text());
+                AXAttributedStringAppendText(attrString, &node, listMarkerText);
+            AXAttributedStringAppendText(attrString, &node, it.text());
         } else {
-            Node* replacedNode = node->traverseToChildAt(offset);
+            Node* replacedNode = node.traverseToChildAt(offset);
             NSString *attachmentString = nsStringForReplacedNode(replacedNode);
             if (attachmentString) {
                 NSRange attrStringRange = NSMakeRange([attrString length], [attachmentString length]);
@@ -3047,6 +3058,26 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if ([attributeName isEqualToString:NSAccessibilityIsMultiSelectableAttribute])
         return [NSNumber numberWithBool:m_object->isMultiSelectable()];
     
+    // Document attributes
+    if ([attributeName isEqualToString:NSAccessibilityDocumentURIAttribute]) {
+        if (Document* document = m_object->document())
+            return document->documentURI();
+        return nil;
+    }
+    
+    if ([attributeName isEqualToString:NSAccessibilityDocumentEncodingAttribute]) {
+        if (Document* document = m_object->document())
+            return document->encoding();
+        return nil;
+    }
+    
+    // Aria controls element
+    if ([attributeName isEqualToString:NSAccessibilityAriaControlsAttribute]) {
+        AccessibilityObject::AccessibilityChildrenVector ariaControls;
+        m_object->ariaControlsElements(ariaControls);
+        return convertToNSArray(ariaControls);
+    }
+    
     return nil;
 }
 
@@ -3329,6 +3360,16 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     m_object->scrollToMakeVisible();
 }
 
+- (void)_accessibilityScrollToMakeVisibleWithSubFocus:(NSRect)rect
+{
+    m_object->scrollToMakeVisibleWithSubFocus(IntRect(rect));
+}
+
+- (void)_accessibilityScrollToGlobalPoint:(NSPoint)point
+{
+    m_object->scrollToGlobalPoint(IntPoint(point));
+}
+
 - (void)accessibilityPerformAction:(NSString*)action
 {
     if (![self updateObjectBackingStore])
@@ -3502,7 +3543,7 @@ static RenderObject* rendererForView(NSView* view)
 - (NSRange)_convertToNSRange:(Range*)range
 {
     NSRange result = NSMakeRange(NSNotFound, 0);
-    if (!range || !range->startContainer())
+    if (!range)
         return result;
     
     Document* document = m_object->document();

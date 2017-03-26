@@ -45,6 +45,11 @@
 
 #ifdef __HAIKU__
 #define BOS_HAIKU 1
+#define BOS_UNIX 1
+#endif
+
+#ifdef __unix
+#define BOS_UNIX 1
 #endif
 
 #endif // BPlatform_h

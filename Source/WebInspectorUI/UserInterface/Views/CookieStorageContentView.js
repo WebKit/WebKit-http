@@ -31,6 +31,9 @@ WebInspector.CookieStorageContentView = class CookieStorageContentView extends W
 
         this.element.classList.add("cookie-storage");
 
+        this._refreshButtonNavigationItem = new WebInspector.ButtonNavigationItem("cookie-storage-refresh", WebInspector.UIString("Refresh"), "Images/ReloadFull.svg", 13, 13);
+        this._refreshButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._refreshButtonClicked, this);
+
         this.update();
     }
 
@@ -55,6 +58,11 @@ WebInspector.CookieStorageContentView = class CookieStorageContentView extends W
     }
 
     // Public
+
+    get navigationItems()
+    {
+        return [this._refreshButtonNavigationItem];
+    }
 
     update()
     {
@@ -248,10 +256,13 @@ WebInspector.CookieStorageContentView = class CookieStorageContentView extends W
 
         var cookie = node.cookie;
         var cookieURL = (cookie.secure ? "https://" : "http://") + cookie.domain + cookie.path;
+        PageAgent.deleteCookie(cookie.name, cookieURL);
 
-        // COMPATIBILITY (iOS 6): PageAgent.deleteCookie used to take 'domain', now takes 'url'. Send both.
-        PageAgent.deleteCookie.invoke({cookieName: cookie.name, domain: cookie.domain, url: cookieURL});
+        this.update();
+    }
 
+    _refreshButtonClicked(event)
+    {
         this.update();
     }
 };

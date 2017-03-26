@@ -317,7 +317,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_pageGroup(*m_configuration->pageGroup())
     , m_preferences(*m_configuration->preferences())
     , m_userContentController(m_configuration->userContentController())
-    , m_visitedLinkProvider(*m_configuration->visitedLinkProvider())
+    , m_visitedLinkStore(*m_configuration->visitedLinkStore())
     , m_websiteDataStore(m_configuration->websiteDataStore()->websiteDataStore())
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
@@ -427,7 +427,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_sessionRestorationRenderTreeSize(0)
     , m_wantsSessionRestorationRenderTreeSizeThresholdEvent(false)
     , m_hitRenderTreeSizeThreshold(false)
-    , m_shouldSendEventsSynchronously(false)
     , m_suppressVisibilityUpdates(false)
     , m_autoSizingShouldExpandToViewHeight(false)
     , m_mediaVolume(1)
@@ -443,13 +442,13 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_potentiallyChangedViewStateFlags(ViewState::NoFlags)
     , m_viewStateChangeWantsSynchronousReply(false)
 {
-    m_webProcessLifetimeTracker.addObserver(m_visitedLinkProvider);
+    m_webProcessLifetimeTracker.addObserver(m_visitedLinkStore);
     m_webProcessLifetimeTracker.addObserver(m_websiteDataStore);
 
     if (m_process->state() == WebProcessProxy::State::Running) {
         if (m_userContentController)
             m_process->addWebUserContentControllerProxy(*m_userContentController);
-        m_process->addVisitedLinkProvider(m_visitedLinkProvider);
+        m_process->addVisitedLinkStore(m_visitedLinkStore);
     }
 
     updateViewState();
@@ -1686,12 +1685,7 @@ void WebPageProxy::handleMouseEvent(const NativeWebMouseEvent& event)
     if (event.type() == WebEvent::MouseDown)
         m_currentlyProcessedMouseDownEvent = std::make_unique<NativeWebMouseEvent>(event);
 
-    if (m_shouldSendEventsSynchronously) {
-        bool handled = false;
-        m_process->sendSync(Messages::WebPage::MouseEventSyncForTesting(event), Messages::WebPage::MouseEventSyncForTesting::Reply(handled), m_pageID);
-        didReceiveEvent(event.type(), handled);
-    } else
-        m_process->send(Messages::WebPage::MouseEvent(event), m_pageID);
+    m_process->send(Messages::WebPage::MouseEvent(event), m_pageID);
 }
 
 #if MERGE_WHEEL_EVENTS
@@ -1798,13 +1792,6 @@ void WebPageProxy::sendWheelEvent(const WebWheelEvent& event)
 {
     m_process->responsivenessTimer()->start();
 
-    if (m_shouldSendEventsSynchronously) {
-        bool handled = false;
-        m_process->sendSync(Messages::WebPage::WheelEventSyncForTesting(event), Messages::WebPage::WheelEventSyncForTesting::Reply(handled), m_pageID);
-        didReceiveEvent(event.type(), handled);
-        return;
-    }
-
     m_process->send(
         Messages::EventDispatcher::WheelEvent(
             m_pageID,
@@ -1826,11 +1813,7 @@ void WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
     m_keyEventQueue.append(event);
 
     m_process->responsivenessTimer()->start();
-    if (m_shouldSendEventsSynchronously) {
-        bool handled = false;
-        m_process->sendSync(Messages::WebPage::KeyEventSyncForTesting(event), Messages::WebPage::KeyEventSyncForTesting::Reply(handled), m_pageID);
-        didReceiveEvent(event.type(), handled);
-    } else if (m_keyEventQueue.size() == 1) // Otherwise, sent from DidReceiveEvent message handler.
+    if (m_keyEventQueue.size() == 1) // Otherwise, sent from DidReceiveEvent message handler.
         m_process->send(Messages::WebPage::KeyEvent(event), m_pageID);
 }
 
@@ -1973,12 +1956,7 @@ void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
     if (!m_isPageSuspended) {
         m_touchEventQueue.append(event);
         m_process->responsivenessTimer()->start();
-        if (m_shouldSendEventsSynchronously) {
-            bool handled = false;
-            m_process->sendSync(Messages::WebPage::TouchEventSyncForTesting(event), Messages::WebPage::TouchEventSyncForTesting::Reply(handled), m_pageID);
-            didReceiveEvent(event.type(), handled);
-        } else
-            m_process->send(Messages::WebPage::TouchEvent(event), m_pageID);
+        m_process->send(Messages::WebPage::TouchEvent(event), m_pageID);
     } else {
         if (m_touchEventQueue.isEmpty()) {
             bool isEventHandled = false;
@@ -2296,22 +2274,6 @@ void WebPageProxy::scaleView(double scale)
     m_viewScaleFactor = scale;
     m_process->send(Messages::WebPage::ScaleView(scale), m_pageID);
 }
-
-#if PLATFORM(COCOA)
-void WebPageProxy::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, std::function<void (const MachSendRight&, CallbackBase::Error)> callback)
-{
-    if (!isValid()) {
-        callback(MachSendRight(), CallbackBase::Error::OwnerWasInvalidated);
-        return;
-    }
-
-    m_viewScaleFactor = scale;
-    if (m_drawingArea)
-        m_drawingArea->willSendUpdateGeometry();
-    uint64_t callbackID = m_callbacks.put(WTF::move(callback), m_process->throttler().backgroundActivityToken());
-    m_process->send(Messages::WebPage::ScaleViewAndUpdateGeometryFenced(scale, viewSize, callbackID), m_pageID);
-}
-#endif
 
 void WebPageProxy::setIntrinsicDeviceScaleFactor(float scaleFactor)
 {
@@ -3650,7 +3612,7 @@ void WebPageProxy::processDidFinishLaunching()
 
     if (m_userContentController)
         m_process->addWebUserContentControllerProxy(*m_userContentController);
-    m_process->addVisitedLinkProvider(m_visitedLinkProvider);
+    m_process->addVisitedLinkStore(m_visitedLinkStore);
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -4281,27 +4243,9 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
             continue;
         }
 
-        // Create the real Share menu item
-        URL absoluteLinkURL;
-        if (!contextMenuContextData.webHitTestResultData().absoluteLinkURL.isEmpty())
-            absoluteLinkURL = URL(ParsedURLString, contextMenuContextData.webHitTestResultData().absoluteLinkURL);
-
-        URL downloadableMediaURL;
-        if (!contextMenuContextData.webHitTestResultData().absoluteMediaURL.isEmpty() && contextMenuContextData.webHitTestResultData().isDownloadableMedia)
-            downloadableMediaURL = URL(ParsedURLString, contextMenuContextData.webHitTestResultData().absoluteMediaURL);
-
-        RefPtr<Image> image;
-        if (contextMenuContextData.webHitTestResultData().imageSharedMemory && contextMenuContextData.webHitTestResultData().imageSize) {
-            image = BitmapImage::create();
-            RefPtr<SharedBuffer> imageData = SharedBuffer::create((unsigned char*)contextMenuContextData.webHitTestResultData().imageSharedMemory->data(), contextMenuContextData.webHitTestResultData().imageSize);
-            image->setData(imageData.release(), true);
-        }
-
-        ContextMenuItem coreItem = ContextMenuItem::shareMenuItem(absoluteLinkURL, downloadableMediaURL, image.get(), contextMenuContextData.selectedText());
-        if (!coreItem.isNull()) {
-            platformInitializeShareMenuItem(coreItem);
+        ContextMenuItem coreItem = platformInitializeShareMenuItem(contextMenuContextData);
+        if (!coreItem.isNull())
             proposedAPIItems.append(WebContextMenuItem::create(coreItem));
-        }
     }
 
     Vector<RefPtr<WebContextMenuItem>> clientItems;
@@ -4317,9 +4261,10 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
     m_contextMenuClient->contextMenuDismissed(*this);
 }
 
-#if !PLATFORM(MAC)
-void WebPageProxy::platformInitializeShareMenuItem(ContextMenuItem&)
+#if !ENABLE(SERVICE_CONTROLS)
+ContextMenuItem WebPageProxy::platformInitializeShareMenuItem(const ContextMenuContextData&)
 {
+    return ContextMenuItem();
 }
 #endif
 
@@ -5194,7 +5139,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.sessionID = m_sessionID;
     parameters.highestUsedBackForwardItemID = WebBackForwardListItem::highedUsedItemID();
     parameters.userContentControllerID = m_userContentController ? m_userContentController->identifier() : 0;
-    parameters.visitedLinkTableID = m_visitedLinkProvider->identifier();
+    parameters.visitedLinkTableID = m_visitedLinkStore->identifier();
     parameters.websiteDataStoreID = m_websiteDataStore->identifier();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
@@ -5928,7 +5873,11 @@ void WebPageProxy::navigationGestureDidBegin()
 
     m_isShowingNavigationGestureSnapshot = true;
     m_pageClient.navigationGestureDidBegin();
-    m_loaderClient->navigationGestureDidBegin(*this);
+
+    if (m_navigationClient)
+        m_navigationClient->didBeginNavigationGesture(*this);
+    else
+        m_loaderClient->navigationGestureDidBegin(*this);
 }
 
 void WebPageProxy::navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem& item)
@@ -5936,7 +5885,11 @@ void WebPageProxy::navigationGestureWillEnd(bool willNavigate, WebBackForwardLis
     PageClientProtector protector(m_pageClient);
 
     m_pageClient.navigationGestureWillEnd(willNavigate, item);
-    m_loaderClient->navigationGestureWillEnd(*this, willNavigate, item);
+
+    if (m_navigationClient)
+        m_navigationClient->willEndNavigationGesture(*this, willNavigate, item);
+    else
+        m_loaderClient->navigationGestureWillEnd(*this, willNavigate, item);
 }
 
 void WebPageProxy::navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem& item)
@@ -5944,7 +5897,10 @@ void WebPageProxy::navigationGestureDidEnd(bool willNavigate, WebBackForwardList
     PageClientProtector protector(m_pageClient);
 
     m_pageClient.navigationGestureDidEnd(willNavigate, item);
-    m_loaderClient->navigationGestureDidEnd(*this, willNavigate, item);
+    if (m_navigationClient)
+        m_navigationClient->didEndNavigationGesture(*this, willNavigate, item);
+    else
+        m_loaderClient->navigationGestureDidEnd(*this, willNavigate, item);
 }
 
 void WebPageProxy::navigationGestureDidEnd()

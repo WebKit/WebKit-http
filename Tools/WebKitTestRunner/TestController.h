@@ -34,6 +34,8 @@
 #include <vector>
 #include <wtf/Vector.h>
 
+OBJC_CLASS WKWebViewConfiguration;
+
 namespace WTR {
 
 class TestInvocation;
@@ -122,6 +124,8 @@ public:
 
     bool isCurrentInvocation(TestInvocation* invocation) const { return invocation == m_currentInvocation.get(); }
 
+    void setShouldDecideNavigationPolicyAfterDelay(bool value) { m_shouldDecideNavigationPolicyAfterDelay = value; }
+
 private:
     void initialize(int argc, const char* argv[]);
     void createWebViewWithOptions(const ViewOptions&);
@@ -132,12 +136,17 @@ private:
 
     void platformInitialize();
     void platformDestroy();
+    WKContextRef platformAdjustContext(WKContextRef, WKContextConfigurationRef);
     void platformInitializeContext();
+    void platformCreateWebView(WKPageConfigurationRef, const ViewOptions&);
+    static PlatformWebView* platformCreateOtherPage(PlatformWebView* parentView, WKPageConfigurationRef, const ViewOptions&);
     void platformResetPreferencesToConsistentValues();
+    void platformResetStateToConsistentValues();
     void platformConfigureViewForTest(const TestInvocation&);
     void platformWillRunTest(const TestInvocation&);
     void platformRunUntil(bool& done, double timeout);
     void platformDidCommitLoadForFrame(WKPageRef, WKFrameRef);
+    WKPreferencesRef platformPreferences();
     void initializeInjectedBundlePath();
     void initializeTestPluginDirectory();
 
@@ -277,6 +286,8 @@ private:
 
     bool m_shouldLogHistoryClientCallbacks;
     bool m_shouldShowWebView;
+
+    bool m_shouldDecideNavigationPolicyAfterDelay { false };
 
     std::unique_ptr<EventSenderProxy> m_eventSenderProxy;
 

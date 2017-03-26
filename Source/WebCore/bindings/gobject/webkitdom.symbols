@@ -85,8 +85,11 @@ WebKitDOMNode* webkit_dom_document_adopt_node(WebKitDOMDocument*, WebKitDOMNode*
 WebKitDOMElement* webkit_dom_document_get_element_by_id(WebKitDOMDocument*, const gchar*)
 WebKitDOMNodeList* webkit_dom_document_get_elements_by_name(WebKitDOMDocument*, const gchar*)
 WebKitDOMNodeList* webkit_dom_document_get_elements_by_tag_name(WebKitDOMDocument*, const gchar*)
+WebKitDOMHTMLCollection* webkit_dom_document_get_elements_by_tag_name_as_html_collection(WebKitDOMDocument*, const gchar*)@2.12
 WebKitDOMNodeList* webkit_dom_document_get_elements_by_tag_name_ns(WebKitDOMDocument*, const gchar*, const gchar*)
+WebKitDOMHTMLCollection* webkit_dom_document_get_elements_by_tag_name_ns_as_html_collection(WebKitDOMDocument*, const gchar*, const gchar*)@2.12
 WebKitDOMNodeList* webkit_dom_document_get_elements_by_class_name(WebKitDOMDocument*, const gchar*)
+WebKitDOMHTMLCollection* webkit_dom_document_get_elements_by_class_name_as_html_collection(WebKitDOMDocument*, const gchar*)@2.12
 WebKitDOMElement* webkit_dom_document_element_from_point(WebKitDOMDocument*, glong, glong)
 WebKitDOMCSSStyleDeclaration* webkit_dom_document_get_override_style(WebKitDOMDocument*, WebKitDOMElement*, const gchar*)
 gboolean webkit_dom_document_query_command_enabled(WebKitDOMDocument*, const gchar*)
@@ -160,8 +163,11 @@ void webkit_dom_element_scroll_by_pages(WebKitDOMElement*, glong)
 WebKitDOMElement* webkit_dom_element_query_selector(WebKitDOMElement*, const gchar*, GError**)
 WebKitDOMNodeList* webkit_dom_element_query_selector_all(WebKitDOMElement*, const gchar*, GError**)
 WebKitDOMNodeList* webkit_dom_element_get_elements_by_tag_name(WebKitDOMElement*, const gchar*)
+WebKitDOMHTMLCollection* webkit_dom_element_get_elements_by_tag_name_as_html_collection(WebKitDOMElement*, const gchar*)@2.12
 WebKitDOMNodeList* webkit_dom_element_get_elements_by_tag_name_ns(WebKitDOMElement*, const gchar*, const gchar*)
+WebKitDOMHTMLCollection* webkit_dom_element_get_elements_by_tag_name_ns_as_html_collection(WebKitDOMElement*, const gchar*, const gchar*)@2.12
 WebKitDOMNodeList* webkit_dom_element_get_elements_by_class_name(WebKitDOMElement*, const gchar*)
+WebKitDOMHTMLCollection* webkit_dom_element_get_elements_by_class_name_as_html_collection(WebKitDOMElement*, const gchar*)@2.12
 void webkit_dom_element_focus(WebKitDOMElement*)
 void webkit_dom_element_blur(WebKitDOMElement*)
 GType webkit_dom_entity_reference_get_type(void)

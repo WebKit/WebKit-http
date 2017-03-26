@@ -183,7 +183,7 @@
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
-#include "MockContentFilter.h"
+#include "MockContentFilterSettings.h"
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -238,6 +238,7 @@ public:
     explicit InspectorFrontendChannelDummy(Page*);
     virtual ~InspectorFrontendChannelDummy() { }
     virtual bool sendMessageToFrontend(const String& message) override;
+    virtual ConnectionType connectionType() const override { return ConnectionType::Local; }
 
 private:
     Page* m_frontendPage;
@@ -357,10 +358,6 @@ Internals::Internals(Document* document)
     MockRealtimeMediaSourceCenter::registerMockRealtimeMediaSourceCenter();
     enableMockRTCPeerConnectionHandler();
     WebCore::provideUserMediaTo(document->page(), new UserMediaClientMock());
-#endif
-
-#if ENABLE(CONTENT_FILTERING)
-    MockContentFilter::ensureInstalled();
 #endif
 }
 
@@ -1272,7 +1269,7 @@ RefPtr<Range> Internals::rangeForDictionaryLookupAtLocation(int x, int y, Except
     
     HitTestResult result = document->frame()->mainFrame().eventHandler().hitTestResultAtPoint(IntPoint(x, y));
     NSDictionary *options = nullptr;
-    return rangeForDictionaryLookupAtHitTestResult(result, &options);
+    return DictionaryLookup::rangeAtHitTestResult(result, &options);
 #else
     UNUSED_PARAM(x);
     UNUSED_PARAM(y);
@@ -1466,7 +1463,7 @@ String Internals::parserMetaData(Deprecated::ScriptValue value)
         GetCallerCodeBlockFunctor iter;
         exec->iterate(iter);
         CodeBlock* codeBlock = iter.codeBlock();
-        executable = codeBlock->ownerExecutable(); 
+        executable = codeBlock->ownerScriptExecutable();
     } else if (code.isFunction()) {
         JSFunction* funcObj = JSC::jsCast<JSFunction*>(code.toObject(exec));
         executable = funcObj->jsExecutable();
@@ -1488,10 +1485,14 @@ String Internals::parserMetaData(Deprecated::ScriptValue value)
         result.append('"');
     } else if (executable->isEvalExecutable())
         result.appendLiteral("eval");
-    else {
-        ASSERT(executable->isProgramExecutable());
+    else if (executable->isProgramExecutable())
         result.appendLiteral("program");
-    }
+#if ENABLE(WEBASSEMBLY)
+    else if (executable->isWebAssemblyExecutable())
+        result.appendLiteral("WebAssembly");
+#endif
+    else
+        ASSERT_NOT_REACHED();
 
     result.appendLiteral(" { ");
     result.appendNumber(startLine);
@@ -2700,12 +2701,6 @@ void Internals::setMediaSessionRestrictions(const String& mediaTypeString, const
     for (auto& restrictionString : restrictionsArray) {
         if (equalIgnoringCase(restrictionString, "ConcurrentPlaybackNotPermitted"))
             restrictions |= PlatformMediaSessionManager::ConcurrentPlaybackNotPermitted;
-        if (equalIgnoringCase(restrictionString, "InlineVideoPlaybackRestricted"))
-            restrictions |= PlatformMediaSessionManager::InlineVideoPlaybackRestricted;
-        if (equalIgnoringCase(restrictionString, "MetadataPreloadingNotPermitted"))
-            restrictions |= PlatformMediaSessionManager::MetadataPreloadingNotPermitted;
-        if (equalIgnoringCase(restrictionString, "AutoPreloadingNotPermitted"))
-            restrictions |= PlatformMediaSessionManager::AutoPreloadingNotPermitted;
         if (equalIgnoringCase(restrictionString, "BackgroundProcessPlaybackRestricted"))
             restrictions |= PlatformMediaSessionManager::BackgroundProcessPlaybackRestricted;
         if (equalIgnoringCase(restrictionString, "BackgroundTabPlaybackRestricted"))
@@ -2751,6 +2746,10 @@ void Internals::setMediaElementRestrictions(HTMLMediaElement* element, const Str
 #endif
         if (equalIgnoringCase(restrictionString, "RequireUserGestureForAudioRateChange"))
             restrictions |= MediaElementSession::RequireUserGestureForAudioRateChange;
+        if (equalIgnoringCase(restrictionString, "MetadataPreloadingNotPermitted"))
+            restrictions |= MediaElementSession::MetadataPreloadingNotPermitted;
+        if (equalIgnoringCase(restrictionString, "AutoPreloadingNotPermitted"))
+            restrictions |= MediaElementSession::AutoPreloadingNotPermitted;
     }
     element->mediaSession().addBehaviorRestriction(restrictions);
 }
@@ -3054,6 +3053,20 @@ String Internals::pathStringWithShrinkWrappedRects(Vector<double> rectComponents
     buildStringFromPath(path, pathString);
 
     return pathString;
+}
+
+
+String Internals::getCurrentMediaControlsStatusForElement(HTMLMediaElement* mediaElement)
+{
+#if !ENABLE(MEDIA_CONTROLS_SCRIPT)
+    UNUSED_PARAM(mediaElement);
+    return String();
+#else
+    if (!mediaElement)
+        return String();
+
+    return mediaElement->getCurrentMediaControlsStatus();
+#endif
 }
 
 }

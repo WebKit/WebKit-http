@@ -47,6 +47,8 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
         this._isProbablyMinified = false;
 
+        this._breakpointPopoverController = new WebInspector.BreakpointPopoverController;
+
         // FIXME: Currently this just jumps between resources and related source map resources. It doesn't "jump to symbol" yet.
         this._updateTokenTrackingControllerState();
 
@@ -1023,9 +1025,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
         // Single breakpoint.
         if (breakpoints.length === 1) {
-            var breakpoint = breakpoints[0];
-
-            breakpoint.appendContextMenuItems(contextMenu, event.target);
+            this._breakpointPopoverController.appendContextMenuItems(contextMenu, breakpoints[0], event.target);
 
             if (!WebInspector.isShowingDebuggerTab()) {
                 contextMenu.appendSeparator();
@@ -1724,6 +1724,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
     _makeTypeTokenAnnotator()
     {
+        // COMPATIBILITY (iOS 8): Runtime.getRuntimeTypesForVariablesAtOffsets did not exist yet.
         if (!RuntimeAgent.getRuntimeTypesForVariablesAtOffsets)
             return;
 
@@ -1736,6 +1737,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
     _makeBasicBlockAnnotator()
     {
+        // COMPATIBILITY (iOS 8): Runtime.getBasicBlocks did not exist yet.
         if (!RuntimeAgent.getBasicBlocks)
             return;
 

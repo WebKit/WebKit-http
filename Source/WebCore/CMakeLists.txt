@@ -820,7 +820,15 @@ set(WebCore_IDL_FILES
     ${WebCore_SVG_IDL_FILES}
 )
 
-set(WebCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
+if (WIN32)
+    if (INTERNAL_BUILD)
+        set(WebCore_INSPECTOR_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore")
+    else ()
+        set(WebCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
+    endif ()
+else ()
+    set(WebCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
+endif ()
 
 set(WebCore_SOURCES
     Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.cpp
@@ -1176,7 +1184,6 @@ set(WebCore_SOURCES
     bindings/js/JSReadableStreamControllerCustom.cpp
     bindings/js/JSReadableStreamCustom.cpp
     bindings/js/JSReadableStreamReaderCustom.cpp
-    bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
     bindings/js/JSSQLTransactionCustom.cpp
     bindings/js/JSSVGLengthCustom.cpp
@@ -1470,7 +1477,7 @@ set(WebCore_SOURCES
     dom/StaticNodeList.cpp
     dom/StringCallback.cpp
     dom/StyledElement.cpp
-    dom/TagNodeList.cpp
+    dom/TagCollection.cpp
     dom/Text.cpp
     dom/TextEvent.cpp
     dom/TextNodeTraversal.cpp
@@ -2009,7 +2016,7 @@ set(WebCore_SOURCES
     page/UserContentController.cpp
     page/UserContentURLPattern.cpp
     page/VisitedLinkStore.cpp
-    page/WheelEventDeltaTracker.cpp
+    page/WheelEventDeltaFilter.cpp
     page/WheelEventTestTrigger.cpp
     page/WindowFeatures.cpp
     page/WindowFocusAllowedIndicator.cpp
@@ -2260,6 +2267,7 @@ set(WebCore_SOURCES
     platform/network/CredentialStorage.cpp
     platform/network/DNSResolveQueue.cpp
     platform/network/DataURL.cpp
+    platform/network/DataURLDecoder.cpp
     platform/network/FormData.cpp
     platform/network/FormDataBuilder.cpp
     platform/network/HTTPHeaderMap.cpp
@@ -3586,16 +3594,6 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNSNames.cpp)
 GENERATE_DOM_NAMES(XML ${WEBCORE_DIR}/xml/xmlattrs.in)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNames.cpp)
 
-if (NOT PORT STREQUAL "GTK")
-    add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h
-        MAIN_DEPENDENCY ${WEBKIT_DIR}/scripts/generate-webkitversion.pl
-        DEPENDS ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig
-        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/scripts/generate-webkitversion.pl --config ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig --outputDir ${DERIVED_SOURCES_WEBCORE_DIR}
-        VERBATIM)
-    list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h)
-endif ()
-
 WEBKIT_WRAP_SOURCELIST(${WebCore_IDL_FILES} ${WebCore_SOURCES})
 WEBKIT_WRAP_SOURCELIST(${WebCoreTestSupport_IDL_FILES} ${WebCoreTestSupport_SOURCES})
 
@@ -3630,6 +3628,11 @@ set_target_properties(WebCore PROPERTIES FOLDER "WebCore")
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
 if (CMAKE_COMPILER_IS_GNUCXX AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "(i[3-6]86|x86)$")
     ADD_TARGET_PROPERTIES(WebCore COMPILE_FLAGS "-fno-tree-sra")
+endif ()
+
+if (WebCore_PRE_BUILD_COMMAND)
+    add_custom_target(WebCorePreBuild COMMAND ${WebCore_PRE_BUILD_COMMAND} VERBATIM)
+    add_dependencies(WebCore WebCorePreBuild)
 endif ()
 
 if (WebCore_POST_BUILD_COMMAND)

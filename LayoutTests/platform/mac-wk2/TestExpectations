@@ -159,6 +159,7 @@ editing/selection/select-across-readonly-input-2.html
 editing/selection/select-across-readonly-input-3.html
 editing/selection/select-across-readonly-input-4.html
 editing/selection/select-across-readonly-input-5.html
+fast/events/clear-drag-state.html
 fast/events/drag-and-drop-subframe-dataTransfer.html
 fast/events/drag-selects-image.html
 fast/events/remove-target-with-shadow-in-drag.html
@@ -244,6 +245,20 @@ webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.htm
 webkit.org/b/136554 tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html [ Pass Failure ]
 webkit.org/b/139901 tiled-drawing/scrolling/frames/frameset-frame-scrollability.html [ Pass Failure ]
 
+webkit.org/b/148405 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-2d-overflow.html [ Pass Failure ]
+
+webkit.org/b/148407 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-horizontal.html [ Pass Failure ]
+webkit.org/b/148407 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-horizontal.html [ Pass Failure ]
+webkit.org/b/148407 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-vertical.html [ Pass Failure ]
+webkit.org/b/148407 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical.html [ Pass Failure ]
+
+webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders.html [ Pass Failure ]
+webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow.html [ Pass Failure ]
+webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated.html [ Pass Failure ]
+webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding.html [ Pass Failure ]
+webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html [ Pass Failure ]
+webkit.org/b/148408 tiled-drawing/scrolling/root-overflow-with-mousewheel.html [ Pass Failure Timeout ]
+
 webkit.org/b/139820 fast/frames/lots-of-objects.html [ Timeout ]
 webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Timeout ]
 
@@ -325,8 +340,6 @@ webkit.org/b/139828 svg/animations/animateMotion-additive-2b.svg [ Pass ImageOnl
 
 # This test crashes every time in WebKit2 on Yosemite
 webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
-
-webkit.org/b/144155 [ Yosemite ] fast/frames/flattening/iframe-flattening-resize-event-count.html [ Pass Failure ]
 
 [ Debug ] editing/undo/remove-css-property-and-remove-style.html [ Pass Failure ]
 
@@ -526,3 +539,6 @@ webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout
 # Content Extensions tests must be enabled explicitly on mac-wk2.
 http/tests/contentextensions [ Pass ]
 webkit.org/b/146400 http/tests/contentextensions/character-set-basic-support.html [ Pass Failure ]
+
+# WebKit1-only failure.
+webkit.org/b/103857 fast/events/mouse-cursor-change.html [ Pass ]

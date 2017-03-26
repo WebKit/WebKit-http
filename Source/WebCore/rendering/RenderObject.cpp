@@ -117,8 +117,8 @@ RenderObject::RenderObject(Node& node)
 #endif
     , m_bitfields(node)
 {
-    if (!node.isDocumentNode())
-        view().didCreateRenderer();
+    if (RenderView* renderView = node.document().renderView())
+        renderView->didCreateRenderer();
 #ifndef NDEBUG
     renderObjectCounter.increment();
 #endif
@@ -126,11 +126,11 @@ RenderObject::RenderObject(Node& node)
 
 RenderObject::~RenderObject()
 {
+    view().didDestroyRenderer();
 #ifndef NDEBUG
     ASSERT(!m_hasAXObject);
     renderObjectCounter.decrement();
 #endif
-    view().didDestroyRenderer();
     ASSERT(!hasRareData());
 }
 
@@ -721,7 +721,7 @@ void RenderObject::addPDFURLRect(PaintInfo& paintInfo, const LayoutPoint& paintO
     const AtomicString& href = downcast<Element>(*node).getAttribute(hrefAttr);
     if (href.isNull())
         return;
-    paintInfo.context->setURLForRect(node->document().completeURL(href), snappedIntRect(urlRect));
+    paintInfo.context().setURLForRect(node->document().completeURL(href), snappedIntRect(urlRect));
 }
 
 #if PLATFORM(IOS)
@@ -804,7 +804,7 @@ void RenderObject::absoluteFocusRingQuads(Vector<FloatQuad>& quads)
 
 FloatRect RenderObject::absoluteBoundingBoxRectForRange(const Range* range)
 {
-    if (!range || !range->startContainer())
+    if (!range)
         return FloatRect();
 
     range->ownerDocument().updateLayout();

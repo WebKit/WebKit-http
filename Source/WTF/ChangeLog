@@ -1,3 +1,97 @@
+2015-08-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WTF] Improve a ParkingLot::parkConditionally() comment for a libstdc++ workaround
+        https://bugs.webkit.org/show_bug.cgi?id=148571
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally): Adjust the comment about the workaround for
+        the libstdc++ std::condition_variable implementation, linking to the WebKit bug
+        that dissected the problem and the GCC bug that originally reported the problem.
+
+2015-08-28  Anders Carlsson  <andersca@apple.com>
+
+        Remove the #if PLATFORM(MAC) in DeprecatedSymbolsUsedBySafari.mm so we'll actually build it on iOS.
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+
+2015-08-27  Anders Carlsson  <andersca@apple.com>
+
+        Define legacy main thread calling functions for iOS as well
+        https://bugs.webkit.org/show_bug.cgi?id=148530
+
+        Reviewed by Tim Horton.
+
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+
+2015-08-26  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * wtf/WorkQueue.cpp:
+
+2015-08-26  Anders Carlsson  <andersca@apple.com>
+
+        Add and implement WorkQueue::concurrentApply
+        https://bugs.webkit.org/show_bug.cgi?id=148488
+
+        Reviewed by Geoffrey Garen.
+
+        WorkQueue::concurrentApply is modeled after dispatch_apply, and on Cocoa it uses dispatch_apply directly.
+        For other ports there's a generic concurrentApply implemented using our threading primitives.
+        
+        * wtf/NeverDestroyed.h:
+        (WTF::LazyNeverDestroyed::operator->):
+        * wtf/WorkQueue.cpp:
+        (WTF::WorkQueue::concurrentApply):
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::concurrentApply):
+
+2015-08-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Node::origin should be able to tell you if it's OK to exit
+        https://bugs.webkit.org/show_bug.cgi?id=145204
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Insertion.h:
+        (WTF::executeInsertions): Add a useful assertion. This come into play because JSC will use UINT_MAX as "invalid index", and that ought to trigger this assertion.
+
+2015-08-25  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Require GCC version at least 4.9
+        https://bugs.webkit.org/show_bug.cgi?id=148430
+
+        Reviewed by Darin Adler.
+
+        * wtf/Compiler.h:
+
+2015-08-22  Anders Carlsson  <andersca@apple.com>
+
+        std::once_flag needs to be static.
+
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+        (WTF::MainThreadFunctionTracker::singleton):
+
+2015-08-21  Anders Carlsson  <andersca@apple.com>
+
+        Build fix.
+
+        * wtf/MainThread.h:
+
+2015-08-21  Anders Carlsson  <andersca@apple.com>
+
+        Address review feedback from Darin.
+
+        * wtf/MainThread.h:
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+        (WTF::callOnMainThread):
+        (WTF::cancelCallOnMainThread):
+
 2015-08-21  Anders Carlsson  <andersca@apple.com>
 
         Deprecate the old school callOnMainThread/cancelCallOnMainThread functions

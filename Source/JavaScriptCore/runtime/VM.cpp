@@ -70,6 +70,7 @@
 #include "Lexer.h"
 #include "Lookup.h"
 #include "MapData.h"
+#include "NativeStdFunctionCell.h"
 #include "Nodes.h"
 #include "Parser.h"
 #include "ProfilerDatabase.h"
@@ -86,6 +87,7 @@
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
+#include "VMEntryScope.h"
 #include "Watchdog.h"
 #include "WeakGCMapInlines.h"
 #include "WeakMapData.h"
@@ -154,7 +156,6 @@ VM::VM(VMType vmType, HeapType heapType)
     , emptyList(new MarkedArgumentBuffer)
     , stringCache(*this)
     , prototypeMap(*this)
-    , keywords(std::make_unique<Keywords>(*this))
     , interpreter(0)
     , jsArrayClassInfo(JSArray::info())
     , jsFinalObjectClassInfo(JSFinalObject::info())
@@ -221,6 +222,9 @@ VM::VM(VMType vmType, HeapType heapType)
     evalExecutableStructure.set(*this, EvalExecutable::createStructure(*this, 0, jsNull()));
     programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, 0, jsNull()));
     functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, 0, jsNull()));
+#if ENABLE(WEBASSEMBLY)
+    webAssemblyExecutableStructure.set(*this, WebAssemblyExecutable::createStructure(*this, 0, jsNull()));
+#endif
     regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
     symbolStructure.set(*this, Symbol::createStructure(*this, 0, jsNull()));
     symbolTableStructure.set(*this, SymbolTable::createStructure(*this, 0, jsNull()));
@@ -240,6 +244,7 @@ VM::VM(VMType vmType, HeapType heapType)
     promiseDeferredStructure.set(*this, JSPromiseDeferred::createStructure(*this, 0, jsNull()));
     internalPromiseDeferredStructure.set(*this, JSInternalPromiseDeferred::createStructure(*this, 0, jsNull()));
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
+    nativeStdFunctionCellStructure.set(*this, NativeStdFunctionCell::createStructure(*this, 0, jsNull()));
     smallStrings.initializeCommonStrings(*this);
 
     wtfThreadData().setCurrentAtomicStringTable(existingEntryAtomicStringTable);
@@ -292,7 +297,7 @@ VM::VM(VMType vmType, HeapType heapType)
     if (Options::watchdog()) {
         std::chrono::milliseconds timeoutMillis(Options::watchdog());
         Watchdog& watchdog = ensureWatchdog();
-        watchdog.setTimeLimit(*this, timeoutMillis);
+        watchdog.setTimeLimit(timeoutMillis);
     }
 }
 
@@ -388,6 +393,11 @@ Watchdog& VM::ensureWatchdog()
         // the LLINT assumes that the internal shape of a std::unique_ptr is the
         // same as a plain C++ pointer, and loads the address of Watchdog from it.
         RELEASE_ASSERT(*reinterpret_cast<Watchdog**>(&watchdog) == watchdog.get());
+
+        // And if we've previously compiled any functions, we need to revert
+        // them because they don't have the needed polling checks for the watchdog
+        // yet.
+        deleteAllCode();
     }
     return *watchdog;
 }
@@ -471,16 +481,28 @@ void VM::stopSampling()
     interpreter->stopSampling();
 }
 
+void VM::whenIdle(std::function<void()> callback)
+{
+    if (!entryScope) {
+        callback();
+        return;
+    }
+
+    entryScope->addDidPopListener(callback);
+}
+
 void VM::deleteAllCode()
 {
-    m_codeCache->clear();
-    m_regExpCache->deleteAllCode();
+    whenIdle([this]() {
+        m_codeCache->clear();
+        m_regExpCache->deleteAllCode();
 #if ENABLE(DFG_JIT)
-    DFG::completeAllPlansForVM(*this);
+        DFG::completeAllPlansForVM(*this);
 #endif
-    heap.deleteAllCompiledCode();
-    heap.deleteAllUnlinkedFunctionCode();
-    heap.reportAbandonedObjectGraph();
+        heap.deleteAllCodeBlocks();
+        heap.deleteAllUnlinkedCodeBlocks();
+        heap.reportAbandonedObjectGraph();
+    });
 }
 
 void VM::dumpSampleData(ExecState* exec)

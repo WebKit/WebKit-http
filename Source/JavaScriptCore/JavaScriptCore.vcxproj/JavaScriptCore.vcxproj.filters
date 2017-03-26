@@ -132,6 +132,9 @@
     <ClCompile Include="..\assembler\MacroAssembler.cpp">
       <Filter>assembler</Filter>
     </ClCompile>
+    <ClCompile Include="..\assembler\MacroAssemblerPrinter.cpp">
+      <Filter>assembler</Filter>
+    </ClCompile>
     <ClCompile Include="..\assembler\MacroAssemblerX86Common.cpp">
       <Filter>assembler</Filter>
     </ClCompile>
@@ -726,6 +729,9 @@
     <ClCompile Include="..\runtime\JSModuleRecord.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\JSNativeStdFunction.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\JSNotAnObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -808,6 +814,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\NativeErrorPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\NativeStdFunctionCell.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\NullGetterFunction.cpp">
@@ -1863,6 +1872,10 @@
     <ClCompile Include="..\dfg\DFGAdaptiveInferredPropertyValueWatchpoint.cpp" />
     <ClCompile Include="..\dfg\DFGAdaptiveStructureWatchpoint.cpp" />
     <ClCompile Include="..\dfg\DFGMultiGetByOffsetData.cpp" />
+    <ClCompile Include="..\dfg\DFGClobbersExitState.cpp" />
+    <ClCompile Include="..\dfg\DFGInsertionSet.cpp" />
+    <ClCompile Include="..\dfg\DFGNodeOrigin.cpp" />
+    <ClCompile Include="..\runtime\JSArrowFunction.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\API\APICallbackFunction.h">
@@ -1968,6 +1981,9 @@
       <Filter>assembler</Filter>
     </ClInclude>
     <ClInclude Include="..\assembler\MacroAssembler.h">
+      <Filter>assembler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\assembler\MacroAssemblerPrinter.h">
       <Filter>assembler</Filter>
     </ClInclude>
     <ClInclude Include="..\assembler\MacroAssemblerX86.h">
@@ -2930,6 +2946,9 @@
     <ClInclude Include="..\runtime\NativeErrorPrototype.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\NativeStdFunctionCell.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\NullGetterFunction.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3267,6 +3286,9 @@
     <ClInclude Include="..\runtime\VM.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\VMInlines.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\VMEntryScope.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3484,6 +3506,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSModuleRecord.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSNativeStdFunction.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSSet.h">
@@ -3709,9 +3734,6 @@
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGLoopPreHeaderCreationPhase.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGMergeMode.h">
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGMinifiedGraph.h">
@@ -4369,9 +4391,6 @@
     <ClInclude Include="..\dfg\DFGPromotedHeapLocation.h">
       <Filter>dfg</Filter>
     </ClInclude>
-    <ClInclude Include="..\dfg\DFGPromoteHeapAccess.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
     <ClInclude Include="..\ftl\FTLExitPropertyValue.h">
       <Filter>ftl</Filter>
     </ClInclude>
@@ -4453,6 +4472,7 @@
     <ClInclude Include="..\dfg\DFGAdaptiveInferredPropertyValueWatchpoint.h" />
     <ClInclude Include="..\dfg\DFGAdaptiveStructureWatchpoint.h" />
     <ClInclude Include="..\dfg\DFGMultiGetByOffsetData.h" />
+    <ClInclude Include="..\dfg\DFGClobbersExitState.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="JavaScriptCorePreLink.cmd" />

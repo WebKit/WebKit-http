@@ -154,7 +154,7 @@ public:
 #if PLATFORM(IOS)
     static float weightOfCTFont(CTFontRef);
 #endif
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     WEBCORE_EXPORT static void setFontWhitelist(const Vector<String>&);
 #endif
 #if PLATFORM(WIN)
@@ -164,7 +164,9 @@ public:
     static IMultiLanguage* getMultiLanguageInterface();
 #endif
 
-    void getTraitsInFamily(const AtomicString&, Vector<unsigned>&);
+    // This function exists so CSSFontSelector can have a unified notion of preinstalled fonts and @font-face.
+    // It comes into play when you create an @font-face which shares a family name as a preinstalled font.
+    Vector<FontTraitsMask> getTraitsInFamily(const AtomicString&);
 
     WEBCORE_EXPORT RefPtr<Font> fontForFamily(const FontDescription&, const AtomicString&, bool checkingAlternateName = false);
     WEBCORE_EXPORT Ref<Font> lastResortFallbackFont(const FontDescription&);
@@ -201,9 +203,8 @@ private:
     FontPlatformData* getCachedFontPlatformData(const FontDescription&, const AtomicString& family, bool checkingAlternateName = false);
 
     // These methods are implemented by each platform.
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA)
     FontPlatformData* getCustomFallbackFont(const UInt32, const FontDescription&);
-    PassRefPtr<Font> getSystemFontFallbackForCharacters(const FontDescription&, const Font*, const UChar* characters, unsigned length);
 #endif
     std::unique_ptr<FontPlatformData> createFontPlatformData(const FontDescription&, const AtomicString& family);
 
@@ -216,13 +217,40 @@ private:
 };
 
 #if PLATFORM(COCOA)
-RetainPtr<CTFontRef> preparePlatformFont(CTFontRef, TextRenderingMode, const FontFeatureSettings*);
-#endif
 
-#if !PLATFORM(MAC)
+struct SynthesisPair {
+    SynthesisPair(bool needsSyntheticBold, bool needsSyntheticOblique)
+        : needsSyntheticBold(needsSyntheticBold)
+        , needsSyntheticOblique(needsSyntheticOblique)
+    {
+    }
+
+    std::pair<bool, bool> boldObliquePair() const
+    {
+        return std::make_pair(needsSyntheticBold, needsSyntheticOblique);
+    }
+
+    bool needsSyntheticBold;
+    bool needsSyntheticOblique;
+};
+
+RetainPtr<CTFontRef> preparePlatformFont(CTFontRef, TextRenderingMode, const FontFeatureSettings*);
+FontWeight fontWeightFromCoreText(CGFloat weight);
+uint16_t toCoreTextFontWeight(FontWeight);
+bool isFontWeightBold(FontWeight);
+void platformInvalidateFontCache();
+SynthesisPair computeNecessarySynthesis(CTFontRef, const FontDescription&, bool isPlatformFont = false);
+RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontWeight, CTFontSymbolicTraits, float size);
+RetainPtr<CTFontRef> platformFontWithFamily(const AtomicString& family, CTFontSymbolicTraits, FontWeight, const FontFeatureSettings*, TextRenderingMode, float size);
+RetainPtr<CTFontRef> platformLookupFallbackFont(CTFontRef, FontWeight, const AtomicString& locale, const UChar* characters, unsigned length);
+bool requiresCustomFallbackFont(UChar32 character);
+
+#else
+
 inline void FontCache::platformPurgeInactiveFontData()
 {
 }
+
 #endif
 
 }

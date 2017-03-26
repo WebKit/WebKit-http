@@ -37,7 +37,7 @@
 #include "TextEventInputType.h"
 #include "TextGranularity.h"
 #include "Timer.h"
-#include "WheelEventDeltaTracker.h"
+#include "WheelEventDeltaFilter.h"
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
@@ -121,7 +121,8 @@ enum class ImmediateActionStage {
     None,
     PerformedHitTest,
     ActionUpdated,
-    ActionCancelled,
+    ActionCancelledWithoutUpdate,
+    ActionCancelledAfterUpdate,
     ActionCompleted
 };
 
@@ -313,6 +314,7 @@ public:
     bool isHandlingWheelEvent() const { return m_isHandlingWheelEvent; }
 
     WEBCORE_EXPORT void setImmediateActionStage(ImmediateActionStage stage);
+    ImmediateActionStage immediateActionStage() const { return m_immediateActionStage; }
 
 private:
 #if ENABLE(DRAG_SUPPORT)

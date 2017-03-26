@@ -1,3 +1,94 @@
+2015-08-31  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Build with Debug Fission on by default on Debug builds.
+        https://bugs.webkit.org/show_bug.cgi?id=148639
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2015-08-29  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed build fix after r179923.
+
+        * Source/CMakeLists.txt:
+        bmalloc isn't ported to Windows yet.
+
+2015-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Isolate Source directories in CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=148389
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * Source/cmake/WebKitCommon.cmake:
+        Move package finding to WebKitCommon.
+
+2015-08-26  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Build does not generate debug info.
+        https://bugs.webkit.org/show_bug.cgi?id=148431
+
+        Reviewed by Alex Christensen.
+
+        Generate debug info for Windows builds.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2015-08-26  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Disable ACCELERATED_2D_CANVAS by default
+        https://bugs.webkit.org/show_bug.cgi?id=148473
+
+        Reviewed by Martin Robinson.
+
+        Currently ACCELERATED_2D_CANVAS is enabled by default on most systems (which have CairoGL)
+        but not on Debian (which does not). We've known this was problematic for a while, since it
+        means we have two different sets of distro-dependent bugs, but never decided whether that
+        outweighed the benefits of CarioGL or not. I'm making the call now: it's more important to
+        have the same bugs everywhere. We can turn this on again for other distros when we're ready
+        to turn it on for Debian.
+
+        Also, properly fail the build if ENABLE_ACCELERATED_2D_CANVAS is enabled but CairoGL is not
+        available.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-08-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188919.
+        https://bugs.webkit.org/show_bug.cgi?id=148452
+
+        broke build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "[Win] Build does not generate debug info."
+        https://bugs.webkit.org/show_bug.cgi?id=148431
+        http://trac.webkit.org/changeset/188919
+
+2015-08-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] r186800 broke the build on Ubuntu 14.04
+        https://bugs.webkit.org/show_bug.cgi?id=147559
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/FindGTK3.cmake: Always define GTK3_SUPPORTS_X11 and GTK3_SUPPORTS_WAYLAND.
+        * Source/cmake/OptionsGTK.cmake: Autodetect support for X11 and Wayland backends.
+
+2015-08-25  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Build does not generate debug info.
+        https://bugs.webkit.org/show_bug.cgi?id=148431
+
+        Reviewed by Brent Fulgham.
+
+        Generate debug info for Windows builds.
+
+        * Source/cmake/OptionsWin.cmake:
+
 2015-08-20  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
 
         [GTK] Auto-detection of cairo-gl fails

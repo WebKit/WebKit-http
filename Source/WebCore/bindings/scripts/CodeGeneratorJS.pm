@@ -3,7 +3,7 @@
 # Copyright (C) 2006 Anders Carlsson <andersca@mac.com>
 # Copyright (C) 2006, 2007 Samuel Weinig <sam@webkit.org>
 # Copyright (C) 2006 Alexey Proskuryakov <ap@webkit.org>
-# Copyright (C) 2006, 2007, 2008, 2009, 2010, 2013, 2014 Apple Inc. All rights reserved.
+# Copyright (C) 2006, 2007-2010, 2013-2105 Apple Inc. All rights reserved.
 # Copyright (C) 2009 Cameron McCormack <cam@mcc.id.au>
 # Copyright (C) Research In Motion Limited 2010. All rights reserved.
 # Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -1379,7 +1379,11 @@ sub GenerateParametersCheckExpression
             }
         } elsif ($codeGenerator->IsCallbackInterface($parameter->type)) {
             # For Callbacks only checks if the value is null or object.
-            push(@andExpression, "(${value}.isNull() || ${value}.isFunction())");
+            if ($codeGenerator->IsFunctionOnlyCallbackInterface($parameter->type)) {
+                push(@andExpression, "(${value}.isNull() || ${value}.isFunction())");
+            } else {
+                push(@andExpression, "(${value}.isNull() || ${value}.isObject())");
+            }
             $usedArguments{$parameterIndex} = 1;
         } elsif (!IsNativeType($type)) {
             my $condition = "";
@@ -3271,7 +3275,11 @@ sub GenerateParametersCheck
             if ($optional) {
                 push(@$outputArray, "    RefPtr<$argType> $name;\n");
                 push(@$outputArray, "    if (!exec->argument($argsIndex).isUndefinedOrNull()) {\n");
-                push(@$outputArray, "        if (!exec->uncheckedArgument($argsIndex).isFunction())\n");
+                if ($codeGenerator->IsFunctionOnlyCallbackInterface($parameter->type)) {
+                    push(@$outputArray, "        if (!exec->uncheckedArgument($argsIndex).isFunction())\n");
+                } else {
+                    push(@$outputArray, "        if (!exec->uncheckedArgument($argsIndex).isObject())\n");
+                }
                 push(@$outputArray, "            return throwArgumentMustBeFunctionError(*exec, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName);\n");
                 if ($function->isStatic) {
                     AddToImplIncludes("CallbackFunction.h");
@@ -3281,7 +3289,11 @@ sub GenerateParametersCheck
                 }
                 push(@$outputArray, "    }\n");
             } else {
-                push(@$outputArray, "    if (!exec->argument($argsIndex).isFunction())\n");
+                if ($codeGenerator->IsFunctionOnlyCallbackInterface($parameter->type)) {
+                    push(@$outputArray, "    if (!exec->argument($argsIndex).isFunction())\n");
+                } else {
+                    push(@$outputArray, "    if (!exec->argument($argsIndex).isObject())\n");
+                }
                 push(@$outputArray, "        return throwArgumentMustBeFunctionError(*exec, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName);\n");
                 if ($function->isStatic) {
                     AddToImplIncludes("CallbackFunction.h");
@@ -3463,6 +3475,11 @@ sub GenerateCallbackHeader
     # Destructor
     push(@headerContent, "    virtual ~$className();\n");
 
+    # Constructor object getter.
+    if (@{$interface->constants}) {
+        push(@headerContent, "    static JSC::JSValue getConstructor(JSC::VM&, JSC::JSGlobalObject*);\n");
+    }
+
     if ($interface->extendedAttributes->{"CallbackNeedsOperatorEqual"}) {
         push(@headerContent, "    virtual bool operator==(const $interfaceName&) const;\n\n")
     }
@@ -3510,6 +3527,7 @@ sub GenerateCallbackImplementation
     my ($object, $interface) = @_;
 
     my $interfaceName = $interface->name;
+    my $visibleInterfaceName = $codeGenerator->GetVisibleInterfaceName($interface);
     my $className = "JS$interfaceName";
 
     # - Add default header template
@@ -3558,7 +3576,54 @@ sub GenerateCallbackImplementation
         push(@implContent, "    return static_cast<const ${className}*>(&other)->m_data->callback() == m_data->callback();\n");
         push(@implContent, "}\n\n");
     }
-    # Functions
+
+    # Constants.
+    my $numConstants = @{$interface->constants};
+    if ($numConstants > 0) {
+        GenerateConstructorDeclaration(\@implContent, $className, $interface, $interfaceName);
+
+        my $hashSize = 0;
+        my $hashName = $className . "ConstructorTable";
+
+        my @hashKeys = ();
+        my @hashValue1 = ();
+        my @hashValue2 = ();
+        my @hashSpecials = ();
+        my %conditionals = ();
+
+        foreach my $constant (@{$interface->constants}) {
+            my $name = $constant->name;
+            push(@hashKeys, $name);
+            push(@hashValue1, $constant->value);
+            push(@hashValue2, "0");
+            push(@hashSpecials, "DontDelete | ReadOnly | ConstantInteger");
+
+            my $implementedBy = $constant->extendedAttributes->{"ImplementedBy"};
+            if ($implementedBy) {
+                $implIncludes{"${implementedBy}.h"} = 1;
+            }
+            my $conditional = $constant->extendedAttributes->{"Conditional"};
+            if ($conditional) {
+                $conditionals{$name} = $conditional;
+            }
+
+            $hashSize++;
+        }
+        $object->GenerateHashTable($hashName, $hashSize,
+                                   \@hashKeys, \@hashSpecials,
+                                   \@hashValue1, \@hashValue2,
+                                   \%conditionals, 1) if $hashSize > 0;
+
+       push(@implContent, $codeGenerator->GenerateCompileTimeCheckForEnumsIfNeeded($interface));
+
+       GenerateConstructorDefinitions(\@implContent, $className, "", $interfaceName, $visibleInterfaceName, $interface);
+
+       push(@implContent, "JSValue ${className}::getConstructor(VM& vm, JSGlobalObject* globalObject)\n{\n");
+       push(@implContent, "    return getDOMConstructor<${className}Constructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));\n");
+       push(@implContent, "}\n\n");
+    }
+
+    # Functions.
     my $numFunctions = @{$interface->functions};
     if ($numFunctions > 0) {
         push(@implContent, "\n// Functions\n");
@@ -3570,7 +3635,8 @@ sub GenerateCallbackImplementation
             }
 
             AddIncludesForTypeInImpl($function->signature->type);
-            push(@implContent, "\n" . GetNativeTypeForCallbacks($function->signature->type) . " ${className}::" . $function->signature->name . "(");
+            my $functionName = $function->signature->name;
+            push(@implContent, "\n" . GetNativeTypeForCallbacks($function->signature->type) . " ${className}::${functionName}(");
 
             my @args = ();
             my @argsCheck = ();
@@ -3588,27 +3654,37 @@ sub GenerateCallbackImplementation
             push(@implContent, "        return true;\n\n");
             push(@implContent, "    Ref<$className> protect(*this);\n\n");
             push(@implContent, "    JSLockHolder lock(m_data->globalObject()->vm());\n\n");
-            if (@params) {
-                push(@implContent, "    ExecState* exec = m_data->globalObject()->globalExec();\n");
-            }
+            push(@implContent, "    ExecState* exec = m_data->globalObject()->globalExec();\n");
             push(@implContent, "    MarkedArgumentBuffer args;\n");
 
             foreach my $param (@params) {
                 my $paramName = $param->name;
-                if ($param->type eq "DOMString") {
-                    push(@implContent, "    args.append(jsStringWithCache(exec, ${paramName}));\n");
-                } elsif ($param->type eq "boolean") {
-                    push(@implContent, "    args.append(jsBoolean(${paramName}));\n");
-                } elsif ($param->type eq "SerializedScriptValue") {
-                    push(@implContent, "    args.append($paramName ? $paramName->deserialize(exec, m_data->globalObject(), 0) : jsNull());\n");
-                } else {
-                    push(@implContent, "    args.append(toJS(exec, m_data->globalObject(), ${paramName}));\n");
-                }
+                push(@implContent, "    args.append(" . NativeToJSValue($param, 1, $interfaceName, $paramName, "m_data") . ");\n");
             }
 
-            push(@implContent, "\n    bool raisedException = false;\n");
-            push(@implContent, "    m_data->invokeCallback(args, &raisedException);\n");
-            push(@implContent, "    return !raisedException;\n");
+            push(@implContent, "\n    NakedPtr<Exception> returnedException;\n");
+
+            my $propertyToLookup = "Identifier::fromString(exec, \"${functionName}\")";
+            my $invokeMethod = "JSCallbackData::CallbackType::FunctionOrObject";
+            if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"Callback"}, "FunctionOnly")) {
+                # For callback functions, do not look up callable property on the user object.
+                # https://heycam.github.io/webidl/#es-callback-function
+                $invokeMethod = "JSCallbackData::CallbackType::Function";
+                $propertyToLookup = "Identifier()";
+                push(@implContent, "    UNUSED_PARAM(exec);\n");    
+            } elsif ($numFunctions > 1) {
+                # The callback interface has more than one operation so we should not call the user object as a function.
+                # instead, we should look for a property with the same name as the operation on the user object.
+                # https://heycam.github.io/webidl/#es-user-objects
+                $invokeMethod = "JSCallbackData::CallbackType::Object";
+            }
+            push(@implContent, "    m_data->invokeCallback(args, $invokeMethod, $propertyToLookup, returnedException);\n");
+
+            # FIXME: We currently just report the exception. We should probably add an extended attribute to indicate when
+            # we want the exception to be rethrown instead.
+            push(@implContent, "    if (returnedException)\n");
+            push(@implContent, "        reportException(exec, returnedException);\n");
+            push(@implContent, "    return !returnedException;\n");
             push(@implContent, "}\n");
         }
     }
@@ -3722,7 +3798,6 @@ sub GetNativeTypeFromSignature
 }
 
 my %nativeType = (
-    "CompareHow" => "Range::CompareHow",
     "DOMString" => "String",
     "NodeFilter" => "RefPtr<NodeFilter>",
     "SerializedScriptValue" => "RefPtr<SerializedScriptValue>",
@@ -3862,7 +3937,6 @@ sub JSValueToNative
     return "toUInt64(exec, $value, $intConversion)" if $type eq "unsigned long long";
 
     return "valueToDate(exec, $value)" if $type eq "Date";
-    return "static_cast<Range::CompareHow>($value.toInt32(exec))" if $type eq "CompareHow";
 
     if ($type eq "DOMString") {
         # FIXME: This implements [TreatNullAs=NullString] and [TreatUndefinedAs=NullString],
@@ -4124,16 +4198,20 @@ sub GenerateHashTableValueArray
             $secondTargetType = "static_cast<PutPropertySlot::PutValueFunc>";
             $hasSetter = "true";
         }
-        push(@implContent, "    { \"$key\", @$specials[$i], NoIntrinsic, (intptr_t)" . $firstTargetType . "(@$value1[$i]), (intptr_t) " . $secondTargetType . "(@$value2[$i]) },\n");
+        if ("@$specials[$i]" =~ m/ConstantInteger/) {
+            push(@implContent, "    { \"$key\", @$specials[$i], NoIntrinsic, { (long long)" . $firstTargetType . "(@$value1[$i]) } },\n");
+        } else {
+            push(@implContent, "    { \"$key\", @$specials[$i], NoIntrinsic, { (intptr_t)" . $firstTargetType . "(@$value1[$i]), (intptr_t) " . $secondTargetType . "(@$value2[$i]) } },\n");
+        }
         if ($conditional) {
             push(@implContent, "#else\n") ;
-            push(@implContent, "    { 0, 0, NoIntrinsic, 0, 0 },\n");
+            push(@implContent, "    { 0, 0, NoIntrinsic, { 0, 0 } },\n");
             push(@implContent, "#endif\n") ;
         }
         ++$i;
     }
 
-    push(@implContent, "    { 0, 0, NoIntrinsic, 0, 0 }\n") if (!$packedSize);
+    push(@implContent, "    { 0, 0, NoIntrinsic, { 0, 0 } }\n") if (!$packedSize);
     push(@implContent, "};\n\n");
 
     return $hasSetter;
@@ -4228,7 +4306,7 @@ sub GenerateHashTable
     my $packedSize = scalar @{$keys};
 
     my $compactSizeMask = $numEntries - 1;
-    push(@implContent, "static const HashTable $name = { $packedSize, $compactSizeMask, $hasSetter, $nameEntries, 0, $nameIndex };\n");
+    push(@implContent, "static const HashTable $name = { $packedSize, $compactSizeMask, $hasSetter, $nameEntries, $nameIndex };\n");
 }
 
 sub WriteData
@@ -4763,18 +4841,23 @@ sub GenerateConstructorHelperMethods
 
     push(@$outputArray, "void ${constructorClassName}::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)\n");
     push(@$outputArray, "{\n");
-    if (IsDOMGlobalObject($interface)) {
-        push(@$outputArray, "    Base::finishCreation(vm);\n");
-        push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject->prototype(), DontDelete | ReadOnly | DontEnum);\n");
-    } elsif ($generatingNamedConstructor) {
+
+    if ($generatingNamedConstructor) {
         push(@$outputArray, "    Base::finishCreation(globalObject);\n");
-        push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
     } else {
         push(@$outputArray, "    Base::finishCreation(vm);\n");
-        push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
+    }
+    push(@$outputArray, "    ASSERT(inherits(info()));\n");
+
+    # There must exist an interface prototype object for every non-callback interface defined, regardless
+    # of whether the interface was declared with the [NoInterfaceObject] extended attribute.
+    # https://heycam.github.io/webidl/#interface-prototype-object
+    if (IsDOMGlobalObject($interface)) {
+        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject->prototype(), DontDelete | ReadOnly | DontEnum);\n");
+    } elsif ($interface->isCallback) {
+        push(@$outputArray, "    UNUSED_PARAM(globalObject);\n");
+    } else {
+       push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
     }
 
     push(@$outputArray, "    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral(\"$visibleInterfaceName\"))), ReadOnly | DontEnum);\n");

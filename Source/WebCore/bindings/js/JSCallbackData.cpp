@@ -43,28 +43,39 @@ void JSCallbackData::deleteData(void* context)
     delete static_cast<JSCallbackData*>(context);
 }
 
-JSValue JSCallbackData::invokeCallback(MarkedArgumentBuffer& args, bool* raisedException)
+JSValue JSCallbackData::invokeCallback(MarkedArgumentBuffer& args, CallbackType method, PropertyName functionName, NakedPtr<Exception>& returnedException)
 {
     ASSERT(callback());
-    return invokeCallback(callback(), args, raisedException);
+    return invokeCallback(callback(), args, method, functionName, returnedException);
 }
 
-JSValue JSCallbackData::invokeCallback(JSValue thisValue, MarkedArgumentBuffer& args, bool* raisedException)
+JSValue JSCallbackData::invokeCallback(JSValue thisValue, MarkedArgumentBuffer& args, CallbackType method, PropertyName functionName, NakedPtr<Exception>& returnedException)
 {
     ASSERT(callback());
     ASSERT(globalObject());
 
     ExecState* exec = globalObject()->globalExec();
-    JSValue function = callback();
-
+    JSValue function;
     CallData callData;
-    CallType callType = callback()->methodTable()->getCallData(callback(), callData);
+    CallType callType = CallTypeNone;
+
+    if (method != CallbackType::Object) {
+        function = callback();
+        callType = callback()->methodTable()->getCallData(callback(), callData);
+    }
     if (callType == CallTypeNone) {
-        function = callback()->get(exec, Identifier::fromString(exec, "handleEvent"));
+        if (method == CallbackType::Function)
+            return JSValue();
+
+        ASSERT(!functionName.isNull());
+        function = callback()->get(exec, functionName);
         callType = getCallData(function, callData);
         if (callType == CallTypeNone)
             return JSValue();
     }
+
+    ASSERT(!function.isEmpty());
+    ASSERT(callType != CallTypeNone);
 
     ScriptExecutionContext* context = globalObject()->scriptExecutionContext();
     // We will fail to get the context if the frame has been detached.
@@ -73,19 +84,12 @@ JSValue JSCallbackData::invokeCallback(JSValue thisValue, MarkedArgumentBuffer& 
 
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(context, callType, callData);
 
-    NakedPtr<Exception> exception;
+    returnedException = nullptr;
     JSValue result = context->isDocument()
-        ? JSMainThreadExecState::call(exec, function, callType, callData, thisValue, args, exception)
-        : JSC::call(exec, function, callType, callData, thisValue, args, exception);
+        ? JSMainThreadExecState::call(exec, function, callType, callData, thisValue, args, returnedException)
+        : JSC::call(exec, function, callType, callData, thisValue, args, returnedException);
 
     InspectorInstrumentation::didCallFunction(cookie, context);
-
-    if (exception) {
-        reportException(exec, exception);
-        if (raisedException)
-            *raisedException = true;
-        return result;
-    }
 
     return result;
 }

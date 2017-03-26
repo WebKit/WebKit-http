@@ -54,6 +54,7 @@ bool doesGC(Graph& graph, Node* node)
     case SetLocal:
     case MovHint:
     case ZombieHint:
+    case ExitOK:
     case Phantom:
     case Upsilon:
     case Phi:
@@ -239,6 +240,7 @@ bool doesGC(Graph& graph, Node* node)
     case ToIndexString:
     case MaterializeNewObject:
     case MaterializeCreateActivation:
+    case StrCat:
         return true;
         
     case MultiPutByOffset:

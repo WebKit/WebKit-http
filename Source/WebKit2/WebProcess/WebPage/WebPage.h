@@ -30,7 +30,6 @@
 #include "APIInjectedBundlePageContextMenuClient.h"
 #include "APIInjectedBundlePageUIClient.h"
 #include "APIObject.h"
-#include "DictionaryPopupInfo.h"
 #include "FindController.h"
 #include "GeolocationPermissionRequestManager.h"
 #include "ImageOptions.h"
@@ -49,6 +48,7 @@
 #include "UserData.h"
 #include "UserMediaPermissionRequestManager.h"
 #include <WebCore/DictationAlternative.h>
+#include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/DragData.h>
 #include <WebCore/Editor.h>
 #include <WebCore/FrameLoaderTypes.h>
@@ -63,6 +63,8 @@
 #include <WebCore/TextChecking.h>
 #include <WebCore/TextIndicator.h>
 #include <WebCore/UserActivity.h>
+#include <WebCore/UserContentTypes.h>
+#include <WebCore/UserScriptTypes.h>
 #include <WebCore/ViewState.h>
 #include <WebCore/ViewportConfiguration.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
@@ -368,9 +370,6 @@ public:
     double totalScaleFactor() const;
     double viewScaleFactor() const;
     void scaleView(double scale);
-#if PLATFORM(COCOA)
-    void scaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, uint64_t callbackID);
-#endif
 
     void setUseFixedLayout(bool);
     bool useFixedLayout() const { return m_useFixedLayout; }
@@ -901,7 +900,7 @@ public:
     void setPageActivityState(WebCore::PageActivityState::Flags);
 
     void postMessage(const String& messageName, API::Object* messageBody);
-    void postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
+    void postSynchronousMessageForTesting(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
 
 #if PLATFORM(GTK)
     void setInputMethodState(bool);
@@ -913,6 +912,10 @@ public:
     void requestInstallMissingMediaPlugins(const String& details, const String& description, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&);
 #endif
 #endif
+
+    void addUserScript(const String& source, WebCore::UserContentInjectedFrames, WebCore::UserScriptInjectionTime);
+    void addUserStyleSheet(const String& source, WebCore::UserContentInjectedFrames);
+    void removeAllUserContent();
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
@@ -990,15 +993,11 @@ private:
     void updateUserActivity();
 
     void mouseEvent(const WebMouseEvent&);
-    void mouseEventSyncForTesting(const WebMouseEvent&, bool&);
-    void wheelEventSyncForTesting(const WebWheelEvent&, bool&);
     void keyEvent(const WebKeyboardEvent&);
-    void keyEventSyncForTesting(const WebKeyboardEvent&, bool&);
 #if ENABLE(IOS_TOUCH_EVENTS)
     void touchEventSync(const WebTouchEvent&, bool& handled);
 #elif ENABLE(TOUCH_EVENTS)
     void touchEvent(const WebTouchEvent&);
-    void touchEventSyncForTesting(const WebTouchEvent&, bool& handled);
 #endif
 #if ENABLE(CONTEXT_MENUS)
     void contextMenuHidden() { m_isShowingContextMenu = false; }
@@ -1053,9 +1052,9 @@ private:
     void performDictionaryLookupAtLocation(const WebCore::FloatPoint&);
     void performDictionaryLookupOfCurrentSelection();
     void performDictionaryLookupForRange(WebCore::Frame*, WebCore::Range&, NSDictionary *options, WebCore::TextIndicatorPresentationTransition);
-    DictionaryPopupInfo dictionaryPopupInfoForRange(WebCore::Frame* frame, WebCore::Range& range, NSDictionary **options, WebCore::TextIndicatorPresentationTransition presentationTransition);
+    WebCore::DictionaryPopupInfo dictionaryPopupInfoForRange(WebCore::Frame*, WebCore::Range&, NSDictionary **options, WebCore::TextIndicatorPresentationTransition);
 #if ENABLE(PDFKIT_PLUGIN)
-    DictionaryPopupInfo dictionaryPopupInfoForSelectionInPDFPlugin(PDFSelection *, PDFPlugin&, NSDictionary **options, WebCore::TextIndicatorPresentationTransition);
+    WebCore::DictionaryPopupInfo dictionaryPopupInfoForSelectionInPDFPlugin(PDFSelection *, PDFPlugin&, NSDictionary **options, WebCore::TextIndicatorPresentationTransition);
 #endif
 
     void windowAndViewFramesChanged(const WebCore::FloatRect& windowFrameInScreenCoordinates, const WebCore::FloatRect& windowFrameInUnflippedScreenCoordinates, const WebCore::FloatRect& viewFrameInWindowCoordinates, const WebCore::FloatPoint& accessibilityViewCoordinates);

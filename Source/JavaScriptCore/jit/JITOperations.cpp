@@ -58,7 +58,7 @@
 #include "ScopedArguments.h"
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
-#include "Watchdog.h"
+#include "VMInlines.h"
 #include <wtf/InlineASM.h>
 
 namespace JSC {
@@ -564,6 +564,7 @@ static void directPutByVal(CallFrame* callFrame, JSObject* baseObject, JSValue s
 
 enum class OptimizationResult {
     NotOptimized,
+    SeenOnce,
     Optimized,
     GiveUp,
 };
@@ -578,7 +579,7 @@ static OptimizationResult tryPutByValOptimize(ExecState* exec, JSValue baseValue
     if (baseValue.isObject() && subscript.isInt32()) {
         JSObject* object = asObject(baseValue);
 
-        ASSERT(exec->locationAsBytecodeOffset());
+        ASSERT(exec->bytecodeOffset());
         ASSERT(!byValInfo->stubRoutine);
 
         Structure* structure = object->structure(vm);
@@ -603,14 +604,25 @@ static OptimizationResult tryPutByValOptimize(ExecState* exec, JSValue baseValue
     if (baseValue.isObject() && isStringOrSymbol(subscript)) {
         const Identifier propertyName = subscript.toPropertyKey(exec);
         if (!subscript.isString() || !parseIndex(propertyName)) {
-            ASSERT(exec->locationAsBytecodeOffset());
+            ASSERT(exec->bytecodeOffset());
             ASSERT(!byValInfo->stubRoutine);
-            JIT::compilePutByValWithCachedId(&vm, exec->codeBlock(), byValInfo, returnAddress, NotDirect, propertyName);
-            optimizationResult = OptimizationResult::Optimized;
+            if (byValInfo->seen) {
+                if (byValInfo->cachedId == propertyName) {
+                    JIT::compilePutByValWithCachedId(&vm, exec->codeBlock(), byValInfo, returnAddress, NotDirect, propertyName);
+                    optimizationResult = OptimizationResult::Optimized;
+                } else {
+                    // Seem like a generic property access site.
+                    optimizationResult = OptimizationResult::GiveUp;
+                }
+            } else {
+                byValInfo->seen = true;
+                byValInfo->cachedId = propertyName;
+                optimizationResult = OptimizationResult::SeenOnce;
+            }
         }
     }
 
-    if (optimizationResult != OptimizationResult::Optimized) {
+    if (optimizationResult != OptimizationResult::Optimized && optimizationResult != OptimizationResult::SeenOnce) {
         // If we take slow path more than 10 times without patching then make sure we
         // never make that mistake again. For cases where we see non-index-intercepting
         // objects, this gives 10 iterations worth of opportunity for us to observe
@@ -647,7 +659,7 @@ static OptimizationResult tryDirectPutByValOptimize(ExecState* exec, JSObject* o
     VM& vm = exec->vm();
 
     if (subscript.isInt32()) {
-        ASSERT(exec->locationAsBytecodeOffset());
+        ASSERT(exec->bytecodeOffset());
         ASSERT(!byValInfo->stubRoutine);
 
         Structure* structure = object->structure(vm);
@@ -672,14 +684,25 @@ static OptimizationResult tryDirectPutByValOptimize(ExecState* exec, JSObject* o
         Optional<uint32_t> index = parseIndex(propertyName);
 
         if (!subscript.isString() || !index) {
-            ASSERT(exec->locationAsBytecodeOffset());
+            ASSERT(exec->bytecodeOffset());
             ASSERT(!byValInfo->stubRoutine);
-            JIT::compilePutByValWithCachedId(&vm, exec->codeBlock(), byValInfo, returnAddress, Direct, propertyName);
-            optimizationResult = OptimizationResult::Optimized;
+            if (byValInfo->seen) {
+                if (byValInfo->cachedId == propertyName) {
+                    JIT::compilePutByValWithCachedId(&vm, exec->codeBlock(), byValInfo, returnAddress, Direct, propertyName);
+                    optimizationResult = OptimizationResult::Optimized;
+                } else {
+                    // Seem like a generic property access site.
+                    optimizationResult = OptimizationResult::GiveUp;
+                }
+            } else {
+                byValInfo->seen = true;
+                byValInfo->cachedId = propertyName;
+                optimizationResult = OptimizationResult::SeenOnce;
+            }
         }
     }
 
-    if (optimizationResult != OptimizationResult::Optimized) {
+    if (optimizationResult != OptimizationResult::Optimized && optimizationResult != OptimizationResult::SeenOnce) {
         // If we take slow path more than 10 times without patching then make sure we
         // never make that mistake again. For cases where we see non-index-intercepting
         // objects, this gives 10 iterations worth of opportunity for us to observe
@@ -825,9 +848,22 @@ char* JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLinkInfo* callL
 
     MacroAssemblerCodePtr codePtr;
     CodeBlock* codeBlock = 0;
-    if (executable->isHostFunction())
+    if (executable->isHostFunction()) {
         codePtr = executable->entrypointFor(*vm, kind, MustCheckArity, callLinkInfo->registerPreservationMode());
-    else {
+#if ENABLE(WEBASSEMBLY)
+    } else if (executable->isWebAssemblyExecutable()) {
+        WebAssemblyExecutable* webAssemblyExecutable = static_cast<WebAssemblyExecutable*>(executable);
+        webAssemblyExecutable->prepareForExecution(execCallee);
+        codeBlock = webAssemblyExecutable->codeBlockForCall();
+        ASSERT(codeBlock);
+        ArityCheckMode arity;
+        if (execCallee->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()))
+            arity = MustCheckArity;
+        else
+            arity = ArityCheckNotRequired;
+        codePtr = webAssemblyExecutable->entrypointFor(*vm, kind, arity, callLinkInfo->registerPreservationMode());
+#endif
+    } else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
 
         if (!isCall(kind) && functionExecutable->constructAbility() == ConstructAbility::CannotConstruct) {
@@ -873,17 +909,33 @@ inline char* virtualForWithFunction(
     JSScope* scope = function->scopeUnchecked();
     ExecutableBase* executable = function->executable();
     if (UNLIKELY(!executable->hasJITCodeFor(kind))) {
-        FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
+        bool isWebAssemblyExecutable = false;
+#if ENABLE(WEBASSEMBLY)
+        isWebAssemblyExecutable = executable->isWebAssemblyExecutable();
+#endif
+        if (!isWebAssemblyExecutable) {
+            FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
 
-        if (!isCall(kind) && functionExecutable->constructAbility() == ConstructAbility::CannotConstruct) {
-            exec->vm().throwException(exec, createNotAConstructorError(exec, function));
-            return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
-        }
+            if (!isCall(kind) && functionExecutable->constructAbility() == ConstructAbility::CannotConstruct) {
+                exec->vm().throwException(exec, createNotAConstructorError(exec, function));
+                return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
+            }
 
-        JSObject* error = functionExecutable->prepareForExecution(execCallee, function, scope, kind);
-        if (error) {
-            exec->vm().throwException(exec, error);
-            return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
+            JSObject* error = functionExecutable->prepareForExecution(execCallee, function, scope, kind);
+            if (error) {
+                exec->vm().throwException(exec, error);
+                return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
+            }
+        } else {
+#if ENABLE(WEBASSEMBLY)
+            if (!isCall(kind)) {
+                exec->vm().throwException(exec, createNotAConstructorError(exec, function));
+                return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
+            }
+
+            WebAssemblyExecutable* webAssemblyExecutable = static_cast<WebAssemblyExecutable*>(executable);
+            webAssemblyExecutable->prepareForExecution(execCallee);
+#endif
         }
     }
     return reinterpret_cast<char*>(executable->entrypointFor(
@@ -1071,7 +1123,7 @@ UnusedPtr JIT_OPERATION operationHandleWatchdogTimer(ExecState* exec)
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    if (UNLIKELY(vm.watchdog && vm.watchdog->didFire(exec)))
+    if (UNLIKELY(vm.shouldTriggerTermination(exec)))
         vm.throwException(exec, createTerminatedExecutionException(&vm));
 
     return nullptr;
@@ -1525,7 +1577,7 @@ static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, B
         if (JSCell::canUseFastGetOwnProperty(structure)) {
             if (RefPtr<AtomicStringImpl> existingAtomicString = asString(subscript)->toExistingAtomicString(exec)) {
                 if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, existingAtomicString.get())) {
-                    ASSERT(exec->locationAsBytecodeOffset());
+                    ASSERT(exec->bytecodeOffset());
                     if (byValInfo->stubInfo && byValInfo->cachedId.impl() != existingAtomicString)
                         byValInfo->tookSlowPath = true;
                     return result;
@@ -1535,7 +1587,7 @@ static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, B
     }
 
     if (subscript.isUInt32()) {
-        ASSERT(exec->locationAsBytecodeOffset());
+        ASSERT(exec->bytecodeOffset());
         byValInfo->tookSlowPath = true;
 
         uint32_t i = subscript.asUInt32();
@@ -1564,7 +1616,7 @@ static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, B
     if (exec->hadException())
         return jsUndefined();
 
-    ASSERT(exec->locationAsBytecodeOffset());
+    ASSERT(exec->bytecodeOffset());
     if (byValInfo->stubInfo && (!isStringOrSymbol(subscript) || byValInfo->cachedId != property))
         byValInfo->tookSlowPath = true;
 
@@ -1581,7 +1633,7 @@ static OptimizationResult tryGetByValOptimize(ExecState* exec, JSValue baseValue
     if (baseValue.isObject() && subscript.isInt32()) {
         JSObject* object = asObject(baseValue);
 
-        ASSERT(exec->locationAsBytecodeOffset());
+        ASSERT(exec->bytecodeOffset());
         ASSERT(!byValInfo->stubRoutine);
 
         if (hasOptimizableIndexing(object->structure(vm))) {
@@ -1608,14 +1660,26 @@ static OptimizationResult tryGetByValOptimize(ExecState* exec, JSValue baseValue
     if (baseValue.isObject() && isStringOrSymbol(subscript)) {
         const Identifier propertyName = subscript.toPropertyKey(exec);
         if (!subscript.isString() || !parseIndex(propertyName)) {
-            ASSERT(exec->locationAsBytecodeOffset());
+            ASSERT(exec->bytecodeOffset());
             ASSERT(!byValInfo->stubRoutine);
-            JIT::compileGetByValWithCachedId(&vm, exec->codeBlock(), byValInfo, returnAddress, propertyName);
-            optimizationResult = OptimizationResult::Optimized;
+            if (byValInfo->seen) {
+                if (byValInfo->cachedId == propertyName) {
+                    JIT::compileGetByValWithCachedId(&vm, exec->codeBlock(), byValInfo, returnAddress, propertyName);
+                    optimizationResult = OptimizationResult::Optimized;
+                } else {
+                    // Seem like a generic property access site.
+                    optimizationResult = OptimizationResult::GiveUp;
+                }
+            } else {
+                byValInfo->seen = true;
+                byValInfo->cachedId = propertyName;
+                optimizationResult = OptimizationResult::SeenOnce;
+            }
+
         }
     }
 
-    if (optimizationResult != OptimizationResult::Optimized) {
+    if (optimizationResult != OptimizationResult::Optimized && optimizationResult != OptimizationResult::SeenOnce) {
         // If we take slow path more than 10 times without patching then make sure we
         // never make that mistake again. For cases where we see non-index-intercepting
         // objects, this gives 10 iterations worth of opportunity for us to observe
@@ -1671,7 +1735,7 @@ EncodedJSValue JIT_OPERATION operationHasIndexedPropertyDefault(ExecState* exec,
     JSObject* object = asObject(baseValue);
     bool didOptimize = false;
 
-    ASSERT(exec->locationAsBytecodeOffset());
+    ASSERT(exec->bytecodeOffset());
     ASSERT(!byValInfo->stubRoutine);
     
     if (hasOptimizableIndexing(object->structure(vm))) {
@@ -1740,7 +1804,7 @@ EncodedJSValue JIT_OPERATION operationGetByValString(ExecState* exec, EncodedJSV
         else {
             result = baseValue.get(exec, i);
             if (!isJSString(baseValue)) {
-                ASSERT(exec->locationAsBytecodeOffset());
+                ASSERT(exec->bytecodeOffset());
                 ctiPatchCallByReturnAddress(exec->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(byValInfo->stubRoutine ? operationGetByValGeneric : operationGetByValOptimize));
             }
         }

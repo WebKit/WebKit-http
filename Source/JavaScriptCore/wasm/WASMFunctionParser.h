@@ -36,17 +36,23 @@
 
 namespace JSC {
 
+class CodeBlock;
 class JSWASMModule;
+class VM;
 
 class WASMFunctionParser {
 public:
     static bool checkSyntax(JSWASMModule*, const SourceCode&, size_t functionIndex, unsigned startOffsetInSource, unsigned& endOffsetInSource, String& errorMessage);
+    static void compile(VM&, CodeBlock*, JSWASMModule*, const SourceCode&, size_t functionIndex);
 
 private:
     WASMFunctionParser(JSWASMModule* module, const SourceCode& source, size_t functionIndex)
         : m_module(module)
         , m_reader(static_cast<WebAssemblySourceProvider*>(source.provider())->data())
         , m_functionIndex(functionIndex)
+        , m_breakScopeDepth(0)
+        , m_continueScopeDepth(0)
+        , m_labelDepth(0)
     {
     }
 
@@ -58,6 +64,16 @@ private:
     template <class Context> ContextStatement parseSetLocalStatement(Context&);
     template <class Context> ContextStatement parseReturnStatement(Context&);
     template <class Context> ContextStatement parseBlockStatement(Context&);
+    template <class Context> ContextStatement parseIfStatement(Context&);
+    template <class Context> ContextStatement parseIfElseStatement(Context&);
+    template <class Context> ContextStatement parseWhileStatement(Context&);
+    template <class Context> ContextStatement parseDoStatement(Context&);
+    template <class Context> ContextStatement parseLabelStatement(Context&);
+    template <class Context> ContextStatement parseBreakStatement(Context&);
+    template <class Context> ContextStatement parseBreakLabelStatement(Context&);
+    template <class Context> ContextStatement parseContinueStatement(Context&);
+    template <class Context> ContextStatement parseContinueLabelStatement(Context&);
+    template <class Context> ContextStatement parseSwitchStatement(Context&);
 
     template <class Context> ContextExpression parseExpression(Context&, WASMExpressionType);
 
@@ -75,6 +91,10 @@ private:
     uint32_t m_numberOfI32LocalVariables;
     uint32_t m_numberOfF32LocalVariables;
     uint32_t m_numberOfF64LocalVariables;
+
+    unsigned m_breakScopeDepth;
+    unsigned m_continueScopeDepth;
+    unsigned m_labelDepth;
 };
 
 } // namespace JSC

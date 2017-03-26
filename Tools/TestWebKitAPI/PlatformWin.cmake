@@ -2,6 +2,11 @@ set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY_WTF "${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}")
 add_definitions(-DUSE_CONSOLE_ENTRY_POINT)
 
+add_custom_target(forwarding-headersWinForTestWebKitAPI
+    COMMAND ${CMAKE_BINARY_DIR}/DerivedSources/WebCore/preBuild.cmd VERBATIM
+)
+set(ForwardingHeadersForTestWebKitAPI_NAME forwarding-headersWinForTestWebKitAPI)
+
 if (${WTF_PLATFORM_WIN_CAIRO})
     add_definitions(-DWIN_CAIRO)
 endif ()
@@ -128,3 +133,6 @@ set_tests_properties(TestWebKit PROPERTIES TIMEOUT 60)
 set(test_main_SOURCES
     ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cpp
 )
+
+add_dependencies(TestWebCore TestWebCoreLib)
+add_dependencies(TestWebKit TestWebKitLib)

@@ -18,6 +18,7 @@ fast/forms/attributed-strings.html [ Skip ]
 fast/scrolling/latching [ Skip ]
 
 fast/forms/search/search-padding-cancel-results-buttons.html [ Skip ]
+fast/forms/search/search-results-hidden-crash.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -126,6 +127,21 @@ webkit.org/b/74144 fast/regions/flow-body-in-html.html [ Skip ]
 webkit.org/b/74144 fast/regions/universal-selector-children-to-the-same-region.html [ Skip ]
 webkit.org/b/74144 fast/regions/region-content-flown-into-region.html [ Skip ]
 
+# These conformance tests are no longer in sync with the latest specification
+# and expect compareDocumentPosition() to return:
+# DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC | DOCUMENT_POSITION_DISCONNECTED
+# for disconnected nodes (missing PRECEDING / FOLLOWING information).
+# We cannot check rebaseline them because their output is likely to change
+# between test runs as it decides PRECEDING / FOLLOWING using pointer
+# comparison.
+dom/xhtml/level3/core/nodecomparedocumentposition03.xhtml [ WontFix ]
+dom/xhtml/level3/core/nodecomparedocumentposition05.xhtml [ WontFix ]
+dom/xhtml/level3/core/nodecomparedocumentposition16.xhtml [ WontFix ]
+dom/xhtml/level3/core/nodecomparedocumentposition33.xhtml [ WontFix ]
+
+# Node::compareDocumentPosition() wrongly reports an attribute and its content as disconnected.
+webkit.org/b/119325 dom/xhtml/level3/core/nodecomparedocumentposition38.xhtml [ Failure ]
+
 # Expando properties on attribute nodes disappear
 webkit.org/b/88045 fast/dom/gc-attribute-node.html [ Failure Pass ]
 
@@ -197,7 +213,18 @@ webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap.html [ ImageOnlyFa
 webkit.org/b/137149 fast/selectors/nth-child-of-basics.html [ Slow ]
 
 # Promises/A+ 2.3.3 has many tests and it sometimes exceeds the time limit. 
-webkit.org/b/136878 js/promises-tests/promises-tests-2-3-3.html [ Slow ] 
+webkit.org/b/136878 js/promises-tests/promises-tests-2-3-3.html [ Slow ]
+
+# Skip W3C tests that are too slow in debug builds.
+webkit.org/b/148546 [ Debug ] http/tests/w3c/dom/ranges/Range-compareBoundaryPoints.html [ Skip ]
+webkit.org/b/148546 [ Debug ] http/tests/w3c/dom/ranges/Range-comparePoint.html [ Skip ]
+webkit.org/b/148546 [ Debug ] http/tests/w3c/dom/ranges/Range-isPointInRange.html [ Skip ]
+webkit.org/b/148546 [ Debug ] http/tests/w3c/dom/ranges/Range-mutations.html [ Skip ]
+webkit.org/b/148546 [ Debug ] http/tests/w3c/dom/ranges/Range-set.html [ Skip ]
+
+# Newly imported W3C DOM tests that are flaky.
+webkit.org/b/148615 http/tests/w3c/dom/nodes/Element-matches.html [ Failure Pass ]
+webkit.org/b/148638 http/tests/w3c/dom/nodes/ParentNode-querySelector-All-xhtml.xhtml [ Failure Pass ]
 
 # @supports W3C Failures
 webkit.org/b/137566 css3/conditional/w3c/at-supports-010.html [ ImageOnlyFailure ]
@@ -556,3 +583,5 @@ media/session [ Skip ]
 fast/dom/timer-fire-after-page-pause.html [ Skip ]
 
 webkit.org/b/148026 [ Debug ] animations/restart-after-scroll.html [ Skip ]
+
+webkit.org/b/148650 fast/repaint/add-table-overpaint.html [ Pass Failure ]

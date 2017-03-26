@@ -76,6 +76,9 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 - (NSUInteger)accessibilityIndexOfChild:(id)child;
 - (NSUInteger)accessibilityArrayAttributeCount:(NSString *)attribute;
 - (void)_accessibilitySetTestValue:(id)value forAttribute:(NSString*)attributeName;
+- (void)_accessibilityScrollToMakeVisibleWithSubFocus:(NSRect)rect;
+- (void)_accessibilityScrollToGlobalPoint:(NSPoint)point;
+- (void)_accessibilitySetValue:(id)value forAttribute:(NSString*)attributeName;
 @end
 
 AccessibilityUIElement::AccessibilityUIElement(PlatformUIElement element)
@@ -395,8 +398,13 @@ AccessibilityUIElement AccessibilityUIElement::ariaFlowToElementAtIndex(unsigned
 
 AccessibilityUIElement AccessibilityUIElement::ariaControlsElementAtIndex(unsigned index)
 {
-    // FIXME: implement
-    return 0;
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSArray* ariaControls = [m_element accessibilityAttributeValue:@"AXARIAControls"];
+    if (index < [ariaControls count])
+        return [ariaControls objectAtIndex:index];
+    END_AX_OBJC_EXCEPTIONS
+    
+    return nullptr;
 }
 
 AccessibilityUIElement AccessibilityUIElement::disclosedRowAtIndex(unsigned index)
@@ -694,7 +702,8 @@ JSStringRef AccessibilityUIElement::stringValue()
 {
     BEGIN_AX_OBJC_EXCEPTIONS
     id description = descriptionOfValue([m_element accessibilityAttributeValue:NSAccessibilityValueAttribute], m_element);
-    return concatenateAttributeAndValue(@"AXValue", description);
+    if (description)
+        return concatenateAttributeAndValue(@"AXValue", description);
     END_AX_OBJC_EXCEPTIONS
 
     return nullptr;
@@ -1398,6 +1407,33 @@ void AccessibilityUIElement::setSelectedChild(AccessibilityUIElement* element) c
     END_AX_OBJC_EXCEPTIONS    
 }
 
+void AccessibilityUIElement::setSelectedChildAtIndex(unsigned index) const
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    AccessibilityUIElement element = const_cast<AccessibilityUIElement*>(this)->getChildAtIndex(index);
+    if (!element.platformUIElement())
+        return;
+    NSArray *selectedChildren = [m_element accessibilityAttributeValue:NSAccessibilitySelectedChildrenAttribute];
+    NSArray *array = [NSArray arrayWithObject:element.platformUIElement()];
+    if (selectedChildren)
+        array = [selectedChildren arrayByAddingObjectsFromArray:array];
+    [m_element _accessibilitySetValue:array forAttribute:NSAccessibilitySelectedChildrenAttribute];
+    END_AX_OBJC_EXCEPTIONS
+}
+
+void AccessibilityUIElement::removeSelectionAtIndex(unsigned index) const
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    AccessibilityUIElement element = const_cast<AccessibilityUIElement*>(this)->getChildAtIndex(index);
+    NSArray *selectedChildren = [m_element accessibilityAttributeValue:NSAccessibilitySelectedChildrenAttribute];
+    if (!element.platformUIElement() || !selectedChildren)
+        return;
+    NSMutableArray *array = [NSMutableArray arrayWithArray:selectedChildren];
+    [array removeObject:element.platformUIElement()];
+    [m_element _accessibilitySetValue:array forAttribute:NSAccessibilitySelectedChildrenAttribute];
+    END_AX_OBJC_EXCEPTIONS
+}
+
 JSStringRef AccessibilityUIElement::accessibilityValue() const
 {
     // FIXME: implement
@@ -1406,11 +1442,23 @@ JSStringRef AccessibilityUIElement::accessibilityValue() const
 
 JSStringRef AccessibilityUIElement::documentEncoding()
 {
+    BEGIN_AX_OBJC_EXCEPTIONS
+    id value = [m_element accessibilityAttributeValue:@"AXDocumentEncoding"];
+    if ([value isKindOfClass:[NSString class]])
+        return [value createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
+    
     return JSStringCreateWithCharacters(0, 0);
 }
 
 JSStringRef AccessibilityUIElement::documentURI()
 {
+    BEGIN_AX_OBJC_EXCEPTIONS
+    id value = [m_element accessibilityAttributeValue:@"AXDocumentURI"];
+    if ([value isKindOfClass:[NSString class]])
+        return [value createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
+    
     return JSStringCreateWithCharacters(0, 0);
 }
 
@@ -1835,7 +1883,6 @@ JSStringRef AccessibilityUIElement::mathPrescriptsDescription() const
     return nullptr;
 }
 
-
 void AccessibilityUIElement::scrollToMakeVisible()
 {
     BEGIN_AX_OBJC_EXCEPTIONS
@@ -1845,10 +1892,14 @@ void AccessibilityUIElement::scrollToMakeVisible()
 
 void AccessibilityUIElement::scrollToMakeVisibleWithSubFocus(int x, int y, int width, int height)
 {
-    // FIXME: implement
+    BEGIN_AX_OBJC_EXCEPTIONS
+    [m_element _accessibilityScrollToMakeVisibleWithSubFocus:NSMakeRect(x, y, width, height)];
+    END_AX_OBJC_EXCEPTIONS
 }
 
 void AccessibilityUIElement::scrollToGlobalPoint(int x, int y)
 {
-    // FIXME: implement
+    BEGIN_AX_OBJC_EXCEPTIONS
+    [m_element _accessibilityScrollToGlobalPoint:NSMakePoint(x, y)];
+    END_AX_OBJC_EXCEPTIONS
 }

@@ -954,7 +954,7 @@ void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheel
                 latchingState->setScrollableContainer(scrollableContainer);
                 latchingState->setWidgetIsLatched(result.isOverWidget());
                 isOverWidget = latchingState->widgetIsLatched();
-                m_frame.mainFrame().wheelEventDeltaTracker()->beginTrackingDeltas();
+                m_frame.mainFrame().wheelEventDeltaFilter()->beginFilteringDeltas();
             }
         }
     } else if (wheelEvent.shouldResetLatching())
@@ -982,16 +982,15 @@ void EventHandler::platformRecordWheelEvent(const PlatformWheelEvent& wheelEvent
 {
     switch (wheelEvent.phase()) {
         case PlatformWheelEventPhaseBegan:
-            m_frame.mainFrame().wheelEventDeltaTracker()->beginTrackingDeltas();
+            m_frame.mainFrame().wheelEventDeltaFilter()->beginFilteringDeltas();
             break;
         case PlatformWheelEventPhaseEnded:
-            m_frame.mainFrame().wheelEventDeltaTracker()->endTrackingDeltas();
+            m_frame.mainFrame().wheelEventDeltaFilter()->endFilteringDeltas();
             break;
         default:
             break;
     }
-
-    m_frame.mainFrame().wheelEventDeltaTracker()->recordWheelEventDelta(wheelEvent);
+    m_frame.mainFrame().wheelEventDeltaFilter()->updateFromDelta(FloatSize(wheelEvent.deltaX(), wheelEvent.deltaY()));
 }
 
 static FrameView* frameViewForLatchingState(Frame& frame, ScrollLatchingState* latchingState)
@@ -1080,7 +1079,7 @@ VisibleSelection EventHandler::selectClosestWordFromHitTestResultBasedOnLookup(c
         return VisibleSelection();
 
     NSDictionary *options = nil;
-    if (RefPtr<Range> range = rangeForDictionaryLookupAtHitTestResult(result, &options))
+    if (RefPtr<Range> range = DictionaryLookup::rangeAtHitTestResult(result, &options))
         return VisibleSelection(*range);
 
     return VisibleSelection();

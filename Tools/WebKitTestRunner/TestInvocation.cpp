@@ -268,15 +268,13 @@ void TestInvocation::dumpResults()
         dumpAudio(m_audioResult.get());
 
     if (m_dumpPixels && m_pixelResult) {
-        if (PlatformWebView::windowSnapshotEnabled()) {
-            m_gotRepaint = false;
-            WKPageForceRepaint(TestController::singleton().mainWebView()->page(), this, TestInvocation::forceRepaintDoneCallback);
-            TestController::singleton().runUntil(m_gotRepaint, TestController::shortTimeout);
-            if (!m_gotRepaint) {
-                m_errorMessage = "Timed out waiting for pre-pixel dump repaint\n";
-                m_webProcessIsUnresponsive = true;
-                return;
-            }
+        m_gotRepaint = false;
+        WKPageForceRepaint(TestController::singleton().mainWebView()->page(), this, TestInvocation::forceRepaintDoneCallback);
+        TestController::singleton().runUntil(m_gotRepaint, TestController::shortTimeout);
+        if (!m_gotRepaint) {
+            m_errorMessage = "Timed out waiting for pre-pixel dump repaint\n";
+            m_webProcessIsUnresponsive = true;
+            return;
         }
         dumpPixelsAndCompareWithExpected(m_pixelResult.get(), m_repaintRects.get());
     }
@@ -627,6 +625,13 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
         WKBooleanRef shouldBlock = static_cast<WKBooleanRef>(messageBody);
         TestController::singleton().setBlockAllPlugins(WKBooleanGetValue(shouldBlock));
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetShouldDecideNavigationPolicyAfterDelay")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
+        TestController::singleton().setShouldDecideNavigationPolicyAfterDelay(WKBooleanGetValue(value));
         return;
     }
 

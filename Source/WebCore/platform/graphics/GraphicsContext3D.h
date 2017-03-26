@@ -1133,7 +1133,7 @@ public:
                        int canvasWidth, int canvasHeight, PlatformContextCairo* context);
 #elif USE(CG)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
-                       int canvasWidth, int canvasHeight, GraphicsContext*);
+                       int canvasWidth, int canvasHeight, GraphicsContext&);
 #elif PLATFORM(HAIKU)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
                        int canvasWidth, int canvasHeight, BView*);

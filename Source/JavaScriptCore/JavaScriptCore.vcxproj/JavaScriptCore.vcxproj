@@ -305,6 +305,7 @@
     <ClCompile Include="..\API\OpaqueJSString.cpp" />
     <ClCompile Include="..\assembler\LinkBuffer.cpp" />
     <ClCompile Include="..\assembler\MacroAssembler.cpp" />
+    <ClCompile Include="..\assembler\MacroAssemblerPrinter.cpp" />
     <ClCompile Include="..\assembler\MacroAssemblerX86Common.cpp" />
     <ClCompile Include="..\bindings\ScriptFunctionCall.cpp" />
     <ClCompile Include="..\bindings\ScriptObject.cpp" />
@@ -391,6 +392,7 @@
     <ClCompile Include="..\dfg\DFGCleanUpPhase.cpp" />
     <ClCompile Include="..\dfg\DFGClobberize.cpp" />
     <ClCompile Include="..\dfg\DFGClobberSet.cpp" />
+    <ClCompile Include="..\dfg\DFGClobbersExitState.cpp" />
     <ClCompile Include="..\dfg\DFGCombinedLiveness.cpp" />
     <ClCompile Include="..\dfg\DFGCommon.cpp" />
     <ClCompile Include="..\dfg\DFGCommonData.cpp" />
@@ -423,6 +425,7 @@
     <ClCompile Include="..\dfg\DFGGraphSafepoint.cpp" />
     <ClCompile Include="..\dfg\DFGHeapLocation.cpp" />
     <ClCompile Include="..\dfg\DFGInPlaceAbstractState.cpp" />
+    <ClCompile Include="..\dfg\DFGInsertionSet.cpp" />
     <ClCompile Include="..\dfg\DFGIntegerCheckCombiningPhase.cpp" />
     <ClCompile Include="..\dfg\DFGIntegerRangeOptimizationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGInvalidationPointInjectionPhase.cpp" />
@@ -445,6 +448,7 @@
     <ClCompile Include="..\dfg\DFGNaturalLoops.cpp" />
     <ClCompile Include="..\dfg\DFGNode.cpp" />
     <ClCompile Include="..\dfg\DFGNodeFlags.cpp" />
+    <ClCompile Include="..\dfg\DFGNodeOrigin.cpp" />
     <ClCompile Include="..\dfg\DFGOperations.cpp" />
     <ClCompile Include="..\dfg\DFGOSRAvailabilityAnalysisPhase.cpp" />
     <ClCompile Include="..\dfg\DFGOSREntry.cpp" />
@@ -783,6 +787,7 @@
     <ClCompile Include="..\runtime\JSMap.cpp" />
     <ClCompile Include="..\runtime\JSMapIterator.cpp" />
     <ClCompile Include="..\runtime\JSModuleRecord.cpp" />
+    <ClCompile Include="..\runtime\JSNativeStdFunction.cpp" />
     <ClCompile Include="..\runtime\JSNotAnObject.cpp" />
     <ClCompile Include="..\runtime\JSONObject.cpp" />
     <ClCompile Include="..\runtime\JSObject.cpp" />
@@ -821,6 +826,7 @@
     <ClCompile Include="..\runtime\ModuleLoaderObject.cpp" />
     <ClCompile Include="..\runtime\NativeErrorConstructor.cpp" />
     <ClCompile Include="..\runtime\NativeErrorPrototype.cpp" />
+    <ClCompile Include="..\runtime\NativeStdFunctionCell.cpp" />
     <ClCompile Include="..\runtime\NullGetterFunction.cpp" />
     <ClCompile Include="..\runtime\NullSetterFunction.cpp" />
     <ClCompile Include="..\runtime\NumberConstructor.cpp" />
@@ -981,6 +987,7 @@
     <ClInclude Include="..\assembler\CodeLocation.h" />
     <ClInclude Include="..\assembler\LinkBuffer.h" />
     <ClInclude Include="..\assembler\MacroAssembler.h" />
+    <ClInclude Include="..\assembler\MacroAssemblerPrinter.h" />
     <ClInclude Include="..\assembler\MacroAssemblerX86.h" />
     <ClInclude Include="..\assembler\MacroAssemblerX86Common.h" />
     <ClInclude Include="..\assembler\MacroAssemblerX86_64.h" />
@@ -1107,6 +1114,7 @@
     <ClInclude Include="..\dfg\DFGCleanUpPhase.h" />
     <ClInclude Include="..\dfg\DFGClobberize.h" />
     <ClInclude Include="..\dfg\DFGClobberSet.h" />
+    <ClInclude Include="..\dfg\DFGClobbersExitState.h" />
     <ClInclude Include="..\dfg\DFGCombinedLiveness.h" />
     <ClInclude Include="..\dfg\DFGCommon.h" />
     <ClInclude Include="..\dfg\DFGCommonData.h" />
@@ -1162,7 +1170,6 @@
     <ClInclude Include="..\dfg\DFGLongLivedState.h" />
     <ClInclude Include="..\dfg\DFGLoopPreHeaderCreationPhase.h" />
     <ClInclude Include="..\dfg\DFGMayExit.h" />
-    <ClInclude Include="..\dfg\DFGMergeMode.h" />
     <ClInclude Include="..\dfg\DFGMinifiedGraph.h" />
     <ClInclude Include="..\dfg\DFGMinifiedID.h" />
     <ClInclude Include="..\dfg\DFGMinifiedNode.h" />
@@ -1197,7 +1204,6 @@
     <ClInclude Include="..\dfg\DFGPreciseLocalClobberize.h" />
     <ClInclude Include="..\dfg\DFGPredictionInjectionPhase.h" />
     <ClInclude Include="..\dfg\DFGPredictionPropagationPhase.h" />
-    <ClInclude Include="..\dfg\DFGPromoteHeapAccess.h" />
     <ClInclude Include="..\dfg\DFGPromotedHeapLocation.h" />
     <ClInclude Include="..\dfg\DFGPureValue.h" />
     <ClInclude Include="..\dfg\DFGPutStackSinkingPhase.h" />
@@ -1635,6 +1641,7 @@
     <ClInclude Include="..\runtime\JSMap.h" />
     <ClInclude Include="..\runtime\JSMapIterator.h" />
     <ClInclude Include="..\runtime\JSModuleRecord.h" />
+    <ClInclude Include="..\runtime\JSNativeStdFunction.h" />
     <ClInclude Include="..\runtime\JSNotAnObject.h" />
     <ClInclude Include="..\runtime\JSONObject.h" />
     <ClInclude Include="..\runtime\JSObject.h" />
@@ -1684,6 +1691,7 @@
     <ClInclude Include="..\runtime\Microtask.h" />
     <ClInclude Include="..\runtime\NativeErrorConstructor.h" />
     <ClInclude Include="..\runtime\NativeErrorPrototype.h" />
+    <ClInclude Include="..\runtime\NativeStdFunctionCell.h" />
     <ClInclude Include="..\runtime\NullGetterFunction.h" />
     <ClInclude Include="..\runtime\NullSetterFunction.h" />
     <ClInclude Include="..\runtime\NumberConstructor.h" />
@@ -1767,6 +1775,7 @@
     <ClInclude Include="..\runtime\Uint32Array.h" />
     <ClInclude Include="..\runtime\Uint8Array.h" />
     <ClInclude Include="..\runtime\VM.h" />
+    <ClInclude Include="..\runtime\VMInlines.h" />
     <ClInclude Include="..\runtime\VMEntryScope.h" />
     <ClInclude Include="..\runtime\VarOffset.h" />
     <ClInclude Include="..\runtime\Watchdog.h" />

@@ -25,8 +25,6 @@
 
 #include "config.h"
 
-#if PLATFORM(MAC)
-
 #include "Functional.h"
 #include "HashMap.h"
 #include "HashSet.h"
@@ -41,6 +39,7 @@
 
 namespace WTF {
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1090
 WTF_EXPORT_PRIVATE void callOnMainThread(const Function<void ()>&);
 WTF_EXPORT_PRIVATE void lockAtomicallyInitializedStaticMutex();
 WTF_EXPORT_PRIVATE void unlockAtomicallyInitializedStaticMutex();
@@ -61,16 +60,17 @@ void unlockAtomicallyInitializedStaticMutex()
 {
     atomicallyInitializedStaticMutex.unlock();
 }
+#endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101100
-WTF_EXPORT_PRIVATE void callOnMainThread(MainThreadFunction*, void* context);
-WTF_EXPORT_PRIVATE void cancelCallOnMainThread(MainThreadFunction*, void* context);
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000)
+WTF_EXPORT_PRIVATE void callOnMainThread(void (*function)(void*), void* context);
+WTF_EXPORT_PRIVATE void cancelCallOnMainThread(void (*function)(void*), void* context);
 
 class MainThreadFunctionTracker {
 public:
     static MainThreadFunctionTracker& singleton()
     {
-        std::once_flag onceFlag;
+        static std::once_flag onceFlag;
 
         static LazyNeverDestroyed<MainThreadFunctionTracker> tracker;
 
@@ -140,12 +140,12 @@ private:
     HashMap<std::pair<void (*)(void*), void*>, HashSet<uint64_t>> m_functions;
 };
 
-void callOnMainThread(MainThreadFunction* function, void* context)
+void callOnMainThread(void (*function)(void*), void* context)
 {
     MainThreadFunctionTracker::singleton().callOnMainThread(function, context);
 }
 
-void cancelCallOnMainThread(MainThreadFunction* function, void* context)
+void cancelCallOnMainThread(void (*function)(void*), void* context)
 {
     ASSERT(function);
 
@@ -154,5 +154,3 @@ void cancelCallOnMainThread(MainThreadFunction* function, void* context)
 #endif
 
 } // namespace WTF
-
-#endif

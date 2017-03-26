@@ -99,8 +99,6 @@ WK_EXTERN NSString * const _WKShouldOpenExternalURLsKey WK_AVAILABLE(WK_MAC_TBA,
 @property (nonatomic, setter=_setLayoutMode:) _WKLayoutMode _layoutMode;
 // For use with _layoutMode = _WKLayoutModeFixedSize:
 @property (nonatomic, setter=_setFixedLayoutSize:) CGSize _fixedLayoutSize;
-// For use with _layoutMode = _WKLayoutModeDynamicSizeWithMinimumViewSize:
-@property (nonatomic, setter=_setMinimumViewSize:) CGSize _minimumViewSize;
 
 @property (nonatomic, setter=_setViewScale:) CGFloat _viewScale;
 
@@ -173,6 +171,9 @@ WK_EXTERN NSString * const _WKShouldOpenExternalURLsKey WK_AVAILABLE(WK_MAC_TBA,
 
 // Default value is 0. A value of 0 means the window's backing scale factor will be used and automatically update when the window moves screens.
 @property (nonatomic, setter=_setOverrideDeviceScaleFactor:) CGFloat _overrideDeviceScaleFactor WK_AVAILABLE(WK_MAC_TBA, NA);
+
+@property (nonatomic, setter=_setWindowOcclusionDetectionEnabled:) BOOL _windowOcclusionDetectionEnabled;
+
 #endif
 
 - (void)_killWebContentProcessAndResetState;

@@ -172,10 +172,8 @@ void TestRunner::notifyDone()
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
 {
     WKRetainPtr<WKStringRef> sourceWK = toWK(source);
-    WKRetainPtr<WKBundleScriptWorldRef> scriptWorld(AdoptWK, WKBundleScriptWorldCreateWorld());
 
-    auto& injectedBundle = InjectedBundle::singleton();
-    WKBundleAddUserScript(injectedBundle.bundle(), injectedBundle.pageGroup(), scriptWorld.get(), sourceWK.get(), 0, 0, 0,
+    WKBundlePageAddUserScript(InjectedBundle::singleton().page()->page(), sourceWK.get(),
         (runAtStart ? kWKInjectAtDocumentStart : kWKInjectAtDocumentEnd),
         (allFrames ? kWKInjectInAllFrames : kWKInjectInTopFrameOnly));
 }
@@ -183,10 +181,8 @@ void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFram
 void TestRunner::addUserStyleSheet(JSStringRef source, bool allFrames)
 {
     WKRetainPtr<WKStringRef> sourceWK = toWK(source);
-    WKRetainPtr<WKBundleScriptWorldRef> scriptWorld(AdoptWK, WKBundleScriptWorldCreateWorld());
 
-    auto& injectedBundle = InjectedBundle::singleton();
-    WKBundleAddUserStyleSheet(injectedBundle.bundle(), injectedBundle.pageGroup(), scriptWorld.get(), sourceWK.get(), 0, 0, 0,
+    WKBundlePageAddUserStyleSheet(InjectedBundle::singleton().page()->page(), sourceWK.get(),
         (allFrames ? kWKInjectInAllFrames : kWKInjectInTopFrameOnly));
 }
 
@@ -831,7 +827,7 @@ bool TestRunner::secureEventInputIsEnabled() const
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SecureEventInputIsEnabled"));
     WKTypeRef returnData = 0;
 
-    WKBundlePagePostSynchronousMessage(InjectedBundle::singleton().page()->page(), messageName.get(), 0, &returnData);
+    WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), 0, &returnData);
     return WKBooleanGetValue(static_cast<WKBooleanRef>(returnData));
 }
 
@@ -854,6 +850,14 @@ JSValueRef TestRunner::neverInlineFunction(JSValueRef theFunction)
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::singleton().page()->page());
     JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
     return JSC::setNeverInline(context, theFunction);
+}
+
+void TestRunner::setShouldDecideNavigationPolicyAfterDelay(bool value)
+{
+    m_shouldDecideNavigationPolicyAfterDelay = value;
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetShouldDecideNavigationPolicyAfterDelay"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(value));
+    WKBundlePagePostMessage(InjectedBundle::singleton().page()->page(), messageName.get(), messageBody.get());
 }
 
 } // namespace WTR

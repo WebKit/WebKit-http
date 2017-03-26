@@ -25,9 +25,13 @@
 
 WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebInspector.DetailsSectionRow
 {
-    constructor(delegate)
+    constructor(delegate, chartSize, innerRadiusRatio)
     {
         super(WebInspector.UIString("No Chart Available"));
+
+        innerRadiusRatio = innerRadiusRatio || 0;
+        console.assert(chartSize > 0, chartSize);
+        console.assert(innerRadiusRatio >= 0 && innerRadiusRatio < 1, innerRadiusRatio);
 
         this.element.classList.add("chart");
 
@@ -35,25 +39,23 @@ WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebIn
         this._titleElement.className = "title";
         this.element.appendChild(this._titleElement);
 
-        var chartContentElement = document.createElement("div");
+        let chartContentElement = document.createElement("div");
         chartContentElement.className = "chart-content";
         this.element.appendChild(chartContentElement);
 
-        this._canvas = document.createElement("canvas");
-        this._canvas.className = "chart";
-        chartContentElement.appendChild(this._canvas);
+        this._chartElement = createSVGElement("svg");
+        chartContentElement.appendChild(this._chartElement);
 
         this._legendElement = document.createElement("div");
         this._legendElement.className = "legend";
         chartContentElement.appendChild(this._legendElement);
 
         this._delegate = delegate;
-        this._items = [];
+        this._items = new Map;
         this._title = "";
-        this._innerLabel = "";
-        this._innerRadius = 0;
-        this._innerLabelFontSize = 11;
-        this._shadowColor = "rgba(0, 0, 0, 0.6)";
+        this._chartSize = chartSize;
+        this._radius = (this._chartSize / 2) - 1;   // Subtract one to accomodate chart stroke width.
+        this._innerRadius = innerRadiusRatio ? Math.floor(this._radius * innerRadiusRatio) : 0;
         this._total = 0;
 
         this._svgFiltersElement = document.createElement("svg");
@@ -63,9 +65,41 @@ WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebIn
         this._checkboxStyleElement = document.createElement("style");
         this._checkboxStyleElement.id = "checkbox-styles";
         document.getElementsByTagName("head")[0].append(this._checkboxStyleElement);
+
+        function createEmptyChartPathData(c, r1, r2)
+        {
+            const a1 = 0;
+            const a2 = Math.PI * 1.9999;
+            let x1 = c + Math.cos(a1) * r1,
+                y1 = c + Math.sin(a1) * r1,
+                x2 = c + Math.cos(a2) * r1,
+                y2 = c + Math.sin(a2) * r1,
+                x3 = c + Math.cos(a2) * r2,
+                y3 = c + Math.sin(a2) * r2,
+                x4 = c + Math.cos(a1) * r2,
+                y4 = c + Math.sin(a1) * r2;
+            return [
+                "M", x1, y1,                    // Starting position.
+                "A", r1, r1, 0, 1, 1, x2, y2,   // Draw outer arc.
+                "Z",                            // Close path.
+                "M", x3, y3,                    // Starting position.
+                "A", r2, r2, 0, 1, 0, x4, y4,   // Draw inner arc.
+                "Z"                             // Close path.
+            ].join(" ");
+        }
+
+        this._emptyChartPath = createSVGElement("path");
+        this._emptyChartPath.setAttribute("d", createEmptyChartPathData(this._chartSize / 2, this._radius, this._innerRadius));
+        this._emptyChartPath.classList.add("empty-chart");
+        this._chartElement.appendChild(this._emptyChartPath);
     }
 
     // Public
+
+    get chartSize()
+    {
+        return this._chartSize;
+    }
 
     set title(title)
     {
@@ -76,48 +110,59 @@ WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebIn
         this._titleElement.textContent = title;
     }
 
-    set innerLabel(label)
-    {
-        if (this._innerLabel === label)
-            return;
-
-        this._innerLabel = label;
-
-        this._refresh();
-    }
-
-    set innerRadius(radius)
-    {
-        if (this._innerRadius === radius)
-            return;
-
-        this._innerRadius = radius;
-
-        this._refresh();
-    }
-
     get total()
     {
         return this._total;
     }
 
-    set data(items)
+    addItem(id, label, value, color, checkbox, checked)
     {
-        if (!(items instanceof Array))
-            items = [items];
-
-        items = items.filter(function(item) { return item.value >= 0; });
-        if (!this._items.length && !items.length)
+        console.assert(!this._items.has(id), "Already added item with id: " + id);
+        if (this._items.has(id))
             return;
 
-        if (this._items.length === items.length && this._items.every(function(item, index) { return JSON.stringify(item) === JSON.stringify(items[index]); }))
+        console.assert(value >= 0, "Value cannot be negative.");
+        if (value < 0)
             return;
 
-        this._items = items;
-        this._total = this._items.reduce(function(previousValue, currentValue) { return previousValue + currentValue.value; }, 0);;
+        this._items.set(id, {label, value, color, checkbox, checked});
+        this._total += value;
 
-        this._createLegend();
-        this._refresh();
+        this._needsLayout();
+    }
+
+    setItemValue(id, value)
+    {
+        let item = this._items.get(id);
+        console.assert(item, "Cannot set value for invalid item id: " + id);
+        if (!item)
+            return;
+
+        console.assert(value >= 0, "Value cannot be negative.");
+        if (value < 0)
+            return;
+
+        if (item.value === value)
+            return;
+
+        this._total += value - item.value;
+        item.value = value;
+
+        this._needsLayout();
+    }
+
+    clearItems()
+    {
+        for (let item of this._items.values()) {
+            let path = item[WebInspector.ChartDetailsSectionRow.ChartSegmentPathSymbol];
+            if (path)
+                path.remove();
+        }
+
+        this._total = 0;
+        this._items.clear();
+
+        this._needsLayout();
     }
 
     // Private
@@ -151,12 +196,12 @@ WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebIn
         {
             let gammaPrimitive = createSVGElement(tagName);
             gammaPrimitive.setAttribute("type", "gamma");
-            gammaPrimitive.setAttribute("value", value);
+            gammaPrimitive.setAttribute("exponent", value);
             return gammaPrimitive;
         }
 
         let componentTransferPrimitive = createSVGElement("feComponentTransfer");
-        componentTransferPrimitive.append(createGammaPrimitive("feFuncR", 1.2), createGammaPrimitive("feFuncG", 1.2), createGammaPrimitive("feFuncB", 1.2));
+        componentTransferPrimitive.append(createGammaPrimitive("feFuncR", 1.4), createGammaPrimitive("feFuncG", 1.4), createGammaPrimitive("feFuncB", 1.4));
         filterElement.append(colorMatrixPrimitive, componentTransferPrimitive);
 
         this._svgFiltersElement.append(filterElement);
@@ -165,15 +210,31 @@ WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebIn
         styleSheet.insertRule(".details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > input[type=checkbox]." + id + " { filter: grayscale(1) url(#" + id + ") }", 0);
     }
 
-    _createLegend()
+    _updateLegend()
     {
-        this._legendElement.removeChildren();
+        if (!this._items.size) {
+            this._legendElement.removeChildren();
+            return;
+        }
 
-        for (let item of this._items) {
+        function formatItemValue(item)
+        {
+            if (this._delegate && typeof this._delegate.formatChartValue === "function")
+                return this._delegate.formatChartValue(item.value);
+            return item.value;
+        }
+
+        for (let [id, item] of this._items) {
+            if (item[WebInspector.ChartDetailsSectionRow.LegendItemValueElementSymbol]) {
+                let valueElement = item[WebInspector.ChartDetailsSectionRow.LegendItemValueElementSymbol];
+                valueElement.textContent = formatItemValue.call(this, item);
+                continue;
+            }
+
             let labelElement = document.createElement("label");
             let keyElement;
             if (item.checkbox) {
-                let className = item.id.toLowerCase();
+                let className = id.toLowerCase();
                 let rgb = item.color.substring(4, item.color.length - 1).replace(/ /g, "").split(",");
                 if (rgb[0] === rgb[1] && rgb[1] === rgb[2])
                     rgb[0] = rgb[1] = rgb[2] = Math.min(160, rgb[0]);
@@ -181,8 +242,8 @@ WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebIn
                 keyElement = document.createElement("input");
                 keyElement.type = "checkbox";
                 keyElement.classList.add(className);
-                keyElement.checked = item.checked || true;
-                keyElement[WebInspector.ChartDetailsSectionRow.DataItemIdSymbol] = item.id;
+                keyElement.checked = item.checked;
+                keyElement[WebInspector.ChartDetailsSectionRow.DataItemIdSymbol] = id;
 
                 keyElement.addEventListener("change", this._legendItemCheckboxValueChanged.bind(this));
 
@@ -197,11 +258,9 @@ WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebIn
 
             let valueElement = document.createElement("div");
             valueElement.classList.add("value");
+            valueElement.textContent = formatItemValue.call(this, item);
 
-            if (this._delegate && typeof this._delegate.formatChartValue === "function")
-                valueElement.textContent = this._delegate.formatChartValue(item.value);
-            else
-                valueElement.textContent = item.value;
+            item[WebInspector.ChartDetailsSectionRow.LegendItemValueElementSymbol] = valueElement;
 
             let legendItemElement = document.createElement("div");
             legendItemElement.classList.add("legend-item");
@@ -218,60 +277,115 @@ WebInspector.ChartDetailsSectionRow = class ChartDetailsSectionRow extends WebIn
         this.dispatchEventToListeners(WebInspector.ChartDetailsSectionRow.Event.LegendItemChecked, {id, checked: checkbox.checked});
     }
 
-    _refresh()
+    _needsLayout()
     {
-        var width = this._canvas.clientWidth * window.devicePixelRatio;
-        var height = this._canvas.clientHeight * window.devicePixelRatio;
-        this._canvas.width = width;
-        this._canvas.height = height;
+        if (this._scheduledLayoutUpdateIdentifier)
+            return;
 
-        var context = this._canvas.getContext("2d");
-        context.clearRect(0, 0, width, height);
+        this._scheduledLayoutUpdateIdentifier = requestAnimationFrame(this._updateLayout.bind(this));
+    }
 
-        var x = Math.floor(width / 2);
-        var y = Math.floor(height / 2);
-        var radius = Math.floor(Math.min(x, y) * 0.96);   // Add a small margin to prevent clipping of the chart shadow.
-        var innerRadius = Math.floor(radius * this._innerRadius);
-        var startAngle = 1.5 * Math.PI;
-        var endAngle = startAngle;
+    _updateLayout()
+    {
+        if (this._scheduledLayoutUpdateIdentifier) {
+            cancelAnimationFrame(this._scheduledLayoutUpdateIdentifier);
+            this._scheduledLayoutUpdateIdentifier = undefined;
+        }
 
-        function drawSlice(x, y, startAngle, endAngle, color)
+        this._updateLegend();
+
+        this._chartElement.setAttribute("width", this._chartSize);
+        this._chartElement.setAttribute("height", this._chartSize);
+        this._chartElement.setAttribute("viewbox", "0 0 " + this._chartSize + " " + this._chartSize);
+
+        function createSegmentPathData(c, a1, a2, r1, r2)
         {
-            context.beginPath();
-            context.moveTo(x, y);
-            context.arc(x, y, radius, startAngle, endAngle, false);
-            if (innerRadius > 0)
-                context.arc(x, y, innerRadius, endAngle, startAngle, true);
-            context.fillStyle = color;
-            context.fill();
+            const largeArcFlag = ((a2 - a1) % (Math.PI * 2)) > Math.PI ? 1 : 0;
+            let x1 = c + Math.cos(a1) * r1,
+                y1 = c + Math.sin(a1) * r1,
+                x2 = c + Math.cos(a2) * r1,
+                y2 = c + Math.sin(a2) * r1,
+                x3 = c + Math.cos(a2) * r2,
+                y3 = c + Math.sin(a2) * r2,
+                x4 = c + Math.cos(a1) * r2,
+                y4 = c + Math.sin(a1) * r2;
+            return [
+                "M", x1, y1,                                // Starting position.
+                "A", r1, r1, 0, largeArcFlag, 1, x2, y2,    // Draw outer arc.
+                "L", x3, y3,                                // Connect outer and innner arcs.
+                "A", r2, r2, 0, largeArcFlag, 0, x4, y4,    // Draw inner arc.
+                "Z"                                         // Close path.
+            ].join(" ");
         }
 
-        context.save();
-        context.shadowBlur = 2 * window.devicePixelRatio;
-        context.shadowOffsetY = window.devicePixelRatio;
-        context.shadowColor = this._shadowColor;
-        drawSlice(x, y, 0, 2.0 * Math.PI, "rgb(242, 242, 242)");
-        context.restore();
+        // Balance item values so that all non-zero chart segments are visible.
+        const minimumDisplayValue = this._total * 0.015;
 
-        for (var item of this._items) {
-            if (item.value === 0)
+        let items = [];
+        for (let item of this._items.values()) {
+            item.displayValue = item.value ? Math.max(minimumDisplayValue, item.value) : 0;
+            if (item.displayValue)
+                items.push(item);
+        }
+
+        if (items.length > 1) {
+            items.sort(function(a, b) { return a.value - b.value; });
+
+            let largeItemCount = items.length;
+            let totalAdjustedValue = 0;
+            for (let item of items) {
+                if (item.value < minimumDisplayValue) {
+                    totalAdjustedValue += minimumDisplayValue - item.value;
+                    largeItemCount--;
+                    continue;
+                }
+
+                if (!totalAdjustedValue || !largeItemCount)
+                    break;
+
+                const donatedValue = totalAdjustedValue / largeItemCount;
+                if (item.displayValue - donatedValue >= minimumDisplayValue) {
+                    item.displayValue -= donatedValue;
+                    totalAdjustedValue -= donatedValue;
+                }
+
+                largeItemCount--;
+            }
+        }
+
+        const center = this._chartSize / 2;
+        let startAngle = -Math.PI / 2;
+        let endAngle = 0;
+        for (let [id, item] of this._items) {
+            let path = item[WebInspector.ChartDetailsSectionRow.ChartSegmentPathSymbol];
+            if (!path) {
+                path = createSVGElement("path");
+                path.classList.add("chart-segment");
+                path.setAttribute("fill", item.color);
+                this._chartElement.appendChild(path);
+
+                item[WebInspector.ChartDetailsSectionRow.ChartSegmentPathSymbol] = path;
+            }
+
+            if (!item.value) {
+                path.classList.add("hidden");
                 continue;
-            endAngle += (item.value / this._total) * 2.0 * Math.PI;
-            drawSlice(x, y, startAngle, endAngle, item.color);
-            startAngle = endAngle;
-        }
+            }
 
-        if (this._innerLabel) {
-            context.font = (this._innerLabelFontSize * window.devicePixelRatio) + "px sans-serif";
-            var metrics = context.measureText(this._innerLabel);
-            var offsetX = centerX - metrics.width / 2;
-            context.fillStyle = "rgb(68, 68, 68)";
-            context.fillText(this._innerLabel, offsetX, centerY);
+            const angle = (item.displayValue / this._total) * Math.PI * 2;
+            endAngle = startAngle + angle;
+
+            path.setAttribute("d", createSegmentPathData(center, startAngle, endAngle, this._radius, this._innerRadius));
+            path.classList.remove("hidden");
+
+            startAngle = endAngle;
         }
     }
 };
 
 WebInspector.ChartDetailsSectionRow.DataItemIdSymbol = Symbol("chart-details-section-row-data-item-id");
+WebInspector.ChartDetailsSectionRow.ChartSegmentPathSymbol = Symbol("chart-details-section-row-chart-segment-path");
+WebInspector.ChartDetailsSectionRow.LegendItemValueElementSymbol = Symbol("chart-details-section-row-legend-item-value-element");
 
 WebInspector.ChartDetailsSectionRow.Event = {
     LegendItemChecked: "chart-details-section-row-legend-item-checked"

@@ -86,7 +86,6 @@ class Identifier;
 class Interpreter;
 class JSGlobalObject;
 class JSObject;
-class Keywords;
 class LLIntOffsetsExtractor;
 class LegacyProfiler;
 class NativeExecutable;
@@ -237,7 +236,7 @@ public:
     static Ref<VM> createContextGroup(HeapType = SmallHeap);
     JS_EXPORT_PRIVATE ~VM();
 
-    Watchdog& ensureWatchdog();
+    JS_EXPORT_PRIVATE Watchdog& ensureWatchdog();
 
 private:
     RefPtr<JSLock> m_apiLock;
@@ -280,6 +279,9 @@ public:
     Strong<Structure> evalExecutableStructure;
     Strong<Structure> programExecutableStructure;
     Strong<Structure> functionExecutableStructure;
+#if ENABLE(WEBASSEMBLY)
+    Strong<Structure> webAssemblyExecutableStructure;
+#endif
     Strong<Structure> regExpStructure;
     Strong<Structure> symbolStructure;
     Strong<Structure> symbolTableStructure;
@@ -298,6 +300,7 @@ public:
     Strong<Structure> exceptionStructure;
     Strong<Structure> promiseDeferredStructure;
     Strong<Structure> internalPromiseDeferredStructure;
+    Strong<Structure> nativeStdFunctionCellStructure;
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
 
@@ -349,7 +352,6 @@ public:
 
     typedef HashMap<RefPtr<SourceProvider>, RefPtr<SourceProviderCache>> SourceProviderCacheMap;
     SourceProviderCacheMap sourceProviderCacheMap;
-    std::unique_ptr<Keywords> keywords;
     Interpreter* interpreter;
 #if ENABLE(JIT)
     std::unique_ptr<JITThunks> jitStubs;
@@ -541,6 +543,8 @@ public:
     JSLock& apiLock() { return *m_apiLock; }
     CodeCache* codeCache() { return m_codeCache.get(); }
 
+    void whenIdle(std::function<void()>);
+
     JS_EXPORT_PRIVATE void deleteAllCode();
 
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
@@ -564,6 +568,8 @@ public:
 
     JS_EXPORT_PRIVATE void queueMicrotask(JSGlobalObject*, PassRefPtr<Microtask>);
     JS_EXPORT_PRIVATE void drainMicrotasks();
+
+    inline bool shouldTriggerTermination(ExecState*);
 
 private:
     friend class LLIntOffsetsExtractor;

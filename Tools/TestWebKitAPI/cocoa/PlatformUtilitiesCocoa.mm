@@ -55,5 +55,8 @@ std::string toSTD(NSString *string)
     return std::string(buffer.get(), stringLength);
 }
 
+#if WK_API_ENABLED
+NSString * const TestPlugInClassNameParameter = @"TestPlugInPrincipalClassName";
+#endif
 } // namespace Util
 } // namespace TestWebKitAPI

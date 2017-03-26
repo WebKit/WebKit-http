@@ -33,6 +33,8 @@ set(INTROSPECTION_INSTALL_TYPELIBDIR "${LIB_INSTALL_DIR}/girepository-1.0")
 find_package(Cairo 1.10.2 REQUIRED)
 find_package(Fontconfig 2.8.0 REQUIRED)
 find_package(Freetype2 2.4.2 REQUIRED)
+find_package(GTK3 3.6.0 REQUIRED)
+find_package(GDK3 3.6.0 REQUIRED)
 find_package(HarfBuzz 0.9.2 REQUIRED)
 find_package(ICU REQUIRED)
 find_package(JPEG REQUIRED)
@@ -47,6 +49,7 @@ find_package(ATK REQUIRED)
 find_package(WebP REQUIRED)
 find_package(ATSPI 2.5.3)
 find_package(EGL)
+find_package(GTKUnixPrint)
 find_package(OpenGL)
 find_package(OpenGLES2)
 
@@ -68,8 +71,8 @@ WEBKIT_OPTION_DEFINE(ENABLE_GTKDOC "Whether or not to use generate gtkdoc." PUBL
 WEBKIT_OPTION_DEFINE(ENABLE_INTROSPECTION "Whether to enable GObject introspection." PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_OPENGL "Whether to use OpenGL." PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_PLUGIN_PROCESS_GTK2 "Whether to build WebKitPluginProcess2 to load GTK2 based plugins." PUBLIC ON)
-WEBKIT_OPTION_DEFINE(ENABLE_X11_TARGET "Whether to enable support for the X11 windowing target." PUBLIC ON)
-WEBKIT_OPTION_DEFINE(ENABLE_WAYLAND_TARGET "Whether to enable support for the Wayland windowing target." PUBLIC ON)
+WEBKIT_OPTION_DEFINE(ENABLE_X11_TARGET "Whether to enable support for the X11 windowing target." PUBLIC ${GTK3_SUPPORTS_X11})
+WEBKIT_OPTION_DEFINE(ENABLE_WAYLAND_TARGET "Whether to enable support for the Wayland windowing target." PUBLIC ${GTK3_SUPPORTS_WAYLAND})
 WEBKIT_OPTION_DEFINE(USE_LIBNOTIFY "Whether to enable the default web notification implementation." PUBLIC ON)
 WEBKIT_OPTION_DEFINE(USE_LIBHYPHEN "Whether to enable the default automatic hyphenation implementation." PUBLIC ON)
 
@@ -109,27 +112,7 @@ else ()
     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_MEMORY_SAMPLER PUBLIC OFF)
 endif ()
 
-if (OPENGL_FOUND)
-    if (GLX_FOUND)
-        list(APPEND CAIROGL_COMPONENTS cairo-glx)
-    endif ()
-    if (EGL_FOUND)
-        list(APPEND CAIROGL_COMPONENTS cairo-egl)
-    endif ()
-endif ()
-find_package(CairoGL 1.10.2 COMPONENTS ${CAIROGL_COMPONENTS})
-
-# Normally we do not set the value of options automatically. However, CairoGL is special. Currently
-# most major distros compile Cario with --enable-gl, but Debian and derivitives are a major
-# exception. You very probably want accelerated 2D canvas if Cario has been compiled with CarioGL,
-# and very probably do not want to recompile Cario otherwise. So we expect some major distros will
-# enable this feature, and others will not, and that is just fine for the time being. Once Debian
-# enables CairoGL, then it will be time to force this ON by default. Note that if GLX is installed,
-# EGL is not, and ENABLE_X11_TARGET is OFF, this guess is wrong and the user must override it. We
-# can't check ENABLE_X11_TARGET at this point because we don't know whether it's enabled until
-# WEBKIT_OPTION_END has been called, and at that point it's too late to change default values.
-WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_ACCELERATED_2D_CANVAS PUBLIC CAIROGL_FOUND)
-
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_ACCELERATED_2D_CANVAS PUBLIC OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CREDENTIAL_STORAGE PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DRAG_SUPPORT PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_GEOLOCATION PUBLIC ON)
@@ -224,16 +207,6 @@ add_definitions(-DUSER_AGENT_GTK_MAJOR_VERSION=602)
 add_definitions(-DUSER_AGENT_GTK_MINOR_VERSION=1)
 add_definitions(-DWEBKITGTK_API_VERSION_STRING="${WEBKITGTK_API_VERSION}")
 
-if (ENABLE_WAYLAND_TARGET)
-    set(GTK3_REQUIRED_VERSION 3.12.0)
-else ()
-    set(GTK3_REQUIRED_VERSION 3.6.0)
-endif ()
-
-find_package(GTK3 ${GTK3_REQUIRED_VERSION} REQUIRED)
-find_package(GDK3 ${GTK3_REQUIRED_VERSION} REQUIRED)
-find_package(GTKUnixPrint)
-
 set(GTK_LIBRARIES ${GTK3_LIBRARIES})
 set(GTK_INCLUDE_DIRS ${GTK3_INCLUDE_DIRS})
 set(GDK_LIBRARIES ${GDK3_LIBRARIES})
@@ -247,6 +220,20 @@ if (ENABLE_GAMEPAD_DEPRECATED OR ENABLE_GEOLOCATION)
     list(APPEND glib_components gio-unix)
 endif ()
 find_package(GLIB 2.36 REQUIRED COMPONENTS ${glib_components})
+
+if (ENABLE_ACCELERATED_2D_CANVAS)
+    if (GLX_FOUND)
+        list(APPEND CAIROGL_COMPONENTS cairo-glx)
+    endif ()
+    if (EGL_FOUND)
+        list(APPEND CAIROGL_COMPONENTS cairo-egl)
+    endif ()
+
+    find_package(CairoGL 1.10.2 COMPONENTS ${CAIROGL_COMPONENTS})
+    if (NOT CAIROGL_FOUND)
+        message(FATAL_ERROR "CairoGL is needed for ENABLE_ACCELERATED_2D_CANVAS")
+    endif ()
+endif ()
 
 if (ENABLE_CREDENTIAL_STORAGE)
     find_package(Libsecret)
@@ -422,6 +409,10 @@ endif ()
 if (ENABLE_WAYLAND_TARGET)
     if (NOT GTK3_SUPPORTS_WAYLAND)
         message(FATAL_ERROR "Recompile GTK+ with Wayland backend to use ENABLE_WAYLAND_TARGET")
+    endif ()
+
+    if (ENABLE_WAYLAND_TARGET AND GTK3_VERSION VERSION_LESS 3.12)
+        message(FATAL_ERROR "GTK+ 3.12 is required to use ENABLE_WAYLAND_TARGET")
     endif ()
 
     find_package(Wayland REQUIRED)

@@ -1,3 +1,1271 @@
+2015-08-31  Jason Marcell  <jmarcell@apple.com>
+
+        Modify prepare-Changelog to be aware of files that are marked as tests as well as files
+        that are marked as requiring corresponding tests.
+        https://bugs.webkit.org/show_bug.cgi?id=148498
+        <rdar://problem/21555314>
+
+        Reviewed by Dan Bernstein and David Kilzer.
+
+        * Scripts/prepare-ChangeLog: Added "attributeCache" to cache Subversion properties in order to
+        simulate Git's attribute behevaior.
+        (main): Added "requiresTests" array to contain files that require tests.
+        (generateNewChangeLogs): Checks "requiresTests" array to determine whether to inject "tests"
+        section in ChangeLog.
+        (attributeCommand): Queries a given file for a given Git attribute value. If using Subversion,
+        however, we check if the file or any containing folder has the given property set to "1" and
+        return 1 if so; return 0 otherwise.
+        (generateFileList): Adds files to "requiresTests" array if Git attribute is set to "1". Also
+        adds files to "addedRegressionTests" array if "test" attribute is set to "1".
+
+2015-08-26  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Determine navigation and content policy before continuing to filter a load
+        https://bugs.webkit.org/show_bug.cgi?id=148506
+
+        Reviewed by Brady Eidson.
+
+        Added download API tests covering every decision and decision point.
+        Removed _WKDownload.AsynchronousDownloadPolicy in favor of these new tests.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig: Added $(BUILT_PRODUCTS_DIR)/WebCoreTestSupport to the header search path.
+        * TestWebKitAPI/Configurations/WebProcessPlugIn.xcconfig: Removed it from here.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleParametersPlugIn.mm:
+        (-[BundleParametersPlugIn observeValueForKeyPath:ofObject:change:context:]): Called -valueForKeyPath:, which
+        returns an id, instead of -valueForKey:, which always returns an NSString even if the object is of another type.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm: Added a class that can send a MockContentFilter
+        decision and decision point as a bundle parameter.
+        (+[MockContentFilterEnabler supportsSecureCoding]):
+        (-[MockContentFilterEnabler copyWithZone:]):
+        (-[MockContentFilterEnabler initWithCoder:]):
+        (-[MockContentFilterEnabler initWithDecision:decisionPoint:]):
+        (-[MockContentFilterEnabler encodeWithCoder:]):
+        (configurationWithContentFilterSettings): Added a helper function to create a WKWebViewConfiguration with MockConentFilter settings.
+        (TEST): Renamed ContentFiltering.ServerRedirect to ContentFiltering.URLAfterServerRedirect.
+        (-[BecomeDownloadDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]): Decided _WKNavigationResponsePolicyBecomeDownload.
+        (-[BecomeDownloadDelegate webView:didFailProvisionalNavigation:withError:]): Set isDone to true.
+        (-[BecomeDownloadDelegate webView:didFinishNavigation:]): Ditto.
+        (-[ContentFilteringDownloadDelegate _downloadDidStart:]): Set downloadDidStart to true.
+        (downloadTest): Added a helper function to test downloads with a given decision and decision point.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFilteringPlugIn.mm: Added a corresponding bundle class that decodes
+        the MockContentFilter decision and decision point, and sets these values in the MockContentFilterSettings
+        singleton. This class is duplicated in the bundle to prevent TestWebKitAPI from having to link to WebCoreTestSupport.
+        (+[MockContentFilterEnabler supportsSecureCoding]):
+        (-[MockContentFilterEnabler copyWithZone:]):
+        (-[MockContentFilterEnabler initWithCoder:]):
+        (-[MockContentFilterEnabler dealloc]):
+        (-[MockContentFilterEnabler encodeWithCoder:]):
+        (-[ContentFilteringPlugIn webProcessPlugIn:initializeWithObject:]): Start observing changes to the MockContentFilterEnabler key path.
+        (-[ContentFilteringPlugIn dealloc]): Stop observing.
+        (-[ContentFilteringPlugIn observeValueForKeyPath:ofObject:change:context:]): Store a MockContentFilterEnabler in _contentFilterEnabler.
+        (+[ServerRedirectPlugIn initialize]): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[AsynchronousDownloadNavigationDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]): Deleted.
+        (-[AsynchronousDownloadDelegate _downloadDidStart:]): Deleted.
+        (TEST): Deleted.
+
+2015-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Skip slow lock tests on Windows/debug
+        https://bugs.webkit.org/show_bug.cgi?id=148643
+
+        Reviewed by Alexey Proskuryakov.
+
+        The lock tests simulate a critical section by doing some floating point math, and then either
+        make those critical sections very long or invoke them many times. This appears to be
+        particularly slow on Windows in debug mode, maybe because Visual Studio's debug build makes
+        that kind of computation slow.
+
+        These tests are almost as useful in release as they are in debug, so it's probably better to
+        just skip the in debug on platforms where this causes timeouts.
+
+        * TestWebKitAPI/Tests/WTF/Lock.cpp:
+        (TestWebKitAPI::runLockTest):
+        (TestWebKitAPI::skipSlow):
+        (TestWebKitAPI::TEST):
+
+2015-08-29  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: When navigating the elements of a scrollable element with VoiceOver, the scrollTop() position of the element does not permanently change
+        https://bugs.webkit.org/show_bug.cgi?id=125720
+
+        Reviewed by Daniel Bates.
+
+        Add support for scrollToMakeVisibleWithSubFocus and scrollToGlobalPoint.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (pressCallback):
+        (scrollToMakeVisibleWithSubFocusCallback):
+        (scrollToGlobalPointCallback):
+        (scrollToMakeVisibleCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::scrollToMakeVisible):
+        (AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (AccessibilityUIElement::scrollToGlobalPoint):
+        (AccessibilityUIElement::selectedTextRange):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::AccessibilityUIElement):
+        (AccessibilityUIElement::mathPrescriptsDescription):
+        (AccessibilityUIElement::scrollToMakeVisible):
+        (AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (AccessibilityUIElement::scrollToGlobalPoint):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::isTextMarkerValid):
+        (WTR::AccessibilityUIElement::textMarkerForIndex):
+        (WTR::AccessibilityUIElement::scrollToMakeVisible):
+        (WTR::AccessibilityUIElement::scrollToGlobalPoint):
+        (WTR::AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (WTR::AccessibilityUIElement::supportedActions):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        (WTR::AccessibilityUIElement::mathPrescriptsDescription):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::scrollToMakeVisible):
+        (WTR::AccessibilityUIElement::scrollToGlobalPoint):
+        (WTR::AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (WTR::AccessibilityUIElement::selectedTextRange):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::scrollToMakeVisible):
+        (WTR::AccessibilityUIElement::scrollToGlobalPoint):
+        (WTR::AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (WTR::AccessibilityUIElement::selectedTextRange):
+
+2015-08-28  Timothy Horton  <timothy_horton@apple.com>
+
+        Add a mysteriously nonproblematic missing comma.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser._collect_matching_tests):
+        (TestExpectationParser):
+
+2015-08-28  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove an old temporary script that has served its purpose
+
+        * Scripts/convert-test-expectations: Removed.
+
+2015-08-28  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] Add WebKit/WebKit2 settings to control automatic data loading
+        https://bugs.webkit.org/show_bug.cgi?id=148579
+
+        Reviewed by Anders Carlsson.
+
+        In DumpRenderTree, set the new mediaDataLoadsAutomatically preference to YES.
+
+        In WebKitTestRunner, do the same for the new _mediaDataLoadsAutomatically configuration property,
+        and also set the existing requiresUserActionForMediaPlayback configuration property to NO.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        (resetWebViewToConsistentStateBeforeTesting): 
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2015-08-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix run-webkit-tests --additional-env-var="DYLD_INSERT_LIBRARIES=..."
+        https://bugs.webkit.org/show_bug.cgi?id=148592
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.setup_environ_for_server):
+        (Port.to):
+        (Port.to._append_value_colon_separated):
+        (Port.to.show_results_html_file):
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_environ_for_server):
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.setup_environ_for_server):
+
+2015-08-28  Filip Pizlo  <fpizlo@apple.com>
+
+        LICM should be sound even if the CFG has changed
+        https://bugs.webkit.org/show_bug.cgi?id=148259
+
+        Reviewed by Benjamin Poulain.
+
+        Add a utility for creating tests that set some uncommon option.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-08-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed EWS correction.
+
+        * EWSTools/start-queue-win.sh: Update settings to point to VS2015.
+
+2015-08-28  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] Make the AllowsInlineMediaPlayback preference work in WebKit / WebKit2.
+        https://bugs.webkit.org/show_bug.cgi?id=147512
+
+        Reviewed by Anders Carlsson.
+
+        Set the value of WebKitAllowsInlineMediaPlayback / WKPreferencesSetMediaPlaybackAllowsInline()
+        to a consistent (true) value.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2015-08-28  Tim Horton  <timothy_horton@apple.com>
+
+        Add navigation gesture callbacks to WKPageNavigationClient
+        https://bugs.webkit.org/show_bug.cgi?id=148568
+        <rdar://problem/22371346>
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+        Add some zeroes.
+
+2015-08-28  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] kill-old-processes should kill more processes
+        https://bugs.webkit.org/show_bug.cgi?id=148577
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/kill-old-processes:
+
+2015-08-28  Jason Marcell  <jmarcell@apple.com>
+
+        The status message for combined builder queues should say "all builds succeeded" if everything
+        built correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=148535
+
+        Reviewed by David Kilzer and Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Make status message for combined builder queues
+        say "all builds succeeded" if everything built correctly.
+
+2015-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Simplify the internal API to create a WebView
+        https://bugs.webkit.org/show_bug.cgi?id=148570
+
+        Reviewed by Žan Doberšek.
+
+        * TestWebKitAPI/PlatformWebView.h: Add initialize method for GTK+ too.
+        * TestWebKitAPI/gtk/PlatformWebViewGtk.cpp:
+        (TestWebKitAPI::PlatformWebView::PlatformWebView): Implement all
+        PlatformWebView constructors that end up calling initialize with a PageConfiguration.
+        (TestWebKitAPI::PlatformWebView::initialize): Create the WebView
+        passing the received PageConfiguration.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::PlatformWebView): Create the WebView
+        passing the received PageConfiguration.
+
+2015-08-27  Aakash Jain  <aakash_jain@apple.com>
+
+        iOS Simulator API tests fails as Simulator is not running
+        https://bugs.webkit.org/show_bug.cgi?id=148501
+        rdar://problem/22447525
+
+        Reviewed by Daniel Bates.
+
+        This change is a workaround for <rdar://problem/22388812>.
+
+         * Scripts/run-api-tests: Launch the iOS Simulator before starting the API Tests
+         and quit it on program termination when running tests on the iOS port.
+         * Scripts/webkitdirs.pm: Store string "For WebKit Development" in constant
+         SIMULATOR_DEVICE_SUFFIX_FOR_WEBKIT_DEVELOPMENT to make it consistently reusable.
+
+2015-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Make DLLLauncherMain executables dependent on dll
+        https://bugs.webkit.org/show_bug.cgi?id=148548
+
+        Reviewed by Brent Fulgham.
+
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformWin.cmake:
+        * MiniBrowser/win/CMakeLists.txt:
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformWin.cmake:
+
+2015-08-27  Lucas Forschler  <lforschler@apple.com>
+
+        Remove Mac slaves 188/189 after being replaced with 400/401.
+        
+        Unreviewed.
+        
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-08-27  Lucas Forschler  <lforschler@apple.com>
+
+        Add two bots to the Mac Yosemite queue.
+        This is to eventually replace bots188/189, which will be removed after 400/401 are vetted.
+        
+        Unreviewed.
+        
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        [Win CMake] Fix incremental build after r188673
+        https://bugs.webkit.org/show_bug.cgi?id=148539
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+        Copy forwarding headers from WebCore before building in case that was not yet done.
+        It used to be done when running CMake, but now it's a build step.
+
+2015-08-27  Nan Wang  <n_wang@apple.com>
+
+        AX: Fix accessibility/select-element-at-index.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148516
+
+        Reviewed by Chris Fleizach.
+
+        Implemented setSelectedChildAtIndex and removeSelectionAtIndex for mac.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (setSelectedChildCallback):
+        (setSelectedChildAtIndexCallback):
+        (removeSelectionAtIndexCallback):
+        (elementAtPointCallback):
+        (sentenceAtOffsetCallback):
+        (stringForSelectionCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::setSelectedChild):
+        (AccessibilityUIElement::setSelectedChildAtIndex):
+        (AccessibilityUIElement::removeSelectionAtIndex):
+        (AccessibilityUIElement::accessibilityValue):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::wordAtOffset):
+        (WTR::AccessibilityUIElement::lineAtOffset):
+        (WTR::AccessibilityUIElement::sentenceAtOffset):
+        (WTR::AccessibilityUIElement::isSelectable):
+        (WTR::AccessibilityUIElement::isMultiSelectable):
+        (WTR::AccessibilityUIElement::setSelectedChild):
+        (WTR::AccessibilityUIElement::setSelectedChildAtIndex):
+        (WTR::AccessibilityUIElement::removeSelectionAtIndex):
+        (WTR::AccessibilityUIElement::selectedChildrenCount):
+        (WTR::AccessibilityUIElement::selectedChildAtIndex):
+        (WTR::AccessibilityUIElement::isExpanded):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::setSelectedChild):
+        (WTR::AccessibilityUIElement::setSelectedChildAtIndex):
+        (WTR::AccessibilityUIElement::removeSelectionAtIndex):
+        (WTR::AccessibilityUIElement::accessibilityValue):
+
+2015-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r188982
+
+        * MiniBrowser/win/CMakeLists.txt:
+        The directory structure changed in the move.
+
+2015-08-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed, install-dependencies should install geoclue2 on Fedora
+
+        geoclue-devel is for obsolete geoclue. Install geoclue2-devel instead.
+
+        * gtk/install-dependencies:
+
+2015-08-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Mark WTF_WordLock.ContendedShortSection as slow too.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2015-08-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Fix GTK+ WTR crashes in initializeMainRunLoop()
+
+        Rubber-stamped by Žan Doberšek.
+
+        Initialize threading and main thread before
+        RunLoop::initializeMainRunLoop(), since the GLib implementation of
+        the RunLoop uses isMainThread() to decide whether to create a new
+        GMainContext or use the default one. Also use RunLoop::run() and
+        ::stop() instead of gtk_main/quit.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::notifyDone):
+        (WTR::TestController::platformRunUntil):
+
+2015-08-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, further shorten a test that times out because it's very long
+        running.
+
+        I've locally run these tests on repeat for 24 hours and found no genuine
+        failures, like deadlocks. So, the timeouts are probably because the test
+        machine is slow and debug is slow. We should just run this test for fewer
+        iterations.
+
+        * TestWebKitAPI/Tests/WTF/Lock.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-08-26  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        Unreviewed build fix attempt on EFL
+
+        * WebKitTestRunner/PlatformEfl.cmake:
+
+2015-08-26  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r188982
+
+        * MiniBrowser/win/CMakeLists.txt:
+        Find .rc files in correct directory.
+
+2015-08-26  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Bump cairo version to 1.14.2
+        https://bugs.webkit.org/show_bug.cgi?id=148474
+
+        Reviewed by Csaba Osztrogonác.
+
+        * efl/jhbuild.modules:
+
+2015-08-26  Andy Estes  <aestes@apple.com>
+
+        Crash when following a Google search link to Twitter with Limit Adult Content enabled
+        https://bugs.webkit.org/show_bug.cgi?id=147651
+
+        Rubber-stamped by Brady Eidson.
+
+        Taught TestRunner how to decide the navigation policy after a delay.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForNavigationAction):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setShouldDecideNavigationPolicyAfterDelay):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::shouldDecideNavigationPolicyAfterDelay):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::decidePolicyForNavigationAction):
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::setShouldDecideNavigationPolicyAfterDelay):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2015-08-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Rename 'WinLauncher' to 'MiniBrowser'
+        https://bugs.webkit.org/show_bug.cgi?id=148485
+
+        Reviewed by Alex Christensen
+
+        Move the WinLauncher project and source files to a subdirectory
+        of MiniBrowser. Globally change WinLauncher -> MiniBrowser in the
+        source code and project files.
+        
+        * MiniBrowser/MiniBrowser.vcxproj: Copied from WinLauncher/WinLauncher.vcxproj.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.ico: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncher.ico.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.rc: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncher.rc.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.vcxproj: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncher.vcxproj.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.vcxproj.filters: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncher.vcxproj.filters.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserCF.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherCF.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserCFLite.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherCFLite.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserCommon.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherCommon.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserDebug.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherDebug.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.rc: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLib.rc.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.vcxproj: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.vcxproj.filters: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj.filters.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibCommon.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLibCommon.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibDebug.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLibDebug.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibPostBuild.cmd: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLibPostBuild.cmd.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibPreBuild.cmd: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLibPreBuild.cmd.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibProduction.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLibProduction.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibRelease.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLibRelease.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibResource.h: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherLibResource.h.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserPostBuild.cmd: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherPostBuild.cmd.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserPreBuild.cmd: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherPreBuild.cmd.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserProduction.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherProduction.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserRelease.props: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherRelease.props.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserResource.h: Copied from WinLauncher/WinLauncher.vcxproj/WinLauncherResource.h.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncher.ico: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncher.rc: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncher.vcxproj: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncher.vcxproj.filters: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherCF.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherCFLite.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherCommon.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherDebug.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLib.rc: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLib.vcxproj: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLib.vcxproj.filters: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLibCommon.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLibDebug.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLibPostBuild.cmd: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLibPreBuild.cmd: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLibProduction.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLibRelease.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherLibResource.h: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherPostBuild.cmd: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherPreBuild.cmd: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherProduction.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherRelease.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/WinLauncherResource.h: Removed.
+        * MiniBrowser/win: Copied from WinLauncher.
+        * MiniBrowser/win/Common.cpp:
+        * MiniBrowser/win/MiniBrowser.cpp: Copied from WinLauncher/WinLauncher.cpp.
+        * MiniBrowser/win/MiniBrowser.h: Copied from WinLauncher/WinLauncher.h.
+        * MiniBrowser/win/MiniBrowserReplace.h: Copied from WinLauncher/WinLauncherReplace.h.
+        * MiniBrowser/win/MiniBrowserWebHost.cpp: Copied from WinLauncher/WinLauncherWebHost.cpp.
+        * MiniBrowser/win/MiniBrowserWebHost.h: Copied from WinLauncher/WinLauncherWebHost.h.
+        * MiniBrowser/win/PageLoadTestClient.cpp:
+        * MiniBrowser/win/PageLoadTestClient.h:
+        * MiniBrowser/win/ResourceLoadDelegate.cpp:
+        * MiniBrowser/win/ResourceLoadDelegate.h:
+        * MiniBrowser/win/WinLauncher.cpp: Removed.
+        * MiniBrowser/win/WinLauncher.h: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncher.ico: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncher.rc: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncher.vcxproj: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncher.vcxproj.filters: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherCF.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherCFLite.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherCommon.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherDebug.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLib.rc: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLib.vcxproj: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLib.vcxproj.filters: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLibCommon.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLibDebug.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLibPostBuild.cmd: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLibPreBuild.cmd: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLibProduction.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLibRelease.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherLibResource.h: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherPostBuild.cmd: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherPreBuild.cmd: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherProduction.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherRelease.props: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/WinLauncherResource.h: Removed.
+        * MiniBrowser/win/WinLauncher.vcxproj/small.ico: Removed.
+        * MiniBrowser/win/WinLauncherReplace.h: Removed.
+        * MiniBrowser/win/WinLauncherWebHost.cpp: Removed.
+        * MiniBrowser/win/WinLauncherWebHost.h: Removed.
+        * MiniBrowser/win/WinMain.cpp:
+        * WinLauncher: Removed.
+        * WinLauncher/AccessibilityDelegate.cpp: Removed.
+        * WinLauncher/AccessibilityDelegate.h: Removed.
+        * WinLauncher/CMakeLists.txt: Removed.
+        * WinLauncher/Common.cpp: Removed.
+        * WinLauncher/DOMDefaultImpl.cpp: Removed.
+        * WinLauncher/DOMDefaultImpl.h: Removed.
+        * WinLauncher/PageLoadTestClient.cpp: Removed.
+        * WinLauncher/PageLoadTestClient.h: Removed.
+        * WinLauncher/PrintWebUIDelegate.cpp: Removed.
+        * WinLauncher/PrintWebUIDelegate.h: Removed.
+        * WinLauncher/ResourceLoadDelegate.cpp: Removed.
+        * WinLauncher/ResourceLoadDelegate.h: Removed.
+        * WinLauncher/WebDownloadDelegate.cpp: Removed.
+        * WinLauncher/WebDownloadDelegate.h: Removed.
+        * WinLauncher/WinLauncher.cpp: Removed.
+        * WinLauncher/WinLauncher.h: Removed.
+        * WinLauncher/WinLauncher.vcxproj: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncher.ico: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncher.rc: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncher.vcxproj: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncher.vcxproj.filters: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherCF.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherCFLite.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherCommon.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherDebug.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.rc: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj.filters: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibCommon.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibDebug.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibPostBuild.cmd: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibPreBuild.cmd: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibProduction.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibRelease.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibResource.h: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherPostBuild.cmd: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherPreBuild.cmd: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherProduction.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherRelease.props: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherResource.h: Removed.
+        * WinLauncher/WinLauncher.vcxproj/small.ico: Removed.
+        * WinLauncher/WinLauncherReplace.h: Removed.
+        * WinLauncher/WinLauncherWebHost.cpp: Removed.
+        * WinLauncher/WinLauncherWebHost.h: Removed.
+        * WinLauncher/WinMain.cpp: Removed.
+        * WinLauncher/resource.h: Removed.
+        * WinLauncher/stdafx.cpp: Removed.
+        * WinLauncher/stdafx.h: Removed.
+        * win/AssembleBuildLogs/AssembleLogs.cmd:
+
+2015-08-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Simplify menu handling code in WinLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=148461
+
+        Reviewed by Zalan Bujtas.
+
+        Revise 'ToggleMenuItem' to return a boolean value indicating if
+        it handled the message. Revise WndProc to use this to decide if it
+        should pass the message on to the default handler, rather than
+        duplicating the logic in both places.
+        
+        * WinLauncher/Common.cpp:
+        (ToggleMenuItem): Return true if the menu item message was handled.
+        (WndProc): If 'ToggleMenuItem' did not handle the message, pass
+        the message tothe default handler.
+
+2015-08-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove unused code after r188948
+        https://bugs.webkit.org/show_bug.cgi?id=148467
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::platformPreferences): Deleted.
+
+2015-08-26  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL][GTK] REGRESSION(r188828): All performance tests and almost all layout tests crash
+        https://bugs.webkit.org/show_bug.cgi?id=148377
+
+        Reviewed by Carlos Garcia Campos.
+
+        EFL and GTK don't support TestController::platformPreferences() yet which was introduced by r188828.
+        It caused all crashes of layout test and performance test on EFL and GTK. So this patch implements
+        TestController::platformPreferences() using WKPageGroupGetPreferences() which was previous thing for
+        EFL and GTK at the moment.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::platformWillRunTest):
+        * WebKitTestRunner/efl/TestControllerEfl.cpp:
+        (WTR::TestController::platformPreferences):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::platformPreferences):
+
+2015-08-25  Nan Wang  <n_wang@apple.com>
+
+        AX: Enable accessibility/aria-controls.html test for mac
+        https://bugs.webkit.org/show_bug.cgi?id=148458
+
+        Reviewed by Chris Fleizach.
+
+        Implemented ariaControlsElementAtIndex(unsigned index).
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::ariaControlsElementAtIndex):
+        (AccessibilityUIElement::disclosedRowAtIndex):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::ariaControlsElementAtIndex):
+
+2015-08-25  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove python tests for PassRefPtr 
+        https://bugs.webkit.org/show_bug.cgi?id=148463
+
+        Reviewed by Andy Estes.
+
+        As we're removing uses of PassRefPtr, we need to remove all python tests for PassRefPtr as well.
+
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (PassPtrTest): Deleted.
+        (PassPtrTest.assert_pass_ptr_check): Deleted.
+        (PassPtrTest.test_pass_ref_ptr_in_function): Deleted.
+        (PassPtrTest.test_pass_other_type_ptr_in_function): Deleted.
+        (PassPtrTest.test_pass_ref_ptr_return_value): Deleted.
+        (PassPtrTest.test_ref_ptr_parameter_value): Deleted.
+        (PassPtrTest.test_ref_ptr_member_variable): Deleted.
+        (PassPtrTest.test_ref_ptr_member_variable.Foo): Deleted.
+
+2015-08-25  Andy Estes  <aestes@apple.com>
+
+        [iOS] run-webkit-tests fails if watchOS SDK is installed
+        https://bugs.webkit.org/show_bug.cgi?id=148453
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator): Taught Simulator how to parse watchOS runtimes and devices.
+        * Scripts/webkitpy/xcode/simulator_unittest.py: Added tests.
+
+2015-08-25  Aakash Jain  <aakash_jain@apple.com>
+
+        iOS Simulator layout-tests fail to start while cleaning a directory structure if simulator is already running
+        https://bugs.webkit.org/show_bug.cgi?id=148197
+        rdar://problem/22334382
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/kill-old-processes: Add Simulator to the list of processes to kill (for iOS builders).
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort): Converted bundle id com.apple.iphonesimulator to a variable SIMULATOR_BUNDLE_ID.
+        (IOSSimulatorPort._quitIOSSimulator): Common function to quit iOS Simulator.
+        (IOSSimulatorPort.clean_up_test_run): Quit the simulator during the cleanup.
+        (IOSSimulatorPort.check_sys_deps): No need to quit the simulator here as its now being quit in reset_preferences().
+        (IOSSimulatorPort.reset_preferences): Quit the simulator before trying to delete associated data directory.
+
+2015-08-25  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove PassRefPtr style check rule
+        https://bugs.webkit.org/show_bug.cgi?id=148432
+
+        Reviewed by Andreas Kling.
+
+        PassRefPtr is being removed. Thus style rule needs to be removed as well.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (_check_parameter_name_against_text): Deleted.
+        (check_function_definition_and_pass_ptr): Deleted.
+        (check_function_definition): Deleted.
+        (check_pass_ptr_usage): Deleted.
+        (process_line): Deleted.
+        (CppChecker): Deleted.
+
+2015-08-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Expose "Inverted Colors" option in WinLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=148451
+
+        Reviewed by Tim Horton.
+
+        Add the ability to toggle the "Inverted Colors" preference
+        in WinLauncher.
+        
+        * WinLauncher/Common.cpp:
+        (ToggleMenuItem): Toggle the feature when the menu item
+        is selected.
+        (WndProc): Recognize the new menu option.
+        * WinLauncher/WinLauncher.cpp:
+        (WinLauncher::setToDefaultPreferences): Launch with "Invert
+        Colors" turned off.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.rc: Add menu
+        entry for "Invert Colors".
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibResource.h:
+
+2015-08-25  Nan Wang  <n_wang@apple.com>
+
+        [Mac] accessibility/document-attributes.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=116636
+
+        Reviewed by Chris Fleizach.
+
+        Implemented documentURI() and documentEncoding().
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::documentEncoding):
+        (AccessibilityUIElement::documentURI):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::documentEncoding):
+        (WTR::AccessibilityUIElement::documentURI):
+
+2015-08-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test gardening.
+
+        Fix another case where the logging string is constructed using the variable 'frame',
+        but the method argument is not given a name. This causes the global 'frame' value to
+        be used, producing incorrect output.
+
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        (FrameLoadDelegate::didReceiveServerRedirectForProvisionalLoadForFrame): Use 'frame'
+        argument.
+
+2015-08-24  Tim Horton  <timothy_horton@apple.com>
+
+        (Finally...) get rid of WKViewIOS
+        https://bugs.webkit.org/show_bug.cgi?id=148404
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/CustomProtocolsSyncXHRTest.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsInvalidScheme.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsTest.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/PreventImageLoadWithAutoResizing.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/UserContentTest.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/WKBrowsingContextGroupTest.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/WKBrowsingContextLoadDelegateTest.mm:
+        * TestWebKitAPI/mac/TestBrowsingContextLoadDelegate.h:
+        * TestWebKitAPI/mac/TestBrowsingContextLoadDelegate.mm:
+        Mark tests that use WKBrowsingContextController as Mac-only.
+
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityControllerIOS.mm:
+        (WTR::AccessibilityController::addNotificationListener):
+        * WebKitTestRunner/ios/mainIOS.mm:
+        (-[WebKitTestRunnerApp applicationDidEnterBackground:]):
+        Import UIKit instead of depending on WKView.h to do so.
+
+2015-08-24  Jason Marcell  <jmarcell@apple.com>
+
+        Add support to dashboard for displaying Git SHA's as revisions.
+        https://bugs.webkit.org/show_bug.cgi?id=148387
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (parseRevisionProperty): Added support to dashboard for displaying Git SHA's as revisions.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js: Added
+        "isSVN" property to Dashboard.Repository.(OpenSource|Internal).
+
+2015-08-24  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r188851): WebKit2.BundleParameters fails on iOS
+
+        * TestWebKitAPI/Configurations/WebProcessPlugIn.xcconfig: Specify LD_RUNPATH_SEARCH_PATHS correctly for iOS.
+
+2015-08-23  Andy Estes  <aestes@apple.com>
+
+        Addressed a missed piece of review feedback from r188851.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm:
+
+2015-08-23  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] REGRESSION (r182356): Provisional URL is incorrect in didReceiveServerRedirectForProvisionalLoadForFrame when Content Filtering is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=147872
+        rdar://problem/22044000
+
+        Reviewed by Dan Bernstein.
+        
+        Added an API test.
+
+        * TestWebKitAPI/Configurations/WebProcessPlugIn.xcconfig: Linked libWebCoreTestSupport in order to use MockContentFilter.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm: Added.
+        (-[ServerRedirectNavigationDelegate webView:didStartProvisionalNavigation:]): Expect the initial request URL.
+        (-[ServerRedirectNavigationDelegate webView:didReceiveServerRedirectForProvisionalNavigation:]): Expect the redirect URL.
+        (-[ServerRedirectNavigationDelegate webView:didCommitNavigation:]):
+        (TEST): Tested that -[WKWebView URL] is updated after a redirect when content filtering is enabled.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFilteringPlugIn.mm: Added.
+        (+[ServerRedirectPlugIn initialize]): Enable MockContentFilter.
+        * TestWebKitAPI/cocoa/TestProtocol.h: Renamed from Tools/TestWebKitAPI/mac/TestProtocol.h.
+        * TestWebKitAPI/cocoa/TestProtocol.mm: Renamed from Tools/TestWebKitAPI/mac/TestProtocol.mm.
+
+2015-08-23  Andy Estes  <aestes@apple.com>
+
+        Fixed the 32-bit Mac build after r188844.
+
+        * TestWebKitAPI/WKWebViewConfigurationExtras.h:
+        * TestWebKitAPI/WKWebViewConfigurationExtras.mm:
+
+2015-08-22  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] API tests using the Modern WebKit API should be able to create web process plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=148317
+
+        Reviewed by Dan Bernstein.
+
+        Added the ability for Modern WebKit API tests to create WKWebProcessPlugIns. A test can create a plug-in by
+        creating a class that conforms to WKWebProcessPlugIn, adding it to the WebProcessPlugIn target, and using the
+        WKWebViewConfiguration returned by +[WKWebViewConfiguration testwebkitapi_configurationWithTestPlugInClassName:]
+        when creating WKWebViews.
+
+        Since TestWebKitAPI relies on a bundle parameter to know which test class to instantiate in the plug-in, I also
+        added a new API test for bundle parameters.
+
+        * TestWebKitAPI/Configurations/WebProcessPlugIn.xcconfig: Added. Named the bundle TestWebKitAPI.wkbundle and
+        named its executable TestWebKitAPI.bundle.
+        * TestWebKitAPI/PlatformUtilities.h: Declared TestPlugInClassNameParameter.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Added the WebProcessPlugIn target.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleParameters.mm: Added.
+        (TEST): Tested bundle parameters by verifying that parameter changes in the UI process are observed in the bundle.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleParametersPlugIn.mm: Added.
+        (-[BundleParametersPlugIn webProcessPlugIn:didCreateBrowserContextController:]): Started observing changes to a
+        bundle parameter and asked for an initial notification.
+        (-[BundleParametersPlugIn dealloc]): Stopped observing changes to a bundle parameter.
+        (-[BundleParametersPlugIn observeValueForKeyPath:ofObject:change:context:]): When a bundle parameter changes,
+        mirror its value in the main frame's JSContext.
+        * TestWebKitAPI/WKWebViewConfigurationExtras.h: Added.
+        * TestWebKitAPI/WKWebViewConfigurationExtras.mm: Added.
+        (+[WKWebViewConfiguration testwebkitapi_configurationWithTestPlugInClassName:]): Created a configuration with
+        TestWebKitAPI's bundle URL and set a bundle parameter indicating the test plug-in's class name.
+        * TestWebKitAPI/cocoa/PlatformUtilitiesCocoa.mm: Defined TestPlugInClassNameParameter.
+        * TestWebKitAPI/cocoa/WebProcessPlugIn/Info.plist: Added. Set the principal class to WebProcessPlugIn.
+        * TestWebKitAPI/cocoa/WebProcessPlugIn/WebProcessPlugIn.mm: Added.
+        (-[WebProcessPlugIn webProcessPlugIn:initializeWithObject:]): Forwarded to a newly-created test class instance.
+        (-[WebProcessPlugIn respondsToSelector:]): Returned YES if the test class instance response.
+        (-[WebProcessPlugIn forwardingTargetForSelector:]): Forwarded unimplemented methods to the test class instance.
+
+2015-08-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r188828.
+
+        * WebKitTestRunner/PlatformWebView.h:
+
+2015-08-23  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Combined queues don't turn orange on internal failure
+        https://bugs.webkit.org/show_bug.cgi?id=148356
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update):
+
+2015-08-23  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Respect step's hidden flag
+        https://bugs.webkit.org/show_bug.cgi?id=148357
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData):
+
+2015-08-23  Nan Wang  <n_wang@apple.com>
+
+        AX: Fix accessibility/deleting-iframe-destroys-axcache.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148328
+
+        Reviewed by Darin Adler.
+
+        We should only expose stringValue() when value attribute is set.
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::stringValue):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::stringValue):
+
+2015-08-23  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove style checking rule regarding OwnPtr and PassOwnPtr
+        https://bugs.webkit.org/show_bug.cgi?id=148360
+
+        Reviewed by Darin Adler.
+
+        OwnPtr and PassOwnPtr were totally removed though, style rule is still alive.
+        Removed it.
+
+        * Scripts/do-webcore-rename:
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (PassPtrTest.test_pass_own_ptr_in_function): Deleted.
+        (PassPtrTest.test_pass_ref_ptr_return_value): Deleted.
+        (PassPtrTest.test_own_ptr_parameter_value): Deleted.
+        (WebKitStyleTest.test_names): Deleted.
+
+2015-08-22  Timothy Horton  <timothy_horton@apple.com>
+
+        WebKitTestRunner should use WKWebView on OS X and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=143743
+        <rdar://problem/16947123>
+
+        Reviewed by Anders Carlsson.
+        Patch by Enrica Casucci and myself.
+
+        * WebKitTestRunner/PlatformWebView.h:
+        (WTR::PlatformWebView::windowSnapshotEnabled): Deleted.
+        Add a PlatformWebView constructor that takes a WKWebViewConfiguration
+        instead of WKContext and WKPageGroup.
+
+        Remove the unused, always-true windowSnapshotEnabled().
+        While technically some platforms don't have window snapshotting,
+        they just return null instead of implementing windowSnapshotEnabled().
+
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::initialize):
+        (WTR::TestController::createWebViewWithOptions):
+        Delegate to the various platforms for creating PlatformWebView instances,
+        for creating WKContexts, and for accessing WKPreferences,
+        so that they can do special things (like, use WKWebView instead!).
+
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        Make explicit WebKitTestRunner's desired default for two preferences
+        which have differing defaults between the antique and modern API,
+        for consistency's sake.
+
+        (WTR::TestController::resetStateToConsistentValues):
+        Add platformResetStateToConsistentValues.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::dumpResults):
+        Adjust to the aforementioned removal of windowSnapshotEnabled().
+
+        * WebKitTestRunner/ios/TestControllerCocoa.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+        (WTR::TestController::platformPreferences):
+        (WTR::TestController::platformCreateWebView):
+        (WTR::TestController::platformCreateOtherPage):
+        (WTR::TestController::platformInitializeConfiguration):
+        Implement the new platform functions for the Modern WebKit2 API,
+        in a new TestControllerCocoa file that is shared between iOS and Mac.
+        
+        For platformMaybeCreateContext, use the trick that we know we can cast
+        the WKProcessPool to a WKContextRef to retrieve a WKContextRef from
+        WKWebView's configuration.
+
+        Ditto for WKPreferencesRef and WKPreferences.
+
+        Remove user content filters on the WKWebView's userContentController.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        Move code into TestControllerCocoa.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::addUserScript):
+        (WTR::TestRunner::addUserStyleSheet):
+        Adopt WKBundlePage API for user scripts/sheets.
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        Make and keep a WKWebView instead of a WKView.
+        
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::mouseUp):
+        (WTR::EventSenderProxy::mouseMoveTo):
+        Reach inside the WKWebView to the WKView when dispatching events.
+        This is fairly ugly and we should come up with a better solution.
+        Also, fix some flipping and style errors.
+
+2015-08-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, attempt to fix GTK build after r188718
+
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::PlatformWebView):
+
+2015-08-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188807, r188813, and r188815.
+        https://bugs.webkit.org/show_bug.cgi?id=148349
+
+        lots of 32-bit build problems, better to resolve separately
+        and try again (Requested by thorton on #webkit).
+
+        Reverted changesets:
+
+        "WebKitTestRunner should use WKWebView on OS X and iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=143743
+        http://trac.webkit.org/changeset/188807
+
+        "Stop building WebKitTestRunner for 32-bit platforms"
+        https://bugs.webkit.org/show_bug.cgi?id=143743
+        http://trac.webkit.org/changeset/188813
+
+        "Stop building WebKitTestRunner for 32-bit platforms"
+        https://bugs.webkit.org/show_bug.cgi?id=143743
+        http://trac.webkit.org/changeset/188815
+
+2015-08-21  Tim Horton  <timothy_horton@apple.com>
+
+        Stop building WebKitTestRunner for 32-bit platforms
+        https://bugs.webkit.org/show_bug.cgi?id=143743
+        <rdar://problem/16947123>
+
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        This is a restriction on the valid set, not the desired set.
+
+2015-08-21  Jason Marcell  <jmarcell@apple.com>
+
+        Make Dashboard.Branches be objects of the form (repository, "branch name") and update existing code
+        to work with these new objects.
+        https://bugs.webkit.org/show_bug.cgi?id=148188
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot.prototype._normalizeQueueInfo): Renamed BuildbotQueue.branch to BuildbotQueue.branches.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView): Changed to work with new branch objects which represent a
+        (repository, "branch name")-pair.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js: Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue): Renamed BuildbotQueue.branch to BuildbotQueue.branches.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._appendPendingRevisionCount): Changed to work with new branch
+        objects which represent a (repository, "branch name")-pair.
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits): Ditto.
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Ditto.
+        (BuildbotQueueView.prototype._addDividerToPopover): Ditto.
+        (BuildbotQueueView.prototype.revisionContentForIteration): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js: Renamed
+        BuildbotQueue.branch to BuildbotQueue.branches.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot.prototype.get defaultBranches): Changed to new (repository, "branch name") format.
+
+2015-08-21  Tim Horton  <timothy_horton@apple.com>
+
+        Stop building WebKitTestRunner for 32-bit platforms
+        https://bugs.webkit.org/show_bug.cgi?id=143743
+        <rdar://problem/16947123>
+
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        WKWebView is not available on 32-bit OS X.
+
+2015-08-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test correction after r188709.
+
+        I removed a function argument that happened to be mirrored by a global
+        value with the same name. This prevented a compile error, but testing
+        showed that the wrong value was being used in the function.
+
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        (FrameLoadDelegate::willPerformClientRedirectToURL): Put function argument
+        back
+
+2015-08-21  Timothy Horton  <timothy_horton@apple.com>
+
+        WebKitTestRunner should use WKWebView on OS X and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=143743
+        <rdar://problem/16947123>
+
+        Reviewed by Anders Carlsson.
+        Patch by Enrica Casucci and myself.
+
+        * WebKitTestRunner/PlatformWebView.h:
+        (WTR::PlatformWebView::windowSnapshotEnabled): Deleted.
+        Add a PlatformWebView constructor that takes a WKWebViewConfiguration
+        instead of WKContext and WKPageGroup.
+
+        Remove the unused, always-true windowSnapshotEnabled().
+        While technically some platforms don't have window snapshotting,
+        they just return null instead of implementing windowSnapshotEnabled().
+
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::initialize):
+        (WTR::TestController::createWebViewWithOptions):
+        Delegate to the various platforms for creating PlatformWebView instances,
+        for creating WKContexts, and for accessing WKPreferences,
+        so that they can do special things (like, use WKWebView instead!).
+
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        Make explicit WebKitTestRunner's desired default for two preferences
+        which have differing defaults between the antique and modern API,
+        for consistency's sake.
+
+        (WTR::TestController::resetStateToConsistentValues):
+        Add platformResetStateToConsistentValues.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::dumpResults):
+        Adjust to the aforementioned removal of windowSnapshotEnabled().
+
+        * WebKitTestRunner/ios/TestControllerCocoa.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+        (WTR::TestController::platformPreferences):
+        (WTR::TestController::platformCreateWebView):
+        (WTR::TestController::platformCreateOtherPage):
+        (WTR::TestController::platformInitializeConfiguration):
+        Implement the new platform functions for the Modern WebKit2 API,
+        in a new TestControllerCocoa file that is shared between iOS and Mac.
+        
+        For platformMaybeCreateContext, use the trick that we know we can cast
+        the WKProcessPool to a WKContextRef to retrieve a WKContextRef from
+        WKWebView's configuration.
+
+        Ditto for WKPreferencesRef and WKPreferences.
+
+        Remove user content filters on the WKWebView's userContentController.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        Move code into TestControllerCocoa.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::addUserScript):
+        (WTR::TestRunner::addUserStyleSheet):
+        Adopt WKBundlePage API for user scripts/sheets.
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        Make and keep a WKWebView instead of a WKView.
+        
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::mouseUp):
+        (WTR::EventSenderProxy::mouseMoveTo):
+        Reach inside the WKWebView to the WKView when dispatching events.
+        This is fairly ugly and we should come up with a better solution.
+        Also, fix some flipping and style errors.
+
+2015-08-21  Alexey Proskuryakov  <ap@apple.com>
+
+        Improve how UI events are dispatched by WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=148326
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/EventSendingController.idl:
+        * WebKitTestRunner/InjectedBundle/EventSendingController.h:
+        Removed asyncScrolling from mouseScrollByWithWheelAndMomentumPhases, it's now always
+        asynchronous (and really, it has always been for the most part).
+
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::mouseDown): Updated for WKBundlePagePostSynchronousMessage renaming.
+        (WTR::EventSendingController::mouseUp): Ditto.
+        (WTR::EventSendingController::mouseMoveTo): Ditto.
+        (WTR::EventSendingController::mouseForceDown): Ditto.
+        (WTR::EventSendingController::mouseForceUp): Ditto.
+        (WTR::EventSendingController::mouseForceChanged): Ditto.
+        (WTR::EventSendingController::leapForward): Ditto.
+        (WTR::EventSendingController::scheduleAsynchronousClick): Ditto.
+        (WTR::EventSendingController::keyDown): Ditto.
+        (WTR::EventSendingController::scheduleAsynchronousKeyDown): Ditto.
+        (WTR::EventSendingController::mouseScrollBy): Force a scrolling tree commit. It used
+        to be done in custom WebKit2 code for test wheel event handling.
+        (WTR::EventSendingController::mouseScrollByWithWheelAndMomentumPhases): Got rid of sync version.
+        (WTR::EventSendingController::continuousMouseScrollBy): Added a FIXME. This one is weird.
+        (WTR::EventSendingController::contextClick): Updated for WKBundlePagePostSynchronousMessage renaming.
+        (WTR::EventSendingController::addTouchPoint): Ditto.
+        (WTR::EventSendingController::updateTouchPoint): Ditto.
+        (WTR::EventSendingController::setTouchModifier): Ditto.
+        (WTR::EventSendingController::setTouchPointRadius): Ditto.
+        (WTR::EventSendingController::touchStart): Ditto.
+        (WTR::EventSendingController::touchMove): Ditto.
+        (WTR::EventSendingController::touchEnd): Ditto.
+        (WTR::EventSendingController::touchCancel): Ditto.
+        (WTR::EventSendingController::clearTouchPoints): Ditto.
+        (WTR::EventSendingController::releaseTouchPoint): Ditto.
+        (WTR::EventSendingController::cancelTouchPoint): Ditto.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::postSetWindowIsKey):
+        (WTR::InjectedBundle::postSimulateWebNotificationClick):
+        (WTR::InjectedBundle::isGeolocationProviderActive):
+        (WTR::InjectedBundle::shouldProcessWorkQueue):
+        Updated for WKBundlePagePostSynchronousMessage renaming.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::secureEventInputIsEnabled): Ditto.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize): Allow handling the new test style messages.
+        (WTR::TestController::didReceiveKeyDownMessageFromInjectedBundle): Removed calls
+        to WKPageSetShouldSendEventsSynchronously, which we no longer need.
+        (WTR::TestController::didReceiveMessageFromInjectedBundle):
+        (WTR::TestController::didReceiveSynchronousMessageFromInjectedBundle): Moved
+        "MouseScrollBy" to async section, and got rid of WKPageSetShouldSendEventsSynchronously.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::mouseMoveTo): Got rid of WKPageSetShouldSendEventsSynchronously.
+        (WTR::EventSenderProxy::keyDown): Ditto.
+        (WTR::EventSenderProxy::mouseScrollBy): Ditto.
+        (WTR::EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases): Ditto.
+
 2015-08-21  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Skip no-llint tests that fail due to running out of executable memory after r188969

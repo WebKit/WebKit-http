@@ -154,7 +154,7 @@ GPRReg SpeculativeJIT::fillJSValue(Edge edge)
 void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode spillMode)
 {
     JITGetByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, usedRegisters(), JSValueRegs(baseGPR),
+        m_jit.codeBlock(), codeOrigin, m_jit.addCallSite(codeOrigin), usedRegisters(), JSValueRegs(baseGPR),
         JSValueRegs(resultGPR), spillMode);
     gen.generateFastPath(m_jit);
     
@@ -174,7 +174,7 @@ void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg
 void SpeculativeJIT::cachedPutById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg valueGPR, GPRReg scratchGPR, unsigned identifierNumber, PutKind putKind, JITCompiler::Jump slowPathTarget, SpillRegistersMode spillMode)
 {
     JITPutByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, usedRegisters(), JSValueRegs(baseGPR),
+        m_jit.codeBlock(), codeOrigin, m_jit.addCallSite(codeOrigin), usedRegisters(), JSValueRegs(baseGPR),
         JSValueRegs(valueGPR), scratchGPR, spillMode, m_jit.ecmaModeFor(codeOrigin), putKind);
 
     gen.generateFastPath(m_jit);
@@ -1971,6 +1971,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
+    case ExitOK: {
+        noResult(node);
+        break;
+    }
+        
     case SetLocal: {
         switch (node->variableAccessData()->flushFormat()) {
         case FlushedDouble: {
@@ -2189,6 +2194,32 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
+    case StrCat: {
+        JSValueOperand op1(this, node->child1(), ManualOperandSpeculation);
+        JSValueOperand op2(this, node->child2(), ManualOperandSpeculation);
+        JSValueOperand op3(this, node->child3(), ManualOperandSpeculation);
+        
+        GPRReg op1GPR = op1.gpr();
+        GPRReg op2GPR = op2.gpr();
+        GPRReg op3GPR;
+        if (node->child3())
+            op3GPR = op3.gpr();
+        else
+            op3GPR = InvalidGPRReg;
+        
+        flushRegisters();
+
+        GPRFlushedCallResult result(this);
+        if (node->child3())
+            callOperation(operationStrCat3, result.gpr(), op1GPR, op2GPR, op3GPR);
+        else
+            callOperation(operationStrCat2, result.gpr(), op1GPR, op2GPR);
+        m_jit.exceptionCheck();
+        
+        cellResult(result.gpr(), node);
+        break;
+    }
+
     case ArithAdd:
         compileAdd(node);
         break;

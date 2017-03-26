@@ -66,7 +66,7 @@
 #import "_WKProcessPoolConfigurationInternal.h"
 #import "_WKUserContentExtensionStoreInternal.h"
 #import "_WKUserContentFilterInternal.h"
-#import "_WKVisitedLinkProviderInternal.h"
+#import "_WKVisitedLinkStoreInternal.h"
 #import <objc/objc-auto.h>
 
 namespace API {
@@ -206,8 +206,8 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [WKUserScript alloc];
         break;
 
-    case Type::VisitedLinkProvider:
-        wrapper = [_WKVisitedLinkProvider alloc];
+    case Type::VisitedLinkStore:
+        wrapper = [_WKVisitedLinkStore alloc];
         break;
 
     case Type::WebsiteDataRecord:

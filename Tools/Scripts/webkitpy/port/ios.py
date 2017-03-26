@@ -77,6 +77,8 @@ class IOSSimulatorPort(Port):
 
     DEFAULT_ARCHITECTURE = 'x86_64'
 
+    SIMULATOR_BUNDLE_ID = 'com.apple.iphonesimulator'
+
     relay_name = 'LayoutTestRelay'
 
     def __init__(self, *args, **kwargs):
@@ -199,7 +201,7 @@ class IOSSimulatorPort(Port):
         device_udid = self.testing_device.udid
         # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
         self._executive.run_command([
-            'open', '-b', 'com.apple.iphonesimulator',
+            'open', '-b', self.SIMULATOR_BUNDLE_ID,
             '--args', '-CurrentDeviceUDID', device_udid])
         Simulator.wait_until_device_is_in_state(device_udid, Simulator.DeviceState.BOOTED)
 
@@ -208,8 +210,13 @@ class IOSSimulatorPort(Port):
         _log.debug('Waiting {seconds} seconds for iOS Simulator to finish booting ...'.format(seconds=boot_delay))
         time.sleep(boot_delay)
 
+    def _quit_ios_simulator(self):
+        # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
+        self._executive.run_command(['osascript', '-e', 'tell application id "{0}" to quit'.format(self.SIMULATOR_BUNDLE_ID)])
+
     def clean_up_test_run(self):
         super(IOSSimulatorPort, self).clean_up_test_run()
+        self._quit_ios_simulator()
         fifos = [path for path in os.listdir('/tmp') if re.search('org.webkit.(DumpRenderTree|WebKitTestRunner).*_(IN|OUT|ERROR)', path)]
         for fifo in fifos:
             try:
@@ -224,9 +231,8 @@ class IOSSimulatorPort(Port):
             if self.get_option('leaks'):
                 env['MallocStackLogging'] = '1'
             if self.get_option('guard_malloc'):
-                env['DYLD_INSERT_LIBRARIES'] = '/usr/lib/libgmalloc.dylib:' + self._build_path("libWebCoreTestShim.dylib")
-            else:
-                env['DYLD_INSERT_LIBRARIES'] = self._build_path("libWebCoreTestShim.dylib")
+                self._append_value_colon_separated(env, 'DYLD_INSERT_LIBRARIES', '/usr/lib/libgmalloc.dylib')
+            self._append_value_colon_separated(env, 'DYLD_INSERT_LIBRARIES', self._build_path("libWebCoreTestShim.dylib"))
         env['XML_CATALOG_FILES'] = ''  # work around missing /etc/catalog <rdar://problem/4292995>
         return env
 
@@ -238,13 +244,6 @@ class IOSSimulatorPort(Port):
             _log.error('The iOS Simulator runtime with identifier "{0}" cannot be used because it is unavailable.'.format(self.simulator_runtime.identifier))
             return False
         testing_device = self.testing_device  # May create a new simulator device
-
-        # testing_device will fail to boot if it is already booted. We assume that if testing_device
-        # is booted that it was booted by the iOS Simulator app (as opposed to simctl). So, quit the
-        # iOS Simulator app to shutdown testing_device.
-        # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
-        self._executive.run_command(['osascript', '-e', 'tell application id "com.apple.iphonesimulator" to quit'])
-        Simulator.wait_until_device_is_in_state(testing_device.udid, Simulator.DeviceState.SHUTDOWN)
 
         if not Simulator.check_simulator_device_and_erase_if_needed(self.host, testing_device.udid):
             _log.error('Unable to boot the simulator device with UDID {0}.'.format(testing_device.udid))
@@ -378,6 +377,11 @@ class IOSSimulatorPort(Port):
         return self._image_differ.diff_image(expected_contents, actual_contents, tolerance)
 
     def reset_preferences(self):
+        # We assume that if testing_device is booted that it was booted by the iOS Simulator app
+        # (as opposed to simctl). So, quit the iOS Simulator app to shutdown testing_device.
+        self._quit_ios_simulator()
+        Simulator.wait_until_device_is_in_state(self.testing_device.udid, Simulator.DeviceState.SHUTDOWN)
+
         data_path = os.path.join(self.testing_device.path, 'data')
         if os.path.isdir(data_path):
             shutil.rmtree(data_path)

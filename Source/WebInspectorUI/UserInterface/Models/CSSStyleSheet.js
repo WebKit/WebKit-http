@@ -34,6 +34,7 @@ WebInspector.CSSStyleSheet = class CSSStyleSheet extends WebInspector.SourceCode
         this._id = id || null;
         this._url = null;
         this._parentFrame = null;
+        this._origin = null;
         this._startLineNumber = 0;
         this._startColumnNumber = 0;
 
@@ -60,6 +61,11 @@ WebInspector.CSSStyleSheet = class CSSStyleSheet extends WebInspector.SourceCode
     get parentFrame()
     {
         return this._parentFrame;
+    }
+
+    get origin()
+    {
+        return this._origin;
     }
 
     get url()
@@ -106,6 +112,11 @@ WebInspector.CSSStyleSheet = class CSSStyleSheet extends WebInspector.SourceCode
         return this._hasInfo;
     }
 
+    isInspectorStyleSheet()
+    {
+        return this._origin === WebInspector.CSSStyleSheet.Type.Inspector;
+    }
+
     isInlineStyleTag()
     {
         return this._inlineStyleTag;
@@ -137,7 +148,7 @@ WebInspector.CSSStyleSheet = class CSSStyleSheet extends WebInspector.SourceCode
 
     // Protected
 
-    updateInfo(url, parentFrame, inlineStyle, startLineNumber, startColumnNumber)
+    updateInfo(url, parentFrame, origin, inlineStyle, startLineNumber, startColumnNumber)
     {
         this._hasInfo = true;
 
@@ -145,6 +156,7 @@ WebInspector.CSSStyleSheet = class CSSStyleSheet extends WebInspector.SourceCode
         this._urlComponents = undefined;
 
         this._parentFrame = parentFrame || null;
+        this._origin = origin;
 
         this._inlineStyleTag = inlineStyle;
         this._startLineNumber = startLineNumber;
@@ -204,4 +216,11 @@ WebInspector.CSSStyleSheet._nextUniqueDisplayNameNumber = 1;
 
 WebInspector.CSSStyleSheet.Event = {
     ContentDidChange: "stylesheet-content-did-change"
+};
+
+WebInspector.CSSStyleSheet.Type = {
+    Author: "css-stylesheet-type-author",
+    User: "css-stylesheet-type-user",
+    UserAgent: "css-stylesheet-type-user-agent",
+    Inspector: "css-stylesheet-type-inspector"
 };

@@ -183,7 +183,7 @@ void SpeculativeJIT::cachedGetById(
     }
     
     JITGetByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, usedRegisters(),
+        m_jit.codeBlock(), codeOrigin, m_jit.addCallSite(codeOrigin), usedRegisters(),
         JSValueRegs(baseTagGPROrNone, basePayloadGPR),
         JSValueRegs(resultTagGPR, resultPayloadGPR), spillMode);
     
@@ -215,7 +215,7 @@ void SpeculativeJIT::cachedGetById(
 void SpeculativeJIT::cachedPutById(CodeOrigin codeOrigin, GPRReg basePayloadGPR, GPRReg valueTagGPR, GPRReg valuePayloadGPR, GPRReg scratchGPR, unsigned identifierNumber, PutKind putKind, JITCompiler::Jump slowPathTarget, SpillRegistersMode spillMode)
 {
     JITPutByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, usedRegisters(),
+        m_jit.codeBlock(), codeOrigin, m_jit.addCallSite(codeOrigin), usedRegisters(),
         JSValueRegs::payloadOnly(basePayloadGPR), JSValueRegs(valueTagGPR, valuePayloadGPR),
         scratchGPR, spillMode, m_jit.ecmaModeFor(codeOrigin), putKind);
     
@@ -1892,6 +1892,11 @@ void SpeculativeJIT::compile(Node* node)
         noResult(node);
         break;
     }
+
+    case ExitOK: {
+        noResult(node);
+        break;
+    }
         
     case SetLocal: {
         switch (node->variableAccessData()->flushFormat()) {
@@ -2054,6 +2059,38 @@ void SpeculativeJIT::compile(Node* node)
         m_jit.exceptionCheck();
         
         jsValueResult(resultTag.gpr(), resultPayload.gpr(), node);
+        break;
+    }
+
+    case StrCat: {
+        JSValueOperand op1(this, node->child1(), ManualOperandSpeculation);
+        JSValueOperand op2(this, node->child2(), ManualOperandSpeculation);
+        JSValueOperand op3(this, node->child3(), ManualOperandSpeculation);
+        
+        GPRReg op1TagGPR = op1.tagGPR();
+        GPRReg op1PayloadGPR = op1.payloadGPR();
+        GPRReg op2TagGPR = op2.tagGPR();
+        GPRReg op2PayloadGPR = op2.payloadGPR();
+        GPRReg op3TagGPR;
+        GPRReg op3PayloadGPR;
+        if (node->child3()) {
+            op3TagGPR = op3.tagGPR();
+            op3PayloadGPR = op3.payloadGPR();
+        } else {
+            op3TagGPR = InvalidGPRReg;
+            op3PayloadGPR = InvalidGPRReg;
+        }
+        
+        flushRegisters();
+
+        GPRFlushedCallResult result(this);
+        if (node->child3())
+            callOperation(operationStrCat3, result.gpr(), op1TagGPR, op1PayloadGPR, op2TagGPR, op2PayloadGPR, op3TagGPR, op3PayloadGPR);
+        else
+            callOperation(operationStrCat2, result.gpr(), op1TagGPR, op1PayloadGPR, op2TagGPR, op2PayloadGPR);
+        m_jit.exceptionCheck();
+        
+        cellResult(result.gpr(), node);
         break;
     }
 
