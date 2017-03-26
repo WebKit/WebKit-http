@@ -242,11 +242,11 @@ static void pageDidDrawToImage(const ShareableBitmap::Handle& imageHandle, IPCCa
     ASSERT(RunLoop::isMain());
 
     if (!_webFrame->page()) {
-        _printingCallbackCondition.notify_one();
+        _printingCallbackCondition.notifyOne();
         return;
     }
 
-    std::lock_guard<std::mutex> lock(_printingCallbackMutex);
+    std::lock_guard<Lock> lock(_printingCallbackMutex);
 
     ASSERT([self _hasPageRects]);
     ASSERT(_printedPagesData.isEmpty());
@@ -278,7 +278,7 @@ static void pageDidDrawToImage(const ShareableBitmap::Handle& imageHandle, IPCCa
             if (data)
                 view->_printedPagesData.append(data->bytes(), data->size());
             view->_expectedPrintCallback = 0;
-            view->_printingCallbackCondition.notify_one();
+            view->_printingCallbackCondition.notifyOne();
         }
     });
     _expectedPrintCallback = callback->callbackID();
@@ -352,12 +352,11 @@ static void pageDidComputePageRects(const Vector<WebCore::IntRect>& pageRects, d
     return YES;
 }
 
-static void prepareDataForPrintingOnSecondaryThread(void* untypedContext)
+static void prepareDataForPrintingOnSecondaryThread(WKPrintingView *view)
 {
     ASSERT(RunLoop::isMain());
 
-    WKPrintingView *view = static_cast<WKPrintingView *>(untypedContext);
-    std::lock_guard<std::mutex> lock(view->_printingCallbackMutex);
+    std::lock_guard<Lock> lock(view->_printingCallbackMutex);
 
     // We may have received page rects while a message to call this function traveled from secondary thread to main one.
     if ([view _hasPageRects]) {
@@ -395,8 +394,12 @@ static void prepareDataForPrintingOnSecondaryThread(void* untypedContext)
         *range = NSMakeRange(1, _printingPageRects.size());
     else if (!RunLoop::isMain()) {
         ASSERT(![self _isPrintingPreview]);
-        std::unique_lock<std::mutex> lock(_printingCallbackMutex);
-        callOnMainThread(prepareDataForPrintingOnSecondaryThread, self);
+        std::unique_lock<Lock> lock(_printingCallbackMutex);
+
+        RunLoop::main().dispatch([self] {
+            prepareDataForPrintingOnSecondaryThread(self);
+        });
+
         _printingCallbackCondition.wait(lock);
         *range = NSMakeRange(1, _printingPageRects.size());
     } else {

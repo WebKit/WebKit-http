@@ -10,6 +10,8 @@ accessibility/mac [ Pass ]
 editing/mac [ Pass ]
 fast/scrolling/latching [ Pass ]
 
+fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -33,13 +35,7 @@ fast/notifications
 fast/dom/Window/slow-unload-handler.html
 fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html
 
-# This test fails on release and crashes on debug because of trying to use isEqual() with undefined objects
-webkit.org/b/126066 accessibility/loading-iframe-updates-axtree.html [ Failure Crash ]
-
 webkit.org/b/116636 accessibility/document-attributes.html [ Failure ]
-
-# Accessibility tests with missing AccessibilityController functionality.
-webkit.org/b/116637 accessibility/selection-states.html [ Failure ]
 
 # Accessibility tests for notifications that don't exist or aren't needed on Mac OS X.
 accessibility/aria-checkbox-sends-notification.html
@@ -49,8 +45,6 @@ accessibility/children-changed-sends-notification.html
 accessibility/menu-list-sends-change-notification.html
 accessibility/multiselect-list-reports-active-option.html
 
-# isIndeterminate is not implemented in mac
-webkit.org/b/125855 accessibility/aria-checked-mixed-value.html [ Skip ]
 # Missing implementation of some functions in mac.
 webkit.org/b/129039 accessibility/select-element-at-index.html [ Skip ]
 
@@ -490,9 +484,6 @@ webkit.org/b/96828 webgl/1.0.2/conformance/extensions/oes-vertex-array-object.ht
 
 http/tests/misc/willCacheResponse-delegate-callback.html [ Failure ]
 http/tests/xmlhttprequest/basic-auth-nopassword.html [ Failure ]
-accessibility/mac/selection-value-changes-for-aria-textbox.html [ Failure ]
-
-accessibility/mac/search-with-frames.html [ Pass Failure ]
 
 # --- Plugins ---
 # WebKit1 OOP plug-ins: Can't evaluate JavaScript from NPP_Destroy.
@@ -876,8 +867,6 @@ webkit.org/b/131477 fast/repaint/obscured-background-no-repaint.html [ Pass Fail
 
 webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Pass Failure ]
 
-webkit.org/b/137737 accessibility/table-cells-roles.html [ Skip ]
-
 # --- Start media tests ---
 ## --- Start media wontfix tests ---
 # This test requires ogg codecs
@@ -1075,7 +1064,6 @@ webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Timeout ]
 webkit.org/b/122021 media/video-controls-fullscreen-volume.html [ Failure ]
 webkit.org/b/116266 media/video-controls-toggling.html [ Timeout ]
 
-webkit.org/b/139708 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Timeout ]
 # --- End media tests ---
 
 webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
@@ -1294,3 +1282,12 @@ webkit.org/b/147390 [ Mavericks Yosemite ElCapitan ] fast/text/fallback-language
 
 # This test relies on iOS-specific font fallback.
 [ Mavericks Yosemite ElCapitan ] fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
+
+# Started to fail after r188390
+webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Failure ]
+
+# This test tests a particular system font, which is only on iOS and El Capitan.
+webkit.org/b/148119 [ Mavericks Yosemite ] fast/text/trak-optimizeLegibility.html [ Failure ]
+
+# These operating systems do not have language-sensitive font fallback.
+[ Mavericks Yosemite ElCapitan ] css3/line-break-language-sensitive [ Pass ImageOnlyFailure ]

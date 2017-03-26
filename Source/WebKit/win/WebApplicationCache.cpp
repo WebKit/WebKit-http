@@ -65,9 +65,11 @@ WebCore::ApplicationCacheStorage& WebApplicationCache::storage()
 
 // IUnknown -------------------------------------------------------------------
 
-HRESULT WebApplicationCache::QueryInterface(REFIID riid, void** ppvObject)
+HRESULT WebApplicationCache::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppvObject)
 {
-    *ppvObject = 0;
+    if (!ppvObject)
+        return E_POINTER;
+    *ppvObject = nullptr;
     if (IsEqualGUID(riid, IID_IUnknown))
         *ppvObject = static_cast<WebApplicationCache*>(this);
     else if (IsEqualGUID(riid, IID_IWebApplicationCache))
@@ -79,12 +81,12 @@ HRESULT WebApplicationCache::QueryInterface(REFIID riid, void** ppvObject)
     return S_OK;
 }
 
-ULONG WebApplicationCache::AddRef(void)
+ULONG WebApplicationCache::AddRef()
 {
     return ++m_refCount;
 }
 
-ULONG WebApplicationCache::Release(void)
+ULONG WebApplicationCache::Release()
 {
     ULONG newRef = --m_refCount;
     if (!newRef)

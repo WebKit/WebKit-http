@@ -1,3 +1,577 @@
+2015-08-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Skip no-llint tests that fail due to running out of executable memory after r188969
+        https://bugs.webkit.org/show_bug.cgi?id=148273
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-08-21  Nan Wang  <n_wang@apple.com>
+
+        [Mac] accessibility/selection-states.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=116637
+
+        Reviewed by Chris Fleizach.
+
+        Implemented isSelectable() and isMultiSelectable().
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::isSelectable):
+        (AccessibilityUIElement::isMultiSelectable):
+        (AccessibilityUIElement::isSelectedOptionActive):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::isSelectable):
+        (WTR::AccessibilityUIElement::isMultiSelectable):
+        (WTR::AccessibilityUIElement::isVisible):
+
+2015-08-21  Jason Marcell  <jmarcell@apple.com>
+
+        Fix iteration over repositories on bot watcher's dashboard.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits): Don't reuse the same index variable.
+
+2015-08-20  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL] Revise PlatformWebView ctor according to r188718
+        https://bugs.webkit.org/show_bug.cgi?id=148282
+
+        This patch change PlatformWebView ctor's argument to use WKPageConfigurationRef
+        instead of WKContextRef and WKPageGroupRef respectively.
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::PlatformWebView):
+
+2015-08-20  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Unreviewed, changed Devin Rousso's email.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-08-20  Anders Carlsson  <andersca@apple.com>
+
+        Use WKPageConfigurationRef in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=147996
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::initialize):
+        (WTR::TestController::createWebViewWithOptions):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (-[TestRunnerWKView initWithFrame:configurationRef:useThreadedScrolling:]):
+        (WTR::PlatformWebView::PlatformWebView):
+        (-[TestRunnerWKView initWithFrame:contextRef:pageGroupRef:relatedToPage:useThreadedScrolling:]): Deleted.
+
+2015-08-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update Windows tools for revised MIDL interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=148249
+
+        Reviewed by Dean Jackson.
+
+        This is a follow-up to Bug 148001.
+
+        Revise the testing software to use compatible signatures and
+        implementations to match the requirements of the IDL generated
+        with the SAL annotations.
+
+        * DumpRenderTree/win/DRTDataObject.cpp:
+        * DumpRenderTree/win/DRTDataObject.h:
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.cpp:
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.h:
+        * DumpRenderTree/win/DRTDropSource.cpp:
+        * DumpRenderTree/win/DRTDropSource.h:
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        * DumpRenderTree/win/EditingDelegate.cpp:
+        * DumpRenderTree/win/EditingDelegate.h:
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        * DumpRenderTree/win/FrameLoadDelegate.h:
+        * DumpRenderTree/win/HistoryDelegate.cpp:
+        * DumpRenderTree/win/HistoryDelegate.h:
+        * DumpRenderTree/win/PolicyDelegate.cpp:
+        * DumpRenderTree/win/PolicyDelegate.h:
+        * DumpRenderTree/win/ResourceLoadDelegate.cpp:
+        * DumpRenderTree/win/ResourceLoadDelegate.h:
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        * DumpRenderTree/win/UIDelegate.cpp:
+        * DumpRenderTree/win/UIDelegate.h:
+        * WinLauncher/AccessibilityDelegate.cpp:
+        * WinLauncher/AccessibilityDelegate.h:
+        * WinLauncher/Common.cpp:
+        * WinLauncher/DOMDefaultImpl.cpp:
+        * WinLauncher/DOMDefaultImpl.h:
+        * WinLauncher/PageLoadTestClient.cpp:
+        * WinLauncher/PageLoadTestClient.h:
+        * WinLauncher/PrintWebUIDelegate.cpp:
+        * WinLauncher/PrintWebUIDelegate.h:
+        * WinLauncher/ResourceLoadDelegate.cpp:
+        * WinLauncher/ResourceLoadDelegate.h:
+        * WinLauncher/WebDownloadDelegate.cpp:
+        * WinLauncher/WebDownloadDelegate.h:
+        * WinLauncher/WinLauncherWebHost.cpp:
+        * WinLauncher/WinLauncherWebHost.h:
+        * WinLauncher/WinMain.cpp:
+        * win/DLLLauncher/DLLLauncherMain.cpp:
+
+2015-08-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, shorten a test that runs too long and times out.
+
+        * TestWebKitAPI/Tests/WTF/Lock.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-08-20  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up CMake build after r188673
+        https://bugs.webkit.org/show_bug.cgi?id=148234
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/PlatformWin.cmake:
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformWin.cmake:
+        Define WIN_CAIRO so WinCairo executables can find the correct dlls in WebKitLibraries.
+        gtest needs to be a static library on Windows to not crash.
+
+2015-08-19  Alex Christensen  <achristensen@webkit.org>
+
+        CMake Windows build should not include files directly from other Source directories
+        https://bugs.webkit.org/show_bug.cgi?id=148198
+
+        Reviewed by Brent Fulgham.
+
+        * DumpRenderTree/DumpRenderTreePrefix.h:
+        Include cmakeconfig.h to properly define all enabled features.
+        * DumpRenderTree/PlatformWin.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+
+2015-08-19  Alex Christensen  <achristensen@webkit.org>
+
+        Build TestWTF on Mac with CMake.
+        https://bugs.webkit.org/show_bug.cgi?id=147972
+
+        Reviewed by Tim Horton.
+
+        TestWTF only depends on gtest and WTF instead of TestWebKitAPi depending on all of WebKit.
+        Now I can run the WTF API tests after a few seconds of building instead of waiting for all of WebKit to build.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        Added WTF as a dependency for platforms that do not have ForwardingHeadersForTestWebKitAPI_NAME.
+        WTF was already a library that was linked, but having at least one item makes the syntax of add_dependencies work.
+        * TestWebKitAPI/PlatformMac.cmake: Added.
+        * TestWebKitAPI/config.h:
+        Postpone some build fixes until WebKit builds completely on Mac with CMake.
+
+2015-08-19  Brian Burg  <bburg@apple.com>
+
+        Unreviewed, add Aleksandr Skachkov to the list of contributors.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-08-18  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r188548): [GTK] Build broken.
+        https://bugs.webkit.org/show_bug.cgi?id=148154
+
+        Reviewed by Martin Robinson.
+
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::updatePlatformSpecificViewOptionsForTest):
+        Even if we don't need to add/override any settings in ViewOptions,
+        we need to define this as an empty function to make it build.
+
+2015-08-18  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Fix conversion-null warning in conversion.cpp of TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=148073
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/Tests/WTF/Condition.cpp: Use EXPECT_FALSE instead of EXPECT_EQ.
+        (TestWebKitAPI::TEST):
+
+2015-08-18  Anders Carlsson  <andersca@apple.com>
+
+        Fix test failure fallout from r188602 by using a V5 page ui client struct.
+
+        * TestWebKitAPI/Tests/WebKit2/WKPageIsPlayingAudio.cpp:
+        (TestWebKitAPI::setUpClients):
+
+2015-08-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: load ProtocolTestStub from the WebInspectorUI bundle
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+
+        Reviewed by Timothy Hatcher.
+
+        To enable sharing of common test code between protocol and model tests,
+        start loading the protocol TestStub.js through the WebInspectorUI bundle.
+
+        This patch adds the read-only getter TestRunner.inspectorTestStubURL, which
+        protocol-test.js uses to load the inspector frontend stub into its iframe
+        from an arbitrary local file URL.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (getInspectorTestStubURLCallback):
+        (TestRunner::staticValues):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (SOFT_LINK_STAGED_FRAMEWORK):
+        (TestRunner::inspectorTestStubURL):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::inspectorTestStubURL):
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        Since WebKitTestRunner now includes WebCore private headers, also search
+        for the WebCore framework inside the WebKit umbrella framework.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/InjectedBundle/efl/TestRunnerEfl.cpp:
+        (WTR::TestRunner::inspectorTestStubURL):
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::inspectorTestStubURL):
+        * WebKitTestRunner/InjectedBundle/mac/TestRunnerMac.mm:
+        (WTR::TestRunner::inspectorTestStubURL):
+
+2015-08-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix GTK build.
+
+        * TestWebKitAPI/Tests/WTF/glib/WorkQueueGLib.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-08-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace all remaining uses of WTF::Mutex with WTF::Lock
+        https://bugs.webkit.org/show_bug.cgi?id=148089
+
+        Reviewed by Geoffrey Garen.
+
+        * DumpRenderTree/JavaScriptThreading.cpp:
+        (javaScriptThreadsMutex):
+        (runJavaScriptThread):
+        (startJavaScriptThreads):
+        (stopJavaScriptThreads):
+        * TestWebKitAPI/Tests/WTF/Condition.cpp: Fixed a bug in the test that I found from turning the test into a benchmark.
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/glib/WorkQueueGLib.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-08-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188539, r188544, r188552, and
+        r188564.
+        https://bugs.webkit.org/show_bug.cgi?id=148122
+
+        Broke tests and some build styles (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Web Inspector: load ProtocolTestStub from the WebInspectorUI
+        bundle"
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+        http://trac.webkit.org/changeset/188539
+
+        "Web Inspector: split TestStub.js into multiple files and
+        modernize it"
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+        http://trac.webkit.org/changeset/188544
+
+        "Web Inspector: InspectorTest should be a subclass of
+        TestHarness"
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+        http://trac.webkit.org/changeset/188552
+
+        "Unreviewed internal build fix attempt after r188539."
+        http://trac.webkit.org/changeset/188564
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Remove support for composite fonts
+        https://bugs.webkit.org/show_bug.cgi?id=147920
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/fonts/SampleFont.sfont: Removed.
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig:
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet): Deleted.
+        (activateTestingFonts): Deleted.
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        (WTR::allowedFontFamilySet): Deleted.
+        (WTR::activateFonts): Deleted.
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/fonts/SampleFont.sfont: Removed.
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet): Deleted.
+
+2015-08-17  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Unreviewed internal build fix attempt after r188539.
+
+        * WebKitTestRunner/InjectedBundle/mac/TestRunnerMac.mm:
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Fix the build
+
+        Unreviewed.
+
+        * TestWebKitAPI/Tests/WTF/StringHasher.cpp:
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Build Debug Suffix on Windows with CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148083
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformWin.cmake:
+        Add DEBUG_SUFFIX
+
+2015-08-17  Anders Carlsson  <andersca@apple.com>
+
+        Simplify how PlatformWebViews are created when view options change
+        https://bugs.webkit.org/show_bug.cgi?id=148093
+
+        Reviewed by Sam Weinig.
+
+        Instead of letting each port dictate when the PlatformWebView should be recreated we now do the following:
+
+        TestController::ensureViewSupportsOptionsForTest gets the view options for a test by calling
+        TestController::viewOptionsForTest, which returns a filled in ViewOptions struct for a given test. It also allows
+        ports to add/override settings by calling TestController::updatePlatformSpecificViewOptionsForTest.
+
+        If the current PlatformWebView doesn't support the given view options, delete the web view and create a new one.
+
+        Also, get rid of the first call to TestController::createWebViewWithOptions in TestController::initialize and
+        always rely on TestController::ensureViewSupportsOptionsForTest creating a PlatformWebView for us.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::ensureViewSupportsOptionsForTest):
+        (WTR::shouldUseFixedLayout):
+        (WTR::TestController::viewOptionsForTest):
+        (WTR::TestController::updateWebViewSizeForTest):
+        (WTR::TestController::updateWindowScaleForTest):
+        (WTR::TestController::configureViewForTest):
+        (WTR::TestController::initialize): Deleted.
+        (WTR::TestController::ensureViewSupportsOptions): Deleted.
+        (WTR::TestController::updateLayoutTypeForTest): Deleted.
+        (WTR::TestController::platformConfigureViewForTest): Deleted.
+        (WTR::TestController::platformResetPreferencesToConsistentValues): Deleted.
+        (WTR::TestController::run): Deleted.
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/efl/TestControllerEfl.cpp:
+        (WTR::shouldUseFixedLayout):
+        (WTR::TestController::updatePlatformSpecificViewOptionsForTest):
+        (WTR::TestController::platformConfigureViewForTest):
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::updatePlatformSpecificViewOptionsForTest):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::updatePlatformSpecificViewOptionsForTest):
+        (WTR::TestController::platformConfigureViewForTest):
+
+2015-08-17  Sam Weinig  <sam@webkit.org>
+
+        API::PageConfiguration's sessionID needs to be set whenever the API::WebsiteDataStore is set
+        https://bugs.webkit.org/show_bug.cgi?id=148097
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKit2/WKPageConfiguration.cpp:
+        Add tests for WebsiteDataStores in the WKPageConfiguration.
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: load ProtocolTestStub from the WebInspectorUI bundle
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+
+        Reviewed by Timothy Hatcher.
+
+        To enable sharing of common test code between protocol and model tests,
+        start loading the protocol TestStub.js through the WebInspectorUI bundle.
+
+        This patch adds the read-only getter TestRunner.inspectorTestStubURL, which
+        protocol-test.js uses to load the inspector frontend stub into its iframe
+        from an arbitrary local file URL.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (getInspectorTestStubURLCallback):
+        (TestRunner::staticValues):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (SOFT_LINK_STAGED_FRAMEWORK):
+        (TestRunner::inspectorTestStubURL):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::inspectorTestStubURL):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/InjectedBundle/efl/TestRunnerEfl.cpp:
+        (WTR::TestRunner::inspectorTestStubURL):
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::inspectorTestStubURL):
+        * WebKitTestRunner/InjectedBundle/mac/TestRunnerMac.mm:
+        (WTR::TestRunner::inspectorTestStubURL):
+
+2015-08-17  Saam barati  <sbarati@apple.com>
+
+        Change email address from saambarati1@gmail.com to sbarati@apple.com
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-08-17  Jason Marcell  <jmarcell@apple.com>
+
+        Refactor BuildbotQueueView._presentPopoverForPendingCommits to work more generically with
+        repositories other than "openSource" and "internal".
+        https://bugs.webkit.org/show_bug.cgi?id=147961
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits): Refactored to work more
+        generically with repositories other than "openSource" and "internal".
+
+2015-08-17  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard shows yellow when crash-only queues have too many failures
+        https://bugs.webkit.org/show_bug.cgi?id=148081
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.update.appendBuilderQueueStatus):
+
+2015-08-11  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add redirect support to CustomProtocolManager
+        https://bugs.webkit.org/show_bug.cgi?id=147871
+
+        Reviewed by Dan Bernstein.
+
+        Updated WebKit2CustomProtocolsTest.MainResource to generate a redirect response.
+
+        * TestWebKitAPI/Tests/CustomProtocolsSyncXHRTest.mm:
+        (TestWebKitAPI::TEST): Unregesitered TestProtocol.
+        * TestWebKitAPI/Tests/WebKit2/custom-protocol-sync-xhr.html: Changed scheme to http.
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsTest.mm:
+        (-[CustomProtocolsLoadDelegate browsingContextControllerDidStartProvisionalLoad:]): Expected a certain provisional URL.
+        (-[CustomProtocolsLoadDelegate browsingContextControllerDidReceiveServerRedirectForProvisionalLoad:]): Ditto.
+        (-[CustomProtocolsLoadDelegate browsingContextControllerDidCommitLoad:]): Expected a certain committed URL.
+        (-[CustomProtocolsLoadDelegate browsingContextControllerDidFinishLoad:]): Expected isLoading to be false.
+        (TestWebKitAPI::TEST): Used the new load delegate and unregistered TestProtocol.
+        * TestWebKitAPI/Tests/WebKit2ObjC/PreventImageLoadWithAutoResizing.mm:
+        (TestWebKitAPI::TEST): Unregistered TestProtocol.
+        * TestWebKitAPI/mac/TestProtocol.mm: Changed scheme to http.
+        (+[TestProtocol canInitWithRequest:]): Changed to use property syntax.
+        (-[TestProtocol startLoading]): Taught to handle redirect responses.
+
+2015-08-13  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Downloads do not start if policy decision is made asynchronously
+        https://bugs.webkit.org/show_bug.cgi?id=147985
+
+        Reviewed by Brady Eidson.
+
+        Added a new API test.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[AsynchronousDownloadNavigationDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]):
+        (-[AsynchronousDownloadDelegate _downloadDidStart:]):
+        (TEST):
+
+2015-08-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r187357.
+        https://bugs.webkit.org/show_bug.cgi?id=148032
+
+        webkit-patch generates incorrect patches that cannot be
+        applied (Requested by dydz on #webkit).
+
+        Reverted changeset:
+
+        "Call fixChangeLogPatch when generating patches from webkit-
+        patch"
+        https://bugs.webkit.org/show_bug.cgi?id=147248
+        http://trac.webkit.org/changeset/187357
+
+2015-08-14  Jason Marcell  <jmarcell@apple.com>
+
+        Refactor BuildbotQueueView._appendPendingRevisionCount to work more generically with repositories
+        other than "openSource" and "internal".
+        https://bugs.webkit.org/show_bug.cgi?id=147938
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._appendPendingRevisionCount): Refactored to work more generically with
+        repositories other than "openSource" and "internal".
+
+2015-08-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, shorten another test that is timing out.
+
+        * TestWebKitAPI/Tests/WTF/Lock.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-08-13  Aakash Jain  <aakash_jain@apple.com>
+
+        AppScale: Assertion hit when hovering a webkit-queue bubble
+        https://bugs.webkit.org/show_bug.cgi?id=147997
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueue.js:
+        (BubbleQueue.prototype.loadDetailedStatus): Strip off http(s) before asserting.
+
+2015-08-13  Lucas Forschler  <lforschler@apple.com>
+
+        Teach Scripts/copy-webkitlibraries-to-product-directory to copy the El Capitan Library.
+        
+        Unreviewed.
+        
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2015-08-13  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Run benchmark customized Dromaeo should not assume there is an internet connection.
+        https://bugs.webkit.org/show_bug.cgi?id=147995
+
+        Reviewed by Ryosuke Niwa.
+
+        Add several dependency js libs to local.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/Dromaeo.patch:
+
+2015-08-13  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should have a compact Condition object to use with Lock
+        https://bugs.webkit.org/show_bug.cgi?id=147986
+
+        Reviewed by Geoffrey Garen.
+
+        Add a test for WTF::Condition.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/Condition.cpp: Added.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/Lock.cpp:
+        (TestWebKitAPI::runLockTest): Change the name of the thread.
+
 2015-08-13  Filip Pizlo  <fpizlo@apple.com>
 
         Unreviewed, shorten another test. It's timing out in debug on some bot.

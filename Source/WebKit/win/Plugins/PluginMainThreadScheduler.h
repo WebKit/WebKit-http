@@ -28,6 +28,7 @@
 
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
+#include <wtf/Lock.h>
 #include <wtf/MainThread.h>
 #include <wtf/Threading.h>
 
@@ -57,8 +58,6 @@ private:
     void dispatchCallsForPlugin(NPP, const Deque<Call>& calls);
     typedef HashMap<NPP, Deque<Call>> CallQueueMap;
 
-    static void mainThreadCallback(void* context);
-
     class Call {
     public:
         Call(MainThreadFunction* function, void* userData)
@@ -79,7 +78,7 @@ private:
 
     bool m_callPending;
     CallQueueMap m_callQueueMap;
-    Mutex m_queueMutex;
+    Lock m_queueMutex;
 };
 
 } // namespace WebCore

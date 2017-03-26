@@ -306,13 +306,6 @@ Color RenderThemeMac::platformFocusRingColor() const
     return systemColor(CSSValueWebkitFocusRingColor);
 }
 
-int RenderThemeMac::platformFocusRingMaxWidth() const
-{
-    // FIXME: Shouldn't this function be named platformFocusRingMinWidth? But also, I'm not sure if this function is needed - looks like
-    // all platforms just used 0 for this before <http://trac.webkit.org/changeset/168397>.
-    return 0;
-}
-
 Color RenderThemeMac::platformInactiveListBoxSelectionBackgroundColor() const
 {
     return platformInactiveSelectionBackgroundColor();
@@ -946,13 +939,7 @@ bool RenderThemeMac::paintMenuList(const RenderObject& renderer, const PaintInfo
         paintInfo.context->translate(-inflatedRect.x(), -inflatedRect.y());
     }
 
-    NSView *view = documentViewFor(renderer);
-    [popupButton drawWithFrame:inflatedRect inView:view];
-    if (isFocused(renderer) && renderer.style().outlineStyleIsAuto()) {
-        if (wkDrawCellFocusRingWithFrameAtTime(popupButton, inflatedRect, view, std::numeric_limits<double>::max()))
-            renderer.document().page()->focusController().setFocusedElementNeedsRepaint();
-    }
-
+    paintCellAndSetFocusedElementNeedsRepaintIfNecessary(popupButton, renderer, paintInfo, inflatedRect);
     [popupButton setControlView:nil];
 
     return false;
@@ -1461,6 +1448,16 @@ void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntSiz
     updatePressedState(popupButton, o);
 }
 
+void RenderThemeMac::paintCellAndSetFocusedElementNeedsRepaintIfNecessary(NSCell* cell, const RenderObject& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
+{
+    Page* page = renderer.document().page();
+    bool shouldDrawFocusRing = isFocused(renderer) && renderer.style().outlineStyleIsAuto();
+    bool shouldUseImageBuffer = renderer.style().effectiveZoom() != 1 || page->pageScaleFactor() != 1;
+    bool shouldDrawCell = true;
+    if (ThemeMac::drawCellOrFocusRingWithViewIntoContext(cell, paintInfo.context, rect, documentViewFor(renderer), shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, page->deviceScaleFactor()))
+        page->focusController().setFocusedElementNeedsRepaint();
+}
+
 const IntSize* RenderThemeMac::menuListSizes() const
 {
     static const IntSize sizes[3] = { IntSize(9, 0), IntSize(5, 0), IntSize(0, 0) };
@@ -1613,17 +1610,10 @@ bool RenderThemeMac::paintSearchField(const RenderObject& o, const PaintInfo& pa
     // Set the search button to nil before drawing.  Then reset it so we can draw it later.
     [search setSearchButtonCell:nil];
 
-    NSView *documentView = documentViewFor(o);
-    [search drawWithFrame:NSRect(unzoomedRect) inView:documentView];
-
+    paintCellAndSetFocusedElementNeedsRepaintIfNecessary(search, o, paintInfo, unzoomedRect);
     [search setControlView:nil];
     [search resetSearchButtonCell];
 
-    if (isFocused(o) && o.style().outlineStyleIsAuto()) {
-        if (wkDrawCellFocusRingWithFrameAtTime(search, NSRect(unzoomedRect), documentView, std::numeric_limits<double>::max()))
-            o.document().page()->focusController().setFocusedElementNeedsRepaint();
-    }
-    
     return false;
 }
 
@@ -1709,7 +1699,7 @@ bool RenderThemeMac::paintSearchFieldCancelButton(const RenderObject& o, const P
 
     float zoomLevel = o.style().effectiveZoom();
 
-    FloatRect localBounds = [search cancelButtonRectForBounds:NSRect(input->renderBox()->pixelSnappedBorderBoxRect())];
+    FloatRect localBounds = [search cancelButtonRectForBounds:NSRect(snappedIntRect(input->renderBox()->contentBoxRect()))];
     localBounds = convertToPaintingRect(*input->renderer(), o, localBounds, r);
 
     FloatRect unzoomedRect(localBounds);
@@ -1784,7 +1774,7 @@ bool RenderThemeMac::paintSearchFieldResultsDecorationPart(const RenderObject& o
     if ([search searchMenuTemplate] != nil)
         [search setSearchMenuTemplate:nil];
 
-    FloatRect localBounds = [search searchButtonRectForBounds:NSRect(input->renderBox()->pixelSnappedBorderBoxRect())];
+    FloatRect localBounds = [search searchButtonRectForBounds:NSRect(snappedIntRect(input->renderBox()->borderBoxRect()))];
     localBounds = convertToPaintingRect(*input->renderer(), o, localBounds, r);
 
     [[search searchButtonCell] drawWithFrame:localBounds inView:documentViewFor(o)];
@@ -1820,7 +1810,7 @@ bool RenderThemeMac::paintSearchFieldResultsButton(const RenderObject& o, const 
     GraphicsContextStateSaver stateSaver(*paintInfo.context);
     float zoomLevel = o.style().effectiveZoom();
 
-    FloatRect localBounds = [search searchButtonRectForBounds:NSRect(input->renderBox()->pixelSnappedBorderBoxRect())];
+    FloatRect localBounds = [search searchButtonRectForBounds:NSRect(snappedIntRect(input->renderBox()->contentBoxRect()))];
     localBounds = convertToPaintingRect(*input->renderer(), o, localBounds, r);
 
     IntRect unzoomedRect(localBounds);

@@ -74,6 +74,11 @@ public:
             if (m_state.forNode(edge).m_type & ~SpecInt32)
                 m_result = false;
             return;
+
+        case KnownBooleanUse:
+            if (m_state.forNode(edge).m_type & ~SpecBoolean)
+                m_result = false;
+            return;
             
         case KnownCellUse:
             if (m_state.forNode(edge).m_type & ~SpecCell)
@@ -180,6 +185,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Arrayify:
     case ArrayifyToStructure:
     case GetScope:
+    case LoadArrowFunctionThis:
     case SkipScope:
     case GetClosureVar:
     case PutClosureVar:
@@ -197,7 +203,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CompareGreater:
     case CompareGreaterEq:
     case CompareEq:
-    case CompareEqConstant:
     case CompareStrictEq:
     case Call:
     case Construct:
@@ -239,6 +244,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CreateClonedArguments:
     case GetFromArguments:
     case PutToArguments:
+    case NewArrowFunction:
     case NewFunction:
     case Jump:
     case Branch:

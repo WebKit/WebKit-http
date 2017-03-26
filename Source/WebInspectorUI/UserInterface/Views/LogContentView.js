@@ -45,6 +45,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
         this.messagesElement.setAttribute("role", "log");
         this.messagesElement.addEventListener("mousedown", this._mousedown.bind(this));
         this.messagesElement.addEventListener("keydown", this._keyDown.bind(this));
+        this.messagesElement.addEventListener("keypress", this._keyPress.bind(this));
         this.messagesElement.addEventListener("dragstart", this._ondragstart.bind(this), true);
         this.element.appendChild(this.messagesElement);
 
@@ -726,6 +727,15 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             this._leftArrowWasPressed(event);
         else if (event.keyIdentifier === "Right")
             this._rightArrowWasPressed(event);
+        else if (event.keyIdentifier === "Enter" && event.metaKey)
+            this._commandEnterWasPressed(event);
+    }
+
+    _keyPress(event)
+    {
+        const isCommandC = event.metaKey && event.keyCode === 99;
+        if (!isCommandC)
+            this.prompt.focus();
     }
 
     _commandAWasPressed(event)
@@ -814,6 +824,18 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             event.preventDefault();
         } else if (currentMessage.__messageView && currentMessage.__messageView.expandable) {
             currentMessage.__messageView.expand();
+            event.preventDefault();
+        }
+    }
+
+    _commandEnterWasPressed(event)
+    {
+        if (this._selectedMessages.length !== 1)
+            return;
+
+        let message = this._selectedMessages[0];
+        if (message.__commandView && message.__commandView.commandText) {
+            this._logViewController.consolePromptTextCommitted(null, message.__commandView.commandText);
             event.preventDefault();
         }
     }

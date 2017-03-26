@@ -111,6 +111,18 @@ body.docked.bottom #toolbar .item:not(.flexible-space) {
     cursor: default;
 }
 
+input[type=range] {
+    -webkit-appearance: none;
+}
+
+input[type=range]::-webkit-slider-runnable-track::before {
+    content: "";
+    display: block;
+    background: hsl(212, 92%, 54%);
+    height: 1px;
+    margin: 8px 2px -8px 2px;
+}
+
 #main {
     display: flex;
     flex: 1;
@@ -170,6 +182,14 @@ body.window-inactive #split-content-browser {
 
 #split-content-browser .hierarchical-path-component.log-icon select {
     display: none;
+}
+
+#split-content-browser > .navigation-bar > :matches(.hierarchical-path, .log-search-bar, .log-scope-bar) {
+    pointer-events: none;
+}
+
+#split-content-browser > .navigation-bar > :matches(.log-search-bar, .log-scope-bar) > :matches(li, input) {
+    pointer-events: all;
 }
 
 #details-sidebar {

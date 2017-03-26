@@ -1,3 +1,519 @@
+2015-08-21  Anders Carlsson  <andersca@apple.com>
+
+        Deprecate the old school callOnMainThread/cancelCallOnMainThread functions
+        https://bugs.webkit.org/show_bug.cgi?id=148327
+
+        Reviewed by Sam Weinig.
+
+        * wtf/MainThread.cpp:
+        (WTF::functionQueue):
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        Change the function queue to be a queue of std::function<void ()> and get rid of dead code.
+
+        * wtf/MainThread.h:
+        Conditionalize callOnMainThread and cancelCallOnMainThread because Safari on Mavericks still expects to them to be
+        declared in MainThread.h under 10.9.
+
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+        Add a MainThreadFunctionTracker singleton that keeps track of scheduled functions so we can ensure that they're not
+        called if they're cancelled.
+
+        (WTF::MainThreadFunctionTracker::singleton):
+        Return the singleton.
+
+        (WTF::MainThreadFunctionTracker::callOnMainThread):
+        Add the function/context pair to our map and schedule the function to be run on the main thread.
+        If the function has been removed, don't call it.
+
+        (WTF::MainThreadFunctionTracker::cancelCallOnMainThread):
+        Remove all entries with the given function/context pair.
+
+        (WTF::MainThreadFunctionTracker::addFunction):
+        Add the function/context pair to the map and return the unique identifier.
+
+        (WTF::MainThreadFunctionTracker::removeIdentifier):
+        Look up the identifier and remove it if it still exists. If it exists we know that it hasn't been canceled and that we can call it.
+
+        (WTF::MainThreadFunctionTracker::removeFunctions):
+        Remove all function identifiers matched by the function/context pair.
+
+        (WTF::callOnMainThread):
+        Implement using MainThreadFunctionTracker.
+
+        (WTF::cancelCallOnMainThread):
+        Implement using MainThreadFunctionTracker.
+
+2015-08-21  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of uses of the old callOnMainThread function that takes a function ptr + context
+        https://bugs.webkit.org/show_bug.cgi?id=148324
+
+        Reviewed by Tim Horton.
+
+        * wtf/text/cf/StringImplCF.cpp:
+        (WTF::StringWrapperCFAllocator::deallocate):
+        (WTF::StringWrapperCFAllocator::deallocateOnMainThread): Deleted.
+
+2015-08-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188717 and r188719.
+        https://bugs.webkit.org/show_bug.cgi?id=148272
+
+        Broke the Mavericks build (Requested by andersca on #webkit).
+
+        Reverted changesets:
+
+        "Merge Lock and LockBase"
+        https://bugs.webkit.org/show_bug.cgi?id=148266
+        http://trac.webkit.org/changeset/188717
+
+        "Merge ConditionBase and Condition"
+        https://bugs.webkit.org/show_bug.cgi?id=148270
+        http://trac.webkit.org/changeset/188719
+
+2015-08-20  Anders Carlsson  <andersca@apple.com>
+
+        Merge ConditionBase and Condition
+        https://bugs.webkit.org/show_bug.cgi?id=148270
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Condition.h:
+        Direct initialize m_hasWaiters so Condition gets a constexpr constructor.
+
+        * wtf/Lock.h:
+        Remove a now outdated comment.
+
+2015-08-20  Anders Carlsson  <andersca@apple.com>
+
+        Merge Lock and LockBase
+        https://bugs.webkit.org/show_bug.cgi?id=148266
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Atomics.h:
+        (WTF::Atomic::Atomic):
+        Add a default constructor as well as a constexpr constructor that takes a value.
+
+        * wtf/Lock.cpp:
+        (WTF::Lock::lockSlow):
+        (WTF::Lock::unlockSlow):
+        Rename LockBase to Lock.
+
+        * wtf/Lock.h:
+        Rename LockBase to Lock and direct-initialize Atomic to 0. Since the Atomic constructor is constexpr,
+        Lock also gets a constexpr constructor. Change the LockBase -> StaticLock typedef and add a fixme.
+
+        * wtf/WordLock.h:
+        Direct initialize m_word to 0.
+
+2015-08-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove WTF::SpinLock
+        https://bugs.webkit.org/show_bug.cgi?id=148208
+
+        Reviewed by Geoffrey Garen.
+
+        Remove the SpinLock.h file and remove references to the SpinLock class. Put the old SpinLock
+        algorithm in LockSpeedTest.cpp - which isn't compiled as part of a WTF or WebKit build - just
+        so we can still benchmark our locking algorithms against a spinlock baseline.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks/LockSpeedTest.cpp:
+        * wtf/CMakeLists.txt:
+        * wtf/Lock.h:
+        * wtf/SpinLock.h: Removed.
+        * wtf/WordLock.h:
+
+2015-08-19  Alex Christensen  <achristensen@webkit.org>
+
+        CMake Windows build should not include files directly from other Source directories
+        https://bugs.webkit.org/show_bug.cgi?id=148198
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformWin.cmake:
+
+2015-08-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace all uses of std::mutex/std::condition_variable with WTF::Lock/WTF::Condition
+        https://bugs.webkit.org/show_bug.cgi?id=148140
+
+        Reviewed by Geoffrey Garen.
+
+        Also beef up Condition by giving it a StaticCondition variant.
+
+        * wtf/Condition.h:
+        (WTF::ConditionBase::notifyAll):
+        (WTF::ConditionBase::waitForSecondsImpl):
+        (WTF::ConditionBase::absoluteFromRelative):
+        (WTF::Condition::Condition):
+        (WTF::Condition::notifyAll): Deleted.
+        (WTF::Condition::waitForSecondsImpl): Deleted.
+        (WTF::Condition::absoluteFromRelative): Deleted.
+        * wtf/CryptographicallyRandomNumber.cpp:
+        * wtf/HashTable.cpp:
+        (WTF::HashTableStats::recordCollisionAtCount):
+        (WTF::HashTableStats::dumpStats):
+        (WTF::hashTableStatsMutex): Deleted.
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::HashTable):
+        (WTF::KeyTraits>::invalidateIterators):
+        (WTF::addIterator):
+        (WTF::removeIterator):
+        * wtf/Lock.h:
+        * wtf/MainThread.cpp:
+        (WTF::functionQueue):
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        (WTF::cancelCallOnMainThread):
+        (WTF::mainThreadFunctionQueueMutex): Deleted.
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::PerThreadStats::PerThreadStats):
+        (WTF::StackStats::CheckPoint::CheckPoint):
+        (WTF::StackStats::CheckPoint::~CheckPoint):
+        (WTF::StackStats::probe):
+        (WTF::StackStats::LayoutCheckPoint::LayoutCheckPoint):
+        (WTF::StackStats::LayoutCheckPoint::~LayoutCheckPoint):
+        (WTF::StackStats::initialize): Deleted.
+        * wtf/StackStats.h:
+        (WTF::StackStats::LayoutCheckPoint::LayoutCheckPoint):
+        (WTF::StackStats::probe):
+        (WTF::StackStats::initialize): Deleted.
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::initializeThreading):
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+        (WTF::callOnMainThread):
+        (WTF::lockAtomicallyInitializedStaticMutex):
+        (WTF::unlockAtomicallyInitializedStaticMutex):
+        (WTF::atomicallyInitializedStaticMutex): Deleted.
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::UnderlyingString::UnderlyingString):
+        (WTF::underlyingStrings):
+        (WTF::StringView::invalidate):
+        (WTF::StringView::adoptUnderlyingString):
+        (WTF::StringView::setUnderlyingString):
+        (WTF::underlyingStringsMutex): Deleted.
+        * wtf/unicode/icu/CollatorICU.cpp:
+        (WTF::Collator::Collator):
+        (WTF::Collator::~Collator):
+        (WTF::cachedCollatorMutex): Deleted.
+
+2015-08-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] GMainLoopSource should receive the std::function<> objects through rvalue references
+        https://bugs.webkit.org/show_bug.cgi?id=147981
+
+        Reviewed by Carlos Garcia Campos.
+
+        Scheduling methods on GMainLoopSource and GThreadSafeMainLoopSource should
+        have the std::function<> objects passed through rvalue references, and should
+        move the passed-in objects forward when required.
+
+        * wtf/glib/GMainLoopSource.cpp:
+        (WTF::GMainLoopSource::schedule):
+        (WTF::GMainLoopSource::scheduleAfterDelay):
+        (WTF::GMainLoopSource::scheduleAndDeleteOnDestroy):
+        (WTF::GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy):
+        * wtf/glib/GMainLoopSource.h:
+        * wtf/glib/GThreadSafeMainLoopSource.cpp:
+        (WTF::GThreadSafeMainLoopSource::schedule):
+        (WTF::GThreadSafeMainLoopSource::scheduleAfterDelay):
+        * wtf/glib/GThreadSafeMainLoopSource.h:
+
+2015-08-18  Eric Carlson  <eric.carlson@apple.com>
+
+        Remove "platform text track menu"
+        https://bugs.webkit.org/show_bug.cgi?id=148139
+
+        Reviewed by Jer Noble.
+
+        * wtf/Platform.h: Remove PLATFORM_TEXT_TRACK_MENU.
+
+2015-08-18  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF::Condition should have a fast path for notifyOne/notifyAll that avoids calling unparkOne/unparkAll
+        https://bugs.webkit.org/show_bug.cgi?id=148090
+
+        Reviewed by Geoffrey Garen.
+
+        This change makes notifyOne()/notifyAll() blazing fast when nobody is waiting, by using the
+        various hooks that ParkingLot gives us to maintain a m_hasWaiters variable. When it's false, it
+        means that any unpark operation would simply return immediately.
+
+        This is a 45% speed-up for the 1-producer/1-consumer scenario with a 100-element queue when you
+        use the notifyOne()-per-enqueue style. What's cool about this change is that you can now safely
+        call notifyOne() (or notifyAll()) out of paranoia, just in case someone might be waiting. It's
+        free to do so if nobody is waiting!
+
+        * wtf/Condition.h:
+        (WTF::Condition::Condition):
+        (WTF::Condition::waitUntil):
+        (WTF::Condition::notifyOne):
+        (WTF::Condition::notifyAll):
+
+2015-08-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace all remaining uses of WTF::Mutex with WTF::Lock
+        https://bugs.webkit.org/show_bug.cgi?id=148089
+
+        Reviewed by Geoffrey Garen.
+
+        This also beefs up and rationalizes the Condition API, so that it can deal with units of time
+        other than just steady_clock. This makes it easier to port ThreadCondition and
+        std::condition_variable code over to Condition. This patch does not take a position on what
+        kind of time is best; from reading a lot of the uses in WebCore, it seems like our use of
+        double to measure seconds is often nicer than the many different classes in std::chrono.
+
+        Also added a Condition speed test, to make sure that all of this is a good idea. And indeed it
+        is. The 1-producer/1-consumer scenario with a 100-element queue runs 36x faster using
+        Lock/Condition than Mutex/ThreadCondition when you use the notifyOne()-per-enqueue style. It
+        runs 58x faster with Lock/Condition when you use the notifyAll()-at-boundary style. Note that
+        I have a bug open for making the notifyOne()-per-enqueue style even faster:
+        https://bugs.webkit.org/show_bug.cgi?id=148090. Also, the 10-consumer/10-producer scenario with
+        a 100-element queue runs 20x faster with Lock/Condition for notifyOne()-per-enqueue and 30x
+        faster with notifyAll()-at-boundary. The only way to tweak the test to get
+        Mutex/ThreadCondition to win is to have one producer, one consumer, a 1-element queue, and use
+        the notifyOne()-per-enqueue style. In that case, one of the two threads is going to be waiting
+        most of the time and the test basically measures wake-up latency and nothing else. Because
+        Condition::wait() does a little bit more work than ThreadCondition::wait(),
+        Mutex/ThreadCondition end up running 3% faster in this test case. But if you vary any of the
+        parameters of the test, Mutex/ThreadCondition ends up losing - all it takes is more threads or
+        a queue size of 5 or more. To my knowledge, we never do producer/consumer with a queue bounded
+        to one element precisely because that approach is the least efficient regardless of locking
+        algorithm. For example, neither WTF::MessageQueue nor DFG::Worklist have any bounds on their
+        queue size. So, it seems that replacing all uses of system mutexes and condition variables with
+        our own thing is a great idea.
+
+        * benchmarks/LockSpeedTest.cpp:
+        * benchmarks/ConditionSpeedTest.cpp: Added.
+        * wtf/Condition.h:
+        (WTF::Condition::Condition):
+        (WTF::Condition::waitUntil):
+        (WTF::Condition::waitFor):
+        (WTF::Condition::wait):
+        (WTF::Condition::waitUntilWallClockSeconds):
+        (WTF::Condition::waitUntilMonotonicClockSeconds):
+        (WTF::Condition::notifyOne):
+        (WTF::Condition::notifyAll):
+        (WTF::Condition::waitForSecondsImpl):
+        (WTF::Condition::waitForImpl):
+        (WTF::Condition::absoluteFromRelative):
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue::infiniteTime):
+        (WTF::MessageQueue<DataType>::append):
+        (WTF::MessageQueue<DataType>::appendAndKill):
+        (WTF::MessageQueue<DataType>::appendAndCheckEmpty):
+        (WTF::MessageQueue<DataType>::prepend):
+        (WTF::MessageQueue<DataType>::removeIf):
+        (WTF::MessageQueue<DataType>::isEmpty):
+        (WTF::MessageQueue<DataType>::kill):
+        (WTF::MessageQueue<DataType>::killed):
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::execute):
+        (WTF::ParallelEnvironment::ThreadPrivate::waitForFinish):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread):
+        * wtf/ParallelJobsGeneric.h:
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally):
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::compareAndPark):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::initializeThreading):
+        * wtf/ThreadingWin.cpp:
+        (WTF::initializeThreading):
+        * wtf/dtoa.cpp:
+        (WTF::pow5mult):
+        * wtf/dtoa.h:
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Build Debug Suffix on Windows with CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148083
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/PlatformWin.cmake:
+        Add DEBUG_SUFFIX
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement IntegerHasher
+        https://bugs.webkit.org/show_bug.cgi?id=147866
+
+        Reviewed by Darin Adler and Anders Carlsson.
+
+        Rename StringHasher.h to Hasher.h, and include an IntegerHasher class.
+
+        * WTF.vcxproj/WTF.vcxproj: Update to target new file.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * WTF.xcodeproj/project.pbxproj: Ditto.
+        * wtf/CMakeLists.txt: Ditto.
+        * wtf/Hasher.h: Renamed from Source/WTF/wtf/StringHasher.h.
+        * wtf/text/CString.cpp: Use new #include
+        * wtf/text/StringHash.h: Ditto.
+        * wtf/text/StringImpl.h: Ditto.
+        * wtf/unicode/UTF8.cpp: Ditto.
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Move some commands from ./CMakeLists.txt to Source/cmake
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Added commands needed to build WTF by itself.
+
+2015-08-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Use WTF::Lock and WTF::Condition instead of WTF::Mutex, WTF::ThreadCondition, std::mutex, and std::condition_variable
+        https://bugs.webkit.org/show_bug.cgi?id=147999
+
+        Reviewed by Geoffrey Garen.
+
+        Relanding after fixing a deadlock on Linux.
+
+        * wtf/Condition.h: "using WTF::Condition".
+        * wtf/Lock.h:
+        (WTF::LockBase::lock):
+        (WTF::LockBase::tryLock): Add tryLock() because it turns out that we use it sometimes.
+        (WTF::LockBase::try_lock): unique_lock needs this.
+        (WTF::LockBase::unlock):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally): Work around a Linux C++ bug where wait_until with time_point::max() immediately returns and doesn't flash the lock.
+
+2015-08-14  Keith Miller  <keith_miller@apple.com>
+
+        cryptographicallyRandomValuesFromOS should use arc4random_buf on Darwin.
+        https://bugs.webkit.org/show_bug.cgi?id=148038
+
+        Reviewed by Geoffrey Garen.
+
+        Currently, we open a file descriptor to /dev/urandom, which can sometimes
+        fail to open. Using arc4random_buf instead should get around this issue.
+
+        * wtf/OSRandomSource.cpp:
+        (WTF::cryptographicallyRandomValuesFromOS):
+
+2015-08-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188444.
+        https://bugs.webkit.org/show_bug.cgi?id=148029
+
+        Broke GTK and EFL (see bug #148027) (Requested by philn on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use WTF::Lock and WTF::Condition instead of WTF::Mutex,
+        WTF::ThreadCondition, std::mutex, and std::condition_variable"
+        https://bugs.webkit.org/show_bug.cgi?id=147999
+        http://trac.webkit.org/changeset/188444
+
+2015-08-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Use WTF::Lock and WTF::Condition instead of WTF::Mutex, WTF::ThreadCondition, std::mutex, and std::condition_variable
+        https://bugs.webkit.org/show_bug.cgi?id=147999
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Condition.h: "using WTF::Condition".
+        * wtf/Lock.h:
+        (WTF::LockBase::lock):
+        (WTF::LockBase::tryLock): Add tryLock() because it turns out that we use it sometimes.
+        (WTF::LockBase::try_lock): unique_lock needs this.
+        (WTF::LockBase::unlock):
+
+2015-08-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188428.
+        https://bugs.webkit.org/show_bug.cgi?id=148015
+
+        broke cmake build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Move some commands from ./CMakeLists.txt to Source/cmake"
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+        http://trac.webkit.org/changeset/188428
+
+2015-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Move some commands from ./CMakeLists.txt to Source/cmake
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Added commands needed to build WTF by itself.
+
+2015-08-13  Mark Lam  <mark.lam@apple.com>
+
+        WorkQueue::dispatchAfter() on Windows fires early.
+        https://bugs.webkit.org/show_bug.cgi?id=147992
+
+        Reviewed by Brent Fulgham.
+
+        The Windows implementation of WorkQueue::dispatchAfter() uses CreateTimerQueueTimer().
+        Unfortunately, CreateTimerQueueTimer() is sloppy and can fire early.  We need to compensate
+        for this slop to ensure that the specified duration does expire before the callback function
+        is called.  Otherwise, the JSC watchdog (which depends on this) can fail randomly.
+
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatchAfter):
+
+2015-08-13  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should have a compact Condition object to use with Lock
+        https://bugs.webkit.org/show_bug.cgi?id=147986
+
+        Reviewed by Geoffrey Garen.
+
+        Adds a condition variable implementation based on ParkingLot, called simply WTF::Condition.
+        It can be used with WTF::Lock or actually any lock implementation. It should even work with
+        WTF::SpinLock, WTF::Mutex, or std::mutex. Best of all, Condition only requires one byte.
+
+        ParkingLot almost contained all of the functionality needed to implemenet wait/notify. We
+        could have implemented Condition using a 32-bit (or even 64-bit) version that protects
+        against a notify that happens just before we park. But, this changes the ParkingLot API to
+        give us the ability to run some code between when ParkingLot enqueues the current thread
+        and when it actually sleeps. This callback is called with no locks held, so it can call
+        unlock() on any kind of lock, so long as that lock's unlock() method doesn't recurse into
+        ParkingLot::parkConditionally(). That seems unlikely; unlock() is more likely to call
+        ParkingLot::unparkOne() or unparkAll(). WTF::Lock will never call parkConditionally()
+        inside unlock(), so WTF::Lock is definitely appropriate for use with Condition.
+
+        Condition supports most of the API that std::condition_variable supports. It does some
+        things to try to reduce footgun potential. The preferred timeout form is waitUntil() which
+        takes an absolute time from the steady_clock. The only relative timeout form also takes a
+        predicate callback, so it's impossible to write the subtly incorrect
+        "while (...) wait_for(...)" idiom.
+
+        This patch doesn't actually introduce any uses of WTF::Condition other than the unit tests.
+        I'll start switching code over to using WTF::Condition in another patch.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Condition.h: Added.
+        (WTF::Condition::Condition):
+        (WTF::Condition::waitUntil):
+        (WTF::Condition::waitFor):
+        (WTF::Condition::wait):
+        (WTF::Condition::notifyOne):
+        (WTF::Condition::notifyAll):
+        * wtf/Lock.cpp:
+        (WTF::LockBase::unlockSlow): Make this useful assertion be a release assertion. It catches cases where you unlock the lock even though you don't hold it.
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally): Add the beforeSleep() callback.
+        (WTF::ParkingLot::unparkOne):
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::compareAndPark):
+
 2015-08-12  Anders Carlsson  <andersca@apple.com>
 
         Use WTF::Optional in WindowFeatures

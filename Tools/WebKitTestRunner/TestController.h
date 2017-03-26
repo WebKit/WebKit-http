@@ -68,7 +68,6 @@ public:
 
     EventSenderProxy* eventSenderProxy() { return m_eventSenderProxy.get(); }
 
-    void ensureViewSupportsOptions(const ViewOptions&);
     bool shouldUseRemoteLayerTree() const { return m_shouldUseRemoteLayerTree; }
     
     // Runs the run loop until `done` is true or the timeout elapses.
@@ -142,9 +141,12 @@ private:
     void initializeInjectedBundlePath();
     void initializeTestPluginDirectory();
 
+    void ensureViewSupportsOptionsForTest(const TestInvocation&);
+    ViewOptions viewOptionsForTest(const TestInvocation&) const;
+    void updatePlatformSpecificViewOptionsForTest(ViewOptions&, const TestInvocation&) const;
+
     void updateWebViewSizeForTest(const TestInvocation&);
     void updateWindowScaleForTest(PlatformWebView*, const TestInvocation&);
-    void updateLayoutTypeForTest(const TestInvocation&);
 
     void decidePolicyForGeolocationPermissionRequestIfPossible();
     void decidePolicyForUserMediaPermissionRequestIfPossible();
@@ -208,7 +210,7 @@ private:
     static void didUpdateHistoryTitle(WKContextRef, WKPageRef, WKStringRef title, WKURLRef, WKFrameRef, const void*);
     void didUpdateHistoryTitle(WKStringRef title, WKURLRef, WKFrameRef);
 
-    static WKPageRef createOtherPage(WKPageRef oldPage, WKURLRequestRef, WKDictionaryRef, WKEventModifiers, WKEventMouseButton, const void*);
+    static WKPageRef createOtherPage(WKPageRef, WKPageConfigurationRef, WKNavigationActionRef, WKWindowFeaturesRef, const void*);
 
     static void runModal(WKPageRef, const void* clientInfo);
     static void runModal(PlatformWebView*);
@@ -233,6 +235,7 @@ private:
     std::unique_ptr<PlatformWebView> m_mainWebView;
     WKRetainPtr<WKContextRef> m_context;
     WKRetainPtr<WKPageGroupRef> m_pageGroup;
+    WKRetainPtr<WKPageConfigurationRef> m_configuration;
 
     enum State {
         Initial,

@@ -1,12 +1,11 @@
 <html>
 <head>
 <script src="../../http/tests/inspector/resources/protocol-test.js"></script>
+<script src="../../http/tests/inspector/resources/probe-test.js"></script>
 <script src="resources/breakpoint.js"></script>
 <script>
 function test()
 {
-    ProtocolTest.importScript("probe-test.js");
-
     InspectorProtocol.sendCommand("Debugger.enable", {});
 
     var samples = [];
@@ -78,7 +77,7 @@ function test()
         if (receivedAllExpectedSamples()) {
             tests.forEach(function(test) {
                 var result = test.predicate();
-                ProtocolTest.assert(result, test.message);
+                ProtocolTest.expectThat(result, test.message);
                 if (!result)
                     test.error();
             });

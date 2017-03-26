@@ -41,6 +41,7 @@
 #include "DFGWorklist.h"
 #include "Debugger.h"
 #include "FunctionExecutableDump.h"
+#include "InlineCallFrame.h"
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITStubs.h"
@@ -757,6 +758,11 @@ void CodeBlock::dumpBytecode(
             printLocationOpAndRegisterOperand(out, exec, location, it, "get_scope", r0);
             break;
         }
+        case op_load_arrowfunction_this: {
+            int r0 = (++it)->u.operand;
+            printLocationOpAndRegisterOperand(out, exec, location, it, "load_arrowfunction_this", r0);
+            break;
+        }
         case op_create_direct_arguments: {
             int r0 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "create_direct_arguments");
@@ -1082,26 +1088,29 @@ void CodeBlock::dumpBytecode(
         case op_put_getter_by_id: {
             int r0 = (++it)->u.operand;
             int id0 = (++it)->u.operand;
+            int n0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "put_getter_by_id");
-            out.printf("%s, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data());
+            out.printf("%s, %s, %d, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), n0, registerName(r1).data());
             break;
         }
         case op_put_setter_by_id: {
             int r0 = (++it)->u.operand;
             int id0 = (++it)->u.operand;
+            int n0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "put_setter_by_id");
-            out.printf("%s, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data());
+            out.printf("%s, %s, %d, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), n0, registerName(r1).data());
             break;
         }
         case op_put_getter_setter: {
             int r0 = (++it)->u.operand;
             int id0 = (++it)->u.operand;
+            int n0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             int r2 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "put_getter_setter");
-            out.printf("%s, %s, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data(), registerName(r2).data());
+            out.printf("%s, %s, %d, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), n0, registerName(r1).data(), registerName(r2).data());
             break;
         }
         case op_del_by_id: {
@@ -1284,6 +1293,15 @@ void CodeBlock::dumpBytecode(
             int f0 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "new_func");
             out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
+            break;
+        }
+        case op_new_arrow_func_exp: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int f0 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "op_new_arrow_func_exp");
+            out.printf("%s, %s, f%d, %s", registerName(r0).data(), registerName(r1).data(), f0, registerName(r2).data());
             break;
         }
         case op_new_func_exp: {
@@ -2086,9 +2104,9 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
                     // Because a return statement can be added implicitly to return undefined at the end of a function,
                     // and these nodes don't emit expression ranges because they aren't in the actual source text of
                     // the user's program, give the type profiler some range to identify these return statements.
-                    // Currently, the text offset that is used as identification is on the open brace of the function 
+                    // Currently, the text offset that is used as identification is "f" in the function keyword
                     // and is stored on TypeLocation's m_divotForFunctionOffsetIfReturnStatement member variable.
-                    divotStart = divotEnd = m_sourceOffset;
+                    divotStart = divotEnd = m_ownerExecutable->typeProfilingStartOffset();
                     shouldAnalyze = true;
                 }
                 break;
@@ -2101,7 +2119,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             bool isNewLocation = locationPair.second;
 
             if (flag == ProfileTypeBytecodeFunctionReturnStatement)
-                location->m_divotForFunctionOffsetIfReturnStatement = m_sourceOffset;
+                location->m_divotForFunctionOffsetIfReturnStatement = m_ownerExecutable->typeProfilingStartOffset();
 
             if (shouldAnalyze && isNewLocation)
                 vm()->typeProfiler()->insertNewLocation(location);

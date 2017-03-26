@@ -31,7 +31,6 @@
 #include "JSTestEventTarget.h"
 #include "JSTestSubObj.h"
 #include "SVGPoint.h"
-#include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
 #include "TestTypedefs.h"
 #include "URL.h"
@@ -246,7 +245,9 @@ bool JSTestTypedefs::getOwnPropertySlot(JSObject* object, ExecState* exec, Prope
 {
     auto* thisObject = jsCast<JSTestTypedefs*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    return getStaticValueSlot<JSTestTypedefs, Base>(exec, JSTestTypedefsTable, thisObject, propertyName, slot);
+    if (getStaticValueSlot<JSTestTypedefs, Base>(exec, JSTestTypedefsTable, thisObject, propertyName, slot))
+        return true;
+    return false;
 }
 
 EncodedJSValue jsTestTypedefsUnsignedLongLongAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)

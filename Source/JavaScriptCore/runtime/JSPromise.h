@@ -34,7 +34,7 @@ class JSPromise : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
 
-    static JSPromise* create(VM&, JSGlobalObject*);
+    static JSPromise* create(VM&, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_EXPORT_INFO;
@@ -48,7 +48,11 @@ public:
     Status status(VM&) const;
     JSValue result(VM&) const;
 
-private:
+    // Initialize the promise with the executor.
+    // This may raise a JS exception.
+    void initialize(ExecState*, JSGlobalObject*, JSValue executor);
+
+protected:
     JSPromise(VM&, Structure*);
     void finishCreation(VM&);
 };

@@ -59,6 +59,7 @@
 #include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSGlobalObjectFunctions.h"
+#include "JSInternalPromiseDeferred.h"
 #include "JSLexicalEnvironment.h"
 #include "JSLock.h"
 #include "JSNotAnObject.h"
@@ -237,6 +238,7 @@ VM::VM(VMType vmType, HeapType heapType)
     functionRareDataStructure.set(*this, FunctionRareData::createStructure(*this, 0, jsNull()));
     exceptionStructure.set(*this, Exception::createStructure(*this, 0, jsNull()));
     promiseDeferredStructure.set(*this, JSPromiseDeferred::createStructure(*this, 0, jsNull()));
+    internalPromiseDeferredStructure.set(*this, JSInternalPromiseDeferred::createStructure(*this, 0, jsNull()));
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     smallStrings.initializeCommonStrings(*this);
 
@@ -252,7 +254,7 @@ VM::VM(VMType vmType, HeapType heapType)
     ftlThunks = std::make_unique<FTL::Thunks>();
 #endif // ENABLE(FTL_JIT)
     
-    interpreter->initialize(this->canUseJIT());
+    interpreter->initialize();
     
 #if ENABLE(JIT)
     initializeHostCallReturnValue(); // This is needed to convince the linker not to drop host call return support.
@@ -469,21 +471,13 @@ void VM::stopSampling()
     interpreter->stopSampling();
 }
 
-void VM::prepareToDeleteCode()
-{
-#if ENABLE(DFG_JIT)
-    for (unsigned i = DFG::numberOfWorklists(); i--;) {
-        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
-            worklist->completeAllPlansForVM(*this);
-    }
-#endif // ENABLE(DFG_JIT)
-}
-
 void VM::deleteAllCode()
 {
-    prepareToDeleteCode();
     m_codeCache->clear();
     m_regExpCache->deleteAllCode();
+#if ENABLE(DFG_JIT)
+    DFG::completeAllPlansForVM(*this);
+#endif
     heap.deleteAllCompiledCode();
     heap.deleteAllUnlinkedFunctionCode();
     heap.reportAbandonedObjectGraph();
@@ -706,7 +700,6 @@ void VM::setEnabledProfiler(LegacyProfiler* profiler)
 {
     m_enabledProfiler = profiler;
     if (m_enabledProfiler) {
-        prepareToDeleteCode();
         SetEnabledProfilerFunctor functor;
         heap.forEachCodeBlock(functor);
     }

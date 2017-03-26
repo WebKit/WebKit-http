@@ -1062,19 +1062,19 @@ _llint_op_put_by_index:
 _llint_op_put_getter_by_id:
     traceExecution()
     callSlowPath(_llint_slow_path_put_getter_by_id)
-    dispatch(4)
+    dispatch(5)
 
 
 _llint_op_put_setter_by_id:
     traceExecution()
     callSlowPath(_llint_slow_path_put_setter_by_id)
-    dispatch(4)
+    dispatch(5)
 
 
 _llint_op_put_getter_setter:
     traceExecution()
     callSlowPath(_llint_slow_path_put_getter_setter)
-    dispatch(5)
+    dispatch(6)
 
 
 _llint_op_jtrue:
@@ -1183,6 +1183,10 @@ _llint_op_new_func_exp:
     callSlowPath(_llint_slow_path_new_func_exp)
     dispatch(4)
 
+_llint_op_new_arrow_func_exp:
+    traceExecution()
+    callSlowPath(_llint_slow_path_new_arrow_func_exp)
+    dispatch(5)
 
 _llint_op_call:
     traceExecution()

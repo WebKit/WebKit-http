@@ -481,6 +481,8 @@ namespace JSC {
         RegisterID* emitNewFunctionInternal(RegisterID* dst, unsigned index);
         RegisterID* emitNewFunctionExpression(RegisterID* dst, FuncExprNode* func);
         RegisterID* emitNewDefaultConstructor(RegisterID* dst, ConstructorKind, const Identifier& name);
+        void emitNewFunctionCommon(RegisterID*, BaseFuncExprNode*, OpcodeID);
+        RegisterID* emitNewArrowFunctionExpression(RegisterID*, ArrowFuncExprNode*);
         RegisterID* emitNewRegExp(RegisterID* dst, RegExp*);
 
         RegisterID* emitMoveLinkTimeConstant(RegisterID* dst, LinkTimeConstant);
@@ -508,9 +510,9 @@ namespace JSC {
         RegisterID* emitDeleteByVal(RegisterID* dst, RegisterID* base, RegisterID* property);
         RegisterID* emitPutByIndex(RegisterID* base, unsigned index, RegisterID* value);
 
-        void emitPutGetterById(RegisterID* base, const Identifier& property, RegisterID* getter);
-        void emitPutSetterById(RegisterID* base, const Identifier& property, RegisterID* setter);
-        void emitPutGetterSetter(RegisterID* base, const Identifier& property, RegisterID* getter, RegisterID* setter);
+        void emitPutGetterById(RegisterID* base, const Identifier& property, unsigned propertyDescriptorOptions, RegisterID* getter);
+        void emitPutSetterById(RegisterID* base, const Identifier& property, unsigned propertyDescriptorOptions, RegisterID* setter);
+        void emitPutGetterSetter(RegisterID* base, const Identifier& property, unsigned attributes, RegisterID* getter, RegisterID* setter);
         
         ExpectedFunction expectedFunctionForIdentifier(const Identifier&);
         RegisterID* emitCall(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
@@ -663,6 +665,7 @@ namespace JSC {
         ALWAYS_INLINE void rewindUnaryOp();
 
         void allocateAndEmitScope();
+        RegisterID* emitLoadArrowFunctionThis(RegisterID*);
         void emitComplexPopScopes(RegisterID*, ControlFlowContext* topScope, ControlFlowContext* bottomScope);
 
         typedef HashMap<double, JSValue> NumberMap;
@@ -717,9 +720,9 @@ namespace JSC {
             VariableEnvironment variablesUnderTDZ;
             getVariablesUnderTDZ(variablesUnderTDZ);
 
-            FunctionParseMode parseMode = metadata->parseMode();
+            SourceParseMode parseMode = metadata->parseMode();
             ConstructAbility constructAbility = ConstructAbility::CanConstruct;
-            if (parseMode == GetterMode || parseMode == SetterMode || parseMode == ArrowFunctionMode || (parseMode == MethodMode && metadata->constructorKind() == ConstructorKind::None))
+            if (parseMode == SourceParseMode::GetterMode || parseMode == SourceParseMode::SetterMode || parseMode == SourceParseMode::ArrowFunctionMode || (parseMode == SourceParseMode::MethodMode && metadata->constructorKind() == ConstructorKind::None))
                 constructAbility = ConstructAbility::CannotConstruct;
 
             return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), metadata, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, variablesUnderTDZ);

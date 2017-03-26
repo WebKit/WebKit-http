@@ -197,6 +197,7 @@ namespace JSC { namespace DFG {
     macro(MultiPutByOffset, NodeMustGenerate) \
     macro(GetArrayLength, NodeResultInt32) \
     macro(GetTypedArrayByteOffset, NodeResultInt32) \
+    macro(LoadArrowFunctionThis, NodeResultJS) \
     macro(GetScope, NodeResultJS) \
     macro(SkipScope, NodeResultJS) \
     macro(GetClosureVar, NodeResultJS) \
@@ -230,7 +231,6 @@ namespace JSC { namespace DFG {
     macro(CompareGreater, NodeResultBoolean | NodeMustGenerate) \
     macro(CompareGreaterEq, NodeResultBoolean | NodeMustGenerate) \
     macro(CompareEq, NodeResultBoolean | NodeMustGenerate) \
-    macro(CompareEqConstant, NodeResultBoolean) \
     macro(CompareStrictEq, NodeResultBoolean) \
     \
     /* Calls. */\
@@ -293,6 +293,8 @@ namespace JSC { namespace DFG {
     macro(PutToArguments, NodeMustGenerate) \
     \
     macro(NewFunction, NodeResultJS) \
+    \
+    macro(NewArrowFunction, NodeResultJS) \
     \
     /* These aren't terminals but always exit */ \
     macro(Throw, NodeMustGenerate) \

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 #include <memory>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
-#include <wtf/ThreadingPrimitives.h>
+#include <wtf/Lock.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -64,10 +64,6 @@ public:
 
     void lockAcquired();
     void performNextStep();
-
-#if PLATFORM(IOS)
-    bool shouldPerformWhilePaused() const;
-#endif
 
     Database* database() { return m_database.get(); }
     bool isReadOnly() { return m_readOnly; }
@@ -125,7 +121,7 @@ private:
     bool m_readOnly;
     bool m_hasVersionMismatch;
 
-    Mutex m_statementMutex;
+    Lock m_statementMutex;
     Deque<std::unique_ptr<SQLStatement>> m_statementQueue;
 
     std::unique_ptr<SQLiteTransaction> m_sqliteTransaction;

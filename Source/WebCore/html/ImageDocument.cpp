@@ -27,6 +27,7 @@
 
 #include "CachedImage.h"
 #include "Chrome.h"
+#include "ChromeClient.h"
 #include "DocumentLoader.h"
 #include "EventListener.h"
 #include "EventNames.h"
@@ -264,6 +265,8 @@ void ImageDocument::imageUpdated()
         FloatSize screenSize = page()->chrome().screenSize();
         if (imageSize.width() > screenSize.width())
             processViewport(String::format("width=%u", static_cast<unsigned>(imageSize.width().toInt())), ViewportArguments::ImageDocument);
+        if (page())
+            page()->chrome().client().imageOrMediaDocumentSizeChanged(IntSize(imageSize.width(), imageSize.height()));
 #else
         // Call windowSizeChanged for its side effect of sizing the image.
         windowSizeChanged();
@@ -400,7 +403,7 @@ void ImageEventListener::handleEvent(ScriptExecutionContext*, Event* event)
         m_document.windowSizeChanged();
     else if (event->type() == eventNames().clickEvent && is<MouseEvent>(*event)) {
         MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
-        m_document.imageClicked(mouseEvent.x(), mouseEvent.y());
+        m_document.imageClicked(mouseEvent.offsetX(), mouseEvent.offsetY());
     }
 }
 

@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 2.8.12)
+include(WebKitCommon)
+
 set(WebKit_SOURCES
 )
 
@@ -9,17 +12,14 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy"
-    "${JAVASCRIPTCORE_DIR}"
-    "${JAVASCRIPTCORE_DIR}/disassembler"
-    "${WTF_DIR}"
 )
 
 set(WebKit_SYSTEM_INCLUDE_DIRECTORIES "")
 
 set(WebKit_LIBRARIES
-    PRIVATE JavaScriptCore
-    PRIVATE WTF
-    PRIVATE WebCore
+    PRIVATE JavaScriptCore${DEBUG_SUFFIX}
+    PRIVATE WTF${DEBUG_SUFFIX}
+    PRIVATE WebCore${DEBUG_SUFFIX}
 )
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()

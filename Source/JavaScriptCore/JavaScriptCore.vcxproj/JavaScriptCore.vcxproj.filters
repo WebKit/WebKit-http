@@ -459,9 +459,6 @@
     <ClCompile Include="..\parser\ModuleAnalyzer.cpp">
       <Filter>parser</Filter>
     </ClCompile>
-    <ClCompile Include="..\parser\ModuleRecord.cpp">
-      <Filter>parser</Filter>
-    </ClCompile>
     <ClCompile Include="..\parser\Nodes.cpp">
       <Filter>parser</Filter>
     </ClCompile>
@@ -642,6 +639,9 @@
     <ClCompile Include="..\runtime\InitializeThreading.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\InspectorInstrumentationObject.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\InternalFunction.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -721,6 +721,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSMap.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSModuleRecord.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSNotAnObject.cpp">
@@ -1048,6 +1051,18 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\SimpleTypedArrayController.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSInternalPromise.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSInternalPromiseConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSInternalPromiseDeferred.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSInternalPromisePrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSPromise.cpp">
@@ -1395,6 +1410,9 @@
     <ClCompile Include="..\jit\Repatch.cpp">
       <Filter>jit</Filter>
     </ClCompile>
+    <ClCompile Include="..\bytecode\InlineCallFrame.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
     <ClCompile Include="..\bytecode\InlineCallFrameSet.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
@@ -1692,6 +1710,9 @@
     <ClCompile Include="..\runtime\MemoryStatistics.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\ModuleLoaderObject.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\bytecode\ComplexGetStatus.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
@@ -1818,6 +1839,9 @@
     <ClCompile Include="..\runtime\TypeofType.cpp" />
     <ClCompile Include="..\runtime\VarOffset.cpp" />
     <ClCompile Include="..\wasm\JSWASMModule.cpp">
+      <Filter>wasm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wasm\WASMFunctionParser.cpp">
       <Filter>wasm</Filter>
     </ClCompile>
     <ClCompile Include="..\wasm\WASMModuleParser.cpp">
@@ -2492,9 +2516,6 @@
     <ClInclude Include="..\parser\ModuleAnalyzer.h">
       <Filter>parser</Filter>
     </ClInclude>
-    <ClInclude Include="..\parser\ModuleRecord.h">
-      <Filter>parser</Filter>
-    </ClInclude>
     <ClInclude Include="..\parser\NodeConstructors.h">
       <Filter>parser</Filter>
     </ClInclude>
@@ -2738,6 +2759,9 @@
     <ClInclude Include="..\runtime\InitializeThreading.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\InspectorInstrumentationObject.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\InternalFunction.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2790,6 +2814,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSArray.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSArrowFunction.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSBoundFunction.h">
@@ -3186,6 +3213,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorFrontendDispatchers.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorInstrumentationObject.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorProtocolObjects.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
@@ -3196,6 +3226,9 @@
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\Lexer.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ModuleLoaderObject.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NumberConstructor.lut.h">
@@ -3283,6 +3316,18 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSInternalPromise.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSInternalPromiseConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSInternalPromiseDeferred.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSInternalPromisePrototype.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSPromise.h">
@@ -3402,6 +3447,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\DateConstructor.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSInternalPromiseConstructor.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromiseConstructor.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
@@ -3433,6 +3481,9 @@
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSMap.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSModuleRecord.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSSet.h">
@@ -3879,6 +3930,9 @@
     <ClInclude Include="..\jit\RegisterSet.h">
       <Filter>jit</Filter>
     </ClInclude>
+    <ClInclude Include="..\bytecode\InlineCallFrame.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
     <ClInclude Include="..\bytecode\InlineCallFrameSet.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -4228,6 +4282,9 @@
     <ClInclude Include="..\runtime\MemoryStatistics.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\ModuleLoaderObject.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\bytecode\ComplexGetStatus.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -4366,10 +4423,16 @@
     <ClInclude Include="..\wasm\JSWASMModule.h">
       <Filter>wasm</Filter>
     </ClInclude>
+    <ClInclude Include="..\wasm\WASMConstants.h">
+      <Filter>wasm</Filter>
+    </ClInclude>
     <ClInclude Include="..\wasm\WASMFormat.h">
       <Filter>wasm</Filter>
     </ClInclude>
-    <ClInclude Include="..\wasm\WASMMagicNumber.h">
+    <ClInclude Include="..\wasm\WASMFunctionParser.h">
+      <Filter>wasm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wasm\WASMFunctionSyntaxChecker.h">
       <Filter>wasm</Filter>
     </ClInclude>
     <ClInclude Include="..\wasm\WASMModuleParser.h">

@@ -1,3 +1,117 @@
+2015-08-20  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up CMake build after r188673
+        https://bugs.webkit.org/show_bug.cgi?id=148234
+
+        Reviewed by Tim Horton.
+
+        * PlatformWin.cmake:
+        Include ANGLE forwarding headers directories.
+
+2015-08-19  Alex Christensen  <achristensen@webkit.org>
+
+        CMake Windows build should not include files directly from other Source directories
+        https://bugs.webkit.org/show_bug.cgi?id=148198
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2015-08-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Replace MIDL [in/out] comments with equivalent SAL
+        https://bugs.webkit.org/show_bug.cgi?id=148001
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/Interfaces/InterfacesCommon.props: Turn
+        on SAL declarations in MIDL output.
+
+2015-08-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace all remaining uses of WTF::Mutex with WTF::Lock
+        https://bugs.webkit.org/show_bug.cgi?id=148089
+
+        Reviewed by Geoffrey Garen.
+
+        * Storage/StorageAreaSync.cpp:
+        (WebCore::StorageAreaSync::syncTimerFired):
+        (WebCore::StorageAreaSync::markImported):
+        (WebCore::StorageAreaSync::blockUntilImportComplete):
+        (WebCore::StorageAreaSync::performSync):
+        * Storage/StorageAreaSync.h:
+        * Storage/StorageTracker.cpp:
+        (WebCore::StorageTracker::setDatabaseDirectoryPath):
+        (WebCore::StorageTracker::finishedImportingOriginIdentifiers):
+        (WebCore::StorageTracker::syncImportOriginIdentifiers):
+        (WebCore::StorageTracker::syncFileSystemAndTrackerDatabase):
+        (WebCore::StorageTracker::setOriginDetails):
+        (WebCore::StorageTracker::syncSetOriginDetails):
+        (WebCore::StorageTracker::origins):
+        (WebCore::StorageTracker::deleteAllOrigins):
+        (WebCore::StorageTracker::syncDeleteAllOrigins):
+        (WebCore::StorageTracker::deleteOrigin):
+        (WebCore::StorageTracker::syncDeleteOrigin):
+        (WebCore::StorageTracker::canDeleteOrigin):
+        (WebCore::StorageTracker::cancelDeletingOrigin):
+        (WebCore::StorageTracker::diskUsageForOrigin):
+        * Storage/StorageTracker.h:
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        [Win CMake] Allow WebKitLibraries directory to be set from the command line
+        https://bugs.webkit.org/show_bug.cgi?id=148112
+
+        Reviewed by Brent Fulgham.
+
+        * PlatformWin.cmake:
+        Don't use an environment variable for WEBKIT_LIBRARIES_DIR.  
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Build Debug Suffix on Windows with CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148083
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+        Add DEBUG_SUFFIX
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Move some commands from ./CMakeLists.txt to Source/cmake
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Added some commands needed to build WebKit by itself.
+
+2015-08-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188428.
+        https://bugs.webkit.org/show_bug.cgi?id=148015
+
+        broke cmake build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Move some commands from ./CMakeLists.txt to Source/cmake"
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+        http://trac.webkit.org/changeset/188428
+
+2015-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Move some commands from ./CMakeLists.txt to Source/cmake
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Added some commands needed to build WebKit by itself.
+
 2015-08-12  Alex Christensen  <achristensen@webkit.org>
 
         Fix Debug CMake builds on Windows

@@ -638,7 +638,7 @@ void RenderTable::addOverflowFromChildren()
         int bottomBorderOverflow = height() + outerBorderBottom() - borderBottom();
         int topBorderOverflow = borderTop() - outerBorderTop();
         IntRect borderOverflowRect(leftBorderOverflow, topBorderOverflow, rightBorderOverflow - leftBorderOverflow, bottomBorderOverflow - topBorderOverflow);
-        if (borderOverflowRect != pixelSnappedBorderBoxRect()) {
+        if (borderOverflowRect != snappedIntRect(borderBoxRect())) {
             addLayoutOverflow(borderOverflowRect);
             addVisualOverflow(borderOverflowRect);
         }
@@ -661,8 +661,8 @@ void RenderTable::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
     if (!isRoot()) {
         LayoutRect overflowBox = visualOverflowRect();
+        adjustRectWithMaximumOutline(paintInfo.phase, overflowBox);
         flipForWritingMode(overflowBox);
-        overflowBox.inflate(maximalOutlineSize(paintInfo.phase));
         overflowBox.moveBy(adjustedPaintOffset);
         if (!overflowBox.intersects(paintInfo.rect))
             return;

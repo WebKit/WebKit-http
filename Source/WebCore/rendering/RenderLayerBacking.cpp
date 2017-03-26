@@ -952,8 +952,7 @@ void RenderLayerBacking::updateGeometry()
         // FIXME: need to do some pixel snapping here.
         m_scrollingLayer->setPosition(FloatPoint(paddingBox.location() - localCompositingBounds.location()));
 
-        IntSize pixelSnappedClientSize(renderBox.pixelSnappedClientWidth(), renderBox.pixelSnappedClientHeight());
-        m_scrollingLayer->setSize(pixelSnappedClientSize);
+        m_scrollingLayer->setSize(roundedIntSize(LayoutSize(renderBox.clientWidth(), renderBox.clientHeight())));
 #if PLATFORM(IOS)
         FloatSize oldScrollingLayerOffset = m_scrollingLayer->offsetFromRenderer();
         m_scrollingLayer->setOffsetFromRenderer(FloatPoint() - paddingBox.location());
@@ -1343,7 +1342,7 @@ void RenderLayerBacking::positionOverflowControlsLayers()
     if (!m_owningLayer.hasScrollbars())
         return;
 
-    const IntRect borderBox = downcast<RenderBox>(renderer()).pixelSnappedBorderBoxRect();
+    const IntRect borderBox = snappedIntRect(renderBox()->borderBoxRect());
 
     FloatSize offsetFromRenderer = m_graphicsLayer->offsetFromRenderer();
     if (GraphicsLayer* layer = layerForHorizontalScrollbar()) {
@@ -2473,7 +2472,7 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
 {
     bool hasOpacity = keyframes.containsProperty(CSSPropertyOpacity);
     bool hasTransform = renderer().isBox() && keyframes.containsProperty(CSSPropertyTransform);
-    bool hasFilter = keyframes.containsProperty(CSSPropertyWebkitFilter);
+    bool hasFilter = keyframes.containsProperty(CSSPropertyFilter);
 
     bool hasBackdropFilter = false;
 #if ENABLE(FILTERS_LEVEL_2)
@@ -2485,7 +2484,7 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
 
     KeyframeValueList transformVector(AnimatedPropertyTransform);
     KeyframeValueList opacityVector(AnimatedPropertyOpacity);
-    KeyframeValueList filterVector(AnimatedPropertyWebkitFilter);
+    KeyframeValueList filterVector(AnimatedPropertyFilter);
 #if ENABLE(FILTERS_LEVEL_2)
     KeyframeValueList backdropFilterVector(AnimatedPropertyWebkitBackdropFilter);
 #endif
@@ -2508,7 +2507,7 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
         if ((hasOpacity && isFirstOrLastKeyframe) || currentKeyframe.containsProperty(CSSPropertyOpacity))
             opacityVector.insert(std::make_unique<FloatAnimationValue>(key, keyframeStyle->opacity(), tf));
 
-        if ((hasFilter && isFirstOrLastKeyframe) || currentKeyframe.containsProperty(CSSPropertyWebkitFilter))
+        if ((hasFilter && isFirstOrLastKeyframe) || currentKeyframe.containsProperty(CSSPropertyFilter))
             filterVector.insert(std::make_unique<FilterAnimationValue>(key, keyframeStyle->filter(), tf));
 
 #if ENABLE(FILTERS_LEVEL_2)
@@ -2522,7 +2521,7 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
 
     bool didAnimate = false;
 
-    if (hasTransform && m_graphicsLayer->addAnimation(transformVector, downcast<RenderBox>(renderer()).pixelSnappedBorderBoxRect().size(), anim, keyframes.animationName(), timeOffset))
+    if (hasTransform && m_graphicsLayer->addAnimation(transformVector, snappedIntRect(renderBox()->borderBoxRect()).size(), anim, keyframes.animationName(), timeOffset))
         didAnimate = true;
 
     if (hasOpacity && m_graphicsLayer->addAnimation(opacityVector, IntSize(), anim, keyframes.animationName(), timeOffset))
@@ -2576,7 +2575,7 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
             KeyframeValueList transformVector(AnimatedPropertyTransform);
             transformVector.insert(std::make_unique<TransformAnimationValue>(0, fromStyle->transform()));
             transformVector.insert(std::make_unique<TransformAnimationValue>(1, toStyle->transform()));
-            if (m_graphicsLayer->addAnimation(transformVector, downcast<RenderBox>(renderer()).pixelSnappedBorderBoxRect().size(), transformAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyTransform), timeOffset)) {
+            if (m_graphicsLayer->addAnimation(transformVector, snappedIntRect(renderBox()->borderBoxRect()).size(), transformAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyTransform), timeOffset)) {
                 // To ensure that the correct transform is visible when the animation ends, also set the final transform.
                 updateTransform(*toStyle);
                 didAnimate = true;
@@ -2584,13 +2583,13 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
         }
     }
 
-    if (property == CSSPropertyWebkitFilter && m_owningLayer.hasFilter()) {
-        const Animation* filterAnim = toStyle->transitionForProperty(CSSPropertyWebkitFilter);
+    if (property == CSSPropertyFilter && m_owningLayer.hasFilter()) {
+        const Animation* filterAnim = toStyle->transitionForProperty(CSSPropertyFilter);
         if (filterAnim && !filterAnim->isEmptyOrZeroDuration()) {
-            KeyframeValueList filterVector(AnimatedPropertyWebkitFilter);
+            KeyframeValueList filterVector(AnimatedPropertyFilter);
             filterVector.insert(std::make_unique<FilterAnimationValue>(0, fromStyle->filter()));
             filterVector.insert(std::make_unique<FilterAnimationValue>(1, toStyle->filter()));
-            if (m_graphicsLayer->addAnimation(filterVector, FloatSize(), filterAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyWebkitFilter), timeOffset)) {
+            if (m_graphicsLayer->addAnimation(filterVector, FloatSize(), filterAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyFilter), timeOffset)) {
                 // To ensure that the correct filter is visible when the animation ends, also set the final filter.
                 updateFilters(*toStyle);
                 didAnimate = true;
@@ -2698,8 +2697,8 @@ CSSPropertyID RenderLayerBacking::graphicsLayerToCSSProperty(AnimatedPropertyID 
     case AnimatedPropertyBackgroundColor:
         cssProperty = CSSPropertyBackgroundColor;
         break;
-    case AnimatedPropertyWebkitFilter:
-        cssProperty = CSSPropertyWebkitFilter;
+    case AnimatedPropertyFilter:
+        cssProperty = CSSPropertyFilter;
         break;
 #if ENABLE(FILTERS_LEVEL_2)
     case AnimatedPropertyWebkitBackdropFilter:
@@ -2721,8 +2720,8 @@ AnimatedPropertyID RenderLayerBacking::cssToGraphicsLayerProperty(CSSPropertyID 
         return AnimatedPropertyOpacity;
     case CSSPropertyBackgroundColor:
         return AnimatedPropertyBackgroundColor;
-    case CSSPropertyWebkitFilter:
-        return AnimatedPropertyWebkitFilter;
+    case CSSPropertyFilter:
+        return AnimatedPropertyFilter;
 #if ENABLE(FILTERS_LEVEL_2)
     case CSSPropertyWebkitBackdropFilter:
         return AnimatedPropertyWebkitBackdropFilter;

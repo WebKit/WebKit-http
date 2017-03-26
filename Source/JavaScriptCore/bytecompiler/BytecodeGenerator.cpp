@@ -470,20 +470,25 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     }
 
     m_newTargetRegister = addVar();
-    if (isConstructor()) {
-        emitMove(m_newTargetRegister, &m_thisRegister);
-        if (constructorKind() == ConstructorKind::Derived) {
-            emitMoveEmptyValue(&m_thisRegister);
-        } else
-            emitCreateThis(&m_thisRegister);
-    } else if (constructorKind() != ConstructorKind::None) {
-        emitThrowTypeError("Cannot call a class constructor");
-    } else if (functionNode->usesThis() || codeBlock->usesEval()) {
-        m_codeBlock->addPropertyAccessInstruction(instructions().size());
-        emitOpcode(op_to_this);
-        instructions().append(kill(&m_thisRegister));
-        instructions().append(0);
-        instructions().append(0);
+    if (!codeBlock->isArrowFunction()) {
+        if (isConstructor()) {
+            emitMove(m_newTargetRegister, &m_thisRegister);
+            if (constructorKind() == ConstructorKind::Derived)
+                emitMoveEmptyValue(&m_thisRegister);
+            else
+                emitCreateThis(&m_thisRegister);
+        } else if (constructorKind() != ConstructorKind::None) {
+            emitThrowTypeError("Cannot call a class constructor");
+        } else if (functionNode->usesThis() || codeBlock->usesEval()) {
+            m_codeBlock->addPropertyAccessInstruction(instructions().size());
+            emitOpcode(op_to_this);
+            instructions().append(kill(&m_thisRegister));
+            instructions().append(0);
+            instructions().append(0);
+        }
+    } else {
+        if (functionNode->usesThis() || codeBlock->usesEval())
+            emitLoadArrowFunctionThis(&m_thisRegister);
     }
 
     // All "addVar()"s needs to happen before "initializeDefaultParameterValuesAndSetupFunctionScopeStack()" is called
@@ -1948,7 +1953,7 @@ RegisterID* BytecodeGenerator::emitDirectPutById(RegisterID* base, const Identif
     return value;
 }
 
-void BytecodeGenerator::emitPutGetterById(RegisterID* base, const Identifier& property, RegisterID* getter)
+void BytecodeGenerator::emitPutGetterById(RegisterID* base, const Identifier& property, unsigned attributes, RegisterID* getter)
 {
     unsigned propertyIndex = addConstant(property);
     m_staticPropertyAnalyzer.putById(base->index(), propertyIndex);
@@ -1956,10 +1961,11 @@ void BytecodeGenerator::emitPutGetterById(RegisterID* base, const Identifier& pr
     emitOpcode(op_put_getter_by_id);
     instructions().append(base->index());
     instructions().append(propertyIndex);
+    instructions().append(attributes);
     instructions().append(getter->index());
 }
 
-void BytecodeGenerator::emitPutSetterById(RegisterID* base, const Identifier& property, RegisterID* setter)
+void BytecodeGenerator::emitPutSetterById(RegisterID* base, const Identifier& property, unsigned attributes, RegisterID* setter)
 {
     unsigned propertyIndex = addConstant(property);
     m_staticPropertyAnalyzer.putById(base->index(), propertyIndex);
@@ -1967,10 +1973,11 @@ void BytecodeGenerator::emitPutSetterById(RegisterID* base, const Identifier& pr
     emitOpcode(op_put_setter_by_id);
     instructions().append(base->index());
     instructions().append(propertyIndex);
+    instructions().append(attributes);
     instructions().append(setter->index());
 }
 
-void BytecodeGenerator::emitPutGetterSetter(RegisterID* base, const Identifier& property, RegisterID* getter, RegisterID* setter)
+void BytecodeGenerator::emitPutGetterSetter(RegisterID* base, const Identifier& property, unsigned attributes, RegisterID* getter, RegisterID* setter)
 {
     unsigned propertyIndex = addConstant(property);
 
@@ -1979,6 +1986,7 @@ void BytecodeGenerator::emitPutGetterSetter(RegisterID* base, const Identifier& 
     emitOpcode(op_put_getter_setter);
     instructions().append(base->index());
     instructions().append(propertyIndex);
+    instructions().append(attributes);
     instructions().append(getter->index());
     instructions().append(setter->index());
 }
@@ -2254,16 +2262,37 @@ RegisterID* BytecodeGenerator::emitNewRegExp(RegisterID* dst, RegExp* regExp)
     return dst;
 }
 
-RegisterID* BytecodeGenerator::emitNewFunctionExpression(RegisterID* r0, FuncExprNode* n)
+void BytecodeGenerator::emitNewFunctionCommon(RegisterID* dst, BaseFuncExprNode* func, OpcodeID opcodeID)
 {
-    FunctionMetadataNode* metadata = n->metadata();
-    unsigned index = m_codeBlock->addFunctionExpr(makeFunction(metadata));
 
-    emitOpcode(op_new_func_exp);
-    instructions().append(r0->index());
+    ASSERT(opcodeID == op_new_func_exp || opcodeID == op_new_arrow_func_exp);
+    
+    FunctionMetadataNode* function = func->metadata();
+    unsigned index = m_codeBlock->addFunctionExpr(makeFunction(function));
+    
+    emitOpcode(opcodeID);
+    instructions().append(dst->index());
     instructions().append(scopeRegister()->index());
     instructions().append(index);
-    return r0;
+    
+    if (opcodeID == op_new_arrow_func_exp)
+        instructions().append(thisRegister()->index());
+}
+
+RegisterID* BytecodeGenerator::emitNewFunctionExpression(RegisterID* dst, FuncExprNode* func)
+{
+    emitNewFunctionCommon(dst, func, op_new_func_exp);
+    return dst;
+}
+
+RegisterID* BytecodeGenerator::emitNewArrowFunctionExpression(RegisterID* dst, ArrowFuncExprNode* func)
+{
+    bool isClassConstructor = m_codeBlock->isConstructor() && constructorKind() != ConstructorKind::None;
+    if (isClassConstructor)
+        emitTDZCheck(thisRegister());
+    
+    emitNewFunctionCommon(dst, func, op_new_arrow_func_exp);
+    return dst;
 }
 
 RegisterID* BytecodeGenerator::emitNewDefaultConstructor(RegisterID* dst, ConstructorKind constructorKind, const Identifier& name)
@@ -2839,6 +2868,13 @@ void BytecodeGenerator::allocateAndEmitScope()
     emitMove(m_topMostScope, scopeRegister());
 }
 
+RegisterID* BytecodeGenerator::emitLoadArrowFunctionThis(RegisterID* arrowFunctionThis)
+{
+    emitOpcode(op_load_arrowfunction_this);
+    instructions().append(arrowFunctionThis->index());
+    return arrowFunctionThis;
+}
+    
 void BytecodeGenerator::emitComplexPopScopes(RegisterID* scope, ControlFlowContext* topScope, ControlFlowContext* bottomScope)
 {
     while (topScope > bottomScope) {

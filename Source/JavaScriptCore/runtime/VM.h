@@ -297,6 +297,7 @@ public:
     Strong<Structure> functionRareDataStructure;
     Strong<Structure> exceptionStructure;
     Strong<Structure> promiseDeferredStructure;
+    Strong<Structure> internalPromiseDeferredStructure;
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
 
@@ -476,6 +477,14 @@ public:
         return result;
     }
 
+    EncodedJSValue* exceptionFuzzingBuffer(size_t size)
+    {
+        ASSERT(Options::enableExceptionFuzz());
+        if (!m_exceptionFuzzBuffer)
+            m_exceptionFuzzBuffer = MallocPtr<EncodedJSValue>::malloc(size);
+        return m_exceptionFuzzBuffer.get();
+    }
+
     void gatherConservativeRoots(ConservativeRoots&);
 
     VMEntryScope* entryScope;
@@ -532,8 +541,6 @@ public:
     JSLock& apiLock() { return *m_apiLock; }
     CodeCache* codeCache() { return m_codeCache.get(); }
 
-    void prepareToDeleteCode();
-        
     JS_EXPORT_PRIVATE void deleteAllCode();
 
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
@@ -613,6 +620,7 @@ private:
     std::unique_ptr<ControlFlowProfiler> m_controlFlowProfiler;
     unsigned m_controlFlowProfilerEnabledCount;
     Deque<std::unique_ptr<QueuedTask>> m_microtaskQueue;
+    MallocPtr<EncodedJSValue> m_exceptionFuzzBuffer;
 };
 
 #if ENABLE(GC_VALIDATION)

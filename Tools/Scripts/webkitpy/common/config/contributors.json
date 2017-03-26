@@ -720,7 +720,7 @@
       },
       "Devin Rousso" : {
          "emails" : [
-            "drousso@apple.com"
+            "dcrousso+webkit@gmail.com"
          ],
          "nicks" : [
             "drousso"
@@ -3040,6 +3040,14 @@
             "apinheiro@igalia.com"
          ]
       },
+      "Aleksandr Skachkov" : {
+         "emails" : [
+            "gskachkov@gmail.com"
+         ],
+         "nicks" : [
+            "gskachkov"
+         ]
+      },
       "Alexey Marinichev" : {
          "emails" : [
             "amarinichev@chromium.org",
@@ -4656,7 +4664,7 @@
       },
       "Saam Barati" : {
          "emails" : [
-            "saambarati1@gmail.com"
+            "sbarati@apple.com"
          ],
          "nicks" : [
             "saamyjoon"

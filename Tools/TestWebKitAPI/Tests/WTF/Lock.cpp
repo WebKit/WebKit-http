@@ -53,7 +53,7 @@ void runLockTest(unsigned numThreadGroups, unsigned numThreadsPerGroup, unsigned
 
         for (unsigned threadIndex = numThreadsPerGroup; threadIndex--;) {
             threads[threadGroupIndex * numThreadsPerGroup + threadIndex] = createThread(
-                "Benchmark thread",
+                "Lock test thread",
                 [threadGroupIndex, &locks, &words, numIterations, workPerCriticalSection] () {
                     for (unsigned i = numIterations; i--;) {
                         locks[threadGroupIndex].lock();
@@ -114,7 +114,7 @@ TEST(WTF_WordLock, ManyContendedShortSections)
 
 TEST(WTF_WordLock, ManyContendedLongSections)
 {
-    runLockTest<WordLock>(10, 10, 10000, 1000);
+    runLockTest<WordLock>(10, 10, 10000, 500);
 }
 
 TEST(WTF_Lock, UncontendedShortSection)
@@ -149,7 +149,7 @@ TEST(WTF_Lock, ManyContendedLongSections)
 
 TEST(WTF_Lock, ManyContendedLongerSections)
 {
-    runLockTest<Lock>(10, 10, 100000, 100);
+    runLockTest<Lock>(10, 10, 100000, 10);
 }
 
 TEST(WTF_Lock, SectionAddressCollision)

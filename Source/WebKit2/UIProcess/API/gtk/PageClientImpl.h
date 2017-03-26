@@ -87,9 +87,6 @@ private:
 #if ENABLE(INPUT_TYPE_COLOR)
     virtual RefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& intialColor, const WebCore::IntRect&) override;
 #endif
-    virtual void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorLifetime = WebCore::TextIndicatorLifetime::Permanent) override;
-    virtual void clearTextIndicator(WebCore::TextIndicatorDismissalAnimation = WebCore::TextIndicatorDismissalAnimation::FadeOut) override;
-    virtual void setTextIndicatorAnimationProgress(float) override;
     virtual void selectionDidChange() override;
 #if ENABLE(DRAG_SUPPORT)
     virtual void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage) override;
@@ -134,10 +131,6 @@ private:
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
 
     virtual void didChangeBackgroundColor() override;
-
-#if ENABLE(VIDEO)
-    virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) override { }
-#endif
 
     virtual void refView() override;
     virtual void derefView() override;

@@ -31,12 +31,14 @@
 #include "CSSValuePool.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodePlaceholder.h"
+#include "GenericCachedHTMLCollection.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLTableCaptionElement.h"
 #include "HTMLTableRowElement.h"
 #include "HTMLTableRowsCollection.h"
 #include "HTMLTableSectionElement.h"
+#include "NodeRareData.h"
 #include "RenderTable.h"
 #include "StyleProperties.h"
 #include <wtf/Ref.h>
@@ -471,30 +473,31 @@ RefPtr<StyleProperties> HTMLTableElement::createSharedCellStyle()
 {
     RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
 
+    auto& cssValuePool = CSSValuePool::singleton();
     switch (cellBorders()) {
     case SolidBordersColsOnly:
         style->setProperty(CSSPropertyBorderLeftWidth, CSSValueThin);
         style->setProperty(CSSPropertyBorderRightWidth, CSSValueThin);
         style->setProperty(CSSPropertyBorderLeftStyle, CSSValueSolid);
         style->setProperty(CSSPropertyBorderRightStyle, CSSValueSolid);
-        style->setProperty(CSSPropertyBorderColor, cssValuePool().createInheritedValue());
+        style->setProperty(CSSPropertyBorderColor, cssValuePool.createInheritedValue());
         break;
     case SolidBordersRowsOnly:
         style->setProperty(CSSPropertyBorderTopWidth, CSSValueThin);
         style->setProperty(CSSPropertyBorderBottomWidth, CSSValueThin);
         style->setProperty(CSSPropertyBorderTopStyle, CSSValueSolid);
         style->setProperty(CSSPropertyBorderBottomStyle, CSSValueSolid);
-        style->setProperty(CSSPropertyBorderColor, cssValuePool().createInheritedValue());
+        style->setProperty(CSSPropertyBorderColor, cssValuePool.createInheritedValue());
         break;
     case SolidBorders:
-        style->setProperty(CSSPropertyBorderWidth, cssValuePool().createValue(1, CSSPrimitiveValue::CSS_PX));
-        style->setProperty(CSSPropertyBorderStyle, cssValuePool().createIdentifierValue(CSSValueSolid));
-        style->setProperty(CSSPropertyBorderColor, cssValuePool().createInheritedValue());
+        style->setProperty(CSSPropertyBorderWidth, cssValuePool.createValue(1, CSSPrimitiveValue::CSS_PX));
+        style->setProperty(CSSPropertyBorderStyle, cssValuePool.createIdentifierValue(CSSValueSolid));
+        style->setProperty(CSSPropertyBorderColor, cssValuePool.createInheritedValue());
         break;
     case InsetBorders:
-        style->setProperty(CSSPropertyBorderWidth, cssValuePool().createValue(1, CSSPrimitiveValue::CSS_PX));
-        style->setProperty(CSSPropertyBorderStyle, cssValuePool().createIdentifierValue(CSSValueInset));
-        style->setProperty(CSSPropertyBorderColor, cssValuePool().createInheritedValue());
+        style->setProperty(CSSPropertyBorderWidth, cssValuePool.createValue(1, CSSPrimitiveValue::CSS_PX));
+        style->setProperty(CSSPropertyBorderStyle, cssValuePool.createIdentifierValue(CSSValueInset));
+        style->setProperty(CSSPropertyBorderColor, cssValuePool.createInheritedValue());
         break;
     case NoBorders:
         // If 'rules=none' then allow any borders set at cell level to take effect. 
@@ -502,7 +505,7 @@ RefPtr<StyleProperties> HTMLTableElement::createSharedCellStyle()
     }
 
     if (m_padding)
-        style->setProperty(CSSPropertyPadding, cssValuePool().createValue(m_padding, CSSPrimitiveValue::CSS_PX));
+        style->setProperty(CSSPropertyPadding, cssValuePool.createValue(m_padding, CSSPrimitiveValue::CSS_PX));
 
     return style;
 }
@@ -551,12 +554,12 @@ bool HTMLTableElement::isURLAttribute(const Attribute& attribute) const
 
 Ref<HTMLCollection> HTMLTableElement::rows()
 {
-    return ensureCachedHTMLCollection(TableRows);
+    return ensureRareData().ensureNodeLists().addCachedCollection<HTMLTableRowsCollection>(*this, TableRows);
 }
 
 Ref<HTMLCollection> HTMLTableElement::tBodies()
 {
-    return ensureCachedHTMLCollection(TableTBodies);
+    return ensureRareData().ensureNodeLists().addCachedCollection<GenericCachedHTMLCollection<CollectionTypeTraits<TableTBodies>::traversalType>>(*this, TableTBodies);
 }
 
 const AtomicString& HTMLTableElement::rules() const

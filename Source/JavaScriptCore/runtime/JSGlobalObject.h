@@ -70,11 +70,14 @@ class GetterSetter;
 class GlobalCodeBlock;
 class InputCursor;
 class JSGlobalObjectDebuggable;
+class JSPromise;
 class JSPromiseConstructor;
 class JSPromisePrototype;
+class JSInternalPromise;
 class JSStack;
 class LLIntOffsetsExtractor;
 class Microtask;
+class ModuleLoaderObject;
 class NativeErrorConstructor;
 class ObjectConstructor;
 class ProgramCodeBlock;
@@ -99,6 +102,7 @@ struct HashTable;
     macro(Boolean, boolean, booleanObject, BooleanObject, Boolean) \
     macro(Number, number, numberObject, NumberObject, Number) \
     macro(Error, error, error, ErrorInstance, Error) \
+    macro(JSPromise, promise, promise, JSPromise, Promise) \
     macro(JSArrayBuffer, arrayBuffer, arrayBuffer, JSArrayBuffer, ArrayBuffer) \
     DEFINE_STANDARD_BUILTIN(macro, WeakMap, weakMap) \
     DEFINE_STANDARD_BUILTIN(macro, WeakSet, weakSet) \
@@ -115,6 +119,7 @@ struct HashTable;
 
 #define FOR_EACH_SIMPLE_BUILTIN_TYPE(macro) \
     FOR_EACH_SIMPLE_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
+    macro(JSInternalPromise, internalPromise, internalPromise, JSInternalPromise, InternalPromise) \
 
 #define DECLARE_SIMPLE_BUILTIN_TYPE(capitalName, lowerName, properName, instanceType, jsName) \
     class JS ## capitalName; \
@@ -150,6 +155,18 @@ struct GlobalObjectMethodTable {
 
     typedef bool (*ShouldInterruptScriptBeforeTimeoutPtr)(const JSGlobalObject*);
     ShouldInterruptScriptBeforeTimeoutPtr shouldInterruptScriptBeforeTimeout;
+
+    typedef JSInternalPromise* (*ModuleLoaderResolvePtr)(JSGlobalObject*, ExecState*, JSValue, JSValue);
+    ModuleLoaderResolvePtr moduleLoaderResolve;
+
+    typedef JSInternalPromise* (*ModuleLoaderFetchPtr)(JSGlobalObject*, ExecState*, JSValue);
+    ModuleLoaderFetchPtr moduleLoaderFetch;
+
+    typedef JSInternalPromise* (*ModuleLoaderTranslatePtr)(JSGlobalObject*, ExecState*, JSValue, JSValue);
+    ModuleLoaderTranslatePtr moduleLoaderTranslate;
+
+    typedef JSInternalPromise* (*ModuleLoaderInstantiatePtr)(JSGlobalObject*, ExecState*, JSValue, JSValue);
+    ModuleLoaderInstantiatePtr moduleLoaderInstantiate;
 };
 
 class JSGlobalObject : public JSSegmentedVariableObject {
@@ -183,8 +200,9 @@ protected:
     WriteBarrier<NativeErrorConstructor> m_syntaxErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_typeErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_URIErrorConstructor;
-    WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
     WriteBarrier<ObjectConstructor> m_objectConstructor;
+    WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
+    WriteBarrier<JSInternalPromiseConstructor> m_internalPromiseConstructor;
 
     WriteBarrier<NullGetterFunction> m_nullGetterFunction;
     WriteBarrier<NullSetterFunction> m_nullSetterFunction;
@@ -197,15 +215,16 @@ protected:
     WriteBarrier<JSFunction> m_definePropertyFunction;
     WriteBarrier<JSFunction> m_arrayProtoValuesFunction;
     WriteBarrier<JSFunction> m_initializePromiseFunction;
-    WriteBarrier<JSFunction> m_newPromiseDeferredFunction;
+    WriteBarrier<JSFunction> m_newPromiseCapabilityFunction;
     WriteBarrier<GetterSetter> m_throwTypeErrorGetterSetter;
+
+    WriteBarrier<ModuleLoaderObject> m_moduleLoader;
 
     WriteBarrier<ObjectPrototype> m_objectPrototype;
     WriteBarrier<FunctionPrototype> m_functionPrototype;
     WriteBarrier<ArrayPrototype> m_arrayPrototype;
     WriteBarrier<RegExpPrototype> m_regExpPrototype;
     WriteBarrier<IteratorPrototype> m_iteratorPrototype;
-    WriteBarrier<JSPromisePrototype> m_promisePrototype;
 
     WriteBarrier<Structure> m_debuggerScopeStructure;
     WriteBarrier<Structure> m_withScopeStructure;
@@ -232,6 +251,7 @@ protected:
     WriteBarrier<Structure> m_calleeStructure;
     WriteBarrier<Structure> m_functionStructure;
     WriteBarrier<Structure> m_boundFunctionStructure;
+    WriteBarrier<Structure> m_arrowFunctionStructure;
     WriteBarrier<Structure> m_namedFunctionStructure;
     PropertyOffset m_functionNameOffset;
     WriteBarrier<Structure> m_privateNameStructure;
@@ -241,7 +261,7 @@ protected:
     WriteBarrier<Structure> m_internalFunctionStructure;
     WriteBarrier<Structure> m_iteratorResultStructure;
     WriteBarrier<Structure> m_regExpMatchesArrayStructure;
-    WriteBarrier<Structure> m_promiseStructure;
+    WriteBarrier<Structure> m_moduleRecordStructure;
 #if ENABLE(WEBASSEMBLY)
     WriteBarrier<Structure> m_wasmModuleStructure;
 #endif
@@ -380,13 +400,14 @@ public:
 
     ErrorConstructor* errorConstructor() const { return m_errorConstructor.get(); }
     ObjectConstructor* objectConstructor() const { return m_objectConstructor.get(); }
+    JSPromiseConstructor* promiseConstructor() const { return m_promiseConstructor.get(); }
+    JSInternalPromiseConstructor* internalPromiseConstructor() const { return m_internalPromiseConstructor.get(); }
     NativeErrorConstructor* evalErrorConstructor() const { return m_evalErrorConstructor.get(); }
     NativeErrorConstructor* rangeErrorConstructor() const { return m_rangeErrorConstructor.get(); }
     NativeErrorConstructor* referenceErrorConstructor() const { return m_referenceErrorConstructor.get(); }
     NativeErrorConstructor* syntaxErrorConstructor() const { return m_syntaxErrorConstructor.get(); }
     NativeErrorConstructor* typeErrorConstructor() const { return m_typeErrorConstructor.get(); }
     NativeErrorConstructor* URIErrorConstructor() const { return m_URIErrorConstructor.get(); }
-    JSPromiseConstructor* promiseConstructor() const { return m_promiseConstructor.get(); }
 
     NullGetterFunction* nullGetterFunction() const { return m_nullGetterFunction.get(); }
     NullSetterFunction* nullSetterFunction() const { return m_nullSetterFunction.get(); }
@@ -399,13 +420,15 @@ public:
     JSFunction* definePropertyFunction() const { return m_definePropertyFunction.get(); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(); }
     JSFunction* initializePromiseFunction() const { return m_initializePromiseFunction.get(); }
-    JSFunction* newPromiseDeferredFunction() const { return m_newPromiseDeferredFunction.get(); }
+    JSFunction* newPromiseCapabilityFunction() const { return m_newPromiseCapabilityFunction.get(); }
     GetterSetter* throwTypeErrorGetterSetter(VM& vm)
     {
         if (!m_throwTypeErrorGetterSetter)
             createThrowTypeError(vm);
         return m_throwTypeErrorGetterSetter.get();
     }
+
+    ModuleLoaderObject* moduleLoader() const { return m_moduleLoader.get(); }
 
     ObjectPrototype* objectPrototype() const { return m_objectPrototype.get(); }
     FunctionPrototype* functionPrototype() const { return m_functionPrototype.get(); }
@@ -418,7 +441,6 @@ public:
     RegExpPrototype* regExpPrototype() const { return m_regExpPrototype.get(); }
     ErrorPrototype* errorPrototype() const { return m_errorPrototype.get(); }
     IteratorPrototype* iteratorPrototype() const { return m_iteratorPrototype.get(); }
-    JSPromisePrototype* promisePrototype() const { return m_promisePrototype.get(); }
 
     Structure* debuggerScopeStructure() const { return m_debuggerScopeStructure.get(); }
     Structure* withScopeStructure() const { return m_withScopeStructure.get(); }
@@ -462,6 +484,7 @@ public:
     Structure* calleeStructure() const { return m_calleeStructure.get(); }
     Structure* functionStructure() const { return m_functionStructure.get(); }
     Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(); }
+    Structure* arrowFunctionStructure() const { return m_arrowFunctionStructure.get(); }
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(); }
     PropertyOffset functionNameOffset() const { return m_functionNameOffset; }
     Structure* numberObjectStructure() const { return m_numberObjectStructure.get(); }
@@ -475,7 +498,7 @@ public:
     Structure* iteratorResultStructure() const { return m_iteratorResultStructure.get(); }
     static ptrdiff_t iteratorResultStructureOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_iteratorResultStructure); }
     Structure* regExpMatchesArrayStructure() const { return m_regExpMatchesArrayStructure.get(); }
-    Structure* promiseStructure() const { return m_promiseStructure.get(); }
+    Structure* moduleRecordStructure() const { return m_moduleRecordStructure.get(); }
 #if ENABLE(WEBASSEMBLY)
     Structure* wasmModuleStructure() const { return m_wasmModuleStructure.get(); }
 #endif

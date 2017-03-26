@@ -222,7 +222,7 @@ public:
         }
     }
         
-    JSValue tryGetIndexQuickly(unsigned i)
+    JSValue tryGetIndexQuickly(unsigned i) const
     {
         switch (indexingType()) {
         case ALL_BLANK_INDEXING_TYPES:
@@ -268,7 +268,7 @@ public:
         return JSValue();
     }
         
-    JSValue getIndex(ExecState* exec, unsigned i)
+    JSValue getIndex(ExecState* exec, unsigned i) const
     {
         if (JSValue result = tryGetIndexQuickly(i))
             return result;
@@ -467,8 +467,8 @@ public:
     void putDirectAccessor(ExecState*, PropertyName, JSValue, unsigned attributes);
     JS_EXPORT_PRIVATE void putDirectCustomAccessor(VM&, PropertyName, JSValue, unsigned attributes);
 
-    void putGetter(ExecState*, PropertyName, JSValue);
-    void putSetter(ExecState*, PropertyName, JSValue);
+    void putGetter(ExecState*, PropertyName, JSValue, unsigned attributes);
+    void putSetter(ExecState*, PropertyName, JSValue, unsigned attributes);
 
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, PropertyName) const;
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, unsigned propertyName) const;

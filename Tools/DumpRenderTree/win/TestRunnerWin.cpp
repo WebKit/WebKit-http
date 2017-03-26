@@ -262,7 +262,7 @@ size_t TestRunner::webHistoryItemCount()
     if (FAILED(sharedHistory->QueryInterface(&sharedHistoryPrivate)))
         return 0;
 
-    int count;
+    int count = 0;
     if (FAILED(sharedHistoryPrivate->allItems(&count, 0)))
         return 0;
 
@@ -1091,6 +1091,15 @@ void TestRunner::evaluateInWebInspector(JSStringRef script)
         return;
 
     inspectorPrivate->evaluateInFrontend(bstrT(script).GetBSTR());
+}
+
+JSStringRef TestRunner::inspectorTestStubURL()
+{
+    // FIXME: Implement this to support Web Inspector tests using `protocol-test.js`.
+    // See https://bugs.webkit.org/show_bug.cgi?id=148025.
+    printf("ERROR: TestRunner::inspectorTestStubURL() not implemented\n");
+
+    return nullptr;
 }
 
 typedef HashMap<unsigned, COMPtr<IWebScriptWorld> > WorldMap;

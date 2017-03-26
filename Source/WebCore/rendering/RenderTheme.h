@@ -163,7 +163,7 @@ public:
     static Color focusRingColor();
     virtual Color platformFocusRingColor() const { return Color(0, 0, 0); }
     static void setCustomFocusRingColor(const Color&);
-    virtual int platformFocusRingMaxWidth() const { return 3; }
+    virtual int platformFocusRingWidth() const { return 3; }
 #if ENABLE(TOUCH_EVENTS)
     static Color tapHighlightColor();
     virtual Color platformTapHighlightColor() const { return RenderTheme::defaultTapHighlightColor; }
@@ -209,7 +209,7 @@ public:
     virtual String formatMediaControlsRemainingTime(float currentTime, float duration) const;
     
     // Returns the media volume slider container's offset from the mute button.
-    virtual IntPoint volumeSliderOffsetFromMuteButton(const RenderBox&, const IntSize&) const;
+    virtual LayoutPoint volumeSliderOffsetFromMuteButton(const RenderBox&, const LayoutSize&) const;
 #endif
 
 #if ENABLE(METER_ELEMENT)

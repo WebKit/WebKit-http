@@ -63,12 +63,12 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
+#include "GenericCachedHTMLCollection.h"
 #include "HTMLAllCollection.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLBaseElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLCanvasElement.h"
-#include "HTMLCollection.h"
 #include "HTMLDocument.h"
 #include "HTMLElementFactory.h"
 #include "HTMLFormControlElement.h"
@@ -124,7 +124,6 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "ResourceLoadScheduler.h"
-#include "ResourceLoader.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
@@ -147,6 +146,7 @@
 #include "StyleResolver.h"
 #include "StyleSheetContents.h"
 #include "StyleSheetList.h"
+#include "SubresourceLoader.h"
 #include "TextNodeTraversal.h"
 #include "TextResourceDecoder.h"
 #include "TransformSource.h"
@@ -1694,23 +1694,13 @@ Ref<Range> Document::createRange()
     return Range::create(*this);
 }
 
-RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned whatToShow, 
-    PassRefPtr<NodeFilter> filter, bool expandEntityReferences, ExceptionCode& ec)
+RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned long whatToShow, PassRefPtr<NodeFilter> filter, bool expandEntityReferences)
 {
-    if (!root) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
-    }
     return NodeIterator::create(root, whatToShow, filter, expandEntityReferences);
 }
 
-RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned whatToShow, 
-    PassRefPtr<NodeFilter> filter, bool expandEntityReferences, ExceptionCode& ec)
+RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, PassRefPtr<NodeFilter> filter, bool expandEntityReferences)
 {
-    if (!root) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
-    }
     return TreeWalker::create(root, whatToShow, filter, expandEntityReferences);
 }
 
@@ -4772,50 +4762,51 @@ bool Document::hasSVGRootNode() const
     return documentElement() && documentElement()->hasTagName(SVGNames::svgTag);
 }
 
-Ref<HTMLCollection> Document::ensureCachedCollection(CollectionType type)
+template <CollectionType collectionType>
+Ref<HTMLCollection> Document::ensureCachedCollection()
 {
-    return ensureRareData().ensureNodeLists().addCachedCollection<HTMLCollection>(*this, type);
+    return ensureRareData().ensureNodeLists().addCachedCollection<GenericCachedHTMLCollection<CollectionTypeTraits<collectionType>::traversalType>>(*this, collectionType);
 }
 
 Ref<HTMLCollection> Document::images()
 {
-    return ensureCachedCollection(DocImages);
+    return ensureCachedCollection<DocImages>();
 }
 
 Ref<HTMLCollection> Document::applets()
 {
-    return ensureCachedCollection(DocApplets);
+    return ensureCachedCollection<DocApplets>();
 }
 
 Ref<HTMLCollection> Document::embeds()
 {
-    return ensureCachedCollection(DocEmbeds);
+    return ensureCachedCollection<DocEmbeds>();
 }
 
 Ref<HTMLCollection> Document::plugins()
 {
     // This is an alias for embeds() required for the JS DOM bindings.
-    return ensureCachedCollection(DocEmbeds);
+    return ensureCachedCollection<DocEmbeds>();
 }
 
 Ref<HTMLCollection> Document::scripts()
 {
-    return ensureCachedCollection(DocScripts);
+    return ensureCachedCollection<DocScripts>();
 }
 
 Ref<HTMLCollection> Document::links()
 {
-    return ensureCachedCollection(DocLinks);
+    return ensureCachedCollection<DocLinks>();
 }
 
 Ref<HTMLCollection> Document::forms()
 {
-    return ensureCachedCollection(DocForms);
+    return ensureCachedCollection<DocForms>();
 }
 
 Ref<HTMLCollection> Document::anchors()
 {
-    return ensureCachedCollection(DocAnchors);
+    return ensureCachedCollection<DocAnchors>();
 }
 
 Ref<HTMLCollection> Document::all()

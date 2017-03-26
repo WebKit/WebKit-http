@@ -1,17 +1,17 @@
 set(TESTWEBKITAPI_DIR "${TOOLS_DIR}/TestWebKitAPI")
 set(test_wtf_LIBRARIES
-    WTF
+    WTF${DEBUG_SUFFIX}
     gtest
 )
 
 set(test_webcore_LIBRARIES
-    WTF
-    WebCore
+    WTF${DEBUG_SUFFIX}
+    WebCore${DEBUG_SUFFIX}
     gtest
 )
 
 set(TestWebKitAPI_LIBRARIES
-    WTF
+    WTF${DEBUG_SUFFIX}
 )
 
 if (ENABLE_WEBKIT2)
@@ -27,7 +27,7 @@ if (ENABLE_WEBKIT2)
     )
 else ()
     list(APPEND TestWebKitAPI_LIBRARIES
-        WebKit
+        WebKit${DEBUG_SUFFIX}
     )
 endif ()
 
@@ -42,6 +42,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/AtomicString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CString.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Condition.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CheckedArithmeticOperations.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/DateMath.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Deque.cpp
@@ -140,12 +141,18 @@ if (ENABLE_WEBKIT2)
     )
 
     target_link_libraries(TestWebKitAPIInjectedBundle ${TestWebKitAPI_LIBRARIES})
-    add_dependencies(TestWebKitAPIInjectedBundle ${ForwardingHeadersForTestWebKitAPI_NAME})
+    add_dependencies(TestWebKitAPIInjectedBundle WTF ${ForwardingHeadersForTestWebKitAPI_NAME})
 
     get_property(TestWebKitAPIInjectedBundle_PATH TARGET TestWebKitAPIInjectedBundle PROPERTY LOCATION)
 endif ()
 
-add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=1 -DGTEST_HAS_RTTI=0
+if (WIN32)
+    add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=0)
+else ()
+    add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=1)
+endif ()
+
+add_definitions(-DGTEST_HAS_RTTI=0
     -DTEST_WEBKIT2_RESOURCES_DIR=\"${TESTWEBKITAPI_DIR}/Tests/WebKit2\"
     -DTEST_INJECTED_BUNDLE_PATH=\"${TestWebKitAPIInjectedBundle_PATH}\"
 )

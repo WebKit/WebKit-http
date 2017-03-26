@@ -37,6 +37,16 @@ using namespace JSC;
 
 namespace WebCore {
 
+bool JSHTMLOptionsCollection::nameGetter(ExecState* exec, PropertyName propertyName, JSValue& value)
+{
+    auto item = impl().namedItem(propertyNameToAtomicString(propertyName));
+    if (!item)
+        return false;
+
+    value = toJS(exec, globalObject(), item);
+    return true;
+}
+
 void JSHTMLOptionsCollection::setLength(ExecState* exec, JSValue value)
 {
     ExceptionCode ec = 0;

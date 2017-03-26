@@ -85,9 +85,7 @@ void UIDelegate::setDelegate(id <WKUIDelegate> delegate)
     m_delegateMethods.webViewActionsForElementDefaultActions = [delegate respondsToSelector:@selector(_webView:actionsForElement:defaultActions:)];
     m_delegateMethods.webViewDidNotHandleTapAsClickAtPoint = [delegate respondsToSelector:@selector(_webView:didNotHandleTapAsClickAtPoint:)];
 #endif
-#if ENABLE(VIDEO)
-    m_delegateMethods.webViewMediaDocumentNaturalSizeChanged = [delegate respondsToSelector:@selector(_webView:mediaDocumentNaturalSizeChanged:)];
-#endif
+    m_delegateMethods.webViewImageOrMediaDocumentSizeChanged = [delegate respondsToSelector:@selector(_webView:imageOrMediaDocumentSizeChanged:)];
 }
 
 UIDelegate::UIClient::UIClient(UIDelegate& uiDelegate)
@@ -114,9 +112,11 @@ PassRefPtr<WebKit::WebPageProxy> UIDelegate::UIClient::createNewPage(WebKit::Web
     auto sourceFrameInfo = API::FrameInfo::create(*initiatingFrame, securityOriginData.securityOrigin());
 
     bool shouldOpenAppLinks = !protocolHostAndPortAreEqual(WebCore::URL(WebCore::ParsedURLString, initiatingFrame->url()), request.url());
-    auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.ptr(), nullptr, request, WebCore::URL(), shouldOpenAppLinks);
+    auto apiNavigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.ptr(), nullptr, request, WebCore::URL(), shouldOpenAppLinks);
 
-    RetainPtr<WKWebView> webView = [delegate.get() webView:m_uiDelegate.m_webView createWebViewWithConfiguration:configuration.get() forNavigationAction:wrapper(navigationAction) windowFeatures:adoptNS([[WKWindowFeatures alloc] _initWithWindowFeatures:windowFeatures]).get()];
+    auto apiWindowFeatures = API::WindowFeatures::create(windowFeatures);
+
+    RetainPtr<WKWebView> webView = [delegate.get() webView:m_uiDelegate.m_webView createWebViewWithConfiguration:configuration.get() forNavigationAction:wrapper(apiNavigationAction) windowFeatures:wrapper(apiWindowFeatures)];
 
     if (!webView)
         return nullptr;
@@ -341,19 +341,17 @@ void UIDelegate::UIClient::didNotHandleTapAsClick(const WebCore::IntPoint& point
 }
 #endif
 
-#if ENABLE(VIDEO)
-void UIDelegate::UIClient::mediaDocumentNaturalSizeChanged(const WebCore::IntSize& newSize)
+void UIDelegate::UIClient::imageOrMediaDocumentSizeChanged(const WebCore::IntSize& newSize)
 {
-    if (!m_uiDelegate.m_delegateMethods.webViewMediaDocumentNaturalSizeChanged)
+    if (!m_uiDelegate.m_delegateMethods.webViewImageOrMediaDocumentSizeChanged)
         return;
 
     auto delegate = m_uiDelegate.m_delegate.get();
     if (!delegate)
         return;
 
-    [static_cast<id <WKUIDelegatePrivate>>(delegate) _webView:m_uiDelegate.m_webView mediaDocumentNaturalSizeChanged:newSize];
+    [static_cast<id <WKUIDelegatePrivate>>(delegate) _webView:m_uiDelegate.m_webView imageOrMediaDocumentSizeChanged:newSize];
 }
-#endif
 
 } // namespace WebKit
 

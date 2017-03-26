@@ -1,6 +1,10 @@
+cmake_minimum_required(VERSION 2.8.12)
+include(WebKitCommon)
+
 set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${JAVASCRIPTCORE_DIR}"
+    "${JAVASCRIPTCORE_DIR}/.."
     "${JAVASCRIPTCORE_DIR}/API"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${JAVASCRIPTCORE_DIR}/assembler"
@@ -28,12 +32,10 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/tools"
     "${JAVASCRIPTCORE_DIR}/wasm"
     "${JAVASCRIPTCORE_DIR}/yarr"
-    "${WTF_DIR}"
     "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
-    "${CMAKE_SOURCE_DIR}/Source"
 )
 
 set(JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -92,6 +94,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ExitingJITType.cpp
     bytecode/GetByIdStatus.cpp
     bytecode/GetByIdVariant.cpp
+    bytecode/InlineCallFrame.cpp
     bytecode/InlineCallFrameSet.cpp
     bytecode/JumpTable.cpp
     bytecode/LazyOperandValueProfile.cpp
@@ -386,7 +389,6 @@ set(JavaScriptCore_SOURCES
 
     parser/Lexer.cpp
     parser/ModuleAnalyzer.cpp
-    parser/ModuleRecord.cpp
     parser/Nodes.cpp
     parser/NodesAnalyzeModule.cpp
     parser/Parser.cpp
@@ -421,6 +423,7 @@ set(JavaScriptCore_SOURCES
     tools/JSDollarVMPrototype.cpp
 
     wasm/JSWASMModule.cpp
+    wasm/WASMFunctionParser.cpp
     wasm/WASMModuleParser.cpp
     wasm/WASMReader.cpp
 
@@ -486,6 +489,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/IndexingType.cpp
     runtime/InferredValue.cpp
     runtime/InitializeThreading.cpp
+    runtime/InspectorInstrumentationObject.cpp
     runtime/InternalFunction.cpp
     runtime/IntlCollator.cpp
     runtime/IntlCollatorConstructor.cpp
@@ -506,6 +510,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSArrayBufferPrototype.cpp
     runtime/JSArrayBufferView.cpp
     runtime/JSArrayIterator.cpp
+    runtime/JSArrowFunction.cpp
     runtime/JSBoundFunction.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCallee.cpp
@@ -519,11 +524,16 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectDebuggable.cpp
     runtime/JSGlobalObjectFunctions.cpp
+    runtime/JSInternalPromise.cpp
+    runtime/JSInternalPromiseConstructor.cpp
+    runtime/JSInternalPromiseDeferred.cpp
+    runtime/JSInternalPromisePrototype.cpp
     runtime/JSJob.cpp
     runtime/JSLexicalEnvironment.cpp
     runtime/JSLock.cpp
     runtime/JSMap.cpp
     runtime/JSMapIterator.cpp
+    runtime/JSModuleRecord.cpp
     runtime/JSNotAnObject.cpp
     runtime/JSONObject.cpp
     runtime/JSObject.cpp
@@ -558,6 +568,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/MathCommon.cpp
     runtime/MathObject.cpp
     runtime/MemoryStatistics.cpp
+    runtime/ModuleLoaderObject.cpp
     runtime/NativeErrorConstructor.cpp
     runtime/NativeErrorPrototype.cpp
     runtime/NullGetterFunction.cpp
@@ -638,6 +649,7 @@ set(JavaScriptCore_LUT_FILES
     runtime/DateConstructor.cpp
     runtime/DatePrototype.cpp
     runtime/ErrorPrototype.cpp
+    runtime/InspectorInstrumentationObject.cpp
     runtime/IntlCollatorConstructor.cpp
     runtime/IntlCollatorPrototype.cpp
     runtime/IntlDateTimeFormatConstructor.cpp
@@ -646,9 +658,11 @@ set(JavaScriptCore_LUT_FILES
     runtime/IntlNumberFormatPrototype.cpp
     runtime/JSDataViewPrototype.cpp
     runtime/JSGlobalObject.cpp
+    runtime/JSInternalPromiseConstructor.cpp
     runtime/JSONObject.cpp
     runtime/JSPromiseConstructor.cpp
     runtime/JSPromisePrototype.cpp
+    runtime/ModuleLoaderObject.cpp
     runtime/NumberConstructor.cpp
     runtime/NumberPrototype.cpp
     runtime/ObjectConstructor.cpp
@@ -662,7 +676,7 @@ set(JavaScriptCore_LUT_FILES
 )
 
 set(JavaScriptCore_LIBRARIES
-    WTF
+    WTF${DEBUG_SUFFIX}
     ${ICU_I18N_LIBRARIES}
 )
 
@@ -913,10 +927,13 @@ foreach (_file ${JavaScriptCore_LUT_FILES})
 endforeach ()
 
 set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
+    API
     assembler
     bindings
     bytecode
     debugger
+    dfg
+    disassembler
     heap
     inspector
     interpreter
@@ -932,75 +949,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     inspector/agents
     inspector/augmentable
     inspector/remote
-
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
 )
-
-set(JavaScriptCore_FORWARDING_HEADERS_FILES
-    API/APICallbackFunction.h
-    API/APICast.h
-    API/JSAPIWrapperObject.h
-    API/JSBase.h
-    API/JSBasePrivate.h
-    API/JSCTestRunnerUtils.h
-    API/JSCallbackConstructor.h
-    API/JSCallbackFunction.h
-    API/JSCallbackObject.h
-    API/JSCallbackObjectFunctions.h
-    API/JSClassRef.h
-    API/JSContext.h
-    API/JSContextInternal.h
-    API/JSContextPrivate.h
-    API/JSContextRef.h
-    API/JSContextRefInternal.h
-    API/JSContextRefPrivate.h
-    API/JSExport.h
-    API/JSManagedValue.h
-    API/JSManagedValueInternal.h
-    API/JSObjectRef.h
-    API/JSObjectRefPrivate.h
-    API/JSProfilerPrivate.h
-    API/JSRetainPtr.h
-    API/JSScriptRefPrivate.h
-    API/JSStringRef.h
-    API/JSStringRefBSTR.h
-    API/JSStringRefCF.h
-    API/JSStringRefPrivate.h
-    API/JSValue.h
-    API/JSValueInternal.h
-    API/JSValueRef.h
-    API/JSVirtualMachine.h
-    API/JSVirtualMachineInternal.h
-    API/JSWeakObjectMapRefInternal.h
-    API/JSWeakObjectMapRefPrivate.h
-    API/JSWrapperMap.h
-    API/JavaScript.h
-    API/JavaScriptCore.h
-    API/ObjcRuntimeExtras.h
-    API/OpaqueJSString.h
-    API/WebKitAvailability.h
-
-    assembler/LinkBuffer.h
-    assembler/MacroAssembler.h
-    assembler/MacroAssemblerCodeRef.h
-
-    inspector/augmentable/AugmentableInspectorController.h
-
-    inspector/remote/RemoteInspector.h
-    inspector/remote/RemoteInspectorConstants.h
-    inspector/remote/RemoteInspectorDebuggable.h
-    inspector/remote/RemoteInspectorDebuggableConnection.h
-    inspector/remote/RemoteInspectorXPCConnection.h
-
-    jit/GPRInfo.h
-
-    runtime/VM.h
-
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSReplayInputs.h
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h
-)
-
 
 # GENERATOR 1-B: particular LUT creator (for 1 file only)
 GENERATE_HASH_LUT(${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Lexer.lut.h)
@@ -1190,6 +1139,10 @@ add_library(JavaScriptCore ${JavaScriptCore_LIBRARY_TYPE} ${JavaScriptCore_HEADE
 target_link_libraries(JavaScriptCore ${JavaScriptCore_LIBRARIES})
 set_target_properties(JavaScriptCore PROPERTIES COMPILE_DEFINITIONS "BUILDING_JavaScriptCore")
 set_target_properties(JavaScriptCore PROPERTIES FOLDER "JavaScriptCore")
+
+if (JavaScriptCore_POST_BUILD_COMMAND)
+    add_custom_command(TARGET JavaScriptCore POST_BUILD COMMAND ${JavaScriptCore_POST_BUILD_COMMAND} VERBATIM)
+endif ()
 
 if (JavaScriptCore_OUTPUT_NAME)
     set_target_properties(JavaScriptCore PROPERTIES OUTPUT_NAME ${JavaScriptCore_OUTPUT_NAME})

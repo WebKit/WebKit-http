@@ -284,6 +284,11 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
             diff = std::max(diff, StyleDifferenceRepaint);
     }
     
+    if (contextSensitiveProperties & ContextSensitivePropertyWillChange) {
+        if (style().willChange() && style().willChange()->canTriggerCompositing())
+            diff = std::max(diff, StyleDifferenceRecompositeLayer);
+    }
+    
     if ((contextSensitiveProperties & ContextSensitivePropertyFilter) && hasLayer()) {
         RenderLayer* layer = downcast<RenderLayerModelObject>(*this).layer();
         if (!layer->isComposited() || layer->paintsWithFilters())
@@ -359,6 +364,22 @@ void RenderElement::updateShapeImage(const ShapeValue* oldShapeValue, const Shap
 }
 #endif
 
+void RenderElement::computeMaxOutlineSize() const
+{
+    // We need to ensure that view->maximalOutlineSize() is valid for any repaints that happen
+    // during styleDidChange (it's used by clippedOverflowRectForRepaint()).
+    if (!m_style->outlineWidth())
+        return;
+    int maxOutlineSize = m_style->outlineSize();
+    if (m_style->outlineStyleIsAuto())
+        maxOutlineSize = std::max(theme().platformFocusRingWidth() + m_style->outlineOffset(), maxOutlineSize);
+
+    if (maxOutlineSize < view().maximalOutlineSize())
+        return;
+
+    view().setMaximalOutlineSize(maxOutlineSize);
+}
+
 void RenderElement::initializeStyle()
 {
     styleWillChange(StyleDifferenceNewStyle, style());
@@ -375,11 +396,8 @@ void RenderElement::initializeStyle()
     updateShapeImage(nullptr, m_style->shapeOutside());
 #endif
 
-    // We need to ensure that view->maximalOutlineSize() is valid for any repaints that happen
-    // during styleDidChange (it's used by clippedOverflowRectForRepaint()).
-    if (m_style->outlineWidth() > 0 && m_style->outlineSize() > maximalOutlineSize(PaintPhaseOutline))
-        view().setMaximalOutlineSize(std::max(theme().platformFocusRingMaxWidth(), static_cast<int>(m_style->outlineSize())));
-
+    computeMaxOutlineSize();
+    
     styleDidChange(StyleDifferenceNewStyle, nullptr);
 
     // We shouldn't have any text children that would need styleDidChange at this point.
@@ -429,10 +447,7 @@ void RenderElement::setStyle(Ref<RenderStyle>&& style, StyleDifference minimalSt
     updateShapeImage(oldStyle.get().shapeOutside(), m_style->shapeOutside());
 #endif
 
-    // We need to ensure that view->maximalOutlineSize() is valid for any repaints that happen
-    // during styleDidChange (it's used by clippedOverflowRectForRepaint()).
-    if (m_style->outlineWidth() > 0 && m_style->outlineSize() > maximalOutlineSize(PaintPhaseOutline))
-        view().setMaximalOutlineSize(std::max(theme().platformFocusRingMaxWidth(), static_cast<int>(m_style->outlineSize())));
+    computeMaxOutlineSize();
 
     bool doesNotNeedLayout = !parent();
 
@@ -2026,7 +2041,7 @@ void RenderElement::paintFocusRing(PaintInfo& paintInfo, const LayoutPoint& pain
     addFocusRingRects(focusRingRects, paintOffset, paintInfo.paintContainer);
 #if PLATFORM(MAC)
     bool needsRepaint;
-    paintInfo.context->drawFocusRing(focusRingRects, style.outlineWidth(), style.outlineOffset(), document().page()->focusController().timeSinceFocusWasSet(), needsRepaint);
+    paintInfo.context->drawFocusRing(focusRingRects, theme().platformFocusRingWidth(), style.outlineOffset(), document().page()->focusController().timeSinceFocusWasSet(), needsRepaint);
     if (needsRepaint)
         document().page()->focusController().setFocusedElementNeedsRepaint();
 #else
@@ -2036,6 +2051,10 @@ void RenderElement::paintFocusRing(PaintInfo& paintInfo, const LayoutPoint& pain
 
 void RenderElement::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRect)
 {
+    GraphicsContext& graphicsContext = *paintInfo.context;
+    if (graphicsContext.paintingDisabled())
+        return;
+
     if (!hasOutline())
         return;
 
@@ -2067,7 +2086,6 @@ void RenderElement::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRe
     EBorderStyle outlineStyle = styleToUse.outlineStyle();
     Color outlineColor = styleToUse.visitedDependentColor(CSSPropertyOutlineColor);
 
-    GraphicsContext& graphicsContext = *paintInfo.context;
     bool useTransparencyLayer = outlineColor.hasAlpha();
     if (useTransparencyLayer) {
         if (outlineStyle == SOLID) {

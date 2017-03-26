@@ -91,7 +91,7 @@
 }
 
 .css-style-text-editor > .CodeMirror .CodeMirror-lines .invalid-warning-marker.clickable:hover {
-    -webkit-filter: brightness(0.9);
+    filter: brightness(0.9);
 }
 
 .css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker {
@@ -103,12 +103,21 @@
     cursor: default;
 }
 
+@media (-webkit-max-device-pixel-ratio: 1) {
+    /* Ensure the bezier marker is even by even so it looks a bit less blurry. */
+    .css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker {
+        vertical-align: -1px;
+        width: 10px;
+        height: 10px;
+    }
+}
+
 .css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:hover {
-    -webkit-filter: brightness(0.9);
+    filter: brightness(0.9);
 }
 
 .css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:active {
-    -webkit-filter: brightness(0.8);
+    filter: brightness(0.8);
 }
 
 .computed .css-style-text-editor > .CodeMirror .CodeMirror-lines .css-style-declaration-property.implicit,
@@ -164,6 +173,15 @@
     background-repeat: no-repeat;
 
     cursor: default;
+}
+
+@media (-webkit-max-device-pixel-ratio: 1) {
+    /* Ensure the color swatch is even by even so that it looks okay checkered. */
+    .css-style-text-editor > .CodeMirror .CodeMirror-lines .color-swatch {
+        vertical-align: -1px;
+        width: 10px;
+        height: 10px;
+    }
 }
 
 .css-style-text-editor > .CodeMirror .CodeMirror-lines .color-swatch > span {

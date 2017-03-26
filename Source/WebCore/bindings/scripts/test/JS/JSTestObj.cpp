@@ -45,7 +45,6 @@
 #include "SVGDocument.h"
 #include "SVGPoint.h"
 #include "SVGStaticPropertyTearOff.h"
-#include "ScriptExecutionContext.h"
 #include "ScriptProfile.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
@@ -704,7 +703,9 @@ bool JSTestObj::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyNa
 {
     auto* thisObject = jsCast<JSTestObj*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    return getStaticValueSlot<JSTestObj, Base>(exec, JSTestObjTable, thisObject, propertyName, slot);
+    if (getStaticValueSlot<JSTestObj, Base>(exec, JSTestObjTable, thisObject, propertyName, slot))
+        return true;
+    return false;
 }
 
 EncodedJSValue jsTestObjReadOnlyLongAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)

@@ -27,11 +27,12 @@
 #include "ChildListMutationScope.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
-#include "ClassNodeList.h"
+#include "ClassCollection.h"
 #include "ContainerNodeAlgorithms.h"
 #include "Editor.h"
 #include "FloatRect.h"
 #include "FrameView.h"
+#include "GenericCachedHTMLCollection.h"
 #include "HTMLFormControlsCollection.h"
 #include "HTMLOptionsCollection.h"
 #include "HTMLTableRowsCollection.h"
@@ -866,7 +867,7 @@ RefPtr<NodeList> ContainerNode::querySelectorAll(const String& selectors, Except
 RefPtr<NodeList> ContainerNode::getElementsByTagName(const AtomicString& localName)
 {
     if (localName.isNull())
-        return 0;
+        return nullptr;
 
     if (document().isHTMLDocument())
         return ensureRareData().ensureNodeLists().addCacheWithAtomicName<HTMLTagNodeList>(*this, localName);
@@ -876,7 +877,7 @@ RefPtr<NodeList> ContainerNode::getElementsByTagName(const AtomicString& localNa
 RefPtr<NodeList> ContainerNode::getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName)
 {
     if (localName.isNull())
-        return 0;
+        return nullptr;
 
     if (namespaceURI == starAtom)
         return getElementsByTagName(localName);
@@ -884,17 +885,22 @@ RefPtr<NodeList> ContainerNode::getElementsByTagNameNS(const AtomicString& names
     return ensureRareData().ensureNodeLists().addCacheWithQualifiedName(*this, namespaceURI.isEmpty() ? nullAtom : namespaceURI, localName);
 }
 
-RefPtr<NodeList> ContainerNode::getElementsByName(const String& elementName)
+Ref<NodeList> ContainerNode::getElementsByName(const String& elementName)
 {
     return ensureRareData().ensureNodeLists().addCacheWithAtomicName<NameNodeList>(*this, elementName);
 }
 
-RefPtr<NodeList> ContainerNode::getElementsByClassName(const AtomicString& classNames)
+Ref<HTMLCollection> ContainerNode::getElementsByClassName(const AtomicString& classNames)
 {
-    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<ClassNodeList>(*this, classNames);
+    return ensureRareData().ensureNodeLists().addCachedCollection<ClassCollection>(*this, ByClass, classNames);
 }
 
-RefPtr<RadioNodeList> ContainerNode::radioNodeList(const AtomicString& name)
+Ref<NodeList> ContainerNode::getElementsByClassNameForObjC(const AtomicString& classNames)
+{
+    return getElementsByClassName(classNames);
+}
+
+Ref<RadioNodeList> ContainerNode::radioNodeList(const AtomicString& name)
 {
     ASSERT(hasTagName(HTMLNames::formTag) || hasTagName(HTMLNames::fieldsetTag));
     return ensureRareData().ensureNodeLists().addCacheWithAtomicName<RadioNodeList>(*this, name);
@@ -902,7 +908,7 @@ RefPtr<RadioNodeList> ContainerNode::radioNodeList(const AtomicString& name)
 
 Ref<HTMLCollection> ContainerNode::children()
 {
-    return ensureCachedHTMLCollection(NodeChildren);
+    return ensureRareData().ensureNodeLists().addCachedCollection<GenericCachedHTMLCollection<CollectionTypeTraits<NodeChildren>::traversalType>>(*this, NodeChildren);
 }
 
 Element* ContainerNode::firstElementChild() const
@@ -937,22 +943,6 @@ void ContainerNode::prepend(Vector<NodeOrString>&& nodeOrStringVector, Exception
         return;
 
     insertBefore(node.release(), firstChild(), ec);
-}
-
-Ref<HTMLCollection> ContainerNode::ensureCachedHTMLCollection(CollectionType type)
-{
-    if (HTMLCollection* collection = cachedHTMLCollection(type))
-        return *collection;
-
-    if (type == TableRows)
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLTableRowsCollection>(downcast<HTMLTableElement>(*this), type);
-    else if (type == SelectOptions)
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLOptionsCollection>(downcast<HTMLSelectElement>(*this), type);
-    else if (type == FormControls) {
-        ASSERT(hasTagName(HTMLNames::formTag) || hasTagName(HTMLNames::fieldsetTag));
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLFormControlsCollection>(*this, type);
-    }
-    return ensureRareData().ensureNodeLists().addCachedCollection<HTMLCollection>(*this, type);
 }
 
 HTMLCollection* ContainerNode::cachedHTMLCollection(CollectionType type)

@@ -138,7 +138,7 @@ public:
     // once it is escaped if it still has pointers to it in order to
     // replace any use of those pointers by the corresponding
     // materialization
-    enum class Kind { Escaped, Object, Activation, Function };
+    enum class Kind { Escaped, Object, Activation, Function, NewArrowFunction };
 
     explicit Allocation(Node* identifier = nullptr, Kind kind = Kind::Escaped)
         : m_identifier(identifier)
@@ -232,7 +232,12 @@ public:
 
     bool isFunctionAllocation() const
     {
-        return m_kind == Kind::Function;
+        return m_kind == Kind::Function || m_kind == Kind::NewArrowFunction;
+    }
+    
+    bool isArrowFunctionAllocation() const
+    {
+        return m_kind == Kind::NewArrowFunction;
     }
 
     bool operator==(const Allocation& other) const
@@ -266,6 +271,10 @@ public:
 
         case Kind::Function:
             out.print("Function");
+            break;
+                
+        case Kind::NewArrowFunction:
+            out.print("NewArrowFunction");
             break;
 
         case Kind::Activation:
@@ -840,14 +849,19 @@ private:
             break;
         }
 
-        case NewFunction: {
+        case NewFunction:
+        case NewArrowFunction: {
+            bool isArrowFunction = node->op() == NewArrowFunction;
             if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid()) {
                 m_heap.escape(node->child1().node());
                 break;
             }
-            target = &m_heap.newAllocation(node, Allocation::Kind::Function);
+            
+            target = &m_heap.newAllocation(node, isArrowFunction ? Allocation::Kind::NewArrowFunction : Allocation::Kind::Function);
             writes.add(FunctionExecutablePLoc, LazyNode(node->cellOperand()));
             writes.add(FunctionActivationPLoc, LazyNode(node->child1().node()));
+            if (isArrowFunction)
+                writes.add(ArrowFunctionBoundThisPLoc, LazyNode(node->child2().node()));
             break;
         }
 
@@ -921,14 +935,67 @@ private:
             }
             break;
 
-        case MultiGetByOffset:
-            target = m_heap.onlyLocalAllocation(node->child1().node());
-            if (target && target->isObjectAllocation()) {
-                unsigned identifierNumber = node->multiGetByOffsetData().identifierNumber;
-                exactRead = PromotedLocationDescriptor(NamedPropertyPLoc, identifierNumber);
+        case MultiGetByOffset: {
+            Allocation* allocation = m_heap.onlyLocalAllocation(node->child1().node());
+            if (allocation && allocation->isObjectAllocation()) {
+                MultiGetByOffsetData& data = node->multiGetByOffsetData();
+                StructureSet validStructures;
+                bool hasInvalidStructures = false;
+                for (const auto& multiGetByOffsetCase : data.cases) {
+                    if (!allocation->structures().overlaps(multiGetByOffsetCase.set()))
+                        continue;
+
+                    switch (multiGetByOffsetCase.method().kind()) {
+                    case GetByOffsetMethod::LoadFromPrototype: // We need to escape those
+                    case GetByOffsetMethod::Constant: // We don't really have a way of expressing this
+                        hasInvalidStructures = true;
+                        break;
+
+                    case GetByOffsetMethod::Load: // We're good
+                        validStructures.merge(multiGetByOffsetCase.set());
+                        break;
+
+                    default:
+                        RELEASE_ASSERT_NOT_REACHED();
+                    }
+                }
+                if (hasInvalidStructures) {
+                    m_heap.escape(node->child1().node());
+                    break;
+                }
+                unsigned identifierNumber = data.identifierNumber;
+                PromotedHeapLocation location(NamedPropertyPLoc, allocation->identifier(), identifierNumber);
+                if (Node* value = heapResolve(location)) {
+                    if (allocation->structures().isSubsetOf(validStructures))
+                        node->replaceWith(value);
+                    else {
+                        Node* structure = heapResolve(PromotedHeapLocation(allocation->identifier(), StructurePLoc));
+                        ASSERT(structure);
+                        allocation->filterStructures(validStructures);
+                        node->convertToCheckStructure(m_graph.addStructureSet(allocation->structures()));
+                        node->convertToCheckStructureImmediate(structure);
+                        node->setReplacement(value);
+                    }
+                } else if (!allocation->structures().isSubsetOf(validStructures)) {
+                    // Even though we don't need the result here, we still need
+                    // to make the call to tell our caller that we could need
+                    // the StructurePLoc.
+                    // The reason for this is that when we decide not to sink a
+                    // node, we will still lower any read to its fields before
+                    // it escapes (which are usually reads across a function
+                    // call that DFGClobberize can't handle) - but we only do
+                    // this for PromotedHeapLocations that we have seen read
+                    // during the analysis!
+                    heapResolve(PromotedHeapLocation(allocation->identifier(), StructurePLoc));
+                    allocation->filterStructures(validStructures);
+                }
+                Node* identifier = allocation->get(location.descriptor());
+                if (identifier)
+                    m_heap.newPointer(node, identifier);
             } else
                 m_heap.escape(node->child1().node());
             break;
+        }
 
         case PutByOffset:
             target = m_heap.onlyLocalAllocation(node->child2().node());
@@ -981,6 +1048,14 @@ private:
                 m_heap.escape(node->child1().node());
             break;
 
+        case LoadArrowFunctionThis:
+            target = m_heap.onlyLocalAllocation(node->child1().node());
+            if (target && target->isArrowFunctionAllocation())
+                exactRead = ArrowFunctionBoundThisPLoc;
+            else
+                m_heap.escape(node->child1().node());
+            break;
+        
         case GetScope:
             target = m_heap.onlyLocalAllocation(node->child1().node());
             if (target && target->isFunctionAllocation())
@@ -1408,20 +1483,20 @@ private:
 
             return m_graph.addNode(
                 allocation.identifier()->prediction(), Node::VarArg, MaterializeNewObject,
-                NodeOrigin(
-                    allocation.identifier()->origin.semantic,
-                    where->origin.forExit),
+                where->origin.withSemantic(allocation.identifier()->origin.semantic),
                 OpInfo(set), OpInfo(data), 0, 0);
         }
 
+        case Allocation::Kind::NewArrowFunction:
         case Allocation::Kind::Function: {
             FrozenValue* executable = allocation.identifier()->cellOperand();
-
+            
+            NodeType nodeType = allocation.kind() == Allocation::Kind::NewArrowFunction ? NewArrowFunction : NewFunction;
+            
             return m_graph.addNode(
-                allocation.identifier()->prediction(), NewFunction,
-                NodeOrigin(
-                    allocation.identifier()->origin.semantic,
-                    where->origin.forExit),
+                allocation.identifier()->prediction(), nodeType,
+                where->origin.withSemantic(
+                    allocation.identifier()->origin.semantic),
                 OpInfo(executable));
             break;
         }
@@ -1432,9 +1507,8 @@ private:
 
             return m_graph.addNode(
                 allocation.identifier()->prediction(), Node::VarArg, MaterializeCreateActivation,
-                NodeOrigin(
-                    allocation.identifier()->origin.semantic,
-                    where->origin.forExit),
+                where->origin.withSemantic(
+                    allocation.identifier()->origin.semantic),
                 OpInfo(symbolTable), OpInfo(data), 0, 0);
         }
 
@@ -1722,6 +1796,7 @@ private:
                         node->convertToPhantomNewObject();
                         break;
 
+                    case NewArrowFunction:
                     case NewFunction:
                         node->convertToPhantomNewFunction();
                         break;
@@ -1972,18 +2047,27 @@ private:
                 firstChild, m_graph.m_varArgChildren.size() - firstChild);
             break;
         }
-
-        case NewFunction: {
+        
+        case NewFunction:
+        case NewArrowFunction: {
+            bool isArrowFunction = node->op() == NewArrowFunction;
             Vector<PromotedHeapLocation> locations = m_locationsForAllocation.get(escapee);
-            ASSERT(locations.size() == 2);
-
+            ASSERT(locations.size() == (isArrowFunction ? 3 : 2));
+                
             PromotedHeapLocation executable(FunctionExecutablePLoc, allocation.identifier());
             ASSERT_UNUSED(executable, locations.contains(executable));
-
+                
             PromotedHeapLocation activation(FunctionActivationPLoc, allocation.identifier());
             ASSERT(locations.contains(activation));
 
             node->child1() = Edge(resolve(block, activation), KnownCellUse);
+            
+            if (isArrowFunction) {
+                PromotedHeapLocation boundThis(ArrowFunctionBoundThisPLoc, allocation.identifier());
+                ASSERT(locations.contains(boundThis));
+                node->child2() = Edge(resolve(block, boundThis), CellUse);
+            }
+            
             break;
         }
 
@@ -2005,11 +2089,7 @@ private:
 
         if (base->isPhantomAllocation()) {
             return PromotedHeapLocation(base, location.descriptor()).createHint(
-                m_graph,
-                NodeOrigin(
-                    base->origin.semantic,
-                    where->origin.forExit),
-                value);
+                m_graph, where->origin.withSemantic(base->origin.semantic), value);
         }
 
         switch (location.kind()) {
@@ -2072,9 +2152,7 @@ private:
             return m_graph.addNode(
                 SpecNone,
                 MultiPutByOffset,
-                NodeOrigin(
-                    base->origin.semantic,
-                    where->origin.forExit),
+                where->origin.withSemantic(base->origin.semantic),
                 OpInfo(data),
                 Edge(base, KnownCellUse),
                 value->defaultEdge());
@@ -2085,9 +2163,7 @@ private:
             return m_graph.addNode(
                 SpecNone,
                 PutClosureVar,
-                NodeOrigin(
-                    base->origin.semantic,
-                    where->origin.forExit),
+                where->origin.withSemantic(base->origin.semantic),
                 OpInfo(location.info()),
                 Edge(base, KnownCellUse),
                 value->defaultEdge());

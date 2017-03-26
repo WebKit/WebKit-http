@@ -25,6 +25,7 @@
 
 .item.visual-style-selector-item {
     display: flex;
+    align-items: center;
     width: 100%;
     height: 25px;
     padding: 2px 0;
@@ -34,7 +35,7 @@
 
 .item.visual-style-selector-item.selected {
     background-color: hsl(213, 92%, 55%) !important;
-    color: hsl(0, 100%, 100%);
+    color: white;
 }
 
 .item.visual-style-selector-item > .disclosure-button {
@@ -42,23 +43,34 @@
 }
 
 .item.visual-style-selector-item > input[type="checkbox"] {
-    margin: 4.5px 0 4px 5px;
+    position: relative;
+    margin-left: 5px;
+}
+
+body:not(.window-inactive, .window-docked-inactive) .item.visual-style-selector-item.selected > input[type="checkbox"]:checked::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border: 1px solid white;
+    border-radius: 3px;
+    content: "";
 }
 
 .item.visual-style-selector-item > .icon {
     width: 16px;
     height: 16px;
-    margin: 2.5px 0 2.5px 4px;
+    margin-left: 4px;
 }
 
 .item.visual-style-selector-item.modified > .icon {
-    -webkit-filter: brightness(0.75);
+    filter: brightness(0.75);
 }
 
 .item.visual-style-selector-item.selector-invalid > .icon {
     width: 14px;
     height: 14px;
-    margin: 3.5px 0 3.5px 5px;
     content: url(../Images/Error.svg);
 }
 
@@ -68,14 +80,22 @@
 
 .item.visual-style-selector-item.selector-invalid > .titles > .title::before {
     position: absolute;
-    top: calc(50% - 0.5px);
+    top: 0;
     left: 0;
     width: 100%;
+    height: 50%;
     border-bottom: 1px solid hsla(0, 100%, 50%, 0.6);
     content: "";
 }
 
+@media (-webkit-min-device-pixel-ratio: 2) {
+    .item.visual-style-selector-item.selector-invalid > .titles > .title::before {
+        top: -0.5px;
+    }
+}
+
 .item.visual-style-selector-item > .titles {
+    flex: 1;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -96,7 +116,7 @@
 
 .item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title:focus {
     color: black;
-    background-color: hsl(0, 100%, 100%);
+    background-color: white;
     border-radius: 2px;
     box-shadow: hsla(0, 0%, 0%, 0.15) 0 1px 0, 0 0 0 3px hsla(0, 100%, 100%, 0.3);
 }

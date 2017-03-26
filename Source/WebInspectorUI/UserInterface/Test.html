@@ -32,7 +32,11 @@
     <script src="Base/WebInspector.js"></script>
     <script src="Base/Object.js"></script>
 
-    <script src="Base/Test.js"></script>
+    <script src="Test/TestHarness.js"></script>
+    <script src="Test/FrontendTestHarness.js"></script>
+    <script src="Test/TestSuite.js"></script>
+
+    <script src="Test/Test.js"></script>
 
     <script src="Base/DOMUtilities.js"></script>
     <script src="Base/EventListener.js"></script>
@@ -142,6 +146,15 @@
 
     <script type="text/javascript">
         WebInspector.loaded();
+
+        // Debug logging is synchronous on the test page.
+        InspectorTest.forceDebugLogging = false;
+
+        // Tee all TestHarness commands to stderr from within the Inspector.
+        InspectorTest.dumpActivityToSystemConsole = false;
+
+        // Best used in combination with dumpActivityToSystemConsole.
+        InspectorBackend.dumpInspectorProtocolMessages = false;
     </script>
 </head>
 <body>

@@ -144,6 +144,7 @@
 #include "ViewSnapshotStore.h"
 #include <WebCore/MachSendRight.h>
 #include <WebCore/RunLoopObserver.h>
+#include <WebCore/TextIndicatorWindow.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -3889,6 +3890,14 @@ void WebPageProxy::handleMediaEvent(MediaEventType eventType)
     
     m_process->send(Messages::WebPage::HandleMediaEvent(eventType), m_pageID);
 }
+
+void WebPageProxy::setVolumeOfMediaElement(double volume, uint64_t elementID)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetVolumeOfMediaElement(volume, elementID), m_pageID);
+}
 #endif
 
 void WebPageProxy::setMayStartMediaWhenInWindow(bool mayStartMedia)
@@ -4089,17 +4098,30 @@ void WebPageProxy::didGetImageForFindMatch(const ShareableBitmap::Handle& conten
 
 void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, uint64_t lifetime)
 {
-    m_pageClient.setTextIndicator(TextIndicator::create(indicatorData), static_cast<TextIndicatorLifetime>(lifetime));
+    // FIXME: Make TextIndicatorWindow a platform-independent presentational thing ("TextIndicatorPresentation"?).
+#if PLATFORM(COCOA)
+    m_pageClient.setTextIndicator(TextIndicator::create(indicatorData), static_cast<TextIndicatorWindowLifetime>(lifetime));
+#else
+    ASSERT_NOT_REACHED();
+#endif
 }
 
 void WebPageProxy::clearTextIndicator()
 {
-    m_pageClient.clearTextIndicator();
+#if PLATFORM(COCOA)
+    m_pageClient.clearTextIndicator(TextIndicatorWindowDismissalAnimation::FadeOut);
+#else
+    ASSERT_NOT_REACHED();
+#endif
 }
 
 void WebPageProxy::setTextIndicatorAnimationProgress(float progress)
 {
+#if PLATFORM(COCOA)
     m_pageClient.setTextIndicatorAnimationProgress(progress);
+#else
+    ASSERT_NOT_REACHED();
+#endif
 }
 
 void WebPageProxy::didFindString(const String& string, uint32_t matchCount, int32_t matchIndex)
@@ -6032,12 +6054,10 @@ void WebPageProxy::installViewStateChangeCompletionHandler(void (^completionHand
 }
 #endif
 
-#if ENABLE(VIDEO)
-void WebPageProxy::mediaDocumentNaturalSizeChanged(const WebCore::IntSize& newSize)
+void WebPageProxy::imageOrMediaDocumentSizeChanged(const WebCore::IntSize& newSize)
 {
-    m_uiClient->mediaDocumentNaturalSizeChanged(newSize);
+    m_uiClient->imageOrMediaDocumentSizeChanged(newSize);
 }
-#endif
 
 void WebPageProxy::setShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
 {

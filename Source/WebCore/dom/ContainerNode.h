@@ -31,6 +31,7 @@
 namespace WebCore {
 
 class HTMLCollection;
+class NodeList;
 class NodeOrString;
 class QualifiedName;
 class RenderElement;
@@ -144,9 +145,10 @@ public:
 
     RefPtr<NodeList> getElementsByTagName(const AtomicString&);
     RefPtr<NodeList> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    RefPtr<NodeList> getElementsByName(const String& elementName);
-    RefPtr<NodeList> getElementsByClassName(const AtomicString& classNames);
-    RefPtr<RadioNodeList> radioNodeList(const AtomicString&);
+    Ref<NodeList> getElementsByName(const String& elementName);
+    Ref<HTMLCollection> getElementsByClassName(const AtomicString& classNames);
+    Ref<NodeList> getElementsByClassNameForObjC(const AtomicString& classNames);
+    Ref<RadioNodeList> radioNodeList(const AtomicString&);
 
     // From the ParentNode interface - https://dom.spec.whatwg.org/#interface-parentnode
     Ref<HTMLCollection> children();
@@ -169,7 +171,6 @@ protected:
     void setFirstChild(Node* child) { m_firstChild = child; }
     void setLastChild(Node* child) { m_lastChild = child; }
 
-    Ref<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
     HTMLCollection* cachedHTMLCollection(CollectionType);
 
 private:

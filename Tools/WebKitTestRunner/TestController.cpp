@@ -197,17 +197,17 @@ static void decidePolicyForUserMediaPermissionRequest(WKPageRef, WKFrameRef, WKS
     TestController::singleton().handleUserMediaPermissionRequest(permissionRequest);
 }
 
-WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WKDictionaryRef, WKEventModifiers, WKEventMouseButton, const void* clientInfo)
+WKPageRef TestController::createOtherPage(WKPageRef oldPpage, WKPageConfigurationRef configuration, WKNavigationActionRef navigationAction, WKWindowFeaturesRef windowFeatures, const void *clientInfo)
 {
     PlatformWebView* parentView = static_cast<PlatformWebView*>(const_cast<void*>(clientInfo));
 
-    PlatformWebView* view = new PlatformWebView(WKPageGetContext(oldPage), WKPageGetPageGroup(oldPage), oldPage, parentView->options());
+    PlatformWebView* view = new PlatformWebView(configuration, parentView->options());
     WKPageRef newPage = view->page();
 
     view->resizeTo(800, 600);
 
-    WKPageUIClientV5 otherPageUIClient = {
-        { 5, view },
+    WKPageUIClientV6 otherPageUIClient = {
+        { 6, view },
         0, // createNewPage_deprecatedForUseWithV0
         0, // showPage
         closeOtherPage,
@@ -247,7 +247,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
         0, // didCompleteRubberBandForMainFrame
         0, // saveDataToFileInDownloadsFolder
         0, // shouldInterruptJavaScript
-        createOtherPage,
+        0, // createNewPage_deprecatedForUseWithV1
         0, // mouseDidMoveOverElement
         0, // decidePolicyForNotificationPermissionRequest
         0, // unavailablePluginButtonClicked_deprecatedForUseWithV1
@@ -265,6 +265,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
         0, // runJavaScriptConfirm
         0, // runJavaScriptPrompt
         0, // mediaSessionMetadataDidChange
+        createOtherPage,
     };
     WKPageSetPageUIClient(newPage, &otherPageUIClient.base);
     
@@ -430,21 +431,19 @@ void TestController::initialize(int argc, const char* argv[])
     if (m_forceComplexText)
         WKContextSetAlwaysUsesComplexTextCodePath(m_context.get(), true);
 
+    m_configuration = adoptWK(WKPageConfigurationCreate());
+    WKPageConfigurationSetContext(m_configuration.get(), m_context.get());
+    WKPageConfigurationSetPageGroup(m_configuration.get(), m_pageGroup.get());
+
     // Some preferences (notably mock scroll bars setting) currently cannot be re-applied to an existing view, so we need to set them now.
     resetPreferencesToConsistentValues();
-
-    ViewOptions viewOptions;
-    viewOptions.useRemoteLayerTree = m_shouldUseRemoteLayerTree;
-    viewOptions.shouldShowWebView = m_shouldShowWebView;
-
-    createWebViewWithOptions(viewOptions);
 }
 
 void TestController::createWebViewWithOptions(const ViewOptions& options)
 {
-    m_mainWebView = std::make_unique<PlatformWebView>(m_context.get(), m_pageGroup.get(), nullptr, options);
-    WKPageUIClientV5 pageUIClient = {
-        { 5, m_mainWebView.get() },
+    m_mainWebView = std::make_unique<PlatformWebView>(m_configuration.get(), options);
+    WKPageUIClientV6 pageUIClient = {
+        { 6, m_mainWebView.get() },
         0, // createNewPage_deprecatedForUseWithV0
         0, // showPage
         0, // close
@@ -484,7 +483,7 @@ void TestController::createWebViewWithOptions(const ViewOptions& options)
         0, // didCompleteRubberBandForMainFrame
         0, // saveDataToFileInDownloadsFolder
         0, // shouldInterruptJavaScript
-        createOtherPage,
+        0, // createNewPage_deprecatedForUseWithV1
         0, // mouseDidMoveOverElement
         decidePolicyForNotificationPermissionRequest, // decidePolicyForNotificationPermissionRequest
         0, // unavailablePluginButtonClicked_deprecatedForUseWithV1
@@ -502,6 +501,7 @@ void TestController::createWebViewWithOptions(const ViewOptions& options)
         0, // runJavaScriptConfirm
         0, // runJavaScriptPrompt
         0, // mediaSessionMetadataDidChange
+        createOtherPage,
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient.base);
 
@@ -543,18 +543,25 @@ void TestController::createWebViewWithOptions(const ViewOptions& options)
     m_mainWebView->changeWindowScaleIfNeeded(1);
 }
 
-void TestController::ensureViewSupportsOptions(const ViewOptions& options)
+void TestController::ensureViewSupportsOptionsForTest(const TestInvocation& test)
 {
-    if (m_mainWebView && !m_mainWebView->viewSupportsOptions(options)) {
-        WKPageSetPageUIClient(m_mainWebView->page(), 0);
-        WKPageSetPageNavigationClient(m_mainWebView->page(), 0);
-        WKPageClose(m_mainWebView->page());
-        
-        m_mainWebView = nullptr;
+    auto viewOptions = viewOptionsForTest(test);
 
-        createWebViewWithOptions(options);
-        resetStateToConsistentValues();
+    if (m_mainWebView) {
+        if (m_mainWebView->viewSupportsOptions(viewOptions))
+            return;
+
+        WKPageSetPageUIClient(m_mainWebView->page(), nullptr);
+        WKPageSetPageNavigationClient(m_mainWebView->page(), nullptr);
+        WKPageClose(m_mainWebView->page());
+
+        m_mainWebView = nullptr;
     }
+
+    createWebViewWithOptions(viewOptions);
+
+    if (!resetStateToConsistentValues())
+        TestInvocation::dumpWebProcessUnresponsiveness("<unknown> - TestController::run - Failed to reset state to consistent values\n");
 }
 
 void TestController::resetPreferencesToConsistentValues()
@@ -747,6 +754,29 @@ const char* TestController::networkProcessName()
 #endif
 }
 
+static bool shouldUseFixedLayout(const TestInvocation& test)
+{
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+        if (test.urlContains("device-adapt/") || test.urlContains("device-adapt\\"))
+            return true;
+#endif
+
+    return false;
+}
+
+ViewOptions TestController::viewOptionsForTest(const TestInvocation& test) const
+{
+    ViewOptions viewOptions;
+
+    viewOptions.useRemoteLayerTree = m_shouldUseRemoteLayerTree;
+    viewOptions.shouldShowWebView = m_shouldShowWebView;
+    viewOptions.useFixedLayout = shouldUseFixedLayout(test);
+
+    updatePlatformSpecificViewOptionsForTest(viewOptions, test);
+
+    return viewOptions;
+}
+
 void TestController::updateWebViewSizeForTest(const TestInvocation& test)
 {
     bool isSVGW3CTest = test.urlContains("svg/W3C-SVG-1.1") || test.urlContains("svg\\W3C-SVG-1.1");
@@ -767,47 +797,11 @@ void TestController::updateWindowScaleForTest(PlatformWebView* view, const TestI
     view->changeWindowScaleIfNeeded(needsHighDPIWindow ? 2 : 1);
 }
 
-// FIXME: move into relevant platformConfigureViewForTest()?
-static bool shouldUseFixedLayout(const TestInvocation& test)
-{
-#if ENABLE(CSS_DEVICE_ADAPTATION)
-    if (test.urlContains("device-adapt/") || test.urlContains("device-adapt\\"))
-        return true;
-#endif
-
-#if USE(COORDINATED_GRAPHICS) && PLATFORM(EFL)
-    if (test.urlContains("sticky/") || test.urlContains("sticky\\"))
-        return true;
-#endif
-    return false;
-
-    UNUSED_PARAM(test);
-}
-
-void TestController::updateLayoutTypeForTest(const TestInvocation& test)
-{
-    ViewOptions viewOptions;
-
-    viewOptions.useFixedLayout = shouldUseFixedLayout(test);
-
-    ensureViewSupportsOptions(viewOptions);
-}
-
-#if !PLATFORM(COCOA) && !PLATFORM(GTK)
-void TestController::platformConfigureViewForTest(const TestInvocation&)
-{
-}
-
-void TestController::platformResetPreferencesToConsistentValues()
-{
-}
-#endif
-
 void TestController::configureViewForTest(const TestInvocation& test)
 {
+    ensureViewSupportsOptionsForTest(test);
     updateWebViewSizeForTest(test);
     updateWindowScaleForTest(mainWebView(), test);
-    updateLayoutTypeForTest(test);
 
     platformConfigureViewForTest(test);
 }
@@ -935,11 +929,6 @@ void TestController::runTestingServerLoop()
 
 void TestController::run()
 {
-    if (!resetStateToConsistentValues()) {
-        TestInvocation::dumpWebProcessUnresponsiveness("<unknown> - TestController::run - Failed to reset state to consistent values\n");
-        return;
-    }
-
     if (m_usingServerMode)
         runTestingServerLoop();
     else {

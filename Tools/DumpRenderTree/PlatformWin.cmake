@@ -44,6 +44,10 @@ list(APPEND TestNetscapePlugin_SOURCES
     TestNetscapePlugin/win/WindowedPluginTest.cpp
 )
 
+if (${WTF_PLATFORM_WIN_CAIRO})
+    add_definitions(-DWIN_CAIRO)
+endif ()
+
 list(APPEND TestNetscapePlugin_LIBRARIES
     Msimg32
     Shlwapi
@@ -67,6 +71,7 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     TestNetscapePlugin/Tests
     TestNetscapePlugin/win
     TestNetscapePlugin/Tests/win
+    ${DERIVED_SOURCES_DIR}/WebKit/Interfaces
 )
 
 list(APPEND DumpRenderTree_LIBRARIES

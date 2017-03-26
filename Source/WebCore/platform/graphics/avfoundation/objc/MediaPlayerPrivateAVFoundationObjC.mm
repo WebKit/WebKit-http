@@ -72,6 +72,7 @@
 #import <wtf/CurrentTime.h>
 #import <wtf/ListHashSet.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/OSObjectPtr.h>
 #import <wtf/text/CString.h>
 #import <wtf/text/StringBuilder.h>
 
@@ -676,7 +677,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
     [m_videoLayer addObserver:m_objcObserver.get() forKeyPath:@"readyForDisplay" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextAVPlayerLayer];
     updateVideoLayerGravity();
     [m_videoLayer setContentsScale:player()->client().mediaPlayerContentsScale()];
-    IntSize defaultSize = player()->client().mediaPlayerContentBoxRect().pixelSnappedSize();
+    IntSize defaultSize = snappedIntRect(player()->client().mediaPlayerContentBoxRect()).size();
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::createVideoLayer(%p) - returning %p", this, m_videoLayer.get());
 
 #if PLATFORM(IOS)
@@ -1044,31 +1045,29 @@ void MediaPlayerPrivateAVFoundationObjC::beginLoadingMetadata()
 {
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::beginLoadingMetadata(%p) - requesting metadata loading", this);
 
-    dispatch_group_t metadataLoadingGroup = dispatch_group_create();
-    dispatch_group_enter(metadataLoadingGroup);
+    OSObjectPtr<dispatch_group_t> metadataLoadingGroup = adoptOSObject(dispatch_group_create());
+    dispatch_group_enter(metadataLoadingGroup.get());
     auto weakThis = createWeakPtr();
     [m_avAsset.get() loadValuesAsynchronouslyForKeys:assetMetadataKeyNames() completionHandler:^{
 
         callOnMainThread([weakThis, metadataLoadingGroup] {
             if (weakThis && [weakThis->m_avAsset.get() statusOfValueForKey:@"tracks" error:nil] == AVKeyValueStatusLoaded) {
                 for (AVAssetTrack *track in [weakThis->m_avAsset.get() tracks]) {
-                    dispatch_group_enter(metadataLoadingGroup);
+                    dispatch_group_enter(metadataLoadingGroup.get());
                     [track loadValuesAsynchronouslyForKeys:assetTrackMetadataKeyNames() completionHandler:^{
-                        dispatch_group_leave(metadataLoadingGroup);
+                        dispatch_group_leave(metadataLoadingGroup.get());
                     }];
                 }
             }
-            dispatch_group_leave(metadataLoadingGroup);
+            dispatch_group_leave(metadataLoadingGroup.get());
         });
     }];
 
-    dispatch_group_notify(metadataLoadingGroup, dispatch_get_main_queue(), ^{
+    dispatch_group_notify(metadataLoadingGroup.get(), dispatch_get_main_queue(), ^{
         callOnMainThread([weakThis] {
             if (weakThis)
                 [weakThis->m_objcObserver.get() metadataLoaded];
         });
-
-        dispatch_release(metadataLoadingGroup);
     });
 }
 
@@ -1308,11 +1307,8 @@ void MediaPlayerPrivateAVFoundationObjC::seekToTime(const MediaTime& time, const
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::seekToTime(%p) - calling seekToTime", this);
 
     [m_avPlayerItem.get() seekToTime:cmTime toleranceBefore:cmBefore toleranceAfter:cmAfter completionHandler:^(BOOL finished) {
-        double currentTime = CMTimeGetSeconds([m_avPlayerItem currentTime]);
-        callOnMainThread([weakThis, finished, currentTime] {
-            UNUSED_PARAM(currentTime);
+        callOnMainThread([weakThis, finished] {
             auto _this = weakThis.get();
-            LOG(Media, "MediaPlayerPrivateAVFoundationObjC::seekToTime(%p) - completion handler called, currentTime = %f", _this, currentTime);
             if (!_this)
                 return;
 

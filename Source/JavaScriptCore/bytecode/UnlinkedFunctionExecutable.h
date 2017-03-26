@@ -78,7 +78,7 @@ public:
     const Identifier& inferredName() const { return m_inferredName; }
     JSString* nameValue() const { return m_nameValue.get(); }
     unsigned parameterCount() const { return m_parameterCount; };
-    FunctionParseMode parseMode() const { return m_parseMode; };
+    SourceParseMode parseMode() const { return m_parseMode; };
     bool isInStrictContext() const { return m_isInStrictContext; }
     FunctionMode functionMode() const { return static_cast<FunctionMode>(m_functionMode); }
     ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
@@ -94,7 +94,7 @@ public:
 
     UnlinkedFunctionCodeBlock* codeBlockFor(
         VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, 
-        ParserError&);
+        ParserError&, bool);
 
     static UnlinkedFunctionExecutable* fromGlobalCode(
         const Identifier&, ExecState&, const SourceCode&, JSObject*& exception, 
@@ -124,6 +124,7 @@ public:
     ConstructAbility constructAbility() const { return static_cast<ConstructAbility>(m_constructAbility); }
     bool isClassConstructorFunction() const { return constructorKind() != ConstructorKind::None; }
     const VariableEnvironment* parentScopeTDZVariables() const { return &m_parentScopeTDZVariables; }
+    bool isArrowFunction() const { return m_isArrowFunction; }
 
 private:
     UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, RefPtr<SourceProvider>&& sourceOverride, FunctionMetadataNode*, UnlinkedFunctionKind, ConstructAbility, VariableEnvironment&);
@@ -146,7 +147,7 @@ private:
     unsigned m_typeProfilingStartOffset;
     unsigned m_typeProfilingEndOffset;
     unsigned m_parameterCount;
-    FunctionParseMode m_parseMode;
+    SourceParseMode m_parseMode;
 
     CodeFeatures m_features;
 
@@ -156,6 +157,7 @@ private:
     unsigned m_constructAbility: 1;
     unsigned m_constructorKind : 2;
     unsigned m_functionMode : 1; // FunctionMode
+    unsigned m_isArrowFunction : 1;
 
 protected:
     void finishCreation(VM& vm)

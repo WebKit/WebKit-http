@@ -98,7 +98,7 @@ public:
     virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const override;
     virtual void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const override;
 
-    void setMaximalOutlineSize(int o);
+    void setMaximalOutlineSize(int);
     int maximalOutlineSize() const { return m_maximalOutlineSize; }
 
     LayoutRect viewRect() const;
@@ -345,7 +345,8 @@ private:
     LegacyPrinting m_legacyPrinting;
     // End deprecated members.
 
-    int m_maximalOutlineSize; // Used to apply a fudge factor to dirty-rect checks on blocks/tables.
+    // Used to inflate compositing layers and repaint rects.
+    int m_maximalOutlineSize { 0 };
 
     bool shouldUsePrintingLayout() const;
 
@@ -387,9 +388,6 @@ public:
     explicit LayoutStateMaintainer(RenderView& view, RenderBox& root, LayoutSize offset, bool disableState = false, LayoutUnit pageHeight = 0, bool pageHeightChanged = false)
         : m_view(view)
         , m_disabled(disableState)
-        , m_didStart(false)
-        , m_didEnd(false)
-        , m_didCreateLayoutState(false)
     {
         push(root, offset, pageHeight, pageHeightChanged);
     }
@@ -397,50 +395,47 @@ public:
     // Constructor to maybe push later.
     explicit LayoutStateMaintainer(RenderView& view)
         : m_view(view)
-        , m_disabled(false)
-        , m_didStart(false)
-        , m_didEnd(false)
-        , m_didCreateLayoutState(false)
     {
     }
 
     ~LayoutStateMaintainer()
     {
-        ASSERT(m_didStart == m_didEnd);   // if this fires, it means that someone did a push(), but forgot to pop().
+        ASSERT(!m_didCallPush || m_didCallPush == m_didCallPop);
     }
 
     void push(RenderBox& root, LayoutSize offset, LayoutUnit pageHeight = 0, bool pageHeightChanged = false)
     {
-        ASSERT(!m_didStart);
+        ASSERT(!m_didCallPush);
+        m_didCallPush = true;
         // We push state even if disabled, because we still need to store layoutDelta
-        m_didCreateLayoutState = m_view.pushLayoutState(root, offset, pageHeight, pageHeightChanged);
-        if (m_disabled && m_didCreateLayoutState)
+        m_didPushLayoutState = m_view.pushLayoutState(root, offset, pageHeight, pageHeightChanged);
+        if (!m_didPushLayoutState)
+            return;
+        if (m_disabled)
             m_view.disableLayoutState();
-        m_didStart = true;
     }
 
     void pop()
     {
-        if (m_didStart) {
-            ASSERT(!m_didEnd);
-            if (m_didCreateLayoutState) {
-                m_view.popLayoutState();
-                if (m_disabled)
-                    m_view.enableLayoutState();
-            }
-            
-            m_didEnd = true;
-        }
+        ASSERT(!m_didCallPop);
+        m_didCallPop = true;
+        if (!m_didCallPush)
+            return;
+        if (!m_didPushLayoutState)
+            return;
+        m_view.popLayoutState();
+        if (m_disabled)
+            m_view.enableLayoutState();
     }
 
-    bool didPush() const { return m_didStart; }
+    bool didPush() const { return m_didCallPush; }
 
 private:
     RenderView& m_view;
-    bool m_disabled : 1;        // true if the offset and clip part of layoutState is disabled
-    bool m_didStart : 1;        // true if we did a push or disable
-    bool m_didEnd : 1;          // true if we popped or re-enabled
-    bool m_didCreateLayoutState : 1; // true if we actually made a layout state.
+    bool m_disabled { false };
+    bool m_didCallPush { false };
+    bool m_didCallPop { false };
+    bool m_didPushLayoutState { false };
 };
 
 class LayoutStateDisabler {

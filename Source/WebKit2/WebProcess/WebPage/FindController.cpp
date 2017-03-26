@@ -43,7 +43,10 @@
 #include <WebCore/PageOverlayController.h>
 #include <WebCore/PlatformMouseEvent.h>
 #include <WebCore/PluginDocument.h>
-#include <WebCore/TextIndicator.h>
+
+#if PLATFORM(COCOA)
+#include <WebCore/TextIndicatorWindow.h>
+#endif
 
 using namespace WebCore;
 
@@ -254,7 +257,7 @@ void FindController::findStringMatches(const String& string, FindOptions options
     Vector<Vector<IntRect>> matchRects;
     for (size_t i = 0; i < m_findMatches.size(); ++i) {
         Vector<IntRect> rects;
-        m_findMatches[i]->textRects(rects);
+        m_findMatches[i]->absoluteTextRects(rects);
         matchRects.append(WTF::move(rects));
     }
 
@@ -317,12 +320,14 @@ void FindController::hideFindUI()
 #if !PLATFORM(IOS)
 bool FindController::updateFindIndicator(Frame& selectedFrame, bool isShowingOverlay, bool shouldAnimate)
 {
-    RefPtr<TextIndicator> indicator = TextIndicator::createWithSelectionInFrame(selectedFrame, shouldAnimate ? TextIndicatorPresentationTransition::Bounce : TextIndicatorPresentationTransition::None);
+    RefPtr<TextIndicator> indicator = TextIndicator::createWithSelectionInFrame(selectedFrame, TextIndicatorOptionIncludeMarginIfRangeMatchesSelection, shouldAnimate ? TextIndicatorPresentationTransition::Bounce : TextIndicatorPresentationTransition::None);
     if (!indicator)
         return false;
 
     m_findIndicatorRect = enclosingIntRect(indicator->selectionRectInRootViewCoordinates());
-    m_webPage->send(Messages::WebPageProxy::SetTextIndicator(indicator->data(), static_cast<uint64_t>(isShowingOverlay ? TextIndicatorLifetime::Permanent : TextIndicatorLifetime::Temporary)));
+#if PLATFORM(COCOA)
+    m_webPage->send(Messages::WebPageProxy::SetTextIndicator(indicator->data(), static_cast<uint64_t>(isShowingOverlay ? TextIndicatorWindowLifetime::Permanent : TextIndicatorWindowLifetime::Temporary)));
+#endif
     m_isShowingFindIndicator = true;
 
     return true;

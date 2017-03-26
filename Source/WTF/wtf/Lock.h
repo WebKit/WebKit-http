@@ -38,10 +38,10 @@ struct LockInspector;
 namespace WTF {
 
 // This is a fully adaptive mutex that only requires 1 byte of storage. It has fast paths that are
-// competetive to SpinLock (uncontended locking is inlined and is just a CAS, microcontention is
-// handled by spinning and yielding), and a slow path that is competetive to Mutex (if a lock cannot
-// be acquired in a short period of time, the thread is put to sleep until the lock is available
-// again). It uses less memory than either SpinLock or Mutex.
+// competetive to a spinlock (uncontended locking is inlined and is just a CAS, microcontention is
+// handled by spinning and yielding), and a slow path that is competetive to std::mutex (if a lock
+// cannot be acquired in a short period of time, the thread is put to sleep until the lock is available
+// again). It uses less memory than a std::mutex.
 
 // This is a struct without a constructor or destructor so that it can be statically initialized.
 // Use Lock in instance variables.
@@ -54,6 +54,23 @@ struct LockBase {
         }
 
         lockSlow();
+    }
+
+    bool tryLock()
+    {
+        for (;;) {
+            uint8_t currentByteValue = m_byte.load();
+            if (currentByteValue & isHeldBit)
+                return false;
+            if (m_byte.compareExchangeWeak(currentByteValue, currentByteValue | isHeldBit))
+                return true;
+        }
+    }
+
+    // Need this version for std::unique_lock.
+    bool try_lock()
+    {
+        return tryLock();
     }
 
     void unlock()
@@ -108,9 +125,9 @@ typedef Locker<LockBase> LockHolder;
 
 } // namespace WTF
 
-using WTF::StaticLock;
 using WTF::Lock;
 using WTF::LockHolder;
+using WTF::StaticLock;
 
 #endif // WTF_Lock_h
 

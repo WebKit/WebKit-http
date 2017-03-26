@@ -810,7 +810,7 @@ FloatRect RenderObject::absoluteBoundingBoxRectForRange(const Range* range)
     range->ownerDocument().updateLayout();
 
     Vector<FloatQuad> quads;
-    range->textQuads(quads);
+    range->absoluteTextQuads(quads);
 
     if (quads.isEmpty())
         return FloatRect();
@@ -1878,11 +1878,11 @@ void RenderObject::collectAnnotatedRegions(Vector<AnnotatedRegionValue>& regions
 }
 #endif
 
-int RenderObject::maximalOutlineSize(PaintPhase p) const
+void RenderObject::adjustRectWithMaximumOutline(PaintPhase phase, LayoutRect& rect) const
 {
-    if (p != PaintPhaseOutline && p != PaintPhaseSelfOutline && p != PaintPhaseChildOutlines)
-        return 0;
-    return view().maximalOutlineSize();
+    if (phase != PaintPhaseOutline && phase != PaintPhaseSelfOutline && phase != PaintPhaseChildOutlines)
+        return;
+    rect.inflate(view().maximalOutlineSize());
 }
 
 int RenderObject::caretMinOffset() const
@@ -1917,11 +1917,12 @@ int RenderObject::nextOffset(int current) const
 void RenderObject::adjustRectForOutlineAndShadow(LayoutRect& rect) const
 {
     int outlineSize = outlineStyleForRepaint().outlineSize();
+    if (outlineStyleForRepaint().outlineStyleIsAuto())
+        outlineSize = std::max(theme().platformFocusRingWidth() + outlineStyleForRepaint().outlineOffset(), outlineSize);
     if (const ShadowData* boxShadow = style().boxShadow()) {
         boxShadow->adjustRectForShadow(rect, outlineSize);
         return;
     }
-
     rect.inflate(outlineSize);
 }
 

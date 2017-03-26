@@ -67,7 +67,6 @@ private:
         AudioBufferCallback* errorCallback() { return m_errorCallback.get(); }
         AudioBuffer* audioBuffer() { return m_audioBuffer.get(); }
 
-        static void notifyCompleteDispatch(void* userData);
         void notifyComplete();
 
         RefPtr<JSC::ArrayBuffer> m_audioData;
@@ -81,7 +80,7 @@ private:
     void runLoop();
 
     WTF::ThreadIdentifier m_threadID;
-    Mutex m_threadCreationMutex;
+    Lock m_threadCreationMutex;
     MessageQueue<DecodingTask> m_queue;
 };
 

@@ -1,9 +1,9 @@
 if (${WTF_PLATFORM_WIN_CAIRO})
     add_definitions(-DUSE_CAIRO=1 -DUSE_CURL=1 -DWEBKIT_EXPORTS=1)
     list(APPEND WebKit_INCLUDE_DIRECTORIES
-        "$ENV{WEBKIT_LIBRARIES}/include"
-        "$ENV{WEBKIT_LIBRARIES}/include/cairo"
-        "$ENV{WEBKIT_LIBRARIES}/include/sqlite"
+        "${WEBKIT_LIBRARIES_DIR}/include"
+        "${WEBKIT_LIBRARIES_DIR}/include/cairo"
+        "${WEBKIT_LIBRARIES_DIR}/include/sqlite"
         "${WEBCORE_DIR}/platform/graphics/cairo"
     )
     list(APPEND WebKit_SOURCES_Classes
@@ -22,7 +22,27 @@ else ()
         win/WebURLAuthenticationChallengeSenderCFNet.cpp
     )
     list(APPEND WebKit_LIBRARIES
-        PRIVATE WebKitSystemInterface
+        PRIVATE ASL${DEBUG_SUFFIX}
+        PRIVATE AVFoundationCF${DEBUG_SUFFIX}
+        PRIVATE CFNetwork${DEBUG_SUFFIX}
+        PRIVATE CoreAudioToolbox${DEBUG_SUFFIX}
+        PRIVATE CoreFoundation${DEBUG_SUFFIX}
+        PRIVATE CoreGraphics${DEBUG_SUFFIX}
+        PRIVATE CoreMedia${DEBUG_SUFFIX}
+        PRIVATE CoreText${DEBUG_SUFFIX}
+        PRIVATE CoreVideo${DEBUG_SUFFIX}
+        PRIVATE MediaAccessibility${DEBUG_SUFFIX}
+        PRIVATE QuartzCore${DEBUG_SUFFIX}
+        PRIVATE SQLite3${DEBUG_SUFFIX}
+        PRIVATE WebKitSystemInterface${DEBUG_SUFFIX}
+        PRIVATE WebKitQuartzCoreAdditions${DEBUG_SUFFIX}
+        PRIVATE libdispatch${DEBUG_SUFFIX}
+        PRIVATE libexslt${DEBUG_SUFFIX}
+        PRIVATE libicuin${DEBUG_SUFFIX}
+        PRIVATE libicuuc${DEBUG_SUFFIX}
+        PRIVATE libxml2${DEBUG_SUFFIX}
+        PRIVATE libxslt${DEBUG_SUFFIX}
+        PRIVATE zdll${DEBUG_SUFFIX}
     )
 endif ()
 
@@ -33,34 +53,14 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     win/WebCoreSupport
     WebCoreSupport
     WebKit.vcxproj/WebKit
+    "${WEBKIT_DIR}/.."
     "${DERIVED_SOURCES_WEBKIT_DIR}/include"
-    "${CMAKE_SOURCE_DIR}/Source"
-    "${DERIVED_SOURCES_WEBKIT_DIR}/include/WebCore"
-    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
-    "${DERIVED_SOURCES_WEBCORE_DIR}"
-    "${DERIVED_SOURCES_DIR}"
-    "${JAVASCRIPTCORE_DIR}/dfg"
-    "${WEBCORE_DIR}/style"
-    "${WEBCORE_DIR}/loader/archive"
-    "${WEBCORE_DIR}/loader/archive/cf"
-    "${WEBCORE_DIR}/page/scrolling"
-    "${WEBCORE_DIR}/platform/cf"
-    "${WEBCORE_DIR}/platform/graphics/win"
-    "${WEBCORE_DIR}/platform/graphics/filters"
-    "${WEBCORE_DIR}/platform/audio"
-    "${WEBCORE_DIR}/platform/win"
-    "${WEBCORE_DIR}/rendering/line"
-    "${WEBCORE_DIR}/rendering/shapes"
-    "${WEBCORE_DIR}/html/shadow"
-    "${WEBCORE_DIR}/html/track"
-    "${WEBCORE_DIR}/modules/websockets"
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces"
-    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
-    "${THIRDPARTY_DIR}"
-    "${THIRDPARTY_DIR}/ANGLE"
-    "${THIRDPARTY_DIR}/ANGLE/include"
-    "${THIRDPARTY_DIR}/ANGLE/include/egl"
-    "${THIRDPARTY_DIR}/ANGLE/include/khr"
+    "${DERIVED_SOURCES_DIR}"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/egl"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/khr"
 )
 
 list(APPEND WebKit_INCLUDES
@@ -418,6 +418,7 @@ add_library(WebKitGUID STATIC
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/AccessibleText_i.c"
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/AccessibleText2_i.c"
 )
+set_target_properties(WebKitGUID PROPERTIES OUTPUT_NAME WebKitGUID${DEBUG_SUFFIX})
 set_target_properties(WebKitGUID PROPERTIES FOLDER "WebKit")
 
 list(APPEND WebKit_LIBRARIES
@@ -429,14 +430,15 @@ list(APPEND WebKit_LIBRARIES
     PRIVATE Shlwapi
     PRIVATE Usp10
     PRIVATE Version
-    PRIVATE WebKitGUID
+    PRIVATE Winmm
+    PRIVATE WebKitGUID${DEBUG_SUFFIX}
 )
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)
     list(APPEND WebKit_LIBRARIES
-        libANGLE
-        libEGL
-        libGLESv2
+        libANGLE${DEBUG_SUFFIX}
+        libEGL${DEBUG_SUFFIX}
+        libGLESv2${DEBUG_SUFFIX}
     )
 endif ()
 
@@ -457,10 +459,7 @@ endif ()
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces)
 
-set(WebKit_FORWARDING_HEADERS
-    "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/WebKit.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/win/WebKitCOMAPI.h"
-    "win/CFDictionaryPropertyBag.h"
-)
-
-WEBKIT_CREATE_FORWARDING_HEADERS(WebKit FILES ${WebKit_FORWARDING_HEADERS})
+set(WebKitGUID_POST_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/WebKit/postBuild.cmd")
+file(WRITE "${WebKitGUID_POST_BUILD_COMMAND}" "@xcopy /y /d /f \"${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/WebKit.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit\" >nul 2>nul\n@xcopy /y /d /f \"${CMAKE_CURRENT_SOURCE_DIR}/win/WebKitCOMAPI.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit\" >nul 2>nul\n@xcopy /y /d /f \"${CMAKE_CURRENT_SOURCE_DIR}/win/CFDictionaryPropertyBag.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit\" >nul 2>nul\n")
+file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit)
+add_custom_command(TARGET WebKitGUID POST_BUILD COMMAND ${WebKitGUID_POST_BUILD_COMMAND} VERBATIM)

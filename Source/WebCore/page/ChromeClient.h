@@ -281,6 +281,7 @@ public:
         
     virtual void elementDidFocus(const Node*) { };
     virtual void elementDidBlur(const Node*) { };
+    virtual void elementDidRefocus(const Node*) { };
     
     virtual bool shouldPaintEntireContents() const { return false; }
     virtual bool hasStablePageScaleFactor() const { return true; }
@@ -455,7 +456,7 @@ public:
 #endif
 
 #if ENABLE(VIDEO)
-    virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) { }
+    virtual void imageOrMediaDocumentSizeChanged(const WebCore::IntSize&) { }
 #if USE(GSTREAMER)
     virtual void requestInstallMissingMediaPlugins(const String& /*details*/, const String& /*description*/, MediaPlayerRequestInstallMissingPluginsCallback&) { };
 #endif

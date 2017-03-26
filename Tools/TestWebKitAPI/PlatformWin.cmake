@@ -2,6 +2,10 @@ set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY_WTF "${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}")
 add_definitions(-DUSE_CONSOLE_ENTRY_POINT)
 
+if (${WTF_PLATFORM_WIN_CAIRO})
+    add_definitions(-DWIN_CAIRO)
+endif ()
+
 set(test_main_SOURCES
     ${TESTWEBKITAPI_DIR}/win/main.cpp
 )
@@ -10,6 +14,7 @@ include_directories(
     ${DERIVED_SOURCES_DIR}
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders
     ${TESTWEBKITAPI_DIR}/win
+    ${DERIVED_SOURCES_DIR}/WebKit/Interfaces
 )
 
 add_definitions(-DWEBCORE_EXPORT=)
@@ -19,8 +24,8 @@ set(test_webcore_LIBRARIES
     Iphlpapi
     Shlwapi
     Usp10
-    WebCore
-    WebKit
+    WebCore${DEBUG_SUFFIX}
+    WebKit${DEBUG_SUFFIX}
     gtest
 )
 
@@ -49,9 +54,27 @@ if (${WTF_PLATFORM_WIN_CAIRO})
     )
 else ()
     list(APPEND test_webcore_LIBRARIES
-        CFNetwork
-        CoreMedia
-        WebKitSystemInterface
+        ASL${DEBUG_SUFFIX}
+        AVFoundationCF${DEBUG_SUFFIX}
+        CFNetwork${DEBUG_SUFFIX}
+        CoreAudioToolbox${DEBUG_SUFFIX}
+        CoreFoundation${DEBUG_SUFFIX}
+        CoreGraphics${DEBUG_SUFFIX}
+        CoreMedia${DEBUG_SUFFIX}
+        CoreText${DEBUG_SUFFIX}
+        CoreVideo${DEBUG_SUFFIX}
+        MediaAccessibility${DEBUG_SUFFIX}
+        QuartzCore${DEBUG_SUFFIX}
+        SQLite3${DEBUG_SUFFIX}
+        WebKitSystemInterface${DEBUG_SUFFIX}
+        WebKitQuartzCoreAdditions${DEBUG_SUFFIX}
+        libdispatch${DEBUG_SUFFIX}
+        libexslt${DEBUG_SUFFIX}
+        libicuin${DEBUG_SUFFIX}
+        libicuuc${DEBUG_SUFFIX}
+        libxml2${DEBUG_SUFFIX}
+        libxslt${DEBUG_SUFFIX}
+        zdll${DEBUG_SUFFIX}
     )
 endif ()
 

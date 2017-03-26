@@ -42,6 +42,7 @@
     macro(Infinity) \
     macro(Intl) \
     macro(JSON) \
+    macro(Loader) \
     macro(Map)\
     macro(MapIterator)\
     macro(Math) \
@@ -131,6 +132,7 @@
     macro(input) \
     macro(instructionCount) \
     macro(isArray) \
+    macro(isEnabled) \
     macro(isPrototypeOf) \
     macro(isView) \
     macro(isWatchpoint) \
@@ -280,7 +282,9 @@
     macro(Number) \
     macro(Array) \
     macro(String) \
+    macro(Map) \
     macro(Promise) \
+    macro(InternalPromise) \
     macro(abs) \
     macro(floor) \
     macro(isFinite) \
@@ -295,13 +299,14 @@
     macro(handler) \
     macro(promiseState) \
     macro(promisePending) \
-    macro(promiseFulfilled) \
-    macro(promiseRejected) \
     macro(promiseFulfillReactions) \
     macro(promiseRejectReactions) \
     macro(promiseResult) \
     macro(capabilities) \
     macro(starDefault) \
+    macro(InspectorInstrumentation) \
+    macro(get) \
+    macro(set) \
 
 
 namespace JSC {
@@ -348,8 +353,8 @@ namespace JSC {
         bool isPrivateName(UniquedStringImpl& uid) const;
         bool isPrivateName(const Identifier&) const;
 
-        const Identifier* getPrivateName(const Identifier&) const;
-        Identifier getPublicName(const Identifier&) const;
+        const Identifier* lookUpPrivateName(const Identifier&) const;
+        Identifier lookUpPublicName(const Identifier&) const;
 
         const BytecodeIntrinsicRegistry& bytecodeIntrinsicRegistry() const { return m_bytecodeIntrinsicRegistry; }
 

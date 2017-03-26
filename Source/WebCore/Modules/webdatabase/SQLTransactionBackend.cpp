@@ -381,7 +381,7 @@ void SQLTransactionBackend::doCleanup()
 
     releaseOriginLockIfNeeded();
 
-    MutexLocker locker(m_statementMutex);
+    LockHolder locker(m_statementMutex);
     m_statementQueue.clear();
 
     if (m_sqliteTransaction) {
@@ -465,7 +465,7 @@ SQLTransactionBackend::StateFunction SQLTransactionBackend::stateFunctionFor(SQL
 
 void SQLTransactionBackend::enqueueStatementBackend(std::unique_ptr<SQLStatement> statementBackend)
 {
-    MutexLocker locker(m_statementMutex);
+    LockHolder locker(m_statementMutex);
     m_statementQueue.append(WTF::move(statementBackend));
 }
 
@@ -514,14 +514,6 @@ void SQLTransactionBackend::performNextStep()
     computeNextStateAndCleanupIfNeeded();
     runStateMachine();
 }
-
-#if PLATFORM(IOS)
-bool SQLTransactionBackend::shouldPerformWhilePaused() const
-{
-    // SQLTransactions should only run-while-paused if they have progressed passed the first transaction step.
-    return m_nextState != SQLTransactionState::AcquireLock;
-}
-#endif
 
 void SQLTransactionBackend::executeSQL(std::unique_ptr<SQLStatement> statementBackend)
 {
@@ -635,7 +627,7 @@ SQLTransactionState SQLTransactionBackend::openTransactionAndPreflight()
     }
 
     // If we have no callback to make, skip pass to the state after:
-    return SQLTransactionState::RunStatements;
+    return runStatements();
 }
 
 SQLTransactionState SQLTransactionBackend::runStatements()
@@ -681,7 +673,7 @@ void SQLTransactionBackend::getNextStatement()
 {
     m_currentStatementBackend = nullptr;
 
-    MutexLocker locker(m_statementMutex);
+    LockHolder locker(m_statementMutex);
     if (!m_statementQueue.isEmpty())
         m_currentStatementBackend = m_statementQueue.takeFirst();
 }
@@ -831,7 +823,7 @@ SQLTransactionState SQLTransactionBackend::cleanupAfterTransactionErrorCallback(
 
     ASSERT(!m_database->sqliteDatabase().transactionInProgress());
 
-    return SQLTransactionState::CleanupAndTerminate;
+    return cleanupAndTerminate();
 }
 
 // requestTransitToState() can be called from the frontend. Hence, it should

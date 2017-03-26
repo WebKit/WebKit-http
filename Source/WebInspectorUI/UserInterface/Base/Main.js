@@ -244,7 +244,8 @@ WebInspector.contentLoaded = function()
     this._reloadPageKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "R", this._reloadPage.bind(this));
     this._reloadPageIgnoringCacheKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "R", this._reloadPageIgnoringCache.bind(this));
 
-    this._consoleKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Option | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "C", this._showConsoleTab.bind(this));
+    this._consoleTabKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Option | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "C", this._showConsoleTab.bind(this));
+    this._quickConsoleKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control, WebInspector.KeyboardShortcut.Key.Apostrophe, this._focusConsolePrompt.bind(this));
 
     this._inspectModeKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "C", this._toggleInspectMode.bind(this));
 
@@ -340,15 +341,18 @@ WebInspector.contentLoaded = function()
     this._updateDockNavigationItems();
     this._updateToolbarHeight();
 
-    this._pendingOpenTabTypes = [];
+    this._pendingOpenTabs = [];
 
-    for (var tabType of this._openTabsSetting.value) {
+    let openTabTypes = this._openTabsSetting.value;
+
+    for (let i = 0; i < openTabTypes.length; ++i) {
+        let tabType = openTabTypes[i];
         if (!this.isTabTypeAllowed(tabType)) {
-            this._pendingOpenTabTypes.push(tabType);
+            this._pendingOpenTabs.push({tabType, index: i});
             continue;
         }
 
-        var tabContentView = this._tabContentViewForType(tabType);
+        let tabContentView = this._tabContentViewForType(tabType);
         if (!tabContentView)
             continue;
         this.tabBrowser.addTabForContentView(tabContentView, true);
@@ -441,6 +445,10 @@ WebInspector._rememberOpenTabs = function()
         openTabs.push(tabContentView.type);
     }
 
+    // Keep currently unsupported tabs in the setting at their previous index.
+    for (let {tabType, index} of this._pendingOpenTabs)
+        openTabs.insertAtIndex(tabType, index);
+
     this._openTabsSetting.value = openTabs;
 };
 
@@ -511,23 +519,23 @@ WebInspector.activateExtraDomains = function(domains)
     this._updateReloadToolbarButton();
     this._updateDownloadToolbarButton();
 
-    var stillPendingOpenTabTypes = [];
-    for (var tabType of this._pendingOpenTabTypes) {
+    let stillPendingOpenTabs = [];
+    for (let {tabType, index} of this._pendingOpenTabs) {
         if (!this.isTabTypeAllowed(tabType)) {
-            stillPendingOpenTabTypes.push(tabType);
+            stillPendingOpenTabs.push({tabType, index});
             continue;
         }
 
-        var tabContentView = this._tabContentViewForType(tabType);
+        let tabContentView = this._tabContentViewForType(tabType);
         if (!tabContentView)
             continue;
 
-        this.tabBrowser.addTabForContentView(tabContentView, true);
+        this.tabBrowser.addTabForContentView(tabContentView, true, index);
 
         tabContentView.restoreStateFromCookie(WebInspector.StateRestorationType.Load);
     }
 
-    this._pendingOpenTabTypes = stillPendingOpenTabTypes;
+    this._pendingOpenTabs = stillPendingOpenTabs;
 
     this._updateNewTabButtonState();
 };
@@ -1615,6 +1623,11 @@ WebInspector._toggleInspectMode = function(event)
 WebInspector._showConsoleTab = function(event)
 {
     this.showConsoleTab();
+};
+
+WebInspector._focusConsolePrompt = function(event)
+{
+    this.quickConsole.prompt.focus();
 };
 
 WebInspector._focusedContentView = function()

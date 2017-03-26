@@ -42,7 +42,7 @@ PluginMainThreadScheduler::PluginMainThreadScheduler()
 
 void PluginMainThreadScheduler::scheduleCall(NPP npp, MainThreadFunction function, void* userData)
 {
-    MutexLocker lock(m_queueMutex);
+    LockHolder lock(m_queueMutex);
 
     CallQueueMap::iterator it = m_callQueueMap.find(npp);
     if (it == m_callQueueMap.end())
@@ -51,14 +51,16 @@ void PluginMainThreadScheduler::scheduleCall(NPP npp, MainThreadFunction functio
     it->value.append(Call(function, userData));
 
     if (!m_callPending) {
-        callOnMainThread(mainThreadCallback, this);
+        callOnMainThread([this] {
+            dispatchCalls();
+        });
         m_callPending = true;
     }
 }
 
 void PluginMainThreadScheduler::registerPlugin(NPP npp)
 {
-    MutexLocker lock(m_queueMutex);
+    LockHolder lock(m_queueMutex);
 
     ASSERT(!m_callQueueMap.contains(npp));
     m_callQueueMap.set(npp, Deque<Call>());
@@ -66,7 +68,7 @@ void PluginMainThreadScheduler::registerPlugin(NPP npp)
 
 void PluginMainThreadScheduler::unregisterPlugin(NPP npp)
 {
-    MutexLocker lock(m_queueMutex);
+    LockHolder lock(m_queueMutex);
 
     ASSERT(m_callQueueMap.contains(npp));
     m_callQueueMap.remove(npp);
@@ -77,7 +79,7 @@ void PluginMainThreadScheduler::dispatchCallsForPlugin(NPP npp, const Deque<Call
     for (auto& call : calls) {
         // Check if the plug-in has been destroyed.
         {
-            MutexLocker lock(m_queueMutex);
+            LockHolder lock(m_queueMutex);
             if (!m_callQueueMap.contains(npp))
                 return;
         }
@@ -100,11 +102,6 @@ void PluginMainThreadScheduler::dispatchCalls()
 
     for (auto& entry : copy)
         dispatchCallsForPlugin(entry.key, entry.value);
-}
-
-void PluginMainThreadScheduler::mainThreadCallback(void* context)
-{
-    static_cast<PluginMainThreadScheduler*>(context)->dispatchCalls();
 }
 
 } // namespace WebCore

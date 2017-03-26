@@ -507,12 +507,19 @@ bool dequeue(
 
 } // anonymous namespace
 
-bool ParkingLot::parkConditionally(const void* address, std::function<bool()> validation)
+bool ParkingLot::parkConditionally(
+    const void* address,
+    std::function<bool()> validation,
+    std::function<void()> beforeSleep,
+    Clock::time_point timeout)
 {
     if (verbose)
         dataLog(toString(currentThread(), ": parking.\n"));
     
     ThreadData* me = myThreadData();
+
+    // Guard against someone calling parkConditionally() recursively from beforeSleep().
+    RELEASE_ASSERT(!me->address);
 
     bool result = enqueue(
         address,
@@ -527,16 +534,62 @@ bool ParkingLot::parkConditionally(const void* address, std::function<bool()> va
     if (!result)
         return false;
 
-    if (verbose)
-        dataLog(toString(currentThread(), ": parking self: ", RawPointer(me), "\n"));
+    beforeSleep();
+    
+    bool didGetDequeued;
     {
         std::unique_lock<std::mutex> locker(me->parkingLock);
-        while (me->address)
-            me->parkingCondition.wait(locker);
+        while (me->address && Clock::now() < timeout) {
+            // This is pretty funny. On Linux, if you wait until the max time, it immediately reports that you timed
+            // out. What's particularly bad about this is that it never releases the lock in that case. So, you loop
+            // forever without yielding to the thread that would wake you up.
+            if (timeout == Clock::time_point::max())
+                me->parkingCondition.wait(locker);
+            else
+                me->parkingCondition.wait_until(locker, timeout);
+            
+            // Because of the above, we do this thing, which is hilariously awful, but ensures that the worst case is
+            // a CPU-eating spin but not a deadlock.
+            locker.unlock();
+            locker.lock();
+        }
+        ASSERT(!me->address || me->address == address);
+        didGetDequeued = !me->address;
     }
-    if (verbose)
-        dataLog(toString(currentThread(), ": unparked self: ", RawPointer(me), "\n"));
-    return true;
+    
+    if (didGetDequeued) {
+        // Great! We actually got dequeued rather than the timeout expiring.
+        return true;
+    }
+
+    // Have to remove ourselves from the queue since we timed out and nobody has dequeued us yet.
+
+    // It's possible that we get unparked right here, just before dequeue() grabs a lock. It's
+    // probably worthwhile to detect when this happens, and return true in that case, to ensure
+    // that when we return false it really means that no unpark could have been responsible for us
+    // waking up, and that if an unpark call did happen, it woke someone else up.
+    bool didFind = false;
+    dequeue(
+        address, BucketMode::IgnoreEmpty,
+        [&] (ThreadData* element) {
+            if (element == me) {
+                didFind = true;
+                return DequeueResult::RemoveAndStop;
+            }
+            return DequeueResult::Ignore;
+        },
+        [] (bool) { });
+
+    ASSERT(!me->nextInQueue);
+
+    // Make sure that no matter what, me->address is null after this point.
+    {
+        std::lock_guard<std::mutex> locker(me->parkingLock);
+        me->address = nullptr;
+    }
+
+    // If we were not found in the search above, then we know that someone unparked us.
+    return !didFind;
 }
 
 bool ParkingLot::unparkOne(const void* address)

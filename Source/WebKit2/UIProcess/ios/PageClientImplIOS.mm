@@ -453,11 +453,11 @@ RefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy*
     return nullptr;
 }
 
-void PageClientImpl::setTextIndicator(Ref<TextIndicator> textIndicator, TextIndicatorLifetime)
+void PageClientImpl::setTextIndicator(Ref<TextIndicator> textIndicator, TextIndicatorWindowLifetime)
 {
 }
 
-void PageClientImpl::clearTextIndicator(TextIndicatorDismissalAnimation)
+void PageClientImpl::clearTextIndicator(TextIndicatorWindowDismissalAnimation)
 {
 }
 
@@ -738,14 +738,6 @@ void PageClientImpl::didChangeBackgroundColor()
 {
     [m_webView _updateScrollViewBackground];
 }
-
-#if ENABLE(VIDEO)
-void PageClientImpl::mediaDocumentNaturalSizeChanged(const IntSize& newSize)
-{
-    [m_webView _mediaDocumentNaturalSizeChanged:newSize];
-}
-#endif
-
 
 void PageClientImpl::refView()
 {

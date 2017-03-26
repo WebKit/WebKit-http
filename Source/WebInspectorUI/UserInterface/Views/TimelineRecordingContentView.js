@@ -48,7 +48,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         this._currentTimelineOverview = this._linearTimelineOverview;
         this.element.appendChild(this._currentTimelineOverview.element);
 
-        this._contentViewContainer = new WebInspector.ContentViewContainer();
+        this._contentViewContainer = new WebInspector.ContentViewContainer;
         this._contentViewContainer.addEventListener(WebInspector.ContentViewContainer.Event.CurrentContentViewDidChange, this._currentContentViewDidChange, this);
         this.element.appendChild(this._contentViewContainer.element);
 
@@ -245,6 +245,14 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
             return;
 
         this.currentTimelineView.filterDidChange();
+    }
+
+    recordWasFiltered(record, filtered)
+    {
+        if (!this.currentTimelineView)
+            return;
+
+        this._currentTimelineOverview.recordWasFiltered(this.currentTimelineView.representedObject, record, filtered);
     }
 
     matchTreeElementAgainstCustomFilters(treeElement)
@@ -488,7 +496,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
     _capturingStarted(event)
     {
-        this._startUpdatingCurrentTime(event.data.startTime);
+        if (!this._updating)
+            this._startUpdatingCurrentTime(event.data.startTime);
     }
 
     _capturingStopped(event)
@@ -502,7 +511,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         if (WebInspector.replayManager.sessionState === WebInspector.ReplayManager.SessionState.Replaying)
             return;
 
-        this._stopUpdatingCurrentTime();
+        if (this._updating)
+            this._stopUpdatingCurrentTime();
     }
 
     _debuggerResumed(event)
@@ -510,7 +520,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         if (WebInspector.replayManager.sessionState === WebInspector.ReplayManager.SessionState.Replaying)
             return;
 
-        this._startUpdatingCurrentTime();
+        if (!this._updating)
+            this._startUpdatingCurrentTime();
     }
 
     _recordingTimesUpdated(event)
@@ -685,7 +696,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
         var treeElement = this.currentTimelineView.navigationSidebarTreeOutline.findTreeElement(event.data.record);
         console.assert(treeElement, "Timeline view has no tree element for record selected in timeline overview.", timelineView, event.data.record);
-        if (!treeElement)
+        if (!treeElement || treeElement.selected)
             return;
 
         // Don't select the record's tree element if one of it's children is already selected.

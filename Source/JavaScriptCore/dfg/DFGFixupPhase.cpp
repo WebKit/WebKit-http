@@ -356,9 +356,19 @@ private:
         }
             
         case LogicalNot: {
-            if (node->child1()->shouldSpeculateBoolean())
-                fixEdge<BooleanUse>(node->child1());
-            else if (node->child1()->shouldSpeculateObjectOrOther())
+            if (node->child1()->shouldSpeculateBoolean()) {
+                if (node->child1()->result() == NodeResultBoolean) {
+                    // This is necessary in case we have a bytecode instruction implemented by:
+                    //
+                    // a: CompareEq(...)
+                    // b: LogicalNot(@a)
+                    //
+                    // In that case, CompareEq might have a side-effect. Then, we need to make
+                    // sure that we know that Branch does not exit.
+                    fixEdge<KnownBooleanUse>(node->child1());
+                } else
+                    fixEdge<BooleanUse>(node->child1());
+            } else if (node->child1()->shouldSpeculateObjectOrOther())
                 fixEdge<ObjectOrOtherUse>(node->child1());
             else if (node->child1()->shouldSpeculateInt32OrBoolean())
                 fixIntOrBooleanEdge(node->child1());
@@ -366,10 +376,6 @@ private:
                 fixEdge<DoubleRepUse>(node->child1());
             else if (node->child1()->shouldSpeculateString())
                 fixEdge<StringUse>(node->child1());
-            break;
-        }
-            
-        case CompareEqConstant: {
             break;
         }
 
@@ -424,6 +430,32 @@ private:
                 node->clearFlags(NodeMustGenerate);
                 break;
             }
+
+            // If either child can be proved to be Null or Undefined, comparing them is greatly simplified.
+            bool oneArgumentIsUsedAsSpecOther = false;
+            if (node->child1()->isUndefinedOrNullConstant()) {
+                fixEdge<OtherUse>(node->child1());
+                oneArgumentIsUsedAsSpecOther = true;
+            } else if (node->child1()->shouldSpeculateOther()) {
+                m_insertionSet.insertNode(m_indexInBlock, SpecNone, Check, node->origin,
+                    Edge(node->child1().node(), OtherUse));
+                fixEdge<OtherUse>(node->child1());
+                oneArgumentIsUsedAsSpecOther = true;
+            }
+            if (node->child2()->isUndefinedOrNullConstant()) {
+                fixEdge<OtherUse>(node->child2());
+                oneArgumentIsUsedAsSpecOther = true;
+            } else if (node->child2()->shouldSpeculateOther()) {
+                m_insertionSet.insertNode(m_indexInBlock, SpecNone, Check, node->origin,
+                    Edge(node->child2().node(), OtherUse));
+                fixEdge<OtherUse>(node->child2());
+                oneArgumentIsUsedAsSpecOther = true;
+            }
+            if (oneArgumentIsUsedAsSpecOther) {
+                node->clearFlags(NodeMustGenerate);
+                break;
+            }
+
             if (node->child1()->shouldSpeculateObject() && node->child2()->shouldSpeculateObjectOrOther()) {
                 fixEdge<ObjectUse>(node->child1());
                 fixEdge<ObjectOrOtherUse>(node->child2());
@@ -436,6 +468,7 @@ private:
                 node->clearFlags(NodeMustGenerate);
                 break;
             }
+
             break;
         }
             
@@ -625,7 +658,6 @@ private:
             switch (arrayMode.type()) {
             case Array::SelectUsingPredictions:
             case Array::Unprofiled:
-            case Array::Undecided:
                 RELEASE_ASSERT_NOT_REACHED();
                 break;
             case Array::Generic:
@@ -686,6 +718,7 @@ private:
             
             switch (node->arrayMode().modeForPut().type()) {
             case Array::SelectUsingPredictions:
+            case Array::SelectUsingArguments:
             case Array::Unprofiled:
             case Array::Undecided:
                 RELEASE_ASSERT_NOT_REACHED();
@@ -796,9 +829,19 @@ private:
         }
             
         case Branch: {
-            if (node->child1()->shouldSpeculateBoolean())
-                fixEdge<BooleanUse>(node->child1());
-            else if (node->child1()->shouldSpeculateObjectOrOther())
+            if (node->child1()->shouldSpeculateBoolean()) {
+                if (node->child1()->result() == NodeResultBoolean) {
+                    // This is necessary in case we have a bytecode instruction implemented by:
+                    //
+                    // a: CompareEq(...)
+                    // b: Branch(@a)
+                    //
+                    // In that case, CompareEq might have a side-effect. Then, we need to make
+                    // sure that we know that Branch does not exit.
+                    fixEdge<KnownBooleanUse>(node->child1());
+                } else
+                    fixEdge<BooleanUse>(node->child1());
+            } else if (node->child1()->shouldSpeculateObjectOrOther())
                 fixEdge<ObjectOrOtherUse>(node->child1());
             else if (node->child1()->shouldSpeculateInt32OrBoolean())
                 fixIntOrBooleanEdge(node->child1());
@@ -948,7 +991,12 @@ private:
             speculateForBarrier(node->child2());
             break;
         }
-            
+
+        case LoadArrowFunctionThis: {
+            fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
+
         case SkipScope:
         case GetScope:
         case GetGetter:
@@ -1271,7 +1319,13 @@ private:
             fixEdge<CellUse>(node->child1());
             break;
         }
-            
+
+        case NewArrowFunction: {
+            fixEdge<CellUse>(node->child1());
+            fixEdge<CellUse>(node->child2());
+            break;
+        }
+
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
@@ -1743,6 +1797,7 @@ private:
         VariableAccessData* variable = node->variableAccessData();
         switch (useKind) {
         case Int32Use:
+        case KnownInt32Use:
             if (alwaysUnboxSimplePrimitives()
                 || isInt32Speculation(variable->prediction()))
                 m_profitabilityChanged |= variable->mergeIsProfitableToUnbox(true);
@@ -1755,6 +1810,7 @@ private:
                 m_profitabilityChanged |= variable->mergeIsProfitableToUnbox(true);
             break;
         case BooleanUse:
+        case KnownBooleanUse:
             if (alwaysUnboxSimplePrimitives()
                 || isBooleanSpeculation(variable->prediction()))
                 m_profitabilityChanged |= variable->mergeIsProfitableToUnbox(true);

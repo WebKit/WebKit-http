@@ -25,6 +25,7 @@
 
 #include "AnimationController.h"
 #include "RenderObject.h"
+#include "StyleInheritedData.h"
 
 namespace WebCore {
 
@@ -303,6 +304,10 @@ private:
     bool getTrailingCorner(FloatPoint& output) const;
 
     void clearLayoutRootIfNeeded() const;
+    
+    bool shouldWillChangeCreateStackingContext() const;
+
+    void computeMaxOutlineSize() const;
 
     unsigned m_baseTypeFlags : 6;
     unsigned m_ancestorLineBoxDirty : 1;

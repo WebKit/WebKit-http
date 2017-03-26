@@ -62,12 +62,7 @@ MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation(MediaPlayer
     , m_hasVideo(false)
     , m_hwndVideo(nullptr)
     , m_readyState(MediaPlayer::HaveNothing)
-    , m_mediaSession(nullptr)
-    , m_sourceResolver(nullptr)
-    , m_mediaSource(nullptr)
-    , m_topology(nullptr)
-    , m_sourcePD(nullptr)
-    , m_videoDisplay(nullptr)
+    , m_weakPtrFactory(this)
 {
     createSession();
     createVideoWindow();
@@ -78,8 +73,6 @@ MediaPlayerPrivateMediaFoundation::~MediaPlayerPrivateMediaFoundation()
     notifyDeleted();
     destroyVideoWindow();
     endSession();
-    cancelCallOnMainThread(onTopologySetCallback, this);
-    cancelCallOnMainThread(onCreatedMediaSourceCallback, this);
 }
 
 void MediaPlayerPrivateMediaFoundation::registerMediaEngine(MediaEngineRegistrar registrar)
@@ -342,7 +335,12 @@ bool MediaPlayerPrivateMediaFoundation::endCreatedMediaSource(IMFAsyncResult* as
     hr = asyncResult->GetStatus();
     m_loadingProgress = SUCCEEDED(hr);
 
-    callOnMainThread(onCreatedMediaSourceCallback, this);
+    auto weakPtr = m_weakPtrFactory.createWeakPtr();
+    callOnMainThread([weakPtr] {
+        if (!weakPtr)
+            return;
+        weakPtr->onCreatedMediaSource();
+    });
 
     return true;
 }
@@ -366,9 +364,15 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
         return false;
 
     switch (mediaEventType) {
-    case MESessionTopologySet:
-        callOnMainThread(onTopologySetCallback, this);
+    case MESessionTopologySet: {
+        auto weakPtr = m_weakPtrFactory.createWeakPtr();
+        callOnMainThread([weakPtr] {
+            if (!weakPtr)
+                return;
+            weakPtr->onTopologySet();
+        });
         break;
+    }
 
     case MESessionClosed:
         break;
@@ -512,21 +516,21 @@ void MediaPlayerPrivateMediaFoundation::destroyVideoWindow()
 
 void MediaPlayerPrivateMediaFoundation::addListener(MediaPlayerListener* listener)
 {
-    MutexLocker locker(m_mutexListeners);
+    LockHolder locker(m_mutexListeners);
 
     m_listeners.add(listener);
 }
 
 void MediaPlayerPrivateMediaFoundation::removeListener(MediaPlayerListener* listener)
 {
-    MutexLocker locker(m_mutexListeners);
+    LockHolder locker(m_mutexListeners);
 
     m_listeners.remove(listener);
 }
 
 void MediaPlayerPrivateMediaFoundation::notifyDeleted()
 {
-    MutexLocker locker(m_mutexListeners);
+    LockHolder locker(m_mutexListeners);
 
     for (HashSet<MediaPlayerListener*>::const_iterator it = m_listeners.begin(); it != m_listeners.end(); ++it)
         (*it)->onMediaPlayerDeleted();
@@ -643,18 +647,6 @@ void MediaPlayerPrivateMediaFoundation::onTopologySet()
     m_player->playbackStateChanged();
 }
 
-void MediaPlayerPrivateMediaFoundation::onCreatedMediaSourceCallback(void* context)
-{
-    MediaPlayerPrivateMediaFoundation* mediaPlayer = static_cast<MediaPlayerPrivateMediaFoundation*>(context);
-    mediaPlayer->onCreatedMediaSource();
-}
-
-void MediaPlayerPrivateMediaFoundation::onTopologySetCallback(void* context)
-{
-    MediaPlayerPrivateMediaFoundation* mediaPlayer = static_cast<MediaPlayerPrivateMediaFoundation*>(context);
-    mediaPlayer->onTopologySet();
-}
-
 MediaPlayerPrivateMediaFoundation::AsyncCallback::AsyncCallback(MediaPlayerPrivateMediaFoundation* mediaPlayer, bool event)
     : m_refCount(0)
     , m_mediaPlayer(mediaPlayer)
@@ -704,7 +696,7 @@ HRESULT STDMETHODCALLTYPE MediaPlayerPrivateMediaFoundation::AsyncCallback::GetP
 
 HRESULT STDMETHODCALLTYPE MediaPlayerPrivateMediaFoundation::AsyncCallback::Invoke(__RPC__in_opt IMFAsyncResult *pAsyncResult)
 {
-    MutexLocker locker(m_mutex);
+    LockHolder locker(m_mutex);
 
     if (!m_mediaPlayer)
         return S_OK;
@@ -719,7 +711,7 @@ HRESULT STDMETHODCALLTYPE MediaPlayerPrivateMediaFoundation::AsyncCallback::Invo
 
 void MediaPlayerPrivateMediaFoundation::AsyncCallback::onMediaPlayerDeleted()
 {
-    MutexLocker locker(m_mutex);
+    LockHolder locker(m_mutex);
 
     m_mediaPlayer = nullptr;
 }

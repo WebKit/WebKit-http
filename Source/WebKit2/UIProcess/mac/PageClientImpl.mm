@@ -61,6 +61,7 @@
 #import <WebCore/NotImplemented.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextIndicator.h>
+#import <WebCore/TextIndicatorWindow.h>
 #import <WebCore/TextUndoInsertionMarkupMac.h>
 #import <WebKitSystemInterface.h>
 #import <wtf/text/CString.h>
@@ -505,12 +506,12 @@ RefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page, con
 }
 #endif
 
-void PageClientImpl::setTextIndicator(Ref<TextIndicator> textIndicator, WebCore::TextIndicatorLifetime lifetime)
+void PageClientImpl::setTextIndicator(Ref<TextIndicator> textIndicator, WebCore::TextIndicatorWindowLifetime lifetime)
 {
     [m_wkView _setTextIndicator:textIndicator.get() withLifetime:lifetime];
 }
 
-void PageClientImpl::clearTextIndicator(WebCore::TextIndicatorDismissalAnimation dismissalAnimation)
+void PageClientImpl::clearTextIndicator(WebCore::TextIndicatorWindowDismissalAnimation dismissalAnimation)
 {
     [m_wkView _clearTextIndicatorWithAnimation:dismissalAnimation];
 }
@@ -587,22 +588,29 @@ void PageClientImpl::didPerformDictionaryLookup(const DictionaryPopupInfo& dicti
     if (!getLULookupDefinitionModuleClass())
         return;
 
+    RetainPtr<NSMutableDictionary> mutableOptions = adoptNS([(NSDictionary *)dictionaryPopupInfo.options.get() mutableCopy]);
+
+    [m_wkView _prepareForDictionaryLookup];
+
+    if (canLoadLUTermOptionDisableSearchTermIndicator() && dictionaryPopupInfo.textIndicator.contentImage) {
+        [m_wkView _setTextIndicator:TextIndicator::create(dictionaryPopupInfo.textIndicator) withLifetime:TextIndicatorWindowLifetime::Permanent];
+        [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
+
+        if ([getLULookupDefinitionModuleClass() respondsToSelector:@selector(showDefinitionForTerm:relativeToRect:ofView:options:)]) {
+            FloatRect firstTextRectInViewCoordinates = dictionaryPopupInfo.textIndicator.textRectsInBoundingRectCoordinates[0];
+            firstTextRectInViewCoordinates.moveBy(dictionaryPopupInfo.textIndicator.textBoundingRectInRootViewCoordinates.location());
+            [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() relativeToRect:firstTextRectInViewCoordinates ofView:m_wkView options:mutableOptions.get()];
+            return;
+        }
+    }
+
     NSPoint textBaselineOrigin = dictionaryPopupInfo.origin;
 
     // Convert to screen coordinates.
     textBaselineOrigin = [m_wkView convertPoint:textBaselineOrigin toView:nil];
     textBaselineOrigin = [m_wkView.window convertRectToScreen:NSMakeRect(textBaselineOrigin.x, textBaselineOrigin.y, 0, 0)].origin;
 
-    RetainPtr<NSMutableDictionary> mutableOptions = adoptNS([(NSDictionary *)dictionaryPopupInfo.options.get() mutableCopy]);
-
-    [m_wkView _prepareForDictionaryLookup];
-
-    if (canLoadLUTermOptionDisableSearchTermIndicator() && dictionaryPopupInfo.textIndicator.contentImage) {
-        [m_wkView _setTextIndicator:TextIndicator::create(dictionaryPopupInfo.textIndicator) withLifetime:TextIndicatorLifetime::Permanent];
-        [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
-        [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
-    } else
-        [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
+    [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
 }
 
 void PageClientImpl::dismissContentRelativeChildWindows(bool withAnimation)
@@ -834,15 +842,6 @@ void PageClientImpl::showPlatformContextMenu(NSMenu *menu, IntPoint location)
 WebCore::WebMediaSessionManager& PageClientImpl::mediaSessionManager()
 {
     return WebMediaSessionManagerMac::singleton();
-}
-#endif
-
-#if ENABLE(VIDEO)
-void PageClientImpl::mediaDocumentNaturalSizeChanged(const IntSize& newSize)
-{
-#if WK_API_ENABLED
-    [m_webView _mediaDocumentNaturalSizeChanged:newSize];
-#endif
 }
 #endif
 

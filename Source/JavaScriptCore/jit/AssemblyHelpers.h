@@ -31,6 +31,7 @@
 #include "CodeBlock.h"
 #include "FPRInfo.h"
 #include "GPRInfo.h"
+#include "InlineCallFrame.h"
 #include "JITCode.h"
 #include "MacroAssembler.h"
 #include "TypeofType.h"
@@ -731,6 +732,7 @@ public:
     void jitAssertIsNull(GPRReg);
     void jitAssertTagsInPlace();
     void jitAssertArgumentCountSane();
+    void jitAssertNoException();
 #else
     void jitAssertIsInt32(GPRReg) { }
     void jitAssertIsJSInt32(GPRReg) { }
@@ -741,6 +743,7 @@ public:
     void jitAssertIsNull(GPRReg) { }
     void jitAssertTagsInPlace() { }
     void jitAssertArgumentCountSane() { }
+    void jitAssertNoException() { }
 #endif
     
     void purifyNaN(FPRReg);

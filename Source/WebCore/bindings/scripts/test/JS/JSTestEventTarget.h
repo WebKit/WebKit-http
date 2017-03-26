@@ -63,7 +63,7 @@ public:
 private:
     TestEventTarget* m_impl;
 public:
-    static const unsigned StructureFlags = JSC::HasImpureGetOwnPropertySlot | JSC::InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | JSC::MasqueradesAsUndefined | JSC::OverridesGetOwnPropertySlot | JSC::OverridesGetPropertyNames | Base::StructureFlags;
+    static const unsigned StructureFlags = JSC::InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | JSC::MasqueradesAsUndefined | JSC::OverridesGetOwnPropertySlot | JSC::OverridesGetPropertyNames | Base::StructureFlags;
 protected:
     JSTestEventTarget(JSC::Structure*, JSDOMGlobalObject*, Ref<TestEventTarget>&&);
 
@@ -74,8 +74,7 @@ protected:
     }
 
 private:
-    static bool canGetItemsForName(JSC::ExecState*, TestEventTarget*, JSC::PropertyName);
-    static JSC::EncodedJSValue nameGetter(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+    bool nameGetter(JSC::ExecState*, JSC::PropertyName, JSC::JSValue&);
 };
 
 class JSTestEventTargetOwner : public JSC::WeakHandleOwner {

@@ -44,12 +44,14 @@
 #include "FTLOutput.h"
 #include "FTLThunks.h"
 #include "FTLWeightedTarget.h"
+#include "JSArrowFunction.h"
 #include "JSCInlines.h"
 #include "JSLexicalEnvironment.h"
 #include "OperandsInlines.h"
 #include "ScopedArguments.h"
 #include "ScopedArgumentsTable.h"
 #include "VirtualRegister.h"
+#include "Watchdog.h"
 #include <atomic>
 #include <dlfcn.h>
 #include <llvm/InitializeLLVM.h>
@@ -593,6 +595,7 @@ private:
             compileCreateActivation();
             break;
         case NewFunction:
+        case NewArrowFunction:
             compileNewFunction();
             break;
         case CreateDirectArguments:
@@ -678,6 +681,9 @@ private:
         case GetScope:
             compileGetScope();
             break;
+        case LoadArrowFunctionThis:
+            compileLoadArrowFunctionThis();
+            break;
         case SkipScope:
             compileSkipScope();
             break;
@@ -695,9 +701,6 @@ private:
             break;
         case CompareEq:
             compileCompareEq();
-            break;
-        case CompareEqConstant:
-            compileCompareEqConstant();
             break;
         case CompareStrictEq:
             compileCompareStrictEq();
@@ -826,6 +829,9 @@ private:
             break;
         case MaterializeCreateActivation:
             compileMaterializeCreateActivation();
+            break;
+        case CheckWatchdogTimer:
+            compileCheckWatchdogTimer();
             break;
 
         case PhantomLocal:
@@ -2447,6 +2453,14 @@ private:
             setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
             return;
         }
+
+        case Array::Undecided: {
+            LValue index = lowInt32(m_node->child2());
+
+            speculate(OutOfBounds, noValue(), m_node, m_out.lessThan(index, m_out.int32Zero));
+            setJSValue(m_out.constInt64(ValueUndefined));
+            return;
+        }
             
         case Array::DirectArguments: {
             LValue base = lowCell(m_node->child1());
@@ -3085,38 +3099,55 @@ private:
     
     void compileNewFunction()
     {
+        ASSERT(m_node->op() == NewFunction || m_node->op() == NewArrowFunction);
+        
+        bool isArrowFunction = m_node->op() == NewArrowFunction;
+        
         LValue scope = lowCell(m_node->child1());
+        LValue thisValue = isArrowFunction ? lowCell(m_node->child2()) : nullptr;
+        
         FunctionExecutable* executable = m_node->castOperand<FunctionExecutable*>();
         if (executable->singletonFunction()->isStillValid()) {
-            LValue callResult = vmCall(
-                m_out.operation(operationNewFunction), m_callFrame, scope, weakPointer(executable));
+            LValue callResult = isArrowFunction
+                ? vmCall(m_out.operation(operationNewArrowFunction), m_callFrame, scope, weakPointer(executable), thisValue)
+                : vmCall(m_out.operation(operationNewFunction), m_callFrame, scope, weakPointer(executable));
             setJSValue(callResult);
             return;
         }
         
-        Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
+        Structure* structure = isArrowFunction
+            ? m_graph.globalObjectFor(m_node->origin.semantic)->arrowFunctionStructure()
+            : m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
         
         LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("NewFunction slow path"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NewFunction continuation"));
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
-        LValue fastObject = allocateObject<JSFunction>(
-            structure, m_out.intPtrZero, slowPath);
+        LValue fastObject = isArrowFunction
+            ? allocateObject<JSArrowFunction>(structure, m_out.intPtrZero, slowPath)
+            : allocateObject<JSFunction>(structure, m_out.intPtrZero, slowPath);
+        
         
         // We don't need memory barriers since we just fast-created the function, so it
         // must be young.
-        m_out.storePtr(scope, fastObject, m_heaps.JSFunction_scope);
-        m_out.storePtr(weakPointer(executable), fastObject, m_heaps.JSFunction_executable);
-        m_out.storePtr(m_out.intPtrZero, fastObject, m_heaps.JSFunction_rareData);
+        m_out.storePtr(scope, fastObject, isArrowFunction ? m_heaps.JSArrowFunction_scope : m_heaps.JSFunction_scope);
+        m_out.storePtr(weakPointer(executable), fastObject, isArrowFunction ?  m_heaps.JSArrowFunction_executable : m_heaps.JSFunction_executable);
+        
+        if (isArrowFunction)
+            m_out.storePtr(thisValue, fastObject, m_heaps.JSArrowFunction_this);
+        
+        m_out.storePtr(m_out.intPtrZero, fastObject, isArrowFunction ?  m_heaps.JSArrowFunction_rareData : m_heaps.JSFunction_rareData);
         
         ValueFromBlock fastResult = m_out.anchor(fastObject);
         m_out.jump(continuation);
         
         m_out.appendTo(slowPath, continuation);
-        LValue callResult = vmCall(
-            m_out.operation(operationNewFunctionWithInvalidatedReallocationWatchpoint),
-            m_callFrame, scope, weakPointer(executable));
+        
+        LValue callResult = isArrowFunction
+            ? vmCall(m_out.operation(operationNewArrowFunctionWithInvalidatedReallocationWatchpoint), m_callFrame, scope, weakPointer(executable), thisValue)
+            : vmCall(m_out.operation(operationNewFunctionWithInvalidatedReallocationWatchpoint), m_callFrame, scope, weakPointer(executable));
+        
         ValueFromBlock slowResult = m_out.anchor(callResult);
         m_out.jump(continuation);
         
@@ -4048,6 +4079,11 @@ private:
         setJSValue(m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSFunction_scope));
     }
     
+    void compileLoadArrowFunctionThis()
+    {
+        setJSValue(m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSArrowFunction_this));
+    }
+    
     void compileSkipScope()
     {
         setJSValue(m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSScope_next));
@@ -4111,16 +4147,20 @@ private:
             nonSpeculativeCompare(LLVMIntEQ, operationCompareEq);
             return;
         }
-        
+
+        if (m_node->child1().useKind() == OtherUse) {
+            ASSERT(!m_interpreter.needsTypeCheck(m_node->child1(), SpecOther));
+            setBoolean(equalNullOrUndefined(m_node->child2(), AllCellsAreFalse, EqualNullOrUndefined, ManualOperandSpeculation));
+            return;
+        }
+
+        if (m_node->child2().useKind() == OtherUse) {
+            ASSERT(!m_interpreter.needsTypeCheck(m_node->child2(), SpecOther));
+            setBoolean(equalNullOrUndefined(m_node->child1(), AllCellsAreFalse, EqualNullOrUndefined, ManualOperandSpeculation));
+            return;
+        }
+
         DFG_CRASH(m_graph, m_node, "Bad use kinds");
-    }
-    
-    void compileCompareEqConstant()
-    {
-        ASSERT(m_node->child2()->asJSValue().isNull());
-        setBoolean(
-            equalNullOrUndefined(
-                m_node->child1(), AllCellsAreFalse, EqualNullOrUndefined));
     }
     
     void compileCompareStrictEq()
@@ -5392,6 +5432,23 @@ private:
         setJSValue(activation);
     }
 
+    void compileCheckWatchdogTimer()
+    {
+        LBasicBlock timerDidFire = FTL_NEW_BLOCK(m_out, ("CheckWatchdogTimer timer did fire"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CheckWatchdogTimer continuation"));
+        
+        LValue state = m_out.load8(m_out.absolute(vm().watchdog->timerDidFireAddress()));
+        m_out.branch(m_out.equal(state, m_out.constInt8(0)),
+            usually(continuation), rarely(timerDidFire));
+
+        LBasicBlock lastNext = m_out.appendTo(timerDidFire, continuation);
+
+        vmCall(m_out.operation(operationHandleWatchdogTimer), m_callFrame);
+        m_out.jump(continuation);
+        
+        m_out.appendTo(continuation, lastNext);
+    }
+
     bool isInlinableSize(LValue function)
     {
         size_t instructionCount = 0;
@@ -5507,6 +5564,11 @@ private:
         LValue structureDiscriminant, const FormattedValue& formattedValue, ExitKind exitKind,
         const StructureSet& set, const Functor& weakStructureDiscriminant)
     {
+        if (set.isEmpty()) {
+            terminate(exitKind);
+            return;
+        }
+
         if (set.size() == 1) {
             speculate(
                 exitKind, formattedValue, 0,
@@ -6068,6 +6130,7 @@ private:
     {
         switch (edge.useKind()) {
         case BooleanUse:
+        case KnownBooleanUse:
             return lowBoolean(edge);
         case Int32Use:
             return m_out.notZero32(lowInt32(edge));
@@ -7058,7 +7121,7 @@ private:
     
     LValue lowBoolean(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
-        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == BooleanUse);
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == BooleanUse || edge.useKind() == KnownBooleanUse);
         
         if (edge->hasConstant()) {
             JSValue value = edge->asJSValue();
@@ -7986,7 +8049,7 @@ private:
     void callCheck()
     {
         if (Options::enableExceptionFuzz())
-            m_out.call(m_out.operation(operationExceptionFuzz));
+            m_out.call(m_out.operation(operationExceptionFuzz), m_callFrame);
         
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Exception check continuation"));
         

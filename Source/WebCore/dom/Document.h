@@ -113,7 +113,6 @@ class HTMLIFrameElement;
 class HTMLImageElement;
 class HTMLMapElement;
 class HTMLMediaElement;
-class HTMLNameCollection;
 class HTMLScriptElement;
 class HitTestRequest;
 class HitTestResult;
@@ -537,11 +536,9 @@ public:
 
     WEBCORE_EXPORT Ref<Range> createRange();
 
-    RefPtr<NodeIterator> createNodeIterator(Node* root, unsigned whatToShow,
-        PassRefPtr<NodeFilter>, bool expandEntityReferences, ExceptionCode&);
+    RefPtr<NodeIterator> createNodeIterator(Node* root, unsigned long whatToShow = 0xFFFFFFFF, PassRefPtr<NodeFilter> = nullptr, bool expandEntityReferences = false);
 
-    RefPtr<TreeWalker> createTreeWalker(Node* root, unsigned whatToShow,
-        PassRefPtr<NodeFilter>, bool expandEntityReferences, ExceptionCode&);
+    RefPtr<TreeWalker> createTreeWalker(Node* root, unsigned long whatToShow = 0xFFFFFFFF, PassRefPtr<NodeFilter> = nullptr, bool expandEntityReferences = false);
 
     // Special support for editing
     Ref<CSSStyleDeclaration> createCSSStyleDeclaration();
@@ -1345,7 +1342,8 @@ private:
 
     Node* nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint = nullptr);
 
-    Ref<HTMLCollection> ensureCachedCollection(CollectionType);
+    template <CollectionType collectionType>
+    Ref<HTMLCollection> ensureCachedCollection();
 
 #if ENABLE(FULLSCREEN_API)
     void dispatchFullScreenChangeOrErrorEvent(Deque<RefPtr<Node>>&, const AtomicString& eventName, bool shouldNotifyMediaElement);

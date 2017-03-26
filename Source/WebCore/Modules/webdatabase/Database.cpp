@@ -157,17 +157,7 @@ static bool retrieveTextResultFromDatabase(SQLiteDatabase& db, const String& que
 }
 
 // FIXME: move all guid-related functions to a DatabaseVersionTracker class.
-static std::mutex& guidMutex()
-{
-    static std::once_flag onceFlag;
-    static LazyNeverDestroyed<std::mutex> mutex;
-
-    std::call_once(onceFlag, [] {
-        mutex.construct();
-    });
-
-    return mutex;
-}
+static StaticLock guidMutex;
 
 typedef HashMap<DatabaseGuid, String> GuidVersionMap;
 static GuidVersionMap& guidToVersionMap()
@@ -233,7 +223,7 @@ Database::Database(PassRefPtr<DatabaseContext> databaseContext, const String& na
         m_name = emptyString();
 
     {
-        std::lock_guard<std::mutex> locker(guidMutex());
+        std::lock_guard<StaticLock> locker(guidMutex);
 
         m_guid = guidForOriginAndName(securityOrigin()->toString(), name);
         std::unique_ptr<HashSet<Database*>>& hashSet = guidToDatabaseMap().add(m_guid, nullptr).iterator->value;
@@ -294,7 +284,7 @@ void Database::close()
     ASSERT(currentThread() == databaseContext()->databaseThread()->getThreadID());
 
     {
-        MutexLocker locker(m_transactionInProgressMutex);
+        LockHolder locker(m_transactionInProgressMutex);
 
         // Clean up transactions that have not been scheduled yet:
         // Transaction phase 1 cleanup. See comment on "What happens if a
@@ -353,7 +343,7 @@ bool Database::performOpenAndVerify(bool shouldSetVersionInNewDatabase, Database
 #if PLATFORM(IOS)
     {
         // Make sure we wait till the background removal of the empty database files finished before trying to open any database.
-        MutexLocker locker(DatabaseTracker::openDatabaseMutex());
+        LockHolder locker(DatabaseTracker::openDatabaseMutex());
     }
 #endif
 
@@ -370,7 +360,7 @@ bool Database::performOpenAndVerify(bool shouldSetVersionInNewDatabase, Database
 
     String currentVersion;
     {
-        std::lock_guard<std::mutex> locker(guidMutex());
+        std::lock_guard<StaticLock> locker(guidMutex);
 
         auto entry = guidToVersionMap().find(m_guid);
         if (entry != guidToVersionMap().end()) {
@@ -465,7 +455,7 @@ void Database::closeDatabase()
     // See comment at the top this file regarding calling removeOpenDatabase().
     DatabaseTracker::tracker().removeOpenDatabase(this);
     {
-        std::lock_guard<std::mutex> locker(guidMutex());
+        std::lock_guard<StaticLock> locker(guidMutex);
 
         auto it = guidToDatabaseMap().find(m_guid);
         ASSERT(it != guidToDatabaseMap().end());
@@ -524,7 +514,7 @@ void Database::setExpectedVersion(const String& version)
 
 String Database::getCachedVersion() const
 {
-    std::lock_guard<std::mutex> locker(guidMutex());
+    std::lock_guard<StaticLock> locker(guidMutex);
 
     return guidToVersionMap().get(m_guid).isolatedCopy();
 }
@@ -532,7 +522,7 @@ String Database::getCachedVersion() const
 void Database::setCachedVersion(const String& actualVersion)
 {
     // Update the in memory database version map.
-    std::lock_guard<std::mutex> locker(guidMutex());
+    std::lock_guard<StaticLock> locker(guidMutex);
 
     updateGuidVersionMap(m_guid, actualVersion);
 }
@@ -565,7 +555,7 @@ void Database::scheduleTransaction()
 
 PassRefPtr<SQLTransactionBackend> Database::runTransaction(PassRefPtr<SQLTransaction> transaction, bool readOnly, const ChangeVersionData* data)
 {
-    MutexLocker locker(m_transactionInProgressMutex);
+    LockHolder locker(m_transactionInProgressMutex);
     if (!m_isTransactionQueueEnabled)
         return 0;
 
@@ -593,14 +583,14 @@ void Database::scheduleTransactionStep(SQLTransactionBackend* transaction)
 
 void Database::inProgressTransactionCompleted()
 {
-    MutexLocker locker(m_transactionInProgressMutex);
+    LockHolder locker(m_transactionInProgressMutex);
     m_transactionInProgress = false;
     scheduleTransaction();
 }
 
 bool Database::hasPendingTransaction()
 {
-    MutexLocker locker(m_transactionInProgressMutex);
+    LockHolder locker(m_transactionInProgressMutex);
     return m_transactionInProgress || !m_transactionQueue.isEmpty();
 }
 

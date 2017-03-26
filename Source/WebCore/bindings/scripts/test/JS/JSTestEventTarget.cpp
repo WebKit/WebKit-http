@@ -176,11 +176,6 @@ bool JSTestEventTarget::getOwnPropertySlot(JSObject* object, ExecState* exec, Pr
 {
     auto* thisObject = jsCast<JSTestEventTarget*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    const HashTableValue* entry = getStaticValueSlotEntryWithoutCaching<JSTestEventTarget>(exec, propertyName);
-    if (entry) {
-        slot.setCacheableCustom(thisObject, entry->attributes(), entry->propertyGetter());
-        return true;
-    }
     Optional<uint32_t> optionalIndex = parseIndex(propertyName);
     if (optionalIndex && optionalIndex.value() < thisObject->impl().length()) {
         unsigned index = optionalIndex.value();
@@ -188,11 +183,20 @@ bool JSTestEventTarget::getOwnPropertySlot(JSObject* object, ExecState* exec, Pr
         slot.setValue(thisObject, attributes, toJS(exec, thisObject->globalObject(), thisObject->impl().item(index)));
         return true;
     }
-    if (canGetItemsForName(exec, &thisObject->impl(), propertyName)) {
-        slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, thisObject->nameGetter);
+    if (getStaticValueSlot<JSTestEventTarget, Base>(exec, JSTestEventTargetTable, thisObject, propertyName, slot))
         return true;
+    JSValue proto = thisObject->prototype();
+    if (proto.isObject() && jsCast<JSObject*>(proto)->hasProperty(exec, propertyName))
+        return false;
+
+    if (thisObject->classInfo() == info()) {
+        JSValue value;
+        if (thisObject->nameGetter(exec, propertyName, value)) {
+            slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, value);
+            return true;
+        }
     }
-    return getStaticValueSlot<JSTestEventTarget, Base>(exec, JSTestEventTargetTable, thisObject, propertyName, slot);
+    return false;
 }
 
 bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* exec, unsigned index, PropertySlot& slot)
@@ -205,9 +209,12 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* e
         return true;
     }
     Identifier propertyName = Identifier::from(exec, index);
-    if (canGetItemsForName(exec, &thisObject->impl(), propertyName)) {
-        slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, thisObject->nameGetter);
-        return true;
+    if (thisObject->classInfo() == info()) {
+        JSValue value;
+        if (thisObject->nameGetter(exec, propertyName, value)) {
+            slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, value);
+            return true;
+        }
     }
     return Base::getOwnPropertySlotByIndex(thisObject, exec, index, slot);
 }

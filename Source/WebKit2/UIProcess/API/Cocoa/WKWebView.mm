@@ -312,7 +312,6 @@ static bool shouldAllowPictureInPictureMediaPlayback()
     pageConfiguration->setUserContentController([_configuration userContentController]->_userContentControllerProxy.get());
     pageConfiguration->setVisitedLinkProvider([_configuration _visitedLinkProvider]->_visitedLinkProvider.get());
     pageConfiguration->setWebsiteDataStore([_configuration websiteDataStore]->_websiteDataStore.get());
-    pageConfiguration->setSessionID(pageConfiguration->websiteDataStore()->websiteDataStore().sessionID());
     pageConfiguration->setTreatsSHA1SignedCertificatesAsInsecure([_configuration _treatsSHA1SignedCertificatesAsInsecure]);
 
     RefPtr<WebKit::WebPageGroup> pageGroup;
@@ -1897,15 +1896,6 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     return [_wkView performDragOperation:sender];
 }
 #endif // PLATFORM(MAC)
-
-#if ENABLE(VIDEO)
-- (void)_mediaDocumentNaturalSizeChanged:(NSSize)newSize
-{
-    id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([self UIDelegate]);
-    if ([uiDelegate respondsToSelector:@selector(_webView:mediaDocumentNaturalSizeChanged:)])
-        [uiDelegate _webView:self mediaDocumentNaturalSizeChanged:newSize];
-}
-#endif
 
 @end
 
