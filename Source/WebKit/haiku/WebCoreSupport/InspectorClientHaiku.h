@@ -38,10 +38,10 @@ namespace WebCore {
 
     class InspectorClientHaiku : public InspectorClient {
     public:
-        virtual void inspectorDestroyed() override;
+        virtual void inspectedPageDestroyed() override;
 
-        virtual Inspector::FrontendChannel* openInspectorFrontend(WebCore::InspectorController*) override;
-        virtual void closeInspectorFrontend() override;
+        virtual Inspector::FrontendChannel* openLocalFrontend(WebCore::InspectorController*) override;
+        virtual void closeLocalFrontend() override;
         virtual void bringFrontendToFront() override;
 
         virtual void highlight() override;

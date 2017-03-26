@@ -35,18 +35,18 @@
 
 namespace WebCore {
 
-void InspectorClientHaiku::inspectorDestroyed()
+void InspectorClientHaiku::inspectedPageDestroyed()
 {
     delete this;
 }
 
-Inspector::FrontendChannel* InspectorClientHaiku::openInspectorFrontend(WebCore::InspectorController*)
+Inspector::FrontendChannel* InspectorClientHaiku::openLocalFrontend(WebCore::InspectorController*)
 {
     notImplemented();
     return NULL;
 }
 
-void InspectorClientHaiku::closeInspectorFrontend()
+void InspectorClientHaiku::closeLocalFrontend()
 {
     notImplemented();
 }

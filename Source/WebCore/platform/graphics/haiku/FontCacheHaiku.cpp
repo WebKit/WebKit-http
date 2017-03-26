@@ -49,9 +49,10 @@ void FontCache::platformInit()
 
 RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* /*originalFontData*/, bool, const UChar* /*characters*/, unsigned /*length*/)
 {
-    FontPlatformData data(description, description.firstFamily());
-        // TODO be smarter, try the other families and actually check that the
-        // characters are available
+    FontPlatformData data(description, "Sans");
+        // FIXME check that the requested characters are actually available,
+        // and try to use the other info in the arguments (should this be
+        // monospace, etc)
     return fontForPlatformData(data);
 }
 

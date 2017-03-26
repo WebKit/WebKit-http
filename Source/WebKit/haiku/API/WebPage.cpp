@@ -77,6 +77,7 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "TextEncoding.h"
+#include "UserContentController.h"
 #include "WebDatabaseProvider.h"
 #include "WebDownload.h"
 #include "WebDownloadPrivate.h"
@@ -86,6 +87,7 @@
 #include "WebStorageNamespaceProvider.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
+#include "WebViewGroup.h"
 #include "WebVisitedLinkStore.h"
 
 #include <Bitmap.h>
@@ -220,27 +222,32 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
 {
     fProgressTracker = new ProgressTrackerClientHaiku(this);
 
+    // FIXME we should get this from the page settings, but they are created
+    // after the page, and we need this before the page is created.
+    BPath storagePath;
+    find_directory(B_USER_DATA_DIRECTORY, &storagePath);
+
+    storagePath.Append("LocalStorage");
+
+    RefPtr<WebViewGroup> viewGroup = WebViewGroup::getOrCreate("default",
+        storagePath.Path());
+
     PageConfiguration pageClients;
     pageClients.chromeClient = new ChromeClientHaiku(this, webView);
     pageClients.dragClient = new DragClientHaiku(webView);
     pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
     pageClients.inspectorClient = new InspectorClientHaiku();
+    pageClients.storageNamespaceProvider = &viewGroup->storageNamespaceProvider();
     pageClients.progressTrackerClient = fProgressTracker;
     // pageClients.backForwardClient ? (apparently not set in win and mac?)
     pageClients.editorClient = new EditorClientHaiku(this);
     // pluginClient ?
     // validationMessageClient?
     // pageClients.alternativeTextClient = new WebAlternativeTextClient(self); ?
-    // userContentController?
-    pageClients.visitedLinkStore = &WebVisitedLinkStore::shared();
+    pageClients.userContentController = &viewGroup->userContentController();
+    pageClients.visitedLinkStore = &viewGroup->visitedLinkStore();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
     pageClients.databaseProvider = &WebDatabaseProvider::singleton();
-
-    // FIXME we should get this from the page settings, but they are created
-    // after the page, and we need this before the page is created.
-    BPath storagePath;
-    find_directory(B_USER_DATA_DIRECTORY, &storagePath);
-    storagePath.Append("LocalStorage");
 
     pageClients.storageNamespaceProvider = WebStorageNamespaceProvider::create(
         storagePath.Path());
