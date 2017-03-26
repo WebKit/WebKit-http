@@ -51,6 +51,8 @@ defineReplace(appleSdkVersion) {
 }
 
 defineTest(isPlatformSupported) {
+    !qtHaveModule(widgets): skipBuild("QtWidgets module is required to build QtWebKit.")
+
     cross_compile: skipBuild("cross-compilation of QtWebKit with qmake is not supported yet")
 
     requiredPrograms = cmake gperf python perl bison ruby flex
