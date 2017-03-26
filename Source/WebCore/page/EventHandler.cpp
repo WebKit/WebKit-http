@@ -2830,7 +2830,7 @@ bool EventHandler::bestClickableNodeForTouchPoint(const IntPoint& touchCenter, c
     // FIXME: Should be able to handle targetNode being a shadow DOM node to avoid performing uncessary hit tests
     // in the case where further processing on the node is required. Returning the shadow ancestor prevents a
     // regression in touchadjustment/html-label.html. Some refinement is required to testing/internals to
-    // handle targetNode being a shadow DOM node. 
+    // handle targetNode being a shadow DOM node.
     bool success = findBestClickableCandidate(targetNode, targetPoint, touchCenter, touchRect, result.rectBasedTestResult());
     if (success && targetNode)
         targetNode = targetNode->deprecatedShadowAncestorNode();
