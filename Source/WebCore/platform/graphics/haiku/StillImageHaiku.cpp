@@ -81,16 +81,16 @@ NativeImagePtr StillImage::nativeImageForCurrentFrame()
     return const_cast<NativeImagePtr>(m_bitmap);
 }
 
-void StillImage::draw(GraphicsContext* context, const FloatRect& destRect,
+void StillImage::draw(GraphicsContext& context, const FloatRect& destRect,
                       const FloatRect& sourceRect, ColorSpace, CompositeOperator op, BlendMode, ImageOrientationDescription)
 {
     if (!m_bitmap->IsValid())
         return;
     
-    context->save();
-    context->setCompositeOperation(op);
-    context->platformContext()->DrawBitmap(m_bitmap, sourceRect, destRect);
-    context->restore();
+    context.save();
+    context.setCompositeOperation(op);
+    context.platformContext()->DrawBitmap(m_bitmap, sourceRect, destRect);
+    context.restore();
 }
 
 }
