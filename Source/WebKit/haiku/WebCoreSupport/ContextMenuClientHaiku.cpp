@@ -128,19 +128,8 @@ void ContextMenuClientHaiku::stopSpeaking()
 
 ContextMenuItem ContextMenuClientHaiku::shareMenuItem(const HitTestResult& hitTestResult)
 {
-    Node* node = hitTestResult.innerNonSharedNode();
-    if (!node)
-        return ContextMenuItem();
-
-    Frame* frame = node->document().frame();
-    if (!frame)
-        return ContextMenuItem();
-
-    URL downloadableMediaURL;
-    if (!hitTestResult.absoluteMediaURL().isEmpty() && hitTestResult.isDownloadableMedia())
-        downloadableMediaURL = hitTestResult.absoluteMediaURL();
-
-    return ContextMenuItem::shareMenuItem(hitTestResult.absoluteLinkURL(), downloadableMediaURL, hitTestResult.image(), hitTestResult.selectedText());
+    notImplemented();
+    return ContextMenuItem();
 }
 
 } // namespace WebCore

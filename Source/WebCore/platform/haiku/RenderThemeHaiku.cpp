@@ -114,7 +114,7 @@ bool RenderThemeHaiku::paintSliderTrack(const RenderObject& object, const PaintI
     rgb_color background = base;
     	// TODO: From PaintInfo?
     BRect rect = intRect;
-    BView* view = info.context->platformContext();
+    BView* view = info.context().platformContext();
     unsigned flags = flagsForObject(object);
     if (isPressed(object))
     	flags |= BControlLook::B_ACTIVATED;
@@ -188,7 +188,7 @@ bool RenderThemeHaiku::paintSliderThumb(const RenderObject& object, const PaintI
 {
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
     BRect rect = intRect;
-    BView* view = info.context->platformContext();
+    BView* view = info.context().platformContext();
     unsigned flags = flagsForObject(object);
     if (isPressed(object))
     	flags |= BControlLook::B_ACTIVATED;
@@ -229,7 +229,7 @@ String RenderThemeHaiku::mediaControlsScript()
 #if !USE(NEW_THEME)
 bool RenderThemeHaiku::paintCheckbox(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
-    if (info.context->paintingDisabled())
+    if (info.context().paintingDisabled())
         return true;
 
     if (!be_control_look)
@@ -237,7 +237,7 @@ bool RenderThemeHaiku::paintCheckbox(const RenderObject& object, const PaintInfo
 
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
     BRect rect = intRect;
-    BView* view = info.context->platformContext();
+    BView* view = info.context().platformContext();
     unsigned flags = flagsForObject(object);
 
 	view->PushState();
@@ -265,7 +265,7 @@ void RenderThemeHaiku::setCheckboxSize(RenderStyle& style) const
 bool RenderThemeHaiku::paintRadio(const RenderObject& object, const PaintInfo& info,
 	const IntRect& intRect)
 {
-    if (info.context->paintingDisabled())
+    if (info.context().paintingDisabled())
         return true;
 
     if (!be_control_look)
@@ -273,7 +273,7 @@ bool RenderThemeHaiku::paintRadio(const RenderObject& object, const PaintInfo& i
 
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
     BRect rect = intRect;
-    BView* view = info.context->platformContext();
+    BView* view = info.context().platformContext();
     unsigned flags = flagsForObject(object);
 
 	view->PushState();
@@ -290,7 +290,7 @@ void RenderThemeHaiku::setRadioSize(RenderStyle& style) const
 
 bool RenderThemeHaiku::paintButton(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
-    if (info.context->paintingDisabled())
+    if (info.context().paintingDisabled())
         return true;
 
     if (!be_control_look)
@@ -300,7 +300,7 @@ bool RenderThemeHaiku::paintButton(const RenderObject& object, const PaintInfo& 
     rgb_color background = base;
     	// TODO: From PaintInfo?
     BRect rect = intRect;
-    BView* view = info.context->platformContext();
+    BView* view = info.context().platformContext();
     unsigned flags = flagsForObject(object);
     if (isPressed(object))
     	flags |= BControlLook::B_ACTIVATED;
@@ -321,7 +321,7 @@ void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver& selector, RenderStyle
 
 bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInfo& info, const FloatRect& intRect)
 {
-    if (info.context->paintingDisabled())
+    if (info.context().paintingDisabled())
         return true;
 
     if (!be_control_look)
@@ -331,7 +331,7 @@ bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInf
     //rgb_color background = base;
     	// TODO: From PaintInfo?
     BRect rect(intRect);
-    BView* view(info.context->platformContext());
+    BView* view(info.context().platformContext());
     unsigned flags = flagsForObject(object) & ~BControlLook::B_CLICKED;
 
 	view->PushState();
@@ -386,7 +386,7 @@ bool RenderThemeHaiku::paintMenuListButtonDecorations(const RenderBox& object, c
 
 bool RenderThemeHaiku::paintMenuList(const RenderObject& object, const PaintInfo& info, const FloatRect& intRect)
 {
-    if (info.context->paintingDisabled())
+    if (info.context().paintingDisabled())
         return true;
 
     if (!be_control_look)
@@ -396,7 +396,7 @@ bool RenderThemeHaiku::paintMenuList(const RenderObject& object, const PaintInfo
     //rgb_color background = base;
     	// TODO: From PaintInfo?
     BRect rect = intRect;
-    BView* view = info.context->platformContext();
+    BView* view = info.context().platformContext();
     unsigned flags = flagsForObject(object) & ~BControlLook::B_CLICKED;
 
 	view->PushState();

@@ -121,7 +121,7 @@ void Widget::hide()
         platformWidget()->Hide();
 }
 
-void Widget::paint(GraphicsContext*, IntRect const&)
+void Widget::paint(GraphicsContext&, IntRect const&)
 {
     notImplemented();
 }

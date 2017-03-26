@@ -85,9 +85,10 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
     return std::make_unique<FontPlatformData>(fontDescription, family);
 }
 
-void FontCache::getTraitsInFamily(const AtomicString& familyName, Vector<unsigned>& traitsMasks)
+WTF::Vector<WebCore::FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString& familyName)
 {
     // notImplemented(); also by fretype, must not be that important
+    return WTF::Vector<WebCore::FontTraitsMask>();
 }
 
 } // namespace WebCore

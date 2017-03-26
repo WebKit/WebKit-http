@@ -77,7 +77,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BHandler {
 
         void setSize(const IntSize&) override;
 
-        void paint(GraphicsContext*, const FloatRect&) override;
+        void paint(GraphicsContext&, const FloatRect&) override;
 
     private:
         

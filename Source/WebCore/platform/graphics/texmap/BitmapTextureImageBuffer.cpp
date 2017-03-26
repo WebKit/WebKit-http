@@ -49,17 +49,17 @@ void BitmapTextureImageBuffer::updateContents(const void* data, const IntRect& t
 
 void BitmapTextureImageBuffer::updateContents(TextureMapper*, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& sourceOffset, UpdateContentsFlag)
 {
-    GraphicsContext* context = m_image->context();
+    GraphicsContext& context = m_image->context();
 
-    context->clearRect(targetRect);
+    context.clearRect(targetRect);
 
     IntRect sourceRect(targetRect);
     sourceRect.setLocation(sourceOffset);
-    context->save();
-    context->clip(targetRect);
-    context->translate(targetRect.x() - sourceOffset.x(), targetRect.y() - sourceOffset.y());
-    sourceLayer->paintGraphicsLayerContents(*context, sourceRect);
-    context->restore();
+    context.save();
+    context.clip(targetRect);
+    context.translate(targetRect.x() - sourceOffset.x(), targetRect.y() - sourceOffset.y());
+    sourceLayer->paintGraphicsLayerContents(context, sourceRect);
+    context.restore();
 }
 
 void BitmapTextureImageBuffer::didReset()
@@ -69,7 +69,7 @@ void BitmapTextureImageBuffer::didReset()
 
 void BitmapTextureImageBuffer::updateContents(Image* image, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag)
 {
-    m_image->context()->drawImage(image, ColorSpaceDeviceRGB, targetRect, IntRect(offset, targetRect.size()), CompositeCopy);
+    m_image->context().drawImage(image, ColorSpaceDeviceRGB, targetRect, IntRect(offset, targetRect.size()), CompositeCopy);
 }
 
 } // namespace WebCore

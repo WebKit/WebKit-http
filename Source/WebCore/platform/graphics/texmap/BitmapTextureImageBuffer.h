@@ -42,7 +42,7 @@ public:
     virtual IntSize size() const { return m_image->internalSize(); }
     virtual void didReset();
     virtual bool isValid() const { return m_image.get(); }
-    inline GraphicsContext* graphicsContext() { return m_image ? m_image->context() : 0; }
+    inline GraphicsContext* graphicsContext() { return m_image ? &m_image->context() : nullptr; }
     virtual void updateContents(Image*, const IntRect&, const IntPoint&, UpdateContentsFlag);
     virtual void updateContents(TextureMapper*, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag);
     virtual void updateContents(const void*, const IntRect& target, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag);

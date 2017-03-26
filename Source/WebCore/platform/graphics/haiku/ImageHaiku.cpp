@@ -80,7 +80,7 @@ void BitmapImage::invalidatePlatformData()
 }
 
 // Drawing Routines
-void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst, const FloatRect& src,
+void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatRect& src,
     ColorSpace styleColorSpace, CompositeOperator op, BlendMode, ImageOrientationDescription)
 {
     if (!m_source.initialized())
@@ -100,28 +100,28 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst, const FloatR
         return;
     }
 
-    ctxt->save();
-    ctxt->setCompositeOperation(op);
+    ctxt.save();
+    ctxt.setCompositeOperation(op);
 
     BRect srcRect(src);
     BRect dstRect(dst);
 
     // Test using example site at
     // http://www.meyerweb.com/eric/css/edge/complexspiral/demo.html
-    ctxt->platformContext()->SetDrawingMode(B_OP_ALPHA);
+    ctxt.platformContext()->SetDrawingMode(B_OP_ALPHA);
     uint32 options = 0;
-    if (ctxt->imageInterpolationQuality() == InterpolationDefault
-        || ctxt->imageInterpolationQuality() > InterpolationLow) {
+    if (ctxt.imageInterpolationQuality() == InterpolationDefault
+        || ctxt.imageInterpolationQuality() > InterpolationLow) {
         options |= B_FILTER_BITMAP_BILINEAR;
     }
-    ctxt->platformContext()->DrawBitmapAsync(image, srcRect, dstRect, options);
-    ctxt->restore();
+    ctxt.platformContext()->DrawBitmapAsync(image, srcRect, dstRect, options);
+    ctxt.restore();
 
     if (imageObserver())
         imageObserver()->didDraw(this);
 }
 
-void Image::drawPattern(GraphicsContext* context, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, ColorSpace, CompositeOperator op, const FloatRect& dstRect, BlendMode)
+void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, ColorSpace, CompositeOperator op, const FloatRect& dstRect, BlendMode)
 {
     BBitmap* image = nativeImageForCurrentFrame();
     if (!image || !image->IsValid()) // If the image hasn't fully loaded.
@@ -144,13 +144,13 @@ void Image::drawPattern(GraphicsContext* context, const FloatRect& tileRect, con
         bits += bytesPerRow;
     }
 
-    context->save();
+    context.save();
     if (hasAlpha)
-        context->platformContext()->SetDrawingMode(B_OP_ALPHA);
+        context.platformContext()->SetDrawingMode(B_OP_ALPHA);
     else
-        context->platformContext()->SetDrawingMode(B_OP_COPY);
+        context.platformContext()->SetDrawingMode(B_OP_COPY);
 
-    context->clip(enclosingIntRect(dstRect));
+    context.clip(enclosingIntRect(dstRect));
     float currentW = phase.x();
     BRect bTileRect(tileRect);
     // FIXME app_server doesn't support B_TILE_BITMAP in DrawBitmap calls. This
@@ -159,12 +159,12 @@ void Image::drawPattern(GraphicsContext* context, const FloatRect& tileRect, con
         float currentH = phase.y();
         while (currentH < dstRect.y() + dstRect.height()) {
             BRect bDstRect(currentW, currentH, currentW + width - 1, currentH + height - 1);
-            context->platformContext()->DrawBitmapAsync(image, bTileRect, bDstRect);
+            context.platformContext()->DrawBitmapAsync(image, bTileRect, bDstRect);
             currentH += height;
         }
         currentW += width;
     }
-    context->restore();
+    context.restore();
 
     if (imageObserver())
         imageObserver()->didDraw(this);

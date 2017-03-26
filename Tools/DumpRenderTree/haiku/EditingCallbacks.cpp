@@ -57,7 +57,9 @@ static WTF::String dumpRange(WebCore::Range* range)
 {
     if (!range)
         return "(null)";
-    return WTF::String::format("range from %d of %s to %d of %s", range->startOffset(), dumpPath(range->startContainer()).utf8().data(), range->endOffset(), dumpPath(range->endContainer()).utf8().data());
+    return WTF::String::format("range from %d of %s to %d of %s",
+        range->startOffset(), dumpPath(&range->startContainer()).utf8().data(),
+        range->endOffset(), dumpPath(&range->endContainer()).utf8().data());
 }
 
 static const char* insertActionString(WebCore::EditorInsertAction action)

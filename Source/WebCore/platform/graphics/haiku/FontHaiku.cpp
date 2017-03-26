@@ -47,25 +47,25 @@ bool FontCascade::canReturnFallbackFontsForComplexText()
     return false;
 }
 
-void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext* /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
+void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
 {
     notImplemented();
 }
 
-void FontCascade::drawGlyphs(GraphicsContext* graphicsContext, const Font* font,
+void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
                       const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
 {
-    BView* view = graphicsContext->platformContext();
+    BView* view = graphicsContext.platformContext();
     view->PushState();
 
-    rgb_color color = graphicsContext->fillColor();
+    rgb_color color = graphicsContext.fillColor();
 
-    if (color.alpha < 255 || graphicsContext->isInTransparencyLayer())
+    if (color.alpha < 255 || graphicsContext.isInTransparencyLayer())
         view->SetDrawingMode(B_OP_ALPHA);
     else
         view->SetDrawingMode(B_OP_OVER);
     view->SetHighColor(color);
-    view->SetFont(font->platformData().font());
+    view->SetFont(font.platformData().font());
 
     const GlyphBufferGlyph* glyphs = glyphBuffer.glyphs(from);
 
@@ -101,10 +101,10 @@ bool FontCascade::canExpandAroundIdeographsInComplexText()
  * For now, we just call the usual DrawString method. It's better to at least
  * try displaying something.
  */
-float FontCascade::drawComplexText(GraphicsContext* context, const TextRun& run, const FloatPoint& point,
+float FontCascade::drawComplexText(GraphicsContext& context, const TextRun& run, const FloatPoint& point,
                            int from, int to) const
 {
-    BView* view = context->platformContext();
+    BView* view = context.platformContext();
     view->SetFont(primaryFont().platformData().font());
 
     // The "point" is where the complete run starts. We need to offset it

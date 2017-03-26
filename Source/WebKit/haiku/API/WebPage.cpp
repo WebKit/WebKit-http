@@ -764,7 +764,7 @@ void BWebPage::internalPaint(BView* offscreenView,
     offscreenView->ConstrainClippingRegion(dirty);
 
     WebCore::GraphicsContext context(offscreenView);
-    frameView->paint(&context, IntRect(dirty->Frame()));
+    frameView->paint(context, IntRect(dirty->Frame()));
 
     offscreenView->PopState();
 }

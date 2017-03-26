@@ -104,17 +104,14 @@ ImageBuffer::~ImageBuffer()
 {
 }
 
-GraphicsContext* ImageBuffer::context() const
+GraphicsContext& ImageBuffer::context() const
 {
-    if(!m_data.m_view)
-        return NULL;
-
-    return m_data.m_context;
+    return *m_data.m_context;
 }
 
 RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
-    if (context())
+    if (m_data.m_view)
         m_data.m_view->Sync();
 
     if (copyBehavior == CopyBackingStore)
@@ -128,32 +125,32 @@ BackingStoreCopy ImageBuffer::fastCopyImageMode()
     return DontCopyBackingStore;
 }
 
-void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
+void ImageBuffer::draw(GraphicsContext& destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
                        CompositeOperator op, BlendMode, bool useLowQualityScale)
 {
-    if (!context())
+    if (!m_data.m_view)
         return;
 
     m_data.m_view->Sync();
     ImagePaintingOptions options;
     options.m_compositeOperator = op;
     options.m_useLowQualityScale = useLowQualityScale;
-    if (destContext == context()) {
+    if (&destContext == &context() && destRect.intersects(srcRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
-        destContext->drawImage(copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, options);
+        destContext.drawImage(copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, options);
     } else
-        destContext->drawImage(m_data.m_image.get(), styleColorSpace, destRect, srcRect, options);
+        destContext.drawImage(m_data.m_image.get(), styleColorSpace, destRect, srcRect, options);
 }
 
-void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                               const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode)
 {
-    if (!context())
+    if (!m_data.m_view)
         return;
 
     m_data.m_view->Sync();
-    if (destContext == context()) {
+    if (&destContext == &context() && srcRect.intersects(destRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
         copy->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
@@ -161,10 +158,13 @@ void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& src
         m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
 }
 
-void ImageBuffer::clip(GraphicsContext* context, const FloatRect& maskRect) const
+void ImageBuffer::clip(GraphicsContext& context, const FloatRect& maskRect) const
 {
     BPicture picture;
-    BView* view = context->platformContext();
+    BView* view = context.platformContext();
+
+    if (!view)
+        return;
 
     view->LockLooper();
 

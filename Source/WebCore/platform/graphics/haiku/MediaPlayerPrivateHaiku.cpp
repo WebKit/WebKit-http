@@ -269,16 +269,16 @@ void MediaPlayerPrivate::setSize(const IntSize&)
     notImplemented();
 }
 
-void MediaPlayerPrivate::paint(GraphicsContext* context, const FloatRect& r)
+void MediaPlayerPrivate::paint(GraphicsContext& context, const FloatRect& r)
 {
-    if (context->paintingDisabled())
+    if (context.paintingDisabled())
         return;
 
     if (!m_player->visible())
         return;
 
     if (m_frameBuffer) {
-        BView* target = context->platformContext();
+        BView* target = context.platformContext();
         target->SetDrawingMode(B_OP_COPY);
         target->DrawBitmap(m_frameBuffer, r);
     }

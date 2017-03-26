@@ -123,13 +123,13 @@ IntRect ScrollbarThemeHaiku::trackRect(Scrollbar& scrollbar, bool)
     return IntRect(scrollbar.x(), scrollbar.y() + thickness, thickness, scrollbar.height() - 2 * thickness - 1);
 }
 
-void ScrollbarThemeHaiku::paintScrollCorner(ScrollView* scrollView, GraphicsContext* context, const IntRect& rect)
+void ScrollbarThemeHaiku::paintScrollCorner(ScrollView* scrollView, GraphicsContext& context, const IntRect& rect)
 {
 	if (rect.width() == 0 || rect.height() == 0)
 		return;
 
     BRect drawRect = BRect(rect);
-    BView* view = context->platformContext();
+    BView* view = context.platformContext();
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
     if (!m_drawOuterFrame) {
     	view->SetHighColor(tint_color(base, B_DARKEN_2_TINT));
