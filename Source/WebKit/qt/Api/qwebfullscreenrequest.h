@@ -68,7 +68,10 @@ private:
     QScopedPointer<QWebFullScreenRequestPrivate> d;
 };
 
+QT_BEGIN_NAMESPACE
 Q_DECLARE_TYPEINFO(QWebFullScreenRequest, Q_MOVABLE_TYPE);
+QT_END_NAMESPACE
+
 Q_DECLARE_METATYPE(QWebFullScreenRequest)
 
 #endif
