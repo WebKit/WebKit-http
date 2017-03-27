@@ -11,6 +11,7 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/accessibility"
     "${WEBCORE_DIR}/bindings/js"
+    "${WEBCORE_DIR}/contentextensions"
     "${WEBCORE_DIR}/editing"
     "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html"

@@ -700,6 +700,12 @@ WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceReques
                          request.url().string(), "Not allowed to use restricted network port");
 }
 
+WebCore::ResourceError FrameLoaderClientHaiku::blockedByContentBlockerError(const ResourceRequest& request)
+{
+    return ResourceError(String(), WebKitErrorCannotShowURL,
+        request.url().string(), "Blocked by content blocker");
+}
+
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
     return ResourceError(String(), WebKitErrorCannotShowURL,

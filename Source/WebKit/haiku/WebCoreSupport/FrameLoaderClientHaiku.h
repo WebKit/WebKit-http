@@ -164,6 +164,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 
     ResourceError cancelledError(const ResourceRequest&) override;
     ResourceError blockedError(const ResourceRequest&) override;
+    ResourceError blockedByContentBlockerError(const ResourceRequest&) override;
     ResourceError cannotShowURLError(const ResourceRequest&) override;
     ResourceError interruptedForPolicyChangeError(const ResourceRequest&) override;
 
