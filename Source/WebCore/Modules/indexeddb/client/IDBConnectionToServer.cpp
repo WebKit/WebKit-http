@@ -55,8 +55,8 @@ void IDBConnectionToServer::deleteDatabase(IDBOpenDBRequest& request)
 {
     LOG(IndexedDB, "IDBConnectionToServer::deleteDatabase - %s", request.databaseIdentifier().debugString().utf8().data());
 
-    ASSERT(!m_openDBRequestMap.contains(request.requestIdentifier()));
-    m_openDBRequestMap.set(request.requestIdentifier(), &request);
+    ASSERT(!m_openDBRequestMap.contains(request.resourceIdentifier()));
+    m_openDBRequestMap.set(request.resourceIdentifier(), &request);
     
     IDBRequestData requestData(*this, request);
     m_delegate->deleteDatabase(requestData);
@@ -65,6 +65,27 @@ void IDBConnectionToServer::deleteDatabase(IDBOpenDBRequest& request)
 void IDBConnectionToServer::didDeleteDatabase(const IDBResultData& resultData)
 {
     LOG(IndexedDB, "IDBConnectionToServer::didDeleteDatabase");
+
+    auto request = m_openDBRequestMap.take(resultData.requestIdentifier());
+    ASSERT(request);
+
+    request->requestCompleted(resultData);
+}
+
+void IDBConnectionToServer::openDatabase(IDBOpenDBRequest& request)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::openDatabase - %s", request.databaseIdentifier().debugString().utf8().data());
+
+    ASSERT(!m_openDBRequestMap.contains(request.resourceIdentifier()));
+    m_openDBRequestMap.set(request.resourceIdentifier(), &request);
+    
+    IDBRequestData requestData(*this, request);
+    m_delegate->openDatabase(requestData);
+}
+
+void IDBConnectionToServer::didOpenDatabase(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didOpenDatabase");
 
     auto request = m_openDBRequestMap.take(resultData.requestIdentifier());
     ASSERT(request);

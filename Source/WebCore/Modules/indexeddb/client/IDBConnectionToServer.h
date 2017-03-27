@@ -29,7 +29,7 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBConnectionToServerDelegate.h"
-#include "IDBRequestIdentifier.h"
+#include "IDBResourceIdentifier.h"
 #include <wtf/HashMap.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
@@ -50,13 +50,16 @@ public:
 
     void deleteDatabase(IDBOpenDBRequest&);
     void didDeleteDatabase(const IDBResultData&);
-    
+
+    void openDatabase(IDBOpenDBRequest&);
+    void didOpenDatabase(const IDBResultData&);
+
 private:
     IDBConnectionToServer(IDBConnectionToServerDelegate&);
     
     Ref<IDBConnectionToServerDelegate> m_delegate;
 
-    HashMap<IDBRequestIdentifier, RefPtr<IDBClient::IDBOpenDBRequest>> m_openDBRequestMap;
+    HashMap<IDBResourceIdentifier, RefPtr<IDBClient::IDBOpenDBRequest>> m_openDBRequestMap;
 };
 
 } // namespace IDBClient

@@ -188,7 +188,6 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
 
         this._status = x || "";
         this._updateStatusElement();
-        this.didChange();
     }
 
     get filterableData()
@@ -250,7 +249,7 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
     {
         if (this._boundContextMenuEventHandler) {
             this._listItemNode.removeEventListener("contextmenu", this._boundContextMenuEventHandler);
-            delete this._boundContextMenuEventHandler;
+            this._boundContextMenuEventHandler = null;
         }
     }
 

@@ -292,6 +292,12 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         this._updateFilter();
     }
 
+    shouldFilterPopulate()
+    {
+        // Overriden by subclasses if needed.
+        return this.hasCustomFilters();
+    }
+
     hasCustomFilters()
     {
         // Implemented by subclasses if needed.
@@ -335,22 +341,20 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         var filterableData = treeElement.filterableData || {};
 
         var flags = {expandTreeElement: false};
+        var filterRegex = this._textFilterRegex;
 
-        var self = this;
         function matchTextFilter(inputs)
         {
-            if (!inputs || !self._textFilterRegex)
+            if (!inputs || !filterRegex)
                 return true;
 
-            // Convert to a single item array if needed.
-            if (!(inputs instanceof Array))
-                inputs = [inputs];
+            console.assert(inputs instanceof Array, "filterableData.text should be an array of text inputs");
 
             // Loop over all the inputs and try to match them.
             for (var input of inputs) {
                 if (!input)
                     continue;
-                if (self._textFilterRegex.test(input)) {
+                if (filterRegex.test(input)) {
                     flags.expandTreeElement = true;
                     return true;
                 }
@@ -525,7 +529,7 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
 
         // Don't populate if we don't have any active filters.
         // We only need to populate when a filter needs to reveal.
-        var dontPopulate = !this._filterBar.hasActiveFilters() && !this.hasCustomFilters();
+        var dontPopulate = !this._filterBar.hasActiveFilters() && !this.shouldFilterPopulate();
 
         // Update the whole tree.
         var currentTreeElement = this._contentTreeOutline.children[0];
@@ -554,7 +558,7 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
     {
         // Don't populate if we don't have any active filters.
         // We only need to populate when a filter needs to reveal.
-        var dontPopulate = !this._filterBar.hasActiveFilters() && !this.hasCustomFilters();
+        var dontPopulate = !this._filterBar.hasActiveFilters() && !this.shouldFilterPopulate();
 
         // Apply the filters to the tree element and its descendants.
         var currentTreeElement = treeElement;

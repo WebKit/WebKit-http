@@ -248,6 +248,42 @@ void MediaSessionManageriOS::externalOutputDeviceAvailableDidChange()
         session->externalOutputDeviceAvailableDidChange(haveTargets);
 }
 
+void MediaSessionManageriOS::applicationDidEnterBackground(bool isSuspendedUnderLock)
+{
+    LOG(Media, "MediaSessionManageriOS::applicationDidEnterBackground");
+
+    if (m_isInBackground)
+        return;
+    m_isInBackground = true;
+
+    if (!isSuspendedUnderLock)
+        return;
+
+    Vector<PlatformMediaSession*> sessions = this->sessions();
+    for (auto* session : sessions) {
+        if (restrictions(session->mediaType()) & BackgroundProcessPlaybackRestricted)
+            session->beginInterruption(PlatformMediaSession::SuspendedUnderLock);
+    }
+}
+
+void MediaSessionManageriOS::applicationWillEnterForeground(bool isSuspendedUnderLock)
+{
+    LOG(Media, "MediaSessionManageriOS::applicationWillEnterForeground");
+
+    if (!m_isInBackground)
+        return;
+    m_isInBackground = false;
+
+    if (!isSuspendedUnderLock)
+        return;
+
+    Vector<PlatformMediaSession*> sessions = this->sessions();
+    for (auto* session : sessions) {
+        if (restrictions(session->mediaType()) & BackgroundProcessPlaybackRestricted)
+            session->endInterruption(PlatformMediaSession::MayResumePlaying);
+    }
+}
+
 } // namespace WebCore
 
 @implementation WebMediaSessionHelper
@@ -417,11 +453,13 @@ void MediaSessionManageriOS::externalOutputDeviceAvailableDidChange()
 
     LOG(Media, "-[WebMediaSessionHelper applicationWillEnterForeground]");
 
+    BOOL isSuspendedUnderLock = [[[notification userInfo] objectForKey:@"isSuspendedUnderLock"] boolValue];
+
     WebThreadRun(^{
         if (!_callback)
             return;
 
-        _callback->applicationWillEnterForeground();
+        _callback->applicationWillEnterForeground(isSuspendedUnderLock);
     });
 }
 
@@ -438,7 +476,7 @@ void MediaSessionManageriOS::externalOutputDeviceAvailableDidChange()
         if (!_callback)
             return;
 
-        _callback->applicationWillEnterForeground();
+        _callback->applicationDidEnterForeground();
     });
 }
 

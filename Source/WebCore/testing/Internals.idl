@@ -131,7 +131,7 @@ enum MediaControlEvent {
     [RaisesException] unsigned long markerCountForNode(Node node, DOMString markerType);
     [RaisesException] Range markerRangeForNode(Node node, DOMString markerType, unsigned long index);
     [RaisesException] DOMString markerDescriptionForNode(Node node, DOMString markerType, unsigned long index);
-    [RaisesException] DOMString dumpMarkerRectsForNode(Node node, DOMString markerType, unsigned long index);
+    [RaisesException] DOMString dumpMarkerRects(DOMString markerType);
     void addTextMatchMarker(Range range, boolean isActive);
     [RaisesException] void setMarkedTextMatchesAreHighlighted(boolean flag);
 
@@ -365,14 +365,14 @@ enum MediaControlEvent {
     [Conditional=MEDIA_SOURCE] DOMString[] bufferedSamplesForTrackID(SourceBuffer buffer, DOMString trackID);
     [Conditional=MEDIA_SOURCE] void setShouldGenerateTimestamps(SourceBuffer buffer, boolean flag);
 
-    [Conditional=VIDEO] void beginMediaSessionInterruption();
+    [Conditional=VIDEO, RaisesException] void beginMediaSessionInterruption(DOMString interruptionType);
     [Conditional=VIDEO] void endMediaSessionInterruption(DOMString flags);
     [Conditional=MEDIA_SESSION] void sendMediaSessionStartOfInterruptionNotification(MediaSessionInterruptingCategory category);
     [Conditional=MEDIA_SESSION] void sendMediaSessionEndOfInterruptionNotification(MediaSessionInterruptingCategory category);
     [Conditional=MEDIA_SESSION] DOMString mediaSessionCurrentState(MediaSession session);
     [Conditional=MEDIA_SESSION] double mediaElementPlayerVolume(HTMLMediaElement element);
     [Conditional=MEDIA_SESSION] void sendMediaControlEvent(MediaControlEvent event);
-    [Conditional=VIDEO] void applicationWillEnterForeground();
+    [Conditional=VIDEO] void applicationDidEnterForeground();
     [Conditional=VIDEO] void applicationWillEnterBackground();
     [Conditional=VIDEO, RaisesException] void setMediaSessionRestrictions(DOMString mediaType, DOMString restrictions);
     [Conditional=VIDEO, RaisesException] void setMediaElementRestrictions(HTMLMediaElement element, DOMString restrictions);

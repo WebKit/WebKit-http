@@ -1,3 +1,37 @@
+2015-10-06  Emanuele Aina  <emanuele.aina@collabora.com>
+
+        Fix ENABLE_OPENGL=OFF builds
+        https://bugs.webkit.org/show_bug.cgi?id=146511
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsGTK.cmake: Make ENABLE_WAYLAND_TARGET depend on
+        ENABLE_OPENGL due to EGL usage.
+
+2015-10-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Convert focused-input-should-assist-on-touch.html into an automated test
+        https://bugs.webkit.org/show_bug.cgi?id=149724
+
+        Reviewed by Simon Fraser.
+
+        Remove a manual test that can now be rewritten as an automated test.
+
+        * ManualTests/ios/focused-input-should-assist-on-touch.html: Removed.
+
+2015-10-01  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed CMake build fix.
+
+        * Source/cmake/OptionsWin.cmake: Clean up options setttings,
+        and make sure exception handling is turned off.
+
+2015-09-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after CMake conversion.
+
+        * Source/cmake/OptionsWin.cmake: Correct some Windows build flags.
+
 2015-09-29  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK][CMake] Warning about CMP0058

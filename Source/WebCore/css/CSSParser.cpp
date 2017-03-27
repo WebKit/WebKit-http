@@ -571,6 +571,10 @@ static inline bool isSimpleLengthPropertyID(CSSPropertyID propertyId, bool& acce
     case CSSPropertyWebkitPaddingBefore:
     case CSSPropertyWebkitPaddingEnd:
     case CSSPropertyWebkitPaddingStart:
+#if ENABLE(CSS_GRID_LAYOUT)
+    case CSSPropertyWebkitGridColumnGap:
+    case CSSPropertyWebkitGridRowGap:
+#endif
         acceptsNegativeNumbers = false;
         return true;
 #if ENABLE(CSS_SHAPES)
@@ -2772,6 +2776,14 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         parsedValue = parseGridPosition();
         break;
 
+    case CSSPropertyWebkitGridColumnGap:
+    case CSSPropertyWebkitGridRowGap:
+        validPrimitive = validateUnit(valueWithCalculation, FLength | FNonNeg);
+        break;
+
+    case CSSPropertyWebkitGridGap:
+        return parseGridGapShorthand(important);
+
     case CSSPropertyWebkitGridColumn:
     case CSSPropertyWebkitGridRow: {
         return parseGridItemPositionShorthand(propId, important);
@@ -3055,7 +3067,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         else
             return parseLineBoxContain(important);
         break;
-    case CSSPropertyWebkitFontFeatureSettings:
+    case CSSPropertyFontFeatureSettings:
         if (id == CSSValueNormal)
             validPrimitive = true;
         else
@@ -5436,6 +5448,43 @@ bool CSSParser::parseGridItemPositionShorthand(CSSPropertyID shorthandId, bool i
 
     addProperty(shorthand.properties()[0], startValue, important);
     addProperty(shorthand.properties()[1], endValue, important);
+    return true;
+}
+
+bool CSSParser::parseGridGapShorthand(bool important)
+{
+    ShorthandScope scope(this, CSSPropertyWebkitGridGap);
+    ASSERT(shorthandForProperty(CSSPropertyWebkitGridGap).length() == 2);
+
+    CSSParserValue* value = m_valueList->current();
+    if (!value)
+        return false;
+
+    ValueWithCalculation columnValueWithCalculation(*value);
+    if (!validateUnit(columnValueWithCalculation, FLength | FNonNeg))
+        return false;
+
+    RefPtr<CSSPrimitiveValue> columnGap = createPrimitiveNumericValue(columnValueWithCalculation);
+
+    value = m_valueList->next();
+    if (!value) {
+        addProperty(CSSPropertyWebkitGridColumnGap, columnGap, important);
+        addProperty(CSSPropertyWebkitGridRowGap, columnGap, important);
+        return true;
+    }
+
+    ValueWithCalculation rowValueWithCalculation(*value);
+    if (!validateUnit(rowValueWithCalculation, FLength | FNonNeg))
+        return false;
+
+    if (m_valueList->next())
+        return false;
+
+    RefPtr<CSSPrimitiveValue> rowGap = createPrimitiveNumericValue(rowValueWithCalculation);
+
+    addProperty(CSSPropertyWebkitGridColumnGap, columnGap, important);
+    addProperty(CSSPropertyWebkitGridRowGap, rowGap, important);
+
     return true;
 }
 
@@ -10486,7 +10535,7 @@ bool CSSParser::parseFontFeatureSettings(bool important)
     if (m_valueList->size() == 1 && m_valueList->current()->id == CSSValueNormal) {
         RefPtr<CSSPrimitiveValue> normalValue = CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
         m_valueList->next();
-        addProperty(CSSPropertyWebkitFontFeatureSettings, normalValue.release(), important);
+        addProperty(CSSPropertyFontFeatureSettings, normalValue.release(), important);
         return true;
     }
 
@@ -10501,7 +10550,7 @@ bool CSSParser::parseFontFeatureSettings(bool important)
             return false;
     }
     if (settings->length()) {
-        addProperty(CSSPropertyWebkitFontFeatureSettings, settings.release(), important);
+        addProperty(CSSPropertyFontFeatureSettings, settings.release(), important);
         return true;
     }
     return false;

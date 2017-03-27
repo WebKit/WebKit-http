@@ -83,14 +83,14 @@ private:
 class JSTestNondeterministicConstructor : public DOMConstructorObject {
 private:
     JSTestNondeterministicConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSTestNondeterministicConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestNondeterministicConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestNondeterministicConstructor>(vm.heap)) JSTestNondeterministicConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -108,11 +108,11 @@ JSTestNondeterministicConstructor::JSTestNondeterministicConstructor(Structure* 
 {
 }
 
-void JSTestNondeterministicConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSTestNondeterministicConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestNondeterministic::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestNondeterministic::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestNondeterministic"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
@@ -141,8 +141,7 @@ void JSTestNondeterministicPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestNondeterministic::s_info = { "TestNondeterministic", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestNondeterministic) };
 
 JSTestNondeterministic::JSTestNondeterministic(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestNondeterministic>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestNondeterministic>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -160,11 +159,6 @@ void JSTestNondeterministic::destroy(JSC::JSCell* cell)
 {
     JSTestNondeterministic* thisObject = static_cast<JSTestNondeterministic*>(cell);
     thisObject->JSTestNondeterministic::~JSTestNondeterministic();
-}
-
-JSTestNondeterministic::~JSTestNondeterministic()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsTestNondeterministicNondeterministicReadonlyAttr(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)

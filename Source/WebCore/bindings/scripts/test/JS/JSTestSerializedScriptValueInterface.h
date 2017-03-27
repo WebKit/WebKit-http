@@ -29,9 +29,9 @@
 
 namespace WebCore {
 
-class JSTestSerializedScriptValueInterface : public JSDOMWrapper {
+class JSTestSerializedScriptValueInterface : public JSDOMWrapperWithImplementation<TestSerializedScriptValueInterface> {
 public:
-    typedef JSDOMWrapper Base;
+    typedef JSDOMWrapperWithImplementation<TestSerializedScriptValueInterface> Base;
     static JSTestSerializedScriptValueInterface* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestSerializedScriptValueInterface>&& impl)
     {
         JSTestSerializedScriptValueInterface* ptr = new (NotNull, JSC::allocateCell<JSTestSerializedScriptValueInterface>(globalObject->vm().heap)) JSTestSerializedScriptValueInterface(structure, globalObject, WTF::move(impl));
@@ -43,7 +43,6 @@ public:
     static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static TestSerializedScriptValueInterface* toWrapped(JSC::JSValue);
     static void destroy(JSC::JSCell*);
-    ~JSTestSerializedScriptValueInterface();
 
     DECLARE_INFO;
 
@@ -53,15 +52,10 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, JSC::JSGlobalObject*);
-    JSC::WriteBarrier<JSC::Unknown> m_cachedValue;
-    JSC::WriteBarrier<JSC::Unknown> m_cachedReadonlyValue;
+    mutable JSC::WriteBarrier<JSC::Unknown> m_cachedValue;
+    mutable JSC::WriteBarrier<JSC::Unknown> m_cachedReadonlyValue;
     static void visitChildren(JSCell*, JSC::SlotVisitor&);
 
-    TestSerializedScriptValueInterface& impl() const { return *m_impl; }
-    void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }
-
-private:
-    TestSerializedScriptValueInterface* m_impl;
 protected:
     JSTestSerializedScriptValueInterface(JSC::Structure*, JSDOMGlobalObject*, Ref<TestSerializedScriptValueInterface>&&);
 

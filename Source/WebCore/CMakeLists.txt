@@ -282,6 +282,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/speech/SpeechSynthesisUtterance.idl
     Modules/speech/SpeechSynthesisVoice.idl
 
+    Modules/streams/ByteLengthQueuingStrategy.idl
     Modules/streams/CountQueuingStrategy.idl
     Modules/streams/ReadableStream.idl
     Modules/streams/ReadableStreamController.idl
@@ -904,10 +905,14 @@ set(WebCore_SOURCES
 
     Modules/indexeddb/server/IDBConnectionToClient.cpp
     Modules/indexeddb/server/IDBServer.cpp
+    Modules/indexeddb/server/IDBServerOperation.cpp
+    Modules/indexeddb/server/MemoryIDBBackingStore.cpp
+    Modules/indexeddb/server/UniqueIDBDatabase.cpp
 
+    Modules/indexeddb/shared/IDBDatabaseInfo.cpp
     Modules/indexeddb/shared/IDBError.cpp
     Modules/indexeddb/shared/IDBRequestData.cpp
-    Modules/indexeddb/shared/IDBRequestIdentifier.cpp
+    Modules/indexeddb/shared/IDBResourceIdentifier.cpp
     Modules/indexeddb/shared/IDBResultData.cpp
     Modules/indexeddb/shared/InProcessIDBServer.cpp
 
@@ -979,9 +984,6 @@ set(WebCore_SOURCES
     Modules/speech/SpeechSynthesisEvent.cpp
     Modules/speech/SpeechSynthesisUtterance.cpp
     Modules/speech/SpeechSynthesisVoice.cpp
-
-    Modules/streams/ReadableStream.cpp
-    Modules/streams/ReadableStreamReader.cpp
 
     Modules/vibration/NavigatorVibration.cpp
     Modules/vibration/Vibration.cpp
@@ -1209,13 +1211,11 @@ set(WebCore_SOURCES
     bindings/js/JSPerformanceEntryCustom.cpp
     bindings/js/JSPluginElementFunctions.cpp
     bindings/js/JSPopStateEventCustom.cpp
+    bindings/js/JSReadableStreamPrivateConstructors.cpp
     bindings/js/JSRTCIceCandidateCustom.cpp
     bindings/js/JSRTCPeerConnectionCustom.cpp
     bindings/js/JSRTCSessionDescriptionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
-    bindings/js/JSReadableStreamControllerCustom.cpp
-    bindings/js/JSReadableStreamCustom.cpp
-    bindings/js/JSReadableStreamReaderCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
     bindings/js/JSSQLTransactionCustom.cpp
     bindings/js/JSSVGLengthCustom.cpp
@@ -1242,7 +1242,6 @@ set(WebCore_SOURCES
     bindings/js/JSXMLHttpRequestCustom.cpp
     bindings/js/JSXPathResultCustom.cpp
     bindings/js/JSXSLTProcessorCustom.cpp
-    bindings/js/ReadableJSStream.cpp
     bindings/js/ScheduledAction.cpp
     bindings/js/ScriptCachedFrameData.cpp
     bindings/js/ScriptController.cpp
@@ -3354,8 +3353,12 @@ set(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/
 set(IDL_ATTRIBUTES_FILE ${WEBCORE_DIR}/bindings/scripts/IDLAttributes.txt)
 
 set(WEBCORE_JS_BUILTINS
+    ${WEBCORE_DIR}/Modules/streams/ByteLengthQueuingStrategy.js
     ${WEBCORE_DIR}/Modules/streams/CountQueuingStrategy.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStream.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableStreamController.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableStreamInternals.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableStreamReader.js
 )
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
@@ -3715,6 +3718,9 @@ set_target_properties(WebCoreTestSupport PROPERTIES FOLDER "WebCore")
 
 if (WebCoreTestSupport_OUTPUT_NAME)
     set_target_properties(WebCoreTestSupport PROPERTIES OUTPUT_NAME ${WebCoreTestSupport_OUTPUT_NAME})
+    if (MSVC)
+        add_compile_options(/GF- /WX-)
+    endif ()
 endif ()
 
 if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)

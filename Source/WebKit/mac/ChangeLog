@@ -1,3 +1,75 @@
+2015-10-06  Daniel Bates  <dbates@webkit.org>
+
+        Enable XSLT when building WebKit for iOS using the public iOS SDK
+        https://bugs.webkit.org/show_bug.cgi?id=149827
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-10-06  Alex Christensen  <achristensen@webkit.org>
+
+        Report error when main resource is blocked by content blocker
+        https://bugs.webkit.org/show_bug.cgi?id=149719
+        rdar://problem/21970595
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::blockedError):
+        (WebFrameLoaderClient::blockedByContentBlockerError):
+        (WebFrameLoaderClient::cannotShowURLError):
+        Add blockedByContentBlockerError so WebFrameLoaderClient is not an abstract class,
+        but it should be unused because content blockers are not enabled on WK1.
+
+2015-10-05  Daniel Bates  <dabates@apple.com>
+
+        DumpRenderTree built with public iOS SDK crashes under -[WebPreferences(WebPrivate) _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]
+        https://bugs.webkit.org/show_bug.cgi?id=149766
+
+        Reviewed by Alexey Proskuryakov.
+
+        Assert that we have a non-null pointer to a cookie storage.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]):
+
+2015-10-05  Andreas Kling  <akling@apple.com>
+
+        Remove unused HistoryItem::targetItem()
+        <https://webkit.org/b/149803>
+
+        Reviewed by Anders Carlsson.
+
+        Remove the only (unused) client of HistoryItem::targetItem().
+
+        * History/WebHistoryItem.mm:
+        * History/WebHistoryItemPrivate.h:
+
+2015-10-05  Andreas Kling  <akling@apple.com>
+
+        Remove unused HistoryItem::parent
+        <https://webkit.org/b/149803>
+
+        Reviewed by Anders Carlsson.
+
+        Remove the only (unused) client of HistoryItem's with-parent constructor.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initWithURL:target:parent:title:]): Deleted.
+        * History/WebHistoryItemInternal.h:
+
+2015-09-30  Timothy Horton  <timothy_horton@apple.com>
+
+        Compute document marker rects at use time instead of paint time
+        https://bugs.webkit.org/show_bug.cgi?id=149643
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView rectsForTextMatches]):
+
 2015-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         printing does not use minimum page zoom factor

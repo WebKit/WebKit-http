@@ -69,14 +69,14 @@ private:
 class JSTestActiveDOMObjectConstructor : public DOMConstructorObject {
 private:
     JSTestActiveDOMObjectConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSTestActiveDOMObjectConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestActiveDOMObjectConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestActiveDOMObjectConstructor>(vm.heap)) JSTestActiveDOMObjectConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -111,11 +111,11 @@ JSTestActiveDOMObjectConstructor::JSTestActiveDOMObjectConstructor(Structure* st
 {
 }
 
-void JSTestActiveDOMObjectConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSTestActiveDOMObjectConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestActiveDOMObject::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestActiveDOMObject::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestActiveDOMObject"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
@@ -139,8 +139,7 @@ void JSTestActiveDOMObjectPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestActiveDOMObject::s_info = { "TestActiveDOMObject", &Base::s_info, &JSTestActiveDOMObjectTable, CREATE_METHOD_TABLE(JSTestActiveDOMObject) };
 
 JSTestActiveDOMObject::JSTestActiveDOMObject(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestActiveDOMObject>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestActiveDOMObject>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -158,11 +157,6 @@ void JSTestActiveDOMObject::destroy(JSC::JSCell* cell)
 {
     JSTestActiveDOMObject* thisObject = static_cast<JSTestActiveDOMObject*>(cell);
     thisObject->JSTestActiveDOMObject::~JSTestActiveDOMObject();
-}
-
-JSTestActiveDOMObject::~JSTestActiveDOMObject()
-{
-    releaseImpl();
 }
 
 bool JSTestActiveDOMObject::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)

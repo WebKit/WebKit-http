@@ -539,6 +539,7 @@
     <ClCompile Include="..\ftl\FTLJSCall.cpp" />
     <ClCompile Include="..\ftl\FTLJSCallBase.cpp" />
     <ClCompile Include="..\ftl\FTLJSCallVarargs.cpp" />
+    <ClCompile Include="..\ftl\FTLJSTailCall.cpp" />
     <ClCompile Include="..\ftl\FTLLink.cpp" />
     <ClCompile Include="..\ftl\FTLLocation.cpp" />
     <ClCompile Include="..\ftl\FTLLowerDFGToLLVM.cpp" />
@@ -823,6 +824,7 @@
     <ClCompile Include="..\runtime\JSTypedArrayConstructors.cpp" />
     <ClCompile Include="..\runtime\JSTypedArrayPrototypes.cpp" />
     <ClCompile Include="..\runtime\JSTypedArrays.cpp" />
+    <ClCompile Include="..\runtime\JSTypedArrayViewPrototype.cpp" />
     <ClCompile Include="..\runtime\JSEnvironmentRecord.cpp" />
     <ClCompile Include="..\runtime\JSWeakMap.cpp" />
     <ClCompile Include="..\runtime\JSWeakSet.cpp" />
@@ -1299,6 +1301,7 @@
     <ClInclude Include="..\ftl\FTLJSCall.h" />
     <ClInclude Include="..\ftl\FTLJSCallBase.h" />
     <ClInclude Include="..\ftl\FTLJSCallVarargs.h" />
+    <ClInclude Include="..\ftl\FTLJSTailCall.h" />
     <ClInclude Include="..\ftl\FTLLink.h" />
     <ClInclude Include="..\ftl\FTLLocation.h" />
     <ClInclude Include="..\ftl\FTLLowerDFGToLLVM.h" />
@@ -1323,6 +1326,7 @@
     <ClInclude Include="..\ftl\FTLValueRange.h" />
     <ClInclude Include="..\ftl\FTLWeight.h" />
     <ClInclude Include="..\ftl\FTLWeightedTarget.h" />
+    <ClInclude Include="..\heap\CellState.h" />
     <ClInclude Include="..\heap\CodeBlockSet.h" />
     <ClInclude Include="..\heap\ConservativeRoots.h" />
     <ClInclude Include="..\heap\CopiedAllocator.h" />
@@ -1649,6 +1653,7 @@
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructorInlines.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewInlines.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototype.h" />
+    <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototypeFunctions.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototypeInlines.h" />
     <ClInclude Include="..\runtime\JSGlobalObject.h" />
     <ClInclude Include="..\runtime\JSGlobalObjectFunctions.h" />
@@ -1693,6 +1698,7 @@
     <ClInclude Include="..\runtime\JSTypedArrayConstructors.h" />
     <ClInclude Include="..\runtime\JSTypedArrayPrototypes.h" />
     <ClInclude Include="..\runtime\JSTypedArrays.h" />
+    <ClInclude Include="..\runtime\JSTypedArrayViewPrototype.h" />
     <ClInclude Include="..\runtime\JSUint16Array.h" />
     <ClInclude Include="..\runtime\JSUint32Array.h" />
     <ClInclude Include="..\runtime\JSUint8Array.h" />

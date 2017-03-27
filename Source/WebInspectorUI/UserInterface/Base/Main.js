@@ -245,6 +245,9 @@ WebInspector.contentLoaded = function()
     this.navigationSidebarKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "0", this.toggleNavigationSidebar.bind(this));
     this.detailsSidebarKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Option, "0", this.toggleDetailsSidebar.bind(this));
 
+    this._increaseZoomKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, WebInspector.KeyboardShortcut.Key.Plus, this._increaseZoom.bind(this));
+    this._decreaseZoomKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, WebInspector.KeyboardShortcut.Key.Minus, this._decreaseZoom.bind(this));
+
     this.tabBrowser = new WebInspector.TabBrowser(document.getElementById("tab-browser"), this.tabBar, this.navigationSidebar, this.detailsSidebar);
     this.tabBrowser.addEventListener(WebInspector.TabBrowser.Event.SelectedTabContentViewDidChange, this._tabBrowserSelectedTabContentViewDidChange, this);
 
@@ -662,6 +665,8 @@ WebInspector.openURL = function(url, frame, alwaysOpenExternally, lineNumber)
     console.assert(url);
     if (!url)
         return;
+
+    console.assert(typeof lineNumber === "undefined" || typeof lineNumber === "number", "lineNumber should be a number.");
 
     // If alwaysOpenExternally is not defined, base it off the command/meta key for the current event.
     if (alwaysOpenExternally === undefined || alwaysOpenExternally === null)
@@ -1808,6 +1813,18 @@ WebInspector._copy = function(event)
     event.preventDefault();
 };
 
+WebInspector._increaseZoom = function(event) {
+    let currentZoom = InspectorFrontendHost.zoomFactor();
+    InspectorFrontendHost.setZoomFactor(currentZoom * 1.2);
+    event.preventDefault();
+};
+
+WebInspector._decreaseZoom = function(event) {
+    let currentZoom = InspectorFrontendHost.zoomFactor();
+    InspectorFrontendHost.setZoomFactor(currentZoom * 0.8);
+    event.preventDefault();
+};
+
 WebInspector._generateDisclosureTriangleImages = function()
 {
     var specifications = {};
@@ -2019,7 +2036,11 @@ WebInspector.linkifyStringAsFragmentWithCustomLinkifier = function(string, linki
         if (lineColumnMatch)
             realURL = realURL.substring(0, realURL.length - lineColumnMatch[0].length);
 
-        var linkNode = linkifier(title, realURL, lineColumnMatch ? lineColumnMatch[1] : undefined);
+        var lineNumber;
+        if (lineColumnMatch)
+            lineNumber = parseInt(lineColumnMatch[1]) - 1;
+
+        var linkNode = linkifier(title, realURL, lineNumber);
         container.appendChild(linkNode);
         string = string.substring(linkIndex + linkString.length, string.length);
     }

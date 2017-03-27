@@ -66,14 +66,14 @@ private:
 class JSTestEventConstructorConstructor : public DOMConstructorObject {
 private:
     JSTestEventConstructorConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSTestEventConstructorConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestEventConstructorConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestEventConstructorConstructor>(vm.heap)) JSTestEventConstructorConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -135,11 +135,11 @@ JSTestEventConstructorConstructor::JSTestEventConstructorConstructor(Structure* 
 {
 }
 
-void JSTestEventConstructorConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSTestEventConstructorConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestEventConstructor::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestEventConstructor::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestEventConstructor"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum);
 }
@@ -170,8 +170,7 @@ void JSTestEventConstructorPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestEventConstructor::s_info = { "TestEventConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventConstructor) };
 
 JSTestEventConstructor::JSTestEventConstructor(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestEventConstructor>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestEventConstructor>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -189,11 +188,6 @@ void JSTestEventConstructor::destroy(JSC::JSCell* cell)
 {
     JSTestEventConstructor* thisObject = static_cast<JSTestEventConstructor*>(cell);
     thisObject->JSTestEventConstructor::~JSTestEventConstructor();
-}
-
-JSTestEventConstructor::~JSTestEventConstructor()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsTestEventConstructorAttr1(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)

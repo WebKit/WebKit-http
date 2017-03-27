@@ -121,6 +121,9 @@ typedef const char* optionString;
     v(bool, forceCodeBlockLiveness, false, nullptr) \
     v(bool, forceICFailure, false, nullptr) \
     \
+    v(unsigned, repatchCountForCoolDown, 10, nullptr) \
+    v(unsigned, initialCoolDownCount, 20, nullptr) \
+    \
     v(bool, dumpGeneratedBytecodes, false, nullptr) \
     v(bool, dumpBytecodeLivenessResults, false, nullptr) \
     v(bool, validateBytecode, false, nullptr) \
@@ -128,7 +131,7 @@ typedef const char* optionString;
     v(bool, forceProfilerBytecodeGeneration, false, nullptr) \
     \
     v(bool, enableFunctionDotArguments, true, nullptr) \
-    v(bool, enableTailCalls, false, nullptr) \
+    v(bool, enableTailCalls, true, nullptr) \
     \
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false, "dumps disassembly of all JIT compiled code upon compilation") \

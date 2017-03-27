@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include "JITInlines.h"
 #include "JITOperations.h"
 #include "JITStubs.h"
+#include "JITSubGenerator.h"
 #include "JSArray.h"
 #include "JSFunction.h"
 #include "Interpreter.h"
@@ -666,11 +667,8 @@ void JIT::compileBinaryArithOp(OpcodeID opcodeID, int, int op1, int op2, Operand
     emitGetVirtualRegisters(op1, regT0, op2, regT1);
     emitJumpSlowCaseIfNotInt(regT0);
     emitJumpSlowCaseIfNotInt(regT1);
-    RareCaseProfile* profile = m_codeBlock->addSpecialFastCaseProfile(m_bytecodeOffset);
     if (opcodeID == op_add)
         addSlowCase(branchAdd32(Overflow, regT1, regT0));
-    else if (opcodeID == op_sub)
-        addSlowCase(branchSub32(Overflow, regT1, regT0));
     else {
         ASSERT(opcodeID == op_mul);
         if (shouldEmitProfiling()) {
@@ -688,7 +686,7 @@ void JIT::compileBinaryArithOp(OpcodeID opcodeID, int, int op1, int op2, Operand
             // We only get here if we have a genuine negative zero. Record this,
             // so that the speculative JIT knows that we failed speculation
             // because of a negative zero.
-            add32(TrustedImm32(1), AbsoluteAddress(&profile->m_counter));
+            add32(TrustedImm32(1), AbsoluteAddress(&m_codeBlock->addSpecialFastCaseProfile(m_bytecodeOffset)->m_counter));
             addSlowCase(jump());
             done.link(this);
             move(regT2, regT0);
@@ -722,7 +720,7 @@ void JIT::compileBinaryArithOpSlowCase(Instruction* currentInstruction, OpcodeID
 
     Label stubFunctionCall(this);
 
-    JITSlowPathCall slowPathCall(this, currentInstruction, opcodeID == op_add ? slow_path_add : opcodeID == op_sub ? slow_path_sub : slow_path_mul);
+    JITSlowPathCall slowPathCall(this, currentInstruction, opcodeID == op_add ? slow_path_add : slow_path_mul);
     slowPathCall.call();
     Jump end = jump();
 
@@ -768,8 +766,6 @@ void JIT::compileBinaryArithOpSlowCase(Instruction* currentInstruction, OpcodeID
 
     if (opcodeID == op_add)
         addDouble(fpRegT2, fpRegT1);
-    else if (opcodeID == op_sub)
-        subDouble(fpRegT2, fpRegT1);
     else if (opcodeID == op_mul)
         mulDouble(fpRegT2, fpRegT1);
     else {
@@ -836,15 +832,11 @@ void JIT::emit_op_mul(Instruction* currentInstruction)
     // For now, only plant a fast int case if the constant operand is greater than zero.
     int32_t value;
     if (isOperandConstantInt(op1) && ((value = getOperandConstantInt(op1)) > 0)) {
-        // Add a special fast case profile because the DFG JIT will expect one.
-        m_codeBlock->addSpecialFastCaseProfile(m_bytecodeOffset);
         emitGetVirtualRegister(op2, regT0);
         emitJumpSlowCaseIfNotInt(regT0);
         addSlowCase(branchMul32(Overflow, Imm32(value), regT0, regT1));
         emitTagInt(regT1, regT0);
     } else if (isOperandConstantInt(op2) && ((value = getOperandConstantInt(op2)) > 0)) {
-        // Add a special fast case profile because the DFG JIT will expect one.
-        m_codeBlock->addSpecialFastCaseProfile(m_bytecodeOffset);
         emitGetVirtualRegister(op1, regT0);
         emitJumpSlowCaseIfNotInt(regT0);
         addSlowCase(branchMul32(Overflow, Imm32(value), regT0, regT1));
@@ -966,6 +958,8 @@ void JIT::emitSlow_op_div(Instruction* currentInstruction, Vector<SlowCaseEntry>
     slowPathCall.call();
 }
 
+#endif // USE(JSVALUE64)
+
 void JIT::emit_op_sub(Instruction* currentInstruction)
 {
     int result = currentInstruction[1].u.operand;
@@ -973,23 +967,41 @@ void JIT::emit_op_sub(Instruction* currentInstruction)
     int op2 = currentInstruction[3].u.operand;
     OperandTypes types = OperandTypes::fromInt(currentInstruction[4].u.operand);
 
-    compileBinaryArithOp(op_sub, result, op1, op2, types);
-    emitPutVirtualRegister(result);
+#if USE(JSVALUE64)
+    JSValueRegs leftRegs = JSValueRegs(regT0);
+    JSValueRegs rightRegs = JSValueRegs(regT1);
+    JSValueRegs resultRegs = leftRegs;
+    GPRReg scratchGPR = InvalidGPRReg;
+    FPRReg scratchFPR = InvalidFPRReg;
+#else
+    JSValueRegs leftRegs = JSValueRegs(regT1, regT0);
+    JSValueRegs rightRegs = JSValueRegs(regT3, regT2);
+    JSValueRegs resultRegs = leftRegs;
+    GPRReg scratchGPR = regT4;
+    FPRReg scratchFPR = fpRegT2;
+#endif
+
+    emitGetVirtualRegister(op1, leftRegs);
+    emitGetVirtualRegister(op2, rightRegs);
+
+    JITSubGenerator gen(resultRegs, leftRegs, rightRegs, types.first(), types.second(),
+        fpRegT0, fpRegT1, scratchGPR, scratchFPR);
+
+    gen.generateFastPath(*this);
+    emitPutVirtualRegister(result, resultRegs);
+
+    addSlowCase(gen.slowPathJumpList());
 }
 
 void JIT::emitSlow_op_sub(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int result = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
-    OperandTypes types = OperandTypes::fromInt(currentInstruction[4].u.operand);
+    linkAllSlowCasesForBytecodeOffset(m_slowCases, iter, m_bytecodeOffset);
 
-    compileBinaryArithOpSlowCase(currentInstruction, op_sub, iter, result, op1, op2, types, false, false);
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_sub);
+    slowPathCall.call();
 }
 
 /* ------------------------------ END: OP_ADD, OP_SUB, OP_MUL ------------------------------ */
-
-#endif // USE(JSVALUE64)
 
 } // namespace JSC
 

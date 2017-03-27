@@ -60,14 +60,14 @@ private:
 class JSreadonlyConstructor : public DOMConstructorObject {
 private:
     JSreadonlyConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSreadonlyConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSreadonlyConstructor* ptr = new (NotNull, JSC::allocateCell<JSreadonlyConstructor>(vm.heap)) JSreadonlyConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -85,11 +85,11 @@ JSreadonlyConstructor::JSreadonlyConstructor(Structure* structure, JSDOMGlobalOb
 {
 }
 
-void JSreadonlyConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSreadonlyConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSreadonly::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSreadonly::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("readonly"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
@@ -112,8 +112,7 @@ void JSreadonlyPrototype::finishCreation(VM& vm)
 const ClassInfo JSreadonly::s_info = { "readonly", &Base::s_info, 0, CREATE_METHOD_TABLE(JSreadonly) };
 
 JSreadonly::JSreadonly(Structure* structure, JSDOMGlobalObject* globalObject, Ref<readonly>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<readonly>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -131,11 +130,6 @@ void JSreadonly::destroy(JSC::JSCell* cell)
 {
     JSreadonly* thisObject = static_cast<JSreadonly*>(cell);
     thisObject->JSreadonly::~JSreadonly();
-}
-
-JSreadonly::~JSreadonly()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsreadonlyConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)

@@ -322,7 +322,7 @@ webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding.html [ Failure ]
 webkit.org/b/82665 webarchive/test-css-url-resources-in-stylesheets.html [ Failure ]
 webkit.org/b/82665 webarchive/test-css-url-resources-inline-styles.html [ Failure ]
 
-webkit.org/b/82672 http/tests/xmlhttprequest/range-test.html [ Failure ]
+webkit.org/b/82672 http/tests/xmlhttprequest/range-test.html [ Pass Failure ]
 
 webkit.org/b/82762 fast/animation/request-animation-frame-during-modal.html
 
@@ -582,7 +582,6 @@ webkit.org/b/85308 ietestcenter/css3/valuesandunits/units-000.htm [ Skip ]
 # IETC namespace failures
 webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
 
-webaudio/mediastreamaudiodestinationnode.html [ Failure ]
 webaudio/mediastreamaudiosourcenode.html [ Skip ]
 webaudio/codec-tests/vorbis/ [ WontFix ]
 webkit.org/b/119467 webaudio/audiobuffersource-loop-points.html [ Skip ]
@@ -757,9 +756,6 @@ webkit.org/b/131887 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncom
 webkit.org/b/132990 fast/regions/overflow/overflow-size-change-with-stacking-context.html [ ImageOnlyFailure ]
 
 webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas.html [ ImageOnlyFailure ]
-
-# Clipping filter effects when region is present.
-webkit.org/b/133523 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
 
 webkit.org/b/136419 fast/sub-pixel/block-with-margin-overflow.html [ ImageOnlyFailure ]
 webkit.org/b/137729 fast/sub-pixel/client-width-height-snapping.html [ Failure ]
@@ -971,6 +967,7 @@ webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Pass Fai
 webkit.org/b/137311 media/video-fullscreeen-only-playback.html [ Pass Timeout Crash ]
 webkit.org/b/139789 media/media-controls-timeline-updates.html [ Pass Failure ]
 webkit.org/b/139825 media/video-seek-past-end-paused.html [ Pass Timeout ]
+webkit.org/b/139825 [ Mavericks ] media/video-double.html [ Pass Timeout ]
 webkit.org/b/141084 [ Yosemite ] http/tests/media/video-preload.html [ Pass Timeout ]
 webkit.org/b/141294 compositing/reflections/masked-reflection-on-composited.html [ Pass Crash ]
 webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
@@ -1142,7 +1139,7 @@ webkit.org/b/136109 [ Yosemite+ ] fast/multicol/mixed-opacity-fixed-test.html  [
 # Specific to Yosemite's font fallback
 webkit.org/b/138328 [ Mavericks ] fast/text/font-cursive-italic-cjk.html [ Skip ]
 
-webkit.org/b/82980 http/tests/navigation/back-twice-without-commit.html [ Timeout ]
+webkit.org/b/82980 http/tests/navigation/back-twice-without-commit.html [ Pass Timeout ]
 
 # Verified passing, so override generic skip
 webkit.org/b/89235 css3/line-break [ Pass ]
@@ -1300,6 +1297,7 @@ webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout
 webkit.org/b/148636 inspector/model/remote-object-get-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
+webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Failure ]
 
 # Resource priorities are not enabled.
 webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Skip ]
@@ -1308,6 +1306,7 @@ webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validat
 [ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]
 [ Mavericks ] compositing/media-controls-bar-appearance-big.html [ Skip ]
 [ Mavericks ] fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
+[ Mavericks ] fast/css/will-change/will-change-creates-stacking-context-inline.html [ ImageOnlyFailure ]
 
 # Reftests have different expected results in Mavericks and Yosemite
 [ Mavericks ] fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
@@ -1331,7 +1330,8 @@ webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html
 webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
 webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
 
-webkit.org/b/149510 accessibility/mac/aria-expanded-notifications.html [ Pass Failure ]
-
 # Times out in debug.
 [ Debug ] js/regress/getter-richards-try-catch.html [ Skip ]
+
+# Marking test as flaky in El Capitan
+webkit.org/b/149819 [ Debug ElCapitan+ ] compositing/video/video-poster.html [ Pass Crash ]

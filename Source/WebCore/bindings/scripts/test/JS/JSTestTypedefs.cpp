@@ -100,14 +100,14 @@ private:
 class JSTestTypedefsConstructor : public DOMConstructorObject {
 private:
     JSTestTypedefsConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSTestTypedefsConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestTypedefsConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestTypedefsConstructor>(vm.heap)) JSTestTypedefsConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -164,11 +164,11 @@ JSTestTypedefsConstructor::JSTestTypedefsConstructor(Structure* structure, JSDOM
 {
 }
 
-void JSTestTypedefsConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSTestTypedefsConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestTypedefs::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestTypedefs::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestTypedefs"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(2), ReadOnly | DontEnum);
     reifyStaticProperties(vm, JSTestTypedefsConstructorTableValues, *this);
@@ -214,8 +214,7 @@ void JSTestTypedefsPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestTypedefs::s_info = { "TestTypedefs", &Base::s_info, &JSTestTypedefsTable, CREATE_METHOD_TABLE(JSTestTypedefs) };
 
 JSTestTypedefs::JSTestTypedefs(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestTypedefs>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestTypedefs>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -233,11 +232,6 @@ void JSTestTypedefs::destroy(JSC::JSCell* cell)
 {
     JSTestTypedefs* thisObject = static_cast<JSTestTypedefs*>(cell);
     thisObject->JSTestTypedefs::~JSTestTypedefs();
-}
-
-JSTestTypedefs::~JSTestTypedefs()
-{
-    releaseImpl();
 }
 
 bool JSTestTypedefs::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)

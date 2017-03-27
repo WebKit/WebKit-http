@@ -63,14 +63,14 @@ private:
 class JSTestOverloadedConstructorsConstructor : public DOMConstructorObject {
 private:
     JSTestOverloadedConstructorsConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSTestOverloadedConstructorsConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestOverloadedConstructorsConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestOverloadedConstructorsConstructor>(vm.heap)) JSTestOverloadedConstructorsConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -173,13 +173,13 @@ JSTestOverloadedConstructorsConstructor::JSTestOverloadedConstructorsConstructor
 {
 }
 
-void JSTestOverloadedConstructorsConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSTestOverloadedConstructorsConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestOverloadedConstructors::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestOverloadedConstructors::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestOverloadedConstructors"))), ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
 ConstructType JSTestOverloadedConstructorsConstructor::getConstructData(JSCell*, ConstructData& constructData)
@@ -206,8 +206,7 @@ void JSTestOverloadedConstructorsPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestOverloadedConstructors::s_info = { "TestOverloadedConstructors", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestOverloadedConstructors) };
 
 JSTestOverloadedConstructors::JSTestOverloadedConstructors(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestOverloadedConstructors>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestOverloadedConstructors>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -225,11 +224,6 @@ void JSTestOverloadedConstructors::destroy(JSC::JSCell* cell)
 {
     JSTestOverloadedConstructors* thisObject = static_cast<JSTestOverloadedConstructors*>(cell);
     thisObject->JSTestOverloadedConstructors::~JSTestOverloadedConstructors();
-}
-
-JSTestOverloadedConstructors::~JSTestOverloadedConstructors()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsTestOverloadedConstructorsConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)

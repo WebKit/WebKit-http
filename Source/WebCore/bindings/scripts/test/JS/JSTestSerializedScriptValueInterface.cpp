@@ -74,14 +74,14 @@ private:
 class JSTestSerializedScriptValueInterfaceConstructor : public DOMConstructorObject {
 private:
     JSTestSerializedScriptValueInterfaceConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSTestSerializedScriptValueInterfaceConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestSerializedScriptValueInterfaceConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestSerializedScriptValueInterfaceConstructor>(vm.heap)) JSTestSerializedScriptValueInterfaceConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -99,11 +99,11 @@ JSTestSerializedScriptValueInterfaceConstructor::JSTestSerializedScriptValueInte
 {
 }
 
-void JSTestSerializedScriptValueInterfaceConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSTestSerializedScriptValueInterfaceConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestSerializedScriptValueInterface::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestSerializedScriptValueInterface::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestSerializedScriptValueInterface"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
@@ -131,8 +131,7 @@ void JSTestSerializedScriptValueInterfacePrototype::finishCreation(VM& vm)
 const ClassInfo JSTestSerializedScriptValueInterface::s_info = { "TestSerializedScriptValueInterface", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestSerializedScriptValueInterface) };
 
 JSTestSerializedScriptValueInterface::JSTestSerializedScriptValueInterface(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestSerializedScriptValueInterface>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestSerializedScriptValueInterface>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -150,11 +149,6 @@ void JSTestSerializedScriptValueInterface::destroy(JSC::JSCell* cell)
 {
     JSTestSerializedScriptValueInterface* thisObject = static_cast<JSTestSerializedScriptValueInterface*>(cell);
     thisObject->JSTestSerializedScriptValueInterface::~JSTestSerializedScriptValueInterface();
-}
-
-JSTestSerializedScriptValueInterface::~JSTestSerializedScriptValueInterface()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsTestSerializedScriptValueInterfaceValue(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)

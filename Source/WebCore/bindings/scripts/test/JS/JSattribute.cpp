@@ -63,14 +63,14 @@ private:
 class JSattributeConstructor : public DOMConstructorObject {
 private:
     JSattributeConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSattributeConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSattributeConstructor* ptr = new (NotNull, JSC::allocateCell<JSattributeConstructor>(vm.heap)) JSattributeConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -88,11 +88,11 @@ JSattributeConstructor::JSattributeConstructor(Structure* structure, JSDOMGlobal
 {
 }
 
-void JSattributeConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSattributeConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSattribute::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSattribute::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("attribute"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
@@ -116,8 +116,7 @@ void JSattributePrototype::finishCreation(VM& vm)
 const ClassInfo JSattribute::s_info = { "attribute", &Base::s_info, 0, CREATE_METHOD_TABLE(JSattribute) };
 
 JSattribute::JSattribute(Structure* structure, JSDOMGlobalObject* globalObject, Ref<attribute>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<attribute>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -135,11 +134,6 @@ void JSattribute::destroy(JSC::JSCell* cell)
 {
     JSattribute* thisObject = static_cast<JSattribute*>(cell);
     thisObject->JSattribute::~JSattribute();
-}
-
-JSattribute::~JSattribute()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsattributeReadonly(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)

@@ -10,6 +10,8 @@ fast/harness/ui-side-scripts.html [ Pass ]
 fast/harness/concurrent-ui-side-scripts.html [ Pass ]
 fast/zooming/ios [ Pass ]
 fast/viewport/ios [ Pass ]
+fast/events/ios [ Pass ]
+fast/events/touch/ios [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -76,6 +78,7 @@ compositing/overflow/fixed-position-ancestor-clip.html [ Failure ]
 compositing/fixed-positioned-pseudo-content-no-compositing.html [ Failure ]
 compositing/reflections/nested-reflection-on-overflow.html [ Failure ]
 compositing/repaint/invalidations-on-composited-layers.html [ Failure ]
+compositing/geometry/limit-layer-bounds-opacity-transition.html [ Failure ]
 
 # Compositing test that time out:
 compositing/animation/animation-compositing.html
@@ -185,7 +188,7 @@ mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
 # MathML tests that fail:
 mathml/presentation/mo-stretch.html [ Failure ]
 
-# SVG tests that time out:
+# SVG tests that time out (these require EventSender)
 svg/animations/animVal-basics.html
 svg/animations/animate-calcMode-spline-by.html
 svg/animations/animate-calcMode-spline-from-by.html
@@ -559,9 +562,9 @@ http/tests/navigation/no-referrer-reset.html
 http/tests/navigation/no-referrer-same-window.html
 http/tests/navigation/no-referrer-subframe.html
 http/tests/navigation/no-referrer-target-blank.html
-http/tests/navigation/ping-cross-origin-from-https.html
-http/tests/navigation/ping-cross-origin.html
-http/tests/navigation/ping-same-origin.html
+http/tests/navigation/ping-attribute/anchor-cross-origin-from-https.html
+http/tests/navigation/ping-attribute/anchor-cross-origin.html
+http/tests/navigation/ping-attribute/anchor-same-origin.html
 http/tests/navigation/redirect-preserves-referrer.html
 http/tests/navigation/redirect-to-random-url-versus-memory-cache.html
 http/tests/security/aboutBlank/xss-DENIED-navigate-opener-document-write.html
@@ -2060,7 +2063,7 @@ fast/forms/focus-option-control-on-page.html [ Skip ]
 # Skip timeouts
 fast/dom/Geolocation/startUpdatingOnlyWhenPageVisible.html [ Skip ]
 fast/dom/Geolocation/stopUpdatingForHiddenPage.html [ Skip ]
-http/tests/navigation/ping-cookie.html [ Skip ]
+http/tests/navigation/ping-attribute/anchor-cookie.html [ Skip ]
 webkit.org/b/148709 fast/events/wheelevent-basic.html [ Skip ]
 webkit.org/b/148709 fast/events/wheelevent-mousewheel-interaction.html [ Skip ]
 

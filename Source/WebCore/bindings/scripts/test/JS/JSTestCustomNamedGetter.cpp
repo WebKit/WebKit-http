@@ -67,14 +67,14 @@ private:
 class JSTestCustomNamedGetterConstructor : public DOMConstructorObject {
 private:
     JSTestCustomNamedGetterConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSTestCustomNamedGetterConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestCustomNamedGetterConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestCustomNamedGetterConstructor>(vm.heap)) JSTestCustomNamedGetterConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -106,11 +106,11 @@ JSTestCustomNamedGetterConstructor::JSTestCustomNamedGetterConstructor(Structure
 {
 }
 
-void JSTestCustomNamedGetterConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSTestCustomNamedGetterConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestCustomNamedGetter::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestCustomNamedGetter::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestCustomNamedGetter"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
@@ -133,8 +133,7 @@ void JSTestCustomNamedGetterPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestCustomNamedGetter::s_info = { "TestCustomNamedGetter", &Base::s_info, &JSTestCustomNamedGetterTable, CREATE_METHOD_TABLE(JSTestCustomNamedGetter) };
 
 JSTestCustomNamedGetter::JSTestCustomNamedGetter(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestCustomNamedGetter>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestCustomNamedGetter>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -152,11 +151,6 @@ void JSTestCustomNamedGetter::destroy(JSC::JSCell* cell)
 {
     JSTestCustomNamedGetter* thisObject = static_cast<JSTestCustomNamedGetter*>(cell);
     thisObject->JSTestCustomNamedGetter::~JSTestCustomNamedGetter();
-}
-
-JSTestCustomNamedGetter::~JSTestCustomNamedGetter()
-{
-    releaseImpl();
 }
 
 bool JSTestCustomNamedGetter::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)

@@ -1118,6 +1118,14 @@ struct Node {
         }
     }
 
+    bool isFunctionTerminal()
+    {
+        if (isTerminal() && !numSuccessors())
+            return true;
+
+        return false;
+    }
+
     unsigned targetBytecodeOffsetDuringParsing()
     {
         ASSERT(isJump());
@@ -1868,6 +1876,11 @@ struct Node {
     {
         return isStringOrStringObjectSpeculation(prediction());
     }
+
+    bool shouldSpeculateSymbol()
+    {
+        return isSymbolSpeculation(prediction());
+    }
     
     bool shouldSpeculateFinalObject()
     {
@@ -2012,6 +2025,11 @@ struct Node {
     {
         return op1->shouldSpeculateNumberOrBooleanExpectingDefined()
             && op2->shouldSpeculateNumberOrBooleanExpectingDefined();
+    }
+
+    static bool shouldSpeculateSymbol(Node* op1, Node* op2)
+    {
+        return op1->shouldSpeculateSymbol() && op2->shouldSpeculateSymbol();
     }
     
     static bool shouldSpeculateFinalObject(Node* op1, Node* op2)

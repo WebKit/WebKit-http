@@ -141,6 +141,7 @@ private:
 
     virtual WebCore::ResourceError cancelledError(const WebCore::ResourceRequest&) override;
     virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) override;
+    virtual WebCore::ResourceError blockedByContentBlockerError(const WebCore::ResourceRequest&) override;
     virtual WebCore::ResourceError cannotShowURLError(const WebCore::ResourceRequest&) override;
     virtual WebCore::ResourceError interruptedForPolicyChangeError(const WebCore::ResourceRequest&) override;
     
@@ -240,8 +241,6 @@ private:
 #if ENABLE(CONTENT_FILTERING)
     void contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler) override;
 #endif
-
-    void prefetchDNS(const String&) override;
 
     WebFrame* m_frame;
     RefPtr<PluginView> m_pluginView;

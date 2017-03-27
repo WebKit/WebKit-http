@@ -576,13 +576,6 @@ void WebGLRenderingContextBase::setupFlags()
     m_isRobustnessEXTSupported = m_context->getExtensions()->isEnabled("GL_EXT_robustness");
 }
 
-bool WebGLRenderingContextBase::allowPrivilegedExtensions() const
-{
-    if (Page* page = canvas()->document().page())
-        return page->settings().privilegedWebGLExtensionsEnabled();
-    return false;
-}
-
 void WebGLRenderingContextBase::addCompressedTextureFormat(GC3Denum format)
 {
     if (!m_compressedTextureFormats.contains(format))
@@ -601,9 +594,9 @@ WebGLRenderingContextBase::~WebGLRenderingContextBase()
     m_framebufferBinding = nullptr;
     m_renderbufferBinding = nullptr;
 
-    for (size_t i = 0; i < m_textureUnits.size(); ++i) {
-        m_textureUnits[i].texture2DBinding = nullptr;
-        m_textureUnits[i].textureCubeMapBinding = nullptr;
+    for (auto& textureUnit : m_textureUnits) {
+        textureUnit.texture2DBinding = nullptr;
+        textureUnit.textureCubeMapBinding = nullptr;
     }
 
     m_blackTexture2D = nullptr;
@@ -1521,11 +1514,11 @@ void WebGLRenderingContextBase::deleteTexture(WebGLTexture* texture)
 {
     if (!deleteObject(texture))
         return;
-    for (size_t i = 0; i < m_textureUnits.size(); ++i) {
-        if (texture == m_textureUnits[i].texture2DBinding)
-            m_textureUnits[i].texture2DBinding = nullptr;
-        if (texture == m_textureUnits[i].textureCubeMapBinding)
-            m_textureUnits[i].textureCubeMapBinding = nullptr;
+    for (auto& textureUnit : m_textureUnits) {
+        if (texture == textureUnit.texture2DBinding)
+            textureUnit.texture2DBinding = nullptr;
+        if (texture == textureUnit.textureCubeMapBinding)
+            textureUnit.textureCubeMapBinding = nullptr;
     }
     if (m_framebufferBinding)
         m_framebufferBinding->removeAttachmentFromBoundFramebuffer(texture);

@@ -174,6 +174,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/speech/SpeechSynthesisEvent.idl \
     $(WebCore)/Modules/speech/SpeechSynthesisUtterance.idl \
     $(WebCore)/Modules/speech/SpeechSynthesisVoice.idl \
+    $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.idl \
     $(WebCore)/Modules/streams/CountQueuingStrategy.idl \
     $(WebCore)/Modules/streams/ReadableStream.idl \
     $(WebCore)/Modules/streams/ReadableStreamController.idl \
@@ -1139,6 +1140,8 @@ mathmlMakeNames.intermediate : dom/make_names.pl bindings/scripts/Hasher.pm bind
 
 # --------
 
+# Internal Settings
+
 InternalSettingsGenerated.idl InternalSettingsGenerated.cpp InternalSettingsGenerated.h SettingsMacros.h : MakeSettings.intermediate
 .INTERMEDIATE : MakeSettings.intermediate
 MakeSettings.intermediate : page/make_settings.pl page/Settings.in
@@ -1249,8 +1252,12 @@ WebReplayInputs.h : $(INPUT_GENERATOR_SPECIFICATIONS) $(INPUT_GENERATOR_SCRIPTS)
 # WebCore JS Builtins
 
 WEBCORE_JS_BUILTINS = \
+    $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.js \
     $(WebCore)/Modules/streams/CountQueuingStrategy.js \
     $(WebCore)/Modules/streams/ReadableStream.js \
+    $(WebCore)/Modules/streams/ReadableStreamController.js \
+    $(WebCore)/Modules/streams/ReadableStreamInternals.js \
+    $(WebCore)/Modules/streams/ReadableStreamReader.js \
 #
 
 all : $(WEBCORE_JS_BUILTINS:%.js=%Builtins.cpp)

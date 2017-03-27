@@ -457,7 +457,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_frameElementsShouldIgnoreScrolling(false)
     , m_updateFocusAppearanceRestoresSelection(false)
     , m_ignoreDestructiveWriteCount(0)
-    , m_markers(std::make_unique<DocumentMarkerController>())
+    , m_markers(std::make_unique<DocumentMarkerController>(*this))
     , m_updateFocusAppearanceTimer(*this, &Document::updateFocusAppearanceTimerFired)
     , m_cssTarget(nullptr)
     , m_processingLoadEvent(false)
@@ -2662,7 +2662,8 @@ void Document::implicitClose()
 
     dispatchWindowLoadEvent();
     enqueuePageshowEvent(PageshowEventNotPersisted);
-    enqueuePopstateEvent(m_pendingStateObject ? m_pendingStateObject.release() : SerializedScriptValue::nullValue());
+    if (m_pendingStateObject)
+        enqueuePopstateEvent(m_pendingStateObject.release());
     
     if (f)
         f->loader().handledOnloadEvents();

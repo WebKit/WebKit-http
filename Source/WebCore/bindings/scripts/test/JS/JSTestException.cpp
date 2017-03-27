@@ -63,14 +63,14 @@ private:
 class JSTestExceptionConstructor : public DOMConstructorObject {
 private:
     JSTestExceptionConstructor(JSC::Structure*, JSDOMGlobalObject*);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
     static JSTestExceptionConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestExceptionConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestExceptionConstructor>(vm.heap)) JSTestExceptionConstructor(structure, globalObject);
-        ptr->finishCreation(vm, globalObject);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -102,11 +102,11 @@ JSTestExceptionConstructor::JSTestExceptionConstructor(Structure* structure, JSD
 {
 }
 
-void JSTestExceptionConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
+void JSTestExceptionConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestException::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestException::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestException"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
@@ -129,8 +129,7 @@ void JSTestExceptionPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestException::s_info = { "TestException", &Base::s_info, &JSTestExceptionTable, CREATE_METHOD_TABLE(JSTestException) };
 
 JSTestException::JSTestException(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestException>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestException>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -148,11 +147,6 @@ void JSTestException::destroy(JSC::JSCell* cell)
 {
     JSTestException* thisObject = static_cast<JSTestException*>(cell);
     thisObject->JSTestException::~JSTestException();
-}
-
-JSTestException::~JSTestException()
-{
-    releaseImpl();
 }
 
 bool JSTestException::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)

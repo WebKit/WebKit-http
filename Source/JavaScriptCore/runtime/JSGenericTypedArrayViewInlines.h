@@ -30,6 +30,7 @@
 #include "DeferGC.h"
 #include "Error.h"
 #include "ExceptionHelpers.h"
+#include "JSArrayBuffer.h"
 #include "JSGenericTypedArrayView.h"
 #include "Reject.h"
 #include "TypedArrays.h"
@@ -445,7 +446,7 @@ void JSGenericTypedArrayView<Adaptor>::visitChildren(JSCell* cell, SlotVisitor& 
     }
         
     case OversizeTypedArray: {
-        visitor.reportExtraMemoryVisited(thisObject, thisObject->byteSize());
+        visitor.reportExtraMemoryVisited(thisObject->byteSize());
         break;
     }
         

@@ -25,6 +25,7 @@
 #include "HTMLAnchorElement.h"
 
 #include "AttributeDOMTokenList.h"
+#include "DNS.h"
 #include "ElementIterator.h"
 #include "EventHandler.h"
 #include "EventNames.h"
@@ -120,9 +121,8 @@ static bool hasNonEmptyBox(RenderBoxModelObject* renderer)
     // pass in 0,0 for the layout point instead of calling localToAbsolute?
     Vector<IntRect> rects;
     renderer->absoluteRects(rects, flooredLayoutPoint(renderer->localToAbsolute()));
-    size_t size = rects.size();
-    for (size_t i = 0; i < size; ++i) {
-        if (!rects[i].isEmpty())
+    for (auto& rect : rects) {
+        if (!rect.isEmpty())
             return true;
     }
 
@@ -252,9 +252,9 @@ void HTMLAnchorElement::parseAttribute(const QualifiedName& name, const AtomicSt
             setNeedsStyleRecalc();
         if (isLink()) {
             String parsedURL = stripLeadingAndTrailingHTMLSpaces(value);
-            if (document().isDNSPrefetchEnabled() && document().frame()) {
+            if (document().isDNSPrefetchEnabled()) {
                 if (protocolIsInHTTPFamily(parsedURL) || parsedURL.startsWith("//"))
-                    document().frame()->loader().client().prefetchDNS(document().completeURL(parsedURL).host());
+                    prefetchDNS(document().completeURL(parsedURL).host());
             }
         }
         invalidateCachedVisitedLinkHash();

@@ -1225,10 +1225,8 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     ResourceRequest request(url);
     DocumentLoader* documentLoader = frame->loader().documentLoader();
 
-    if (page->userContentController() && documentLoader)
-        page->userContentController()->processContentExtensionRulesForLoad(*page, request, ResourceType::Media, *documentLoader);
-
-    if (request.isNull()) {
+    if (page->userContentController() && documentLoader && page->userContentController()->processContentExtensionRulesForLoad(request, ResourceType::Media, *documentLoader) == ContentExtensions::BlockedStatus::Blocked) {
+        request = { };
         mediaLoadingFailed(MediaPlayer::FormatError);
         return;
     }
@@ -5726,15 +5724,15 @@ void HTMLMediaElement::setMediaGroup(const String& group)
     // 4. If there is another media element whose Document is the same as m's Document (even if one or both
     // of these elements are not actually in the Document), 
     HashSet<HTMLMediaElement*> elements = documentToElementSetMap().get(&document());
-    for (HashSet<HTMLMediaElement*>::iterator i = elements.begin(); i != elements.end(); ++i) {
-        if (*i == this)
+    for (auto& element : elements) {
+        if (element == this)
             continue;
 
         // and which also has a mediagroup attribute, and whose mediagroup attribute has the same value as
         // the new value of m's mediagroup attribute,        
-        if ((*i)->mediaGroup() == group) {
+        if (element->mediaGroup() == group) {
             //  then let controller be that media element's current media controller.
-            setController((*i)->controller());
+            setController(element->controller());
             return;
         }
     }
@@ -6375,14 +6373,14 @@ size_t HTMLMediaElement::maximumSourceBufferSize(const SourceBuffer& buffer) con
 
 void HTMLMediaElement::suspendPlayback()
 {
-    LOG(Media, "HTMLMediaElement::pausePlayback(%p) - paused = %s", this, boolString(paused()));
+    LOG(Media, "HTMLMediaElement::suspendPlayback(%p) - paused = %s", this, boolString(paused()));
     if (!paused())
         pause();
 }
 
 void HTMLMediaElement::mayResumePlayback(bool shouldResume)
 {
-    LOG(Media, "HTMLMediaElement::resumePlayback(%p) - paused = %s", this, boolString(paused()));
+    LOG(Media, "HTMLMediaElement::mayResumePlayback(%p) - paused = %s", this, boolString(paused()));
     if (paused() && shouldResume)
         play();
 }
@@ -6424,8 +6422,11 @@ void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::Remo
     }
 }
 
-bool HTMLMediaElement::overrideBackgroundPlaybackRestriction() const
+bool HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType type) const
 {
+    if (type != PlatformMediaSession::EnteringBackground)
+        return false;
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     if (m_player && m_player->isCurrentPlaybackTargetWireless())
         return true;

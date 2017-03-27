@@ -753,7 +753,7 @@ macro prepareForTailCall(callee, temp1, temp2, temp3)
     addi StackAlignment - 1 + CallFrameHeaderSize, temp2
     andi ~StackAlignmentMask, temp2
 
-    if ARM or SH4 or ARM64 or C_LOOP or MIPS
+    if ARM or ARMv7_TRADITIONAL or ARMv7 or SH4 or ARM64 or C_LOOP or MIPS
         addp 2 * PtrSize, sp
         subi 2 * PtrSize, temp2
         loadp PtrSize[cfr], lr
@@ -799,7 +799,7 @@ macro arrayProfile(cellAndIndexingType, profile, scratch)
 end
 
 macro skipIfIsRememberedOrInEden(cell, scratch1, scratch2, continuation)
-    loadb JSCell::m_gcData[cell], scratch1
+    loadb JSCell::m_cellState[cell], scratch1
     continuation(scratch1)
 end
 
