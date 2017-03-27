@@ -60,10 +60,12 @@ set(WTF_HEADERS
     PageAllocation.h
     PageBlock.h
     PageReservation.h
+    ParallelHelperPool.h
     ParallelJobs.h
     ParallelJobsGeneric.h
     ParallelJobsLibdispatch.h
     ParallelJobsOpenMP.h
+    ParallelVectorIterator.h
     ParkingLot.h
     PassRefPtr.h
     Platform.h
@@ -82,6 +84,7 @@ set(WTF_HEADERS
     RetainPtr.h
     RunLoop.h
     SHA1.h
+    SharedTask.h
     SaturatedArithmetic.h
     SegmentedVector.h
     StackBounds.h
@@ -167,6 +170,7 @@ set(WTF_SOURCES
     NumberOfCores.cpp
     OSRandomSource.cpp
     PageBlock.cpp
+    ParallelHelperPool.cpp
     ParallelJobsGeneric.cpp
     ParkingLot.cpp
     PrintStream.cpp

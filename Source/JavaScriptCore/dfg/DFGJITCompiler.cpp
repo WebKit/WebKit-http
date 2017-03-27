@@ -109,7 +109,7 @@ void JITCompiler::compileEntry()
     // check) which will be dependent on stack layout. (We'd need to account for this in
     // both normal return code and when jumping to an exception handler).
     emitFunctionPrologue();
-    emitPutImmediateToCallFrameHeader(m_codeBlock, JSStack::CodeBlock);
+    emitPutToCallFrameHeader(m_codeBlock, JSStack::CodeBlock);
 }
 
 void JITCompiler::compileSetupRegistersForEntry()
@@ -575,8 +575,8 @@ bool JITCompiler::willCatchExceptionInMachineFrame(CodeOrigin codeOrigin, CodeOr
         if (!inlineCallFrame)
             return false;
 
-        bytecodeIndexToCheck = inlineCallFrame->caller.bytecodeIndex;
-        codeOrigin = codeOrigin.inlineCallFrame->caller;
+        bytecodeIndexToCheck = inlineCallFrame->directCaller.bytecodeIndex;
+        codeOrigin = codeOrigin.inlineCallFrame->directCaller;
     }
 
     RELEASE_ASSERT_NOT_REACHED();

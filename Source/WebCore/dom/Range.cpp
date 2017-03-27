@@ -552,22 +552,22 @@ static inline Node* childOfCommonRootBeforeOffset(Node* container, unsigned offs
     return container;
 }
 
-static inline unsigned lengthOfContentsInNode(Node* node)
+static inline unsigned lengthOfContentsInNode(Node& node)
 {
     // This switch statement must be consistent with that of Range::processContentsBetweenOffsets.
-    switch (node->nodeType()) {
+    switch (node.nodeType()) {
+    case Node::DOCUMENT_TYPE_NODE:
+        return 0;
     case Node::TEXT_NODE:
     case Node::CDATA_SECTION_NODE:
     case Node::COMMENT_NODE:
     case Node::PROCESSING_INSTRUCTION_NODE:
-        return downcast<CharacterData>(*node).length();
+        return downcast<CharacterData>(node).length();
     case Node::ELEMENT_NODE:
     case Node::ATTRIBUTE_NODE:
     case Node::DOCUMENT_NODE:
-    case Node::DOCUMENT_TYPE_NODE:
     case Node::DOCUMENT_FRAGMENT_NODE:
-    case Node::XPATH_NAMESPACE_NODE:
-        return node->countChildNodes();
+        return downcast<ContainerNode>(node).countChildNodes();
     }
     ASSERT_NOT_REACHED();
     return 0;
@@ -622,7 +622,7 @@ RefPtr<DocumentFragment> Range::processContents(ActionType action, ExceptionCode
 
     RefPtr<Node> leftContents;
     if (originalStart.container() != commonRoot && commonRoot->contains(originalStart.container())) {
-        leftContents = processContentsBetweenOffsets(action, 0, originalStart.container(), originalStart.offset(), lengthOfContentsInNode(originalStart.container()), ec);
+        leftContents = processContentsBetweenOffsets(action, 0, originalStart.container(), originalStart.offset(), lengthOfContentsInNode(*originalStart.container()), ec);
         leftContents = processAncestorsAndTheirSiblings(action, originalStart.container(), ProcessContentsForward, leftContents, commonRoot.get(), ec);
     }
 
@@ -726,7 +726,6 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
     case Node::DOCUMENT_NODE:
     case Node::DOCUMENT_TYPE_NODE:
     case Node::DOCUMENT_FRAGMENT_NODE:
-    case Node::XPATH_NAMESPACE_NODE:
         // FIXME: Should we assert that some nodes never appear here?
         if (action == Extract || action == Clone) {
             if (fragment)
@@ -836,107 +835,58 @@ RefPtr<DocumentFragment> Range::cloneContents(ExceptionCode& ec)
     return processContents(Clone, ec);
 }
 
-void Range::insertNode(PassRefPtr<Node> prpNewNode, ExceptionCode& ec)
+void Range::insertNode(RefPtr<Node>&& node, ExceptionCode& ec)
 {
-    RefPtr<Node> newNode = prpNewNode;
-
-    ec = 0;
-    if (!newNode) {
+    if (!node) {
         ec = TypeError;
         return;
     }
 
-    // HIERARCHY_REQUEST_ERR: Raised if the container of the start of the Range is of a type that
-    // does not allow children of the type of newNode or if newNode is an ancestor of the container.
-
-    // an extra one here - if a text node is going to split, it must have a parent to insert into
-    bool startIsText = is<Text>(startContainer());
-    if (startIsText && !startContainer().parentNode()) {
+    bool startIsCharacterData = is<CharacterData>(startContainer());
+    if (startIsCharacterData && !startContainer().parentNode()) {
+        ec = HIERARCHY_REQUEST_ERR;
+        return;
+    }
+    bool startIsText = startIsCharacterData && startContainer().nodeType() == Node::TEXT_NODE;
+    RefPtr<Node> referenceNode = startIsText ? &startContainer() : startContainer().traverseToChildAt(startOffset());
+    Node* parentNode = referenceNode ? referenceNode->parentNode() : &startContainer();
+    if (!is<ContainerNode>(parentNode)) {
         ec = HIERARCHY_REQUEST_ERR;
         return;
     }
 
-    // In the case where the container is a text node, we check against the container's parent, because
-    // text nodes get split up upon insertion.
-    Node* checkAgainst;
-    if (startIsText)
-        checkAgainst = startContainer().parentNode();
-    else
-        checkAgainst = &startContainer();
+    Ref<ContainerNode> parent = downcast<ContainerNode>(*parentNode);
 
-    Node::NodeType newNodeType = newNode->nodeType();
-    int numNewChildren;
-    if (newNodeType == Node::DOCUMENT_FRAGMENT_NODE && !newNode->isShadowRoot()) {
-        // check each child node, not the DocumentFragment itself
-        numNewChildren = 0;
-        for (Node* c = newNode->firstChild(); c; c = c->nextSibling()) {
-            if (!checkAgainst->childTypeAllowed(c->nodeType())) {
-                ec = HIERARCHY_REQUEST_ERR;
-                return;
-            }
-            ++numNewChildren;
-        }
-    } else {
-        numNewChildren = 1;
-        if (!checkAgainst->childTypeAllowed(newNodeType)) {
-            ec = HIERARCHY_REQUEST_ERR;
-            return;
-        }
-    }
-
-    for (Node* n = &startContainer(); n; n = n->parentNode()) {
-        if (n == newNode) {
-            ec = HIERARCHY_REQUEST_ERR;
-            return;
-        }
-    }
-
-    // INVALID_NODE_TYPE_ERR: Raised if newNode is an Attr, Entity, ShadowRoot or Document node.
-    switch (newNodeType) {
-    case Node::ATTRIBUTE_NODE:
-    case Node::DOCUMENT_NODE:
-        ec = INVALID_NODE_TYPE_ERR;
+    ec = 0;
+    if (!parent->ensurePreInsertionValidity(*node, referenceNode.get(), ec))
         return;
-    default:
-        if (newNode->isShadowRoot()) {
-            ec = INVALID_NODE_TYPE_ERR;
-            return;
-        }
-        break;
-    }
 
     EventQueueScope scope;
-    bool collapsed = m_start == m_end;
-    RefPtr<Node> container;
     if (startIsText) {
-        container = &startContainer();
-        RefPtr<Text> newText = downcast<Text>(*container).splitText(m_start.offset(), ec);
+        referenceNode = downcast<Text>(startContainer()).splitText(startOffset(), ec);
         if (ec)
             return;
-        
-        container = &startContainer();
-        container->parentNode()->insertBefore(newNode.releaseNonNull(), newText.get(), ec);
-        if (ec)
-            return;
-
-        if (collapsed && newText->parentNode() == container && &container->document() == &ownerDocument())
-            m_end.setToBeforeChild(*newText);
-    } else {
-        container = &startContainer();
-        RefPtr<Node> firstInsertedChild = newNodeType == Node::DOCUMENT_FRAGMENT_NODE ? newNode->firstChild() : newNode;
-        RefPtr<Node> lastInsertedChild = newNodeType == Node::DOCUMENT_FRAGMENT_NODE ? newNode->lastChild() : newNode;
-        RefPtr<Node> childAfterInsertedContent = container->traverseToChildAt(m_start.offset());
-        container->insertBefore(newNode.release(), childAfterInsertedContent.get(), ec);
-        if (ec)
-            return;
-
-        if (collapsed && numNewChildren && &container->document() == &ownerDocument()) {
-            if (firstInsertedChild->parentNode() == container)
-                m_start.setToBeforeChild(*firstInsertedChild);
-            if (lastInsertedChild->parentNode() == container)
-                m_end.set(container, lastInsertedChild->computeNodeIndex() + 1, lastInsertedChild.get());
-        }
     }
+
+    if (referenceNode == node)
+        referenceNode = referenceNode->nextSibling();
+
+    node->remove(ec);
+    if (ec)
+        return;
+
+    unsigned newOffset = referenceNode ? referenceNode->computeNodeIndex() : parent->countChildNodes();
+    if (is<DocumentFragment>(*node))
+        newOffset += downcast<DocumentFragment>(*node).countChildNodes();
+    else
+        ++newOffset;
+
+    parent->insertBefore(node.releaseNonNull(), referenceNode.get(), ec);
+    if (ec)
+        return;
+
+    if (collapsed())
+        setEnd(parent.ptr(), newOffset, ec);
 }
 
 String Range::toString() const
@@ -1004,8 +954,7 @@ Node* Range::checkNodeWOffset(Node* n, int offset, ExceptionCode& ec) const
         case Node::ATTRIBUTE_NODE:
         case Node::DOCUMENT_FRAGMENT_NODE:
         case Node::DOCUMENT_NODE:
-        case Node::ELEMENT_NODE:
-        case Node::XPATH_NAMESPACE_NODE: {
+        case Node::ELEMENT_NODE: {
             if (!offset)
                 return nullptr;
             Node* childBefore = n->traverseToChildAt(offset - 1);
@@ -1075,31 +1024,20 @@ void Range::selectNode(Node* refNode, ExceptionCode& ec)
         return;
     }
 
-    // INVALID_NODE_TYPE_ERR: Raised if refNode is a Document, DocumentFragment or Attr node.
-    switch (refNode->nodeType()) {
-        case Node::CDATA_SECTION_NODE:
-        case Node::COMMENT_NODE:
-        case Node::DOCUMENT_TYPE_NODE:
-        case Node::ELEMENT_NODE:
-        case Node::PROCESSING_INSTRUCTION_NODE:
-        case Node::TEXT_NODE:
-        case Node::XPATH_NAMESPACE_NODE:
-            break;
-        case Node::ATTRIBUTE_NODE:
-        case Node::DOCUMENT_FRAGMENT_NODE:
-        case Node::DOCUMENT_NODE:
-            ec = INVALID_NODE_TYPE_ERR;
-            return;
+    if (!refNode->parentNode()) {
+        ec = INVALID_NODE_TYPE_ERR;
+        return;
     }
 
     if (&ownerDocument() != &refNode->document())
         setDocument(refNode->document());
 
+    unsigned index = refNode->computeNodeIndex();
     ec = 0;
-    setStartBefore(refNode, ec);
+    setStart(refNode->parentNode(), index, ec);
     if (ec)
         return;
-    setEndAfter(refNode, ec);
+    setEnd(refNode->parentNode(), index + 1, ec);
 }
 
 void Range::selectNodeContents(Node* refNode, ExceptionCode& ec)
@@ -1157,7 +1095,6 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
         case Node::ELEMENT_NODE:
         case Node::PROCESSING_INSTRUCTION_NODE:
         case Node::TEXT_NODE:
-        case Node::XPATH_NAMESPACE_NODE:
             break;
     }
 
@@ -1191,7 +1128,7 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
     RefPtr<DocumentFragment> fragment = extractContents(ec);
     if (ec)
         return;
-    insertNode(newParent, ec);
+    insertNode(newParent.copyRef(), ec);
     if (ec)
         return;
     newParent->appendChild(fragment.release(), ec);

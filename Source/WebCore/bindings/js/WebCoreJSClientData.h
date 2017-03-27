@@ -23,10 +23,14 @@
 #define WebCoreJSClientData_h
 
 #include "DOMWrapperWorld.h"
-#include "ReadableStreamBuiltinsWrapper.h"
 #include "WebCoreTypedArrayController.h"
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
+
+#if ENABLE(STREAMS_API)
+#include "CountQueuingStrategyBuiltinsWrapper.h"
+#include "ReadableStreamBuiltinsWrapper.h"
+#endif
 
 namespace WebCore {
 
@@ -36,9 +40,12 @@ class WebCoreJSClientData : public JSC::VM::ClientData {
     friend void initNormalWorldClientData(JSC::VM*);
 
 public:
-    WebCoreJSClientData(JSC::VM& vm)
 #if ENABLE(STREAMS_API)
+    explicit WebCoreJSClientData(JSC::VM& vm)
         : m_readableStreamBuiltins(&vm)
+        , m_countQueuingStrategyBuiltins(&vm)
+#else
+    WebCoreJSClientData(JSC::VM&)
 #endif
     {
     }
@@ -77,6 +84,7 @@ public:
 
 #if ENABLE(STREAMS_API)
     ReadableStreamBuiltinsWrapper& readableStreamBuiltins() { return m_readableStreamBuiltins; }
+    CountQueuingStrategyBuiltinsWrapper& countQueuingStrategyBuiltins() { return m_countQueuingStrategyBuiltins; }
 #endif
 
 private:
@@ -85,6 +93,7 @@ private:
 
 #if ENABLE(STREAMS_API)
     ReadableStreamBuiltinsWrapper m_readableStreamBuiltins;
+    CountQueuingStrategyBuiltinsWrapper m_countQueuingStrategyBuiltins;
 #endif
 };
 

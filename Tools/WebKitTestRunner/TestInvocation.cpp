@@ -51,56 +51,15 @@
 #include <WebKit/WKPagePrivateMac.h>
 #endif
 
-#include <unistd.h> // For getcwd.
-
 using namespace JSC;
 using namespace WebKit;
 using namespace std;
 
 namespace WTR {
 
-static WKURLRef createWKURL(const char* pathOrURL)
-{
-    if (strstr(pathOrURL, "http://") || strstr(pathOrURL, "https://") || strstr(pathOrURL, "file://"))
-        return WKURLCreateWithUTF8CString(pathOrURL);
-
-    // Creating from filesytem path.
-    size_t length = strlen(pathOrURL);
-    if (!length)
-        return 0;
-
-    const char separator = '/';
-    bool isAbsolutePath = pathOrURL[0] == separator;
-    const char* filePrefix = "file://";
-    static const size_t prefixLength = strlen(filePrefix);
-
-    std::unique_ptr<char[]> buffer;
-    if (isAbsolutePath) {
-        buffer = std::make_unique<char[]>(prefixLength + length + 1);
-        strcpy(buffer.get(), filePrefix);
-        strcpy(buffer.get() + prefixLength, pathOrURL);
-    } else {
-        buffer = std::make_unique<char[]>(prefixLength + PATH_MAX + length + 2); // 1 for the separator
-        strcpy(buffer.get(), filePrefix);
-        if (!getcwd(buffer.get() + prefixLength, PATH_MAX))
-            return 0;
-        size_t numCharacters = strlen(buffer.get());
-        buffer[numCharacters] = separator;
-        strcpy(buffer.get() + numCharacters + 1, pathOrURL);
-    }
-
-    return WKURLCreateWithUTF8CString(buffer.get());
-}
-
-TestInvocation::TestInvocation(const std::string& pathOrURL)
-    : m_url(AdoptWK, createWKURL(pathOrURL.c_str()))
-    , m_dumpPixels(false)
-    , m_timeout(0)
-    , m_gotInitialResponse(false)
-    , m_gotFinalMessage(false)
-    , m_gotRepaint(false)
-    , m_error(false)
-    , m_webProcessIsUnresponsive(false)
+TestInvocation::TestInvocation(WKURLRef url, const TestOptions& options)
+    : m_options(options)
+    , m_url(url)
 {
     WKRetainPtr<WKStringRef> urlString = adoptWK(WKURLCopyString(m_url.get()));
 
@@ -144,21 +103,6 @@ bool TestInvocation::shouldLogHistoryClientCallbacks() const
     return urlContains("globalhistory/");
 }
 
-bool TestInvocation::shouldMakeViewportFlexible() const
-{
-    return urlContains("viewport/");
-}
-
-bool TestInvocation::shouldUseFixedLayout() const
-{
-#if ENABLE(CSS_DEVICE_ADAPTATION)
-    if (urlContains("device-adapt/") || urlContains("device-adapt\\"))
-        return true;
-#endif
-
-    return false;
-}
-
 void TestInvocation::invoke()
 {
     TestController::singleton().configureViewForTest(*this);
@@ -181,7 +125,7 @@ void TestInvocation::invoke()
     WKDictionarySetItem(beginTestMessageBody.get(), dumpFrameLoadDelegatesKey.get(), dumpFrameLoadDelegatesValue.get());
 
     WKRetainPtr<WKStringRef> useFlexibleViewportKey = adoptWK(WKStringCreateWithUTF8CString("UseFlexibleViewport"));
-    WKRetainPtr<WKBooleanRef> useFlexibleViewportValue = adoptWK(WKBooleanCreate(shouldMakeViewportFlexible()));
+    WKRetainPtr<WKBooleanRef> useFlexibleViewportValue = adoptWK(WKBooleanCreate(options().useFlexibleViewport));
     WKDictionarySetItem(beginTestMessageBody.get(), useFlexibleViewportKey.get(), useFlexibleViewportValue.get());
 
     WKRetainPtr<WKStringRef> dumpPixelsKey = adoptWK(WKStringCreateWithUTF8CString("DumpPixels"));
@@ -288,16 +232,22 @@ void TestInvocation::dumpResults()
     else
         dumpAudio(m_audioResult.get());
 
-    if (m_dumpPixels && m_pixelResult) {
-        m_gotRepaint = false;
-        WKPageForceRepaint(TestController::singleton().mainWebView()->page(), this, TestInvocation::forceRepaintDoneCallback);
-        TestController::singleton().runUntil(m_gotRepaint, TestController::shortTimeout);
-        if (!m_gotRepaint) {
-            m_errorMessage = "Timed out waiting for pre-pixel dump repaint\n";
-            m_webProcessIsUnresponsive = true;
-            return;
+    if (m_dumpPixels) {
+        if (m_pixelResult)
+            dumpPixelsAndCompareWithExpected(m_pixelResult.get(), m_repaintRects.get(), TestInvocation::SnapshotResultType::WebContents);
+        else if (m_pixelResultIsPending) {
+            m_gotRepaint = false;
+            WKPageForceRepaint(TestController::singleton().mainWebView()->page(), this, TestInvocation::forceRepaintDoneCallback);
+            TestController::singleton().runUntil(m_gotRepaint, TestController::shortTimeout);
+            if (!m_gotRepaint) {
+                m_errorMessage = "Timed out waiting for pre-pixel dump repaint\n";
+                m_webProcessIsUnresponsive = true;
+                return;
+            }
+            WKRetainPtr<WKImageRef> windowSnapshot = TestController::singleton().mainWebView()->windowSnapshotImage();
+            ASSERT(windowSnapshot);
+            dumpPixelsAndCompareWithExpected(windowSnapshot.get(), m_repaintRects.get(), TestInvocation::SnapshotResultType::WebView);
         }
-        dumpPixelsAndCompareWithExpected(m_pixelResult.get(), m_repaintRects.get());
     }
 
     fputs("#EOF\n", stdout);
@@ -364,9 +314,15 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
 
-        WKRetainPtr<WKStringRef> pixelResultKey = adoptWK(WKStringCreateWithUTF8CString("PixelResult"));
-        m_pixelResult = static_cast<WKImageRef>(WKDictionaryGetItemForKey(messageBodyDictionary, pixelResultKey.get()));
-        ASSERT(!m_pixelResult || m_dumpPixels);
+        WKRetainPtr<WKStringRef> pixelResultIsPendingKey = adoptWK(WKStringCreateWithUTF8CString("PixelResultIsPending"));
+        WKBooleanRef pixelResultIsPending = static_cast<WKBooleanRef>(WKDictionaryGetItemForKey(messageBodyDictionary, pixelResultIsPendingKey.get()));
+        m_pixelResultIsPending = WKBooleanGetValue(pixelResultIsPending);
+
+        if (!m_pixelResultIsPending) {
+            WKRetainPtr<WKStringRef> pixelResultKey = adoptWK(WKStringCreateWithUTF8CString("PixelResult"));
+            m_pixelResult = static_cast<WKImageRef>(WKDictionaryGetItemForKey(messageBodyDictionary, pixelResultKey.get()));
+            ASSERT(!m_pixelResult || m_dumpPixels);
+        }
 
         WKRetainPtr<WKStringRef> repaintRectsKey = adoptWK(WKStringCreateWithUTF8CString("RepaintRects"));
         m_repaintRects = static_cast<WKArrayRef>(WKDictionaryGetItemForKey(messageBodyDictionary, repaintRectsKey.get()));
@@ -668,10 +624,11 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         WKRetainPtr<WKStringRef> scriptKey(AdoptWK, WKStringCreateWithUTF8CString("Script"));
         WKRetainPtr<WKStringRef> callbackIDKey(AdoptWK, WKStringCreateWithUTF8CString("CallbackID"));
 
-        unsigned callbackID = (unsigned)WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, callbackIDKey.get())));
-        WKStringRef scriptString = static_cast<WKStringRef>(WKDictionaryGetItemForKey(messageBodyDictionary, scriptKey.get()));
-
-        runUISideScript(scriptString, callbackID);
+        UIScriptInvocationData* invocationData = new UIScriptInvocationData();
+        invocationData->testInvocation = this;
+        invocationData->callbackID = (unsigned)WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, callbackIDKey.get())));
+        invocationData->scriptString = static_cast<WKStringRef>(WKDictionaryGetItemForKey(messageBodyDictionary, scriptKey.get()));
+        WKPageCallAfterNextPresentationUpdate(TestController::singleton().mainWebView()->page(), invocationData, runUISideScriptAfterUpdateCallback);
         return;
     }
 
@@ -718,6 +675,13 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
 
     ASSERT_NOT_REACHED();
     return nullptr;
+}
+
+void TestInvocation::runUISideScriptAfterUpdateCallback(WKErrorRef, void* context)
+{
+    UIScriptInvocationData* data = static_cast<UIScriptInvocationData*>(context);
+    data->testInvocation->runUISideScript(data->scriptString.get(), data->callbackID);
+    delete data;
 }
 
 void TestInvocation::runUISideScript(WKStringRef script, unsigned scriptCallbackID)

@@ -1,3 +1,31 @@
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare internal AppleWin build for CMake
+        https://bugs.webkit.org/show_bug.cgi?id=149570
+
+        Reviewed by Brent Fulgham.
+
+        * win/tools/scripts/auto-version.pl:
+        Use the WEBKIT_LIBRARIES environment variable if it exists.
+
+2015-09-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix.
+
+        * win/tools/vsprops/FeatureDefines.props: Let Windows build know about
+        the STREAMS_API feature.
+
+2015-09-24  Daniel Bates  <dabates@apple.com>
+
+        Add WebKitSystemInterface for iOS 9.0
+        https://bugs.webkit.org/show_bug.cgi?id=149550
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceIOSDevice9.0.a: Added.
+        * libWebKitSystemInterfaceIOSSimulator9.0.a: Added.
+
 2015-09-18  Alex Christensen  <achristensen@webkit.org>
 
         Remove last required use of WEBKIT_LIBRARIES environment variable on Windows

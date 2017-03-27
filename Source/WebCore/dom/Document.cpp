@@ -96,6 +96,7 @@
 #include "ImageLoader.h"
 #include "InspectorInstrumentation.h"
 #include "JSLazyEventListener.h"
+#include "JSModuleLoader.h"
 #include "Language.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
@@ -464,6 +465,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_startTime(std::chrono::steady_clock::now())
     , m_overMinimumLayoutThreshold(false)
     , m_scriptRunner(std::make_unique<ScriptRunner>(*this))
+    , m_moduleLoader(std::make_unique<JSModuleLoader>(*this))
     , m_xmlVersion(ASCIILiteral("1.0"))
     , m_xmlStandalone(StandaloneUnspecified)
     , m_hasXMLDeclaration(false)
@@ -605,6 +607,7 @@ Document::~Document()
         m_domWindow->resetUnlessSuspendedForPageCache();
 
     m_scriptRunner = nullptr;
+    m_moduleLoader = nullptr;
 
     removeAllEventListeners();
 
@@ -952,11 +955,8 @@ RefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCode& 
     case DOCUMENT_NODE: // Can't import a document into another document.
     case DOCUMENT_TYPE_NODE: // FIXME: Support cloning a DocumentType node per DOM4.
         break;
-
-    case XPATH_NAMESPACE_NODE:
-        ASSERT_NOT_REACHED(); // These two types of DOM nodes are not implemented.
-        break;
     }
+
     ec = NOT_SUPPORTED_ERR;
     return nullptr;
 }
@@ -973,7 +973,6 @@ RefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
 
     switch (source->nodeType()) {
     case DOCUMENT_NODE:
-    case XPATH_NAMESPACE_NODE:
         ec = NOT_SUPPORTED_ERR;
         return nullptr;
     case ATTRIBUTE_NODE: {                   
@@ -2112,11 +2111,22 @@ void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int&
 
 void Document::createStyleResolver()
 {
-    bool matchAuthorAndUserStyles = true;
-    if (Settings* settings = this->settings())
-        matchAuthorAndUserStyles = settings->authorAndUserStylesEnabled();
-    m_styleResolver = std::make_unique<StyleResolver>(*this, matchAuthorAndUserStyles);
-    m_styleResolver->appendAuthorStyleSheets(0, authorStyleSheets().activeStyleSheets());
+    m_styleResolver = std::make_unique<StyleResolver>(*this);
+    m_styleResolver->appendAuthorStyleSheets(authorStyleSheets().activeStyleSheets());
+}
+
+StyleResolver& Document::userAgentShadowTreeStyleResolver()
+{
+    if (!m_userAgentShadowTreeStyleResolver) {
+        m_userAgentShadowTreeStyleResolver = std::make_unique<StyleResolver>(*this);
+
+        // FIXME: Filter out shadow pseudo elements we don't want to expose to authors.
+        auto& documentAuthorStyle = *ensureStyleResolver().ruleSets().authorStyle();
+        if (documentAuthorStyle.hasShadowPseudoElementRules())
+            m_userAgentShadowTreeStyleResolver->ruleSets().authorStyle()->copyShadowPseudoElementRulesFrom(documentAuthorStyle);
+    }
+
+    return *m_userAgentShadowTreeStyleResolver;
 }
 
 void Document::fontsNeedUpdate(FontSelector&)
@@ -2140,6 +2150,7 @@ CSSFontSelector& Document::fontSelector()
 void Document::clearStyleResolver()
 {
     m_styleResolver = nullptr;
+    m_userAgentShadowTreeStyleResolver = nullptr;
 
     // FIXME: It would be better if the FontSelector could survive this operation.
     if (m_fontSelector) {
@@ -3344,7 +3355,6 @@ bool Document::childTypeAllowed(NodeType type) const
     case DOCUMENT_FRAGMENT_NODE:
     case DOCUMENT_NODE:
     case TEXT_NODE:
-    case XPATH_NAMESPACE_NODE:
         return false;
     case COMMENT_NODE:
     case PROCESSING_INSTRUCTION_NODE:
@@ -3371,7 +3381,6 @@ bool Document::canAcceptChild(const Node& newChild, const Node* refChild, Accept
     case CDATA_SECTION_NODE:
     case DOCUMENT_NODE:
     case TEXT_NODE:
-    case XPATH_NAMESPACE_NODE:
         return false;
     case COMMENT_NODE:
     case PROCESSING_INSTRUCTION_NODE:

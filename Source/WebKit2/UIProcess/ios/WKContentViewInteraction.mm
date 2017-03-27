@@ -661,9 +661,9 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     return true;
 }
 
-static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius)
+static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius, CGFloat borderRadiusScale)
 {
-    return [NSValue valueWithCGSize:CGSizeMake(borderRadius.width() + minimumTapHighlightRadius, borderRadius.height() + minimumTapHighlightRadius)];
+    return [NSValue valueWithCGSize:CGSizeMake((borderRadius.width() * borderRadiusScale) + minimumTapHighlightRadius, (borderRadius.height() * borderRadiusScale) + minimumTapHighlightRadius)];
 }
 
 - (void)_updateTapHighlight
@@ -714,10 +714,10 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius)
     }
 
     RetainPtr<NSMutableArray> borderRadii = adoptNS([[NSMutableArray alloc] initWithCapacity:4]);
-    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.topLeftRadius)];
-    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.topRightRadius)];
-    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.bottomLeftRadius)];
-    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.bottomRightRadius)];
+    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.topLeftRadius, selfScale)];
+    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.topRightRadius, selfScale)];
+    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.bottomLeftRadius, selfScale)];
+    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.bottomRightRadius, selfScale)];
     [_highlightView setCornerRadii:borderRadii.get()];
 }
 
@@ -3015,7 +3015,7 @@ static bool isAssistableInputType(InputType type)
 {
     // FIXME: This is a temporary workaround for <rdar://problem/22126518>. The real fix will involve refactoring
     // the way we assist programmatically focused nodes.
-    if (!userIsInteracting && !_textSelectionAssistant)
+    if (!userIsInteracting && !_textSelectionAssistant && !_webView.canAssistOnProgrammaticFocus)
         return;
 
     if (blurPreviousNode)
@@ -3238,8 +3238,6 @@ static bool isAssistableInputType(InputType type)
 
 - (BOOL)_interactionShouldBeginFromPreviewItemController:(UIPreviewItemController *)controller forPosition:(CGPoint)position
 {
-    _lastPreviewStartTime = std::chrono::steady_clock::now();
-
     if (!_highlightLongPressCanClick)
         return NO;
 
@@ -3385,10 +3383,6 @@ static bool isAssistableInputType(InputType type)
 
 - (void)_interactionStoppedFromPreviewItemController:(UIPreviewItemController *)controller
 {
-    std::chrono::milliseconds elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _lastPreviewStartTime);
-    if (elapsedTime <= 250_ms)
-        [self _attemptClickAtLocation:_positionInformation.point];
-
     [self _addDefaultGestureRecognizers];
 
     if (![_actionSheetAssistant isShowingSheet])

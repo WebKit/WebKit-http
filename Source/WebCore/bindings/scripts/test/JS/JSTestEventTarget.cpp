@@ -28,7 +28,6 @@
 #include "JSEventListener.h"
 #include "JSNode.h"
 #include "Node.h"
-#include "TestEventTarget.h"
 #include "wtf/text/AtomicString.h"
 #include <runtime/Error.h>
 #include <runtime/PropertyNameArray.h>
@@ -105,14 +104,14 @@ static const struct CompactHashIndex JSTestEventTargetTableIndex[2] = {
 
 static const HashTableValue JSTestEventTargetTableValues[] =
 {
-    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventTargetConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "constructor", DontEnum | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventTargetConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
 static const HashTable JSTestEventTargetTable = { 1, 1, true, JSTestEventTargetTableValues, JSTestEventTargetTableIndex };
 const ClassInfo JSTestEventTargetConstructor::s_info = { "TestEventTargetConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventTargetConstructor) };
 
 JSTestEventTargetConstructor::JSTestEventTargetConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
-    : DOMConstructorObject(structure, globalObject)
+    : Base(structure, globalObject)
 {
 }
 
@@ -233,6 +232,10 @@ void JSTestEventTarget::getOwnPropertyNames(JSObject* object, ExecState* state, 
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     for (unsigned i = 0, count = thisObject->impl().length(); i < count; ++i)
         propertyNames.add(Identifier::from(state, i));
+    if (mode.includeDontEnumProperties()) {
+        for (auto& propertyName : thisObject->impl().supportedPropertyNames())
+            propertyNames.add(Identifier::fromString(state, propertyName));
+    }
     Base::getOwnPropertyNames(thisObject, state, propertyNames, mode);
 }
 

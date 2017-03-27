@@ -262,6 +262,8 @@ fast/css/draggable-region-parser.html
 css3/font-feature-settings-rendering.html
 
 webkit.org/b/149246 [ Mavericks ] css3/font-feature-settings-rendering-2.html
+webkit.org/b/149246 [ Mavericks ] css3/font-variant-all-webfont.html
+webkit.org/b/149246 [ Mavericks ] css3/font-variant-parsing.html
 
 # This feature is disabled on Mavericks.
 [ Mavericks ] http/tests/navigation/page-cache-pending-image-load.html [ Skip ]
@@ -898,6 +900,28 @@ webkit.org/b/40382 [ Mavericks ] http/tests/media/video-auth.html [ WontFix ]
 # HTML sandboxing produces two or three messages flakily.
 webkit.org/b/137368 media/video-controls-no-scripting.html [ Pass Failure ]
 
+# Newly imported W3C media tests that are flaky on Mavericks only.
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/readyState_during_loadeddata.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_pause.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_loadedmetadata_noautoplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_loadeddata_noautoplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_progress.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_loadstart_noautoplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_timeupdate_noautoplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_canplaythrough_noautoplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/paused_false_during_play.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/readyState_during_canplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_playing.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_loadedmetadata.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_canplay_noautoplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_canplaythrough.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/readyState_during_canplaythrough.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_timeupdate.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_playing_noautoplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_canplay.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_order_canplay_playing.html [ Pass Timeout ]
+webkit.org/b/149636 [ Mavericks ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_play.html [ Pass Timeout ]
+
 # Mavericks and prior do not support Media Source.
 [ Mavericks ] media/media-source [ WontFix ]
 [ Mavericks ] http/tests/media/media-source/ [ WontFix ]
@@ -906,6 +930,9 @@ webkit.org/b/137368 media/video-controls-no-scripting.html [ Pass Failure ]
 [ Mavericks ] fast/history/page-cache-media-source-opened.html [ WontFix ]
 [ Mavericks ] fast/history/page-cache-removed-source-buffer.html [ WontFix ]
 ## --- End media tests failing on Mavericks and earlier ---
+
+# Yosemite has different expected results. It needs to rebase.
+webkit.org/b/149113 media/media-controls-play-button-updates.html [ Pass Failure ]
 
 ## --- Start flaky media tests ---
 webkit.org/b/34331 http/tests/media/video-referer.html [ Pass Timeout ]
@@ -1052,10 +1079,6 @@ webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pa
 # FIXME: Needs bugzilla (<rdar://problem/16663912>)
 # Seems like this should happen everywhere, but it only does on Yosemite.
 [ Yosemite+ ] http/tests/navigation/post-frames-goback1.html [ Pass Failure ]
-
-# FIXME: Needs bugzilla (<rdar://problem/16664245>)
-# We should land updated results if we can't get this bug fixed in time.
-[ Yosemite+ ] http/tests/xmlhttprequest/cache-override.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16802068>)
 [ Yosemite+ ] fast/css/input-search-padding.html [ Failure ]
@@ -1303,9 +1326,12 @@ webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validat
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
-webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-with-rules.html [ ImageOnlyFailure ]
-webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-host-rule.html [ ImageOnlyFailure ]
-webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
-webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
-webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
-webkit.org/b/149328 fast/shadow-dom/shadow-layout-after-slot-changes.html [ ImageOnlyFailure ]
+webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
+
+webkit.org/b/149510 accessibility/mac/aria-expanded-notifications.html [ Pass Failure ]
+
+# Times out in debug.
+[ Debug ] js/regress/getter-richards-try-catch.html [ Skip ]

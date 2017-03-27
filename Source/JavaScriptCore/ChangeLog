@@ -1,3 +1,843 @@
+2015-09-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r190324.
+        https://bugs.webkit.org/show_bug.cgi?id=149671
+
+        Caused flaky crashes, rdar://problem/22916304 (Requested by ap
+        on #webkit).
+
+        Reverted changeset:
+
+        "ParallelHelperPool::runFunctionInParallel() shouldn't
+        allocate, and ParallelHelperPool.h shouldn't be included
+        everywhere"
+        https://bugs.webkit.org/show_bug.cgi?id=149635
+        http://trac.webkit.org/changeset/190324
+
+2015-09-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r190289.
+        https://bugs.webkit.org/show_bug.cgi?id=149647
+
+        Crashing speedometer and some ARM32 tests (Requested by
+        msaboff on #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Implement tail calls in the FTL"
+        https://bugs.webkit.org/show_bug.cgi?id=148664
+        http://trac.webkit.org/changeset/190289
+
+2015-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        ParallelHelperPool::runFunctionInParallel() shouldn't allocate, and ParallelHelperPool.h shouldn't be included everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=149635
+
+        Reviewed by Saam Barati.
+
+        It bugged me that this change caused a whole-world recompile. So, I changed the code so
+        that ParallelHelperPool.h is only included by Heap.cpp and not by Heap.h.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::markRoots):
+        (JSC::Heap::copyBackingStores):
+        * heap/Heap.h:
+
+2015-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        GC copy phase spans too many files
+        https://bugs.webkit.org/show_bug.cgi?id=149586
+
+        Reviewed by Andreas Kling.
+
+        This puts the core logic of the copy phase into Heap::copyBackingStores(). Now, instead of
+        using many helpers in many places, the actual algorithm is all in one place.
+
+        This lets me do a lot of simplification.
+
+        - CopyVisitor no longer requires that you call startCopying() before, and doneCopying() and
+          WTF::releaseFastMallocFreeMemoryForThisThread() after. The constructor and destructor now
+          do this for you.
+
+        - CopyVisitor no longer contains the algorithm that drives copying. That's all in
+          Heap::copyBackingStores() now. Basically, copyBackingStores() glues together the new
+          WTF::ParallelVectorIterator with the copying algorithm that we used to have in
+          CopyVisitor::copyFromShared().
+
+        - Lots of stuff that was in headers is now in .cpp files. That includes all non-hot-path
+          code in CopyVisitor. Also, the code for copying in HeapInlines.h is now in
+          ParallelVectorVisotor, and it's only included by Heap.cpp.
+
+        Overall, I like this direction for the GC. I don't think it's useful for Heap.cpp to have
+        calls to algorithms in some other file, unless those algorithms are either reusable or just
+        very dense. That's not actually true for the copy phase, and it's probably not true for
+        some other stuff like marking. I'll probably do the same refactoring for marking in another
+        bug.
+
+        This should have no effect on performance.
+
+        * heap/CopyVisitor.cpp:
+        (JSC::CopyVisitor::CopyVisitor):
+        (JSC::CopyVisitor::~CopyVisitor):
+        (JSC::CopyVisitor::copyFromShared): Deleted.
+        * heap/CopyVisitor.h:
+        * heap/CopyVisitorInlines.h:
+        (JSC::CopyVisitor::checkIfShouldCopy):
+        (JSC::CopyVisitor::allocateNewSpaceSlow):
+        (JSC::CopyVisitor::didCopy):
+        (JSC::CopyVisitor::visitItem): Deleted.
+        (JSC::CopyVisitor::startCopying): Deleted.
+        (JSC::CopyVisitor::doneCopying): Deleted.
+        * heap/Heap.cpp:
+        (JSC::Heap::copyBackingStores):
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::unregisterWeakGCMap):
+        (JSC::Heap::getNextBlocksToCopy): Deleted.
+
+2015-09-29  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Add support for WebIDL JSBuiltin attributes
+        https://bugs.webkit.org/show_bug.cgi?id=149554
+
+        Reviewed by Darin Adler.
+
+        * runtime/Lookup.cpp:
+        (JSC::reifyStaticAccessor): Adding support for creating attribute getter from JS builtin functions.
+        * runtime/Lookup.h:
+        (JSC::HashTableValue::builtinAccessorGetterGenerator):
+        (JSC::HashTableValue::builtinAccessorSetterGenerator):
+        (JSC::reifyStaticProperties): Ensuring that builtin attributes are not treated as Builtin functions.
+
+2015-09-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused parseMemoryAmount
+        https://bugs.webkit.org/show_bug.cgi?id=149611
+
+        Reviewed by Mark Lam.
+
+        * heap/HeapStatistics.cpp:
+        (JSC::HeapStatistics::parseMemoryAmount): Deleted.
+        * heap/HeapStatistics.h:
+
+2015-09-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSGlobalRuntimeAgent unintentionally overrides InspectorRuntimeAgent destruction handling
+        https://bugs.webkit.org/show_bug.cgi?id=149537
+
+        Reviewed by Darin Adler.
+
+        * inspector/agents/JSGlobalObjectRuntimeAgent.h:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.cpp:
+        (Inspector::JSGlobalObjectRuntimeAgent::willDestroyFrontendAndBackend): Deleted.
+        Do not override method, super class implementation is sufficient.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Fix file ordering.
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        Remove unused member variable.
+
+2015-09-28  basile_clement@apple.com  <basile_clement@apple.com@268f45cc-cd09-0410-ab3c-d52691b4dbfc>
+
+        [ES6] Implement tail calls in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=148664
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements the tail call opcodes in the FTL, making tail
+        calls available through all tiers. The changes are relatively
+        straightforward, although the frame shuffler had to be extended to
+        handle the possibility of running out of stack when spilling or
+        building a slow path frame. The other tiers always ensure that we have
+        enough stack space to build the new frame at the bottom of the old one,
+        but that is not true for the FTL.
+
+        Moreover, for efficiency, this adds to the shuffler the ability to
+        record the state of the TagTypeNumber, and to re-use the same register
+        when doing several consecutive integer boxings with no spilling in
+        between.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/ValueRecovery.h:
+        (JSC::ValueRecovery::inRegister):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isFunctionTerminal):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * ftl/FTLInlineCacheSize.cpp:
+        (JSC::FTL::sizeOfTailCallVarargs):
+        (JSC::FTL::sizeOfTailCallForwardVarargs):
+        (JSC::FTL::sizeOfICFor):
+        * ftl/FTLInlineCacheSize.h:
+        * ftl/FTLJSCall.cpp:
+        (JSC::FTL::JSCall::JSCall):
+        * ftl/FTLJSCallBase.cpp:
+        (JSC::FTL::JSCallBase::emit):
+        (JSC::FTL::JSCallBase::link):
+        * ftl/FTLJSCallBase.h:
+        * ftl/FTLJSCallVarargs.cpp:
+        (JSC::FTL::JSCallVarargs::JSCallVarargs):
+        (JSC::FTL::JSCallVarargs::emit):
+        * ftl/FTLJSTailCall.cpp: Added.
+        (JSC::FTL::getRegisterWithAddend):
+        (JSC::FTL::recoveryFor):
+        (JSC::FTL::sizeFor):
+        (JSC::FTL::JSTailCall::JSTailCall):
+        (JSC::FTL::m_instructionOffset):
+        (JSC::FTL::JSTailCall::emit):
+        * ftl/FTLJSTailCall.h: Copied from Source/JavaScriptCore/ftl/FTLJSCallBase.h.
+        (JSC::FTL::JSTailCall::stackmapID):
+        (JSC::FTL::JSTailCall::estimatedSize):
+        (JSC::FTL::JSTailCall::numArguments):
+        (JSC::FTL::JSTailCall::operator<):
+        * ftl/FTLLocation.h:
+        (JSC::FTL::Location::operator bool):
+        (JSC::FTL::Location::operator!):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::lower):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileTailCall):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToLLVM::callPreflight):
+        (JSC::FTL::DFG::LowerDFGToLLVM::exitValueForTailCall):
+        * ftl/FTLState.h:
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitExceptionCheck):
+        * jit/CallFrameShuffleData.h:
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::CallFrameShuffler):
+        (JSC::CallFrameShuffler::dump):
+        (JSC::CallFrameShuffler::spill):
+        (JSC::CallFrameShuffler::extendFrameIfNeeded):
+        (JSC::CallFrameShuffler::prepareForSlowPath):
+        (JSC::CallFrameShuffler::prepareAny):
+        * jit/CallFrameShuffler.h:
+        (JSC::CallFrameShuffler::restoreGPR):
+        (JSC::CallFrameShuffler::getFreeRegister):
+        (JSC::CallFrameShuffler::getFreeTempGPR):
+        (JSC::CallFrameShuffler::ensureTempGPR):
+        (JSC::CallFrameShuffler::addNew):
+        * jit/CallFrameShuffler64.cpp:
+        (JSC::CallFrameShuffler::emitBox):
+        (JSC::CallFrameShuffler::tryAcquireTagTypeNumber):
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileOpCall):
+        * jit/Reg.h:
+        (JSC::Reg::Reg):
+        (JSC::Reg::isHashTableDeletedValue):
+        (JSC::Reg::deleted):
+        (JSC::RegHash::hash):
+        (JSC::RegHash::equal):
+        * test/es6.yaml:
+
+2015-09-28  Keith Miller  <keith_miller@apple.com>
+
+        ObjectPropertyConditionSet::mergedWith does not produce a minimal intersection.
+        https://bugs.webkit.org/show_bug.cgi?id=149598
+
+        Reviewed by Michael Saboff.
+
+        mergedWith sometimes creates duplicates of an ObjectPropertyCondition, which causes GetByIdVariant
+        in believe that the condition has more than one slotBaseCondition when only one was necessary.
+
+        * bytecode/ObjectPropertyConditionSet.cpp:
+        (JSC::ObjectPropertyConditionSet::mergedWith):
+
+2015-09-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix debug tests. Before marking, we need to call registerGCThreads().
+
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+
+2015-09-24  Filip Pizlo  <fpizlo@apple.com>
+
+        VMs should share GC threads
+        https://bugs.webkit.org/show_bug.cgi?id=149433
+        rdar://problem/12859344
+
+        Reviewed by Geoffrey Garen.
+
+        This changes the GC to use a new WTF abstraction for parallelism called ParallelHelperPool.
+        This allows us to remove GCThread and all of the GCPhase machinery. This kills a lot of
+        code and also gives our GC magical thread sharing powers. If two GCs in two different VMs
+        fire at the same time, then they will both get a random subset of the available shared GC
+        threads. If one GC happens before the other, then it will probably get all of the available
+        threads. If a GC happens while another VM already started GCing, then it will probably not
+        get any helper threads. This is probably fine, since in multi-VM scenarios we have no
+        reason to optimize for anything other than total throughput.
+
+        The GC has one static helper pool. This pool is available via JSC::heapHelperPool(). It
+        would be OK for other parts of JSC to use it in the future for parallel tasks. Each Heap
+        instance has a helper client attached to the pool.
+
+        The marking phase tells the ParallelHelperClient to asynchronously run a function that
+        joins parallel marking and finishes once marking reaches termination. It uses the
+        client.setFunction() idiom where the threads share work with each other using a specialized
+        worklist. The ParallelHelperPool is not involved in deciding when threads should terminate.
+
+        The copying phase tells the ParallelHelperClient to run a copying function in parallel. It
+        uses the client.runFunctionInParallel() idiom. The copying function gets work from the
+        m_blocksToCopy worklist inside Heap.
+
+        To test that multiple VMs work properly, this adds a multi-VM test to testapi.mm. This test
+        creates five concurrent VMs and has each of them allocate about 30MB of memory before doing
+        a full GC. I've confirmed that this tests uses only 6 total GC threads on my 8-core
+        computer (this is correct since we are currently configured for 7-way parallelism).
+
+        This shouldn't affect performance on benchmarks, but it will sure help apps with a lot of
+        VM instances.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/AbstractMacroAssembler.h:
+        * heap/GCThread.cpp: Removed.
+        * heap/GCThread.h: Removed.
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::~Heap):
+        (JSC::Heap::isPagedOut):
+        (JSC::Heap::markRoots):
+        (JSC::Heap::copyBackingStores):
+        (JSC::Heap::resetVisitors):
+        (JSC::Heap::threadVisitCount):
+        (JSC::Heap::threadBytesVisited):
+        (JSC::Heap::threadBytesCopied):
+        (JSC::Heap::startNextPhase): Deleted.
+        (JSC::Heap::endCurrentPhase): Deleted.
+        * heap/Heap.h:
+        * heap/HeapHelperPool.cpp: Added.
+        (JSC::heapHelperPool):
+        * heap/HeapHelperPool.h: Added.
+        * heap/MarkStack.cpp:
+        (JSC::MarkStackArray::stealSomeCellsFrom):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::didStartMarking):
+        (JSC::SlotVisitor::reset):
+        (JSC::SlotVisitor::drainFromShared):
+        * jit/BinarySwitch.h:
+        * runtime/CodeCache.h:
+        * runtime/VM.h:
+        * runtime/WeakRandom.h: Removed.
+        * API/tests/testapi.mm:
+
+2015-09-25  Saam barati  <sbarati@apple.com>
+
+        DFG should use PhantomLocal instead of Flush as liveness preservation mechanism in LiveCatchVariablesPreservationPhase
+        https://bugs.webkit.org/show_bug.cgi?id=149575
+
+        Reviewed by Geoffrey Garen.
+
+        LiveCatchVariablesPreservationPhase is no longer forcing all live-at-catch 
+        variables to be flushed to the stack. They are now kept alive to OSR exit 
+        through PhantomLocal. This gives us a speed improvement for try-catch 
+        programs (especially those that don't throw errors very often) because
+        we can keep locals in registers instead of forcing them onto the stack.
+
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp:
+        (JSC::DFG::LiveCatchVariablePreservationPhase::LiveCatchVariablePreservationPhase):
+        (JSC::DFG::LiveCatchVariablePreservationPhase::handleBlock):
+        (JSC::DFG::performLiveCatchVariablePreservationPhase):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::FlushLiveCatchVariablesInsertionPhase): Deleted.
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::handleBlock): Deleted.
+
+2015-09-25  Michael Saboff  <msaboff@apple.com>
+
+        FTLOSRExitCompiler incorrectly excludes FPR registers in callee saves loop
+        https://bugs.webkit.org/show_bug.cgi?id=149540
+
+        Reviewed by Saam Barati.
+
+        Eliminated the incorrect check that callee saves registers are only GPRs.
+
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Switch to CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148111
+
+        Reviewed by Brent Fulgham.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj:
+
+2015-09-24  Mark Lam  <mark.lam@apple.com>
+
+        Remove the use of "Immediate" in JIT function names.
+        https://bugs.webkit.org/show_bug.cgi?id=149542
+
+        Reviewed by Geoffrey Garen.
+
+        We will rename the following:
+            isOperandConstantImmediateDouble => isOperandConstantDouble
+            isOperandConstantImmediateInt => isOperandConstantInt
+            isOperandConstantImmediateChar => isOperandConstantChar
+
+            getOperandConstantImmediateInt => getOperandConstantInt
+            getConstantOperandImmediateInt => getOperandConstantInt
+
+            emitJumpIfImmediateInteger => emitJumpIfInt
+            emitJumpIfNotImmediateInteger => emitJumpIfNotInt
+            emitJumpIfNotImmediateIntegers => emitJumpIfNotInt
+            emitPatchableJumpIfNotImmediateInteger => emitPatchableJumpIfNotInt
+            emitJumpSlowCaseIfNotImmediateInteger => emitJumpSlowCaseIfNotInt
+            emitJumpSlowCaseIfNotImmediateNumber => emitJumpSlowCaseIfNotNumber
+            emitJumpSlowCaseIfNotImmediateIntegers => emitJumpSlowCaseIfNotInt
+            emitFastArithReTagImmediate => emitTagInt
+            emitTagAsBoolImmediate => emitTagBool
+            emitJumpIfImmediateNumber => emitJumpIfNumber
+            emitJumpIfNotImmediateNumber => emitJumpIfNotNumber
+            emitFastArithImmToInt - Deleted because this is an empty function.
+            emitFastArithIntToImmNoCheck => emitTagInt
+            emitPutImmediateToCallFrameHeader => emitPutToCallFrameHeader
+
+        This is purely a refactoring patch to do the renaming.  There is no behavior
+        change.
+
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compileEntry):
+        (JSC::DFG::JITCompiler::compileSetupRegistersForEntry):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitPutToCallFrameHeader):
+        (JSC::AssemblyHelpers::emitPutImmediateToCallFrameHeader): Deleted.
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+        * jit/JIT.h:
+        (JSC::JIT::emitStoreCell):
+        (JSC::JIT::getSlowCase):
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_negate):
+        (JSC::JIT::emit_op_lshift):
+        (JSC::JIT::emit_op_rshift):
+        (JSC::JIT::emitSlow_op_rshift):
+        (JSC::JIT::emit_op_urshift):
+        (JSC::JIT::emitSlow_op_urshift):
+        (JSC::JIT::emit_op_unsigned):
+        (JSC::JIT::emit_compareAndJump):
+        (JSC::JIT::emit_compareAndJumpSlow):
+        (JSC::JIT::emit_op_bitand):
+        (JSC::JIT::emit_op_inc):
+        (JSC::JIT::emit_op_dec):
+        (JSC::JIT::emit_op_mod):
+        (JSC::JIT::compileBinaryArithOp):
+        (JSC::JIT::compileBinaryArithOpSlowCase):
+        (JSC::JIT::emit_op_add):
+        (JSC::JIT::emitSlow_op_add):
+        (JSC::JIT::emit_op_mul):
+        (JSC::JIT::emitSlow_op_mul):
+        (JSC::JIT::emit_op_div):
+        (JSC::JIT::emitSlow_op_div):
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emit_compareAndJump):
+        (JSC::JIT::emit_compareAndJumpSlow):
+        (JSC::JIT::emit_op_lshift):
+        (JSC::JIT::emitSlow_op_lshift):
+        (JSC::JIT::emitRightShift):
+        (JSC::JIT::emitRightShiftSlowCase):
+        (JSC::JIT::emit_op_bitand):
+        (JSC::JIT::emitSlow_op_bitand):
+        (JSC::JIT::emit_op_bitor):
+        (JSC::JIT::emitSlow_op_bitor):
+        (JSC::JIT::emit_op_bitxor):
+        (JSC::JIT::emitSlow_op_bitxor):
+        (JSC::JIT::emit_op_add):
+        (JSC::JIT::emitSlow_op_add):
+        (JSC::JIT::emit_op_sub):
+        (JSC::JIT::emitSlow_op_sub):
+        * jit/JITInlines.h:
+        (JSC::JIT::emitArrayStorageGetByVal):
+        (JSC::JIT::isOperandConstantDouble):
+        (JSC::JIT::isOperandConstantChar):
+        (JSC::JIT::emitJumpSlowCaseIfNotJSCell):
+        (JSC::JIT::isOperandConstantInt):
+        (JSC::JIT::getOperandConstantInt):
+        (JSC::JIT::emitGetVirtualRegisters):
+        (JSC::JIT::emitLoadInt32ToDouble):
+        (JSC::JIT::emitJumpIfInt):
+        (JSC::JIT::emitJumpIfNotInt):
+        (JSC::JIT::emitPatchableJumpIfNotInt):
+        (JSC::JIT::emitJumpSlowCaseIfNotInt):
+        (JSC::JIT::emitJumpSlowCaseIfNotNumber):
+        (JSC::JIT::emitTagBool):
+        (JSC::JIT::isOperandConstantImmediateDouble): Deleted.
+        (JSC::JIT::isOperandConstantImmediateChar): Deleted.
+        (JSC::JIT::isOperandConstantImmediateInt): Deleted.
+        (JSC::JIT::getOperandConstantImmediateInt): Deleted.
+        (JSC::JIT::getConstantOperandImmediateInt): Deleted.
+        (JSC::JIT::emitJumpIfImmediateInteger): Deleted.
+        (JSC::JIT::emitJumpIfNotImmediateInteger): Deleted.
+        (JSC::JIT::emitPatchableJumpIfNotImmediateInteger): Deleted.
+        (JSC::JIT::emitJumpIfNotImmediateIntegers): Deleted.
+        (JSC::JIT::emitJumpSlowCaseIfNotImmediateInteger): Deleted.
+        (JSC::JIT::emitJumpSlowCaseIfNotImmediateIntegers): Deleted.
+        (JSC::JIT::emitJumpSlowCaseIfNotImmediateNumber): Deleted.
+        (JSC::JIT::emitFastArithReTagImmediate): Deleted.
+        (JSC::JIT::emitTagAsBoolImmediate): Deleted.
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_is_undefined):
+        (JSC::JIT::emit_op_is_boolean):
+        (JSC::JIT::emit_op_is_number):
+        (JSC::JIT::emit_op_is_string):
+        (JSC::JIT::emit_op_is_object):
+        (JSC::JIT::emit_op_jfalse):
+        (JSC::JIT::emit_op_eq):
+        (JSC::JIT::emit_op_jtrue):
+        (JSC::JIT::emit_op_neq):
+        (JSC::JIT::emit_op_bitxor):
+        (JSC::JIT::emit_op_bitor):
+        (JSC::JIT::compileOpStrictEq):
+        (JSC::JIT::emit_op_to_number):
+        (JSC::JIT::emit_op_eq_null):
+        (JSC::JIT::emit_op_neq_null):
+        (JSC::JIT::emitSlow_op_eq):
+        (JSC::JIT::emitSlow_op_neq):
+        (JSC::JIT::emit_op_profile_type):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::privateCompileCTINativeCall):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_get_by_val):
+        (JSC::JIT::emit_op_put_by_val):
+        (JSC::JIT::emitGenericContiguousPutByVal):
+        (JSC::JIT::emit_op_put_by_id):
+        (JSC::JIT::emitIntTypedArrayPutByVal):
+        (JSC::JIT::emitFloatTypedArrayPutByVal):
+        * jit/JSInterfaceJIT.h:
+        (JSC::JSInterfaceJIT::emitJumpIfNotJSCell):
+        (JSC::JSInterfaceJIT::emitJumpIfNumber):
+        (JSC::JSInterfaceJIT::emitJumpIfNotNumber):
+        (JSC::JSInterfaceJIT::emitLoadDouble):
+        (JSC::JSInterfaceJIT::emitTagInt):
+        (JSC::JSInterfaceJIT::emitPutToCallFrameHeader):
+        (JSC::JSInterfaceJIT::emitJumpIfImmediateNumber): Deleted.
+        (JSC::JSInterfaceJIT::emitJumpIfNotImmediateNumber): Deleted.
+        (JSC::JSInterfaceJIT::emitFastArithImmToInt): Deleted.
+        (JSC::JSInterfaceJIT::emitFastArithIntToImmNoCheck): Deleted.
+        (JSC::JSInterfaceJIT::emitPutImmediateToCallFrameHeader): Deleted.
+        * jit/ThunkGenerators.cpp:
+        (JSC::nativeForGenerator):
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::WASMFunctionCompiler::startFunction):
+        (JSC::WASMFunctionCompiler::endFunction):
+
+2015-09-24  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Implement tail calls in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=148663
+
+        Reviewed by Filip Pizlo.
+
+        jsc-tailcall: Implement the tail call opcodes in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=146850
+
+        This patch adds support for tail calls in the DFG. This requires a slightly high number of nodes:
+
+         - TailCall and TailCallVarargs are straightforward. They are terminal
+           nodes and have the semantics of an actual tail call.
+
+         - TailCallInlinedCaller and TailCallVarargsInlinedCaller are here to perform a
+           tail call inside an inlined function. They are non terminal nodes,
+           and are performing the call as a regular call after popping an
+           appropriate number of inlined tail call frames.
+
+         - TailCallForwardVarargs and TailCallForwardVarargsInlinedCaller are the
+           extension of TailCallVarargs and TailCallVarargsInlinedCaller to enable
+           the varargs forwarding optimization so that we don't lose
+           performance with a tail call instead of a regular call.
+
+        This also required two broad kind of changes:
+
+         - Changes in the JIT itself (DFGSpeculativeJIT) are pretty
+           straightforward since they are just an extension of the baseline JIT
+           changes introduced previously.
+
+         - Changes in the runtime are mostly related with handling inline call
+           frames. The idea here is that we have a special TailCall type for
+           call frames that indicates to the various pieces of code walking the
+           inline call frame that they should (recursively) skip the caller in
+           their analysis.
+
+        * bytecode/CallMode.h:
+        (JSC::specializationKindFor):
+        * bytecode/CodeOrigin.cpp:
+        (JSC::CodeOrigin::inlineDepthForCallFrame):
+        (JSC::CodeOrigin::isApproximatelyEqualTo):
+        (JSC::CodeOrigin::approximateHash):
+        (JSC::CodeOrigin::inlineStack):
+        * bytecode/CodeOrigin.h:
+        * bytecode/InlineCallFrame.cpp:
+        (JSC::InlineCallFrame::dumpInContext):
+        (WTF::printInternal):
+        * bytecode/InlineCallFrame.h:
+        (JSC::InlineCallFrame::callModeFor):
+        (JSC::InlineCallFrame::kindFor):
+        (JSC::InlineCallFrame::varargsKindFor):
+        (JSC::InlineCallFrame::specializationKindFor):
+        (JSC::InlineCallFrame::isVarargs):
+        (JSC::InlineCallFrame::isTail):
+        (JSC::InlineCallFrame::computeCallerSkippingDeadFrames):
+        (JSC::InlineCallFrame::getCallerSkippingDeadFrames):
+        (JSC::InlineCallFrame::getCallerInlineFrameSkippingDeadFrames):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGBasicBlock.h:
+        (JSC::DFG::BasicBlock::findTerminal):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inlineCallFrame):
+        (JSC::DFG::ByteCodeParser::allInlineFramesAreTailCalls):
+        (JSC::DFG::ByteCodeParser::currentCodeOrigin):
+        (JSC::DFG::ByteCodeParser::addCallWithoutSettingResult):
+        (JSC::DFG::ByteCodeParser::addCall):
+        (JSC::DFG::ByteCodeParser::getPredictionWithoutOSRExit):
+        (JSC::DFG::ByteCodeParser::getPrediction):
+        (JSC::DFG::ByteCodeParser::handleCall):
+        (JSC::DFG::ByteCodeParser::handleVarargsCall):
+        (JSC::DFG::ByteCodeParser::emitArgumentPhantoms):
+        (JSC::DFG::ByteCodeParser::inliningCost):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::attemptToInlineCall):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        (JSC::DFG::ByteCodeParser::parseCodeBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::isLiveInBytecode):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::forAllLocalsLiveInBytecode):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::mergeToSuccessors):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::willCatchExceptionInMachineFrame):
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp:
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::willCatchException):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasCallVarargsData):
+        (JSC::DFG::Node::isTerminal):
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::handleExitCounts):
+        (JSC::DFG::reifyInlinedCallFrames):
+        (JSC::DFG::osrWriteBarrier):
+        * dfg/DFGOSRExitPreparation.cpp:
+        (JSC::DFG::prepareCodeOriginForOSRExit):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validateSSA):
+        * dfg/DFGVarargsForwardingPhase.cpp:
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::bytecodeOffset):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::gotoNextFrame):
+
+2015-09-23  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove special case code for the no-parallel-GC case
+        https://bugs.webkit.org/show_bug.cgi?id=149512
+
+        Reviewed by Mark Lam.
+
+        Make serial GC just a parallel GC where the helper threads don't do anything. Also make the
+        idle thread calculation a bit more explicit.
+
+        The main outcome is that we no longer use Options::numberOfGCMarkers() as much, so the code is
+        resilient against the number of GC markers changing.
+
+        * heap/Heap.h:
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::donateKnownParallel):
+        (JSC::SlotVisitor::drain):
+        (JSC::SlotVisitor::drainFromShared):
+
+2015-09-23  Filip Pizlo  <fpizlo@apple.com>
+
+        PolymorphicAccess should remember that it checked an ObjectPropertyCondition with a check on some structure
+        https://bugs.webkit.org/show_bug.cgi?id=149514
+
+        Reviewed by Oliver Hunt.
+
+        When we checked an ObjectPropertyCondition using an explicit structure check, we would forget to
+        note the structure in any weak reference table and we would attempt to regenerate the condition
+        check even if the condition became invalid.
+
+        We need to account for this better and we need to prune AccessCases that have an invalid condition
+        set. This change does both.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessGenerationState::addWatchpoint):
+        (JSC::AccessCase::alternateBase):
+        (JSC::AccessCase::couldStillSucceed):
+        (JSC::AccessCase::canReplace):
+        (JSC::AccessCase::generate):
+        (JSC::PolymorphicAccess::regenerateWithCases):
+        (JSC::PolymorphicAccess::visitWeak):
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessCase::callLinkInfo):
+        * tests/stress/make-dictionary-repatch.js: Added. This used to crash on a release assert. If we removed the release assert, this would return bad results.
+
+2015-09-24  Mark Lam  <mark.lam@apple.com>
+
+        We should only expect a RareCaseProfile to exist if the rare case actually exists.
+        https://bugs.webkit.org/show_bug.cgi?id=149531
+
+        Reviewed by Saam Barati.
+
+        The current code that calls rareCaseProfileForBytecodeOffset() assumes that it
+        will always return a non-null RareCaseProfile.  As a result, op_add in the
+        baseline JIT is forced to add a dummy slow case that will never be taken, only to
+        ensure that the RareCaseProfile for that bytecode is created.  This profile will
+        always produce a counter value of 0 (since that path will never be taken).
+
+        Instead, we'll make the callers of rareCaseProfileForBytecodeOffset() check if
+        the profile actually exist before dereferencing it.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::rareCaseProfileForBytecodeOffset):
+        (JSC::CodeBlock::rareCaseProfileCountForBytecodeOffset):
+        (JSC::CodeBlock::capabilityLevel):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addRareCaseProfile):
+        (JSC::CodeBlock::numberOfRareCaseProfiles):
+        (JSC::CodeBlock::likelyToTakeSlowCase):
+        (JSC::CodeBlock::couldTakeSlowCase):
+        (JSC::CodeBlock::likelyToTakeDeepestSlowCase):
+        (JSC::CodeBlock::likelyToTakeAnySlowCase):
+        (JSC::CodeBlock::rareCaseProfile): Deleted.
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_add):
+        (JSC::JIT::emitSlow_op_add):
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emit_op_add):
+        (JSC::JIT::emitSlow_op_add):
+
+2015-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2015-09-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Add support for JS builtins constructor
+        https://bugs.webkit.org/show_bug.cgi?id=149497
+
+        Reviewed by Darin Adler.
+
+        * runtime/JSFunction.h: exporting createBuiltinFunction.
+
+2015-09-23  Saam barati  <sbarati@apple.com>
+
+        JSC allows invalid var declarations when the declared name is the same as a let/const variable
+        https://bugs.webkit.org/show_bug.cgi?id=147600
+
+        Reviewed by Yusuke Suzuki.
+
+        We had an ordering bug where if you first declared a "let"
+        variable then a "var" variable with the same name, you wouldn't
+        get a syntax error. But, if you did it in the reverse order,
+        you would. This patch fixes this syntax error to be order independent.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVariableDeclarationList):
+        (JSC::Parser<LexerType>::createBindingPattern):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        * parser/Parser.h:
+        (JSC::Scope::declareVariable):
+
+2015-09-23  Filip Pizlo  <fpizlo@apple.com>
+
+        Parallel copy phase synchronization should be simplified
+        https://bugs.webkit.org/show_bug.cgi?id=149509
+
+        Reviewed by Mark Lam.
+
+        Before this change, we didn't wait for the copy phase to finish before starting to do things to
+        copied space that presumed that copying was done. Copied space would "detect" that nobody was
+        copying anymore by waiting for all loaned blocks to be returned. But that would succeed if some
+        thread had not yet started copying. So, we had weird hacks to ensure that a block was loaned
+        before any threads started. It also meant that we had two separate mechanisms for waiting for
+        copying threads to finish - one mechanism in the Heap phase logic and another in the
+        CopiedSpace::doneCopying() method.
+
+        We can get rid of a lot of the weirdness by just having a sound shutdown sequence:
+
+        1) Threads concur on when there is no more work. We already have this; once
+           Heap::getNextBlocksToCopy() returns no work in any thread, it will also return no work in
+           any other thread that asks for work.
+        2) Main thread waits for the threads to not be copying anymore.
+        3) Do whatever we need to do after copying finishes.
+
+        Currently, we do (3) before (2) and so we have weird problems. This just changes the code to do
+        (3) after (2), and so we can get rid of the synchronization in doneCopying() and we can safely
+        call startCopying() inside GCThread. This also means that we don't need to make CopyVisitor a
+        property of GCThread. Instead, GCThread just instantiates its own CopyVisitor when it needs to.
+
+        * heap/CopiedSpace.cpp:
+        (JSC::CopiedSpace::doneCopying):
+        * heap/GCThread.cpp:
+        (JSC::GCThread::GCThread):
+        (JSC::GCThread::slotVisitor):
+        (JSC::GCThread::waitForNextPhase):
+        (JSC::GCThread::gcThreadMain):
+        (JSC::GCThread::copyVisitor): Deleted.
+        * heap/GCThread.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::copyBackingStores):
+        (JSC::Heap::gatherStackRoots):
+
+2015-09-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unimplemented method Heap::showStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=149507
+
+        Reviewed by Darin Adler.
+
+        * heap/Heap.h:
+
+2015-09-23  Tim Horton  <timothy_horton@apple.com>
+
+        Hopefully fix the production build.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * PlatformWin.cmake:
+
 2015-09-23  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         [Streams API] Implement ReadableStream pipeThrough

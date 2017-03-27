@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2011, 2013, 2014 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2009, 2011, 2013-2015 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  *
  *  This library is free software; you can redistribute it and/or
@@ -31,6 +31,7 @@
 #include "FullGCActivityCallback.h"
 #include "GCActivityCallback.h"
 #include "GCIncomingRefCountedSetInlines.h"
+#include "HeapHelperPool.h"
 #include "HeapIterationScope.h"
 #include "HeapRootVisitor.h"
 #include "HeapStatistics.h"
@@ -52,6 +53,7 @@
 #include <algorithm>
 #include <wtf/RAMSize.h>
 #include <wtf/CurrentTime.h>
+#include <wtf/ParallelVectorIterator.h>
 #include <wtf/ProcessID.h>
 
 using namespace std;
@@ -59,7 +61,7 @@ using namespace JSC;
 
 namespace JSC {
 
-namespace { 
+namespace {
 
 static const size_t largeHeapSize = 32 * MB; // About 1.5X the average webpage.
 static const size_t smallHeapSize = 1 * MB; // Matches the FastMalloc per-thread cache.
@@ -336,7 +338,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_deprecatedExtraMemorySize(0)
     , m_machineThreads(this)
     , m_slotVisitor(*this)
-    , m_copyVisitor(*this)
     , m_handleSet(vm)
     , m_isSafeToCollect(false)
     , m_writeBarrierBuffer(256)
@@ -356,22 +357,8 @@ Heap::Heap(VM* vm, HeapType heapType)
 #if USE(CF)
     , m_delayedReleaseRecursionCount(0)
 #endif
+    , m_helperClient(&heapHelperPool())
 {
-    {
-        // Grab the lock so the new GC threads can be properly initialized before they start running.
-        std::unique_lock<Lock> lock(m_phaseMutex);
-        for (unsigned i = 1; i < Options::numberOfGCMarkers(); ++i) {
-            m_numberOfActiveGCThreads++;
-            GCThread* newThread = new GCThread(*this, std::make_unique<SlotVisitor>(*this), std::make_unique<CopyVisitor>(*this));
-            ThreadIdentifier threadID = createThread(GCThread::gcThreadStartFunc, newThread, "JavaScriptCore::Marking");
-            newThread->initializeThreadID(threadID);
-            m_gcThreads.append(newThread);
-        }
-        
-        // Wait for all the GCThreads to get to the right place.
-        m_activityConditionVariable.wait(lock, [this] { return !m_numberOfActiveGCThreads; });
-    }
-    
     m_storageSpace.init();
     if (Options::verifyHeap())
         m_verifier = std::make_unique<HeapVerifier>(this, Options::numberOfGCCyclesToRecordForVerification());
@@ -381,21 +368,6 @@ Heap::~Heap()
 {
     for (WeakBlock* block : m_logicallyEmptyWeakBlocks)
         WeakBlock::destroy(block);
-
-    // Destroy our marking threads.
-    {
-        std::lock_guard<Lock> markingLock(m_markingMutex);
-        std::lock_guard<Lock> phaseLock(m_phaseMutex);
-        ASSERT(m_currentPhase == NoPhase);
-        m_parallelMarkersShouldExit = true;
-        m_gcThreadsShouldWait = false;
-        m_currentPhase = Exit;
-        m_phaseConditionVariable.notifyAll();
-    }
-    for (unsigned i = 0; i < m_gcThreads.size(); ++i) {
-        waitForThreadCompletion(m_gcThreads[i]->threadID());
-        delete m_gcThreads[i];
-    }
 }
 
 bool Heap::isPagedOut(double deadline)
@@ -570,12 +542,41 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
 
     if (m_operationInProgress == FullCollection)
         m_opaqueRoots.clear();
-    {
-        std::lock_guard<Lock> lock(m_markingMutex);
-        m_parallelMarkersShouldExit = false;
-        startNextPhase(Mark);
-    }
+
+    m_shouldHashCons = m_vm->haveEnoughNewStringsToHashCons();
+
+    m_parallelMarkersShouldExit = false;
+
+    m_helperClient.setFunction(
+        [this] () {
+            SlotVisitor* slotVisitor;
+            {
+                LockHolder locker(m_parallelSlotVisitorLock);
+                if (m_availableParallelSlotVisitors.isEmpty()) {
+                    std::unique_ptr<SlotVisitor> newVisitor =
+                        std::make_unique<SlotVisitor>(*this);
+                    slotVisitor = newVisitor.get();
+                    m_parallelSlotVisitors.append(WTF::move(newVisitor));
+                } else
+                    slotVisitor = m_availableParallelSlotVisitors.takeLast();
+            }
+
+            WTF::registerGCThread();
+
+            {
+                ParallelModeEnabler parallelModeEnabler(*slotVisitor);
+                slotVisitor->didStartMarking();
+                slotVisitor->drainFromShared(SlotVisitor::SlaveDrain);
+            }
+
+            {
+                LockHolder locker(m_parallelSlotVisitorLock);
+                m_availableParallelSlotVisitors.append(slotVisitor);
+            }
+        });
+
     m_slotVisitor.didStartMarking();
+    
     HeapRootVisitor heapRootVisitor(m_slotVisitor);
 
     {
@@ -603,8 +604,7 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
         m_parallelMarkersShouldExit = true;
         m_markingConditionVariable.notifyAll();
     }
-    ASSERT(m_currentPhase == Mark);
-    endCurrentPhase();
+    m_helperClient.finish();
     updateObjectCounts(gcStartTime);
     resetVisitors();
 }
@@ -620,39 +620,51 @@ void Heap::copyBackingStores()
     }
 
     if (m_storageSpace.shouldDoCopyPhase()) {
-        {
-            LockHolder locker(m_copyLock);
-            if (m_operationInProgress == EdenCollection) {
-                // Reset the vector to be empty, but don't throw away the backing store.
-                m_blocksToCopy.shrink(0);
-                for (CopiedBlock* block = m_storageSpace.m_newGen.fromSpace->head(); block; block = block->next())
-                    m_blocksToCopy.append(block);
-            } else {
-                ASSERT(m_operationInProgress == FullCollection);
-                WTF::copyToVector(m_storageSpace.m_blockSet, m_blocksToCopy);
-            }
-            m_copyIndex = 0;
+        if (m_operationInProgress == EdenCollection) {
+            // Reset the vector to be empty, but don't throw away the backing store.
+            m_blocksToCopy.shrink(0);
+            for (CopiedBlock* block = m_storageSpace.m_newGen.fromSpace->head(); block; block = block->next())
+                m_blocksToCopy.append(block);
+        } else {
+            ASSERT(m_operationInProgress == FullCollection);
+            WTF::copyToVector(m_storageSpace.m_blockSet, m_blocksToCopy);
         }
-        
-        // We do this here so that we avoid a race condition where the main thread can 
-        // blow through all of the copying work before the GCThreads fully wake up. 
-        // The GCThreads then request a block from the CopiedSpace when the copying phase 
-        // has completed, which isn't allowed.
-        for (size_t i = 0; i < m_gcThreads.size(); i++)
-            m_gcThreads[i]->copyVisitor()->startCopying();
-        
-        startNextPhase(Copy);
-        
-        m_copyVisitor.startCopying();
-        m_copyVisitor.copyFromShared();
-        m_copyVisitor.doneCopying();
-        // We need to wait for everybody to finish and return their CopiedBlocks 
-        // before signaling that the phase is complete.
-        m_storageSpace.doneCopying();
-        ASSERT(m_currentPhase == Copy);
-        endCurrentPhase();
-    } else
-        m_storageSpace.doneCopying();
+
+        ParallelVectorIterator<Vector<CopiedBlock*>> iterator(
+            m_blocksToCopy, s_blockFragmentLength);
+
+        // Note that it's safe to use the [&] capture list here, even though we're creating a task
+        // that other threads run. That's because after runFunctionInParallel() returns, the task
+        // we have created is not going to be running anymore. Hence, everything on the stack here
+        // outlives the task.
+        m_helperClient.runFunctionInParallel(
+            [&] () {
+                CopyVisitor copyVisitor(*this);
+                
+                iterator.iterate(
+                    [&] (CopiedBlock* block) {
+                        if (!block->hasWorkList())
+                            return;
+                        
+                        CopyWorkList& workList = block->workList();
+                        for (CopyWorklistItem item : workList) {
+                            if (item.token() == ButterflyCopyToken) {
+                                JSObject::copyBackingStore(
+                                    item.cell(), copyVisitor, ButterflyCopyToken);
+                                continue;
+                            }
+                            
+                            item.cell()->methodTable()->copyBackingStore(
+                                item.cell(), copyVisitor, item.token());
+                        }
+                        
+                        ASSERT(!block->liveBytes());
+                        m_storageSpace.recycleEvacuatedBlock(block, m_operationInProgress);
+                    });
+            });
+    }
+    
+    m_storageSpace.doneCopying();
 }
 
 void Heap::gatherStackRoots(ConservativeRoots& roots, void* stackOrigin, void* stackTop, MachineThreads::RegisterState& calleeSavedRegisters)
@@ -878,8 +890,8 @@ void Heap::resetVisitors()
 {
     m_slotVisitor.reset();
 
-    for (GCThread* thread : m_gcThreads)
-        thread->slotVisitor()->reset();
+    for (auto& parallelVisitor : m_parallelSlotVisitors)
+        parallelVisitor->reset();
 
     ASSERT(m_sharedMarkStack.isEmpty());
     m_weakReferenceHarvesters.removeAll();
@@ -1540,45 +1552,25 @@ bool Heap::sweepNextLogicallyEmptyWeakBlock()
 size_t Heap::threadVisitCount()
 {       
     unsigned long result = 0;
-    for (unsigned i = 0; i < m_gcThreads.size(); ++i)
-        result += m_gcThreads[i]->slotVisitor()->visitCount();
+    for (auto& parallelVisitor : m_parallelSlotVisitors)
+        result += parallelVisitor->visitCount();
     return result;
 }
 
 size_t Heap::threadBytesVisited()
 {       
     size_t result = 0;
-    for (unsigned i = 0; i < m_gcThreads.size(); ++i)
-        result += m_gcThreads[i]->slotVisitor()->bytesVisited();
+    for (auto& parallelVisitor : m_parallelSlotVisitors)
+        result += parallelVisitor->bytesVisited();
     return result;
 }
 
 size_t Heap::threadBytesCopied()
 {       
     size_t result = 0;
-    for (unsigned i = 0; i < m_gcThreads.size(); ++i)
-        result += m_gcThreads[i]->slotVisitor()->bytesCopied();
+    for (auto& parallelVisitor : m_parallelSlotVisitors)
+        result += parallelVisitor->bytesCopied();
     return result;
-}
-
-void Heap::startNextPhase(GCPhase phase)
-{
-    std::lock_guard<Lock> lock(m_phaseMutex);
-    ASSERT(!m_gcThreadsShouldWait);
-    ASSERT(m_currentPhase == NoPhase);
-    m_gcThreadsShouldWait = true;
-    m_currentPhase = phase;
-    m_phaseConditionVariable.notifyAll();
-}
-
-void Heap::endCurrentPhase()
-{
-    ASSERT(m_gcThreadsShouldWait);
-    std::unique_lock<Lock> lock(m_phaseMutex);
-    m_currentPhase = NoPhase;
-    m_gcThreadsShouldWait = false;
-    m_phaseConditionVariable.notifyAll();
-    m_activityConditionVariable.wait(lock, [this] { return !m_numberOfActiveGCThreads; });
 }
 
 } // namespace JSC

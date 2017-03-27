@@ -22,7 +22,6 @@
 #include "JSTestCustomConstructorWithNoInterfaceObject.h"
 
 #include "JSDOMBinding.h"
-#include "TestCustomConstructorWithNoInterfaceObject.h"
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -83,7 +82,7 @@ public:
 const ClassInfo JSTestCustomConstructorWithNoInterfaceObjectConstructor::s_info = { "TestCustomConstructorWithNoInterfaceObjectConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCustomConstructorWithNoInterfaceObjectConstructor) };
 
 JSTestCustomConstructorWithNoInterfaceObjectConstructor::JSTestCustomConstructorWithNoInterfaceObjectConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
-    : DOMConstructorObject(structure, globalObject)
+    : Base(structure, globalObject)
 {
 }
 
@@ -106,7 +105,7 @@ ConstructType JSTestCustomConstructorWithNoInterfaceObjectConstructor::getConstr
 
 static const HashTableValue JSTestCustomConstructorWithNoInterfaceObjectPrototypeTableValues[] =
 {
-    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestCustomConstructorWithNoInterfaceObjectConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "constructor", DontEnum | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestCustomConstructorWithNoInterfaceObjectConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
 const ClassInfo JSTestCustomConstructorWithNoInterfaceObjectPrototype::s_info = { "TestCustomConstructorWithNoInterfaceObjectPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCustomConstructorWithNoInterfaceObjectPrototype) };

@@ -37,7 +37,12 @@ struct TestOptions {
     bool shouldShowWebView { false };
     bool useFlexibleViewport { false };
     bool useFixedLayout { false };
+    bool isSVGTest { false };
+    bool isHiDPITest { false };
+
     Vector<String> overrideLanguages;
+    
+    TestOptions(const std::string& pathOrURL);
 };
 
 }

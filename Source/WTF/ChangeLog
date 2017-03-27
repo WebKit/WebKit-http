@@ -1,3 +1,204 @@
+2015-09-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r190324.
+        https://bugs.webkit.org/show_bug.cgi?id=149671
+
+        Caused flaky crashes, rdar://problem/22916304 (Requested by ap
+        on #webkit).
+
+        Reverted changeset:
+
+        "ParallelHelperPool::runFunctionInParallel() shouldn't
+        allocate, and ParallelHelperPool.h shouldn't be included
+        everywhere"
+        https://bugs.webkit.org/show_bug.cgi?id=149635
+        http://trac.webkit.org/changeset/190324
+
+2015-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        ParallelHelperPool::runFunctionInParallel() shouldn't allocate, and ParallelHelperPool.h shouldn't be included everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=149635
+
+        Reviewed by Saam Barati.
+
+        * wtf/ParallelHelperPool.h:
+        (WTF::ParallelHelperClient::runFunctionInParallel): Stack-allocate the task instead of heap-allocating it.
+
+2015-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        GC copy phase spans too many files
+        https://bugs.webkit.org/show_bug.cgi?id=149586
+
+        Reviewed by Andreas Kling.
+
+        Extract the load balancing algorithm used by the GC's copy phase into a reusable template.
+        The GC copy phase now uses this.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/ParallelVectorIterator.h: Added.
+        (WTF::ParallelVectorIterator::ParallelVectorIterator):
+        (WTF::ParallelVectorIterator::iterate):
+
+2015-09-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix Windows build by adding WTF_EXPORT_PRIVATE in various places.
+
+        * wtf/ParallelHelperPool.h:
+        (WTF::ParallelHelperClient::setFunction):
+        (WTF::ParallelHelperPool::numberOfThreads):
+
+2015-09-24  Filip Pizlo  <fpizlo@apple.com>
+
+        VMs should share GC threads
+        https://bugs.webkit.org/show_bug.cgi?id=149433
+        rdar://problem/12859344
+
+        Reviewed by Geoffrey Garen.
+
+        This adds two major things to WTF: WeakRandom and ParallelHelperPool. WeakRandom was
+        already in JSC; we're just hoisting it into WTF. It's just a weak random number generator
+        that's suitable for places where you need just a tiny bit of randomness.
+
+        ParallelHelperPool is a new API that simplifies data-parallel algorithms like the JSC GC.
+        In a data-parallel algorithm, we want to run one task on as many cores as possible and let
+        the task worry about which subset of the input data to work on. In some cases, the
+        algorithm will not need to do any load balancing - and if load balancing is required, it's
+        up to the user. This is appropriate in contexts where the load balancing needs to be
+        custom-tuned for performance, like the GC's marking phase.
+
+        This new API has three concepts: task, client, and pool. A task is a reference counted
+        object with a run() method, which may be run in parallel. It is usually used to wrap a
+        functor. A pool is a pool of threads that can run things. A client is a placeholder for a
+        task. A client can have zero or one tasks. A client must be registered with a pool. When a
+        client has a task, the pool's threads may choose to run it. If a thread starts running a
+        task, it will run it to completion. When the task returns on any thread, the client takes
+        it to mean that the task should be removed. That means that any currently running instances
+        of the task will finish but no new threads will attempt to run the task. You can easily ask
+        a client to wait until a task finishes. You can also easily ask a client to run a task on
+        the current thread in addition to possibly some helper threads from the pool.
+
+        For some data-parallel algorithms, programming with ParallelHelperPool is as easy as:
+
+        client.runFunctionInParallel(
+            [=] () {
+                do things;
+            });
+
+        Note that you cannot tell ahead of time how many threads will join to help the task.
+        Threads may become available after the task has already started running. Those threads may
+        join after the other threads have already started. It's not advisable to make algorithmic
+        decisions based on client.numberOfActiveThreads(), since that number may change. Usually
+        the best way to use ParallelHelperPool is with an algorithm that has its own custom
+        worklist. An example of a very simple custom worklist is the one in the JSC GC's copying
+        phase - it's just a Vector and an index that indicates the next set of elements to process.
+
+        This new API was initially designed to simplify how GCThread works, by replacing Phase with
+        a callback that contains the phase's workload. I then realized that with a few tweaks, I
+        could make this somewhat general enough that it might become interesting outside GC. I also
+        realized that I could use this to enable thread sharing. So, although the API is kinda
+        quirky, it's grounded in the reality of how the JSC GC does parallelism.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/ParallelHelperPool.cpp: Added.
+        (WTF::ParallelHelperClient::ParallelHelperClient):
+        (WTF::ParallelHelperClient::~ParallelHelperClient):
+        (WTF::ParallelHelperClient::setTask):
+        (WTF::ParallelHelperClient::finish):
+        (WTF::ParallelHelperClient::doSomeHelping):
+        (WTF::ParallelHelperClient::runTaskInParallel):
+        (WTF::ParallelHelperClient::claimTask):
+        (WTF::ParallelHelperClient::runTask):
+        (WTF::ParallelHelperPool::ParallelHelperPool):
+        (WTF::ParallelHelperPool::~ParallelHelperPool):
+        (WTF::ParallelHelperPool::addThreads):
+        (WTF::ParallelHelperPool::ensureThreads):
+        (WTF::ParallelHelperPool::doSomeHelping):
+        (WTF::ParallelHelperPool::didMakeWorkAvailable):
+        (WTF::ParallelHelperPool::helperThreadBody):
+        (WTF::ParallelHelperPool::hasClientWithTask):
+        (WTF::ParallelHelperPool::getClientWithTask):
+        (WTF::ParallelHelperPool::waitForClientWithTask):
+        * wtf/ParallelHelperPool.h: Added.
+        (WTF::ParallelHelperClient::setFunction):
+        (WTF::ParallelHelperClient::runFunctionInParallel):
+        (WTF::ParallelHelperClient::pool):
+        (WTF::ParallelHelperClient::numberOfActiveThreads):
+        (WTF::ParallelHelperPool::numberOfThreads):
+        * wtf/SharedTask.h: Added.
+        (WTF::SharedTask::SharedTask):
+        (WTF::SharedTask::~SharedTask):
+        (WTF::SharedTaskFunctor::SharedTaskFunctor):
+        (WTF::createSharedTask):
+        * wtf/WeakRandom.h: Copied from Source/JavaScriptCore/runtime/WeakRandom.h.
+        (WTF::WeakRandom::WeakRandom):
+        (WTF::WeakRandom::initializeSeed):
+        (WTF::WeakRandom::seedUnsafe):
+        (WTF::WeakRandom::getUint32):
+        (WTF::WeakRandom::advance):
+        (JSC::WeakRandom::WeakRandom): Deleted.
+        (JSC::WeakRandom::seedUnsafe): Deleted.
+        (JSC::WeakRandom::getUint32): Deleted.
+        (JSC::WeakRandom::advance): Deleted.
+        (JSC::WeakRandom::initializeSeed): Deleted.
+
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up CMake build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=149573
+
+        Reviewed by Chris Dumez.
+
+        * wtf/PlatformMac.cmake:
+
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Switch to CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148111
+
+        Reviewed by Brent Fulgham.
+
+        * WTF.vcxproj/WTF.proj:
+
+2015-09-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Simplify Stopwatch::elapsedTime
+        https://bugs.webkit.org/show_bug.cgi?id=149538
+
+        Reviewed by Darin Adler.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::elapsedTime):
+        Simplify by not starting/stopping but just computing without updating members.
+
+2015-09-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix.
+
+        * wtf/FeatureDefines.h: Don't turn STREAMS_API on by default
+        on Windows.
+
+2015-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2015-09-23  Andy Estes  <aestes@apple.com>
+
+        Disable QuickLook on watchOS
+        https://bugs.webkit.org/show_bug.cgi?id=149508
+        <rdar://problem/22517968>
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+
 2015-09-22  Andy Estes  <aestes@apple.com>
 
         Disable QuickLook on tvOS

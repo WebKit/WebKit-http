@@ -248,6 +248,12 @@ typedef GenericCallback<const String&, double, bool> FontAtSelectionCallback;
 #if PLATFORM(IOS)
 typedef GenericCallback<const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t> GestureCallback;
 typedef GenericCallback<const WebCore::IntPoint&, uint32_t> TouchesCallback;
+struct NodeAssistanceArguments {
+    AssistedNodeInformation m_nodeInformation;
+    bool m_userIsInteracting;
+    bool m_blurPreviousNode;
+    RefPtr<API::Object> m_userData;
+};
 #endif
 
 #if PLATFORM(COCOA)
@@ -1057,7 +1063,9 @@ public:
     void didChangeBackgroundColor();
     void didLayoutForCustomContentProvider();
 
+    // For testing
     void clearWheelEventTestTrigger();
+    void callAfterNextPresentationUpdate(std::function<void (CallbackBase::Error)>);
 
     void didLayout(uint32_t layoutMilestones);
 
@@ -1182,7 +1190,7 @@ private:
     void reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>);
     void requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier);
 
-    void requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, bool audio, bool video, const Vector<String>& deviceUIDsVideo, const Vector<String>& deviceUIDsAudio);
+    void requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, const Vector<String>& audioDeviceUIDs, const Vector<String>& videoDeviceUIDs);
 
     void runModal();
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&);
@@ -1763,6 +1771,11 @@ private:
 #endif
 
     bool m_userContentExtensionsEnabled { true };
+
+#if PLATFORM(IOS)
+    bool m_hasDeferredStartAssistingNode { false };
+    std::unique_ptr<NodeAssistanceArguments> m_deferredNodeAssistanceArguments;
+#endif
 };
 
 } // namespace WebKit

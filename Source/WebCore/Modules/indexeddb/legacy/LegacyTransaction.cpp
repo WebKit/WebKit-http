@@ -28,7 +28,6 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "EventException.h"
 #include "EventQueue.h"
 #include "ExceptionCodePlaceholder.h"
 #include "IDBDatabase.h"
@@ -113,7 +112,7 @@ void LegacyTransaction::setError(PassRefPtr<DOMError> error, const String& error
     }
 }
 
-PassRefPtr<IDBObjectStore> LegacyTransaction::objectStore(const String& name, ExceptionCode& ec)
+RefPtr<IDBObjectStore> LegacyTransaction::objectStore(const String& name, ExceptionCode& ec)
 {
     if (m_state == Finished) {
         ec = IDBDatabaseException::InvalidStateError;

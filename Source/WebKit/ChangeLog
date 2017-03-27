@@ -1,3 +1,38 @@
+2015-09-28  Brady Eidson  <beidson@apple.com>
+
+        Add an IDB Server that can roundtrip a request back to the client.
+        https://bugs.webkit.org/show_bug.cgi?id=149603
+
+        Reviewed by Alex Christensen.
+
+        * Storage/WebDatabaseProvider.cpp:
+        (WebDatabaseProvider::idbConnectionToServerForSession):
+        * Storage/WebDatabaseProvider.h:
+
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up CMake build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=149573
+
+        Reviewed by Chris Dumez.
+
+        * PlatformMac.cmake:
+
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Switch to CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148111
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.proj:
+
+2015-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
 2015-09-21  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Unreviewed build fix.

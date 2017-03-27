@@ -45,6 +45,7 @@
 #include <runtime/StructureInlines.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/TypedArrays.h>
+#include <runtime/WriteBarrier.h>
 #include <wtf/Forward.h>
 #include <wtf/GetPtr.h>
 #include <wtf/Noncopyable.h>
@@ -52,6 +53,7 @@
 
 namespace JSC {
 class HashEntry;
+class JSFunction;
 }
 
 namespace WebCore {
@@ -101,6 +103,23 @@ protected:
     }
 };
 
+class DOMConstructorJSBuiltinObject : public DOMConstructorObject {
+public:
+    typedef DOMConstructorObject Base;
+
+protected:
+    DOMConstructorJSBuiltinObject(JSC::Structure* structure, JSDOMGlobalObject* globalObject)
+        : DOMConstructorObject(structure, globalObject) { }
+
+    static void visitChildren(JSC::JSCell*, JSC::SlotVisitor&);
+
+    JSC::JSFunction* initializeFunction() { return m_initializeFunction.get(); }
+    void setInitializeFunction(JSC::VM& vm, JSC::JSFunction& function) { m_initializeFunction.set(vm, this, &function); }
+
+private:
+    JSC::WriteBarrier<JSC::JSFunction> m_initializeFunction;
+};
+
 WEBCORE_EXPORT JSC::Structure* getCachedDOMStructure(JSDOMGlobalObject*, const JSC::ClassInfo*);
 WEBCORE_EXPORT JSC::Structure* cacheDOMStructure(JSDOMGlobalObject*, JSC::Structure*, const JSC::ClassInfo*);
 
@@ -128,6 +147,15 @@ template<typename WrapperClass> inline JSC::Structure* deprecatedGetDOMStructure
 template<typename WrapperClass> inline JSC::JSObject* getDOMPrototype(JSC::VM& vm, JSC::JSGlobalObject* globalObject)
 {
     return JSC::jsCast<JSC::JSObject*>(asObject(getDOMStructure<WrapperClass>(vm, JSC::jsCast<JSDOMGlobalObject*>(globalObject))->storedPrototype()));
+}
+
+void callFunctionWithCurrentArguments(JSC::ExecState&, JSC::JSObject& thisObject, JSC::JSFunction&);
+
+template<typename JSClass> inline JSC::EncodedJSValue createJSBuiltin(JSC::ExecState& state, JSC::JSFunction& initializeFunction, JSDOMGlobalObject& globalObject)
+{
+    JSC::JSObject* object = JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), &globalObject), &globalObject);
+    callFunctionWithCurrentArguments(state, *object, initializeFunction);
+    return JSC::JSValue::encode(object);
 }
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld& world, JSC::ArrayBuffer*)

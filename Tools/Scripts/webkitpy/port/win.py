@@ -123,7 +123,7 @@ class WinPort(ApplePort):
         return True
 
     def _path_to_apache(self):
-        httpdPath = "C:/xampp/apache/bin/httpd.exe"
+        httpdPath = os.path.join('C:', 'xampp', 'apache', 'bin', 'httpd.exe')
         if self._filesystem.exists(httpdPath):
             return httpdPath
         _log.error("Could not find apache. Not installed or unknown path.")
@@ -138,9 +138,6 @@ class WinPort(ApplePort):
     def _path_to_lighttpd_php(self):
         return "/usr/bin/php-cgi"
 
-    def _driver_tempdir_for_environment(self):
-        return cygpath(self._driver_tempdir())
-
     def test_search_path(self):
         test_fallback_names = [path for path in self.baseline_search_path() if not path.startswith(self._webkit_baseline_path('mac'))]
         return map(self._webkit_baseline_path, test_fallback_names)
@@ -153,8 +150,9 @@ class WinPort(ApplePort):
             self._filesystem.join(os.environ['PROGRAMFILES'], "Windows Kits", "8.0", "Debuggers", "x86", "ntsd.exe"),
             self._filesystem.join(os.environ['PROGRAMFILES'], "Windows Kits", "8.0", "Debuggers", "x64", "ntsd.exe"),
             self._filesystem.join(os.environ['PROGRAMFILES'], "Debugging Tools for Windows (x86)", "ntsd.exe"),
-            self._filesystem.join(os.environ['ProgramW6432'], "Debugging Tools for Windows (x64)", "ntsd.exe"),
             self._filesystem.join(os.environ['SYSTEMROOT'], "system32", "ntsd.exe")]
+        if 'ProgramW6432' in os.environ:
+            possible_paths.append(self._filesystem.join(os.environ['ProgramW6432'], "Debugging Tools for Windows (x64)", "ntsd.exe"))
         for path in possible_paths:
             expanded_path = self._filesystem.expanduser(path)
             if self._filesystem.exists(expanded_path):

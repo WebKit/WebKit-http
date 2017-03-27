@@ -1043,6 +1043,13 @@ sub determineIsWin64()
     $isWin64 = checkForArgumentAndRemoveFromARGV("--64-bit");
 }
 
+sub determineIsWin64FromArchitecture($)
+{
+    my $arch = shift;
+    $isWin64 = ($arch eq "x86_64");
+    return $isWin64;
+}
+
 sub isCygwin()
 {
     return ($^O eq "cygwin") || 0;
@@ -1393,7 +1400,7 @@ sub launcherName()
     } elsif (isAppleMacWebKit()) {
         return "Safari";
     } elsif (isAppleWinWebKit()) {
-        return "WinLauncher";
+        return "MiniBrowser";
     } elsif (isHaiku()) {
         return "HaikuLauncher";
     }
@@ -1870,6 +1877,8 @@ sub generateBuildSystemFromCMakeProject
         } else {
             push @args, "Ninja";
         }
+    } elsif (isAnyWindows() && isWin64()) {
+        push @args, '-G "Visual Studio 14 2015 Win64"';
     }
 
     # GTK+ has a production mode, but build-webkit should always use developer mode.

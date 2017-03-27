@@ -28,7 +28,6 @@
 #include "DOMObjectCache.h"
 #include "Element.h"
 #include "Event.h"
-#include "EventException.h"
 #include "EventTarget.h"
 #include "File.h"
 #include "HTMLElement.h"
@@ -104,8 +103,6 @@ WebKitDOMNode* wrap(Node* node)
         return WEBKIT_DOM_NODE(wrapDocumentType(static_cast<DocumentType*>(node)));
     case Node::DOCUMENT_FRAGMENT_NODE:
         return WEBKIT_DOM_NODE(wrapDocumentFragment(static_cast<DocumentFragment*>(node)));
-    case Node::XPATH_NAMESPACE_NODE:
-        break;
     }
 
     return wrapNode(node);

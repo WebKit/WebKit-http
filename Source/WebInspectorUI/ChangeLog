@@ -1,3 +1,126 @@
+2015-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Console completion suggestions should include properties on Object (hasOwnProperty, toString, etc)
+        https://bugs.webkit.org/show_bug.cgi?id=149649
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Base/Utilities.js:
+        (value):
+        Since keySets in this instance are often used as hash maps with the
+        `in` operator, create a blank object that won't have Object.prototype
+        functions that would be seen by `in`.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.receivedPropertyNames.compare):
+        Sort __defineGetter__ and __lookupGetter__ and friends last, since they
+        are rarely used properties.
+
+2015-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Missing completions for Symbol objects, console.error warning
+        https://bugs.webkit.org/show_bug.cgi?id=149641
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.getCompletions):
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.evaluated):
+        Include completions for symbol types.
+
+2015-09-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Hitting ESC while editing element tag name leaves element in bad state
+        https://bugs.webkit.org/show_bug.cgi?id=149506
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._startEditingTagName.editingCancelled):
+        (WebInspector.DOMTreeElement.prototype._startEditingTagName):
+        When cancelling editing of a tag name, revert any changes we had
+        been making to the closing tag name.
+
+2015-09-28  João Oliveira  <hello@jxs.pt>
+
+        Web Inspector: search shortcut in split console moves focus to search box, but doesn't show caret
+        https://bugs.webkit.org/show_bug.cgi?id=149223
+
+        Reviewed by Timothy Hatcher.
+
+        When pressing console find shortcut (CMD+F) SearchBar now checks if there's text on _searchInput
+        if so text is selected, if the textbox is empty, textbox gains focus.
+
+        * UserInterface/Views/SearchBar.js:
+        (WebInspector.SearchBar.prototype.focus):
+
+2015-09-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reloading the page causes the inspector tab to switch back to "Resources" tab
+        https://bugs.webkit.org/show_bug.cgi?id=148732
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._scriptsCleared):
+        Suppress selection of sibiling tree elements when removing extra folders.
+
+2015-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * WebInspectorUI.xcodeproj/project.pbxproj:
+
+2015-09-23  Saam barati  <sbarati@apple.com>
+
+        Fix broken inspector tests.
+
+        Reviewed by Joseph Pecoraro and Brian Burg.
+
+        We can't redeclare a "let" variable and "var" variable using the same
+        identifier at the top-level of a function.
+
+        * UserInterface/Test/InspectorProtocol.js:
+        (InspectorProtocol.sendCommand):
+        (InspectorProtocol.addEventListener):
+        (InspectorProtocol.dispatchMessageFromBackend):
+
+2015-09-23  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Don't use bind() when creating internal AST, instead, pass in "this" parameter to map()
+        https://bugs.webkit.org/show_bug.cgi?id=149483
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        (WebInspector.ScriptSyntaxTree):
+
+2015-09-23  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Type bubbles missing for computed methods and methods on object literals
+        https://bugs.webkit.org/show_bug.cgi?id=148562
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch makes sure that computed methods are working
+        for both classes and object literals. Also, methods now
+        work on object literals. This patch also cleans up the
+        "isGetterOrSetter" and "getterOrSetterRange" fields.
+        Basically, we used this as a way to ask the type profiler
+        for the return types of a function. Now, we just have
+        a field called "typeProfilingReturnDivot" that is set
+        on all functions so we don't need to conditionally ask
+        if it's a getter or setter.
+
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator.prototype._insertTypeToken):
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.functionReturnDivot):
+        (WebInspector.ScriptSyntaxTree.prototype._recurseArray):
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        (WebInspector.ScriptSyntaxTree):
+
 2015-09-22  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: The right sidebar always opens up on breakpoint

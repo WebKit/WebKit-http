@@ -1,3 +1,47 @@
+2015-09-25  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Incorrect position for windowless plugins.
+        https://bugs.webkit.org/show_bug.cgi?id=149524
+
+        Reviewed by Alex Christensen.
+
+        Only perform the device context transformation if the plugin is painting
+        directly into the GraphicsContext HDC. The previous check was not correct
+        in all cases.
+
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::paint):
+
+2015-09-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Support composited content in WebView render-to-context methods
+        https://bugs.webkit.org/show_bug.cgi?id=149516
+        <rdar://problem/22635080>
+
+        Reviewed by Simon Fraser.
+
+        * WebView.cpp:
+        (WebView::paint): Call the new 'paintCompositedContentToHDC' method. If
+        it handles the pain, return.
+        (WebView::paintCompositedContentToHDC): New method to share code with other
+        paint methods.
+        (WebView::paintDocumentRectToContext): Call new 'paintCompositedContentToHDC'
+        to handle any composited layers. Otherwise, use slow drawing path.
+        (WebView::paintScrollViewRectToContextAtPoint): Ditto.
+        * WebView.h:
+
+2015-09-24  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] NULL pointer crash when trying to use tiled backing for frame view.
+        https://bugs.webkit.org/show_bug.cgi?id=149523
+
+        Reviewed by Brent Fulgham.
+
+        For WinCairo, disable tiled backing for frame view.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::shouldUseTiledBackingForFrameView):
+
 2015-09-21  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Show tiled drawing debug overlay on Windows

@@ -1,3 +1,63 @@
+2015-09-29  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK][CMake] Warning about CMP0058
+        https://bugs.webkit.org/show_bug.cgi?id=149627
+
+        Reviewed by Martin Robinson.
+
+        Opt-in to the new behavior for CMP0058.
+
+        * CMakeLists.txt:
+
+2015-09-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix for internal systems.
+
+        * Source/cmake/OptionsWin.cmake: Preferentially use the build target
+        location for include and link libraries, rather than the system locations.
+
+2015-09-28  Alex Christensen  <achristensen@webkit.org>
+
+        Build WK1 with CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=149604
+
+        Reviewed by Chris Dumez.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitMacros.cmake:
+        ObjC bindings now have their own list of IDL files, but some of them still don't generate a .mm file.
+
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up CMake build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=149573
+
+        Reviewed by Chris Dumez.
+
+        * Source/cmake/OptionsMac.cmake:
+
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Switch to CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148111
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/WinTools.make: Added.
+        * Source/cmake/tools: Added.
+        * Source/cmake/tools/scripts: Copied from WebKitLibraries/win/tools/scripts.
+        * Source/cmake/tools/scripts/auto-version.pl: Copied from WebKitLibraries/win/tools/scripts/auto-version.pl.
+
+2015-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare internal AppleWin build for CMake
+        https://bugs.webkit.org/show_bug.cgi?id=149570
+
+        Reviewed by Brent Fulgham.
+
+        * Source/PlatformWin.cmake:
+        Include internal CMake files if they exist.
+
 2015-09-22  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
 
         Add a file of pointer-lock to cmake ports

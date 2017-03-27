@@ -1,3 +1,492 @@
+2015-09-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Build error with -DENABLE_SPELLCHECK=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=146904
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add ifdef guards to allow building when SPELLCHECK is not enabled.
+
+        * UIProcess/gtk/TextCheckerGtk.cpp:
+        (WebKit::TextChecker::isContinuousSpellCheckingAllowed):
+        (WebKit::TextChecker::setContinuousSpellCheckingEnabled):
+        (WebKit::TextChecker::setGrammarCheckingEnabled):
+        (WebKit::TextChecker::continuousSpellCheckingEnabledStateChanged):
+        (WebKit::TextChecker::grammarCheckingEnabledStateChanged):
+        (WebKit::TextChecker::checkSpellingOfString):
+        (WebKit::TextChecker::getGuessesForWord):
+        (WebKit::TextChecker::learnWord):
+        (WebKit::TextChecker::ignoreWord):
+        (WebKit::TextChecker::requestCheckingOfString):
+        (WebKit::TextChecker::checkTextOfParagraph):
+        (WebKit::TextChecker::setSpellCheckingLanguages):
+        (WebKit::TextChecker::loadedSpellCheckingLanguages):
+
+2015-09-30  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Support HiDPI Properly in WebKitGtk+ with the TextureMapper
+        https://bugs.webkit.org/show_bug.cgi?id=141782
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        * UIProcess/gtk/RedirectedXCompositeWindow.cpp:
+
+            Modified to create scaled size of window.
+
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::initialize):
+        (WebKit::LayerTreeHostGtk::deviceOrPageScaleFactorChanged):
+
+            We should apply device scale factor to the root layer to apply
+            the scale matrix before applying other transform matrices.
+
+        (WebKit::LayerTreeHostGtk::deviceScaleFactor): Added.
+        (WebKit::LayerTreeHostGtk::pageScaleFactor): Added.
+
+2015-09-29  Daniel Bates  <dabates@apple.com>
+
+        Make WebKit for iOS Simulator build with the public iOS 9 SDK
+        https://bugs.webkit.org/show_bug.cgi?id=149652
+
+        Reviewed by Simon Fraser.
+
+        * Platform/spi/ios/SafariServicesSPI.h: Add definition for SFSafariViewController.
+        * Platform/spi/ios/UIKitSPI.h: Add more SPI.
+        * WebProcess/cocoa/WebProcessCocoa.mm: Include header pthreadSPI.h.
+
+2015-09-29  Brady Eidson  <beidson@apple.com>
+
+        Followup to "Move WebKit2 AsyncTask to WebCore CrossThreadTask."
+        https://bugs.webkit.org/show_bug.cgi?id=149651
+
+        Rubberstamped by Alex Christensen.
+
+        * DatabaseProcess/DatabaseProcess.h: CrossThreadTask is in the WebCore namespace, not WebKit.
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h: Ditto.
+
+2015-09-29  Brady Eidson  <beidson@apple.com>
+
+        Move WebKit2 AsyncTask to WebCore CrossThreadTask.
+        https://bugs.webkit.org/show_bug.cgi?id=149651
+
+        Reviewed by Alex Christensen.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::ensureIndexedDatabaseRelativePathExists):
+        (WebKit::DatabaseProcess::postDatabaseTask):
+        (WebKit::DatabaseProcess::performNextDatabaseTask):
+        (WebKit::DatabaseProcess::fetchWebsiteData):
+        (WebKit::DatabaseProcess::deleteWebsiteData):
+        (WebKit::DatabaseProcess::deleteWebsiteDataForOrigins):
+        * DatabaseProcess/DatabaseProcess.h:
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::shutdown):
+        (WebKit::UniqueIDBDatabase::shutdownBackingStore):
+        (WebKit::UniqueIDBDatabase::getOrEstablishIDBDatabaseMetadata):
+        (WebKit::UniqueIDBDatabase::openBackingStoreAndReadMetadata):
+        (WebKit::UniqueIDBDatabase::openTransaction):
+        (WebKit::UniqueIDBDatabase::beginTransaction):
+        (WebKit::UniqueIDBDatabase::commitTransaction):
+        (WebKit::UniqueIDBDatabase::resetTransaction):
+        (WebKit::UniqueIDBDatabase::rollbackTransaction):
+        (WebKit::UniqueIDBDatabase::postTransactionOperation):
+        (WebKit::UniqueIDBDatabase::changeDatabaseVersion):
+        (WebKit::UniqueIDBDatabase::createObjectStore):
+        (WebKit::UniqueIDBDatabase::deleteObjectStore):
+        (WebKit::UniqueIDBDatabase::clearObjectStore):
+        (WebKit::UniqueIDBDatabase::createIndex):
+        (WebKit::UniqueIDBDatabase::deleteIndex):
+        (WebKit::UniqueIDBDatabase::putRecord):
+        (WebKit::UniqueIDBDatabase::getRecord):
+        (WebKit::UniqueIDBDatabase::openCursor):
+        (WebKit::UniqueIDBDatabase::cursorAdvance):
+        (WebKit::UniqueIDBDatabase::cursorIterate):
+        (WebKit::UniqueIDBDatabase::count):
+        (WebKit::UniqueIDBDatabase::deleteRange):
+        (WebKit::UniqueIDBDatabase::openBackingStoreTransaction):
+        (WebKit::UniqueIDBDatabase::beginBackingStoreTransaction):
+        (WebKit::UniqueIDBDatabase::commitBackingStoreTransaction):
+        (WebKit::UniqueIDBDatabase::resetBackingStoreTransaction):
+        (WebKit::UniqueIDBDatabase::rollbackBackingStoreTransaction):
+        (WebKit::UniqueIDBDatabase::changeDatabaseVersionInBackingStore):
+        (WebKit::UniqueIDBDatabase::createObjectStoreInBackingStore):
+        (WebKit::UniqueIDBDatabase::deleteObjectStoreInBackingStore):
+        (WebKit::UniqueIDBDatabase::clearObjectStoreInBackingStore):
+        (WebKit::UniqueIDBDatabase::createIndexInBackingStore):
+        (WebKit::UniqueIDBDatabase::deleteIndexInBackingStore):
+        (WebKit::UniqueIDBDatabase::putRecordInBackingStore):
+        (WebKit::UniqueIDBDatabase::getRecordFromBackingStore):
+        (WebKit::UniqueIDBDatabase::openCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::advanceCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::iterateCursorInBackingStore):
+        (WebKit::UniqueIDBDatabase::countInBackingStore):
+        (WebKit::UniqueIDBDatabase::deleteRangeInBackingStore):
+        (WebKit::UniqueIDBDatabase::postMainThreadTask):
+        (WebKit::UniqueIDBDatabase::performNextMainThreadTask):
+        (WebKit::UniqueIDBDatabase::postDatabaseTask):
+        (WebKit::UniqueIDBDatabase::performNextDatabaseTask):
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-09-29  Chris Dumez  <cdumez@apple.com>
+
+        Memory cache revalidations should refresh the network disk cache
+        https://bugs.webkit.org/show_bug.cgi?id=149606
+
+        Reviewed by Darin Adler.
+
+        Previously, resource revalidations triggered by the memory cache would
+        bypass the disk cache entirely because the requests are conditional. As
+        a result, when the server responds with a 304, we were unable to update
+        the headers (e.g. new expiration date) of the corresponding entry in
+        the disk cache.
+
+        This patch updates our disk cache implementation to not bypass the disk
+        cache when the request is conditional. Instead, we look up the cached
+        entry and force its revalidation from the network. If the server then
+        returns a 304, we are now able to update the headers of this cached
+        entry. In such case though, we let the 304 response through to WebCore
+        unlike revalidations triggered by the disk cache.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didReceiveResponseAsync):
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::makeUseDecision):
+        (WebKit::NetworkCache::makeRetrieveDecision):
+
+2015-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        printing does not use minimum page zoom factor
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+
+        Reviewed by Darin Adler.
+
+        Add kWKSnapshotOptionsPrinting flag to indicate the snapshot
+        should be generated in printing mode.
+
+        * Shared/API/c/WKImage.h:
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toSnapshotOptions):
+        * Shared/ImageOptions.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::numberOfPages): Pass the frame as a
+        reference instead of a pointer.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::scaledSnapshotWithOptions): In case of printing,
+        calculate the bitmap height based on the number of pages.
+        (WebKit::WebPage::snapshotAtSize): In case of printing, use
+        PrintContext::spoolAllPagesWithBoundaries() and return.
+
+2015-09-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Expose 'geometryFlipped' state for debugging/logging purposes
+        https://bugs.webkit.org/show_bug.cgi?id=149557
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::geometryFlipped): Added.
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+
+2015-09-28  Brady Eidson  <beidson@apple.com>
+
+        Add an IDB Server that can roundtrip a request back to the client.
+        https://bugs.webkit.org/show_bug.cgi?id=149603
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Databases/WebDatabaseProvider.h:
+
+2015-09-28  Beth Dakin  <bdakin@apple.com>
+
+        Heavy taps on links are sometimes interpreted as the preview gesture
+        https://bugs.webkit.org/show_bug.cgi?id=149304
+        -and corresponding-
+        rdar://problem/22689258
+
+        Rubber-stamped by Tim Horton.
+
+        Rolling out this patch. We should try to fix this at the UIKit-level.
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _interactionShouldBeginFromPreviewItemController:forPosition:]):
+        (-[WKContentView _interactionStoppedFromPreviewItemController:]):
+
+2015-09-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Expose a WKWebView API for allowing programmatic focus to trigger node assistance
+        https://bugs.webkit.org/show_bug.cgi?id=149567
+
+        Reviewed by Darin Adler.
+
+        Adds an API method to WKWebView that allows clients to override the default iOS behavior of not
+        starting node assistance when programmatically focusing. Also fixes a bug caused by naively
+        introducing the flag where the autofocus attribute could trigger node assistance before layout
+        occurs, causing an ASSERT to fail in EditorState::postLayoutData.
+
+        I fixed this issue by not assisting the node if the editor state is missing post layout data,
+        instead deferring node assistance until layout has occurred.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]): Initializes the new node assistance flag to NO, which
+            is the current default behavior.
+        (-[WKWebView canAssistOnProgrammaticFocus]):
+        (-[WKWebView setCanAssistOnProgrammaticFocus:]): New API method that allows clients to set node
+            assistance behavior upon programmatic focus.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]): Added new node assistance flag to configuration.
+        (-[WKWebViewConfiguration _canAssistOnProgrammaticFocus]):
+        (-[WKWebViewConfiguration _setCanAssistOnProgrammaticFocus:]):
+        * UIProcess/WebPageProxy.h: Added NodeAssistanceArguments struct.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _startAssistingNode:userIsInteracting:blurPreviousNode:userObject:]): Do not return
+            early if the node assistance flag is set to allow programmatic focus.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didCommitLayerTree): After committing the layer tree, if we have deferred
+            starting node assistance, immediately trigger node assistance.
+        (WebKit::WebPageProxy::startAssistingNode): Defer starting node assistance if we have not yet repainted.
+        (WebKit::WebPageProxy::stopAssistingNode): Also cancel any deferred node assistance.
+
+2015-09-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r188639): [GTK] Several inspector tests started to time out in GTK+ bots after r188639
+        https://bugs.webkit.org/show_bug.cgi?id=148569
+
+        Reviewed by Darin Adler.
+
+        * PlatformGTK.cmake: Add missing inspector files required for
+        layout tests.
+
+2015-09-25  Eric Carlson  <eric.carlson@apple.com>
+
+        Clean up user media request internal API
+        https://bugs.webkit.org/show_bug.cgi?id=149527
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/C/WKUserMediaPermissionRequest.cpp:
+        (WKUserMediaPermissionRequestVideoDeviceUIDs): New, renamed from WKUserMediaPermissionRequestDeviceNamesVideo.
+        (WKUserMediaPermissionRequestAudioDeviceUIDs): New, renamed from WKUserMediaPermissionRequestDeviceNamesAudio.
+        (WKUserMediaPermissionRequestAllowBest): Deleted.
+        (WKUserMediaPermissionRequestDeviceNamesVideo): Deleted.
+        (WKUserMediaPermissionRequestDeviceNamesAudio): Deleted.
+        (WKUserMediaPermissionRequestFirstVideoDeviceUID): Deleted.
+        (WKUserMediaPermissionRequestFirstAudioDeviceUID): Deleted.
+        * UIProcess/API/C/WKUserMediaPermissionRequest.h:
+
+        * UIProcess/API/gtk/WebKitUserMediaPermissionRequest.cpp:
+        (webkitUserMediaPermissionRequestAllow): Update for UserMediaRequest API change.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::createRequest): Get rid of the bool parameters.
+          Switch audio/video parameter order to be consistent with everywhere else.
+        (WebKit::UserMediaPermissionRequestManagerProxy::didReceiveUserMediaPermissionDecision): Ditto.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * UIProcess/UserMediaPermissionRequestProxy.cpp:
+        (WebKit::UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy): Get rid of the bool parameters.
+          Switch audio/video parameter order to be consistent with everywhere else.
+        (WebKit::UserMediaPermissionRequestProxy::allow): Switch audio/video parameter order.
+        (WebKit::UserMediaPermissionRequestProxy::getDeviceNameForUID): Deleted.
+        * UIProcess/UserMediaPermissionRequestProxy.h:
+        (WebKit::UserMediaPermissionRequestProxy::create):
+        (WebKit::UserMediaPermissionRequestProxy::videoDeviceUIDs):
+        (WebKit::UserMediaPermissionRequestProxy::audioDeviceUIDs):
+        (WebKit::UserMediaPermissionRequestProxy::firstAudioDeviceUID):
+        (WebKit::UserMediaPermissionRequestProxy::requiresAudio): Deleted.
+        (WebKit::UserMediaPermissionRequestProxy::requiresVideo): Deleted.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::requestUserMediaPermissionForFrame): Get rid of the bool parameters.
+          Switch audio/video parameter order to be consistent with everywhere else.
+        * UIProcess/WebPageProxy.h: Ditto.
+        * UIProcess/WebPageProxy.messages.in: Ditto.
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::startRequest): Get rid of bool params, the device
+          vectors have the same information.
+        (WebKit::UserMediaPermissionRequestManager::didReceiveUserMediaPermissionDecision): Switch audio/video
+          parameter order to be consistent with everywhere else. deviceUIDVideo -> videoDeviceUID,
+        deviceUIDAudio -> audioDeviceUID.
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didReceiveUserMediaPermissionDecision): Switch audio/video parameter order.
+        * WebProcess/WebPage/WebPage.h:
+
+2015-09-25  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Add viewport tests and fix runUIScript() timing issues
+        https://bugs.webkit.org/show_bug.cgi?id=149577
+
+        Reviewed by Tim Horton.
+        
+        When calling testRunner.runUIScript() from a page load event, the script could run
+        in the UI process before the current remote layer tree transaction had been handled
+        there. This meant that runUIScript() could query state which was about to change.
+        
+        Fix by delaying the execution of the UI script until a layer tree transaction has
+        been handled by the UI process, leveraging the existing DrawingAreaProxy::dispatchAfterEnsuringDrawing().
+        
+        This is done using a new C SPI function WKPageCallAfterNextPresentationUpdate(),
+        which is mirrored in the Obj-C SPI as -_doAfterNextPresentationUpdate:.
+        
+        Move WKWebView SPI which is testing-related into a WKTesting category. It is expected
+        that this will grow significantly.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageCallAfterNextPresentationUpdate):
+        * UIProcess/API/C/WKPagePrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::callAfterNextPresentationUpdate):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.h:
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.mm:
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::dispatchAfterEnsuringDrawing):
+
+2015-09-25  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Media tests start to time out after a few days of bot uptime
+        https://bugs.webkit.org/show_bug.cgi?id=149468
+
+        Reviewed by Darin Adler.
+
+        Make the fix work with WebKit2, and avoid touching user's media cache for WebKit1.
+
+        When UI process is not sandboxed, inherit DIRHELPER_USER_DIR_SUFFIX from it.
+        This means that during testing, WebContent uses a temporary directory of the form
+        /private/var/folders/.../T/WebKitTestRunner-VKjmz0/com.apple.WebKit.WebContent.Development,
+        instead of /private/var/folders/.../T/com.apple.WebKit.WebContent.Development+WebKitTestRunner.
+
+        WebKit1 now also better respects a temporary directory of the form
+        /private/var/folders/.../T/DumpRenderTree-VKjmz0, instead of the default, which
+        makes CoreMedia put its cache inside it.
+
+        As a result, almost everything is isolated per testing process, and deleted at the end.
+        Same with cache directories. The only outliers that I know of are plug-in directories,
+        which are per-process, but are not under the testing root, and thus aren't deleted.
+
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::PluginProcess::initializeSandbox):
+        * Shared/ChildProcessProxy.cpp:
+        (WebKit::ChildProcessProxy::fromConnection):
+        (WebKit::ChildProcessProxy::getLaunchOptions):
+        (WebKit::ChildProcessProxy::connect):
+        * Shared/ChildProcessProxy.h:
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm:
+        (WebKit::XPCServiceInitializerDelegate::getExtraInitializationData):
+        * Shared/SandboxInitializationParameters.h:
+        (WebKit::SandboxInitializationParameters::sandboxProfile):
+        (WebKit::SandboxInitializationParameters::setUserDirectorySuffix):
+        (WebKit::SandboxInitializationParameters::userDirectorySuffix):
+        (WebKit::SandboxInitializationParameters::setSystemDirectorySuffix): Deleted.
+        (WebKit::SandboxInitializationParameters::systemDirectorySuffix): Deleted.
+        * Shared/ios/ChildProcessIOS.mm:
+        (WebKit::ChildProcess::initializeSandbox):
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::ChildProcess::initializeSandbox):
+        * UIProcess/Databases/DatabaseProcessProxy.cpp:
+        (WebKit::DatabaseProcessProxy::getLaunchOptions):
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::getLaunchOptions):
+        * UIProcess/Plugins/PluginProcessProxy.cpp:
+        (WebKit::PluginProcessProxy::getLaunchOptions):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::getLaunchOptions):
+
+2015-09-25  Beth Dakin  <bdakin@apple.com>
+
+        Clicking on a data detected item inside a form control always pops up a map 
+        on force touch trackpad
+        https://bugs.webkit.org/show_bug.cgi?id=149559
+        -and corresponding-
+        rdar://problem/22826796
+
+        Reviewed by Tim Horton.
+
+        Look for Data Detected text for text nodes and HitTestResults that are over 
+        text inside form controls.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::performImmediateActionHitTestAtLocation):
+
+2015-09-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] ASSERTION FAILED: !m_inUpdateBackingStoreState in DrawingAreaImpl::display() after DrawingAreaImpl::forceRepaint()
+        https://bugs.webkit.org/show_bug.cgi?id=148956
+
+        Reviewed by Žan Doberšek.
+
+        This is because those tests call notifyDone in the onresize event
+        handler. InjectedBundlePage::dump() always calls WKBundlePageForceRepaint()
+        before dumping. When the view is resized DrawingAreaImpl::updateBackingStoreState()
+        is called, so if the size has changed the FrameView::resize()
+        method is called and all children are resized, so the onresize
+        handlers happen at that point, before the
+        m_inUpdateBackingStoreState is set to false again. For WTR we
+        could probably just return early from froceReapaint() when
+        m_inUpdateBackingStoreState is true, because in that case we know
+        the layout is updated because of the resize and the actual display
+        is not really needed. But the UI process can also request a force
+        repaint, so we could wait until the backing store update is done
+        and then force the repaint. For WTR it will happen after the
+        dump, but it shouldn't be a problem.
+
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::forceRepaint):
+        (WebKit::DrawingAreaImpl::updateBackingStoreState):
+        * WebProcess/WebPage/DrawingAreaImpl.h:
+
+2015-09-24  Tim Horton  <timothy_horton@apple.com>
+
+        Find hole drawn at subframe's 0x0 when a subframe find match is not rendered
+        https://bugs.webkit.org/show_bug.cgi?id=149543
+
+        Reviewed by Beth Dakin.
+
+        * WebProcess/WebPage/FindController.cpp:
+        (WebKit::FindController::rectsForTextMatches):
+        Don't add empty rects to the list. Later code will just inflate them
+        and end up drawing a nonsensical find hole.
+
+2015-09-24  Chris Dumez  <cdumez@apple.com>
+
+        Drop XPATH_NAMESPACE_NODE from Node::NodeType enum
+        https://bugs.webkit.org/show_bug.cgi?id=149532
+
+        Reviewed by Ryosuke Niwa.
+
+        Drop XPATH_NAMESPACE_NODE from Node::NodeType enum as there is currently
+        no way to construct such Node in WebKit. This avoid having to handle this
+        Node type everywhere.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
+        (WebKit::WKDOMNodeClass): Deleted.
+
+2015-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-09-23  Timothy Horton  <timothy_horton@apple.com>
+
+        Link highlight rect is too rounded on blocks with border-radius
+        https://bugs.webkit.org/show_bug.cgi?id=149511
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (nsSizeForTapHighlightBorderRadius):
+        (-[WKContentView _updateTapHighlight]):
+        Scale the border radius from content to view coordinates, just like
+        we do for the rects that WebKit returns us.
+
 2015-09-22  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
 
         Add a file of pointer-lock to cmake ports

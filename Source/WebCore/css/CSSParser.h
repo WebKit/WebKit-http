@@ -119,6 +119,7 @@ public:
     bool parseSupportsCondition(const String&);
 
     static ParseResult parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, CSSParserMode, StyleSheetContents*);
+    static ParseResult parseCustomPropertyValue(MutableStyleProperties*, const AtomicString& propertyName, const String&, bool important, CSSParserMode, StyleSheetContents* contextStyleSheet);
 
     static bool parseColor(RGBA32& color, const String&, bool strict = false);
     static bool isValidSystemColorValue(CSSValueID);
@@ -142,6 +143,8 @@ public:
     bool parseContent(CSSPropertyID, bool important);
     bool parseQuotes(CSSPropertyID, bool important);
     bool parseAlt(CSSPropertyID, bool important);
+    
+    bool parseCustomPropertyDeclaration(bool important);
     
     RefPtr<CSSValue> parseAttr(CSSParserValueList& args);
 
@@ -344,6 +347,8 @@ public:
     bool parseRegionThread(CSSPropertyID, bool important);
 
     bool parseFontVariantLigatures(bool important);
+    bool parseFontVariantNumeric(bool important);
+    bool parseFontVariantEastAsian(bool important);
 
     bool parseWillChange(bool important);
 
@@ -391,6 +396,7 @@ public:
 
     bool m_important;
     CSSPropertyID m_id;
+    AtomicString m_customPropertyName;
     StyleSheetContents* m_styleSheet;
     RefPtr<StyleRuleBase> m_rule;
     RefPtr<StyleKeyframe> m_keyframe;
@@ -461,6 +467,8 @@ public:
 
     Location currentLocation();
     static bool isCalculation(CSSParserValue&);
+
+    void setCustomPropertyName(const AtomicString& propertyName) { m_customPropertyName = propertyName; }
 
 private:
     bool is8BitSource() { return m_is8BitSource; }
@@ -751,6 +759,11 @@ inline UChar CSSParser::tokenStartChar()
     if (is8BitSource())
         return *m_tokenStart.ptr8;
     return *m_tokenStart.ptr16;
+}
+
+inline bool isCustomPropertyName(const String& propertyName)
+{
+    return propertyName.length() > 2 && propertyName.characterAt(0) == '-' && propertyName.characterAt(1) == '-';
 }
 
 inline int cssyylex(void* yylval, CSSParser* parser)

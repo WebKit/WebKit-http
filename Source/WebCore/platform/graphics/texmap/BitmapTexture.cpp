@@ -37,8 +37,7 @@ BitmapTexture::~BitmapTexture()
 {
 }
 
-
-void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag updateContentsFlag)
+void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag updateContentsFlag, float scale)
 {
     // Making an unconditionally unaccelerated buffer here is OK because this code
     // isn't used by any platforms that respect the accelerated bit.
@@ -53,7 +52,10 @@ void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* 
 
     IntRect sourceRect(targetRect);
     sourceRect.setLocation(offset);
-    context.translate(-offset.x(), -offset.y());
+    sourceRect.scale(1 / scale);
+    context.applyDeviceScaleFactor(scale);
+    context.translate(-sourceRect.x(), -sourceRect.y());
+
     sourceLayer->paintGraphicsLayerContents(context, sourceRect);
 
     RefPtr<Image> image = imageBuffer->copyImage(DontCopyBackingStore);

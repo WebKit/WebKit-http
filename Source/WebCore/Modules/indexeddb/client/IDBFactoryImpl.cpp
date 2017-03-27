@@ -28,12 +28,14 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "Document.h"
 #include "ExceptionCode.h"
 #include "IDBDatabaseIdentifier.h"
 #include "IDBOpenDBRequestImpl.h"
 #include "Logging.h"
 #include "Page.h"
 #include "SchemeRegistry.h"
+#include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 
 namespace WebCore {
@@ -58,29 +60,29 @@ static bool shouldThrowSecurityException(ScriptExecutionContext* context)
     return false;
 }
 
-Ref<IDBFactory> IDBFactory::create()
+Ref<IDBFactory> IDBFactory::create(IDBConnectionToServer& connection)
 {
-    return adoptRef(*new IDBFactory);
+    return adoptRef(*new IDBFactory(connection));
 }
 
-IDBFactory::IDBFactory()
+IDBFactory::IDBFactory(IDBConnectionToServer& connection)
+    : m_connectionToServer(connection)
 {
-
 }
 
-PassRefPtr<WebCore::IDBRequest> IDBFactory::getDatabaseNames(ScriptExecutionContext*, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBFactory::getDatabaseNames(ScriptExecutionContext*, ExceptionCode&)
 {
     return nullptr;
 }
 
-PassRefPtr<WebCore::IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext* context, const String& name, ExceptionCode& ec)
+RefPtr<WebCore::IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext* context, const String& name, ExceptionCode& ec)
 {
     LOG(IndexedDB, "IDBFactory::open");
     
     return openInternal(context, name, 0, ec).release();
 }
 
-PassRefPtr<WebCore::IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext* context, const String& name, unsigned long long version, ExceptionCode& ec)
+RefPtr<WebCore::IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext* context, const String& name, unsigned long long version, ExceptionCode& ec)
 {
     LOG(IndexedDB, "IDBFactory::open");
     
@@ -92,7 +94,7 @@ PassRefPtr<WebCore::IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext* c
     return openInternal(context, name, 0, ec).release();
 }
 
-RefPtr<IDBOpenDBRequest> IDBFactory::openInternal(ScriptExecutionContext* context, const String& name, unsigned long long, ExceptionCode& ec)
+RefPtr<IDBOpenDBRequest> IDBFactory::openInternal(ScriptExecutionContext* context, const String& name, unsigned long long version, ExceptionCode& ec)
 {
     if (name.isNull()) {
         ec = TypeError;
@@ -112,11 +114,11 @@ RefPtr<IDBOpenDBRequest> IDBFactory::openInternal(ScriptExecutionContext* contex
         return nullptr;
     }
 
-    auto request = IDBOpenDBRequest::create(context);
+    auto request = IDBOpenDBRequest::createOpenRequest(m_connectionToServer.get(), context, databaseIdentifier, version);
     return adoptRef(&request.leakRef());
 }
 
-PassRefPtr<WebCore::IDBOpenDBRequest> IDBFactory::deleteDatabase(ScriptExecutionContext* context, const String& name, ExceptionCode& ec)
+RefPtr<WebCore::IDBOpenDBRequest> IDBFactory::deleteDatabase(ScriptExecutionContext* context, const String& name, ExceptionCode& ec)
 {
     LOG(IndexedDB, "IDBFactory::deleteDatabase");
 
@@ -138,7 +140,9 @@ PassRefPtr<WebCore::IDBOpenDBRequest> IDBFactory::deleteDatabase(ScriptExecution
         return nullptr;
     }
 
-    auto request = IDBOpenDBRequest::create(context);
+    auto request = IDBOpenDBRequest::createDeleteRequest(m_connectionToServer.get(), context, databaseIdentifier);
+    m_connectionToServer->deleteDatabase(request.get());
+
     return adoptRef(&request.leakRef());
 }
 
