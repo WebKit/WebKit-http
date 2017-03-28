@@ -924,7 +924,7 @@ RefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
     return coreSubFrame;
 }
 
-ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, const String& originalMimeType, bool /*shouldPreferPlugInsForImages*/)
+ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, const String& originalMimeType)
 {
     CALLED();
     if (url.isEmpty() && !originalMimeType.length())

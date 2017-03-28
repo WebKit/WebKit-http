@@ -138,13 +138,13 @@ void ImageBuffer::draw(GraphicsContext& destContext, ColorSpace styleColorSpace,
     if (&destContext == &context() && destRect.intersects(srcRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
-        destContext.drawImage(copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, options);
+        destContext.drawImage(*copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, options);
     } else
-        destContext.drawImage(m_data.m_image.get(), styleColorSpace, destRect, srcRect, options);
+        destContext.drawImage(*m_data.m_image.get(), styleColorSpace, destRect, srcRect, options);
 }
 
 void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode)
+    const FloatPoint& phase, const FloatSize& size, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode)
 {
     if (!m_data.m_view)
         return;
@@ -153,9 +153,9 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& src
     if (&destContext == &context() && srcRect.intersects(destRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
-        copy->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
+        copy->drawPattern(destContext, srcRect, patternTransform, phase, size, styleColorSpace, op, destRect);
     } else
-        m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
+        m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, size, styleColorSpace, op, destRect);
 }
 
 void ImageBuffer::clip(GraphicsContext& context, const FloatRect& maskRect) const

@@ -83,7 +83,7 @@ void TextureMapperImageBuffer::drawTexture(const BitmapTexture& texture, const F
 #else
     context->concatCTM(matrix.toAffineTransform());
 #endif
-    context->drawImageBuffer(image, ColorSpaceDeviceRGB, targetRect);
+    context->drawImageBuffer(*image, ColorSpaceDeviceRGB, targetRect);
     context->restore();
 }
 

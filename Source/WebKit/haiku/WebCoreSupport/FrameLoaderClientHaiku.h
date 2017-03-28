@@ -207,7 +207,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL,
         const Vector<String>& paramNames, const Vector<String>& paramValues) override;
 
-    ObjectContentType objectContentType(const URL&, const String& mimeType, bool shouldPreferPlugInsForImages) override;
+    ObjectContentType objectContentType(const URL&, const String& mimeType) override;
 
     String overrideMediaType() const override;
 
