@@ -47,6 +47,7 @@
 #include "StyledElement.h"
 #include "WorkerThread.h"
 #include <wtf/FastMalloc.h>
+#include <wtf/SystemTracing.h>
 
 #if PLATFORM(COCOA)
 #include "ResourceUsageThread.h"
@@ -112,6 +113,8 @@ static void releaseCriticalMemory(Synchronous synchronous)
 
 void releaseMemory(Critical critical, Synchronous synchronous)
 {
+    TraceScope scope(MemoryPressureHandlerStart, MemoryPressureHandlerEnd, static_cast<uint64_t>(critical), static_cast<uint64_t>(synchronous));
+
     if (critical == Critical::Yes)
         releaseCriticalMemory(synchronous);
 
@@ -181,40 +184,6 @@ void logMemoryStatisticsAtTimeOfDeath()
     for (auto& it : *vm.heap.objectTypeCounts())
         RELEASE_LOG(MemoryPressure, "  %s: %d", it.key, it.value);
 #endif
-}
-
-void didExceedMemoryLimitAndFailedToRecover()
-{
-    RELEASE_LOG(MemoryPressure, "Crashing non-visible process due to excessive memory usage + inability to free up memory below panic threshold.");
-    logMemoryStatisticsAtTimeOfDeath();
-    CRASH();
-}
-
-bool processIsEligibleForMemoryKill()
-{
-    bool hasVisiblePages = false;
-    bool hasAudiblePages = false;
-    bool hasMainFrameNavigatedInTheLastHour = false;
-
-    auto now = MonotonicTime::now();
-    Page::forEachPage([&] (Page& page) {
-        if (page.isUtilityPage())
-            return;
-        if (page.isVisible())
-            hasVisiblePages = true;
-        if (page.activityState() & ActivityState::IsAudible)
-            hasAudiblePages = true;
-        if (auto timeOfLastCompletedLoad = page.mainFrame().timeOfLastCompletedLoad()) {
-            if (now - timeOfLastCompletedLoad <= Seconds::fromMinutes(60))
-                hasMainFrameNavigatedInTheLastHour = true;
-        }
-    });
-
-    bool eligible = !hasVisiblePages && !hasAudiblePages && !hasMainFrameNavigatedInTheLastHour;
-    if (!eligible)
-        RELEASE_LOG(MemoryPressure, "Process not eligible for panic memory kill. Reasons: hasVisiblePages=%u, hasAudiblePages=%u, hasMainFrameNavigatedInTheLastHour=%u", hasVisiblePages, hasAudiblePages, hasMainFrameNavigatedInTheLastHour);
-
-    return eligible;
 }
 
 #if !PLATFORM(COCOA)

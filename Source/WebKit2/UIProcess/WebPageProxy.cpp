@@ -384,15 +384,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_canRunModal(false)
     , m_isInPrintingMode(false)
     , m_isPerformingDOMPrintOperation(false)
-    , m_inDecidePolicyForResponseSync(false)
-    , m_decidePolicyForResponseRequest(0)
-    , m_syncMimeTypePolicyActionIsValid(false)
-    , m_syncMimeTypePolicyAction(PolicyUse)
-    , m_syncMimeTypePolicyDownloadID(0)
-    , m_inDecidePolicyForNavigationAction(false)
-    , m_syncNavigationActionPolicyActionIsValid(false)
-    , m_syncNavigationActionPolicyAction(PolicyUse)
-    , m_syncNavigationActionPolicyDownloadID(0)
     , m_processingMouseMoveEvent(false)
     , m_pageID(pageID)
     , m_sessionID(m_configuration->sessionID())
@@ -718,7 +709,6 @@ void WebPageProxy::reattachToWebProcess()
     ASSERT(m_process->state() == WebProcessProxy::State::Terminated);
 
     m_isValid = true;
-    m_wasTerminatedDueToResourceExhaustionWhileInBackground = false;
     m_process->removeWebPage(m_pageID);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
@@ -1531,13 +1521,8 @@ void WebPageProxy::dispatchActivityStateChange()
     m_activityStateChangeDispatcher->invalidate();
 #endif
 
-    if (!isValid()) {
-        if (m_potentiallyChangedActivityStateFlags & ActivityState::IsVisible && m_wasTerminatedDueToResourceExhaustionWhileInBackground) {
-            m_wasTerminatedDueToResourceExhaustionWhileInBackground = false;
-            processDidCrash();
-        }
+    if (!isValid())
         return;
-    }
 
     // If the visibility state may have changed, then so may the visually idle & occluded agnostic state.
     if (m_potentiallyChangedActivityStateFlags & ActivityState::IsVisible)
@@ -1823,7 +1808,7 @@ void WebPageProxy::didPerformDragControllerAction(uint64_t dragOperation, bool m
     m_currentDragOperation = static_cast<DragOperation>(dragOperation);
     m_currentDragIsOverFileInput = mouseIsOverFileInput;
     m_currentDragNumberOfFilesToBeAccepted = numberOfItemsToBeAccepted;
-    m_currentDragCaretRect = insertionRect;
+    setDragCaretRect(insertionRect);
 }
 
 #if PLATFORM(GTK)
@@ -1841,6 +1826,7 @@ void WebPageProxy::dragEnded(const IntPoint& clientPosition, const IntPoint& glo
     if (!isValid())
         return;
     m_process->send(Messages::WebPage::DragEnded(clientPosition, globalPosition, operation), m_pageID);
+    setDragCaretRect({ });
 }
     
 void WebPageProxy::dragCancelled()
@@ -1849,13 +1835,28 @@ void WebPageProxy::dragCancelled()
         m_process->send(Messages::WebPage::DragCancelled(), m_pageID);
 }
 
+void WebPageProxy::didEndDragging()
+{
+    resetCurrentDragInformation();
+}
+
 void WebPageProxy::resetCurrentDragInformation()
 {
     m_currentDragOperation = WebCore::DragOperationNone;
     m_currentDragIsOverFileInput = false;
     m_currentDragNumberOfFilesToBeAccepted = 0;
-    m_currentDragCaretRect = { };
+    setDragCaretRect({ });
 }
+
+#if !ENABLE(DATA_INTERACTION)
+
+void WebPageProxy::setDragCaretRect(const IntRect& dragCaretRect)
+{
+    m_currentDragCaretRect = dragCaretRect;
+}
+
+#endif
+
 #endif // ENABLE(DRAG_SUPPORT)
 
 void WebPageProxy::handleMouseEvent(const NativeWebMouseEvent& event)
@@ -2298,29 +2299,27 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
     DownloadID downloadID = { };
     if (action == PolicyDownload) {
         // Create a download proxy.
-        // FIXME: We should ensure that the downloadRequest is never empty.
-        const ResourceRequest& downloadRequest = m_decidePolicyForResponseRequest ? *m_decidePolicyForResponseRequest : ResourceRequest();
-        DownloadProxy* download = m_process->processPool().createDownloadProxy(downloadRequest);
+        DownloadProxy* download = m_process->processPool().createDownloadProxy(m_decidePolicyForResponseRequest);
         downloadID = download->downloadID();
         handleDownloadRequest(download);
+        m_decidePolicyForResponseRequest = { };
     }
 
     // If we received a policy decision while in decidePolicyForResponse the decision will
     // be sent back to the web process by decidePolicyForResponse.
-    if (m_inDecidePolicyForResponseSync) {
-        m_syncMimeTypePolicyActionIsValid = true;
-        m_syncMimeTypePolicyAction = action;
-        m_syncMimeTypePolicyDownloadID = downloadID;
+    if (m_responsePolicyReply) {
+        m_responsePolicyReply->send(action, downloadID);
+        ASSERT(!m_newNavigationID);
+        m_responsePolicyReply = nullptr;
         return;
     }
 
     // If we received a policy decision while in decidePolicyForNavigationAction the decision will 
     // be sent back to the web process by decidePolicyForNavigationAction. 
-    if (m_inDecidePolicyForNavigationAction) {
-        m_syncNavigationActionPolicyActionIsValid = true;
-        m_syncNavigationActionPolicyAction = action;
-        m_syncNavigationActionPolicyDownloadID = downloadID;
-        m_syncNavigationActionPolicyWebsitePolicies = websitePolicies;
+    if (m_navigationActionPolicyReply) {
+        m_navigationActionPolicyReply->send(m_newNavigationID, action, downloadID, websitePolicies);
+        m_newNavigationID = 0;
+        m_navigationActionPolicyReply = nullptr;
         return;
     }
     
@@ -2402,7 +2401,7 @@ void WebPageProxy::setCustomTextEncodingName(const String& encodingName)
     m_process->send(Messages::WebPage::SetCustomTextEncodingName(encodingName), m_pageID);
 }
 
-void WebPageProxy::terminateProcess(TerminationReason terminationReason)
+void WebPageProxy::terminateProcess()
 {
     // NOTE: This uses a check of m_isValid rather than calling isValid() since
     // we want this to run even for pages being closed or that already closed.
@@ -2411,7 +2410,6 @@ void WebPageProxy::terminateProcess(TerminationReason terminationReason)
 
     m_process->requestTermination();
     resetStateAfterProcessExited();
-    m_wasTerminatedDueToResourceExhaustionWhileInBackground = terminationReason == TerminationReason::ResourceExhaustionWhileInBackground;
 }
 
 SessionState WebPageProxy::sessionState(const std::function<bool (WebBackForwardListItem&)>& filter) const
@@ -3648,7 +3646,7 @@ void WebPageProxy::frameDidBecomeFrameSet(uint64_t frameID, bool value)
         m_frameSetLargestFrame = value ? m_mainFrame : 0;
 }
 
-void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const NavigationActionData& navigationActionData, uint64_t originatingFrameID, const SecurityOriginData& originatingFrameSecurityOrigin, const WebCore::ResourceRequest& originalRequest, const ResourceRequest& request, uint64_t listenerID, const UserData& userData, bool& receivedPolicyAction, uint64_t& newNavigationID, uint64_t& policyAction, DownloadID& downloadID, WebsitePolicies& websitePolicies)
+void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const NavigationActionData& navigationActionData, uint64_t originatingFrameID, const SecurityOriginData& originatingFrameSecurityOrigin, const WebCore::ResourceRequest& originalRequest, const ResourceRequest& request, uint64_t listenerID, const UserData& userData, Ref<Messages::WebPageProxy::DecidePolicyForNavigationAction::DelayedReply>&& reply)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -3664,28 +3662,26 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
 
     WebFrameProxy* originatingFrame = m_process->webFrame(originatingFrameID);
     
+    m_newNavigationID = 0;
     Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
     if (!navigationID && frame->isMainFrame()) {
         auto navigation = m_navigationState->createLoadRequestNavigation(request);
-        newNavigationID = navigation->navigationID();
+        m_newNavigationID = navigation->navigationID();
         listener->setNavigation(WTFMove(navigation));
     }
 
 #if ENABLE(CONTENT_FILTERING)
     if (frame->didHandleContentFilterUnblockNavigation(request)) {
-        receivedPolicyAction = true;
-        policyAction = PolicyIgnore;
+        reply->send(m_newNavigationID, PolicyIgnore, { }, { });
+        m_newNavigationID = 0;
         return;
     }
 #endif
 
-    ASSERT(!m_inDecidePolicyForNavigationAction);
-
-    m_inDecidePolicyForNavigationAction = true;
-    m_syncNavigationActionPolicyActionIsValid = false;
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     m_syncNavigationActionHasDownloadAttribute = !navigationActionData.downloadAttribute.isNull();
 #endif
+    m_navigationActionPolicyReply = WTFMove(reply);
 
     if (m_navigationClient) {
         RefPtr<API::FrameInfo> destinationFrameInfo;
@@ -3709,15 +3705,6 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         m_policyClient->decidePolicyForNavigationAction(*this, frame, navigationActionData, originatingFrame, originalRequest, request, WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
     m_shouldSuppressAppLinksInNextNavigationPolicyDecision = false;
-    m_inDecidePolicyForNavigationAction = false;
-
-    // Check if we received a policy decision already. If we did, we can just pass it back.
-    receivedPolicyAction = m_syncNavigationActionPolicyActionIsValid;
-    if (m_syncNavigationActionPolicyActionIsValid) {
-        policyAction = m_syncNavigationActionPolicyAction;
-        downloadID = m_syncNavigationActionPolicyDownloadID;
-        websitePolicies = m_syncNavigationActionPolicyWebsitePolicies;
-    }
 }
 
 void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, const NavigationActionData& navigationActionData, const ResourceRequest& request, const String& frameName, uint64_t listenerID, const UserData& userData)
@@ -3763,27 +3750,14 @@ void WebPageProxy::decidePolicyForResponse(uint64_t frameID, const SecurityOrigi
         m_policyClient->decidePolicyForResponse(*this, *frame, response, request, canShowMIMEType, WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPageProxy::decidePolicyForResponseSync(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, const ResourceResponse& response, const ResourceRequest& request, bool canShowMIMEType, uint64_t listenerID, const UserData& userData, bool& receivedPolicyAction, uint64_t& policyAction, DownloadID& downloadID)
+void WebPageProxy::decidePolicyForResponseSync(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, const ResourceResponse& response, const ResourceRequest& request, bool canShowMIMEType, uint64_t listenerID, const UserData& userData, Ref<Messages::WebPageProxy::DecidePolicyForResponseSync::DelayedReply>&& reply)
 {
     PageClientProtector protector(m_pageClient);
 
-    ASSERT(!m_inDecidePolicyForResponseSync);
-
-    m_inDecidePolicyForResponseSync = true;
-    m_decidePolicyForResponseRequest = &request;
-    m_syncMimeTypePolicyActionIsValid = false;
+    m_decidePolicyForResponseRequest = request;
+    m_responsePolicyReply = WTFMove(reply);
 
     decidePolicyForResponse(frameID, frameSecurityOrigin, response, request, canShowMIMEType, listenerID, userData);
-
-    m_inDecidePolicyForResponseSync = false;
-    m_decidePolicyForResponseRequest = 0;
-
-    // Check if we received a policy decision already. If we did, we can just pass it back.
-    receivedPolicyAction = m_syncMimeTypePolicyActionIsValid;
-    if (m_syncMimeTypePolicyActionIsValid) {
-        policyAction = m_syncMimeTypePolicyAction;
-        downloadID = m_syncMimeTypePolicyDownloadID;
-    }
 }
 
 void WebPageProxy::unableToImplementPolicy(uint64_t frameID, const ResourceError& error, const UserData& userData)

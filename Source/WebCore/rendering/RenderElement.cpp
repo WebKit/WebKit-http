@@ -114,6 +114,8 @@ inline RenderElement::RenderElement(ContainerNode& elementOrDocument, RenderStyl
     , m_renderBlockShouldForceRelayoutChildren(false)
     , m_renderBlockFlowHasMarkupTruncation(false)
     , m_renderBlockFlowLineLayoutPath(RenderBlockFlow::UndeterminedPath)
+    , m_isRegisteredForVisibleInViewportCallback(false)
+    , m_visibleInViewportState(VisibilityUnknown)
     , m_firstChild(nullptr)
     , m_lastChild(nullptr)
     , m_style(WTFMove(style))
@@ -132,28 +134,7 @@ RenderElement::RenderElement(Document& document, RenderStyle&& style, BaseTypeFl
 
 RenderElement::~RenderElement()
 {
-    if (hasInitializedStyle()) {
-        for (auto* bgLayer = &m_style.backgroundLayers(); bgLayer; bgLayer = bgLayer->next()) {
-            if (auto* backgroundImage = bgLayer->image())
-                backgroundImage->removeClient(this);
-        }
-        for (auto* maskLayer = &m_style.maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
-            if (auto* maskImage = maskLayer->image())
-                maskImage->removeClient(this);
-        }
-        if (auto* borderImage = m_style.borderImage().image())
-            borderImage->removeClient(this);
-        if (auto* maskBoxImage = m_style.maskBoxImage().image())
-            maskBoxImage->removeClient(this);
-        if (auto shapeValue = m_style.shapeOutside()) {
-            if (auto shapeImage = shapeValue->image())
-                shapeImage->removeClient(this);
-        }
-    }
-    if (m_hasPausedImageAnimations)
-        view().removeRendererWithPausedImageAnimations(*this);
-    if (isRegisteredForVisibleInViewportCallback())
-        view().unregisterForVisibleInViewportCallback(*this);
+    // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
 RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&& style, RendererCreationType creationType)
@@ -1127,8 +1108,7 @@ void RenderElement::willBeDestroyed()
 
     destroyLeftoverChildren();
 
-    if (isRegisteredForVisibleInViewportCallback())
-        unregisterForVisibleInViewportCallback();
+    unregisterForVisibleInViewportCallback();
 
     if (hasCounterNodeMap())
         RenderCounter::destroyCounterNodes(*this);
@@ -1145,6 +1125,27 @@ void RenderElement::willBeDestroyed()
 #endif
 
     clearLayoutRootIfNeeded();
+
+    if (hasInitializedStyle()) {
+        for (auto* bgLayer = &m_style.backgroundLayers(); bgLayer; bgLayer = bgLayer->next()) {
+            if (auto* backgroundImage = bgLayer->image())
+                backgroundImage->removeClient(this);
+        }
+        for (auto* maskLayer = &m_style.maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
+            if (auto* maskImage = maskLayer->image())
+                maskImage->removeClient(this);
+        }
+        if (auto* borderImage = m_style.borderImage().image())
+            borderImage->removeClient(this);
+        if (auto* maskBoxImage = m_style.maskBoxImage().image())
+            maskBoxImage->removeClient(this);
+        if (auto shapeValue = m_style.shapeOutside()) {
+            if (auto shapeImage = shapeValue->image())
+                shapeImage->removeClient(this);
+        }
+    }
+    if (m_hasPausedImageAnimations)
+        view().removeRendererWithPausedImageAnimations(*this);
 }
 
 void RenderElement::setNeedsPositionedMovementLayout(const RenderStyle* oldStyle)
@@ -1464,30 +1465,33 @@ static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const 
 
 void RenderElement::registerForVisibleInViewportCallback()
 {
-    if (isRegisteredForVisibleInViewportCallback())
+    if (m_isRegisteredForVisibleInViewportCallback)
         return;
-    setIsRegisteredForVisibleInViewportCallback(true);
+    m_isRegisteredForVisibleInViewportCallback = true;
 
     view().registerForVisibleInViewportCallback(*this);
 }
 
 void RenderElement::unregisterForVisibleInViewportCallback()
 {
-    if (!isRegisteredForVisibleInViewportCallback())
+    if (!m_isRegisteredForVisibleInViewportCallback)
         return;
-    setIsRegisteredForVisibleInViewportCallback(false);
+    m_isRegisteredForVisibleInViewportCallback = false;
 
     view().unregisterForVisibleInViewportCallback(*this);
 }
 
-void RenderElement::visibleInViewportStateChanged(VisibleInViewportState state)
+void RenderElement::setVisibleInViewportState(VisibleInViewportState state)
 {
-    if (state == visibleInViewportState())
+    if (state == m_visibleInViewportState)
         return;
-    setVisibleInViewportState(state);
+    m_visibleInViewportState = state;
+    visibleInViewportStateChanged();
+}
 
-    if (element())
-        element()->isVisibleInViewportChanged();
+void RenderElement::visibleInViewportStateChanged()
+{
+    ASSERT_NOT_REACHED();
 }
 
 void RenderElement::newImageAnimationFrameAvailable(CachedImage& image)

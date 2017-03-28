@@ -86,7 +86,6 @@
 #include "MainFrame.h"
 #include "MemoryCache.h"
 #include "MemoryRelease.h"
-#include "NoEventDispatchAssertion.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PageTransitionEvent.h"
@@ -1210,6 +1209,11 @@ static ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicyToApply(Frame& s
     return propagatedPolicy;
 }
 
+bool FrameLoader::isNavigationAllowed() const
+{
+    return m_pageDismissalEventBeingDispatched == PageDismissalType::None && NavigationDisabler::isNavigationAllowed();
+}
+
 void FrameLoader::loadURL(const FrameLoadRequest& frameLoadRequest, const String& referrer, FrameLoadType newLoadType, Event* event, FormState* formState)
 {
     if (m_inStopAllLoaders)
@@ -1248,7 +1252,7 @@ void FrameLoader::loadURL(const FrameLoadRequest& frameLoadRequest, const String
         return;
     }
 
-    if (m_pageDismissalEventBeingDispatched != PageDismissalType::None)
+    if (!isNavigationAllowed())
         return;
 
     NavigationAction action(request, newLoadType, isFormSubmission, event, frameLoadRequest.shouldOpenExternalURLsPolicy(), frameLoadRequest.downloadAttribute());
@@ -1453,7 +1457,7 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
 
     ASSERT(m_frame.view());
 
-    if (m_pageDismissalEventBeingDispatched != PageDismissalType::None)
+    if (!isNavigationAllowed())
         return;
 
     if (m_frame.document())
@@ -1648,7 +1652,7 @@ void FrameLoader::reload(OptionSet<ReloadOption> options)
 void FrameLoader::stopAllLoaders(ClearProvisionalItemPolicy clearProvisionalItemPolicy)
 {
     ASSERT(!m_frame.document() || m_frame.document()->pageCacheState() != Document::InPageCache);
-    if (m_pageDismissalEventBeingDispatched != PageDismissalType::None)
+    if (!isNavigationAllowed())
         return;
 
     // If this method is called from within this method, infinite recursion can occur (3442218). Avoid this.
@@ -1861,18 +1865,10 @@ void FrameLoader::commitProvisionalLoad()
 
         std::optional<HasInsecureContent> hasInsecureContent = cachedPage->cachedMainFrame()->hasInsecureContent();
 
-        {
-            // Do not dispatch DOM events as their JavaScript listeners could cause the page to be put
-            // into the page cache before we have finished restoring it from the page cache.
-            NoEventDispatchAssertion assertNoEventDispatch;
-
-            // FIXME: This API should be turned around so that we ground CachedPage into the Page.
-            cachedPage->restore(*m_frame.page());
-        }
+        // FIXME: This API should be turned around so that we ground CachedPage into the Page.
+        cachedPage->restore(*m_frame.page());
 
         dispatchDidCommitLoad(hasInsecureContent);
-
-        didRestoreFromCachedPage();
 
 #if PLATFORM(IOS)
         m_frame.page()->chrome().setDispatchViewportDataDidChangeSuppressed(false);
@@ -2104,31 +2100,6 @@ void FrameLoader::willRestoreFromCachedPage()
         DOMWindow* window = m_frame.document()->domWindow();
         window->setStatus(String());
         window->setDefaultStatus(String());
-    }
-}
-
-void FrameLoader::didRestoreFromCachedPage()
-{
-    // Dispatching JavaScript events can cause frame destruction.
-    auto& mainFrame = m_frame.page()->mainFrame();
-    Vector<Ref<Frame>> childFrames;
-    for (auto* child = mainFrame.tree().traverseNextInPostOrderWithWrap(true); child; child = child->tree().traverseNextInPostOrderWithWrap(false))
-        childFrames.append(*child);
-
-    for (auto& child : childFrames) {
-        if (!child->tree().isDescendantOf(&mainFrame))
-            continue;
-        auto* document = child->document();
-        if (!document)
-            continue;
-
-        // FIXME: Update Page Visibility state here.
-        // https://bugs.webkit.org/show_bug.cgi?id=116770
-        document->enqueuePageshowEvent(PageshowEventPersisted);
-
-        auto* historyItem = child->loader().history().currentItem();
-        if (historyItem && historyItem->stateObject())
-            document->enqueuePopstateEvent(historyItem->stateObject());
     }
 }
 
@@ -2985,7 +2956,7 @@ bool FrameLoader::shouldClose()
 
     bool shouldClose = false;
     {
-        NavigationDisablerForBeforeUnload navigationDisabler;
+        NavigationDisabler navigationDisabler;
         size_t i;
 
         for (i = 0; i < targetFrames.size(); i++) {
@@ -3063,14 +3034,15 @@ void FrameLoader::dispatchUnloadEvents(UnloadEventPolicy unloadEventPolicy)
         m_frame.document()->removeAllEventListeners();
 }
 
-static bool shouldAskForNavigationConfirmation(const BeforeUnloadEvent& event)
+static bool shouldAskForNavigationConfirmation(Document& document, const BeforeUnloadEvent& event)
 {
+    bool userDidInteractWithPage = document.topDocument().lastHandledUserGestureTimestamp() > 0;
     // Web pages can request we ask for confirmation before navigating by:
     // - Cancelling the BeforeUnloadEvent (modern way)
     // - Setting the returnValue attribute on the BeforeUnloadEvent to a non-empty string.
     // - Returning a non-empty string from the event handler, which is then set as returnValue
     //   attribute on the BeforeUnloadEvent.
-    return event.defaultPrevented() || !event.returnValue().isEmpty();
+    return userDidInteractWithPage && (event.defaultPrevented() || !event.returnValue().isEmpty());
 }
 
 bool FrameLoader::dispatchBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLoaderBeingNavigated)
@@ -3097,7 +3069,7 @@ bool FrameLoader::dispatchBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLo
     if (!beforeUnloadEvent->defaultPrevented())
         document->defaultEventHandler(beforeUnloadEvent.get());
 
-    if (!shouldAskForNavigationConfirmation(beforeUnloadEvent))
+    if (!shouldAskForNavigationConfirmation(*document, beforeUnloadEvent))
         return true;
 
     // If the navigating FrameLoader has already shown a beforeunload confirmation panel for the current navigation attempt,

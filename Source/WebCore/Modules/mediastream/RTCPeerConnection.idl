@@ -31,13 +31,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+typedef RTCRtpTransceiverDirection RtpTransceiverDirection;
+
 [
     Conditional=WEB_RTC,
     EnabledAtRuntime=PeerConnection
 ] dictionary RTCDataChannelInit {
     boolean ordered = true;
-    // FIXME 169644: rename to maxPacketLifeTime;
-    unsigned short maxRetransmitTime;
+    unsigned short maxPacketLifeTime;
     unsigned short maxRetransmits;
     USVString protocol = "";
     boolean negotiated = false;
@@ -50,7 +51,7 @@
     EnabledAtRuntime=PeerConnection,
     ImplementedAs=RTCRtpTransceiverInit
 ] dictionary RTCRtpTransceiverInit {
-    RTCRtpTransceiverDirection direction = "sendrecv";
+    RtpTransceiverDirection direction = "sendrecv";
     // FIXME 169662: missing streams
     // FIXME 169662: missing sendEncodings
 };
@@ -63,8 +64,7 @@
     ExportMacro=WEBCORE_EXPORT,
     JSBuiltinConstructor
 ] interface RTCPeerConnection : EventTarget {
-    // FIXME 169644: update Constructor to take optional RTCConfiguration
-    // Private initializer
+    // JS built-in constructor handles the optional RTCConfiguration
     [PrivateIdentifier, CallWith=Document, MayThrowException] void initializeWith(RTCConfiguration configuration);
 
 
@@ -73,32 +73,22 @@
     [JSBuiltin] Promise<RTCSessionDescriptionInit> createOffer(optional RTCOfferOptions offerOptions);
     [JSBuiltin] Promise<RTCSessionDescriptionInit> createAnswer(optional RTCAnswerOptions answerOptions);
 
-    // FIXME 169644: change to RTCSessionDescriptionInit
-    [JSBuiltin] Promise<void> setLocalDescription(RTCSessionDescription description);
-    // FIXME 169644: change to nullable
-    readonly attribute RTCSessionDescription localDescription;
-    // FIXME 169644: change to nullable
-    readonly attribute RTCSessionDescription currentLocalDescription;
-    // FIXME 169644: change to nullable
-    readonly attribute RTCSessionDescription pendingLocalDescription;
+    [JSBuiltin] Promise<void> setLocalDescription(RTCSessionDescriptionInit description);
+    readonly attribute RTCSessionDescription? localDescription;
+    readonly attribute RTCSessionDescription? currentLocalDescription;
+    readonly attribute RTCSessionDescription? pendingLocalDescription;
 
-    // FIXME 169644: change to RTCSessionDescriptionInit
-    [JSBuiltin] Promise<void> setRemoteDescription(RTCSessionDescription description);
-    // FIXME 169644: change to nullable
-    readonly attribute RTCSessionDescription remoteDescription;
-    // FIXME 169644: change to nullable
-    readonly attribute RTCSessionDescription currentRemoteDescription;
-    // FIXME 169644: change to nullable
-    readonly attribute RTCSessionDescription pendingRemoteDescription;
+    [JSBuiltin] Promise<void> setRemoteDescription(RTCSessionDescriptionInit description);
+    readonly attribute RTCSessionDescription? remoteDescription;
+    readonly attribute RTCSessionDescription? currentRemoteDescription;
+    readonly attribute RTCSessionDescription? pendingRemoteDescription;
 
-    // FIXME 169644: update parameter to (RTCIceCandidateInit or RTCIceCandidate)
-    [JSBuiltin] Promise<void> addIceCandidate(RTCIceCandidate candidate);
+    [JSBuiltin] Promise<void> addIceCandidate((RTCIceCandidateInit or RTCIceCandidate) candidate);
 
     readonly attribute RTCSignalingState signalingState;
     readonly attribute RTCIceGatheringState iceGatheringState;
     readonly attribute RTCIceConnectionState iceConnectionState;
-
-    // FIXME 169644: missing connectionState
+    readonly attribute RTCPeerConnectionState connectionState;
     // FIXME 169644: missing canTrickleIceCandidates
     // FIXME 169644: missing defaultIceServers
 
@@ -108,12 +98,11 @@
 
     attribute EventHandler onnegotiationneeded;
     attribute EventHandler onicecandidate;
-    // FIXME 169644: missing onicecandidateerror
     attribute EventHandler onsignalingstatechange;
     attribute EventHandler oniceconnectionstatechange;
     attribute EventHandler onicegatheringstatechange;
-    // FIXME 169644: missing onconnectionstatechanged
-    // FIXME 169644: missing onfingerprintfailure
+    attribute EventHandler onconnectionstatechange;
+    // FIXME 169644: missing onfingerprintfailure and onicecandidateerror
 
     // Private API used to implement the overloaded operations above. Queued functions are called by runQueuedOperation().
     // See RTCPeerConnectionInternals.js.
@@ -121,12 +110,7 @@
     [PrivateIdentifier] Promise<RTCSessionDescriptionInit> queuedCreateAnswer(optional RTCAnswerOptions answerOptions);
     [PrivateIdentifier] Promise<void> queuedSetLocalDescription(RTCSessionDescription description);
     [PrivateIdentifier] Promise<void> queuedSetRemoteDescription(RTCSessionDescription description);
-    [PrivateIdentifier] Promise<void> queuedAddIceCandidate(RTCIceCandidate candidate);
-
-
-    // 4.3.3.1 Legacy extensions supported
-    // JSBuiltin attributes above handles support of the extensions
-    // FIXME 169646: wrap legacy calls in runtime flag
+    [PrivateIdentifier] Promise<void> queuedAddIceCandidate(RTCIceCandidate? candidate);
 
 
     // 4.11 Certificate management
@@ -142,9 +126,7 @@
     [PrivateIdentifier, PublicIdentifier, MayThrowException] RTCRtpSender addTrack(MediaStreamTrack track, MediaStream... streams);
     [PrivateIdentifier, PublicIdentifier, MayThrowException] void removeTrack(RTCRtpSender sender);
 
-    // FIXME 169644: convert to (MediaStreamTrack or DOMString)
-    [MayThrowException] RTCRtpTransceiver addTransceiver(MediaStreamTrack track, optional RTCRtpTransceiverInit init);
-    [MayThrowException] RTCRtpTransceiver addTransceiver(DOMString kind, optional RTCRtpTransceiverInit init);
+    [MayThrowException] RTCRtpTransceiver addTransceiver((MediaStreamTrack or DOMString) track, optional RTCRtpTransceiverInit init);
 
     attribute EventHandler ontrack;
 
@@ -152,8 +134,7 @@
     // 6.1 Peer-to-peer data API
     // FIXME 169644: missing sctp
 
-    // FIXME 169644: convert to USVString
-    [CallWith=ScriptExecutionContext, MayThrowException] RTCDataChannel createDataChannel([TreatNullAs=EmptyString] DOMString label, optional RTCDataChannelInit options);
+    [CallWith=ScriptExecutionContext, MayThrowException] RTCDataChannel createDataChannel([TreatNullAs=EmptyString] USVString label, optional RTCDataChannelInit options);
     attribute EventHandler ondatachannel;
 
 

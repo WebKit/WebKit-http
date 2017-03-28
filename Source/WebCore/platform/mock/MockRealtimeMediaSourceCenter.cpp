@@ -72,27 +72,56 @@ void MockRealtimeMediaSourceCenter::validateRequestConstraints(ValidConstraintsH
     Vector<String> videoSourceIds;
     String invalidConstraint;
 
+    struct DeviceInfo {
+        unsigned fitnessScore;
+        String id;
+    };
+
+    struct {
+        bool operator()(const DeviceInfo& a, const DeviceInfo& b)
+        {
+            return a.fitnessScore < b.fitnessScore;
+        }
+    } sortBasedOnFitnessScore;
+
     if (audioConstraints.isValid()) {
-        auto audioSource = MockRealtimeAudioSource::create(MockRealtimeMediaSource::mockAudioSourceName(), nullptr);
-        if (!audioSource->supportsConstraints(audioConstraints, invalidConstraint)) {
+        Vector<DeviceInfo> deviceInfo;
+        for (const auto& device : MockRealtimeMediaSource::audioDevices()) {
+            auto audioSource = MockRealtimeAudioSource::create(device.label(), nullptr);
+            if (audioSource->supportsConstraints(audioConstraints, invalidConstraint))
+                deviceInfo.append({audioSource->fitnessScore(), device.persistentId()});
+        }
+
+        if (deviceInfo.isEmpty()) {
             if (invalidHandler)
                 invalidHandler(invalidConstraint);
             return;
         }
 
-        audioSourceIds.append(MockRealtimeMediaSource::mockAudioSourcePersistentID());
+        audioSourceIds.reserveInitialCapacity(deviceInfo.size());
+        std::sort(deviceInfo.begin(), deviceInfo.end(), sortBasedOnFitnessScore);
+        for (const auto& info : deviceInfo)
+            audioSourceIds.uncheckedAppend(info.id);
     }
 
     if (videoConstraints.isValid()) {
-        auto videoSource = MockRealtimeVideoSource::create(MockRealtimeMediaSource::mockVideoSourceName(), nullptr);
-        if (!videoSource->supportsConstraints(videoConstraints, invalidConstraint)) {
+        Vector<DeviceInfo> deviceInfo;
+        for (const auto& device : MockRealtimeMediaSource::videoDevices()) {
+            auto videoSource = MockRealtimeVideoSource::create(device.label(), nullptr);
+            if (videoSource->supportsConstraints(videoConstraints, invalidConstraint))
+                deviceInfo.append({videoSource->fitnessScore(), device.persistentId()});
+        }
+
+        if (deviceInfo.isEmpty()) {
             if (invalidHandler)
                 invalidHandler(invalidConstraint);
             return;
         }
 
-
-        videoSourceIds.append(MockRealtimeMediaSource::mockVideoSourcePersistentID());
+        videoSourceIds.reserveInitialCapacity(deviceInfo.size());
+        std::sort(deviceInfo.begin(), deviceInfo.end(), sortBasedOnFitnessScore);
+        for (const auto& info : deviceInfo)
+            videoSourceIds.uncheckedAppend(info.id);
     }
 
     validHandler(WTFMove(audioSourceIds), WTFMove(videoSourceIds));
@@ -103,16 +132,30 @@ void MockRealtimeMediaSourceCenter::createMediaStream(NewMediaStreamHandler comp
     Vector<Ref<RealtimeMediaSource>> audioSources;
     Vector<Ref<RealtimeMediaSource>> videoSources;
 
-    if (audioDeviceID == MockRealtimeMediaSource::mockAudioSourcePersistentID()) {
-        auto source = MockRealtimeAudioSource::create(MockRealtimeMediaSource::mockAudioSourceName(), audioConstraints);
-        if (source)
-            audioSources.append(source.releaseNonNull());
+    if (!audioDeviceID.isEmpty()) {
+        auto& audioDevices = MockRealtimeMediaSource::audioDevices();
+        if (audioDeviceID == audioDevices[0].persistentId()) {
+            auto source = MockRealtimeAudioSource::create(audioDevices[0].label(), audioConstraints);
+            if (source)
+                audioSources.append(source.releaseNonNull());
+        } else if (audioDeviceID == audioDevices[1].persistentId()) {
+            auto source = MockRealtimeAudioSource::create(audioDevices[1].label(), audioConstraints);
+            if (source)
+                audioSources.append(source.releaseNonNull());
+        }
     }
 
-    if (videoDeviceID == MockRealtimeMediaSource::mockVideoSourcePersistentID()) {
-        auto source = MockRealtimeVideoSource::create(MockRealtimeMediaSource::mockVideoSourceName(), videoConstraints);
-        if (source)
-            videoSources.append(source.releaseNonNull());
+    if (!videoDeviceID.isEmpty()) {
+        auto& videoDevices = MockRealtimeMediaSource::videoDevices();
+        if (videoDeviceID == videoDevices[0].persistentId()) {
+            auto source = MockRealtimeVideoSource::create(videoDevices[0].label(), videoConstraints);
+            if (source)
+                videoSources.append(source.releaseNonNull());
+        } else if (videoDeviceID == videoDevices[1].persistentId()) {
+            auto source = MockRealtimeVideoSource::create(videoDevices[1].label(), videoConstraints);
+            if (source)
+                videoSources.append(source.releaseNonNull());
+        }
     }
 
     if (videoSources.isEmpty() && audioSources.isEmpty())
@@ -125,8 +168,8 @@ Vector<CaptureDevice> MockRealtimeMediaSourceCenter::getMediaStreamDevices()
 {
     Vector<CaptureDevice> sources;
 
-    sources.append(MockRealtimeMediaSource::audioDeviceInfo());
-    sources.append(MockRealtimeMediaSource::videoDeviceInfo());
+    sources.appendVector(MockRealtimeMediaSource::audioDevices());
+    sources.appendVector(MockRealtimeMediaSource::videoDevices());
 
     return sources;
 }

@@ -1,3 +1,130 @@
+2017-03-27  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: misc memory testing
+        https://bugs.webkit.org/show_bug.cgi?id=170137
+
+        Reviewed by Keith Miller.
+
+        * wasm/assert.js: handle newlines in code we print out, avoid regex
+        * wasm/function-tests/memory-import-and-grow.js: Added.
+        (const.instantiate):
+        (const.test):
+        * wasm/function-tests/memory-section-and-import.js: Added.
+        (const.instantiate):
+
+2017-03-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use jsNontrivialString agressively for ToString(Int52)
+        https://bugs.webkit.org/show_bug.cgi?id=170002
+
+        Reviewed by Sam Weinig.
+
+        * stress/to-string-int52.js: Added.
+        (shouldBe):
+        (toString10):
+        (expected):
+
+2017-03-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG] Make addShouldSpeculateAnyInt more conservative to avoid regression caused by Double <-> Int52 conversions
+        https://bugs.webkit.org/show_bug.cgi?id=169998
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/int52-back-and-forth.js: Added.
+        (shouldBe):
+        (num):
+
+2017-03-23  Mark Lam  <mark.lam@apple.com>
+
+        Clients of JSArray::tryCreateForInitializationPrivate() should do their own null checks.
+        https://bugs.webkit.org/show_bug.cgi?id=169783
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-169783.js: Added.
+
+2017-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG] Propagate AnyIntAsDouble information carefully to utilize it in fixup
+        https://bugs.webkit.org/show_bug.cgi?id=169914
+
+        Reviewed by Saam Barati.
+
+        * stress/any-int-as-double-add.js: Added.
+        (shouldBe):
+        (test):
+        * stress/to-this-numbers.js: Added.
+        (shouldBe):
+        (Number.prototype.toThis):
+
+2017-03-22  Mark Lam  <mark.lam@apple.com>
+
+        Add support for Error.stackTraceLimit.
+        https://bugs.webkit.org/show_bug.cgi?id=169904
+
+        Reviewed by Saam Barati.
+
+        * stress/error-stack-trace-limit.js: Added.
+
+2017-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use jsNontrivialString for Number toString operations
+        https://bugs.webkit.org/show_bug.cgi?id=169965
+
+        Reviewed by Mark Lam.
+
+        * stress/to-string-int32.js: Added.
+        (shouldBe):
+        (toString10):
+        (expected):
+
+2017-03-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: test module namespace object for WebAssembly.Instance
+        https://bugs.webkit.org/show_bug.cgi?id=169951
+
+        Reviewed by Saam Barati.
+
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2017-03-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: constructors without new don't throw
+        https://bugs.webkit.org/show_bug.cgi?id=165995
+
+        Reviewed by Saam Barati.
+
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2017-03-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Number.prototype.toString on Int32 / Int52 / Double
+        https://bugs.webkit.org/show_bug.cgi?id=167454
+
+        Reviewed by Saam Barati.
+
+        * stress/number-to-string-abstract-operation.js: Added.
+        (shouldBe):
+        (int32ToString):
+        (shouldBe.int32ToString.new.Number.int52ToString):
+        (shouldBe.int32ToString.new.Number):
+        (shouldBe.doubleToString):
+        * stress/number-to-string-radix.js: Added.
+        (shouldBe):
+        (int32ToString):
+        (shouldBe.int32ToString.new.Number.int52ToString):
+        (shouldBe.int32ToString.new.Number):
+        (shouldBe.doubleToString):
+        * stress/number-to-string.js: Added.
+        (shouldBe):
+        (int32ToString):
+        (shouldBe.int32ToString.new.Number.int52ToString):
+        (shouldBe.int32ToString.new.Number):
+        (shouldBe.doubleToString):
+
 2017-03-19  Chris Dumez  <cdumez@apple.com>
 
         `const location = "foo"` throws in a worker

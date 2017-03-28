@@ -21,33 +21,31 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import errno
 import os
 import signal
 import time
 
 from webkitpy.port.server_process import ServerProcess
-from webkitpy.xcode.simulator import Simulator
 
 
 class SimulatorProcess(ServerProcess):
 
     class Popen(object):
 
-        def __init__(self, pid, stdin, stdout, stderr):
+        def __init__(self, pid, stdin, stdout, stderr, device):
             self.stdin = stdin
             self.stdout = stdout
             self.stderr = stderr
             self.pid = pid
             self.returncode = None
+            self._device = device
 
         def poll(self):
             if self.returncode:
                 return self.returncode
-            try:
-                os.kill(self.pid, 0)
-            except OSError, err:
-                assert err.errno == errno.ESRCH
+            if self._device.executive.check_running_pid(self.pid):
+                self.returncode = None
+            else:
                 self.returncode = 1
             return self.returncode
 
@@ -116,7 +114,7 @@ class SimulatorProcess(ServerProcess):
             stdin = open(self._in_path, 'w', 0)  # Opening with no buffering, like popen
         except:
             # We set self._proc as _reset() and _kill() depend on it.
-            self._proc = SimulatorProcess.Popen(self._pid, stdin, stdout, stderr)
+            self._proc = SimulatorProcess.Popen(self._pid, stdin, stdout, stderr, self._device)
             if self._proc.poll() is not None:
                 self._reset()
                 raise Exception('App {} crashed before stdin could be attached'.format(os.path.basename(self._cmd[0])))
@@ -125,12 +123,14 @@ class SimulatorProcess(ServerProcess):
             raise
         signal.alarm(0)  # Cancel alarm
 
-        self._proc = SimulatorProcess.Popen(self._pid, stdin, stdout, stderr)
+        self._proc = SimulatorProcess.Popen(self._pid, stdin, stdout, stderr, self._device)
 
     def stop(self, timeout_secs=3.0):
-        try:
-            os.kill(self._pid, signal.SIGTERM)
-        except OSError as err:
-            assert err.errno == errno.ESRCH
-            pass
+        if self._proc:
+            self._device.executive.kill_process(self._proc.pid)
         return super(SimulatorProcess, self).stop(timeout_secs)
+
+    def _kill(self):
+        self._device.executive.kill_process(self._proc.pid)
+        if self._proc.poll() is not None:
+            self._proc.wait()

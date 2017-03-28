@@ -140,6 +140,7 @@ static void resetStyleForNonRenderedDescendants(Element& current)
 
         if (child.needsStyleRecalc() || affectedByPreviousSibling) {
             child.resetComputedStyle();
+            child.resetStyleRelations();
             child.setHasValidStyle();
         }
 
@@ -168,7 +169,7 @@ static bool affectsRenderedSubtree(Element& element, const RenderStyle& newStyle
 ElementUpdate TreeResolver::resolveElement(Element& element)
 {
     if (m_didSeePendingStylesheet && !element.renderer() && !m_document.isIgnoringPendingStylesheets()) {
-        m_document.setHasNodesWithNonFinalStyle();
+        m_document.setHasNodesWithMissingStyle();
         return { };
     }
 
@@ -413,6 +414,7 @@ void TreeResolver::resolveComposedTree()
         bool shouldResolve = shouldResolveElement(element, parent.change) || affectedByPreviousSibling;
         if (shouldResolve) {
             element.resetComputedStyle();
+            element.resetStyleRelations();
 
             if (element.hasCustomStyleResolveCallbacks())
                 element.willRecalcStyle(parent.change);

@@ -311,7 +311,6 @@ webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-origin.htm [ F
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-preflight.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-preflight-2.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/simple-requests.htm [ Failure ]
-webkit.org/b/169565 imported/w3c/web-platform-tests/cors/simple-requests.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/status-preflight.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/status-async.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/304.htm [ Failure ]
@@ -707,9 +706,11 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
+webrtc/video-getParameters.html [ Failure ]
 webrtc/peer-connection-audio-mute2.html [ Pass Failure ]
 webrtc/peer-connection-remote-audio-mute2.html [ Pass Failure ]
 webrtc/peer-connection-remote-audio-mute.html [ Pass Failure ]
+webkit.org/b/170178 webrtc/video-replace-track-to-null.html [ Pass Failure ]
 fast/mediastream/getUserMedia-webaudio.html [ Skip ]
 fast/mediastream/RTCPeerConnection-closed-state.html [ Skip ]
 fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html [ Skip ]
@@ -1087,6 +1088,8 @@ fast/history/page-cache-with-opener.html [ Skip ]
 
 webkit.org/b/168238 imported/w3c/web-platform-tests/dom/events/EventListener-invoke-legacy.html [ Pass Failure ]
 
+webkit.org/b/170122 http/tests/preload/single_download_preload_headers_charset.php [ Pass Failure ]
+
 ########################################
 ### START OF -disabled tests
 
@@ -1225,6 +1228,9 @@ svg/custom/font-face-fallback.svg [ Skip ]
 
 # Test disabled until we can fix layout of orthogonal writing mode roots
 fast/table/colspanMinWidth-vertical.html [ Skip ]
+
+# Test only works on iOS WK2. webkit.org/b/165535
+fast/forms/range/range-remove-on-drag.html [ Skip ]
 
 ### END OF -disabled tests
 ########################################

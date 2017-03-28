@@ -63,6 +63,7 @@
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxyMessages.h"
 #include "WebResourceLoadStatisticsStoreMessages.h"
+#include "WebSocketStream.h"
 #include "WebsiteData.h"
 #include "WebsiteDataType.h"
 #include <JavaScriptCore/JSLock.h>
@@ -267,11 +268,12 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
         });
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200
         memoryPressureHandler.setShouldUsePeriodicMemoryMonitor(true);
-        memoryPressureHandler.setMemoryKillCallback([] () {
-            WebCore::didExceedMemoryLimitAndFailedToRecover();
-        });
-        memoryPressureHandler.setProcessIsEligibleForMemoryKillCallback([] () {
-            return WebCore::processIsEligibleForMemoryKill();
+        memoryPressureHandler.setMemoryKillCallback([this] () {
+            WebCore::logMemoryStatisticsAtTimeOfDeath();
+            if (MemoryPressureHandler::singleton().processState() == WebsamProcessState::Active)
+                parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedActiveMemoryLimit(), 0);
+            else
+                parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedInactiveMemoryLimit(), 0);
         });
 #endif
         memoryPressureHandler.setMemoryPressureStatusChangedCallback([this](bool isUnderMemoryPressure) {
@@ -1124,6 +1126,7 @@ void WebProcess::networkProcessConnectionClosed(NetworkProcessConnection* connec
     logDiagnosticMessageForNetworkProcessCrash();
 
     m_webLoaderStrategy.networkProcessCrashed();
+    WebSocketStream::networkProcessCrashed();
 }
 
 WebLoaderStrategy& WebProcess::webLoaderStrategy()

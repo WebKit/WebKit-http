@@ -556,8 +556,6 @@ webkit.org/b/159447 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-ent
 
 webkit.org/b/167607 [ Debug ] http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts.html [ Pass Timeout ]
 
-webkit.org/b/159430 [ Debug Sierra+ ] media/restore-from-page-cache.html [ Pass Crash ]
-
 webkit.org/b/159884 http/tests/loading/basic-auth-resend-wrong-credentials.html [ Pass Failure ]
 
 webkit.org/b/159896 storage/indexeddb/modern/handle-user-delete.html [ Pass Timeout ]
@@ -645,32 +643,6 @@ webkit.org/b/168380 [ ElCapitan Debug ] imported/w3c/web-platform-tests/IndexedD
 # Skipped because Mac doesn't have a key to show the context menu
 fast/events/context-activated-by-key-event.html [ Skip ]
 
-# <rdar://problem/30735372>
-[ Release ] fast/events/constructors/media-stream-event-constructor.html [ Skip ]
-[ Release ] fast/mediastream/RTCIceCandidate.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-add-removeTrack.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-addTransceiver.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-createAnswer.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-createOffer.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-datachannel.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-getConfiguration.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-have-local-offer.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-have-local-pranswer.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-have-remote-offer.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-have-remote-pranswer.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-inspect-answer.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-inspect-offer.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-localDescription.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-overloaded-operations.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-remoteDescription.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection-stable.html [ Skip ]
-[ Release ] fast/mediastream/RTCPeerConnection.html [ Skip ]
-[ Release ] fast/mediastream/RTCSessionDescription.html [ Skip ]
-[ Release ] fast/mediastream/RTCTrackEvent-constructor.html [ Skip ]
-[ Release ] imported/w3c/web-platform-tests/webrtc/RTCDataChannelEvent-constructor.html [ Skip ]
-[ Release ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnectionIceEvent-constructor.html [ Skip ]
-[ Release ] imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor.html [ Skip ]
-[ Release ] imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Skip ]
 [ Release ] js/dom/global-constructors-attributes.html [ Skip ]
 
 webkit.org/b/168933 fast/regions/inline-block-inside-anonymous-overflow-with-covered-controls.html [ Pass ImageOnlyFailure ]

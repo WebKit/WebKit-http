@@ -88,7 +88,11 @@ void LibWebRTCProvider::callOnWebRTCSignalingThread(Function<void()>&& callback)
 static void initializePeerConnectionFactoryAndThreads()
 {
 #if defined(NDEBUG)
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
+    rtc::LogMessage::LogToDebug(LogWebRTC.state != WTFLogChannelOn ? rtc::LS_NONE : rtc::LS_INFO);
+#else
     rtc::LogMessage::LogToDebug(rtc::LS_NONE);
+#endif
 #else
     if (LogWebRTC.state != WTFLogChannelOn)
         rtc::LogMessage::LogToDebug(rtc::LS_WARNING);
@@ -170,17 +174,25 @@ rtc::scoped_refptr<webrtc::PeerConnectionInterface> LibWebRTCProvider::createPee
 
     return createActualPeerConnection(observer, WTFMove(portAllocator));
 }
+
+static inline bool isNullFunctionPointer(void* functionPointer)
+{
+    void* result;
+    asm(
+        "mov %1, %0"
+        : "=r" (result)
+        : "r" (functionPointer)
+    );
+    return !result;
+}
+
 #endif // USE(LIBWEBRTC)
 
 bool LibWebRTCProvider::webRTCAvailable()
 {
 #if USE(LIBWEBRTC)
     static bool available = [] {
-        void* libwebrtcLibrary = dlopen("libwebrtc.dylib", RTLD_LAZY);
-        if (!libwebrtcLibrary)
-            return false;
-        dlclose(libwebrtcLibrary);
-        return true;
+        return !isNullFunctionPointer(reinterpret_cast<void*>(rtc::LogMessage::LogToDebug));
     }();
     return available;
 #else

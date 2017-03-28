@@ -1,3 +1,40 @@
+2017-03-25  David Kilzer  <ddkilzer@apple.com>
+
+        [Bugzilla] Add a checkbox to add self to the CC list when creating or editing an attachment
+        <https://webkit.org/b/124047>
+
+        Original patch by Csaba Osztrogonác.
+
+        Reviewed by Daniel Bates.
+
+        * template/en/default/attachment/reviewform.html.tmpl:
+        Add template for "Add me to CC list" by default.  This
+        adds the reviewer to the CC list whether the "Preview"
+        or "Publish" button is used.  Only the "Preview" button
+        allows the checkbox to be unchecked, though.
+
+2017-03-23  David Kilzer  <ddkilzer@apple.com>
+
+        Fix Apache::SizeLimit unshared size limit in mod_perl.pl for bugs.webkit.org
+        <https://webkit.org/b/169926>
+
+        Reviewed by Brent Fulgham.
+
+        * mod_perl.pl: Update syntax for setting unshared size
+        limit, and bump it up another 100 Mb so children don't
+        respawn as quickly.
+
+2017-03-21  David Kilzer  <ddkilzer@apple.com>
+
+        Commit local changes for Bugzilla 5.0.3
+
+        * images/favicon.ico: Update favicon from Dec 11, 2015.
+        * data/params.json: Deleted.
+
+2017-03-21  David Kilzer  <ddkilzer@apple.com>
+
+        Upgrade to Bugzilla 5.0.3.
+
 2017-02-01  Joseph Pecoraro  <pecoraro@apple.com>
 
         Patch Details: EWS Bubbles wrap on Patch Details page

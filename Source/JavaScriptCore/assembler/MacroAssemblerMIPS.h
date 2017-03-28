@@ -1538,6 +1538,12 @@ public:
         return branch32(cond, dataTempRegister, immTempRegister);
     }
 
+    Jump branchPtr(RelationalCondition cond, BaseIndex left, RegisterID right)
+    {
+        load32(left, dataTempRegister);
+        return branch32(cond, dataTempRegister, right);
+    }
+
     Jump branch32(RelationalCondition cond, RegisterID left, RegisterID right)
     {
         if (cond == Equal)
@@ -2993,6 +2999,11 @@ public:
     {
         move(TrustedImm32(reason), dataTempRegister);
         breakpoint();
+    }
+
+    void storeFence()
+    {
+        m_assembler.sync();
     }
 
     void abortWithReason(AbortReason reason, intptr_t misc)

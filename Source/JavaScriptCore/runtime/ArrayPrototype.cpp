@@ -967,6 +967,20 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSlice(ExecState* exec)
     return JSValue::encode(result);
 }
 
+template<bool needToFillHolesManually>
+inline bool copySplicedArrayElements(ExecState* exec, ThrowScope& scope, JSObject* result, JSObject* thisObj, unsigned actualStart, unsigned actualDeleteCount)
+{
+    VM& vm = scope.vm();
+    for (unsigned k = 0; k < actualDeleteCount; ++k) {
+        JSValue v = getProperty(exec, thisObj, k + actualStart);
+        RETURN_IF_EXCEPTION(scope, false);
+        if (UNLIKELY(!v && !needToFillHolesManually))
+            continue;
+        result->initializeIndex(vm, k, v);
+    }
+    return true;
+}
+
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
 {
     // 15.4.4.12
@@ -1042,15 +1056,25 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
             }
         } else {
             result = JSArray::tryCreateForInitializationPrivate(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), actualDeleteCount);
-            if (!result)
-                return JSValue::encode(throwOutOfMemoryError(exec, scope));
-            
-            for (unsigned k = 0; k < actualDeleteCount; ++k) {
-                JSValue v = getProperty(exec, thisObj, k + actualStart);
-                RETURN_IF_EXCEPTION(scope, encodedJSValue());
-                if (UNLIKELY(!v))
-                    continue;
-                result->initializeIndex(vm, k, v);
+            if (UNLIKELY(!result)) {
+                throwOutOfMemoryError(exec, scope);
+                return encodedJSValue();
+            }
+
+            // The result can have an ArrayStorage indexing type if we're having a bad time.
+            bool isArrayStorage = hasAnyArrayStorage(result->indexingType());
+            bool success = false;
+            if (UNLIKELY(isArrayStorage)) {
+                static const bool needToFillHolesManually = true;
+                success = copySplicedArrayElements<needToFillHolesManually>(exec, scope, result, thisObj, actualStart, actualDeleteCount);
+            } else {
+                ASSERT(hasUndecided(result->indexingType()));
+                static const bool needToFillHolesManually = false;
+                success = copySplicedArrayElements<needToFillHolesManually>(exec, scope, result, thisObj, actualStart, actualDeleteCount);
+            }
+            if (UNLIKELY(!success)) {
+                ASSERT(scope.exception());
+                return encodedJSValue();
             }
         }
     }
@@ -1303,7 +1327,12 @@ EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncConcatMemcpy(ExecState* exec)
         return JSValue::encode(result);
     }
 
-    Structure* resultStructure = exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(type);
+    JSGlobalObject* lexicalGlobalObject = exec->lexicalGlobalObject();
+    Structure* resultStructure = lexicalGlobalObject->arrayStructureForIndexingTypeDuringAllocation(type);
+    if (UNLIKELY(hasAnyArrayStorage(resultStructure->indexingType())))
+        return JSValue::encode(jsNull());
+
+    ASSERT(!lexicalGlobalObject->isHavingABadTime());
     JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, resultStructure, resultSize);
     if (UNLIKELY(!result)) {
         throwOutOfMemoryError(exec, scope);

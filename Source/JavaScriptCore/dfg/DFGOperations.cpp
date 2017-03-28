@@ -1644,6 +1644,75 @@ JSString* JIT_OPERATION operationToLowerCase(ExecState* exec, JSString* string, 
     return jsString(exec, lowercasedString);
 }
 
+char* JIT_OPERATION operationInt32ToString(ExecState* exec, int32_t value, int32_t radix)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (radix < 2 || radix > 36) {
+        throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("toString() radix argument must be between 2 and 36")));
+        return nullptr;
+    }
+
+    return reinterpret_cast<char*>(int32ToString(vm, value, radix));
+}
+
+char* JIT_OPERATION operationInt52ToString(ExecState* exec, int64_t value, int32_t radix)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (radix < 2 || radix > 36) {
+        throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("toString() radix argument must be between 2 and 36")));
+        return nullptr;
+    }
+
+    return reinterpret_cast<char*>(int52ToString(vm, value, radix));
+}
+
+char* JIT_OPERATION operationDoubleToString(ExecState* exec, double value, int32_t radix)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (radix < 2 || radix > 36) {
+        throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("toString() radix argument must be between 2 and 36")));
+        return nullptr;
+    }
+
+    return reinterpret_cast<char*>(numberToString(vm, value, radix));
+}
+
+char* JIT_OPERATION operationInt32ToStringWithValidRadix(ExecState* exec, int32_t value, int32_t radix)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    return reinterpret_cast<char*>(int32ToString(vm, value, radix));
+}
+
+char* JIT_OPERATION operationInt52ToStringWithValidRadix(ExecState* exec, int64_t value, int32_t radix)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    return reinterpret_cast<char*>(int52ToString(vm, value, radix));
+}
+
+char* JIT_OPERATION operationDoubleToStringWithValidRadix(ExecState* exec, double value, int32_t radix)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    return reinterpret_cast<char*>(numberToString(vm, value, radix));
+}
+
 JSString* JIT_OPERATION operationSingleCharacterString(ExecState* exec, int32_t character)
 {
     VM& vm = exec->vm();
@@ -2017,6 +2086,10 @@ JSCell* JIT_OPERATION operationNewArrayWithSpreadSlow(ExecState* exec, void* buf
     Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
 
     JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, structure, length);
+    if (UNLIKELY(!result)) {
+        throwOutOfMemoryError(exec, scope);
+        return nullptr;
+    }
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     unsigned index = 0;

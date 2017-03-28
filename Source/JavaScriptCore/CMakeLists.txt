@@ -101,6 +101,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirOptimizeBlockOrder.cpp
     b3/air/AirPadInterference.cpp
     b3/air/AirPhaseScope.cpp
+    b3/air/AirRegLiveness.cpp
     b3/air/AirReportUsedRegisters.cpp
     b3/air/AirSimplifyCFG.cpp
     b3/air/AirSpecial.cpp
@@ -179,6 +180,7 @@ set(JavaScriptCore_SOURCES
     b3/B3ValueKey.cpp
     b3/B3ValueRep.cpp
     b3/B3Variable.cpp
+    b3/B3VariableLiveness.cpp
     b3/B3VariableValue.cpp
     b3/B3WasmAddressValue.cpp
     b3/B3WasmBoundsCheckValue.cpp
@@ -932,6 +934,7 @@ set(JavaScriptCore_SOURCES
     wasm/WasmB3IRGenerator.cpp
     wasm/WasmBinding.cpp
     wasm/WasmCallingConvention.cpp
+    wasm/WasmContext.cpp
     wasm/WasmFaultSignalHandler.cpp
     wasm/WasmFormat.cpp
     wasm/WasmMemory.cpp

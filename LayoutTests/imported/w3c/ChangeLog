@@ -1,3 +1,122 @@
+2017-03-27  Youenn Fablet  <youenn@apple.com>
+
+        addIceCandidate should not throw if passed null or undefined
+        https://bugs.webkit.org/show_bug.cgi?id=170118
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl-expected.txt:
+
+2017-03-22  Youenn Fablet  <youenn@apple.com>
+
+        Support RTCPeerConnectionState
+        https://bugs.webkit.org/show_bug.cgi?id=169978
+
+        Reviewed by Jon Lee.
+
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2017-03-22  Chris Dumez  <cdumez@apple.com>
+
+        WebKit should disallow beforeunload alerts from web pages users have never interacted with
+        https://bugs.webkit.org/show_bug.cgi?id=169936
+        <rdar://problem/23798897>
+
+        Reviewed by Brent Fulgham.
+
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/beforeunload-canceling-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/compile-event-handler-settings-objects-expected.txt:
+        Rebaseline now that the CONFIRM MESSAGE lines are now longer shown. This is because there is no user interaction
+        with the page.
+
+2017-03-22  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBRequest respond() (readable stream state)
+        https://bugs.webkit.org/show_bug.cgi?id=169759
+
+        Reviewed by Youenn Fablet.
+
+        Updated test expectations.
+
+        * web-platform-tests/streams/readable-byte-streams/general-expected.txt:
+        * web-platform-tests/streams/readable-byte-streams/general.dedicatedworker-expected.txt:
+
+2017-03-22  Youenn Fablet  <youenn@apple.com>
+
+        Move LayoutTests/webrtc/rtcconfiguration-icecandidatepoolsize.html to web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=169958
+
+        Reviewed by Jon Lee.
+
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcconfiguration-icecandidatepoolsize-expected.txt: Added.
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcconfiguration-icecandidatepoolsize.html: Added.
+
+2017-03-22  Youenn Fablet  <youenn@apple.com>
+
+        Safari sends empty "Access-Control-Request-Headers" in preflight request
+        https://bugs.webkit.org/show_bug.cgi?id=169851
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/fetch/api/cors/cors-preflight-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight.js:
+
+2017-03-22  Youenn Fablet  <youenn@apple.com>
+
+        XMLHttpRequest: getAllResponseHeaders() should lowercase header names before sorting
+        https://bugs.webkit.org/show_bug.cgi?id=169286
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/XMLHttpRequest/getallresponseheaders-cl-expected.txt:
+        * web-platform-tests/XMLHttpRequest/getallresponseheaders-expected.txt:
+
+2017-03-22  Chris Dumez  <cdumez@apple.com>
+
+        Implement the "noopener" feature for window.open()
+        https://bugs.webkit.org/show_bug.cgi?id=163960
+        <rdar://problem/28941679>
+
+        Reviewed by Sam Weinig.
+
+        Import test coverage from WPT upstream.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/common/PrefixedLocalStorage.js: Added.
+        (PrefixedLocalStorage):
+        (PrefixedLocalStorage.prototype.clear):
+        (PrefixedLocalStorage.prototype.url):
+        (PrefixedLocalStorage.prototype.prefixedKey):
+        (PrefixedLocalStorage.prototype.setItem):
+        (PrefixedLocalStorage.prototype.onSet):
+        (PrefixedLocalStorageTest):
+        (PrefixedLocalStorageTest.prototype.cleanup):
+        (PrefixedLocalStorageResource):
+        * web-platform-tests/common/w3c-import.log:
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-closed-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-closed.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-multiple-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-multiple.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-noopener-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-noopener.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-noreferrer-expected.txt: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-noreferrer.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/resources/close-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/resources/message-window-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/resources/multiple-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/resources/no-opener.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/resources/open-closer.html: Added.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/resources/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/w3c-import.log.
+        * web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/w3c-import.log:
+
+2017-03-20  Jon Lee  <jonlee@apple.com>
+
+        Update progression in wpt test for WebRTC.
+
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
 2017-03-19  Chris Dumez  <cdumez@apple.com>
 
         Implement self.origin

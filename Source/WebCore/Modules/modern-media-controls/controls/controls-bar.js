@@ -40,6 +40,8 @@ class ControlsBar extends LayoutNode
 
         this.fadesWhileIdle = false;
         this.userInteractionEnabled = true;
+
+        this.element.addEventListener("focusin", this);
     }
 
     // Public
@@ -148,6 +150,8 @@ class ControlsBar extends LayoutNode
             delete this._enforceAutoHideTimer;
 
         this.markDirtyProperty("faded");
+
+        this._mediaControls.controlsBarFadedStateDidChange();
     }
 
     // Protected
@@ -167,7 +171,7 @@ class ControlsBar extends LayoutNode
             } else if (event.type === "mouseleave") {
                 delete this._disableAutoHiding;
                 this._resetAutoHideTimer(true);
-            } else if (event.type === "focus")
+            } else if (event.type === "focusin")
                 this.faded = false;
         }
     }

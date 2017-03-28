@@ -45,6 +45,7 @@
 #import "RemoteObjectRegistry.h"
 #import "RemoteObjectRegistryMessages.h"
 #import "UIDelegate.h"
+#import "VersionChecks.h"
 #import "ViewGestureController.h"
 #import "ViewSnapshotStore.h"
 #import "WKBackForwardListInternal.h"
@@ -288,7 +289,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     RetainPtr<WKPasswordView> _passwordView;
 
-    BOOL _hasInstalledPreCommitHandlerForVisibleRectUpdate;
+    BOOL _hasScheduledVisibleRectUpdate;
     BOOL _visibleContentRectUpdateScheduledFromScrollViewInStableState;
     Vector<BlockPtr<void ()>> _visibleContentRectUpdateCallbacks;
 #endif
@@ -2301,16 +2302,19 @@ static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRe
 {
     _visibleContentRectUpdateScheduledFromScrollViewInStableState = [self _scrollViewIsInStableState:scrollView];
 
-    if (_hasInstalledPreCommitHandlerForVisibleRectUpdate)
+    if (_hasScheduledVisibleRectUpdate)
         return;
 
-    _hasInstalledPreCommitHandlerForVisibleRectUpdate = YES;
-
-    [CATransaction addCommitHandler:[retainedSelf = retainPtr(self)] {
-        WKWebView *webView = retainedSelf.get();
-        [webView _updateVisibleContentRects];
-        webView->_hasInstalledPreCommitHandlerForVisibleRectUpdate = NO;
-    } forPhase:kCATransactionPhasePreCommit];
+    _hasScheduledVisibleRectUpdate = YES;
+    
+    // FIXME: remove the dispatch_async() when we have a fix for rdar://problem/31253952.
+    dispatch_async(dispatch_get_main_queue(), [retainedSelf = retainPtr(self)] {
+        [CATransaction addCommitHandler:[retainedSelf] {
+            WKWebView *webView = retainedSelf.get();
+            [webView _updateVisibleContentRects];
+            webView->_hasScheduledVisibleRectUpdate = NO;
+        } forPhase:kCATransactionPhasePreCommit];
+    });
 }
 
 static bool scrollViewCanScroll(UIScrollView *scrollView)
@@ -3484,6 +3488,22 @@ WEBCORE_COMMAND(yankAndSelect)
 - (void)_web_didChangeContentSize:(NSSize)newSize
 {
 }
+
+#if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+
+- (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
+{
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)[self UIDelegate];
+    if ([uiDelegate respondsToSelector:@selector(_webView:dragDestinationActionMaskForDraggingInfo:)])
+        return [uiDelegate _webView:self dragDestinationActionMaskForDraggingInfo:draggingInfo];
+
+    if (!linkedOnOrAfter(WebKit::SDKVersion::FirstWithDropToNavigateDisallowedByDefault))
+        return WKDragDestinationActionAny;
+
+    return WKDragDestinationActionAny & ~WKDragDestinationActionLoad;
+}
+
+#endif
 
 - (void)_web_dismissContentRelativeChildWindows
 {

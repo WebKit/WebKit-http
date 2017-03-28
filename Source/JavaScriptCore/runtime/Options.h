@@ -376,6 +376,8 @@ typedef const char* optionString;
     v(bool, verifyHeap, false, Normal, nullptr) \
     v(unsigned, numberOfGCCyclesToRecordForVerification, 3, Normal, nullptr) \
     \
+    v(unsigned, exceptionStackTraceLimit, 100, Normal, "Stack trace limit for internal Exception object") \
+    v(unsigned, defaultErrorStackTraceLimit, 100, Normal, "The default value for Error.stackTraceLimit") \
     v(bool, useExceptionFuzz, false, Normal, nullptr) \
     v(unsigned, fireExceptionFuzzAt, 0, Normal, nullptr) \
     v(bool, validateDFGExceptionHandling, false, Normal, "Causes the DFG to emit code validating exception handling for each node that can exit") /* This is true by default on Debug builds */\
@@ -397,6 +399,7 @@ typedef const char* optionString;
     v(bool, airSpillsEverything, false, Normal, nullptr) \
     v(bool, airForceBriggsAllocator, false, Normal, nullptr) \
     v(bool, airForceIRCAllocator, false, Normal, nullptr) \
+    v(bool, coalesceSpillSlots, true, Normal, nullptr) \
     v(bool, logAirRegisterPressure, false, Normal, nullptr) \
     v(unsigned, maxB3TailDupBlockSize, 3, Normal, nullptr) \
     v(unsigned, maxB3TailDupBlockSuccessors, 3, Normal, nullptr) \
@@ -426,7 +429,8 @@ typedef const char* optionString;
     \
     v(bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
     v(bool, simulateWebAssemblyLowMemory, false, Normal, "If true, the Memory object won't mmap the full 'maximum' range and instead will allocate the minimum required amount.") \
-    v(bool, useWebAssemblyFastMemory, true, Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.")
+    v(bool, useWebAssemblyFastMemory, true, Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.") \
+    v(bool, useWebAssemblyFastTLS, true, Normal, "If true, we will try to use fast thread-local storage if available on the current platform.")
 
 
 enum OptionEquivalence {

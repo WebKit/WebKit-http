@@ -514,6 +514,7 @@ public:
     void clearBeforePseudoElement();
     void clearAfterPseudoElement();
     void resetComputedStyle();
+    void resetStyleRelations();
     void clearStyleDerivedDataBeforeDetachingRenderer();
     void clearHoverAndActiveStatusBeforeDetachingRenderer();
 
@@ -548,8 +549,6 @@ public:
 
     bool hasDisplayContents() const;
     void setHasDisplayContents(bool);
-
-    virtual void isVisibleInViewportChanged() { }
 
     using ContainerNode::setAttributeEventListener;
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);

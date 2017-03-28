@@ -143,7 +143,13 @@ RenderImage::RenderImage(Document& document, RenderStyle&& style, StyleImage* st
 
 RenderImage::~RenderImage()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderImage::willBeDestroyed()
+{
     imageResource().shutdown();
+    RenderReplaced::willBeDestroyed();
 }
 
 // If we'll be displaying either alt text or an image, add some padding.
@@ -575,7 +581,7 @@ void RenderImage::paintIntoRect(GraphicsContext& context, const FloatRect& rect)
 #endif
 
     ImageOrientationDescription orientationDescription(shouldRespectImageOrientation(), style().imageOrientation());
-    context.drawImage(*img, rect, ImagePaintingOptions(compositeOperator, BlendModeNormal, orientationDescription, interpolation));
+    context.drawImage(*img, rect, ImagePaintingOptions(compositeOperator, BlendModeNormal, DecodingMode::Asynchronous, orientationDescription, interpolation));
 }
 
 bool RenderImage::boxShadowShouldBeAppliedToBackground(const LayoutPoint& paintOffset, BackgroundBleedAvoidance bleedAvoidance, InlineFlowBox*) const

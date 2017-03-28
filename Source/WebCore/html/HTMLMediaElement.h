@@ -497,6 +497,8 @@ public:
 
     bool isTemporarilyAllowingInlinePlaybackAfterFullscreen() const {return m_temporarilyAllowingInlinePlaybackAfterFullscreen; }
 
+    void isVisibleInViewportChanged();
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLMediaElement();
@@ -813,7 +815,6 @@ private:
 #endif
 
     bool isVideoTooSmallForInlinePlayback();
-    void isVisibleInViewportChanged() final;
     void updateShouldAutoplay();
 
     void pauseAfterDetachedTask();
@@ -838,7 +839,6 @@ private:
     Timer m_playbackControlsManagerBehaviorRestrictionsTimer;
     Timer m_seekToPlaybackPositionEndedTimer;
     GenericTaskQueue<Timer> m_seekTaskQueue;
-    GenericTaskQueue<Timer> m_resizeTaskQueue;
     GenericTaskQueue<Timer> m_shadowDOMTaskQueue;
     GenericTaskQueue<Timer> m_promiseTaskQueue;
     GenericTaskQueue<Timer> m_pauseAfterDetachedTaskQueue;

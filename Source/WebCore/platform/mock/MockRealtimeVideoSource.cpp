@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -85,7 +85,8 @@ MockRealtimeVideoSource::MockRealtimeVideoSource(const String& name)
     : MockRealtimeMediaSource(createCanonicalUUIDString(), RealtimeMediaSource::Type::Video, name)
     , m_timer(RunLoop::current(), this, &MockRealtimeVideoSource::generateFrame)
 {
-    setFrameRate(30);
+    setFrameRate(!deviceIndex() ? 30 : 15);
+    setFacingMode(!deviceIndex() ? RealtimeMediaSourceSettings::User : RealtimeMediaSourceSettings::Environment);
     m_dashWidths.reserveInitialCapacity(2);
     m_dashWidths.uncheckedAppend(6);
     m_dashWidths.uncheckedAppend(6);
@@ -132,8 +133,10 @@ void MockRealtimeVideoSource::updateSettings(RealtimeMediaSourceSettings& settin
 
 void MockRealtimeVideoSource::initializeCapabilities(RealtimeMediaSourceCapabilities& capabilities)
 {
-    capabilities.addFacingMode(RealtimeMediaSourceSettings::User);
-    capabilities.addFacingMode(RealtimeMediaSourceSettings::Environment);
+    if (!deviceIndex())
+        capabilities.addFacingMode(RealtimeMediaSourceSettings::User);
+    else
+        capabilities.addFacingMode(RealtimeMediaSourceSettings::Environment);
     capabilities.setWidth(CapabilityValueOrRange(320, 1920));
     capabilities.setHeight(CapabilityValueOrRange(240, 1080));
     capabilities.setFrameRate(CapabilityValueOrRange(15.0, 60.0));
@@ -326,11 +329,11 @@ void MockRealtimeVideoSource::drawText(GraphicsContext& context)
     FloatPoint bipBopLocation(size.width() * .6, size.height() * .6);
     unsigned frameMod = m_frameNumber % 60;
     if (frameMod <= 15) {
-        context.setFillColor(Color::gray);
+        context.setFillColor(Color::cyan);
         String bip(ASCIILiteral("Bip"));
         context.drawText(m_bipBopFont, TextRun(StringView(bip)), bipBopLocation);
     } else if (frameMod > 30 && frameMod <= 45) {
-        context.setFillColor(Color::white);
+        context.setFillColor(Color::yellow);
         String bop(ASCIILiteral("Bop"));
         context.drawText(m_bipBopFont, TextRun(StringView(bop)), bipBopLocation);
     }
@@ -347,7 +350,7 @@ void MockRealtimeVideoSource::generateFrame()
 
     IntSize size = this->size();
     FloatRect frameRect(FloatPoint(), size);
-    context.fillRect(FloatRect(FloatPoint(), size), Color::black);
+    context.fillRect(FloatRect(FloatPoint(), size), !deviceIndex() ? Color::black : Color::darkGray);
 
     if (!m_muted && m_enabled) {
         drawText(context);

@@ -233,8 +233,8 @@
 #endif
 
 #if USE(QUICK_LOOK)
-#include "MockQuickLookHandleClient.h"
-#include "QuickLook.h"
+#include "MockPreviewLoaderClient.h"
+#include "PreviewLoader.h"
 #endif
 
 using JSC::CallData;
@@ -446,8 +446,8 @@ void Internals::resetToConsistentState(Page& page)
     page.setLowPowerModeEnabledOverrideForTesting(std::nullopt);
 
 #if USE(QUICK_LOOK)
-    MockQuickLookHandleClient::singleton().setPassword("");
-    QuickLookHandle::setClientForTesting(nullptr);
+    MockPreviewLoaderClient::singleton().setPassword("");
+    PreviewLoader::setClientForTesting(nullptr);
 #endif
 }
 
@@ -517,14 +517,14 @@ unsigned Internals::workerThreadCount() const
     return WorkerThread::workerThreadCount();
 }
 
-bool Internals::areSVGAnimationsPaused() const
+ExceptionOr<bool> Internals::areSVGAnimationsPaused() const
 {
     auto* document = contextDocument();
     if (!document)
-        return false;
+        return Exception { INVALID_ACCESS_ERR, ASCIILiteral("No context document") };
 
     if (!document->svgExtensions())
-        return false;
+        return Exception { NOT_FOUND_ERR, ASCIILiteral("No SVG animations") };
 
     return document->accessSVGExtensions().areAnimationsPaused();
 }
@@ -3829,8 +3829,8 @@ Vector<String> Internals::accessKeyModifiers() const
 void Internals::setQuickLookPassword(const String& password)
 {
 #if USE(QUICK_LOOK)
-    auto& quickLookHandleClient = MockQuickLookHandleClient::singleton();
-    QuickLookHandle::setClientForTesting(&quickLookHandleClient);
+    auto& quickLookHandleClient = MockPreviewLoaderClient::singleton();
+    PreviewLoader::setClientForTesting(&quickLookHandleClient);
     quickLookHandleClient.setPassword(password);
 #else
     UNUSED_PARAM(password);

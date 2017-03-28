@@ -108,6 +108,19 @@
 
 @end
 
+#if ENABLE(DATA_INTERACTION)
+
+@interface WKDataInteractionCaretView : UIView
+
+- (instancetype)initWithTextInputView:(UIView<UITextInput> *)textInputView;
+- (void)insertAtPosition:(UITextPosition *)position;
+- (void)updateToPosition:(UITextPosition *)position;
+- (void)remove;
+
+@end
+
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -641,6 +654,8 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 #if ENABLE(DATA_INTERACTION)
     [self teardownDataInteractionDelegates];
     _isPerformingDataInteractionOperation = NO;
+    [_dataInteractionCaretView remove];
+    _dataInteractionCaretView = nil;
 #endif
 
     _inspectorNodeSearchEnabled = NO;
@@ -1276,7 +1291,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     if (_positionInformation.isLink) {
         NSURL *targetURL = [NSURL URLWithString:_positionInformation.url];
-        if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:[targetURL scheme]])
+        if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:targetURL.scheme.lowercaseString])
             return @selector(_showDataDetectorsSheet);
         return @selector(_showLinkSheet);
     }
@@ -1962,6 +1977,11 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         [result setObject:[NSNumber numberWithInt:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
 
     return result;
+}
+
+- (UIColor *)insertionPointColor
+{
+    return [UIColor insertionPointColor];
 }
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
@@ -4149,7 +4169,7 @@ static bool isAssistableInputType(InputType type)
             return NO;
         if (WebCore::protocolIsInHTTPFamily(absoluteLinkURL))
             return YES;
-        if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:[targetURL scheme]])
+        if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:targetURL.scheme.lowercaseString])
             return YES;
         return NO;
     }
@@ -4336,8 +4356,11 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
             [uiDelegate _webView:_webView willPreviewImageWithURL:targetURL];
 
         auto defaultActions = [_actionSheetAssistant defaultActionsForImageSheet:elementInfo.get()];
-        if (imageInfo && [uiDelegate respondsToSelector:@selector(_webView:actionsForElement:defaultActions:)])
-            defaultActions = [uiDelegate _webView:_webView actionsForElement:elementInfo.get() defaultActions:defaultActions.get()];
+        if (imageInfo && [uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForImage:alternateURL:defaultActions:elementInfo:)]) {
+            UIViewController *previewViewController = [uiDelegate _webView:_webView previewViewControllerForImage:uiImage.get() alternateURL:alternateURL.get() defaultActions:defaultActions.get() elementInfo:elementInfo.get()];
+            if (previewViewController)
+                return previewViewController;
+        }
 
         return [[[WKImagePreviewViewController alloc] initWithCGImage:cgImage defaultActions:defaultActions elementInfo:elementInfo] autorelease];
     }

@@ -68,7 +68,7 @@
 #endif
 
 #if USE(QUICK_LOOK)
-#include "QuickLookHandleClient.h"
+#include "PreviewLoaderClient.h"
 #endif
 
 namespace WebCore {
@@ -129,7 +129,6 @@ class EmptyDiagnosticLoggingClient final : public DiagnosticLoggingClient {
 class EmptyDragClient final : public DragClient {
     void willPerformDragDestinationAction(DragDestinationAction, const DragData&) final { }
     void willPerformDragSourceAction(DragSourceAction, const IntPoint&, DataTransfer&) final { }
-    DragDestinationAction actionMaskForDrag(const DragData&) final { return DragDestinationActionNone; }
     DragSourceAction dragSourceActionMaskForPoint(const IntPoint&) final { return DragSourceActionNone; }
     void startDrag(DragImage, const IntPoint&, const IntPoint&, const FloatPoint&, DataTransfer&, Frame&, DragSourceAction) final { }
     void dragControllerDestroyed() final { }
@@ -448,7 +447,7 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
     void prefetchDNS(const String&) final { }
 
 #if USE(QUICK_LOOK)
-    RefPtr<QuickLookHandleClient> createQuickLookHandleClient(const String&, const String&) final { return nullptr; }
+    RefPtr<PreviewLoaderClient> createPreviewLoaderClient(const String&, const String&) final { return nullptr; }
 #endif
 };
 

@@ -240,7 +240,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCDataChannel.idl
     Modules/mediastream/RTCDataChannelEvent.idl
     Modules/mediastream/RTCIceCandidate.idl
-    Modules/mediastream/RTCIceCandidateEvent.idl
     Modules/mediastream/RTCIceConnectionState.idl
     Modules/mediastream/RTCIceGatheringState.idl
     Modules/mediastream/RTCIceServer.idl
@@ -249,6 +248,9 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCOfferAnswerOptions.idl
     Modules/mediastream/RTCOfferOptions.idl
     Modules/mediastream/RTCPeerConnection.idl
+    Modules/mediastream/RTCPeerConnectionIceEvent.idl
+    Modules/mediastream/RTCPeerConnectionState.idl
+    Modules/mediastream/RTCRtpParameters.idl
     Modules/mediastream/RTCRtpReceiver.idl
     Modules/mediastream/RTCRtpSender.idl
     Modules/mediastream/RTCRtpTransceiver.idl
@@ -964,8 +966,8 @@ set(WebCore_SOURCES
     Modules/mediastream/RTCDataChannel.cpp
     Modules/mediastream/RTCDataChannelEvent.cpp
     Modules/mediastream/RTCIceCandidate.cpp
-    Modules/mediastream/RTCIceCandidateEvent.cpp
     Modules/mediastream/RTCPeerConnection.cpp
+    Modules/mediastream/RTCPeerConnectionIceEvent.cpp
     Modules/mediastream/RTCRtpReceiver.cpp
     Modules/mediastream/RTCRtpSender.cpp
     Modules/mediastream/RTCRtpTransceiver.cpp
@@ -1313,6 +1315,8 @@ set(WebCore_SOURCES
     css/CSSFontFaceSrcValue.cpp
     css/CSSFontFeatureValue.cpp
     css/CSSFontSelector.cpp
+    css/CSSFontStyleRangeValue.cpp
+    css/CSSFontStyleValue.cpp
     css/CSSFontValue.cpp
     css/CSSFontVariationValue.cpp
     css/CSSFunctionValue.cpp
@@ -2163,6 +2167,7 @@ set(WebCore_SOURCES
     platform/LengthPoint.cpp
     platform/LengthSize.cpp
     platform/LinkHash.cpp
+    platform/LocalizedStrings.cpp
     platform/Logging.cpp
     platform/LowPowerModeNotifier.cpp
     platform/MIMETypeRegistry.cpp
@@ -3491,6 +3496,11 @@ endif ()
 if (USE_WOFF2)
   list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/woff2/src")
   list(APPEND WebCore_LIBRARIES woff2)
+endif ()
+
+if (USE_XDGMIME)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/xdgmime/src")
+    list(APPEND WebCore_LIBRARIES xdgmime)
 endif ()
 
 set(WebCoreTestSupport_INCLUDE_DIRECTORIES

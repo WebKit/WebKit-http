@@ -35,6 +35,7 @@
 #include "CSSBorderImageSliceValue.h"
 #include "CSSCustomPropertyValue.h"
 #include "CSSFontFeatureValue.h"
+#include "CSSFontStyleValue.h"
 #include "CSSFontValue.h"
 #include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
@@ -161,6 +162,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyFontSynthesis,
     CSSPropertyFontVariant,
     CSSPropertyFontWeight,
+#if ENABLE(VARIATION_FONTS)
+    CSSPropertyFontOpticalSizing,
+#endif
     CSSPropertyHangingPunctuation,
     CSSPropertyHeight,
 #if ENABLE(CSS_IMAGE_ORIENTATION)
@@ -1913,28 +1917,55 @@ static Ref<CSSPrimitiveValue> fontSizeFromStyle(const RenderStyle& style)
     return zoomAdjustedPixelValue(style.fontDescription().computedSize(), style);
 }
 
-static Ref<CSSPrimitiveValue> fontWeightFromStyle(const RenderStyle& style)
+Ref<CSSPrimitiveValue> ComputedStyleExtractor::fontNonKeywordWeightFromStyleValue(FontSelectionValue weight)
 {
-    auto weight = style.fontDescription().weight();
+    return CSSValuePool::singleton().createValue(static_cast<float>(weight), CSSPrimitiveValue::CSS_NUMBER);
+}
+
+Ref<CSSPrimitiveValue> ComputedStyleExtractor::fontWeightFromStyleValue(FontSelectionValue weight)
+{
     if (auto value = fontWeightKeyword(weight))
         return CSSValuePool::singleton().createIdentifierValue(value.value());
-    return CSSValuePool::singleton().createValue(static_cast<float>(weight), CSSPrimitiveValue::CSS_NUMBER);
+    return fontNonKeywordWeightFromStyleValue(weight);
+}
+
+static Ref<CSSPrimitiveValue> fontWeightFromStyle(const RenderStyle& style)
+{
+    return ComputedStyleExtractor::fontWeightFromStyleValue(style.fontDescription().weight());
+}
+
+Ref<CSSPrimitiveValue> ComputedStyleExtractor::fontNonKeywordStretchFromStyleValue(FontSelectionValue stretch)
+{
+    return CSSValuePool::singleton().createValue(static_cast<float>(stretch), CSSPrimitiveValue::CSS_PERCENTAGE);
+}
+
+Ref<CSSPrimitiveValue> ComputedStyleExtractor::fontStretchFromStyleValue(FontSelectionValue stretch)
+{
+    if (auto keyword = fontStretchKeyword(stretch))
+        return CSSValuePool::singleton().createIdentifierValue(keyword.value());
+    return fontNonKeywordStretchFromStyleValue(stretch);
 }
 
 static Ref<CSSPrimitiveValue> fontStretchFromStyle(const RenderStyle& style)
 {
-    auto stretch = style.fontDescription().stretch();
-    if (auto keyword = fontStretchKeyword(stretch))
-        return CSSValuePool::singleton().createIdentifierValue(keyword.value());
-    return CSSValuePool::singleton().createValue(static_cast<float>(stretch), CSSPrimitiveValue::CSS_PERCENTAGE);
+    return ComputedStyleExtractor::fontStretchFromStyleValue(style.fontDescription().stretch());
 }
 
-static Ref<CSSPrimitiveValue> fontStyleFromStyle(const RenderStyle& style)
+Ref<CSSFontStyleValue> ComputedStyleExtractor::fontNonKeywordStyleFromStyleValue(FontSelectionValue italic)
 {
-    auto italic = style.fontDescription().italic();
-    if (auto italicValue = fontStyleKeyword(italic))
-        return CSSValuePool::singleton().createIdentifierValue(italicValue.value());
-    return CSSValuePool::singleton().createValue(static_cast<float>(italic), CSSPrimitiveValue::CSS_DEG);
+    return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique), CSSValuePool::singleton().createValue(static_cast<float>(italic), CSSPrimitiveValue::CSS_DEG));
+}
+
+Ref<CSSFontStyleValue> ComputedStyleExtractor::fontStyleFromStyleValue(FontSelectionValue italic)
+{
+    if (auto keyword = fontStyleKeyword(italic))
+        return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(keyword.value()));
+    return fontNonKeywordStyleFromStyleValue(italic);
+}
+
+static Ref<CSSFontStyleValue> fontStyleFromStyle(const RenderStyle& style)
+{
+    return ComputedStyleExtractor::fontStyleFromStyleValue(style.fontDescription().italic());
 }
 
 static Ref<CSSValue> fontVariantFromStyle(const RenderStyle& style)
@@ -2550,7 +2581,7 @@ static Ref<CSSFontValue> fontShorthandValueForSelectionProperties(const FontDesc
         return CSSFontValue::create();
 
     if (auto italic = fontStyleKeyword(fontDescription.italic()))
-        computedFont->style = CSSValuePool::singleton().createIdentifierValue(italic.value());
+        computedFont->style = CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(italic.value()));
     else
         return CSSFontValue::create();
 
@@ -2946,6 +2977,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
                 list->append(CSSFontVariationValue::create(feature.tag(), feature.value()));
             return WTFMove(list);
         }
+        case CSSPropertyFontOpticalSizing:
+            return cssValuePool.createValue(style->fontDescription().opticalSizing());
 #endif
         case CSSPropertyGridAutoFlow: {
             auto list = CSSValueList::createSpaceSeparated();

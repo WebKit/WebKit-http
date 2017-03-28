@@ -33,6 +33,7 @@ WebInspector.WebSocketContentView = class WebSocketContentView extends WebInspec
 
         this._resource = resource;
         this._framesRendered = 0;
+        this._lastRenderedReadyState = null;
 
         // COMPATIBILITY (iOS 10.3): `walltime` did not exist in 10.3 and earlier.
         this._showTimeColumn = NetworkAgent.hasEventParameter("webSocketWillSendHandshakeRequest", "walltime");
@@ -51,7 +52,7 @@ WebInspector.WebSocketContentView = class WebSocketContentView extends WebInspec
         this._dataGrid.variableHeightRows = true;
         this.addSubview(this._dataGrid);
 
-        this._addRow(WebInspector.UIString("WebSocket Connection Established"), this._resource.walltime, ["non-text-frame"]);
+        this._addRow(WebInspector.UIString("WebSocket Connection Established"), this._resource.walltime);
 
         this._dataGrid.updateLayout();
     }
@@ -81,12 +82,16 @@ WebInspector.WebSocketContentView = class WebSocketContentView extends WebInspec
     shown()
     {
         this._updateFrames();
+        this._updateState();
+
         this._resource.addEventListener(WebInspector.WebSocketResource.Event.FrameAdded, this._updateFrames, this);
+        this._resource.addEventListener(WebInspector.WebSocketResource.Event.ReadyStateChanged, this._updateState, this);
     }
 
     hidden()
     {
         this._resource.removeEventListener(WebInspector.WebSocketResource.Event.FrameAdded, this._updateFrames, this);
+        this._resource.removeEventListener(WebInspector.WebSocketResource.Event.ReadyStateChanged, this._updateState, this);
     }
 
     addFrame(data, isOutgoing, opcode, time)
@@ -97,12 +102,12 @@ WebInspector.WebSocketContentView = class WebSocketContentView extends WebInspec
         else
             nodeText = WebInspector.WebSocketContentView.textForOpcode(opcode);
 
-        let classNames = [
-            isOutgoing ? "outgoing" : "incoming",
-            opcode === WebInspector.WebSocketResource.OpCodes.TextFrame ? "text-frame" : "non-text-frame"
-        ];
+        let attributes = {
+            isOutgoing,
+            isText: opcode === WebInspector.WebSocketResource.OpCodes.TextFrame,
+        };
 
-        this._addRow(nodeText, time, classNames, isOutgoing);
+        this._addRow(nodeText, time, attributes);
     }
 
     // Private
@@ -118,16 +123,35 @@ WebInspector.WebSocketContentView = class WebSocketContentView extends WebInspec
         this._framesRendered = framesLength;
     }
 
-    _addRow(data, time, classNames, isOutgoing)
+    _updateState(event)
+    {
+        if (this._lastRenderedReadyState === this._resource.readyState)
+            return;
+
+        if (this._resource.readyState === WebInspector.WebSocketResource.ReadyState.Closed)
+            this._dataGrid.appendChild(new WebInspector.SpanningDataGridNode(WebInspector.UIString("Connection Closed")));
+
+        this._lastRenderedReadyState = this._resource.readyState;
+    }
+
+    _addRow(data, time, attributes = {})
     {
         let node;
         if (this._showTimeColumn)
-            node = new WebInspector.WebSocketDataGridNode({data, time, isOutgoing});
+            node = new WebInspector.WebSocketDataGridNode(Object.shallowMerge({data, time}, attributes));
         else
-            node = new WebInspector.WebSocketDataGridNode({data, isOutgoing});
+            node = new WebInspector.WebSocketDataGridNode(Object.shallowMerge({data}, attributes));
 
         this._dataGrid.appendChild(node);
 
-        node.element.classList.add(...classNames);
+        if (attributes.isText)
+            node.element.classList.add("text-frame");
+        else
+            node.element.classList.add("non-text-frame");
+
+        if (attributes.isOutgoing)
+            node.element.classList.add("outgoing");
+        else
+            node.element.classList.add("incoming");
     }
 };

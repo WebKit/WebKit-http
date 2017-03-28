@@ -40,7 +40,7 @@ FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription&
     FontOrientation orientation = fontDescription.orientation();
     FontWidthVariant widthVariant = fontDescription.widthVariant();
     RetainPtr<CTFontRef> font = adoptCF(CTFontCreateWithFontDescriptor(m_fontDescriptor.get(), size, nullptr));
-    font = preparePlatformFont(font.get(), fontDescription.textRenderingMode(), &fontFaceFeatures, &fontFaceVariantSettings, fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.fontSelectionRequest(), fontDescription.variationSettings());
+    font = preparePlatformFont(font.get(), fontDescription.textRenderingMode(), &fontFaceFeatures, &fontFaceVariantSettings, fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.fontSelectionRequest(), fontDescription.variationSettings(), fontDescription.opticalSizing(), fontDescription.computedSize());
     ASSERT(font);
     return FontPlatformData(font.get(), size, bold, italic, orientation, widthVariant, fontDescription.textRenderingMode());
 }
@@ -62,6 +62,11 @@ bool FontCustomPlatformData::supportsFormat(const String& format)
         || equalLettersIgnoringASCIICase(format, "opentype")
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
         || equalLettersIgnoringASCIICase(format, "woff2")
+#endif
+#if ENABLE(VARIATION_FONTS)
+        || equalLettersIgnoringASCIICase(format, "woff-variations")
+        || equalLettersIgnoringASCIICase(format, "truetype-variations")
+        || equalLettersIgnoringASCIICase(format, "opentype-variations")
 #endif
         || equalLettersIgnoringASCIICase(format, "woff");
 }

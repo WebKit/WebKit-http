@@ -1,3 +1,281 @@
+2017-03-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Share more code between ManifestGenerator and /api/triggerables
+        https://bugs.webkit.org/show_bug.cgi?id=169993
+
+        Reviewed by Chris Dumez.
+
+        Shared the code to fetch the list of triggerables from the database between ManifestGenerator
+        and /api/triggerables.
+
+        * public/api/triggerables.php:
+        (main):
+        * public/include/manifest-generator.php:
+        (ManifestGenerator::fetch_triggerables): Extracted as a static function. Also include the ID
+        in the triggerable data.
+
+2017-03-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        create-test-group should allow a different set of repositories to be used in each configuration
+        https://bugs.webkit.org/show_bug.cgi?id=169992
+
+        Rubber-stamped by Antti Koivisto.
+
+        Added the support for new POST parameter, revisionSets, to /privileged-api/create-test-group.
+        This new parameter now specifies an array of repository id to revision dictionaries, and allows
+        different set of repositories' revisions to be specified in each dictionary.
+
+        We keep the old API for v2 UI and detect-changes.js compatibility for now.
+
+        * public/privileged-api/create-test-group.php:
+        (main):
+        (commit_sets_from_revision_sets): Added.
+        (ensure_commit_sets): Only fetch the top-level repository per r213788 and r213976.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.createAndRefetchTestGroups): Use the newly added revisionSets parameter instead of
+        the now depreacted commitSets parameter.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype._createTestGroupAfterVerifyingCommitSetList): Simplified this code
+        by simply verifying the consistency of commit sets now that createAndRefetchTestGroups takes
+        an array of commit sets instead of a dictionary of repository name to a list of revisions.
+
+        * server-tests/privileged-api-create-test-group-tests.js: Added test cases for new parameter.
+
+2017-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        /api/uploaded-file should return createdAt as a POSIX timestamp
+        https://bugs.webkit.org/show_bug.cgi?id=169980
+
+        Rubber-stamped by Antti Koivisto.
+
+        Call Database::to_js_time on createdAt to return it as a POSIX timestamp.
+
+        * public/include/uploaded-file-helpers.php:
+        (format_uploaded_file): Fixed the bug.
+        * server-tests/api-manifest-tests.js: Renamed from api-manifest.js.
+        * server-tests/api-uploaded-file-tests.js: Renamed from api-uploaded-file.js. Added a test case.
+
+2017-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        UploadedFile should support a callback for upload progress
+        https://bugs.webkit.org/show_bug.cgi?id=169977
+
+        Reviewed by Andreas Kling.
+
+        Added a new option dictionary to CommonRemoteAPI.sendHttpRequest with uploadProgressCallback
+
+        Moved request headers and responseHandler callback in NodeRemoteAPI to this dictionary,
+        and updated the tests which relied on this code.
+
+        * public/shared/common-remote.js:
+        (CommonRemoteAPI.prototype.postJSON):
+        (CommonRemoteAPI.prototype.postJSONWithStatus):
+        (CommonRemoteAPI.prototype.postFormData):
+        (CommonRemoteAPI.prototype.postFormDataWithStatus):
+        * public/v3/privileged-api.js:
+        (PrivilegedAPI.prototype.sendRequest):
+        * public/v3/remote.js:
+        (BrowserRemoteAPI.prototype.sendHttpRequest):
+        (BrowserRemoteAPI.prototype.sendHttpRequestWithFormData):
+        (BrowserRemoteAPI):
+        * server-tests/api-uploaded-file.js:
+        * tools/js/remote.js:
+        (NodeRemoteAPI.prototype.sendHttpRequest):
+        (NodeRemoteAPI.prototype.sendHttpRequestWithFormData):
+        (NodeRemoteAPI):
+
+2017-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ComponentBase should enqueue itself to render when it becomes connected
+        https://bugs.webkit.org/show_bug.cgi?id=169905
+
+        Reviewed by Antti Koivisto.
+
+        When a component becomes connected to a document, enqueue itself to render automatically.
+        Also added the support for boolean attribute to ComponentBase.createElement.
+
+        * ReadMe.md: Added an instruction to raise the upload limit per r214065.
+        * browser-tests/component-base-tests.js: Added tests for the new behavior and createElement. Also moved
+        the tests related to enqueueToRenderOnResize out of defineElement tests.
+
+        * browser-tests/index.html:
+        (BrowsingContext.prototype.constructor): Override requestAnimationFrame so that the callback would be
+        involved immediately durign testing.
+
+        * public/v3/components/base.js:
+        (ComponentBase): Enqueue itself to render during construction if custom elements is not available.
+        (ComponentBase.defineElement):
+        (ComponentBase.defineElement.elementClass.prototype.connectedCallback): Enqueue itself to render when
+        the component's element became connected.
+        (ComponentBase.createElement): Use Array.isArray instead of instanceof to make it work with arrays made
+        in other realms (global objects) during testing. Added the support for boolean attributes. Setting an
+        attribute value to true would set the attribute, and setting it to false would not set the attribute.
+        (ComponentBase.useNativeCustomElements): Added. True iff window.customElements is defined.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype.render): No longer need to call enqueueToRender on the commit log viewer.
+
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer.prototype.render): No longer need to call enqueueToRender on the spinner icon.
+
+        * public/v3/models/time-series.js:
+        (TimeSeries): Made this a proper class declaration now that we don't include data.js after r213300.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype._renderActionToolbar): No longer need to call enqueueToRender on the close icon.
+
+        * public/v3/pages/summary-page.js:
+        (SummaryPage.prototype._renderCell): No longer need to call enqueueToRender on the spinner icon.
+
+2017-03-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Delete another function that was supposed to be removed in the previous commit.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.cachedRequestsForTriggerableID): Deleted.
+
+2017-03-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Modernize BuildRequestQueuePage
+        https://bugs.webkit.org/show_bug.cgi?id=169903
+
+        Reviewed by Antti Koivisto.
+
+        Modernized the code for /v3/#/analysis/queue.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.fetchTriggerables): Deleted since the manifest JSON now contains all the triggerables.
+
+        * public/v3/pages/build-request-queue-page.js:
+        (BuildRequestQueuePage): Deleted this._triggerables. Added this._buildRequestsByTriggerable.
+        (BuildRequestQueuePage.prototype.open): Modernized the code.
+        (BuildRequestQueuePage.prototype.render): Ditto.
+        (BuildRequestQueuePage.prototype._constructBuildRequestTable): Ditto.
+
+2017-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Charts page show an inconsistent list of revisions for Git and Subversion
+        https://bugs.webkit.org/show_bug.cgi?id=169888
+
+        Reviewed by Andreas Kling.
+
+        With Git, CommitLogViewer was showing the list of revisions including the starting hash,
+        which was the last data point's revision instead of all revisions after the last data point.
+
+        Fixed the bug by always specifying the revision at the last data point in both Subversion
+        and Git and then making /api/commits/<repository>/?from=X&to=Y exclude the first revision.
+        For clarity, "from" and "to" query parameters have been renamed to "precedingRevision" and
+        "lastRevision" respectively.
+
+        We also no longer adds 1 to the starting revision of Subversion-like starting revisions. e.g.
+        when the last data point was at r1234, new data point is at r1250, the label is now "r1234-r1250"
+        instead of "r1235-r1250".
+
+        * browser-tests/chart-revision-range-tests.js: Fixed the tests since revisionList no longer
+        specifies from/to revisions.
+        * browser-tests/commit-log-viewer-tests.js: Added. Added tests for CommitLogViewer.
+        * browser-tests/index.html: Include the new test. Also use a local copy of mocha.js/css.
+
+        * public/api/commits.php:
+        (main): Renamed "from" and "to" query parameters.
+
+        * public/include/commit-log-fetcher.php:
+        (CommitLogFetcher::fetch_between): Added a check that commit time should either be specified
+        in both rows or not specified in either. Also reject when before_first_revision is identical
+        or after last_revision instead of re-ordering them since it no longer makes sense to do so with
+        new query parameter names.
+
+        * public/v3/components/base.js:
+        (ComponentBase._addContentToElement): Use Array.isArray instead of instanceof. It's resilient
+        againt realm (global object) differences.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype._updateCommitLogViewer): No longer calls enqueueToRender on this since
+        CommitLogViewer does that on its own now.
+        (ChartPaneBase.prototype.render): Juse use this._openRepository instead of relying on CommitLogViewer
+        to remember which repository is current. This was the only use of currentRepository.
+
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer):
+        (CommitLogViewer.prototype.currentRepository): Deleted.
+        (CommitLogViewer.prototype.view):
+        (CommitLogViewer.prototype._fetchCommitLogs): Modernized and extracted from view to make it lazy.
+        Call fetchForSingleRevision when precedingRevision is not specified or it's identical to lastRevision
+        since the generic JSON API no longer supports being called with the identical revisions.
+        (CommitLogViewer.prototype.render): Modernized & simplified the code.
+        (CommitLogViewer.prototype._renderCommitList): Extracted from render to make it lazy.
+        (CommitLogViewer.htmlTemplate): Add ID on caption & tbody so that they're more easily addressable.
+        (CommitLogViewer.cssTemplate):
+
+        * public/v3/models/commit-log.js:
+        (CommitLog.prototype.diff): No longer includes from/to revisions in the result. Also avoid adding
+        1 to a Subversion-like starting revision for creating the label. See above. But we still do this
+        for forming URLs due to the way tools like Trac work with Subversion revisions.
+        (CommitLog.fetchBetweenRevisions): Rewritten using DataModel.prototype.cachedFetch with FIXME for
+        what this function is supposed to be doing.
+        (CommitLog._cachedCommitLogs): Deleted.
+        (CommitLog.fetchForSingleRevision): Added.
+        (CommitLog._constructFromRawData): Added.
+
+        * public/v3/models/data-model.js:
+        (DataModelObject.cachedFetch): Don't parse query values as an integer. Just URL-escape them.
+
+        * public/v3/remote.js:
+        (BrowserRemoteAPI.prototype.sendHttpRequest): Fixed a typo.
+
+        * server-tests/api-commits-tests.js: Renamed from api-commits.js. Updated the existing tests to
+        use new query parameters and added more test cases.
+
+        * unit-tests/commit-log-tests.js: Updated the test cases now that CommitLog.prototype.diff no longer
+        includes from/to values. They're computed in ChartRevisionRange instead.
+
+2017-03-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix os-build-fetcher.js and subprocess.js to make them work
+        https://bugs.webkit.org/show_bug.cgi?id=169844
+
+        Reviewed by Antti Koivisto.
+
+        The script added in r213976 has a bug that it can execute commands to fetch subcommits in parallel.
+        Some commands to poll the lsit of system components is not desirable to be ran in parallel.
+
+        * server-tests/resources/mock-subprocess.js:
+        (MockSubprocess): Use const declaration.
+        (MockSubprocess.resetAndWaitForInvocation): Added.
+        (MockSubprocess.waitForInvocation): Renamed from waitingForInvocation. A function name must be a verb.
+        See https://webkit.org/code-style-guidelines/#names-verb
+        (MockSubprocess.reset): Set invocations.length to 0 so that tests can store a reference to the array
+        regardless of whether reset is called or when it's called.
+
+        * server-tests/tools-os-build-fetcher-tests.js: Updated tests per the code change. Most of codes now
+        expect each command to be ran seprately. e.g. if there were two commands to run, instead of expecting
+        them to be both ran, and resolving invocation promises, we'd wait for one command to run, resolve,
+        its subcommand to run, and then move onto the second top-level command. Also use a local reference
+        to MockSubprocess.invocations instead of using the fully qualified name.
+
+        * tools/js/os-build-fetcher.js:
+        (mapInSerialPromiseChain): Added. Calling a closure that returns a promise on each item in an array
+        in serial (not asynchronous) is a very common pattern in this class.
+        (OSBuildFetcher.fetchAndReportAllInOrder): Added.
+        (OSBuildFetcher.prototype.fetchAndReportNewBuilds): Log what the number of builds being submitted.
+        (OSBuildFetcher.prototype._fetchAvailableBuilds): Fixed the main bug. Using Promise.all would result
+        in each top-level command to be execued in parallel. Since each subcommand is executed as soon as
+        its parent command is executed, this results in commands to be executed in parallel.
+        Added a whole bunch of logging so that we can at least detect a bug like this in the future.
+        (OSBuildFetcher.prototype._commitsForAvailableBuilds): Cleanup the coding style.
+        (OSBuildFetcher.prototype._addSubCommitsForBuild): Use mapInSerialPromiseChain. Tightened the assertion
+        about the content returned by a subcommand.
+
+        * tools/js/subprocess.js: Fixed the bug that we were importing require('child_process').ChildProcess.
+        execFile is defined on require('child_process') itself.
+        (Subprocess.prototype.execute): Fixed a typo. this._childProcess doesn't exist.
+        (Subprocess):
+
+        * tools/sync-os-versions.js: Renamed from tools/pull-os-versions.js.
+        (syncLoop): Cleaned up the coding style a little. Also added logging about how long we're about to sleep.
+
 2017-03-16  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add the file uploading capability to the perf dashboard.

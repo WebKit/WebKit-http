@@ -238,10 +238,7 @@ void WebSocketChannel::fail(const String& reason)
     m_client->didReceiveMessageError();
 
     if (m_handle && !m_closed)
-        m_handle->disconnect(); // Will call didClose().
-
-    // We should be closed by now, but if we never got a handshake then we never even opened.
-    ASSERT(m_closed || !m_handshake);
+        m_handle->disconnect(); // Will call didCloseSocketStream() but maybe not synchronously.
 }
 
 void WebSocketChannel::disconnect()
@@ -278,7 +275,7 @@ void WebSocketChannel::didOpenSocketStream(SocketStreamHandle& handle)
     if (m_identifier)
         InspectorInstrumentation::willSendWebSocketHandshakeRequest(m_document, m_identifier, m_handshake->clientHandshakeRequest());
     CString handshakeMessage = m_handshake->clientHandshakeMessage();
-    handle.send(handshakeMessage.data(), handshakeMessage.length(), [this, protectedThis = makeRef(*this)] (bool success) {
+    handle.sendData(handshakeMessage.data(), handshakeMessage.length(), [this, protectedThis = makeRef(*this)] (bool success) {
         if (!success)
             fail("Failed to send WebSocket handshake.");
     });
@@ -366,6 +363,8 @@ void WebSocketChannel::didFailSocketStream(SocketStreamHandle& handle, const Soc
         m_document->addConsoleMessage(MessageSource::Network, MessageLevel::Error, message);
     }
     m_shouldDiscardReceivedData = true;
+    if (m_client)
+        m_client->didReceiveMessageError();
     handle.disconnect();
 }
 
@@ -829,7 +828,7 @@ void WebSocketChannel::sendFrame(WebSocketFrame::OpCode opCode, const char* data
     Vector<char> frameData;
     frame.makeFrameData(frameData);
 
-    m_handle->send(frameData.data(), frameData.size(), WTFMove(completionHandler));
+    m_handle->sendData(frameData.data(), frameData.size(), WTFMove(completionHandler));
 }
 
 }  // namespace WebCore

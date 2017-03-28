@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004-2009, 2011-2012, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2009, 2011-2012, 2015-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008, 2009, 2011, 2012 Google Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -233,6 +233,11 @@ bool Scope::hasPendingSheetInBody(const Element& element) const
     return m_elementsInBodyWithPendingSheets.contains(&element);
 }
 
+bool Scope::hasPendingSheet(const ProcessingInstruction& processingInstruction) const
+{
+    return m_processingInstructionsWithPendingSheets.contains(&processingInstruction);
+}
+
 void Scope::addStyleSheetCandidateNode(Node& node, bool createdByParser)
 {
     if (!node.isConnected())
@@ -389,7 +394,7 @@ Scope::StyleResolverUpdateType Scope::analyzeStyleSheetChange(const Vector<RefPt
     auto styleResolverUpdateType = hasInsertions ? Reset : Additive;
 
     // If we are already parsing the body and so may have significant amount of elements, put some effort into trying to avoid style recalcs.
-    if (!m_document.bodyOrFrameset() || m_document.hasNodesWithNonFinalStyle())
+    if (!m_document.bodyOrFrameset() || m_document.hasNodesWithNonFinalStyle() || m_document.hasNodesWithMissingStyle())
         return styleResolverUpdateType;
 
     StyleInvalidationAnalysis invalidationAnalysis(addedSheets, styleResolver.mediaQueryEvaluator());

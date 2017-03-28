@@ -30,6 +30,7 @@
 #import <UIKit/UIAlertController_Private.h>
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIBarButtonItem_Private.h>
+#import <UIKit/UICalloutBar.h>
 #import <UIKit/UIDatePicker_Private.h>
 #import <UIKit/UIDevice_Private.h>
 #import <UIKit/UIDocumentMenuViewController_Private.h>
@@ -864,6 +865,10 @@ typedef enum {
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)
+
+@interface UIColor (IPI)
++ (UIColor *)insertionPointColor;
+@end
 
 @interface UIView (IPI)
 - (UIScrollView *)_scroller;

@@ -638,6 +638,7 @@ private:
 @synthesize contentImageWithoutSelection=_contentImageWithoutSelection;
 @synthesize contentImageWithoutSelectionRectInRootViewCoordinates=_contentImageWithoutSelectionRectInRootViewCoordinates;
 @synthesize contentImage=_contentImage;
+@synthesize estimatedBackgroundColor=_estimatedBackgroundColor;
 
 @end
 
@@ -670,6 +671,9 @@ private:
         }
     }
 
+    if (indicatorData.options & TextIndicatorOptionComputeEstimatedBackgroundColor)
+        _estimatedBackgroundColor = [[[getUIColorClass() alloc] initWithCGColor:cachedCGColor(indicatorData.estimatedBackgroundColor)] retain];
+
     return self;
 }
 
@@ -690,6 +694,7 @@ private:
     [_contentImageWithHighlight release];
     [_contentImageWithoutSelection release];
     [_contentImage release];
+    [_estimatedBackgroundColor release];
     
     [super dealloc];
 }
@@ -1725,7 +1730,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->page->settings().setMinimumLogicalFontSize(9);
     _private->page->settings().setDefaultFontSize([_private->preferences defaultFontSize]);
     _private->page->settings().setDefaultFixedFontSize(13);
-    _private->page->settings().setDownloadableBinaryFontsEnabled(false);
     _private->page->settings().setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
     _private->page->settings().setDisplayListDrawingEnabled([preferences displayListDrawingEnabled]);
     
@@ -1813,6 +1817,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image textIndicatorData:indicatorData.value() scale:_private->page->deviceScaleFactor()] retain];
     else
         _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image scale:_private->page->deviceScaleFactor()] retain];
+}
+
+- (CGRect)_dataInteractionCaretRect
+{
+    if (auto* page = _private->page)
+        return page->dragCaretController().caretPosition().absoluteCaretBounds();
+
+    return { };
 }
 
 - (WebUITextIndicatorData *)_dataOperationTextIndicator
@@ -1915,6 +1927,11 @@ static Vector<FloatRect> floatRectsForCGRectArray(NSArray<NSValue *> *rectValues
 - (UIImage *)_createImageWithPlatterForImage:(UIImage *)image boundingRect:(CGRect)boundingRect contentScaleFactor:(CGFloat)contentScaleFactor clippingRects:(NSArray<NSValue *> *)clippingRects
 {
     return nil;
+}
+
+- (CGRect)_dataInteractionCaretRect
+{
+    return CGRectNull;
 }
 #endif
 
@@ -6602,11 +6619,17 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     return static_cast<DragApplicationFlags>(flags);
 }
 
+- (DragDestinationAction)actionMaskForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
+{
+    return (DragDestinationAction)[[self _UIDelegateForwarder] webView:self dragDestinationActionMaskForDraggingInfo:draggingInfo];
+}
+
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)draggingInfo
 {
     IntPoint client([draggingInfo draggingLocation]);
     IntPoint global(globalPoint([draggingInfo draggingLocation], [self window]));
-    DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
+
+    DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo], [self actionMaskForDraggingInfo:draggingInfo]);
     return core(self)->dragController().dragEntered(dragData);
 }
 
@@ -6618,7 +6641,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
     IntPoint client([draggingInfo draggingLocation]);
     IntPoint global(globalPoint([draggingInfo draggingLocation], [self window]));
-    DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
+
+    DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo], [self actionMaskForDraggingInfo:draggingInfo]);
     return page->dragController().dragUpdated(dragData);
 }
 

@@ -31,3 +31,23 @@
     color: var(--error-text-color) !important;
     opacity: 0.7;
 }
+
+.item.resource.resource-type-websocket .status > div {
+    width: 8px;
+    height: 8px;
+    margin-top: 4px;
+    background-color: white;
+    -webkit-clip-path: circle(50% at 50% 50%);
+}
+
+.item.resource.resource-type-websocket:not(.selected) .status .open,
+.tree-outline:not(:focus, .force-focus) .item.resource.resource-type-websocket.selected .status .open,
+body:matches(.window-inactive, .window-docked-inactive) .item.resource.resource-type-websocket.selected .status .open {
+    background-color: limegreen;
+}
+
+.item.resource.resource-type-websocket:not(.selected) .status .connecting,
+.tree-outline:not(:focus, .force-focus) .item.resource.resource-type-websocket.selected .status .connecting,
+body:matches(.window-inactive, .window-docked-inactive) .item.resource.resource-type-websocket.selected .status .connecting {
+    background-color: yellow;
+}

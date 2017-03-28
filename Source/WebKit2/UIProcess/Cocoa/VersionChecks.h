@@ -38,6 +38,7 @@ enum class SDKVersion : uint32_t {
 #elif PLATFORM(MAC)
     FirstWithNetworkCache = DYLD_MACOSX_VERSION_10_11,
     FirstWithExceptionsForDuplicateCompletionHandlerCalls = DYLD_MACOSX_VERSION_10_13,
+    FirstWithDropToNavigateDisallowedByDefault = DYLD_MACOSX_VERSION_10_13
 #endif
 };
 

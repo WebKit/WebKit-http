@@ -113,6 +113,7 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/freetype/FontCacheFreeType.cpp
     platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
+    platform/graphics/freetype/FontPlatformDataFreeType.cpp
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
 
@@ -139,7 +140,7 @@ list(APPEND WebCore_SOURCES
 
     platform/gtk/DragDataGtk.cpp
     platform/gtk/ErrorsGtk.cpp
-    platform/gtk/MIMETypeRegistryGtk.cpp
+    platform/gtk/LocalizedStringsGtk.cpp
     platform/gtk/PasteboardGtk.cpp
     platform/gtk/ScrollAnimatorGtk.cpp
     platform/gtk/SelectionData.cpp
@@ -177,6 +178,8 @@ list(APPEND WebCore_SOURCES
     platform/text/hyphen/HyphenationLibHyphen.cpp
 
     platform/unix/LoggingUnix.cpp
+
+    platform/xdg/MIMETypeRegistryXdg.cpp
 )
 
 list(APPEND WebCorePlatformGTK_SOURCES
@@ -186,8 +189,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     page/gtk/EventHandlerGtk.cpp
 
     platform/graphics/PlatformDisplay.cpp
-
-    platform/graphics/freetype/FontPlatformDataFreeType.cpp
 
     platform/graphics/gtk/ColorGtk.cpp
     platform/graphics/gtk/GdkCairoUtilities.cpp
@@ -200,7 +201,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/GRefPtrGtk.cpp
     platform/gtk/GtkUtilities.cpp
     platform/gtk/GtkVersioning.c
-    platform/gtk/LocalizedStringsGtk.cpp
     platform/gtk/PasteboardHelper.cpp
     platform/gtk/PlatformKeyboardEventGtk.cpp
     platform/gtk/PlatformMouseEventGtk.cpp

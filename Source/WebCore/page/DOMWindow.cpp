@@ -515,6 +515,9 @@ void DOMWindow::willDetachDocumentFromFrame()
     copyToVector(m_properties, properties);
     for (auto& property : properties)
         property->willDetachGlobalObjectFromFrame();
+
+    if (m_performance)
+        m_performance->clearResourceTimings();
 }
 
 #if ENABLE(GAMEPAD)
@@ -2198,7 +2201,8 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
     if (!newFrame)
         return nullptr;
 
-    newFrame->loader().setOpener(&openerFrame);
+    if (!windowFeatures.noopener)
+        newFrame->loader().setOpener(&openerFrame);
     newFrame->page()->setOpenedByDOM();
 
     if (newFrame->document()->domWindow()->isInsecureScriptAccess(activeWindow, completedURL))

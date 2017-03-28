@@ -28,8 +28,8 @@ import subprocess
 import time
 
 from webkitpy.common.memoized import memoized
-from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port import image_diff
+from webkitpy.port.device import Device
 from webkitpy.port.ios import IOSPort
 from webkitpy.xcode.simulator import Simulator, Runtime, DeviceType
 from webkitpy.common.system.crashlogs import CrashLogs
@@ -66,6 +66,8 @@ class IOSSimulatorPort(IOSPort):
         },
     }
 
+    _DEVICE_MAP = {}
+
     def __init__(self, host, port_name, **kwargs):
         super(IOSSimulatorPort, self).__init__(host, port_name, **kwargs)
 
@@ -73,7 +75,7 @@ class IOSSimulatorPort(IOSPort):
         self._device_class = optional_device_class if optional_device_class else self.DEFAULT_DEVICE_CLASS
         _log.debug('IOSSimulatorPort _device_class is %s', self._device_class)
 
-        self._current_device = Simulator(host).current_device()
+        self._current_device = Device(Simulator(host).current_device())
         if not self._current_device:
             self.set_option('dedicated_simulators', True)
         if not self.get_option('dedicated_simulators'):
@@ -82,7 +84,7 @@ class IOSSimulatorPort(IOSPort):
             self.set_option('child_processes', 1)
 
     def _device_for_worker_number_map(self):
-        return Simulator.managed_devices
+        return IOSSimulatorPort._DEVICE_MAP
 
     @property
     @memoized
@@ -170,21 +172,6 @@ class IOSSimulatorPort(IOSPort):
         sdk = ['--sdk', 'iphonesimulator']
         return archs + sdk
 
-    def _generate_all_test_configurations(self):
-        configurations = []
-        for build_type in self.ALL_BUILD_TYPES:
-            for architecture in self.ARCHITECTURES:
-                configurations.append(TestConfiguration(version=self._version, architecture=architecture, build_type=build_type))
-        return configurations
-
-    def default_baseline_search_path(self):
-        if self.get_option('webkit_test_runner'):
-            fallback_names = [self._wk2_port_name()] + [self.port_name] + ['wk2']
-        else:
-            fallback_names = [self.port_name + '-wk1'] + [self.port_name]
-
-        return map(self._webkit_baseline_path, fallback_names)
-
     def _set_device_class(self, device_class):
         self._device_class = device_class if device_class else self.DEFAULT_DEVICE_CLASS
 
@@ -201,13 +188,13 @@ class IOSSimulatorPort(IOSPort):
                 self._create_device(i)
 
             for i in xrange(self.child_processes()):
-                device_udid = self._testing_device(i).udid
+                device_udid = Simulator.managed_devices[i].udid
                 Simulator.wait_until_device_is_in_state(device_udid, Simulator.DeviceState.SHUTDOWN)
                 Simulator.reset_device(device_udid)
         else:
             assert(self._current_device)
-            if self._current_device.name != self.simulator_device_type().name:
-                _log.warn("Expected simulator of type '" + self.simulator_device_type().name + "' but found simulator of type '" + self._current_device.name + "'")
+            if self._current_device.platform_device.name != self.simulator_device_type().name:
+                _log.warn("Expected simulator of type '" + self.simulator_device_type().name + "' but found simulator of type '" + self._current_device.platform_device.name + "'")
                 _log.warn('The next block of tests may fail due to device mis-match')
 
     def _create_devices(self, device_class):
@@ -224,7 +211,7 @@ class IOSSimulatorPort(IOSPort):
             return
 
         for i in xrange(self.child_processes()):
-            device_udid = self._testing_device(i).udid
+            device_udid = Simulator.managed_devices[i].udid
             _log.debug('testing device %s has udid %s', i, device_udid)
 
             # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
@@ -237,7 +224,11 @@ class IOSSimulatorPort(IOSPort):
 
         _log.info('Waiting for all iOS Simulators to finish booting.')
         for i in xrange(self.child_processes()):
-            Simulator.wait_until_device_is_booted(self._testing_device(i).udid)
+            Simulator.wait_until_device_is_booted(Simulator.managed_devices[i].udid)
+
+        IOSSimulatorPort._DEVICE_MAP = {}
+        for i in xrange(self.child_processes()):
+            IOSSimulatorPort._DEVICE_MAP[i] = Device(Simulator.managed_devices[i])
 
     def _quit_ios_simulator(self):
         if not self._using_dedicated_simulators():
@@ -284,6 +275,7 @@ class IOSSimulatorPort(IOSPort):
 
             except:
                 _log.warning('Unable to remove Simulator' + str(i))
+        IOSSimulatorPort._DEVICE_MAP = {}
 
     def setup_environ_for_server(self, server_name=None):
         _log.debug("setup_environ_for_server")

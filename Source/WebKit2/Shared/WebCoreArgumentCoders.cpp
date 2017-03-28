@@ -1226,6 +1226,7 @@ void ArgumentCoder<DragData>::encode(Encoder& encoder, const DragData& dragData)
 #if PLATFORM(MAC)
     encoder << dragData.fileNames();
 #endif
+    encoder.encodeEnum(dragData.dragDestinationAction());
 }
 
 bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
@@ -1257,7 +1258,11 @@ bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
         return false;
 #endif
 
-    dragData = DragData(pasteboardName, clientPosition, globalPosition, draggingSourceOperationMask, applicationFlags);
+    DragDestinationAction destinationAction;
+    if (!decoder.decodeEnum(destinationAction))
+        return false;
+
+    dragData = DragData(pasteboardName, clientPosition, globalPosition, draggingSourceOperationMask, applicationFlags, destinationAction);
     dragData.setFileNames(fileNames);
 
     return true;
@@ -2068,6 +2073,7 @@ void ArgumentCoder<TextIndicatorData>::encode(Encoder& encoder, const TextIndica
     encoder << textIndicatorData.textRectsInBoundingRectCoordinates;
     encoder << textIndicatorData.contentImageWithoutSelectionRectInRootViewCoordinates;
     encoder << textIndicatorData.contentImageScaleFactor;
+    encoder << textIndicatorData.estimatedBackgroundColor;
     encoder.encodeEnum(textIndicatorData.presentationTransition);
     encoder << static_cast<uint64_t>(textIndicatorData.options);
 
@@ -2091,6 +2097,9 @@ bool ArgumentCoder<TextIndicatorData>::decode(Decoder& decoder, TextIndicatorDat
         return false;
 
     if (!decoder.decode(textIndicatorData.contentImageScaleFactor))
+        return false;
+
+    if (!decoder.decode(textIndicatorData.estimatedBackgroundColor))
         return false;
 
     if (!decoder.decodeEnum(textIndicatorData.presentationTransition))

@@ -1,3 +1,215 @@
+2017-03-26  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::fixSSA should do liveness pruning
+        https://bugs.webkit.org/show_bug.cgi?id=170111
+
+        Reviewed by Saam Barati.
+        
+        Move Air::Liveness<> to WTF::Liveness<>. This is pretty easy since Air::Liveness<> was
+        already fairly generic. It leverages the CFG concept so that it can understand many
+        different kinds of basic blocks. It doesn't try to understand the contents of basic
+        blocks; it just asks the adaptor for the block size and asks for the early/late
+        uses/defs of each thing in the block.
+        
+        This makes it easy to create a B3::VariableLiveness, which fixSSA then uses for
+        pruning. One of the new features is the Liveness::LiveAtHead nested class, which you
+        instantiate if you want to perform liveAtHead queries, which SSA construction wants to
+        do.
+        
+        This also fixes https://bugs.webkit.org/show_bug.cgi?id=170102#c12
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Liveness.h: Added.
+        (WTF::Liveness::Liveness):
+        (WTF::Liveness::LocalCalc::LocalCalc):
+        (WTF::Liveness::LocalCalc::Iterable::Iterable):
+        (WTF::Liveness::LocalCalc::Iterable::iterator::iterator):
+        (WTF::Liveness::LocalCalc::Iterable::iterator::operator++):
+        (WTF::Liveness::LocalCalc::Iterable::iterator::operator*):
+        (WTF::Liveness::LocalCalc::Iterable::iterator::operator==):
+        (WTF::Liveness::LocalCalc::Iterable::iterator::operator!=):
+        (WTF::Liveness::LocalCalc::Iterable::begin):
+        (WTF::Liveness::LocalCalc::Iterable::end):
+        (WTF::Liveness::LocalCalc::Iterable::contains):
+        (WTF::Liveness::LocalCalc::live):
+        (WTF::Liveness::LocalCalc::isLive):
+        (WTF::Liveness::LocalCalc::execute):
+        (WTF::Liveness::rawLiveAtHead):
+        (WTF::Liveness::Iterable::Iterable):
+        (WTF::Liveness::Iterable::iterator::iterator):
+        (WTF::Liveness::Iterable::iterator::operator*):
+        (WTF::Liveness::Iterable::iterator::operator++):
+        (WTF::Liveness::Iterable::iterator::operator==):
+        (WTF::Liveness::Iterable::iterator::operator!=):
+        (WTF::Liveness::Iterable::begin):
+        (WTF::Liveness::Iterable::end):
+        (WTF::Liveness::Iterable::contains):
+        (WTF::Liveness::liveAtHead):
+        (WTF::Liveness::liveAtTail):
+        (WTF::Liveness::workset):
+        (WTF::Liveness::LiveAtHead::LiveAtHead):
+        (WTF::Liveness::LiveAtHead::isLiveAtHead):
+
+2017-03-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Air::Liveness shouldn't need HashSets
+        https://bugs.webkit.org/show_bug.cgi?id=170102
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/IndexSparseSet.h: Add some helpers for a HashSet-free liveness analysis.
+        (WTF::IndexSparseSet::values):
+        (WTF::IndexSparseSet<OverflowHandler>::sort):
+        * wtf/StdLibExtras.h:
+        (WTF::mergeDeduplicatedSorted): Rapidly merge two sorted lists that don't have duplicates to produce a new sorted list that doesn't have duplicates.
+        * wtf/Vector.h:
+        (WTF::minCapacity>::uncheckedAppend): Inline this!
+        (WTF::removeRepeatedElements): This is a version of std::unique() that works naturally for Vectors.
+
+2017-03-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Air should use RegisterSet for RegLiveness
+        https://bugs.webkit.org/show_bug.cgi?id=170108
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Atomics.h:
+        (WTF::ensurePointer): This is a useful replacement for std::once, which requires less fencing.
+        * wtf/Bitmap.h: Add more utilities.
+        (WTF::Bitmap::iterator::iterator): An iterator for set bits.
+        (WTF::Bitmap::iterator::operator*):
+        (WTF::Bitmap::iterator::operator++):
+        (WTF::Bitmap::iterator::operator==):
+        (WTF::Bitmap::iterator::operator!=):
+        (WTF::Bitmap::begin):
+        (WTF::Bitmap::end):
+        (WTF::WordType>::subsumes): a.subsumes(b) if all of b's set bits are set in a.
+        (WTF::WordType>::findBit): find next set or clear bit.
+
+2017-03-24  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: store state in TLS instead of on VM
+        https://bugs.webkit.org/show_bug.cgi?id=169611
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/FastTLS.h: reserve one key for WebAssembly, delete a bunch
+        of dead code which clang couldn't compile (it's valid GCC assembly
+        which LLVM dislikes).
+
+2017-03-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r214351.
+
+        This change caused API test
+        WebKit1.DidCreateJavaScriptContextBackForwardCacheTest to
+        fail.
+
+        Reverted changeset:
+
+        "Make inactive web processes behave as though under memory
+        pressure."
+        https://bugs.webkit.org/show_bug.cgi?id=170042
+        http://trac.webkit.org/changeset/214351
+
+2017-03-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r214329.
+
+        Significantly regressed Speedometer
+
+        Reverted changeset:
+
+        "window.crypto.getRandomValues() uses the insecure RC4 RNG"
+        https://bugs.webkit.org/show_bug.cgi?id=169623
+        http://trac.webkit.org/changeset/214329
+
+2017-03-24  Andreas Kling  <akling@apple.com>
+
+        Make inactive web processes behave as though under memory pressure.
+        <https://webkit.org/b/170042>
+
+        Reviewed by Antti Koivisto.
+
+        Once a web process becomes inactive, let's try to reduce its impact
+        on memory usage by treating it as if it's under memory pressure until
+        it becomes active.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::setProcessState):
+        (WTF::MemoryPressureHandler::isUnderMemoryPressure):
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::isUnderMemoryPressure): Deleted.
+
+2017-03-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        window.crypto.getRandomValues() uses the insecure RC4 RNG
+        https://bugs.webkit.org/show_bug.cgi?id=169623
+
+        Reviewed by Alex Christensen.
+
+        Remove the RC4 random generator in favor of using OS randomness for now. This is basically
+        a merge of https://codereview.chromium.org/1431233002 from Blink, original author "eroman".
+
+        * wtf/CryptographicallyRandomNumber.cpp:
+        (WTF::cryptographicallyRandomNumber):
+        (WTF::cryptographicallyRandomValues):
+        (): Deleted.
+
+2017-03-23  Tomas Popela  <tpopela@redhat.com>
+
+        Fix uninitialized public members in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=169676
+
+        Reviewed by Michael Catanzaro.
+
+        Found by Coverity scan.
+
+        * wtf/Bag.h:
+        * wtf/HashTable.h:
+        * wtf/HashTraits.h:
+        * wtf/Insertion.h:
+        * wtf/OrderMaker.h:
+        * wtf/ParallelJobsGeneric.h:
+
+2017-03-22  Andreas Kling  <akling@apple.com>
+
+        Let MemoryPressureHandler track whether the process is active or inactive.
+        <https://webkit.org/b/169990>
+
+        Reviewed by Antti Koivisto.
+
+        An active process is a process that meets any of these criteria:
+
+            - Has had a visible Page in an active window in the last hour
+            - Is playing audio
+
+        This replaces the old mechanism where MemoryPressureHandler would invoke
+        a callback to know whether the process was eligible for a memory kill.
+        Instead we now plumb the relevant information down from WebCore and kill
+        based on this activity state.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::setProcessState):
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::setMemoryKillCallback):
+        (WTF::MemoryPressureHandler::processState):
+        (WTF::MemoryPressureHandler::setProcessIsEligibleForMemoryKillCallback): Deleted.
+
+2017-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a system trace point for memory warning handling
+        https://bugs.webkit.org/show_bug.cgi?id=169893
+
+        Reviewed by Zalan Bujtas.
+
+        Make it possible to pass data to the Begin trace point.
+
+        * wtf/SystemTracing.h:
+        (WTF::TraceScope::TraceScope):
+
 2017-03-17  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         Time channel attack on SVG Filters
