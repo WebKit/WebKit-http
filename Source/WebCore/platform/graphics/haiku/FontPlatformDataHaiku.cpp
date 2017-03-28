@@ -28,10 +28,10 @@
 #include <wtf/text/CString.h>
 
 namespace WebCore {
-font_family FontPlatformData::m_FallbackSansSerifFontFamily= "DejaVu Sans";
-font_family FontPlatformData::m_FallbackSerifFontFamily = "DejaVu Serif";
-font_family FontPlatformData::m_FallbackFixedFontFamily = "DejaVu Mono";
-font_family FontPlatformData::m_FallbackStandardFontFamily = "DejaVu Serif";
+font_family FontPlatformData::m_FallbackSansSerifFontFamily= "Noto Sans";
+font_family FontPlatformData::m_FallbackSerifFontFamily = "Noto Serif";
+font_family FontPlatformData::m_FallbackFixedFontFamily = "Noto Mono";
+font_family FontPlatformData::m_FallbackStandardFontFamily = "Noto Sans";
 
 static inline bool isEmtpyValue(const float size, const bool bold, const bool oblique)
 {
@@ -47,11 +47,11 @@ FontPlatformData::findMatchingFontFamily(const AtomicString& familyName, font_fa
         strncpy(*fontFamily, familyNameUTF8.data(), B_FONT_FAMILY_LENGTH + 1);
     else {
         // If no font family is found for the given name, we use a generic font.
-        if (familyName.contains("Sans", false) != B_ERROR)
+        if (familyName.contains("Sans", false))
             strncpy(*fontFamily, m_FallbackSansSerifFontFamily, B_FONT_FAMILY_LENGTH + 1);
-        else if (familyName.contains("Serif", false) != B_ERROR)
+        else if (familyName.contains("Serif", false))
             strncpy(*fontFamily, m_FallbackSerifFontFamily, B_FONT_FAMILY_LENGTH + 1);
-        else if (familyName.contains("Mono", false) != B_ERROR)
+        else if (familyName.contains("Mono", false))
             strncpy(*fontFamily, m_FallbackFixedFontFamily, B_FONT_FAMILY_LENGTH + 1);
         else {
             // This is the fallback font.
