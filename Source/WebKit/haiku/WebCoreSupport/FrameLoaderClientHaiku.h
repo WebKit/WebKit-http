@@ -223,6 +223,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     PassRefPtr<FrameNetworkingContext> createNetworkingContext() override;
     void updateCachedDocumentLoader(WebCore::DocumentLoader&) override { }
 
+    void prefetchDNS(const String&) override { }
  private:
     bool isTertiaryMouseButton(const NavigationAction& action) const;
 

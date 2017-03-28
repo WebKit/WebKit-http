@@ -31,9 +31,9 @@ public:
     SearchPopupMenuHaiku(PopupMenuClient*);
 
     virtual PopupMenu* popupMenu();
-    virtual void saveRecentSearches(const AtomicString& name, const Vector<String>& searchItems);
-    virtual void loadRecentSearches(const AtomicString& name, Vector<String>& searchItems);
-    virtual bool enabled();
+    void saveRecentSearches(const AtomicString& name, const Vector<RecentSearch>& searchItems) override;
+    void loadRecentSearches(const AtomicString& name, Vector<RecentSearch>& searchItems) override;
+    bool enabled() override;
 
 private:
     RefPtr<PopupMenuHaiku> m_popup;

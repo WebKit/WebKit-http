@@ -735,14 +735,9 @@ void GraphicsContext::setPlatformShouldAntialias(bool /*enable*/)
     notImplemented();
 }
 
-void GraphicsContext::setImageInterpolationQuality(InterpolationQuality quality)
+void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality quality)
 {
     m_data->state()->imageInterpolationQuality = quality;
-}
-
-InterpolationQuality GraphicsContext::imageInterpolationQuality() const
-{
-    return m_data->state()->imageInterpolationQuality;
 }
 
 void GraphicsContext::setURLForRect(const URL& /*link*/, const IntRect& /*destRect*/)
