@@ -55,7 +55,6 @@
 #include "HTMLSelectElement.h"
 #include "HTMLTemplateElement.h"
 #include "IdTargetObserverRegistry.h"
-#include "InsertionPoint.h"
 #include "KeyboardEvent.h"
 #include "MainFrame.h"
 #include "MutationObserverInterestGroup.h"
@@ -1236,7 +1235,7 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
             elementData()->setHasNameAttribute(!newValue.isNull());
         else if (name == HTMLNames::pseudoAttr)
             shouldInvalidateStyle |= testShouldInvalidateStyle && isInShadowTree();
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
         else if (name == HTMLNames::slotAttr) {
             if (auto* parent = parentElement()) {
                 if (auto* shadowRoot = parent->shadowRoot())
@@ -1622,9 +1621,7 @@ ShadowRoot* Element::shadowRoot() const
 
 static bool shouldUseNodeRenderingTraversalSlowPath(const Element& element)
 {
-    if (element.isShadowRoot())
-        return true;
-    return element.isInsertionPoint() || element.shadowRoot();
+    return element.isShadowRoot() || element.shadowRoot();
 }
 
 void Element::resetNeedsNodeRenderingTraversalSlowPath()
@@ -1860,9 +1857,7 @@ void Element::childrenChanged(const ChildChange& change)
     }
 
     if (ShadowRoot* shadowRoot = this->shadowRoot()) {
-        if (auto* distributor = shadowRoot->distributor())
-            distributor->invalidateDistribution(this);
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
         switch (change.type) {
         case ElementInserted:
         case ElementRemoved:

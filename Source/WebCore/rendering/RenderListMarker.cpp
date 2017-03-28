@@ -1197,7 +1197,8 @@ void RenderListMarker::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
     GraphicsContext& context = paintInfo.context();
 
     if (isImage()) {
-        context.drawImage(m_image->image(this, marker.size()).get(), style().colorSpace(), marker);
+        if (RefPtr<Image> markerImage = m_image->image(this, marker.size()))
+            context.drawImage(*markerImage, style().colorSpace(), marker);
         if (selectionState() != SelectionNone) {
             LayoutRect selRect = localSelectionRect();
             selRect.moveBy(boxOrigin);
@@ -1426,8 +1427,7 @@ void RenderListMarker::updateContent()
         // until we support the CSS3 marker pseudoclass to allow control over the width and height of the marker box.
         LayoutUnit bulletWidth = style().fontMetrics().ascent() / LayoutUnit(2);
         LayoutSize defaultBulletSize(bulletWidth, bulletWidth);
-        LayoutSize imageSize;
-        calculateImageIntrinsicDimensions(m_image.get(), defaultBulletSize, DoNotScaleByEffectiveZoom, imageSize);
+        LayoutSize imageSize = calculateImageIntrinsicDimensions(m_image.get(), defaultBulletSize, DoNotScaleByEffectiveZoom);
         m_image->setContainerSizeForRenderer(this, imageSize, style().effectiveZoom());
         return;
     }
@@ -1894,11 +1894,8 @@ LayoutRect RenderListMarker::selectionRectForRepaint(const RenderLayerModelObjec
     LayoutRect rect(0, rootBox.selectionTop() - y(), width(), rootBox.selectionHeight());
             
     if (clipToVisibleContent)
-        computeRectForRepaint(repaintContainer, rect);
-    else
-        rect = localToContainerQuad(FloatRect(rect), repaintContainer).enclosingBoundingBox();
-    
-    return rect;
+        return computeRectForRepaint(rect, repaintContainer);
+    return localToContainerQuad(FloatRect(rect), repaintContainer).enclosingBoundingBox();
 }
 
 } // namespace WebCore

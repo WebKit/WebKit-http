@@ -65,12 +65,12 @@ void GradientImage::draw(GraphicsContext& destContext, const FloatRect& destRect
 }
 
 void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-    const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator compositeOp, const FloatRect& destRect, BlendMode blendMode)
+    const FloatPoint& phase, const FloatSize& spacing, ColorSpace styleColorSpace, CompositeOperator compositeOp, const FloatRect& destRect, BlendMode blendMode)
 {
     // Allow the generator to provide visually-equivalent tiling parameters for better performance.
     FloatSize adjustedSize = size();
     FloatRect adjustedSrcRect = srcRect;
-    m_gradient->adjustParametersForTiledDrawing(adjustedSize, adjustedSrcRect);
+    m_gradient->adjustParametersForTiledDrawing(adjustedSize, adjustedSrcRect, spacing);
 
     // Factor in the destination context's scale to generate at the best resolution
     AffineTransform destContextCTM = destContext.getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
@@ -82,7 +82,7 @@ void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& s
 
     unsigned generatorHash = m_gradient->hash();
 
-    if (!m_cachedImageBuffer || m_cachedGeneratorHash != generatorHash || m_cachedAdjustedSize != adjustedSize || !destContext.isCompatibleWithBuffer(m_cachedImageBuffer.get())) {
+    if (!m_cachedImageBuffer || m_cachedGeneratorHash != generatorHash || m_cachedAdjustedSize != adjustedSize || !destContext.isCompatibleWithBuffer(*m_cachedImageBuffer)) {
         m_cachedImageBuffer = destContext.createCompatibleBuffer(adjustedSize, m_gradient->hasAlpha());
         if (!m_cachedImageBuffer)
             return;
@@ -97,11 +97,10 @@ void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& s
             m_cachedImageBuffer->convertToLuminanceMask();
     }
 
-    m_cachedImageBuffer->setSpaceSize(spaceSize());
     destContext.setDrawLuminanceMask(false);
 
     // Tile the image buffer into the context.
-    m_cachedImageBuffer->drawPattern(destContext, adjustedSrcRect, adjustedPatternCTM, phase, styleColorSpace, compositeOp, destRect, blendMode);
+    m_cachedImageBuffer->drawPattern(destContext, adjustedSrcRect, adjustedPatternCTM, phase, spacing, styleColorSpace, compositeOp, destRect, blendMode);
 }
 
 }

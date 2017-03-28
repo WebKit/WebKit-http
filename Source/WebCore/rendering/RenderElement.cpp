@@ -488,24 +488,31 @@ void RenderElement::setStyle(Ref<RenderStyle>&& style, StyleDifference minimalSt
     }
 }
 
+bool RenderElement::childRequiresTable(const RenderObject& child) const
+{
+    if (is<RenderTableCol>(child)) {
+        const RenderTableCol& newTableColumn = downcast<RenderTableCol>(child);
+        bool isColumnInColumnGroup = newTableColumn.isTableColumn() && is<RenderTableCol>(*this);
+        return !is<RenderTable>(*this) && !isColumnInColumnGroup;
+    }
+    if (is<RenderTableCaption>(child))
+        return !is<RenderTable>(*this);
+
+    if (is<RenderTableSection>(child))
+        return !is<RenderTable>(*this);
+
+    if (is<RenderTableRow>(child))
+        return !is<RenderTableSection>(*this);
+
+    if (is<RenderTableCell>(child))
+        return !is<RenderTableRow>(*this);
+
+    return false;
+}
+
 void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
 {
-    bool needsTable = false;
-
-    if (is<RenderTableCol>(*newChild)) {
-        RenderTableCol& newTableColumn = downcast<RenderTableCol>(*newChild);
-        bool isColumnInColumnGroup = newTableColumn.isTableColumn() && is<RenderTableCol>(*this);
-        needsTable = !is<RenderTable>(*this) && !isColumnInColumnGroup;
-    } else if (is<RenderTableCaption>(*newChild))
-        needsTable = !is<RenderTable>(*this);
-    else if (is<RenderTableSection>(*newChild))
-        needsTable = !is<RenderTable>(*this);
-    else if (is<RenderTableRow>(*newChild))
-        needsTable = !is<RenderTableSection>(*this);
-    else if (is<RenderTableCell>(*newChild))
-        needsTable = !is<RenderTableRow>(*this);
-
-    if (needsTable) {
+    if (childRequiresTable(*newChild)) {
         RenderTable* table;
         RenderObject* afterChild = beforeChild ? beforeChild->previousSibling() : m_lastChild;
         if (afterChild && afterChild->isAnonymous() && is<RenderTable>(*afterChild) && !afterChild->isBeforeContent())
@@ -895,7 +902,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
 
         bool newStyleSlowScroll = repaintFixedBackgroundsOnScroll && newStyleUsesFixedBackgrounds;
         bool oldStyleSlowScroll = oldStyle && repaintFixedBackgroundsOnScroll && oldStyleUsesFixedBackgrounds;
-        bool drawsRootBackground = isRoot() || (isBody() && !rendererHasBackground(document().documentElement()->renderer()));
+        bool drawsRootBackground = isDocumentElementRenderer() || (isBody() && !rendererHasBackground(document().documentElement()->renderer()));
         if (drawsRootBackground && repaintFixedBackgroundsOnScroll) {
             if (view().compositor().supportsFixedRootBackgroundCompositing()) {
                 if (newStyleSlowScroll && newStyle.hasEntirelyFixedBackground())
@@ -915,7 +922,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         }
     }
 
-    if (isRoot() || isBody())
+    if (isDocumentElementRenderer() || isBody())
         view().frameView().updateExtendBackgroundIfNecessary();
 
     if (!oldStyle || (oldStyle->outlineSize() != newStyle.outlineSize()
@@ -1155,7 +1162,7 @@ void RenderElement::setNeedsSimplifiedNormalFlowLayout()
 
 RenderElement& RenderElement::rendererForRootBackground()
 {
-    ASSERT(isRoot());
+    ASSERT(isDocumentElementRenderer());
     if (!hasBackground() && is<HTMLHtmlElement>(element())) {
         // Locate the <body> element using the DOM. This is easier than trying
         // to crawl around a render tree with potential :before/:after content and
@@ -1441,10 +1448,10 @@ static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const 
     // FIXME: This is overly conservative as the image may not be a background-image, in which case it will not
     // be propagated to the root. At this point, we unfortunately don't have access to the image anymore so we
     // can no longer check if it is a background image.
-    bool backgroundIsPaintedByRoot = renderer.isRoot();
+    bool backgroundIsPaintedByRoot = renderer.isDocumentElementRenderer();
     if (renderer.isBody()) {
         auto& rootRenderer = *renderer.parent(); // If <body> has a renderer then <html> does too.
-        ASSERT(rootRenderer.isRoot());
+        ASSERT(rootRenderer.isDocumentElementRenderer());
         ASSERT(is<HTMLHtmlElement>(rootRenderer.element()));
         // FIXME: Should share body background propagation code.
         backgroundIsPaintedByRoot = !rootRenderer.hasBackground();

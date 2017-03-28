@@ -1,3 +1,638 @@
+2015-10-14  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r190882): Concatenating a character array and an empty string is broken.
+        <https://webkit.org/b/150135>
+
+        Reviewed by Geoffrey Garen.
+
+        Add a new WTF API test that covers this issue.
+
+        * TestWebKitAPI/Tests/WTF/StringOperators.cpp:
+        (TestWebKitAPI::build):
+        (TestWebKitAPI::TEST):
+
+2015-10-14  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI for reloading without content blockers
+        https://bugs.webkit.org/show_bug.cgi?id=150058
+        rdar://problem/22742222
+
+        Reviewed by Sam Weinig.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::cocoaResetStateToConsistentValues):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformConfigureViewForTest):
+
+2015-10-14  Mark Lam  <mark.lam@apple.com>
+
+        Rename some JSC option names to be more uniform.
+        https://bugs.webkit.org/show_bug.cgi?id=150127
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/jsc-stress-test-helpers/js-executable-allocation-fuzz:
+        * Scripts/run-jsc-stress-tests:
+
+2015-10-14  Anders Carlsson  <andersca@apple.com>
+
+        Change the bundle app cache APIs to take a page
+        https://bugs.webkit.org/show_bug.cgi?id=150123
+
+        Reviewed by Sam Weinig.
+
+        Update APIs.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didReachApplicationCacheOriginQuota):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::clearAllApplicationCaches):
+        (WTR::TestRunner::clearApplicationCacheForOrigin):
+        (WTR::TestRunner::setAppCacheMaximumSize):
+        (WTR::TestRunner::applicationCacheDiskUsageForOrigin):
+        (WTR::TestRunner::originsWithApplicationCache):
+
+2015-10-14  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Update web-platform-tests tools to the latest revision
+        https://bugs.webkit.org/show_bug.cgi?id=149645
+
+        Reviewed by Darin Adler.
+
+        Disabling git submodules information conversion to json install file for web-platform-tests.
+        Disabling related python unit tests.
+        The tools submodules contain submodules and the conversion tool does not support that yet.
+
+        Updating wpt launcher script to aling it with web-platform-test main script.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py:
+        (main):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server_unittest.py:
+        (TestWebPlatformTestServer.test_corrupted_subserver_files): Deleted.
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest.test_submodules_generation):
+
+2015-10-13  Alexey Proskuryakov  <ap@apple.com>
+
+        More debug queue build fixing.
+
+        Preserve the build style in one more place. Changed mock build_style from "both"
+        to "release", as we don't support testing both debug and release.
+
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        (MockCommitQueue.archive_last_test_results):
+        (MockCommitQueue):
+        (MockCommitQueue.build_style):
+        (MockCommitQueue.did_pass_testing_ews):
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        (PatchAnalysisTask._test):
+        (PatchAnalysisTask._build_and_test_without_patch):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (EarlyWarningSystemTest._default_expected_logs):
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+
+2015-10-13  Alexey Proskuryakov  <ap@apple.com>
+
+        More debug queue build fixing.
+
+        Add build_style argument to derived classes as well.
+
+        * Scripts/webkitpy/common/config/ports.py:
+        (MacPort):
+        (MacPort.run_webkit_tests_command):
+        (WinPort.run_bindings_tests_command):
+        (WinPort):
+        (WinPort.run_webkit_tests_command):
+        (GtkWK2Port.build_webkit_command):
+        (GtkWK2Port):
+        (GtkWK2Port.run_webkit_tests_command):
+
+2015-10-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Build fix
+
+        Unreviewed.
+
+        Mach-O section names are limited to 16 characters.
+
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (activateFontsIOS):
+
+2015-10-13  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix for mac-debug EWS queue.
+
+        Unreviewed.
+
+        Pass --debug to run-webkit-tests.
+
+        While at it, removed unsupported run_webkit_unit_tests_command. All the test steps
+        will need to be substantially modified to work in EWS, so the dummy implementation
+        was not helpful.
+
+        * Scripts/webkitpy/common/config/ports.py:
+        (DeprecatedPort.run_javascriptcore_tests_command):
+        (DeprecatedPort):
+        (DeprecatedPort.run_webkit_tests_command):
+        (DeprecatedPort.run_python_unittests_command):
+        (DeprecatedPort.run_webkit_unit_tests_command): Deleted.
+        * Scripts/webkitpy/common/config/ports_mock.py:
+        (MockPort.run_javascriptcore_tests_command):
+        (MockPort):
+        (MockPort.run_webkit_tests_command):
+        (MockPort.run_bindings_tests_command):
+        (MockPort.run_webkit_unit_tests_command): Deleted.
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        * Scripts/webkitpy/tool/steps/runtests.py:
+        (RunTests.run):
+        * Scripts/webkitpy/tool/steps/runtests_unittest.py:
+        (RunTestsTest.test_webkit_run_unit_tests):
+        * Scripts/webkitpy/tool/steps/steps_unittest.py:
+        (StepsTest.test_runtests_args):
+
+2015-10-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Generate Crash Traces
+        https://bugs.webkit.org/show_bug.cgi?id=150103
+
+        Reviewed by Daniel Bates.
+
+        We were using an exception filter to try to emit "#CRASHED" to stderr
+        when a test program crashed. However, the modern Python implementation
+        seems capable of recognizing crashes on its own. Furthermore, registering
+        the exception handler was preventing the JIT debugger (NTSD) from
+        automatically attaching to the crashing program, so we were not getting
+        crash traces.
+        
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (main): Don't register an exception filter.
+        (exceptionFilter): Deleted.
+        * Scripts/webkitpy/common/system/crashlogs.py:
+        (CrashLogs): Add another regular expression to handle a second crash trace
+        syntax I encountered during testing.
+        (CrashLogs._find_newest_log_win): If the old regular expression doesn't match,
+        try the new one. The PID found by the new expression is in hexadecimal, so
+        convert it to an integer before returning it.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._check_for_driver_crash_or_unresponsiveness): Windows was not recognizing
+        the "#CRASHED" state because it was appending '\r\n', rather than just '\r'. Instead,
+        check for "#CRASHED" after stripping off the EOL characters.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.setup_crash_log_saving): Put back the '-e %ld' flag in the debugger
+        invocation. This is apparently used to signal an event when the debugger is finished.
+
+2015-10-13  Alexey Proskuryakov  <ap@apple.com>
+
+        Mac Debug and 32-bit queues should be separate
+        https://bugs.webkit.org/show_bug.cgi?id=150092
+
+        Reviewed by Lucas Forschler.
+
+        * QueueStatusServer/config/queues.py:
+        * QueueStatusServer/model/queues.py:
+        (Queue._capitalize_after_dash):
+        (Queue._caplitalize_after_dash): Deleted.
+        * Scripts/webkitpy/common/config/ews.json:
+
+2015-10-13  Sergio Villar Senin  <svillar@igalia.com>
+
+        [GTK] Fix build for ENABLE_TOUCH_EVENTS=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=150085
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+
+2015-10-13  Sebastian Dröge  <sebastian@centricular.com>
+
+        Unreviewed, add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-10-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Update bot watcher's dashboard to reflect that EWS is on iOS 9 now
+        https://bugs.webkit.org/show_bug.cgi?id=149983
+
+        Reviewed by Dan Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        (BubbleQueueServer):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+
+2015-10-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix webkitpy tests after r190922.
+
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+
+2015-10-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a Mac debug EWS queue
+        https://bugs.webkit.org/show_bug.cgi?id=150069
+
+        Reviewed by Geoffrey Garen.
+
+        * QueueStatusServer/config/queues.py:
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem):
+        (AbstractEarlyWarningSystem.archive_last_test_results):
+        (AbstractEarlyWarningSystem.build_style):
+        (AbstractEarlyWarningSystem.refetch_patch):
+        (AbstractEarlyWarningSystem.load_ews_classes):
+
+2015-10-12  Mario Sanchez Prada  <mario@endlessm.com>
+
+        [GTK] Update jhbuild's version of harfbuzz
+        https://bugs.webkit.org/show_bug.cgi?id=149749
+
+        Reviewed by Martin Robinson.
+
+        Update harfbuzz to 0.9.35, following the lead of Debian Stable.
+
+        * gtk/jhbuild.modules: Updated details for harfbuzz.
+
+2015-10-12  Mario Sanchez Prada  <mario@endlessm.com>
+
+        [GTK] Media tests crashing with gst-plugins-bad 1.4.4 and cpp 5.2
+        https://bugs.webkit.org/show_bug.cgi?id=150026
+
+        Reviewed by Philippe Normand.
+
+        Backport upstream patch from gst-plugins-bad so that the right version
+        of FAAD2 can be found with newer versions of cpp, so that gst-plugins-bad
+        gets compiled properly, avoiding crashes on runtime while running tests.
+
+        * gtk/patches/gst-plugins-bad-fix-faad2-version-check.patch: Added.
+        * gtk/jhbuild.modules: Referenced the newly added patch for gst-plugins-bad.
+
+2015-10-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test font-variant-* and font-feature-settings with mocked preinstalled fonts
+        https://bugs.webkit.org/show_bug.cgi?id=149777
+
+        Reviewed by Simon Fraser.
+
+        Include FontWithFeatures in DumpRenderTree and WebKitTestRunner. Add it
+        to the list of tests to preinstall at startup time.
+
+        Also, update the generation of the 'name' table in the FontWithFeatures font.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet):
+        (activateTestingFonts):
+        (activateFontsIOS):
+        * FontWithFeatures/FontWithFeatures/FontCreator.cpp:
+        (Generator::generate):
+        (Generator::appendCFFTable):
+        (Generator::appendNameSubtable):
+        (Generator::appendNAMETable):
+        * FontWithFeatures/FontWithFeatures/main.cpp:
+        (main):
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        (WTR::allowedFontFamilySet):
+        (WTR::activateFonts):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet):
+
+2015-10-11  Jinyoung Hur  <hur.ims@navercorp.com>
+
+        Unreviewed. Add Jinyoung Hur as a committer. 
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-10-10  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove unnecessary iOS version checks
+        https://bugs.webkit.org/show_bug.cgi?id=150002
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (-[HIDEventGenerator _createIOHIDEventType:]):
+        (-[HIDEventGenerator _sendHIDEvent:]):
+        (-[HIDEventGenerator _sendMarkerHIDEventWithCompletionBlock:]):
+        * WebKitTestRunner/ios/UIKitSPI.h:
+
+2015-10-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unreviewed, rolling out r190689
+        https://bugs.webkit.org/show_bug.cgi?id=149992
+
+        Fixed in other repository.
+
+        Reverted changesets:
+
+        "Unreviewed, rolling out r190572, r190593, r190594, and r190639."
+        https://bugs.webkit.org/show_bug.cgi?id=149897
+
+2015-10-09  Brian Burg  <bburg@apple.com>
+
+        Teach webkitperl how to figure out IOS versions from the SDK
+        https://bugs.webkit.org/show_bug.cgi?id=149963
+
+        Reviewed by Daniel Bates.
+
+        It should be easier to check the major and minor version of IOS SDKs.
+
+        * Scripts/copy-webkitlibraries-to-product-directory: use iosVersion().
+        * Scripts/webkitdirs.pm:
+        (splitVersionString): Added.
+        (determineOSXVersion): Use splitVersionString.
+        (determineIOSVersion): Added. Look at the SDK version and make a tuple.
+        (iosVersion): Added.
+
+2015-10-09  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Fix some leaks in TestRunnerWKWebView and UIScriptContext
+        https://bugs.webkit.org/show_bug.cgi?id=149960
+
+        Reviewed by Tim Horton.
+        
+        Use adoptWK(), and null out some members (file is not using ARC).
+
+        * WebKitTestRunner/UIScriptContext/UIScriptContext.cpp:
+        (UIScriptContext::uiScriptComplete):
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView dealloc]):
+
+2015-10-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE_SUID_SANDBOX_LINUX cruft
+        https://bugs.webkit.org/show_bug.cgi?id=149954
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-10-09  Daniel Bates  <dabates@apple.com>
+
+        Make iOS builders generate debug information in a separate dSYM file
+        https://bugs.webkit.org/show_bug.cgi?id=149696
+
+        Reviewed by Darin Adler.
+
+        Similar to the Mac builders, the iOS builders should write debug information
+        into a separate dSYM file instead of including such information in the binary
+        itself (default Xcode behavior)
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (CompileWebKit.start):
+
+2015-10-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix webkitpy tests after r190779
+        https://bugs.webkit.org/show_bug.cgi?id=149949
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_results.py:
+        (BenchmarkResults.format):
+        (BenchmarkResults._format_values):
+
+2015-10-08  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Extend run-benchmark script to support human-readable results conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=149944
+
+        Reviewed by Ryosuke Niwa.
+
+        Add '--read-results-json' and '--no-adjust-unit' options.
+        '--read-results-json' option converts result file to human readable format.
+        '--no-adjust-unit' option skips scientific notation convertion.
+        '--platform' defaults to 'osx' and '--browser' defaults to 'safari'.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_results.py:
+        (BenchmarkResults.format):
+        (BenchmarkResults._format_tests):
+        (BenchmarkResults._format_values):
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner._run_benchmark):
+        (BenchmarkRunner._dump):
+        (BenchmarkRunner.show_results):
+        (BenchmarkRunner._show_results): Deleted.
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+        (parse_args):
+        (start):
+
+2015-10-08  Daniel Bates  <dabates@apple.com>
+
+        Add iOS 9 device builder to WebKit Bot Watcher's Dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=149945
+
+        Reviewed by Dan Bernstein.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS9.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS9@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (table.queue-grid tr.platform.ios-9 img.logo):
+
+2015-10-08  Daniel Bates  <dabates@apple.com>
+
+        Teach build-webkit to install LLVM binaries for iOS when building for device with the public iOS SDK
+        https://bugs.webkit.org/show_bug.cgi?id=149943
+
+        Reviewed by Dan Bernstein.
+
+        Following the addition of the LLVM binaries for iOS in changeset r190759 (bug #149913) we should
+        teach build-webkit to install them when building for iOS device using the public iOS SDK. 
+
+        * Scripts/build-webkit:
+
+2015-10-08  Daniel Bates  <dabates@apple.com>
+
+        Add LLVM binaries for iOS 9 device
+        https://bugs.webkit.org/show_bug.cgi?id=149913
+
+        Reviewed by Filip Pizlo.
+
+        Implement support for building LLVM for ARM64-based iOS devices.
+
+        * Scripts/build-jsc: Enable the FTL when building for Mac or iOS device.
+        * Scripts/copy-webkitlibraries-to-product-directory: Move logic to clean
+        an existing build earlier in the file such that remove previously built
+        libraries before building/copying new ones (if applicable).
+        (fileContains): Moved function outside of if-block.
+        (isContentOfFileEqualToString): Renamed; formerly named fileContentsEquals().
+        (buildLLVM): Added. Extracted machinery to build LLVM into this function and
+        added logic to build LLVM for ARM64-based iOS devices.
+        (symlinkLLVMLibrariesIfNeeded): Added. Extracted machinery to symlink the built
+        LLVM into the WebKitBuild directory.
+
+2015-10-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Crash-only queues on bot watcher's dashboard should not have non-crashing tests in popovers
+        https://bugs.webkit.org/show_bug.cgi?id=149848
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+
+2015-10-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Support 64-bit Build and Testing
+        https://bugs.webkit.org/show_bug.cgi?id=149904
+
+        Reviewed by Daniel Bates.
+
+        Extend our existing scripts to support 64-bit build and test operations on
+        Windows.
+
+        * Scripts/build-dumprendertree: We don't need to build DRT on its own;
+        Windows always builds the whole stack.
+        * Scripts/webkit-build-directory: Add an option to return the location of
+        the executable files produced by a specific configuration. This change is
+        actually useful for Gtk and EFL, too.
+        * Scripts/webkitdirs.pm:
+        (executableProductDir): Added. This function appends the proper binary
+        path to the productDir. This is useful for Windows, Gtk, and EFL ports.
+        (jscProductDir): Use the new 'executableProductDir' method.
+        (setPathForRunningWebKitApp): Ditto.
+        (runSafari): Ditto.
+        (runMiniBrowser): Ditto.
+        * Scripts/webkitpy/port/factory.py:
+        (configuration_options): Add a 64-bit option, used on Windows to specify
+        which binary target should be used for testing.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._port_flag_for_scripts): Added. Supply the 64-bit flag to child
+        processes when needed.
+        (WinPort._build_path): Add the correct binary target path to _build_path.
+        (WinPort._ntsd_location): Check 32-bit paths when running 32-bit tests,
+        64-bit paths for 64-bit tests.
+        (WinPort.setup_crash_log_saving): Remove '-e %ld' argument, since the
+        NTSD debugger does not understand this argument.
+
+2015-10-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test font-variant-* and font-feature-settings with TrueType fonts
+        https://bugs.webkit.org/show_bug.cgi?id=149776
+
+        Reviewed by Simon Fraser.
+
+        This test extends our existing FontWithFeatures project to be able to generate a
+        TrueType font. This font is conceptually similar as the existing OpenType font,
+        except the feature -> character mapping is different.
+
+        The font itself only supports the following characters:
+        ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+        However, the shape of these letters are either an X or a check mark.
+        The letter "A" always is a check mark.
+        The letter "B" always is an X.
+        Each font feature has an letter associated with it. When the font feature is enabled,
+        that letter is shown as a check mark. For example, when
+        "kLowerCaseType / kLowerCaseSmallCapsSelector" is enabled, "S" is shown as a check
+        mark.
+
+        Here are the mappings of font features to letters:
+        kLigaturesType / kCommonLigaturesOnSelector: C
+        kLigaturesType / kContextualLigaturesOnSelector: D
+        kLigaturesType / kRareLigaturesOnSelector: G
+        kLigaturesType / kHistoricalLigaturesOnSelector: I
+        kContextualAlternatesType / kContextualAlternatesOnSelector: L
+        kVerticalPositionType / kInferiorsSelector: O
+        kVerticalPositionType / kSuperiorsSelector: P
+        kLowerCaseType / kLowerCaseSmallCapsSelector: S
+        kUpperCaseType / kUpperCaseSmallCapsSelector: V
+        kLowerCaseType / kLowerCasePetiteCapsSelector: T
+        kUpperCaseType / kUpperCasePetiteCapsSelector: W
+        kLetterCaseType / 14: Y
+        kStyleOptionsType / kTitlingCapsSelector: a
+        kNumberCaseType / kUpperCaseNumbersSelector: c
+        kNumberCaseType / kLowerCaseNumbersSelector: d
+        kNumberSpacingType / kProportionalNumbersSelector: f
+        kNumberSpacingType / kMonospacedNumbersSelector: g
+        kFractionsType / kDiagonalFractionsSelector: i
+        kFractionsType / kVerticalFractionsSelector: j
+        kVerticalPositionType / kOrdinalsSelector: Q
+        kTypographicExtrasType / kSlashedZeroOnSelector: k
+        kLigaturesType / kHistoricalLigaturesOnSelector: K
+        kCharacterShapeType / kJIS1978CharactersSelector: m
+        kCharacterShapeType / kJIS1983CharactersSelector: n
+        kCharacterShapeType / kJIS1990CharactersSelector: o
+        kCharacterShapeType / kJIS2004CharactersSelector: p
+        kCharacterShapeType / kSimplifiedCharactersSelector: q
+        kCharacterShapeType / kTraditionalCharactersSelector: r
+        kTextSpacingType / kMonospacedTextSelector: t
+        kTextSpacingType / kProportionalTextSelector: u
+        kRubyKanaType / kRubyKanaOnSelector: v
+
+        * FontWithFeatures/FontWithFeatures.xcodeproj/project.pbxproj:
+        * FontWithFeatures/FontWithFeatures/FontCreator.cpp:
+        (CFFBuilder::moveTo):
+        (CFFBuilder::lineTo):
+        (GLYFBuilder::GLYFBuilder):
+        (GLYFBuilder::takeResult):
+        (GLYFBuilder::moveTo):
+        (GLYFBuilder::lineTo):
+        (GLYFBuilder::closePath):
+        (GLYFBuilder::writePoint):
+        (GLYFBuilder::append16):
+        (generateBoxCharString):
+        (generateCheckCharString):
+        (generateXCharString):
+        (itemForGlyph):
+        (Generator::generate):
+        (Generator::insertSelector):
+        (Generator::insertFeature):
+        (Generator::generateFeatureDescription):
+        (Generator::appendCFFTable):
+        (Generator::appendGLYFTable):
+        (Generator::appendLOCATable):
+        (Generator::appendFEATTable):
+        (Generator::appendMetamorphosisChain):
+        (Generator::appendMORXTable):
+        (Generator::appendHEADTable):
+        (Generator::appendHMTXTable):
+        (Generator::appendNameSubtable):
+        (Generator::append2ByteASCIIString):
+        (Generator::appendNAMETable):
+        (generateFont):
+        (CFFBuilder::curveToCubic): Deleted.
+        (charStringForGlyph): Deleted.
+        * FontWithFeatures/FontWithFeatures/FontCreator.h:
+        * FontWithFeatures/FontWithFeatures/main.cpp:
+        (constructFontWithTrueTypeFeature):
+        (constructFontWithOpenTypeFeature):
+        (drawText):
+        (main):
+        (drawTextWithFeature): Deleted.
+
+2015-10-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r190572, r190593, r190594, and
+        r190639.
+        https://bugs.webkit.org/show_bug.cgi?id=149897
+
+        Breaks Mavericks build (Requested by litherum on #webkit).
+
+        Reverted changesets:
+
+        "Allow WKRetainPtrs to be used as keys in hashing data
+        structures"
+        https://bugs.webkit.org/show_bug.cgi?id=149762
+        http://trac.webkit.org/changeset/190572
+
+        "REGRESSION(189668?): http/tests/notifications/events.html
+        flakily asserts or times out"
+        https://bugs.webkit.org/show_bug.cgi?id=149218
+        http://trac.webkit.org/changeset/190593
+
+        "Prospective Mavericks build fix."
+        http://trac.webkit.org/changeset/190594
+
+        "Post-review cleanup after r190572."
+        http://trac.webkit.org/changeset/190639
+
 2015-10-06  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK] Add autocleanups

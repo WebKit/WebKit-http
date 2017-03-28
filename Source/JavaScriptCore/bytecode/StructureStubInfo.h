@@ -35,7 +35,6 @@
 #include "Options.h"
 #include "PolymorphicAccess.h"
 #include "RegisterSet.h"
-#include "SpillRegistersMode.h"
 #include "Structure.h"
 #include "StructureStubClearingWatchpoint.h"
 
@@ -75,6 +74,7 @@ public:
     void reset(CodeBlock*);
 
     void deref();
+    void aboutToDie();
 
     // Check if the stub has weak references that are dead. If it does, then it resets itself,
     // either entirely or just enough to ensure that those dead pointers don't get used anymore.
@@ -131,7 +131,6 @@ public:
     } u;
 
     struct {
-        unsigned spillMode : 8;
         int8_t baseGPR;
 #if USE(JSVALUE32_64)
         int8_t valueTagGPR;
@@ -139,7 +138,6 @@ public:
         int8_t valueGPR;
         RegisterSet usedRegisters;
         int32_t deltaCallToDone;
-        int32_t deltaCallToStorageLoad;
         int32_t deltaCallToJump;
         int32_t deltaCallToSlowCase;
         int32_t deltaCheckImmToCall;

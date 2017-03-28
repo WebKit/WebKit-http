@@ -425,10 +425,6 @@ namespace JSC {
         void emitJumpSlowCaseIfNotJSCell(int virtualRegisterIndex, RegisterID tag);
 
         void compileGetByIdHotPath(const Identifier*);
-        void compileGetDirectOffset(RegisterID base, RegisterID resultTag, RegisterID resultPayload, PropertyOffset cachedOffset);
-        void compileGetDirectOffset(JSObject* base, RegisterID resultTag, RegisterID resultPayload, PropertyOffset cachedOffset);
-        void compileGetDirectOffset(RegisterID base, RegisterID resultTag, RegisterID resultPayload, RegisterID offset, FinalObjectMode = MayBeFinal);
-        void compilePutDirectOffset(RegisterID base, RegisterID valueTag, RegisterID valuePayload, PropertyOffset cachedOffset);
 
         // Arithmetic opcode helpers
         void emitAdd32Constant(int dst, int op, int32_t constant, ResultType opType);
@@ -471,10 +467,6 @@ namespace JSC {
         void compileBinaryArithOpSlowCase(Instruction*, OpcodeID, Vector<SlowCaseEntry>::iterator&, int dst, int src1, int src2, OperandTypes, bool op1HasImmediateIntFastCase, bool op2HasImmediateIntFastCase);
 
         void compileGetByIdHotPath(int baseVReg, const Identifier*);
-        void compileGetDirectOffset(RegisterID base, RegisterID result, PropertyOffset cachedOffset);
-        void compileGetDirectOffset(JSObject* base, RegisterID result, PropertyOffset cachedOffset);
-        void compileGetDirectOffset(RegisterID base, RegisterID result, RegisterID offset, RegisterID scratch, FinalObjectMode = MayBeFinal);
-        void compilePutDirectOffset(RegisterID base, RegisterID value, PropertyOffset cachedOffset);
 
 #endif // USE(JSVALUE32_64)
 
@@ -672,7 +664,6 @@ namespace JSC {
         void emitVarInjectionCheck(bool needsVarInjectionChecks);
         void emitResolveClosure(int dst, int scope, bool needsVarInjectionChecks, unsigned depth);
         void emitLoadWithStructureCheck(int scope, Structure** structureSlot);
-        void emitGetGlobalProperty(uintptr_t* operandSlot);
 #if USE(JSVALUE64)
         void emitGetVarFromPointer(JSValue* operand, GPRReg);
         void emitGetVarFromIndirectPointer(JSValue** operand, GPRReg);
@@ -681,7 +672,6 @@ namespace JSC {
         void emitGetVarFromPointer(JSValue* operand, GPRReg tag, GPRReg payload);
 #endif
         void emitGetClosureVar(int scope, uintptr_t operand);
-        void emitPutGlobalProperty(uintptr_t* operandSlot, int value);
         void emitNotifyWrite(WatchpointSet*);
         void emitNotifyWrite(GPRReg pointerToSet);
         void emitPutGlobalVariable(JSValue* operand, int value, WatchpointSet*);

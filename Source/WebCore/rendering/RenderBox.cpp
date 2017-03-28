@@ -293,7 +293,7 @@ void RenderBox::styleWillChange(StyleDifference diff, const RenderStyle& newStyl
     if (oldStyle) {
         // The background of the root element or the body element could propagate up to
         // the canvas. Issue full repaint, when our style changes substantially.
-        if (diff >= StyleDifferenceRepaint && (isRoot() || isBody())) {
+        if (diff >= StyleDifferenceRepaint && (isDocumentElementRenderer() || isBody())) {
             view().repaintRootContents();
             if (oldStyle->hasEntirelyFixedBackground() != newStyle.hasEntirelyFixedBackground())
                 view().compositor().rootFixedBackgroundsChanged();
@@ -352,7 +352,7 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
 
     // If our zoom factor changes and we have a defined scrollLeft/Top, we need to adjust that value into the
     // new zoomed coordinate space.
-    if (hasOverflowClip() && oldStyle && oldStyle->effectiveZoom() != newStyle.effectiveZoom()) {
+    if (hasOverflowClip() && oldStyle && oldStyle->effectiveZoom() != newStyle.effectiveZoom() && layer()) {
         if (int left = layer()->scrollXOffset()) {
             left = (left / oldStyle->effectiveZoom()) * newStyle.effectiveZoom();
             layer()->scrollToXOffset(left);
@@ -373,20 +373,20 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
     }
 
     bool isBodyRenderer = isBody();
-    bool isRootRenderer = isRoot();
+    bool isDocElementRenderer = isDocumentElementRenderer();
 
     // Set the text color if we're the body.
     if (isBodyRenderer)
         document().setTextColor(newStyle.visitedDependentColor(CSSPropertyColor));
 
-    if (isRootRenderer || isBodyRenderer) {
+    if (isDocElementRenderer || isBodyRenderer) {
         // Propagate the new writing mode and direction up to the RenderView.
         RenderStyle& viewStyle = view().style();
         bool viewChangedWritingMode = false;
         bool rootStyleChanged = false;
         bool viewStyleChanged = false;
         RenderObject* rootRenderer = isBodyRenderer ? document().documentElement()->renderer() : nullptr;
-        if (viewStyle.direction() != newStyle.direction() && (isRootRenderer || !document().directionSetOnDocumentElement())) {
+        if (viewStyle.direction() != newStyle.direction() && (isDocElementRenderer || !document().directionSetOnDocumentElement())) {
             viewStyle.setDirection(newStyle.direction());
             viewStyleChanged = true;
             if (isBodyRenderer) {
@@ -396,7 +396,7 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
             setNeedsLayoutAndPrefWidthsRecalc();
         }
 
-        if (viewStyle.writingMode() != newStyle.writingMode() && (isRootRenderer || !document().writingModeSetOnDocumentElement())) {
+        if (viewStyle.writingMode() != newStyle.writingMode() && (isDocElementRenderer || !document().writingModeSetOnDocumentElement())) {
             viewStyle.setWritingMode(newStyle.writingMode());
             viewChangedWritingMode = true;
             viewStyleChanged = true;
@@ -477,17 +477,17 @@ void RenderBox::updateFromStyle()
     RenderBoxModelObject::updateFromStyle();
 
     const RenderStyle& styleToUse = style();
-    bool isRootObject = isRoot();
+    bool isDocElementRenderer = isDocumentElementRenderer();
     bool isViewObject = isRenderView();
 
     // The root and the RenderView always paint their backgrounds/borders.
-    if (isRootObject || isViewObject)
+    if (isDocElementRenderer || isViewObject)
         setHasBoxDecorations(true);
 
     setFloating(!isOutOfFlowPositioned() && styleToUse.isFloating());
 
     // We also handle <body> and <html>, whose overflow applies to the viewport.
-    if (styleToUse.overflowX() != OVISIBLE && !isRootObject && isRenderBlock()) {
+    if (styleToUse.overflowX() != OVISIBLE && !isDocElementRenderer && isRenderBlock()) {
         bool boxHasOverflowClip = true;
         if (isBody()) {
             // Overflow on the body can propagate to the viewport under the following conditions.
@@ -1325,7 +1325,7 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
 
 void RenderBox::paintBackground(const PaintInfo& paintInfo, const LayoutRect& paintRect, BackgroundBleedAvoidance bleedAvoidance)
 {
-    if (isRoot()) {
+    if (isDocumentElementRenderer()) {
         paintRootBoxFillLayers(paintInfo);
         return;
     }
@@ -1463,7 +1463,7 @@ bool RenderBox::computeBackgroundIsKnownToBeObscured(const LayoutPoint& paintOff
     if (!hasBackground())
         return false;
     // Table and root background painting is special.
-    if (isTable() || isRoot())
+    if (isTable() || isDocumentElementRenderer())
         return false;
 
     LayoutRect backgroundRect;
@@ -1670,7 +1670,7 @@ bool RenderBox::repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer
     for (const FillLayer* curLayer = layers; curLayer; curLayer = curLayer->next()) {
         if (curLayer->image() && image == curLayer->image()->data() && curLayer->image()->canRender(this, style().effectiveZoom())) {
             // Now that we know this image is being used, compute the renderer and the rect if we haven't already.
-            bool drawingRootBackground = drawingBackground && (isRoot() || (isBody() && !document().documentElement()->renderer()->hasBackground()));
+            bool drawingRootBackground = drawingBackground && (isDocumentElementRenderer() || (isBody() && !document().documentElement()->renderer()->hasBackground()));
             if (!layerRenderer) {
                 if (drawingRootBackground) {
                     layerRenderer = &view();
@@ -2141,9 +2141,7 @@ LayoutRect RenderBox::clippedOverflowRectForRepaint(const RenderLayerModelObject
     // that projects outside of our overflowRect.
     ASSERT(style().outlineSize() <= view().maximalOutlineSize());
     r.inflate(view().maximalOutlineSize());
-    
-    computeRectForRepaint(repaintContainer, r);
-    return r;
+    return computeRectForRepaint(r, repaintContainer);
 }
 
 static inline bool shouldApplyContainersClipAndOffset(const RenderLayerModelObject* repaintContainer, RenderBox* containerBox)
@@ -2160,7 +2158,7 @@ static inline bool shouldApplyContainersClipAndOffset(const RenderLayerModelObje
 #endif
 }
 
-void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect& rect, bool fixed) const
+LayoutRect RenderBox::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer, bool fixed) const
 {
     // The rect we compute at each step is shifted by our x/y offset in the parent container's coordinate space.
     // Only when we cross a writing mode boundary will we have to possibly flipForWritingMode (to convert into a more appropriate
@@ -2170,38 +2168,39 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
     // RenderView::computeRectForRepaint then converts the rect to physical coordinates.  We also convert to
     // physical when we hit a repaintContainer boundary.  Therefore the final rect returned is always in the
     // physical coordinate space of the repaintContainer.
+    LayoutRect adjustedRect = rect;
     const RenderStyle& styleToUse = style();
     // LayoutState is only valid for root-relative, non-fixed position repainting
     if (view().layoutStateEnabled() && !repaintContainer && styleToUse.position() != FixedPosition) {
         LayoutState* layoutState = view().layoutState();
 
         if (layer() && layer()->transform())
-            rect = LayoutRect(encloseRectToDevicePixels(layer()->transform()->mapRect(rect), document().deviceScaleFactor()));
+            adjustedRect = LayoutRect(encloseRectToDevicePixels(layer()->transform()->mapRect(adjustedRect), document().deviceScaleFactor()));
 
         // We can't trust the bits on RenderObject, because this might be called while re-resolving style.
         if (styleToUse.hasInFlowPosition() && layer())
-            rect.move(layer()->offsetForInFlowPosition());
+            adjustedRect.move(layer()->offsetForInFlowPosition());
 
-        rect.moveBy(location());
-        rect.move(layoutState->m_paintOffset);
+        adjustedRect.moveBy(location());
+        adjustedRect.move(layoutState->m_paintOffset);
         if (layoutState->m_clipped)
-            rect.intersect(layoutState->m_clipRect);
-        return;
+            adjustedRect.intersect(layoutState->m_clipRect);
+        return adjustedRect;
     }
 
     if (hasReflection())
-        rect.unite(reflectedRect(rect));
+        adjustedRect.unite(reflectedRect(adjustedRect));
 
     if (repaintContainer == this) {
         if (repaintContainer->style().isFlippedBlocksWritingMode())
-            flipForWritingMode(rect);
-        return;
+            flipForWritingMode(adjustedRect);
+        return adjustedRect;
     }
 
     bool containerSkipped;
     auto* renderer = container(repaintContainer, &containerSkipped);
     if (!renderer)
-        return;
+        return adjustedRect;
     
     EPosition position = styleToUse.position();
 
@@ -2216,28 +2215,28 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
         RenderRegion* firstRegion = nullptr;
         RenderRegion* lastRegion = nullptr;
         if (downcast<RenderFlowThread>(*renderer).getRegionRangeForBox(this, firstRegion, lastRegion))
-            rect.moveBy(firstRegion->flowThreadPortionRect().location());
+            adjustedRect.moveBy(firstRegion->flowThreadPortionRect().location());
     }
 
     if (isWritingModeRoot() && !isOutOfFlowPositioned())
-        flipForWritingMode(rect);
+        flipForWritingMode(adjustedRect);
 
     LayoutSize locationOffset = this->locationOffset();
     // FIXME: This is needed as long as RenderWidget snaps to integral size/position.
     if (isRenderReplaced() && isWidget()) {
         LayoutSize flooredLocationOffset = toIntSize(flooredIntPoint(locationOffset));
-        rect.expand(locationOffset - flooredLocationOffset);
+        adjustedRect.expand(locationOffset - flooredLocationOffset);
         locationOffset = flooredLocationOffset;
     }
-    LayoutPoint topLeft = rect.location();
+    LayoutPoint topLeft = adjustedRect.location();
     topLeft.move(locationOffset);
 
     // We are now in our parent container's coordinate space. Apply our transform to obtain a bounding box
     // in the parent's coordinate space that encloses us.
     if (hasLayer() && layer()->transform()) {
         fixed = position == FixedPosition;
-        rect = LayoutRect(encloseRectToDevicePixels(layer()->transform()->mapRect(rect), document().deviceScaleFactor()));
-        topLeft = rect.location();
+        adjustedRect = LayoutRect(encloseRectToDevicePixels(layer()->transform()->mapRect(adjustedRect), document().deviceScaleFactor()));
+        topLeft = adjustedRect.location();
         topLeft.move(locationOffset);
     } else if (position == FixedPosition)
         fixed = true;
@@ -2254,24 +2253,23 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
 
     // FIXME: We ignore the lightweight clipping rect that controls use, since if |o| is in mid-layout,
     // its controlClipRect will be wrong. For overflow clip we use the values cached by the layer.
-    rect.setLocation(topLeft);
+    adjustedRect.setLocation(topLeft);
     if (renderer->hasOverflowClip()) {
         RenderBox& containerBox = downcast<RenderBox>(*renderer);
         if (shouldApplyContainersClipAndOffset(repaintContainer, &containerBox)) {
-            containerBox.applyCachedClipAndScrollOffsetForRepaint(rect);
-            if (rect.isEmpty())
-                return;
+            containerBox.applyCachedClipAndScrollOffsetForRepaint(adjustedRect);
+            if (adjustedRect.isEmpty())
+                return adjustedRect;
         }
     }
 
     if (containerSkipped) {
         // If the repaintContainer is below o, then we need to map the rect into repaintContainer's coordinates.
         LayoutSize containerOffset = repaintContainer->offsetFromAncestorContainer(*renderer);
-        rect.move(-containerOffset);
-        return;
+        adjustedRect.move(-containerOffset);
+        return adjustedRect;
     }
-
-    renderer->computeRectForRepaint(repaintContainer, rect, fixed);
+    return renderer->computeRectForRepaint(adjustedRect, repaintContainer, fixed);
 }
 
 void RenderBox::repaintDuringLayoutIfMoved(const LayoutRect& oldRect)
@@ -2803,11 +2801,11 @@ void RenderBox::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logica
     // height since we don't set a height in RenderView when we're printing. So without this quirk, the 
     // height has nothing to be a percentage of, and it ends up being 0. That is bad.
     bool paginatedContentNeedsBaseHeight = document().printing() && h.isPercentOrCalculated()
-        && (isRoot() || (isBody() && document().documentElement()->renderer()->style().logicalHeight().isPercentOrCalculated())) && !isInline();
+        && (isDocumentElementRenderer() || (isBody() && document().documentElement()->renderer()->style().logicalHeight().isPercentOrCalculated())) && !isInline();
     if (stretchesToViewport() || paginatedContentNeedsBaseHeight) {
         LayoutUnit margins = collapsedMarginBefore() + collapsedMarginAfter();
         LayoutUnit visibleHeight = view().pageOrViewLogicalHeight();
-        if (isRoot())
+        if (isDocumentElementRenderer())
             computedValues.m_extent = std::max(computedValues.m_extent, visibleHeight - margins);
         else {
             LayoutUnit marginsBordersPadding = margins + parentBox()->marginBefore() + parentBox()->marginAfter() + parentBox()->borderAndPaddingLogicalHeight();
@@ -2881,7 +2879,7 @@ Optional<LayoutUnit> RenderBox::computePercentageLogicalHeight(const Length& hei
     LayoutUnit rootMarginBorderPaddingHeight = 0;
     bool isHorizontal = isHorizontalWritingMode();
     while (!cb->isRenderView() && skipContainingBlockForPercentHeightCalculation(cb, isHorizontal != cb->isHorizontalWritingMode())) {
-        if (cb->isBody() || cb->isRoot())
+        if (cb->isBody() || cb->isDocumentElementRenderer())
             rootMarginBorderPaddingHeight += cb->marginBefore() + cb->marginAfter() + cb->borderAndPaddingLogicalHeight();
         skippedAutoHeightContainingBlock = true;
         containingBlockChild = cb;
@@ -3280,7 +3278,7 @@ static void computeInlineStaticDistance(Length& logicalLeft, Length& logicalRigh
     // FIXME: The static distance computation has not been patched for mixed writing modes yet.
     if (child->parent()->style().direction() == LTR) {
         LayoutUnit staticPosition = child->layer()->staticInlinePosition() - containerBlock->borderLogicalLeft();
-        for (auto current = child->parent(); current && current != containerBlock; current = current->container()) {
+        for (auto* current = child->parent(); current && current != containerBlock; current = current->container()) {
             if (is<RenderBox>(*current)) {
                 staticPosition += downcast<RenderBox>(*current).logicalLeft();
                 if (region && is<RenderBlock>(*current)) {
@@ -4383,7 +4381,7 @@ bool RenderBox::shrinkToAvoidFloats() const
 bool RenderBox::createsNewFormattingContext() const
 {
     return (isInlineBlockOrInlineTable() && !isAnonymousInlineBlock()) || isFloatingOrOutOfFlowPositioned() || hasOverflowClip() || isFlexItemIncludingDeprecated()
-        || isTableCell() || isTableCaption() || isFieldset() || isWritingModeRoot() || isRoot() || isRenderFlowThread() || isRenderRegion()
+        || isTableCell() || isTableCaption() || isFieldset() || isWritingModeRoot() || isDocumentElementRenderer() || isRenderFlowThread() || isRenderRegion()
 #if ENABLE(CSS_GRID_LAYOUT)
         || isGridItem()
 #endif
@@ -4610,7 +4608,7 @@ bool RenderBox::percentageLogicalHeightIsResolvableFromBlock(const RenderBlock* 
         return percentageLogicalHeightIsResolvableFromBlock(cb->containingBlock(), cb->isOutOfFlowPositioned());
     if (cb->isRenderView() || inQuirksMode || isOutOfFlowPositionedWithSpecifiedHeight)
         return true;
-    if (cb->isRoot() && isOutOfFlowPositioned) {
+    if (cb->isDocumentElementRenderer() && isOutOfFlowPositioned) {
         // Match the positioned objects behavior, which is that positioned objects will fill their viewport
         // always.  Note we could only hit this case by recurring into computePercentageLogicalHeight on a positioned containing block.
         return true;

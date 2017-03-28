@@ -223,8 +223,8 @@ void RenderLayerBacking::setTiledBackingHasMargins(bool hasExtendedBackgroundOnL
     if (!m_usingTiledCacheLayer)
         return;
 
-    int marginLeftAndRightSize = hasExtendedBackgroundOnLeftAndRight ? defaultTileWidth : 0;
-    int marginTopAndBottomSize = hasExtendedBackgroundOnTopAndBottom ? defaultTileHeight : 0;
+    int marginLeftAndRightSize = hasExtendedBackgroundOnLeftAndRight ? tileSize().width() : 0;
+    int marginTopAndBottomSize = hasExtendedBackgroundOnTopAndBottom ? tileSize().height() : 0;
     tiledBacking()->setTileMargins(marginTopAndBottomSize, marginTopAndBottomSize, marginLeftAndRightSize, marginLeftAndRightSize);
 }
 
@@ -1703,7 +1703,7 @@ static inline bool hasPerspectiveOrPreserves3D(const RenderStyle& style)
 
 Color RenderLayerBacking::rendererBackgroundColor() const
 {
-    const auto& backgroundRenderer = renderer().isRoot() ? renderer().rendererForRootBackground() : renderer();
+    const auto& backgroundRenderer = renderer().isDocumentElementRenderer() ? renderer().rendererForRootBackground() : renderer();
     return backgroundRenderer.style().visitedDependentColor(CSSPropertyBackgroundColor);
 }
 
@@ -1860,7 +1860,7 @@ bool RenderLayerBacking::isSimpleContainerCompositingLayer() const
     if (renderer().isRenderNamedFlowFragmentContainer())
         return false;
 
-    if (renderer().isRoot() && m_owningLayer.isolatesCompositedBlending())
+    if (renderer().isDocumentElementRenderer() && m_owningLayer.isolatesCompositedBlending())
         return false;
 
     if (renderer().isRenderView()) {
@@ -2459,6 +2459,12 @@ bool RenderLayerBacking::shouldTemporarilyRetainTileCohorts(const GraphicsLayer*
     if (Page* page = renderer().frame().page())
         return page->settings().temporaryTileCohortRetentionEnabled();
     return true;
+}
+
+IntSize RenderLayerBacking::tileSize() const
+{
+    TileSizeMode tileSizeMode = renderer().frame().page()->settings().useGiantTiles() ? GiantTileSizeMode : StandardTileSizeMode;
+    return defaultTileSize(tileSizeMode);
 }
 
 #ifndef NDEBUG

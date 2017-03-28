@@ -123,11 +123,6 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
         doneCompiling = true;
     }];
     platformRunUntil(doneCompiling, 0);
-
-    // This is for http/tests/contentextensions/disable-blocker.html
-    if (!test.urlContains("disable-blocker"))
-        return;
-    mainWebView()->platformView()._userContentExtensionsEnabled = false;
 #endif
 }
 
@@ -246,6 +241,8 @@ static NSSet *allowedFontFamilySet()
         @"Verdana",
         @"Webdings",
         @"WebKit WeightWatcher",
+        @"FontWithFeaturesOTF",
+        @"FontWithFeaturesTTF",
         @"Wingdings 2",
         @"Wingdings 3",
         @"Wingdings",

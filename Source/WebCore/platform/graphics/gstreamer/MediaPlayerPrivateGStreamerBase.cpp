@@ -362,10 +362,7 @@ void MediaPlayerPrivateGStreamerBase::notifyPlayerOfVolumeChange()
 void MediaPlayerPrivateGStreamerBase::volumeChanged()
 {
     m_volumeTimerHandler.schedule("[WebKit] MediaPlayerPrivateGStreamerBase::volumeChanged",
-        std::function<void()>(
-            [this] {
-                notifyPlayerOfVolumeChange();
-            }));
+        std::function<void()>([this] { notifyPlayerOfVolumeChange(); }));
 }
 
 MediaPlayer::NetworkState MediaPlayerPrivateGStreamerBase::networkState() const
@@ -414,10 +411,7 @@ void MediaPlayerPrivateGStreamerBase::notifyPlayerOfMute()
 void MediaPlayerPrivateGStreamerBase::muteChanged()
 {
     m_muteTimerHandler.schedule("[WebKit] MediaPlayerPrivateGStreamerBase::muteChanged",
-        std::function<void()>(
-            [this] {
-                notifyPlayerOfMute();
-            }));
+        std::function<void()>([this] { notifyPlayerOfMute(); }));
 }
 
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
@@ -531,8 +525,8 @@ void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext& context, const Floa
     if (!gstImage)
         return;
 
-    context.drawImage(reinterpret_cast<Image*>(gstImage->image().get()), ColorSpaceSRGB,
-        rect, gstImage->rect(), CompositeCopy);
+    if (Image* image = reinterpret_cast<Image*>(gstImage->image().get()))
+        context.drawImage(*image, ColorSpaceSRGB, rect, gstImage->rect(), CompositeCopy);
 }
 
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)

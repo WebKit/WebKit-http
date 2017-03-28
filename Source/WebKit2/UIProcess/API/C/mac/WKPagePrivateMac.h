@@ -35,6 +35,8 @@ extern "C" {
 
 #ifdef __OBJC__
 
+@class _WKRemoteObjectRegistry;
+
 @protocol _WKObservablePageState
 
 @property (nonatomic, readonly, copy) NSString *title;
@@ -43,9 +45,13 @@ extern "C" {
 @property (nonatomic, readonly) double estimatedProgress;
 @property (nonatomic, readonly) BOOL hasOnlySecureContent;
 
+// Not KVO compliant.
+@property (nonatomic, readonly) NSURL *unreachableURL;
+
 @end
 
 WK_EXPORT id <_WKObservablePageState> WKPageCreateObservableState(WKPageRef page) NS_RETURNS_RETAINED;
+WK_EXPORT _WKRemoteObjectRegistry *WKPageGetObjectRegistry(WKPageRef page);
 
 #endif
 

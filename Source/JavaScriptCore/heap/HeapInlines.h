@@ -26,6 +26,7 @@
 #ifndef HeapInlines_h
 #define HeapInlines_h
 
+#include "CopyBarrier.h"
 #include "Heap.h"
 #include "JSCell.h"
 #include "Structure.h"
@@ -83,11 +84,6 @@ inline bool Heap::testAndSetMarked(const void* cell)
 inline void Heap::setMarked(const void* cell)
 {
     MarkedBlock::blockFor(cell)->setMarked(cell);
-}
-
-inline bool Heap::isWriteBarrierEnabled()
-{
-    return true;
 }
 
 inline void Heap::writeBarrier(const JSCell* from, JSValue to)

@@ -32,12 +32,13 @@
 #include "JSObject.h"
 #include "Options.h"
 #include <stdlib.h>
+#include <wtf/CurrentTime.h>
+#include <wtf/DataLog.h>
+#include <wtf/StdLibExtras.h>
+
 #if OS(UNIX)
 #include <sys/resource.h>
 #endif
-#include <wtf/CurrentTime.h>
-#include <wtf/DataLog.h>
-#include <wtf/Deque.h>
 
 namespace JSC {
 
@@ -215,7 +216,7 @@ inline size_t StorageStatistics::storageCapacity()
     return m_storageCapacity;
 }
 
-void HeapStatistics::showObjectStatistics(Heap* heap)
+void HeapStatistics::dumpObjectStatistics(Heap* heap)
 {
     dataLogF("\n=== Heap Statistics: ===\n");
     dataLogF("size: %ldkB\n", static_cast<long>(heap->m_sizeAfterLastCollect / KB));

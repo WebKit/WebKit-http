@@ -27,12 +27,12 @@
 
 namespace WebCore {
 
-class JSTestCustomConstructorWithNoInterfaceObject : public JSDOMWrapperWithImplementation<TestCustomConstructorWithNoInterfaceObject> {
+class JSTestCustomConstructorWithNoInterfaceObject : public JSDOMWrapper<TestCustomConstructorWithNoInterfaceObject> {
 public:
-    typedef JSDOMWrapperWithImplementation<TestCustomConstructorWithNoInterfaceObject> Base;
+    typedef JSDOMWrapper<TestCustomConstructorWithNoInterfaceObject> Base;
     static JSTestCustomConstructorWithNoInterfaceObject* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestCustomConstructorWithNoInterfaceObject>&& impl)
     {
-        JSTestCustomConstructorWithNoInterfaceObject* ptr = new (NotNull, JSC::allocateCell<JSTestCustomConstructorWithNoInterfaceObject>(globalObject->vm().heap)) JSTestCustomConstructorWithNoInterfaceObject(structure, globalObject, WTF::move(impl));
+        JSTestCustomConstructorWithNoInterfaceObject* ptr = new (NotNull, JSC::allocateCell<JSTestCustomConstructorWithNoInterfaceObject>(globalObject->vm().heap)) JSTestCustomConstructorWithNoInterfaceObject(structure, *globalObject, WTF::move(impl));
         ptr->finishCreation(globalObject->vm());
         return ptr;
     }
@@ -50,7 +50,7 @@ public:
     }
 
 protected:
-    JSTestCustomConstructorWithNoInterfaceObject(JSC::Structure*, JSDOMGlobalObject*, Ref<TestCustomConstructorWithNoInterfaceObject>&&);
+    JSTestCustomConstructorWithNoInterfaceObject(JSC::Structure*, JSDOMGlobalObject&, Ref<TestCustomConstructorWithNoInterfaceObject>&&);
 
     void finishCreation(JSC::VM& vm)
     {

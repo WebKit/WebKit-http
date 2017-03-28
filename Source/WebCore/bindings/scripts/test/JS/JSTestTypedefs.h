@@ -27,12 +27,12 @@
 
 namespace WebCore {
 
-class JSTestTypedefs : public JSDOMWrapperWithImplementation<TestTypedefs> {
+class JSTestTypedefs : public JSDOMWrapper<TestTypedefs> {
 public:
-    typedef JSDOMWrapperWithImplementation<TestTypedefs> Base;
+    typedef JSDOMWrapper<TestTypedefs> Base;
     static JSTestTypedefs* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestTypedefs>&& impl)
     {
-        JSTestTypedefs* ptr = new (NotNull, JSC::allocateCell<JSTestTypedefs>(globalObject->vm().heap)) JSTestTypedefs(structure, globalObject, WTF::move(impl));
+        JSTestTypedefs* ptr = new (NotNull, JSC::allocateCell<JSTestTypedefs>(globalObject->vm().heap)) JSTestTypedefs(structure, *globalObject, WTF::move(impl));
         ptr->finishCreation(globalObject->vm());
         return ptr;
     }
@@ -54,7 +54,7 @@ public:
 public:
     static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | Base::StructureFlags;
 protected:
-    JSTestTypedefs(JSC::Structure*, JSDOMGlobalObject*, Ref<TestTypedefs>&&);
+    JSTestTypedefs(JSC::Structure*, JSDOMGlobalObject&, Ref<TestTypedefs>&&);
 
     void finishCreation(JSC::VM& vm)
     {

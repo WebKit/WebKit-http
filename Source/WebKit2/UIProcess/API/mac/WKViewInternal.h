@@ -23,18 +23,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if !TARGET_OS_IPHONE
+
 #import "WKViewPrivate.h"
 
 #import "APIObject.h"
 #import "PluginComplexTextInputState.h"
 #import "SameDocumentNavigationType.h"
 #import "WebFindOptions.h"
-#import "WebHitTestResult.h"
+#import "WebHitTestResultData.h"
 #import <wtf/Forward.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
 
-@class WKWebViewConfiguration;
+@class _WKRemoteObjectRegistry;
 
 namespace API {
 class Object;
@@ -145,7 +147,7 @@ struct EditorState;
 - (void)_prepareForDictionaryLookup;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-- (void)_didPerformImmediateActionHitTest:(const WebKit::WebHitTestResult::Data&)hitTestResult contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData;
+- (void)_didPerformImmediateActionHitTest:(const WebKit::WebHitTestResultData&)hitTestResult contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData;
 #endif
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
@@ -163,4 +165,10 @@ struct EditorState;
 
 - (void)_updateSupportsArbitraryLayoutModes;
 
+#if WK_API_ENABLED
+@property (nonatomic, readonly) _WKRemoteObjectRegistry *_remoteObjectRegistry;
+#endif
+
 @end
+
+#endif

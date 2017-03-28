@@ -108,11 +108,11 @@ public:
     
     const typename Adaptor::Type* typedVector() const
     {
-        return static_cast<const typename Adaptor::Type*>(m_vector);
+        return bitwise_cast<const typename Adaptor::Type*>(m_vector.get(this));
     }
     typename Adaptor::Type* typedVector()
     {
-        return static_cast<typename Adaptor::Type*>(m_vector);
+        return bitwise_cast<typename Adaptor::Type*>(m_vector.get(this));
     }
 
     // These methods are meant to match indexed access methods that JSObject
@@ -171,13 +171,7 @@ public:
         return true;
     }
 
-    static Optional<typename Adaptor::Type> toAdaptorNativeFromValue(ExecState* exec, JSValue jsValue)
-    {
-        typename Adaptor::Type value = toNativeFromValue<Adaptor>(exec, jsValue);
-        if (exec->hadException())
-            return Nullopt;
-        return value;
-    }
+    static ElementType toAdaptorNativeFromValue(ExecState* exec, JSValue jsValue) { return toNativeFromValue<Adaptor>(exec, jsValue); }
 
     bool setRangeToValue(ExecState* exec, unsigned start, unsigned end, JSValue jsValue)
     {

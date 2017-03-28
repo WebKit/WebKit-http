@@ -402,6 +402,7 @@
     <ClCompile Include="..\dfg\DFGCompilationMode.cpp" />
     <ClCompile Include="..\dfg\DFGConstantFoldingPhase.cpp" />
     <ClCompile Include="..\dfg\DFGConstantHoistingPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGCopyBarrierOptimizationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGCPSRethreadingPhase.cpp" />
     <ClCompile Include="..\dfg\DFGCriticalEdgeBreakingPhase.cpp" />
     <ClCompile Include="..\dfg\DFGCSEPhase.cpp" />
@@ -540,6 +541,7 @@
     <ClCompile Include="..\ftl\FTLJSCallBase.cpp" />
     <ClCompile Include="..\ftl\FTLJSCallVarargs.cpp" />
     <ClCompile Include="..\ftl\FTLJSTailCall.cpp" />
+    <ClCompile Include="..\ftl\FTLLazySlowPath.cpp" />
     <ClCompile Include="..\ftl\FTLLink.cpp" />
     <ClCompile Include="..\ftl\FTLLocation.cpp" />
     <ClCompile Include="..\ftl\FTLLowerDFGToLLVM.cpp" />
@@ -1137,6 +1139,7 @@
     <ClInclude Include="..\dfg\DFGCompilationMode.h" />
     <ClInclude Include="..\dfg\DFGConstantFoldingPhase.h" />
     <ClInclude Include="..\dfg\DFGConstantHoistingPhase.h" />
+    <ClInclude Include="..\dfg\DFGCopyBarrierOptimizationPhase.h" />
     <ClInclude Include="..\dfg\DFGCPSRethreadingPhase.h" />
     <ClInclude Include="..\dfg\DFGCriticalEdgeBreakingPhase.h" />
     <ClInclude Include="..\dfg\DFGCSEPhase.h" />
@@ -1302,6 +1305,8 @@
     <ClInclude Include="..\ftl\FTLJSCallBase.h" />
     <ClInclude Include="..\ftl\FTLJSCallVarargs.h" />
     <ClInclude Include="..\ftl\FTLJSTailCall.h" />
+    <ClInclude Include="..\ftl\FTLLazySlowPath.h" />
+    <ClInclude Include="..\ftl\FTLLazySlowPathCall.h" />
     <ClInclude Include="..\ftl\FTLLink.h" />
     <ClInclude Include="..\ftl\FTLLocation.h" />
     <ClInclude Include="..\ftl\FTLLowerDFGToLLVM.h" />
@@ -1334,11 +1339,11 @@
     <ClInclude Include="..\heap\CopiedBlockInlines.h" />
     <ClInclude Include="..\heap\CopiedSpace.h" />
     <ClInclude Include="..\heap\CopiedSpaceInlines.h" />
+    <ClInclude Include="..\heap\CopyBarrier.h" />
     <ClInclude Include="..\heap\CopyToken.h" />
     <ClInclude Include="..\heap\CopyVisitor.h" />
     <ClInclude Include="..\heap\CopyVisitorInlines.h" />
     <ClInclude Include="..\heap\CopyWorkList.h" />
-    <ClInclude Include="..\heap\CopyWriteBarrier.h" />
     <ClInclude Include="..\heap\DeferGC.h" />
     <ClInclude Include="..\heap\EdenGCActivityCallback.h" />
     <ClInclude Include="..\heap\FullGCActivityCallback.h" />
@@ -1375,7 +1380,6 @@
     <ClInclude Include="..\heap\MarkedBlockSet.h" />
     <ClInclude Include="..\heap\MarkedSpace.h" />
     <ClInclude Include="..\heap\MarkStack.h" />
-    <ClInclude Include="..\heap\RecursiveAllocationScope.h" />
     <ClInclude Include="..\heap\SlotVisitor.h" />
     <ClInclude Include="..\heap\SlotVisitorInlines.h" />
     <ClInclude Include="..\heap\Strong.h" />
@@ -1830,6 +1834,7 @@
     <ClInclude Include="..\wasm\WASMConstants.h" />
     <ClInclude Include="..\wasm\WASMFormat.h" />
     <ClInclude Include="..\wasm\WASMFunctionCompiler.h" />
+    <ClInclude Include="..\wasm\WASMFunctionLLVMIRGenerator.h" />
     <ClInclude Include="..\wasm\WASMFunctionParser.h" />
     <ClInclude Include="..\wasm\WASMFunctionSyntaxChecker.h" />
     <ClInclude Include="..\wasm\WASMModuleParser.h" />

@@ -29,12 +29,12 @@
 
 namespace WebCore {
 
-class WEBCORE_EXPORT JSTestInterface : public JSDOMWrapperWithImplementation<TestInterface> {
+class WEBCORE_EXPORT JSTestInterface : public JSDOMWrapper<TestInterface> {
 public:
-    typedef JSDOMWrapperWithImplementation<TestInterface> Base;
+    typedef JSDOMWrapper<TestInterface> Base;
     static JSTestInterface* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestInterface>&& impl)
     {
-        JSTestInterface* ptr = new (NotNull, JSC::allocateCell<JSTestInterface>(globalObject->vm().heap)) JSTestInterface(structure, globalObject, WTF::move(impl));
+        JSTestInterface* ptr = new (NotNull, JSC::allocateCell<JSTestInterface>(globalObject->vm().heap)) JSTestInterface(structure, *globalObject, WTF::move(impl));
         ptr->finishCreation(globalObject->vm());
         return ptr;
     }
@@ -81,7 +81,7 @@ public:
 public:
     static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | Base::StructureFlags;
 protected:
-    JSTestInterface(JSC::Structure*, JSDOMGlobalObject*, Ref<TestInterface>&&);
+    JSTestInterface(JSC::Structure*, JSDOMGlobalObject&, Ref<TestInterface>&&);
 
     void finishCreation(JSC::VM& vm)
     {

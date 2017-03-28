@@ -65,29 +65,29 @@ private:
 
 class JSTestEventConstructorConstructor : public DOMConstructorObject {
 private:
-    JSTestEventConstructorConstructor(JSC::Structure*, JSDOMGlobalObject*);
+    JSTestEventConstructorConstructor(JSC::Structure*, JSDOMGlobalObject&);
     void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
-    static JSTestEventConstructorConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
+    static JSTestEventConstructorConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
     {
         JSTestEventConstructorConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestEventConstructorConstructor>(vm.heap)) JSTestEventConstructorConstructor(structure, globalObject);
-        ptr->finishCreation(vm, *globalObject);
+        ptr->finishCreation(vm, globalObject);
         return ptr;
     }
 
     DECLARE_INFO;
-    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
+    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)
     {
-        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
+        return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 protected:
-    static JSC::EncodedJSValue JSC_HOST_CALL constructJSTestEventConstructor(JSC::ExecState*);
+    static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
 };
 
-EncodedJSValue JSC_HOST_CALL JSTestEventConstructorConstructor::constructJSTestEventConstructor(ExecState* state)
+EncodedJSValue JSC_HOST_CALL JSTestEventConstructorConstructor::construct(ExecState* state)
 {
     auto* jsConstructor = jsCast<JSTestEventConstructorConstructor*>(state->callee());
 
@@ -130,7 +130,7 @@ bool fillTestEventConstructorInit(TestEventConstructorInit& eventInit, JSDiction
 
 const ClassInfo JSTestEventConstructorConstructor::s_info = { "TestEventConstructorConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventConstructorConstructor) };
 
-JSTestEventConstructorConstructor::JSTestEventConstructorConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
+JSTestEventConstructorConstructor::JSTestEventConstructorConstructor(Structure* structure, JSDOMGlobalObject& globalObject)
     : Base(structure, globalObject)
 {
 }
@@ -144,9 +144,10 @@ void JSTestEventConstructorConstructor::finishCreation(VM& vm, JSDOMGlobalObject
     putDirect(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum);
 }
 
-ConstructType JSTestEventConstructorConstructor::getConstructData(JSCell*, ConstructData& constructData)
+ConstructType JSTestEventConstructorConstructor::getConstructData(JSCell* cell, ConstructData& constructData)
 {
-    constructData.native.function = constructJSTestEventConstructor;
+    UNUSED_PARAM(cell);
+    constructData.native.function = construct;
     return ConstructTypeHost;
 }
 
@@ -169,8 +170,8 @@ void JSTestEventConstructorPrototype::finishCreation(VM& vm)
 
 const ClassInfo JSTestEventConstructor::s_info = { "TestEventConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventConstructor) };
 
-JSTestEventConstructor::JSTestEventConstructor(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestEventConstructor>&& impl)
-    : JSDOMWrapperWithImplementation<TestEventConstructor>(structure, globalObject, WTF::move(impl))
+JSTestEventConstructor::JSTestEventConstructor(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestEventConstructor>&& impl)
+    : JSDOMWrapper<TestEventConstructor>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -234,7 +235,7 @@ EncodedJSValue jsTestEventConstructorConstructor(ExecState* state, JSObject* bas
 
 JSValue JSTestEventConstructor::getConstructor(VM& vm, JSGlobalObject* globalObject)
 {
-    return getDOMConstructor<JSTestEventConstructorConstructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));
+    return getDOMConstructor<JSTestEventConstructorConstructor>(vm, *jsCast<JSDOMGlobalObject*>(globalObject));
 }
 
 bool JSTestEventConstructorOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

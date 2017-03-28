@@ -261,7 +261,15 @@ webkit.org/b/140217 http/tests/navigation/forward-and-cancel.html [ Pass Failure
 
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
-webkit.org/b/147075 [ Release Yosemite ] http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure ]
+# A lot of the disk-cache tests are flaky on mac-wk2
+webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Pass Failure Timeout ]
+webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-no-body.html [ Pass Failure Timeout ]
+webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation.html [ Pass Failure Timeout ]
+webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-last-modified.html [ Pass Failure Timeout ]
+webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-vary.html [ Pass Failure Timeout ]
+webkit.org/b/147075 http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure Timeout ]
+
+webkit.org/b/150095 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Pass Timeout ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -531,8 +539,14 @@ webkit.org/b/146400 http/tests/contentextensions/character-set-basic-support.htm
 # WebKit1-only failure.
 webkit.org/b/103857 fast/events/mouse-cursor-change.html [ Pass ]
 
-# Imported Blink tests
+# Imported Blink tests which have not been investigated.
+imported/blink/fast/media/empty-media-rule.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/basic-rtl.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/dynamic/add-spanner-inside-overflow-hidden.html [ Pass ImageOnlyFailure ]
-imported/blink/fast/multicol/vertical-lr/float-big-line.html  [ Pass ImageOnlyFailure ]
 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Pass Timeout ]
+
+[ Debug ] imported/blink/fast/multicol/newmulticol/multicol-becomes-regular-block.html [ Pass ImageOnlyFailure ]
+[ Debug ] imported/blink/fast/multicol/vertical-lr/float-big-line.html  [ Pass ImageOnlyFailure ]
+[ Debug ] imported/blink/fast/pagination/viewport-x-horizontal-bt-ltr.html [ Pass ImageOnlyFailure ]
+[ Debug ] imported/blink/fast/transforms/transform-update-frame-overflow.html [ Pass ImageOnlyFailure ]
+[ Debug ] imported/blink/fast/multicol/vertical-rl/float-big-line.html [ Pass ImageOnlyFailure ]

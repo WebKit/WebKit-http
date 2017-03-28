@@ -914,7 +914,7 @@ void RenderLayer::updateBlendMode()
 
 void RenderLayer::updateAncestorChainHasBlendingDescendants()
 {
-    for (auto layer = this; layer; layer = layer->parent()) {
+    for (auto* layer = this; layer; layer = layer->parent()) {
         if (!layer->hasNotIsolatedBlendingDescendantsStatusDirty() && layer->hasNotIsolatedBlendingDescendants())
             break;
         layer->m_hasNotIsolatedBlendingDescendants = true;
@@ -929,7 +929,7 @@ void RenderLayer::updateAncestorChainHasBlendingDescendants()
 
 void RenderLayer::dirtyAncestorChainHasBlendingDescendants()
 {
-    for (auto layer = this; layer; layer = layer->parent()) {
+    for (auto* layer = this; layer; layer = layer->parent()) {
         if (layer->hasNotIsolatedBlendingDescendantsStatusDirty())
             break;
         
@@ -1285,13 +1285,13 @@ bool RenderLayer::update3DTransformedDescendantStatus()
         // Transformed or preserve-3d descendants can only be in the z-order lists, not
         // in the normal flow list, so we only need to check those.
         if (Vector<RenderLayer*>* positiveZOrderList = posZOrderList()) {
-            for (auto layer : *positiveZOrderList)
+            for (auto* layer : *positiveZOrderList)
                 m_has3DTransformedDescendant |= layer->update3DTransformedDescendantStatus();
         }
 
         // Now check our negative z-index children.
         if (Vector<RenderLayer*>* negativeZOrderList = negZOrderList()) {
-            for (auto layer : *negativeZOrderList)
+            for (auto* layer : *negativeZOrderList)
                 m_has3DTransformedDescendant |= layer->update3DTransformedDescendantStatus();
         }
         
@@ -3655,12 +3655,16 @@ void RenderLayer::drawPlatformResizerImage(GraphicsContext& context, const Layou
         context.save();
         context.translate(resizerCornerRect.x() + cornerResizerSize.width(), resizerCornerRect.y() + resizerCornerRect.height() - cornerResizerSize.height());
         context.scale(FloatSize(-1.0, 1.0));
-        context.drawImage(resizeCornerImage.get(), renderer().style().colorSpace(), FloatRect(FloatPoint(), cornerResizerSize));
+        if (resizeCornerImage)
+            context.drawImage(*resizeCornerImage, renderer().style().colorSpace(), FloatRect(FloatPoint(), cornerResizerSize));
         context.restore();
         return;
     }
+    
+    if (!resizeCornerImage)
+        return;
     FloatRect imageRect = snapRectToDevicePixels(LayoutRect(resizerCornerRect.maxXMaxYCorner() - cornerResizerSize, cornerResizerSize), renderer().document().deviceScaleFactor());
-    context.drawImage(resizeCornerImage.get(), renderer().style().colorSpace(), imageRect);
+    context.drawImage(*resizeCornerImage, renderer().style().colorSpace(), imageRect);
 }
 
 void RenderLayer::paintResizer(GraphicsContext& context, const LayoutPoint& paintOffset, const LayoutRect& damageRect)
@@ -3850,7 +3854,7 @@ static void performOverlapTests(OverlapTestRequestMap& overlapTestRequests, cons
         request.key->setOverlapTestResult(true);
         overlappedRequestClients.append(request.key);
     }
-    for (auto client : overlappedRequestClients)
+    for (auto* client : overlappedRequestClients)
         overlapTestRequests.remove(client);
 }
 
@@ -3864,7 +3868,7 @@ static inline bool shouldSuppressPaintingLayer(RenderLayer* layer)
     // Avoid painting descendants of the root layer when stylesheets haven't loaded. This eliminates FOUC.
     // It's ok not to draw, because later on, when all the stylesheets do load, updateStyleSelector on the Document
     // will do a full repaint().
-    if (layer->renderer().document().didLayoutWithPendingStylesheets() && !layer->isRootLayer() && !layer->renderer().isRoot())
+    if (layer->renderer().document().didLayoutWithPendingStylesheets() && !layer->isRootLayer() && !layer->renderer().isDocumentElementRenderer())
         return true;
 
     // Avoid painting all layers if the document is in a state where visual updates aren't allowed.
@@ -3877,7 +3881,7 @@ static inline bool shouldSuppressPaintingLayer(RenderLayer* layer)
 
 static inline bool paintForFixedRootBackground(const RenderLayer* layer, RenderLayer::PaintLayerFlags paintFlags)
 {
-    return layer->renderer().isRoot() && (paintFlags & RenderLayer::PaintLayerPaintingRootBackgroundOnly);
+    return layer->renderer().isDocumentElementRenderer() && (paintFlags & RenderLayer::PaintLayerPaintingRootBackgroundOnly);
 }
 
 void RenderLayer::paintLayer(GraphicsContext& context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
@@ -4207,7 +4211,7 @@ void RenderLayer::paintFixedLayersInNamedFlows(GraphicsContext& context, const L
     renderer().view().flowThreadController().collectFixedPositionedLayers(fixedLayers);
 
     // Paint the layers
-    for (auto fixedLayer : fixedLayers)
+    for (auto* fixedLayer : fixedLayers)
         fixedLayer->paintLayer(context, paintingInfo, paintFlags);
 }
 
@@ -4234,7 +4238,7 @@ void RenderLayer::paintLayerContents(GraphicsContext& originalContext, const Lay
         || (!isPaintingScrollingContent && isPaintingCompositedForeground));
     bool shouldPaintContent = m_hasVisibleContent && isSelfPaintingLayer && !isPaintingOverlayScrollbars;
 
-    if (localPaintFlags & PaintLayerPaintingRootBackgroundOnly && !renderer().isRenderView() && !renderer().isRoot())
+    if (localPaintFlags & PaintLayerPaintingRootBackgroundOnly && !renderer().isRenderView() && !renderer().isDocumentElementRenderer())
         return;
 
     // Ensure our lists are up-to-date.
@@ -4430,7 +4434,7 @@ void RenderLayer::paintList(Vector<RenderLayer*>* list, GraphicsContext& context
     LayerListMutationDetector mutationChecker(this);
 #endif
 
-    for (auto childLayer : *list) {
+    for (auto* childLayer : *list) {
         if (childLayer->isFlowThreadCollectingGraphicsLayersUnderRegions())
             continue;
         childLayer->paintLayer(context, paintingInfo, paintFlags);
@@ -5759,9 +5763,9 @@ void RenderLayer::repaintBlockSelectionGaps()
 bool RenderLayer::intersectsDamageRect(const LayoutRect& layerBounds, const LayoutRect& damageRect, const RenderLayer* rootLayer, const LayoutSize& offsetFromRoot, const LayoutRect* cachedBoundingBox) const
 {
     // Always examine the canvas and the root.
-    // FIXME: Could eliminate the isRoot() check if we fix background painting so that the RenderView
+    // FIXME: Could eliminate the isDocumentElementRenderer() check if we fix background painting so that the RenderView
     // paints the root's background.
-    if (isRootLayer() || renderer().isRoot())
+    if (isRootLayer() || renderer().isDocumentElementRenderer())
         return true;
 
     if (damageRect.isEmpty())
@@ -5932,7 +5936,7 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
             renderer().containingBlock()->flipForWritingMode(boundingBoxRect);
     }
 
-    if (renderer().isRoot()) {
+    if (renderer().isDocumentElementRenderer()) {
         // If the root layer becomes composited (e.g. because some descendant with negative z-index is composited),
         // then it has to be big enough to cover the viewport in order to display the background. This is akin
         // to the code in RenderBox::paintRootBoxFillLayers().
@@ -5974,7 +5978,7 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
 #endif
 
     if (Vector<RenderLayer*>* negZOrderList = this->negZOrderList()) {
-        for (auto curLayer : *negZOrderList) {
+        for (auto* curLayer : *negZOrderList) {
             if (flags & IncludeCompositedDescendants || !curLayer->isComposited()) {
                 LayoutRect childUnionBounds = curLayer->calculateLayerBounds(this, curLayer->offsetFromAncestor(this), descendantFlags);
                 unionBounds.unite(childUnionBounds);
@@ -5983,7 +5987,7 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
     }
 
     if (Vector<RenderLayer*>* posZOrderList = this->posZOrderList()) {
-        for (auto curLayer : *posZOrderList) {
+        for (auto* curLayer : *posZOrderList) {
             // The RenderNamedFlowThread is ignored when we calculate the bounds of the RenderView.
             if ((flags & IncludeCompositedDescendants || !curLayer->isComposited()) && !curLayer->isFlowThreadCollectingGraphicsLayersUnderRegions()) {
                 LayoutRect childUnionBounds = curLayer->calculateLayerBounds(this, curLayer->offsetFromAncestor(this), descendantFlags);
@@ -5993,7 +5997,7 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
     }
 
     if (Vector<RenderLayer*>* normalFlowList = this->normalFlowList()) {
-        for (auto curLayer : *normalFlowList) {
+        for (auto* curLayer : *normalFlowList) {
             // RenderView will always return the size of the document, before reaching this point,
             // so there's no way we could hit a RenderNamedFlowThread here.
             ASSERT(!curLayer->isFlowThreadCollectingGraphicsLayersUnderRegions());
@@ -6127,6 +6131,12 @@ bool RenderLayer::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect)
     if (paintsWithTransparency(PaintBehaviorNormal))
         return false;
 
+    if (renderer().isDocumentElementRenderer()) {
+        // Normally the document element doens't have a layer.  If it does have a layer, its background propagates to the RenderView
+        // so this layer doesn't draw it.
+        return false;
+    }
+
     // We can't use hasVisibleContent(), because that will be true if our renderer is hidden, but some child
     // is visible and that child doesn't cover the entire rect.
     if (renderer().style().visibility() != VISIBLE)
@@ -6143,6 +6153,10 @@ bool RenderLayer::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect)
     // This function should not be called when layer-lists are dirty.
     // It is somehow getting triggered during style update.
     if (m_zOrderListsDirty || m_normalFlowListDirty)
+        return false;
+
+    // Table painting is special; a table paints its sections.
+    if (renderer().isTablePart())
         return false;
 
     // FIXME: We currently only check the immediate renderer,
@@ -6338,24 +6352,24 @@ void RenderLayer::updateDescendantsLayerListsIfNeeded(bool recursive)
     
     if (isStackingContainer()) {
         if (Vector<RenderLayer*>* list = negZOrderList()) {
-            for (auto childLayer : *list)
+            for (auto* childLayer : *list)
                 layersToUpdate.append(childLayer);
         }
     }
     
     if (Vector<RenderLayer*>* list = normalFlowList()) {
-        for (auto childLayer : *list)
+        for (auto* childLayer : *list)
             layersToUpdate.append(childLayer);
     }
     
     if (isStackingContainer()) {
         if (Vector<RenderLayer*>* list = posZOrderList()) {
-            for (auto childLayer : *list)
+            for (auto* childLayer : *list)
                 layersToUpdate.append(childLayer);
         }
     }
     
-    for (auto childLayer : layersToUpdate) {
+    for (auto* childLayer : layersToUpdate) {
         childLayer->updateLayerListsIfNeeded();
         if (recursive)
             childLayer->updateDescendantsLayerListsIfNeeded(true);

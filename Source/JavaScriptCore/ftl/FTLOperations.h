@@ -33,6 +33,8 @@
 
 namespace JSC { namespace FTL {
 
+class LazySlowPath;
+
 extern "C" {
 
 JSCell* JIT_OPERATION operationNewObjectWithButterfly(ExecState*, Structure*) WTF_INTERNAL;
@@ -42,6 +44,8 @@ JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
 void JIT_OPERATION operationPopulateObjectInOSR(
     ExecState*, ExitTimeObjectMaterialization*, EncodedJSValue*, EncodedJSValue*) WTF_INTERNAL;
+
+void* JIT_OPERATION compileFTLLazySlowPath(ExecState*, unsigned) WTF_INTERNAL;
 
 } // extern "C"
 

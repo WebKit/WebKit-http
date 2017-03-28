@@ -104,7 +104,9 @@ if (DEVELOPER_MODE)
 else ()
     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_MINIBROWSER PUBLIC OFF)
     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_API_TESTS PRIVATE OFF)
-    set(WebKit2_VERSION_SCRIPT "-Wl,--version-script,${CMAKE_MODULE_PATH}/gtksymbols.filter")
+    if (NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
+        set(WebKit2_VERSION_SCRIPT "-Wl,--version-script,${CMAKE_MODULE_PATH}/gtksymbols.filter")
+    endif ()
 endif ()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
@@ -469,12 +471,15 @@ endmacro()
 # CMake does not automatically add --whole-archive when building shared objects from
 # a list of convenience libraries. This can lead to missing symbols in the final output.
 # We add --whole-archive to all libraries manually to prevent the linker from trimming
-# symbols that we actually need later.
+# symbols that we actually need later. (--whole-archive isn't an option on XCode's
+# linker, though.)
 macro(ADD_WHOLE_ARCHIVE_TO_LIBRARIES _list_name)
-    foreach (library IN LISTS ${_list_name})
-      list(APPEND ${_list_name}_TMP -Wl,--whole-archive ${library} -Wl,--no-whole-archive)
-    endforeach ()
-    set(${_list_name} "${${_list_name}_TMP}")
+    if (NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
+        foreach (library IN LISTS ${_list_name})
+          list(APPEND ${_list_name}_TMP -Wl,--whole-archive ${library} -Wl,--no-whole-archive)
+        endforeach ()
+        set(${_list_name} "${${_list_name}_TMP}")
+    endif ()
 endmacro()
 
 if (CMAKE_MAJOR_VERSION LESS 3)

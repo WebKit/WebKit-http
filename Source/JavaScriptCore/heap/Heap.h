@@ -31,6 +31,7 @@
 #include "HeapOperation.h"
 #include "JITStubRoutineSet.h"
 #include "ListableHandler.h"
+#include "MachineStackMarker.h"
 #include "MarkedAllocator.h"
 #include "MarkedBlock.h"
 #include "MarkedBlockSet.h"
@@ -73,6 +74,7 @@ class WeakGCHandlePool;
 class SlotVisitor;
 
 namespace DFG {
+class SpeculativeJIT;
 class Worklist;
 }
 
@@ -102,17 +104,18 @@ public:
     static bool testAndSetMarked(const void*);
     static void setMarked(const void*);
 
-    static bool isWriteBarrierEnabled();
     void writeBarrier(const JSCell*);
     void writeBarrier(const JSCell*, JSValue);
     void writeBarrier(const JSCell*, JSCell*);
+
+    JS_EXPORT_PRIVATE static void* copyBarrier(const JSCell* owner, void*& copiedSpacePointer);
 
     WriteBarrierBuffer& writeBarrierBuffer() { return m_writeBarrierBuffer; }
     void flushWriteBarrierBuffer(JSCell*);
 
     Heap(VM*, HeapType);
     ~Heap();
-    JS_EXPORT_PRIVATE void lastChanceToFinalize();
+    void lastChanceToFinalize();
     void releaseDelayedReleasedObjects();
 
     VM* vm() const { return m_vm; }
@@ -206,7 +209,7 @@ public:
     size_t sizeBeforeLastFullCollection() const { return m_sizeBeforeLastFullCollect; }
     size_t sizeAfterLastFullCollection() const { return m_sizeAfterLastFullCollect; }
 
-    JS_EXPORT_PRIVATE void deleteAllCodeBlocks();
+    void deleteAllCodeBlocks();
     void deleteAllUnlinkedCodeBlocks();
 
     void didAllocate(size_t);
@@ -218,15 +221,13 @@ public:
     
     void addReference(JSCell*, ArrayBuffer*);
     
-    bool isDeferred() const { return !!m_deferralDepth || Options::disableGC(); }
+    bool isDeferred() const { return !!m_deferralDepth || !Options::useGC(); }
 
     StructureIDTable& structureIDTable() { return m_structureIDTable; }
 
 #if USE(CF)
         template<typename T> void releaseSoon(RetainPtr<T>&&);
 #endif
-
-    void removeCodeBlock(CodeBlock* cb) { m_codeBlocks.remove(cb); }
 
     static bool isZombified(JSCell* cell) { return *(void**)cell == zombifiedBits; }
 
@@ -252,9 +253,7 @@ private:
     friend class MarkedBlock;
     friend class CopiedSpace;
     friend class CopyVisitor;
-    friend class RecursiveAllocationScope;
     friend class SlotVisitor;
-    friend class SuperRegion;
     friend class IncrementalSweeper;
     friend class HeapStatistics;
     friend class VM;
@@ -313,7 +312,7 @@ private:
     void snapshotMarkedSpace();
     void deleteSourceProviderCaches();
     void notifyIncrementalSweeper();
-    void rememberCurrentlyExecutingCodeBlocks();
+    void writeBarrierCurrentlyExecutingCodeBlocks();
     void resetAllocators();
     void copyBackingStores();
     void harvestWeakReferences();
@@ -342,7 +341,6 @@ private:
     size_t threadVisitCount();
     size_t threadBytesVisited();
     size_t threadBytesCopied();
-    size_t threadDupStrings();
 
     const HeapType m_heapType;
     const size_t m_ramSize;

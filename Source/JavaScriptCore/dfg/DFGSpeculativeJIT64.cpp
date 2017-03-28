@@ -155,10 +155,15 @@ GPRReg SpeculativeJIT::fillJSValue(Edge edge)
 void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode spillMode)
 {
     CallSiteIndex callSite = m_jit.recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(codeOrigin, m_stream->size());
-
+    RegisterSet usedRegisters = this->usedRegisters();
+    if (spillMode == DontSpill) {
+        // We've already flushed registers to the stack, we don't need to spill these.
+        usedRegisters.set(baseGPR, false);
+        usedRegisters.set(resultGPR, false);
+    }
     JITGetByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters(), JSValueRegs(baseGPR),
-        JSValueRegs(resultGPR), spillMode);
+        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters, JSValueRegs(baseGPR),
+        JSValueRegs(resultGPR));
     gen.generateFastPath(m_jit);
     
     JITCompiler::JumpList slowCases;
@@ -177,10 +182,16 @@ void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg
 void SpeculativeJIT::cachedPutById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg valueGPR, GPRReg scratchGPR, unsigned identifierNumber, PutKind putKind, JITCompiler::Jump slowPathTarget, SpillRegistersMode spillMode)
 {
     CallSiteIndex callSite = m_jit.recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(codeOrigin, m_stream->size());
+    RegisterSet usedRegisters = this->usedRegisters();
+    if (spillMode == DontSpill) {
+        // We've already flushed registers to the stack, we don't need to spill these.
+        usedRegisters.set(baseGPR, false);
+        usedRegisters.set(valueGPR, false);
+    }
 
     JITPutByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters(), JSValueRegs(baseGPR),
-        JSValueRegs(valueGPR), scratchGPR, spillMode, m_jit.ecmaModeFor(codeOrigin), putKind);
+        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters, JSValueRegs(baseGPR),
+        JSValueRegs(valueGPR), scratchGPR, m_jit.ecmaModeFor(codeOrigin), putKind);
 
     gen.generateFastPath(m_jit);
     
@@ -4026,18 +4037,10 @@ void SpeculativeJIT::compile(Node* node)
         compileReallocatePropertyStorage(node);
         break;
         
-    case GetButterfly: {
-        SpeculateCellOperand base(this, node->child1());
-        GPRTemporary result(this, Reuse, base);
-        
-        GPRReg baseGPR = base.gpr();
-        GPRReg resultGPR = result.gpr();
-        
-        m_jit.loadPtr(JITCompiler::Address(baseGPR, JSObject::butterflyOffset()), resultGPR);
-        
-        storageResult(resultGPR, node);
+    case GetButterfly:
+    case GetButterflyReadOnly:
+        compileGetButterfly(node);
         break;
-    }
 
     case GetIndexedPropertyStorage: {
         compileGetIndexedPropertyStorage(node);
@@ -4633,10 +4636,16 @@ void SpeculativeJIT::compile(Node* node)
         GPRReg scratch1GPR = scratch1.gpr();
         GPRReg scratch2GPR = scratch2.gpr();
 
+        MacroAssembler::JumpList slowPath;
+
         // Check the structure
         m_jit.load32(MacroAssembler::Address(baseGPR, JSCell::structureIDOffset()), scratch1GPR);
-        MacroAssembler::Jump wrongStructure = m_jit.branch32(MacroAssembler::NotEqual, 
-            scratch1GPR, MacroAssembler::Address(enumeratorGPR, JSPropertyNameEnumerator::cachedStructureIDOffset()));
+        slowPath.append(
+            m_jit.branch32(
+                MacroAssembler::NotEqual, 
+                scratch1GPR,
+                MacroAssembler::Address(
+                    enumeratorGPR, JSPropertyNameEnumerator::cachedStructureIDOffset())));
         
         // Compute the offset
         // If index is less than the enumerator's cached inline storage, then it's an inline access
@@ -4650,6 +4659,7 @@ void SpeculativeJIT::compile(Node* node)
         // Otherwise it's out of line
         outOfLineAccess.link(&m_jit);
         m_jit.loadPtr(MacroAssembler::Address(baseGPR, JSObject::butterflyOffset()), scratch2GPR);
+        slowPath.append(m_jit.branchIfNotToSpace(scratch2GPR));
         m_jit.move(indexGPR, scratch1GPR);
         m_jit.sub32(MacroAssembler::Address(enumeratorGPR, JSPropertyNameEnumerator::cachedInlineCapacityOffset()), scratch1GPR);
         m_jit.neg32(scratch1GPR);
@@ -4659,7 +4669,7 @@ void SpeculativeJIT::compile(Node* node)
 
         done.link(&m_jit);
 
-        addSlowPathGenerator(slowPathCall(wrongStructure, this, operationGetByVal, resultGPR, baseGPR, propertyGPR));
+        addSlowPathGenerator(slowPathCall(slowPath, this, operationGetByVal, resultGPR, baseGPR, propertyGPR));
 
         jsValueResult(resultGPR, node);
         break;

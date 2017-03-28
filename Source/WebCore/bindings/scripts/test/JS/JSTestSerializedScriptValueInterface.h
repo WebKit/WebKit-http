@@ -29,12 +29,12 @@
 
 namespace WebCore {
 
-class JSTestSerializedScriptValueInterface : public JSDOMWrapperWithImplementation<TestSerializedScriptValueInterface> {
+class JSTestSerializedScriptValueInterface : public JSDOMWrapper<TestSerializedScriptValueInterface> {
 public:
-    typedef JSDOMWrapperWithImplementation<TestSerializedScriptValueInterface> Base;
+    typedef JSDOMWrapper<TestSerializedScriptValueInterface> Base;
     static JSTestSerializedScriptValueInterface* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestSerializedScriptValueInterface>&& impl)
     {
-        JSTestSerializedScriptValueInterface* ptr = new (NotNull, JSC::allocateCell<JSTestSerializedScriptValueInterface>(globalObject->vm().heap)) JSTestSerializedScriptValueInterface(structure, globalObject, WTF::move(impl));
+        JSTestSerializedScriptValueInterface* ptr = new (NotNull, JSC::allocateCell<JSTestSerializedScriptValueInterface>(globalObject->vm().heap)) JSTestSerializedScriptValueInterface(structure, *globalObject, WTF::move(impl));
         ptr->finishCreation(globalObject->vm());
         return ptr;
     }
@@ -57,7 +57,7 @@ public:
     static void visitChildren(JSCell*, JSC::SlotVisitor&);
 
 protected:
-    JSTestSerializedScriptValueInterface(JSC::Structure*, JSDOMGlobalObject*, Ref<TestSerializedScriptValueInterface>&&);
+    JSTestSerializedScriptValueInterface(JSC::Structure*, JSDOMGlobalObject&, Ref<TestSerializedScriptValueInterface>&&);
 
     void finishCreation(JSC::VM& vm)
     {

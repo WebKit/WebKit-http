@@ -37,11 +37,11 @@
 
 namespace JSC {
 
-bool shouldShowDisassemblyFor(CodeBlock* codeBlock)
+bool shouldDumpDisassemblyFor(CodeBlock* codeBlock)
 {
-    if (JITCode::isOptimizingJIT(codeBlock->jitType()) && Options::showDFGDisassembly())
+    if (JITCode::isOptimizingJIT(codeBlock->jitType()) && Options::dumpDFGDisassembly())
         return true;
-    return Options::showDisassembly();
+    return Options::dumpDisassembly();
 }
 
 LinkBuffer::CodeRef LinkBuffer::finalizeCodeWithoutDisassembly()
@@ -193,6 +193,8 @@ void LinkBuffer::linkCode(MacroAssembler& macroAssembler, void* ownerUID, JITCom
 #elif CPU(ARM64)
     copyCompactAndLinkCode<uint32_t>(macroAssembler, ownerUID, effort);
 #endif
+
+    m_linkTasks = WTF::move(macroAssembler.m_linkTasks);
 }
 
 void LinkBuffer::allocate(size_t initialSize, void* ownerUID, JITCompilationEffort effort)
@@ -224,6 +226,9 @@ void LinkBuffer::shrink(size_t newSize)
 
 void LinkBuffer::performFinalization()
 {
+    for (auto& task : m_linkTasks)
+        task->run(*this);
+
 #ifndef NDEBUG
     ASSERT(!isCompilationThread());
     ASSERT(!m_completed);

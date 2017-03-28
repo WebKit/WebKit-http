@@ -99,25 +99,25 @@ private:
 
 class JSTestTypedefsConstructor : public DOMConstructorObject {
 private:
-    JSTestTypedefsConstructor(JSC::Structure*, JSDOMGlobalObject*);
+    JSTestTypedefsConstructor(JSC::Structure*, JSDOMGlobalObject&);
     void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
-    static JSTestTypedefsConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
+    static JSTestTypedefsConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
     {
         JSTestTypedefsConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestTypedefsConstructor>(vm.heap)) JSTestTypedefsConstructor(structure, globalObject);
-        ptr->finishCreation(vm, *globalObject);
+        ptr->finishCreation(vm, globalObject);
         return ptr;
     }
 
     DECLARE_INFO;
-    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
+    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)
     {
-        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
+        return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 protected:
-    static JSC::EncodedJSValue JSC_HOST_CALL constructJSTestTypedefs(JSC::ExecState*);
+    static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
 };
 
@@ -142,7 +142,7 @@ static const HashTableValue JSTestTypedefsConstructorTableValues[] =
     { "TestSubObj", DontDelete | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestTypedefsConstructorTestSubObj), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
-EncodedJSValue JSC_HOST_CALL JSTestTypedefsConstructor::constructJSTestTypedefs(ExecState* state)
+EncodedJSValue JSC_HOST_CALL JSTestTypedefsConstructor::construct(ExecState* state)
 {
     auto* castedThis = jsCast<JSTestTypedefsConstructor*>(state->callee());
     if (UNLIKELY(state->argumentCount() < 2))
@@ -159,7 +159,7 @@ EncodedJSValue JSC_HOST_CALL JSTestTypedefsConstructor::constructJSTestTypedefs(
 
 const ClassInfo JSTestTypedefsConstructor::s_info = { "TestTypedefsConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestTypedefsConstructor) };
 
-JSTestTypedefsConstructor::JSTestTypedefsConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
+JSTestTypedefsConstructor::JSTestTypedefsConstructor(Structure* structure, JSDOMGlobalObject& globalObject)
     : Base(structure, globalObject)
 {
 }
@@ -174,9 +174,10 @@ void JSTestTypedefsConstructor::finishCreation(VM& vm, JSDOMGlobalObject& global
     reifyStaticProperties(vm, JSTestTypedefsConstructorTableValues, *this);
 }
 
-ConstructType JSTestTypedefsConstructor::getConstructData(JSCell*, ConstructData& constructData)
+ConstructType JSTestTypedefsConstructor::getConstructData(JSCell* cell, ConstructData& constructData)
 {
-    constructData.native.function = constructJSTestTypedefs;
+    UNUSED_PARAM(cell);
+    constructData.native.function = construct;
     return ConstructTypeHost;
 }
 
@@ -213,8 +214,8 @@ void JSTestTypedefsPrototype::finishCreation(VM& vm)
 
 const ClassInfo JSTestTypedefs::s_info = { "TestTypedefs", &Base::s_info, &JSTestTypedefsTable, CREATE_METHOD_TABLE(JSTestTypedefs) };
 
-JSTestTypedefs::JSTestTypedefs(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestTypedefs>&& impl)
-    : JSDOMWrapperWithImplementation<TestTypedefs>(structure, globalObject, WTF::move(impl))
+JSTestTypedefs::JSTestTypedefs(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestTypedefs>&& impl)
+    : JSDOMWrapper<TestTypedefs>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -493,7 +494,7 @@ void setJSTestTypedefsStringAttrWithSetterException(ExecState* state, JSObject* 
 
 JSValue JSTestTypedefs::getConstructor(VM& vm, JSGlobalObject* globalObject)
 {
-    return getDOMConstructor<JSTestTypedefsConstructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));
+    return getDOMConstructor<JSTestTypedefsConstructor>(vm, *jsCast<JSDOMGlobalObject*>(globalObject));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionFunc(ExecState* state)

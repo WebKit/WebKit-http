@@ -1105,7 +1105,7 @@ sub printWrapperFunctions
 
         if ($enabledTags{$tagName}{wrapperOnlyIfMediaIsAvailable}) {
             print F <<END
-static JSDOMWrapper* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
+static JSDOMObject* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
 {
     if (element->is$parameters{fallbackInterfaceName}())
         return CREATE_DOM_WRAPPER(globalObject, $parameters{fallbackInterfaceName}, element.get());
@@ -1116,7 +1116,7 @@ END
             ;
         } elsif ($enabledTags{$tagName}{settingsConditional}) {
             print F <<END
-static JSDOMWrapper* create$enabledTags{$tagName}{interfaceName}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
+static JSDOMObject* create$enabledTags{$tagName}{interfaceName}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
 {
     if (element->is$parameters{fallbackInterfaceName}())
         return CREATE_DOM_WRAPPER(globalObject, $parameters{fallbackInterfaceName}, element.get());
@@ -1128,7 +1128,7 @@ END
         } elsif ($enabledTags{$tagName}{runtimeConditional}) {
             my $runtimeConditional = $enabledTags{$tagName}{runtimeConditional};
             print F <<END
-static JSDOMWrapper* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
+static JSDOMObject* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().${runtimeConditional}Enabled()) {
         ASSERT(!element || element->is$parameters{fallbackInterfaceName}());
@@ -1141,7 +1141,7 @@ END
     ;
         } else {
             print F <<END
-static JSDOMWrapper* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
+static JSDOMObject* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
 {
     return CREATE_DOM_WRAPPER(globalObject, ${JSInterfaceName}, element.get());
 }
@@ -1194,7 +1194,7 @@ namespace WebCore {
 
 using namespace $parameters{namespace}Names;
 
-typedef JSDOMWrapper* (*Create$parameters{namespace}ElementWrapperFunction)(JSDOMGlobalObject*, PassRefPtr<$parameters{namespace}Element>);
+typedef JSDOMObject* (*Create$parameters{namespace}ElementWrapperFunction)(JSDOMGlobalObject*, PassRefPtr<$parameters{namespace}Element>);
 
 END
 ;
@@ -1247,7 +1247,7 @@ END
         map.add(table[i].name.localName().impl(), table[i].function);
 }
 
-JSDOMWrapper* createJS$parameters{namespace}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
+JSDOMObject* createJS$parameters{namespace}Wrapper(JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
 {
     static NeverDestroyed<HashMap<AtomicStringImpl*, Create$parameters{namespace}ElementWrapperFunction>> functions;
     if (functions.get().isEmpty())
@@ -1285,11 +1285,11 @@ sub printWrapperFactoryHeaderFile
 
 namespace WebCore {
 
-    class JSDOMWrapper;
+    class JSDOMObject;
     class JSDOMGlobalObject;
     class $parameters{namespace}Element;
 
-    JSDOMWrapper* createJS$parameters{namespace}Wrapper(JSDOMGlobalObject*, PassRefPtr<$parameters{namespace}Element>);
+    JSDOMObject* createJS$parameters{namespace}Wrapper(JSDOMGlobalObject*, PassRefPtr<$parameters{namespace}Element>);
 
 }
  

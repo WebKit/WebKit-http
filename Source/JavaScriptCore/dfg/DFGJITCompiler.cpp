@@ -53,7 +53,7 @@ JITCompiler::JITCompiler(Graph& dfg)
     , m_jitCode(adoptRef(new JITCode()))
     , m_blockHeads(dfg.numBlocks())
 {
-    if (shouldShowDisassembly() || m_graph.m_vm.m_perBytecodeProfiler)
+    if (shouldDumpDisassembly() || m_graph.m_vm.m_perBytecodeProfiler)
         m_disassembler = std::make_unique<Disassembler>(dfg);
 }
 
@@ -473,7 +473,7 @@ void JITCompiler::compileFunction()
 
 void JITCompiler::disassemble(LinkBuffer& linkBuffer)
 {
-    if (shouldShowDisassembly()) {
+    if (shouldDumpDisassembly()) {
         m_disassembler->dump(linkBuffer);
         linkBuffer.didAlreadyDisassemble();
     }
@@ -555,6 +555,7 @@ void JITCompiler::appendExceptionHandlingOSRExit(unsigned eventStreamIndex, Code
     exit.m_willArriveAtOSRExitFromGenericUnwind = jumpsToFail.empty(); // If jumps are empty, we're going to jump here from genericUnwind from a child call frame.
     exit.m_isExceptionHandler = true;
     exit.m_codeOrigin = opCatchOrigin;
+    exit.m_exceptionHandlerCallSiteIndex = callSite;
     OSRExitCompilationInfo& exitInfo = appendExitInfo(jumpsToFail);
     jitCode()->appendOSRExit(exit);
     m_exceptionHandlerOSRExitCallSites.append(ExceptionHandlingOSRExitInfo { exitInfo, *exceptionHandler, callSite });

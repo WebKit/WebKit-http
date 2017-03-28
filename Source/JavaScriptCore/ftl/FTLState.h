@@ -49,9 +49,9 @@ inline bool verboseCompilationEnabled()
     return DFG::verboseCompilationEnabled(DFG::FTLMode);
 }
 
-inline bool shouldShowDisassembly()
+inline bool shouldDumpDisassembly()
 {
-    return DFG::shouldShowDisassembly(DFG::FTLMode);
+    return DFG::shouldDumpDisassembly(DFG::FTLMode);
 }
 
 class State {
@@ -78,6 +78,7 @@ public:
     SegmentedVector<GetByIdDescriptor> getByIds;
     SegmentedVector<PutByIdDescriptor> putByIds;
     SegmentedVector<CheckInDescriptor> checkIns;
+    SegmentedVector<LazySlowPathDescriptor> lazySlowPaths;
     Vector<JSCall> jsCalls;
     Vector<JSCallVarargs> jsCallVarargses;
     Vector<JSTailCall> jsTailCalls;

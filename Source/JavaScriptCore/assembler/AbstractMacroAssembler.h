@@ -33,6 +33,7 @@
 #include "Options.h"
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/SharedTask.h>
 #include <wtf/WeakRandom.h>
 
 #if ENABLE(ASSEMBLER)
@@ -68,21 +69,20 @@ inline bool isX86()
 
 inline bool optimizeForARMv7IDIVSupported()
 {
-    return isARMv7IDIVSupported() && Options::enableArchitectureSpecificOptimizations();
+    return isARMv7IDIVSupported() && Options::useArchitectureSpecificOptimizations();
 }
 
 inline bool optimizeForARM64()
 {
-    return isARM64() && Options::enableArchitectureSpecificOptimizations();
+    return isARM64() && Options::useArchitectureSpecificOptimizations();
 }
 
 inline bool optimizeForX86()
 {
-    return isX86() && Options::enableArchitectureSpecificOptimizations();
+    return isX86() && Options::useArchitectureSpecificOptimizations();
 }
 
 class LinkBuffer;
-class RepatchBuffer;
 class Watchpoint;
 namespace DFG {
 struct OSRExit;
@@ -1005,6 +1005,17 @@ public:
         AssemblerType::replaceWithAddressComputation(label.dataLocation());
     }
 
+    void addLinkTask(RefPtr<SharedTask<void(LinkBuffer&)>> task)
+    {
+        m_linkTasks.append(task);
+    }
+
+    template<typename Functor>
+    void addLinkTask(const Functor& functor)
+    {
+        m_linkTasks.append(createSharedTask<void(LinkBuffer&)>(functor));
+    }
+
 protected:
     AbstractMacroAssembler()
         : m_randomSource(cryptographicallyRandomNumber())
@@ -1100,10 +1111,9 @@ protected:
 
     unsigned m_tempRegistersValidBits;
 
+    Vector<RefPtr<SharedTask<void(LinkBuffer&)>>> m_linkTasks;
+
     friend class LinkBuffer;
-
-private:
-
 }; // class AbstractMacroAssembler
 
 } // namespace JSC

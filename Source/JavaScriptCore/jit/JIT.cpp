@@ -180,6 +180,8 @@ void JIT::privateCompileMainPass()
         
         if (Options::eagerlyUpdateTopCallFrame())
             updateTopCallFrame();
+
+        unsigned bytecodeOffset = m_bytecodeOffset;
         
         switch (opcodeID) {
         DEFINE_SLOW_OP(del_by_val)
@@ -314,6 +316,9 @@ void JIT::privateCompileMainPass()
         default:
             RELEASE_ASSERT_NOT_REACHED();
         }
+
+        if (false)
+            dataLog("At ", bytecodeOffset, ": ", m_slowCases.size(), "\n");
     }
 
     RELEASE_ASSERT(m_callLinkInfoIndex == m_callCompilationInfo.size());
@@ -433,6 +438,9 @@ void JIT::privateCompileSlowCases()
             RELEASE_ASSERT_NOT_REACHED();
         }
 
+        if (false)
+            dataLog("At ", firstTo, " slow: ", iter - m_slowCases.begin(), "\n");
+
         RELEASE_ASSERT_WITH_MESSAGE(iter == m_slowCases.end() || firstTo != iter->to, "Not enough jumps linked in slow case codegen.");
         RELEASE_ASSERT_WITH_MESSAGE(firstTo == (iter - 1)->to, "Too many jumps linked in slow case codegen.");
         
@@ -492,7 +500,7 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
     if (m_vm->typeProfiler())
         m_vm->typeProfilerLog()->processLogEntries(ASCIILiteral("Preparing for JIT compilation."));
     
-    if (Options::showDisassembly() || m_vm->m_perBytecodeProfiler)
+    if (Options::dumpDisassembly() || m_vm->m_perBytecodeProfiler)
         m_disassembler = std::make_unique<JITDisassembler>(m_codeBlock);
     if (m_vm->m_perBytecodeProfiler) {
         m_compilation = adoptRef(
@@ -683,7 +691,7 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
     if (m_codeBlock->codeType() == FunctionCode)
         withArityCheck = patchBuffer.locationOf(arityCheck);
 
-    if (Options::showDisassembly()) {
+    if (Options::dumpDisassembly()) {
         m_disassembler->dump(patchBuffer);
         patchBuffer.didAlreadyDisassemble();
     }

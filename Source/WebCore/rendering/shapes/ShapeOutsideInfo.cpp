@@ -148,8 +148,7 @@ static LayoutRect getShapeImageMarginRect(const RenderBox& renderBox, const Layo
 
 std::unique_ptr<Shape> ShapeOutsideInfo::createShapeForImage(StyleImage* styleImage, float shapeImageThreshold, WritingMode writingMode, float margin) const
 {
-    LayoutSize imageSize;
-    m_renderer.calculateImageIntrinsicDimensions(styleImage, m_referenceBoxLogicalSize, RenderImage::ScaleByEffectiveZoom, imageSize);
+    LayoutSize imageSize = m_renderer.calculateImageIntrinsicDimensions(styleImage, m_referenceBoxLogicalSize, RenderImage::ScaleByEffectiveZoom);
     styleImage->setContainerSizeForRenderer(&m_renderer, imageSize, m_renderer.style().effectiveZoom());
 
     const LayoutRect& marginRect = getShapeImageMarginRect(m_renderer, m_referenceBoxLogicalSize);
@@ -159,7 +158,6 @@ std::unique_ptr<Shape> ShapeOutsideInfo::createShapeForImage(StyleImage* styleIm
 
     ASSERT(!styleImage->isPendingImage());
     RefPtr<Image> image = styleImage->image(const_cast<RenderBox*>(&m_renderer), imageSize);
-
     return Shape::createRasterShape(image.get(), shapeImageThreshold, imageRect, marginRect, writingMode, margin);
 }
 

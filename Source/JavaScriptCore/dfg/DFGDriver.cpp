@@ -91,7 +91,7 @@ static CompilationResult compileImpl(
         new Plan(codeBlock, profiledDFGCodeBlock, mode, osrEntryBytecodeIndex, mustHandleValues));
     
     plan->callback = callback;
-    if (Options::enableConcurrentJIT()) {
+    if (Options::useConcurrentJIT()) {
         Worklist* worklist = ensureGlobalWorklistFor(mode);
         if (logCompilationChanges(mode))
             dataLog("Deferring DFG compilation of ", *codeBlock, " with queue length ", worklist->queueLength(), ".\n");
@@ -121,7 +121,7 @@ CompilationResult compile(
         vm, codeBlock, profiledDFGCodeBlock, mode, osrEntryBytecodeIndex, mustHandleValues,
         callback);
     if (result != CompilationDeferred)
-        callback->compilationDidComplete(codeBlock, result);
+        callback->compilationDidComplete(codeBlock, profiledDFGCodeBlock, result);
     return result;
 }
 

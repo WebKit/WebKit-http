@@ -65,29 +65,29 @@ private:
 
 class JSTestNodeConstructor : public DOMConstructorObject {
 private:
-    JSTestNodeConstructor(JSC::Structure*, JSDOMGlobalObject*);
+    JSTestNodeConstructor(JSC::Structure*, JSDOMGlobalObject&);
     void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
-    static JSTestNodeConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
+    static JSTestNodeConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
     {
         JSTestNodeConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestNodeConstructor>(vm.heap)) JSTestNodeConstructor(structure, globalObject);
-        ptr->finishCreation(vm, *globalObject);
+        ptr->finishCreation(vm, globalObject);
         return ptr;
     }
 
     DECLARE_INFO;
-    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
+    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)
     {
-        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
+        return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 protected:
-    static JSC::EncodedJSValue JSC_HOST_CALL constructJSTestNode(JSC::ExecState*);
+    static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
 };
 
-EncodedJSValue JSC_HOST_CALL JSTestNodeConstructor::constructJSTestNode(ExecState* state)
+EncodedJSValue JSC_HOST_CALL JSTestNodeConstructor::construct(ExecState* state)
 {
     auto* castedThis = jsCast<JSTestNodeConstructor*>(state->callee());
     RefPtr<TestNode> object = TestNode::create();
@@ -96,7 +96,7 @@ EncodedJSValue JSC_HOST_CALL JSTestNodeConstructor::constructJSTestNode(ExecStat
 
 const ClassInfo JSTestNodeConstructor::s_info = { "TestNodeConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestNodeConstructor) };
 
-JSTestNodeConstructor::JSTestNodeConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
+JSTestNodeConstructor::JSTestNodeConstructor(Structure* structure, JSDOMGlobalObject& globalObject)
     : Base(structure, globalObject)
 {
 }
@@ -110,9 +110,10 @@ void JSTestNodeConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObje
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-ConstructType JSTestNodeConstructor::getConstructData(JSCell*, ConstructData& constructData)
+ConstructType JSTestNodeConstructor::getConstructData(JSCell* cell, ConstructData& constructData)
 {
-    constructData.native.function = constructJSTestNode;
+    UNUSED_PARAM(cell);
+    constructData.native.function = construct;
     return ConstructTypeHost;
 }
 
@@ -134,7 +135,7 @@ void JSTestNodePrototype::finishCreation(VM& vm)
 
 const ClassInfo JSTestNode::s_info = { "TestNode", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestNode) };
 
-JSTestNode::JSTestNode(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestNode>&& impl)
+JSTestNode::JSTestNode(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestNode>&& impl)
     : JSNode(structure, globalObject, WTF::move(impl))
 {
 }
@@ -196,7 +197,7 @@ void setJSTestNodeName(ExecState* state, JSObject* baseObject, EncodedJSValue th
 
 JSValue JSTestNode::getConstructor(VM& vm, JSGlobalObject* globalObject)
 {
-    return getDOMConstructor<JSTestNodeConstructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));
+    return getDOMConstructor<JSTestNodeConstructor>(vm, *jsCast<JSDOMGlobalObject*>(globalObject));
 }
 
 void JSTestNode::visitChildren(JSCell* cell, SlotVisitor& visitor)

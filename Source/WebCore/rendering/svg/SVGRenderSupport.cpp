@@ -67,20 +67,20 @@ LayoutRect SVGRenderSupport::clippedOverflowRectForRepaint(const RenderElement& 
     const SVGRenderStyle& svgStyle = renderer.style().svgStyle();
     if (const ShadowData* shadow = svgStyle.shadow())
         shadow->adjustRectForShadow(repaintRect);
-    renderer.computeFloatRectForRepaint(repaintContainer, repaintRect);
-    return enclosingLayoutRect(repaintRect);
+    return enclosingLayoutRect(renderer.computeFloatRectForRepaint(repaintRect, repaintContainer));
 }
 
-void SVGRenderSupport::computeFloatRectForRepaint(const RenderElement& renderer, const RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed)
+FloatRect SVGRenderSupport::computeFloatRectForRepaint(const RenderElement& renderer, const FloatRect& repaintRect, const RenderLayerModelObject* repaintContainer, bool fixed)
 {
+    FloatRect adjustedRect = repaintRect;
     const SVGRenderStyle& svgStyle = renderer.style().svgStyle();
     if (const ShadowData* shadow = svgStyle.shadow())
-        shadow->adjustRectForShadow(repaintRect);
-    repaintRect.inflate(renderer.style().outlineWidth());
+        shadow->adjustRectForShadow(adjustedRect);
+    adjustedRect.inflate(renderer.style().outlineWidth());
 
     // Translate to coords in our parent renderer, and then call computeFloatRectForRepaint() on our parent.
-    repaintRect = renderer.localToParentTransform().mapRect(repaintRect);
-    renderer.parent()->computeFloatRectForRepaint(repaintContainer, repaintRect, fixed);
+    adjustedRect = renderer.localToParentTransform().mapRect(adjustedRect);
+    return renderer.parent()->computeFloatRectForRepaint(adjustedRect, repaintContainer, fixed);
 }
 
 const RenderElement& SVGRenderSupport::localToParentTransform(const RenderElement& renderer, AffineTransform &transform)
@@ -299,7 +299,7 @@ void SVGRenderSupport::layoutChildren(RenderElement& start, bool selfNeedsLayout
 bool SVGRenderSupport::isOverflowHidden(const RenderElement& renderer)
 {
     // RenderSVGRoot should never query for overflow state - it should always clip itself to the initial viewport size.
-    ASSERT(!renderer.isRoot());
+    ASSERT(!renderer.isDocumentElementRenderer());
 
     return renderer.style().overflowX() == OHIDDEN || renderer.style().overflowX() == OSCROLL;
 }

@@ -877,9 +877,9 @@
 - path: es6/Promise_Promise[Symbol.species].js
   cmd: runES6 :fail
 - path: es6/proper_tail_calls_tail_call_optimisation_direct_recursion.js
-  cmd: runES6 :normal
+  cmd: runES6 :fail
 - path: es6/proper_tail_calls_tail_call_optimisation_mutual_recursion.js
-  cmd: runES6 :normal
+  cmd: runES6 :fail
 - path: es6/prototype_of_bound_functions_arrow_functions.js
   cmd: runES6 :fail
 - path: es6/prototype_of_bound_functions_basic_functions.js
@@ -1115,9 +1115,9 @@
 - path: es6/String.prototype_methods_String.prototype.normalize.js
   cmd: runES6 :fail
 - path: es6/typed_arrays_%TypedArray%.from.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/typed_arrays_%TypedArray%.of.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/typed_arrays_%TypedArray%.prototype.copyWithin.js
   cmd: runES6 :normal
 - path: es6/typed_arrays_%TypedArray%.prototype.entries.js

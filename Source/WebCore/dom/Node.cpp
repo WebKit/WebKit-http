@@ -46,7 +46,6 @@
 #include "HTMLImageElement.h"
 #include "HTMLSlotElement.h"
 #include "HTMLStyleElement.h"
-#include "InsertionPoint.h"
 #include "InspectorController.h"
 #include "KeyboardEvent.h"
 #include "Logging.h"
@@ -721,7 +720,7 @@ LayoutRect Node::renderRect(bool* isReplaced)
     RenderObject* hitRenderer = this->renderer();
     ASSERT(hitRenderer);
     RenderObject* renderer = hitRenderer;
-    while (renderer && !renderer->isBody() && !renderer->isRoot()) {
+    while (renderer && !renderer->isBody() && !renderer->isDocumentElementRenderer()) {
         if (renderer->isRenderBlock() || renderer->isInlineBlockOrInlineTable() || renderer->isReplaced()) {
             *isReplaced = renderer->isReplaced();
             return renderer->absoluteBoundingBoxRect();
@@ -750,7 +749,7 @@ static ContainerNode* traverseStyleParent(Node& node)
             return downcast<ShadowRoot>(node).host();
         return nullptr;
     }
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (auto* shadowRoot = parent->shadowRoot()) {
         if (auto* assignedSlot = shadowRoot->findAssignedSlot(node))
             return assignedSlot;
@@ -1131,11 +1130,6 @@ Element* Node::parentOrShadowHostElement() const
         return nullptr;
 
     return downcast<Element>(parent);
-}
-
-Node* Node::insertionParentForBinding() const
-{
-    return findInsertionPointOf(this);
 }
 
 Node::InsertionNotificationRequest Node::insertedInto(ContainerNode& insertionPoint)

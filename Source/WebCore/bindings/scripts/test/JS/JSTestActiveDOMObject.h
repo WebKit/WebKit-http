@@ -27,12 +27,12 @@
 
 namespace WebCore {
 
-class JSTestActiveDOMObject : public JSDOMWrapperWithImplementation<TestActiveDOMObject> {
+class JSTestActiveDOMObject : public JSDOMWrapper<TestActiveDOMObject> {
 public:
-    typedef JSDOMWrapperWithImplementation<TestActiveDOMObject> Base;
+    typedef JSDOMWrapper<TestActiveDOMObject> Base;
     static JSTestActiveDOMObject* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestActiveDOMObject>&& impl)
     {
-        JSTestActiveDOMObject* ptr = new (NotNull, JSC::allocateCell<JSTestActiveDOMObject>(globalObject->vm().heap)) JSTestActiveDOMObject(structure, globalObject, WTF::move(impl));
+        JSTestActiveDOMObject* ptr = new (NotNull, JSC::allocateCell<JSTestActiveDOMObject>(globalObject->vm().heap)) JSTestActiveDOMObject(structure, *globalObject, WTF::move(impl));
         ptr->finishCreation(globalObject->vm());
         return ptr;
     }
@@ -54,7 +54,7 @@ public:
 public:
     static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | Base::StructureFlags;
 protected:
-    JSTestActiveDOMObject(JSC::Structure*, JSDOMGlobalObject*, Ref<TestActiveDOMObject>&&);
+    JSTestActiveDOMObject(JSC::Structure*, JSDOMGlobalObject&, Ref<TestActiveDOMObject>&&);
 
     void finishCreation(JSC::VM& vm)
     {

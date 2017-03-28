@@ -38,7 +38,7 @@ ExecutableBase* AssemblyHelpers::executableFor(const CodeOrigin& codeOrigin)
     if (!codeOrigin.inlineCallFrame)
         return m_codeBlock->ownerExecutable();
     
-    return codeOrigin.inlineCallFrame->executable.get();
+    return codeOrigin.inlineCallFrame->baselineCodeBlock->ownerExecutable();
 }
 
 Vector<BytecodeAndMachineOffset>& AssemblyHelpers::decodedCodeMapFor(CodeBlock* codeBlock)
@@ -84,6 +84,11 @@ AssemblyHelpers::JumpList AssemblyHelpers::branchIfNotType(
     case InferredType::String:
         result.append(branchIfNotCell(regs, mode));
         result.append(branchIfNotString(regs.payloadGPR()));
+        break;
+
+    case InferredType::Symbol:
+        result.append(branchIfNotCell(regs, mode));
+        result.append(branchIfNotSymbol(regs.payloadGPR()));
         break;
 
     case InferredType::ObjectWithStructure:
@@ -283,7 +288,7 @@ void AssemblyHelpers::jitAssertNoException()
 
 void AssemblyHelpers::callExceptionFuzz()
 {
-    if (!Options::enableExceptionFuzz())
+    if (!Options::useExceptionFuzz())
         return;
 
     EncodedJSValue* buffer = vm()->exceptionFuzzingBuffer(sizeof(EncodedJSValue) * (GPRInfo::numberOfRegisters + FPRInfo::numberOfRegisters));

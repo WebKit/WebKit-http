@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-CrossfadeGeneratedImage::CrossfadeGeneratedImage(Image* fromImage, Image* toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize& size)
+CrossfadeGeneratedImage::CrossfadeGeneratedImage(Image& fromImage, Image& toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize& size)
     : m_fromImage(fromImage)
     , m_toImage(toImage)
     , m_percentage(percentage)
@@ -41,12 +41,12 @@ CrossfadeGeneratedImage::CrossfadeGeneratedImage(Image* fromImage, Image* toImag
     setContainerSize(size);
 }
 
-static void drawCrossfadeSubimage(GraphicsContext& context, Image* image, CompositeOperator operation, float opacity, const FloatSize& targetSize)
+static void drawCrossfadeSubimage(GraphicsContext& context, Image& image, CompositeOperator operation, float opacity, const FloatSize& targetSize)
 {
-    FloatSize imageSize = image->size();
+    FloatSize imageSize = image.size();
 
     // SVGImage resets the opacity when painting, so we have to use transparency layers to accurately paint one at a given opacity.
-    bool useTransparencyLayer = image->isSVGImage();
+    bool useTransparencyLayer = image.isSVGImage();
 
     GraphicsContextStateSaver stateSaver(context);
 
@@ -68,7 +68,7 @@ static void drawCrossfadeSubimage(GraphicsContext& context, Image* image, Compos
 void CrossfadeGeneratedImage::drawCrossfade(GraphicsContext& context)
 {
     // Draw nothing if either of the images hasn't loaded yet.
-    if (m_fromImage == Image::nullImage() || m_toImage == Image::nullImage())
+    if (m_fromImage.ptr() == Image::nullImage() || m_toImage.ptr() == Image::nullImage())
         return;
 
     GraphicsContextStateSaver stateSaver(context);
@@ -76,8 +76,8 @@ void CrossfadeGeneratedImage::drawCrossfade(GraphicsContext& context)
     context.clip(FloatRect(FloatPoint(), m_crossfadeSize));
     context.beginTransparencyLayer(1);
 
-    drawCrossfadeSubimage(context, m_fromImage, CompositeSourceOver, 1 - m_percentage, m_crossfadeSize);
-    drawCrossfadeSubimage(context, m_toImage, CompositePlusLighter, m_percentage, m_crossfadeSize);
+    drawCrossfadeSubimage(context, m_fromImage.get(), CompositeSourceOver, 1 - m_percentage, m_crossfadeSize);
+    drawCrossfadeSubimage(context, m_toImage.get(), CompositePlusLighter, m_percentage, m_crossfadeSize);
 
     context.endTransparencyLayer();
 }
@@ -95,7 +95,7 @@ void CrossfadeGeneratedImage::draw(GraphicsContext& context, const FloatRect& ds
     drawCrossfade(context);
 }
 
-void CrossfadeGeneratedImage::drawPattern(GraphicsContext& context, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator compositeOp, const FloatRect& dstRect, BlendMode blendMode)
+void CrossfadeGeneratedImage::drawPattern(GraphicsContext& context, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, ColorSpace styleColorSpace, CompositeOperator compositeOp, const FloatRect& dstRect, BlendMode blendMode)
 {
     std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(size(), context.renderingMode());
     if (!imageBuffer)
@@ -106,7 +106,7 @@ void CrossfadeGeneratedImage::drawPattern(GraphicsContext& context, const FloatR
     drawCrossfade(graphicsContext);
 
     // Tile the image buffer into the context.
-    imageBuffer->drawPattern(context, srcRect, patternTransform, phase, styleColorSpace, compositeOp, dstRect, blendMode);
+    imageBuffer->drawPattern(context, srcRect, patternTransform, phase, spacing, styleColorSpace, compositeOp, dstRect, blendMode);
 }
 
 }

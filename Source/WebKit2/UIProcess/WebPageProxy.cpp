@@ -34,6 +34,7 @@
 #include "APIFrameInfo.h"
 #include "APIGeometry.h"
 #include "APIHistoryClient.h"
+#include "APIHitTestResult.h"
 #include "APILegacyContextHistoryClient.h"
 #include "APILoaderClient.h"
 #include "APINavigation.h"
@@ -1047,7 +1048,7 @@ void WebPageProxy::stopLoading()
     m_process->responsivenessTimer()->start();
 }
 
-RefPtr<API::Navigation> WebPageProxy::reload(bool reloadFromOrigin)
+RefPtr<API::Navigation> WebPageProxy::reload(bool reloadFromOrigin, bool contentBlockersEnabled)
 {
     SandboxExtension::Handle sandboxExtensionHandle;
 
@@ -1067,7 +1068,7 @@ RefPtr<API::Navigation> WebPageProxy::reload(bool reloadFromOrigin)
     
     auto navigation = m_navigationState->createReloadNavigation();
 
-    m_process->send(Messages::WebPage::Reload(navigation->navigationID(), reloadFromOrigin, sandboxExtensionHandle), m_pageID);
+    m_process->send(Messages::WebPage::Reload(navigation->navigationID(), reloadFromOrigin, contentBlockersEnabled, sandboxExtensionHandle), m_pageID);
     m_process->responsivenessTimer()->start();
 
     return WTF::move(navigation);
@@ -3181,16 +3182,6 @@ void WebPageProxy::didLayout(uint32_t layoutMilestones)
         m_loaderClient->didLayout(*this, static_cast<LayoutMilestones>(layoutMilestones));
 }
 
-void WebPageProxy::didRemoveFrameFromHierarchy(uint64_t frameID, const UserData& userData)
-{
-    PageClientProtector protector(m_pageClient);
-
-    WebFrameProxy* frame = m_process->webFrame(frameID);
-    MESSAGE_CHECK(frame);
-
-    m_loaderClient->didRemoveFrameFromHierarchy(*this, *frame, m_process->transformHandlesToObjects(userData.object()).get());
-}
-
 void WebPageProxy::didDisplayInsecureContentForFrame(uint64_t frameID, const UserData& userData)
 {
     PageClientProtector protector(m_pageClient);
@@ -3564,16 +3555,16 @@ void WebPageProxy::setStatusText(const String& text)
     m_uiClient->setStatusText(this, text);
 }
 
-void WebPageProxy::mouseDidMoveOverElement(const WebHitTestResult::Data& hitTestResultData, uint32_t opaqueModifiers, const UserData& userData)
+void WebPageProxy::mouseDidMoveOverElement(const WebHitTestResultData& hitTestResultData, uint32_t opaqueModifiers, const UserData& userData)
 {
-    m_lastMouseMoveHitTestResult = WebHitTestResult::create(hitTestResultData);
+    m_lastMouseMoveHitTestResult = API::HitTestResult::create(hitTestResultData);
 
     WebEvent::Modifiers modifiers = static_cast<WebEvent::Modifiers>(opaqueModifiers);
 
     m_uiClient->mouseDidMoveOverElement(this, hitTestResultData, modifiers, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPageProxy::didBeginTrackingPotentialLongMousePress(const IntPoint& mouseDownPosition, const WebHitTestResult::Data& hitTestResultData, const UserData& userData)
+void WebPageProxy::didBeginTrackingPotentialLongMousePress(const IntPoint& mouseDownPosition, const WebHitTestResultData& hitTestResultData, const UserData& userData)
 {
     m_uiClient->didBeginTrackingPotentialLongMousePress(this, mouseDownPosition, hitTestResultData, m_process->transformHandlesToObjects(userData.object()).get());
 }
@@ -5166,7 +5157,6 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.appleMailPaginationQuirkEnabled = false;
 #endif
     parameters.shouldScaleViewToFitDocument = m_shouldScaleViewToFitDocument;
-    parameters.userContentExtensionsEnabled = m_userContentExtensionsEnabled;
 
     return parameters;
 }
@@ -5983,9 +5973,14 @@ void WebPageProxy::immediateActionDidComplete()
     m_process->send(Messages::WebPage::ImmediateActionDidComplete(), m_pageID);
 }
 
-void WebPageProxy::didPerformImmediateActionHitTest(const WebHitTestResult::Data& result, bool contentPreventsDefault, const UserData& userData)
+void WebPageProxy::didPerformImmediateActionHitTest(const WebHitTestResultData& result, bool contentPreventsDefault, const UserData& userData)
 {
     m_pageClient.didPerformImmediateActionHitTest(result, contentPreventsDefault, m_process->transformHandlesToObjects(userData.object()).get());
+}
+
+void* WebPageProxy::immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult> hitTestResult, uint64_t type, RefPtr<API::Object> userData)
+{
+    return m_pageClient.immediateActionAnimationControllerForHitTestResult(hitTestResult, type, userData);
 }
 
 void WebPageProxy::installViewStateChangeCompletionHandler(void (^completionHandler)())
@@ -6095,19 +6090,6 @@ void WebPageProxy::setShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocu
         return;
 
     m_process->send(Messages::WebPage::SetShouldScaleViewToFitDocument(shouldScaleViewToFitDocument), m_pageID);
-}
-
-void WebPageProxy::setUserContentExtensionsEnabled(bool userContentExtensionsEnabled)
-{
-    if (m_userContentExtensionsEnabled == userContentExtensionsEnabled)
-        return;
-
-    m_userContentExtensionsEnabled = userContentExtensionsEnabled;
-
-    if (!isValid())
-        return;
-
-    m_process->send(Messages::WebPage::SetUserContentExtensionsEnabled(userContentExtensionsEnabled), m_pageID);
 }
 
 } // namespace WebKit

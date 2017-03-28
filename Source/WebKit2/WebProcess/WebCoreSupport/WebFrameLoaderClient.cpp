@@ -144,9 +144,6 @@ void WebFrameLoaderClient::detachedFromParent2()
 
     // Notify the bundle client.
     webPage->injectedBundleLoaderClient().didRemoveFrameFromHierarchy(webPage, m_frame, userData);
-
-    // Notify the UIProcess.
-    webPage->send(Messages::WebPageProxy::DidRemoveFrameFromHierarchy(m_frame->frameID(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
 void WebFrameLoaderClient::detachedFromParent3()
@@ -1512,7 +1509,7 @@ static bool pluginSupportsExtension(const PluginData& pluginData, const String& 
     return false;
 }
 
-ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const String& mimeTypeIn, bool shouldPreferPlugInsForImages)
+ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const String& mimeTypeIn)
 {
     // FIXME: This should be merged with WebCore::FrameLoader::defaultObjectContentType when the plugin code
     // is consolidated.
@@ -1546,7 +1543,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
     }
     
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return shouldPreferPlugInsForImages && plugInSupportsMIMEType ? ObjectContentNetscapePlugin : ObjectContentImage;
+        return ObjectContentImage;
 
     if (plugInSupportsMIMEType)
         return ObjectContentNetscapePlugin;

@@ -1932,7 +1932,7 @@ void webkitWebViewMakePermissionRequest(WebKitWebView* webView, WebKitPermission
     g_signal_emit(webView, signals[PERMISSION_REQUEST], 0, request, &returnValue);
 }
 
-void webkitWebViewMouseTargetChanged(WebKitWebView* webView, const WebHitTestResult::Data& hitTestResult, unsigned modifiers)
+void webkitWebViewMouseTargetChanged(WebKitWebView* webView, const WebHitTestResultData& hitTestResult, unsigned modifiers)
 {
     webkitWebViewBaseSetTooltipArea(WEBKIT_WEB_VIEW_BASE(webView), hitTestResult.elementBoundingBox);
 
@@ -2076,7 +2076,7 @@ static void contextMenuDismissed(GtkMenuShell*, WebKitWebView* webView)
     g_signal_emit(webView, signals[CONTEXT_MENU_DISMISSED], 0, NULL);
 }
 
-void webkitWebViewPopulateContextMenu(WebKitWebView* webView, const Vector<WebContextMenuItemData>& proposedMenu, const WebHitTestResult::Data& hitTestResultData, GVariant* userData)
+void webkitWebViewPopulateContextMenu(WebKitWebView* webView, const Vector<WebContextMenuItemData>& proposedMenu, const WebHitTestResultData& hitTestResultData, GVariant* userData)
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(webView);
     WebContextMenuProxyGtk* contextMenuProxy = webkitWebViewBaseGetActiveContextMenuProxy(webViewBase);
@@ -2474,7 +2474,9 @@ void webkit_web_view_reload(WebKitWebView* webView)
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    getPage(webView)->reload(false);
+    const bool reloadFromOrigin = false;
+    const bool contentBlockersEnabled = true;
+    getPage(webView)->reload(reloadFromOrigin, contentBlockersEnabled);
 }
 
 /**
@@ -2488,7 +2490,9 @@ void webkit_web_view_reload_bypass_cache(WebKitWebView* webView)
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    getPage(webView)->reload(true);
+    const bool reloadFromOrigin = true;
+    const bool contentBlockersEnabled = true;
+    getPage(webView)->reload(reloadFromOrigin, contentBlockersEnabled);
 }
 
 /**

@@ -89,16 +89,12 @@ const Vector<RefPtr<StyleRule>>& ElementRuleCollector::matchedRuleList() const
 
 inline void ElementRuleCollector::addMatchedRule(const MatchedRule& matchedRule)
 {
-    if (!m_matchedRules)
-        m_matchedRules = std::make_unique<Vector<MatchedRule, 32>>();
-    m_matchedRules->append(matchedRule);
+    m_matchedRules.append(matchedRule);
 }
 
 void ElementRuleCollector::clearMatchedRules()
 {
-    if (!m_matchedRules)
-        return;
-    m_matchedRules->clear();
+    m_matchedRules.clear();
 }
 
 inline void ElementRuleCollector::addElementStyleProperties(const StyleProperties* propertySet, bool isCacheable)
@@ -166,20 +162,19 @@ void ElementRuleCollector::collectMatchingRulesForRegion(const MatchRequest& mat
 
 void ElementRuleCollector::sortAndTransferMatchedRules()
 {
-    if (!m_matchedRules || m_matchedRules->isEmpty())
+    if (m_matchedRules.isEmpty())
         return;
 
     sortMatchedRules();
 
-    Vector<MatchedRule, 32>& matchedRules = *m_matchedRules;
     if (m_mode == SelectorChecker::Mode::CollectingRules) {
-        for (const MatchedRule& matchedRule : matchedRules)
+        for (const MatchedRule& matchedRule : m_matchedRules)
             m_matchedRuleList.append(matchedRule.ruleData->rule());
         return;
     }
 
     // Now transfer the set of matched rules over to our list of declarations.
-    for (const MatchedRule& matchedRule : matchedRules) {
+    for (const MatchedRule& matchedRule : m_matchedRules) {
         if (m_style && matchedRule.ruleData->containsUncommonAttributeSelector())
             m_style->setUnique();
         m_result.addMatchedProperties(matchedRule.ruleData->rule()->properties(), matchedRule.ruleData->rule(), matchedRule.ruleData->linkMatchType(), matchedRule.ruleData->propertyWhitelistType());
@@ -188,6 +183,11 @@ void ElementRuleCollector::sortAndTransferMatchedRules()
 
 void ElementRuleCollector::matchAuthorRules(bool includeEmptyRules)
 {
+#if ENABLE(SHADOW_DOM)
+    if (m_element.shadowRoot())
+        matchHostPseudoClassRules(includeEmptyRules);
+#endif
+
     clearMatchedRules();
     m_result.ranges.lastAuthorRule = m_result.matchedProperties().size() - 1;
 
@@ -199,6 +199,29 @@ void ElementRuleCollector::matchAuthorRules(bool includeEmptyRules)
 
     sortAndTransferMatchedRules();
 }
+
+#if ENABLE(SHADOW_DOM)
+void ElementRuleCollector::matchHostPseudoClassRules(bool includeEmptyRules)
+{
+    ASSERT(m_element.shadowRoot());
+    auto& shadowAuthorStyle = *m_element.shadowRoot()->styleResolver().ruleSets().authorStyle();
+    auto& shadowHostRules = shadowAuthorStyle.hostPseudoClassRules();
+    if (shadowHostRules.isEmpty())
+        return;
+
+    clearMatchedRules();
+    m_result.ranges.lastAuthorRule = m_result.matchedProperties().size() - 1;
+
+    auto ruleRange = m_result.ranges.authorRuleRange();
+    MatchRequest matchRequest(&shadowAuthorStyle, includeEmptyRules);
+    collectMatchingRulesForList(&shadowHostRules, matchRequest, ruleRange);
+
+    // We just sort the host rules before other author rules. This matches the current vague spec language
+    // but is not necessarily exactly what is needed.
+    // FIXME: Match the spec when it is finalized.
+    sortAndTransferMatchedRules();
+}
+#endif
 
 void ElementRuleCollector::matchUserRules(bool includeEmptyRules)
 {
@@ -365,8 +388,7 @@ static inline bool compareRules(MatchedRule r1, MatchedRule r2)
 
 void ElementRuleCollector::sortMatchedRules()
 {
-    ASSERT(m_matchedRules);
-    std::sort(m_matchedRules->begin(), m_matchedRules->end(), compareRules);
+    std::sort(m_matchedRules.begin(), m_matchedRules.end(), compareRules);
 }
 
 void ElementRuleCollector::matchAllRules(bool matchAuthorAndUserStyles, bool includeSMILProperties)
@@ -425,7 +447,7 @@ bool ElementRuleCollector::hasAnyMatchingRules(RuleSet* ruleSet)
     StyleResolver::RuleRange ruleRange(firstRuleIndex, lastRuleIndex);
     collectMatchingRules(MatchRequest(ruleSet), ruleRange);
 
-    return m_matchedRules && !m_matchedRules->isEmpty();
+    return !m_matchedRules.isEmpty();
 }
 
 } // namespace WebCore

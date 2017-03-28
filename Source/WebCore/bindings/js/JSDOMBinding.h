@@ -86,9 +86,9 @@ WEBCORE_EXPORT JSC::EncodedJSValue throwGetterTypeError(JSC::ExecState&, const c
 WEBCORE_EXPORT JSC::EncodedJSValue throwThisTypeError(JSC::ExecState&, const char* interfaceName, const char* functionName);
 
 // Base class for all constructor objects in the JSC bindings.
-class DOMConstructorObject : public JSDOMWrapper {
+class DOMConstructorObject : public JSDOMObject {
 public:
-    typedef JSDOMWrapper Base;
+    typedef JSDOMObject Base;
     static const unsigned StructureFlags = Base::StructureFlags | JSC::ImplementsHasInstance;
 
     static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
@@ -97,8 +97,8 @@ public:
     }
 
 protected:
-    DOMConstructorObject(JSC::Structure* structure, JSDOMGlobalObject* globalObject)
-        : JSDOMWrapper(structure, globalObject)
+    DOMConstructorObject(JSC::Structure* structure, JSDOMGlobalObject& globalObject)
+        : JSDOMObject(structure, globalObject)
     {
     }
 };
@@ -108,7 +108,7 @@ public:
     typedef DOMConstructorObject Base;
 
 protected:
-    DOMConstructorJSBuiltinObject(JSC::Structure* structure, JSDOMGlobalObject* globalObject)
+    DOMConstructorJSBuiltinObject(JSC::Structure* structure, JSDOMGlobalObject& globalObject)
         : DOMConstructorObject(structure, globalObject) { }
 
     static void visitChildren(JSC::JSCell*, JSC::SlotVisitor&);
@@ -120,8 +120,8 @@ private:
     JSC::WriteBarrier<JSC::JSFunction> m_initializeFunction;
 };
 
-WEBCORE_EXPORT JSC::Structure* getCachedDOMStructure(JSDOMGlobalObject*, const JSC::ClassInfo*);
-WEBCORE_EXPORT JSC::Structure* cacheDOMStructure(JSDOMGlobalObject*, JSC::Structure*, const JSC::ClassInfo*);
+WEBCORE_EXPORT JSC::Structure* getCachedDOMStructure(JSDOMGlobalObject&, const JSC::ClassInfo*);
+WEBCORE_EXPORT JSC::Structure* cacheDOMStructure(JSDOMGlobalObject&, JSC::Structure*, const JSC::ClassInfo*);
 
 inline JSDOMGlobalObject* deprecatedGlobalObjectForPrototype(JSC::ExecState* exec)
 {
@@ -131,29 +131,29 @@ inline JSDOMGlobalObject* deprecatedGlobalObjectForPrototype(JSC::ExecState* exe
     return JSC::jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject());
 }
 
-template<typename WrapperClass> inline JSC::Structure* getDOMStructure(JSC::VM& vm, JSDOMGlobalObject* globalObject)
+template<typename WrapperClass> inline JSC::Structure* getDOMStructure(JSC::VM& vm, JSDOMGlobalObject& globalObject)
 {
     if (JSC::Structure* structure = getCachedDOMStructure(globalObject, WrapperClass::info()))
         return structure;
-    return cacheDOMStructure(globalObject, WrapperClass::createStructure(vm, globalObject, WrapperClass::createPrototype(vm, globalObject)), WrapperClass::info());
+    return cacheDOMStructure(globalObject, WrapperClass::createStructure(vm, &globalObject, WrapperClass::createPrototype(vm, &globalObject)), WrapperClass::info());
 }
 
 template<typename WrapperClass> inline JSC::Structure* deprecatedGetDOMStructure(JSC::ExecState* exec)
 {
     // FIXME: This function is wrong. It uses the wrong global object for creating the prototype structure.
-    return getDOMStructure<WrapperClass>(exec->vm(), deprecatedGlobalObjectForPrototype(exec));
+    return getDOMStructure<WrapperClass>(exec->vm(), *deprecatedGlobalObjectForPrototype(exec));
 }
 
 template<typename WrapperClass> inline JSC::JSObject* getDOMPrototype(JSC::VM& vm, JSC::JSGlobalObject* globalObject)
 {
-    return JSC::jsCast<JSC::JSObject*>(asObject(getDOMStructure<WrapperClass>(vm, JSC::jsCast<JSDOMGlobalObject*>(globalObject))->storedPrototype()));
+    return JSC::jsCast<JSC::JSObject*>(asObject(getDOMStructure<WrapperClass>(vm, *JSC::jsCast<JSDOMGlobalObject*>(globalObject))->storedPrototype()));
 }
 
 void callFunctionWithCurrentArguments(JSC::ExecState&, JSC::JSObject& thisObject, JSC::JSFunction&);
 
 template<typename JSClass> inline JSC::EncodedJSValue createJSBuiltin(JSC::ExecState& state, JSC::JSFunction& initializeFunction, JSDOMGlobalObject& globalObject)
 {
-    JSC::JSObject* object = JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), &globalObject), &globalObject);
+    JSC::JSObject* object = JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), globalObject), &globalObject);
     callFunctionWithCurrentArguments(state, *object, initializeFunction);
     return JSC::JSValue::encode(object);
 }
@@ -163,11 +163,11 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld& world, JSC::ArrayBuff
     return static_cast<WebCoreTypedArrayController*>(world.vm().m_typedArrayController.get())->wrapperOwner();
 }
 
-inline JSDOMWrapper* getInlineCachedWrapper(DOMWrapperWorld&, void*) { return nullptr; }
-inline bool setInlineCachedWrapper(DOMWrapperWorld&, void*, JSDOMWrapper*, JSC::WeakHandleOwner*) { return false; }
-inline bool clearInlineCachedWrapper(DOMWrapperWorld&, void*, JSDOMWrapper*) { return false; }
+inline JSDOMObject* getInlineCachedWrapper(DOMWrapperWorld&, void*) { return nullptr; }
+inline bool setInlineCachedWrapper(DOMWrapperWorld&, void*, JSDOMObject*, JSC::WeakHandleOwner*) { return false; }
+inline bool clearInlineCachedWrapper(DOMWrapperWorld&, void*, JSDOMObject*) { return false; }
 
-inline JSDOMWrapper* getInlineCachedWrapper(DOMWrapperWorld& world, ScriptWrappable* domObject)
+inline JSDOMObject* getInlineCachedWrapper(DOMWrapperWorld& world, ScriptWrappable* domObject)
 {
     if (!world.isNormal())
         return nullptr;
@@ -181,7 +181,7 @@ inline JSC::JSArrayBuffer* getInlineCachedWrapper(DOMWrapperWorld& world, JSC::A
     return buffer->m_wrapper.get();
 }
 
-inline bool setInlineCachedWrapper(DOMWrapperWorld& world, ScriptWrappable* domObject, JSDOMWrapper* wrapper, JSC::WeakHandleOwner* wrapperOwner)
+inline bool setInlineCachedWrapper(DOMWrapperWorld& world, ScriptWrappable* domObject, JSDOMObject* wrapper, JSC::WeakHandleOwner* wrapperOwner)
 {
     if (!world.isNormal())
         return false;
@@ -197,7 +197,7 @@ inline bool setInlineCachedWrapper(DOMWrapperWorld& world, JSC::ArrayBuffer* dom
     return true;
 }
 
-inline bool clearInlineCachedWrapper(DOMWrapperWorld& world, ScriptWrappable* domObject, JSDOMWrapper* wrapper)
+inline bool clearInlineCachedWrapper(DOMWrapperWorld& world, ScriptWrappable* domObject, JSDOMObject* wrapper)
 {
     if (!world.isNormal())
         return false;
@@ -236,11 +236,11 @@ template<typename DOMClass, typename WrapperClass> inline void uncacheWrapper(DO
 }
 
 #define CREATE_DOM_WRAPPER(globalObject, className, object) createWrapper<JS##className>(globalObject, static_cast<className*>(object))
-template<typename WrapperClass, typename DOMClass> inline JSDOMWrapper* createWrapper(JSDOMGlobalObject* globalObject, DOMClass* node)
+template<typename WrapperClass, typename DOMClass> inline JSDOMObject* createWrapper(JSDOMGlobalObject* globalObject, DOMClass* node)
 {
     ASSERT(node);
     ASSERT(!getCachedWrapper(globalObject->world(), node));
-    WrapperClass* wrapper = WrapperClass::create(getDOMStructure<WrapperClass>(globalObject->vm(), globalObject), globalObject, Ref<DOMClass>(*node));
+    WrapperClass* wrapper = WrapperClass::create(getDOMStructure<WrapperClass>(globalObject->vm(), *globalObject), globalObject, Ref<DOMClass>(*node));
     cacheWrapper(globalObject->world(), node, wrapper);
     return wrapper;
 }
@@ -645,7 +645,7 @@ template<typename DOMClass> inline const JSC::HashTableValue* getStaticValueSlot
     return entry;
 }
 
-template<> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching<JSDOMWrapper>(JSC::ExecState*, JSC::PropertyName)
+template<> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching<JSDOMObject>(JSC::ExecState*, JSC::PropertyName)
 {
     return nullptr;
 }

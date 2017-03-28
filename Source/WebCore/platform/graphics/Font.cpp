@@ -371,18 +371,19 @@ PassRefPtr<Font> Font::createScaledFont(const FontDescription& fontDescription, 
     return platformCreateScaledFont(fontDescription, scaleFactor);
 }
 
-bool Font::applyTransforms(GlyphBufferGlyph* glyphs, GlyphBufferAdvance* advances, size_t glyphCount, TypesettingFeatures typesettingFeatures) const
+bool Font::applyTransforms(GlyphBufferGlyph* glyphs, GlyphBufferAdvance* advances, size_t glyphCount, bool enableKerning, bool enableLigatures) const
 {
     // We need to handle transforms on SVG fonts internally, since they are rendered internally.
     ASSERT(!isSVGFont());
 #if PLATFORM(COCOA)
-    CTFontTransformOptions options = (typesettingFeatures & Kerning ? kCTFontTransformApplyPositioning : 0) | (typesettingFeatures & Ligatures ? kCTFontTransformApplyShaping : 0);
+    CTFontTransformOptions options = (enableKerning ? kCTFontTransformApplyPositioning : 0) | (enableLigatures ? kCTFontTransformApplyShaping : 0);
     return CTFontTransformGlyphs(m_platformData.ctFont(), glyphs, reinterpret_cast<CGSize*>(advances), glyphCount, options);
 #else
     UNUSED_PARAM(glyphs);
     UNUSED_PARAM(advances);
     UNUSED_PARAM(glyphCount);
-    UNUSED_PARAM(typesettingFeatures);
+    UNUSED_PARAM(enableKerning);
+    UNUSED_PARAM(enableLigatures);
     return false;
 #endif
 }
@@ -393,9 +394,8 @@ public:
     {
     }
 
-    CharacterFallbackMapKey(const AtomicString& locale, UChar32 character, bool isForPlatformFont)
-        : locale(locale)
-        , character(character)
+    CharacterFallbackMapKey(UChar32 character, bool isForPlatformFont)
+        : character(character)
         , isForPlatformFont(isForPlatformFont)
     {
     }
@@ -409,7 +409,7 @@ public:
 
     bool operator==(const CharacterFallbackMapKey& other) const
     {
-        return locale == other.locale && character == other.character && isForPlatformFont == other.isForPlatformFont;
+        return character == other.character && isForPlatformFont == other.isForPlatformFont;
     }
 
     static const bool emptyValueIsZero = true;
@@ -417,7 +417,6 @@ public:
 private:
     friend struct CharacterFallbackMapKeyHash;
 
-    AtomicString locale;
     UChar32 character { 0 };
     bool isForPlatformFont { false };
 };
@@ -425,7 +424,7 @@ private:
 struct CharacterFallbackMapKeyHash {
     static unsigned hash(const CharacterFallbackMapKey& key)
     {
-        return WTF::pairIntHash(key.locale.isNull() ? 0 : WTF::AtomicStringHash::hash(key.locale), WTF::pairIntHash(key.character, key.isForPlatformFont));
+        return WTF::pairIntHash(key.character, key.isForPlatformFont);
     }
 
     static bool equal(const CharacterFallbackMapKey& a, const CharacterFallbackMapKey& b)
@@ -456,7 +455,7 @@ RefPtr<Font> Font::systemFallbackFontForCharacter(UChar32 character, const FontD
         return FontCache::singleton().systemFallbackForCharacters(description, this, isForPlatformFont, &codeUnit, 1);
     }
 
-    auto key = CharacterFallbackMapKey(description.locale(), character, isForPlatformFont);
+    auto key = CharacterFallbackMapKey(character, isForPlatformFont);
     auto characterAddResult = fontAddResult.iterator->value.add(WTF::move(key), nullptr);
 
     Font*& fallbackFont = characterAddResult.iterator->value;

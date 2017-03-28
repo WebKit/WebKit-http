@@ -362,7 +362,7 @@ public:
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
 
     void stopLoading();
-    RefPtr<API::Navigation> reload(bool reloadFromOrigin);
+    RefPtr<API::Navigation> reload(bool reloadFromOrigin, bool contentBlockersEnabled);
 
     RefPtr<API::Navigation> goForward();
     RefPtr<API::Navigation> goBack();
@@ -650,9 +650,6 @@ public:
     void scaleView(double scale);
     void setShouldScaleViewToFitDocument(bool);
     
-    bool userContentExtensionsEnabled() { return m_userContentExtensionsEnabled; }
-    void setUserContentExtensionsEnabled(bool);
-
     float deviceScaleFactor() const;
     void setIntrinsicDeviceScaleFactor(float);
     void setCustomDeviceScaleFactor(float);
@@ -1015,12 +1012,14 @@ public:
 #if PLATFORM(MAC)
     void removeNavigationGestureSnapshot();
 
-    WebHitTestResult* lastMouseMoveHitTestResult() const { return m_lastMouseMoveHitTestResult.get(); }
+    API::HitTestResult* lastMouseMoveHitTestResult() const { return m_lastMouseMoveHitTestResult.get(); }
     void performImmediateActionHitTestAtLocation(WebCore::FloatPoint);
 
     void immediateActionDidUpdate();
     void immediateActionDidCancel();
     void immediateActionDidComplete();
+
+    void* immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>);
 
     void installViewStateChangeCompletionHandler(void(^completionHandler)());
 #endif
@@ -1116,7 +1115,6 @@ private:
     void didReceiveTitleForFrame(uint64_t frameID, const String&, const UserData&);
     void didFirstLayoutForFrame(uint64_t frameID, const UserData&);
     void didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, const UserData&);
-    void didRemoveFrameFromHierarchy(uint64_t frameID, const UserData&);
     void didDisplayInsecureContentForFrame(uint64_t frameID, const UserData&);
     void didRunInsecureContentForFrame(uint64_t frameID, const UserData&);
     void didDetectXSSForFrame(uint64_t frameID, const UserData&);
@@ -1150,9 +1148,9 @@ private:
     void runJavaScriptConfirm(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>);
     void runJavaScriptPrompt(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply>);
     void setStatusText(const String&);
-    void mouseDidMoveOverElement(const WebHitTestResult::Data& hitTestResultData, uint32_t modifiers, const UserData&);
+    void mouseDidMoveOverElement(const WebHitTestResultData&, uint32_t modifiers, const UserData&);
 
-    void didBeginTrackingPotentialLongMousePress(const WebCore::IntPoint& mouseDownPosition, const WebHitTestResult::Data& hitTestResultData, const UserData&);
+    void didBeginTrackingPotentialLongMousePress(const WebCore::IntPoint& mouseDownPosition, const WebHitTestResultData&, const UserData&);
     void didRecognizeLongMousePress(const UserData&);
     void didCancelTrackingPotentialLongMousePress(const UserData&);
 
@@ -1451,7 +1449,7 @@ private:
     void viewDidEnterWindow();
 
 #if PLATFORM(MAC)
-    void didPerformImmediateActionHitTest(const WebHitTestResult::Data&, bool contentPreventsDefault, const UserData&);
+    void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, const UserData&);
 #endif
 
     void useFixedLayoutDidChange(bool useFixedLayout) { m_useFixedLayout = useFixedLayout; }
@@ -1555,7 +1553,7 @@ private:
     RefPtr<WebContextMenuProxy> m_activeContextMenu;
     ContextMenuContextData m_activeContextMenuContextData;
 #endif
-    RefPtr<WebHitTestResult> m_lastMouseMoveHitTestResult;
+    RefPtr<API::HitTestResult> m_lastMouseMoveHitTestResult;
 
     RefPtr<WebOpenPanelResultListenerProxy> m_openPanelResultListener;
     GeolocationPermissionRequestManagerProxy m_geolocationPermissionRequestManager;
@@ -1767,8 +1765,6 @@ private:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     bool m_requiresTargetMonitoring { false };
 #endif
-
-    bool m_userContentExtensionsEnabled { true };
 
 #if PLATFORM(IOS)
     bool m_hasDeferredStartAssistingNode { false };

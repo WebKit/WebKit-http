@@ -161,7 +161,7 @@ void RenderBoxModelObject::suspendAnimations(double time)
     layer()->backing()->suspendAnimations(time);
 }
 
-bool RenderBoxModelObject::shouldPaintAtLowQuality(GraphicsContext& context, Image* image, const void* layer, const LayoutSize& size)
+bool RenderBoxModelObject::shouldPaintAtLowQuality(GraphicsContext& context, Image& image, const void* layer, const LayoutSize& size)
 {
     return view().imageQualityController().shouldPaintAtLowQuality(context, this, image, layer, size);
 }
@@ -628,7 +628,7 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     bool hasRoundedBorder = style().hasBorderRadius() && (includeLeftEdge || includeRightEdge);
     bool clippedWithLocalScrolling = hasOverflowClip() && bgLayer->attachment() == LocalBackgroundAttachment;
     bool isBorderFill = bgLayer->clip() == BorderFillBox;
-    bool isRoot = this->isRoot();
+    bool isRoot = this->isDocumentElementRenderer();
 
     Color bgColor = color;
     StyleImage* bgImage = bgLayer->image();
@@ -830,20 +830,17 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     if (!baseBgColorOnly && shouldPaintBackgroundImage) {
         BackgroundImageGeometry geometry = calculateBackgroundImageGeometry(paintInfo.paintContainer, *bgLayer, rect.location(), scrolledPaintRect, backgroundObject);
         geometry.clip(LayoutRect(pixelSnappedRect));
-        if (!geometry.destRect().isEmpty()) {
+        RefPtr<Image> image;
+        if (!geometry.destRect().isEmpty() && (image = bgImage->image(backgroundObject ? backgroundObject : this, geometry.tileSize()))) {
             CompositeOperator compositeOp = op == CompositeSourceOver ? bgLayer->composite() : op;
-            auto clientForBackgroundImage = backgroundObject ? backgroundObject : this;
-            RefPtr<Image> image = bgImage->image(clientForBackgroundImage, geometry.tileSize());
             context.setDrawLuminanceMask(bgLayer->maskSourceType() == MaskLuminance);
-            bool useLowQualityScaling = shouldPaintAtLowQuality(context, image.get(), bgLayer, geometry.tileSize());
-            if (image.get())
-                image->setSpaceSize(geometry.spaceSize());
-            context.drawTiledImage(image.get(), style().colorSpace(), geometry.destRect(), toLayoutPoint(geometry.relativePhase()), geometry.tileSize(), ImagePaintingOptions(compositeOp, bgLayer->blendMode(), ImageOrientationDescription(), useLowQualityScaling));
+            bool useLowQualityScaling = shouldPaintAtLowQuality(context, *image, bgLayer, geometry.tileSize());
+            context.drawTiledImage(*image, style().colorSpace(), geometry.destRect(), toLayoutPoint(geometry.relativePhase()), geometry.tileSize(), geometry.spaceSize(), ImagePaintingOptions(compositeOp, bgLayer->blendMode(), ImageOrientationDescription(), useLowQualityScaling));
         }
     }
 
-    if (bgLayer->clip() == TextFillBox) {
-        context.drawImageBuffer(maskImage.get(), ColorSpaceDeviceRGB, maskRect, CompositeDestinationIn);
+    if (maskImage && bgLayer->clip() == TextFillBox) {
+        context.drawImageBuffer(*maskImage, ColorSpaceDeviceRGB, maskRect, CompositeDestinationIn);
         context.endTransparencyLayer();
     }
 }
@@ -897,13 +894,11 @@ static inline LayoutSize resolveAgainstIntrinsicRatio(const LayoutSize& size, co
     return LayoutSize(size.width(), solutionHeight);
 }
 
-bool RenderBoxModelObject::calculateImageIntrinsicDimensions(StyleImage* image, const LayoutSize& positioningAreaSize, ScaleByEffectiveZoomOrNot shouldScaleOrNot, LayoutSize& imageSize) const
+LayoutSize RenderBoxModelObject::calculateImageIntrinsicDimensions(StyleImage* image, const LayoutSize& positioningAreaSize, ScaleByEffectiveZoomOrNot shouldScaleOrNot) const
 {
     // A generated image without a fixed size, will always return the container size as intrinsic size.
-    if (image->isGeneratedImage() && image->usesImageContainerSize()) {
-        imageSize = LayoutSize(positioningAreaSize.width(), positioningAreaSize.height());
-        return true;
-    }
+    if (image->isGeneratedImage() && image->usesImageContainerSize())
+        return LayoutSize(positioningAreaSize.width(), positioningAreaSize.height());
 
     Length intrinsicWidth;
     Length intrinsicHeight;
@@ -913,36 +908,29 @@ bool RenderBoxModelObject::calculateImageIntrinsicDimensions(StyleImage* image, 
     ASSERT(!intrinsicWidth.isPercentOrCalculated());
     ASSERT(!intrinsicHeight.isPercentOrCalculated());
 
-    imageSize = LayoutSize(intrinsicWidth.value(), intrinsicHeight.value());
-    LayoutSize minimumSize(imageSize.width() > 0 ? 1 : 0, imageSize.height() > 0 ? 1 : 0);
-    if (shouldScaleOrNot == ScaleByEffectiveZoom)
-        imageSize.scale(style().effectiveZoom());
-    imageSize.clampToMinimumSize(minimumSize);
+    LayoutSize resolvedSize(intrinsicWidth.value(), intrinsicHeight.value());
+    LayoutSize minimumSize(resolvedSize.width() > 0 ? 1 : 0, resolvedSize.height() > 0 ? 1 : 0);
 
-    if (!imageSize.isEmpty())
-        return true;
+    if (shouldScaleOrNot == ScaleByEffectiveZoom)
+        resolvedSize.scale(style().effectiveZoom());
+    resolvedSize.clampToMinimumSize(minimumSize);
 
     // If the image has one of either an intrinsic width or an intrinsic height:
     // * and an intrinsic aspect ratio, then the missing dimension is calculated from the given dimension and the ratio.
     // * and no intrinsic aspect ratio, then the missing dimension is assumed to be the size of the rectangle that
     //   establishes the coordinate system for the 'background-position' property.
-    if (imageSize.width() > 0 || imageSize.height() > 0) {
-        imageSize = resolveAgainstIntrinsicWidthOrHeightAndRatio(positioningAreaSize, intrinsicRatio, imageSize.width(), imageSize.height());
-        return true;
-    }
+    if (resolvedSize.width() > 0 || resolvedSize.height() > 0)
+        return resolveAgainstIntrinsicWidthOrHeightAndRatio(positioningAreaSize, intrinsicRatio, resolvedSize.width(), resolvedSize.height());
 
     // If the image has no intrinsic dimensions and has an intrinsic ratio the dimensions must be assumed to be the
     // largest dimensions at that ratio such that neither dimension exceeds the dimensions of the rectangle that
     // establishes the coordinate system for the 'background-position' property.
-    if (!intrinsicRatio.isEmpty()) {
-        imageSize = resolveAgainstIntrinsicRatio(positioningAreaSize, intrinsicRatio);
-        return false;
-    }
+    if (!intrinsicRatio.isEmpty())
+        return resolveAgainstIntrinsicRatio(positioningAreaSize, intrinsicRatio);
 
     // If the image has no intrinsic ratio either, then the dimensions must be assumed to be the rectangle that
     // establishes the coordinate system for the 'background-position' property.
-    imageSize = positioningAreaSize;
-    return false;
+    return positioningAreaSize;
 }
 
 LayoutSize RenderBoxModelObject::calculateFillTileSize(const FillLayer& fillLayer, const LayoutSize& positioningAreaSize) const
@@ -952,7 +940,7 @@ LayoutSize RenderBoxModelObject::calculateFillTileSize(const FillLayer& fillLaye
 
     LayoutSize imageIntrinsicSize;
     if (image) {
-        calculateImageIntrinsicDimensions(image, positioningAreaSize, ScaleByEffectiveZoom, imageIntrinsicSize);
+        imageIntrinsicSize = calculateImageIntrinsicDimensions(image, positioningAreaSize, ScaleByEffectiveZoom);
         imageIntrinsicSize.scale(1 / image->imageScaleFactor(), 1 / image->imageScaleFactor());
     } else
         imageIntrinsicSize = positioningAreaSize;
@@ -1028,7 +1016,7 @@ static void pixelSnapBackgroundImageGeometryForPainting(LayoutRect& destinationR
 
 bool RenderBoxModelObject::fixedBackgroundPaintsInLocalCoordinates() const
 {
-    if (!isRoot())
+    if (!isDocumentElementRenderer())
         return false;
 
     if (view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers)
@@ -1084,7 +1072,7 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
         // The background of the box generated by the root element covers the entire canvas including
         // its margins. Since those were added in already, we have to factor them out when computing
         // the background positioning area.
-        if (isRoot()) {
+        if (isDocumentElementRenderer()) {
             positioningAreaSize = downcast<RenderBox>(*this).size() - LayoutSize(left + right, top + bottom);
             positioningAreaSize = LayoutSize(snapSizeToDevicePixel(positioningAreaSize, LayoutPoint(), deviceScaleFactor));
             if (view().frameView().hasExtendedBackgroundRectForPainting()) {
@@ -1263,13 +1251,12 @@ bool RenderBoxModelObject::paintNinePieceImage(GraphicsContext& graphicsContext,
     rectWithOutsets.expand(style.imageOutsets(ninePieceImage));
     LayoutRect destination = LayoutRect(snapRectToDevicePixels(rectWithOutsets, deviceScaleFactor));
 
-    LayoutSize source;
-    bool intrinsicSource = calculateImageIntrinsicDimensions(styleImage, destination.size(), DoNotScaleByEffectiveZoom, source);
+    LayoutSize source = calculateImageIntrinsicDimensions(styleImage, destination.size(), DoNotScaleByEffectiveZoom);
 
     // If both values are ‘auto’ then the intrinsic width and/or height of the image should be used, if any.
     styleImage->setContainerSizeForRenderer(this, source, style.effectiveZoom());
 
-    ninePieceImage.paint(graphicsContext, this, style, destination, source, intrinsicSource, deviceScaleFactor, op);
+    ninePieceImage.paint(graphicsContext, this, style, destination, source, deviceScaleFactor, op);
     return true;
 }
 

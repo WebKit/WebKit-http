@@ -333,7 +333,7 @@ static void fixFunctionBasedOnStackMaps(
 {
     Graph& graph = state.graph;
     VM& vm = graph.m_vm;
-    StackMaps stackmaps = jitCode->stackmaps;
+    StackMaps& stackmaps = jitCode->stackmaps;
     
     int localsOffset = offsetOfStackRegion(recordMap, state.capturedStackmapID) + graph.m_nextMachineLocal;
     int varargsSpillSlotsOffset = offsetOfStackRegion(recordMap, state.varargsSpillSlotsStackmapID);
@@ -439,7 +439,10 @@ static void fixFunctionBasedOnStackMaps(
         state.finalizer->exitThunksLinkBuffer = WTF::move(linkBuffer);
     }
 
-    if (!state.getByIds.isEmpty() || !state.putByIds.isEmpty() || !state.checkIns.isEmpty()) {
+    if (!state.getByIds.isEmpty()
+        || !state.putByIds.isEmpty()
+        || !state.checkIns.isEmpty()
+        || !state.lazySlowPaths.isEmpty()) {
         CCallHelpers slowPathJIT(&vm, codeBlock);
         
         CCallHelpers::JumpList exceptionTarget;
@@ -456,7 +459,7 @@ static void fixFunctionBasedOnStackMaps(
                 continue;
             }
             
-            CodeOrigin codeOrigin = state.jitCode->common.codeOrigins[getById.callSiteIndex().bits()];
+            CodeOrigin codeOrigin = getById.codeOrigin();
             for (unsigned i = 0; i < iter->value.size(); ++i) {
                 StackMaps::Record& record = iter->value[i];
             
@@ -466,14 +469,15 @@ static void fixFunctionBasedOnStackMaps(
                 GPRReg base = record.locations[1].directGPR();
                 
                 JITGetByIdGenerator gen(
-                    codeBlock, codeOrigin, getById.callSiteIndex(), usedRegisters, JSValueRegs(base),
-                    JSValueRegs(result), NeedToSpill);
+                    codeBlock, codeOrigin, state.jitCode->common.addUniqueCallSiteIndex(codeOrigin), usedRegisters, JSValueRegs(base),
+                    JSValueRegs(result));
                 
                 MacroAssembler::Label begin = slowPathJIT.label();
 
                 MacroAssembler::Call call = callOperation(
                     state, usedRegisters, slowPathJIT, codeOrigin, &exceptionTarget,
-                    operationGetByIdOptimize, result, gen.stubInfo(), base, getById.uid());
+                    operationGetByIdOptimize, result, CCallHelpers::TrustedImmPtr(gen.stubInfo()),
+                    base, CCallHelpers::TrustedImmPtr(getById.uid())).call();
 
                 gen.reportSlowPathCall(begin, call);
 
@@ -494,7 +498,7 @@ static void fixFunctionBasedOnStackMaps(
                 continue;
             }
             
-            CodeOrigin codeOrigin = state.jitCode->common.codeOrigins[putById.callSiteIndex().bits()];
+            CodeOrigin codeOrigin = putById.codeOrigin();
             for (unsigned i = 0; i < iter->value.size(); ++i) {
                 StackMaps::Record& record = iter->value[i];
                 
@@ -504,15 +508,16 @@ static void fixFunctionBasedOnStackMaps(
                 GPRReg value = record.locations[1].directGPR();
                 
                 JITPutByIdGenerator gen(
-                    codeBlock, codeOrigin, putById.callSiteIndex(), usedRegisters, JSValueRegs(base),
-                    JSValueRegs(value), GPRInfo::patchpointScratchRegister, NeedToSpill,
-                    putById.ecmaMode(), putById.putKind());
+                    codeBlock, codeOrigin, state.jitCode->common.addUniqueCallSiteIndex(codeOrigin), usedRegisters, JSValueRegs(base),
+                    JSValueRegs(value), GPRInfo::patchpointScratchRegister, putById.ecmaMode(), putById.putKind());
                 
                 MacroAssembler::Label begin = slowPathJIT.label();
                 
                 MacroAssembler::Call call = callOperation(
                     state, usedRegisters, slowPathJIT, codeOrigin, &exceptionTarget,
-                    gen.slowPathFunction(), gen.stubInfo(), value, base, putById.uid());
+                    gen.slowPathFunction(), InvalidGPRReg,
+                    CCallHelpers::TrustedImmPtr(gen.stubInfo()), value, base,
+                    CCallHelpers::TrustedImmPtr(putById.uid())).call();
                 
                 gen.reportSlowPathCall(begin, call);
                 
@@ -533,7 +538,7 @@ static void fixFunctionBasedOnStackMaps(
                 continue;
             }
             
-            CodeOrigin codeOrigin = state.jitCode->common.codeOrigins[checkIn.callSiteIndex().bits()];
+            CodeOrigin codeOrigin = checkIn.codeOrigin();
             for (unsigned i = 0; i < iter->value.size(); ++i) {
                 StackMaps::Record& record = iter->value[i];
                 RegisterSet usedRegisters = usedRegistersFor(record);
@@ -541,21 +546,63 @@ static void fixFunctionBasedOnStackMaps(
                 GPRReg obj = record.locations[1].directGPR();
                 StructureStubInfo* stubInfo = codeBlock->addStubInfo(AccessType::In); 
                 stubInfo->codeOrigin = codeOrigin;
-                stubInfo->callSiteIndex = checkIn.callSiteIndex();
+                stubInfo->callSiteIndex = state.jitCode->common.addUniqueCallSiteIndex(codeOrigin);
                 stubInfo->patch.baseGPR = static_cast<int8_t>(obj);
                 stubInfo->patch.valueGPR = static_cast<int8_t>(result);
                 stubInfo->patch.usedRegisters = usedRegisters;
-                stubInfo->patch.spillMode = NeedToSpill;
 
                 MacroAssembler::Label begin = slowPathJIT.label();
 
                 MacroAssembler::Call slowCall = callOperation(
                     state, usedRegisters, slowPathJIT, codeOrigin, &exceptionTarget,
-                    operationInOptimize, result, stubInfo, obj, checkIn.m_uid);
+                    operationInOptimize, result, CCallHelpers::TrustedImmPtr(stubInfo), obj,
+                    CCallHelpers::TrustedImmPtr(checkIn.uid())).call();
 
                 checkIn.m_slowPathDone.append(slowPathJIT.jump());
                 
                 checkIn.m_generators.append(CheckInGenerator(stubInfo, slowCall, begin));
+            }
+        }
+
+        for (unsigned i = state.lazySlowPaths.size(); i--;) {
+            LazySlowPathDescriptor& descriptor = state.lazySlowPaths[i];
+
+            if (verboseCompilationEnabled())
+                dataLog("Handling lazySlowPath stackmap #", descriptor.stackmapID(), "\n");
+
+            auto iter = recordMap.find(descriptor.stackmapID());
+            if (iter == recordMap.end()) {
+                // It was optimized out.
+                continue;
+            }
+            CodeOrigin codeOrigin = descriptor.codeOrigin();
+            for (unsigned i = 0; i < iter->value.size(); ++i) {
+                StackMaps::Record& record = iter->value[i];
+                RegisterSet usedRegisters = usedRegistersFor(record);
+                Vector<Location> locations;
+                for (auto location : record.locations)
+                    locations.append(Location::forStackmaps(&stackmaps, location));
+
+                char* startOfIC =
+                    bitwise_cast<char*>(generatedFunction) + record.instructionOffset;
+                CodeLocationLabel patchpoint((MacroAssemblerCodePtr(startOfIC)));
+                CodeLocationLabel exceptionTarget =
+                    state.finalizer->handleExceptionsLinkBuffer->entrypoint();
+
+                std::unique_ptr<LazySlowPath> lazySlowPath = std::make_unique<LazySlowPath>(
+                    patchpoint, exceptionTarget, usedRegisters, state.jitCode->common.addUniqueCallSiteIndex(codeOrigin),
+                    descriptor.m_linker->run(locations));
+
+                CCallHelpers::Label begin = slowPathJIT.label();
+
+                slowPathJIT.pushToSaveImmediateWithoutTouchingRegisters(
+                    CCallHelpers::TrustedImm32(state.jitCode->lazySlowPaths.size()));
+                CCallHelpers::Jump generatorJump = slowPathJIT.jump();
+                
+                descriptor.m_generators.append(std::make_tuple(lazySlowPath.get(), begin));
+
+                state.jitCode->lazySlowPaths.append(WTF::move(lazySlowPath));
+                state.finalizer->lazySlowPathGeneratorJumps.append(generatorJump);
             }
         }
         
@@ -580,12 +627,19 @@ static void fixFunctionBasedOnStackMaps(
                 state, codeBlock, generatedFunction, recordMap, state.putByIds[i],
                 sizeOfPutById());
         }
-
         for (unsigned i = state.checkIns.size(); i--;) {
             generateCheckInICFastPath(
                 state, codeBlock, generatedFunction, recordMap, state.checkIns[i],
                 sizeOfIn()); 
-        } 
+        }
+        for (unsigned i = state.lazySlowPaths.size(); i--;) {
+            LazySlowPathDescriptor& lazySlowPath = state.lazySlowPaths[i];
+            for (auto& tuple : lazySlowPath.m_generators) {
+                MacroAssembler::replaceWithJump(
+                    std::get<0>(tuple)->patchpoint(),
+                    state.finalizer->sideCodeLinkBuffer->locationOf(std::get<1>(tuple)));
+            }
+        }
     }
     
     adjustCallICsForStackmaps(state.jsCalls, recordMap);
@@ -790,7 +844,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
             llvm->RunPassManager(modulePasses, module);
         }
 
-        if (shouldShowDisassembly() || verboseCompilationEnabled())
+        if (shouldDumpDisassembly() || verboseCompilationEnabled())
             state.dumpState(module, "after optimization");
         
         // FIXME: Need to add support for the case where JIT memory allocation failed.
@@ -809,7 +863,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
     if (state.allocationFailed)
         return;
     
-    if (shouldShowDisassembly()) {
+    if (shouldDumpDisassembly()) {
         for (unsigned i = 0; i < state.jitCode->handles().size(); ++i) {
             ExecutableMemoryHandle* handle = state.jitCode->handles()[i].get();
             dataLog(
@@ -834,14 +888,14 @@ void compile(State& state, Safepoint::Result& safepointResult)
     std::unique_ptr<RegisterAtOffsetList> registerOffsets = parseUnwindInfo(
         state.unwindDataSection, state.unwindDataSectionSize,
         state.generatedFunction);
-    if (shouldShowDisassembly()) {
+    if (shouldDumpDisassembly()) {
         dataLog("Unwind info for ", CodeBlockWithJITType(state.graph.m_codeBlock, JITCode::FTLJIT), ":\n");
         dataLog("    ", *registerOffsets, "\n");
     }
     state.graph.m_codeBlock->setCalleeSaveRegisters(WTF::move(registerOffsets));
     
     if (state.stackmapsSection && state.stackmapsSection->size()) {
-        if (shouldShowDisassembly()) {
+        if (shouldDumpDisassembly()) {
             dataLog(
                 "Generated LLVM stackmaps section for ",
                 CodeBlockWithJITType(state.graph.m_codeBlock, JITCode::FTLJIT), ":\n");
@@ -853,7 +907,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
             ArrayBuffer::create(state.stackmapsSection->base(), state.stackmapsSection->size()));
         state.jitCode->stackmaps.parse(stackmapsData.get());
     
-        if (shouldShowDisassembly()) {
+        if (shouldDumpDisassembly()) {
             dataLog("    Structured data:\n");
             state.jitCode->stackmaps.dumpMultiline(WTF::dataFile(), "        ");
         }
@@ -865,7 +919,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
         if (state.allocationFailed)
             return;
         
-        if (shouldShowDisassembly() || Options::asyncDisassembly()) {
+        if (shouldDumpDisassembly() || Options::asyncDisassembly()) {
             for (unsigned i = 0; i < state.jitCode->handles().size(); ++i) {
                 if (state.codeSectionNames[i] != SECTION_NAME("text"))
                     continue;

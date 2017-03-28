@@ -2328,7 +2328,7 @@ void Document::prepareForDestruction()
     if (!m_clientToIDMap.isEmpty() && page()) {
         Vector<WebCore::MediaPlaybackTargetClient*> clients;
         copyKeysToVector(m_clientToIDMap, clients);
-        for (auto client : clients)
+        for (auto* client : clients)
             removePlaybackTargetPickerClient(*client);
     }
 #endif
@@ -3545,7 +3545,7 @@ void Document::removeAudioProducer(MediaProducer* audioProducer)
 void Document::updateIsPlayingMedia(uint64_t sourceElementID)
 {
     MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
-    for (auto audioProducer : m_audioProducers)
+    for (auto* audioProducer : m_audioProducers)
         state |= audioProducer->mediaState();
 
 #if ENABLE(MEDIA_SESSION)
@@ -3553,9 +3553,8 @@ void Document::updateIsPlayingMedia(uint64_t sourceElementID)
         if (sourceElement->isPlaying())
             state |= MediaProducer::IsSourceElementPlaying;
 
-        if (MediaSession* session = sourceElement->session()) {
-            bool isNull;
-            if (MediaRemoteControls* controls = session->controls(isNull)) {
+        if (auto* session = sourceElement->session()) {
+            if (auto* controls = session->controls()) {
                 if (controls->previousTrackEnabled())
                     state |= MediaProducer::IsPreviousTrackControlEnabled;
                 if (controls->nextTrackEnabled())
@@ -3576,7 +3575,7 @@ void Document::updateIsPlayingMedia(uint64_t sourceElementID)
 
 void Document::pageMutedStateDidChange()
 {
-    for (auto audioProducer : m_audioProducers)
+    for (auto* audioProducer : m_audioProducers)
         audioProducer->pageMutedStateDidChange();
 }
 
@@ -4654,6 +4653,7 @@ static Editor::Command command(Document* document, const String& commandName, bo
 
 bool Document::execCommand(const String& commandName, bool userInterface, const String& value)
 {
+    EventQueueScope eventQueueScope;
     return command(this, commandName, userInterface).execute(value);
 }
 

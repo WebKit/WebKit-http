@@ -27,13 +27,13 @@
 
 namespace WebCore {
 
-class JSTestEventTarget : public JSDOMWrapperWithImplementation<TestEventTarget> {
+class JSTestEventTarget : public JSDOMWrapper<TestEventTarget> {
 public:
-    typedef JSDOMWrapperWithImplementation<TestEventTarget> Base;
+    typedef JSDOMWrapper<TestEventTarget> Base;
     static JSTestEventTarget* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestEventTarget>&& impl)
     {
         globalObject->masqueradesAsUndefinedWatchpoint()->fireAll("Allocated masquerading object");
-        JSTestEventTarget* ptr = new (NotNull, JSC::allocateCell<JSTestEventTarget>(globalObject->vm().heap)) JSTestEventTarget(structure, globalObject, WTF::move(impl));
+        JSTestEventTarget* ptr = new (NotNull, JSC::allocateCell<JSTestEventTarget>(globalObject->vm().heap)) JSTestEventTarget(structure, *globalObject, WTF::move(impl));
         ptr->finishCreation(globalObject->vm());
         return ptr;
     }
@@ -59,7 +59,7 @@ public:
 public:
     static const unsigned StructureFlags = JSC::InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | JSC::MasqueradesAsUndefined | JSC::OverridesGetOwnPropertySlot | JSC::OverridesGetPropertyNames | Base::StructureFlags;
 protected:
-    JSTestEventTarget(JSC::Structure*, JSDOMGlobalObject*, Ref<TestEventTarget>&&);
+    JSTestEventTarget(JSC::Structure*, JSDOMGlobalObject&, Ref<TestEventTarget>&&);
 
     void finishCreation(JSC::VM& vm)
     {

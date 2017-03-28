@@ -247,6 +247,14 @@ VM::VM(VMType vmType, HeapType heapType)
     exceptionStructure.set(*this, Exception::createStructure(*this, 0, jsNull()));
     promiseDeferredStructure.set(*this, JSPromiseDeferred::createStructure(*this, 0, jsNull()));
     internalPromiseDeferredStructure.set(*this, JSInternalPromiseDeferred::createStructure(*this, 0, jsNull()));
+    programCodeBlockStructure.set(*this, ProgramCodeBlock::createStructure(*this, 0, jsNull()));
+    moduleProgramCodeBlockStructure.set(*this, ModuleProgramCodeBlock::createStructure(*this, 0, jsNull()));
+    evalCodeBlockStructure.set(*this, EvalCodeBlock::createStructure(*this, 0, jsNull()));
+    functionCodeBlockStructure.set(*this, FunctionCodeBlock::createStructure(*this, 0, jsNull()));
+#if ENABLE(WEBASSEMBLY)
+    webAssemblyCodeBlockStructure.set(*this, WebAssemblyCodeBlock::createStructure(*this, 0, jsNull()));
+#endif
+
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     nativeStdFunctionCellStructure.set(*this, NativeStdFunctionCell::createStructure(*this, 0, jsNull()));
     smallStrings.initializeCommonStrings(*this);
@@ -273,7 +281,7 @@ VM::VM(VMType vmType, HeapType heapType)
     
     LLInt::Data::performAssertions(*this);
     
-    if (Options::enableProfiler()) {
+    if (Options::useProfiler()) {
         m_perBytecodeProfiler = std::make_unique<Profiler::Database>(*this);
 
         StringPrintStream pathOut;
@@ -295,9 +303,9 @@ VM::VM(VMType vmType, HeapType heapType)
     // won't use this.
     m_typedArrayController = adoptRef(new SimpleTypedArrayController());
 
-    if (Options::enableTypeProfiler())
+    if (Options::useTypeProfiler())
         enableTypeProfiler();
-    if (Options::enableControlFlowProfiler())
+    if (Options::useControlFlowProfiler())
         enableControlFlowProfiler();
 
     if (Options::watchdog()) {

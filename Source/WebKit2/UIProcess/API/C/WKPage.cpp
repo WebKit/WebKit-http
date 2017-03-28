@@ -33,6 +33,7 @@
 #include "APIDictionary.h"
 #include "APIFindClient.h"
 #include "APIFrameInfo.h"
+#include "APIHitTestResult.h"
 #include "APILoaderClient.h"
 #include "APINavigationAction.h"
 #include "APINavigationClient.h"
@@ -227,12 +228,23 @@ void WKPageStopLoading(WKPageRef pageRef)
 
 void WKPageReload(WKPageRef pageRef)
 {
-    toImpl(pageRef)->reload(false);
+    const bool reloadFromOrigin = false;
+    const bool contentBlockersEnabled = true;
+    toImpl(pageRef)->reload(reloadFromOrigin, contentBlockersEnabled);
+}
+
+void WKPageReloadWithoutContentBlockers(WKPageRef pageRef)
+{
+    const bool reloadFromOrigin = false;
+    const bool contentBlockersEnabled = false;
+    toImpl(pageRef)->reload(reloadFromOrigin, contentBlockersEnabled);
 }
 
 void WKPageReloadFromOrigin(WKPageRef pageRef)
 {
-    toImpl(pageRef)->reload(true);
+    const bool reloadFromOrigin = true;
+    const bool contentBlockersEnabled = true;
+    toImpl(pageRef)->reload(reloadFromOrigin, contentBlockersEnabled);
 }
 
 bool WKPageTryClose(WKPageRef pageRef)
@@ -362,7 +374,7 @@ void WKPageSetCustomUserAgent(WKPageRef pageRef, WKStringRef userAgentRef)
 
 void WKPageSetUserContentExtensionsEnabled(WKPageRef pageRef, bool enabled)
 {
-    toImpl(pageRef)->setUserContentExtensionsEnabled(enabled);
+    // FIXME: Remove this function once it is no longer used.
 }
 
 bool WKPageSupportsTextEncoding(WKPageRef pageRef)
@@ -768,7 +780,7 @@ void WKPageSetPageContextMenuClient(WKPageRef pageRef, const WKPageContextMenuCl
         }
 
     private:
-        virtual bool getContextMenuFromProposedMenu(WebPageProxy& page, const Vector<RefPtr<WebKit::WebContextMenuItem>>& proposedMenuVector, Vector<RefPtr<WebKit::WebContextMenuItem>>& customMenu, const WebHitTestResult::Data& hitTestResultData, API::Object* userData) override
+        virtual bool getContextMenuFromProposedMenu(WebPageProxy& page, const Vector<RefPtr<WebKit::WebContextMenuItem>>& proposedMenuVector, Vector<RefPtr<WebKit::WebContextMenuItem>>& customMenu, const WebHitTestResultData& hitTestResultData, API::Object* userData) override
         {
             if (!m_client.getContextMenuFromProposedMenu && !m_client.getContextMenuFromProposedMenu_deprecatedForUseWithV0)
                 return false;
@@ -784,7 +796,7 @@ void WKPageSetPageContextMenuClient(WKPageRef pageRef, const WKPageContextMenuCl
 
             WKArrayRef newMenu = nullptr;
             if (m_client.base.version >= 2) {
-                RefPtr<WebHitTestResult> webHitTestResult = WebHitTestResult::create(hitTestResultData);
+                RefPtr<API::HitTestResult> webHitTestResult = API::HitTestResult::create(hitTestResultData);
                 m_client.getContextMenuFromProposedMenu(toAPI(&page), toAPI(API::Array::create(WTF::move(proposedMenuItems)).ptr()), &newMenu, toAPI(webHitTestResult.get()), toAPI(userData), m_client.base.clientInfo);
             } else
                 m_client.getContextMenuFromProposedMenu_deprecatedForUseWithV0(toAPI(&page), toAPI(API::Array::create(WTF::move(proposedMenuItems)).ptr()), &newMenu, toAPI(userData), m_client.base.clientInfo);
@@ -1019,14 +1031,6 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
                 return;
 
             m_client.didLayout(toAPI(&page), toWKLayoutMilestones(milestones), nullptr, m_client.base.clientInfo);
-        }
-
-        virtual void didRemoveFrameFromHierarchy(WebPageProxy& page, WebFrameProxy& frame, API::Object* userData) override
-        {
-            if (!m_client.didRemoveFrameFromHierarchy)
-                return;
-
-            m_client.didRemoveFrameFromHierarchy(toAPI(&page), toAPI(&frame), toAPI(userData), m_client.base.clientInfo);
         }
 
         virtual void didDisplayInsecureContentForFrame(WebPageProxy& page, WebFrameProxy& frame, API::Object* userData) override
@@ -1637,7 +1641,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.setStatusText(toAPI(page), toAPI(text.impl()), m_client.base.clientInfo);
         }
 
-        virtual void mouseDidMoveOverElement(WebPageProxy* page, const WebHitTestResult::Data& data, WebEvent::Modifiers modifiers, API::Object* userData) override
+        virtual void mouseDidMoveOverElement(WebPageProxy* page, const WebHitTestResultData& data, WebEvent::Modifiers modifiers, API::Object* userData) override
         {
             if (!m_client.mouseDidMoveOverElement && !m_client.mouseDidMoveOverElement_deprecatedForUseWithV0)
                 return;
@@ -1650,7 +1654,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
                 return;
             }
 
-            RefPtr<WebHitTestResult> webHitTestResult = WebHitTestResult::create(data);
+            RefPtr<API::HitTestResult> webHitTestResult = API::HitTestResult::create(data);
             m_client.mouseDidMoveOverElement(toAPI(page), toAPI(webHitTestResult.get()), toAPI(modifiers), toAPI(userData), m_client.base.clientInfo);
         }
 
@@ -1918,12 +1922,12 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.pinnedStateDidChange(toAPI(&page), m_client.base.clientInfo);
         }
 
-        virtual void didBeginTrackingPotentialLongMousePress(WebPageProxy* page, const IntPoint& mouseDownPosition, const WebHitTestResult::Data& data, API::Object* userInfo) override
+        virtual void didBeginTrackingPotentialLongMousePress(WebPageProxy* page, const IntPoint& mouseDownPosition, const WebHitTestResultData& data, API::Object* userInfo) override
         {
             if (!m_client.didBeginTrackingPotentialLongMousePress)
                 return;
 
-            RefPtr<WebHitTestResult> webHitTestResult = WebHitTestResult::create(data);
+            RefPtr<API::HitTestResult> webHitTestResult = API::HitTestResult::create(data);
             m_client.didBeginTrackingPotentialLongMousePress(toAPI(page), toAPI(mouseDownPosition), toAPI(webHitTestResult.get()), toAPI(userInfo), m_client.base.clientInfo);
         }
 

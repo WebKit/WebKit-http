@@ -48,6 +48,8 @@
 #import "PageClientImpl.h"
 #import "PasteboardTypes.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
+#import "RemoteObjectRegistry.h"
+#import "RemoteObjectRegistryMessages.h"
 #import "StringUtilities.h"
 #import "TextChecker.h"
 #import "TextCheckerState.h"
@@ -68,7 +70,7 @@
 #import "WKWebView.h"
 #import "WebBackForwardList.h"
 #import "WebEventFactory.h"
-#import "WebHitTestResult.h"
+#import "WebHitTestResultData.h"
 #import "WebInspectorProxy.h"
 #import "WebKit2Initialize.h"
 #import "WebPage.h"
@@ -78,6 +80,7 @@
 #import "WebProcessPool.h"
 #import "WebProcessProxy.h"
 #import "WebSystemInterface.h"
+#import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKThumbnailViewInternal.h"
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/AXObjectCache.h>
@@ -181,6 +184,8 @@ struct WKViewInterpretKeyEventsParameters {
 #if WK_API_ENABLED
     RetainPtr<WKBrowsingContextController> _browsingContextController;
     RetainPtr<NSView> _inspectorAttachmentView;
+
+    RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
 #endif
 
     RetainPtr<NSTrackingArea> _primaryTrackingArea;
@@ -385,6 +390,13 @@ struct WKViewInterpretKeyEventsParameters {
     [_data->_immediateActionController willDestroyView:self];
 #endif
     [_data->_layoutStrategy willDestroyView:self];
+
+#if WK_API_ENABLED
+    if (_data->_remoteObjectRegistry) {
+        _data->_page->process().processPool().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _data->_page->pageID());
+        [_data->_remoteObjectRegistry _invalidate];
+    }
+#endif
 
     _data->_page->close();
 
@@ -3949,6 +3961,20 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     }
 }
 
+#if WK_API_ENABLED
+- (_WKRemoteObjectRegistry *)_remoteObjectRegistry
+{
+    if (!_data->_remoteObjectRegistry) {
+        _data->_remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithMessageSender:*_data->_page]);
+        _data->_page->process().processPool().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _data->_page->pageID(), [_data->_remoteObjectRegistry remoteObjectRegistry]);
+    }
+
+    return _data->_remoteObjectRegistry.get();
+}
+
+#endif
+
+
 - (void)_didCommitLoadForMainFrame
 {
     [self _updateSupportsArbitraryLayoutModes];
@@ -3980,7 +4006,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
-- (void)_didPerformImmediateActionHitTest:(const WebHitTestResult::Data&)hitTestResult contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData
+- (void)_didPerformImmediateActionHitTest:(const WebHitTestResultData&)hitTestResult contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData
 {
     [_data->_immediateActionController didPerformImmediateActionHitTest:hitTestResult contentPreventsDefault:contentPreventsDefault userData:userData];
 }
@@ -4655,7 +4681,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_gestureController->setDidMoveSwipeSnapshotCallback(callback);
 }
 
-- (id)_immediateActionAnimationControllerForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKImmediateActionType)type userData:(WKTypeRef)userData
+- (id)_immediateActionAnimationControllerForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(uint32_t)type userData:(WKTypeRef)userData
 {
     return nil;
 }

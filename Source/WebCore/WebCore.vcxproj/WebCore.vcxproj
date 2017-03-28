@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
@@ -13705,6 +13705,20 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\dom\ComposedTreeIterator.cpp">
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+        <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\dom\CompositionEvent.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -14899,6 +14913,20 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\dom\SelectorQuery.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\dom\SlotAssignment.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -17301,9 +17329,7 @@
     <ClCompile Include="..\html\parser\XSSAuditor.cpp" />
     <ClCompile Include="..\html\parser\XSSAuditorDelegate.cpp" />
     <ClCompile Include="..\html\shadow\AutoFillButtonElement.cpp" />
-    <ClCompile Include="..\html\shadow\ContentDistributor.cpp" />
     <ClCompile Include="..\html\shadow\DetailsMarkerControl.cpp" />
-    <ClCompile Include="..\html\shadow\InsertionPoint.cpp" />
     <ClCompile Include="..\html\shadow\MediaControlElements.cpp" />
     <ClCompile Include="..\html\shadow\MediaControlElementTypes.cpp" />
     <ClCompile Include="..\html\shadow\MediaControls.cpp" />
@@ -21937,6 +21963,7 @@
     <ClInclude Include="..\dom\ClipboardEvent.h" />
     <ClInclude Include="..\dom\CollectionIndexCache.h" />
     <ClInclude Include="..\dom\Comment.h" />
+    <ClInclude Include="..\dom\ComposedTreeIterator.h" />
     <ClInclude Include="..\dom\CompositionEvent.h" />
     <ClInclude Include="..\dom\ContainerNode.h" />
     <ClInclude Include="..\dom\ContextDestructionObserver.h" />
@@ -22049,6 +22076,7 @@
     <ClInclude Include="..\dom\SecurityContext.h" />
     <ClInclude Include="..\dom\SecurityOriginPolicy.h" />
     <ClInclude Include="..\dom\SelectorQuery.h" />
+    <ClInclude Include="..\dom\SlotAssignment.h" />
     <ClInclude Include="..\dom\SimulatedClickOptions.h" />
     <ClInclude Include="..\dom\SpaceSplitString.h" />
     <ClInclude Include="..\dom\StaticHashSetNodeList.h" />
@@ -22357,9 +22385,7 @@
     <ClInclude Include="..\html\parser\XSSAuditor.h" />
     <ClInclude Include="..\html\parser\XSSAuditorDelegate.h" />
     <ClInclude Include="..\html\shadow\AutoFillButtonElement.h" />
-    <ClInclude Include="..\html\shadow\ContentDistributor.h" />
     <ClInclude Include="..\html\shadow\DetailsMarkerControl.h" />
-    <ClInclude Include="..\html\shadow\InsertionPoint.h" />
     <ClInclude Include="..\html\shadow\MediaControlElements.h" />
     <ClInclude Include="..\html\shadow\MediaControlElementTypes.h" />
     <ClInclude Include="..\html\shadow\MediaControls.h" />

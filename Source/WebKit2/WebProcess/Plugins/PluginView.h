@@ -47,8 +47,6 @@
 // FIXME: Eventually this should move to WebCore.
 
 #if PLATFORM(COCOA)
-#include "WebHitTestResult.h"
-
 OBJC_CLASS NSDictionary;
 OBJC_CLASS PDFSelection;
 #endif

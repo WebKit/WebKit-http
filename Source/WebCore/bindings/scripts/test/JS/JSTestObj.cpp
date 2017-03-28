@@ -347,25 +347,25 @@ private:
 
 class JSTestObjConstructor : public DOMConstructorObject {
 private:
-    JSTestObjConstructor(JSC::Structure*, JSDOMGlobalObject*);
+    JSTestObjConstructor(JSC::Structure*, JSDOMGlobalObject&);
     void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 
 public:
     typedef DOMConstructorObject Base;
-    static JSTestObjConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
+    static JSTestObjConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
     {
         JSTestObjConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestObjConstructor>(vm.heap)) JSTestObjConstructor(structure, globalObject);
-        ptr->finishCreation(vm, *globalObject);
+        ptr->finishCreation(vm, globalObject);
         return ptr;
     }
 
     DECLARE_INFO;
-    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
+    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)
     {
-        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
+        return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 protected:
-    static JSC::EncodedJSValue JSC_HOST_CALL constructJSTestObj(JSC::ExecState*);
+    static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
 };
 
@@ -468,7 +468,7 @@ COMPILE_ASSERT(0x1abc == TestObj::CONST_VALUE_14, TestObjEnumCONST_VALUE_14IsWro
 COMPILE_ASSERT(15 == TestObj::CONST_IMPL, TestObjEnumCONST_IMPLIsWrongUseDoNotCheckConstants);
 COMPILE_ASSERT(0 == TestObj::readonly, TestObjEnumreadonlyIsWrongUseDoNotCheckConstants);
 
-EncodedJSValue JSC_HOST_CALL JSTestObjConstructor::constructJSTestObj(ExecState* state)
+EncodedJSValue JSC_HOST_CALL JSTestObjConstructor::construct(ExecState* state)
 {
     auto* castedThis = jsCast<JSTestObjConstructor*>(state->callee());
     if (UNLIKELY(state->argumentCount() < 2))
@@ -485,7 +485,7 @@ EncodedJSValue JSC_HOST_CALL JSTestObjConstructor::constructJSTestObj(ExecState*
 
 const ClassInfo JSTestObjConstructor::s_info = { "TestObjectConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestObjConstructor) };
 
-JSTestObjConstructor::JSTestObjConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
+JSTestObjConstructor::JSTestObjConstructor(Structure* structure, JSDOMGlobalObject& globalObject)
     : Base(structure, globalObject)
 {
 }
@@ -500,9 +500,10 @@ void JSTestObjConstructor::finishCreation(VM& vm, JSDOMGlobalObject& globalObjec
     reifyStaticProperties(vm, JSTestObjConstructorTableValues, *this);
 }
 
-ConstructType JSTestObjConstructor::getConstructData(JSCell*, ConstructData& constructData)
+ConstructType JSTestObjConstructor::getConstructData(JSCell* cell, ConstructData& constructData)
 {
-    constructData.native.function = constructJSTestObj;
+    UNUSED_PARAM(cell);
+    constructData.native.function = construct;
     return ConstructTypeHost;
 }
 
@@ -725,8 +726,8 @@ void JSTestObjPrototype::finishCreation(VM& vm)
 
 const ClassInfo JSTestObj::s_info = { "TestObject", &Base::s_info, &JSTestObjTable, CREATE_METHOD_TABLE(JSTestObj) };
 
-JSTestObj::JSTestObj(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestObj>&& impl)
-    : JSDOMWrapperWithImplementation<TestObj>(structure, globalObject, WTF::move(impl))
+JSTestObj::JSTestObj(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestObj>&& impl)
+    : JSDOMWrapper<TestObj>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -3162,7 +3163,7 @@ void setJSTestObjPutForwardsNullableAttribute(ExecState* state, JSObject* baseOb
 
 JSValue JSTestObj::getConstructor(VM& vm, JSGlobalObject* globalObject)
 {
-    return getDOMConstructor<JSTestObjConstructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));
+    return getDOMConstructor<JSTestObjConstructor>(vm, *jsCast<JSDOMGlobalObject*>(globalObject));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethod(ExecState* state)

@@ -878,10 +878,14 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBVersionChangeEvent.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
 
+    Modules/indexeddb/client/IDBAnyImpl.cpp
     Modules/indexeddb/client/IDBConnectionToServer.cpp
+    Modules/indexeddb/client/IDBDatabaseImpl.cpp
     Modules/indexeddb/client/IDBFactoryImpl.cpp
     Modules/indexeddb/client/IDBOpenDBRequestImpl.cpp
     Modules/indexeddb/client/IDBRequestImpl.cpp
+    Modules/indexeddb/client/IDBTransactionImpl.cpp
+    Modules/indexeddb/client/IDBVersionChangeEventImpl.cpp
 
     Modules/indexeddb/legacy/IDBCursorBackend.cpp
     Modules/indexeddb/legacy/IDBCursorBackendOperations.cpp
@@ -908,12 +912,15 @@ set(WebCore_SOURCES
     Modules/indexeddb/server/IDBServerOperation.cpp
     Modules/indexeddb/server/MemoryIDBBackingStore.cpp
     Modules/indexeddb/server/UniqueIDBDatabase.cpp
+    Modules/indexeddb/server/UniqueIDBDatabaseConnection.cpp
+    Modules/indexeddb/server/UniqueIDBDatabaseTransaction.cpp
 
     Modules/indexeddb/shared/IDBDatabaseInfo.cpp
     Modules/indexeddb/shared/IDBError.cpp
     Modules/indexeddb/shared/IDBRequestData.cpp
     Modules/indexeddb/shared/IDBResourceIdentifier.cpp
     Modules/indexeddb/shared/IDBResultData.cpp
+    Modules/indexeddb/shared/IDBTransactionInfo.cpp
     Modules/indexeddb/shared/InProcessIDBServer.cpp
 
     Modules/mediacontrols/MediaControlsHost.cpp
@@ -1411,6 +1418,7 @@ set(WebCore_SOURCES
     dom/ClipboardEvent.cpp
     dom/CollectionIndexCache.cpp
     dom/Comment.cpp
+    dom/ComposedTreeIterator.cpp
     dom/CompositionEvent.cpp
     dom/ContainerNode.cpp
     dom/ContainerNodeAlgorithms.cpp
@@ -1506,6 +1514,7 @@ set(WebCore_SOURCES
     dom/SecurityOriginPolicy.cpp
     dom/SelectorQuery.cpp
     dom/ShadowRoot.cpp
+    dom/SlotAssignment.cpp
     dom/SpaceSplitString.cpp
     dom/StaticNodeList.cpp
     dom/StringCallback.cpp
@@ -1706,6 +1715,7 @@ set(WebCore_SOURCES
     html/HTMLQuoteElement.cpp
     html/HTMLScriptElement.cpp
     html/HTMLSelectElement.cpp
+    html/HTMLSlotElement.cpp
     html/HTMLSourceElement.cpp
     html/HTMLSpanElement.cpp
     html/HTMLStyleElement.cpp
@@ -1847,9 +1857,7 @@ set(WebCore_SOURCES
     html/parser/XSSAuditorDelegate.cpp
 
     html/shadow/AutoFillButtonElement.cpp
-    html/shadow/ContentDistributor.cpp
     html/shadow/DetailsMarkerControl.cpp
-    html/shadow/InsertionPoint.cpp
     html/shadow/MediaControlElementTypes.cpp
     html/shadow/MediaControlElements.cpp
     html/shadow/MediaControls.cpp
@@ -3589,7 +3597,7 @@ foreach (_builtinjs ${WEBCORE_JS_BUILTINS})
     get_filename_component(_name ${_builtinjs} NAME_WE)
     add_custom_command(
         OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}BuiltinsWrapper.h ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}Builtins.h ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}Builtins.cpp
-        MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins
+        MAIN_DEPENDENCY ${WEBCORE_DIR}/generate-js-builtins
         DEPENDS ${WebCore_GENERATE_JS_BUILTINS_SCRIPTS_DIR}/generate-js-builtins
         DEPENDS ${_builtinjs}
         COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins --input ${_builtinjs} --output_dir ${DERIVED_SOURCES_WEBCORE_DIR} --generate_js_builtins_path ${WebCore_GENERATE_JS_BUILTINS_SCRIPTS_DIR}

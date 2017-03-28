@@ -29,12 +29,12 @@ namespace WebCore {
 
 class JSDictionary;
 
-class JSTestEventConstructor : public JSDOMWrapperWithImplementation<TestEventConstructor> {
+class JSTestEventConstructor : public JSDOMWrapper<TestEventConstructor> {
 public:
-    typedef JSDOMWrapperWithImplementation<TestEventConstructor> Base;
+    typedef JSDOMWrapper<TestEventConstructor> Base;
     static JSTestEventConstructor* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestEventConstructor>&& impl)
     {
-        JSTestEventConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestEventConstructor>(globalObject->vm().heap)) JSTestEventConstructor(structure, globalObject, WTF::move(impl));
+        JSTestEventConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestEventConstructor>(globalObject->vm().heap)) JSTestEventConstructor(structure, *globalObject, WTF::move(impl));
         ptr->finishCreation(globalObject->vm());
         return ptr;
     }
@@ -53,7 +53,7 @@ public:
 
     static JSC::JSValue getConstructor(JSC::VM&, JSC::JSGlobalObject*);
 protected:
-    JSTestEventConstructor(JSC::Structure*, JSDOMGlobalObject*, Ref<TestEventConstructor>&&);
+    JSTestEventConstructor(JSC::Structure*, JSDOMGlobalObject&, Ref<TestEventConstructor>&&);
 
     void finishCreation(JSC::VM& vm)
     {

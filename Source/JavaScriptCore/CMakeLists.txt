@@ -168,6 +168,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGCompilationMode.cpp
     dfg/DFGConstantFoldingPhase.cpp
     dfg/DFGConstantHoistingPhase.cpp
+    dfg/DFGCopyBarrierOptimizationPhase.cpp
     dfg/DFGCriticalEdgeBreakingPhase.cpp
     dfg/DFGDCEPhase.cpp
     dfg/DFGDesiredIdentifiers.cpp
@@ -574,6 +575,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSTemplateRegistryKey.cpp
     runtime/JSTypedArrayConstructors.cpp
     runtime/JSTypedArrayPrototypes.cpp
+    runtime/JSTypedArrayViewConstructor.cpp
     runtime/JSTypedArrayViewPrototype.cpp
     runtime/JSTypedArrays.cpp
     runtime/JSWeakMap.cpp
@@ -905,6 +907,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLJSCallBase.cpp
         ftl/FTLJSCallVarargs.cpp
         ftl/FTLJSTailCall.cpp
+        ftl/FTLLazySlowPath.cpp
         ftl/FTLLink.cpp
         ftl/FTLLocation.cpp
         ftl/FTLLowerDFGToLLVM.cpp
@@ -1090,6 +1093,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/StringConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/StringIterator.prototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArray.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayConstructor.js
 )
 
 add_custom_command(

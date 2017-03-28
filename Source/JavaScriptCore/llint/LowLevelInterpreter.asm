@@ -216,9 +216,12 @@ const PutByIdSecondaryTypeOther = 0x10
 const PutByIdSecondaryTypeInt32 = 0x18
 const PutByIdSecondaryTypeNumber = 0x20
 const PutByIdSecondaryTypeString = 0x28
-const PutByIdSecondaryTypeObject = 0x30
-const PutByIdSecondaryTypeObjectOrOther = 0x38
-const PutByIdSecondaryTypeTop = 0x40
+const PutByIdSecondaryTypeSymbol = 0x30
+const PutByIdSecondaryTypeObject = 0x38
+const PutByIdSecondaryTypeObjectOrOther = 0x40
+const PutByIdSecondaryTypeTop = 0x48
+
+const CopyBarrierSpaceBits = 3
 
 const CallOpCodeSize = 9
 
@@ -324,6 +327,7 @@ const SlowPutArrayStorageShape = 30
 
 # Type constants.
 const StringType = 6
+const SymbolType = 7
 const ObjectType = 21
 const FinalObjectType = 22
 
@@ -369,9 +373,6 @@ const Initialization = 0
 
 const MarkedBlockSize = 16 * 1024
 const MarkedBlockMask = ~(MarkedBlockSize - 1)
-# Constants for checking mark bits.
-const AtomNumberShift = 3
-const BitMapWordShift = 4
 
 # Allocation constants
 if JSVALUE64
@@ -662,6 +663,10 @@ macro preserveReturnAddressAfterCall(destinationRegister)
     else
         error
     end
+end
+
+macro copyBarrier(value, slow)
+    btpnz value, CopyBarrierSpaceBits, slow
 end
 
 macro functionPrologue()
@@ -1297,20 +1302,6 @@ _llint_op_in:
     traceExecution()
     callSlowPath(_slow_path_in)
     dispatch(4)
-
-macro withInlineStorage(object, propertyStorage, continuation)
-    # Indicate that the object is the property storage, and that the
-    # property storage register is unused.
-    continuation(object, propertyStorage)
-end
-
-macro withOutOfLineStorage(object, propertyStorage, continuation)
-    loadp JSObject::m_butterfly[object], propertyStorage
-    # Indicate that the propertyStorage register now points to the
-    # property storage, and that the object register may be reused
-    # if the object pointer is not needed anymore.
-    continuation(propertyStorage, object)
-end
 
 
 _llint_op_del_by_id:

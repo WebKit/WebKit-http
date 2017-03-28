@@ -1,3 +1,168 @@
+2015-10-14  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r190882): Concatenating a character array and an empty string is broken.
+        <https://webkit.org/b/150135>
+
+        Reviewed by Geoffrey Garen.
+
+        StringAdapter templates for raw character arrays were always using 1 as the array length
+        in toString().
+
+        * wtf/text/StringConcatenate.h:
+
+2015-10-14  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win64] Enable concurrent JIT.
+        https://bugs.webkit.org/show_bug.cgi?id=150098
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h:
+
+2015-10-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Add helper funtion for checking pointer equivalency and use it
+        https://bugs.webkit.org/show_bug.cgi?id=150022
+
+        Reviewed by Darin Adler.
+        
+        Add PointerComparison.h which contains the templated pointer comparison
+        function.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/PointerComparison.h: Added.
+        (WTF::arePointingToEqualData):
+
+2015-10-12  Andreas Kling  <akling@apple.com>
+
+        "A + B" with strings shouldn't copy if A or B is empty.
+        <https://webkit.org/b/150034>
+
+        Reviewed by Anders Carlsson.
+
+        Add a fast path to WTF's operator+ magic for concatenation of two strings where
+        one of them is empty. In that case, try to avoid allocation altogether by returning
+        the non-empty string.
+
+        Spotted this while analyzing memory peaks during page load; it turns out we were
+        duplicating whole text resources (JS, CSS) at the end of decoding, below
+        TextResourceDecoder::decodeAndFlush(). That function effectively does:
+
+            return decode() + flush();
+
+        Very often, flush() returns an empty string, so due to the naive operator+,
+        we'd allocate a new StringImpl of length (decode().length() + flush().length())
+        and copy the return value from decode() into it. So silly!
+
+        Had to make the tryMakeString() machinery use String as a return type instead of
+        RefPtr<StringImpl> to make all the right overloads gel. StringTypeAdapter templates
+        are now required to provide a toString() function.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::StringTypeAdapter<char>::toString):
+        (WTF::StringTypeAdapter<UChar>::toString):
+        (WTF::StringTypeAdapter<Vector<char>>::toString):
+        (WTF::StringTypeAdapter<String>::toString):
+        (WTF::tryMakeString):
+        (WTF::makeString):
+        * wtf/text/StringOperators.h:
+        (WTF::StringAppend::operator String):
+        * wtf/text/StringView.h:
+        (WTF::StringTypeAdapter<StringView>::toString):
+
+2015-10-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix style in the hopes that it fixes Windows.
+
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperClient::~ParallelHelperClient):
+        (WTF::ParallelHelperClient::setTask):
+        (WTF::ParallelHelperClient::doSomeHelping):
+        (WTF::ParallelHelperClient::runTaskInParallel):
+        (WTF::ParallelHelperClient::finish):
+        (WTF::ParallelHelperClient::claimTask):
+        (WTF::ParallelHelperClient::runTask):
+        (WTF::ParallelHelperPool::doSomeHelping):
+        (WTF::ParallelHelperPool::helperThreadBody):
+        * wtf/ParallelHelperPool.h:
+        (WTF::ParallelHelperClient::setFunction):
+        (WTF::ParallelHelperClient::runFunctionInParallel):
+        (WTF::ParallelHelperClient::pool):
+
+2015-10-10  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should generate code to call slow paths lazily
+        https://bugs.webkit.org/show_bug.cgi?id=149936
+
+        Reviewed by Saam Barati.
+
+        Enables SharedTask to handle any function type, not just void().
+
+        It's probably better to use SharedTask instead of std::function in performance-sensitive
+        code. std::function uses the system malloc and has copy semantics. SharedTask uses FastMalloc
+        and has aliasing semantics. So, you can just trust that it will have sensible performance
+        characteristics.
+
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperClient::~ParallelHelperClient):
+        (WTF::ParallelHelperClient::setTask):
+        (WTF::ParallelHelperClient::doSomeHelping):
+        (WTF::ParallelHelperClient::runTaskInParallel):
+        (WTF::ParallelHelperClient::finish):
+        (WTF::ParallelHelperClient::claimTask):
+        (WTF::ParallelHelperClient::runTask):
+        (WTF::ParallelHelperPool::doSomeHelping):
+        (WTF::ParallelHelperPool::helperThreadBody):
+        * wtf/ParallelHelperPool.h:
+        (WTF::ParallelHelperClient::setFunction):
+        (WTF::ParallelHelperClient::runFunctionInParallel):
+        (WTF::ParallelHelperClient::pool):
+        * wtf/SharedTask.h:
+        (WTF::createSharedTask):
+        (WTF::SharedTask::SharedTask): Deleted.
+        (WTF::SharedTask::~SharedTask): Deleted.
+        (WTF::SharedTaskFunctor::SharedTaskFunctor): Deleted.
+
+2015-10-10  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove unnecessary iOS version checks
+        https://bugs.webkit.org/show_bug.cgi?id=150002
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/Platform.h:
+
+2015-10-10  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove project support for iOS 8
+        https://bugs.webkit.org/show_bug.cgi?id=149993
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/WTF.xcconfig:
+        * Configurations/mbmalloc.xcconfig:
+
+2015-10-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Clean up Marked classes
+        https://bugs.webkit.org/show_bug.cgi?id=149853
+
+        Reviewed by Darin Adler.
+
+        * wtf/PageBlock.h:
+        Remove duplicate using statement.
+
+2015-10-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove PageReservation.h clang fixme that has been fixed for a while
+        https://bugs.webkit.org/show_bug.cgi?id=149908
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/PageReservation.h:
+        (WTF::PageReservation::operator bool): Deleted.
+
 2015-10-06  Daniel Bates  <dbates@webkit.org>
 
         Enable XSLT when building WebKit for iOS using the public iOS SDK

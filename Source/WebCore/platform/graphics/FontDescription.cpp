@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2007 Nicholas Shanks <contact@nickshanks.com>
  * Copyright (C) 2008, 2013 Apple Inc. All rights reserved.
@@ -30,13 +29,11 @@
 
 #include "config.h"
 #include "FontDescription.h"
-#include "LocaleToScriptMapping.h"
 
 namespace WebCore {
 
 struct SameSizeAsFontCascadeDescription {
     Vector<void*> vector;
-    void* string;
     float size;
     unsigned bitfields1;
     unsigned bitfields2 : 22;
@@ -56,7 +53,7 @@ FontDescription::FontDescription()
     , m_weight(FontWeightNormal)
     , m_renderingMode(NormalRenderingMode)
     , m_textRendering(AutoTextRendering)
-    , m_script(localeToScriptCodeForFontSelection(m_locale))
+    , m_script(USCRIPT_COMMON)
     , m_fontSynthesis(FontSynthesisWeight | FontSynthesisStyle)
     , m_variantCommonLigatures(static_cast<unsigned>(FontVariantLigatures::Normal))
     , m_variantDiscretionaryLigatures(static_cast<unsigned>(FontVariantLigatures::Normal))
@@ -76,12 +73,6 @@ FontDescription::FontDescription()
 {
 }
 
-void FontDescription::setLocale(const AtomicString& locale)
-{
-    m_locale = locale;
-    m_script = localeToScriptCodeForFontSelection(m_locale);
-}
-
 FontTraitsMask FontDescription::traitsMask() const
 {
     return static_cast<FontTraitsMask>((m_italic ? FontStyleItalicMask : FontStyleNormalMask)
@@ -92,7 +83,7 @@ FontTraitsMask FontDescription::traitsMask() const
 
 FontCascadeDescription::FontCascadeDescription()
     : m_isAbsoluteSize(false)
-    , m_kerning(AutoKerning)
+    , m_kerning(static_cast<unsigned>(Kerning::Auto))
     , m_keywordSize(0)
     , m_fontSmoothing(AutoSmoothing)
     , m_isSpecifiedFont(false)

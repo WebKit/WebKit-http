@@ -81,13 +81,6 @@ bool InjectedBundle::initialize(const WebProcessCreationParameters& parameters, 
         return false;
     }
 
-    // First check to see if the bundle has a WKBundleInitialize function.
-    WKBundleInitializeFunctionPtr initializeFunction = reinterpret_cast<WKBundleInitializeFunctionPtr>(CFBundleGetFunctionPointerForName([m_platformBundle _cfBundle], CFSTR("WKBundleInitialize")));
-    if (initializeFunction) {
-        initializeFunction(toAPI(this), toAPI(initializationUserData));
-        return true;
-    }
-    
 #if WK_API_ENABLED
     if (parameters.bundleParameterData) {
         auto bundleParameterData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(parameters.bundleParameterData->bytes())) length:parameters.bundleParameterData->size() freeWhenDone:NO]);
@@ -103,9 +96,19 @@ bool InjectedBundle::initialize(const WebProcessCreationParameters& parameters, 
             LOG_ERROR("Failed to decode bundle parameters: %@", exception);
         }
 
+        ASSERT(!m_bundleParameters);
         m_bundleParameters = adoptNS([[WKWebProcessBundleParameters alloc] initWithDictionary:dictionary]);
     }
+#endif
 
+    // First check to see if the bundle has a WKBundleInitialize function.
+    WKBundleInitializeFunctionPtr initializeFunction = reinterpret_cast<WKBundleInitializeFunctionPtr>(CFBundleGetFunctionPointerForName([m_platformBundle _cfBundle], CFSTR("WKBundleInitialize")));
+    if (initializeFunction) {
+        initializeFunction(toAPI(this), toAPI(initializationUserData));
+        return true;
+    }
+
+#if WK_API_ENABLED
     // Otherwise, look to see if the bundle has a principal class
     Class principalClass = [m_platformBundle principalClass];
     if (!principalClass) {
@@ -165,12 +168,40 @@ void InjectedBundle::setBundleParameter(const String& key, const IPC::DataRefere
         parameter = [unarchiver decodeObjectOfClass:[NSObject class] forKey:@"parameter"];
     } @catch (NSException *exception) {
         LOG_ERROR("Failed to decode bundle parameter: %@", exception);
+        return;
     }
 
     if (!m_bundleParameters && parameter)
         m_bundleParameters = adoptNS([[WKWebProcessBundleParameters alloc] initWithDictionary:[NSDictionary dictionary]]);
 
     [m_bundleParameters setParameter:parameter forKey:key];
+#endif
+}
+
+void InjectedBundle::setBundleParameters(const IPC::DataReference& value)
+{
+#if WK_API_ENABLED
+    auto bundleParametersData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(value.data())) length:value.size() freeWhenDone:NO]);
+
+    auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:bundleParametersData.get()]);
+    [unarchiver setRequiresSecureCoding:YES];
+
+    NSDictionary *parameters = nil;
+    @try {
+        parameters = [unarchiver decodeObjectOfClass:[NSDictionary class] forKey:@"parameters"];
+    } @catch (NSException *exception) {
+        LOG_ERROR("Failed to decode bundle parameter: %@", exception);
+    }
+
+    if (!parameters)
+        return;
+
+    if (!m_bundleParameters) {
+        m_bundleParameters = adoptNS([[WKWebProcessBundleParameters alloc] initWithDictionary:parameters]);
+        return;
+    }
+
+    [m_bundleParameters setParametersForKeyWithDictionary:parameters];
 #endif
 }
 
