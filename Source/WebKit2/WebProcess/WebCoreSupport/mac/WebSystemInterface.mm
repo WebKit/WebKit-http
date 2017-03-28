@@ -42,7 +42,6 @@ void InitWebCoreSystemInterface(void)
         INIT(CALayerEnumerateRectsBeingDrawnWithBlock);
         INIT(CGContextGetShouldSmoothFonts);
         INIT(CGPatternCreateWithImageAndTransform);
-        INIT(CGContextResetClip);
 #if !PLATFORM(IOS)
         INIT(CGContextDrawsWithCorrectShadowOffsets);
 #endif
@@ -91,7 +90,6 @@ void InitWebCoreSystemInterface(void)
         INIT(QTClearMediaDownloadCache);
         INIT(SetCGFontRenderingMode);
 #endif
-        INIT(SetBaseCTM);
         INIT(SetCONNECTProxyAuthorizationForStream);
         INIT(SetCONNECTProxyForStream);
 #if !PLATFORM(IOS)
@@ -100,7 +98,6 @@ void InitWebCoreSystemInterface(void)
         INIT(SetHTTPRequestMaximumPriority);
         INIT(SetHTTPRequestPriority);
         INIT(SetHTTPRequestMinimumFastLanePriority);
-        INIT(SetNSURLConnectionDefersCallbacks);
         INIT(SetNSURLRequestShouldContentSniff);
         INIT(SetPatternPhaseInUserSpace);
         INIT(CreatePrivateStorageSession);

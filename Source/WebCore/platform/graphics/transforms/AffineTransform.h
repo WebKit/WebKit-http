@@ -48,6 +48,7 @@ class FloatSize;
 class IntPoint;
 class IntSize;
 class IntRect;
+class TextStream;
 class TransformationMatrix;
 
 class AffineTransform {
@@ -196,6 +197,8 @@ private:
 };
 
 AffineTransform makeMapBetweenRects(const FloatRect& source, const FloatRect& dest);
+
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, const AffineTransform&);
 
 }
 

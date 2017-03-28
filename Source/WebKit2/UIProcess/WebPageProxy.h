@@ -71,6 +71,7 @@
 #include <WebCore/Page.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ScrollTypes.h>
+#include <WebCore/SearchPopupMenu.h>
 #include <WebCore/TextChecking.h>
 #include <WebCore/TextGranularity.h>
 #include <WebCore/ViewState.h>
@@ -175,6 +176,7 @@ typedef GtkWidget* PlatformWidget;
 namespace WebKit {
 
 class CertificateInfo;
+class NativeWebGestureEvent;
 class NativeWebKeyboardEvent;
 class NativeWebMouseEvent;
 class NativeWebWheelEvent;
@@ -325,6 +327,7 @@ public:
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
+    API::ContextMenuClient& contextMenuClient() { return *m_contextMenuClient; }
     void setContextMenuClient(std::unique_ptr<API::ContextMenuClient>);
 #endif
     API::FindClient& findClient() { return *m_findClient; }
@@ -506,6 +509,7 @@ public:
     void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
     void viewportMetaTagWidthDidChange(float width);
+    void disableDoubleTapGesturesUntilTapIsFinishedIfNecessary(uint64_t requestID, bool allowsDoubleTapZoom, const WebCore::FloatRect& targetRect, bool isReplacedElement, double minimumScale, double maximumScale);
     void didFinishDrawingPagesToPDF(const IPC::DataReference&);
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
     void getLookupContextAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
@@ -600,6 +604,10 @@ public:
     void handleMouseEvent(const NativeWebMouseEvent&);
     void handleWheelEvent(const NativeWebWheelEvent&);
     void handleKeyboardEvent(const NativeWebKeyboardEvent&);
+
+#if ENABLE(MAC_GESTURE_EVENTS)
+    void handleGestureEvent(const NativeWebGestureEvent&);
+#endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     void handleTouchEventSynchronously(const NativeWebTouchEvent&);
@@ -805,7 +813,8 @@ public:
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&);
-    
+    void willEnterAcceleratedCompositingMode();
+
     enum UndoOrRedo { Undo, Redo };
     void addEditCommand(WebEditCommandProxy*);
     void removeEditCommand(WebEditCommandProxy*);
@@ -1150,10 +1159,6 @@ private:
     void setStatusText(const String&);
     void mouseDidMoveOverElement(const WebHitTestResultData&, uint32_t modifiers, const UserData&);
 
-    void didBeginTrackingPotentialLongMousePress(const WebCore::IntPoint& mouseDownPosition, const WebHitTestResultData&, const UserData&);
-    void didRecognizeLongMousePress(const UserData&);
-    void didCancelTrackingPotentialLongMousePress(const UserData&);
-
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void unavailablePluginButtonClicked(uint32_t opaquePluginUnavailabilityReason, const String& mimeType, const String& pluginURLString, const String& pluginsPageURLString, const String& frameURLString, const String& pageURLString);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
@@ -1261,13 +1266,8 @@ private:
     void hidePopupMenu();
 
 #if ENABLE(CONTEXT_MENUS)
-    enum class ContextMenuClientEligibility {
-        EligibleForClient,
-        NotEligibleForClient
-    };
-    void showContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, const UserData&);
-    void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, ContextMenuClientEligibility, const UserData&);
-    WebCore::ContextMenuItem platformInitializeShareMenuItem(const ContextMenuContextData&);
+    void showContextMenu(const ContextMenuContextData&, const UserData&);
+    void internalShowContextMenu(const ContextMenuContextData&, const UserData&);
 #endif
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
@@ -1276,13 +1276,9 @@ private:
 #endif
 #endif
 
-#if ENABLE(SERVICE_CONTROLS)
-    void showSelectionServiceMenu(const IPC::DataReference& selectionAsRTFD, const Vector<String>& telephoneNumbers, bool isEditable, const WebCore::IntPoint&);
-#endif
-
     // Search popup results
-    void saveRecentSearches(const String&, const Vector<String>&);
-    void loadRecentSearches(const String&, Vector<String>&);
+    void saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&);
+    void loadRecentSearches(const String&, Vector<WebCore::RecentSearch>&);
 
 #if PLATFORM(COCOA)
     // Speech.
@@ -1636,6 +1632,9 @@ private:
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
     Deque<NativeWebWheelEvent> m_wheelEventQueue;
     Deque<std::unique_ptr<Vector<NativeWebWheelEvent>>> m_currentlyProcessedWheelEvents;
+#if ENABLE(MAC_GESTURE_EVENTS)
+    Deque<NativeWebGestureEvent> m_gestureEventQueue;
+#endif
 
     bool m_processingMouseMoveEvent;
     std::unique_ptr<NativeWebMouseEvent> m_nextMouseMoveEvent;

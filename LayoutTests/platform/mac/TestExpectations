@@ -967,11 +967,12 @@ webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Pass Fai
 webkit.org/b/137311 media/video-fullscreeen-only-playback.html [ Pass Timeout Crash ]
 webkit.org/b/139789 media/media-controls-timeline-updates.html [ Pass Failure ]
 webkit.org/b/139825 media/video-seek-past-end-paused.html [ Pass Timeout ]
-webkit.org/b/139825 [ Mavericks ] media/video-double.html [ Pass Timeout ]
 webkit.org/b/141084 [ Yosemite ] http/tests/media/video-preload.html [ Pass Timeout ]
 webkit.org/b/141294 compositing/reflections/masked-reflection-on-composited.html [ Pass Crash ]
 webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
 webkit.org/b/147944 media/video-seek-to-current-time.html [ Pass Failure ]
+webkit.org/b/114177 media/event-queue-crash.html [ Pass Failure ]
+
 ## --- End flaky media tests
 
 # Skipped while Eric Carlson works on a fix.
@@ -1343,5 +1344,10 @@ webkit.org/b/149218 http/tests/notifications/events.html [ Pass Crash ]
 # Flaky on Mac
 webkit.org/b/148435 storage/domstorage/events/basic-body-attribute.html [ Pass Failure ]
 
+webkit.org/b/149930 fast/canvas/webgl/oes-texture-float-linear.html [ Pass Failure ]
+
 # Imported Blink tests which have not been investigated.
 imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ Pass ImageOnlyFailure ]
+
+# USE_TYPO_METRICS is not implemented on mac.
+webkit.org/b/131839 fonts/use-typo-metrics-1.html [ ImageOnlyFailure ]

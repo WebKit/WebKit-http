@@ -38,6 +38,7 @@
 #import "HTTPHeaderNames.h"
 #import "Logging.h"
 #import "MIMETypeRegistry.h"
+#import "NSURLConnectionSPI.h"
 #import "NetworkingContext.h"
 #import "Page.h"
 #import "ResourceError.h"
@@ -297,7 +298,7 @@ bool ResourceHandle::start()
     
     if (d->m_connection) {
         if (d->m_defersLoading)
-            wkSetNSURLConnectionDefersCallbacks(connection(), YES);
+            connection().defersCallbacks = YES;
 
         return true;
     }
@@ -321,7 +322,7 @@ void ResourceHandle::cancel()
 void ResourceHandle::platformSetDefersLoading(bool defers)
 {
     if (d->m_connection)
-        wkSetNSURLConnectionDefersCallbacks(d->m_connection.get(), defers);
+        [d->m_connection setDefersCallbacks:defers];
 }
 
 #if PLATFORM(MAC)

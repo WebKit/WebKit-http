@@ -28,11 +28,14 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "EventQueue.h"
 #include "IDBConnectionToServer.h"
 #include "IDBOpenDBRequestImpl.h"
 #include "IDBResultData.h"
 #include "IDBTransactionImpl.h"
+#include "IDBVersionChangeEventImpl.h"
 #include "Logging.h"
+#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 namespace IDBClient {
@@ -44,17 +47,18 @@ Ref<IDBDatabase> IDBDatabase::create(ScriptExecutionContext& context, IDBConnect
 
 IDBDatabase::IDBDatabase(ScriptExecutionContext& context, IDBConnectionToServer& connection, const IDBResultData& resultData)
     : WebCore::IDBDatabase(&context)
-    , m_connection(connection)
+    , m_serverConnection(connection)
     , m_info(resultData.databaseInfo())
+    , m_databaseConnectionIdentifier(resultData.databaseConnectionIdentifier())
 {
     suspendIfNeeded();
     relaxAdoptionRequirement();
-    m_connection->registerDatabaseConnection(*this);
+    m_serverConnection->registerDatabaseConnection(*this);
 }
 
 IDBDatabase::~IDBDatabase()
 {
-    m_connection->unregisterDatabaseConnection(*this);
+    m_serverConnection->unregisterDatabaseConnection(*this);
 }
 
 const String IDBDatabase::name() const
@@ -104,7 +108,23 @@ void IDBDatabase::deleteObjectStore(const String&, ExceptionCode&)
 
 void IDBDatabase::close()
 {
-    ASSERT_NOT_REACHED();
+    m_closePending = true;
+    maybeCloseInServer();
+}
+
+void IDBDatabase::maybeCloseInServer()
+{
+    if (m_closedInServer)
+        return;
+
+    // 3.3.9 Database closing steps
+    // Wait for all transactions created using this connection to complete.
+    // Once they are complete, this connection is closed.
+    if (!m_activeTransactions.isEmpty() || !m_committingTransactions.isEmpty())
+        return;
+
+    m_closedInServer = true;
+    m_serverConnection->databaseConnectionClosed(*this);
 }
 
 const char* IDBDatabase::activeDOMObjectName() const
@@ -128,9 +148,63 @@ Ref<IDBTransaction> IDBDatabase::startVersionChangeTransaction(const IDBTransact
 
     Ref<IDBTransaction> transaction = IDBTransaction::create(*this, info);
     m_versionChangeTransaction = &transaction.get();
+
     m_activeTransactions.set(transaction->info().identifier(), &transaction.get());
 
     return WTF::move(transaction);
+}
+
+void IDBDatabase::commitTransaction(IDBTransaction& transaction)
+{
+    LOG(IndexedDB, "IDBDatabase::commitTransaction");
+
+    auto refTransaction = m_activeTransactions.take(transaction.info().identifier());
+    ASSERT(refTransaction);
+    m_committingTransactions.set(transaction.info().identifier(), WTF::move(refTransaction));
+
+    m_serverConnection->commitTransaction(transaction);
+}
+
+void IDBDatabase::didCommitTransaction(IDBTransaction& transaction)
+{
+    LOG(IndexedDB, "IDBDatabase::didCommitTransaction");
+
+    if (m_versionChangeTransaction == &transaction)
+        m_info.setVersion(transaction.info().newVersion());
+
+    didCommitOrAbortTransaction(transaction);
+}
+
+void IDBDatabase::didAbortTransaction(IDBTransaction& transaction)
+{
+    LOG(IndexedDB, "IDBDatabase::didAbortTransaction");
+    didCommitOrAbortTransaction(transaction);
+}
+
+void IDBDatabase::didCommitOrAbortTransaction(IDBTransaction& transaction)
+{
+    LOG(IndexedDB, "IDBDatabase::didCommitOrAbortTransaction");
+
+    if (m_versionChangeTransaction == &transaction)
+        m_versionChangeTransaction = nullptr;
+    
+    ASSERT(m_activeTransactions.contains(transaction.info().identifier()) || m_committingTransactions.contains(transaction.info().identifier()));
+
+    m_activeTransactions.remove(transaction.info().identifier());
+    m_committingTransactions.remove(transaction.info().identifier());
+}
+
+void IDBDatabase::fireVersionChangeEvent(uint64_t requestedVersion)
+{
+    uint64_t currentVersion = m_info.version();
+    LOG(IndexedDB, "IDBDatabase::fireVersionChangeEvent - current version %" PRIu64 ", requested version %" PRIu64, currentVersion, requestedVersion);
+
+    if (!scriptExecutionContext())
+        return;
+    
+    Ref<Event> event = IDBVersionChangeEvent::create(currentVersion, requestedVersion, eventNames().versionchangeEvent);
+    event->setTarget(this);
+    scriptExecutionContext()->eventQueue().enqueueEvent(adoptRef(&event.leakRef()));
 }
 
 } // namespace IDBClient

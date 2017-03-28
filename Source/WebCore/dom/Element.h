@@ -519,8 +519,6 @@ private:
     bool isUserActionElementFocused() const;
     bool isUserActionElementHovered() const;
 
-    void resetNeedsNodeRenderingTraversalSlowPath();
-
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) { }
     virtual bool alwaysCreateUserAgentShadowRoot() const { return false; }
 
@@ -574,6 +572,9 @@ private:
     virtual Ref<Element> cloneElementWithoutAttributesAndChildren(Document&);
 
     void removeShadowRoot();
+
+    RenderStyle* existingComputedStyle();
+    RenderStyle& resolveComputedStyle();
 
     bool rareDataStyleAffectedByEmpty() const;
     bool rareDataChildrenAffectedByHover() const;

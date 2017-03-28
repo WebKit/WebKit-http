@@ -237,7 +237,9 @@
 #include "JSHTMLTableCaptionElement.cpp"
 #include "JSHTMLTableCellElement.cpp"
 #include "JSHTMLTableColElement.cpp"
+#include "JSHTMLTableDataCellElement.cpp"
 #include "JSHTMLTableElement.cpp"
+#include "JSHTMLTableHeaderCellElement.cpp"
 #include "JSHTMLTableRowElement.cpp"
 #include "JSHTMLTableSectionElement.cpp"
 #if ENABLE(TEMPLATE_ELEMENT)
@@ -309,6 +311,7 @@
 #include "JSReadableStream.cpp"
 #include "JSReadableStreamController.cpp"
 #include "JSReadableStreamReader.cpp"
+#include "JSWritableStream.cpp"
 #endif
 #include "JSRect.cpp"
 #include "JSRequestAnimationFrameCallback.cpp"

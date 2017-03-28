@@ -84,7 +84,7 @@ public:
     virtual void focusedElementChanged(Element*) override { }
     virtual void focusedFrameChanged(Frame*) override { }
 
-    virtual Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) override { return 0; }
+    virtual Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) override { return nullptr; }
     virtual void show() override { }
 
     virtual bool canRunModal() override { return false; }
@@ -292,7 +292,7 @@ public:
     virtual void dispatchDidFinishLoad() override { }
     virtual void dispatchDidLayout(LayoutMilestones) override { }
 
-    virtual Frame* dispatchCreatePage(const NavigationAction&) override { return 0; }
+    virtual Frame* dispatchCreatePage(const NavigationAction&) override { return nullptr; }
     virtual void dispatchShow() override { }
 
     virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction) override { }
@@ -386,7 +386,7 @@ public:
     virtual void registerForIconNotification(bool) override { }
 
 #if PLATFORM(COCOA)
-    virtual RemoteAXObjectRef accessibilityRemoteObject() override { return 0; }
+    virtual RemoteAXObjectRef accessibilityRemoteObject() override { return nullptr; }
     virtual NSCachedURLResponse* willCacheResponse(DocumentLoader*, unsigned long, NSCachedURLResponse* response) const override { return response; }
 #endif
 #if PLATFORM(WIN) && USE(CFNETWORK)
@@ -401,6 +401,8 @@ public:
 #endif
 
     virtual bool isEmptyFrameLoaderClient() override { return true; }
+
+    virtual void prefetchDNS(const String&) override { }
 };
 
 class EmptyTextCheckerClient : public TextCheckerClient {
@@ -494,11 +496,11 @@ public:
 #endif
 
 #if PLATFORM(COCOA)
-    virtual NSString* userVisibleString(NSURL*) override { return 0; }
-    virtual DocumentFragment* documentFragmentFromAttributedString(NSAttributedString*, Vector<RefPtr<ArchiveResource>>&) override { return 0; };
+    virtual NSString* userVisibleString(NSURL*) override { return nullptr; }
+    virtual DocumentFragment* documentFragmentFromAttributedString(NSAttributedString*, Vector<RefPtr<ArchiveResource>>&) override { return nullptr; };
     virtual void setInsertionPasteboard(const String&) override { };
-    virtual NSURL *canonicalizeURL(NSURL*) override { return 0; }
-    virtual NSURL *canonicalizeURLString(NSString*) override { return 0; }
+    virtual NSURL *canonicalizeURL(NSURL*) override { return nullptr; }
+    virtual NSURL *canonicalizeURLString(NSString*) override { return nullptr; }
 #endif
 
 #if USE(APPKIT)
@@ -551,7 +553,7 @@ public:
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
     virtual std::unique_ptr<ContextMenu> customizeMenu(std::unique_ptr<ContextMenu>) override;
 #else
-    virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) override { return 0; }
+    virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) override { return nullptr; }
 #endif
     virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*) override { }
 
@@ -597,7 +599,7 @@ public:
 
     virtual void inspectedPageDestroyed() override { }
     
-    virtual Inspector::FrontendChannel* openLocalFrontend(InspectorController*) override { return 0; }
+    virtual Inspector::FrontendChannel* openLocalFrontend(InspectorController*) override { return nullptr; }
     virtual void bringFrontendToFront() override { }
 
     virtual void highlight() override { }
@@ -613,14 +615,14 @@ public:
 class EmptyDeviceMotionClient : public DeviceMotionClient {
 public:
     virtual void setController(DeviceMotionController*) override { }
-    virtual DeviceMotionData* lastMotion() const override { return 0; }
+    virtual DeviceMotionData* lastMotion() const override { return nullptr; }
     virtual void deviceMotionControllerDestroyed() override { }
 };
 
 class EmptyDeviceOrientationClient : public DeviceOrientationClient {
 public:
     virtual void setController(DeviceOrientationController*) override { }
-    virtual DeviceOrientationData* lastOrientation() const override { return 0; }
+    virtual DeviceOrientationData* lastOrientation() const override { return nullptr; }
     virtual void deviceOrientationControllerDestroyed() override { }
 };
 

@@ -561,6 +561,7 @@
     <ClCompile Include="..\ftl\FTLValueRange.cpp" />
     <ClCompile Include="..\heap\CodeBlockSet.cpp" />
     <ClCompile Include="..\heap\ConservativeRoots.cpp" />
+    <ClCompile Include="..\heap\CopiedBlock.cpp" />
     <ClCompile Include="..\heap\CopiedSpace.cpp" />
     <ClCompile Include="..\heap\CopyVisitor.cpp" />
     <ClCompile Include="..\heap\DeferGC.cpp" />
@@ -568,7 +569,6 @@
     <ClCompile Include="..\heap\FullGCActivityCallback.cpp" />
     <ClCompile Include="..\heap\GCActivityCallback.cpp" />
     <ClCompile Include="..\heap\GCLogging.cpp" />
-    <ClCompile Include="..\heap\GCThread.cpp" />
     <ClCompile Include="..\heap\HandleSet.cpp" />
     <ClCompile Include="..\heap\HandleStack.cpp" />
     <ClCompile Include="..\heap\Heap.cpp" />
@@ -616,6 +616,7 @@
     <ClCompile Include="..\inspector\agents\InspectorAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorConsoleAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorDebuggerAgent.cpp" />
+    <ClCompile Include="..\inspector\agents\InspectorHeapAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorRuntimeAgent.cpp" />
     <ClCompile Include="..\interpreter\AbstractPC.cpp" />
     <ClCompile Include="..\interpreter\CallFrame.cpp" />
@@ -635,6 +636,7 @@
     <ClCompile Include="..\jit\ExecutableAllocatorFixedVMPool.cpp" />
     <ClCompile Include="..\jit\GCAwareJITStubRoutine.cpp" />
     <ClCompile Include="..\jit\HostCallReturnValue.cpp" />
+    <ClCompile Include="..\jit\IntrinsicEmitter.cpp" />
     <ClCompile Include="..\jit\JIT.cpp" />
     <ClCompile Include="..\jit\JITArithmetic.cpp" />
     <ClCompile Include="..\jit\JITArithmetic32_64.cpp" />
@@ -651,7 +653,6 @@
     <ClCompile Include="..\jit\JITPropertyAccess.cpp" />
     <ClCompile Include="..\jit\JITPropertyAccess32_64.cpp" />
     <ClCompile Include="..\jit\JITStubRoutine.cpp" />
-    <ClCompile Include="..\jit\JITStubs.cpp" />
     <ClCompile Include="..\jit\JITThunks.cpp" />
     <ClCompile Include="..\jit\JITToDFGDeferredCompilationCallback.cpp" />
     <ClCompile Include="..\jit\SetupVarargsFrame.cpp" />
@@ -826,6 +827,7 @@
     <ClCompile Include="..\runtime\JSTypedArrayConstructors.cpp" />
     <ClCompile Include="..\runtime\JSTypedArrayPrototypes.cpp" />
     <ClCompile Include="..\runtime\JSTypedArrays.cpp" />
+    <ClCompile Include="..\runtime\JSTypedArrayViewConstructor.cpp" />
     <ClCompile Include="..\runtime\JSTypedArrayViewPrototype.cpp" />
     <ClCompile Include="..\runtime\JSEnvironmentRecord.cpp" />
     <ClCompile Include="..\runtime\JSWeakMap.cpp" />
@@ -1352,7 +1354,6 @@
     <ClInclude Include="..\heap\GCSegmentedArray.h" />
     <ClInclude Include="..\heap\GCSegmentedArrayInlines.h" />
     <ClInclude Include="..\heap\GCAssertions.h" />
-    <ClInclude Include="..\heap\GCThread.h" />
     <ClInclude Include="..\heap\Handle.h" />
     <ClInclude Include="..\heap\HandleBlock.h" />
     <ClInclude Include="..\heap\HandleBlockInlines.h" />
@@ -1425,6 +1426,7 @@
     <ClInclude Include="..\inspector\agents\InspectorAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorConsoleAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorDebuggerAgent.h" />
+    <ClInclude Include="..\inspector\agents\InspectorHeapAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorRuntimeAgent.h" />
     <ClInclude Include="..\interpreter\AbstractPC.h" />
     <ClInclude Include="..\interpreter\CachedCall.h" />
@@ -1460,10 +1462,6 @@
     <ClInclude Include="..\jit\JITInlines.h" />
     <ClInclude Include="..\jit\JITOperations.h" />
     <ClInclude Include="..\jit\JITStubRoutine.h" />
-    <ClInclude Include="..\jit\JITStubs.h" />
-    <ClInclude Include="..\jit\JITStubsX86.h" />
-    <ClInclude Include="..\jit\JITStubsX86Common.h" />
-    <ClInclude Include="..\jit\JITStubsX86_64.h" />
     <ClInclude Include="..\jit\JITThunks.h" />
     <ClInclude Include="..\jit\JITToDFGDeferredCompilationCallback.h" />
     <ClInclude Include="..\jit\JITWriteBarrier.h" />
@@ -1702,6 +1700,7 @@
     <ClInclude Include="..\runtime\JSTypedArrayConstructors.h" />
     <ClInclude Include="..\runtime\JSTypedArrayPrototypes.h" />
     <ClInclude Include="..\runtime\JSTypedArrays.h" />
+    <ClInclude Include="..\runtime\JSTypedArrayViewConstructor.h" />
     <ClInclude Include="..\runtime\JSTypedArrayViewPrototype.h" />
     <ClInclude Include="..\runtime\JSUint16Array.h" />
     <ClInclude Include="..\runtime\JSUint32Array.h" />

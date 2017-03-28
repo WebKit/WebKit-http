@@ -54,6 +54,7 @@
 #include "DrawingAreaProxyMessages.h"
 #include "EventDispatcherMessages.h"
 #include "Logging.h"
+#include "NativeWebGestureEvent.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
@@ -1900,6 +1901,20 @@ bool WebPageProxy::shouldStartTrackingTouchEvents(const WebTouchEvent& touchStar
 
 #endif
 
+#if ENABLE(MAC_GESTURE_EVENTS)
+void WebPageProxy::handleGestureEvent(const NativeWebGestureEvent& event)
+{
+    if (!isValid())
+        return;
+
+    m_gestureEventQueue.append(event);
+    // FIXME: Consider doing some coalescing here.
+    m_process->responsivenessTimer()->start();
+
+    m_process->send(Messages::EventDispatcher::GestureEvent(m_pageID, event), 0);
+}
+#endif
+
 #if ENABLE(IOS_TOUCH_EVENTS)
 void WebPageProxy::handleTouchEventSynchronously(const NativeWebTouchEvent& event)
 {
@@ -3564,21 +3579,6 @@ void WebPageProxy::mouseDidMoveOverElement(const WebHitTestResultData& hitTestRe
     m_uiClient->mouseDidMoveOverElement(this, hitTestResultData, modifiers, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPageProxy::didBeginTrackingPotentialLongMousePress(const IntPoint& mouseDownPosition, const WebHitTestResultData& hitTestResultData, const UserData& userData)
-{
-    m_uiClient->didBeginTrackingPotentialLongMousePress(this, mouseDownPosition, hitTestResultData, m_process->transformHandlesToObjects(userData.object()).get());
-}
-
-void WebPageProxy::didRecognizeLongMousePress(const UserData& userData)
-{
-    m_uiClient->didRecognizeLongMousePress(this, m_process->transformHandlesToObjects(userData.object()).get());
-}
-
-void WebPageProxy::didCancelTrackingPotentialLongMousePress(const UserData& userData)
-{
-    m_uiClient->didCancelTrackingPotentialLongMousePress(this, m_process->transformHandlesToObjects(userData.object()).get());
-}
-
 void WebPageProxy::connectionWillOpen(IPC::Connection& connection)
 {
     ASSERT(&connection == m_process->connection());
@@ -4148,7 +4148,7 @@ void WebPageProxy::showPopupMenu(const IntRect& rect, uint64_t textDirection, co
         m_activePopupMenu = nullptr;
     }
 
-    m_activePopupMenu = m_pageClient.createPopupMenuProxy(this);
+    m_activePopupMenu = m_pageClient.createPopupMenuProxy(*this);
 
     if (!m_activePopupMenu)
         return;
@@ -4182,18 +4182,18 @@ void WebPageProxy::hidePopupMenu()
 }
 
 #if ENABLE(CONTEXT_MENUS)
-void WebPageProxy::showContextMenu(const IntPoint& menuLocation, const ContextMenuContextData& contextMenuContextData, const Vector<WebContextMenuItemData>& proposedItems, const UserData& userData)
+void WebPageProxy::showContextMenu(const ContextMenuContextData& contextMenuContextData, const UserData& userData)
 {
     // Showing a context menu runs a nested runloop, which can handle messages that cause |this| to get closed.
     Ref<WebPageProxy> protect(*this);
 
-    internalShowContextMenu(menuLocation, contextMenuContextData, proposedItems, ContextMenuClientEligibility::EligibleForClient, userData);
+    internalShowContextMenu(contextMenuContextData, userData);
     
     // No matter the result of internalShowContextMenu, always notify the WebProcess that the menu is hidden so it starts handling mouse events again.
     m_process->send(Messages::WebPage::ContextMenuHidden(), m_pageID);
 }
 
-void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const ContextMenuContextData& contextMenuContextData, const Vector<WebContextMenuItemData>& proposedItems, ContextMenuClientEligibility clientEligibility, const UserData& userData)
+void WebPageProxy::internalShowContextMenu(const ContextMenuContextData& contextMenuContextData, const UserData& userData)
 {
     m_activeContextMenuContextData = contextMenuContextData;
 
@@ -4202,51 +4202,15 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
         m_activeContextMenu = nullptr;
     }
 
-    m_activeContextMenu = m_pageClient.createContextMenuProxy(this);
+    m_activeContextMenu = m_pageClient.createContextMenuProxy(*this, contextMenuContextData, userData);
     if (!m_activeContextMenu)
         return;
 
     // Since showContextMenu() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
 
-    // Unless this is an image control, give the PageContextMenuClient one last swipe at changing the menu.
-    bool askClientToChangeMenu = clientEligibility == ContextMenuClientEligibility::EligibleForClient;
-#if ENABLE(SERVICE_CONTROLS)
-    if (contextMenuContextData.controlledImage())
-        askClientToChangeMenu = false;
-#endif
-
-    Vector<RefPtr<WebContextMenuItem>> proposedAPIItems;
-    for (auto& item : proposedItems) {
-        if (item.action() != ContextMenuItemTagShareMenu) {
-            proposedAPIItems.append(WebContextMenuItem::create(item));
-            continue;
-        }
-
-        ContextMenuItem coreItem = platformInitializeShareMenuItem(contextMenuContextData);
-        if (!coreItem.isNull())
-            proposedAPIItems.append(WebContextMenuItem::create(coreItem));
-    }
-
-    Vector<RefPtr<WebContextMenuItem>> clientItems;
-    bool useProposedItems = true;
-
-    if (askClientToChangeMenu && m_contextMenuClient->getContextMenuFromProposedMenu(*this, proposedAPIItems, clientItems, contextMenuContextData.webHitTestResultData(), m_process->transformHandlesToObjects(userData.object()).get()))
-        useProposedItems = false;
-
-    const Vector<RefPtr<WebContextMenuItem>>& itemsToShow = useProposedItems ? proposedAPIItems : clientItems;
-    if (!m_contextMenuClient->showContextMenu(*this, menuLocation, itemsToShow))
-        m_activeContextMenu->showContextMenu(menuLocation, itemsToShow, contextMenuContextData);
-
-    m_contextMenuClient->contextMenuDismissed(*this);
+    m_activeContextMenu->showContextMenu();
 }
-
-#if !ENABLE(SERVICE_CONTROLS)
-ContextMenuItem WebPageProxy::platformInitializeShareMenuItem(const ContextMenuContextData&)
-{
-    return ContextMenuItem();
-}
-#endif
 
 void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
 {
@@ -4561,6 +4525,11 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     case WebEvent::TouchEnd:
     case WebEvent::TouchCancel:
 #endif
+#if ENABLE(MAC_GESTURE_EVENTS)
+    case WebEvent::GestureStart:
+    case WebEvent::GestureChange:
+    case WebEvent::GestureEnd:
+#endif
         m_process->responsivenessTimer()->stop();
         break;
     }
@@ -4630,6 +4599,21 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
             m_uiClient->didNotHandleKeyEvent(this, event);
         break;
     }
+#if ENABLE(MAC_GESTURE_EVENTS)
+    case WebEvent::GestureStart:
+    case WebEvent::GestureChange:
+    case WebEvent::GestureEnd: {
+        MESSAGE_CHECK(!m_gestureEventQueue.isEmpty());
+        NativeWebGestureEvent event = m_gestureEventQueue.takeFirst();
+
+        MESSAGE_CHECK(type == event.type());
+
+        if (!handled)
+            m_pageClient.gestureEventWasNotHandledByWebCore(event);
+        break;
+    }
+        break;
+#endif
 #if ENABLE(IOS_TOUCH_EVENTS)
     case WebEvent::TouchStart:
     case WebEvent::TouchMove:
@@ -5174,6 +5158,11 @@ void WebPageProxy::exitAcceleratedCompositingMode()
 void WebPageProxy::updateAcceleratedCompositingMode(const LayerTreeContext& layerTreeContext)
 {
     m_pageClient.updateAcceleratedCompositingMode(layerTreeContext);
+}
+
+void WebPageProxy::willEnterAcceleratedCompositingMode()
+{
+    m_pageClient.willEnterAcceleratedCompositingMode();
 }
 
 void WebPageProxy::backForwardClear()

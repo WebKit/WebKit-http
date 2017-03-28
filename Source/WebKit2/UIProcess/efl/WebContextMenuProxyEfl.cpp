@@ -28,7 +28,9 @@
 
 #if ENABLE(CONTEXT_MENUS)
 
+#include "APIContextMenuClient.h"
 #include "EwkView.h"
+#include "WebContextMenuItem.h"
 #include "WebContextMenuItemData.h"
 #include "WebPageProxy.h"
 #include <WebCore/NotImplemented.h>
@@ -37,7 +39,10 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebContextMenuProxyEfl::WebContextMenuProxyEfl(EwkView*, WebPageProxy*)
+WebContextMenuProxyEfl::WebContextMenuProxyEfl(EwkView* ewkView, WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
+    : WebContextMenuProxy(context, userData)
+    , m_ewkView(ewkView)
+    , m_page(page)
 {
 }
 
@@ -45,15 +50,45 @@ WebContextMenuProxyEfl::~WebContextMenuProxyEfl()
 {
 }
 
-void WebContextMenuProxyEfl::showContextMenu(const WebCore::IntPoint&, const Vector<RefPtr<WebContextMenuItem>>&, const ContextMenuContextData&)
+void WebContextMenuProxyEfl::showContextMenu()
 {
-    notImplemented();
+    Vector<RefPtr<WebContextMenuItem>> proposedAPIItems;
+    for (auto& item : m_context.menuItems()) {
+        if (item.action() != ContextMenuItemTagShareMenu)
+            proposedAPIItems.append(WebContextMenuItem::create(item));
+    }
+
+    Vector<RefPtr<WebContextMenuItem>> clientItems;
+    bool useProposedItems = true;
+
+    if (m_page.contextMenuClient().getContextMenuFromProposedMenu(m_page, proposedAPIItems, clientItems, m_context.webHitTestResultData(), m_page.process().transformHandlesToObjects(m_userData.object()).get()))
+        useProposedItems = false;
+
+    const Vector<RefPtr<WebContextMenuItem>>& items = useProposedItems ? proposedAPIItems : clientItems;
+
+    if (items.isEmpty())
+        return;
+
+    Vector<RefPtr<API::Object>> menuItems;
+    menuItems.reserveInitialCapacity(items.size());
+
+    for (const auto& menuItem : items)
+        menuItems.uncheckedAppend(menuItem);
+
+    if (m_ewkView)
+        m_ewkView->showContextMenu(toAPI(m_context.menuLocation()), toAPI(API::Array::create(WTF::move(menuItems)).ptr()));
 }
 
 void WebContextMenuProxyEfl::hideContextMenu()
 {
     notImplemented();
 }
+
+void WebContextMenuProxyEfl::cancelTracking()
+{
+    notImplemented();
+}
+
 
 } // namespace WebKit
 

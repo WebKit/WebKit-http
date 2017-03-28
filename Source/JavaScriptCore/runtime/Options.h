@@ -131,7 +131,7 @@ typedef const char* optionString;
     v(bool, forceProfilerBytecodeGeneration, false, nullptr) \
     \
     v(bool, useFunctionDotArguments, true, nullptr) \
-    v(bool, useTailCalls, false, nullptr) \
+    v(bool, useTailCalls, true, nullptr) \
     \
     /* dumpDisassembly implies dumpDFGDisassembly. */ \
     v(bool, dumpDisassembly, false, "dumps disassembly of all JIT compiled code upon compilation") \
@@ -202,6 +202,7 @@ typedef const char* optionString;
     v(double, minimumCallToKnownRate, 0.51, nullptr) \
     v(bool, createPreHeaders, true, nullptr) \
     v(bool, useMovHintRemoval, true, nullptr) \
+    v(bool, usePutStackSinking, true, nullptr) \
     v(bool, useObjectAllocationSinking, true, nullptr) \
     v(bool, useCopyBarrierOptimization, true, nullptr) \
     \

@@ -11,6 +11,7 @@
 # Copyright (C) 2012 Ericsson AB. All rights reserved.
 # Copyright (C) 2007, 2008, 2009, 2012 Google Inc.
 # Copyright (C) 2013 Samsung Electronics. All rights reserved.
+# Copyright (C) 2015 Canon Inc. All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Library General Public
@@ -571,7 +572,7 @@ sub GetAttributeGetterName
         return $codeGenerator->WK_lcfirst($className) . "Constructor" . $codeGenerator->WK_ucfirst($attribute->signature->name);
     }
     if ($attribute->signature->extendedAttributes->{"JSBuiltin"}) {
-        return GetJSBuiltinFunctionName($className, $attribute->signature->name);
+        return GetJSBuiltinFunctionName($className, $attribute);
     }
     return "js" . $interfaceName . $codeGenerator->WK_ucfirst($attribute->signature->name) . ($attribute->signature->type =~ /Constructor$/ ? "Constructor" : "");
 }
@@ -583,28 +584,17 @@ sub GetAttributeSetterName
         return "set" . $codeGenerator->WK_ucfirst($className) . "Constructor" . $codeGenerator->WK_ucfirst($attribute->signature->name);
     }
     if ($attribute->signature->extendedAttributes->{"JSBuiltin"}) {
-        return "set" . $codeGenerator->WK_ucfirst(GetJSBuiltinFunctionName($className, $attribute->signature->name));
+        return "set" . $codeGenerator->WK_ucfirst(GetJSBuiltinFunctionName($className, $attribute));
     }
     return "setJS" . $interfaceName . $codeGenerator->WK_ucfirst($attribute->signature->name) . ($attribute->signature->type =~ /Constructor$/ ? "Constructor" : "");
-}
-
-sub GetJSBuiltinFunctionName
-{
-    my ($className, $functionName) = @_;
-    return $codeGenerator->WK_lcfirst(substr $className, 2) . $codeGenerator->WK_ucfirst($functionName) . "CodeGenerator";
 }
 
 sub GetFunctionName
 {
     my ($className, $function) = @_;
 
-    my $scopeName = $function->signature->extendedAttributes->{"ImplementedBy"};
-    if (!$scopeName) {
-        $scopeName = substr $className, 2;
-    }
-
     if ($function->signature->extendedAttributes->{"JSBuiltin"}) {
-        return GetJSBuiltinFunctionName($className, $function->signature->name);
+        return GetJSBuiltinFunctionName($className, $function);
     }
 
     my $kind = $function->isStatic ? "Constructor" : "Prototype";
@@ -1874,10 +1864,6 @@ sub GenerateImplementation
 
     # Add constructor declaration
     if (NeedsConstructorProperty($interface)) {
-        $implIncludes{"JSDOMBinding.h"} = 1;
-        if ($interface->extendedAttributes->{"NamedConstructor"}) {
-            $implIncludes{"DOMConstructorWithDocument.h"} = 1;
-        }
         GenerateConstructorDeclaration(\@implContent, $className, $interface, $interfaceName);
     }
 
@@ -2032,6 +2018,7 @@ sub GenerateImplementation
     my @runtimeEnabledFunctions = ();
 
     foreach my $function (@{$interface->functions}) {
+        next if ($function->signature->extendedAttributes->{"Private"});
         next if ($function->isStatic);
         next if $function->{overloadIndex} && $function->{overloadIndex} > 1;
         my $name = $function->signature->name;
@@ -2106,6 +2093,16 @@ sub GenerateImplementation
                 push(@implContent, "    }\n");
                 push(@implContent, "#endif\n") if $conditionalString;
             }
+
+            my $firstPrivateFunction = 1;
+            foreach my $function (@{$interface->functions}) {
+                next unless ($function->signature->extendedAttributes->{"Private"});
+                AddToImplIncludes("WebCoreJSClientData.h");
+                push(@implContent, "    JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);\n") if $firstPrivateFunction;
+                $firstPrivateFunction = 0;
+                push(@implContent, "    putDirect(vm, clientData.builtinNames()." . $function->signature->name . "PrivateName(), JSFunction::create(vm, globalObject(), 0, String(), " . GetFunctionName($className, $function) . "), ReadOnly | DontEnum);\n");
+            }
+
             push(@implContent, "}\n\n");
         } else {
             push(@implContent, "void ${className}Prototype::finishCreation(VM& vm)\n");
@@ -4584,14 +4581,13 @@ sub GeneratePrototypeDeclaration
     push(@$outputArray, "};\n\n");
 }
 
-sub GetParentConstructorClassName
+sub GetConstructorTemplateClassName
 {
     my $interface = shift;
-    if ($interface->extendedAttributes->{"JSBuiltinConstructor"}) {
-        return "DOMConstructorJSBuiltinObject";
-    }
-    return "DOMConstructorObject";
-
+    return "JSBuiltinConstructor" if ($interface->extendedAttributes->{"JSBuiltinConstructor"});
+    return "JSDOMConstructorNotConstructable" if ($interface->extendedAttributes->{"NamedConstructor"});
+    return "JSDOMConstructorNotConstructable" unless IsConstructable($interface);
+    return "JSDOMConstructor";
 }
 
 sub GenerateConstructorDeclaration
@@ -4602,65 +4598,13 @@ sub GenerateConstructorDeclaration
     my $interfaceName = shift;
 
     my $constructorClassName = "${className}Constructor";
-    my $parentClassName = GetParentConstructorClassName($interface);
+    my $templateClassName = GetConstructorTemplateClassName($interface);
 
-    push(@$outputArray, "class ${constructorClassName} : public " . $parentClassName . " {\n");
-    push(@$outputArray, "private:\n");
-    push(@$outputArray, "    ${constructorClassName}(JSC::Structure*, JSDOMGlobalObject&);\n");
-    push(@$outputArray, "    void finishCreation(JSC::VM&, JSDOMGlobalObject&);\n\n");
+    $implIncludes{"JSDOMConstructor.h"} = 1;
 
-    push(@$outputArray, "public:\n");
-    push(@$outputArray, "    typedef " . $parentClassName . " Base;\n");
-    push(@$outputArray, "    static $constructorClassName* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)\n");
-    push(@$outputArray, "    {\n");
-    push(@$outputArray, "        $constructorClassName* ptr = new (NotNull, JSC::allocateCell<$constructorClassName>(vm.heap)) $constructorClassName(structure, globalObject);\n");
-    push(@$outputArray, "        ptr->finishCreation(vm, globalObject);\n");
-    push(@$outputArray, "        return ptr;\n");
-    push(@$outputArray, "    }\n\n");
-
-    push(@$outputArray, "    DECLARE_INFO;\n");
-
-    push(@$outputArray, "    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)\n");
-    push(@$outputArray, "    {\n");
-    push(@$outputArray, "        return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());\n");
-    push(@$outputArray, "    }\n");
-
-    if (IsConstructable($interface) && !$interface->extendedAttributes->{"NamedConstructor"}) {
-        push(@$outputArray, "protected:\n");
-        push(@$outputArray, "    static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);\n");
-        push(@$outputArray, "    static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);\n");
-    }
-    push(@$outputArray, "};\n\n");
-
-    if ($interface->extendedAttributes->{"NamedConstructor"}) {
-        push(@$outputArray, <<END);
-class JS${interfaceName}NamedConstructor : public DOMConstructorWithDocument {
-public:
-    typedef DOMConstructorWithDocument Base;
-
-    static JS${interfaceName}NamedConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
-    {
-        JS${interfaceName}NamedConstructor* constructor = new (NotNull, JSC::allocateCell<JS${interfaceName}NamedConstructor>(vm.heap)) JS${interfaceName}NamedConstructor(structure, globalObject);
-        constructor->finishCreation(vm, globalObject);
-        return constructor;
-    }
-
-    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)
-    {
-        return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
-    }
-
-    DECLARE_INFO;
-
-private:
-    JS${interfaceName}NamedConstructor(JSC::Structure*, JSDOMGlobalObject&);
-    static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
-    static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
-};
-
-END
-    }
+    push(@$outputArray, "typedef $templateClassName<$className> ${constructorClassName};\n");
+    push(@$outputArray, "typedef JSDOMNamedConstructor<$className> JS${interfaceName}NamedConstructor;\n") if $interface->extendedAttributes->{"NamedConstructor"};
+    push(@$outputArray, "\n");
 }
 
 sub GenerateConstructorDefinitions
@@ -4700,7 +4644,7 @@ sub GenerateOverloadedConstructorDefinition
     my $lengthOfLongestOverloadedConstructorParameterList = LengthOfLongestFunctionParameterList($interface->constructors);
 
     push(@$outputArray, <<END);
-EncodedJSValue JSC_HOST_CALL ${className}Constructor::construct(ExecState* state)
+template<> EncodedJSValue JSC_HOST_CALL ${className}Constructor::construct(ExecState* state)
 {
     size_t argsCount = std::min<size_t>($lengthOfLongestOverloadedConstructorParameterList, state->argumentCount());
 END
@@ -4746,6 +4690,8 @@ sub GenerateConstructorDefinition
     my $generatingNamedConstructor = shift;
     my $function = shift;
 
+    return if ($interface->extendedAttributes->{"JSBuiltinConstructor"});
+
     my $constructorClassName = $generatingNamedConstructor ? "${className}NamedConstructor" : "${className}Constructor";
 
     if (IsConstructable($interface)) {
@@ -4754,7 +4700,7 @@ sub GenerateConstructorDefinition
             $implIncludes{"<runtime/Error.h>"} = 1;
 
             push(@$outputArray, <<END);
-EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(ExecState* state)
+template<> EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(ExecState* state)
 {
     auto* jsConstructor = jsCast<${constructorClassName}*>(state->callee());
 
@@ -4819,24 +4765,16 @@ END
 
 END
          } elsif ($interface->extendedAttributes->{"CustomConstructor"}) {
-            push(@$outputArray, "JSC::EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(JSC::ExecState* state)\n");
+            push(@$outputArray, "template<> JSC::EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(JSC::ExecState* state)\n");
             push(@$outputArray, "{\n");
             push(@$outputArray, "    return construct${className}(state);\n");
             push(@$outputArray, "}\n\n");
-         } elsif ($interface->extendedAttributes->{"JSBuiltinConstructor"}) {
-            push(@$outputArray, "JSC::EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(JSC::ExecState* state)\n");
-            push(@$outputArray, "{\n");
-
-            push(@$outputArray, "    auto* castedThis = jsCast<${constructorClassName}*>(state->callee());\n");
-            push(@$outputArray, "    return createJSBuiltin<${className}>(*state, *castedThis->initializeFunction(), *castedThis->globalObject());\n");
-
-            push(@$outputArray, "}\n\n");
-        } elsif (!HasCustomConstructor($interface) && (!$interface->extendedAttributes->{"NamedConstructor"} || $generatingNamedConstructor)) {
+         } elsif (!HasCustomConstructor($interface) && (!$interface->extendedAttributes->{"NamedConstructor"} || $generatingNamedConstructor)) {
             if ($function->{overloadedIndex} && $function->{overloadedIndex} > 0) {
                 push(@$outputArray, "static inline EncodedJSValue construct${className}$function->{overloadedIndex}(ExecState* state)\n");
             }
             else {
-                push(@$outputArray, "EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(ExecState* state)\n");
+                push(@$outputArray, "template<> EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(ExecState* state)\n");
             }
 
             push(@$outputArray, "{\n");
@@ -4961,22 +4899,8 @@ sub GenerateConstructorHelperMethods
         $leastConstructorLength = 0;
     }
 
-    push(@$outputArray, "const ClassInfo ${constructorClassName}::s_info = { \"${visibleInterfaceName}Constructor\", &Base::s_info, 0, CREATE_METHOD_TABLE($constructorClassName) };\n\n");
-
-    push(@$outputArray, "${constructorClassName}::${constructorClassName}(Structure* structure, JSDOMGlobalObject& globalObject)\n");
-    push(@$outputArray, "    : Base(structure, globalObject)\n");
+    push(@$outputArray, "template<> void ${constructorClassName}::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)\n");
     push(@$outputArray, "{\n");
-    push(@$outputArray, "}\n\n");
-
-    push(@$outputArray, "void ${constructorClassName}::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)\n");
-    push(@$outputArray, "{\n");
-
-    if ($generatingNamedConstructor) {
-        push(@$outputArray, "    Base::finishCreation(globalObject);\n");
-    } else {
-        push(@$outputArray, "    Base::finishCreation(vm);\n");
-    }
-    push(@$outputArray, "    ASSERT(inherits(info()));\n");
 
     # There must exist an interface prototype object for every non-callback interface defined, regardless
     # of whether the interface was declared with the [NoInterfaceObject] extended attribute.
@@ -4986,7 +4910,7 @@ sub GenerateConstructorHelperMethods
     } elsif ($interface->isCallback) {
         push(@$outputArray, "    UNUSED_PARAM(globalObject);\n");
     } else {
-       push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);\n");
+        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);\n");
     }
 
     push(@$outputArray, "    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral(\"$visibleInterfaceName\"))), ReadOnly | DontEnum);\n");
@@ -4999,35 +4923,32 @@ sub GenerateConstructorHelperMethods
         push(@$outputArray, "    reifyStaticProperties(vm, ${className}ConstructorTableValues, *this);\n");
     }
 
-    if ($interface->extendedAttributes->{"JSBuiltinConstructor"}) {
-        my $initializeFunctionName = GetJSBuiltinFunctionName(${className}, "initialize" . ${interfaceName});
-        push(@$outputArray, "    setInitializeFunction(vm, *JSC::JSFunction::createBuiltinFunction(vm, ${initializeFunctionName}(vm), &globalObject));\n");
-    }
-
     push(@$outputArray, "}\n\n");
 
-    if (IsConstructable($interface)) {
-        if (!$interface->extendedAttributes->{"NamedConstructor"} || $generatingNamedConstructor) {
-            my $conditionalString = $codeGenerator->GenerateConstructorConditionalString($interface);
-            push(@$outputArray, "ConstructType ${constructorClassName}::getConstructData(JSCell* cell, ConstructData& constructData)\n");
-            push(@$outputArray, "{\n");
-            if ($conditionalString) {
-                push(@$outputArray, "#if $conditionalString\n");
-                push(@$outputArray, "    UNUSED_PARAM(cell);\n");
-                push(@$outputArray, "    constructData.native.function = construct;\n");
-                push(@$outputArray, "    return ConstructTypeHost;\n");
-                push(@$outputArray, "#else\n");
-                push(@$outputArray, "    return Base::getConstructData(cell, constructData);\n");
-                push(@$outputArray, "#endif\n");
-            } else {
-                push(@$outputArray, "    UNUSED_PARAM(cell);\n");
-                push(@$outputArray, "    constructData.native.function = construct;\n");
-                push(@$outputArray, "    return ConstructTypeHost;\n");
-            }
-            push(@$outputArray, "}\n");
-            push(@$outputArray, "\n");
-        }
+    my $conditionalString = $codeGenerator->GenerateConstructorConditionalString($interface);
+    if ($conditionalString) {
+        push(@$outputArray, "template<> ConstructType ${constructorClassName}::getConstructData(JSCell* cell, ConstructData& constructData)\n");
+        push(@$outputArray, "{\n");
+        push(@$outputArray, "#if $conditionalString\n");
+        push(@$outputArray, "    UNUSED_PARAM(cell);\n");
+        push(@$outputArray, "    constructData.native.function = construct;\n");
+        push(@$outputArray, "    return ConstructTypeHost;\n");
+        push(@$outputArray, "#else\n");
+        push(@$outputArray, "    return Base::getConstructData(cell, constructData);\n");
+        push(@$outputArray, "#endif\n");
+        push(@$outputArray, "}\n");
+        push(@$outputArray, "\n");
     }
+
+    if ($interface->extendedAttributes->{"JSBuiltinConstructor"}) {
+        push(@$outputArray, "template<> FunctionExecutable* ${constructorClassName}::initializeExecutable(VM& vm)\n");
+        push(@$outputArray, "{\n");
+        push(@$outputArray, "    return " . GetJSBuiltinFunctionNameFromString($interfaceName, "initialize" . $interfaceName) . "(vm);\n");
+        push(@$outputArray, "}\n");
+        push(@$outputArray, "\n");
+    }
+    push(@$outputArray, "template<> const ClassInfo ${constructorClassName}::s_info = { \"${visibleInterfaceName}Constructor\", &Base::s_info, 0, CREATE_METHOD_TABLE($constructorClassName) };\n\n");
+ 
 }
 
 sub HasCustomConstructor
@@ -5101,25 +5022,45 @@ sub ComputeFunctionSpecial
     return (@specials > 0) ? join(" | ", @specials) : "0";
 }
 
+sub GetJSBuiltinFunctionName
+{
+    my ($className, $function) = @_;
+    my $scopeName = $function->signature->extendedAttributes->{"ImplementedBy"};
+    $scopeName = substr $className, 2 unless $scopeName;
+    return GetJSBuiltinFunctionNameFromString($scopeName, $function->signature->name);
+}
+
+sub GetJSBuiltinFunctionNameFromString
+{
+    my ($scopeName, $functionName) = @_;
+    return $codeGenerator->WK_lcfirst($scopeName) . $codeGenerator->WK_ucfirst($functionName) . "CodeGenerator";
+}
+
+sub GetJSBuiltinScopeName
+{
+    my $interface = shift;
+    my $object = shift;
+
+    return $object->signature->extendedAttributes->{"ImplementedBy"} if $object->signature->extendedAttributes->{"ImplementedBy"};
+    return $interface->name;
+}
+
 sub AddJSBuiltinIncludesIfNeeded()
 {
     my $interface = shift;
 
-    my $include = $interface->name . "Builtins.h";
-
     if ($interface->extendedAttributes->{"JSBuiltinConstructor"}) {
-        AddToImplIncludes($include);
+        AddToImplIncludes($interface->name . "Builtins.h");
         return;
     }
 
     foreach my $function (@{$interface->functions}) {
-        AddToImplIncludes($include, $function->signature->extendedAttributes->{"Conditional"}) if $function->signature->extendedAttributes->{"JSBuiltin"};
+        AddToImplIncludes(GetJSBuiltinScopeName($interface, $function) . "Builtins.h", $function->signature->extendedAttributes->{"Conditional"}) if $function->signature->extendedAttributes->{"JSBuiltin"};
     }
 
     foreach my $attribute (@{$interface->attributes}) {
-        AddToImplIncludes($include, $attribute->signature->extendedAttributes->{"Conditional"}) if $attribute->signature->extendedAttributes->{"JSBuiltin"};
+        AddToImplIncludes(GetJSBuiltinScopeName($interface, $attribute) . "Builtins.h", $attribute->signature->extendedAttributes->{"Conditional"}) if $attribute->signature->extendedAttributes->{"JSBuiltin"};
     }
-
 }
 
 1;

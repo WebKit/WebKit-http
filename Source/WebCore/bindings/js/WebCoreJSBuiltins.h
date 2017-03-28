@@ -27,6 +27,10 @@
 #ifndef WebCoreJSBuiltins_h
 #define WebCoreJSBuiltins_h
 
+#if ENABLE(MEDIA_STREAM)
+#include "MediaDevicesBuiltinsWrapper.h"
+#endif
+
 #if ENABLE(STREAMS_API)
 #include "ByteLengthQueuingStrategyBuiltinsWrapper.h"
 #include "CountQueuingStrategyBuiltinsWrapper.h"
@@ -34,8 +38,10 @@
 #include "ReadableStreamControllerBuiltinsWrapper.h"
 #include "ReadableStreamInternalsBuiltinsWrapper.h"
 #include "ReadableStreamReaderBuiltinsWrapper.h"
+#include "StreamInternalsBuiltinsWrapper.h"
+#include "WritableStreamBuiltinsWrapper.h"
+#include "WritableStreamInternalsBuiltinsWrapper.h"
 #endif
-
 
 #include <runtime/VM.h>
 
@@ -52,19 +58,33 @@ public:
         , m_readableStreamControllerBuiltins(&vm)
         , m_readableStreamInternalsBuiltins(&vm)
         , m_readableStreamReaderBuiltins(&vm)
+        , m_streamInternalsBuiltins(&vm)
+        , m_writableStreamBuiltins(&vm)
+        , m_writableStreamInternalsBuiltins(&vm)
+#endif
+#if ENABLE(MEDIA_STREAM)
+        , m_mediaDevicesBuiltins(&vm)
 #endif
     {
 #if ENABLE(STREAMS_API)
         m_readableStreamInternalsBuiltins.exportNames();
+        m_streamInternalsBuiltins.exportNames();
+        m_writableStreamInternalsBuiltins.exportNames();
 #endif
     }
 #if ENABLE(STREAMS_API)
-    ByteLengthQueuingStrategyBuiltinsWrapper& byteLengthQueuingStrategyBuiltins() { return m_byteLengthQueuingStrategyBuiltins;}
-    CountQueuingStrategyBuiltinsWrapper& countQueuingStrategyBuiltins() { return m_countQueuingStrategyBuiltins;}
-    ReadableStreamBuiltinsWrapper& readableStreamBuiltins() { return m_readableStreamBuiltins;}
-    ReadableStreamControllerBuiltinsWrapper& readableStreamControllerBuiltins() { return m_readableStreamControllerBuiltins;}
-    ReadableStreamInternalsBuiltinsWrapper& readableStreamInternalsBuiltins() { return m_readableStreamInternalsBuiltins;}
-    ReadableStreamReaderBuiltinsWrapper& readableStreamReaderBuiltins() { return m_readableStreamReaderBuiltins;}
+    ByteLengthQueuingStrategyBuiltinsWrapper& byteLengthQueuingStrategyBuiltins() { return m_byteLengthQueuingStrategyBuiltins; }
+    CountQueuingStrategyBuiltinsWrapper& countQueuingStrategyBuiltins() { return m_countQueuingStrategyBuiltins; }
+    ReadableStreamBuiltinsWrapper& readableStreamBuiltins() { return m_readableStreamBuiltins; }
+    ReadableStreamControllerBuiltinsWrapper& readableStreamControllerBuiltins() { return m_readableStreamControllerBuiltins; }
+    ReadableStreamInternalsBuiltinsWrapper& readableStreamInternalsBuiltins() { return m_readableStreamInternalsBuiltins; }
+    ReadableStreamReaderBuiltinsWrapper& readableStreamReaderBuiltins() { return m_readableStreamReaderBuiltins; }
+    StreamInternalsBuiltinsWrapper& streamInternalsBuiltins() { return m_streamInternalsBuiltins; }
+    WritableStreamBuiltinsWrapper& writableStreamBuiltins() { return m_writableStreamBuiltins; }
+    WritableStreamInternalsBuiltinsWrapper& writableStreamInternalsBuiltins() { return m_writableStreamInternalsBuiltins;}
+#endif
+#if ENABLE(MEDIA_STREAM)
+    MediaDevicesBuiltinsWrapper& mediaDevicesBuiltins() { return m_mediaDevicesBuiltins; }
 #endif
 
 private:
@@ -76,6 +96,12 @@ private:
     ReadableStreamControllerBuiltinsWrapper m_readableStreamControllerBuiltins;
     ReadableStreamInternalsBuiltinsWrapper m_readableStreamInternalsBuiltins;
     ReadableStreamReaderBuiltinsWrapper m_readableStreamReaderBuiltins;
+    StreamInternalsBuiltinsWrapper m_streamInternalsBuiltins;
+    WritableStreamBuiltinsWrapper m_writableStreamBuiltins;
+    WritableStreamInternalsBuiltinsWrapper m_writableStreamInternalsBuiltins;
+#endif
+#if ENABLE(MEDIA_STREAM)
+    MediaDevicesBuiltinsWrapper m_mediaDevicesBuiltins;
 #endif
 
 };

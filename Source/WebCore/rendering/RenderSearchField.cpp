@@ -37,11 +37,11 @@
 #include "LocalizedStrings.h"
 #include "Page.h"
 #include "PlatformKeyboardEvent.h"
+#include "PopupMenu.h"
 #include "RenderLayer.h"
 #include "RenderScrollbar.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
-#include "SearchPopupMenu.h"
 #include "Settings.h"
 #include "StyleResolver.h"
 #include "TextControlInnerElements.h"
@@ -52,8 +52,6 @@ using namespace HTMLNames;
 
 RenderSearchField::RenderSearchField(HTMLInputElement& element, Ref<RenderStyle>&& style)
     : RenderTextControlSingleLine(element, WTF::move(style))
-    , m_searchPopupIsVisible(false)
-    , m_searchPopup(0)
 {
     ASSERT(element.isSearchField());
 }
@@ -88,8 +86,12 @@ void RenderSearchField::addSearchResult()
     if (frame().page()->usesEphemeralSession())
         return;
 
-    m_recentSearches.removeAll(value);
-    m_recentSearches.insert(0, value);
+    m_recentSearches.removeAllMatching([value] (const RecentSearch& recentSearch) {
+        return recentSearch.string == value;
+    });
+
+    RecentSearch recentSearch = { value, std::chrono::system_clock::now() };
+    m_recentSearches.insert(0, recentSearch);
     while (static_cast<int>(m_recentSearches.size()) > inputElement().maxResults())
         m_recentSearches.removeLast();
 
@@ -163,25 +165,20 @@ void RenderSearchField::updateFromElement()
         m_searchPopup->popupMenu()->updateFromElement();
 }
 
-void RenderSearchField::updateCancelButtonVisibility() const
+void RenderSearchField::updateCancelButtonVisibility()
 {
     RenderElement* cancelButtonRenderer = cancelButtonElement()->renderer();
     if (!cancelButtonRenderer)
         return;
 
-    const RenderStyle& curStyle = cancelButtonRenderer->style();
-    EVisibility buttonVisibility = visibilityForCancelButton();
-    if (curStyle.visibility() == buttonVisibility)
+    bool wasCancelButtonVisible = m_isCancelButtonVisible;
+    m_isCancelButtonVisible = style().visibility() == VISIBLE && !inputElement().value().isEmpty();
+    if (wasCancelButtonVisible == m_isCancelButtonVisible)
         return;
 
-    auto cancelButtonStyle = RenderStyle::clone(&curStyle);
-    cancelButtonStyle.get().setVisibility(buttonVisibility);
+    auto cancelButtonStyle = RenderStyle::clone(&cancelButtonRenderer->style());
+    cancelButtonStyle.get().setVisibility(m_isCancelButtonVisible ? VISIBLE : HIDDEN);
     cancelButtonRenderer->setStyle(WTF::move(cancelButtonStyle));
-}
-
-EVisibility RenderSearchField::visibilityForCancelButton() const
-{
-    return (style().visibility() == HIDDEN || inputElement().value().isEmpty()) ? HIDDEN : VISIBLE;
 }
 
 const AtomicString& RenderSearchField::autosaveName() const
@@ -228,7 +225,7 @@ String RenderSearchField::itemText(unsigned listIndex) const
     if (static_cast<int>(listIndex) == (size - 1))
         return searchMenuClearRecentSearchesText();
 #endif
-    return m_recentSearches[listIndex - 1];
+    return m_recentSearches[listIndex - 1].string;
 }
 
 String RenderSearchField::itemLabel(unsigned) const

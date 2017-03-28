@@ -268,8 +268,15 @@ webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation.html [ Pas
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-last-modified.html [ Pass Failure Timeout ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-vary.html [ Pass Failure Timeout ]
 webkit.org/b/147075 http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure Timeout ]
+webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-vary-no-body.html [ Pass Failure Timeout ]
 
 webkit.org/b/150095 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Pass Timeout ]
+
+webkit.org/b/150241 webarchive/loading/object.html [ Pass Crash ] 
+
+webkit.org/b/150363 [ Yosemite ] http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-twice.html [ Pass Failure ]
+
+webkit.org/b/150378 [ Yosemite ] http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-simple.html [ Pass Failure ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -525,7 +532,7 @@ webkit.org/b/141322 [ Debug Yosemite+ ] fast/images/destroyed-image-load-event.h
 
 webkit.org/b/141325 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-abortedonmain.html [ Pass Failure ]
 
-webkit.org/b/141085 [ Yosemite ] http/tests/media/video-query-url.html [ Pass Timeout ]
+webkit.org/b/141085 http/tests/media/video-query-url.html [ Pass Timeout ]
 
 webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout ]
 
@@ -539,14 +546,14 @@ webkit.org/b/146400 http/tests/contentextensions/character-set-basic-support.htm
 # WebKit1-only failure.
 webkit.org/b/103857 fast/events/mouse-cursor-change.html [ Pass ]
 
-# Imported Blink tests which have not been investigated.
+# Imported Blink tests which have not been investigated. Partially covered with rdar://problem/23023848.
 imported/blink/fast/media/empty-media-rule.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/basic-rtl.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/dynamic/add-spanner-inside-overflow-hidden.html [ Pass ImageOnlyFailure ]
 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Pass Timeout ]
-
-[ Debug ] imported/blink/fast/multicol/newmulticol/multicol-becomes-regular-block.html [ Pass ImageOnlyFailure ]
-[ Debug ] imported/blink/fast/multicol/vertical-lr/float-big-line.html  [ Pass ImageOnlyFailure ]
-[ Debug ] imported/blink/fast/pagination/viewport-x-horizontal-bt-ltr.html [ Pass ImageOnlyFailure ]
-[ Debug ] imported/blink/fast/transforms/transform-update-frame-overflow.html [ Pass ImageOnlyFailure ]
-[ Debug ] imported/blink/fast/multicol/vertical-rl/float-big-line.html [ Pass ImageOnlyFailure ]
+imported/blink/fast/multicol/newmulticol/multicol-becomes-regular-block.html [ Pass ImageOnlyFailure ]
+imported/blink/fast/multicol/vertical-lr/float-big-line.html  [ Pass ImageOnlyFailure ]
+imported/blink/fast/pagination/viewport-x-horizontal-bt-ltr.html [ Pass ImageOnlyFailure ]
+imported/blink/fast/transforms/transform-update-frame-overflow.html [ Pass ImageOnlyFailure ]
+imported/blink/fast/multicol/vertical-rl/float-big-line.html [ Pass ImageOnlyFailure ]
+imported/blink/fast/multicol/span/adjacent-spanners-with-margin.html [ Pass ImageOnlyFailure ]

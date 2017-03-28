@@ -30,10 +30,6 @@ messages -> WebPageProxy {
     RunJavaScriptPrompt(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, String message, String defaultValue) -> (String result) Delayed
     MouseDidMoveOverElement(struct WebKit::WebHitTestResultData hitTestResultData, uint32_t modifiers, WebKit::UserData userData)
 
-    DidBeginTrackingPotentialLongMousePress(WebCore::IntPoint mouseDownPosition, struct WebKit::WebHitTestResultData hitTestResultData, WebKit::UserData userData)
-    DidRecognizeLongMousePress(WebKit::UserData userData)
-    DidCancelTrackingPotentialLongMousePress(WebKit::UserData userData)
-
 #if ENABLE(NETSCAPE_PLUGIN_API)
     UnavailablePluginButtonClicked(uint32_t pluginUnavailabilityReason, String mimeType, String pluginURLString, String pluginspageAttributeURLString, String frameURLString, String pageURLString)
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
@@ -188,6 +184,7 @@ messages -> WebPageProxy {
     CommitPotentialTapFailed()
     DidNotHandleTapAsClick(WebCore::IntPoint point)
     ViewportMetaTagWidthDidChange(float width)
+    DisableDoubleTapGesturesUntilTapIsFinishedIfNecessary(uint64_t requestID, bool allowsDoubleTapZoom, WebCore::FloatRect targetRect, bool isReplacedElement, double minimumScale, double maximumScale)
     DidFinishDrawingPagesToPDF(IPC::DataReference pdfData)
 #endif
 #if PLATFORM(GTK)
@@ -247,8 +244,7 @@ messages -> WebPageProxy {
     HidePopupMenu()
 
 #if ENABLE(CONTEXT_MENUS)
-    # ContextMenu messages
-    ShowContextMenu(WebCore::IntPoint menuLocation, WebKit::ContextMenuContextData contextMenuContextData, Vector<WebKit::WebContextMenuItemData> items, WebKit::UserData userData)
+    ShowContextMenu(WebKit::ContextMenuContextData contextMenuContextData, WebKit::UserData userData)
 #endif
 
     # Authentication messages
@@ -378,8 +374,8 @@ messages -> WebPageProxy {
 #endif
 
     # Search popup menus
-    SaveRecentSearches(String name, Vector<String> searchItems)
-    LoadRecentSearches(String name) -> (Vector<String> result)
+    SaveRecentSearches(String name, Vector<WebCore::RecentSearch> searchItems)
+    LoadRecentSearches(String name) -> (Vector<WebCore::RecentSearch> result)
 
     SavePDFToFileInDownloadsFolder(String suggestedFilename, String originatingURLString, IPC::DataReference data)
 
@@ -406,10 +402,6 @@ messages -> WebPageProxy {
 #if PLATFORM(MAC)
     ShowTelephoneNumberMenu(String telephoneNumber, WebCore::IntPoint point)
 #endif
-#endif
-
-#if ENABLE(SERVICE_CONTROLS)
-    ShowSelectionServiceMenu(IPC::DataReference selectionAsRTFD, Vector<String> telephoneNumbers, bool isEditable, WebCore::IntPoint point)
 #endif
 
 #if USE(QUICK_LOOK)

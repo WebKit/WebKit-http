@@ -260,6 +260,12 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_SHADOW_DOM 1
 #endif
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+#if !defined(ENABLE_MAC_GESTURE_EVENTS) && USE(APPLE_INTERNAL_SDK)
+#define ENABLE_MAC_GESTURE_EVENTS 1
+#endif
+#endif
+
 #endif /* PLATFORM(MAC) */
 
 /* --------- Apple Windows port --------- */
@@ -789,8 +795,8 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_WEB_SOCKETS 1
 #endif
 
-#if !defined(ENABLE_PICTURE_SIZES)
-#define ENABLE_PICTURE_SIZES 0
+#if !defined(ENABLE_CURRENTSRC)
+#define ENABLE_CURRENTSRC 0
 #endif
 
 #if !defined(ENABLE_WEB_TIMING)

@@ -37,12 +37,14 @@
 
 namespace WebCore {
 
+class IDBError;
 class IDBResultData;
 
 namespace IDBClient {
 
 class IDBDatabase;
 class IDBOpenDBRequest;
+class IDBTransaction;
 
 class IDBConnectionToServer : public RefCounted<IDBConnectionToServer> {
 public:
@@ -56,8 +58,12 @@ public:
     void openDatabase(IDBOpenDBRequest&);
     void didOpenDatabase(const IDBResultData&);
 
+    void commitTransaction(IDBTransaction&);
+    void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
+
     void fireVersionChangeEvent(uint64_t databaseConnectionIdentifier, uint64_t requestedVersion);
 
+    void databaseConnectionClosed(IDBDatabase&);
     void registerDatabaseConnection(IDBDatabase&);
     void unregisterDatabaseConnection(IDBDatabase&);
 
@@ -67,7 +73,8 @@ private:
     Ref<IDBConnectionToServerDelegate> m_delegate;
 
     HashMap<IDBResourceIdentifier, RefPtr<IDBClient::IDBOpenDBRequest>> m_openDBRequestMap;
-    HashSet<RefPtr<IDBDatabase>> m_databaseConnections;
+    HashMap<uint64_t, IDBDatabase*> m_databaseConnectionMap;
+    HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
 };
 
 } // namespace IDBClient

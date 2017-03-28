@@ -74,6 +74,7 @@
 #import "_WKDiagnosticLoggingDelegate.h"
 #import "_WKFindDelegate.h"
 #import "_WKFormDelegate.h"
+#import "_WKInputDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
@@ -159,7 +160,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
     _WKRenderingProgressEvents _observedRenderingProgressEvents;
 
-    WebKit::WeakObjCPtr<id <_WKFormDelegate>> _formDelegate;
+    WebKit::WeakObjCPtr<id <_WKInputDelegate>> _inputDelegate;
+
 #if PLATFORM(IOS)
     RetainPtr<WKScrollView> _scrollView;
     RetainPtr<WKContentView> _contentView;
@@ -211,11 +213,10 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     BOOL _pageIsPrintingToPDF;
     RetainPtr<CGPDFDocumentRef> _printedDocument;
     Vector<std::function<void ()>> _snapshotsDeferredDuringResize;
-
-    BOOL _canAssistOnProgrammaticFocus;
 #endif
 #if PLATFORM(MAC)
     RetainPtr<WKView> _wkView;
+    CGSize _intrinsicContentSize;
 #endif
 }
 
@@ -364,14 +365,14 @@ static bool shouldAllowPictureInPictureMediaPlayback()
     _page->contentSizeCategoryDidChange([self _contentSizeCategory]);
 
     [[_configuration _contentProviderRegistry] addPage:*_page];
-
-    [self setCanAssistOnProgrammaticFocus:[_configuration canAssistOnProgrammaticFocus]];
 #endif
 
 #if PLATFORM(MAC)
     _wkView = adoptNS([[WKView alloc] initWithFrame:bounds processPool:processPool configuration:WTF::move(pageConfiguration) webView:self]);
     [self addSubview:_wkView.get()];
     _page = WebKit::toImpl([_wkView pageRef]);
+
+    _intrinsicContentSize = CGSizeMake(NSViewNoInstrinsicMetric, NSViewNoInstrinsicMetric);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [_wkView _setAutomaticallyAdjustsContentInsets:YES];
@@ -720,16 +721,6 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
     return _scrollView.get();
 }
 
-- (BOOL)canAssistOnProgrammaticFocus
-{
-    return _canAssistOnProgrammaticFocus;
-}
-
-- (void)setCanAssistOnProgrammaticFocus:(BOOL)canAssistOnProgrammaticFocus
-{
-    _canAssistOnProgrammaticFocus = canAssistOnProgrammaticFocus;
-}
-
 - (WKBrowsingContextController *)browsingContextController
 {
     return [_contentView browsingContextController];
@@ -1005,6 +996,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     [_scrollView setZoomEnabled:layerTreeTransaction.allowsUserScaling()];
     if (!layerTreeTransaction.scaleWasSetByUIProcess() && ![_scrollView isZooming] && ![_scrollView isZoomBouncing] && ![_scrollView _isAnimatingZoom])
         [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
+
+    [_contentView _setDoubleTapGesturesEnabled:self._viewportIsUserScalable];
 
     [self _updateScrollViewBackground];
 
@@ -1402,12 +1395,13 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
                         force:YES];
 }
 
-- (BOOL)_zoomToRect:(WebCore::FloatRect)targetRect withOrigin:(WebCore::FloatPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(float)minimumScrollDistance
+- (CGFloat)_contentZoomScale
 {
-    const float maximumScaleFactorDeltaForPanScroll = 0.02;
+    return contentZoomScale(self);
+}
 
-    double currentScale = contentZoomScale(self);
-
+- (CGFloat)_targetContentZoomScaleForRect:(const WebCore::FloatRect&)targetRect currentScale:(double)currentScale fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale
+{
     WebCore::FloatSize unobscuredContentSize([self _contentRectForUserInteraction].size);
     double horizontalScale = unobscuredContentSize.width() * currentScale / targetRect.width();
     double verticalScale = unobscuredContentSize.height() * currentScale / targetRect.height();
@@ -1415,7 +1409,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     horizontalScale = std::min(std::max(horizontalScale, minimumScale), maximumScale);
     verticalScale = std::min(std::max(verticalScale, minimumScale), maximumScale);
 
-    double targetScale = fitEntireRect ? std::min(horizontalScale, verticalScale) : horizontalScale;
+    return fitEntireRect ? std::min(horizontalScale, verticalScale) : horizontalScale;
+}
+
+- (BOOL)_zoomToRect:(WebCore::FloatRect)targetRect withOrigin:(WebCore::FloatPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(float)minimumScrollDistance
+{
+    const float maximumScaleFactorDeltaForPanScroll = 0.02;
+
+    double currentScale = contentZoomScale(self);
+    double targetScale = [self _targetContentZoomScaleForRect:targetRect currentScale:currentScale fitEntireRect:fitEntireRect minimumScale:minimumScale maximumScale:maximumScale];
+
     if (fabs(targetScale - currentScale) < maximumScaleFactorDeltaForPanScroll) {
         if ([self _scrollToRect:targetRect origin:origin minimumScrollDistance:minimumScrollDistance])
             return true;
@@ -1922,6 +1925,26 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     return [_wkView performDragOperation:sender];
 }
+
+- (CGSize)intrinsicContentSize
+{
+    return _intrinsicContentSize;
+}
+
+- (void)_setIntrinsicContentSize:(CGSize)intrinsicContentSize
+{
+    // If the intrinsic content size is less than the minimum layout width, the content flowed to fit,
+    // so we can report that that dimension is flexible. If not, we need to report our intrinsic width
+    // so that autolayout will know to provide space for us.
+
+    CGSize intrinsicContentSizeAcknowledgingFlexibleWidth = intrinsicContentSize;
+    if (intrinsicContentSize.width < _page->minimumLayoutSize().width())
+        intrinsicContentSizeAcknowledgingFlexibleWidth.width = NSViewNoInstrinsicMetric;
+
+    _intrinsicContentSize = intrinsicContentSizeAcknowledgingFlexibleWidth;
+    [self invalidateIntrinsicContentSize];
+}
+
 #endif // PLATFORM(MAC)
 
 @end
@@ -2450,14 +2473,19 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _page->recordNavigationSnapshot(item._item);
 }
 
-- (id <_WKFormDelegate>)_formDelegate
+- (id <_WKInputDelegate>)_inputDelegate
 {
-    return _formDelegate.getAutoreleased();
+    return _inputDelegate.getAutoreleased();
 }
 
-- (void)_setFormDelegate:(id <_WKFormDelegate>)formDelegate
+- (id <_WKFormDelegate>)_formDelegate
 {
-    _formDelegate = formDelegate;
+    return (id <_WKFormDelegate>)[self _inputDelegate];
+}
+
+- (void)_setInputDelegate:(id <_WKInputDelegate>)inputDelegate
+{
+    _inputDelegate = inputDelegate;
 
     class FormClient : public API::FormClient {
     public:
@@ -2477,9 +2505,9 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
                 return;
             }
 
-            auto formDelegate = m_webView->_formDelegate.get();
+            auto inputDelegate = m_webView->_inputDelegate.get();
 
-            if (![formDelegate respondsToSelector:@selector(_webView:willSubmitFormValues:userObject:submissionHandler:)]) {
+            if (![inputDelegate respondsToSelector:@selector(_webView:willSubmitFormValues:userObject:submissionHandler:)]) {
                 listener->continueSubmission();
                 return;
             }
@@ -2501,8 +2529,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
             }
 
             RefPtr<WebKit::WebFormSubmissionListenerProxy> localListener = WTF::move(listener);
-            RefPtr<WebKit::CompletionHandlerCallChecker> checker = WebKit::CompletionHandlerCallChecker::create(formDelegate.get(), @selector(_webView:willSubmitFormValues:userObject:submissionHandler:));
-            [formDelegate _webView:m_webView willSubmitFormValues:valueMap.get() userObject:userObject submissionHandler:[localListener, checker] {
+            RefPtr<WebKit::CompletionHandlerCallChecker> checker = WebKit::CompletionHandlerCallChecker::create(inputDelegate.get(), @selector(_webView:willSubmitFormValues:userObject:submissionHandler:));
+            [inputDelegate _webView:m_webView willSubmitFormValues:valueMap.get() userObject:userObject submissionHandler:[localListener, checker] {
                 checker->didCallCompletionHandler();
                 localListener->continueSubmission();
             }];
@@ -2512,10 +2540,15 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         WKWebView *m_webView;
     };
 
-    if (formDelegate)
+    if (inputDelegate)
         _page->setFormClient(std::make_unique<FormClient>(self));
     else
         _page->setFormClient(nullptr);
+}
+
+- (void)_setFormDelegate:(id <_WKFormDelegate>)formDelegate
+{
+    [self _setInputDelegate:(id <_WKInputDelegate>)formDelegate];
 }
 
 - (BOOL)_isDisplayingStandaloneImageDocument
@@ -3043,6 +3076,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _viewportMetaTagWidth;
 }
 
+- (BOOL)_viewportIsUserScalable
+{
+    return [_scrollView isZoomEnabled] && [_scrollView minimumZoomScale] < [_scrollView maximumZoomScale];
+}
+
 - (_WKWebViewPrintFormatter *)_webViewPrintFormatter
 {
     UIViewPrintFormatter *viewPrintFormatter = self.viewPrintFormatter;
@@ -3121,6 +3159,21 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 }
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+- (CGFloat)_minimumLayoutWidth
+{
+    return _page->minimumLayoutSize().width();
+}
+
+- (void)_setMinimumLayoutWidth:(CGFloat)width
+{
+    BOOL expandsToFit = width > 0;
+
+    _page->setMinimumLayoutSize(WebCore::IntSize(width, 0));
+    _page->setMainFrameIsScrollable(!expandsToFit);
+
+    [_wkView setShouldClipToVisibleRect:expandsToFit];
+}
 
 #endif
 

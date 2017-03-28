@@ -33,6 +33,7 @@
 #include "TextFlags.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/Optional.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/unicode/CharacterNames.h>
 
@@ -158,7 +159,7 @@ public:
     FontRenderingMode renderingMode() const { return m_fontDescription.renderingMode(); }
 
     bool enableKerning() const { return m_enableKerning; }
-    bool enableLigatures() const { return m_enableLigatures; }
+    bool requiresShaping() const { return m_requiresShaping; }
 
     const AtomicString& firstFamily() const { return m_fontDescription.firstFamily(); }
     unsigned familyCount() const { return m_fontDescription.familyCount(); }
@@ -231,7 +232,7 @@ private:
     int offsetForPositionForSimpleText(const TextRun&, float position, bool includePartialGlyphs) const;
     void adjustSelectionRectForSimpleText(const TextRun&, LayoutRect& selectionRect, int from, int to) const;
 
-    bool getEmphasisMarkGlyphData(const AtomicString&, GlyphData&) const;
+    Optional<GlyphData> getEmphasisMarkGlyphData(const AtomicString&) const;
 
     static bool canReturnFallbackFontsForComplexText();
     static bool canExpandAroundIdeographsInComplexText();
@@ -265,8 +266,6 @@ public:
     static CodePath codePath();
     static CodePath s_codePath;
 
-    WEBCORE_EXPORT static void setDefaultKerning(bool);
-    WEBCORE_EXPORT static void setDefaultLigatures(bool);
     static const uint8_t s_roundingHackCharacterTable[256];
     static bool isRoundingHackCharacter(UChar32 c)
     {
@@ -306,7 +305,11 @@ private:
             return true;
         if (textRenderingMode == OptimizeSpeed)
             return false;
-        return s_defaultKerning;
+#if PLATFORM(COCOA)
+        return true;
+#else
+        return false;
+#endif
     }
 
     bool computeEnableKerning() const
@@ -319,18 +322,14 @@ private:
         return advancedTextRenderingMode();
     }
 
-    bool computeEnableLigatures() const
+    bool computeRequiresShaping() const
     {
-        auto ligatures = m_fontDescription.variantCommonLigatures();
-        if (ligatures == FontVariantLigatures::Yes)
+        if (!m_fontDescription.variantSettings().isAllNormal())
             return true;
-        if (ligatures == FontVariantLigatures::No)
-            return false;
+        if (m_fontDescription.featureSettings().size())
+            return true;
         return advancedTextRenderingMode();
     }
-
-    static bool s_defaultKerning;
-    static bool s_defaultLigatures;
 
     FontCascadeDescription m_fontDescription;
     mutable RefPtr<FontCascadeFonts> m_fonts;
@@ -339,7 +338,7 @@ private:
     float m_wordSpacing;
     mutable bool m_useBackslashAsYenSymbol;
     mutable unsigned m_enableKerning : 1; // Computed from m_fontDescription.
-    mutable unsigned m_enableLigatures : 1; // Computed from m_fontDescription.
+    mutable unsigned m_requiresShaping : 1; // Computed from m_fontDescription.
 };
 
 void invalidateFontCascadeCache();

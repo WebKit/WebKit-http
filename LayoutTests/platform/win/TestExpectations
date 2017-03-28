@@ -621,6 +621,9 @@ animations/trigger-container-scroll-boundaries.html [ Skip ]
 # TODO aria-current is not supported
 webkit.org/b/149018 accessibility/aria-current.html [ Skip ]
 
+# TODO ARIA 1.1 table related attributes are not supported
+webkit.org/b/148967 accessibility/aria-table-attributes.html [ Skip ]
+
 # TODO webkit-font-smoothing is not supported.
 webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-basic-001.html [ Skip ]
 webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-basic-002.html [ Skip ]
@@ -1993,6 +1996,7 @@ webkit.org/b/136484 fast/css-generated-content/initial-letter-clearance.html [ F
 webkit.org/b/136484 fast/css-generated-content/initial-letter-descender.html [ Failure ]
 webkit.org/b/136484 fast/css-generated-content/initial-letter-raised.html [ Failure ]
 webkit.org/b/136484 fast/css-generated-content/initial-letter-sunken.html [ Failure ]
+webkit.org/b/136484 fast/css-generated-content/initial-letter-first-line-wrapping.html  [ ImageOnlyFailure ]
 fast/css/direct-adjacent-style-update-optimization.html [ Failure ]
 webkit.org/b/140767 fast/css/read-only-read-write-input-basics.html [ ImageOnlyFailure ]
 
@@ -3263,3 +3267,6 @@ webkit.org/b/150040 js/dom/dfg-custom-getter.html [ Failure ]
 
 # The following tests are not relevant on the Windows platform:
 fast/forms/hidpi-textfield-background-bleeding.html [ Skip ]
+
+# USE_TYPO_METRICS is not implemented on the Windows platform
+webkit.org/b/131839 fonts/use-typo-metrics-1.html [ ImageOnlyFailure ]

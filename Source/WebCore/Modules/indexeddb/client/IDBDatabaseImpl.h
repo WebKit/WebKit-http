@@ -70,17 +70,32 @@ public:
     virtual bool canSuspendForPageCache() const override final;
 
     const IDBDatabaseInfo& info() const { return m_info; }
+    uint64_t databaseConnectionIdentifier() const { return m_databaseConnectionIdentifier; }
 
     Ref<IDBTransaction> startVersionChangeTransaction(const IDBTransactionInfo&);
+    void commitTransaction(IDBTransaction&);
+    void didCommitTransaction(IDBTransaction&);
+    void didAbortTransaction(IDBTransaction&);
+
+    void fireVersionChangeEvent(uint64_t requestedVersion);
 
 private:
     IDBDatabase(ScriptExecutionContext&, IDBConnectionToServer&, const IDBResultData&);
 
-    Ref<IDBConnectionToServer> m_connection;
+    void didCommitOrAbortTransaction(IDBTransaction&);
+
+    void maybeCloseInServer();
+
+    Ref<IDBConnectionToServer> m_serverConnection;
     IDBDatabaseInfo m_info;
+    uint64_t m_databaseConnectionIdentifier { 0 };
+
+    bool m_closePending { false };
+    bool m_closedInServer { false };
 
     RefPtr<IDBTransaction> m_versionChangeTransaction;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_activeTransactions;
+    HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
 };
 
 } // namespace IDBClient

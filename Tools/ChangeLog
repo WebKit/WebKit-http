@@ -1,3 +1,335 @@
+2015-10-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Failures in PutStackSinkingPhase should be less severe
+        https://bugs.webkit.org/show_bug.cgi?id=150400
+
+        Reviewed by Geoffrey Garen.
+
+        Add a test mode for no PutStackSinkingPhase.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-10-21  Nan Wang  <n_wang@apple.com>
+
+        AX: Expose table size and cell indexes on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=150366
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::rowCount):
+        (AccessibilityUIElement::columnCount):
+        (AccessibilityUIElement::indexInTable):
+        (AccessibilityUIElement::numberAttributeValue):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::numberAttributeValue):
+        (WTR::AccessibilityUIElement::rowCount):
+        (WTR::AccessibilityUIElement::columnCount):
+        (WTR::AccessibilityUIElement::indexInTable):
+
+2015-10-21  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should not import reference files as regular tests
+        https://bugs.webkit.org/show_bug.cgi?id=150331
+
+        Reviewed by Darin Adler.
+
+        Updated test_parser to return information that a file can be a referencefile or a manual test.
+        Updated test importer to skip those files.
+        Updated/Added test parser unit tests accordingly.
+
+        Updated test importer to import all not-test files, as they are usually used by tests and lead to test failing or timing out.
+        Updated test importer to log these 'resource' files that are not in a resources folder, and suggest to import script user
+        to mark these files as Skip, since they are not direct tests. 
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.__init__):
+        (TestImporter.find_importable_tests):
+        (TestImporter.import_tests):
+        * Scripts/webkitpy/w3c/test_parser.py:
+        (TestParser.analyze_test):
+        * Scripts/webkitpy/w3c/test_parser_unittest.py:
+        (test_analyze_non_html_file):
+        (test_reference_test):
+
+2015-10-20  Aakash Jain  <aakash_jain@apple.com>
+
+        run-webkit-tests does not copy all crash logs for layout test failures on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=150056
+        <rdar://problem/9280656>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/system/crashlogs.py:
+        (CrashLogs.find_all_logs): Generic method to find all crash logs.
+        (CrashLogs._find_all_logs_darwin): Darwin based method to find all crash logs.
+        It iterates through log directory and returns all the logs based on timestamp.
+        * Scripts/webkitpy/common/system/crashlogs_unittest.py:
+        (CrashLogsTest.create_crash_logs_darwin): Creates sample crash logs and verify them.
+        (CrashLogsTest.test_find_all_log_darwin): Testcase for above find_all_logs method
+        (CrashLogsTest.test_find_log_darwin): Restructured to share code with other methods.
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.run): Modified start_time to start counting before simulator launch
+        so that we can capture crashes during simualator launch.
+        (Manager._look_for_new_crash_logs): Browse through list of crashes and append
+        any test which is not already marked as CRASH to the run_results.
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationsModel.get_expectations_string): return PASS in case there
+        are no expectations defined for this test.
+        * Scripts/webkitpy/layout_tests/models/test_run_results.py:
+        (summarize_results): Add other_crashes in a separte category in full_results.json.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort._merge_crash_logs): Merge unique crash logs from two dictionaries.
+        (IOSSimulatorPort._look_for_all_crash_logs_in_log_dir): Get the crash logs
+        from the log directory.
+        (IOSSimulatorPort.look_for_new_crash_logs): Uses above method to get crash
+        logs from log directory and merge them with the list of already crashed tests.
+
+2015-10-20  Dana Burkart  <dburkart@apple.com>
+
+        Fix the build
+
+        Unreviewed.
+
+        My previous patch was missing a necessary space character.
+
+        * Scripts/webkitperl/VCSUtils_unittest/decodeGitBinaryPatch.pl:
+
+2015-10-20  Dana Burkart  <dburkart@apple.com>
+
+        svn-apply fails to apply binary diffs in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=64647
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/VCSUtils.pm:
+        (decodeGitBinaryPatchDeltaSize): Modified.
+        We need to handle the case where the binary diff is the last in the patch; so we match on "-- \n" or "\Z".
+        * Tools/Scripts/webkitperl/VCSUtils_unittest/decodeGitBinaryPatch.pl: Added.
+
+2015-10-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Mac Debug EWS never finishes when there are failures
+        https://bugs.webkit.org/show_bug.cgi?id=150334
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        * Scripts/webkitpy/tool/commands/queues.py:
+
+2015-10-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] Enable OpenWebRTC test video/audio sources in tests
+
+        This is needed because we can't expect the buildbots to have
+        webcam/mic devices plugged in.
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner._setup_testing_environment):
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server):
+
+2015-10-20  Yoav Weiss  <yoav@yoav.ws>
+
+        Rename the PICTURE_SIZES flag to CURRENTSRC
+        https://bugs.webkit.org/show_bug.cgi?id=150275
+
+        Reviewed by Dean Jackson.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-10-19  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed, add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-10-19  Alexey Proskuryakov  <ap@apple.com>
+
+        Add new EWS queues to bot watcher's dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=150297
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        (BubbleQueueServer):
+
+2015-10-19  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        REGRESSION(r190262): User media unit test failures after r190262
+        https://bugs.webkit.org/show_bug.cgi?id=149580
+
+        Reviewed by Carlos Garcia Campos.
+
+        The test failures on usermedia-permission-requests and WebKit2.UserMediaBasic have gone.
+        So we do not need to skip them anymore.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Deleted.
+
+2015-10-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Add historical addresses to contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=150227
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-10-18  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        [Win] Change the DLL name in MiniBrowserLib.vcxproj to match webkit.org/b/150124.
+        https://bugs.webkit.org/show_bug.cgi?id=150307
+
+        Reviewed by Brent Fulgham.
+
+        The DLL build rules have been changed to generate "{Name}Lib.DLL",
+        but these changes have not yet been applied to the Visual Studio builds.
+
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.vcxproj:
+
+2015-10-16  Andreas Kling  <akling@apple.com>
+
+        [EFL, AppleWin] WTF.ConcatenateCharacterArrayAndEmptyString API test failed
+        <https://webkit.org/b/150153>
+
+        Unreviewed.
+
+        Just use simple arrays of LChar and UChar for this test instead of creating String
+        objects and then getting the characters8()/characters16() from them, since that
+        doesn't guarantee null-termination (the bug.)
+
+        * TestWebKitAPI/Tests/WTF/StringOperators.cpp:
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::build): Deleted.
+
+2015-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        WebKit2.AutoLayoutIntegration API test is failing on some of the bots
+        https://bugs.webkit.org/show_bug.cgi?id=150255
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/run-api-tests:
+        (runTest):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AutoLayoutIntegration.mm:
+        (-[AutoLayoutWKWebView load:withWidth:expectingContentSize:]):
+        (-[AutoLayoutWKWebView layoutAtMinimumWidth:andExpectContentSizeChange:]):
+        (-[AutoLayoutWKWebView load:expectingContentSize:]): Deleted.
+        (-[AutoLayoutWKWebView expectContentSizeChange:]): Deleted.
+        Don't set the layout size until after the load finishes and we're waiting
+        for the reply, so that there is no race between the new size coming in
+        and us waiting for it.
+
+2015-10-16  Anders Carlsson  <andersca@apple.com>
+
+        WebEditingDelegate should be a formal protocol
+        https://bugs.webkit.org/show_bug.cgi?id=150254
+        <rdar://problem/23149847>
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/EditingDelegate.h:
+        Conform to the WebEditingDelegate protocol.
+
+2015-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        Hook up autolayout intrinsic sizing for WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=150219
+        <rdar://problem/20016905>
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AutoLayoutIntegration.mm: Added.
+        (-[AutoLayoutNavigationDelegate webView:didFinishNavigation:]):
+        (-[AutoLayoutWKWebView load:expectingContentSize:]):
+        (-[AutoLayoutWKWebView expectContentSizeChange:]):
+        (-[AutoLayoutWKWebView invalidateIntrinsicContentSize]):
+        (TEST):
+        Add a variety of tests, including one which catches the bug that
+        the WebCore part of this patch fixes.
+
+2015-10-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Update the help message of --system-malloc
+        https://bugs.webkit.org/show_bug.cgi?id=150169
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-10-15  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Update ImportExpectations according currently imported wpt tests
+        https://bugs.webkit.org/show_bug.cgi?id=150158
+
+        Reviewed by Chris Dumez.
+
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader.copy_tests): ensuring that directories marked as [ Skip ] are not copied.
+
+2015-10-15  Eunmi Lee  <eunmi15.lee@samsung.com>
+
+        Unreviewed, Update my email address.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-10-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test WebKit2.RestoreSessionStateContainingFormData fails
+        https://bugs.webkit.org/show_bug.cgi?id=84960
+
+        Reviewed by Žan Doberšek.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Unskip tests using SessionState.
+        * TestWebKitAPI/PlatformGTK.cmake: Add
+        WKPageCopySessionStateWithFiltering test.
+
+2015-10-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Missing return value on TestWebExtensions.cpp:193
+        https://bugs.webkit.org/show_bug.cgi?id=149755
+
+        Unreviewed. Add missing return value.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebExtensions.cpp:
+        (permissionRequestCallback):
+
+2015-10-14  Andy Estes  <aestes@apple.com>
+
+        [iOS] build-dumprendertree does not build ImageDiff
+        https://bugs.webkit.org/show_bug.cgi?id=150152
+
+        Reviewed by Tim Horton.
+
+        run-webkit-tests attempts to build the tools it requires by calling build-dumprendertree and build-webkittestrunner.
+        On iOS, build-dumprendertree builds the DumpRenderTree.app target, which does not contain the ImageDiff target
+        as a dependent. If you haven't built ImageDiff by other means (say, because you built the 'All Source' scheme in
+        WebKit.xcworkspace), tests that rely on image diffing won't work properly.
+
+        There's actually no reason to build the DumpRenderTree.app target on iOS; the default aggregate target works
+        fine on that platform, and results in ImageDiff being built.
+
+        * Scripts/build-dumprendertree:
+
+2015-10-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Enforce launcher/library naming scheme
+        https://bugs.webkit.org/show_bug.cgi?id=150124
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/PlatformWin.cmake: Use 'Lib' suffix for DLLs.
+        * MiniBrowser/win/CMakeLists.txt: Ditto.
+        * TestWebKitAPI/PlatformWin.cmake: Ditto.
+        * win/DLLLauncher/DLLLauncherMain.cpp:
+        (wWinMain): Look for a DLL named {name}Lib.dll, rather than the
+        original {name}.dll.
+
 2015-10-14  Andreas Kling  <akling@apple.com>
 
         REGRESSION(r190882): Concatenating a character array and an empty string is broken.

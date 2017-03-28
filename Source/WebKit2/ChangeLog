@@ -1,3 +1,1490 @@
+2015-10-21  Chris Dumez  <cdumez@apple.com>
+
+        Add assertions to NetworkCache::Entry constructor to make sure a key's type is "resource"
+        https://bugs.webkit.org/show_bug.cgi?id=150369
+
+        Reviewed by Antti Koivisto.
+
+        Add assertions to NetworkCache::Entry constructor to make sure a key's
+        type is "resource" now that the NetworkCache storage supports other
+        types of entries.
+
+        * NetworkProcess/cache/NetworkCacheEntry.cpp:
+        (WebKit::NetworkCache::Entry::Entry):
+
+2015-10-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        NetworkProcess: DNS prefetch happens in the Web Process
+        https://bugs.webkit.org/show_bug.cgi?id=147824
+
+        Reviewed by Chris Dumez.
+
+        DNS prefetch requests started in the WebProcess should be sent to
+        the network process when it's enabled.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::prefetchDNS): Use NetworkProcess::prefetchDNS().
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in: Add
+        PrefetchDNS message.
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::prefetchDNS): Do the actual DNS prefetch.
+        * NetworkProcess/NetworkProcess.h:
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.cpp:
+        (webkitWebExtensionDidReceiveMessage): Use WebProcess::prefetchDNS().
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::prefetchDNS): Use WebProcess::prefetchDNS().
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::sendTapHighlightForNodeIfNecessary): Use
+        FrameLoaderClient to do the DNS prefetch.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess): Initialize the DNS prefetched
+        hosts cleanup hysteresis activity. Clear the cache of DNS
+        prefetched when hysteresis activity stopped.
+        (WebKit::WebProcess::prefetchDNS): Send the request to the network
+        process if it's enabled, otherwise do the actual DNS prefetch.
+        * WebProcess/WebProcess.h:
+
+2015-10-20  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Generalize NetworkCacheStorage API so it can store different types of metadata
+        https://bugs.webkit.org/show_bug.cgi?id=150221
+        <rdar://problem/23149771>
+
+        Reviewed by Darin Adler and Antti Koivisto.
+
+        Generalize NetworkCacheStorage API so it can store different types of
+        metadata alongside the network resources. This is a pre-requirement to
+        making our NetworkCache smarter by storing information about the
+        resources.
+
+        To keep the code simple, the entry type is now part of the entry key and
+        we store records of a specific type in a 'type' subfolder. The cache
+        structure looks like so:
+        - WebKitCache/Version 5/[Partition]/[Type]/[Hash]
+        - WebKitCache/Version 5/[Partition]/[Type]/[Hash]-blob (Optional)
+
+        Existing cache entries now that the 'resource' type as these are network
+        resources.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        * NetworkProcess/cache/NetworkCacheKey.cpp:
+        * NetworkProcess/cache/NetworkCacheKey.h:
+        * NetworkProcess/cache/NetworkCacheStatistics.cpp:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2015-10-20  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] ContextMenu doesn't work correctly on MiniBrowser after r191194.
+        https://bugs.webkit.org/show_bug.cgi?id=150311
+
+        Reviewed by Gyuyoung Kim.
+
+        Restore the test_ewk2_context_menu API test to check the context menu whether it works correctly.
+
+        * PlatformEfl.cmake:
+
+2015-10-13  Conrad Shultz  <conrad_shultz@apple.com>
+
+        _WKThumbnailView should support a snapshot-only mode
+        https://bugs.webkit.org/show_bug.cgi?id=150106
+
+        Reviewed by Tim Horton.
+
+        Add a new property to _WKThumbnailView, exclusivelyUsesSnapshot, which causes _WKThumbnailView
+        to bypass both layer tree reparenting and event suppression on the associated WKView.
+
+        Add a new method, -requestSnapshot, which clients can use to force _WKThumbnailView to refresh
+        on demand.
+
+        * UIProcess/API/Cocoa/_WKThumbnailView.h:
+        * UIProcess/API/Cocoa/_WKThumbnailView.mm:
+        (-[_WKThumbnailView requestSnapshot]):
+        Extracted from -_requestSnapshotIfNeeded:.
+        (-[_WKThumbnailView _viewWasUnparented]):
+        (-[_WKThumbnailView _viewWasParented]):
+        (-[_WKThumbnailView _requestSnapshotIfNeeded]):
+
+2015-10-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * UIProcess/ios/forms/WKAirPlayRoutePicker.mm:
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+
+2015-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ASSERT when right clicking on SVG Image generating Share menu - can break Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=150374
+
+        Reviewed by Brian Burg.
+
+        When there is no absolute URL or downloadable media URL no system share
+        menu is created, but we were still appending the null context menu to
+        the list of context menu items.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::shareMenuItem):
+        Bail early if the context menu is null.
+
+        (WebKit::WebContextMenuProxyMac::showContextMenu):
+        Only append the share context menu item if it is non-null.
+        This matches ContextMenuController.cpp in WebCore.
+
+2015-10-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r191306.
+        https://bugs.webkit.org/show_bug.cgi?id=150371
+
+        "May have caused a significant warm PLT regression" (Requested
+        by cdumez_ on #webkit).
+
+        Reverted changeset:
+
+        "[WK2] Generalize NetworkCacheStorage API so it can store
+        different types of metadata"
+        https://bugs.webkit.org/show_bug.cgi?id=150221
+        http://trac.webkit.org/changeset/191306
+
+2015-10-20  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the build by disabling MAC_GESTURE_EVENTS on 10.9 and 10.10
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-10-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r191333.
+        https://bugs.webkit.org/show_bug.cgi?id=150362
+
+        Caused assertions on regression tests (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "ERROR: Unhandled web process message
+        'StorageAreaMap:DispatchStorageEvent'"
+        https://bugs.webkit.org/show_bug.cgi?id=150315
+        http://trac.webkit.org/changeset/191333
+
+2015-10-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [UNIX] ASSERTION FAILED: m_shouldWaitForSyncReplies in Connection::connectionDidClose()
+        https://bugs.webkit.org/show_bug.cgi?id=150361
+
+        Reviewed by Martin Robinson.
+
+        It doesn't always happen because it depends on how sockets are
+        closed, and the state of the threads. The problem is that we are
+        not handling the case when the read fails because we closed the
+        connection. In that case we log the error and call
+        Connection::connectionDidClose(). But it was connectionDidClose()
+        the one closing the socket. So, in this particular case it's not an
+        error but a normal termination, and we shouldn't try to close the
+        connection again. Something similar can happen while sending a
+        message, and we get a broken pipe error, but in that case we are
+        only printing the error, so it's harmless.
+
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        (IPC::Connection::readyReadHandler): Only print error and call
+        connectionDidClose() if we are still connected when read fails.
+        (IPC::Connection::sendOutgoingMessage): Only print error if we are
+        still connected when send fails.
+
+2015-10-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Graphics corruption when entering/leaving AC mode quickly
+        https://bugs.webkit.org/show_bug.cgi?id=150323
+
+        Reviewed by Mario Sanchez Prada.
+
+        The UI process is notified when entering accelerated compositing
+        mode after the layers have been flushed and rendered to avoid
+        flickering. However, this is producing flickering in the GTK+
+        port, because we use an offscreen redirected window that is
+        resized to a minimium size to save memory when not in AC mode. The
+        web process always uses the current size of the redirected window,
+        so when entering AC mode, contents are rendered into the 1x1
+        window, then the UI process is notified, the redirected window is
+        resized to its actual size, and we force a resize to ask the web
+        process to render again, now at the correct size. Rendering at 1x1
+        and then resizing the window is what produces the flickering when
+        entering AC mode, but it's also inefficient, since we need to
+        render again after the redirected window is resized. So, this
+        patch adds a WillEnterAcceleratedCompositing message that is sent
+        to the UI process when the layer tree host is created but before
+        the contents have been composited and rendered. This is
+        implemented by the GTK+ port to prepare for entering AC mode, by
+        resizing the redirected window. When we actually enter AC mode,
+        the contents have already been rendered in the web process at the
+        correct size, so we can just use the redirected window surface
+        instead of the drawing area one, and paint in the web view without
+        any flickering. We no longer need the forceResize either.
+        When leaving accelerated compositing mode, we now clear the redirected
+        window resources after a short delay. This ensures that we have
+        already rendered the update sent in the ExitAcceleratedCompositingMode
+        message, but also that entering/leaving AC mode quickly doesn't
+        produce any redirected window resize.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::willEnterAcceleratedCompositingMode):
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseClearRedirectedWindowSoon):
+        (webkitWebViewBaseWillEnterAcceleratedCompositingMode):
+        (webkitWebViewBaseEnterAcceleratedCompositingMode):
+        (webkitWebViewBaseExitAcceleratedCompositingMode):
+        * UIProcess/API/gtk/WebKitWebViewBasePrivate.h:
+        * UIProcess/CoordinatedGraphics/WebView.h:
+        * UIProcess/DrawingAreaProxy.h:
+        (WebKit::DrawingAreaProxy::willEnterAcceleratedCompositingMode):
+        * UIProcess/DrawingAreaProxy.messages.in:
+        * UIProcess/DrawingAreaProxyImpl.cpp:
+        (WebKit::DrawingAreaProxyImpl::willEnterAcceleratedCompositingMode):
+        * UIProcess/DrawingAreaProxyImpl.h:
+        (WebKit::DrawingAreaProxyImpl::forceResize): Deleted.
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::willEnterAcceleratedCompositingMode):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::willEnterAcceleratedCompositingMode):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::willEnterAcceleratedCompositingMode):
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::enterAcceleratedCompositingMode):
+
+2015-10-20  Sergio Villar Senin  <svillar@igalia.com>
+
+        [GTK] Fix build for ENABLE_PLUGIN_PROCESS_GTK2=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=150086
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::BackingStore::createBackend):
+
+2015-10-20  Yoav Weiss  <yoav@yoav.ws>
+
+        Rename the PICTURE_SIZES flag to CURRENTSRC
+        https://bugs.webkit.org/show_bug.cgi?id=150275
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-10-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        ERROR: Unhandled web process message 'StorageAreaMap:DispatchStorageEvent'
+        https://bugs.webkit.org/show_bug.cgi?id=150315
+
+        Reviewed by Andreas Kling.
+
+        It was introduced in r184930, that keeps the session storage area
+        maps alive in the UI process when they are destroyed by the web
+        process. The problem is that we also keep the listeners, so that
+        events are also dispatched to the listeners of destroyed areas,
+        and the message handlers were removed in the web process.
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::createTransientLocalStorageMap): Add a
+        listener for the new storage map ID when the map is reused.
+        (WebKit::StorageManager::destroyStorageMap): Always remove
+        listeners of destroyed maps.
+
+2015-10-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused support for long presses from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=150345
+
+        Reviewed by Beth Dakin.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::didBeginTrackingPotentialLongMousePress): Deleted.
+        (API::UIClient::didRecognizeLongMousePress): Deleted.
+        (API::UIClient::didCancelTrackingPotentialLongMousePress): Deleted.
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageUIClient): Deleted.
+        * UIProcess/API/C/WKPageUIClient.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesGetLongMousePressEnabled):
+        (WKPreferencesSetLongMousePressEnabled): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didBeginTrackingPotentialLongMousePress): Deleted.
+        (WebKit::WebPageProxy::didRecognizeLongMousePress): Deleted.
+        (WebKit::WebPageProxy::didCancelTrackingPotentialLongMousePress): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageUIClient.h:
+        (API::InjectedBundle::PageUIClient::didBeginTrackingPotentialLongMousePress): Deleted.
+        (API::InjectedBundle::PageUIClient::didRecognizeLongMousePress): Deleted.
+        (API::InjectedBundle::PageUIClient::didCancelTrackingPotentialLongMousePress): Deleted.
+        * WebProcess/InjectedBundle/API/c/WKBundlePageUIClient.h:
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.cpp:
+        (WebKit::InjectedBundlePageUIClient::didBeginTrackingPotentialLongMousePress): Deleted.
+        (WebKit::InjectedBundlePageUIClient::didRecognizeLongMousePress): Deleted.
+        (WebKit::InjectedBundlePageUIClient::didCancelTrackingPotentialLongMousePress): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::didBeginTrackingPotentialLongMousePress): Deleted.
+        (WebKit::WebChromeClient::didRecognizeLongMousePress): Deleted.
+        (WebKit::WebChromeClient::didCancelTrackingPotentialLongMousePress): Deleted.
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences): Deleted.
+
+2015-10-19  Chris Dumez  <cdumez@apple.com>
+
+        Make sure development Safari does not delete the stable Safari cache storage.
+        https://bugs.webkit.org/show_bug.cgi?id=150343
+
+        Reviewed by Antti Koivisto.
+
+        Make sure development Safari does not delete the stable Safari disk cache
+        storage. Development Safari now uses Version 5, while the last stable
+        Safari uses Version 4. Since the 2 versions can co-exist, it is best not
+        to drop the old cache version (4) at this point.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::deleteOldVersions):
+
+2015-10-19  Tim Horton  <timothy_horton@apple.com>
+
+        WKView being inside WKWebView leads to weird API issues
+        https://bugs.webkit.org/show_bug.cgi?id=150174
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/mac/WKView.mm:
+        * UIProcess/API/mac/WKViewInternal.h:
+        * UIProcess/Cocoa/WebViewImpl.h: Added.
+        * UIProcess/Cocoa/WebViewImpl.mm: Added.
+        (WebKit::WebViewImpl::WebViewImpl):
+        (WebKit::WebViewImpl::~WebViewImpl):
+        (WebKit::WebViewImpl::setDrawsBackground):
+        (WebKit::WebViewImpl::drawsBackground):
+        (WebKit::WebViewImpl::setDrawsTransparentBackground):
+        (WebKit::WebViewImpl::drawsTransparentBackground):
+        (WebKit::WebViewImpl::acceptsFirstResponder):
+        (WebKit::WebViewImpl::becomeFirstResponder):
+        (WebKit::WebViewImpl::resignFirstResponder):
+        (WebKit::WebViewImpl::isFocused):
+        (WebKit::WebViewImpl::viewWillStartLiveResize):
+        (WebKit::WebViewImpl::viewDidEndLiveResize):
+        (WebKit::WebViewImpl::setFrameSize):
+        (WebKit::WebViewImpl::disableFrameSizeUpdates):
+        (WebKit::WebViewImpl::enableFrameSizeUpdates):
+        (WebKit::WebViewImpl::frameSizeUpdatesDisabled):
+        (WebKit::WebViewImpl::setFrameAndScrollBy):
+        (WebKit::WebViewImpl::setFixedLayoutSize):
+        (WebKit::WebViewImpl::fixedLayoutSize):
+        (WebKit::WebViewImpl::setDrawingAreaSize):
+        (WebKit::WebViewImpl::setContentPreparationRect):
+        (WebKit::WebViewImpl::updateViewExposedRect):
+        (WebKit::WebViewImpl::setClipsToVisibleRect):
+        (WebKit::WebViewImpl::setIntrinsicContentSize):
+        (WebKit::WebViewImpl::intrinsicContentSize):
+        (WebKit::WebViewImpl::setViewScale):
+        (WebKit::WebViewImpl::viewScale):
+        (WebKit::WebViewImpl::layoutMode):
+        (WebKit::WebViewImpl::setLayoutMode):
+        (WebKit::WebViewImpl::supportsArbitraryLayoutModes):
+        (WebKit::WebViewImpl::updateSupportsArbitraryLayoutModes):
+        (WebKit::WebViewImpl::updateSecureInputState):
+        (WebKit::WebViewImpl::resetSecureInputState):
+        (WebKit::WebViewImpl::notifyInputContextAboutDiscardedComposition):
+        (WebKit::WebViewImpl::hasFullScreenWindowController):
+        (WebKit::WebViewImpl::fullScreenWindowController):
+        (WebKit::WebViewImpl::closeFullScreenWindowController):
+        (WebKit::WebViewImpl::fullScreenPlaceholderView):
+        (WebKit::WebViewImpl::createFullScreenWindow):
+        Move the actual implementation of a number of WKView methods into a
+        C++ class, WebViewImpl, which WKView calls directly into.
+        Eventually, we will move all of the logic of WKView into WebViewImpl,
+        and then duplicate the necessary forwarding in WKWebView and remove
+        WKWebView's inner WKView.
+
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::isViewFocused):
+        (WebKit::PageClientImpl::didCommitLoadForMainFrame):
+        (WebKit::PageClientImpl::updateSecureInputState):
+        (WebKit::PageClientImpl::resetSecureInputState):
+        (WebKit::PageClientImpl::notifyInputContextAboutDiscardedComposition):
+        (WebKit::PageClientImpl::beganEnterFullScreen):
+        (WebKit::PageClientImpl::beganExitFullScreen):
+        For now, forward PageClient requests that can be answered by WebViewImpl
+        to WebViewImpl. Eventually, we'll probably fold PageClientImpl and WebViewImpl
+        together into one class, and these things will collapse down.
+
+        * UIProcess/mac/WKFullScreenWindowController.h:
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController initWithWindow:webView:page:]):
+        (-[WKFullScreenWindowController enterFullScreen:]):
+        (-[WKFullScreenWindowController finishedEnterFullScreenAnimation:]):
+        (-[WKFullScreenWindowController exitFullScreen]):
+        (-[WKFullScreenWindowController finishedExitFullScreenAnimation:]):
+        (-[WKFullScreenWindowController completeFinishExitFullScreenAnimationAfterRepaint]):
+        (-[WKFullScreenWindowController _manager]):
+        (-[WKFullScreenWindowController _startEnterFullScreenAnimationWithDuration:]):
+        (-[WKFullScreenWindowController _startExitFullScreenAnimationWithDuration:]):
+        (-[WKFullScreenWindowController initWithWindow:webView:]): Deleted.
+        (-[WKFullScreenWindowController _page]): Deleted.
+        * UIProcess/mac/WKViewLayoutStrategy.h:
+        * UIProcess/mac/WKViewLayoutStrategy.mm:
+        (+[WKViewLayoutStrategy layoutStrategyWithPage:view:viewImpl:mode:]):
+        (-[WKViewLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (-[WKViewLayoutStrategy invalidate]):
+        (-[WKViewLayoutStrategy didChangeFrameSize]):
+        (-[WKViewViewSizeLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (-[WKViewFixedSizeLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy updateLayout]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy didChangeFrameSize]):
+        (-[WKViewDynamicSizeComputedFromMinimumDocumentSizeLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (+[WKViewLayoutStrategy layoutStrategyWithPage:view:mode:]): Deleted.
+        (-[WKViewLayoutStrategy initWithPage:view:mode:]): Deleted.
+        (-[WKViewLayoutStrategy willDestroyView:]): Deleted.
+        (-[WKViewViewSizeLayoutStrategy initWithPage:view:mode:]): Deleted.
+        (-[WKViewFixedSizeLayoutStrategy initWithPage:view:mode:]): Deleted.
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy initWithPage:view:mode:]): Deleted.
+        (-[WKViewDynamicSizeComputedFromMinimumDocumentSizeLayoutStrategy initWithPage:view:mode:]): Deleted.
+        Make WKViewLayoutStrategy and WKFullScreenWindowController operate in terms of generic
+        NSViews instead of WKView, so that eventually they will be able to work for either
+        WKView or WKWebView, and so that they can sit underneath WebViewImpl.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-10-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r191307.
+        https://bugs.webkit.org/show_bug.cgi?id=150338
+
+        broke lots of API tests, need time to figure out whats up
+        (Requested by thorton on #webkit).
+
+        Reverted changeset:
+
+        "WKView being inside WKWebView leads to weird API issues"
+        https://bugs.webkit.org/show_bug.cgi?id=150174
+        http://trac.webkit.org/changeset/191307
+
+2015-10-19  Tim Horton  <timothy_horton@apple.com>
+
+        Try again to fix the 32-bit build.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::setupServicesMenu):
+
+2015-10-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Extend fast-clicking behavior to trigger on elements that have negligible zoom
+        https://bugs.webkit.org/show_bug.cgi?id=150248
+        <rdar://problem/23140069>
+
+        Reviewed by Simon Fraser.
+
+        Currently, fast-clicking only triggers on pages that have unscalable viewports. To allow more websites to benefit from fast-clicking
+        behavior, we generalize fast-clicking to also occur when tapping on elements for which double-tap-to-zoom would zoom the element in
+        or out by an insignificant amount. We define an insignificant amount of zoom to mean that zooming would increase the viewport scale
+        by less than a configurable threshold, or decrease the viewport scale by more than a configurable threshold. We accomplish this by
+        temporarily disabling the double tap gesture recognizer for the duration of the tap. This patch refactors some logic used to compute
+        zoomed viewports to make it possible to predict the change in viewport scale when double tapping to zoom. See the changes in
+        SmartMagnificationController and ViewGestureGeometryCollector for more details.
+
+        There are no new tests, since this patch does not change existing behavior. Instead, this patch adds the machinery needed for zoom-
+        dependent fast-clicking: by setting the preferences WebKitFastClickingEnabled and WebKitFastClickZoomThreshold, we will be able to tweak
+        the behavior dynamically.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _contentZoomScale]):
+        (-[WKWebView _targetContentZoomScaleForRect:currentScale:fitEntireRect:minimumScale:maximumScale:]):
+        (-[WKWebView _zoomToRect:withOrigin:fitEntireRect:minimumScale:maximumScale:minimumScrollDistance:]):
+        (-[WKWebView _viewportIsUserScalable]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::disableDoubleTapGesturesUntilTapIsFinishedIfNecessary):
+        * UIProcess/ios/SmartMagnificationController.h:
+        * UIProcess/ios/SmartMagnificationController.mm:
+        (WebKit::SmartMagnificationController::adjustSmartMagnificationTargetRectAndZoomScales):
+        (WebKit::SmartMagnificationController::didCollectGeometryForSmartMagnificationGesture):
+        (WebKit::SmartMagnificationController::magnify):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _didGetTapHighlightForRequest:color:quads:topLeftRadius:topRightRadius:bottomLeftRadius:bottomRightRadius:]):
+        (-[WKContentView _fastClickZoomThreshold]):
+        (-[WKContentView _allowDoubleTapToZoomForCurrentZoomScale:andTargetZoomScale:]):
+        (-[WKContentView _disableDoubleTapGesturesUntilTapIsFinishedIfNecessary:allowsDoubleTapZoom:targetRect:isReplaced:minimumScale:maximumScale:]):
+        (-[WKContentView _highlightLongPressRecognized:]):
+        (-[WKContentView _endPotentialTapAndEnableDoubleTapGesturesIfNecessary]):
+        (-[WKContentView _singleTapRecognized:]):
+        (cancelPotentialTapIfNecessary):
+        (-[WKContentView _singleTapCommited:]):
+        (-[WKContentView webSelectionRects]): Deleted.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::disableDoubleTapGesturesUntilTapIsFinishedIfNecessary):
+        * WebProcess/WebPage/ViewGestureGeometryCollector.cpp:
+        (WebKit::ViewGestureGeometryCollector::collectGeometryForSmartMagnificationGesture):
+        (WebKit::ViewGestureGeometryCollector::computeZoomInformationForNode):
+        * WebProcess/WebPage/ViewGestureGeometryCollector.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::potentialTapAtPosition):
+
+2015-10-19  Tim Horton  <timothy_horton@apple.com>
+
+        WKView being inside WKWebView leads to weird API issues
+        https://bugs.webkit.org/show_bug.cgi?id=150174
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/mac/WKView.mm:
+        * UIProcess/API/mac/WKViewInternal.h:
+        * UIProcess/Cocoa/WebViewImpl.h: Added.
+        * UIProcess/Cocoa/WebViewImpl.mm: Added.
+        (WebKit::WebViewImpl::WebViewImpl):
+        (WebKit::WebViewImpl::~WebViewImpl):
+        (WebKit::WebViewImpl::setDrawsBackground):
+        (WebKit::WebViewImpl::drawsBackground):
+        (WebKit::WebViewImpl::setDrawsTransparentBackground):
+        (WebKit::WebViewImpl::drawsTransparentBackground):
+        (WebKit::WebViewImpl::acceptsFirstResponder):
+        (WebKit::WebViewImpl::becomeFirstResponder):
+        (WebKit::WebViewImpl::resignFirstResponder):
+        (WebKit::WebViewImpl::isFocused):
+        (WebKit::WebViewImpl::viewWillStartLiveResize):
+        (WebKit::WebViewImpl::viewDidEndLiveResize):
+        (WebKit::WebViewImpl::setFrameSize):
+        (WebKit::WebViewImpl::disableFrameSizeUpdates):
+        (WebKit::WebViewImpl::enableFrameSizeUpdates):
+        (WebKit::WebViewImpl::frameSizeUpdatesDisabled):
+        (WebKit::WebViewImpl::setFrameAndScrollBy):
+        (WebKit::WebViewImpl::setFixedLayoutSize):
+        (WebKit::WebViewImpl::fixedLayoutSize):
+        (WebKit::WebViewImpl::setDrawingAreaSize):
+        (WebKit::WebViewImpl::setContentPreparationRect):
+        (WebKit::WebViewImpl::updateViewExposedRect):
+        (WebKit::WebViewImpl::setClipsToVisibleRect):
+        (WebKit::WebViewImpl::setIntrinsicContentSize):
+        (WebKit::WebViewImpl::intrinsicContentSize):
+        (WebKit::WebViewImpl::setViewScale):
+        (WebKit::WebViewImpl::viewScale):
+        (WebKit::WebViewImpl::layoutMode):
+        (WebKit::WebViewImpl::setLayoutMode):
+        (WebKit::WebViewImpl::supportsArbitraryLayoutModes):
+        (WebKit::WebViewImpl::updateSupportsArbitraryLayoutModes):
+        (WebKit::WebViewImpl::updateSecureInputState):
+        (WebKit::WebViewImpl::resetSecureInputState):
+        (WebKit::WebViewImpl::notifyInputContextAboutDiscardedComposition):
+        (WebKit::WebViewImpl::hasFullScreenWindowController):
+        (WebKit::WebViewImpl::fullScreenWindowController):
+        (WebKit::WebViewImpl::closeFullScreenWindowController):
+        (WebKit::WebViewImpl::fullScreenPlaceholderView):
+        (WebKit::WebViewImpl::createFullScreenWindow):
+        Move the actual implementation of a number of WKView methods into a
+        C++ class, WebViewImpl, which WKView calls directly into.
+        Eventually, we will move all of the logic of WKView into WebViewImpl,
+        and then duplicate the necessary forwarding in WKWebView and remove
+        WKWebView's inner WKView.
+
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::isViewFocused):
+        (WebKit::PageClientImpl::didCommitLoadForMainFrame):
+        (WebKit::PageClientImpl::updateSecureInputState):
+        (WebKit::PageClientImpl::resetSecureInputState):
+        (WebKit::PageClientImpl::notifyInputContextAboutDiscardedComposition):
+        (WebKit::PageClientImpl::beganEnterFullScreen):
+        (WebKit::PageClientImpl::beganExitFullScreen):
+        For now, forward PageClient requests that can be answered by WebViewImpl
+        to WebViewImpl. Eventually, we'll probably fold PageClientImpl and WebViewImpl
+        together into one class, and these things will collapse down.
+
+        * UIProcess/mac/WKFullScreenWindowController.h:
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController initWithWindow:webView:page:]):
+        (-[WKFullScreenWindowController enterFullScreen:]):
+        (-[WKFullScreenWindowController finishedEnterFullScreenAnimation:]):
+        (-[WKFullScreenWindowController exitFullScreen]):
+        (-[WKFullScreenWindowController finishedExitFullScreenAnimation:]):
+        (-[WKFullScreenWindowController completeFinishExitFullScreenAnimationAfterRepaint]):
+        (-[WKFullScreenWindowController _manager]):
+        (-[WKFullScreenWindowController _startEnterFullScreenAnimationWithDuration:]):
+        (-[WKFullScreenWindowController _startExitFullScreenAnimationWithDuration:]):
+        (-[WKFullScreenWindowController initWithWindow:webView:]): Deleted.
+        (-[WKFullScreenWindowController _page]): Deleted.
+        * UIProcess/mac/WKViewLayoutStrategy.h:
+        * UIProcess/mac/WKViewLayoutStrategy.mm:
+        (+[WKViewLayoutStrategy layoutStrategyWithPage:view:viewImpl:mode:]):
+        (-[WKViewLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (-[WKViewLayoutStrategy invalidate]):
+        (-[WKViewLayoutStrategy didChangeFrameSize]):
+        (-[WKViewViewSizeLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (-[WKViewFixedSizeLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy updateLayout]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy didChangeFrameSize]):
+        (-[WKViewDynamicSizeComputedFromMinimumDocumentSizeLayoutStrategy initWithPage:view:viewImpl:mode:]):
+        (+[WKViewLayoutStrategy layoutStrategyWithPage:view:mode:]): Deleted.
+        (-[WKViewLayoutStrategy initWithPage:view:mode:]): Deleted.
+        (-[WKViewLayoutStrategy willDestroyView:]): Deleted.
+        (-[WKViewViewSizeLayoutStrategy initWithPage:view:mode:]): Deleted.
+        (-[WKViewFixedSizeLayoutStrategy initWithPage:view:mode:]): Deleted.
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy initWithPage:view:mode:]): Deleted.
+        (-[WKViewDynamicSizeComputedFromMinimumDocumentSizeLayoutStrategy initWithPage:view:mode:]): Deleted.
+        Make WKViewLayoutStrategy and WKFullScreenWindowController operate in terms of generic
+        NSViews instead of WKView, so that eventually they will be able to work for either
+        WKView or WKWebView, and so that they can sit underneath WebViewImpl.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-10-19  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Generalize NetworkCacheStorage API so it can store different types of metadata
+        https://bugs.webkit.org/show_bug.cgi?id=150221
+        <rdar://problem/23149771>
+
+        Reviewed by Darin Adler and Antti Koivisto.
+
+        Generalize NetworkCacheStorage API so it can store different types of
+        metadata alongside the network resources. This is a pre-requirement to
+        making our NetworkCache smarter by storing information about the
+        resources.
+
+        To keep the code simple, the entry type is now part of the entry key and
+        we store records of a specific type in a 'type' subfolder. The cache
+        structure looks like so:
+        - WebKitCache/Version 5/[Partition]/[Type]/[Hash]
+        - WebKitCache/Version 5/[Partition]/[Type]/[Hash]-blob (Optional)
+
+        Existing cache entries now that the 'resource' type as these are network
+        resources.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        * NetworkProcess/cache/NetworkCacheKey.cpp:
+        * NetworkProcess/cache/NetworkCacheKey.h:
+        * NetworkProcess/cache/NetworkCacheStatistics.cpp:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2015-10-19  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the iOS build
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-10-19  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the 32-bit build.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::setupServicesMenu):
+
+2015-10-16  Anders Carlsson  <andersca@apple.com>
+
+        Fix image service menus somewhat
+        https://bugs.webkit.org/show_bug.cgi?id=150265
+
+        Reviewed by Tim Horton.
+
+        * Shared/ContextMenuContextData.cpp:
+        (WebKit::ContextMenuContextData::ContextMenuContextData):
+        It's a service menu if we have a controlled image.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::setupServicesMenu):
+        Use an item provider.
+
+2015-10-19  Tim Horton  <timothy_horton@apple.com>
+
+        Add magnify and rotate gesture event support for Mac
+        https://bugs.webkit.org/show_bug.cgi?id=150179
+        <rdar://problem/8036240>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+        New feature flag.
+
+        * Shared/NativeWebGestureEvent.h: Added.
+        (WebKit::NativeWebGestureEvent::nativeEvent):
+        * Shared/WebEvent.h:
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformGestureEvent::WebKit2PlatformGestureEvent):
+        (WebKit::platform):
+        * Shared/WebEventConversion.h:
+        * Shared/mac/NativeWebGestureEventMac.mm: Added.
+        (WebKit::webEventTypeForNSEvent):
+        (WebKit::pointForEvent):
+        (WebKit::NativeWebGestureEvent::NativeWebGestureEvent):
+        Add and plumb a new native event that wraps a NSEvent of type
+        NSEventTypeMagnify or NSEventTypeRotate (gesture events).
+
+        * Shared/mac/WebGestureEvent.cpp: Added.
+        (WebKit::WebGestureEvent::encode):
+        (WebKit::WebGestureEvent::decode):
+        (WebKit::WebGestureEvent::isGestureEventType):
+        * Shared/mac/WebGestureEvent.h: Added.
+        (WebKit::WebGestureEvent::WebGestureEvent):
+        (WebKit::WebGestureEvent::position):
+        (WebKit::WebGestureEvent::gestureScale):
+        (WebKit::WebGestureEvent::gestureRotation):
+        Add IPC plumbing for WebGestureEvent, which becomes a WebCore::PlatformGestureEvent.
+
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+        Remove unnecessary iPhone-only WKView code.
+        Add _gestureEventWasNotHandledByWebCore, SPI which can be overridden
+        to react when WebCore decides not to handle a gesture event.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView magnifyWithEvent:]):
+        Route magnification gesture events to the page, unless we're already
+        in an active view zoom gesture, in which case we'll bypass the page
+        and send the event straight to ViewGestureController.
+
+        (-[WKView rotateWithEvent:]):
+        Route rotation gesture events to the page.
+
+        (-[WKView _gestureEventWasNotHandledByWebCore:]):
+        Let ViewGestureController know that WebCore didn't handle a gesture event.
+        We always give WebCore the first crack at the event if we're not in a zoom,
+        because it could preventDefault() on the Begin phase event, and that should
+        prevent pinch-zoom from starting.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::gestureEventWasNotHandledByWebCore):
+        Plumb gestureEventWasNotHandledByWebCore back from WebPageProxy to WKView.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleGestureEvent):
+        (WebKit::WebPageProxy::didReceiveEvent):
+        * UIProcess/WebPageProxy.h:
+        Forward gesture events to EventDispatcher, and let WKView know when WebCore
+        passes on handling them.
+        
+        * UIProcess/mac/ViewGestureController.h:
+        (WebKit::ViewGestureController::hasActiveMagnificationGesture):
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::gestureEventWasNotHandledByWebCore):
+        (WebKit::ViewGestureController::handleMagnificationGestureEvent):
+        Don't try to start a zoom with anything other than a Begin phase event.
+        Try to start a zoom with any events that WebCore doesn't handle.
+        Move dispatch of endMagnificationGesture into ViewGestureController;
+        there is no reason for that to be in WKView anymore.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        (WebKit::EventDispatcher::gestureEvent):
+        (WebKit::EventDispatcher::dispatchGestureEvent):
+        * WebProcess/WebPage/EventDispatcher.h:
+        * WebProcess/WebPage/EventDispatcher.messages.in:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::handleGestureEvent):
+        (WebKit::WebPage::gestureEvent):
+        * WebProcess/WebPage/WebPage.h:
+        Dispatch to the main thread and hand off the gesture event to WebCore,
+        asynchronously informing the UI process of whether the event was handled or not.
+
+2015-10-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] ASSERTION FAILED: parent in WebInspectorProxy::platformDetach()
+        https://bugs.webkit.org/show_bug.cgi?id=150319
+
+        Reviewed by Žan Doberšek.
+
+        This happens when the inspector is shown/closed very
+        quickly. Since we start the inspector attached by default, when
+        the web inspector is created m_isAttached is set to true, so that
+        when opened, it's attached to the view. If the inspector is closed
+        before it has been actually attached, the inspector view doesn't
+        have a parent, even if the m_isAttached is true. So, we should
+        handle this case instead of asserting. This is what happens in
+        test http/tests/xmlhttprequest/access-control-repeated-failed-preflight-crash.html.
+
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::platformDetach): Remove the view from
+        its parent container if it was actually attached.
+
+2015-10-19  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Implement WebContextMenuProxyEfl::showContextMenu after r191194
+        https://bugs.webkit.org/show_bug.cgi?id=150310
+
+        Reviewed by Gyuyoung Kim.
+
+        showContextMenu() doesn't work correctly after r191194 in EFL port.
+        This patch implements WebContextMenuProxyEfl::showContextMenu.
+
+        * UIProcess/efl/WebContextMenuProxyEfl.cpp:
+        (WebKit::WebContextMenuProxyEfl::WebContextMenuProxyEfl):
+        (WebKit::WebContextMenuProxyEfl::showContextMenu):
+        (WebKit::WebContextMenuProxyEfl::hideContextMenu):
+        * UIProcess/efl/WebContextMenuProxyEfl.h:
+
+2015-10-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [WK2] Simplify unused return warning in WKRetainPtr.h
+        https://bugs.webkit.org/show_bug.cgi?id=150173
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/cpp/WKRetainPtr.h:
+        (WebKit::__attribute__):
+        (WebKit::adoptWK): Deleted.
+
+2015-10-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the ENABLE(SECCOMP_FILTERS) build after r187030
+        https://bugs.webkit.org/show_bug.cgi?id=150172
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Shared/linux/SeccompFilters/Syscall.cpp:
+        (WebKit::reportUnexpectedSyscall):
+
+2015-10-18  Joonghun Park  <jh718.park@samsung.com>
+
+        [GTK] Remove WebKitContextMenu related missing annotation warnings
+        https://bugs.webkit.org/show_bug.cgi?id=150299
+
+        Reviewed by Darin Adler.
+
+        The warnings occur currently because when executing g-ir-scanner,
+        it doesn't consider WebKitContextMenu related .cpp files,
+        but only .h files.
+
+        * PlatformGTK.cmake: Add WebKitContextMenu related cpp files.
+
+2015-10-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Stop honoring the user default "WebKitKerningAndLigaturesEnabledByDefault"
+        https://bugs.webkit.org/show_bug.cgi?id=150287
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::WebProcessCreationParameters): Deleted.
+        (WebKit::WebProcessCreationParameters::encode): Deleted.
+        (WebKit::WebProcessCreationParameters::decode): Deleted.
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded): Deleted.
+        (WebKit::WebProcessPool::platformInitializeWebProcess): Deleted.
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess): Deleted.
+
+2015-10-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK] Implement WebContextMenuProxyGtk::showContextMenu after r191194
+        https://bugs.webkit.org/show_bug.cgi?id=150276
+
+        Reviewed by Carlos Garcia Campos.
+
+        After r191194, showContextMenu signature becomes changed, and the implementation
+        is moved from the generic file to the Mac port. It poses the compile error in GTK port.
+        This patch implements WebContextMenuProxyGtk::showContextMenu. The logic is the same
+        to the old one except for dropping SERVICE_CONTROLS support. This is because
+        SERVICE_CONTROLS is not related to GTK.
+
+        * UIProcess/gtk/WebContextMenuProxyGtk.cpp:
+        (WebKit::WebContextMenuProxyGtk::showContextMenu):
+        * UIProcess/gtk/WebContextMenuProxyGtk.h:
+
+2015-10-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r191250 and r191253.
+        https://bugs.webkit.org/show_bug.cgi?id=150296
+
+        Broke all the tests on Windows (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Stop honoring the user default
+        "WebKitKerningAndLigaturesEnabledByDefault""
+        https://bugs.webkit.org/show_bug.cgi?id=150287
+        http://trac.webkit.org/changeset/191250
+
+        "Build fix after r191250"
+        http://trac.webkit.org/changeset/191253
+
+2015-10-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Stop honoring the user default "WebKitKerningAndLigaturesEnabledByDefault"
+        https://bugs.webkit.org/show_bug.cgi?id=150287
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::WebProcessCreationParameters): Deleted.
+        (WebKit::WebProcessCreationParameters::encode): Deleted.
+        (WebKit::WebProcessCreationParameters::decode): Deleted.
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded): Deleted.
+        (WebKit::WebProcessPool::platformInitializeWebProcess): Deleted.
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess): Deleted.
+
+2015-10-17  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Stop using WKAXRegisterRemoteApp
+        https://bugs.webkit.org/show_bug.cgi?id=150283
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Platform/spi/mac: Added.
+        * Platform/spi/mac/AppKitSPI.h: Added. Includes declaration of
+          +[NSAccessibilityRemoteUIElement setRemoteUIApp:].
+
+        * WebKit2.xcodeproj/project.pbxproj: Added reference to new header. Also changed the path of
+          the Platform/spi/Cocoa group to the corresponding path in the source tree.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::registerWithAccessibility): Added.
+        (WebKit::WebProcess::platformInitializeProcess): Use new registerWithAccessibility instead
+          of WKAXRegisterRemoteApp.
+
+2015-10-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Enhance TextStream for logging, remove subclasses, log more things
+        https://bugs.webkit.org/show_bug.cgi?id=150269
+
+        Reviewed by Zalan Bujtas.
+
+        Remove the various TextStream subclasses that only existed to support indenting,
+        and output additional types. Add output for more WebCore and WebKit2 types, and
+        just use TextStream everywhere.
+        
+        TextStream is enhance to support grouping (open paren and intent), with a 
+        stack-based class to open/end a group.
+        
+        Remove some SVG-specific duplicate output functions.
+        
+        Outdent namespace contents of GraphicsTypes.h.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (WebKit::dump):
+        (WebKit::recursiveDumpNodes):
+        (WebKit::RemoteScrollingCoordinatorTransaction::description):
+        (WebKit::RemoteScrollingTreeTextStream::RemoteScrollingTreeTextStream): Deleted.
+        (WebKit::RemoteScrollingTreeTextStream::increaseIndent): Deleted.
+        (WebKit::RemoteScrollingTreeTextStream::decreaseIndent): Deleted.
+        (WebKit::RemoteScrollingTreeTextStream::writeIndent): Deleted.
+        (WebKit::dumpProperty): Deleted.
+        (WebKit::RemoteScrollingTreeTextStream::operator<<): Deleted.
+        (WebKit::RemoteScrollingTreeTextStream::dump): Deleted.
+        (WebKit::RemoteScrollingTreeTextStream::recursiveDumpNodes): Deleted.
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::operator<<):
+        (WebKit::dumpChangedLayers):
+        (WebKit::RemoteLayerTreeTransaction::description):
+        (WebKit::RemoteLayerTreeTextStream::RemoteLayerTreeTextStream): Deleted.
+        (WebKit::RemoteLayerTreeTextStream::increaseIndent): Deleted.
+        (WebKit::RemoteLayerTreeTextStream::decreaseIndent): Deleted.
+        (WebKit::dumpProperty): Deleted.
+        (WebKit::RemoteLayerTreeTextStream::operator<<): Deleted.
+        (WebKit::RemoteLayerTreeTextStream::writeIndent): Deleted.
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.h:
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm:
+        (WebKit::operator<<):
+
+2015-10-17  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        URTBF after r191194 to fix EFL build.
+        https://bugs.webkit.org/show_bug.cgi?id=150272
+
+        Reviewed by Csaba Osztrogonác.
+
+        * UIProcess/efl/WebContextMenuProxyEfl.cpp:
+        (WebKit::WebContextMenuProxyEfl::showContextMenu):
+        * UIProcess/efl/WebContextMenuProxyEfl.h:
+
+2015-10-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a WKWebView input delegate SPI
+        https://bugs.webkit.org/show_bug.cgi?id=149646
+
+        Reviewed by Dan Bernstein.
+
+        Renames the existing _WKFormDelegate to _WKInputDelegate and adds a new delegate SPI method
+        -[_WKInputDelegate _webView:focusShouldStartInputSession:] that allows clients to allow or
+        disallow showing up the keyboard. To make this decision, clients are given a
+        _WKFocusedElementInfo, which contains information about the focused element prior to the
+        keyboard showing up so the client will be able to override default assistance behavior.
+
+        While the information contained in a _WKFocusedElementInfo currently seems like overkill for
+        _webView:focusShouldStartInputSession, our intentions are to give WebKit clients control over more
+        details of how node assistance works, such as being able to use a custom editor for certain
+        types of nodes.
+
+        * Shared/API/Cocoa/WebKitPrivate.h: Added new header _WKFocusedElementInfo.h.
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _inputDelegate]):
+        (-[WKWebView _formDelegate]):
+        (-[WKWebView _setInputDelegate:]):
+        (-[WKWebView _setFormDelegate:]):
+        (-[WKWebView initWithFrame:configuration:]): Deleted canAssistOnProgrammaticFocus flag.
+        (-[WKWebView canAssistOnProgrammaticFocus]): Ditto.
+        (-[WKWebView setCanAssistOnProgrammaticFocus:]): Ditto.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]): Deleted.
+        (-[WKWebViewConfiguration _canAssistOnProgrammaticFocus]): Deleted canAssistOnProgrammaticFocus flag.
+        (-[WKWebViewConfiguration _setCanAssistOnProgrammaticFocus:]): Ditto.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/_WKFocusedElementInfo.h: Added.
+        * UIProcess/API/Cocoa/_WKFormDelegate.h:
+        * UIProcess/API/Cocoa/_WKInputDelegate.h: Copied from Source/WebKit2/UIProcess/API/Cocoa/_WKFormDelegate.h.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKFocusedElementInfo initWithAssistedNodeInformation:isInteracting:]):
+        (-[WKFocusedElementInfo type]):
+        (-[WKFocusedElementInfo value]):
+        (-[WKFocusedElementInfo isUserInitiated]):
+        (-[WKContentView accessoryAutoFill]):
+        (-[WKContentView _startAssistingNode:userIsInteracting:blurPreviousNode:userObject:]): If the input delegate responds to
+            shouldStartInputSession, consult it to see if we should bring up the keyboard; otherwise, use our default behavior.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-10-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Make TextStream the canonical way to log classes in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=150256
+
+        Reviewed by Sam Weinig.
+
+        We vacillated between PrintStream and TextStream as being the canonical way
+        to stringify WebCore data structures. This patch solidifies TextStream
+        as the solution, since it has convenient stream syntax, and is what we
+        use for render tree dumps.
+
+        Remove TextStream member functions that output non-simple structs
+        (sizes, points and rects), replacing them with free operator<< functions
+        in the .cpp file for the relevant class. Formatting is currently consistent
+        with RenderTreeAsText output, to avoid breaking tests.
+
+        Remove custom FloatRect outputting in SVG and RemoteLayerTreeTransaction.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (WebKit::RemoteScrollingTreeTextStream::operator<<): Deleted.
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTextStream::operator<<): Deleted.
+
+2015-10-16  Anders Carlsson  <andersca@apple.com>
+
+        Remove some dead menu code
+        https://bugs.webkit.org/show_bug.cgi?id=150247
+
+        Reviewed by Andreas Kling.
+
+        * Shared/WebContextMenuItemData.cpp:
+        (WebKit::WebContextMenuItemData::WebContextMenuItemData):
+        (WebKit::WebContextMenuItemData::encode): Deleted.
+        * Shared/WebContextMenuItemData.h:
+        (WebKit::WebContextMenuItemData::selectionHandler): Deleted.
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::nsMenuItem):
+
+2015-10-16  Anders Carlsson  <andersca@apple.com>
+
+        Move more code to WebContextMenuProxyMac
+        https://bugs.webkit.org/show_bug.cgi?id=150240
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/WebContextMenuProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::internalShowContextMenu):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::contextMenuClient):
+        * UIProcess/mac/WebContextMenuProxyMac.h:
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::initializeShareMenuItem):
+        (WebKit::WebContextMenuProxyMac::showContextMenu):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::platformInitializeShareMenuItem): Deleted.
+
+2015-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        Hook up autolayout intrinsic sizing for WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=150219
+        <rdar://problem/20016905>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+        (-[WKWebView intrinsicContentSize]):
+        (-[WKWebView _setIntrinsicContentSize:]):
+        (-[WKWebView _minimumLayoutWidth]):
+        (-[WKWebView _setMinimumLayoutWidth:]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        Add a simple SPI to specify the minimum width that a WKWebView will attempt
+        to lay out to, similar to WKView except just a width, not a size, and
+        with no option to force the height to the view size. Similar behavior can
+        be achieved by clients by setting custom autolayout constraints on the view.
+
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::intrinsicContentSizeDidChange):
+        Forward intrinsic content size changes to the WKWebView, not its inner WKView,
+        if we have one.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::transitionToCommittedForNewPage):
+        Only set the autosizing fixed minimum height if we're using that behavior;
+        otherwise, setting it to the view's height will end up accidentally
+        turning on that behavior (which involves an extra layout per resize!).
+
+2015-10-15  Anders Carlsson  <andersca@apple.com>
+
+        Use the ShowContextMenu message for service menus as well
+        https://bugs.webkit.org/show_bug.cgi?id=150206
+
+        Reviewed by Tim Horton.
+
+        * Shared/ContextMenuContextData.cpp:
+        (WebKit::ContextMenuContextData::ContextMenuContextData):
+        (WebKit::ContextMenuContextData::encode):
+        (WebKit::ContextMenuContextData::decode):
+        * Shared/ContextMenuContextData.h:
+        (WebKit::ContextMenuContextData::type):
+        (WebKit::ContextMenuContextData::ContextMenuContextData):
+        (WebKit::ContextMenuContextData::isServicesMenu):
+        (WebKit::ContextMenuContextData::needsServicesMenu): Deleted.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::showContextMenu):
+        (WebKit::WebPageProxy::internalShowContextMenu):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::populate):
+        (WebKit::WebContextMenuProxyMac::showContextMenu):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::showSelectionServiceMenu): Deleted.
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::handleSelectionServiceClick):
+
+2015-10-16  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [GTK] Try to fix the build after r191137
+        https://bugs.webkit.org/show_bug.cgi?id=150222
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::doneWithKeyEvent):
+        (WebKit::PageClientImpl::createPopupMenuProxy):
+        (WebKit::PageClientImpl::createContextMenuProxy):
+        (WebKit::PageClientImpl::createColorPicker):
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/gtk/WebContextMenuProxyGtk.cpp:
+        (WebKit::WebContextMenuProxyGtk::populate):
+        (WebKit::WebContextMenuProxyGtk::showContextMenu):
+        (WebKit::WebContextMenuProxyGtk::hideContextMenu):
+        (WebKit::WebContextMenuProxyGtk::WebContextMenuProxyGtk):
+        * UIProcess/gtk/WebContextMenuProxyGtk.h:
+        (WebKit::WebContextMenuProxyGtk::create):
+        (WebKit::WebContextMenuProxyGtk::gtkMenu):
+        * UIProcess/gtk/WebPopupMenuProxyGtk.cpp:
+        (WebKit::WebPopupMenuProxyGtk::WebPopupMenuProxyGtk):
+        * UIProcess/gtk/WebPopupMenuProxyGtk.h:
+        (WebKit::WebPopupMenuProxyGtk::create):
+        (WebKit::WebPopupMenuProxyGtk::setCurrentlySelectedMenuItem):
+
+2015-10-15  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+         EFL build fix since r191137
+
+         Unreviewed EFL build fix.
+
+        * UIProcess/CoordinatedGraphics/WebView.cpp: Removed.
+
+2015-10-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Migrate to CGContextSetBaseCTM() and CGContextResetClip() from WKSI
+        https://bugs.webkit.org/show_bug.cgi?id=150155
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+
+2015-10-15  Dean Jackson  <dino@apple.com>
+
+        Fix the iOS build. And hopefully not breaking the other builds
+        at the same time.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebContextMenuProxy.cpp:
+        * UIProcess/WebContextMenuProxy.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+
+2015-10-15  Anders Carlsson  <andersca@apple.com>
+
+        Use the context inside WebContextMenuProxyMac
+        https://bugs.webkit.org/show_bug.cgi?id=150196
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/WebContextMenuProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::internalShowContextMenu):
+        * UIProcess/mac/WebContextMenuProxyMac.h:
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::populate):
+        (WebKit::WebContextMenuProxyMac::showContextMenu):
+
+2015-10-15  Anders Carlsson  <andersca@apple.com>
+
+        Use the context menu location that's stored in the context data
+        https://bugs.webkit.org/show_bug.cgi?id=150194
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/WebContextMenuProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::internalShowContextMenu):
+        * UIProcess/mac/WebContextMenuProxyMac.h:
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::showContextMenu):
+
+2015-10-15  Anders Carlsson  <andersca@apple.com>
+
+        Store the context menu data and user data in the WebContextMenuProxy object
+        https://bugs.webkit.org/show_bug.cgi?id=150191
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebContextMenuProxy.cpp:
+        (WebKit::WebContextMenuProxy::WebContextMenuProxy):
+        * UIProcess/WebContextMenuProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::internalShowContextMenu):
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::createContextMenuProxy):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::createContextMenuProxy):
+        * UIProcess/mac/WebContextMenuProxyMac.h:
+        (WebKit::WebContextMenuProxyMac::create):
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::WebContextMenuProxyMac):
+
+2015-10-15  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Stop using WKSetNSURLConnectionDefersCallbacks
+        https://bugs.webkit.org/show_bug.cgi?id=150189
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Removed initialization.
+
+2015-10-15  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * UIProcess/API/APIFrameInfo.cpp:
+        (API::FrameInfo::~FrameInfo):
+        * UIProcess/API/APIFrameInfo.h:
+        * UIProcess/API/Cocoa/WKUserContentController.mm:
+
+2015-10-15  Anders Carlsson  <andersca@apple.com>
+
+        CTTE menu proxies
+        https://bugs.webkit.org/show_bug.cgi?id=150187
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::showPopupMenu):
+        (WebKit::WebPageProxy::internalShowContextMenu):
+        * UIProcess/WebPopupMenuProxy.h:
+        (WebKit::WebPopupMenuProxy::WebPopupMenuProxy):
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::createPopupMenuProxy):
+        (WebKit::PageClientImpl::createContextMenuProxy): Deleted.
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::createPopupMenuProxy):
+        (WebKit::PageClientImpl::createContextMenuProxy):
+        * UIProcess/mac/WebContextMenuProxyMac.h:
+        (WebKit::WebContextMenuProxyMac::create):
+        (WebKit::WebContextMenuProxyMac::page):
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::WebContextMenuProxyMac):
+        (WebKit::WebContextMenuProxyMac::~WebContextMenuProxyMac):
+        (WebKit::WebContextMenuProxyMac::contextMenuItemSelected):
+        * UIProcess/mac/WebPopupMenuProxyMac.h:
+        (WebKit::WebPopupMenuProxyMac::create):
+        * UIProcess/mac/WebPopupMenuProxyMac.mm:
+        (WebKit::WebPopupMenuProxyMac::WebPopupMenuProxyMac):
+
+2015-10-15  Anders Carlsson  <andersca@apple.com>
+
+        Add -[WKFrameInfo _handle]
+        https://bugs.webkit.org/show_bug.cgi?id=150185
+        rdar://problem/23132371
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/APIFrameInfo.cpp:
+        (API::FrameInfo::FrameInfo):
+        * UIProcess/API/APIFrameInfo.h:
+        * UIProcess/API/Cocoa/WKFrameInfo.mm:
+        (-[WKFrameInfo _handle]):
+        * UIProcess/API/Cocoa/WKFrameInfoInternal.h:
+        * UIProcess/API/Cocoa/WKFrameInfoPrivate.h: Copied from Source/WebKit2/UIProcess/API/Cocoa/WKFrameInfoInternal.h.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::showPopupMenu):
+        (WebKit::WebPageProxy::internalShowContextMenu):
+        * UIProcess/WebPopupMenuProxy.h:
+        (WebKit::WebPopupMenuProxy::WebPopupMenuProxy):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-10-15  Anders Carlsson  <andersca@apple.com>
+
+        The menu location and menu items should be part of ContextMenuContextData
+        https://bugs.webkit.org/show_bug.cgi?id=150182
+
+        Reviewed by Andreas Kling.
+
+        * Shared/ContextMenuContextData.cpp:
+        (WebKit::ContextMenuContextData::ContextMenuContextData):
+        (WebKit::ContextMenuContextData::encode):
+        (WebKit::ContextMenuContextData::decode):
+        * Shared/ContextMenuContextData.h:
+        (WebKit::ContextMenuContextData::menuLocation):
+        (WebKit::ContextMenuContextData::menuItems):
+        (WebKit::ContextMenuContextData::ContextMenuContextData):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::showContextMenu):
+        (WebKit::WebPageProxy::internalShowContextMenu):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::showSelectionServiceMenu):
+        * WebProcess/WebPage/WebContextMenu.cpp:
+        (WebKit::WebContextMenu::show):
+
+2015-10-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test WebKit2.RestoreSessionStateContainingFormData fails
+        https://bugs.webkit.org/show_bug.cgi?id=84960
+
+        Reviewed by Žan Doberšek.
+
+        Add a cross-platform implementation to LegacySessionStateCodingNone
+        using the new SessionState, so that non mac ports can make unit
+        tests that use the legacy session state coding pass.
+
+        * UIProcess/LegacySessionStateCodingNone.cpp:
+        (WebKit::encodeLegacySessionState):
+        (WebKit::decodeLegacySessionState):
+        (WebKit::encodeLegacySessionHistoryEntryData): Deleted.
+        (WebKit::decodeLegacySessionHistoryEntryData): Deleted.
+
+2015-10-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix wrong #ifdef added in r190615.
+
+        This disabled accelerated compositing unconditionally.
+
+        * UIProcess/gtk/WebPreferencesGtk.cpp:
+        (WebKit::WebPreferences::platformInitializeStore):
+
+2015-10-14  Zhuo Li  <zachli@apple.com>
+
+        Augment <input type=search>’s recent search history with the time each entry was added,
+        in order to allow time-based clearing of search history.
+        https://bugs.webkit.org/show_bug.cgi?id=148388.
+
+        Reviewed by Darin Adler.
+
+        Replace Vector<String> with Vector<RecentSearch>, where RecentSearch is a struct
+        that consists search string and time, for recent searches in order to store additional time
+        information.
+
+        All these new RecentSearches are stored in a plist in which the structure looks like:
+        Root {
+            "items": {
+                autosave name: {
+                    "searches": [
+                        { "searchString": searchString, "date": date },
+                        ...
+                    ]
+                }
+            }
+        }
+
+        * Scripts/webkit/messages.py:
+        (headers_for_type):
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<RecentSearch>::encode): Encode the new struct RecentSearch
+        (IPC::ArgumentCoder<RecentSearch>::decode): Decode the new struct RecentSearch
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        (WebKit::WebPageProxy::saveRecentSearches): Call saveRecentSearches in WebCore::SearchPopupMenuCocoa.
+        (WebKit::WebPageProxy::loadRecentSearches): Call loadRecentSearches in WebCore::SearchPopupMenuCocoa.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/efl/WebPageProxyEfl.cpp:
+        (WebKit::WebPageProxy::saveRecentSearches):
+        (WebKit::WebPageProxy::loadRecentSearches):
+        * UIProcess/gtk/WebPageProxyGtk.cpp:
+        (WebKit::WebPageProxy::saveRecentSearches):
+        (WebKit::WebPageProxy::loadRecentSearches):
+        * WebProcess/WebCoreSupport/WebSearchPopupMenu.cpp:
+        (WebKit::WebSearchPopupMenu::saveRecentSearches):
+        (WebKit::WebSearchPopupMenu::loadRecentSearches):
+        * WebProcess/WebCoreSupport/WebSearchPopupMenu.h:
+
+2015-10-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Web pages with unscalable viewports shouldn't have a single tap delay
+        https://bugs.webkit.org/show_bug.cgi?id=149968
+        <rdar://problem/23054453>
+
+        Reviewed by Simon Fraser.
+
+        When a viewport is unscalable (specified through the meta viewport tag) we
+        do not add a delay to our single tap gesture recognizer. We do this by
+        disabling or reinitializing the WKContentView's double tap gesture recognizer
+        when the viewport becomes unscalable or scalable, respectively. A viewport is
+        deemed unscalable when it has user-scalable = no, or when the minimum scale is
+        greater than or equal to the maximum scale.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _createAndConfigureDoubleTapGestureRecognizer]): Pulled logic
+                for initializing a double tap gesture recognizer out into a helper function.
+        (-[WKContentView setupInteraction]):
+        (-[WKContentView _setDoubleTapGesturesEnabled:]): Turns gesture recognition for double
+                taps on or off.
+
 2015-10-14  Anders Carlsson  <andersca@apple.com>
 
         Remove a message that isn't used by anyone

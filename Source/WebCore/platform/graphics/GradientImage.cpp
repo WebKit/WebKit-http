@@ -30,6 +30,7 @@
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
 #include "Length.h"
+#include "TextStream.h"
 
 namespace WebCore {
 
@@ -101,6 +102,12 @@ void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& s
 
     // Tile the image buffer into the context.
     m_cachedImageBuffer->drawPattern(destContext, adjustedSrcRect, adjustedPatternCTM, phase, spacing, styleColorSpace, compositeOp, destRect, blendMode);
+}
+
+void GradientImage::dump(TextStream& ts) const
+{
+    GeneratedImage::dump(ts);
+    // FIXME: dump the gradient.
 }
 
 }

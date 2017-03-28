@@ -38,6 +38,7 @@
 #include "DFGSaneStringGetByValSlowPathGenerator.h"
 #include "DFGSlowPathGenerator.h"
 #include "DirectArguments.h"
+#include "JITSubGenerator.h"
 #include "JSArrowFunction.h"
 #include "JSCInlines.h"
 #include "JSEnvironmentRecord.h"
@@ -767,6 +768,7 @@ void SpeculativeJIT::checkArray(Node* node)
     const ClassInfo* expectedClassInfo = 0;
     
     switch (node->arrayMode().type()) {
+    case Array::AnyTypedArray:
     case Array::String:
         RELEASE_ASSERT_NOT_REACHED(); // Should have been a Phantom(String:)
         break;
@@ -2194,11 +2196,12 @@ void SpeculativeJIT::compileDoubleRep(Node* node)
             done.append(isNull);
 
             DFG_TYPE_CHECK(JSValueRegs(op1GPR), node->child1(), ~SpecCell,
-                m_jit.branchTest64(JITCompiler::NonZero, op1GPR, TrustedImm32(static_cast<int32_t>(~1))));
+                m_jit.branchTest64(JITCompiler::Zero, op1GPR, TrustedImm32(static_cast<int32_t>(TagBitBool))));
 
             JITCompiler::Jump isFalse = m_jit.branch64(JITCompiler::Equal, op1GPR, TrustedImm64(ValueFalse));
             static const double one = 1;
             m_jit.loadDouble(MacroAssembler::TrustedImmPtr(&one), resultFPR);
+            done.append(m_jit.jump());
             done.append(isFalse);
 
             isUndefined.link(&m_jit);
@@ -2247,6 +2250,7 @@ void SpeculativeJIT::compileDoubleRep(Node* node)
             JITCompiler::Jump isFalse = m_jit.branchTest32(JITCompiler::Zero, op1PayloadGPR, TrustedImm32(1));
             static const double one = 1;
             m_jit.loadDouble(MacroAssembler::TrustedImmPtr(&one), resultFPR);
+            done.append(m_jit.jump());
             done.append(isFalse);
 
             isUndefined.link(&m_jit);
@@ -3078,7 +3082,52 @@ void SpeculativeJIT::compileArithSub(Node* node)
         doubleResult(result.fpr(), node);
         return;
     }
-        
+
+    case UntypedUse: {
+        JSValueOperand left(this, node->child1());
+        JSValueOperand right(this, node->child2());
+
+        JSValueRegs leftRegs = left.jsValueRegs();
+        JSValueRegs rightRegs = right.jsValueRegs();
+
+        ResultType leftType = m_state.forNode(node->child1()).resultType();
+        ResultType rightType = m_state.forNode(node->child2()).resultType();
+
+        FPRTemporary leftNumber(this);
+        FPRTemporary rightNumber(this);
+        FPRReg leftFPR = leftNumber.fpr();
+        FPRReg rightFPR = rightNumber.fpr();
+
+#if USE(JSVALUE64)
+        GPRTemporary result(this);
+        JSValueRegs resultRegs = JSValueRegs(result.gpr());
+        GPRTemporary scratch(this);
+        GPRReg scratchGPR = scratch.gpr();
+        FPRReg scratchFPR = InvalidFPRReg;
+#else
+        GPRTemporary resultTag(this);
+        GPRTemporary resultPayload(this);
+        JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
+        GPRReg scratchGPR = resultTag.gpr();
+        FPRTemporary fprScratch(this);
+        FPRReg scratchFPR = fprScratch.fpr();
+#endif
+
+        JITSubGenerator gen(resultRegs, leftRegs, rightRegs, leftType, rightType,
+            leftFPR, rightFPR, scratchGPR, scratchFPR);
+        gen.generateFastPath(m_jit);
+
+        gen.slowPathJumpList().link(&m_jit);
+        silentSpillAllRegisters(resultRegs);
+        callOperation(operationValueSub, resultRegs, leftRegs, rightRegs);
+        silentFillAllRegisters(resultRegs);
+        m_jit.exceptionCheck();
+
+        gen.endJumpList().link(&m_jit);
+        jsValueResult(resultRegs, node);
+        return;
+    }
+
     default:
         RELEASE_ASSERT_NOT_REACHED();
         return;
@@ -4385,14 +4434,11 @@ void SpeculativeJIT::compileGetIndexedPropertyStorage(Node* node)
         
     default:
         ASSERT(isTypedView(node->arrayMode().typedArrayType()));
-        m_jit.loadPtr(
-            MacroAssembler::Address(baseReg, JSArrayBufferView::offsetOfVector()),
-            storageReg);
+
+        JITCompiler::Jump fail = m_jit.loadTypedArrayVector(baseReg, storageReg);
 
         addSlowPathGenerator(
-            slowPathCall(
-                m_jit.branchIfNotToSpace(storageReg),
-                this, operationGetArrayBufferVector, storageReg, baseReg));
+            slowPathCall(fail, this, operationGetArrayBufferVector, storageReg, baseReg));
         break;
     }
     
@@ -4417,7 +4463,11 @@ void SpeculativeJIT::compileGetTypedArrayByteOffset(Node* node)
     m_jit.loadPtr(MacroAssembler::Address(baseGPR, JSObject::butterflyOffset()), dataGPR);
     m_jit.removeSpaceBits(dataGPR);
     m_jit.loadPtr(MacroAssembler::Address(baseGPR, JSArrayBufferView::offsetOfVector()), vectorGPR);
+    JITCompiler::JumpList vectorReady;
+    vectorReady.append(m_jit.branchIfToSpace(vectorGPR));
+    vectorReady.append(m_jit.branchIfNotFastTypedArray(baseGPR));
     m_jit.removeSpaceBits(vectorGPR);
+    vectorReady.link(&m_jit);
     m_jit.loadPtr(MacroAssembler::Address(dataGPR, Butterfly::offsetOfArrayBuffer()), dataGPR);
     m_jit.loadPtr(MacroAssembler::Address(dataGPR, ArrayBuffer::offsetOfData()), dataGPR);
     m_jit.subPtr(dataGPR, vectorGPR);
@@ -4665,7 +4715,7 @@ void SpeculativeJIT::compileGetArrayLength(Node* node)
         break;
     }
     default: {
-        ASSERT(isTypedView(node->arrayMode().typedArrayType()));
+        ASSERT(node->arrayMode().isSomeTypedArrayView());
         SpeculateCellOperand base(this, node->child1());
         GPRTemporary result(this, Reuse, base);
         GPRReg baseGPR = base.gpr();

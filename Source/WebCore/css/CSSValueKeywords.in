@@ -3,6 +3,9 @@
 //
 inherit
 initial
+unset
+revert
+
 //
 // CSS_PROP_OUTLINE_STYLE
 // CSS_PROP_BORDER_TOP_STYLE

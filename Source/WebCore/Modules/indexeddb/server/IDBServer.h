@@ -57,12 +57,16 @@ public:
     // Operations requested by the client.
     void openDatabase(const IDBRequestData&);
     void deleteDatabase(const IDBRequestData&);
+    void commitTransaction(const IDBResourceIdentifier&);
+    void databaseConnectionClosed(uint64_t databaseConnectionIdentifier);
 
     void postDatabaseTask(std::unique_ptr<CrossThreadTask>&&);
     void postDatabaseTaskReply(std::unique_ptr<CrossThreadTask>&&);
 
     void registerDatabaseConnection(UniqueIDBDatabaseConnection&);
     void unregisterDatabaseConnection(UniqueIDBDatabaseConnection&);
+    void registerTransaction(UniqueIDBDatabaseTransaction&);
+    void unregisterTransaction(UniqueIDBDatabaseTransaction&);
 
     std::unique_ptr<IDBBackingStore> createBackingStore(const IDBDatabaseIdentifier&);
 
@@ -87,6 +91,7 @@ private:
     MessageQueue<CrossThreadTask> m_databaseReplyQueue;
 
     HashMap<uint64_t, UniqueIDBDatabaseConnection*> m_databaseConnections;
+    HashMap<IDBResourceIdentifier, UniqueIDBDatabaseTransaction*> m_transactions;
 };
 
 } // namespace IDBServer

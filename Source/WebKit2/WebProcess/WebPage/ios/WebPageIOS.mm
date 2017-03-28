@@ -50,7 +50,6 @@
 #import "WebProcess.h"
 #import <CoreText/CTFont.h>
 #import <WebCore/Chrome.h>
-#import <WebCore/DNS.h>
 #import <WebCore/DiagnosticLoggingClient.h>
 #import <WebCore/DiagnosticLoggingKeys.h>
 #import <WebCore/Element.h>
@@ -59,6 +58,7 @@
 #import <WebCore/FloatQuad.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
+#import <WebCore/FrameLoaderClient.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/GeometryUtilities.h>
 #import <WebCore/HTMLElementTypeHelpers.h>
@@ -628,8 +628,10 @@ void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
     if (!node)
         return;
 
-    if (is<Element>(*node))
-        prefetchDNS(downcast<Element>(*node).absoluteLinkURL().host());
+    if (is<Element>(*node)) {
+        ASSERT(m_page);
+        m_page->mainFrame().loader().client().prefetchDNS(downcast<Element>(*node).absoluteLinkURL().host());
+    }
 
     Vector<FloatQuad> quads;
     if (RenderObject *renderer = node->renderer()) {
@@ -662,6 +664,16 @@ void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoi
 {
     m_potentialTapNode = m_page->mainFrame().nodeRespondingToClickEvents(position, m_potentialTapLocation);
     sendTapHighlightForNodeIfNecessary(requestID, m_potentialTapNode.get());
+    if (m_potentialTapNode) {
+        FloatPoint origin = position;
+        FloatRect renderRect;
+        bool isReplaced;
+        double viewportMinimumScale;
+        double viewportMaximumScale;
+
+        m_viewGestureGeometryCollector.computeZoomInformationForNode(*m_potentialTapNode.get(), origin, renderRect, isReplaced, viewportMinimumScale, viewportMaximumScale);
+        send(Messages::WebPageProxy::DisableDoubleTapGesturesUntilTapIsFinishedIfNecessary(requestID, true, renderRect, isReplaced, viewportMinimumScale, viewportMaximumScale));
+    }
 }
 
 void WebPage::commitPotentialTap(uint64_t lastLayerTreeTransactionId)

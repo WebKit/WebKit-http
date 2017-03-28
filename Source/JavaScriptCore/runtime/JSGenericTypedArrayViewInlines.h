@@ -293,16 +293,7 @@ bool JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot(
     JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(object);
-    if (propertyName == exec->propertyNames().length) {
-        slot.setValue(thisObject, DontDelete | ReadOnly, jsNumber(thisObject->length()));
-        return true;
-    }
-    
-    if (propertyName == exec->propertyNames().byteLength) {
-        slot.setValue(thisObject, DontDelete | ReadOnly, jsNumber(thisObject->byteLength()));
-        return true;
-    }
-    
+
     Optional<uint32_t> index = parseIndex(propertyName);
     if (index && thisObject->canGetIndexQuickly(index.value())) {
         slot.setValue(thisObject, DontDelete | ReadOnly, thisObject->getIndexQuickly(index.value()));
@@ -318,12 +309,6 @@ void JSGenericTypedArrayView<Adaptor>::put(
     PutPropertySlot& slot)
 {
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
-    
-    if (propertyName == exec->propertyNames().length) {
-        // Firefox appears to simply ignore attempts to store to the length property.
-        // Even in strict mode. I will do the same.
-        return;
-    }
     
     if (Optional<uint32_t> index = parseIndex(propertyName)) {
         putByIndex(thisObject, exec, index.value(), value, slot.isStrictMode());
@@ -343,7 +328,7 @@ bool JSGenericTypedArrayView<Adaptor>::defineOwnProperty(
     // This is matching Firefox behavior. In particular, it rejects all attempts to
     // defineOwnProperty for indexed properties on typed arrays, even if they're out
     // of bounds.
-    if (propertyName == exec->propertyNames().length || parseIndex(propertyName))
+    if (parseIndex(propertyName))
         return reject(exec, shouldThrow, "Attempting to write to a read-only typed array property.");
     
     return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
@@ -355,7 +340,7 @@ bool JSGenericTypedArrayView<Adaptor>::deleteProperty(
 {
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
     
-    if (propertyName == exec->propertyNames().length || parseIndex(propertyName))
+    if (parseIndex(propertyName))
         return false;
     
     return Base::deleteProperty(thisObject, exec, propertyName);
@@ -405,18 +390,6 @@ bool JSGenericTypedArrayView<Adaptor>::deletePropertyByIndex(
     }
     
     return false;
-}
-
-template<typename Adaptor>
-void JSGenericTypedArrayView<Adaptor>::getOwnNonIndexPropertyNames(
-    JSObject* object, ExecState* exec, PropertyNameArray& array, EnumerationMode mode)
-{
-    JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(object);
-    
-    if (mode.includeDontEnumProperties())
-        array.add(exec->propertyNames().length);
-    
-    Base::getOwnNonIndexPropertyNames(thisObject, exec, array, mode);
 }
 
 template<typename Adaptor>
@@ -470,7 +443,7 @@ void JSGenericTypedArrayView<Adaptor>::copyBackingStore(
     if (token == TypedArrayVectorCopyToken
         && visitor.checkIfShouldCopy(thisObject->m_vector.getWithoutBarrier())) {
         ASSERT(thisObject->m_vector);
-        void* oldVector = thisObject->m_vector.get(thisObject);
+        void* oldVector = thisObject->vector();
         void* newVector = visitor.allocateNewSpace(thisObject->byteSize());
         memcpy(newVector, oldVector, thisObject->byteSize());
         thisObject->m_vector.setWithoutBarrier(static_cast<char*>(newVector));
@@ -509,7 +482,7 @@ ArrayBuffer* JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory(JSArrayBuf
         ASSERT(thisObject->m_vector);
         // Reuse already allocated memory if at all possible.
         thisObject->m_butterfly.setWithoutBarrier(
-            bitwise_cast<IndexingHeader*>(thisObject->m_vector.get(thisObject))->butterfly());
+            bitwise_cast<IndexingHeader*>(thisObject->vector())->butterfly());
     } else {
         VM& vm = *heap->vm();
         thisObject->m_butterfly.set(vm, thisObject, Butterfly::createOrGrowArrayRight(
@@ -521,14 +494,14 @@ ArrayBuffer* JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory(JSArrayBuf
     
     switch (thisObject->m_mode) {
     case FastTypedArray:
-        buffer = ArrayBuffer::create(thisObject->m_vector.get(thisObject), thisObject->byteLength());
+        buffer = ArrayBuffer::create(thisObject->vector(), thisObject->byteLength());
         break;
         
     case OversizeTypedArray:
         // FIXME: consider doing something like "subtracting" from extra memory
         // cost, since right now this case will cause the GC to think that we reallocated
         // the whole buffer.
-        buffer = ArrayBuffer::createAdopted(thisObject->m_vector.get(thisObject), thisObject->byteLength());
+        buffer = ArrayBuffer::createAdopted(thisObject->vector(), thisObject->byteLength());
         break;
         
     default:

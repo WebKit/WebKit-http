@@ -43,6 +43,8 @@ class AlternativeTextUIController;
 
 namespace WebKit {
 
+class WebViewImpl;
+
 class PageClientImpl final : public PageClient
 #if ENABLE(FULLSCREEN_API)
     , public WebFullScreenManagerProxyClient
@@ -51,7 +53,10 @@ class PageClientImpl final : public PageClient
 public:
     PageClientImpl(WKView *, WKWebView *);
     virtual ~PageClientImpl();
-    
+
+    // FIXME: Eventually WebViewImpl should become the PageClient.
+    void setImpl(WebViewImpl& impl) { m_impl = &impl; }
+
     void viewWillMoveToAnotherWindow();
 
 private:
@@ -120,8 +125,10 @@ private:
 
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) override;
 
-    virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
-    virtual RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) override;
+    virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
+#if ENABLE(CONTEXT_MENUS)
+    virtual RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
+#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
     virtual RefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) override;
@@ -134,9 +141,13 @@ private:
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     virtual void exitAcceleratedCompositingMode() override;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
+    virtual void willEnterAcceleratedCompositingMode() override;
 
     virtual PassRefPtr<ViewSnapshot> takeViewSnapshot() override;
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
+#if ENABLE(MAC_GESTURE_EVENTS)
+    virtual void gestureEventWasNotHandledByWebCore(const NativeWebGestureEvent&) override;
+#endif
 
     virtual void accessibilityWebProcessTokenReceived(const IPC::DataReference&) override;
 
@@ -208,6 +219,7 @@ private:
 
     WKView *m_wkView;
     WKWebView *m_webView;
+    WebViewImpl* m_impl { nullptr };
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
 #if USE(AUTOCORRECTION_PANEL)
     CorrectionPanel m_correctionPanel;

@@ -32,6 +32,7 @@
 #import "ColorSpaceData.h"
 #import "DataReference.h"
 #import "DownloadProxy.h"
+#import "NativeWebGestureEvent.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebWheelEvent.h"
 #import "NavigationState.h"
@@ -46,6 +47,7 @@
 #import "WebContextMenuProxyMac.h"
 #import "WebEditCommandProxy.h"
 #import "WebPopupMenuProxyMac.h"
+#import "WebViewImpl.h"
 #import "WindowServerConnection.h"
 #import "_WKDownloadInternal.h"
 #import "_WKHitTestResultInternal.h"
@@ -218,7 +220,12 @@ bool PageClientImpl::isViewWindowActive()
 
 bool PageClientImpl::isViewFocused()
 {
-    return [m_wkView _isFocused];
+    // FIXME: This is called from the WebPageProxy constructor before we have a WebViewImpl.
+    // Once WebViewImpl and PageClient merge, this won't be a problem.
+    if (!m_impl)
+        return NO;
+
+    return m_impl->isFocused();
 }
 
 void PageClientImpl::makeFirstResponder()
@@ -310,7 +317,7 @@ void PageClientImpl::toolTipChanged(const String& oldToolTip, const String& newT
 
 void PageClientImpl::didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider)
 {
-    [m_wkView _didCommitLoadForMainFrame];
+    m_impl->updateSupportsArbitraryLayoutModes();
 }
 
 void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String& suggestedFilename, const IPC::DataReference& dataReference)
@@ -432,17 +439,17 @@ void PageClientImpl::setPromisedDataForAttachment(const String& pasteboardName, 
 
 void PageClientImpl::updateSecureInputState()
 {
-    [m_wkView _updateSecureInputState];
+    m_impl->updateSecureInputState();
 }
 
 void PageClientImpl::resetSecureInputState()
 {
-    [m_wkView _resetSecureInputState];
+    m_impl->resetSecureInputState();
 }
 
 void PageClientImpl::notifyInputContextAboutDiscardedComposition()
 {
-    [m_wkView _notifyInputContextAboutDiscardedComposition];
+    m_impl->notifyInputContextAboutDiscardedComposition();
 }
 
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -487,15 +494,17 @@ void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool 
     [m_wkView _doneWithKeyEvent:event.nativeEvent() eventWasHandled:eventWasHandled];
 }
 
-RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy* page)
+RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy& page)
 {
     return WebPopupMenuProxyMac::create(m_wkView, page);
 }
 
-RefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy* page)
+#if ENABLE(CONTEXT_MENUS)
+RefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
 {
-    return WebContextMenuProxyMac::create(m_wkView, page);
+    return WebContextMenuProxyMac::create(m_wkView, page, context, userData);
 }
+#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
 RefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page, const WebCore::Color& initialColor,  const WebCore::IntRect& rect)
@@ -546,6 +555,10 @@ void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext& la
     [m_wkView _setAcceleratedCompositingModeRootLayer:renderLayer];
 }
 
+void PageClientImpl::willEnterAcceleratedCompositingMode()
+{
+}
+
 void PageClientImpl::setAcceleratedCompositingRootLayer(CALayer *rootLayer)
 {
     [m_wkView _setAcceleratedCompositingModeRootLayer:rootLayer];
@@ -570,6 +583,13 @@ void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&
 {
     [m_wkView _wheelEventWasNotHandledByWebCore:event.nativeEvent()];
 }
+
+#if ENABLE(MAC_GESTURE_EVENTS)
+void PageClientImpl::gestureEventWasNotHandledByWebCore(const NativeWebGestureEvent& event)
+{
+    [m_wkView _gestureEventWasNotHandledByWebCore:event.nativeEvent()];
+}
+#endif
 
 void PageClientImpl::pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus)
 {
@@ -641,7 +661,10 @@ void PageClientImpl::recommendedScrollbarStyleDidChange(ScrollbarStyle newStyle)
 
 void PageClientImpl::intrinsicContentSizeDidChange(const IntSize& intrinsicContentSize)
 {
-    [m_wkView _setIntrinsicContentSize:intrinsicContentSize];
+    if (m_webView)
+        [m_webView _setIntrinsicContentSize:intrinsicContentSize];
+    else
+        [m_wkView _setIntrinsicContentSize:intrinsicContentSize];
 }
 
 bool PageClientImpl::executeSavedCommandBySelector(const String& selectorString)
@@ -710,13 +733,13 @@ void PageClientImpl::exitFullScreen()
 void PageClientImpl::beganEnterFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
 {
     [m_wkView._fullScreenWindowController beganEnterFullScreenWithInitialFrame:initialFrame finalFrame:finalFrame];
-    [m_wkView _updateSupportsArbitraryLayoutModes];
+    m_impl->updateSupportsArbitraryLayoutModes();
 }
 
 void PageClientImpl::beganExitFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
 {
     [m_wkView._fullScreenWindowController beganExitFullScreenWithInitialFrame:initialFrame finalFrame:finalFrame];
-    [m_wkView _updateSupportsArbitraryLayoutModes];
+    m_impl->updateSupportsArbitraryLayoutModes();
 }
 
 #endif // ENABLE(FULLSCREEN_API)

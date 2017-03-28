@@ -29,8 +29,10 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBConnectionToClient.h"
+#include "IDBServer.h"
 #include "IDBTransactionInfo.h"
 #include "Logging.h"
+#include "UniqueIDBDatabase.h"
 
 namespace WebCore {
 namespace IDBServer {
@@ -51,6 +53,25 @@ UniqueIDBDatabaseConnection::UniqueIDBDatabaseConnection(UniqueIDBDatabase& data
     , m_database(database)
     , m_connectionToClient(connection)
 {
+    m_database.server().registerDatabaseConnection(*this);
+}
+
+UniqueIDBDatabaseConnection::~UniqueIDBDatabaseConnection()
+{
+    m_database.server().unregisterDatabaseConnection(*this);
+}
+
+bool UniqueIDBDatabaseConnection::hasNonFinishedTransactions() const
+{
+    return !m_transactionMap.isEmpty();
+}
+
+void UniqueIDBDatabaseConnection::connectionClosedFromClient()
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::connectionClosedFromClient");
+
+    m_closePending = true;
+    m_database.connectionClosedFromClient(*this);
 }
 
 void UniqueIDBDatabaseConnection::fireVersionChangeEvent(uint64_t requestedVersion)
@@ -59,7 +80,7 @@ void UniqueIDBDatabaseConnection::fireVersionChangeEvent(uint64_t requestedVersi
     m_connectionToClient.fireVersionChangeEvent(*this, requestedVersion);
 }
 
-Ref<UniqueIDBDatabaseTransaction> UniqueIDBDatabaseConnection::createVersionChangeTransaction(uint64_t newVersion)
+UniqueIDBDatabaseTransaction& UniqueIDBDatabaseConnection::createVersionChangeTransaction(uint64_t newVersion)
 {
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::createVersionChangeTransaction");
     ASSERT(!m_closePending);
@@ -69,7 +90,19 @@ Ref<UniqueIDBDatabaseTransaction> UniqueIDBDatabaseConnection::createVersionChan
     Ref<UniqueIDBDatabaseTransaction> transaction = UniqueIDBDatabaseTransaction::create(*this, info);
     m_transactionMap.set(transaction->info().identifier(), &transaction.get());
 
-    return WTF::move(transaction);
+    return transaction.get();
+}
+
+void UniqueIDBDatabaseConnection::didCommitTransaction(UniqueIDBDatabaseTransaction& transaction, const IDBError& error)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::didCommitTransaction");
+
+    auto transactionIdentifier = transaction.info().identifier();
+
+    ASSERT(m_transactionMap.contains(transactionIdentifier));
+    m_transactionMap.remove(transactionIdentifier);
+
+    m_connectionToClient.didCommitTransaction(transactionIdentifier, error);
 }
 
 } // namespace IDBServer

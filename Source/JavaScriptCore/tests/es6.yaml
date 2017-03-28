@@ -86,6 +86,8 @@
   cmd: runES6 :normal
 - path: es6/class_class_expression.js
   cmd: runES6 :normal
+- path: es6/class_class_name_is_lexically_scoped.js
+  cmd: runES6 :normal
 - path: es6/class_class_statement.js
   cmd: runES6 :normal
 - path: es6/class_computed_accessor_properties.js
@@ -438,6 +440,14 @@
   cmd: runES6 :normal
 - path: es6/own_property_order_Reflect.ownKeys_symbol_key_order.js
   cmd: runES6 :normal
+- path: es6/Promise_basic_functionality.js
+  cmd: runES6 :normal
+- path: es6/Promise_is_subclassable_basic_functionality.js
+  cmd: runES6 :normal
+- path: es6/Promise_constructor_requires_new.js
+  cmd: runES6 :normal
+- path: es6/Promise_is_subclassable_correct_prototype_chain.js
+  cmd: runES6 :normal
 - path: es6/Reflect_Reflect.apply.js
   cmd: runES6 :normal
 - path: es6/Reflect_Reflect.defineProperty.js
@@ -547,6 +557,8 @@
 - path: es6/String.prototype_methods_String.prototype.endsWith.js
   cmd: runES6 :normal
 - path: es6/String.prototype_methods_String.prototype.includes.js
+  cmd: runES6 :normal
+- path: es6/String.prototype_methods_String.prototype.normalize.js
   cmd: runES6 :normal
 - path: es6/String.prototype_methods_String.prototype.repeat.js
   cmd: runES6 :normal
@@ -728,8 +740,6 @@
   cmd: runES6 :normal
 - path: es6/block-level_function_declaration.js
   cmd: runES6 :fail
-- path: es6/class_class_name_is_lexically_scoped.js
-  cmd: runES6 :fail
 - path: es6/destructuring_computed_properties.js
   cmd: runES6 :fail
 - path: es6/destructuring_defaults_in_parameters_separate_scope.js
@@ -854,14 +864,6 @@
   cmd: runES6 :fail
 - path: es6/non-strict_function_semantics_hoisted_block-level_function_declaration.js
   cmd: runES6 :fail
-- path: es6/Promise_basic_functionality.js
-  cmd: runES6 :fail
-- path: es6/Promise_constructor_requires_new.js
-  cmd: runES6 :fail
-- path: es6/Promise_is_subclassable_basic_functionality.js
-  cmd: runES6 :fail
-- path: es6/Promise_is_subclassable_correct_prototype_chain.js
-  cmd: runES6 :fail
 - path: es6/Promise_is_subclassable_Promise.all.js
   cmd: runES6 :fail
 - path: es6/Promise_is_subclassable_Promise.race.js
@@ -877,9 +879,9 @@
 - path: es6/Promise_Promise[Symbol.species].js
   cmd: runES6 :fail
 - path: es6/proper_tail_calls_tail_call_optimisation_direct_recursion.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/proper_tail_calls_tail_call_optimisation_mutual_recursion.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/prototype_of_bound_functions_arrow_functions.js
   cmd: runES6 :fail
 - path: es6/prototype_of_bound_functions_basic_functions.js
@@ -1111,8 +1113,6 @@
 - path: es6/spread_..._operator_with_instances_of_iterables_in_calls.js
   cmd: runES6 :fail
 - path: es6/spread_..._operator_with_strings_in_function_calls.js
-  cmd: runES6 :fail
-- path: es6/String.prototype_methods_String.prototype.normalize.js
   cmd: runES6 :fail
 - path: es6/typed_arrays_%TypedArray%.from.js
   cmd: runES6 :normal

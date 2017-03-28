@@ -32,6 +32,7 @@
 #include "IDBDatabaseIdentifier.h"
 #include "IDBDatabaseInfo.h"
 #include "IDBServerOperation.h"
+#include "Timer.h"
 #include "UniqueIDBDatabaseConnection.h"
 #include "UniqueIDBDatabaseTransaction.h"
 #include <wtf/Deque.h>
@@ -41,12 +42,15 @@
 
 namespace WebCore {
 
+class IDBError;
 class IDBRequestData;
 
 namespace IDBServer {
 
 class IDBConnectionToClient;
 class IDBServer;
+
+typedef std::function<void(const IDBError&)> ErrorCallback;
 
 class UniqueIDBDatabase : public ThreadSafeRefCounted<UniqueIDBDatabase> {
 public:
@@ -58,6 +62,11 @@ public:
     void openDatabaseConnection(IDBConnectionToClient&, const IDBRequestData&);
 
     const IDBDatabaseInfo& info() const;
+    IDBServer& server() { return m_server; }
+
+    void commitTransaction(UniqueIDBDatabaseTransaction&, ErrorCallback);
+    void transactionDestroyed(UniqueIDBDatabaseTransaction&);
+    void connectionClosedFromClient(UniqueIDBDatabaseConnection&);
 
 private:
     UniqueIDBDatabase(IDBServer&, const IDBDatabaseIdentifier&);
@@ -68,12 +77,21 @@ private:
 
     void startVersionChangeTransaction();
     void notifyConnectionsOfVersionChange();
+
+    uint64_t storeCallback(ErrorCallback);
     
     // Database thread operations
     void openBackingStore(const IDBDatabaseIdentifier&);
+    void performCommitTransaction(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier);
 
     // Main thread callbacks
     void didOpenBackingStore(const IDBDatabaseInfo&);
+    void didPerformCommitTransaction(uint64_t callbackIdentifier, const IDBError&);
+
+    void performErrorCallback(uint64_t callbackIdentifier, const IDBError&);
+
+    void invokeTransactionScheduler();
+    void transactionSchedulingTimerFired();
 
     IDBServer& m_server;
     IDBDatabaseIdentifier m_identifier;
@@ -81,15 +99,18 @@ private:
     Deque<Ref<IDBServerOperation>> m_pendingOpenDatabaseOperations;
 
     HashSet<RefPtr<UniqueIDBDatabaseConnection>> m_openDatabaseConnections;
+    HashSet<RefPtr<UniqueIDBDatabaseConnection>> m_closePendingDatabaseConnections;
 
     RefPtr<IDBServerOperation> m_versionChangeOperation;
     RefPtr<UniqueIDBDatabaseConnection> m_versionChangeDatabaseConnection;
-
-    RefPtr<UniqueIDBDatabaseTransaction> m_versionChangeTransaction;
-    HashMap<IDBResourceIdentifier, RefPtr<UniqueIDBDatabaseTransaction>> m_inProgressTransactions;
+    UniqueIDBDatabaseTransaction* m_versionChangeTransaction { nullptr };
 
     std::unique_ptr<IDBBackingStore> m_backingStore;
     std::unique_ptr<IDBDatabaseInfo> m_databaseInfo;
+
+    HashMap<uint64_t, ErrorCallback> m_errorCallbacks;
+
+    Timer m_transactionSchedulingTimer;
 };
 
 } // namespace IDBServer

@@ -178,7 +178,7 @@ public:
 #endif
     }
 
-    void emitSaveCalleeSavesFor(CodeBlock* codeBlock, VirtualRegister offsetVirtualRegister = static_cast<VirtualRegister>(0))
+    void emitSaveCalleeSavesFor(CodeBlock* codeBlock)
     {
         ASSERT(codeBlock);
 
@@ -190,10 +190,43 @@ public:
             RegisterAtOffset entry = calleeSaves->at(i);
             if (dontSaveRegisters.get(entry.reg()))
                 continue;
-            storePtr(entry.reg().gpr(), Address(framePointerRegister, offsetVirtualRegister.offsetInBytes() + entry.offset()));
+            storePtr(entry.reg().gpr(), Address(framePointerRegister, entry.offset()));
         }
     }
+    
+    enum RestoreTagRegisterMode { UseExistingTagRegisterContents, CopySavedTagRegistersFromBaseFrame };
 
+    void emitSaveOrCopyCalleeSavesFor(CodeBlock* codeBlock, VirtualRegister offsetVirtualRegister, RestoreTagRegisterMode tagRegisterMode, GPRReg temp)
+    {
+        ASSERT(codeBlock);
+        
+        RegisterAtOffsetList* calleeSaves = codeBlock->calleeSaveRegisters();
+        RegisterSet dontSaveRegisters = RegisterSet(RegisterSet::stackRegisters(), RegisterSet::allFPRs());
+        unsigned registerCount = calleeSaves->size();
+        
+        for (unsigned i = 0; i < registerCount; i++) {
+            RegisterAtOffset entry = calleeSaves->at(i);
+            if (dontSaveRegisters.get(entry.reg()))
+                continue;
+            
+            GPRReg registerToWrite;
+            
+#if USE(JSVALUE32_64)
+            UNUSED_PARAM(tagRegisterMode);
+            UNUSED_PARAM(temp);
+#else
+            if (tagRegisterMode == CopySavedTagRegistersFromBaseFrame
+                && (entry.reg() == GPRInfo::tagTypeNumberRegister || entry.reg() == GPRInfo::tagMaskRegister)) {
+                registerToWrite = temp;
+                loadPtr(AssemblyHelpers::Address(GPRInfo::callFrameRegister, entry.offset()), registerToWrite);
+            } else
+#endif
+                registerToWrite = entry.reg().gpr();
+
+            storePtr(registerToWrite, Address(framePointerRegister, offsetVirtualRegister.offsetInBytes() + entry.offset()));
+        }
+    }
+    
     void emitRestoreCalleeSavesFor(CodeBlock* codeBlock)
     {
         ASSERT(codeBlock);
@@ -756,6 +789,11 @@ public:
 #endif
     }
 
+    Jump branchIfToSpace(GPRReg storageGPR)
+    {
+        return branchTest32(Zero, storageGPR, TrustedImm32(CopyBarrierBase::spaceBits));
+    }
+
     Jump branchIfNotToSpace(GPRReg storageGPR)
     {
         return branchTest32(NonZero, storageGPR, TrustedImm32(CopyBarrierBase::spaceBits));
@@ -765,6 +803,13 @@ public:
     {
         andPtr(TrustedImmPtr(~static_cast<uintptr_t>(CopyBarrierBase::spaceBits)), storageGPR);
     }
+
+    Jump branchIfFastTypedArray(GPRReg baseGPR);
+    Jump branchIfNotFastTypedArray(GPRReg baseGPR);
+
+    // Returns a jump to slow path for when we need to execute the barrier. Note that baseGPR and
+    // resultGPR must be different.
+    Jump loadTypedArrayVector(GPRReg baseGPR, GPRReg resultGPR);
     
     static Address addressForByteOffset(ptrdiff_t byteOffset)
     {
@@ -975,9 +1020,11 @@ public:
     {
         boxDouble(fpr, regs.gpr());
     }
-    void unboxDouble(JSValueRegs regs, FPRReg destFPR, FPRReg)
+
+    void unboxDoubleNonDestructive(JSValueRegs regs, FPRReg destFPR, GPRReg scratchGPR, FPRReg)
     {
-        unboxDouble(regs.payloadGPR(), destFPR);
+        move(regs.payloadGPR(), scratchGPR);
+        unboxDouble(scratchGPR, destFPR);
     }
 
     // Here are possible arrangements of source, target, scratch:
@@ -1020,6 +1067,11 @@ public:
     void unboxDouble(JSValueRegs regs, FPRReg fpr, FPRReg scratchFPR)
     {
         unboxDouble(regs.tagGPR(), regs.payloadGPR(), fpr, scratchFPR);
+    }
+
+    void unboxDoubleNonDestructive(const JSValueRegs regs, FPRReg destFPR, GPRReg, FPRReg scratchFPR)
+    {
+        unboxDouble(regs, destFPR, scratchFPR);
     }
 #endif
     

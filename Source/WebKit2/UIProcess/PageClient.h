@@ -185,6 +185,9 @@ public:
     virtual LayerOrView *acceleratedCompositingRootLayer() const = 0;
     virtual PassRefPtr<ViewSnapshot> takeViewSnapshot() = 0;
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) = 0;
+#if ENABLE(MAC_GESTURE_EVENTS)
+    virtual void gestureEventWasNotHandledByWebCore(const NativeWebGestureEvent&) = 0;
+#endif
 #endif
 
 #if PLATFORM(COCOA) || PLATFORM(GTK)
@@ -219,8 +222,10 @@ public:
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) = 0;
 #endif
 
-    virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) = 0;
-    virtual RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) = 0;
+    virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) = 0;
+#if ENABLE(CONTEXT_MENUS)
+    virtual RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) = 0;
+#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
     virtual RefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) = 0;
@@ -235,6 +240,7 @@ public:
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) = 0;
     virtual void exitAcceleratedCompositingMode() = 0;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) = 0;
+    virtual void willEnterAcceleratedCompositingMode() = 0;
 
 #if PLATFORM(MAC)
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
@@ -289,6 +295,7 @@ public:
     virtual void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) = 0;
     virtual void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale) = 0;
     virtual void didChangeViewportMetaTagWidth(float) = 0;
+    virtual void disableDoubleTapGesturesUntilTapIsFinishedIfNecessary(uint64_t requestID, bool allowsDoubleTapZoom, const WebCore::FloatRect& targetRect, bool isReplacedElement, double minimumScale, double maximumScale) = 0;
     virtual double minimumZoomScale() const = 0;
     virtual WebCore::FloatRect documentRect() const = 0;
     virtual void overflowScrollViewWillStartPanGesture() = 0;

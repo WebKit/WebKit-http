@@ -58,6 +58,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @protocol _WKDiagnosticLoggingDelegate;
 @protocol _WKFindDelegate;
 @protocol _WKFormDelegate;
+@protocol _WKInputDelegate;
 
 @interface WKWebView (WKPrivate)
 
@@ -134,6 +135,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 // The viewport meta tag width is negative if the value is not defined.
 @property (nonatomic, readonly) CGFloat _viewportMetaTagWidth;
+@property (nonatomic, readonly) BOOL _viewportIsUserScalable;
 
 @property (nonatomic, readonly) _WKWebViewPrintFormatter *_webViewPrintFormatter;
 
@@ -185,6 +187,9 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 // Clients that want to maintain default behavior can return nil. To disable the immediate action entirely, return NSNull. And to
 // do something custom, return an object that conforms to the NSImmediateActionAnimationController protocol.
 - (id)_immediateActionAnimationControllerForHitTestResult:(_WKHitTestResult *)hitTestResult withType:(_WKImmediateActionType)type userData:(id<NSSecureCoding>)userData;
+
+@property (nonatomic, setter=_setMinimumLayoutWidth:) CGFloat _minimumLayoutWidth WK_AVAILABLE(WK_MAC_TBA, NA);
+
 #endif
 
 - (WKNavigation *)_reloadWithoutContentBlockers WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
@@ -213,7 +218,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_countStringMatches:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount;
 - (void)_hideFindUI;
 
-@property (nonatomic, weak, setter=_setFormDelegate:) id <_WKFormDelegate> _formDelegate;
+@property (nonatomic, weak, setter=_setFormDelegate:) id <_WKFormDelegate> _formDelegate WK_DEPRECATED(10_10, WK_MAC_TBA, 8_0, WK_IOS_TBA, "use _inputDelegate");
+@property (nonatomic, weak, setter=_setInputDelegate:) id <_WKInputDelegate> _inputDelegate WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 
 @property (nonatomic, readonly, getter=_isDisplayingStandaloneImageDocument) BOOL _displayingStandaloneImageDocument;
 @property (nonatomic, readonly, getter=_isDisplayingStandaloneMediaDocument) BOOL _displayingStandaloneMediaDocument;

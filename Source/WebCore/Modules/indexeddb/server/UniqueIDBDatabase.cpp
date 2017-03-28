@@ -41,6 +41,7 @@ namespace IDBServer {
 UniqueIDBDatabase::UniqueIDBDatabase(IDBServer& server, const IDBDatabaseIdentifier& identifier)
     : m_server(server)
     , m_identifier(identifier)
+    , m_transactionSchedulingTimer(*this, &UniqueIDBDatabase::transactionSchedulingTimerFired)
 {
 }
 
@@ -92,7 +93,6 @@ void UniqueIDBDatabase::handleOpenDatabaseOperations()
 
     Ref<UniqueIDBDatabaseConnection> connection = UniqueIDBDatabaseConnection::create(*this, operation->connection());
     UniqueIDBDatabaseConnection* rawConnection = &connection.get();
-    m_server.registerDatabaseConnection(*rawConnection);
 
     if (requestedVersion == m_databaseInfo->version()) {
         addOpenDatabaseConnection(WTF::move(connection));
@@ -124,6 +124,20 @@ bool UniqueIDBDatabase::hasAnyOpenConnections() const
     return !m_openDatabaseConnections.isEmpty();
 }
 
+static uint64_t generateUniqueCallbackIdentifier()
+{
+    ASSERT(isMainThread());
+    static uint64_t currentID = 0;
+    return ++currentID;
+}
+
+uint64_t UniqueIDBDatabase::storeCallback(ErrorCallback callback)
+{
+    uint64_t identifier = generateUniqueCallbackIdentifier();
+    m_errorCallbacks.set(identifier, callback);
+    return identifier;
+}
+
 void UniqueIDBDatabase::startVersionChangeTransaction()
 {
     LOG(IndexedDB, "(main) UniqueIDBDatabase::startVersionChangeTransaction");
@@ -141,8 +155,7 @@ void UniqueIDBDatabase::startVersionChangeTransaction()
 
     addOpenDatabaseConnection(*m_versionChangeDatabaseConnection);
 
-    m_versionChangeTransaction = m_versionChangeDatabaseConnection->createVersionChangeTransaction(requestedVersion);
-    m_inProgressTransactions.set(m_versionChangeTransaction->info().identifier(), m_versionChangeTransaction);
+    m_versionChangeTransaction = &m_versionChangeDatabaseConnection->createVersionChangeTransaction(requestedVersion);
 
     auto result = IDBResultData::openDatabaseUpgradeNeeded(operation->requestData().requestIdentifier(), *m_versionChangeTransaction);
     operation->connection().didOpenDatabase(result);
@@ -155,7 +168,7 @@ void UniqueIDBDatabase::notifyConnectionsOfVersionChange()
 
     uint64_t requestedVersion = m_versionChangeOperation->requestData().requestedVersion();
 
-    LOG(IndexedDB, "(main) UniqueIDBDatabase::notifyConnectionsOfVersionChange - %llu", static_cast<unsigned long long>(requestedVersion));
+    LOG(IndexedDB, "(main) UniqueIDBDatabase::notifyConnectionsOfVersionChange - %" PRIu64, requestedVersion);
 
     // 3.3.7 "versionchange" transaction steps
     // Fire a versionchange event at each connection in m_openDatabaseConnections that is open.
@@ -194,6 +207,93 @@ void UniqueIDBDatabase::didOpenBackingStore(const IDBDatabaseInfo& info)
     m_databaseInfo = std::make_unique<IDBDatabaseInfo>(info);
 
     handleOpenDatabaseOperations();
+}
+
+void UniqueIDBDatabase::commitTransaction(UniqueIDBDatabaseTransaction& transaction, ErrorCallback callback)
+{
+    ASSERT(isMainThread());
+    LOG(IndexedDB, "(main) UniqueIDBDatabase::commitTransaction");
+
+    if (m_versionChangeTransaction == &transaction) {
+        ASSERT(&m_versionChangeTransaction->databaseConnection() == m_versionChangeDatabaseConnection);
+        m_databaseInfo->setVersion(transaction.info().newVersion());
+        m_versionChangeTransaction = nullptr;
+        m_versionChangeDatabaseConnection = nullptr;
+    }
+
+    uint64_t callbackID = storeCallback(callback);
+    m_server.postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performCommitTransaction, callbackID, transaction.info().identifier()));
+}
+
+void UniqueIDBDatabase::performCommitTransaction(uint64_t callbackIdentifier, const IDBResourceIdentifier&)
+{
+    ASSERT(!isMainThread());
+    LOG(IndexedDB, "(db) UniqueIDBDatabase::performCommitTransaction");
+
+    // FIXME: Commit transaction in backing store, once that exists.
+
+    IDBError error;
+    m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformCommitTransaction, callbackIdentifier, error));
+
+}
+
+void UniqueIDBDatabase::didPerformCommitTransaction(uint64_t callbackIdentifier, const IDBError& error)
+{
+    ASSERT(isMainThread());
+    LOG(IndexedDB, "(main) UniqueIDBDatabase::didPerformCommitTransaction");
+
+    performErrorCallback(callbackIdentifier, error);
+}
+
+void UniqueIDBDatabase::transactionDestroyed(UniqueIDBDatabaseTransaction& transaction)
+{
+    if (m_versionChangeTransaction == &transaction)
+        m_versionChangeTransaction = nullptr;
+}
+
+void UniqueIDBDatabase::connectionClosedFromClient(UniqueIDBDatabaseConnection& connection)
+{
+    ASSERT(isMainThread());
+    LOG(IndexedDB, "(main) UniqueIDBDatabase::connectionClosedFromClient");
+
+    if (m_versionChangeDatabaseConnection == &connection)
+        m_versionChangeDatabaseConnection = nullptr;
+
+    ASSERT(m_openDatabaseConnections.contains(&connection));
+
+    auto removedConnection = m_openDatabaseConnections.take(&connection);
+    if (removedConnection->hasNonFinishedTransactions()) {
+        m_closePendingDatabaseConnections.add(WTF::move(removedConnection));
+        return;
+    }
+
+    // Now that a database connection has closed, previously blocked transactions might be runnable.
+    invokeTransactionScheduler();
+}
+
+void UniqueIDBDatabase::invokeTransactionScheduler()
+{
+    if (!m_transactionSchedulingTimer.isActive())
+        m_transactionSchedulingTimer.startOneShot(0);
+}
+
+void UniqueIDBDatabase::transactionSchedulingTimerFired()
+{
+    LOG(IndexedDB, "(main) UniqueIDBDatabase::transactionSchedulingTimerFired");
+
+    if (!hasAnyOpenConnections() && m_versionChangeOperation) {
+        startVersionChangeTransaction();
+        return;
+    }
+
+    // FIXME: Handle starting other pending transactions here.
+}
+
+void UniqueIDBDatabase::performErrorCallback(uint64_t callbackIdentifier, const IDBError& error)
+{
+    auto callback = m_errorCallbacks.take(callbackIdentifier);
+    ASSERT(callback);
+    callback(error);
 }
 
 } // namespace IDBServer

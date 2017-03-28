@@ -50,6 +50,8 @@ struct rgb_color;
 
 namespace WebCore {
 
+class TextStream;
+
 typedef unsigned RGBA32; // Deprecated: Type for an RGBA quadruplet. Use RGBA class instead.
 
 WEBCORE_EXPORT RGBA32 makeRGB(int r, int g, int b);
@@ -300,6 +302,8 @@ inline uint16_t fastDivideBy255(uint16_t value)
     uint16_t remainder = value - (approximation * 255) + 1;
     return approximation + (remainder >> 8);
 }
+
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, const Color&);
 
 } // namespace WebCore
 
