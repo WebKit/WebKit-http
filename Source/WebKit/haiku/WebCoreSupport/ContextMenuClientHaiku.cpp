@@ -55,13 +55,7 @@ void ContextMenuClientHaiku::contextMenuDestroyed()
     delete this;
 }
 
-#if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-std::unique_ptr<ContextMenu> ContextMenuClientHaiku::customizeMenu(std::unique_ptr<ContextMenu> menu)
-{
-    // We can add items to the menu here.
-    return menu;
-}
-#else
+#if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
 PlatformMenuDescription ContextMenuClientHaiku::getCustomMenuFromDefaultItems(ContextMenu* menu)
 {
     // This method appears to allow some form of filtering. I.e. we get the

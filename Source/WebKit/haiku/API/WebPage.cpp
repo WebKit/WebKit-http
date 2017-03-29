@@ -441,7 +441,7 @@ BString BWebPage::MainFrameURL() const
 
 status_t BWebPage::GetContentsAsMHTML(BDataIO& output)
 {
-    RefPtr<SharedBuffer> buffer = MHTMLArchive::generateMHTMLDataUsingBinaryEncoding(fPage);
+    RefPtr<SharedBuffer> buffer = MHTMLArchive::generateMHTMLData(fPage);
     ssize_t size = output.Write(buffer->data(), buffer->size());
     if (size < 0)
         return size;

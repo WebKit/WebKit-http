@@ -400,11 +400,6 @@ void GraphicsContext::fillPath(const Path& path)
     }
 }
 
-void GraphicsContext::clipPath(const Path& path, WindRule windRule)
-{
-    clip(path, windRule);
-}
-
 void GraphicsContext::clip(const FloatRect& rect)
 {
     if (paintingDisabled())
@@ -414,17 +409,13 @@ void GraphicsContext::clip(const FloatRect& rect)
 
 IntRect GraphicsContext::clipBounds() const
 {
-    BRect rect;
-	// TODO
-    if (!rect.IsValid()) {
-        // No clipping, return view bounds
-        return IntRect(m_data->view()->Bounds());
-    }
-
-    return IntRect(rect);
+    BRegion region;
+    // TODO does this also take clipping shape into account?
+    m_data->view()->GetClippingRegion(&region);
+    return IntRect(region.Frame());
 }
 
-void GraphicsContext::clip(const Path& path, WindRule windRule)
+void GraphicsContext::clipPath(const Path& path, WindRule windRule)
 {
     if (paintingDisabled())
         return;
@@ -436,7 +427,7 @@ void GraphicsContext::clip(const Path& path, WindRule windRule)
 
 void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
 {
-    clip(path, windRule);
+    clipPath(path, windRule);
 }
 
 void GraphicsContext::clipOut(const Path& path)
