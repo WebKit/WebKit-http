@@ -1647,9 +1647,9 @@ static const CommandMap& createCommandMap()
 
     CommandMap& commandMap = *new CommandMap;
 
-    for (size_t i = 0; i < WTF_ARRAY_LENGTH(commands); ++i) {
-        ASSERT(!commandMap.get(commands[i].name));
-        commandMap.set(commands[i].name, &commands[i].command);
+    for (auto& command : commands) {
+        ASSERT(!commandMap.get(command.name));
+        commandMap.set(command.name, &command.command);
     }
 
     return commandMap;
@@ -1677,7 +1677,6 @@ bool Editor::commandIsSupportedFromMenuOrKeyBinding(const String& commandName)
 }
 
 Editor::Command::Command()
-    : m_command(0)
 {
 }
 

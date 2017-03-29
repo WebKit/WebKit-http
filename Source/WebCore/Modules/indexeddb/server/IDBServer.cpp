@@ -142,6 +142,54 @@ void IDBServer::deleteDatabase(const IDBRequestData& requestData)
     connection->didDeleteDatabase(result);
 }
 
+void IDBServer::abortTransaction(const IDBResourceIdentifier& transactionIdentifier)
+{
+    LOG(IndexedDB, "IDBServer::abortTransaction");
+
+    auto transaction = m_transactions.get(transactionIdentifier);
+    if (!transaction) {
+        // If there is no transaction there is nothing to abort.
+        // We also have no access to a connection over which to message failure-to-abort.
+        return;
+    }
+
+    transaction->abort();
+}
+
+void IDBServer::createObjectStore(const IDBRequestData& requestData, const IDBObjectStoreInfo& info)
+{
+    LOG(IndexedDB, "IDBServer::createObjectStore");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    ASSERT(transaction->isVersionChange());
+    transaction->createObjectStore(requestData, info);
+}
+
+void IDBServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
+{
+    LOG(IndexedDB, "IDBServer::putOrAdd");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    transaction->putOrAdd(requestData, keyData, valueData, overwriteMode);
+}
+
+void IDBServer::getRecord(const IDBRequestData& requestData, const IDBKeyData& keyData)
+{
+    LOG(IndexedDB, "IDBServer::getRecord");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    transaction->getRecord(requestData, keyData);
+}
+
 void IDBServer::commitTransaction(const IDBResourceIdentifier& transactionIdentifier)
 {
     LOG(IndexedDB, "IDBServer::commitTransaction");

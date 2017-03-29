@@ -4102,8 +4102,6 @@ void SpeculativeJIT::compile(Node* node)
     case PutByOffset: {
         StorageOperand storage(this, node->child1());
         JSValueOperand value(this, node->child3());
-        GPRTemporary scratch1(this);
-        GPRTemporary scratch2(this);
 
         GPRReg storageGPR = storage.gpr();
         GPRReg valueGPR = value.gpr();
@@ -4161,6 +4159,23 @@ void SpeculativeJIT::compile(Node* node)
         cachedPutById(node->origin.semantic, baseGPR, valueGPR, scratchGPR, node->identifierNumber(), Direct);
 
         noResult(node);
+        break;
+    }
+
+    case PutGetterById:
+    case PutSetterById: {
+        compilePutAccessorById(node);
+        break;
+    }
+
+    case PutGetterSetterById: {
+        compilePutGetterSetterById(node);
+        break;
+    }
+
+    case PutGetterByVal:
+    case PutSetterByVal: {
+        compilePutAccessorByVal(node);
         break;
     }
 

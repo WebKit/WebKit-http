@@ -53,8 +53,8 @@ public:
     virtual uint64_t version() const override final;
     virtual RefPtr<DOMStringList> objectStoreNames() const override final;
 
-    virtual RefPtr<IDBObjectStore> createObjectStore(const String& name, const Dictionary&, ExceptionCode&) override final;
-    virtual RefPtr<IDBObjectStore> createObjectStore(const String& name, const IDBKeyPath&, bool autoIncrement, ExceptionCode&) override final;
+    virtual RefPtr<WebCore::IDBObjectStore> createObjectStore(const String& name, const Dictionary&, ExceptionCode&) override final;
+    virtual RefPtr<WebCore::IDBObjectStore> createObjectStore(const String& name, const IDBKeyPath&, bool autoIncrement, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBTransaction> transaction(ScriptExecutionContext*, const Vector<String>&, const String& mode, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBTransaction> transaction(ScriptExecutionContext*, const String&, const String& mode, ExceptionCode&) override final;
     virtual void deleteObjectStore(const String& name, ExceptionCode&) override final;
@@ -75,9 +75,12 @@ public:
     Ref<IDBTransaction> startVersionChangeTransaction(const IDBTransactionInfo&);
     void commitTransaction(IDBTransaction&);
     void didCommitTransaction(IDBTransaction&);
+    void abortTransaction(IDBTransaction&);
     void didAbortTransaction(IDBTransaction&);
 
     void fireVersionChangeEvent(uint64_t requestedVersion);
+
+    IDBConnectionToServer& serverConnection() { return m_serverConnection.get(); }
 
 private:
     IDBDatabase(ScriptExecutionContext&, IDBConnectionToServer&, const IDBResultData&);
@@ -96,6 +99,7 @@ private:
     RefPtr<IDBTransaction> m_versionChangeTransaction;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_activeTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
+    HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_abortingTransactions;
 };
 
 } // namespace IDBClient

@@ -328,20 +328,12 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
     _currentContentViewDidChange(event)
     {
-        var newTimelineOverview = this._linearTimelineOverview;
-        var timelineView = this.currentTimelineView;
-        if (timelineView) {
-            this._timelineSidebarPanel.contentTreeOutline = timelineView.navigationSidebarTreeOutline;
-            this._timelineSidebarPanel.contentTreeOutlineLabel = timelineView.navigationSidebarTreeOutlineLabel;
-            this._timelineSidebarPanel.contentTreeOutlineScopeBar = timelineView.navigationSidebarTreeOutlineScopeBar;
-
-            if (timelineView.representedObject.type === WebInspector.TimelineRecord.Type.RenderingFrame)
-                newTimelineOverview = this._renderingFrameTimelineOverview;
-
-            timelineView.startTime = newTimelineOverview.selectionStartTime;
-            timelineView.endTime = newTimelineOverview.selectionStartTime + newTimelineOverview.selectionDuration;
-            timelineView.currentTime = this._currentTime;
-        }
+        let newTimelineOverview;
+        let timelineView = this.currentTimelineView;
+        if (timelineView && timelineView.representedObject.type === WebInspector.TimelineRecord.Type.RenderingFrame)
+            newTimelineOverview = this._renderingFrameTimelineOverview;
+        else
+            newTimelineOverview = this._linearTimelineOverview;
 
         if (newTimelineOverview !== this._currentTimelineOverview) {
             this._currentTimelineOverview.hidden();
@@ -353,6 +345,16 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
             this._currentTimelineOverview.shown();
 
             this._updateTimelineOverviewHeight();
+        }
+
+        if (timelineView) {
+            this._timelineSidebarPanel.contentTreeOutline = timelineView.navigationSidebarTreeOutline;
+            this._timelineSidebarPanel.contentTreeOutlineLabel = timelineView.navigationSidebarTreeOutlineLabel;
+            this._timelineSidebarPanel.contentTreeOutlineScopeBar = timelineView.navigationSidebarTreeOutlineScopeBar;
+
+            timelineView.startTime = newTimelineOverview.selectionStartTime;
+            timelineView.endTime = newTimelineOverview.selectionStartTime + newTimelineOverview.selectionDuration;
+            timelineView.currentTime = this._currentTime;
         }
 
         this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
@@ -458,18 +460,16 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         if (this._updating)
             return;
 
-        if (!isNaN(this._currentTime)) {
+        if (typeof startTime === "number")
+            this._currentTime = startTime;
+        else if (!isNaN(this._currentTime)) {
             // This happens when you stop and later restart recording.
-            if (typeof startTime === "number")
-                this._currentTime = startTime;
-            else {
-                // COMPATIBILITY (iOS 9): Timeline.recordingStarted events did not include a timestamp.
-                // We likely need to jump into the future to a better current time which we can
-                // ascertained from a new incoming timeline record, so we wait for a Timeline to update.
-                console.assert(!this._waitingToResetCurrentTime);
-                this._waitingToResetCurrentTime = true;
-                this._recording.addEventListener(WebInspector.TimelineRecording.Event.TimesUpdated, this._recordingTimesUpdated, this);
-            }
+            // COMPATIBILITY (iOS 9): Timeline.recordingStarted events did not include a timestamp.
+            // We likely need to jump into the future to a better current time which we can
+            // ascertained from a new incoming timeline record, so we wait for a Timeline to update.
+            console.assert(!this._waitingToResetCurrentTime);
+            this._waitingToResetCurrentTime = true;
+            this._recording.addEventListener(WebInspector.TimelineRecording.Event.TimesUpdated, this._recordingTimesUpdated, this);
         }
 
         this._updating = true;

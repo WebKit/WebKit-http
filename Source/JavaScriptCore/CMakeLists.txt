@@ -150,7 +150,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGBasicBlock.cpp
     dfg/DFGBlockInsertionSet.cpp
     dfg/DFGBlockSet.cpp
-    dfg/DFGBlockWorklist.cpp
     dfg/DFGByteCodeParser.cpp
     dfg/DFGCFAPhase.cpp
     dfg/DFGCFGSimplificationPhase.cpp
@@ -667,14 +666,11 @@ list(APPEND JavaScriptCore_SOURCES
     ${JavaScriptCore_RUNTIME_SOURCES}
 )
 
-set(JavaScriptCore_LUT_FILES
-    runtime/ArrayConstructor.cpp
-    runtime/ArrayIteratorPrototype.cpp
+set(JavaScriptCore_NATIVE_OBJECT_LUT_SOURCES
     runtime/BooleanPrototype.cpp
     runtime/DateConstructor.cpp
     runtime/DatePrototype.cpp
     runtime/ErrorPrototype.cpp
-    runtime/InspectorInstrumentationObject.cpp
     runtime/IntlCollatorConstructor.cpp
     runtime/IntlCollatorPrototype.cpp
     runtime/IntlDateTimeFormatConstructor.cpp
@@ -682,30 +678,68 @@ set(JavaScriptCore_LUT_FILES
     runtime/IntlNumberFormatConstructor.cpp
     runtime/IntlNumberFormatPrototype.cpp
     runtime/JSDataViewPrototype.cpp
-    runtime/JSGlobalObject.cpp
-    runtime/JSInternalPromiseConstructor.cpp
     runtime/JSONObject.cpp
-    runtime/JSPromiseConstructor.cpp
-    runtime/JSPromisePrototype.cpp
-    runtime/ModuleLoaderObject.cpp
     runtime/NumberConstructor.cpp
     runtime/NumberPrototype.cpp
-    runtime/ObjectConstructor.cpp
-    runtime/ReflectObject.cpp
     runtime/RegExpConstructor.cpp
     runtime/RegExpPrototype.cpp
-    runtime/StringConstructor.cpp
-    runtime/StringIteratorPrototype.cpp
     runtime/SymbolConstructor.cpp
     runtime/SymbolPrototype.cpp
 )
 
-set(JavaScriptCore_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/Scripts")
+# If an object's implementation contains at least one builtin, then it must
+# be added to this section so it is generated with builtin-specific includes.
+
+set(JavaScriptCore_BUILTIN_OBJECT_LUT_SOURCES
+    runtime/ArrayConstructor.cpp
+    runtime/ArrayIteratorPrototype.cpp
+    runtime/InspectorInstrumentationObject.cpp
+    runtime/JSGlobalObject.cpp
+    runtime/JSInternalPromiseConstructor.cpp
+    runtime/JSPromiseConstructor.cpp
+    runtime/JSPromisePrototype.cpp
+    runtime/ModuleLoaderObject.cpp
+    runtime/ObjectConstructor.cpp
+    runtime/ReflectObject.cpp
+    runtime/StringConstructor.cpp
+    runtime/StringIteratorPrototype.cpp
+)
 
 set(JavaScriptCore_LIBRARIES
     WTF${DEBUG_SUFFIX}
     ${ICU_I18N_LIBRARIES}
 )
+
+set(JavaScriptCore_SCRIPTS_SOURCES_DIR "${JAVASCRIPTCORE_DIR}/Scripts")
+
+# Globbing relies on the fact that generator-specific file names are prefixed with their directory.
+# Top-level scripts should have a file extension, since they are invoked during the build.
+
+set(JavaScriptCore_SCRIPTS_SOURCES_PATHS
+    ${JavaScriptCore_SCRIPTS_SOURCES_DIR}/*.pl
+    ${JavaScriptCore_SCRIPTS_SOURCES_DIR}/*.py
+    ${JavaScriptCore_SCRIPTS_SOURCES_DIR}/builtins/builtins*.py
+)
+
+# Force JavaScriptCore to run scripts from the same staging path as WebCore.
+set(JavaScriptCore_SCRIPTS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/Scripts")
+
+file(MAKE_DIRECTORY ${JavaScriptCore_SCRIPTS_DIR})
+
+# The directory flattening performed below mirrors what the Mac port does with private headers.
+
+file(GLOB JavaScriptCore_SCRIPTS_SOURCES ${JavaScriptCore_SCRIPTS_SOURCES_PATHS})
+
+foreach (_file ${JavaScriptCore_SCRIPTS_SOURCES})
+    get_filename_component(_script "${_file}" NAME)
+    add_custom_command(
+        OUTPUT ${JavaScriptCore_SCRIPTS_DIR}/${_script}
+        MAIN_DEPENDENCY ${_file}
+        WORKING_DIRECTORY ${DERIVED_SOURCES_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_file} ${JavaScriptCore_SCRIPTS_DIR}/${_script}
+        VERBATIM)
+    list(APPEND JavaScriptCore_SCRIPTS ${JavaScriptCore_SCRIPTS_DIR}/${_script})
+endforeach ()
 
 if (USE_UDIS86)
     set(UDIS_GEN_DEP
@@ -938,18 +972,29 @@ if (ENABLE_FTL_JIT)
 endif ()
 
 set(HASH_LUT_GENERATOR ${CMAKE_CURRENT_SOURCE_DIR}/create_hash_table)
+set(LUT_GENERATOR_FLAGS "")
 macro(GENERATE_HASH_LUT _input _output)
     add_custom_command(
         OUTPUT ${_output}
-        DEPENDS ${HASH_LUT_GENERATOR} ${_input} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins
-        COMMAND ${PERL_EXECUTABLE} ${HASH_LUT_GENERATOR} ${_input} -i > ${_output}
+        MAIN_DEPENDENCY ${HASH_LUT_GENERATOR}
+        DEPENDS ${_input}
+        COMMAND ${PERL_EXECUTABLE} ${HASH_LUT_GENERATOR} ${LUT_GENERATOR_FLAGS} ${_input} > ${_output}
         VERBATIM)
     list(APPEND JavaScriptCore_HEADERS ${_output})
+    ADD_SOURCE_DEPENDENCIES(${_input} ${_output})
 endmacro()
 
 # GENERATOR 1-A: LUT creator
-foreach (_file ${JavaScriptCore_LUT_FILES})
+
+foreach (_file ${JavaScriptCore_NATIVE_OBJECT_LUT_SOURCES})
     get_filename_component(_name ${_file} NAME_WE)
+    set(LUT_GENERATOR_FLAGS -i)
+    GENERATE_HASH_LUT(${CMAKE_CURRENT_SOURCE_DIR}/${_file} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/${_name}.lut.h)
+endforeach ()
+
+foreach (_file ${JavaScriptCore_BUILTIN_OBJECT_LUT_SOURCES})
+    get_filename_component(_name ${_file} NAME_WE)
+    set(LUT_GENERATOR_FLAGS -i -b)
     GENERATE_HASH_LUT(${CMAKE_CURRENT_SOURCE_DIR}/${_file} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/${_name}.lut.h)
 endforeach ()
 
@@ -981,6 +1026,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
 )
 
 # GENERATOR 1-B: particular LUT creator (for 1 file only)
+set(LUT_GENERATOR_FLAGS )
 GENERATE_HASH_LUT(${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Lexer.lut.h)
 
 #GENERATOR: "RegExpJitTables.h": tables used by Yarr
@@ -1080,6 +1126,21 @@ add_custom_command(
     VERBATIM)
 
 # JSCBuiltins
+
+set(BUILTINS_GENERATOR_SCRIPTS
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generator.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_model.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_templates.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_combined_header.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_combined_implementation.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_header.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_implementation.py
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_wrapper.py
+    ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py
+    ${JavaScriptCore_SCRIPTS_DIR}/lazywriter.py
+)
+
 set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayIterator.prototype.js
@@ -1102,10 +1163,11 @@ set(JavaScriptCore_BUILTINS_SOURCES
 )
 
 add_custom_command(
-   OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
-   MAIN_DEPENDENCY ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins
-   DEPENDS ${JavaScriptCore_BUILTINS_SOURCES}
-   COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins --input-directory ${CMAKE_CURRENT_SOURCE_DIR}/builtins --output ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
+   OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
+          ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
+   MAIN_DEPENDENCY ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py
+   DEPENDS ${JavaScriptCore_BUILTINS_SOURCES} ${BUILTINS_GENERATOR_SCRIPTS}
+   COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py --framework JavaScriptCore --output-directory ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR} --combined ${JavaScriptCore_BUILTINS_SOURCES}
    VERBATIM)
 
 list(APPEND JavaScriptCore_SOURCES
@@ -1209,4 +1271,7 @@ if (ENABLE_FTL_JIT)
     add_dependencies(JavaScriptCore llvmForJSC)
 endif ()
 
+# Force staging of shared scripts, even if they aren't directly used to build JavaScriptCore.
 
+add_custom_target(stageSharedScripts DEPENDS ${JavaScriptCore_SCRIPTS})
+add_dependencies(JavaScriptCore stageSharedScripts)

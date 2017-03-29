@@ -1,3 +1,682 @@
+2015-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove Timeline MarkDOMContent and MarkLoad, data is already available
+        https://bugs.webkit.org/show_bug.cgi?id=150615
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._processEvent):
+        Remove the now unneed mark event handling.
+
+        (WebInspector.TimelineManager.prototype.pageDOMContentLoadedEventFired):
+        (WebInspector.TimelineManager.prototype.pageLoadEventFired):
+        Update the main frame and create markers for the current recording.
+
+        * UserInterface/Protocol/PageObserver.js:
+        (WebInspector.PageObserver.prototype.domContentEventFired):
+        (WebInspector.PageObserver.prototype.loadEventFired):
+        Forward to TimelineManager.
+
+2015-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused / duplicated XHR timeline instrumentation
+        https://bugs.webkit.org/show_bug.cgi?id=150605
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._processRecord):
+        Remove unused events and add an assert that we don't miss
+        any script embedders.
+
+2015-10-27  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION: Web Inspector: DOM path bar blinks when modifying inline styles
+        https://bugs.webkit.org/show_bug.cgi?id=149258
+
+        Reviewed by Timothy Hatcher.
+
+        Now that Object now longer spams constructor event listeners, ContentBrowser can safely
+        update the NavigationBar synchronously. This fixes the issue, with zero impact on layout
+        responsiveness when selecting Rendering Frames tree elements.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype._contentViewSelectionPathComponentDidChange):
+        Force NavigationBar to update synchronously.
+
+2015-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline current time marker does not start moving when starting recording after just opening inspector
+        https://bugs.webkit.org/show_bug.cgi?id=150178
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.capturingStarted):
+        * UserInterface/Models/TimelineRecording.js:
+        (WebInspector.TimelineRecording.prototype.initializeTimeBoundsIfNecessary):
+        For a recording to start updating current time the recording itself
+        must have a start time. Provide a setter so that the start time can
+        be set without waiting for a timeline record. For example the
+        timestamp that the frontend receives when it starts a recording.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._startUpdatingCurrentTime):
+        When we have a startTime number (new backends) always use it as the current time.
+        Previously we were only doing this if current time was NaN, which would be when
+        re-starting a recording after it had stopped, but not for the initial recording
+        after opening the inspector.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.updateLayout):
+        Even if we do not need to create new time dividers we may need to perform
+        other updates like update the current time marker. So do work before bailing.
+
+2015-10-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: WebInspector.Object can dispatch constructor-level events multiple times
+        https://bugs.webkit.org/show_bug.cgi?id=150579
+
+        Reviewed by Timothy Hatcher.
+
+        Use `hasOwnProperty` when checking for constructor event listeners when walking the
+        prototype chain. This prevents listeners registered with a base class constructor
+        from being dispatched multiple times by getting picked up higher in the prototype chain.
+
+        * UserInterface/Base/Object.js:
+        (WebInspector.Object.prototype.dispatchEventToListeners.dispatch):
+        (WebInspector.Object.prototype.dispatchEventToListeners):
+        (WebInspector.Object):
+
+2015-10-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Hundreds of failed assertions after switching to Rendering Frames after recording complete
+        https://bugs.webkit.org/show_bug.cgi?id=150568
+
+        Reviewed by Timothy Hatcher.
+
+        When the TimelineRecordingContentView responds to the current content view changing,
+        the TimelineOverview may be swapped out (if switching from a Timelines content view to a
+        Rendering Frames content view). This patch installs a new overview (if it's changing) prior
+        to setting the TimelineSidebarPanel's tree outline, as setting the tree outline forces
+        filters to run.
+
+        Filtering tree elements requires that the timeline overview is up to date, which was the
+        cause the assertion deluge.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+
+2015-10-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Spacebar to start recording should not cause system beep
+        https://bugs.webkit.org/show_bug.cgi?id=150573
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype._toggleRecordingOnSpacebar):
+        (WebInspector.TimelineSidebarPanel.prototype._toggleNewRecordingOnSpacebar):
+        The keyboard shortcuts do not implicitly prevent default because they may bail.
+        So in cases where they do handle the key, prevent default to prevent system beeps.
+
+2015-10-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cleanup sidebar panels, reduce `delete` and use Maps instead of objects
+        https://bugs.webkit.org/show_bug.cgi?id=150548
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel):
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._updateDataGrid):
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._dataGridNodeForLayer):
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel):
+        (WebInspector.NavigationSidebarPanel.restoreStateFromCookie.finalAttemptToRestoreViewStateFromCookie):
+        (WebInspector.NavigationSidebarPanel.restoreStateFromCookie):
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement):
+        (WebInspector.NavigationSidebarPanel.prototype._updateContentOverflowShadowVisibility):
+        (WebInspector.NavigationSidebarPanel.prototype._checkElementsForPendingViewStateCookie):
+        Switched to using Symbol() to set external properties on tree elements.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateCallFramesSection):
+
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel):
+        (WebInspector.StorageSidebarPanel.prototype._addDatabase):
+        (WebInspector.StorageSidebarPanel.prototype._addIndexedDatabase):
+        (WebInspector.StorageSidebarPanel.prototype._addFrameManifest):
+        (WebInspector.StorageSidebarPanel.prototype._storageCleared):
+
+2015-10-24  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Unreviewed, rolling out r191419.
+        https://bugs.webkit.org/show_bug.cgi?id=150537
+
+        Reverted changeset:
+
+        "Web Inspector: Autocompletion previews in the CSS sidebar do not apply"
+        https://bugs.webkit.org/show_bug.cgi?id=147720
+        http://trac.webkit.org/changeset/191419
+
+2015-10-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused ScrollLayer Timeline EventType
+        https://bugs.webkit.org/show_bug.cgi?id=150518
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/Inspector-iOS-8.0.json:
+        * Versions/Inspector-iOS-9.0.json:
+
+2015-10-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: xlink:href should be linkified
+        https://bugs.webkit.org/show_bug.cgi?id=150505
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        When opening a URL with a fragment, prefer opening a resource
+        that has the same URL without the fragment, otherwise this would
+        open in a new tab.
+
+        * UserInterface/Base/URLUtilities.js:
+        (absoluteURL):
+        Better handling absoluteURL("#frag", baseURL).
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._buildAttributeDOM):
+        Allow for more "href" style attributes, such as XML namespaced
+        "xlink:href" attribute names.
+
+2015-10-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Command-Enter in Debugger should show a popover with evaluation result
+        https://bugs.webkit.org/show_bug.cgi?id=149195
+
+        Currenty, the only way to display the popover is to hover over the text with a mouse cursor.
+        Provide a way to display it via a keyboard shortcut.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController): Deleted.
+        (WebInspector.CodeMirrorCompletionController.prototype._generateJavaScriptCompletions): Deleted.
+        Don't evaluate selected text from Debugger or Sources in the console.
+
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        (WebInspector.CodeMirrorTokenTrackingController):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._handleCommandEnterKey):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._hidePopover):
+        Cmd-Enter triggers the popover, Esc hides it.
+
+        (WebInspector.CodeMirrorTokenTrackingController.prototype.set mode):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype.removeHighlightedRange):
+        Don't use delete.
+
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._mouseMovedWithMarkedText):
+        When a token isn't hovered, hide it only when it was triggered not by the keyboard.
+
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._markedTextIsNoLongerHovered):
+        Don't use delete.
+
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._updateHoveredTokenInfo):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._getTokenInfoForPosition):
+        Abstract out a no side effects _getTokenInfoForPosition method, which is also used by _handleCommandEnterKey.
+
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._mouseMovedOutOfEditor):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._mouseButtonWasReleasedOverEditor):
+        Don't use delete.
+
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._processNewHoveredToken):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._processNonSymbolToken):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._processJavaScriptExpression):
+        Pass tokenInfo as an argument to explicitly state that these methods require it.
+
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._resetTrackingStates):
+        Don't use delete.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.tokenTrackingControllerHighlightedRangeReleased):
+        Allow to hide the popover regardless of mouse position. Used when the text cursor moves or
+        when Esc key is pressed.
+
+2015-10-23  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Visual sidebar should support multiple backgrounds
+        https://bugs.webkit.org/show_bug.cgi?id=148310
+
+        Reviewed by Timothy Hatcher.
+
+        Changes the layout of the Background - Style section in the Visual sidebar
+        to be a list instead of a single editable field for a background-image URL.
+        Allows for comma-separated background properties (both shorthand and
+        longhand) and displays them all in a single list for editing.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/VisualStyleColorPicker.js:
+        (WebInspector.VisualStyleColorPicker):
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css:
+        (.visual-style-property-container.comma-separated-keyword-editor):
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._generateTextFromLonghandProperties.propertyValue):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._generateTextFromLonghandProperties):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.modifyPropertyText):
+        Comma separated properties will now try to assemble a value from related longhand
+        properties so that a single shorthand property with commas may be used.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .visual > .details-section.background .details-section.background-style .visual-style-property-container.comma-separated-keyword-editor.background):
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBackgroundStyleSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._noRemainingCommaSeparatedEditorItems):
+        (WebInspector.VisualStyleDetailsPanel.prototype._selectedCommaSeparatedEditorItemValueChanged):
+        (WebInspector.VisualStyleDetailsPanel.prototype._commaSeparatedEditorTreeItemSelected):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection.noRemainingTreeItems): Deleted.
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection.selectedBoxShadowItemValueChanged): Deleted.
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection.boxShadowItemSelected): Deleted.
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection.noRemainingTreeItems): Deleted.
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection.selectedtransitionItemValueChanged): Deleted.
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection.transitionItemSelected): Deleted.
+        Made the "background-image" property into a comma separated editor.
+
+        * UserInterface/Views/VisualStyleFontFamilyListEditor.js:
+        (WebInspector.VisualStyleFontFamilyListEditor):
+        * UserInterface/Views/VisualStyleKeywordIconList.js:
+        (WebInspector.VisualStyleKeywordIconList.prototype.set value):
+        (WebInspector.VisualStyleKeywordIconList.prototype._handleKeywordChanged):
+        (WebInspector.VisualStyleKeywordIconList):
+        * UserInterface/Views/VisualStyleKeywordPicker.js:
+        (WebInspector.VisualStyleKeywordPicker.prototype.updateEditorValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._setValue):
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox.prototype.set value):
+        * UserInterface/Views/VisualStylePropertyCombiner.js:
+        (WebInspector.VisualStylePropertyCombiner):
+        (WebInspector.VisualStylePropertyCombiner.prototype.updateValuesFromText.updateCompatibleEditor):
+        (WebInspector.VisualStylePropertyCombiner.prototype.updateValuesFromText):
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor):
+        (WebInspector.VisualStylePropertyEditor.prototype.update):
+        (WebInspector.VisualStylePropertyEditor.prototype.getValuesFromText):
+        (WebInspector.VisualStylePropertyEditor.prototype.get propertyMissing):
+        (WebInspector.VisualStylePropertyEditor.prototype._valueDidChange):
+        Moved "propertyMissing" into a member variable for better access.
+
+        * UserInterface/Views/VisualStyleURLInput.js:
+        (WebInspector.VisualStyleURLInput):
+        (WebInspector.VisualStyleURLInput.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleURLInput.prototype.parseValue):
+        Added support for specific keywords to be used in the input field.
+
+2015-10-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove generateColoredImagesForCSS and its clients
+        https://bugs.webkit.org/show_bug.cgi?id=150474
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/ImageUtilities.js:
+        (generateColoredImage): Deleted.
+        (imageLoaded): Deleted.
+        (ensureImageIsLoaded): Deleted.
+        (restoreImages.restoreActiveImages): Deleted.
+        (restoreImages): Deleted.
+        (restoreImage): Deleted.
+        (update): Deleted.
+        (generateImage): Deleted.
+        (generateColoredImagesForCSS): Deleted.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded): Deleted call to _generateDisclosureTriangleImages.
+        (WebInspector._generateDisclosureTriangleImages): Deleted.
+        (WebInspector.createGoToArrowButton): Deleted code to generate the states.
+
+        * UserInterface/Images/BackArrow.svg: Removed.
+        * UserInterface/Images/BackForwardArrows.svg: Added.
+        * UserInterface/Images/DisclosureTriangleSmallClosed.svg: Removed.
+        * UserInterface/Images/DisclosureTriangleSmallOpen.svg: Removed.
+        * UserInterface/Images/DisclosureTriangleTinyClosed.svg: Removed.
+        * UserInterface/Images/DisclosureTriangleTinyOpen.svg: Removed.
+        * UserInterface/Images/DisclosureTriangles.svg: Added.
+        * UserInterface/Images/ForwardArrow.svg: Removed.
+        * UserInterface/Images/GoToArrow.svg:
+        * UserInterface/Images/Locked.svg: Moved fill color here.
+        * UserInterface/Images/SortIndicatorArrows.svg: Added.
+        * UserInterface/Images/SortIndicatorDownArrow.svg: Removed.
+        * UserInterface/Images/SortIndicatorUpArrow.svg: Removed.
+        * UserInterface/Images/gtk/BackArrow.svg: Removed.
+        * UserInterface/Images/gtk/BackForwardArrows.svg: Added.
+        * UserInterface/Images/gtk/DisclosureTriangleSmallClosed.svg: Removed.
+        * UserInterface/Images/gtk/DisclosureTriangleSmallOpen.svg: Removed.
+        * UserInterface/Images/gtk/DisclosureTriangleTinyClosed.svg: Removed.
+        * UserInterface/Images/gtk/DisclosureTriangleTinyOpen.svg: Removed.
+        * UserInterface/Images/gtk/DisclosureTriangles.svg: Added.
+        * UserInterface/Images/gtk/ForwardArrow.svg: Removed.
+        * UserInterface/Images/gtk/GoToArrow.svg:
+        * UserInterface/Images/gtk/Locked.svg: Moved fill color here.
+        * UserInterface/Images/gtk/SortIndicatorArrows.svg: Added.
+        * UserInterface/Images/gtk/SortIndicatorDownArrow.svg: Removed.
+        * UserInterface/Images/gtk/SortIndicatorUpArrow.svg: Removed.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section.locked > .header::before):
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection): Deleted.
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message.expandable .console-top-level-message::before):
+        (.console-message.expandable.expanded .console-top-level-message::before):
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser): Use BackForwardArrows.svg.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline li.parent::before):
+        (.dom-tree-outline:focus li.parent.selected::before):
+        (.dom-tree-outline li.parent.expanded::before):
+        (.dom-tree-outline:focus li.parent.expanded.selected::before):
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid th.sort-ascending > div:first-child::after):
+        (.data-grid th.sort-descending > div:first-child::after):
+        (.data-grid tr.parent td.disclosure::before):
+        (.data-grid tr.parent.expanded td.disclosure::before):
+        (.data-grid:matches(:focus, .force-focus) tr.parent.selected td.disclosure::before):
+        (.data-grid:matches(:focus, .force-focus) tr.parent.expanded.selected td.disclosure::before):
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid): Deleted call to _generateSortIndicatorImagesIfNeeded.
+        (WebInspector.DataGrid.prototype._generateSortIndicatorImagesIfNeeded): Deleted.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .header::before):
+        (.details-section > .header:not(.mouse-over-options-element):active::before):
+        (.details-section.collapsed > .header::before):
+        (.details-section.collapsed > .header:not(.mouse-over-options-element):active::before):
+
+        * UserInterface/Views/DetailsSection.js:
+        (WebInspector.DetailsSection): Deleted call to _generateDisclosureTrianglesIfNeeded.
+        (WebInspector.DetailsSection.prototype._generateDisclosureTrianglesIfNeeded): Deleted.
+
+        * UserInterface/Views/ErrorObjectView.css:
+        (.error-object > .formatted-error::before):
+        (.error-object.expanded > .formatted-error::before):
+
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner > button.segmented.left > .glyph):
+        (.find-banner > button.segmented.left:active:not(:disabled) > .glyph):
+        (.find-banner > button.segmented.right > .glyph):
+        (.find-banner > button.segmented.right:active:not(:disabled) > .glyph):
+
+        * UserInterface/Views/FindBanner.js:
+        (WebInspector.FindBanner): Deleted call to _generateButtonsGlyphsIfNeeded.
+        (WebInspector.FindBanner.prototype._generateButtonsGlyphsIfNeeded): Deleted.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-group-title::before):
+        (.console-group.collapsed .console-group-title::before):
+
+        * UserInterface/Views/Main.css:
+        (.go-to-arrow):
+        (.go-to-arrow:active):
+        (:matches(:focus, .force-focus) .selected .go-to-arrow):
+        (:matches(:focus, .force-focus) .selected .go-to-arrow:active):
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.navigation-sidebar-panel-content-tree-outline .item .disclosure-button):
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected .disclosure-button):
+        (.navigation-sidebar-panel-content-tree-outline .item.expanded .disclosure-button):
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected.expanded .disclosure-button):
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel): Deleted call to _generateDisclosureTrianglesIfNeeded.
+        (WebInspector.NavigationSidebarPanel.prototype._generateDisclosureTrianglesIfNeeded): Deleted.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property.parent > .disclosure-button):
+        (.object-tree-property.parent.expanded > .disclosure-button):
+        (.object-tree-property .read-only): Deleted.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree > :matches(.title, .object-preview)::before):
+        (.object-tree.expanded > :matches(.title, .object-preview)::before):
+
+        * UserInterface/Views/TypeTreeElement.css:
+        (.type-tree-element.parent > .disclosure-button):
+        (.type-tree-element.parent.expanded > .disclosure-button):
+
+2015-10-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: CSS Data URIs count against page weight twice
+        https://bugs.webkit.org/show_bug.cgi?id=150101
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard.prototype._resourceSizeDidChange):
+        Exclude resources with a data URI from the total page weight.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.prototype.updateForRedirectResponse):
+        (WebInspector.Resource.prototype.updateForResponse):
+        (WebInspector.Resource.prototype.markAsFinished):
+        Removed uses of `delete`.
+
+2015-10-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused Timeline GCEvent Record type
+        https://bugs.webkit.org/show_bug.cgi?id=150477
+
+        Reviewed by Timothy Hatcher.
+
+        iOS backends never emitted a GCEvent timeline event.
+
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/Inspector-iOS-8.0.json:
+        * Versions/Inspector-iOS-9.0.json:
+
+2015-10-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: srcset attributes should have hyperlinks to the resources
+        https://bugs.webkit.org/show_bug.cgi?id=150409
+
+        Reviewed by Timothy Hatcher.
+
+        Follow-up tweaks and fixes that were intended to be landed.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        (tokenizeSrcSetString):
+        Multiline parsing has issues recovering the state CodeMirror
+        expects, so we just bail in those cases. Leading whitespace
+        is also handled poorly, but expected to be rare.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._buildAttributeDOM):
+        Trim to eliminate leading whitespace.
+
+2015-10-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Restore :not(:placeholder-shown) behavior on search bars with comments
+        https://bugs.webkit.org/show_bug.cgi?id=150452
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner.console-find-banner > input[type="search"]:not(:placeholder-shown)):
+        * UserInterface/Views/SearchBar.css:
+        (.search-bar > input[type="search"]:not(:placeholder-shown)):
+        Add back the placeholder-shown related styles and add a comment about what they are for.
+
+2015-10-22  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Tabbing over CSS properties prepended by * doesn't move the highlighted range
+        https://bugs.webkit.org/show_bug.cgi?id=150294
+
+        Reviewed by Timothy Hatcher.
+
+        Moving the selected text when tabbing and shift-tabbing now relies upon
+        the last index of ";" if it exists instead of whether the line ends with it.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleShiftTabKey):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleTabKey):
+
+2015-10-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: srcset attributes should have hyperlinks to the resources
+        https://bugs.webkit.org/show_bug.cgi?id=150409
+
+        Reviewed by Timothy Hatcher.
+
+        The "srcset" attribute parsing is a simplification of:
+        https://html.spec.whatwg.org/multipage/embedded-content.html#attr-img-srcset
+
+        The "srcset" attribute value is expected to be in comma
+        separated groups. Within each group we always expect a link,
+        and an optional descriptor. We want to linkify the link.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        (tokenizeSrcSetString):
+        (extendedXMLToken):
+        When parsing srcset attribute, parse links as link tokens
+        so that they are linkified in resource content views.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._buildAttributeDOM):
+        When creating the DOMTree DOM for srcset attributes,
+        create link elements for the link values of attribute value.
+
+2015-10-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Autocompletion previews in the CSS sidebar do not apply
+        https://bugs.webkit.org/show_bug.cgi?id=147720
+
+        Reviewed by Timothy Hatcher.
+
+        When autocompletion hints are added to styles or the console, the history
+        object used by CodeMirror was edited to remove the last entry. Instead of
+        using this method (which caused glitchy behaviour when undo-ing), call
+        CodeMirror.undo() and adjust accordingly. In addition, a marker was being
+        used as the completion hint instead of applying text, whereas these
+        changes use actual text, ensuring that completions are previewed in the page.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController):
+        (WebInspector.CodeMirrorCompletionController.prototype.close):
+        (WebInspector.CodeMirrorCompletionController.prototype._applyCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._commitCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint):
+        (WebInspector.CodeMirrorCompletionController.prototype._handleBeforeChange):
+        (WebInspector.CodeMirrorCompletionController.prototype._createCompletionHintMarker): Deleted.
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint.clearMarker): Deleted.
+
+2015-10-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add forgotten WebInspector.UIString from r190521
+        https://bugs.webkit.org/show_bug.cgi?id=150425
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (UserInterface/Views/CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded)
+
+2015-10-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Adjust usages of classList.toggle to ensure a true/false value instead of undefined
+        https://bugs.webkit.org/show_bug.cgi?id=150424
+
+        Reviewed by Timothy Hatcher.
+
+        Adds "!!" in front of force parameters in classList.toggle calls that
+        could possibly be undefined (thereby breaking the UI).
+
+        * UserInterface/Views/ScopeBarItem.js:
+        (WebInspector.ScopeBarItem):
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateSections):
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor):
+
+2015-10-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Option-Up doesn't increment certain attribute values
+        https://bugs.webkit.org/show_bug.cgi?id=149257
+
+        Reviewed by Brian Burg.
+
+        If the user tries to modify a numerical attribute in HTML and the cursor
+        was at the beginning of the attribute value, the range of the selection
+        was within a sibling element instead of the text node containin the value.
+        This patch fixes this issue and ensures that the correct text is selected.
+
+        * UserInterface/Views/EditingSupport.js:
+        (WebInspector.startEditing.handleEditingResult):
+        Replaced var with let.
+
+2015-10-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use some CSS Variables in Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=150405
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Main.html:
+        Include the new variables stylesheet.
+
+        * UserInterface/Views/Variables.css: Added.
+        (:root):
+        Introduce new global variables.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .cm-link):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message-preview-divider):
+        (.console-message-enclosed):
+        (.console-message .console-message-extra-parameters-container > li::before):
+        (.console-saved-variable):
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline li.selected > span::after):
+        * UserInterface/Views/FormattedValue.css:
+        (:matches(.formatted-array, .formatted-map, .formatted-set, .formatted-weakmap, .formatted-weakset) > .size):
+        (.formatted-number):
+        (.formatted-boolean):
+        (.formatted-string):
+        (.formatted-regexp):
+        (.formatted-symbol):
+        * UserInterface/Views/ObjectPreviewView.css:
+        (.object-preview > .size):
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.object-tree-array-index .index-name):
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.syntax-highlighted :matches(.css-keyword, .css-tag, .css-at-rule, .css-important, .javascript-keyword, .html-tag)):
+        (.syntax-highlighted :matches(.css-number, .javascript-number)):
+        (.syntax-highlighted :matches(.css-string, .javascript-string, .html-attribute-value)):
+        (.syntax-highlighted .javascript-regexp):
+        * UserInterface/Views/TypeTokenView.css:
+        (.type-token-symbol):
+        Make use of variables.
+
 2015-10-21  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Typo in a property name: style.inerhited

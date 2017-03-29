@@ -1,3 +1,111 @@
+2015-10-26  Anders Carlsson  <andersca@apple.com>
+
+        Remove dead context menu code
+        https://bugs.webkit.org/show_bug.cgi?id=150567
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::getCustomMenuFromDefaultItems): Deleted.
+
+2015-10-23  Anders Carlsson  <andersca@apple.com>
+
+        Invoke the context menu delegate callback right before we return the menu
+        https://bugs.webkit.org/show_bug.cgi?id=150521
+
+        Reviewed by Tim Horton.
+
+        Move the getCustomMenuFromDefaultItems to WebHTMLView wholesale. This will allow us to get rid of the ContextMenuClient function from WebCore.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::getCustomMenuFromDefaultItems):
+        (isPreVersion3Client): Deleted.
+        (isPreInspectElementTagClient): Deleted.
+        (fixMenusToSendToOldClients): Deleted.
+        (fixMenusReceivedFromOldClients): Deleted.
+        * WebView/WebHTMLView.mm:
+        (isPreVersion3Client):
+        (isPreInspectElementTagClient):
+        (fixMenusToSendToOldClients):
+        (fixMenusReceivedFromOldClients):
+        (customMenuFromDefaultItems):
+        (-[WebHTMLView menuForEvent:]):
+
+2015-10-23  Anders Carlsson  <andersca@apple.com>
+
+        More context menu simplification
+        https://bugs.webkit.org/show_bug.cgi?id=150519
+
+        Reviewed by Tim Horton.
+
+        There's no need to convert the menu items back to ContextMenuItems just so we can check whether its
+        represented object is the sharing service picker. Also, move the check to the second loop.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView menuForEvent:]):
+
+2015-10-23  Anders Carlsson  <andersca@apple.com>
+
+        Simplify the WebKitLegacy menu conversion code
+        https://bugs.webkit.org/show_bug.cgi?id=150509
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (fixMenusToSendToOldClients):
+        (fixMenusReceivedFromOldClients):
+        (WebContextMenuClient::getCustomMenuFromDefaultItems):
+
+2015-10-23  Anders Carlsson  <andersca@apple.com>
+
+        Don't override already existing represented objects on menu items
+        https://bugs.webkit.org/show_bug.cgi?id=150508
+
+        Reviewed by Tim Horton.
+
+        This fixes a crash/exception when a client implements webView:contextMenuItemsForElement:defaultMenuItems: and
+        the default menu has a share menu item.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::getCustomMenuFromDefaultItems):
+
+2015-10-22  Sam Weinig  <sam@webkit.org>
+
+        Navigations on the same host (but with different schemes and ports) should not trigger universal links
+        <rdar://problem/22811325>
+        https://bugs.webkit.org/show_bug.cgi?id=150481
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (shouldTryAppLink):
+        Update the policy for following universal links to only take host into consideration.
+
+2015-10-22  Gordon Sheridan  <gordon_sheridan@apple.com>
+
+        Fix build for clang-700.0.59.5 by replacing deprecated calls to convert points between screen and window coordinates for Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=150379
+
+        Reviewed by Andy Estes.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView characterIndexForPoint:]):
+        Convert point to rect, and replace call to deprecated convertScreenToBase: with convertRectFromScreen:.
+
+        (-[WebHTMLView firstRectForCharacterRange:]):
+        Replace call to deprecated convertBaseToScreen: with convertRectToScreen:.
+
+2015-10-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Migrate WKSetPatternPhaseInUserSpace() and WKGetUserToBaseCTM() from WKSI
+        https://bugs.webkit.org/show_bug.cgi?id=150460
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+
 2015-10-21  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         NetworkProcess: DNS prefetch happens in the Web Process

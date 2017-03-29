@@ -27,10 +27,8 @@
 
 namespace WebCore {
 
+// Only used by ObjC bindings.
 class HTMLBaseFontElement final : public HTMLElement {
-public:
-    static Ref<HTMLBaseFontElement> create(const QualifiedName&, Document&);
-
 private:
     HTMLBaseFontElement(const QualifiedName&, Document&);
 };

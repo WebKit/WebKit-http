@@ -1,3 +1,281 @@
+2015-10-27  Alexey Proskuryakov  <ap@apple.com>
+
+        WebKitTestRunner leaks in generateWhitelist()
+        https://bugs.webkit.org/show_bug.cgi?id=150563
+
+        Reviewed by Andreas Kling.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::generateWhitelist):
+
+2015-10-27  Anders Carlsson  <andersca@apple.com>
+
+        Add an API test for _WKRemoteObjectRegistry
+        https://bugs.webkit.org/show_bug.cgi?id=150597
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistry.h: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistry.mm: Added.
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistryPlugIn.mm: Added.
+        (-[RemoteObjectRegistryPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[RemoteObjectRegistryPlugIn sayHello:]):
+
+2015-10-26  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Add myself to the reviewers list
+        https://bugs.webkit.org/show_bug.cgi?id=150581
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-10-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Adding myself to contributors.json
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-10-26  Tim Horton  <timothy_horton@apple.com>
+
+        Don't expose the whitelist/blacklist in _WKUserStyleSheet
+        https://bugs.webkit.org/show_bug.cgi?id=150566
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        (TEST):
+
+2015-10-26  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, rolling out r191576.
+
+        broke
+
+        Reverted changeset:
+
+        "[GStreamer] Bump internal jhbuild versions to 1.6.0"
+        https://bugs.webkit.org/show_bug.cgi?id=149594
+        http://trac.webkit.org/changeset/191576
+
+2015-10-26  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GStreamer] Bump internal jhbuild versions to 1.6.0
+        https://bugs.webkit.org/show_bug.cgi?id=149594
+
+        Reviewed by Philippe Normand.
+
+        Bump up whole gstreamer libraries to 1.6.0. Relevant patches are no more
+        useful so they are removed accordingly.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/gst-plugins-bad-fix-faad2-version-check.patch: Removed.
+        * gtk/patches/gst-plugins-bad-remove-gnustep-support.patch: Removed.
+        * gtk/patches/gst-plugins-base-rtp-rtcpbuffer-fix-typo-in-enum.patch: Removed.
+
+2015-10-25  Alexey Proskuryakov  <ap@apple.com>
+
+        API tests fail on El Capitan after r191543
+        https://bugs.webkit.org/show_bug.cgi?id=150547
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/run-api-tests: (listAllTests): Add appropriate arch arguments in one more place.
+
+2015-10-24  Tim Horton  <timothy_horton@apple.com>
+
+        Add a way to add user style sheets to WKUserContentController
+        https://bugs.webkit.org/show_bug.cgi?id=150531
+        <rdar://problem/23191691>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        (TEST):
+
+2015-10-24  Tim Horton  <timothy_horton@apple.com>
+
+        Expose more information about the exception in WKErrorJavaScriptExceptionOccurred errors
+        https://bugs.webkit.org/show_bug.cgi?id=150525
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewEvaluateJavaScript.mm:
+        (TEST):
+        Test the various new keys.
+
+2015-10-24  Frederic Wang  <fred.wang@free.fr>
+
+        check-webkit-style complains about missing operator whitespace inside character literal
+        https://bugs.webkit.org/show_bug.cgi?id=150396
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checkers/cpp.py: Improve matching of C++ character literal.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_spacing): Add a test to verify that the spacing for the character literal 'OS/2' is not tested.
+
+2015-10-23  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r179357-r179359): WebContent Crash using AOL Mail @ com.apple.JavascriptCore JSC::linkPolymorphicCall(JSC::ExecState*, JSC::CallLinkInfo&, JSC::CallVariant, JSC::RegisterPreservationMode) + 1584
+        https://bugs.webkit.org/show_bug.cgi?id=150513
+
+        Reviewed by Saam Barati.
+
+        Added a new test function, failNextNewCodeBlock() to simplify the writing of a regression test.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (simulateWebNotificationClickCallback):
+        (failNextCodeBlock):
+        (numberOfDFGCompiles):
+        (TestRunner::staticFunctions):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setBlockAllPlugins):
+        (WTR::TestRunner::failNextCodeBlock):
+        (WTR::TestRunner::numberOfDFGCompiles):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2015-10-23  Anders Carlsson  <andersca@apple.com>
+
+        Simplify the WebKitLegacy menu conversion code
+        https://bugs.webkit.org/show_bug.cgi?id=150509
+
+        Reviewed by Andreas Kling.
+
+        Implement the context menu delegate method so we'll test that code path.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController webView:contextMenuItemsForElement:defaultMenuItems:]):
+
+2015-10-23  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Improve test results for fast layouttests.
+        https://bugs.webkit.org/show_bug.cgi?id=150464
+
+        Reviewed by Alex Christensen.
+
+        Set custom device scale factor to 1.0.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (createWebViewAndOffscreenWindow):
+
+2015-10-23  Mark Salisbury  <mark.salisbury@hp.com>
+
+        [GTK] update-webkitgtk-libs should use mesa tarball
+
+        https://bugs.webkit.org/show_bug.cgi?id=150470
+
+        update-webkitgtk-libs downloads all build dependencies; in fixing
+        bug 148941 mesa was switched from ftp to git access.  Now an http
+        tarball is available, which is preferred over accessing via git.
+
+        Reviewed by Philippe Normand
+
+        * gtk/jhbuild.modules:
+        Mesa access changed to http tarball.
+
+2015-10-22  Sam Weinig  <sam@webkit.org>
+
+        Navigations on the same host (but with different schemes and ports) should not trigger universal links
+        <rdar://problem/22811325>
+        https://bugs.webkit.org/show_bug.cgi?id=150481
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ShouldOpenExternalURLsInNewWindowActions.mm:
+        Update test to test that navigations on the same host but with different schemes does not
+        trigger universal links, but that changes in the host do.
+
+2015-10-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r181972): Scroll position changes to top of youtube page when switching tabs
+        https://bugs.webkit.org/show_bug.cgi?id=150428
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test using WebKit API test.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/FirstResponderScrollingPosition.mm: Added.
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::TEST):
+
+2015-10-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build after r191423.
+
+        Add WebKitDOMHTMLBaseFontElement to the list of deleted classes.
+
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGenerator):
+
+2015-10-22  Aakash Jain  <aakash_jain@apple.com>
+
+        [Win][EFL][GTK] webkitpy test failed after r191374.
+        https://bugs.webkit.org/show_bug.cgi?id=150433
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/system/crashlogs_unittest.py:
+        (CrashLogsTest.test_find_all_log_darwin): Check platform before running test.
+        (CrashLogsTest.test_find_log_darwin): Same.
+
+2015-10-21  Brian Burg  <bburg@apple.com>
+
+        Unreviewed, update watchlist for JS builtins.
+
+        Add a category for JS builtins code generator, similar to other generators.
+
+        Add a nag message to rebaseline builtins generator tests when touching
+        code generator files in Source/JavaScriptCore/Scripts/builtins/.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-10-21  Brian Burg  <bburg@apple.com>
+
+        Restructure generate-js-bindings script to be modular and testable
+        https://bugs.webkit.org/show_bug.cgi?id=149929
+
+        Reviewed by Alex Christensen.
+
+        Add a stub shell script and basic webkitpy support for running builtins
+        generator tests.
+
+        * Scripts/run-builtins-generator-tests: Added.
+        (main):
+        * Scripts/webkitpy/codegen/__init__.py: Added.
+        * Scripts/webkitpy/codegen/main.py: Added.
+
+            The only interesting difference here from the inspector protocol
+            generator equivalent is that this implementation decodes the target
+            framework and output mode (combined or separate) from the test's file name.
+
+        (BuiltinsGeneratorTests):
+        (BuiltinsGeneratorTests.__init__):
+        (BuiltinsGeneratorTests.generate_from_js_builtins):
+        (BuiltinsGeneratorTests.write_error_file):
+        (BuiltinsGeneratorTests.detect_changes):
+        (BuiltinsGeneratorTests.run_tests):
+        (BuiltinsGeneratorTests.main):
+
+2015-10-21  Aakash Jain  <aakash_jain@apple.com>
+
+        run-webkit-tests does not copy all crash logs for layout test failures on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=150407
+        <rdar://problem/22239750>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort._merge_crash_logs): Merge unique crash logs from two dictionaries.
+        (MacPort._look_for_all_crash_logs_in_log_dir): Get the crash logs from
+        the log directory.
+        (MacPort.look_for_new_crash_logs): Uses above method to get crash logs
+        from log directory and merge them with the list of already crashed tests.
+
 2015-10-21  Filip Pizlo  <fpizlo@apple.com>
 
         Failures in PutStackSinkingPhase should be less severe

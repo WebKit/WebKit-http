@@ -27,11 +27,6 @@
 
 #import "WKViewPrivate.h"
 
-#import "APIObject.h"
-#import "PluginComplexTextInputState.h"
-#import "SameDocumentNavigationType.h"
-#import "WebFindOptions.h"
-#import "WebHitTestResultData.h"
 #import <wtf/Forward.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
@@ -39,33 +34,14 @@
 @class _WKRemoteObjectRegistry;
 
 namespace API {
-class Object;
 class PageConfiguration;
-}
-
-namespace IPC {
-class DataReference;
-}
-
-namespace WebCore {
-class Image;
-class SharedBuffer;
-class TextIndicator;
-enum class TextIndicatorWindowLifetime : uint8_t;
-enum class TextIndicatorWindowDismissalAnimation : uint8_t;
-struct KeypressCommand;
 }
 
 namespace WebKit {
 class DrawingAreaProxy;
-class LayerTreeContext;
-class ViewSnapshot;
 class WebProcessPool;
-struct ColorSpaceData;
-struct EditorState;
 }
 
-@class WKFullScreenWindowController;
 @class WKWebView;
 #if WK_API_ENABLED
 @class _WKThumbnailView;
@@ -80,78 +56,21 @@ struct EditorState;
 - (void)_processDidExit;
 - (void)_pageClosed;
 - (void)_didRelaunchProcess;
-- (void)_preferencesDidChange;
-- (void)_toolTipChangedFrom:(NSString *)oldToolTip to:(NSString *)newToolTip;
 - (void)_setUserInterfaceItemState:(NSString *)commandName enabled:(BOOL)isEnabled state:(int)newState;
 - (void)_doneWithKeyEvent:(NSEvent *)event eventWasHandled:(BOOL)eventWasHandled;
 - (bool)_executeSavedCommandBySelector:(SEL)selector;
-- (void)_setIntrinsicContentSize:(NSSize)intrinsicContentSize;
 - (NSRect)_convertToDeviceSpace:(NSRect)rect;
 - (NSRect)_convertToUserSpace:(NSRect)rect;
-- (void)_setTextIndicator:(WebCore::TextIndicator&)textIndicator;
-- (void)_setTextIndicator:(WebCore::TextIndicator&)textIndicator withLifetime:(WebCore::TextIndicatorWindowLifetime)lifetime;
-- (void)_clearTextIndicatorWithAnimation:(WebCore::TextIndicatorWindowDismissalAnimation)animation;
-- (void)_setTextIndicatorAnimationProgress:(float)progress;
-- (void)_selectionChanged;
-
-- (void)_setAcceleratedCompositingModeRootLayer:(CALayer *)rootLayer;
-- (CALayer *)_acceleratedCompositingModeRootLayer;
-
-- (PassRefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot;
-- (void)_wheelEventWasNotHandledByWebCore:(NSEvent *)event;
-
-- (void)_setAccessibilityWebProcessToken:(NSData *)data;
-
-- (void)_pluginFocusOrWindowFocusChanged:(BOOL)pluginHasFocusAndWindowHasFocus pluginComplexTextInputIdentifier:(uint64_t)pluginComplexTextInputIdentifier;
-- (void)_setPluginComplexTextInputState:(WebKit::PluginComplexTextInputState)pluginComplexTextInputState pluginComplexTextInputIdentifier:(uint64_t)pluginComplexTextInputIdentifier;
-- (void)_dragImageForView:(NSView *)view withImage:(NSImage *)image at:(NSPoint)clientPoint linkDrag:(BOOL)linkDrag;
-- (void)_setPromisedDataForImage:(WebCore::Image *)image withFileName:(NSString *)filename withExtension:(NSString *)extension withTitle:(NSString *)title withURL:(NSString *)url withVisibleURL:(NSString *)visibleUrl withArchive:(WebCore::SharedBuffer*) archiveBuffer forPasteboard:(NSString *)pasteboardName;
-#if ENABLE(ATTACHMENT_ELEMENT)
-- (void)_setPromisedDataForAttachment:(NSString *)filename withExtension:(NSString *)extension withTitle:(NSString *)title withURL:(NSString *)url withVisibleURL:(NSString *)visibleUrl forPasteboard:(NSString *)pasteboardName;
-#endif
-
-- (WebKit::ColorSpaceData)_colorSpace;
-
-- (NSInteger)spellCheckerDocumentTag;
-- (void)handleAcceptedAlternativeText:(NSString*)text;
-
-- (void)_setSuppressVisibilityUpdates:(BOOL)suppressVisibilityUpdates;
-- (BOOL)_suppressVisibilityUpdates;
-
-- (void)_didFirstVisuallyNonEmptyLayoutForMainFrame;
-- (void)_didFinishLoadForMainFrame;
-- (void)_didFailLoadForMainFrame;
-- (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)type;
-- (void)_removeNavigationGestureSnapshot;
 
 #if WK_API_ENABLED
 @property (nonatomic, setter=_setThumbnailView:) _WKThumbnailView *_thumbnailView;
-- (void)_reparentLayerTreeInThumbnailView;
 #endif
-
-- (void)_windowDidOrderOnScreen:(NSNotification *)notification;
-- (void)_windowDidOrderOffScreen:(NSNotification *)notification;
 
 - (void)_addFontPanelObserver;
-// FullScreen
-
-@property (readonly) BOOL _hasFullScreenWindowController;
-@property (readonly) WKFullScreenWindowController *_fullScreenWindowController;
-- (void)_closeFullScreenWindowController;
-
-- (void)_prepareForDictionaryLookup;
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-- (void)_didPerformImmediateActionHitTest:(const WebKit::WebHitTestResultData&)hitTestResult contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData;
-#endif
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
 - (void)_startWindowDrag;
 #endif
-
-@property (nonatomic, retain, setter=_setPrimaryTrackingArea:) NSTrackingArea *_primaryTrackingArea;
-
-@property (readonly) NSWindow *_targetWindowForMovePreparation;
 
 #if WK_API_ENABLED
 @property (nonatomic, readonly) _WKRemoteObjectRegistry *_remoteObjectRegistry;

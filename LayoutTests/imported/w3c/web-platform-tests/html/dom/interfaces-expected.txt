@@ -144,14 +144,6 @@ CONSOLE MESSAGE: line 794: Deprecated attempt to access property 'nodeType' on a
 CONSOLE MESSAGE: line 2476: Deprecated attempt to access property 'nodeType' on a non-Node object.
 CONSOLE MESSAGE: line 794: Deprecated attempt to access property 'nodeType' on a non-Node object.
 CONSOLE MESSAGE: line 2476: Deprecated attempt to access property 'nodeType' on a non-Node object.
-CONSOLE MESSAGE: line 794: Deprecated attempt to access property 'nodeType' on a non-Node object.
-CONSOLE MESSAGE: line 2476: Deprecated attempt to access property 'nodeType' on a non-Node object.
-CONSOLE MESSAGE: line 794: Deprecated attempt to access property 'nodeType' on a non-Node object.
-CONSOLE MESSAGE: line 2476: Deprecated attempt to access property 'nodeType' on a non-Node object.
-CONSOLE MESSAGE: line 794: Deprecated attempt to access property 'nodeType' on a non-Node object.
-CONSOLE MESSAGE: line 2476: Deprecated attempt to access property 'nodeType' on a non-Node object.
-CONSOLE MESSAGE: line 794: Deprecated attempt to access property 'nodeType' on a non-Node object.
-CONSOLE MESSAGE: line 2476: Deprecated attempt to access property 'nodeType' on a non-Node object.
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'version' on a non-HTMLHtmlElement object.
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'text' on a non-HTMLTitleElement object.
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'href' on a non-HTMLBaseElement object.
@@ -1590,11 +1582,11 @@ FAIL HTMLCollection interface: document.createElement("form").elements must inhe
 FAIL HTMLCollection interface: calling item(unsigned long) on document.createElement("form").elements with too few arguments must throw TypeError assert_equals: wrong typeof object expected "function" but got "object"
 FAIL HTMLCollection interface: document.createElement("form").elements must inherit property "namedItem" with the proper type (2) assert_equals: wrong typeof object expected "function" but got "object"
 FAIL HTMLCollection interface: calling namedItem(DOMString) on document.createElement("form").elements with too few arguments must throw TypeError assert_equals: wrong typeof object expected "function" but got "object"
-FAIL RadioNodeList interface: existence and properties of interface object assert_own_property: self does not have own property "RadioNodeList" expected property "RadioNodeList" missing
-FAIL RadioNodeList interface object length assert_own_property: self does not have own property "RadioNodeList" expected property "RadioNodeList" missing
-FAIL RadioNodeList interface: existence and properties of interface prototype object assert_own_property: self does not have own property "RadioNodeList" expected property "RadioNodeList" missing
-FAIL RadioNodeList interface: existence and properties of interface prototype object's "constructor" property assert_own_property: self does not have own property "RadioNodeList" expected property "RadioNodeList" missing
-FAIL RadioNodeList interface: attribute value assert_own_property: self does not have own property "RadioNodeList" expected property "RadioNodeList" missing
+FAIL RadioNodeList interface: existence and properties of interface object assert_equals: class string of RadioNodeList expected "[object Function]" but got "[object RadioNodeListConstructor]"
+PASS RadioNodeList interface object length 
+PASS RadioNodeList interface: existence and properties of interface prototype object 
+FAIL RadioNodeList interface: existence and properties of interface prototype object's "constructor" property assert_own_property: RadioNodeList.prototype does not have own property "constructor" expected property "constructor" missing
+FAIL RadioNodeList interface: attribute value assert_true: The prototype object must have a property "value" expected true got false
 FAIL HTMLOptionsCollection interface: existence and properties of interface object assert_equals: class string of HTMLOptionsCollection expected "[object Function]" but got "[object HTMLOptionsCollectionConstructor]"
 PASS HTMLOptionsCollection interface object length 
 PASS HTMLOptionsCollection interface: existence and properties of interface prototype object 
@@ -2230,8 +2222,8 @@ PASS HTMLUnknownElement must be primary interface of document.createElement("bli
 PASS Stringification of document.createElement("blink") 
 PASS HTMLUnknownElement must be primary interface of document.createElement("quasit") 
 PASS Stringification of document.createElement("quasit") 
-FAIL HTMLUnknownElement must be primary interface of document.createElement("bgsound") assert_equals: document.createElement("bgsound")'s prototype is not HTMLUnknownElement.prototype expected Node object of unknown type but got Node object of unknown type
-FAIL Stringification of document.createElement("bgsound") assert_equals: class string of document.createElement("bgsound") expected "[object HTMLUnknownElement]" but got "[object HTMLElement]"
+PASS HTMLUnknownElement must be primary interface of document.createElement("bgsound") 
+PASS Stringification of document.createElement("bgsound") 
 PASS HTMLUnknownElement must be primary interface of document.createElement("isindex") 
 PASS Stringification of document.createElement("isindex") 
 PASS HTMLUnknownElement must be primary interface of document.createElement("multicol") 
@@ -2242,8 +2234,8 @@ FAIL HTMLUnknownElement must be primary interface of document.createElement("rb"
 FAIL Stringification of document.createElement("rb") assert_equals: class string of document.createElement("rb") expected "[object HTMLUnknownElement]" but got "[object HTMLElement]"
 PASS HTMLUnknownElement must be primary interface of document.createElement("spacer") 
 PASS Stringification of document.createElement("spacer") 
-FAIL HTMLUnknownElement must be primary interface of document.createElement("basefont") assert_equals: document.createElement("basefont")'s prototype is not HTMLUnknownElement.prototype expected Node object of unknown type but got Node object of unknown type
-FAIL Stringification of document.createElement("basefont") assert_equals: class string of document.createElement("basefont") expected "[object HTMLUnknownElement]" but got "[object HTMLBaseFontElement]"
+PASS HTMLUnknownElement must be primary interface of document.createElement("basefont") 
+PASS Stringification of document.createElement("basefont") 
 PASS HTMLUnknownElement must be primary interface of document.createElement("directory") 
 PASS Stringification of document.createElement("directory") 
 PASS HTMLUnknownElement must be primary interface of document.createElement("mod") 

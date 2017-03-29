@@ -459,7 +459,7 @@ void AnimationBase::updateStateMachine(AnimationStateInput input, double param)
             break;
     }
 }
-    
+
 void AnimationBase::fireAnimationEventsIfNeeded()
 {
     if (!m_compositeAnimation)
@@ -621,8 +621,8 @@ double AnimationBase::progress(double scale, double offset, const TimingFunction
     if (preActive())
         return 0;
 
-    if (postActive() || !m_animation->duration())
-        return 1.0;
+    if (postActive())
+        return 1;
 
     double elapsedTime = getElapsedTime();
 
@@ -746,7 +746,7 @@ double AnimationBase::getElapsedTime() const
     if (m_startTime <= 0)
         return 0;
     if (postActive() || fillingForwards())
-        return 1;
+        return m_totalDuration;
 
     return beginAnimationUpdateTime() - m_startTime;
 }

@@ -30,29 +30,39 @@
 
 #include "IDBDatabaseInfo.h"
 #include "IDBError.h"
+#include "IDBKeyData.h"
 #include "IDBResourceIdentifier.h"
 #include "IDBTransactionInfo.h"
+#include "ThreadSafeDataBuffer.h"
 
 namespace WebCore {
 
 class IDBResourceIdentifier;
+class ThreadSafeDataBuffer;
+
+enum class IDBResultType {
+    Error,
+    OpenDatabaseSuccess,
+    OpenDatabaseUpgradeNeeded,
+    CreateObjectStoreSuccess,
+    PutOrAddSuccess,
+    GetRecordSuccess,
+};
 
 namespace IDBServer {
 class UniqueIDBDatabaseConnection;
 class UniqueIDBDatabaseTransaction;
 }
 
-enum class IDBResultType {
-    Error,
-    OpenDatabaseSuccess,
-    OpenDatabaseUpgradeNeeded,
-};
-
 class IDBResultData {
 public:
     static IDBResultData error(const IDBResourceIdentifier&, const IDBError&);
     static IDBResultData openDatabaseSuccess(const IDBResourceIdentifier&, IDBServer::UniqueIDBDatabaseConnection&);
     static IDBResultData openDatabaseUpgradeNeeded(const IDBResourceIdentifier&, IDBServer::UniqueIDBDatabaseTransaction&);
+    static IDBResultData createObjectStoreSuccess(const IDBResourceIdentifier&);
+    static IDBResultData putOrAddSuccess(const IDBResourceIdentifier&, const IDBKeyData&);
+    static IDBResultData getRecordSuccess(const IDBResourceIdentifier&, const ThreadSafeDataBuffer& valueData);
+
     IDBResultData(const IDBResultData&);
 
     IDBResultType type() const { return m_type; }
@@ -64,8 +74,12 @@ public:
     const IDBDatabaseInfo& databaseInfo() const;
     const IDBTransactionInfo& transactionInfo() const;
 
+    const IDBKeyData* resultKey() const { return m_resultKey.get(); }
+    const ThreadSafeDataBuffer& resultData() const { return m_resultData; }
+
 private:
     IDBResultData(const IDBResourceIdentifier&);
+    IDBResultData(IDBResultType, const IDBResourceIdentifier&);
 
     IDBResultType m_type;
     IDBResourceIdentifier m_requestIdentifier;
@@ -74,6 +88,8 @@ private:
     uint64_t m_databaseConnectionIdentifier { 0 };
     std::unique_ptr<IDBDatabaseInfo> m_databaseInfo;
     std::unique_ptr<IDBTransactionInfo> m_transactionInfo;
+    std::unique_ptr<IDBKeyData> m_resultKey;
+    ThreadSafeDataBuffer m_resultData;
 };
 
 } // namespace WebCore

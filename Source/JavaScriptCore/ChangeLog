@@ -1,3 +1,912 @@
+2015-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove Timeline MarkDOMContent and MarkLoad, data is already available
+        https://bugs.webkit.org/show_bug.cgi?id=150615
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Timeline.json:
+
+2015-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused / duplicated XHR timeline instrumentation
+        https://bugs.webkit.org/show_bug.cgi?id=150605
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Timeline.json:
+
+2015-10-27  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r191360): Crash: com.apple.WebKit.WebContent at com.apple.JavaScriptCore: JSC::FTL:: + 386
+        https://bugs.webkit.org/show_bug.cgi?id=150580
+
+        Reviewed by Mark Lam.
+
+        Changed code to box 32 bit integers and booleans arguments when generating the call instead of boxing
+        them in the shuffler.
+
+        The ASSERT in CallFrameShuffler::extendFrameIfNeeded is wrong when called from CallFrameShuffler::spill(),
+        as we could be making space to spill a register so that we have a spare that we can use for the new
+        frame's base pointer.
+
+        * ftl/FTLJSTailCall.cpp:
+        (JSC::FTL::DFG::recoveryFor): Added RELEASE_ASSERT to check that we never see unboxed 32 bit
+        arguments stored in the stack.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::exitValueForTailCall):
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::extendFrameIfNeeded): Removed unneeded ASSERT.
+
+2015-10-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Add DFG/FTL support for accessor put operations
+        https://bugs.webkit.org/show_bug.cgi?id=148860
+
+        Reviewed by Geoffrey Garen.
+
+        This patch introduces accessor defining ops into DFG and FTL.
+        The following DFG nodes are introduced.
+
+            op_put_getter_by_id  => PutGetterById
+            op_put_setter_by_id  => PutSetterById
+            op_put_getter_setter => PutGetterSetterById
+            op_put_getter_by_val => PutGetterByVal
+            op_put_setter_by_val => PutSetterByVal
+
+        These DFG nodes just call operations. But it does not prevent compiling in DFG/FTL.
+
+        To use operations defined for baseline JIT, we clean up existing operations.
+        And reuse these operations in DFG and FTL.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasIdentifier):
+        (JSC::DFG::Node::hasAccessorAttributes):
+        (JSC::DFG::Node::accessorAttributes):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compilePutAccessorById):
+        (JSC::DFG::SpeculativeJIT::compilePutGetterSetterById):
+        (JSC::DFG::SpeculativeJIT::compilePutAccessorByVal):
+        We should fill all GPRs before calling flushRegisters().
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutAccessorById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutGetterSetterById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutAccessorByVal):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_put_getter_by_id):
+        (JSC::JIT::emit_op_put_setter_by_id):
+        (JSC::JIT::emit_op_put_getter_setter):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_put_getter_by_id):
+        (JSC::JIT::emit_op_put_setter_by_id):
+        (JSC::JIT::emit_op_put_getter_setter):
+        * tests/stress/dfg-put-accessors-by-id-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.Cocoa.prototype.get hello):
+        (getter.Cocoa):
+        (getter):
+        (setter.Cocoa):
+        (setter.Cocoa.prototype.set hello):
+        (setter):
+        (accessors.Cocoa):
+        (accessors.Cocoa.prototype.get hello):
+        (accessors.Cocoa.prototype.set hello):
+        (accessors):
+        * tests/stress/dfg-put-accessors-by-id.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.object.get hello):
+        (getter):
+        (setter.object.set hello):
+        (setter):
+        (accessors.object.get hello):
+        (accessors.object.set hello):
+        (accessors):
+        * tests/stress/dfg-put-getter-by-id-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.Cocoa):
+        (getter.Cocoa.prototype.get hello):
+        (getter.Cocoa.prototype.get name):
+        (getter):
+        * tests/stress/dfg-put-getter-by-id.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.object.get hello):
+        (getter):
+        * tests/stress/dfg-put-getter-by-val-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.Cocoa):
+        (getter.Cocoa.prototype.get name):
+        (getter):
+        * tests/stress/dfg-put-getter-by-val.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.object.get name):
+        (getter):
+        * tests/stress/dfg-put-setter-by-id-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.Cocoa):
+        (getter.Cocoa.prototype.set hello):
+        (getter.Cocoa.prototype.get name):
+        (getter):
+        * tests/stress/dfg-put-setter-by-id.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (setter.object.set hello):
+        (setter):
+        * tests/stress/dfg-put-setter-by-val-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (setter.Cocoa):
+        (setter.Cocoa.prototype.set name):
+        (setter):
+        * tests/stress/dfg-put-setter-by-val.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (setter.object.set name):
+        (setter):
+
+2015-10-26  Mark Lam  <mark.lam@apple.com>
+
+        Add logging to warn about under-estimated FTL inline cache sizes.
+        https://bugs.webkit.org/show_bug.cgi?id=150570
+
+        Reviewed by Geoffrey Garen.
+
+        Added 2 options:
+        1. JSC_dumpFailedICSizing - dumps an error message if the FTL encounters IC size
+           estimates that are less than the actual needed code size.
+
+           This option is useful for when we add a new IC and want to compute an
+           estimated size for the IC.  To do this:
+           1. Build jsc for the target port with a very small IC size (enough to
+              store the jump instruction needed for the out of line fallback
+              implementation).
+           2. Implement a test suite with scenarios that exercise all the code paths in
+              the IC generator.
+           3. Run jsc with JSC_dumpFailedICSizing=true on the test suite.
+           4. The max value reported by the dumps will be the worst case size needed to
+              store the IC.  We should use this value for our estimate.
+           5. Update the IC's estimated size and rebuild jsc.
+           6. Re-run (3) and confirm that there are no more error messages about the
+              IC sizing.
+
+        2. JSC_assertICSizing - same as JSC_dumpFailedICSizing except that it also
+           crashes the VM each time it encounters an inadequate IC size estimate.
+
+           This option is useful for regression testing to ensure that our estimates
+           do not regress.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::generateInlineIfPossibleOutOfLineIfNot):
+        * runtime/Options.h:
+
+2015-10-26  Saam barati  <sbarati@apple.com>
+
+        r190735 Caused us to maybe trample the base's tag-GPR on 32-bit inline cache when the cache allocates a scratch register and then jumps to the slow path
+        https://bugs.webkit.org/show_bug.cgi?id=150532
+
+        Reviewed by Geoffrey Garen.
+
+        The base's tag register used to show up in the used register set
+        before r190735 because of how the DFG kept track of used register. I changed this 
+        in my work on inline caching because we don't want to spill these registers
+        when we have a GetByIdFlush/PutByIdFlush and we use the used register set
+        as the metric of what to spill. That said, these registers should be locked
+        and not used as scratch registers by the scratch register allocator. The
+        reason is that our inline cache may fail and jump to the slow path. The slow
+        path then uses the base's tag register. If the inline cache used the base's tag
+        register as a scratch and the inline cache fails and jumps to the slow path, we
+        have a problem because the tag may now be trampled.
+
+        Note that this doesn't mean that we can't trample the base's tag register when making
+        a call. We can totally trample the register as long as the inline cache succeeds in a GetByIdFlush/PutByIdFlush.
+        The problem is only when we trample it and then jump to the slow path.
+
+        This patch fixes this bug by making StructureStubInfo keep track of the base's
+        tag GPR. PolymorphicAccess then locks this register when using the ScratchRegisterAllocator.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate):
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/StructureStubInfo.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileIn):
+        * jit/JITInlineCacheGenerator.cpp:
+        (JSC::JITByIdGenerator::JITByIdGenerator):
+        * tests/stress/regress-150532.js: Added.
+        (assert):
+        (randomFunction):
+        (foo):
+        (i.switch):
+
+2015-10-24  Brian Burg  <bburg@apple.com>
+
+        Teach create_hash_table to omit builtins macros when generating tables for native-only objects
+        https://bugs.webkit.org/show_bug.cgi?id=150491
+
+        Reviewed by Yusuke Suzuki.
+
+        In order to support separate compilation for generated builtins files, we need to be able to
+        include specific builtins headers from generated .lut.h files. However, the create_hash_table
+        script isn't smart enough to figure out when a generated file might actually contain a builtin.
+        Without further help, we'd have to include an all-in-one header, mostly defeating the point of
+        generating separate .h and .cpp files for every builtin.
+
+        This patch segregates the pure native and partially builtin sources in the build system, and
+        gives hints to create_hash_table so that it doesn't even generate checks for builtins if the
+        input file has no builtin method implementations. Also do some modernization and code cleanup.
+
+        * CMakeLists.txt:
+
+        Generate each group with different flags to create_hash_table. Change the macro to take
+        flags through the variable LUT_GENERATOR_FLAGS. Set this as necessary before calling macro.
+        Add an additional hint to CMake that the .cpp source file depends on the generated file.
+
+        * DerivedSources.make:
+
+        Generate each group with different flags to create_hash_table. Clean up the 'all' target
+        so that static dependencies are listed first. Use static patterns to decide which .lut.h
+        files require which flags. Reduce fragile usages of implicit variables.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+        Add some missing .lut.h files to the Derived Sources group. Sort the project.
+
+        * create_hash_table:
+
+        Parse options in a sane way using GetOpt::Long. Remove ability to specify a custom namespace
+        since this isn't actually used anywhere. Normalize placement of newlines in quoted strings.
+        Only generate builtins macros and includes if the source file is known to have some builtins.
+
+2015-10-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused ScrollLayer Timeline EventType
+        https://bugs.webkit.org/show_bug.cgi?id=150518
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Timeline.json:
+
+2015-10-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Clean up InspectorInstrumentation includes
+        https://bugs.webkit.org/show_bug.cgi?id=150523
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::consoleMessageArgumentCounts): Deleted.
+        * inspector/agents/InspectorConsoleAgent.h:
+
+2015-10-23  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r179357-r179359): WebContent Crash using AOL Mail @ com.apple.JavascriptCore JSC::linkPolymorphicCall(JSC::ExecState*, JSC::CallLinkInfo&, JSC::CallVariant, JSC::RegisterPreservationMode) + 1584
+        https://bugs.webkit.org/show_bug.cgi?id=150513
+
+        Reviewed by Saam Barati.
+
+        Add check in linkPolymorphicCall() to make sure we have a CodeBlock for the newly added variant.
+        If not, we turn the call into a virtual call.
+
+        The bug was caused by a stack overflow when preparing the function for execution.  This properly
+        threw an exception, however linkPolymorphicCall() didn't check for this error case.
+
+        Added a new test function "failNextNewCodeBlock()" to test tools to simplify the testing.
+
+        * API/JSCTestRunnerUtils.cpp:
+        (JSC::failNextNewCodeBlock):
+        (JSC::numberOfDFGCompiles):
+        * API/JSCTestRunnerUtils.h:
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionTransferArrayBuffer):
+        (functionFailNextNewCodeBlock):
+        (functionQuit):
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::prepareForExecutionImpl):
+        * runtime/TestRunnerUtils.cpp:
+        (JSC::optimizeNextInvocation):
+        (JSC::failNextNewCodeBlock):
+        (JSC::numberOfDFGCompiles):
+        * runtime/TestRunnerUtils.h:
+        * runtime/VM.h:
+        (JSC::VM::setFailNextNewCodeBlock):
+        (JSC::VM::getAndClearFailNextNewCodeBlock):
+        (JSC::VM::stackPointerAtVMEntry):
+
+2015-10-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r191500.
+        https://bugs.webkit.org/show_bug.cgi?id=150526
+
+        Broke two JSC regression tests (Requested by msaboff on
+        #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Add DFG/FTL support for accessor put operations"
+        https://bugs.webkit.org/show_bug.cgi?id=148860
+        http://trac.webkit.org/changeset/191500
+
+2015-10-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Add DFG/FTL support for accessor put operations
+        https://bugs.webkit.org/show_bug.cgi?id=148860
+
+        Reviewed by Geoffrey Garen.
+
+        This patch introduces accessor defining ops into DFG and FTL.
+        The following DFG nodes are introduced.
+
+            op_put_getter_by_id  => PutGetterById
+            op_put_setter_by_id  => PutSetterById
+            op_put_getter_setter => PutGetterSetterById
+            op_put_getter_by_val => PutGetterByVal
+            op_put_setter_by_val => PutSetterByVal
+
+        These DFG nodes just call operations. But it does not prevent compiling in DFG/FTL.
+
+        To use operations defined for baseline JIT, we clean up existing operations.
+        And reuse these operations in DFG and FTL.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasIdentifier):
+        (JSC::DFG::Node::hasAccessorAttributes):
+        (JSC::DFG::Node::accessorAttributes):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compilePutAccessorById):
+        (JSC::DFG::SpeculativeJIT::compilePutGetterSetterById):
+        (JSC::DFG::SpeculativeJIT::compilePutAccessorByVal):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutAccessorById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutGetterSetterById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutAccessorByVal):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_put_getter_by_id):
+        (JSC::JIT::emit_op_put_setter_by_id):
+        (JSC::JIT::emit_op_put_getter_setter):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_put_getter_by_id):
+        (JSC::JIT::emit_op_put_setter_by_id):
+        (JSC::JIT::emit_op_put_getter_setter):
+        * tests/stress/dfg-put-accessors-by-id-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.Cocoa.prototype.get hello):
+        (getter.Cocoa):
+        (getter):
+        (setter.Cocoa):
+        (setter.Cocoa.prototype.set hello):
+        (setter):
+        (accessors.Cocoa):
+        (accessors.Cocoa.prototype.get hello):
+        (accessors.Cocoa.prototype.set hello):
+        (accessors):
+        * tests/stress/dfg-put-accessors-by-id.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.object.get hello):
+        (getter):
+        (setter.object.set hello):
+        (setter):
+        (accessors.object.get hello):
+        (accessors.object.set hello):
+        (accessors):
+        * tests/stress/dfg-put-getter-by-id-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.Cocoa):
+        (getter.Cocoa.prototype.get hello):
+        (getter.Cocoa.prototype.get name):
+        (getter):
+        * tests/stress/dfg-put-getter-by-id.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.object.get hello):
+        (getter):
+        * tests/stress/dfg-put-getter-by-val-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.Cocoa):
+        (getter.Cocoa.prototype.get name):
+        (getter):
+        * tests/stress/dfg-put-getter-by-val.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.object.get name):
+        (getter):
+        * tests/stress/dfg-put-setter-by-id-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (getter.Cocoa):
+        (getter.Cocoa.prototype.set hello):
+        (getter.Cocoa.prototype.get name):
+        (getter):
+        * tests/stress/dfg-put-setter-by-id.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (setter.object.set hello):
+        (setter):
+        * tests/stress/dfg-put-setter-by-val-class.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (setter.Cocoa):
+        (setter.Cocoa.prototype.set name):
+        (setter):
+        * tests/stress/dfg-put-setter-by-val.js: Added.
+        (shouldBe):
+        (testAttribute):
+        (setter.object.set name):
+        (setter):
+
+2015-10-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused Timeline GCEvent Record type
+        https://bugs.webkit.org/show_bug.cgi?id=150477
+
+        Reviewed by Timothy Hatcher.
+
+        Garbage Collection events go through the Heap domain, not the
+        Timeline domain (long time ago for Chromium).
+
+        * inspector/protocol/Timeline.json:
+
+2015-10-22  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r191360): Repro Crash: com.apple.WebKit.WebContent at JavaScriptCore:JSC::ExecState::bytecodeOffset + 174
+        https://bugs.webkit.org/show_bug.cgi?id=150434
+
+        Reviewed by Mark Lam.
+
+        Pass the current frame instead of the caller frame to operationVMHandleException when processing an
+        exception in one of the native thunks.
+
+        * jit/JITExceptions.cpp:
+        (JSC::genericUnwind): Made debug printing of CodeBlock safe for call frames without one.
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::privateCompileCTINativeCall):
+        * jit/ThunkGenerators.cpp:
+        (JSC::nativeForGenerator):
+
+2015-10-21  Brian Burg  <bburg@apple.com>
+
+        Restructure generate-js-bindings script to be modular and testable
+        https://bugs.webkit.org/show_bug.cgi?id=149929
+
+        Reviewed by Alex Christensen.
+
+        This is a new code generator, based on the replay inputs code generator and
+        the inspector protocol code generator, which produces various files for JS
+        builtins.
+
+        Relative to the generator it replaces, this one consolidates two scripts in
+        JavaScriptCore and WebCore into a single script with multiple files. Parsed
+        information about the builtins file is stored in backend-independent model
+        objects. Each output file has its own code generator that uses the model to
+        produce resulting code. Generators are additionally parameterized by the target
+        framework (to choose correct macros and includes) and output mode (one
+        header/implementation file per builtin or per framework).
+
+        It includes a few simple tests of the generator's functionality. These result-
+        based tests will become increasingly more important as we start to add support
+        for builtins annotation such as @optional, @internal, etc. to the code generator.
+
+        Some of these complexities, such as having two output modes, will be removed in
+        subsequent patches. This patch is intended to exactly replace the existing
+        functionality with a unified script that makes additional cleanups straightforward.
+
+        Additional cleanup and consolidation between inspector code generator scripts
+        and this script will be pursued in followup patches.
+
+        New tests:
+
+        Scripts/tests/builtins/JavaScriptCore-Builtin.Promise-Combined.js
+        Scripts/tests/builtins/JavaScriptCore-Builtin.Promise-Separate.js
+        Scripts/tests/builtins/JavaScriptCore-Builtin.prototype-Combined.js
+        Scripts/tests/builtins/JavaScriptCore-Builtin.prototype-Separate.js
+        Scripts/tests/builtins/JavaScriptCore-BuiltinConstructor-Combined.js
+        Scripts/tests/builtins/JavaScriptCore-BuiltinConstructor-Separate.js
+        Scripts/tests/builtins/WebCore-GuardedBuiltin-Separate.js
+        Scripts/tests/builtins/WebCore-GuardedInternalBuiltin-Separate.js
+        Scripts/tests/builtins/WebCore-UnguardedBuiltin-Separate.js
+        Scripts/tests/builtins/WebCore-xmlCasingTest-Separate.js
+
+
+        * CMakeLists.txt:
+
+            Copy the scripts that are used by other targets to a staging directory inside
+            ${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/Scripts.
+            Define JavaScriptCore_SCRIPTS_DIR to point here so that the add_custom_command
+            and shared file lists are identical between JavaScriptCore and WebCore. The staged
+            scripts are a dependency of the main JavaScriptCore target so that they are
+            always staged, even if JavaScriptCore itself does not use a particular script.
+
+            The output files additionally depend on all builtin generator script files
+            and input files that are combined into the single header/implementation file.
+
+        * DerivedSources.make:
+
+            Define JavaScriptCore_SCRIPTS_DIR explicitly so the rule for code generation and
+            shared file lists are identical between JavaScriptCore and WebCore.
+
+            The output files additionally depend on all builtin generator script files
+            and input files that are combined into the single header/implementation file.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+            Mark the new builtins generator files as private headers so we can use them from
+            WebCore.
+
+        * Scripts/UpdateContents.py: Renamed from Source/JavaScriptCore/UpdateContents.py.
+        * Scripts/builtins/__init__.py: Added.
+        * Scripts/builtins/builtins.py: Added.
+        * Scripts/builtins/builtins_generator.py: Added. This file contains the base generator.
+        (WK_lcfirst):
+        (WK_ucfirst):
+        (BuiltinsGenerator):
+        (BuiltinsGenerator.__init__):
+        (BuiltinsGenerator.model):
+        (BuiltinsGenerator.generate_license):
+        (BuiltinsGenerator.generate_includes_from_entries):
+        (BuiltinsGenerator.generate_output):
+        (BuiltinsGenerator.output_filename):
+        (BuiltinsGenerator.mangledNameForFunction):
+        (BuiltinsGenerator.mangledNameForFunction.toCamel):
+        (BuiltinsGenerator.generate_embedded_code_string_section_for_function):
+        * Scripts/builtins/builtins_model.py: Added. This file contains builtins model objects.
+        (ParseException):
+        (Framework):
+        (Framework.__init__):
+        (Framework.setting):
+        (Framework.fromString):
+        (Frameworks):
+        (BuiltinObject):
+        (BuiltinObject.__init__):
+        (BuiltinFunction):
+        (BuiltinFunction.__init__):
+        (BuiltinFunction.fromString):
+        (BuiltinFunction.__str__):
+        (BuiltinsCollection):
+        (BuiltinsCollection.__init__):
+        (BuiltinsCollection.parse_builtins_file):
+        (BuiltinsCollection.copyrights):
+        (BuiltinsCollection.all_functions):
+        (BuiltinsCollection._parse_copyright_lines):
+        (BuiltinsCollection._parse_functions):
+        * Scripts/builtins/builtins_templates.py: Added.
+        (BuiltinsGeneratorTemplates):
+        * Scripts/builtins/builtins_generate_combined_header.py: Added.
+        (BuiltinsCombinedHeaderGenerator):
+        (BuiltinsCombinedHeaderGenerator.__init__):
+        (BuiltinsCombinedHeaderGenerator.output_filename):
+        (BuiltinsCombinedHeaderGenerator.generate_output):
+        (BuiltinsCombinedHeaderGenerator.generate_forward_declarations):
+        (FunctionExecutable):
+        (VM):
+        (ConstructAbility):
+        (generate_section_for_object):
+        (generate_externs_for_object):
+        (generate_macros_for_object):
+        (generate_defines_for_object):
+        (generate_section_for_code_table_macro):
+        (generate_section_for_code_name_macro):
+        * Scripts/builtins/builtins_generate_combined_implementation.py: Added.
+        (BuiltinsCombinedImplementationGenerator):
+        (BuiltinsCombinedImplementationGenerator.__init__):
+        (BuiltinsCombinedImplementationGenerator.output_filename):
+        (BuiltinsCombinedImplementationGenerator.generate_output):
+        (BuiltinsCombinedImplementationGenerator.generate_header_includes):
+        * Scripts/builtins/builtins_generate_separate_header.py: Added.
+        (BuiltinsSeparateHeaderGenerator):
+        (BuiltinsSeparateHeaderGenerator.__init__):
+        (BuiltinsSeparateHeaderGenerator.output_filename):
+        (BuiltinsSeparateHeaderGenerator.macro_prefix):
+        (BuiltinsSeparateHeaderGenerator.generate_output):
+        (BuiltinsSeparateHeaderGenerator.generate_forward_declarations):
+        (FunctionExecutable):
+        (generate_header_includes):
+        (generate_section_for_object):
+        (generate_externs_for_object):
+        (generate_macros_for_object):
+        (generate_defines_for_object):
+        (generate_section_for_code_table_macro):
+        (generate_section_for_code_name_macro):
+        * Scripts/builtins/builtins_generate_separate_implementation.py: Added.
+        (BuiltinsSeparateImplementationGenerator):
+        (BuiltinsSeparateImplementationGenerator.__init__):
+        (BuiltinsSeparateImplementationGenerator.output_filename):
+        (BuiltinsSeparateImplementationGenerator.macro_prefix):
+        (BuiltinsSeparateImplementationGenerator.generate_output):
+        (BuiltinsSeparateImplementationGenerator.generate_header_includes):
+        * Scripts/builtins/builtins_generate_separate_wrapper.py: Added.
+        (BuiltinsSeparateWrapperGenerator):
+        (BuiltinsSeparateWrapperGenerator.__init__):
+        (BuiltinsSeparateWrapperGenerator.output_filename):
+        (BuiltinsSeparateWrapperGenerator.macro_prefix):
+        (BuiltinsSeparateWrapperGenerator.generate_output):
+        (BuiltinsSeparateWrapperGenerator.generate_header_includes):
+        * Scripts/generate-js-builtins.py: Added.
+
+            Parse command line options, decide which generators and output modes to use.
+
+        (generate_bindings_for_builtins_files):
+        * Scripts/lazywriter.py: Copied from the inspector protocol generator.
+        (LazyFileWriter):
+        (LazyFileWriter.__init__):
+        (LazyFileWriter.write):
+        (LazyFileWriter.close):
+        * Scripts/tests/builtins/JavaScriptCore-Builtin.Promise-Combined.js: Added.
+        * Scripts/tests/builtins/JavaScriptCore-Builtin.Promise-Separate.js: Added.
+        * Scripts/tests/builtins/JavaScriptCore-Builtin.prototype-Combined.js: Added.
+        * Scripts/tests/builtins/JavaScriptCore-Builtin.prototype-Separate.js: Added.
+        * Scripts/tests/builtins/JavaScriptCore-BuiltinConstructor-Combined.js: Added.
+        * Scripts/tests/builtins/JavaScriptCore-BuiltinConstructor-Separate.js: Added.
+        * Scripts/tests/builtins/WebCore-GuardedBuiltin-Separate.js: Added.
+        * Scripts/tests/builtins/WebCore-GuardedInternalBuiltin-Separate.js: Added.
+        * Scripts/tests/builtins/WebCore-UnguardedBuiltin-Separate.js: Added.
+        * Scripts/tests/builtins/WebCore-xmlCasingTest-Separate.js: Added.
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Combined.js-result: Added.
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Separate.js-result: Added.
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Combined.js-result: Added.
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Separate.js-result: Added.
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Combined.js-result: Added.
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Separate.js-result: Added.
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result: Added.
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result: Added.
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result: Added.
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result: Added.
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::BuiltinExecutables):
+        * builtins/BuiltinExecutables.h:
+        * create_hash_table:
+
+            Update the generated builtin macro names.
+
+        * generate-js-builtins: Removed.
+
+2015-10-21  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Remove FTL Native Inlining, it is dead code
+        https://bugs.webkit.org/show_bug.cgi?id=150429
+
+        Reviewed by Filip Pizlo.
+
+        The code is not used and it is in the way of other changes.
+
+        * ftl/FTLAbbreviations.h:
+        (JSC::FTL::getFirstInstruction): Deleted.
+        (JSC::FTL::getNextInstruction): Deleted.
+        (JSC::FTL::getFirstBasicBlock): Deleted.
+        (JSC::FTL::getNextBasicBlock): Deleted.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::isInlinableSize): Deleted.
+        * runtime/Options.h:
+
+2015-10-21  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Remove two useless temporaries from the PutByOffset codegen
+        https://bugs.webkit.org/show_bug.cgi?id=150421
+
+        Reviewed by Geoffrey Garen.
+
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile): Deleted.
+        Looks like they were added by accident in r160796.
+
+2015-10-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Factor out the graph node worklists from DFG into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=150411
+
+        Reviewed by Geoffrey Garen.
+
+        Rewrite the DFGBlockWorklist.h file as a bunch of typedefs and aliases for things in
+        wtf/GraphNodeWorklist.h. Most users won't notice, except that some small things got
+        renamed. For example PreOrder becomes VisitOrder::Pre and item.block becomes item.node.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGBlockWorklist.cpp: Removed.
+        * dfg/DFGBlockWorklist.h:
+        (JSC::DFG::BlockWorklist::notEmpty): Deleted.
+        (JSC::DFG::BlockWith::BlockWith): Deleted.
+        (JSC::DFG::BlockWith::operator bool): Deleted.
+        (JSC::DFG::ExtendedBlockWorklist::ExtendedBlockWorklist): Deleted.
+        (JSC::DFG::ExtendedBlockWorklist::forcePush): Deleted.
+        (JSC::DFG::ExtendedBlockWorklist::push): Deleted.
+        (JSC::DFG::ExtendedBlockWorklist::notEmpty): Deleted.
+        (JSC::DFG::ExtendedBlockWorklist::pop): Deleted.
+        (JSC::DFG::BlockWithOrder::BlockWithOrder): Deleted.
+        (JSC::DFG::BlockWithOrder::operator bool): Deleted.
+        (JSC::DFG::PostOrderBlockWorklist::push): Deleted.
+        (JSC::DFG::PostOrderBlockWorklist::notEmpty): Deleted.
+        * dfg/DFGDominators.cpp:
+        (JSC::DFG::Dominators::compute):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::blocksInPostOrder):
+        * dfg/DFGPrePostNumbering.cpp:
+        (JSC::DFG::PrePostNumbering::compute):
+
+2015-10-21  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        [INTL] Implement Intl.Collator.prototype.resolvedOptions ()
+        https://bugs.webkit.org/show_bug.cgi?id=147601
+
+        Reviewed by Benjamin Poulain.
+
+        This patch implements Intl.Collator.prototype.resolvedOptions() according
+        to the ECMAScript 2015 Internationalization API spec (ECMA-402 2nd edition.)
+        It also implements the abstract operations InitializeCollator, ResolveLocale,
+        LookupMatcher, and BestFitMatcher.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/IntlCollator.h:
+        (JSC::IntlCollator::usage):
+        (JSC::IntlCollator::setUsage):
+        (JSC::IntlCollator::locale):
+        (JSC::IntlCollator::setLocale):
+        (JSC::IntlCollator::collation):
+        (JSC::IntlCollator::setCollation):
+        (JSC::IntlCollator::numeric):
+        (JSC::IntlCollator::setNumeric):
+        (JSC::IntlCollator::sensitivity):
+        (JSC::IntlCollator::setSensitivity):
+        (JSC::IntlCollator::ignorePunctuation):
+        (JSC::IntlCollator::setIgnorePunctuation):
+        * runtime/IntlCollatorConstructor.cpp:
+        (JSC::sortLocaleData):
+        (JSC::searchLocaleData):
+        (JSC::initializeCollator):
+        (JSC::constructIntlCollator):
+        (JSC::callIntlCollator):
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorPrototypeFuncResolvedOptions):
+        * runtime/IntlObject.cpp:
+        (JSC::defaultLocale):
+        (JSC::getIntlBooleanOption):
+        (JSC::getIntlStringOption):
+        (JSC::removeUnicodeLocaleExtension):
+        (JSC::lookupMatcher):
+        (JSC::bestFitMatcher):
+        (JSC::resolveLocale):
+        (JSC::lookupSupportedLocales):
+        * runtime/IntlObject.h:
+
+2015-10-21  Saam barati  <sbarati@apple.com>
+
+        C calls in PolymorphicAccess shouldn't assume that the top of the stack looks like a JSC JIT frame and enable *ByIdFlush in FTL
+        https://bugs.webkit.org/show_bug.cgi?id=125711
+
+        Reviewed by Filip Pizlo.
+
+        This patch ensures that anytime we need to make a C call inside
+        PolymorphicAccess, we ensure there is enough space on the stack to do so.
+
+        This patch also enables GetByIdFlush/PutByIdFlush inside the FTL.
+        Because PolymorphicAccess now spills the necessary registers
+        before making a JS/C call, any registers that LLVM report as
+        being in use for the patchpoint will be spilled before making
+        a call by PolymorphicAccess.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessGenerationState::restoreScratch):
+        (JSC::AccessGenerationState::succeed):
+        (JSC::AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling):
+        (JSC::AccessCase::generate):
+        (JSC::PolymorphicAccess::regenerate):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileGetById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::emitStoreBarrier):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitTypeOf):
+        (JSC::AssemblyHelpers::makeSpaceOnStackForCCall):
+        (JSC::AssemblyHelpers::reclaimSpaceOnStackForCCall):
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::webAssemblyCalleeSaveRegisters):
+        (JSC::RegisterSet::registersToNotSaveForJSCall):
+        (JSC::RegisterSet::registersToNotSaveForCCall):
+        (JSC::RegisterSet::allGPRs):
+        (JSC::RegisterSet::registersToNotSaveForCall): Deleted.
+        * jit/RegisterSet.h:
+        (JSC::RegisterSet::set):
+        * jit/ScratchRegisterAllocator.cpp:
+        (JSC::ScratchRegisterAllocator::allocateScratchGPR):
+        (JSC::ScratchRegisterAllocator::allocateScratchFPR):
+        (JSC::ScratchRegisterAllocator::preserveReusedRegistersByPushing):
+        (JSC::ScratchRegisterAllocator::restoreReusedRegistersByPopping):
+        These methods now take an extra parameter indicating if they
+        should create space for a C call at the top of the stack if
+        there are any reused registers to spill.
+
+        (JSC::ScratchRegisterAllocator::usedRegistersForCall):
+        * jit/ScratchRegisterAllocator.h:
+        (JSC::ScratchRegisterAllocator::usedRegisters):
+
+2015-10-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Array previews with Symbol objects have too few preview values
+        https://bugs.webkit.org/show_bug.cgi?id=150404
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.RemoteObject.prototype._appendPropertyPreviews):
+        We should be continuing inside this loop not returning.
+
 2015-10-21  Filip Pizlo  <fpizlo@apple.com>
 
         Failures in PutStackSinkingPhase should be less severe

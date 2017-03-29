@@ -130,7 +130,6 @@ ApplyStyleCommand::ApplyStyleCommand(Document& document, const EditingStyle* sty
     , m_end(endingSelection().end().upstream())
     , m_useEndingSelection(true)
     , m_removeOnly(false)
-    , m_isInlineElementToRemoveFunction(0)
 {
 }
 
@@ -142,7 +141,6 @@ ApplyStyleCommand::ApplyStyleCommand(Document& document, const EditingStyle* sty
     , m_end(end)
     , m_useEndingSelection(false)
     , m_removeOnly(false)
-    , m_isInlineElementToRemoveFunction(0)
 {
 }
 
@@ -155,7 +153,6 @@ ApplyStyleCommand::ApplyStyleCommand(PassRefPtr<Element> element, bool removeOnl
     , m_useEndingSelection(true)
     , m_styledInlineElement(element)
     , m_removeOnly(removeOnly)
-    , m_isInlineElementToRemoveFunction(0)
 {
 }
 
@@ -428,9 +425,8 @@ void ApplyStyleCommand::applyRelativeFontStyleChange(EditingStyle* style)
         }
     }
 
-    size_t size = unstyledSpans.size();
-    for (size_t i = 0; i < size; ++i)
-        removeNodePreservingChildren(unstyledSpans[i].get());
+    for (auto& unstyledSpan : unstyledSpans)
+        removeNodePreservingChildren(unstyledSpan.get());
 }
 
 static ContainerNode* dummySpanAncestorForNode(const Node* node)
@@ -456,8 +452,9 @@ void ApplyStyleCommand::cleanupUnstyledAppleStyleSpans(ContainerNode* dummySpanA
         if (isSpanWithoutAttributesOrUnstyledStyleSpan(&child))
             toRemove.append(&child);
     }
-    for (unsigned i = 0; i < toRemove.size(); ++i)
-        removeNodePreservingChildren(toRemove[i]);
+
+    for (auto& element : toRemove)
+        removeNodePreservingChildren(element);
 }
 
 HTMLElement* ApplyStyleCommand::splitAncestorsWithUnicodeBidi(Node* node, bool before, WritingDirection allowedDirection)
@@ -468,8 +465,8 @@ HTMLElement* ApplyStyleCommand::splitAncestorsWithUnicodeBidi(Node* node, bool b
     if (!block || block == node)
         return 0;
 
-    Node* highestAncestorWithUnicodeBidi = 0;
-    Node* nextHighestAncestorWithUnicodeBidi = 0;
+    Node* highestAncestorWithUnicodeBidi = nullptr;
+    Node* nextHighestAncestorWithUnicodeBidi = nullptr;
     int highestAncestorUnicodeBidi = 0;
     for (Node* n = node->parentNode(); n != block; n = n->parentNode()) {
         int unicodeBidi = toIdentifier(ComputedStyleExtractor(n).propertyValue(CSSPropertyUnicodeBidi));
@@ -483,7 +480,7 @@ HTMLElement* ApplyStyleCommand::splitAncestorsWithUnicodeBidi(Node* node, bool b
     if (!highestAncestorWithUnicodeBidi)
         return 0;
 
-    HTMLElement* unsplitAncestor = 0;
+    HTMLElement* unsplitAncestor = nullptr;
 
     WritingDirection highestAncestorDirection;
     if (allowedDirection != NaturalWritingDirection
@@ -559,8 +556,8 @@ static Node* highestEmbeddingAncestor(Node* startNode, Node* enclosingNode)
 
 void ApplyStyleCommand::applyInlineStyle(EditingStyle* style)
 {
-    RefPtr<ContainerNode> startDummySpanAncestor = 0;
-    RefPtr<ContainerNode> endDummySpanAncestor = 0;
+    RefPtr<ContainerNode> startDummySpanAncestor;
+    RefPtr<ContainerNode> endDummySpanAncestor;
 
     // update document layout once before removing styles
     // so that we avoid the expense of updating before each and every call
@@ -834,11 +831,10 @@ void ApplyStyleCommand::applyInlineStyleToNodeRange(EditingStyle* style, PassRef
 
     document().updateLayoutIgnorePendingStylesheets();
 
-    for (size_t i = 0; i < runs.size(); i++)
-        runs[i].change = StyleChange(style, runs[i].positionForStyleComputation);
+    for (auto& run : runs)
+        run.change = StyleChange(style, run.positionForStyleComputation);
 
-    for (size_t i = 0; i < runs.size(); i++) {
-        InlineRunToApplyStyle& run = runs[i];
+    for (auto& run : runs) {
         if (run.dummyElement)
             removeNode(run.dummyElement);
         if (run.startAndEndAreStillInDocument())
@@ -958,8 +954,8 @@ bool ApplyStyleCommand::removeImplicitlyStyledElement(EditingStyle* style, HTMLE
         extractedStyle, attributes, mode == RemoveAlways ? EditingStyle::ExtractMatchingStyle : EditingStyle::DoNotExtractMatchingStyle))
         return false;
 
-    for (size_t i = 0; i < attributes.size(); i++)
-        removeNodeAttribute(element, attributes[i]);
+    for (auto& attribute : attributes)
+        removeNodeAttribute(element, attribute);
 
     if (isEmptyFontTag(element) || isSpanWithoutAttributesOrUnstyledStyleSpan(element))
         removeNodePreservingChildren(element);
@@ -1075,8 +1071,8 @@ void ApplyStyleCommand::pushDownInlineStyleAroundNode(EditingStyle* style, Node*
             if (!child.parentNode())
                 continue;
             if (!child.contains(targetNode) && elementsToPushDown.size()) {
-                for (size_t i = 0; i < elementsToPushDown.size(); i++) {
-                    RefPtr<Element> wrapper = elementsToPushDown[i]->cloneElementWithoutChildren(document());
+                for (auto& element : elementsToPushDown) {
+                    RefPtr<Element> wrapper = element->cloneElementWithoutChildren(document());
                     wrapper->removeAttribute(styleAttr);
                     surroundNodeRangeWithElement(&child, &child, wrapper);
                 }
@@ -1541,8 +1537,7 @@ void ApplyStyleCommand::joinChildTextNodes(Node* node, const Position& start, co
     for (Text* textNode = TextNodeTraversal::firstChild(*node); textNode; textNode = TextNodeTraversal::nextSibling(*textNode))
         textNodes.append(textNode);
 
-    for (size_t i = 0; i < textNodes.size(); ++i) {
-        Text* childText = textNodes[i].get();
+    for (auto& childText : textNodes) {
         Node* next = childText->nextSibling();
         if (!is<Text>(next))
             continue;

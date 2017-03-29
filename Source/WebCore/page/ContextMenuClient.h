@@ -43,12 +43,6 @@ namespace WebCore {
         virtual ~ContextMenuClient() {  }
         virtual void contextMenuDestroyed() = 0;
         
-#if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-        virtual std::unique_ptr<ContextMenu> customizeMenu(std::unique_ptr<ContextMenu>) = 0;
-#else
-        virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) = 0;
-#endif
-
         virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*) = 0;
 
         virtual void downloadURL(const URL& url) = 0;

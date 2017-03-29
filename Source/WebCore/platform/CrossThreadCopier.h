@@ -46,6 +46,7 @@ namespace WebCore {
     class ResourceRequest;
     class ResourceResponse;
     class SessionID;
+    class ThreadSafeDataBuffer;
     struct CrossThreadResourceResponseData;
     struct CrossThreadResourceRequestData;
     struct ThreadableLoaderOptions;
@@ -139,6 +140,11 @@ namespace WebCore {
         static Type copy(const SessionID&);
     };
 
+    template<> struct CrossThreadCopierBase<false, false, ThreadSafeDataBuffer> {
+        typedef ThreadSafeDataBuffer Type;
+        static Type copy(const ThreadSafeDataBuffer&);
+    };
+
 #if ENABLE(INDEXED_DATABASE)
     namespace IndexedDB {
         enum class TransactionMode;
@@ -173,7 +179,7 @@ namespace WebCore {
         static Type copy(const IDBIndexMetadata&);
     };
 
-    struct IDBKeyData;
+    class IDBKeyData;
     template<> struct WEBCORE_EXPORT CrossThreadCopierBase<false, false, IDBKeyData> {
         typedef IDBKeyData Type;
         static Type copy(const IDBKeyData&);
@@ -219,6 +225,12 @@ namespace WebCore {
     template<> struct WEBCORE_EXPORT CrossThreadCopierBase<false, false, IDBTransactionInfo> {
         typedef IDBTransactionInfo Type;
         static Type copy(const IDBTransactionInfo&);
+    };
+
+    class IDBObjectStoreInfo;
+    template<> struct WEBCORE_EXPORT CrossThreadCopierBase<false, false, IDBObjectStoreInfo> {
+        typedef IDBObjectStoreInfo Type;
+        static Type copy(const IDBObjectStoreInfo&);
     };
 
 #endif

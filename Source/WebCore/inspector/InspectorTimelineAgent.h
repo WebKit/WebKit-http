@@ -73,7 +73,6 @@ enum class TimelineRecordType {
     Paint,
     Composite,
     RenderingFrame,
-    ScrollLayer,
 
     ParseHTML,
 
@@ -83,15 +82,9 @@ enum class TimelineRecordType {
 
     EvaluateScript,
 
-    MarkLoad,
-    MarkDOMContent,
-
     TimeStamp,
     Time,
     TimeEnd,
-
-    XHRReadyStateChange,
-    XHRLoad,
 
     FunctionCall,
     ProbeSample,
@@ -142,8 +135,6 @@ public:
     void didFireTimer();
     void willCallFunction(const String& scriptName, int scriptLine, Frame*);
     void didCallFunction(Frame*);
-    void willDispatchXHRReadyStateChangeEvent(const String&, int, Frame*);
-    void didDispatchXHRReadyStateChangeEvent();
     void willDispatchEvent(const Event&, Frame*);
     void didDispatchEvent();
     void willEvaluateScript(const String&, int, Frame&);
@@ -151,10 +142,6 @@ public:
     void didInvalidateLayout(Frame&);
     void willLayout(Frame&);
     void didLayout(RenderObject*);
-    void willScroll(Frame&);
-    void didScroll();
-    void willDispatchXHRLoadEvent(const String&, Frame*);
-    void didDispatchXHRLoadEvent();
     void willComposite(Frame&);
     void didComposite();
     void willPaint(Frame&);
@@ -165,8 +152,6 @@ public:
     void willWriteHTML(unsigned startLine, Frame*);
     void didWriteHTML(unsigned endLine);
     void didTimeStamp(Frame&, const String&);
-    void didMarkDOMContentEvent(Frame&);
-    void didMarkLoadEvent(Frame&);
     void didRequestAnimationFrame(int callbackId, Frame*);
     void didCancelAnimationFrame(int callbackId, Frame*);
     void willFireAnimationFrame(int callbackId, Frame*);

@@ -223,9 +223,13 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 @end
 #endif
 
+@interface WKFocusedElementInfo : NSObject <_WKFocusedElementInfo>
+- (instancetype)initWithAssistedNodeInformation:(const AssistedNodeInformation&)information isUserInitiated:(BOOL)isUserInitiated;
+@end
+
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
-- (instancetype)initWithContentView:(WKContentView *)view userObject:(NSObject <NSSecureCoding> *)userObject;
+- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo userObject:(NSObject <NSSecureCoding> *)userObject;
 - (void)invalidate;
 
 @end
@@ -233,17 +237,25 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 @implementation WKFormInputSession {
     WKContentView *_contentView;
     RetainPtr<NSObject <NSSecureCoding>> _userObject;
+    RetainPtr<WKFocusedElementInfo> _focusedElementInfo;
+    RetainPtr<UIView> _customInputView;
 }
 
-- (instancetype)initWithContentView:(WKContentView *)view userObject:(NSObject <NSSecureCoding> *)userObject
+- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo userObject:(NSObject <NSSecureCoding> *)userObject
 {
     if (!(self = [super init]))
         return nil;
 
     _contentView = view;
+    _focusedElementInfo = elementInfo;
     _userObject = userObject;
 
     return self;
+}
+
+- (id <_WKFocusedElementInfo>)focusedElementInfo
+{
+    return _focusedElementInfo.get();
 }
 
 - (NSObject <NSSecureCoding> *)userObject
@@ -271,15 +283,25 @@ const CGFloat minimumTapHighlightRadius = 2.0;
         [_contentView reloadInputViews];
 }
 
+- (UIView *)customInputView
+{
+    return _customInputView.get();
+}
+
+- (void)setCustomInputView:(UIView *)customInputView
+{
+    if (customInputView == _customInputView)
+        return;
+
+    _customInputView = customInputView;
+    [_contentView reloadInputViews];
+}
+
 - (void)invalidate
 {
     _contentView = nil;
 }
 
-@end
-
-@interface WKFocusedElementInfo : NSObject <_WKFocusedElementInfo>
-- (instancetype)initWithAssistedNodeInformation:(const AssistedNodeInformation&)information isUserInitiated:(BOOL)isUserInitiated;
 @end
 
 @implementation WKFocusedElementInfo {
@@ -453,6 +475,8 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     _actionSheetAssistant = adoptNS([[WKActionSheetAssistant alloc] initWithView:self]);
     [_actionSheetAssistant setDelegate:self];
     _smartMagnificationController = std::make_unique<SmartMagnificationController>(self);
+    _isExpectingFastSingleTapCommit = NO;
+    _showDebugTapHighlightsForFastClicking = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitShowFastClickDebugTapHighlights"];
 }
 
 - (void)cleanupInteraction
@@ -462,6 +486,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     _actionSheetAssistant = nil;
     _smartMagnificationController = nil;
     _didAccessoryTabInitiateFocus = NO;
+    _isExpectingFastSingleTapCommit = NO;
     [_formInputSession invalidate];
     _formInputSession = nil;
     [_highlightView removeFromSuperview];
@@ -816,7 +841,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (void)_showTapHighlight
 {
-    if (!highlightedQuadsAreSmallerThanRect(_tapHighlightInformation.quads, _page->unobscuredContentRect()))
+    if (!highlightedQuadsAreSmallerThanRect(_tapHighlightInformation.quads, _page->unobscuredContentRect()) && !_showDebugTapHighlightsForFastClicking)
         return;
 
     if (!_highlightView) {
@@ -836,12 +861,15 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
     _isTapHighlightIDValid = NO;
 
-    _tapHighlightInformation.color = color;
     _tapHighlightInformation.quads = highlightedQuads;
     _tapHighlightInformation.topLeftRadius = topLeftRadius;
     _tapHighlightInformation.topRightRadius = topRightRadius;
     _tapHighlightInformation.bottomLeftRadius = bottomLeftRadius;
     _tapHighlightInformation.bottomRightRadius = bottomRightRadius;
+    if (_showDebugTapHighlightsForFastClicking)
+        _tapHighlightInformation.color = [self _tapHighlightColorForFastClick:![_doubleTapGestureRecognizer isEnabled]];
+    else
+        _tapHighlightInformation.color = color;
 
     if (_potentialTapInProgress) {
         _hasTapHighlightForPotentialTap = YES;
@@ -849,42 +877,22 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     }
 
     [self _showTapHighlight];
+    if (_isExpectingFastSingleTapCommit) {
+        [self _finishInteraction];
+        if (!_potentialTapInProgress)
+            _isExpectingFastSingleTapCommit = NO;
+    }
 }
 
-- (CGFloat)_fastClickZoomThreshold
+- (BOOL)_mayDisableDoubleTapGesturesDuringSingleTap
 {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    if (![defaults boolForKey:@"WebKitFastClickingEnabled"])
-        return 0;
-
-    return [defaults floatForKey:@"WebKitFastClickZoomThreshold"];
+    return _potentialTapInProgress;
 }
 
-- (BOOL)_allowDoubleTapToZoomForCurrentZoomScale:(CGFloat)currentZoomScale andTargetZoomScale:(CGFloat)targetZoomScale
-{
-    CGFloat zoomThreshold = [self _fastClickZoomThreshold];
-    if (!zoomThreshold)
-        return YES;
-
-    CGFloat minimumZoomRatioForDoubleTapToZoomIn = 1 + zoomThreshold;
-    CGFloat maximumZoomRatioForDoubleTapToZoomOut = 1 / minimumZoomRatioForDoubleTapToZoomIn;
-    CGFloat zoomRatio = targetZoomScale / currentZoomScale;
-    return zoomRatio < maximumZoomRatioForDoubleTapToZoomOut || zoomRatio > minimumZoomRatioForDoubleTapToZoomIn;
-}
-
-- (void)_disableDoubleTapGesturesUntilTapIsFinishedIfNecessary:(uint64_t)requestID allowsDoubleTapZoom:(bool)allowsDoubleTapZoom targetRect:(WebCore::FloatRect)targetRect isReplaced:(BOOL)isReplacedElement minimumScale:(double)minimumScale maximumScale:(double)maximumScale
+- (void)_disableDoubleTapGesturesDuringTapIfNecessary:(uint64_t)requestID
 {
     if (!_potentialTapInProgress || _latestTapID != requestID)
         return;
-
-    if (allowsDoubleTapZoom) {
-        // Though the element allows us to zoom in on double tap, we avoid this behavior in favor of fast clicking if the difference in scale is insignificant.
-        _smartMagnificationController->adjustSmartMagnificationTargetRectAndZoomScales(!isReplacedElement, targetRect, minimumScale, maximumScale);
-        CGFloat currentZoomScale = [_webView _contentZoomScale];
-        CGFloat targetZoomScale = [_webView _targetContentZoomScaleForRect:targetRect currentScale:currentZoomScale fitEntireRect:isReplacedElement minimumScale:minimumScale maximumScale:maximumScale];
-        if ([self _allowDoubleTapToZoomForCurrentZoomScale:currentZoomScale andTargetZoomScale:targetZoomScale])
-            return;
-    }
 
     [self _setDoubleTapGesturesEnabled:NO];
 }
@@ -967,7 +975,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     else
         [self _displayFormNodeInputView];
 
-    return [_inputPeripheral assistantView];
+    return [_formInputSession customInputView] ?: [_inputPeripheral assistantView];
 }
 
 - (CGRect)_selectionClipRect
@@ -1124,7 +1132,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (void)_finishInteraction
 {
     _isTapHighlightIDValid = NO;
-    [UIView animateWithDuration:0.1
+    CGFloat tapHighlightFadeDuration = _showDebugTapHighlightsForFastClicking ? 0.25 : 0.1;
+    [UIView animateWithDuration:tapHighlightFadeDuration
                      animations:^{
                          [_highlightView layer].opacity = 0;
                      }
@@ -1230,7 +1239,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (void)_endPotentialTapAndEnableDoubleTapGesturesIfNecessary
 {
-    if (_webView._viewportIsUserScalable)
+    if (_webView._allowsDoubleTapGestures)
         [self _setDoubleTapGesturesEnabled:YES];
 
     _potentialTapInProgress = NO;
@@ -1244,6 +1253,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     _page->potentialTapAtPosition(gestureRecognizer.location, ++_latestTapID);
     _potentialTapInProgress = YES;
     _isTapHighlightIDValid = YES;
+    _isExpectingFastSingleTapCommit = !_doubleTapGestureRecognizer.get().enabled;
 }
 
 static void cancelPotentialTapIfNecessary(WKContentView* contentView)
@@ -1297,7 +1307,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
     _page->commitPotentialTap();
 
-    [self _finishInteraction];
+    if (!_isExpectingFastSingleTapCommit)
+        [self _finishInteraction];
 }
 
 - (void)_doubleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
@@ -2383,6 +2394,12 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     });
 }
 
+- (WebCore::Color)_tapHighlightColorForFastClick:(BOOL)forFastClick
+{
+    ASSERT(_showDebugTapHighlightsForFastClicking);
+    return forFastClick ? WebCore::Color(0, 225, 0, 127) : WebCore::Color(225, 0, 0, 127);
+}
+
 - (void)_setDoubleTapGesturesEnabled:(BOOL)enabled
 {
     if (enabled && ![_doubleTapGestureRecognizer isEnabled]) {
@@ -2392,6 +2409,10 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         [_doubleTapGestureRecognizer setDelegate:nil];
         [self _createAndConfigureDoubleTapGestureRecognizer];
     }
+
+    if (_showDebugTapHighlightsForFastClicking && !enabled)
+        _tapHighlightInformation.color = [self _tapHighlightColorForFastClick:YES];
+
     [_doubleTapGestureRecognizer setEnabled:enabled];
 }
 
@@ -3168,11 +3189,12 @@ static bool isAssistableInputType(InputType type)
 - (void)_startAssistingNode:(const AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode userObject:(NSObject <NSSecureCoding> *)userObject
 {
     id <_WKInputDelegate> inputDelegate = [_webView _inputDelegate];
+    RetainPtr<WKFocusedElementInfo> focusedElementInfo = adoptNS([[WKFocusedElementInfo alloc] initWithAssistedNodeInformation:information isUserInitiated:userIsInteracting]);
     BOOL shouldShowKeyboard;
-    if ([inputDelegate respondsToSelector:@selector(_webView:focusShouldStartInputSession:)]) {
-        RetainPtr<WKFocusedElementInfo> focusedElementInfo = adoptNS([[WKFocusedElementInfo alloc] initWithAssistedNodeInformation:information isUserInitiated:userIsInteracting]);
+
+    if ([inputDelegate respondsToSelector:@selector(_webView:focusShouldStartInputSession:)])
         shouldShowKeyboard = [inputDelegate _webView:_webView focusShouldStartInputSession:focusedElementInfo.get()];
-    } else {
+    else {
         // The default behavior is to allow node assistance if the user is interacting or the keyboard is already active.
         shouldShowKeyboard = userIsInteracting || _textSelectionAssistant;
     }
@@ -3220,7 +3242,7 @@ static bool isAssistableInputType(InputType type)
     [_inputPeripheral beginEditing];
 
     if ([inputDelegate respondsToSelector:@selector(_webView:didStartInputSession:)]) {
-        _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self userObject:userObject]);
+        _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get() userObject:userObject]);
         [inputDelegate _webView:_webView didStartInputSession:_formInputSession.get()];
     }
 }

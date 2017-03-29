@@ -1393,6 +1393,63 @@ Page* WebView::page()
     return m_page;
 }
 
+static HMENU createContextMenuFromItems(const Vector<ContextMenuItem>& items)
+{
+    HMENU menu = ::CreatePopupMenu();
+
+    for (auto& item : items) {
+        UINT flags = 0;
+
+        flags |= item.enabled() ? MF_ENABLED : MF_DISABLED;
+        flags |= item.checked() ? MF_CHECKED : MF_UNCHECKED;
+
+        switch (item.type()) {
+        case ActionType:
+        case CheckableActionType:
+            ::AppendMenu(menu, flags | MF_STRING, item.action(), item.title().charactersWithNullTermination().data());
+            break;
+        case SeparatorType:
+            ::AppendMenu(menu, flags | MF_SEPARATOR, item.action(), nullptr);
+            break;
+        case SubmenuType:
+            ::AppendMenu(menu, flags | MF_POPUP, (UINT_PTR)createContextMenuFromItems(item.subMenuItems()), item.title().charactersWithNullTermination().data());
+            break;
+        }
+    }
+
+    return menu;
+}
+
+HMENU WebView::createContextMenu()
+{
+    auto& contextMenuController = m_page->contextMenuController();
+
+    ContextMenu* coreMenu = contextMenuController.contextMenu();
+    if (!coreMenu)
+        return nullptr;
+
+    HMENU contextMenu = createContextMenuFromItems(coreMenu->items());
+
+    COMPtr<IWebUIDelegate> uiDelegate;
+    if (SUCCEEDED(this->uiDelegate(&uiDelegate))) {
+        ASSERT(uiDelegate);
+
+        COMPtr<WebElementPropertyBag> propertyBag;
+        propertyBag.adoptRef(WebElementPropertyBag::createInstance(contextMenuController.hitTestResult()));
+
+        HMENU newMenu = nullptr;
+        if (SUCCEEDED(uiDelegate->contextMenuItemsForElement(this, propertyBag.get(), contextMenu, &newMenu))) {
+            // Make sure to delete the old menu if the delegate returned a new menu.
+            if (newMenu != contextMenu) {
+                ::DestroyMenu(contextMenu);
+                contextMenu = newMenu;
+            }
+        }
+    }
+
+    return contextMenu;
+}
+
 bool WebView::handleContextMenuEvent(WPARAM wParam, LPARAM lParam)
 {
     // Translate the screen coordinates into window coordinates
@@ -1456,18 +1513,22 @@ bool WebView::handleContextMenuEvent(WPARAM wParam, LPARAM lParam)
     if (!::ClientToScreen(m_viewWindow, &point))
         return false;
 
+    HMENU contextMenu = createContextMenu();
+
     BOOL hasCustomMenus = false;
     if (m_uiDelegate)
         m_uiDelegate->hasCustomMenuImplementation(&hasCustomMenus);
 
     if (hasCustomMenus)
-        m_uiDelegate->trackCustomPopupMenu((IWebView*)this, coreMenu->platformContextMenu(), &point);
+        m_uiDelegate->trackCustomPopupMenu((IWebView*)this, contextMenu, &point);
     else {
         // Surprisingly, TPM_RIGHTBUTTON means that items are selectable with either the right OR left mouse button
         UINT flags = TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_VERPOSANIMATION | TPM_HORIZONTAL
             | TPM_LEFTALIGN | TPM_HORPOSANIMATION;
-        ::TrackPopupMenuEx(coreMenu->platformContextMenu(), flags, point.x, point.y, m_viewWindow, 0);
+        ::TrackPopupMenuEx(contextMenu, flags, point.x, point.y, m_viewWindow, 0);
     }
+
+    ::DestroyMenu(contextMenu);
 
     return true;
 }

@@ -554,6 +554,7 @@ private:
             compilePutStructure();
             break;
         case GetById:
+        case GetByIdFlush:
             compileGetById();
             break;
         case In:
@@ -561,7 +562,19 @@ private:
             break;
         case PutById:
         case PutByIdDirect:
+        case PutByIdFlush:
             compilePutById();
+            break;
+        case PutGetterById:
+        case PutSetterById:
+            compilePutAccessorById();
+            break;
+        case PutGetterSetterById:
+            compilePutGetterSetterById();
+            break;
+        case PutGetterByVal:
+        case PutSetterByVal:
+            compilePutAccessorByVal();
             break;
         case GetButterfly:
             compileGetButterfly();
@@ -2212,9 +2225,6 @@ private:
     
     void compileGetById()
     {
-        // Pretty much the only reason why we don't also support GetByIdFlush is because:
-        // https://bugs.webkit.org/show_bug.cgi?id=125711
-        
         switch (m_node->child1().useKind()) {
         case CellUse: {
             setJSValue(getById(lowCell(m_node->child1())));
@@ -2999,6 +3009,38 @@ private:
             DFG_CRASH(m_graph, m_node, "Bad array type");
             break;
         }
+    }
+
+    void compilePutAccessorById()
+    {
+        LValue base = lowCell(m_node->child1());
+        LValue accessor = lowCell(m_node->child2());
+        auto uid = m_graph.identifiers()[m_node->identifierNumber()];
+        vmCall(
+            m_out.operation(m_node->op() == PutGetterById ? operationPutGetterById : operationPutSetterById),
+            m_callFrame, base, m_out.constIntPtr(uid), m_out.constInt32(m_node->accessorAttributes()), accessor);
+    }
+
+    void compilePutGetterSetterById()
+    {
+        LValue base = lowCell(m_node->child1());
+        LValue getter = lowJSValue(m_node->child2());
+        LValue setter = lowJSValue(m_node->child3());
+        auto uid = m_graph.identifiers()[m_node->identifierNumber()];
+        vmCall(
+            m_out.operation(operationPutGetterSetter),
+            m_callFrame, base, m_out.constIntPtr(uid), m_out.constInt32(m_node->accessorAttributes()), getter, setter);
+
+    }
+
+    void compilePutAccessorByVal()
+    {
+        LValue base = lowCell(m_node->child1());
+        LValue subscript = lowJSValue(m_node->child2());
+        LValue accessor = lowCell(m_node->child3());
+        vmCall(
+            m_out.operation(m_node->op() == PutGetterByVal ? operationPutGetterByVal : operationPutSetterByVal),
+            m_callFrame, base, subscript, m_out.constInt32(m_node->accessorAttributes()), accessor);
     }
     
     void compileArrayPush()
@@ -5646,19 +5688,6 @@ private:
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
-    }
-
-    bool isInlinableSize(LValue function)
-    {
-        size_t instructionCount = 0;
-        size_t maxSize = Options::maximumLLVMInstructionCountForNativeInlining();
-        for (LBasicBlock basicBlock = getFirstBasicBlock(function); basicBlock; basicBlock = getNextBasicBlock(basicBlock)) {
-            for (LValue instruction = getFirstInstruction(basicBlock); instruction; instruction = getNextInstruction(instruction)) {
-                if (++instructionCount >= maxSize)
-                    return false;
-            }
-        }
-        return true;
     }
 
     LValue didOverflowStack()
@@ -8596,7 +8625,7 @@ private:
                         GPRReg scratch2 = scratchRegisterAllocator.allocateScratchGPR();
 
                         unsigned bytesPushed =
-                            scratchRegisterAllocator.preserveReusedRegistersByPushing(jit);
+                            scratchRegisterAllocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
 
                         // We've already saved these, so when we make a slow path call, we don't have
                         // to save them again.
@@ -8618,7 +8647,7 @@ private:
                                 scratch1, scratch2, CCallHelpers::ScalePtr,
                                 static_cast<int32_t>(-sizeof(void*))));
 
-                        scratchRegisterAllocator.restoreReusedRegistersByPopping(jit, bytesPushed);
+                        scratchRegisterAllocator.restoreReusedRegistersByPopping(jit, bytesPushed, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
 
                         params.doneJumps.append(jit.jump());
 
@@ -8627,7 +8656,7 @@ private:
                             usedRegisters, jit, params.lazySlowPath->callSiteIndex(),
                             params.exceptionJumps, operationFlushWriteBarrierBuffer, InvalidGPRReg,
                             baseGPR);
-                        scratchRegisterAllocator.restoreReusedRegistersByPopping(jit, bytesPushed);
+                        scratchRegisterAllocator.restoreReusedRegistersByPopping(jit, bytesPushed, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
                         params.doneJumps.append(jit.jump());
                     });
             },
@@ -8978,13 +9007,11 @@ private:
 
         value = m_int32Values.get(node);
         if (isValid(value))
-            return exitArgument(arguments, DataFormatInt32, value.value());
+            return exitArgument(arguments, DataFormatJS, boxInt32(value.value()));
 
         value = m_booleanValues.get(node);
-        if (isValid(value)) {
-            LValue valueToPass = m_out.zeroExt(value.value(), m_out.int32);
-            return exitArgument(arguments, DataFormatBoolean, valueToPass);
-        }
+        if (isValid(value))
+            return exitArgument(arguments, DataFormatJS, boxBoolean(value.value()));
 
         // Doubles and Int52 have been converted by ValueRep()
         DFG_CRASH(m_graph, m_node, toCString("Cannot find value for node: ", node).data());

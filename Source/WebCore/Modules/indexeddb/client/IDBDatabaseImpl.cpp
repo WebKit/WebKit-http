@@ -30,6 +30,7 @@
 
 #include "EventQueue.h"
 #include "IDBConnectionToServer.h"
+#include "IDBDatabaseException.h"
 #include "IDBOpenDBRequestImpl.h"
 #include "IDBResultData.h"
 #include "IDBTransactionImpl.h"
@@ -73,20 +74,58 @@ uint64_t IDBDatabase::version() const
 
 RefPtr<DOMStringList> IDBDatabase::objectStoreNames() const
 {
-    ASSERT_NOT_REACHED();
-    return nullptr;
+    RefPtr<DOMStringList> objectStoreNames = DOMStringList::create();
+    for (auto& name : m_info.objectStoreNames())
+        objectStoreNames->append(name);
+    objectStoreNames->sort();
+    return WTF::move(objectStoreNames);
 }
 
-RefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String&, const Dictionary&, ExceptionCode&)
+RefPtr<WebCore::IDBObjectStore> IDBDatabase::createObjectStore(const String&, const Dictionary&, ExceptionCode&)
 {
     ASSERT_NOT_REACHED();
     return nullptr;
 }
 
-RefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String&, const IDBKeyPath&, bool, ExceptionCode&)
+RefPtr<WebCore::IDBObjectStore> IDBDatabase::createObjectStore(const String& name, const IDBKeyPath& keyPath, bool autoIncrement, ExceptionCode& ec)
 {
-    ASSERT_NOT_REACHED();
-    return nullptr;
+    LOG(IndexedDB, "IDBDatabase::createObjectStore");
+
+    ASSERT(!m_versionChangeTransaction || m_versionChangeTransaction->isVersionChange());
+
+    if (!m_versionChangeTransaction) {
+        ec = IDBDatabaseException::InvalidStateError;
+        return nullptr;
+    }
+
+    if (!m_versionChangeTransaction->isActive()) {
+        ec = IDBDatabaseException::TransactionInactiveError;
+        return nullptr;
+    }
+
+    if (m_info.hasObjectStore(name)) {
+        ec = IDBDatabaseException::ConstraintError;
+        return nullptr;
+    }
+
+    if (!keyPath.isNull() && !keyPath.isValid()) {
+        ec = IDBDatabaseException::SyntaxError;
+        return nullptr;
+    }
+
+    if (autoIncrement && !keyPath.isNull()) {
+        if ((keyPath.type() == IndexedDB::KeyPathType::String && keyPath.string().isEmpty()) || keyPath.type() == IndexedDB::KeyPathType::Array) {
+            ec = IDBDatabaseException::InvalidAccessError;
+            return nullptr;
+        }
+    }
+
+    // Install the new ObjectStore into the connection's metadata.
+    IDBObjectStoreInfo info = m_info.createNewObjectStore(name, keyPath, autoIncrement);
+
+    // Create the actual IDBObjectStore from the transaction, which also schedules the operation server side.
+    Ref<IDBObjectStore> objectStore = m_versionChangeTransaction->createObjectStore(info);
+    return adoptRef(&objectStore.leakRef());
 }
 
 RefPtr<WebCore::IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext*, const Vector<String>&, const String&, ExceptionCode&)
@@ -175,9 +214,26 @@ void IDBDatabase::didCommitTransaction(IDBTransaction& transaction)
     didCommitOrAbortTransaction(transaction);
 }
 
+void IDBDatabase::abortTransaction(IDBTransaction& transaction)
+{
+    LOG(IndexedDB, "IDBDatabase::abortTransaction");
+
+    auto refTransaction = m_activeTransactions.take(transaction.info().identifier());
+    ASSERT(refTransaction);
+    m_abortingTransactions.set(transaction.info().identifier(), WTF::move(refTransaction));
+
+    m_serverConnection->abortTransaction(transaction);
+}
+
 void IDBDatabase::didAbortTransaction(IDBTransaction& transaction)
 {
     LOG(IndexedDB, "IDBDatabase::didAbortTransaction");
+
+    if (transaction.isVersionChange()) {
+        ASSERT(transaction.originalDatabaseInfo());
+        m_info = *transaction.originalDatabaseInfo();
+    }
+
     didCommitOrAbortTransaction(transaction);
 }
 
@@ -187,11 +243,22 @@ void IDBDatabase::didCommitOrAbortTransaction(IDBTransaction& transaction)
 
     if (m_versionChangeTransaction == &transaction)
         m_versionChangeTransaction = nullptr;
-    
-    ASSERT(m_activeTransactions.contains(transaction.info().identifier()) || m_committingTransactions.contains(transaction.info().identifier()));
+
+#ifndef NDBEBUG
+    unsigned count = 0;
+    if (m_activeTransactions.contains(transaction.info().identifier()))
+        ++count;
+    if (m_committingTransactions.contains(transaction.info().identifier()))
+        ++count;
+    if (m_abortingTransactions.contains(transaction.info().identifier()))
+        ++count;
+
+    ASSERT(count == 1);
+#endif
 
     m_activeTransactions.remove(transaction.info().identifier());
     m_committingTransactions.remove(transaction.info().identifier());
+    m_abortingTransactions.remove(transaction.info().identifier());
 }
 
 void IDBDatabase::fireVersionChangeEvent(uint64_t requestedVersion)

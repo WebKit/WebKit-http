@@ -2518,6 +2518,14 @@
             "ruth_fong"
          ]
       },
+      "Ryan Haddad" : {
+         "emails" : [
+            "ryanhaddad@apple.com"
+         ],
+         "nicks" : [
+            "ryanhaddad"
+         ]
+      },
       "Ryuan Choi" : {
          "emails" : [
             "ryuan.choi@navercorp.com",
@@ -3024,15 +3032,6 @@
          "expertise" : "HTML5 Forms especially for multiple-fields UI, charset encoding, decimal arithmetic",
          "nicks" : [
             "yosin"
-         ]
-      },
-      "Youenn Fablet" : {
-         "emails" : [
-            "youennf@gmail.com",
-            "youenn.fablet@crf.canon.fr"
-         ],
-         "nicks" : [
-            "youenn"
          ]
       },
       "Yuqiang Xian" : {
@@ -4975,6 +4974,15 @@
          ],
          "nicks" : [
             "yong"
+         ]
+      },
+      "Youenn Fablet" : {
+         "emails" : [
+            "youennf@gmail.com",
+            "youenn.fablet@crf.canon.fr"
+         ],
+         "nicks" : [
+            "youenn"
          ]
       },
       "Yury Semikhatsky" : {

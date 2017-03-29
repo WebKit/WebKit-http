@@ -28,6 +28,8 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBError.h"
+#include "IDBResultData.h"
 #include "IDBServer.h"
 #include "Logging.h"
 #include "UniqueIDBDatabase.h"
@@ -44,6 +46,9 @@ UniqueIDBDatabaseTransaction::UniqueIDBDatabaseTransaction(UniqueIDBDatabaseConn
     : m_databaseConnection(connection)
     , m_transactionInfo(info)
 {
+    if (m_transactionInfo.mode() == IndexedDB::TransactionMode::VersionChange)
+        m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(m_databaseConnection->database().info());
+
     m_databaseConnection->database().server().registerTransaction(*this);
 }
 
@@ -53,6 +58,33 @@ UniqueIDBDatabaseTransaction::~UniqueIDBDatabaseTransaction()
     m_databaseConnection->database().server().unregisterTransaction(*this);
 }
 
+IDBDatabaseInfo* UniqueIDBDatabaseTransaction::originalDatabaseInfo() const
+{
+    ASSERT(m_transactionInfo.mode() == IndexedDB::TransactionMode::VersionChange);
+    return m_originalDatabaseInfo.get();
+}
+
+void UniqueIDBDatabaseTransaction::abort()
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::abort");
+
+    RefPtr<UniqueIDBDatabaseTransaction> self(this);
+    m_databaseConnection->database().abortTransaction(*this, [this, self](const IDBError& error) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::abort (callback)");
+        m_databaseConnection->didAbortTransaction(*this, error);
+    });
+}
+
+bool UniqueIDBDatabaseTransaction::isVersionChange() const
+{
+    return m_transactionInfo.mode() == IndexedDB::TransactionMode::VersionChange;
+}
+
+bool UniqueIDBDatabaseTransaction::isReadOnly() const
+{
+    return m_transactionInfo.mode() == IndexedDB::TransactionMode::ReadOnly;
+}   
+
 void UniqueIDBDatabaseTransaction::commit()
 {
     LOG(IndexedDB, "UniqueIDBDatabaseTransaction::commit");
@@ -61,6 +93,58 @@ void UniqueIDBDatabaseTransaction::commit()
     m_databaseConnection->database().commitTransaction(*this, [this, self](const IDBError& error) {
         LOG(IndexedDB, "UniqueIDBDatabaseTransaction::commit (callback)");
         m_databaseConnection->didCommitTransaction(*this, error);
+    });
+}
+
+void UniqueIDBDatabaseTransaction::createObjectStore(const IDBRequestData& requestData, const IDBObjectStoreInfo& info)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::createObjectStore");
+
+    ASSERT(isVersionChange());
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> self(this);
+    m_databaseConnection->database().createObjectStore(*this, info, [this, self, requestData](const IDBError& error) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::createObjectStore (callback)");
+        if (error.isNull())
+            m_databaseConnection->didCreateObjectStore(IDBResultData::createObjectStoreSuccess(requestData.requestIdentifier()));
+        else
+            m_databaseConnection->didCreateObjectStore(IDBResultData::error(requestData.requestIdentifier(), error));
+    });
+}
+
+void UniqueIDBDatabaseTransaction::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::putOrAdd");
+
+    ASSERT(!isReadOnly());
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> self(this);
+    m_databaseConnection->database().putOrAdd(requestData, keyData, valueData, overwriteMode, [this, self, requestData](const IDBError& error, const IDBKeyData& key) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::putOrAdd (callback)");
+
+        if (error.isNull())
+            m_databaseConnection->connectionToClient().didPutOrAdd(IDBResultData::putOrAddSuccess(requestData.requestIdentifier(), key));
+        else
+            m_databaseConnection->connectionToClient().didPutOrAdd(IDBResultData::error(requestData.requestIdentifier(), error));
+    });
+}
+
+void UniqueIDBDatabaseTransaction::getRecord(const IDBRequestData& requestData, const IDBKeyData& keyData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::getRecord");
+
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> self(this);
+    m_databaseConnection->database().getRecord(requestData, keyData, [this, self, requestData](const IDBError& error, const ThreadSafeDataBuffer& valueData) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::getRecord (callback)");
+
+        if (error.isNull())
+            m_databaseConnection->connectionToClient().didGetRecord(IDBResultData::getRecordSuccess(requestData.requestIdentifier(), valueData));
+        else
+            m_databaseConnection->connectionToClient().didGetRecord(IDBResultData::error(requestData.requestIdentifier(), error));
     });
 }
 

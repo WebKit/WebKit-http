@@ -50,7 +50,11 @@ public:
 
     void didDeleteDatabase(const IDBResultData&);
     void didOpenDatabase(const IDBResultData&);
+    void didAbortTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
     void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
+    void didCreateObjectStore(const IDBResultData&);
+    void didPutOrAdd(const IDBResultData&);
+    void didGetRecord(const IDBResultData&);
 
     void fireVersionChangeEvent(UniqueIDBDatabaseConnection&, uint64_t requestedVersion);
 

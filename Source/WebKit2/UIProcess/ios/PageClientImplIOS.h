@@ -97,7 +97,7 @@ private:
 #endif
     virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
 #if ENABLE(CONTEXT_MENUS)
-    virtual RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
+    virtual std::unique_ptr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
 #endif
     virtual void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorWindowLifetime) override;
     virtual void clearTextIndicator(WebCore::TextIndicatorWindowDismissalAnimation) override;
@@ -134,8 +134,7 @@ private:
     virtual void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) override;
 
     virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) override;
-    virtual void didChangeViewportMetaTagWidth(float) override;
-    virtual void disableDoubleTapGesturesUntilTapIsFinishedIfNecessary(uint64_t requestID, bool allowsDoubleTapZoom, const WebCore::FloatRect& targetRect, bool isReplacedElement, double minimumScale, double maximumScale) override;
+    virtual void disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID) override;
     virtual double minimumZoomScale() const override;
     virtual WebCore::FloatRect documentRect() const override;
 

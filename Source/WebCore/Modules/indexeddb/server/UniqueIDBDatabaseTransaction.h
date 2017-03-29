@@ -34,6 +34,13 @@
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
+
+class IDBDatabaseInfo;
+class IDBKeyData;
+class IDBObjectStoreInfo;
+class IDBRequestData;
+class ThreadSafeDataBuffer;
+
 namespace IDBServer {
 
 class UniqueIDBDatabaseConnection;
@@ -46,14 +53,25 @@ public:
 
     UniqueIDBDatabaseConnection& databaseConnection() { return m_databaseConnection.get(); }
     const IDBTransactionInfo& info() const { return m_transactionInfo; }
+    bool isVersionChange() const;
+    bool isReadOnly() const;
 
+    IDBDatabaseInfo* originalDatabaseInfo() const;
+
+    void abort();
     void commit();
+
+    void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&);
+    void putOrAdd(const IDBRequestData&, const IDBKeyData&, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode);
+    void getRecord(const IDBRequestData&, const IDBKeyData&);
 
 private:
     UniqueIDBDatabaseTransaction(UniqueIDBDatabaseConnection&, IDBTransactionInfo&);
 
     Ref<UniqueIDBDatabaseConnection> m_databaseConnection;
     IDBTransactionInfo m_transactionInfo;
+
+    std::unique_ptr<IDBDatabaseInfo> m_originalDatabaseInfo;
 };
 
 } // namespace IDBServer

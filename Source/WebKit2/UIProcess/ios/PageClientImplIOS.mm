@@ -254,17 +254,12 @@ void PageClientImpl::didChangeContentSize(const WebCore::IntSize&)
     notImplemented();
 }
 
-void PageClientImpl::didChangeViewportMetaTagWidth(float newWidth)
+void PageClientImpl::disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID)
 {
-    [m_webView _setViewportMetaTagWidth:newWidth];
-}
-
-void PageClientImpl::disableDoubleTapGesturesUntilTapIsFinishedIfNecessary(uint64_t requestID, bool allowsDoubleTapZoom, const WebCore::FloatRect& targetRect, bool isReplacedElement, double minimumScale, double maximumScale)
-{
-    if (!m_webView._viewportIsUserScalable)
+    if (!m_webView._allowsDoubleTapGestures)
         return;
 
-    [m_contentView _disableDoubleTapGesturesUntilTapIsFinishedIfNecessary:requestID allowsDoubleTapZoom:allowsDoubleTapZoom targetRect:targetRect isReplaced:isReplacedElement minimumScale:minimumScale maximumScale:maximumScale];
+    [m_contentView _disableDoubleTapGesturesDuringTapIfNecessary:requestID];
 }
 
 double PageClientImpl::minimumZoomScale() const
@@ -444,7 +439,7 @@ RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy&)
 }
 
 #if ENABLE(CONTEXT_MENUS)
-RefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy&, const UserData&)
+std::unique_ptr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy&, const UserData&)
 {
     return nullptr;
 }

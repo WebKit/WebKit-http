@@ -53,7 +53,6 @@
 #include "WebColorPicker.h"
 #include "WebContextMenuItemData.h"
 #include "WebCoreArgumentCoders.h"
-#include "WebFindClient.h"
 #include "WebFrameProxy.h"
 #include "WebPageCreationParameters.h"
 #include "WebPageDiagnosticLoggingClient.h"
@@ -129,6 +128,7 @@ class MediaSessionMetadata;
 namespace API {
 class ContextMenuClient;
 class FindClient;
+class FindMatchesClient;
 class FormClient;
 class HistoryClient;
 class LoaderClient;
@@ -157,6 +157,7 @@ class RunLoopObserver;
 class SharedBuffer;
 class TextIndicator;
 struct DictionaryPopupInfo;
+struct ExceptionDetails;
 struct FileChooserSettings;
 struct SecurityOriginData;
 struct TextAlternativeWithRange;
@@ -222,7 +223,7 @@ class QuickLookDocumentData;
 typedef GenericCallback<uint64_t> UnsignedCallback;
 typedef GenericCallback<EditingRange> EditingRangeCallback;
 typedef GenericCallback<const String&> StringCallback;
-typedef GenericCallback<API::SerializedScriptValue*, bool> ScriptValueCallback;
+typedef GenericCallback<API::SerializedScriptValue*, bool, const WebCore::ExceptionDetails&> ScriptValueCallback;
 
 #if PLATFORM(GTK)
 typedef GenericCallback<API::Error*> PrintFinishedCallback;
@@ -332,9 +333,10 @@ public:
 #endif
     API::FindClient& findClient() { return *m_findClient; }
     void setFindClient(std::unique_ptr<API::FindClient>);
+    API::FindMatchesClient& findMatchesClient() { return *m_findMatchesClient; }
+    void setFindMatchesClient(std::unique_ptr<API::FindMatchesClient>);
     API::DiagnosticLoggingClient& diagnosticLoggingClient() { return *m_diagnosticLoggingClient; }
     void setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLoggingClient>);
-    void initializeFindMatchesClient(const WKPageFindMatchesClientBase*);
     void setFormClient(std::unique_ptr<API::FormClient>);
     void setNavigationClient(std::unique_ptr<API::NavigationClient>);
     void setHistoryClient(std::unique_ptr<API::HistoryClient>);
@@ -508,8 +510,7 @@ public:
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
     void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
-    void viewportMetaTagWidthDidChange(float width);
-    void disableDoubleTapGesturesUntilTapIsFinishedIfNecessary(uint64_t requestID, bool allowsDoubleTapZoom, const WebCore::FloatRect& targetRect, bool isReplacedElement, double minimumScale, double maximumScale);
+    void disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID);
     void didFinishDrawingPagesToPDF(const IPC::DataReference&);
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
     void getLookupContextAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
@@ -752,7 +753,7 @@ public:
     void getBytecodeProfile(std::function<void (const String&, CallbackBase::Error)>);
 
 #if ENABLE(MHTML)
-    void getContentsAsMHTMLData(std::function<void (API::Data*, CallbackBase::Error)>, bool useBinaryEncoding);
+    void getContentsAsMHTMLData(std::function<void (API::Data*, CallbackBase::Error)>);
 #endif
     void getMainResourceDataOfFrame(WebFrameProxy*, std::function<void (API::Data*, CallbackBase::Error)>);
     void getResourceDataFromFrame(WebFrameProxy*, API::URL*, std::function<void (API::Data*, CallbackBase::Error)>);
@@ -761,7 +762,7 @@ public:
     void getSelectionAsWebArchiveData(std::function<void (API::Data*, CallbackBase::Error)>);
     void getSourceForFrame(WebFrameProxy*, std::function<void (const String&, CallbackBase::Error)>);
     void getWebArchiveOfFrame(WebFrameProxy*, std::function<void (API::Data*, CallbackBase::Error)>);
-    void runJavaScriptInMainFrame(const String&, std::function<void (API::SerializedScriptValue*, bool hadException, CallbackBase::Error)> callbackFunction);
+    void runJavaScriptInMainFrame(const String&, std::function<void (API::SerializedScriptValue*, bool hadException, const WebCore::ExceptionDetails&, CallbackBase::Error)> callbackFunction);
     void forceRepaint(PassRefPtr<VoidCallback>);
 
     float headerHeight(WebFrameProxy*);
@@ -1322,7 +1323,7 @@ private:
     void dataCallback(const IPC::DataReference&, uint64_t);
     void imageCallback(const ShareableBitmap::Handle&, uint64_t);
     void stringCallback(const String&, uint64_t);
-    void scriptValueCallback(const IPC::DataReference&, bool hadException, uint64_t);
+    void scriptValueCallback(const IPC::DataReference&, bool hadException, const WebCore::ExceptionDetails&, uint64_t);
     void computedPagesCallback(const Vector<WebCore::IntRect>&, double totalScaleFactorForPrinting, uint64_t);
     void validateCommandCallback(const String&, bool, int, uint64_t);
     void unsignedCallback(uint64_t, uint64_t);
@@ -1476,7 +1477,7 @@ private:
     WebUIPopupMenuClient m_uiPopupMenuClient;
 #endif
     std::unique_ptr<API::FindClient> m_findClient;
-    WebFindMatchesClient m_findMatchesClient;
+    std::unique_ptr<API::FindMatchesClient> m_findMatchesClient;
     std::unique_ptr<API::DiagnosticLoggingClient> m_diagnosticLoggingClient;
 #if ENABLE(CONTEXT_MENUS)
     std::unique_ptr<API::ContextMenuClient> m_contextMenuClient;
@@ -1546,7 +1547,7 @@ private:
 
     RefPtr<WebPopupMenuProxy> m_activePopupMenu;
 #if ENABLE(CONTEXT_MENUS)
-    RefPtr<WebContextMenuProxy> m_activeContextMenu;
+    std::unique_ptr<WebContextMenuProxy> m_activeContextMenu;
     ContextMenuContextData m_activeContextMenuContextData;
 #endif
     RefPtr<API::HitTestResult> m_lastMouseMoveHitTestResult;

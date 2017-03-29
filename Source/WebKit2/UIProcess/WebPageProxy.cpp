@@ -30,6 +30,7 @@
 #include "APIArray.h"
 #include "APIContextMenuClient.h"
 #include "APIFindClient.h"
+#include "APIFindMatchesClient.h"
 #include "APIFormClient.h"
 #include "APIFrameInfo.h"
 #include "APIGeometry.h"
@@ -109,6 +110,7 @@
 #include <WebCore/DragData.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FocusDirection.h>
+#include <WebCore/JSDOMBinding.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/RenderEmbeddedObject.h>
 #include <WebCore/SerializedCryptoKeyWrap.h>
@@ -310,6 +312,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_formClient(std::make_unique<API::FormClient>())
     , m_uiClient(std::make_unique<API::UIClient>())
     , m_findClient(std::make_unique<API::FindClient>())
+    , m_findMatchesClient(std::make_unique<API::FindMatchesClient>())
     , m_diagnosticLoggingClient(std::make_unique<API::DiagnosticLoggingClient>())
 #if ENABLE(CONTEXT_MENUS)
     , m_contextMenuClient(std::make_unique<API::ContextMenuClient>())
@@ -622,9 +625,14 @@ void WebPageProxy::setFindClient(std::unique_ptr<API::FindClient> findClient)
     m_findClient = WTF::move(findClient);
 }
 
-void WebPageProxy::initializeFindMatchesClient(const WKPageFindMatchesClientBase* client)
+void WebPageProxy::setFindMatchesClient(std::unique_ptr<API::FindMatchesClient> findMatchesClient)
 {
-    m_findMatchesClient.initialize(client);
+    if (!findMatchesClient) {
+        m_findMatchesClient = std::make_unique<API::FindMatchesClient>();
+        return;
+    }
+
+    m_findMatchesClient = WTF::move(findMatchesClient);
 }
 
 void WebPageProxy::setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLoggingClient> diagnosticLoggingClient)
@@ -817,8 +825,7 @@ void WebPageProxy::close()
         m_activePopupMenu->cancelTracking();
 
 #if ENABLE(CONTEXT_MENUS)
-    if (m_activeContextMenu)
-        m_activeContextMenu->cancelTracking();
+    m_activeContextMenu = nullptr;
 #endif
 
     m_backForwardList->pageClosed();
@@ -836,7 +843,7 @@ void WebPageProxy::close()
     m_uiPopupMenuClient.initialize(nullptr);
 #endif
     m_findClient = std::make_unique<API::FindClient>();
-    m_findMatchesClient.initialize(nullptr);
+    m_findMatchesClient = std::make_unique<API::FindMatchesClient>();
     m_diagnosticLoggingClient = std::make_unique<API::DiagnosticLoggingClient>();
 #if ENABLE(CONTEXT_MENUS)
     m_contextMenuClient = std::make_unique<API::ContextMenuClient>();
@@ -2581,10 +2588,10 @@ void WebPageProxy::countStringMatches(const String& string, FindOptions options,
     m_process->send(Messages::WebPage::CountStringMatches(string, options, maxMatchCount), m_pageID);
 }
 
-void WebPageProxy::runJavaScriptInMainFrame(const String& script, std::function<void (API::SerializedScriptValue*, bool hadException, CallbackBase::Error)> callbackFunction)
+void WebPageProxy::runJavaScriptInMainFrame(const String& script, std::function<void (API::SerializedScriptValue*, bool hadException, const ExceptionDetails&, CallbackBase::Error)> callbackFunction)
 {
     if (!isValid()) {
-        callbackFunction(nullptr, false, CallbackBase::Error::Unknown);
+        callbackFunction(nullptr, false, { }, CallbackBase::Error::Unknown);
         return;
     }
 
@@ -2640,7 +2647,7 @@ void WebPageProxy::getBytecodeProfile(std::function<void (const String&, Callbac
 }
     
 #if ENABLE(MHTML)
-void WebPageProxy::getContentsAsMHTMLData(std::function<void (API::Data*, CallbackBase::Error)> callbackFunction, bool useBinaryEncoding)
+void WebPageProxy::getContentsAsMHTMLData(std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
 {
     if (!isValid()) {
         callbackFunction(nullptr, CallbackBase::Error::Unknown);
@@ -2648,7 +2655,7 @@ void WebPageProxy::getContentsAsMHTMLData(std::function<void (API::Data*, Callba
     }
 
     uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), m_process->throttler().backgroundActivityToken());
-    m_process->send(Messages::WebPage::GetContentsAsMHTMLData(callbackID, useBinaryEncoding), m_pageID);
+    m_process->send(Messages::WebPage::GetContentsAsMHTMLData(callbackID), m_pageID);
 }
 #endif
 
@@ -3295,7 +3302,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         else if (originatingFrame)
             sourceFrameInfo = API::FrameInfo::create(*originatingFrame, originatingFrameSecurityOrigin.securityOrigin());
 
-        bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && (!destinationFrameInfo || destinationFrameInfo->isMainFrame()) && !protocolHostAndPortAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
+        bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && (!destinationFrameInfo || destinationFrameInfo->isMainFrame()) && !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
 
         auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), destinationFrameInfo.get(), request, originalRequest.url(), shouldOpenAppLinks);
 
@@ -3329,7 +3336,7 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
         if (frame)
             sourceFrameInfo = API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin());
 
-        bool shouldOpenAppLinks = !protocolHostAndPortAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
+        bool shouldOpenAppLinks = !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
         auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), nullptr, request, request.url(), shouldOpenAppLinks);
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
@@ -3500,7 +3507,7 @@ void WebPageProxy::createNewPage(uint64_t frameID, const SecurityOriginData& sec
     newPageParameters = newPage->creationParameters();
 
     WebsiteDataStore::cloneSessionData(*this, *newPage);
-    newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = protocolHostAndPortAreEqual(URL(ParsedURLString, mainFrameURL), request.url());
+    newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = hostsAreEqual(URL(ParsedURLString, mainFrameURL), request.url());
 }
     
 void WebPageProxy::showPage()
@@ -4035,7 +4042,7 @@ void WebPageProxy::didCountStringMatches(const String& string, uint32_t matchCou
 
 void WebPageProxy::didGetImageForFindMatch(const ShareableBitmap::Handle& contentImageHandle, uint32_t matchIndex)
 {
-    m_findMatchesClient.didGetImageForMatchResult(this, WebImage::create(ShareableBitmap::create(contentImageHandle)).get(), matchIndex);
+    m_findMatchesClient->didGetImageForMatchResult(this, WebImage::create(ShareableBitmap::create(contentImageHandle)).get(), matchIndex);
 }
 
 void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, uint64_t lifetime)
@@ -4073,20 +4080,7 @@ void WebPageProxy::didFindString(const String& string, uint32_t matchCount, int3
 
 void WebPageProxy::didFindStringMatches(const String& string, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t firstIndexAfterSelection)
 {
-    Vector<RefPtr<API::Object>> matches;
-    matches.reserveInitialCapacity(matchRects.size());
-
-    for (const auto& rects : matchRects) {
-        Vector<RefPtr<API::Object>> apiRects;
-        apiRects.reserveInitialCapacity(rects.size());
-
-        for (const auto& rect : rects)
-            apiRects.uncheckedAppend(API::Rect::create(toAPI(rect)));
-
-        matches.uncheckedAppend(API::Array::create(WTF::move(apiRects)));
-    }
-
-    m_findMatchesClient.didFindStringMatches(this, string, API::Array::create(WTF::move(matches)).ptr(), firstIndexAfterSelection);
+    m_findMatchesClient->didFindStringMatches(this, string, matchRects, firstIndexAfterSelection);
 }
 
 void WebPageProxy::didFailToFindString(const String& string)
@@ -4197,11 +4191,6 @@ void WebPageProxy::internalShowContextMenu(const ContextMenuContextData& context
 {
     m_activeContextMenuContextData = contextMenuContextData;
 
-    if (!m_contextMenuClient->hideContextMenu(*this) && m_activeContextMenu) {
-        m_activeContextMenu->hideContextMenu();
-        m_activeContextMenu = nullptr;
-    }
-
     m_activeContextMenu = m_pageClient.createContextMenuProxy(*this, contextMenuContextData, userData);
     if (!m_activeContextMenu)
         return;
@@ -4209,7 +4198,7 @@ void WebPageProxy::internalShowContextMenu(const ContextMenuContextData& context
     // Since showContextMenu() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
 
-    m_activeContextMenu->showContextMenu();
+    m_activeContextMenu->show();
 }
 
 void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
@@ -4693,7 +4682,7 @@ void WebPageProxy::stringCallback(const String& resultString, uint64_t callbackI
     callback->performCallbackWithReturnValue(resultString.impl());
 }
 
-void WebPageProxy::scriptValueCallback(const IPC::DataReference& dataReference, bool hadException, uint64_t callbackID)
+void WebPageProxy::scriptValueCallback(const IPC::DataReference& dataReference, bool hadException, const ExceptionDetails& details, uint64_t callbackID)
 {
     auto callback = m_callbacks.take<ScriptValueCallback>(callbackID);
     if (!callback) {
@@ -4705,7 +4694,7 @@ void WebPageProxy::scriptValueCallback(const IPC::DataReference& dataReference, 
     data.reserveInitialCapacity(dataReference.size());
     data.append(dataReference.data(), dataReference.size());
 
-    callback->performCallbackWithReturnValue(data.size() ? API::SerializedScriptValue::adopt(data).ptr() : nullptr, hadException);
+    callback->performCallbackWithReturnValue(data.size() ? API::SerializedScriptValue::adopt(data).ptr() : nullptr, hadException, details);
 }
 
 void WebPageProxy::computedPagesCallback(const Vector<IntRect>& pageRects, double totalScaleFactorForPrinting, uint64_t callbackID)

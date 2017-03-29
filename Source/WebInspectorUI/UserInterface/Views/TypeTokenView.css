@@ -56,7 +56,7 @@
 }
 
 .type-token-symbol {
-    background-color: hsl(172, 45%, 45%);
+    background-color: var(--syntax-highlight-symbol-color);
 }
 
 .type-token-default {

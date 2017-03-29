@@ -64,11 +64,6 @@ CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinato
     , m_lastAnimationServiceTime(0)
 #endif
 {
-    m_page->settings().setApplyDeviceScaleFactorInCompositor(true);
-
-    // This is a temporary way to enable this only in the GL case, until TextureMapperImageBuffer is removed.
-    // See https://bugs.webkit.org/show_bug.cgi?id=114869
-    CoordinatedGraphicsLayer::setShouldSupportContentsTiling(true);
 }
 
 void CompositingCoordinator::setRootCompositingLayer(GraphicsLayer* compositingLayer, GraphicsLayer* overlayLayer)

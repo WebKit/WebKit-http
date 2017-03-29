@@ -253,93 +253,91 @@ void GraphicsContext::drawRect(const FloatRect& rect, float)
     cairo_restore(cr);
 }
 
-static double calculateStrokePatternOffset(int distance, int patternWidth)
-{
-    // Example: 80 pixels with a width of 30 pixels. Remainder is 20.
-    // The maximum pixels of line we could paint will be 50 pixels.
-    int remainder = distance % patternWidth;
-    int numSegments = (distance - remainder) / patternWidth;
-
-    // Special case 1px dotted borders for speed.
-    if (patternWidth == 1)
-        return 1;
-
-    bool evenNumberOfSegments = !(numSegments % 2);
-    if (remainder)
-        evenNumberOfSegments = !evenNumberOfSegments;
-
-    if (evenNumberOfSegments) {
-        if (remainder)
-            return (patternWidth - remainder) + (remainder / 2);
-        return patternWidth / 2;
-    }
-
-    // Odd number of segments.
-    if (remainder)
-        return (patternWidth - remainder) / 2.f;
-    return 0;
-}
-
-static void drawLineOnCairoContext(GraphicsContext* graphicsContext, cairo_t* context, const FloatPoint& point1, const FloatPoint& point2)
-{
-    StrokeStyle style = graphicsContext->strokeStyle();
-    if (style == NoStroke)
-        return;
-
-    const Color& strokeColor = graphicsContext->strokeColor();
-    int strokeThickness = floorf(graphicsContext->strokeThickness());
-    if (graphicsContext->strokeThickness() < 1)
-        strokeThickness = 1;
-
-    int patternWidth = 0;
-    if (style == DottedStroke)
-        patternWidth = strokeThickness;
-    else if (style == DashedStroke)
-        patternWidth = 3 * strokeThickness;
-
-    bool isVerticalLine = point1.x() == point2.x();
-    FloatPoint point1OnPixelBoundaries = point1;
-    FloatPoint point2OnPixelBoundaries = point2;
-    GraphicsContext::adjustLineToPixelBoundaries(point1OnPixelBoundaries, point2OnPixelBoundaries, strokeThickness, style);
-
-    if (patternWidth) {
-        // Do a rect fill of our endpoints.  This ensures we always have the
-        // appearance of being a border.  We then draw the actual dotted/dashed line.
-        FloatRect firstRect(point1OnPixelBoundaries, FloatSize(strokeThickness, strokeThickness));
-        FloatRect secondRect(point2OnPixelBoundaries, FloatSize(strokeThickness, strokeThickness));
-        if (isVerticalLine) {
-            firstRect.move(-strokeThickness / 2, -strokeThickness);
-            secondRect.move(-strokeThickness / 2, 0);
-        } else {
-            firstRect.move(-strokeThickness, -strokeThickness / 2);
-            secondRect.move(0, -strokeThickness / 2);
-        }
-        fillRectWithColor(context, firstRect, strokeColor);
-        fillRectWithColor(context, secondRect, strokeColor);
-
-        int distance = (isVerticalLine ? (point2.y() - point1.y()) : (point2.x() - point1.x())) - 2 * strokeThickness;
-        double patternOffset = calculateStrokePatternOffset(distance, patternWidth);
-        double patternWidthAsDouble = patternWidth;
-        cairo_set_dash(context, &patternWidthAsDouble, 1, patternOffset);
-    }
-
-    setSourceRGBAFromColor(context, strokeColor);
-    cairo_set_line_width(context, strokeThickness);
-    cairo_move_to(context, point1OnPixelBoundaries.x(), point1OnPixelBoundaries.y());
-    cairo_line_to(context, point2OnPixelBoundaries.x(), point2OnPixelBoundaries.y());
-    cairo_stroke(context);
-}
-
 // This is only used to draw borders, so we should not draw shadows.
 void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point2)
 {
     if (paintingDisabled())
         return;
 
+    if (strokeStyle() == NoStroke)
+        return;
+
+    const Color& strokeColor = this->strokeColor();
+    float thickness = strokeThickness();
+    bool isVerticalLine = (point1.x() + thickness == point2.x());
+    float strokeWidth = isVerticalLine ? point2.y() - point1.y() : point2.x() - point1.x();
+    if (!thickness || !strokeWidth)
+        return;
+
     cairo_t* cairoContext = platformContext()->cr();
-    cairo_save(cairoContext);
-    drawLineOnCairoContext(this, cairoContext, point1, point2);
-    cairo_restore(cairoContext);
+    StrokeStyle strokeStyle = this->strokeStyle();
+    float cornerWidth = 0;
+    bool drawsDashedLine = strokeStyle == DottedStroke || strokeStyle == DashedStroke;
+
+    if (drawsDashedLine) {
+        cairo_save(cairoContext);
+        // Figure out end points to ensure we always paint corners.
+        cornerWidth = strokeStyle == DottedStroke ? thickness : std::min(2 * thickness, std::max(thickness, strokeWidth / 3));
+        if (isVerticalLine) {
+            fillRectWithColor(cairoContext, FloatRect(point1.x(), point1.y(), thickness, cornerWidth), strokeColor);
+            fillRectWithColor(cairoContext, FloatRect(point1.x(), point2.y() - cornerWidth, thickness, cornerWidth), strokeColor);
+        } else {
+            fillRectWithColor(cairoContext, FloatRect(point1.x(), point1.y(), cornerWidth, thickness), strokeColor);
+            fillRectWithColor(cairoContext, FloatRect(point2.x() - cornerWidth, point1.y(), cornerWidth, thickness), strokeColor);
+        }
+        strokeWidth -= 2 * cornerWidth;
+        float patternWidth = strokeStyle == DottedStroke ? thickness : std::min(3 * thickness, std::max(thickness, strokeWidth / 3));
+        // Check if corner drawing sufficiently covers the line.
+        if (strokeWidth <= patternWidth + 1) {
+            cairo_restore(cairoContext);
+            return;
+        }
+
+        // Pattern starts with full fill and ends with the empty fill.
+        // 1. Let's start with the empty phase after the corner.
+        // 2. Check if we've got odd or even number of patterns and whether they fully cover the line.
+        // 3. In case of even number of patterns and/or remainder, move the pattern start position
+        // so that the pattern is balanced between the corners.
+        float patternOffset = patternWidth;
+        int numberOfSegments = std::floor(strokeWidth / patternWidth);
+        bool oddNumberOfSegments = numberOfSegments % 2;
+        float remainder = strokeWidth - (numberOfSegments * patternWidth);
+        if (oddNumberOfSegments && remainder)
+            patternOffset -= remainder / 2.f;
+        else if (!oddNumberOfSegments) {
+            if (remainder)
+                patternOffset += patternOffset - (patternWidth + remainder) / 2.f;
+            else
+                patternOffset += patternWidth / 2.f;
+        }
+        const double dashedLine[2] = { static_cast<double>(patternWidth), static_cast<double>(patternWidth) };
+        cairo_set_dash(cairoContext, dashedLine, 2, patternOffset);
+    }
+
+    FloatPoint p1 = point1;
+    FloatPoint p2 = point2;
+    // Center line and cut off corners for pattern patining.
+    if (isVerticalLine) {
+        float centerOffset = (p2.x() - p1.x()) / 2;
+        p1.move(centerOffset, cornerWidth);
+        p2.move(-centerOffset, -cornerWidth);
+    } else {
+        float centerOffset = (p2.y() - p1.y()) / 2;
+        p1.move(cornerWidth, centerOffset);
+        p2.move(-cornerWidth, -centerOffset);
+    }
+
+    if (shouldAntialias())
+        cairo_set_antialias(cairoContext, CAIRO_ANTIALIAS_NONE);
+
+    cairo_new_path(cairoContext);
+    cairo_move_to(cairoContext, p1.x(), p1.y());
+    cairo_line_to(cairoContext, p2.x(), p2.y());
+    cairo_stroke(cairoContext);
+    if (drawsDashedLine)
+        cairo_restore(cairoContext);
+    if (shouldAntialias())
+        cairo_set_antialias(cairoContext, CAIRO_ANTIALIAS_DEFAULT);
 }
 
 // This method is only used to draw the little circles used in lists.
@@ -494,8 +492,13 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
     cairo_t* cr = platformContext()->cr();
     if (!path.isNull())
         setPathOnCairoContext(cr, path.platformPath()->context());
+
+    cairo_fill_rule_t savedFillRule = cairo_get_fill_rule(cr);
     cairo_set_fill_rule(cr, clipRule == RULE_EVENODD ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING);
     cairo_clip(cr);
+    cairo_set_fill_rule(cr, savedFillRule);
+
+    m_data->clip(path);
 }
 
 IntRect GraphicsContext::clipBounds() const
@@ -960,30 +963,9 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     cairo_set_operator(platformContext()->cr(), cairo_op);
 }
 
-void GraphicsContext::clip(const Path& path, WindRule windRule)
-{
-    if (paintingDisabled())
-        return;
-
-    cairo_t* cr = platformContext()->cr();
-    if (!path.isNull()) {
-        cairo_path_t* pathCopy = cairo_copy_path(path.platformPath()->context());
-        cairo_append_path(cr, pathCopy);
-        cairo_path_destroy(pathCopy);
-    }
-    cairo_fill_rule_t savedFillRule = cairo_get_fill_rule(cr);
-    if (windRule == RULE_NONZERO)
-        cairo_set_fill_rule(cr, CAIRO_FILL_RULE_WINDING);
-    else
-        cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
-    cairo_clip(cr);
-    cairo_set_fill_rule(cr, savedFillRule);
-    m_data->clip(path);
-}
-
 void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
 {
-    clip(path, windRule);
+    clipPath(path, windRule);
 }
 
 void GraphicsContext::clipOut(const Path& path)

@@ -286,9 +286,8 @@ void ReplacementFragment::removeUnrenderedNodes(Node* holder)
             unrendered.append(node);
     }
 
-    size_t n = unrendered.size();
-    for (size_t i = 0; i < n; ++i)
-        removeNode(unrendered[i]);
+    for (auto& node : unrendered)
+        removeNode(node);
 }
 
 void ReplacementFragment::removeInterchangeNodes(Node* container)
@@ -502,8 +501,8 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
                 } else if (newInlineStyle->extractConflictingImplicitStyleOfAttributes(&htmlElement, EditingStyle::PreserveWritingDirection, 0, attributes,
                     EditingStyle::DoNotExtractMatchingStyle)) {
                     // e.g. <font size="3" style="font-size: 20px;"> is converted to <font style="font-size: 20px;">
-                    for (size_t i = 0; i < attributes.size(); i++)
-                        removeNodeAttribute(element, attributes[i]);
+                    for (auto& attribute : attributes)
+                        removeNodeAttribute(element, attribute);
                 }
             }
 
@@ -529,7 +528,7 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
             setNodeAttribute(element, styleAttr, newInlineStyle->style()->asText());
 
         // FIXME: Tolerate differences in id, class, and style attributes.
-        if (isNonTableCellHTMLBlockElement(element) && areIdenticalElements(element, element->parentNode())
+        if (element->parentNode() && isNonTableCellHTMLBlockElement(element) && areIdenticalElements(element, element->parentNode())
             && VisiblePosition(firstPositionInNode(element->parentNode())) == VisiblePosition(firstPositionInNode(element))
             && VisiblePosition(lastPositionInNode(element->parentNode())) == VisiblePosition(lastPositionInNode(element))) {
             insertedNodes.willRemoveNodePreservingChildren(element);
@@ -537,7 +536,7 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
             continue;
         }
 
-        if (element->parentNode()->hasRichlyEditableStyle())
+        if (element->parentNode() && element->parentNode()->hasRichlyEditableStyle())
             removeNodeAttribute(element, contenteditableAttr);
 
         // WebKit used to not add display: inline and float: none on copy.
@@ -733,8 +732,8 @@ static void removeHeadContents(ReplacementFragment& fragment)
         ++it;
     }
 
-    for (unsigned i = 0; i < toRemove.size(); ++i)
-        fragment.removeNode(toRemove[i]);
+    for (auto& element : toRemove)
+        fragment.removeNode(element);
 }
 
 // Remove style spans before insertion if they are unnecessary.  It's faster because we'll 
@@ -776,7 +775,7 @@ static bool handleStyleSpansBeforeInsertion(ReplacementFragment& fragment, const
 // or at copy time.
 void ReplaceSelectionCommand::handleStyleSpans(InsertedNodes& insertedNodes)
 {
-    HTMLElement* wrappingStyleSpan = 0;
+    HTMLElement* wrappingStyleSpan = nullptr;
     // The style span that contains the source document's default style should be at
     // the top of the fragment, but Mail sometimes adds a wrapper (for Paste As Quotation),
     // so search for the top level style span instead of assuming it's at the top.
@@ -1144,7 +1143,7 @@ void ReplaceSelectionCommand::doApply()
 
     // We inserted before the insertionBlock to prevent nesting, and the content before the insertionBlock wasn't in its own block and
     // didn't have a br after it, so the inserted content ended up in the same paragraph.
-    if (insertionBlock && insertionPos.deprecatedNode() == insertionBlock->parentNode() && (unsigned)insertionPos.deprecatedEditingOffset() < insertionBlock->computeNodeIndex() && !isStartOfParagraph(startOfInsertedContent))
+    if (!startOfInsertedContent.isNull() && insertionBlock && insertionPos.deprecatedNode() == insertionBlock->parentNode() && (unsigned)insertionPos.deprecatedEditingOffset() < insertionBlock->computeNodeIndex() && !isStartOfParagraph(startOfInsertedContent))
         insertNodeAt(createBreakElement(document()), startOfInsertedContent.deepEquivalent());
 
     if (endBR && (plainTextFragment || shouldRemoveEndBR(endBR.get(), originalVisPosBeforeEndBR))) {
@@ -1465,7 +1464,7 @@ Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<HTMLElement> prpList
         } else
             ASSERT_NOT_REACHED();
     }
-    if (isStart || isMiddle)
+    if ((isStart || isMiddle) && lastNode->previousSibling())
         lastNode = lastNode->previousSibling();
     return lastNode;
 }

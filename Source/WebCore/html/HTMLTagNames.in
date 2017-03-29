@@ -15,10 +15,10 @@ attachment conditional=ATTACHMENT_ELEMENT, settingsConditional=attachmentElement
 audio wrapperOnlyIfMediaIsAvailable, conditional=VIDEO, constructorNeedsCreatedByParser, customTypeHelper
 b interfaceName=HTMLElement
 base
-basefont interfaceName=HTMLBaseFontElement
+basefont interfaceName=HTMLUnknownElement
 bdi interfaceName=HTMLBDIElement, JSInterfaceName=HTMLElement
 bdo interfaceName=HTMLElement
-bgsound interfaceName=HTMLElement
+bgsound interfaceName=HTMLUnknownElement
 big interfaceName=HTMLElement
 blockquote interfaceName=HTMLQuoteElement
 body

@@ -38,6 +38,7 @@
 #include "ResourceResponse.h"
 #include "SerializedScriptValue.h"
 #include "SessionID.h"
+#include "ThreadSafeDataBuffer.h"
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 
@@ -49,6 +50,7 @@
 #include "IDBGetResult.h"
 #include "IDBKeyData.h"
 #include "IDBKeyRangeData.h"
+#include "IDBObjectStoreInfo.h"
 #include "IDBResourceIdentifier.h"
 #include "IDBTransactionInfo.h"
 #endif
@@ -83,6 +85,11 @@ CrossThreadCopierBase<false, false, ResourceResponse>::Type CrossThreadCopierBas
 CrossThreadCopierBase<false, false, SessionID>::Type CrossThreadCopierBase<false, false, SessionID>::copy(const SessionID& sessionID)
 {
     return sessionID;
+}
+
+CrossThreadCopierBase<false, false, ThreadSafeDataBuffer>::Type CrossThreadCopierBase<false, false, ThreadSafeDataBuffer>::copy(const ThreadSafeDataBuffer& buffer)
+{
+    return ThreadSafeDataBuffer(buffer);
 }
 
 #if ENABLE(INDEXED_DATABASE)
@@ -155,6 +162,11 @@ CrossThreadCopierBase<false, false, IDBResourceIdentifier>::Type CrossThreadCopi
 CrossThreadCopierBase<false, false, IDBError>::Type CrossThreadCopierBase<false, false, IDBError>::copy(const IDBError& error)
 {
     return error.isolatedCopy();
+}
+
+CrossThreadCopierBase<false, false, IDBObjectStoreInfo>::Type CrossThreadCopierBase<false, false, IDBObjectStoreInfo>::copy(const IDBObjectStoreInfo& info)
+{
+    return info.isolatedCopy();
 }
 
 #endif // ENABLE(INDEXED_DATABASE)

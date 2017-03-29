@@ -59,9 +59,7 @@ function initializeWritableStream(underlyingSink, strategy)
     this.@startedPromise.then(function() {
         _this.@started = true;
         _this.@startedPromise = undefined;
-    }, function(r) {
-        error(r);
-    });
+    }, error);
 
     return this;
 }
@@ -70,40 +68,111 @@ function abort(reason)
 {
     "use strict";
 
-    throw new EvalError("abort not implemented");
+    if (!@isWritableStream(this))
+        return Promise.reject(new @TypeError("The WritableStream.abort method can only be used on instances of WritableStream"));
+
+    if (this.@state === "closed")
+        return Promise.resolve(undefined);
+
+    if (this.@state === "errored")
+        return Promise.reject(this.@storedError);
+
+    @errorWritableStream.@apply(this, [reason]);
+
+    const sinkAbortPromise = @promiseInvokeOrFallbackOrNoop(this.@underlyingSink, "abort", [reason], "close", []);
+
+    return sinkAbortPromise.then(function() { return undefined; });
 }
 
 function close()
 {
     "use strict";
 
-    throw new EvalError("close not implemented");
+    if (!@isWritableStream(this))
+        return Promise.reject(new @TypeError("The WritableStream.close method can only be used on instances of WritableStream"));
+
+    if (this.@state === "closed" || this.@state === "closing")
+        return Promise.reject(new @TypeError("Cannot close a WritableString that is closed or closing"));
+
+    if (this.@state === "errored")
+        return Promise.reject(this.@storedError);
+
+    if (this.@state === "waiting")
+        @resolveStreamsPromise(this.@readyPromise, undefined);
+
+    this.@state = "closing";
+    @enqueueValueWithSize(this.@queue, "close", 0);
+    @callOrScheduleWritableStreamAdvanceQueue(this);
+
+    return this.@closedPromise;
 }
 
 function write(chunk)
 {
     "use strict";
 
-    throw new EvalError("write not implemented");
+    if (!@isWritableStream(this))
+        return Promise.reject(new @TypeError("The WritableStream.close method can only be used on instances of WritableStream"));
+
+    if (this.@state === "closed" || this.@state === "closing")
+        return Promise.reject(new @TypeError("Cannot write on a WritableString that is closed or closing"));
+
+    if (this.@state === "errored")
+        return Promise.reject(this.@storedError);
+
+    // FIXME
+    // assert(this.@state === "writable" || this.@state === "waiting" || this.@state === undefined);
+
+    let chunkSize = 1;
+    if (this.@strategy.size !== undefined) {
+        try {
+            chunkSize = this.@strategy.size.@call(undefined, chunk);
+        } catch(e) {
+            @errorWritableStream.@call(this, e);
+            return Promise.reject(e);
+        }
+    }
+
+    const promise = @createNewStreamsPromise();
+    try {
+        @enqueueValueWithSize(this.@queue, { promise: promise, chunk: chunk }, chunkSize);
+    } catch (e) {
+        @errorWritableStream.@call(this, e);
+        return Promise.reject(e);
+    }
+
+    @syncWritableStreamStateWithQueue(this);
+    @callOrScheduleWritableStreamAdvanceQueue(this);
+
+    return promise;
 }
 
 function closed()
 {
     "use strict";
 
-    throw new EvalError("closed not implemented");
+    if (!@isWritableStream(this))
+        return Promise.reject(new @TypeError("The WritableStream.closed getter can only be used on instances of WritableStream"));
+
+    return this.@closedPromise;
 }
 
 function ready()
 {
     "use strict";
 
-    throw new EvalError("ready not implemented");
+    if (!@isWritableStream(this))
+        return Promise.reject(new @TypeError("The WritableStream.ready getter can only be used on instances of WritableStream"));
+
+    return this.@readyPromise;
 }
 
 function state()
 {
     "use strict";
 
-    throw new EvalError("state not implemented");
+    if (!@isWritableStream(this))
+        throw new @TypeError("The WritableStream.state getter can only be used on instances of WritableStream");
+
+    return this.@state;
 }

@@ -414,14 +414,17 @@ if (USE_TEXTURE_MAPPER)
     )
     list(APPEND WebCore_SOURCES
         platform/graphics/texmap/BitmapTexture.cpp
-        platform/graphics/texmap/BitmapTextureGL.cpp
-        platform/graphics/texmap/BitmapTextureImageBuffer.cpp
         platform/graphics/texmap/BitmapTexturePool.cpp
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
-        platform/graphics/texmap/TextureMapperGL.cpp
-        platform/graphics/texmap/TextureMapperImageBuffer.cpp
-        platform/graphics/texmap/TextureMapperShaderProgram.cpp
     )
+
+    if (USE_TEXTURE_MAPPER_GL)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/texmap/BitmapTextureGL.cpp
+            platform/graphics/texmap/TextureMapperGL.cpp
+            platform/graphics/texmap/TextureMapperShaderProgram.cpp
+        )
+    endif ()
 endif ()
 
 if (ENABLE_THREADED_COMPOSITOR)
@@ -610,7 +613,6 @@ list(APPEND GObjectDOMBindingsStable_IDL_FILES
     html/HTMLAreaElement.idl
     html/HTMLBRElement.idl
     html/HTMLBaseElement.idl
-    html/HTMLBaseFontElement.idl
     html/HTMLBodyElement.idl
     html/HTMLButtonElement.idl
     html/HTMLCanvasElement.idl

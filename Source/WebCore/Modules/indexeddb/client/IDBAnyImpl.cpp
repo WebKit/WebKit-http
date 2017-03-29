@@ -42,6 +42,24 @@ IDBAny::IDBAny(Ref<IDBDatabase>&& database)
 {
 }
 
+IDBAny::IDBAny(Ref<IDBObjectStore>&& objectStore)
+    : m_type(IDBAny::Type::IDBObjectStore)
+    , m_objectStore(adoptRef(&objectStore.leakRef()))
+{
+}
+
+IDBAny::IDBAny(const IDBKeyPath& keyPath)
+    : m_type(IDBAny::Type::KeyPath)
+    , m_idbKeyPath(keyPath)
+{
+}
+
+IDBAny::IDBAny(const Deprecated::ScriptValue& value)
+    : m_type(IDBAny::Type::ScriptValue)
+    , m_scriptValue(value)
+{
+}
+
 IDBAny::~IDBAny()
 {
 }
@@ -80,6 +98,12 @@ RefPtr<WebCore::IDBIndex> IDBAny::idbIndex()
 RefPtr<WebCore::IDBObjectStore> IDBAny::idbObjectStore()
 {
     return nullptr;
+}
+
+IDBObjectStore* IDBAny::modernIDBObjectStore()
+{
+    ASSERT(m_type == IDBAny::Type::IDBObjectStore);
+    return m_objectStore.get();
 }
 
 RefPtr<WebCore::IDBTransaction> IDBAny::idbTransaction()

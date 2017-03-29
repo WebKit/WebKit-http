@@ -32,7 +32,9 @@
 #include "APIData.h"
 #include "APIDictionary.h"
 #include "APIFindClient.h"
+#include "APIFindMatchesClient.h"
 #include "APIFrameInfo.h"
+#include "APIGeometry.h"
 #include "APIHitTestResult.h"
 #include "APILoaderClient.h"
 #include "APINavigationAction.h"
@@ -57,6 +59,7 @@
 #include "WKPluginInformation.h"
 #include "WebBackForwardList.h"
 #include "WebFormClient.h"
+#include "WebImage.h"
 #include "WebInspectorProxy.h"
 #include "WebOpenPanelParameters.h"
 #include "WebOpenPanelResultListenerProxy.h"
@@ -112,6 +115,14 @@ template<> struct ClientTraits<WKPageContextMenuClientBase> {
     typedef std::tuple<WKPageContextMenuClientV0, WKPageContextMenuClientV1, WKPageContextMenuClientV2, WKPageContextMenuClientV3> Versions;
 };
 #endif
+
+template<> struct ClientTraits<WKPageFindClientBase> {
+    typedef std::tuple<WKPageFindClientV0> Versions;
+};
+
+template<> struct ClientTraits<WKPageFindMatchesClientBase> {
+    typedef std::tuple<WKPageFindMatchesClientV0> Versions;
+};
 
 }
 
@@ -827,14 +838,6 @@ void WKPageSetPageContextMenuClient(WKPageRef pageRef, const WKPageContextMenuCl
             m_client.customContextMenuItemSelected(toAPI(&page), toAPI(WebContextMenuItem::create(itemData).ptr()), m_client.base.clientInfo);
         }
 
-        virtual void contextMenuDismissed(WebPageProxy& page) override
-        {
-            if (!m_client.contextMenuDismissed)
-                return;
-
-            m_client.contextMenuDismissed(toAPI(&page), m_client.base.clientInfo);
-        }
-
         virtual bool showContextMenu(WebPageProxy& page, const WebCore::IntPoint& menuLocation, const Vector<RefPtr<WebContextMenuItem>>& menuItemsVector) override
         {
             if (!m_client.showContextMenu)
@@ -914,7 +917,45 @@ void WKPageSetPageFindClient(WKPageRef pageRef, const WKPageFindClientBase* wkCl
 
 void WKPageSetPageFindMatchesClient(WKPageRef pageRef, const WKPageFindMatchesClientBase* wkClient)
 {
-    toImpl(pageRef)->initializeFindMatchesClient(wkClient);
+    class FindMatchesClient : public API::Client<WKPageFindMatchesClientBase>, public API::FindMatchesClient {
+    public:
+        explicit FindMatchesClient(const WKPageFindMatchesClientBase* client)
+        {
+            initialize(client);
+        }
+
+    private:
+        virtual void didFindStringMatches(WebPageProxy* page, const String& string, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t index) override
+        {
+            if (!m_client.didFindStringMatches)
+                return;
+
+            Vector<RefPtr<API::Object>> matches;
+            matches.reserveInitialCapacity(matchRects.size());
+
+            for (const auto& rects : matchRects) {
+                Vector<RefPtr<API::Object>> apiRects;
+                apiRects.reserveInitialCapacity(rects.size());
+
+                for (const auto& rect : rects)
+                    apiRects.uncheckedAppend(API::Rect::create(toAPI(rect)));
+
+                matches.uncheckedAppend(API::Array::create(WTF::move(apiRects)));
+            }
+
+            m_client.didFindStringMatches(toAPI(page), toAPI(string.impl()), toAPI(API::Array::create(WTF::move(matches)).ptr()), index, m_client.base.clientInfo);
+        }
+
+        virtual void didGetImageForMatchResult(WebPageProxy* page, WebImage* image, int32_t index) override
+        {
+            if (!m_client.didGetImageForMatchResult)
+                return;
+
+            m_client.didGetImageForMatchResult(toAPI(page), toAPI(image), index, m_client.base.clientInfo);
+        }
+    };
+
+    toImpl(pageRef)->setFindMatchesClient(std::make_unique<FindMatchesClient>(wkClient));
 }
 
 void WKPageSetPageInjectedBundleClient(WKPageRef pageRef, const WKPageInjectedBundleClientBase* wkClient)
@@ -1530,7 +1571,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
             auto sourceFrameInfo = API::FrameInfo::create(*initiatingFrame, securityOriginData.securityOrigin());
 
-            bool shouldOpenAppLinks = !protocolHostAndPortAreEqual(WebCore::URL(WebCore::ParsedURLString, initiatingFrame->url()), resourceRequest.url());
+            bool shouldOpenAppLinks = !hostsAreEqual(WebCore::URL(WebCore::ParsedURLString, initiatingFrame->url()), resourceRequest.url());
             auto apiNavigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.ptr(), nullptr, resourceRequest, WebCore::URL(), shouldOpenAppLinks);
 
             auto apiWindowFeatures = API::WindowFeatures::create(windowFeatures);
@@ -2134,7 +2175,7 @@ void WKPageSetSession(WKPageRef pageRef, WKSessionRef session)
 
 void WKPageRunJavaScriptInMainFrame(WKPageRef pageRef, WKStringRef scriptRef, void* context, WKPageRunJavaScriptFunction callback)
 {
-    toImpl(pageRef)->runJavaScriptInMainFrame(toImpl(scriptRef)->string(), [context, callback](API::SerializedScriptValue* returnValue, bool, CallbackBase::Error error) {
+    toImpl(pageRef)->runJavaScriptInMainFrame(toImpl(scriptRef)->string(), [context, callback](API::SerializedScriptValue* returnValue, bool, const WebCore::ExceptionDetails&, CallbackBase::Error error) {
         callback(toAPI(returnValue), (error != CallbackBase::Error::None) ? toAPI(API::Error::create().ptr()) : 0, context);
     });
 }
@@ -2185,13 +2226,12 @@ void WKPageGetSelectionAsWebArchiveData(WKPageRef pageRef, void* context, WKPage
     toImpl(pageRef)->getSelectionAsWebArchiveData(toGenericCallbackFunction(context, callback));
 }
 
-void WKPageGetContentsAsMHTMLData(WKPageRef pageRef, bool useBinaryEncoding, void* context, WKPageGetContentsAsMHTMLDataFunction callback)
+void WKPageGetContentsAsMHTMLData(WKPageRef pageRef, void* context, WKPageGetContentsAsMHTMLDataFunction callback)
 {
 #if ENABLE(MHTML)
-    toImpl(pageRef)->getContentsAsMHTMLData(toGenericCallbackFunction(context, callback), useBinaryEncoding);
+    toImpl(pageRef)->getContentsAsMHTMLData(toGenericCallbackFunction(context, callback));
 #else
     UNUSED_PARAM(pageRef);
-    UNUSED_PARAM(useBinaryEncoding);
     UNUSED_PARAM(context);
     UNUSED_PARAM(callback);
 #endif
@@ -2375,7 +2415,7 @@ void WKPageSetMayStartMediaWhenInWindow(WKPageRef pageRef, bool mayStartMedia)
 void WKPageSelectContextMenuItem(WKPageRef page, WKContextMenuItemRef item)
 {
 #if ENABLE(CONTEXT_MENUS)
-    toImpl(page)->contextMenuItemSelected(*(toImpl(item)->data()));
+    toImpl(page)->contextMenuItemSelected((toImpl(item)->data()));
 #else
     UNUSED_PARAM(page);
     UNUSED_PARAM(item);

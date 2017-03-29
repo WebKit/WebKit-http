@@ -93,6 +93,18 @@ UniqueIDBDatabaseTransaction& UniqueIDBDatabaseConnection::createVersionChangeTr
     return transaction.get();
 }
 
+void UniqueIDBDatabaseConnection::didAbortTransaction(UniqueIDBDatabaseTransaction& transaction, const IDBError& error)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::didAbortTransaction");
+
+    auto transactionIdentifier = transaction.info().identifier();
+
+    ASSERT(m_transactionMap.contains(transactionIdentifier));
+    m_transactionMap.remove(transactionIdentifier);
+
+    m_connectionToClient.didAbortTransaction(transactionIdentifier, error);
+}
+
 void UniqueIDBDatabaseConnection::didCommitTransaction(UniqueIDBDatabaseTransaction& transaction, const IDBError& error)
 {
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::didCommitTransaction");
@@ -103,6 +115,13 @@ void UniqueIDBDatabaseConnection::didCommitTransaction(UniqueIDBDatabaseTransact
     m_transactionMap.remove(transactionIdentifier);
 
     m_connectionToClient.didCommitTransaction(transactionIdentifier, error);
+}
+
+void UniqueIDBDatabaseConnection::didCreateObjectStore(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::didCreateObjectStore");
+
+    m_connectionToClient.didCreateObjectStore(resultData);
 }
 
 } // namespace IDBServer

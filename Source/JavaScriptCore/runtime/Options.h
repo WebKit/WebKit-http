@@ -233,8 +233,6 @@ typedef const char* optionString;
     v(unsigned, maximumInliningDepth, 5, "maximum allowed inlining depth.  Depth of 1 means no inlining") \
     v(unsigned, maximumInliningRecursion, 2, nullptr) \
     \
-    v(unsigned, maximumLLVMInstructionCountForNativeInlining, 80, nullptr) \
-    \
     /* Maximum size of a caller for enabling inlining. This is purely to protect us */\
     /* from super long compiles that take a lot of memory. */\
     v(unsigned, maximumInliningCallerSize, 10000, nullptr) \
@@ -281,6 +279,9 @@ typedef const char* optionString;
     v(unsigned, osrExitCountForReoptimizationFromLoop, 5, nullptr) \
     \
     v(unsigned, reoptimizationRetryCounterMax, 0, nullptr)  \
+    \
+    v(bool, assertICSizing, false, "crash if estimated IC sizes are inadequate")  \
+    v(bool, dumpFailedICSizing, false, "dumps a log entry if estimated IC sizes are inadequate")  \
     \
     v(unsigned, minimumOptimizationDelay, 1, nullptr) \
     v(unsigned, maximumOptimizationDelay, 5, nullptr) \
