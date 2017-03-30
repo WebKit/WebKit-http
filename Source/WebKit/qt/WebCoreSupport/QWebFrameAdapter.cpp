@@ -924,7 +924,7 @@ QWebElement QWebHitTestResultPrivate::elementForInnerNode() const
 
 QSize QWebFrameAdapter::customLayoutSize() const
 {
-    ASSERT(pageAdapter->mainFrameAdapter() == this);
+    ASSERT(&pageAdapter->mainFrameAdapter() == this);
     FrameView* view = frame->view();
     ASSERT(view);
     if (view->useFixedLayout())
@@ -934,7 +934,7 @@ QSize QWebFrameAdapter::customLayoutSize() const
 
 void QWebFrameAdapter::setCustomLayoutSize(const QSize& size)
 {
-    ASSERT(pageAdapter->mainFrameAdapter() == this);
+    ASSERT(&pageAdapter->mainFrameAdapter() == this);
     FrameView* view = frame->view();
     ASSERT(view);
 
@@ -949,7 +949,7 @@ void QWebFrameAdapter::setCustomLayoutSize(const QSize& size)
 
 void QWebFrameAdapter::setFixedVisibleContentRect(const QRect& rect)
 {
-    ASSERT(pageAdapter->mainFrameAdapter() == this);
+    ASSERT(&pageAdapter->mainFrameAdapter() == this);
     FrameView* view = frame->view();
     ASSERT(view);
     view->setFixedVisibleContentRect(rect);
@@ -957,7 +957,7 @@ void QWebFrameAdapter::setFixedVisibleContentRect(const QRect& rect)
 
 void QWebFrameAdapter::setViewportSize(const QSize& size)
 {
-    ASSERT(pageAdapter->mainFrameAdapter() == this);
+    ASSERT(&pageAdapter->mainFrameAdapter() == this);
     FrameView* view = frame->view();
     ASSERT(view);
     view->resize(size);
@@ -967,14 +967,14 @@ void QWebFrameAdapter::setViewportSize(const QSize& size)
 
 void QWebFrameAdapter::setPaintsEntireContents(bool resizesToContents)
 {
-    ASSERT(pageAdapter->mainFrameAdapter() == this);
+    ASSERT(&pageAdapter->mainFrameAdapter() == this);
     ASSERT(frame->view());
     frame->view()->setPaintsEntireContents(resizesToContents);
 }
 
 void QWebFrameAdapter::setDelegatesScrolling(bool resizesToContents)
 {
-    ASSERT(pageAdapter->mainFrameAdapter() == this);
+    ASSERT(&pageAdapter->mainFrameAdapter() == this);
     ASSERT(frame->view());
     frame->view()->setDelegatesScrolling(resizesToContents);
 }

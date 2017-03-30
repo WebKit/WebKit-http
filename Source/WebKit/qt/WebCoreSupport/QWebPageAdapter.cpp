@@ -311,7 +311,7 @@ QWebPageAdapter::~QWebPageAdapter()
 void QWebPageAdapter::deletePage()
 {
     // Before we delete the page, detach the mainframe's loader
-    FrameLoader& loader = mainFrameAdapter()->frame->loader();
+    FrameLoader& loader = mainFrameAdapter().frame->loader();
     loader.detachFromParent();
     delete page;
     page = 0;
@@ -399,7 +399,7 @@ void QWebPageAdapter::setContentEditable(bool editable)
     page->setEditable(editable);
     page->setTabKeyCyclesThroughElements(!editable);
 
-    Frame* frame = mainFrameAdapter()->frame;
+    Frame* frame = mainFrameAdapter().frame;
     if (editable) {
         frame->editor().applyEditingStyleToBodyElement();
         // FIXME: mac port calls this if there is no selectedDOMRange
@@ -488,7 +488,7 @@ void QWebPageAdapter::adjustPointForClicking(QMouseEvent* ev)
 
 void QWebPageAdapter::mouseMoveEvent(QMouseEvent* ev)
 {
-    WebCore::Frame* frame = mainFrameAdapter()->frame;
+    WebCore::Frame* frame = mainFrameAdapter().frame;
     if (!frame->view())
         return;
     if (ev->buttons() == Qt::NoButton)
@@ -500,7 +500,7 @@ void QWebPageAdapter::mouseMoveEvent(QMouseEvent* ev)
 
 void QWebPageAdapter::mousePressEvent(QMouseEvent* ev)
 {
-    WebCore::Frame* frame = mainFrameAdapter()->frame;
+    WebCore::Frame* frame = mainFrameAdapter().frame;
     if (!frame->view())
         return;
 
@@ -533,7 +533,7 @@ void QWebPageAdapter::mousePressEvent(QMouseEvent* ev)
 
 void QWebPageAdapter::mouseDoubleClickEvent(QMouseEvent *ev)
 {
-    WebCore::Frame* frame = mainFrameAdapter()->frame;
+    WebCore::Frame* frame = mainFrameAdapter().frame;
     if (!frame->view())
         return;
 
@@ -550,7 +550,7 @@ void QWebPageAdapter::mouseDoubleClickEvent(QMouseEvent *ev)
 
 void QWebPageAdapter::mouseTripleClickEvent(QMouseEvent *ev)
 {
-    WebCore::Frame* frame = mainFrameAdapter()->frame;
+    WebCore::Frame* frame = mainFrameAdapter().frame;
     if (!frame->view())
         return;
 
@@ -564,7 +564,7 @@ void QWebPageAdapter::mouseTripleClickEvent(QMouseEvent *ev)
 
 void QWebPageAdapter::mouseReleaseEvent(QMouseEvent *ev)
 {
-    WebCore::Frame* frame = mainFrameAdapter()->frame;
+    WebCore::Frame* frame = mainFrameAdapter().frame;
     if (!frame->view())
         return;
 
@@ -605,7 +605,7 @@ void QWebPageAdapter::handleSoftwareInputPanel(Qt::MouseButton button, const QPo
 #ifndef QT_NO_WHEELEVENT
 void QWebPageAdapter::wheelEvent(QWheelEvent *ev, int wheelScrollLines)
 {
-    WebCore::Frame* frame = mainFrameAdapter()->frame;
+    WebCore::Frame* frame = mainFrameAdapter().frame;
     if (!frame->view())
         return;
 
@@ -1027,7 +1027,7 @@ void QWebPageAdapter::didCloseInspector()
 
 void QWebPageAdapter::updateActionInternal(QWebPageAdapter::MenuAction action, const char* commandName, bool* enabled, bool* checked)
 {
-    WebCore::FrameLoader& loader = mainFrameAdapter()->frame->loader();
+    WebCore::FrameLoader& loader = mainFrameAdapter().frame->loader();
     WebCore::Editor& editor = page->focusController().focusedOrMainFrame().editor();
 
     switch (action) {
@@ -1135,11 +1135,11 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         page->backForward().goForward();
         break;
     case Stop:
-        mainFrameAdapter()->frame->loader().stopForUserCancel();
+        mainFrameAdapter().frame->loader().stopForUserCancel();
         updateNavigationActions();
         break;
     case Reload:
-        mainFrameAdapter()->frame->loader().reload(endToEndReload);
+        mainFrameAdapter().frame->loader().reload(endToEndReload);
         break;
 
     case SetTextDirectionDefault:
@@ -1454,7 +1454,7 @@ void QWebPageAdapter::focusInEvent(QFocusEvent *)
     focusController.setActive(true);
     focusController.setFocused(true);
     if (!focusController.focusedFrame())
-        focusController.setFocusedFrame(mainFrameAdapter()->frame);
+        focusController.setFocusedFrame(mainFrameAdapter().frame);
 }
 
 void QWebPageAdapter::focusOutEvent(QFocusEvent *)
@@ -1504,7 +1504,7 @@ bool QWebPageAdapter::handleShortcutOverrideEvent(QKeyEvent* event)
 bool QWebPageAdapter::touchEvent(QTouchEvent* event)
 {
 #if ENABLE(TOUCH_EVENTS)
-    Frame* frame = mainFrameAdapter()->frame;
+    Frame* frame = mainFrameAdapter().frame;
     if (!frame->view() || !frame->document())
         return false;
 

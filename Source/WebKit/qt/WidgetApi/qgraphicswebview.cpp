@@ -119,8 +119,8 @@ void QGraphicsWebViewPrivate::updateResizesToContentsForPage()
         QObject::disconnect(page->mainFrame(), SIGNAL(contentsSizeChanged(QSize)),
             q, SLOT(_q_contentsSizeChanged(const QSize&)));
     }
-    page->d->mainFrameAdapter()->setPaintsEntireContents(resizesToContents);
-    page->d->mainFrameAdapter()->setDelegatesScrolling(resizesToContents);
+    page->d->mainFrameAdapter().setPaintsEntireContents(resizesToContents);
+    page->d->mainFrameAdapter().setDelegatesScrolling(resizesToContents);
 }
 
 void QGraphicsWebViewPrivate::_q_contentsSizeChanged(const QSize& size)

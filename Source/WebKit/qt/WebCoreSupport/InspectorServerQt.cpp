@@ -227,7 +227,7 @@ void InspectorServerRequestHandlerQt::tcpReadyRead()
 
                 indexHtml.append(QString::fromLatin1("<li><a href=\"/webkit/inspector/UserInterface/Main.html?page=%1\">%2</li>\n")
                     .arg(it.key())
-                    .arg(QUrl(it.value()->m_inspectedWebPage->mainFrameAdapter()->url).toString()));
+                    .arg(QUrl(it.value()->m_inspectedWebPage->mainFrameAdapter().url).toString()));
             }
             indexHtml.append(QLatin1String("</ul></body></html>"));
             response = indexHtml.toLatin1();

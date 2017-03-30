@@ -195,7 +195,7 @@ Inspector::FrontendChannel* InspectorClientQt::openLocalFrontend(WebCore::Inspec
     m_frontendWebPage->page->setGroupName("__WebInspectorPageGroup__");
     frontendChannel = this;
 
-    inspectorPage->mainFrameAdapter()->load(QNetworkRequest(inspectorUrl));
+    inspectorPage->mainFrameAdapter().load(QNetworkRequest(inspectorUrl));
     m_inspectedWebPage->setInspectorFrontend(view);
 
     return frontendChannel;
@@ -238,7 +238,7 @@ void InspectorClientQt::highlight()
 void InspectorClientQt::hideHighlight()
 {
     WebCore::Frame& frame = m_inspectedWebPage->page->mainFrame();
-    QRect rect = m_inspectedWebPage->mainFrameAdapter()->frameRect();
+    QRect rect = m_inspectedWebPage->mainFrameAdapter().frameRect();
     if (!rect.isEmpty())
         frame.view()->invalidateRect(rect);
 }

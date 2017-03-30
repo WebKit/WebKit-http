@@ -97,7 +97,7 @@ public:
 #if USE(QT_MULTIMEDIA)
     QWebFullScreenVideoHandler* createFullScreenVideoHandler() override;
 #endif
-    QWebFrameAdapter* mainFrameAdapter() override;
+    QWebFrameAdapter& mainFrameAdapter() override;
     QStringList chooseFiles(QWebFrameAdapter*, bool allowMultiple, const QStringList& suggestedFileNames) override;
     QColor colorSelectionRequested(const QColor& selectedColor) override;
     std::unique_ptr<QWebSelectMethod> createSelectPopup() override;

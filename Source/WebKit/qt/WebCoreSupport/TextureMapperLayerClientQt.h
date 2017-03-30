@@ -34,7 +34,7 @@ class TextureMapperLayer;
 
 class TextureMapperLayerClientQt final : public GraphicsLayerClient {
 public:
-    TextureMapperLayerClientQt(QWebFrameAdapter*);
+    TextureMapperLayerClientQt(QWebFrameAdapter&);
     ~TextureMapperLayerClientQt();
     void syncRootLayer();
     TextureMapperLayer* rootLayer();
@@ -47,7 +47,7 @@ public:
 
     void renderCompositedLayers(GraphicsContext&, const IntRect& clip);
 private:
-    QWebFrameAdapter* m_frame;
+    QWebFrameAdapter& m_frame;
     std::unique_ptr<GraphicsLayer> m_rootGraphicsLayer;
     Timer m_syncTimer;
     WebCore::TextureMapperLayer* m_rootTextureMapperLayer;

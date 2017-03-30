@@ -230,7 +230,7 @@ public:
     virtual void updateNavigationActions() = 0;
     virtual void clearCustomActions() = 0;
 
-    virtual QWebFrameAdapter* mainFrameAdapter() = 0;
+    virtual QWebFrameAdapter& mainFrameAdapter() = 0;
 
     virtual QObject* inspectorHandle() = 0;
     virtual void setInspectorFrontend(QObject*) = 0;

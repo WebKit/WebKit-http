@@ -31,7 +31,7 @@
 
 using namespace WebCore;
 
-TextureMapperLayerClientQt::TextureMapperLayerClientQt(QWebFrameAdapter* frame)
+TextureMapperLayerClientQt::TextureMapperLayerClientQt(QWebFrameAdapter& frame)
     : m_frame(frame)
     , m_syncTimer(*this, &TextureMapperLayerClientQt::syncLayers)
     , m_rootTextureMapperLayer(0)
@@ -71,7 +71,7 @@ void TextureMapperLayerClientQt::setRootGraphicsLayer(GraphicsLayer* layer)
         m_rootGraphicsLayer->setMasksToBounds(false);
         m_rootGraphicsLayer->setSize(IntSize(1, 1));
         TextureMapper::AccelerationMode mode = TextureMapper::SoftwareMode;
-        if (m_frame->pageAdapter->client->makeOpenGLContextCurrentIfAvailable())
+        if (m_frame.pageAdapter->client->makeOpenGLContextCurrentIfAvailable())
             mode = TextureMapper::OpenGLMode;
         m_textureMapper = TextureMapper::create(mode);
         m_rootTextureMapperLayer->setTextureMapper(m_textureMapper.get());
@@ -87,7 +87,7 @@ void TextureMapperLayerClientQt::syncLayers()
     if (m_rootGraphicsLayer)
         syncRootLayer();
 
-    bool didSync = m_frame->frame->view()->flushCompositingStateIncludingSubframes();
+    bool didSync = m_frame.frame->view()->flushCompositingStateIncludingSubframes();
 
     if (!m_rootGraphicsLayer)
         return;
@@ -98,7 +98,7 @@ void TextureMapperLayerClientQt::syncLayers()
     if (rootLayer()->descendantsOrSelfHaveRunningAnimations() && !m_syncTimer.isActive())
         m_syncTimer.startOneShot(1.0 / 60.0);
 
-    m_frame->pageAdapter->client->repaintViewport();
+    m_frame.pageAdapter->client->repaintViewport();
 }
 
 void TextureMapperLayerClientQt::renderCompositedLayers(GraphicsContext& context, const IntRect& clip)

@@ -102,7 +102,7 @@ static QString drtDescriptionSuitableForTestResult(WebCore::Frame* webCoreFrame)
     QWebFrameAdapter* frame = QWebFrameAdapter::kit(webCoreFrame);
     QString name = webCoreFrame->tree().uniqueName();
 
-    bool isMainFrame = frame == frame->pageAdapter->mainFrameAdapter();
+    bool isMainFrame = frame == &frame->pageAdapter->mainFrameAdapter();
     if (isMainFrame) {
         if (!name.isEmpty())
             return QString::fromLatin1("main frame \"%1\"").arg(name);
@@ -986,7 +986,7 @@ void FrameLoaderClientQt::dispatchWillSendRequest(WebCore::DocumentLoader*, unsi
         && !host.isEmpty()
         && (urlScheme == QLatin1String("http") || urlScheme == QLatin1String("https"))) {
 
-        QUrl testURL = m_webFrame->pageAdapter->mainFrameAdapter()->frameLoaderClient->lastRequestedUrl();
+        QUrl testURL = m_webFrame->pageAdapter->mainFrameAdapter().frameLoaderClient->lastRequestedUrl();
         QString testHost = testURL.host();
         QString testURLScheme = testURL.scheme().toLower();
 
@@ -1136,7 +1136,7 @@ WebCore::Frame* FrameLoaderClientQt::dispatchCreatePage(const WebCore::Navigatio
     QWebPageAdapter* newPage = m_webFrame->pageAdapter->createWindow(/* modalDialog = */ false);
     if (!newPage)
         return 0;
-    return newPage->mainFrameAdapter()->frame;
+    return newPage->mainFrameAdapter().frame;
 }
 
 void FrameLoaderClientQt::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest&, FramePolicyFunction function)

@@ -328,9 +328,9 @@ QWebFullScreenVideoHandler *QWebPagePrivate::createFullScreenVideoHandler()
 }
 #endif
 
-QWebFrameAdapter *QWebPagePrivate::mainFrameAdapter()
+QWebFrameAdapter& QWebPagePrivate::mainFrameAdapter()
 {
-    return q->mainFrame()->d;
+    return *q->mainFrame()->d;
 }
 
 QStringList QWebPagePrivate::chooseFiles(QWebFrameAdapter *frame, bool allowMultiple, const QStringList &suggestedFileNames)
@@ -2008,11 +2008,11 @@ void QWebPage::setViewportSize(const QSize &size) const
 
     d->updateWindow();
 
-    QWebFrameAdapter* mainFrame = d->mainFrameAdapter();
-    if (!mainFrame->hasView())
+    QWebFrameAdapter& mainFrame = d->mainFrameAdapter();
+    if (!mainFrame.hasView())
         return;
 
-    mainFrame->setViewportSize(size);
+    mainFrame.setViewportSize(size);
 }
 
 void QWebPagePrivate::updateWindow()
@@ -2161,11 +2161,11 @@ void QWebPage::setPreferredContentsSize(const QSize& size) const
 
     d->fixedLayoutSize = size;
 
-    QWebFrameAdapter* mainFrame = d->mainFrameAdapter();
-    if (!mainFrame->hasView())
+    QWebFrameAdapter& mainFrame = d->mainFrameAdapter();
+    if (!mainFrame.hasView())
         return;
 
-    mainFrame->setCustomLayoutSize(size);
+    mainFrame.setCustomLayoutSize(size);
 }
 
 /*
@@ -2180,11 +2180,11 @@ void QWebPage::setPreferredContentsSize(const QSize& size) const
 */
 void QWebPage::setActualVisibleContentRect(const QRect& rect) const
 {
-    QWebFrameAdapter* mainFrame = d->mainFrameAdapter();
-    if (!mainFrame->hasView())
+    QWebFrameAdapter& mainFrame = d->mainFrameAdapter();
+    if (!mainFrame.hasView())
         return;
 
-    mainFrame->setFixedVisibleContentRect(rect);
+    mainFrame.setFixedVisibleContentRect(rect);
 }
 
 /*!
