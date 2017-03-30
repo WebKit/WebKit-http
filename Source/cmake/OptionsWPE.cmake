@@ -79,7 +79,7 @@ find_package(WebP REQUIRED)
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
 
-find_package(WPE REQUIRED)
+find_package(WPEBackend REQUIRED)
 
 set(USE_XDGMIME ON)
 
