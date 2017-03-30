@@ -4,6 +4,8 @@ ROOT_QT_BUILD_DIR = $$ROOT_BUILD_DIR/..
 
 TEMPLATE = aux
 
+qtConfig(debug_and_release): CONFIG += debug_and_release build_all
+
 msvc:!contains(QMAKE_HOST.arch, x86_64) {
     debug_and_release {
         warning("Skipping debug build of QtWebKit because it requires a 64-bit toolchain")
@@ -76,10 +78,13 @@ build_pass|!debug_and_release {
     equals(QMAKE_HOST.os, Windows) {
         if(equals(MAKEFILE_GENERATOR, MSVC.NET)|equals(MAKEFILE_GENERATOR, MSBUILD)) {
             cmake_generator = "NMake Makefiles JOM"
+            make_command_name = jom
         } else: if(equals(MAKEFILE_GENERATOR, MINGW)) {
             cmake_generator = "MinGW Makefiles"
+            make_command_name = make
         } else {
             cmake_generator = "Unix Makefiles"
+            make_command_name = make
         }
         cmake_args += "-G \"$$cmake_generator\""
     }
@@ -98,10 +103,11 @@ build_pass|!debug_and_release {
     log("$${EOL}Running $$cmake_env cmake $$ROOT_WEBKIT_DIR $$cmake_args $${EOL}$${EOL}")
     !system("$$cmake_cmd_base $$cmake_env cmake $$ROOT_WEBKIT_DIR $$cmake_args"): error("Running cmake failed")
 
-    log("$${EOL}WebKit is now configured for building. Just run 'make'.$${EOL}$${EOL}")
+    log("$${EOL}WebKit is now configured for building. Just run '$$make_command_name'.$${EOL}$${EOL}")
 
 
-    default_target.target = first
+    build_pass:build_all: default_target.target = all
+    else: default_target.target = first
     default_target.commands = cd $$cmake_build_dir && $(MAKE) $$make_args
     QMAKE_EXTRA_TARGETS += default_target
 
