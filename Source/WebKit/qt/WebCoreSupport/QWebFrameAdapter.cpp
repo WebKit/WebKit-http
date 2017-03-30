@@ -465,7 +465,7 @@ QString QWebFrameAdapter::uniqueName() const
 // This code is copied from ChromeClientGtk.cpp.
 static void coalesceRectsIfPossible(const QRect& clipRect, QVector<QRect>& rects)
 {
-    const unsigned rectThreshold = 10;
+    const int rectThreshold = 10;
     const float wastedSpaceThreshold = 0.75f;
     bool useUnionedRect = (rects.size() <= 1) || (rects.size() > rectThreshold);
     if (!useUnionedRect) {
@@ -474,8 +474,8 @@ static void coalesceRectsIfPossible(const QRect& clipRect, QVector<QRect>& rects
         // is too large, then we will do individual rect painting instead.
         float unionPixels = (clipRect.width() * clipRect.height());
         float singlePixels = 0;
-        for (size_t i = 0; i < rects.size(); ++i)
-            singlePixels += rects[i].width() * rects[i].height();
+        for (auto& rect : rects)
+            singlePixels += rect.width() * rect.height();
         float wastedSpace = 1 - (singlePixels / unionPixels);
         if (wastedSpace <= wastedSpaceThreshold)
             useUnionedRect = true;
