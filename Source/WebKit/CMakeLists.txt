@@ -54,17 +54,22 @@ set(WebKit_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKit/Private)
 
 WEBKIT_FRAMEWORK(WebKit)
 
-set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
-install(TARGETS WebKit EXPORT WebKitTargets
-        DESTINATION "${LIB_INSTALL_DIR}"
-        RUNTIME DESTINATION "${BIN_INSTALL_DIR}"
-)
+if (${PORT} STREQUAL "Qt")
+    set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+    install(TARGETS WebKit EXPORT WebKitTargets
+            DESTINATION "${LIB_INSTALL_DIR}"
+            RUNTIME DESTINATION "${BIN_INSTALL_DIR}"
+    )
+    if (MSVC)
+        install(FILES $<TARGET_PDB_FILE:WebKit> DESTINATION "${BIN_INSTALL_DIR}" OPTIONAL)
+    endif ()
+
+    if (NOT MSVC)
+        ADD_PREFIX_HEADER(WebKit "${WEBKIT_DIR}/qt/WebKitPrefix.h")
+    endif ()
+endif ()
 
 add_dependencies(WebKit WebCore)
 if (TARGET WebKitGUID)
     add_dependencies(WebKit WebKitGUID)
-endif ()
-
-if (NOT MSVC AND ${PORT} STREQUAL "Qt")
-    ADD_PREFIX_HEADER(WebKit "${WEBKIT_DIR}/qt/WebKitPrefix.h")
 endif ()

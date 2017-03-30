@@ -680,6 +680,9 @@ install(TARGETS WebKitWidgets EXPORT Qt5WebKitWidgetsTargets
         DESTINATION "${LIB_INSTALL_DIR}"
         RUNTIME DESTINATION "${BIN_INSTALL_DIR}"
 )
+if (MSVC)
+    install(FILES $<TARGET_PDB_FILE:WebKitWidgets> DESTINATION "${BIN_INSTALL_DIR}" OPTIONAL)
+endif ()
 
 if (NOT MSVC AND WIN32)
     ADD_PREFIX_HEADER(WebKitWidgets "qt/WebKitWidgetsPrefix.h")
