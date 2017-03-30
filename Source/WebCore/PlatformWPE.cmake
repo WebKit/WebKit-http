@@ -168,7 +168,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/CursorWPE.cpp
     platform/wpe/ErrorsWPE.cpp
     platform/wpe/LocalizedStringsWPE.cpp
-    platform/wpe/MIMETypeRegistryWPE.cpp
     platform/wpe/PasteboardWPE.cpp
     platform/wpe/PlatformKeyboardEventWPE.cpp
     platform/wpe/PlatformPasteboardWPE.cpp
@@ -178,6 +177,8 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
+
+    platform/xdg/MIMETypeRegistryXdg.cpp
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
