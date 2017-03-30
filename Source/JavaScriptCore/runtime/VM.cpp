@@ -85,6 +85,7 @@
 #include "Parser.h"
 #include "ProfilerDatabase.h"
 #include "ProgramCodeBlock.h"
+#include "PromiseDeferredTimer.h"
 #include "PropertyMapHashTable.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
@@ -103,6 +104,7 @@
 #include "UnlinkedCodeBlock.h"
 #include "VMEntryScope.h"
 #include "VMInspector.h"
+#include "WasmWorklist.h"
 #include "Watchdog.h"
 #include "WeakGCMapInlines.h"
 #include "WeakMapData.h"
@@ -163,9 +165,6 @@ static bool enableAssembler(ExecutableAllocator& executableAllocator)
 
 VM::VM(VMType vmType, HeapType heapType)
     : m_apiLock(adoptRef(new JSLock(this)))
-#if ENABLE(ASSEMBLER)
-    , executableAllocator(*this)
-#endif
     , heap(this, heapType)
     , auxiliarySpace("Auxiliary", heap, AllocatorAttributes(DoesNotNeedDestruction, HeapCell::Auxiliary))
     , cellSpace("JSCell", heap, AllocatorAttributes(DoesNotNeedDestruction, HeapCell::JSCell))
@@ -177,6 +176,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , clientData(0)
     , topVMEntryFrame(nullptr)
     , topCallFrame(CallFrame::noCaller())
+    , promiseDeferredTimer(std::make_unique<PromiseDeferredTimer>(*this))
     , m_atomicStringTable(vmType == Default ? wtfThreadData().atomicStringTable() : new AtomicStringTable)
     , propertyNames(nullptr)
     , emptyList(new ArgList)
@@ -195,7 +195,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , m_rtTraceList(new RTTraceList())
 #endif
 #if ENABLE(ASSEMBLER)
-    , m_canUseAssembler(enableAssembler(executableAllocator))
+    , m_canUseAssembler(enableAssembler(ExecutableAllocator::singleton()))
 #endif
 #if ENABLE(JIT)
     , m_canUseJIT(m_canUseAssembler && Options::useJIT())
@@ -240,7 +240,6 @@ VM::VM(VMType vmType, HeapType heapType)
     webAssemblyCalleeStructure.set(*this, JSWebAssemblyCallee::createStructure(*this, 0, jsNull()));
     webAssemblyToJSCalleeStructure.set(*this, WebAssemblyToJSCallee::createStructure(*this, 0, jsNull()));
     webAssemblyCodeBlockStructure.set(*this, JSWebAssemblyCodeBlock::createStructure(*this, 0, jsNull()));
-    webAssemblyToJSCallee.set(*this, WebAssemblyToJSCallee::create(*this, webAssemblyToJSCalleeStructure.get()));
 #endif
     moduleProgramExecutableStructure.set(*this, ModuleProgramExecutable::createStructure(*this, 0, jsNull()));
     regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
@@ -356,6 +355,11 @@ VM::VM(VMType vmType, HeapType heapType)
 
 VM::~VM()
 {
+    promiseDeferredTimer->stopRunningTasks();
+#if ENABLE(WEBASSEMBLY)
+    if (Wasm::existingWorklistOrNull())
+        Wasm::ensureWorklist().stopAllPlansForVM(*this);
+#endif
     if (UNLIKELY(m_watchdog))
         m_watchdog->willDestroyVM(this);
     m_traps.willDestroyVM();

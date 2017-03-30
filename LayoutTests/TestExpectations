@@ -718,6 +718,7 @@ fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
 fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
 fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
 fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Pass Failure ]
+fast/mediastream/RTCPeerConnection-dtmf.html [ Failure ]
 
 # Need updating wptserve
 imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm [ Skip ]
@@ -1238,3 +1239,5 @@ fast/forms/range/range-remove-on-drag.html [ Skip ]
 webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Failure ]
 
 webkit.org/b/169625 imported/w3c/web-platform-tests/cors/status.htm [ Pass Failure ]
+
+webkit.org/b/170130 fast/events/before-unload-adopt-subframe-to-outside.html [ Pass Timeout ]

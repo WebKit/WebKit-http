@@ -309,6 +309,8 @@ webkit.org/b/165799 fast/dom/timer-throttling-hidden-page-non-nested.html [ Skip
 webkit.org/b/165799 fast/events/page-visibility-onvisibilitychange.html [ Skip ]
 webkit.org/b/165799 media/media-playback-page-visibility.html [ Skip ]
 webkit.org/b/165799 svg/animations/animations-paused-page-non-visible.html [ Skip ]
+webkit.org/b/165799 svg/animations/animations-paused-in-background-page-iframe.html [ Skip ]
+webkit.org/b/165799 svg/animations/animations-paused-in-background-page.html [ Skip ]
 
 # AutoFill button is not supported
 fast/forms/auto-fill-button/mouse-down-input-mouse-release-auto-fill-button.html
@@ -480,7 +482,6 @@ http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
 http/tests/misc/object-embedding-svg-delayed-size-negotiation.xhtml [ Failure ]
 http/tests/misc/submit-post-keygen.html [ Failure ]
 http/tests/misc/willCacheResponse-delegate-callback.html [ Failure ]
-http/tests/multipart/policy-ignore-crash.php [ Failure ]
 http/tests/navigation/response204.html [ Failure ]
 http/tests/security/clipboard/clipboard-file-access.html [ Failure ]
 http/tests/security/contentSecurityPolicy/object-src-no-url-blocked.html [ Failure ]
@@ -2743,6 +2744,7 @@ webkit.org/b/162739 fast/images/gif-loop-count.html [ Pass ImageOnlyFailure ]
 webkit.org/b/163093 fast/text/variations/advances.html [ Failure ]
 webkit.org/b/163093 fast/text/variations/outofbounds.html [ ImageOnlyFailure ]
 webkit.org/b/163093 fast/text/variations/default-value.html [ ImageOnlyFailure ]
+webkit.org/b/169518 fast/text/font-variations-feature-detection.html [ ImageOnlyFailure ]
 
 webkit.org/b/162647 http/tests/xmlhttprequest/onabort-response-getters.html [ Pass Failure ]
 
@@ -2870,8 +2872,6 @@ media/modern-media-controls/macos-inline-media-controls/macos-inline-media-contr
 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-compact.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-tight-padding.html [ Skip ]
-
-webkit.org/b/170180 media/modern-media-controls/media-controller/media-controller-scale-factor-audio.html [ Failure ]
 
 # Form validation popover does not obey minimum font size setting on iOS but Dynamic Type instead.
 fast/forms/validation-message-minimum-font-size.html [ Skip ]

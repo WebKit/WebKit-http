@@ -1,3 +1,849 @@
+2017-03-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Disconnecting a HTMLObjectElement does not always unload its content document
+        https://bugs.webkit.org/show_bug.cgi?id=169606
+
+        Reviewed by Andy Estes.
+
+        When removing a node, we first disconnect all subframes then update the focused element as we remove each child.
+        However, when the removed element is a focused object element with a content document, removeFocusedNodeOfSubtree
+        can update the style tree synchronously inside Document::setFocusedElement, and reload the document.
+
+        Avoid this by instantiating a SubframeLoadingDisabler on the parent of the focused element.
+
+        Test: fast/dom/removing-focused-object-element.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::removeFocusedNodeOfSubtree):
+
+2017-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Migrate to kCTFontCSSWidthAttribute
+        https://bugs.webkit.org/show_bug.cgi?id=170265
+
+        Reviewed by Darin Adler.
+
+        Previously, we were mapping from Core Text widths to CSS widths in WebKit.
+        However, on some OSes, Core Text can directly tell us what the CSS width
+        value is.
+
+        No new tests because there is no behavior change.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::getCSSAttribute):
+        (WebCore::capabilitiesForFontDescriptor):
+        * platform/spi/cocoa/CoreTextSPI.h:
+
+2017-03-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to dump touch event regions for testing
+        https://bugs.webkit.org/show_bug.cgi?id=170209
+        <rdar://problem/31309258>
+
+        Reviewed by Tim Horton.
+
+        Expose internals.touchEventRectsForEvent() and internals.passiveTouchEventListenerRects(), which
+        fetch data via Page.
+
+        Because the regions are normally updated on a timer, we have to force an eager update via Document::updateTouchEventRegions().
+
+        Test: fast/events/touch/ios/touch-event-regions.html
+
+        * page/Page.cpp:
+        (WebCore::Page::nonFastScrollableRects):
+        (WebCore::Page::touchEventRectsForEvent):
+        (WebCore::Page::passiveTouchEventListenerRects):
+        * page/Page.h:
+        * testing/Internals.cpp:
+        (WebCore::Internals::touchEventRectsForEvent):
+        (WebCore::Internals::passiveTouchEventListenerRects):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2017-03-29  Zalan Bujtas  <zalan@apple.com>
+
+        RenderBlockFlow::addFloatsToNewParent should check if float is already added to the object list.
+        https://bugs.webkit.org/show_bug.cgi?id=170259
+        <rdar://problem/31300584>
+
+        Reviewed by Simon Fraser.
+
+        r210145 assumed that m_floatingObjects would simply ignore the floating box if it was already in the list.  
+
+        Test: fast/block/float/placing-multiple-floats-crash.html
+
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::addFloatsToNewParent):
+
+2017-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Try to normalize variation ranges
+        https://bugs.webkit.org/show_bug.cgi?id=170119
+
+        Unreviewed.
+
+        Addressing post-review comment.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::isGXVariableFont):
+
+2017-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Try to normalize variation ranges
+        https://bugs.webkit.org/show_bug.cgi?id=170119
+
+        Reviewed by Simon Fraser.
+
+        TrueType GX-style variation fonts use one particular scale for values on their
+        weight/width/slope axes - usually the values lie between -1 and 1 on that scale.
+        However, OpenType 1.8-style fonts use the CSS scale for values on these axes.
+        For the purposes of font selection, these values need to lie on the same scale.
+        However, when font selection is completed and the variation values are actually
+        being applied to the fonts, values which lie on the font's actual scale need to
+        be applied. This patch adds normalize*() and denormalize*() functions to perform
+        both of these operations. 
+
+        The conversion itself between the two scales isn't an exact mapping. Mapping
+        slope is just a linear relationship with 0deg <=> 0 and 20deg <=> 1 (as per the
+        CSS Fonts spec). Mapping widths is similar, it uses a 2-component piecewise
+        linear relationship which includes the values given in the Microsoft OpenType
+        spec for the OS/2 table's usWidthClass field. Weights are more difficult, so I
+        plotted the CSS weights and the GX-style weights for every style of San
+        Francisco, saw that the relationship appears to be linear, and ran a linear
+        regression to compute the line equation.
+
+        As for the actual discrimination of determining whether a font is a GX-style
+        font or not, we can use the presence of the 'STAT' table. This table didn't
+        exist when GX fonts were being created, and OpenType 1.8 variable fonts are
+        required to have this table.
+
+        Facebook uses the string ".SFNSText" in their @font-face blocks. This font is
+        a variation font, but uses the GX-style values. Facebook asks us to create
+        this font with a weight of 700, and because the values in the font are around
+        1.0, we were erroneously thinking that the font wasn't bold, so we were then
+        applying synthetic bold. This was causing text on facebook to look fuzzy and
+        ugly.
+
+        Test: fast/text/variations/font-selection-properties-expected.html
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::isGXVariableFont):
+        (WebCore::normalizeWeight):
+        (WebCore::normalizeSlope):
+        (WebCore::denormalizeWeight):
+        (WebCore::denormalizeWidth):
+        (WebCore::denormalizeSlope):
+        (WebCore::normalizeWidth):
+        (WebCore::preparePlatformFont): Instead of using FontSelectionValues for the
+        intermediate values, we should use floats instead. This is because
+        FontSelectionValues are fixed-point numbers with the denominator having 2 bits.
+        When using this data type to represent values on the GX scale, which are usually
+        between 0 and 1, you lose a lot of fidelity. Instead, our intermediate
+        calculations should be done with floats, and converted to FontSelectionValues at
+        the end when they are representative of values on the CSS scale.
+        (WebCore::stretchFromCoreTextTraits):
+        (WebCore::fontWeightFromCoreText):
+        (WebCore::extractVariationBounds):
+        (WebCore::variationCapabilitiesForFontDescriptor):
+        (WebCore::capabilitiesForFontDescriptor):
+
+2017-03-29  Saam Barati  <sbarati@apple.com>
+
+        LinkBuffer and ExecutableAllocator shouldn't have anything to do with VM
+        https://bugs.webkit.org/show_bug.cgi?id=170210
+
+        Reviewed by Mark Lam.
+
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::compileSelector):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::compile):
+
+2017-03-29  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] Adapt self-alignment properties to the new baseline syntax
+        https://bugs.webkit.org/show_bug.cgi?id=170235
+
+        Reviewed by David Hyatt.
+
+        The baseline-position syntax has changed recently, so we need to update
+        the CSS properties using the old syntax. This patch address only the
+        self-alignment (align-self and justify-self) and default-alignment
+        (align-items and justify-items).
+
+        The content-distribution properties (align-content and justify-content)
+        will be updated in a follow up patch.
+
+        The new baseline syntax is "[first | last ]? baseline" which implies
+        modifying the parsing and computed value logic.
+
+        There are several layout tests affected by this change, so I'll update
+        them accordingly.
+
+        No new tests, just added/modified some cases to the tests we already have using the new baseline values.
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::valueForItemPositionWithOverflowAlignment):
+        * css/CSSValueKeywords.in:
+        * css/StyleBuilderConverter.h:
+        (WebCore::StyleBuilderConverter::convertSelfOrDefaultAlignmentData):
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::consumeBaselineKeyword):
+        (WebCore::consumeSelfPositionOverflowPosition):
+
+2017-03-29  Chris Dumez  <cdumez@apple.com>
+
+        Animated SVG images are not paused in pages loaded in the background
+        https://bugs.webkit.org/show_bug.cgi?id=170043
+        <rdar://problem/31234412>
+
+        Reviewed by Simon Fraser.
+
+        Animated SVG images are not paused in pages loaded in the background. We rely
+        on FrameView::isOffscreen() to stop images animations in background tab (See
+        logic in RenderElement's shouldRepaintForImageAnimation()). This works fine
+        if a tab is visble and then becomes hidden (i.e. by switching to another
+        tab). However, in the case where the tab gets loaded while in the background
+        (e.g. opening link in new background tab, or session restore), then the
+        animations would not be paused, due to FrameView::isOffscreen() erroneously
+        returning false in this case.
+
+        Normally, the following chain of events happens:
+        - Page is visible, we construct a main frame and its FrameView for loading
+          the page. When a FrameView is constructed, we call FrameView::show() to
+          make it visible. Then, if the page becomes non-visible, we call
+          Page::setIsVisibleInternal(false) which calls FrameView::hide(). After
+          that, FrameView::isOffscreen() correctly returns true because we properly
+          called FrameView::hide().
+
+        However, when doing a load while the Page is hidden, the following was
+        happening:
+        - Page is not visible, we call Page::setIsVisibleInternal(false) which tries
+          to call FrameView::hide() for the main frame but it does not have a FrameView
+          yet (because the load has not started). We start the load and end up creating
+          a FrameView. The FrameView constructor was calling FrameView::show()
+          unconditionally, thus making the FrameView think is visible, even though its
+          page isn't. At this point, FrameView::isOffscreen() was returning false
+          and animations would keep running, even though the page is not visible.
+
+        To address the issue, we now call FrameView::show() in FrameView::create() only
+        if the Page is actually visible, instead of calling it unconditionally. If the
+        page ever becomes visible, Page::setIsVisibleInternal(true) will be called and
+        it will take care of calling FrameView::show() then.
+
+        Tests: svg/animations/animations-paused-in-background-page-iframe.html
+               svg/animations/animations-paused-in-background-page.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::create):
+
+2017-03-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Links with empty hrefs should not be drag sources
+        https://bugs.webkit.org/show_bug.cgi?id=170241
+        <rdar://problem/31305505>
+
+        Reviewed by Tim Horton.
+
+        The m_dragSouceAction member of DragController represents the drag source actions that are available to the
+        document, rather than the available actions given the dragging element. Thus, it is not correct to only check
+        that (m_dragSourceAction & DragSourceActionAttachment) before proceeding down the attachment dragging codepath.
+        This should be additionally guarded with a check that the element being dragged is, in fact, an attachment
+        element.
+
+        New API test (see Tools/ChangeLog).
+
+        * page/DragController.cpp:
+        (WebCore::DragController::startDrag):
+
+2017-03-29  Jeremy Jones  <jeremyj@apple.com>
+
+        WebVideoFullscreenInterfaceAVKit needs a strong self ref before dispatching to the main thread.
+        https://bugs.webkit.org/show_bug.cgi?id=170129
+
+        Reviewed by David Kilzer.
+
+        No new tests becuase no new behavior.
+
+        Hold a strong reference to WebVideoFullscreenInterfaceAVKit when dispatching to the main thread.
+        Make WebVideoFullscreenInterfaceAVKit safe to retain from non-main thread.
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.h:
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (WebVideoFullscreenInterfaceAVKit::exitFullscreen):
+
+2017-03-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Add a Handle<> class to help with GCrypt object lifetime control
+        https://bugs.webkit.org/show_bug.cgi?id=170238
+
+        Reviewed by Michael Catanzaro.
+
+        The platform-specific CryptoAlgorithmHMAC implementation is modified
+        to showcase the GCrypt::Handle<> use. HandleDeleter<gcry_mac_hd_t>
+        is added accordingly.
+
+        * crypto/gcrypt/CryptoAlgorithmHMACGCrypt.cpp:
+        (WebCore::calculateSignature):
+
+2017-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Variation fonts: Make sure that feature detection and preprocessor macros are right
+        https://bugs.webkit.org/show_bug.cgi?id=169518
+
+        Reviewed by Simon Fraser.
+
+        When I added variable fonts support, I made all OSes parse the newly accepted values,
+        instead of just the OSes which support variable fonts.
+
+        Test: fast/text/font-variations-feature-detection.html
+
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::consumeFontStretch):
+        (WebCore::consumeFontStyle):
+        * css/parser/CSSPropertyParserHelpers.cpp:
+        (WebCore::CSSPropertyParserHelpers::divisibleBy100):
+        (WebCore::CSSPropertyParserHelpers::consumeFontWeightNumber):
+
+2017-03-29  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Controls bar may disappear while captions menu is visible (redux)
+        https://bugs.webkit.org/show_bug.cgi?id=170239
+        <rdar://problem/31320685>
+
+        Reviewed by Dean Jackson.
+
+        We did some work in webkit.org/b/168751 to prevent the controls bar from disappearing while the
+        captions menu is visible. But there were two cases where the behavior was not as intended:
+
+            1. the controls bar would hide upon exiting the video.
+            2. clicking on the controls bar while the caption panel is up would hide the controls bar
+               as well as the captions panel.
+
+        Instead of determining that the "userInteractionEnabled" property being set to "false" is indicative
+        of secondary UI, such as the tracks panel, being attached to the controls bar, we now have an
+        explicit property to specify this. Now, when "hasSecondaryUIAttached" is "true", we prevent the
+        controls bar from fading when exiting the media.
+
+        Additionally, when dismissing the tracks panel, we check whether a mouse event lead to this and check
+        if the mouse was positioned over the controls bar. If that is the case, we no longer hide the controls
+        bar and only dismiss the tracks panel.
+
+        Test: media/modern-media-controls/tracks-panel/tracks-panel-controls-bar-remains-visible-after-clicking-over-it.html
+
+        * Modules/modern-media-controls/controls/controls-bar.js:
+        (ControlsBar.prototype.set userInteractionEnabled):
+        (ControlsBar.prototype.handleEvent):
+        (ControlsBar.prototype._autoHideTimerFired):
+        * Modules/modern-media-controls/controls/macos-media-controls.js:
+        (MacOSMediaControls.prototype.showTracksPanel):
+        (MacOSMediaControls.prototype.hideTracksPanel):
+
+2017-03-29  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Volume slider is initially empty
+        https://bugs.webkit.org/show_bug.cgi?id=170237
+        <rdar://problem/31319077>
+
+        Reviewed by Dean Jackson.
+
+        Fixing fallout from https://bugs.webkit.org/show_bug.cgi?id=167935 where we changed the behavior
+        of layout() to happen prior to a commit. In this one instance, we were overriding layout() to run
+        after a commit, so we now override commit(). Otherwise, the <canvas> that we draw the volume slider
+        into would have its "width" and "height" properties set after we drew, which would clear the <canvas>.
+
+        * Modules/modern-media-controls/controls/slider.js:
+        (Slider.prototype.commit):
+        (Slider.prototype.layout): Deleted.
+
+2017-03-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Move over empty GnuTLS-based SUBTLE_CRYPTO implementation files
+        https://bugs.webkit.org/show_bug.cgi?id=170232
+
+        Reviewed by Michael Catanzaro.
+
+        Migrate the GnuTLS SUBTLE_CRYPTO implementation files to the gcrypt/
+        directory. The implementation files themselves are no-op, so this is
+        a simple move-and-rename operation that will enable proceeding with
+        the libgcrypt-based implementation of SUBTLE_CRYPTO functionality.
+
+        No change in behavior. The SUBTLE_CRYPTO feature should build as it
+        did before, and the implementations are empty anyway.
+
+        * PlatformGTK.cmake:
+        * crypto/gcrypt/CryptoAlgorithmAES_CBCGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp.
+        * crypto/gcrypt/CryptoAlgorithmAES_CFBGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmAES_CFBGnuTLS.cpp.
+        * crypto/gcrypt/CryptoAlgorithmAES_GCMGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmAES_GCMGnuTLS.cpp.
+        * crypto/gcrypt/CryptoAlgorithmAES_KWGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp.
+        * crypto/gcrypt/CryptoAlgorithmECDHGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmECDHGnuTLS.cpp.
+        * crypto/gcrypt/CryptoAlgorithmPBKDF2GCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmPBKDF2GnuTLS.cpp.
+        * crypto/gcrypt/CryptoAlgorithmRSAES_PKCS1_v1_5GCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp.
+        * crypto/gcrypt/CryptoAlgorithmRSASSA_PKCS1_v1_5GCrypt.cpp: This one already exists.
+        * crypto/gcrypt/CryptoAlgorithmRSA_OAEPGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp.
+        * crypto/gcrypt/CryptoAlgorithmRegistryGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp.
+        * crypto/gcrypt/CryptoKeyECGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoKeyECGnuTLS.cpp.
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/CryptoKeyRSAGnuTLS.cpp.
+        * crypto/gcrypt/SerializedCryptoKeyWrapGCrypt.cpp: Renamed from Source/WebCore/crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp.
+        * crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp: Removed.
+
+2017-03-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GnuTLS] Remove unused CryptoDigestGnuTLS, CryptoAlgorithmHMACGnuTLS implementation files
+        https://bugs.webkit.org/show_bug.cgi?id=170231
+
+        Reviewed by Michael Catanzaro.
+
+        * crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp: Removed. The GCrypt counterpart
+        is already in use, and this file wasn't even being built.
+
+2017-03-29  Youenn Fablet  <youenn@apple.com>
+
+        Move DTMF WebRTC extension behind its own compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=170226
+
+        Reviewed by Eric Carlson.
+
+        Moving RTCDTMFSender and RTCDTMFToneChangeEvent behinf a WEB_RTC_DTMF compile flag.
+        This compile flag is not set on any supported platform yet.
+        Disabling related test and updated test expectations.
+
+        * Modules/mediastream/RTCDTMFSender.cpp:
+        * Modules/mediastream/RTCDTMFSender.h:
+        * Modules/mediastream/RTCDTMFSender.idl:
+        * Modules/mediastream/RTCDTMFToneChangeEvent.cpp:
+        * Modules/mediastream/RTCDTMFToneChangeEvent.h:
+        * Modules/mediastream/RTCDTMFToneChangeEvent.idl:
+        * dom/EventNames.in:
+        * dom/EventTargetFactory.in:
+        * platform/mediastream/RTCDTMFSenderHandler.h:
+        * platform/mediastream/RTCDTMFSenderHandlerClient.h:
+
+2017-03-29  Antoine Quint  <graouts@apple.com>
+
+        [mac-wk1] LayoutTest media/modern-media-controls/airplay-button/airplay-button.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=168409
+        <rdar://problem/30799198>
+
+        Reviewed by Dean Jackson.
+
+        Add a new internals setting to opt into ScriptedAnimationController logging through DOM events dispatched
+        through the document. This should allow this flaky test to get information as to why the frame isn't
+        firing when it times out.
+
+        * dom/ScriptedAnimationController.cpp:
+        (WebCore::ScriptedAnimationController::suspend):
+        (WebCore::ScriptedAnimationController::resume):
+        (WebCore::ScriptedAnimationController::addThrottlingReason):
+        (WebCore::ScriptedAnimationController::removeThrottlingReason):
+        (WebCore::ScriptedAnimationController::registerCallback):
+        (WebCore::ScriptedAnimationController::cancelCallback):
+        (WebCore::ScriptedAnimationController::serviceScriptedAnimations):
+        (WebCore::ScriptedAnimationController::scheduleAnimation):
+        (WebCore::ScriptedAnimationController::dispatchLoggingEventIfRequired):
+        * dom/ScriptedAnimationController.h:
+        * page/Settings.in:
+        * testing/InternalSettings.cpp:
+        (WebCore::InternalSettings::resetToConsistentState):
+        (WebCore::InternalSettings::shouldDispatchRequestAnimationFrameEvents):
+        (WebCore::InternalSettings::setShouldDispatchRequestAnimationFrameEvents):
+        * testing/InternalSettings.h:
+        * testing/InternalSettings.idl:
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] After r214441 addIceCandidate no longer accepts an RTCIceCandidateInit dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=170192
+
+        Reviewed by Jon Lee.
+
+        Covered by updated tests.
+
+        * Modules/mediastream/RTCIceCandidate.idl: Candidate is no longer a required field in RTCIceCandidateInit.
+        * Modules/mediastream/RTCPeerConnectionInternals.js: Reworking defaultsToNull to handle both undefined and null cases.
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        LibWebRTCProvider should allow setting encoder and decoder factories
+        https://bugs.webkit.org/show_bug.cgi?id=170212
+
+        Reviewed by Eric Carlson.
+
+        No change of behavior.
+        Adding the ability to set encoder/decoder libwebrtc factory getters.
+        Setting default cocoa factory getters.
+
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.cpp:
+        (WebCore::staticFactoryAndThreads):
+        (WebCore::initializePeerConnectionFactoryAndThreads):
+        (WebCore::LibWebRTCProvider::setDecoderFactoryGetter):
+        (WebCore::LibWebRTCProvider::setEncoderFactoryGetter):
+        (WebCore::LibWebRTCProvider::setPeerConnectionFactory):
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.h:
+
+2017-03-27  Brent Fulgham  <bfulgham@apple.com>
+
+        Only attach Attributes to a given element one time
+        https://bugs.webkit.org/show_bug.cgi?id=170125
+        <rdar://problem/31279676>
+
+        Reviewed by Chris Dumez.
+
+        Attach the attribute node to the Element before calling 'setAttributeInternal', since that method may cause
+        arbitrary JavaScript events to fire. 
+
+        Test: fast/dom/Attr/only-attach-attr-once.html
+
+        * dom/Element.cpp:
+        (WebCore::Element::attachAttributeNodeIfNeeded): Added.
+        (WebCore::Element::setAttributeNode): Use new method. Revise to attach attribute before calling 'setAttributeInternal'. 
+        (WebCore::Element::setAttributeNodeNS): Ditto.
+        * dom/Element.h:
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        Stop RTCDataChannel when closing page
+        https://bugs.webkit.org/show_bug.cgi?id=170166
+
+        Reviewed by Eric Carlson.
+
+        Test: webrtc/datachannel/datachannel-gc.html
+
+        Making RTCDataChannel an ActiveDOMObject.
+        Closing the data channel backend and freeing upon close and stop.
+
+        * Modules/mediastream/RTCDataChannel.cpp:
+        (WebCore::RTCDataChannel::create):
+        (WebCore::RTCDataChannel::RTCDataChannel):
+        (WebCore::RTCDataChannel::close):
+        (WebCore::RTCDataChannel::stop):
+        * Modules/mediastream/RTCDataChannel.h:
+        * Modules/mediastream/RTCDataChannel.idl:
+        * Modules/mediastream/RTCPeerConnection.h:
+
+2017-03-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Ranges for variation font properties are not enforced
+        https://bugs.webkit.org/show_bug.cgi?id=169979
+
+        Reviewed by David Hyatt.
+
+        The spec specifies that:
+        - Font weights less than or equal to 0, or greater than or equal to 1000 are parse errors
+        - Font stretch values less than or equal to 0% are parse errors
+        - Font style values less than or equal to -90deg or greater than or equal to 90deg are parse errors
+
+        Test: fast/text/variations/out-of-bounds-selection-properties.html
+
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::consumeFontWeightRange):
+        (WebCore::fontStretchIsWithinRange):
+        (WebCore::consumeFontStretch):
+        (WebCore::consumeFontStretchRange):
+        (WebCore::fontStyleIsWithinRange):
+        (WebCore::consumeFontStyle):
+        (WebCore::consumeFontStyleRange):
+
+2017-03-28  Andy Estes  <aestes@apple.com>
+
+        [iOS] Crash in -[WebPreviewLoader failed] when running http/tests/multipart/policy-ignore-crash.php
+        https://bugs.webkit.org/show_bug.cgi?id=170197
+        <rdar://problem/30314067>
+
+        Reviewed by Brady Eidson.
+
+        If QuickLook conversion fails, we call ResourceLoader::didFail() with the NSError from
+        QuickLook, which will call back into PreviewLoader::didFail(). We only care about network
+        failures in PreviewLoader, not conversion failures, so check if
+        m_finishedLoadingDataIntoConverter is set before continuing (like we do in
+        PreviewLoader::didFinishLoading()).
+
+        Fixes crash in http/tests/multipart/policy-ignore-crash.php.
+
+        * loader/ios/PreviewLoader.mm:
+        (WebCore::PreviewLoader::didFail):
+
+2017-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Audio indicator is visible on uni-watch.com but there is no audible audio
+        https://bugs.webkit.org/show_bug.cgi?id=170200
+        <rdar://problem/31289132>
+
+        Reviewed by Eric Carlson.
+
+        Cherry-pick the following patch from Blink by <rtoy@chromium.org>:
+        - https://chromium.googlesource.com/chromium/src.git/+/439de5bb2a31384666db1a0e2dadb2b97d2f3ce4
+
+        When the gain of a GainNode is 0 or 1, the operation of the node can
+        be optimized.  When gain = 1, just copy the input to the output.  When
+        gain = 0; just zero out the output.  Currently, the input is
+        multiplied by the gain to produce the output.  This just optimizes the
+        multiplication away for the two special cases.
+
+        Also, have the GainNode set the silence hint if the gain is 0.
+
+        And fix a bug in processIfNecessary when unsilenceOutputs was causing the
+        silence hint to be cleared after the node's process method was finished
+        and may have set the silence hint.  The processing should come after
+        unsilenceOutputs to preserve any hints from processing the node.
+
+        * Modules/webaudio/AudioNode.cpp:
+        (WebCore::AudioNode::processIfNecessary):
+        * Modules/webaudio/GainNode.cpp:
+        (WebCore::GainNode::process):
+        * platform/audio/AudioBus.cpp:
+        (WebCore::AudioBus::copyWithGainFrom):
+
+2017-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Animated SVG images are not paused when outside viewport
+        https://bugs.webkit.org/show_bug.cgi?id=170155
+        <rdar://problem/31288893>
+
+        Reviewed by Antti Koivisto.
+
+        Make sure animated SVG images get paused when outside the viewport,
+        similarly to what was already done for animated GIF images. Also
+        make sure they are paused when they no longer have any renderers
+        using them.
+
+        Tests: svg/animations/animated-svg-image-outside-viewport-paused.html
+               svg/animations/animated-svg-image-removed-from-document-paused.html
+
+        * loader/cache/CachedImage.cpp:
+        (WebCore::CachedImage::didAddClient):
+        Restart the animation whenever a new CachedImage client is added. This
+        will cause us the re-evaluate if the animation should run. The animation
+        will pause again if the new renderer is not inside the viewport.
+
+        (WebCore::CachedImage::animationAdvanced):
+        Add a flag to newImageAnimationFrameAvailable() so that the renderers can
+        let us know if we can pause the animation. Pause the animation if all no
+        renderer requires it (i.e. they are all outside the viewport, or there
+        are no renderers).
+
+        * loader/cache/CachedImageClient.h:
+        (WebCore::CachedImageClient::newImageAnimationFrameAvailable):
+        By default, the CachedImageClients allow pausing. Only renderer will
+        potentially prevent pausing if they are inside the viewport.
+
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::isAnimating):
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/Image.h:
+        (WebCore::Image::isAnimating):
+        Add isAnimating() flag on Image for layout testing purposes.
+
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::newImageAnimationFrameAvailable):
+        Set canPause flag to true if the renderer is not inside the viewport.
+
+        (WebCore::RenderElement::repaintForPausedImageAnimationsIfNeeded):
+        Call startAnimation() if the renderer is now visible to resume SVG
+        animations. Repainting is enough for GIF animations but not for SVG
+        animations, we have to explicitly resume them.
+
+        * rendering/RenderElement.h:
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::addRendererWithPausedImageAnimations):
+        (WebCore::RenderView::removeRendererWithPausedImageAnimations):
+        (WebCore::RenderView::resumePausedImageAnimationsIfNeeded):
+        * rendering/RenderView.h:
+        Store CachedImages with the renderers that have paused animations.
+        This is required for SVG where we need to explicitly resume the
+        animation on the CachedImage when the renderer becomes visible
+        again. Having access to the Image will also allow us to do smarter
+        visibility checks in RenderElement's shouldRepaintForImageAnimation(),
+        in the future.
+
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::hasActiveAnimation):
+        * svg/SVGSVGElement.h:
+        Add hasActiveAnimation() method.
+
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::startAnimation):
+        Check that animations are paused before starting them. This avoid
+        jumping due to unnecessary calls to rootElement->setCurrentTime(0).
+
+        (WebCore::SVGImage::isAnimating):
+        Add isAnimating() method for layout tests purposes.
+
+        * svg/graphics/SVGImage.h:
+        * svg/graphics/SVGImageClients.h:
+        Call animationAdvanced() on the observer instead of the generic
+        changedInRect() when the SVGImage is animating. This way, we go
+        through the same code path as GIF animations and we end up calling
+        CachedImage::animationAdvanced() which calls newImageAnimationFrameAvailable()
+        on RenderElement, which determines if the animation should keep
+        running or not.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::isImageAnimating):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+        Add layout testing infrastructure.
+
+2017-03-28  Antti Koivisto  <antti@apple.com>
+
+        Missing render tree position invalidation when tearing down renderers for display:contents subtree
+        https://bugs.webkit.org/show_bug.cgi?id=170199
+        <rdar://problem/31260856>
+
+        Reviewed by Zalan Bujtas.
+
+        Test: fast/shadow-dom/slot-renderer-teardown.html
+
+        * style/RenderTreeUpdater.cpp:
+        (WebCore::RenderTreeUpdater::updateElementRenderer):
+
+            Invalidate the render tree position in case we do a teardown for an element without renderer.
+
+2017-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r214485.
+
+        This change caused LayoutTest crashes.
+
+        Reverted changeset:
+
+        "Stop RTCDataChannel when closing page"
+        https://bugs.webkit.org/show_bug.cgi?id=170166
+        http://trac.webkit.org/changeset/214485
+
+2017-03-28  Anders Carlsson  <andersca@apple.com>
+
+        ApplePayShippingContactUpdate.idl shouldn't have status field
+        https://bugs.webkit.org/show_bug.cgi?id=170202
+        rdar://problem/31307106
+
+        Reviewed by Beth Dakin.
+
+        * Modules/applepay/ApplePaySession.cpp:
+        (WebCore::convertAndValidate):
+        If status isn't set, infer it based on whether there are errors present or not.
+
+        * Modules/applepay/ApplePayShippingContactUpdate.h:
+        Make status optional here; it's still used by the old code path.
+
+        * Modules/applepay/ApplePayShippingContactUpdate.idl:
+        Remove status here.
+
+2017-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Add "Disable Caches" option that only applies to the inspected page while Web Inspector is open
+        https://bugs.webkit.org/show_bug.cgi?id=169865
+        <rdar://problem/31250573>
+
+        Reviewed by Joseph Pecoraro.
+
+        Rewrite the network agent's command for disabling resource caching to use Page::setResourceCachingEnabled.
+        The old implementation was doing weird stuff like setting no-cache headers and evicting the
+        contents of the memory cache, neither of which is correct. The new approach has no side effects
+        on the network, disk, or memory cache so it can be turned on temporarily without causing problems.
+
+        New tests:
+        - http/tests/inspector/network/set-resource-caching-disabled-disk-cache.html
+        - http/tests/inspector/network/set-resource-caching-disabled-memory-cache.html
+
+        * inspector/InspectorNetworkAgent.h:
+        * inspector/InspectorNetworkAgent.cpp:
+        (WebCore::InspectorNetworkAgent::setCacheDisabled): Deleted.
+        (WebCore::InspectorNetworkAgent::setResourceCachingDisabled): Added.
+        Implement new command.
+
+        (WebCore::InspectorNetworkAgent::willSendRequest):
+        (WebCore::InspectorNetworkAgent::mainFrameNavigated):
+        Remove crufty attempts to break caches. I believe these are intended to defeat caching
+        proxies and similar middlemen, but this is just as likely to cause unusual loading behavior.
+
+        * page/Page.h:
+        (WebCore::Page::isResourceCachingDisabled):
+        (WebCore::Page::setResourceCachingDisabledOverride):
+        Add an override setting so that Web Inspector's override does not mess up the value
+        of isResourceCachingDisabled that may have been set by a WebKit API client.
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        Fix addIceCandidate after r214441
+        https://bugs.webkit.org/show_bug.cgi?id=170146
+
+        Reviewed by Chris Dumez.
+
+        Covered by rebased test.
+
+        * Modules/mediastream/RTCPeerConnection.js:
+        (addIceCandidate): Setting function length to 1 and throwing if no parameter is passed.
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        Stop RTCDataChannel when closing page
+        https://bugs.webkit.org/show_bug.cgi?id=170166
+
+        Reviewed by Eric Carlson.
+
+        Test: webrtc/datachannel/datachannel-gc.html
+
+        Making RTCDataChannel an ActiveDOMObject.
+        Closing the data channel backend and freeing upon close and stop.
+
+        * Modules/mediastream/RTCDataChannel.cpp:
+        (WebCore::RTCDataChannel::create):
+        (WebCore::RTCDataChannel::RTCDataChannel):
+        (WebCore::RTCDataChannel::close):
+        (WebCore::RTCDataChannel::stop):
+        * Modules/mediastream/RTCDataChannel.h:
+        * Modules/mediastream/RTCDataChannel.idl:
+        * Modules/mediastream/RTCPeerConnection.h:
+
+2017-03-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Enhance the touch region debug overlay to show regions for the different events
+        https://bugs.webkit.org/show_bug.cgi?id=170162
+
+        Reviewed by Tim Horton.
+
+        Have NonFastScrollableRegionOverlay use a different color for each region in EventTrackingRegions,
+        and to draw a legend showing what the colors mean.
+        
+        On Mac, this overlay displays the non-fast scrollable region (which we don't keep separate from the wheel event
+        region).
+
+        * page/DebugPageOverlays.cpp:
+        (WebCore::NonFastScrollableRegionOverlay::updateRegion):
+        (WebCore::touchEventRegionColors):
+        (WebCore::drawRightAlignedText):
+        (WebCore::NonFastScrollableRegionOverlay::drawRect):
+        (WebCore::RegionOverlay::drawRect):
+        (WebCore::RegionOverlay::drawRegion):
+
+2017-03-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Make sure the non-fast scrolling debug overlay is correctly updated
+        https://bugs.webkit.org/show_bug.cgi?id=170142
+
+        Reviewed by Tim Horton.
+
+        AsyncScrollingCoordinator::frameViewEventTrackingRegionsChanged() is called on a timer
+        from Document code, so the existing DebugPageOverlays::didLayout() call at the end
+        of FrameView::layout() wasn't sufficient to keep the non-fast scrollable region up-to-date
+        on iOS.
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::frameViewEventTrackingRegionsChanged):
+
+2017-03-28  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] AirPlay placard text looks bad on 1x displays
+        https://bugs.webkit.org/show_bug.cgi?id=170183
+        <rdar://problem/30663416>
+
+        Reviewed by Dean Jackson.
+
+        Use subpixel antialiasing for all text in modern media controls.
+
+        * Modules/modern-media-controls/controls/media-controls.css:
+        (.media-controls-container,):
+
 2017-03-28  Antoine Quint  <graouts@apple.com>
 
         [Modern Media Controls] Improve appearance of tracks panel on macOS

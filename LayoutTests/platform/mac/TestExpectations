@@ -1429,7 +1429,12 @@ webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pa
 
 # Variation fonts are not implemented earlier than Sierra.
 [ ElCapitan Yosemite ] fast/text/variations [ Pass Failure ImageOnlyFailure ]
-[ ElCapitan Yosemite ] animations/font-variations [ Pass Failure ImageOnlyFailure ]
+[ ElCapitan Yosemite ] animations/font-variations [ Pass Failure ImageOnlyFailure Timeout ]
+
+# This test makes sure that variation fonts are disabled on OSes which don't support them. So,
+# the test should be skipped on OSes which do support them. As soon as all OSes support them,
+# we should delete the test.
+[ Sierra+ ] fast/text/font-variations-feature-detection.html [ ImageOnlyFailure ]
 
 [ Debug ] fast/selectors/slow-style-sharing-with-long-cousin-list.html [ Skip ]
 
@@ -1477,6 +1482,8 @@ media/modern-media-controls/media-documents/media-document-video-ios-sizing.html
 media/modern-media-controls/media-documents/ipad/media-document-audio-ios-sizing.html [ Skip ]
 media/modern-media-controls/media-documents/ipad/media-document-video-ios-sizing.html [ Skip ]
 media/modern-media-controls/audio/audio-controls-styles.html [ Skip ]
+
+webkit.org/b/169677 [ Release ] http/tests/media/modern-media-controls/time-labels-support/long-time.html [ Pass Timeout ]
 
 webkit.org/b/169118 [ Debug ] media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Pass Timeout ]
 
@@ -1559,3 +1566,7 @@ webkit.org/b/169637 imported/w3c/web-platform-tests/XMLHttpRequest/timeout-multi
 
 # <rdar://problem/19759913>
 http/tests/media/video-served-as-text-with-type.html [ Skip ]
+
+webkit.org/b/168132 http/tests/xmlhttprequest/simple-cross-origin-progress-events.html [ Pass Timeout ]
+
+webkit.org/b/169838 [ Release ] fast/workers/worker-close-more.html [ Pass Timeout ]

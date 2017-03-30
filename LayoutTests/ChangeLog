@@ -1,3 +1,507 @@
+2017-03-30  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION(~r212322): LayoutTest media/track/track-cue-container-rendering-position.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=168660
+
+        Reviewed Eric Carlson.
+
+        The textTrackDisplayElement call will fail and throw an exception if the text track display element
+        has not yet been added to the text track container element. We wait until it has been added.
+
+        * media/track/track-cue-container-rendering-position.html:
+
+2017-03-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Disconnecting a HTMLObjectElement does not always unload its content document
+        https://bugs.webkit.org/show_bug.cgi?id=169606
+
+        Reviewed by Andy Estes.
+
+        Add a regression test.
+
+        * fast/dom/removing-focused-object-element-expected.txt: Added.
+        * fast/dom/removing-focused-object-element.html: Added.
+
+2017-03-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Add some tests that dump the touch event regions with various content configurations
+        https://bugs.webkit.org/show_bug.cgi?id=170216
+
+        Reviewed by Dean Jackson.
+
+        Tests for touch event regions. Some of these are modeled after tests in tiled-drawing/scrolling/non-fast-region/.
+
+        * fast/events/touch/ios/touch-event-regions/resources/touch-regions-helper.js: Added.
+        * fast/events/touch/ios/touch-event-regions/active-passive-nesting-expected.html: Added.
+        * fast/events/touch/ios/touch-event-regions/active-passive-nesting.html: Added.
+        * fast/events/touch/ios/touch-event-regions/columns-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-regions/columns.html: Added.
+        * fast/events/touch/ios/touch-event-regions/complex-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-regions/complex.html: Added.
+        * fast/events/touch/ios/touch-event-regions/document-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-regions/document.html: Added.
+        * fast/events/touch/ios/touch-event-regions/iframes-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-regions/iframes.html: Added.
+        * fast/events/touch/ios/touch-event-regions/overflow-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-regions/overflow.html: Added.
+        * fast/events/touch/ios/touch-event-regions/range-sliders-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-regions/range-sliders.html: Added.
+
+2017-03-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to dump touch event regions for testing
+        https://bugs.webkit.org/show_bug.cgi?id=170209
+        <rdar://problem/31309258>
+
+        Reviewed by Tim Horton.
+
+        Simple test that dumps the regions.
+
+        * fast/events/touch/ios/touch-event-regions-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-regions.html: Added.
+
+2017-03-29  Zalan Bujtas  <zalan@apple.com>
+
+        RenderBlockFlow::addFloatsToNewParent should check if float is already added to the object list.
+        https://bugs.webkit.org/show_bug.cgi?id=170259
+        <rdar://problem/31300584>
+
+        Reviewed by Simon Fraser.
+
+        * fast/block/float/placing-multiple-floats-crash-expected.txt: Added.
+        * fast/block/float/placing-multiple-floats-crash.html: Added.
+
+2017-03-29  Tim Horton  <timothy_horton@apple.com>
+
+        Swipe gesture tests don't work on macOS Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=161675
+        <rdar://problem/23379930>
+
+        Reviewed by Darin Adler.
+
+        * platform/mac-wk2/TestExpectations:
+        * swipe/basic-cached-back-swipe-expected.txt:
+        * swipe/basic-cached-back-swipe.html:
+        * swipe/main-frame-pinning-requirement-expected.txt:
+        * swipe/main-frame-pinning-requirement.html:
+        * swipe/pushState-cached-back-swipe-expected.txt:
+        * swipe/pushState-cached-back-swipe.html:
+        * swipe/pushState-programmatic-back-while-swiping-crash-expected.txt:
+        * swipe/pushState-programmatic-back-while-swiping-crash.html:
+        * swipe/resources/swipe-test.js:
+        (measuredDurationShouldBeLessThan):
+        (startSwipeGesture):
+        (completeSwipeGesture):
+        (playEventStream):
+        (eventQueue.enqueueScrollEvent): Deleted.
+        (eventQueue.enqueueSwipeEvent): Deleted.
+        (eventQueue.hasPendingEvents): Deleted.
+        (eventQueue.callAfterEventDispatch): Deleted.
+        (eventQueue._processEventQueue): Deleted.
+        (eventQueue._processEventQueueSoon): Deleted.
+        * swipe/swipe-start-hysteresis-failures-expected.txt: Removed.
+        * swipe/swipe-start-hysteresis-failures.html: Removed.
+
+2017-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Try to normalize variation ranges
+        https://bugs.webkit.org/show_bug.cgi?id=170119
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/variations/font-selection-properties-expected.html:
+
+2017-03-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/media/modern-media-controls/time-labels-support/long-time.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=169677
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-03-29  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] Adapt self-alignment properties to the new baseline syntax
+        https://bugs.webkit.org/show_bug.cgi?id=170235
+
+        Reviewed by David Hyatt.
+
+        Added new cases to the alignment properties parsing tests so that we can verify the new
+        baseline-alignment syntax is parsed as expected.
+        Additionally, I modified the tests so that they use the testharness format.
+
+        * css3/parse-align-items-expected.txt:
+        * css3/parse-align-items.html:
+        * css3/parse-align-self-expected.txt:
+        * css3/parse-align-self.html:
+        * css3/resources/alignment-parsing-utils-th.js:
+        (checkValues):
+        * fast/css/parse-justify-items-expected.txt:
+        * fast/css/parse-justify-items.html:
+        * fast/css/parse-justify-self-expected.txt:
+        * fast/css/parse-justify-self.html:
+        * fast/css/resources/alignment-parsing-utils-th.js: Copied from LayoutTests/css3/resources/alignment-parsing-utils-th.js.
+        (checkValues):
+        (checkBadValues):
+        (checkInitialValues):
+        (checkInheritValues):
+        (checkLegacyValues):
+        (checkSupportedValues):
+
+2017-03-29  Chris Dumez  <cdumez@apple.com>
+
+        Animated SVG images are not paused in pages loaded in the background
+        https://bugs.webkit.org/show_bug.cgi?id=170043
+        <rdar://problem/31234412>
+
+        Reviewed by Simon Fraser.
+
+        Extend layout test coverage.
+
+        * svg/animations/animations-paused-in-background-page-expected.txt: Added.
+        * svg/animations/animations-paused-in-background-page-iframe-expected.txt: Added.
+        * svg/animations/animations-paused-in-background-page-iframe.html: Added.
+        * svg/animations/animations-paused-in-background-page.html: Added.
+        * svg/animations/resources/iframe-with-animated-svg-image.html: Added.
+
+2017-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Post-commit test gardening after r214546
+        https://bugs.webkit.org/show_bug.cgi?id=169518
+
+        Unreviewed.
+
+        * platform/mac-elcapitan/fast/text/font-selection-font-loading-api-parse-expected.txt:
+        * platform/mac-elcapitan/fast/text/font-style-parse-expected.txt:
+
+2017-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Post-commit test gardening after r214546
+        https://bugs.webkit.org/show_bug.cgi?id=169518
+
+        Unreviewed.
+
+        * platform/mac-elcapitan/fast/text/font-selection-font-loading-api-parse-expected.txt:
+        * platform/mac-elcapitan/fast/text/font-style-parse-expected.txt:
+
+2017-03-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/events/before-unload-adopt-subframe-to-outside.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170130
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Variation fonts: Make sure that feature detection and preprocessor macros are right
+        https://bugs.webkit.org/show_bug.cgi?id=169518
+
+        Reviewed by Simon Fraser.
+
+        Create platform-specific results for mac-elcapitan which doesn't support variation fonts.
+
+        * fast/text/font-variations-feature-detection-expected.html: Added.
+        * fast/text/font-variations-feature-detection.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-elcapitan/fast/text/font-selection-font-face-parse-expected.txt:
+        * platform/mac-elcapitan/fast/text/font-selection-font-loading-api-parse-expected.txt: Added.
+        * platform/mac-elcapitan/fast/text/font-stretch-parse-expected.txt: Added.
+        * platform/mac-elcapitan/fast/text/font-style-parse-expected.txt: Added.
+        * platform/mac-elcapitan/fast/text/font-weight-parse-expected.txt: Added.
+        * platform/mac/TestExpectations:
+
+2017-03-29  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Controls bar may disappear while captions menu is visible (redux)
+        https://bugs.webkit.org/show_bug.cgi?id=170239
+        <rdar://problem/31320685>
+
+        Reviewed by Dean Jackson.
+
+        We extend an existing test to cover the case where we would hide the controls bar while the tracks panel
+        is up by mousing out of the media. We also add a new test where we check that clicking over the controls
+        bar to dismiss the tracks panel does not hide the controls bar. Finally, we make a small change to an
+        existing test to listen to "transitionend" event on the tracks panel specifically since with this patch
+        the controls bar would disappear and trigger a similar event when disappearing as the tracks panel is dismissed.
+
+        * media/modern-media-controls/tracks-panel/tracks-panel-controls-bar-remains-visible-after-clicking-over-it-expected.txt: Added.
+        * media/modern-media-controls/tracks-panel/tracks-panel-controls-bar-remains-visible-after-clicking-over-it.html: Added.
+        * media/modern-media-controls/tracks-panel/tracks-panel-prevent-controls-bar-from-fading-expected.txt:
+        * media/modern-media-controls/tracks-panel/tracks-panel-prevent-controls-bar-from-fading.html:
+        * media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html:
+
+2017-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/workers/worker-close-more.html as a flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=169838
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-29  Youenn Fablet  <youenn@apple.com>
+
+        Move DTMF WebRTC extension behind its own compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=170226
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-03-29  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][OWR] Rebaseline fast/mediastream/RTCPeerConnection-addIceCandidate.html after r214527
+        https://bugs.webkit.org/show_bug.cgi?id=170192
+
+        Unreviewed test gardening.
+
+        * platform/gtk/fast/mediastream/RTCPeerConnection-addIceCandidate-expected.txt:
+
+2017-03-29  Youenn Fablet  <youenn@apple.com>
+
+        Add test for differentiating camera versus canvas stream
+        https://bugs.webkit.org/show_bug.cgi?id=169698
+        <rdar://problem/31076026>
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/captureStream/canvas2d.html:
+
+2017-03-28  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WebRTC] Update test RTCPeerConnection-overloaded-operations-params.html after r214441
+        https://bugs.webkit.org/show_bug.cgi?id=170223
+
+        Reviewed by Youenn Fablet.
+
+        After r214441 the arguments of addIceCandidate() are nullable.
+
+        * fast/mediastream/RTCPeerConnection-overloaded-operations-params-expected.txt:
+        * fast/mediastream/RTCPeerConnection-overloaded-operations-params.html:
+        * platform/gtk/fast/mediastream/RTCPeerConnection-overloaded-operations-params-expected.txt: Removed. The expected result was the same than the general one.
+
+2017-03-29  Antoine Quint  <graouts@apple.com>
+
+        [mac-wk1] LayoutTest media/modern-media-controls/airplay-button/airplay-button.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=168409
+        <rdar://problem/30799198>
+
+        Reviewed by Dean Jackson.
+
+        Opt into ScriptedAnimationController logging.
+
+        * media/modern-media-controls/airplay-button/airplay-button-expected.txt:
+        * media/modern-media-controls/airplay-button/airplay-button.html:
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] After r214441 addIceCandidate no longer accepts an RTCIceCandidateInit dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=170192
+
+        Reviewed by Jon Lee.
+
+        * fast/mediastream/RTCIceCandidate-expected.txt:
+        * fast/mediastream/RTCIceCandidate.html: Removing no longer valid tests.
+        * fast/mediastream/RTCPeerConnection-addIceCandidate-expected.txt:
+        * fast/mediastream/RTCPeerConnection-addIceCandidate.html: Adding more tests to cover null/undefined cases.
+        Ensuring sdpMid has a valid value.
+        * fast/mediastream/resources/promise-utils.js: Improving error logging.
+
+2017-03-27  Brent Fulgham  <bfulgham@apple.com>
+
+        Only attach Attributes to a given element one time
+        https://bugs.webkit.org/show_bug.cgi?id=170125
+        <rdar://problem/31279676>
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/Attr/make-unique-element-data-while-replacing-attr-expected.txt: Rebaselined.
+        * fast/dom/Attr/make-unique-element-data-while-replacing-attr.html: Add check before setting new value.
+        * fast/dom/Attr/only-attach-attr-once-expected.txt: Added.
+        * fast/dom/Attr/only-attach-attr-once.html: Added.
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        Stop RTCDataChannel when closing page
+        https://bugs.webkit.org/show_bug.cgi?id=170166
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/datachannel/datachannel-gc-expected.txt: Added.
+        * webrtc/datachannel/datachannel-gc.html: Added.
+
+2017-03-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Ranges for variation font properties are not enforced
+        https://bugs.webkit.org/show_bug.cgi?id=169979
+
+        Reviewed by David Hyatt.
+
+        * fast/text/font-selection-font-face-parse-expected.txt:
+        * fast/text/font-selection-font-face-parse.html:
+        * fast/text/font-selection-font-loading-api-parse-expected.txt:
+        * fast/text/font-selection-font-loading-api-parse.html:
+        * fast/text/font-style-parse-expected.txt:
+        * fast/text/font-style-parse.html:
+        * fast/text/variations/font-loading-api-parse-ranges-expected.txt:
+        * fast/text/variations/font-loading-api-parse-ranges.html:
+        * fast/text/variations/out-of-bounds-selection-properties-expected.txt: Added.
+        * fast/text/variations/out-of-bounds-selection-properties.html: Added.
+        * platform/mac-elcapitan/fast/text/font-selection-font-face-parse-expected.txt:
+
+2017-03-28  Andy Estes  <aestes@apple.com>
+
+        [iOS] Crash in -[WebPreviewLoader failed] when running http/tests/multipart/policy-ignore-crash.php
+        https://bugs.webkit.org/show_bug.cgi?id=170197
+        <rdar://problem/30314067>
+
+        Reviewed by Brady Eidson.
+
+        * platform/ios/TestExpectations: Unskipped http/tests/multipart/policy-ignore-crash.php.
+        * platform/ios/http/tests/multipart/policy-ignore-crash-expected.txt: Added an iOS-specific result.
+
+2017-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Animated SVG images are not paused when outside viewport
+        https://bugs.webkit.org/show_bug.cgi?id=170155
+        <rdar://problem/31288893>
+
+        Reviewed by Antti Koivisto.
+
+        Add layout test coverage.
+
+        * platform/mac-wk1/TestExpectations:
+        * svg/animations/animated-svg-image-outside-viewport-paused-expected.txt: Added.
+        * svg/animations/animated-svg-image-outside-viewport-paused.html: Added.
+        * svg/animations/animated-svg-image-removed-from-document-paused-expected.txt: Added.
+        * svg/animations/animated-svg-image-removed-from-document-paused.html: Added.
+        * svg/animations/resources/smilAnimation.svg: Added.
+
+2017-03-28  Antti Koivisto  <antti@apple.com>
+
+        Missing render tree position invalidation when tearing down renderers for display:contents subtree
+        https://bugs.webkit.org/show_bug.cgi?id=170199
+        <rdar://problem/31260856>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/shadow-dom/slot-renderer-teardown-expected.txt: Added.
+        * fast/shadow-dom/slot-renderer-teardown.html: Added.
+
+2017-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r214485.
+
+        This change caused LayoutTest crashes.
+
+        Reverted changeset:
+
+        "Stop RTCDataChannel when closing page"
+        https://bugs.webkit.org/show_bug.cgi?id=170166
+        http://trac.webkit.org/changeset/214485
+
+2017-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Add "Disable Caches" option that only applies to the inspected page while Web Inspector is open
+        https://bugs.webkit.org/show_bug.cgi?id=169865
+        <rdar://problem/31250573>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add tests that verify the new command works as expected when it disables resource caching.
+        I also manually verified that the override setting is cleared when Web Inspector disconnects.
+        This is not easy to check in a layout test since we rely on the Web Inspector to tell whether
+        a load happened or not.
+
+        * http/tests/inspector/network/set-resource-caching-disabled-disk-cache-expected.txt: Added.
+        * http/tests/inspector/network/set-resource-caching-disabled-disk-cache.html: Added.
+        * http/tests/inspector/network/set-resource-caching-disabled-memory-cache-expected.txt: Added.
+        * http/tests/inspector/network/set-resource-caching-disabled-memory-cache.html: Added.
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        Update LayoutTests/fast/mediastream/RTCPeerConnection-addIceCandidate.html to get more coverage
+        https://bugs.webkit.org/show_bug.cgi?id=170194
+
+        Reviewed by Chris Dumez.
+
+        * fast/mediastream/RTCPeerConnection-addIceCandidate-expected.txt:
+        * fast/mediastream/RTCPeerConnection-addIceCandidate.html: Making test more robust to failures to get more coverage.
+
+2017-03-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inspecting a Main Resource that is JS/JSON does not format / syntax highlight it properly
+        https://bugs.webkit.org/show_bug.cgi?id=166862
+        <rdar://problem/29835977>
+
+        Reviewed by Brian Burg.
+
+        * http/tests/inspector/network/resource-mime-type-expected.txt: Added.
+        * http/tests/inspector/network/resource-mime-type.html: Added.
+        Test resource mime types for different resources.
+
+        * http/tests/inspector/network/resources/json.php: Added.
+        * http/tests/inspector/network/resources/script.js: Added.
+        * http/tests/inspector/network/resources/script.txt: Added.
+        * http/tests/inspector/network/resources/stylesheet.css: Added.
+        * http/tests/inspector/network/resources/stylesheet.txt: Added.
+        * http/tests/resources/square20.jpg: Added.
+        Resources for various requests and different mime types.
+
+2017-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/xmlhttprequest/simple-cross-origin-progress-events.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168132
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark two fast/scrolling/ios/touch-scroll tests as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=170153
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove failure expectation for media/modern-media-controls/media-controller/media-controller-scale-factor-audio.html.
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-03-28  Youenn Fablet  <youenn@apple.com>
+
+        Stop RTCDataChannel when closing page
+        https://bugs.webkit.org/show_bug.cgi?id=170166
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/datachannel/datachannel-gc-expected.txt: Added.
+        * webrtc/datachannel/datachannel-gc.html: Added.
+
+2017-03-28  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION (r214386): [ios-simulator] LayoutTest media/modern-media-controls/media-controller/media-controller-scale-factor-audio.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=170180
+
+        Unreviewed. Restore a value that was mistakenly changed in the fix for webkit.org/b/169962.
+
+        * media/modern-media-controls/media-controller/media-controller-scale-factor-audio-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor-audio.html:
+
 2017-03-28  Ryan Haddad  <ryanhaddad@apple.com>
 
         Mark fast/history/ios/history-scroll-restoration.html as flaky.

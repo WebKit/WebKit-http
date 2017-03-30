@@ -36,12 +36,11 @@
 #include "LinkBuffer.h"
 #include "NativeErrorConstructor.h"
 #include "WasmCallingConvention.h"
-#include "WasmContext.h"
 #include "WasmExceptionType.h"
 
 namespace JSC { namespace Wasm {
 
-typedef CCallHelpers JIT;
+using JIT = CCallHelpers;
 
 static void materializeImportJSCell(JIT& jit, unsigned importIndex, GPRReg result)
 {
@@ -58,7 +57,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
     const JSCCallingConvention& jsCC = jscCallingConvention();
     const Signature* signature = SignatureInformation::get(vm, signatureIndex);
     unsigned argCount = signature->argumentCount();
-    JIT jit(vm, nullptr);
+    JIT jit;
 
     // Below, we assume that the JS calling convention is always on the stack.
     ASSERT(!jsCC.m_gprArgs.size());
@@ -66,8 +65,6 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
 
     jit.emitFunctionPrologue();
     jit.store64(JIT::TrustedImm32(0), JIT::Address(GPRInfo::callFrameRegister, CallFrameSlot::codeBlock * static_cast<int>(sizeof(Register)))); // FIXME Stop using 0 as codeBlocks. https://bugs.webkit.org/show_bug.cgi?id=165321
-    jit.storePtr(JIT::TrustedImmPtr(vm->webAssemblyToJSCallee.get()), JIT::Address(GPRInfo::callFrameRegister, CallFrameSlot::callee * static_cast<int>(sizeof(Register))));
-
 
     {
         bool hasBadI64Use = false;
@@ -91,18 +88,24 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
         }
 
         if (hasBadI64Use) {
-            jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer();
+            jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(*vm);
             jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
-            auto call = jit.call();
-            jit.jumpToExceptionHandler();
+            jit.loadWasmContext(GPRInfo::argumentGPR1);
 
-            void (*throwBadI64)(ExecState*) = [] (ExecState* exec) -> void {
+            // Store Callee.
+            jit.loadPtr(CCallHelpers::Address(GPRInfo::argumentGPR1, JSWebAssemblyInstance::offsetOfCallee()), GPRInfo::argumentGPR2);
+            jit.storePtr(GPRInfo::argumentGPR2, JIT::Address(GPRInfo::callFrameRegister, CallFrameSlot::callee * static_cast<int>(sizeof(Register))));
+
+            auto call = jit.call();
+            jit.jumpToExceptionHandler(*vm);
+
+            void (*throwBadI64)(ExecState*, JSWebAssemblyInstance*) = [] (ExecState* exec, JSWebAssemblyInstance* wasmContext) -> void {
                 VM* vm = &exec->vm();
                 NativeCallFrameTracer tracer(vm, exec);
 
                 {
                     auto throwScope = DECLARE_THROW_SCOPE(*vm);
-                    JSGlobalObject* globalObject = loadWasmContext(*vm)->globalObject();
+                    JSGlobalObject* globalObject = wasmContext->globalObject();
                     auto* error = ErrorInstance::create(exec, *vm, globalObject->typeErrorConstructor()->errorStructure(), ASCIILiteral("i64 not allowed as return type or argument to an imported function"));
                     throwException(exec, throwScope, error);
                 }
@@ -111,7 +114,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
                 ASSERT(!!vm->callFrameForCatch);
             };
 
-            LinkBuffer linkBuffer(*vm, jit, GLOBAL_THUNK_ID);
+            LinkBuffer linkBuffer(jit, GLOBAL_THUNK_ID);
             linkBuffer.link(call, throwBadI64);
             return FINALIZE_CODE(linkBuffer, ("WebAssembly->JavaScript invalid i64 use in import[%i]", importIndex));
         }
@@ -252,6 +255,10 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
         }
     }
 
+    jit.loadWasmContext(GPRInfo::argumentGPR0);
+    jit.loadPtr(CCallHelpers::Address(GPRInfo::argumentGPR0, JSWebAssemblyInstance::offsetOfCallee()), GPRInfo::argumentGPR0);
+    jit.storePtr(GPRInfo::argumentGPR0, JIT::Address(GPRInfo::callFrameRegister, CallFrameSlot::callee * static_cast<int>(sizeof(Register))));
+
     GPRReg importJSCellGPRReg = GPRInfo::regT0; // Callee needs to be in regT0 for slow path below.
     ASSERT(!wasmCC.m_calleeSaveRegisters.get(importJSCellGPRReg));
 
@@ -302,7 +309,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
         slowPath.link(&jit);
         jit.setupArgumentsWithExecState(GPRInfo::returnValueGPR);
         auto call = jit.call();
-        exceptionChecks.append(jit.emitJumpIfException());
+        exceptionChecks.append(jit.emitJumpIfException(*vm));
 
         int32_t (*convertToI32)(ExecState*, JSValue) = [] (ExecState* exec, JSValue v) -> int32_t { 
             VM* vm = &exec->vm();
@@ -335,7 +342,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
         notANumber.link(&jit);
         jit.setupArgumentsWithExecState(GPRInfo::returnValueGPR);
         auto call = jit.call();
-        exceptionChecks.append(jit.emitJumpIfException());
+        exceptionChecks.append(jit.emitJumpIfException(*vm));
 
         float (*convertToF32)(ExecState*, JSValue) = [] (ExecState* exec, JSValue v) -> float { 
             VM* vm = &exec->vm();
@@ -367,7 +374,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
         notANumber.link(&jit);
         jit.setupArgumentsWithExecState(GPRInfo::returnValueGPR);
         auto call = jit.call();
-        exceptionChecks.append(jit.emitJumpIfException());
+        exceptionChecks.append(jit.emitJumpIfException(*vm));
 
         double (*convertToF64)(ExecState*, JSValue) = [] (ExecState* exec, JSValue v) -> double { 
             VM* vm = &exec->vm();
@@ -388,10 +395,10 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
 
     if (!exceptionChecks.empty()) {
         exceptionChecks.link(&jit);
-        jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer();
+        jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(*vm);
         jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
         auto call = jit.call();
-        jit.jumpToExceptionHandler();
+        jit.jumpToExceptionHandler(*vm);
 
         void (*doUnwinding)(ExecState*) = [] (ExecState* exec) -> void {
             VM* vm = &exec->vm();
@@ -405,7 +412,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
         });
     }
 
-    LinkBuffer patchBuffer(*vm, jit, GLOBAL_THUNK_ID);
+    LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     patchBuffer.link(slowCall, FunctionPtr(vm->getCTIStub(linkCallThunkGenerator).code().executableAddress()));
     CodeLocationLabel callReturnLocation(patchBuffer.locationOfNearCall(slowCall));
     CodeLocationLabel hotPathBegin(patchBuffer.locationOf(targetToCheck));
@@ -419,10 +426,10 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
     return FINALIZE_CODE(patchBuffer, ("WebAssembly->JavaScript import[%i] %s", importIndex, signatureDescription.ascii().data()));
 }
 
-static MacroAssemblerCodeRef wasmToWasm(VM* vm, unsigned importIndex)
+static MacroAssemblerCodeRef wasmToWasm(unsigned importIndex)
 {
     const PinnedRegisterInfo& pinnedRegs = PinnedRegisterInfo::get();
-    JIT jit(vm, nullptr);
+    JIT jit;
 
     GPRReg scratch = GPRInfo::nonPreservedNonArgumentGPR;
 
@@ -455,7 +462,7 @@ static MacroAssemblerCodeRef wasmToWasm(VM* vm, unsigned importIndex)
     jit.loadPtr(JIT::Address(scratch, WebAssemblyFunction::offsetOfWasmEntryPointCode()), scratch);
     jit.jump(scratch);
 
-    LinkBuffer patchBuffer(*vm, jit, GLOBAL_THUNK_ID);
+    LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     return FINALIZE_CODE(patchBuffer, ("WebAssembly->WebAssembly import[%i]", importIndex));
 }
 
@@ -463,7 +470,7 @@ WasmExitStubs exitStubGenerator(VM* vm, Bag<CallLinkInfo>& callLinkInfos, Signat
 {
     WasmExitStubs stubs;
     stubs.wasmToJs = wasmToJs(vm, callLinkInfos, signatureIndex, importIndex);
-    stubs.wasmToWasm = wasmToWasm(vm, importIndex);
+    stubs.wasmToWasm = wasmToWasm(importIndex);
     return stubs;
 }
 

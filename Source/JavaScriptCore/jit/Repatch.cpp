@@ -59,7 +59,6 @@
 #include "StructureStubClearingWatchpoint.h"
 #include "StructureStubInfo.h"
 #include "ThunkGenerators.h"
-#include "WasmContext.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/ListDump.h>
 #include <wtf/StringPrintStream.h>
@@ -92,7 +91,7 @@ void ftlThunkAwareRepatchCall(CodeBlock* codeBlock, CodeLocationCall call, Funct
                 MacroAssembler::readCallTarget(call).executableAddress()));
         key = key.withCallTarget(newCalleeFunction.executableAddress());
         newCalleeFunction = FunctionPtr(
-            thunks.getSlowPathCallThunk(vm, key).code().executableAddress());
+            thunks.getSlowPathCallThunk(key).code().executableAddress());
     }
 #else // ENABLE(FTL_JIT)
     UNUSED_PARAM(codeBlock);
@@ -178,7 +177,7 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
                 && slot.slotBase() == baseValue
                 && InlineAccess::isCacheableArrayLength(stubInfo, jsCast<JSArray*>(baseValue))) {
 
-                bool generatedCodeInline = InlineAccess::generateArrayLength(*codeBlock->vm(), stubInfo, jsCast<JSArray*>(baseValue));
+                bool generatedCodeInline = InlineAccess::generateArrayLength(stubInfo, jsCast<JSArray*>(baseValue));
                 if (generatedCodeInline) {
                     ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation(), appropriateOptimizingGetByIdFunction(kind));
                     stubInfo.initArrayLength();
@@ -234,7 +233,7 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
             && !structure->needImpurePropertyWatchpoint()
             && !loadTargetFromProxy) {
 
-            bool generatedCodeInline = InlineAccess::generateSelfPropertyAccess(*codeBlock->vm(), stubInfo, structure, slot.cachedOffset());
+            bool generatedCodeInline = InlineAccess::generateSelfPropertyAccess(stubInfo, structure, slot.cachedOffset());
             if (generatedCodeInline) {
                 LOG_IC((ICEvent::GetByIdSelfPatch, structure->classInfo(), propertyName));
                 structure->startWatchingPropertyForReplacements(vm, slot.cachedOffset());
@@ -330,7 +329,7 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
         LOG_IC((ICEvent::GetByIdReplaceWithJump, baseValue.classInfoOrNull(vm), propertyName));
         
         RELEASE_ASSERT(result.code());
-        InlineAccess::rewireStubAsJump(exec->vm(), stubInfo, CodeLocationLabel(result.code()));
+        InlineAccess::rewireStubAsJump(stubInfo, CodeLocationLabel(result.code()));
     }
     
     return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
@@ -397,7 +396,7 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Str
                 && !structure->needImpurePropertyWatchpoint()
                 && !structure->inferredTypeFor(ident.impl())) {
                 
-                bool generatedCodeInline = InlineAccess::generateSelfPropertyReplace(vm, stubInfo, structure, slot.cachedOffset());
+                bool generatedCodeInline = InlineAccess::generateSelfPropertyReplace(stubInfo, structure, slot.cachedOffset());
                 if (generatedCodeInline) {
                     LOG_IC((ICEvent::PutByIdSelfPatch, structure->classInfo(), ident));
                     ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation(), appropriateOptimizingPutByIdFunction(slot, putKind));
@@ -484,7 +483,7 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Str
         
         RELEASE_ASSERT(result.code());
 
-        InlineAccess::rewireStubAsJump(vm, stubInfo, CodeLocationLabel(result.code()));
+        InlineAccess::rewireStubAsJump(stubInfo, CodeLocationLabel(result.code()));
     }
     
     return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
@@ -577,25 +576,13 @@ static void linkSlowFor(VM* vm, CallLinkInfo& callLinkInfo)
     callLinkInfo.setSlowStub(createJITStubRoutine(virtualThunk, *vm, nullptr, true));
 }
 
-static bool isWebAssemblyToJSCallee(VM& vm, JSCell* callee)
-{
-#if ENABLE(WEBASSEMBLY)
-    // The WebAssembly -> JS stub sets it caller frame's callee to a singleton which lives on the VM.
-    return callee == vm.webAssemblyToJSCallee.get();
-#else
-    UNUSED_PARAM(vm);
-    UNUSED_PARAM(callee);
-    return false;
-#endif // ENABLE(WEBASSEMBLY)
-}
-
-static JSCell* webAssemblyOwner(VM& vm)
+static JSCell* webAssemblyOwner(JSCell* callee)
 {
 #if ENABLE(WEBASSEMBLY)
     // Each WebAssembly.Instance shares the stubs from their WebAssembly.Module, which are therefore the appropriate owner.
-    return loadWasmContext(vm)->module();
+    return jsCast<WebAssemblyToJSCallee*>(callee)->module();
 #else
-    UNUSED_PARAM(vm);
+    UNUSED_PARAM(callee);
     RELEASE_ASSERT_NOT_REACHED();
     return nullptr;
 #endif // ENABLE(WEBASSEMBLY)
@@ -612,7 +599,7 @@ void linkFor(
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
 
     // WebAssembly -> JS stubs don't have a valid CodeBlock.
-    JSCell* owner = isWebAssemblyToJSCallee(vm, callerFrame->callee()) ? webAssemblyOwner(vm) : callerCodeBlock;
+    JSCell* owner = isWebAssemblyToJSCallee(callerFrame->callee()) ? webAssemblyOwner(callerFrame->callee()) : callerCodeBlock;
     ASSERT(owner);
 
     ASSERT(!callLinkInfo.isLinked());
@@ -732,10 +719,10 @@ void linkPolymorphicCall(
     CallFrame* callerFrame = exec->callerFrame();
     VM& vm = callerFrame->vm();
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
-    bool isWebAssembly = isWebAssemblyToJSCallee(vm, callerFrame->callee());
+    bool isWebAssembly = isWebAssemblyToJSCallee(callerFrame->callee());
 
     // WebAssembly -> JS stubs don't have a valid CodeBlock.
-    JSCell* owner = isWebAssembly ? webAssemblyOwner(vm) : callerCodeBlock;
+    JSCell* owner = isWebAssembly ? webAssemblyOwner(callerFrame->callee()) : callerCodeBlock;
     ASSERT(owner);
 
     CallVariantList list;
@@ -798,7 +785,7 @@ void linkPolymorphicCall(
     
     GPRReg calleeGPR = static_cast<GPRReg>(callLinkInfo.calleeGPR());
     
-    CCallHelpers stubJit(&vm, callerCodeBlock);
+    CCallHelpers stubJit(callerCodeBlock);
     
     CCallHelpers::JumpList slowPath;
     
@@ -944,7 +931,7 @@ void linkPolymorphicCall(
     stubJit.restoreReturnAddressBeforeReturn(GPRInfo::regT4);
     AssemblyHelpers::Jump slow = stubJit.jump();
         
-    LinkBuffer patchBuffer(vm, stubJit, owner, JITCompilationCanFail);
+    LinkBuffer patchBuffer(stubJit, owner, JITCompilationCanFail);
     if (patchBuffer.didFailToAllocate()) {
         linkVirtualFor(exec, callLinkInfo);
         return;
@@ -994,7 +981,7 @@ void linkPolymorphicCall(
 void resetGetByID(CodeBlock* codeBlock, StructureStubInfo& stubInfo, GetByIDKind kind)
 {
     ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation(), appropriateOptimizingGetByIdFunction(kind));
-    InlineAccess::rewireStubAsJump(*codeBlock->vm(), stubInfo, stubInfo.slowPathStartLocation());
+    InlineAccess::rewireStubAsJump(stubInfo, stubInfo.slowPathStartLocation());
 }
 
 void resetPutByID(CodeBlock* codeBlock, StructureStubInfo& stubInfo)
@@ -1013,7 +1000,7 @@ void resetPutByID(CodeBlock* codeBlock, StructureStubInfo& stubInfo)
     }
 
     ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation(), optimizedFunction);
-    InlineAccess::rewireStubAsJump(*codeBlock->vm(), stubInfo, stubInfo.slowPathStartLocation());
+    InlineAccess::rewireStubAsJump(stubInfo, stubInfo.slowPathStartLocation());
 }
 
 void resetIn(CodeBlock*, StructureStubInfo& stubInfo)

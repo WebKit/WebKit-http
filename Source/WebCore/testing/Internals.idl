@@ -213,6 +213,9 @@ enum EventThrottlingBehavior {
     [MayThrowException] unsigned long wheelEventHandlerCount();
     [MayThrowException] unsigned long touchEventHandlerCount();
 
+    [MayThrowException] ClientRectList touchEventRectsForEvent(DOMString eventName);
+    [MayThrowException] ClientRectList passiveTouchEventListenerRects();
+
     [MayThrowException] NodeList? nodesFromRect(Document document, long x, long y,
         unsigned long topPadding, unsigned long rightPadding, unsigned long bottomPadding, unsigned long leftPadding,
         boolean ignoreClipping, boolean allowShadowContent, boolean allowChildFrameContent);
@@ -244,6 +247,7 @@ enum EventThrottlingBehavior {
     unsigned long imageFrameIndex(HTMLImageElement element);
     void setImageFrameDecodingDuration(HTMLImageElement element, unrestricted float duration);
     void resetImageAnimation(HTMLImageElement element);
+    boolean isImageAnimating(HTMLImageElement element);
     void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement element, boolean value);
 
     readonly attribute InternalSettings settings;

@@ -115,6 +115,7 @@ public:
     unsigned imageFrameIndex(HTMLImageElement&);
     void setImageFrameDecodingDuration(HTMLImageElement&, float duration);
     void resetImageAnimation(HTMLImageElement&);
+    bool isImageAnimating(HTMLImageElement&);
     void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement&, bool);
 
     void clearPageCache();
@@ -232,6 +233,9 @@ public:
 
     ExceptionOr<unsigned> wheelEventHandlerCount();
     ExceptionOr<unsigned> touchEventHandlerCount();
+
+    ExceptionOr<Ref<ClientRectList>> touchEventRectsForEvent(const String&);
+    ExceptionOr<Ref<ClientRectList>> passiveTouchEventListenerRects();
 
     ExceptionOr<RefPtr<NodeList>> nodesFromRect(Document&, int x, int y, unsigned topPadding, unsigned rightPadding, unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, bool allowChildFrameContent) const;
 

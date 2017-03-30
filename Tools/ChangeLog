@@ -1,3 +1,280 @@
+2017-03-29  Tim Horton  <timothy_horton@apple.com>
+
+        Swipe gesture tests don't work on macOS Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=161675
+        <rdar://problem/23379930>
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::platformPlayBackEventStream):
+        (WTR::UIScriptController::beginBackSwipe):
+        (WTR::UIScriptController::completeBackSwipe):
+        * TestRunnerShared/EventSerialization/mac/EventSerializerMac.h: Copied from Tools/DumpRenderTree/mac/UIScriptControllerMac.mm.
+        * TestRunnerShared/EventSerialization/mac/EventSerializerMac.mm: Added.
+        (eventIsOfType):
+        (eventIsOfTypes):
+        (eventIsOfGestureType):
+        (eventIsOfGestureTypes):
+        (+[EventSerializer dictionaryForEvent:relativeToTime:]):
+        (+[EventSerializer createEventForDictionary:inWindow:relativeToTime:]):
+        (+[EventSerializer playEventStream:inWindow:completionHandler:]):
+        * TestRunnerShared/EventSerialization/mac/SharedEventStreamsMac.h: Copied from Tools/WebKitTestRunner/mac/UIScriptControllerMac.mm.
+        * TestRunnerShared/EventSerialization/mac/SharedEventStreamsMac.mm: Added.
+        (beginSwipeBackEventStream):
+        (completeSwipeBackEventStream):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::playBackEventStream):
+        (WTR::UIScriptController::beginBackSwipe):
+        (WTR::UIScriptController::completeBackSwipe):
+        (WTR::UIScriptController::platformPlayBackEventStream):
+        (WTR::UIScriptController::platformClearAllCallbacks): Deleted.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * TestRunnerShared/spi/CoreGraphicsSPI.h: Added.
+        * TestRunnerShared/spi/IOKitSPI.h: Renamed from Tools/WebKitTestRunner/ios/IOKitSPI.h.
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::playBackEvents):
+        (WTR::UIScriptController::beginBackSwipe):
+        (WTR::UIScriptController::completeBackSwipe):
+        (WTR::UIScriptController::platformPlayBackEventStream):
+
+2017-03-29  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Robust test clean-up
+        https://bugs.webkit.org/show_bug.cgi?id=170255
+
+        Reviewed by Alexey Proskuryakov.
+
+        On-device testing is the motivation for this change.  Failure to run clean-up functions can
+        result in zombie processes, residual NFS mounts and other undesirable remnants from a failed
+        test run.  Make an effort to clean-up even if exceptions are thrown during set-up or clean-up.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._set_up_run): Clean up test run if set-up fails.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.clean_up_test_run): Continue cleaning up devices even after an exception is thrown.
+
+2017-03-29  Jonathan Bedard  <jbedard@apple.com>
+
+        Simulator testing stops after the first crash
+        <rdar://problem/31325362>
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDevice):
+        (SimulatedDevice.launch_app): Increase timeout when attempting to launch app.
+
+2017-03-29  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Standardize web-server port definitions
+        https://bugs.webkit.org/show_bug.cgi?id=170144
+        <rdar://problem/31284026>
+
+        Reviewed by Daniel Bates.
+
+        Default web-server ports should be declared in global variables.
+        Add functions to web-servers which return the ports these servers
+        are using so that other tools can forward them.
+
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__): Use shared constants in http_server_base.py.
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server_unittest.py:
+        (TestLayoutTestApacheHttpd.test_start_cmd): Check port_to_forward for expected values.
+        * Scripts/webkitpy/layout_tests/servers/http_server.py:
+        (Lighttpd.__init__): Use shared constants in http_server_base.py.
+        (Lighttpd._prepare_config): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/http_server_base.py:
+        (HttpServerBase): Add default port constants.
+        (HttpServerBase.ports_to_forward): Add function to return ports used for http server.
+        * Scripts/webkitpy/layout_tests/servers/http_server_unittest.py:
+        (TestHttpServer.test_start_cmd): Check port_to_forward for expected values.
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+         (WebPlatformTestServer.ports_to_forward): Add function to return ports used for web-platform tests.
+        * Scripts/webkitpy/layout_tests/servers/websocket_server.py:
+        (PyWebSocket): Make default port values public.
+        (PyWebSocket.__init__): Use public default port.
+        (PyWebSocket.ports_to_forward): Return port used in an array.
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.ports_to_forward): Return all ports used the various web-servers managed by the port object.
+        (Port.to.start_websocket_server): Use PyWebSocket port constants.
+
+2017-03-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Links with empty hrefs should not be drag sources
+        https://bugs.webkit.org/show_bug.cgi?id=170241
+        <rdar://problem/31305505>
+
+        Reviewed by Tim Horton.
+
+        Adds a new API test: DataInteractionTests.LinkWithEmptyHREF.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+
+        Expose the current phase of the data interaction simulator for verifying behaviors in unit tests.
+
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator phase]):
+
+2017-03-29  Jonathan Bedard  <jbedard@apple.com>
+
+        Use TCP instead of FIFOs for Simulator/Device communication
+        https://bugs.webkit.org/show_bug.cgi?id=169419
+        <rdar://problem/30949615>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Using TCP instead of FIFOs when communicating with devices allows the device being tested
+        to be on a different machine then the one handling the management of the test run.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpRenderTree): Call setUp/tearDownIOSLayoutTestCommunication() instead of using FIFOs.
+        * Scripts/webkitpy/port/device.py:
+        (Device.__init__): Initialize the listening_socket.
+        (Device.listening_port): Return port of listening socket.
+        (Device.prepare_for_testing): Open listening socket on an open port, prepare platform device
+        fro testing.
+        (Device.finished_testing): Close listening socket associated with this device, call the
+        platform device's finished_testing function if it exists.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.setup_test_run): Prepare each device for testing.
+        (IOSPort.clean_up_test_run): Notify each device that testing has completed.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort): Work around device persistence bug.
+        (IOSSimulatorPort.__init__): Ditto.
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess):
+        (SimulatorProcess.NonBlockingFileFromSocket): Add to work around shortcomings in
+        Python 2’s makefile.
+        (SimulatorProcess.NonBlockingFileFromSocket.__init__): Initialize file with socket.
+        (SimulatorProcess.ReadFileSocket.close): Close file and then socket;
+        (SimulatorProcess.__init__): Pass TCP port over environment, remove FIFO names.
+        (SimulatorProcess.__getattr__): Expose all file attributes.
+        (SimulatorProcess._accept_connection_create_file): Wait for connection from server and
+        create and return a file-like object from the incoming connection.
+        (SimulatorProcess._start): Use TCP connections instead of FIFOs.
+        (SimulatorProcess._start.handler): Output server port in timeout exception.
+        (SimulatorProcess._reset): Deleted.
+        * TestRunnerShared/IOSLayoutTestCommunication.cpp: Added.
+        (connectToServer): Return socket connected to the provided server address.
+        (setupiOSLayoutTestCommunication): Connect stdin, stdout and stderr as socket to a
+        TCP server running on localhost.
+        (tearDownIOSLayoutTestCommunication): Close stdin, stdout and stderr TCP sockets.
+        * TestRunnerShared/IOSLayoutTestCommunication.h: Added.
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformInitialize): Call setUpIOSLayoutTestCommunication()
+        instead of using FIFOs.
+        (WTR::TestController::platformDestroy): Call tearDownIOSLayoutTestCommunication().
+
+2017-03-29  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Add IOSDevicePort and IOSPort tests
+        https://bugs.webkit.org/show_bug.cgi?id=170206
+        <rdar://problem/31308364>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/darwin_testcase.py: Removed unused import.
+        * Scripts/webkitpy/port/ios_device_unittest.py: Added.
+        (iosDeviceTest): Contains tests for the IOSDevicePort.
+        (iosDeviceTest.make_port): Creates an IOSDevicePort with arguments.
+        (iosDeviceTest.test_operating_system): Check for the correct operating system.
+        * Scripts/webkitpy/port/ios_simulator_unittest.py: Moved from Tools/Scripts/webkitpy/port/ios_unittest.py.
+        (iosSimulatorTest): Inherit from ios_testcase.
+        (iosSimulatorTest.make_port): Ditto.
+        (iosSimulatorTest.test_get_crash_log): Ditto.
+        * Scripts/webkitpy/port/ios_testcase.py: Added.
+        (iOSTest): Contains shared tests for the IOSDevicePort and IOSSimulatorPort.
+        (iOSTest.test_driver_name): Tests for iOS app driver.
+        (iOSTest.test_baseline_searchpath): Check that ios and ios-wk1 are in the baseline search path.
+        * Scripts/webkitpy/port/ios_unittest.py: Moved to ios_simulator_unittest.py.
+        * Scripts/webkitpy/port/port_testcase.py:
+        (PortTestCase): Rename is_simulator to disable_setup to more accurately describe it's meaning.
+        (PortTestCase.test_diff_image): Use disable_setup instead of is_simulator.
+        (PortTestCase.test_diff_image_crashed): Ditto.
+
+2017-03-28  Jason Marcell  <jmarcell@apple.com>
+
+        Fix `index-expected.txt` for dashboard test results.
+        https://bugs.webkit.org/show_bug.cgi?id=170214
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/index-expected.txt:
+
+2017-03-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Bot watcher's dashboard has separate settings for "mac" and "macos"
+        https://bugs.webkit.org/show_bug.cgi?id=170164
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Settings.js:
+        (Settings.prototype.parsePlatformFamily): Aded a special case for "macos".
+
+2017-03-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix dashboard test results on the dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=170158
+
+        Reviewed by Tim Horton.
+
+        Link to result diff instead of stdio. Looking at the diff, I wonder if it can be
+        further improved, as it's not super readable, but stdio is entirely useless in this context.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot.prototype.dashboardTestResultsURLForIteration): Generate formatted diff link.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        Fixed a typo in step name, so that it's actually treated as productive.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.appendBuilderQueueStatus):
+        (BuildbotTesterQueueView.prototype.update):
+        (BuildbotTesterQueueView.prototype._presentPopoverForGenericTestFailures):
+        Added special handling for dashboard test results.
+
+2017-03-28  Aakash Jain  <aakash_jain@apple.com>
+
+        Fix Dashboard test _presentPopoverForJavaScriptCoreTestRegressions
+        https://bugs.webkit.org/show_bug.cgi?id=170193
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/tests.js:
+        Fixed the order of arguments.
+
+2017-03-28  Aakash Jain  <aakash_jain@apple.com>
+
+        Dashboard tests fails to fetch the revision from commits
+        https://bugs.webkit.org/show_bug.cgi?id=170191
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockTrac.js:
+        Added recordedCommitIndicesByRevisionNumber.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/tests.js:
+        (setup): Populated trac.recordedCommitIndicesByRevisionNumber since the dashboard code uses this variable.
+
+2017-03-28  Timothy Horton  <timothy_horton@apple.com>
+
+        Safari crashes when attempting to close tab that is displaying PDF
+        https://bugs.webkit.org/show_bug.cgi?id=170201
+        <rdar://problem/31242019>
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DoAfterNextPresentationUpdateAfterCrash.mm:
+        (TEST):
+        Add a test for doAfterNextStablePresentationUpdate just like the existing
+        non-stable one.
+
 2017-03-28  Jonathan Bedard  <jbedard@apple.com>
 
         webkitpy: Use host pattern for devices

@@ -298,7 +298,7 @@ public:
     
     bool isMarkedRaw(const void* p);
     HeapVersion markingVersion() const { return m_markingVersion; }
-    
+
 private:
     static const size_t atomAlignmentMask = atomSize - 1;
 

@@ -106,6 +106,7 @@ class JSObject;
 class JSWebAssemblyInstance;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
+class PromiseDeferredTimer;
 class RegExpCache;
 class Register;
 class RegisterAtOffsetList;
@@ -284,14 +285,6 @@ private:
     RefPtr<JSLock> m_apiLock;
 
 public:
-#if ENABLE(ASSEMBLER)
-    // executableAllocator should be destructed after the heap, as the heap can call executableAllocator
-    // in its destructor.
-    ExecutableAllocator executableAllocator;
-#endif
-
-    // The heap should be just after executableAllocator and before other members to ensure that it's
-    // destructed after all the objects that reference it.
     Heap heap;
     
     Subspace auxiliarySpace;
@@ -336,7 +329,6 @@ public:
     Strong<Structure> webAssemblyCalleeStructure;
     Strong<Structure> webAssemblyToJSCalleeStructure;
     Strong<Structure> webAssemblyCodeBlockStructure;
-    Strong<JSCell> webAssemblyToJSCallee;
 #endif
     Strong<Structure> moduleProgramExecutableStructure;
     Strong<Structure> regExpStructure;
@@ -380,6 +372,7 @@ public:
     std::once_flag m_wasmSignatureInformationOnceFlag;
     std::unique_ptr<Wasm::SignatureInformation> m_wasmSignatureInformation;
 #endif
+    std::unique_ptr<PromiseDeferredTimer> promiseDeferredTimer;
     
     JSCell* currentlyDestructingCallbackObject;
     const ClassInfo* currentlyDestructingCallbackObjectClassInfo;
@@ -673,7 +666,7 @@ public:
     template<typename Func>
     void logEvent(CodeBlock*, const char* summary, const Func& func);
 
-    std::optional<PlatformThread> ownerThread() const { return m_apiLock->ownerThread(); }
+    std::optional<ThreadIdentifier> ownerThread() const { return m_apiLock->ownerThread(); }
 
     VMTraps& traps() { return m_traps; }
 

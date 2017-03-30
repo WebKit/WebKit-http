@@ -91,6 +91,7 @@ test("_parseRevisionFromURL", function()
 test("nextRevision", function()
 {
     this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    this.trac.recordedCommitIndicesByRevisionNumber = MockTrac.recordedCommitIndicesByRevisionNumber;
     strictEqual(this.trac.nextRevision("trunk", "33020"), "33022", "nextRevision same branch");
     strictEqual(this.trac.nextRevision("trunk", "33019"), "33020", "nextRevision different branch");
 });
@@ -98,12 +99,14 @@ test("nextRevision", function()
 test("indexOfRevision", function()
 {
     this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    this.trac.recordedCommitIndicesByRevisionNumber = MockTrac.recordedCommitIndicesByRevisionNumber;
     strictEqual(this.trac.indexOfRevision("33020"), 2, "indexOfRevision");
 });
 
 test("commitsOnBranchLaterThanRevision", function()
 {
     this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    this.trac.recordedCommitIndicesByRevisionNumber = MockTrac.recordedCommitIndicesByRevisionNumber;
     var commits = this.trac.commitsOnBranchLaterThanRevision("trunk", "33020");
     equal(commits.length, 1, "greater than 33020");
 });
@@ -111,6 +114,7 @@ test("commitsOnBranchLaterThanRevision", function()
 test("commitsOnBranchLaterThanRevision no commits", function()
 {
     this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    this.trac.recordedCommitIndicesByRevisionNumber = MockTrac.recordedCommitIndicesByRevisionNumber;
     var commits = this.trac.commitsOnBranchLaterThanRevision("someOtherBranch", "33021");
     equal(commits.length, 0, "greater than 33021");
 });
@@ -118,6 +122,7 @@ test("commitsOnBranchLaterThanRevision no commits", function()
 test("commitsOnBranchInRevisionRange", function()
 {
     this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    this.trac.recordedCommitIndicesByRevisionNumber = MockTrac.recordedCommitIndicesByRevisionNumber;
     var commits = this.trac.commitsOnBranchInRevisionRange("trunk", "33020", "33022");
     equal(commits.length, 2, "in range 33020, 33022");
 });
@@ -156,6 +161,7 @@ module("BuildBotQueueView", {
     setup: function() {
         this.trac = new MockTrac();
         this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+        this.trac.recordedCommitIndicesByRevisionNumber = MockTrac.recordedCommitIndicesByRevisionNumber;
         this.queue = new MockBuildbotQueue();
         this.trunkBranch = {
             name: "trunk",
@@ -318,7 +324,7 @@ test("_presentPopoverForJavaScriptCoreTestRegressions including loading", functi
     iteration.javaScriptCoreTestResults = new MockBuildbotTestResults();
 
     var view = new BuildbotQueueView();
-    view._presentPopoverForJavaScriptCoreTestRegressions(element, popover, iteration, "jscore-test");
+    view._presentPopoverForJavaScriptCoreTestRegressions("jscore-test", element, popover, iteration);
 
     JSON.load("resources/test-jsc-results.json", function(data)
     {
@@ -362,7 +368,7 @@ test("_presentPopoverForJavaScriptCoreTestRegressions already loaded", function(
     iteration.javaScriptCoreTestResults = {"regressions": ["uno", "dos", "tres"]};
 
     var view = new BuildbotQueueView();
-    view._presentPopoverForJavaScriptCoreTestRegressions(element, popover, iteration, "jscore-test");
+    view._presentPopoverForJavaScriptCoreTestRegressions("jscore-test", element, popover, iteration);
 
     var numChildrenInEmptyPopoverContent = 2;
     strictEqual(popover._content.childNodes.length - numChildrenInEmptyPopoverContent,
@@ -382,6 +388,7 @@ module("BuildBotQueue", {
     setup: function() {
         Dashboard.Repository.OpenSource.trac = new MockTrac();
         Dashboard.Repository.OpenSource.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+        Dashboard.Repository.OpenSource.trac.recordedCommitIndicesByRevisionNumber = MockTrac.recordedCommitIndicesByRevisionNumber;
         this.queue = new MockBuildbotQueue();
         this.queue.branches = [{
             name: "trunk",

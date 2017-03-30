@@ -509,10 +509,6 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
-    [_scrollView _setEdgesScrollingContentIntoSafeArea:UIRectEdgeAll];
-#endif
-
     [self addSubview:_scrollView.get()];
 
     static uint32_t programSDKVersion = dyld_get_program_sdk_version();
@@ -5160,22 +5156,24 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 - (void)_doAfterNextStablePresentationUpdate:(dispatch_block_t)updateBlock
 {
-    updateBlock = Block_copy(updateBlock);
+    auto updateBlockCopy = makeBlockPtr(updateBlock);
+
     if (_stableStatePresentationUpdateCallbacks)
-        [_stableStatePresentationUpdateCallbacks addObject:updateBlock];
+        [_stableStatePresentationUpdateCallbacks addObject:updateBlockCopy.get()];
     else {
-        _stableStatePresentationUpdateCallbacks = adoptNS([[NSMutableArray alloc] initWithObjects:Block_copy(updateBlock), nil]);
+        _stableStatePresentationUpdateCallbacks = adoptNS([[NSMutableArray alloc] initWithObjects:updateBlockCopy.get(), nil]);
         [self _firePresentationUpdateForPendingStableStatePresentationCallbacks];
     }
-    Block_release(updateBlock);
 }
 
 - (void)_firePresentationUpdateForPendingStableStatePresentationCallbacks
 {
     RetainPtr<WKWebView> strongSelf = self;
-    [self _doAfterNextPresentationUpdate:^() {
-        if ([strongSelf->_stableStatePresentationUpdateCallbacks count])
-            [strongSelf _firePresentationUpdateForPendingStableStatePresentationCallbacks];
+    [self _doAfterNextPresentationUpdate:[strongSelf] {
+        dispatch_async(dispatch_get_main_queue(), [strongSelf] {
+            if ([strongSelf->_stableStatePresentationUpdateCallbacks count])
+                [strongSelf _firePresentationUpdateForPendingStableStatePresentationCallbacks];
+        });
     }];
 }
 

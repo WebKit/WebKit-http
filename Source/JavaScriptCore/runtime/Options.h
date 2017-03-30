@@ -252,6 +252,7 @@ typedef const char* optionString;
     v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(8, 2) - 1, Normal, nullptr) \
     v(int32, priorityDeltaOfDFGCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
     v(int32, priorityDeltaOfFTLCompilerThreads, computePriorityDeltaOfWorkerThreads(-2, 0), Normal, nullptr) \
+    v(int32, priorityDeltaOfWasmCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
     \
     v(bool, useProfiler, false, Normal, nullptr) \
     v(bool, disassembleBaselineForProfiler, true, Normal, nullptr) \
@@ -428,8 +429,13 @@ typedef const char* optionString;
     v(bool, useCodeCache, true, Normal, "If false, the unlinked byte code cache will not be used.") \
     \
     v(bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
+    \
+    v(bool, failToCompileWebAssemblyCode, false, Normal, "If true, no Wasm::Plan will sucessfully compile a function.") \
+    v(size, webAssemblyPartialCompileLimit, 5000, Normal, "Limit on the number of bytes a Wasm::Plan::compile should attempt before checking for other work.") \
+    \
     v(bool, simulateWebAssemblyLowMemory, false, Normal, "If true, the Memory object won't mmap the full 'maximum' range and instead will allocate the minimum required amount.") \
     v(bool, useWebAssemblyFastMemory, true, Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.") \
+    v(bool, crashIfWebAssemblyCantFastMemory, false, Normal, "If true, we will crash if we can't obtain fast memory for wasm.") \
     v(bool, useWebAssemblyFastTLS, true, Normal, "If true, we will try to use fast thread-local storage if available on the current platform.")
 
 
@@ -489,6 +495,7 @@ public:
     // This typedef is to allow us to eliminate the '_' in the field name in
     // union inside Entry. This is needed to keep the style checker happy.
     typedef int32_t int32;
+    typedef size_t size;
 
     // Declare the option IDs:
     enum ID {
@@ -504,6 +511,7 @@ public:
         unsignedType,
         doubleType,
         int32Type,
+        sizeType,
         optionRangeType,
         optionStringType,
         gcLogLevelType,
@@ -543,6 +551,7 @@ private:
         unsigned unsignedVal;
         double doubleVal;
         int32 int32Val;
+        size sizeVal;
         OptionRange optionRangeVal;
         const char* optionStringVal;
         GCLogging::Level gcLogLevelVal;

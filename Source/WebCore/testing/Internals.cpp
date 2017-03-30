@@ -744,6 +744,19 @@ void Internals::resetImageAnimation(HTMLImageElement& element)
     image->resetAnimation();
 }
 
+bool Internals::isImageAnimating(HTMLImageElement& element)
+{
+    auto* cachedImage = element.cachedImage();
+    if (!cachedImage)
+        return false;
+
+    auto* image = cachedImage->image();
+    if (!image)
+        return false;
+
+    return image->isAnimating();
+}
+
 void Internals::setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement& element, bool value)
 {
     auto* cachedImage = element.cachedImage();
@@ -1704,6 +1717,24 @@ ExceptionOr<unsigned> Internals::touchEventHandlerCount()
         return Exception { INVALID_ACCESS_ERR };
 
     return document->touchEventHandlerCount();
+}
+
+ExceptionOr<Ref<ClientRectList>> Internals::touchEventRectsForEvent(const String& eventName)
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return Exception { INVALID_ACCESS_ERR };
+
+    return document->page()->touchEventRectsForEvent(eventName);
+}
+
+ExceptionOr<Ref<ClientRectList>> Internals::passiveTouchEventListenerRects()
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return Exception { INVALID_ACCESS_ERR };
+
+    return document->page()->passiveTouchEventListenerRects();
 }
 
 // FIXME: Remove the document argument. It is almost always the same as

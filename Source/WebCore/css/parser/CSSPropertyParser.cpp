@@ -883,15 +883,13 @@ static RefPtr<CSSValue> consumeFontWeightRange(CSSParserTokenRange& range)
 {
     if (auto result = consumeFontWeightKeywordValue(range))
         return result;
-    auto firstNumber = consumeNumber(range, ValueRangeAll);
+    auto firstNumber = consumeFontWeightNumber(range);
     if (!firstNumber)
         return nullptr;
     if (range.atEnd())
         return firstNumber;
-    auto secondNumber = consumeNumber(range, ValueRangeAll);
-    if (!secondNumber)
-        return nullptr;
-    if (firstNumber->floatValue() > secondNumber->floatValue())
+    auto secondNumber = consumeFontWeightNumber(range);
+    if (!secondNumber || firstNumber->floatValue() > secondNumber->floatValue())
         return nullptr;
     auto result = CSSValueList::createSpaceSeparated();
     result->append(firstNumber.releaseNonNull());
@@ -905,11 +903,22 @@ static RefPtr<CSSPrimitiveValue> consumeFontStretchKeywordValue(CSSParserTokenRa
     return consumeIdent<CSSValueUltraCondensed, CSSValueExtraCondensed, CSSValueCondensed, CSSValueSemiCondensed, CSSValueNormal, CSSValueSemiExpanded, CSSValueExpanded, CSSValueExtraExpanded, CSSValueUltraExpanded>(range);
 }
 
+#if ENABLE(VARIATION_FONTS)
+static bool fontStretchIsWithinRange(float stretch)
+{
+    return stretch > 0;
+}
+#endif
+
 static RefPtr<CSSPrimitiveValue> consumeFontStretch(CSSParserTokenRange& range)
 {
     if (auto result = consumeFontStretchKeywordValue(range))
         return result;
-    return consumePercent(range, ValueRangeAll);
+#if ENABLE(VARIATION_FONTS)
+    if (auto percent = consumePercent(range, ValueRangeNonNegative))
+        return fontStretchIsWithinRange(percent->value<float>()) ? percent : nullptr;
+#endif
+    return nullptr;
 }
 
 #if ENABLE(VARIATION_FONTS)
@@ -917,15 +926,13 @@ static RefPtr<CSSValue> consumeFontStretchRange(CSSParserTokenRange& range)
 {
     if (auto result = consumeFontStretchKeywordValue(range))
         return result;
-    auto firstPercent = consumePercent(range, ValueRangeAll);
-    if (!firstPercent)
+    auto firstPercent = consumePercent(range, ValueRangeNonNegative);
+    if (!firstPercent || !fontStretchIsWithinRange(firstPercent->value<float>()))
         return nullptr;
     if (range.atEnd())
         return firstPercent;
-    auto secondPercent = consumePercent(range, ValueRangeAll);
-    if (!secondPercent)
-        return nullptr;
-    if (firstPercent->floatValue() > secondPercent->floatValue())
+    auto secondPercent = consumePercent(range, ValueRangeNonNegative);
+    if (!secondPercent || !fontStretchIsWithinRange(secondPercent->value<float>()) || firstPercent->floatValue() > secondPercent->floatValue())
         return nullptr;
     auto result = CSSValueList::createSpaceSeparated();
     result->append(firstPercent.releaseNonNull());
@@ -939,21 +946,34 @@ static RefPtr<CSSPrimitiveValue> consumeFontStyleKeywordValue(CSSParserTokenRang
     return consumeIdent<CSSValueNormal, CSSValueItalic, CSSValueOblique>(range);
 }
 
+#if ENABLE(VARIATION_FONTS)
+static bool fontStyleIsWithinRange(float oblique)
+{
+    return oblique > -90 && oblique < 90;
+}
+#endif
+
 static RefPtr<CSSFontStyleValue> consumeFontStyle(CSSParserTokenRange& range, CSSParserMode cssParserMode)
 {
     auto result = consumeFontStyleKeywordValue(range);
     if (!result)
         return nullptr;
 
-    if (result->valueID() == CSSValueNormal)
-        return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueNormal));
-    if (result->valueID() == CSSValueItalic)
-        return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueItalic));
+    auto valueID = result->valueID();
+    if (valueID == CSSValueNormal || valueID == CSSValueItalic)
+        return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(valueID));
     ASSERT(result->valueID() == CSSValueOblique);
-    if (range.atEnd())
-        return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique));
-    if (auto angle = consumeAngle(range, cssParserMode))
-        return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique), WTFMove(angle));
+#if ENABLE(VARIATION_FONTS)
+    if (!range.atEnd()) {
+        if (auto angle = consumeAngle(range, cssParserMode)) {
+            if (fontStyleIsWithinRange(angle->value<float>(CSSPrimitiveValue::CSS_DEG)))
+                return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique), WTFMove(angle));
+            return nullptr;
+        }
+    }
+#else
+    UNUSED_PARAM(cssParserMode);
+#endif
     return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique));
 }
 
@@ -968,15 +988,15 @@ static RefPtr<CSSFontStyleRangeValue> consumeFontStyleRange(CSSParserTokenRange&
         return CSSFontStyleRangeValue::create(keyword.releaseNonNull());
 
     if (auto firstAngle = consumeAngle(range, cssParserMode)) {
+        if (!fontStyleIsWithinRange(firstAngle->value<float>(CSSPrimitiveValue::CSS_DEG)))
+            return nullptr;
         if (range.atEnd()) {
             auto result = CSSValueList::createSpaceSeparated();
             result->append(firstAngle.releaseNonNull());
             return CSSFontStyleRangeValue::create(keyword.releaseNonNull(), WTFMove(result));
         }
         auto secondAngle = consumeAngle(range, cssParserMode);
-        if (!secondAngle)
-            return nullptr;
-        if (firstAngle->floatValue(CSSPrimitiveValue::CSS_DEG) > secondAngle->floatValue(CSSPrimitiveValue::CSS_DEG))
+        if (!secondAngle || !fontStyleIsWithinRange(secondAngle->value<float>(CSSPrimitiveValue::CSS_DEG)) || firstAngle->floatValue(CSSPrimitiveValue::CSS_DEG) > secondAngle->floatValue(CSSPrimitiveValue::CSS_DEG))
             return nullptr;
         auto result = CSSValueList::createSpaceSeparated();
         result->append(firstAngle.releaseNonNull());
@@ -2997,10 +3017,26 @@ static RefPtr<CSSPrimitiveValue> consumeSelfPositionKeyword(CSSParserTokenRange&
     return nullptr;
 }
 
+static RefPtr<CSSValue> consumeBaselineKeyword(CSSParserTokenRange& range)
+{
+    CSSValueID id = range.peek().id();
+    if (identMatches<CSSValueBaseline>(id))
+        return consumeIdent(range);
+
+    if (RefPtr<CSSPrimitiveValue> preference = consumeIdent<CSSValueFirst, CSSValueLast>(range)) {
+        if (range.peek().id() == CSSValueBaseline)
+            return createPrimitiveValuePair(preference.releaseNonNull(), consumeIdent(range), Pair::IdenticalValueEncoding::Coalesce);
+    }
+    return nullptr;
+}
+
 static RefPtr<CSSValue> consumeSelfPositionOverflowPosition(CSSParserTokenRange& range)
 {
-    if (identMatches<CSSValueAuto, CSSValueNormal, CSSValueStretch, CSSValueBaseline, CSSValueLastBaseline>(range.peek().id()))
+    if (identMatches<CSSValueAuto, CSSValueNormal, CSSValueStretch>(range.peek().id()))
         return consumeIdent(range);
+
+    if (identMatches<CSSValueFirst, CSSValueLast, CSSValueBaseline>(range.peek().id()))
+        return consumeBaselineKeyword(range);
 
     RefPtr<CSSPrimitiveValue> overflowPosition = consumeIdent<CSSValueUnsafe, CSSValueSafe>(range);
     RefPtr<CSSPrimitiveValue> selfPosition = consumeSelfPositionKeyword(range);

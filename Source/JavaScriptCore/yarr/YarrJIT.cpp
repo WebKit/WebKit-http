@@ -2657,7 +2657,7 @@ public:
     {
     }
 
-    void compile(VM* vm, YarrCodeBlock& jitObject)
+    void compile(YarrCodeBlock& jitObject)
     {
         generateEnter();
 
@@ -2685,7 +2685,7 @@ public:
         generate();
         backtrack();
 
-        LinkBuffer linkBuffer(*vm, *this, REGEXP_CODE_ID, JITCompilationCanFail);
+        LinkBuffer linkBuffer(*this, REGEXP_CODE_ID, JITCompilationCanFail);
         if (linkBuffer.didFailToAllocate()) {
             jitObject.setFallBack(true);
             return;
@@ -2740,9 +2740,9 @@ private:
 void jitCompile(YarrPattern& pattern, YarrCharSize charSize, VM* vm, YarrCodeBlock& jitObject, YarrJITCompileMode mode)
 {
     if (mode == MatchOnly)
-        YarrGenerator<MatchOnly>(vm, pattern, charSize).compile(vm, jitObject);
+        YarrGenerator<MatchOnly>(vm, pattern, charSize).compile(jitObject);
     else
-        YarrGenerator<IncludeSubpatterns>(vm, pattern, charSize).compile(vm, jitObject);
+        YarrGenerator<IncludeSubpatterns>(vm, pattern, charSize).compile(jitObject);
 }
 
 }}

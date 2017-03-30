@@ -45,13 +45,13 @@ class VM;
 namespace Wasm {
 
 // FIXME: We should support other modes. see: https://bugs.webkit.org/show_bug.cgi?id=162693
-enum class MemoryMode {
+enum class MemoryMode : uint8_t {
     BoundsChecking,
     Signaling,
     NumberOfMemoryModes
 };
 static constexpr size_t NumberOfMemoryModes = static_cast<size_t>(MemoryMode::NumberOfMemoryModes);
-const char* makeString(MemoryMode);
+JS_EXPORT_PRIVATE const char* makeString(MemoryMode);
 
 class Memory : public RefCounted<Memory> {
     WTF_MAKE_NONCOPYABLE(Memory);

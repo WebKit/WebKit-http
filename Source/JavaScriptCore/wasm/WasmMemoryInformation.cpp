@@ -29,10 +29,26 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "WasmCallingConvention.h"
+#include "WasmContext.h"
 #include "WasmMemory.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace JSC { namespace Wasm {
+
+static Vector<GPRReg> getPinnedRegisters(unsigned remainingPinnedRegisters)
+{
+    Vector<GPRReg> registers;
+    jscCallingConvention().m_calleeSaveRegisters.forEach([&] (Reg reg) {
+        if (!reg.isGPR())
+            return;
+        GPRReg gpr = reg.gpr();
+        if (!remainingPinnedRegisters || RegisterSet::stackRegisters().get(reg))
+            return;
+        --remainingPinnedRegisters;
+        registers.append(gpr);
+    });
+    return registers;
+}
 
 const PinnedRegisterInfo& PinnedRegisterInfo::get()
 {
@@ -40,41 +56,40 @@ const PinnedRegisterInfo& PinnedRegisterInfo::get()
     static std::once_flag staticPinnedRegisterInfoFlag;
     std::call_once(staticPinnedRegisterInfoFlag, [] () {
         Vector<PinnedSizeRegisterInfo> sizeRegisters;
-        GPRReg baseMemoryPointer;
+        GPRReg baseMemoryPointer = InvalidGPRReg;
+        GPRReg wasmContextPointer = InvalidGPRReg;
 
         // FIXME: We should support more than one memory size register, and we should allow different
         //        WebAssembly.Instance to have different pins. Right now we take a vector with only one entry.
         //        If we have more than one size register, we can have one for each load size class.
         //        see: https://bugs.webkit.org/show_bug.cgi?id=162952
         Vector<unsigned> pinnedSizes = { 0 };
-        unsigned remainingPinnedRegisters = pinnedSizes.size() + 1;
-        jscCallingConvention().m_calleeSaveRegisters.forEach([&] (Reg reg) {
-            if (!reg.isGPR())
-                return;
-            GPRReg gpr = reg.gpr();
-            if (!remainingPinnedRegisters || RegisterSet::stackRegisters().get(reg))
-                return;
-            if (remainingPinnedRegisters == 1) {
-                baseMemoryPointer = gpr;
-                remainingPinnedRegisters--;
-            } else
-                sizeRegisters.append({ gpr, pinnedSizes[--remainingPinnedRegisters - 1] });
-        });
+        unsigned numberOfPinnedRegisters = pinnedSizes.size() + 1;
+        if (!useFastTLSForContext())
+            ++numberOfPinnedRegisters;
+        Vector<GPRReg> pinnedRegs = getPinnedRegisters(numberOfPinnedRegisters);
 
-        ASSERT(!remainingPinnedRegisters);
-        staticPinnedRegisterInfo.construct(WTFMove(sizeRegisters), baseMemoryPointer);
+        baseMemoryPointer = pinnedRegs.takeLast();
+        if (!useFastTLSForContext())
+            wasmContextPointer = pinnedRegs.takeLast();
+
+        ASSERT(pinnedSizes.size() == pinnedRegs.size());
+        for (unsigned i = 0; i < pinnedSizes.size(); ++i)
+            sizeRegisters.append({ pinnedRegs[i], pinnedSizes[i] });
+        staticPinnedRegisterInfo.construct(WTFMove(sizeRegisters), baseMemoryPointer, wasmContextPointer);
     });
 
     return staticPinnedRegisterInfo.get();
 }
 
-PinnedRegisterInfo::PinnedRegisterInfo(Vector<PinnedSizeRegisterInfo>&& sizeRegisters, GPRReg baseMemoryPointer)
+PinnedRegisterInfo::PinnedRegisterInfo(Vector<PinnedSizeRegisterInfo>&& sizeRegisters, GPRReg baseMemoryPointer, GPRReg wasmContextPointer)
     : sizeRegisters(WTFMove(sizeRegisters))
     , baseMemoryPointer(baseMemoryPointer)
+    , wasmContextPointer(wasmContextPointer)
 {
 }
 
-MemoryInformation::MemoryInformation(VM& vm, PageCount initial, PageCount maximum, std::optional<MemoryMode> recompileMode, bool isImport)
+MemoryInformation::MemoryInformation(PageCount initial, PageCount maximum, bool isImport)
     : m_initial(initial)
     , m_maximum(maximum)
     , m_isImport(isImport)
@@ -82,28 +97,6 @@ MemoryInformation::MemoryInformation(VM& vm, PageCount initial, PageCount maximu
     RELEASE_ASSERT(!!m_initial);
     RELEASE_ASSERT(!m_maximum || m_maximum >= m_initial);
     ASSERT(!!*this);
-
-    if (!recompileMode) {
-        if (!isImport) {
-            if (maximum && maximum.bytes() == 0) {
-                m_reservedMemory = Memory::create(vm, initial, maximum, MemoryMode::BoundsChecking);
-                RELEASE_ASSERT(m_reservedMemory);
-                RELEASE_ASSERT(m_reservedMemory->maximum());
-                RELEASE_ASSERT(m_reservedMemory->maximum().bytes() == 0);
-                m_mode = m_reservedMemory->mode();
-                return;
-            }
-
-            m_reservedMemory = Memory::create(vm, initial, maximum, MemoryMode::Signaling);
-            if (m_reservedMemory) {
-                ASSERT(!!*m_reservedMemory);
-                m_mode = m_reservedMemory->mode();
-                return;
-            }
-        }
-        m_mode = Memory::lastAllocatedMode();
-    } else
-        m_mode = *recompileMode;
 }
 
 } } // namespace JSC::Wasm
