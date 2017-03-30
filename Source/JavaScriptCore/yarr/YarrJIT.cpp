@@ -2603,14 +2603,7 @@ class YarrGenerator : private MacroAssembler {
         push(ARMRegisters::r5);
         push(ARMRegisters::r6);
 #elif CPU(MIPS)
-        m_assembler.addiu(stackPointerRegister, stackPointerRegister, -8);
-        m_assembler.sw(returnAddressRegister, stackPointerRegister, 4);
-        m_assembler.sw(framePointerRegister, stackPointerRegister, 0);
-        move(stackPointerRegister, framePointerRegister);
-        // the Macroassembler might use the cmpTempRegister which is a callee
-        // saved register, so we need to save it
-        m_assembler.addiu(stackPointerRegister, stackPointerRegister, -4);
-        m_assembler.sw(cmpTempRegister, stackPointerRegister, 0);
+        // Do nothing.
 #endif
 
         store8(TrustedImm32(1), &m_vm->isExecutingInRegExpJIT);
@@ -2639,11 +2632,7 @@ class YarrGenerator : private MacroAssembler {
         pop(ARMRegisters::r5);
         pop(ARMRegisters::r4);
 #elif CPU(MIPS)
-        move(framePointerRegister, stackPointerRegister);
-        m_assembler.lw(cmpTempRegister, stackPointerRegister, -4);
-        m_assembler.lw(framePointerRegister, stackPointerRegister, 0);
-        m_assembler.lw(returnAddressRegister, stackPointerRegister, 4);
-        m_assembler.addiu(stackPointerRegister, stackPointerRegister, 8);
+        // Do nothing
 #endif
         ret();
     }

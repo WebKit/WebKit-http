@@ -204,7 +204,6 @@ COMPILE_ASSERT(sizeof(MacroAssemblerARM::ProbeContext) == PROBE_SIZE, ProbeConte
 
 asm (
     ".text" "\n"
-    ".align 2" "\n"
     ".globl " SYMBOL_STRING(ctiMasmProbeTrampoline) "\n"
     HIDE_SYMBOL(ctiMasmProbeTrampoline) "\n"
     INLINE_ARM_FUNCTION(ctiMasmProbeTrampoline) "\n"
