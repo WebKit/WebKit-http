@@ -21,12 +21,13 @@
 #ifndef TextureMapperLayerClientQt_h
 #define TextureMapperLayerClientQt_h
 
-class QWebFrameAdapter;
-
 #include "GraphicsLayer.h"
 #include "TextureMapper.h"
 #include "TextureMapperFPSCounter.h"
 #include "Timer.h"
+
+class QWebFrameAdapter;
+class QWebPageClient;
 
 namespace WebCore {
 
@@ -46,7 +47,10 @@ public:
     void syncLayers();
 
     void renderCompositedLayers(GraphicsContext&, const IntRect& clip);
+
 private:
+    QWebPageClient* pageClient() const;
+
     QWebFrameAdapter& m_frame;
     std::unique_ptr<GraphicsLayer> m_rootGraphicsLayer;
     Timer m_syncTimer;

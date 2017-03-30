@@ -71,7 +71,7 @@ void TextureMapperLayerClientQt::setRootGraphicsLayer(GraphicsLayer* layer)
         m_rootGraphicsLayer->setMasksToBounds(false);
         m_rootGraphicsLayer->setSize(IntSize(1, 1));
         TextureMapper::AccelerationMode mode = TextureMapper::SoftwareMode;
-        if (m_frame.pageAdapter->client->makeOpenGLContextCurrentIfAvailable())
+        if (pageClient() && pageClient()->makeOpenGLContextCurrentIfAvailable())
             mode = TextureMapper::OpenGLMode;
         m_textureMapper = TextureMapper::create(mode);
         m_rootTextureMapperLayer->setTextureMapper(m_textureMapper.get());
@@ -98,7 +98,8 @@ void TextureMapperLayerClientQt::syncLayers()
     if (rootLayer()->descendantsOrSelfHaveRunningAnimations() && !m_syncTimer.isActive())
         m_syncTimer.startOneShot(1.0 / 60.0);
 
-    m_frame.pageAdapter->client->repaintViewport();
+    if (pageClient())
+        pageClient()->repaintViewport();
 }
 
 void TextureMapperLayerClientQt::renderCompositedLayers(GraphicsContext& context, const IntRect& clip)
@@ -144,4 +145,9 @@ void TextureMapperLayerClientQt::renderCompositedLayers(GraphicsContext& context
     m_fpsCounter.updateFPSAndDisplay(*m_textureMapper.get(), IntPoint::zero(), matrix);
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
+}
+
+QWebPageClient* TextureMapperLayerClientQt::pageClient() const
+{
+    return m_frame.pageAdapter->client.data();
 }
