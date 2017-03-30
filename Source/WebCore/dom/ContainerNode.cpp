@@ -64,7 +64,7 @@ namespace WebCore {
 static void dispatchChildInsertionEvents(Node&);
 static void dispatchChildRemovalEvents(Node&);
 
-ChildNodesLazySnapshot* ChildNodesLazySnapshot::latestSnapshot = 0;
+ChildNodesLazySnapshot* ChildNodesLazySnapshot::latestSnapshot;
 
 #ifndef NDEBUG
 unsigned NoEventDispatchAssertion::s_count = 0;
@@ -272,19 +272,17 @@ bool ContainerNode::insertBefore(Ref<Node>&& newChild, Node* refChild, Exception
     InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
     ChildListMutationScope mutation(*this);
-    for (auto it = targets.begin(), end = targets.end(); it != end; ++it) {
-        Node& child = it->get();
-
+    for (auto& child : targets) {
         // Due to arbitrary code running in response to a DOM mutation event it's
         // possible that "next" is no longer a child of "this".
         // It's also possible that "child" has been inserted elsewhere.
         // In either of those cases, we'll just stop.
         if (next->parentNode() != this)
             break;
-        if (child.parentNode())
+        if (child->parentNode())
             break;
 
-        treeScope().adoptIfNeeded(&child);
+        treeScope().adoptIfNeeded(child.ptr());
 
         insertBeforeCommon(next, child);
 
@@ -586,9 +584,9 @@ void ContainerNode::removeBetween(Node* previousChild, Node* nextChild, Node& ol
     if (m_lastChild == &oldChild)
         m_lastChild = previousChild;
 
-    oldChild.setPreviousSibling(0);
-    oldChild.setNextSibling(0);
-    oldChild.setParentNode(0);
+    oldChild.setPreviousSibling(nullptr);
+    oldChild.setNextSibling(nullptr);
+    oldChild.setParentNode(nullptr);
 
     document().adoptIfNeeded(&oldChild);
 }

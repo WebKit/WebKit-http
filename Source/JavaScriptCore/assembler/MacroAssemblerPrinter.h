@@ -89,6 +89,7 @@ namespace JSC {
 // This is a marker type only used with MacroAssemblerPrinter::print().
 // See MacroAssemblerPrinter::print() below for details.
 struct AllRegisters { };
+struct PCRegister { };
 
 struct Memory {
     using Address = MacroAssembler::Address;
@@ -168,7 +169,7 @@ public:
     {
         auto argsList = std::make_unique<PrintArgsList>();
         appendPrintArg(argsList.get(), args...);
-        masm->probe(printCallback, argsList.release());
+        masm->probe(printCallback, argsList.release(), 0);
     }
     
 private:
@@ -176,6 +177,7 @@ private:
 
         enum class Type {
             AllRegisters,
+            PCRegister,
             RegisterID,
             FPRegisterID,
             Memory,
@@ -187,6 +189,11 @@ private:
         
         PrintArg(AllRegisters&)
             : type(Type::AllRegisters)
+        {
+        }
+        
+        PrintArg(PCRegister&)
+            : type(Type::PCRegister)
         {
         }
         

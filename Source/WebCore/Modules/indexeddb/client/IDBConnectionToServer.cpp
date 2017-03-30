@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBKeyRangeData.h"
 #include "IDBOpenDBRequestImpl.h"
 #include "IDBRequestData.h"
 #include "IDBResultData.h"
@@ -109,6 +110,36 @@ void IDBConnectionToServer::didCreateObjectStore(const IDBResultData& resultData
     completeOperation(resultData);
 }
 
+void IDBConnectionToServer::deleteObjectStore(TransactionOperation& operation, const String& objectStoreName)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::deleteObjectStore");
+
+    saveOperation(operation);
+
+    m_delegate->deleteObjectStore(IDBRequestData(operation), objectStoreName);
+}
+
+void IDBConnectionToServer::didDeleteObjectStore(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didDeleteObjectStore");
+    completeOperation(resultData);
+}
+
+void IDBConnectionToServer::clearObjectStore(TransactionOperation& operation, uint64_t objectStoreIdentifier)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::clearObjectStore");
+
+    saveOperation(operation);
+
+    m_delegate->clearObjectStore(IDBRequestData(operation), objectStoreIdentifier);
+}
+
+void IDBConnectionToServer::didClearObjectStore(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didClearObjectStore");
+    completeOperation(resultData);
+}
+
 void IDBConnectionToServer::putOrAdd(TransactionOperation& operation, RefPtr<IDBKey>& key, RefPtr<SerializedScriptValue>& value, const IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     LOG(IndexedDB, "IDBConnectionToServer::putOrAdd");
@@ -123,20 +154,62 @@ void IDBConnectionToServer::didPutOrAdd(const IDBResultData& resultData)
     completeOperation(resultData);
 }
 
-void IDBConnectionToServer::getRecord(TransactionOperation& operation, RefPtr<IDBKey>& key)
+void IDBConnectionToServer::getRecord(TransactionOperation& operation, const IDBKeyRangeData& keyRangeData)
 {
     LOG(IndexedDB, "IDBConnectionToServer::getRecord");
 
-    ASSERT(key);
+    ASSERT(!keyRangeData.isNull);
 
     saveOperation(operation);
-    m_delegate->getRecord(IDBRequestData(operation), key.get());
+    m_delegate->getRecord(IDBRequestData(operation), keyRangeData);
 }
 
 void IDBConnectionToServer::didGetRecord(const IDBResultData& resultData)
 {
     LOG(IndexedDB, "IDBConnectionToServer::didGetRecord");
     completeOperation(resultData);
+}
+
+void IDBConnectionToServer::getCount(TransactionOperation& operation, const IDBKeyRangeData& keyRangeData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::getCount");
+
+    ASSERT(!keyRangeData.isNull);
+
+    saveOperation(operation);
+    m_delegate->getCount(IDBRequestData(operation), keyRangeData);
+}
+
+void IDBConnectionToServer::didGetCount(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didGetCount");
+    completeOperation(resultData);
+}
+
+void IDBConnectionToServer::deleteRecord(TransactionOperation& operation, const IDBKeyRangeData& keyRangeData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::deleteRecord");
+
+    ASSERT(!keyRangeData.isNull);
+
+    saveOperation(operation);
+    m_delegate->deleteRecord(IDBRequestData(operation), keyRangeData);
+}
+
+void IDBConnectionToServer::didDeleteRecord(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didDeleteRecord");
+    completeOperation(resultData);
+}
+
+void IDBConnectionToServer::establishTransaction(IDBTransaction& transaction)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::establishTransaction");
+
+    ASSERT(!hasRecordOfTransaction(transaction));
+    m_pendingTransactions.set(transaction.info().identifier(), &transaction);
+
+    m_delegate->establishTransaction(transaction.database().databaseConnectionIdentifier(), transaction.info());
 }
 
 void IDBConnectionToServer::commitTransaction(IDBTransaction& transaction)
@@ -190,6 +263,16 @@ void IDBConnectionToServer::fireVersionChangeEvent(uint64_t databaseConnectionId
     connection->fireVersionChangeEvent(requestedVersion);
 }
 
+void IDBConnectionToServer::didStartTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError& error)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didStartTransaction");
+
+    auto transaction = m_pendingTransactions.take(transactionIdentifier);
+    ASSERT(transaction);
+
+    transaction->didStart(error);
+}
+
 void IDBConnectionToServer::databaseConnectionClosed(IDBDatabase& database)
 {
     LOG(IndexedDB, "IDBConnectionToServer::databaseConnectionClosed");
@@ -222,6 +305,12 @@ void IDBConnectionToServer::completeOperation(const IDBResultData& resultData)
     ASSERT(operation);
 
     operation->completed(resultData);
+}
+
+bool IDBConnectionToServer::hasRecordOfTransaction(const IDBTransaction& transaction) const
+{
+    auto identifier = transaction.info().identifier();
+    return m_pendingTransactions.contains(identifier) || m_committingTransactions.contains(identifier) || m_abortingTransactions.contains(identifier);
 }
 
 } // namespace IDBClient

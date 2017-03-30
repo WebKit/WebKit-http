@@ -35,6 +35,7 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/soup/NetworkProcessSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
+    Platform/IPC/glib/GSocketMonitor.cpp
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
 
@@ -290,6 +291,8 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/Storage/StorageManager.cpp
 
+    UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp
+
     UIProcess/cairo/BackingStoreCairo.cpp
 
     UIProcess/gstreamer/InstallMissingMediaPluginsPermissionRequest.cpp
@@ -490,6 +493,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/DatabaseProcess/unix"
     "${WEBKIT2_DIR}/NetworkProcess/gtk"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
+    "${WEBKIT2_DIR}/Platform/IPC/glib"
     "${WEBKIT2_DIR}/Shared/API/c/gtk"
     "${WEBKIT2_DIR}/Shared/Network/CustomProtocols/soup"
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
@@ -708,6 +712,7 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
         Platform/IPC/MessageSender.cpp
         Platform/IPC/StringReference.cpp
 
+        Platform/IPC/glib/GSocketMonitor.cpp
         Platform/IPC/unix/AttachmentUnix.cpp
         Platform/IPC/unix/ConnectionUnix.cpp
 

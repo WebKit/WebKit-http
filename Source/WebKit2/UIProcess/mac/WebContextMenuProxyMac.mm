@@ -36,12 +36,12 @@
 #import "ShareableBitmap.h"
 #import "StringUtilities.h"
 #import "WKSharingServicePickerDelegate.h"
-#import "WKView.h"
 #import "WebContextMenuItem.h"
 #import "WebContextMenuItemData.h"
 #import "WebProcessProxy.h"
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/IntRect.h>
+#import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSSharingServicePickerSPI.h>
 #import <WebCore/NSSharingServiceSPI.h>
 #import <WebKitSystemInterface.h>
@@ -151,7 +151,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebContextMenuProxyMac::WebContextMenuProxyMac(WKView* webView, WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
+WebContextMenuProxyMac::WebContextMenuProxyMac(NSView* webView, WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
     : WebContextMenuProxy(context, userData)
     , m_webView(webView)
     , m_page(page)
@@ -257,29 +257,38 @@ void WebContextMenuProxyMac::clearServicesMenu()
     m_menu = nullptr;
 }
 
-ContextMenuItem WebContextMenuProxyMac::shareMenuItem()
+RetainPtr<NSMenuItem> WebContextMenuProxyMac::createShareMenuItem()
 {
+    if (![[NSMenuItem class] respondsToSelector:@selector(standardShareMenuItemWithItems:)])
+        return nil;
+
     const WebHitTestResultData& hitTestData = m_context.webHitTestResultData();
 
-    URL absoluteLinkURL;
-    if (!hitTestData.absoluteLinkURL.isEmpty())
-        absoluteLinkURL = URL(ParsedURLString, hitTestData.absoluteLinkURL);
+    auto items = adoptNS([[NSMutableArray alloc] init]);
 
-    URL downloadableMediaURL;
-    if (!hitTestData.absoluteMediaURL.isEmpty() && hitTestData.isDownloadableMedia)
-        downloadableMediaURL = URL(ParsedURLString, hitTestData.absoluteMediaURL);
+    if (!hitTestData.absoluteLinkURL.isEmpty()) {
+        NSURL *absoluteLinkURL = [NSURL URLWithString:hitTestData.absoluteLinkURL];
+        [items addObject:absoluteLinkURL];
+    }
 
-    RetainPtr<NSImage> image;
-    if (hitTestData.imageSharedMemory && hitTestData.imageSize)
-        image = adoptNS([[NSImage alloc] initWithData:[NSData dataWithBytes:(unsigned char*)hitTestData.imageSharedMemory->data() length:hitTestData.imageSize]]);
+    if (hitTestData.isDownloadableMedia && !hitTestData.absoluteMediaURL.isEmpty()) {
+        NSURL *downloadableMediaURL = [NSURL URLWithString:hitTestData.absoluteMediaURL];
+        [items addObject:downloadableMediaURL];
+    }
 
-    ContextMenuItem item = ContextMenuItem::shareMenuItem(absoluteLinkURL, downloadableMediaURL, image.get(), m_context.selectedText());
-    if (item.isNull())
-        return item;
+    if (hitTestData.imageSharedMemory && hitTestData.imageSize) {
+        auto image = adoptNS([[NSImage alloc] initWithData:[NSData dataWithBytes:(unsigned char*)hitTestData.imageSharedMemory->data() length:hitTestData.imageSize]]);
+        [items addObject:image.get()];
+    }
 
-    NSMenuItem *nsItem = item.platformDescription();
+    if (![items count])
+        return nil;
 
-    NSSharingServicePicker *sharingServicePicker = [nsItem representedObject];
+    RetainPtr<NSMenuItem> item = [NSMenuItem standardShareMenuItemWithItems:items.get()];
+    if (!item)
+        return nil;
+
+    NSSharingServicePicker *sharingServicePicker = [item representedObject];
     sharingServicePicker.delegate = [WKSharingServicePickerDelegate sharedSharingServicePickerDelegate];
 
     [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setFiltersEditingServices:NO];
@@ -324,7 +333,7 @@ RetainPtr<NSMenuItem> WebContextMenuProxyMac::createContextMenuItem(const WebCon
 {
 #if ENABLE(SERVICE_CONTROLS)
     if (item.action() == ContextMenuItemTagShareMenu)
-        return shareMenuItem().platformDescription();
+        return createShareMenuItem();
 #endif
 
     switch (item.type()) {

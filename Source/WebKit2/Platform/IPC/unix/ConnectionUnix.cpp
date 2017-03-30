@@ -40,10 +40,10 @@
 #include <wtf/UniStdExtras.h>
 
 #if PLATFORM(GTK)
-#include <glib.h>
+#include <gio/gio.h>
 #endif
 
-#ifdef SOCK_SEQPACKET
+#if defined(SOCK_SEQPACKET) && !PLATFORM(GTK)
 #define SOCKET_TYPE SOCK_SEQPACKET
 #else
 #if PLATFORM(GTK)
@@ -147,7 +147,9 @@ void Connection::platformInvalidate()
     if (!m_isConnected)
         return;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
+    m_socketMonitor.stop();
+#elif PLATFORM(EFL)
     m_connectionQueue->unregisterSocketEventHandler(m_socketDescriptor);
 #endif
 
@@ -374,13 +376,21 @@ bool Connection::open()
     RefPtr<Connection> protectedThis(this);
     m_isConnected = true;
 #if PLATFORM(GTK)
-    m_connectionQueue->registerSocketEventHandler(m_socketDescriptor,
-        [protectedThis] {
-            protectedThis->readyReadHandler();
-        },
-        [protectedThis] {
+    GRefPtr<GSocket> socket = adoptGRef(g_socket_new_from_fd(m_socketDescriptor, nullptr));
+    m_socketMonitor.start(socket.get(), G_IO_IN, m_connectionQueue->runLoop(), [protectedThis] (GIOCondition condition) -> gboolean {
+        if (condition & G_IO_HUP || condition & G_IO_ERR || condition & G_IO_NVAL) {
             protectedThis->connectionDidClose();
-        });
+            return G_SOURCE_REMOVE;
+        }
+
+        if (condition & G_IO_IN) {
+            protectedThis->readyReadHandler();
+            return G_SOURCE_CONTINUE;
+        }
+
+        ASSERT_NOT_REACHED();
+        return G_SOURCE_REMOVE;
+    });
 #elif PLATFORM(EFL)
     m_connectionQueue->registerSocketEventHandler(m_socketDescriptor,
         [protectedThis] {

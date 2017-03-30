@@ -37,12 +37,12 @@
 namespace WebCore {
 namespace IDBServer {
 
-Ref<UniqueIDBDatabaseTransaction> UniqueIDBDatabaseTransaction::create(UniqueIDBDatabaseConnection& connection, IDBTransactionInfo& info)
+Ref<UniqueIDBDatabaseTransaction> UniqueIDBDatabaseTransaction::create(UniqueIDBDatabaseConnection& connection, const IDBTransactionInfo& info)
 {
     return adoptRef(*new UniqueIDBDatabaseTransaction(connection, info));
 }
 
-UniqueIDBDatabaseTransaction::UniqueIDBDatabaseTransaction(UniqueIDBDatabaseConnection& connection, IDBTransactionInfo& info)
+UniqueIDBDatabaseTransaction::UniqueIDBDatabaseTransaction(UniqueIDBDatabaseConnection& connection, const IDBTransactionInfo& info)
     : m_databaseConnection(connection)
     , m_transactionInfo(info)
 {
@@ -113,6 +113,39 @@ void UniqueIDBDatabaseTransaction::createObjectStore(const IDBRequestData& reque
     });
 }
 
+void UniqueIDBDatabaseTransaction::deleteObjectStore(const IDBRequestData& requestData, const String& objectStoreName)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::deleteObjectStore");
+
+    ASSERT(isVersionChange());
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> self(this);
+    m_databaseConnection->database().deleteObjectStore(*this, objectStoreName, [this, self, requestData](const IDBError& error) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::deleteObjectStore (callback)");
+        if (error.isNull())
+            m_databaseConnection->didDeleteObjectStore(IDBResultData::deleteObjectStoreSuccess(requestData.requestIdentifier()));
+        else
+            m_databaseConnection->didDeleteObjectStore(IDBResultData::error(requestData.requestIdentifier(), error));
+    });
+}
+
+void UniqueIDBDatabaseTransaction::clearObjectStore(const IDBRequestData& requestData, uint64_t objectStoreIdentifier)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::clearObjectStore");
+
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> self(this);
+    m_databaseConnection->database().clearObjectStore(*this, objectStoreIdentifier, [this, self, requestData](const IDBError& error) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::clearObjectStore (callback)");
+        if (error.isNull())
+            m_databaseConnection->didClearObjectStore(IDBResultData::clearObjectStoreSuccess(requestData.requestIdentifier()));
+        else
+            m_databaseConnection->didClearObjectStore(IDBResultData::error(requestData.requestIdentifier(), error));
+    });
+}
+
 void UniqueIDBDatabaseTransaction::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     LOG(IndexedDB, "UniqueIDBDatabaseTransaction::putOrAdd");
@@ -131,14 +164,14 @@ void UniqueIDBDatabaseTransaction::putOrAdd(const IDBRequestData& requestData, c
     });
 }
 
-void UniqueIDBDatabaseTransaction::getRecord(const IDBRequestData& requestData, const IDBKeyData& keyData)
+void UniqueIDBDatabaseTransaction::getRecord(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
 {
     LOG(IndexedDB, "UniqueIDBDatabaseTransaction::getRecord");
 
     ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
 
     RefPtr<UniqueIDBDatabaseTransaction> self(this);
-    m_databaseConnection->database().getRecord(requestData, keyData, [this, self, requestData](const IDBError& error, const ThreadSafeDataBuffer& valueData) {
+    m_databaseConnection->database().getRecord(requestData, keyRangeData, [this, self, requestData](const IDBError& error, const ThreadSafeDataBuffer& valueData) {
         LOG(IndexedDB, "UniqueIDBDatabaseTransaction::getRecord (callback)");
 
         if (error.isNull())
@@ -146,6 +179,66 @@ void UniqueIDBDatabaseTransaction::getRecord(const IDBRequestData& requestData, 
         else
             m_databaseConnection->connectionToClient().didGetRecord(IDBResultData::error(requestData.requestIdentifier(), error));
     });
+}
+
+void UniqueIDBDatabaseTransaction::getCount(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::getCount");
+
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> self(this);
+    m_databaseConnection->database().getCount(requestData, keyRangeData, [this, self, requestData](const IDBError& error, uint64_t count) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::getCount (callback)");
+
+        if (error.isNull())
+            m_databaseConnection->connectionToClient().didGetCount(IDBResultData::getCountSuccess(requestData.requestIdentifier(), count));
+        else
+            m_databaseConnection->connectionToClient().didGetCount(IDBResultData::error(requestData.requestIdentifier(), error));
+    });
+}
+
+void UniqueIDBDatabaseTransaction::deleteRecord(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::deleteRecord");
+
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> protectedThis(this);
+    m_databaseConnection->database().deleteRecord(requestData, keyRangeData, [this, protectedThis, requestData](const IDBError& error) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::deleteRecord (callback)");
+
+        if (error.isNull())
+            m_databaseConnection->connectionToClient().didDeleteRecord(IDBResultData::deleteRecordSuccess(requestData.requestIdentifier()));
+        else
+            m_databaseConnection->connectionToClient().didDeleteRecord(IDBResultData::error(requestData.requestIdentifier(), error));
+    });
+}
+
+const Vector<uint64_t>& UniqueIDBDatabaseTransaction::objectStoreIdentifiers()
+{
+    if (!m_objectStoreIdentifiers.isEmpty())
+        return m_objectStoreIdentifiers;
+
+    auto& info = m_databaseConnection->database().info();
+    for (auto objectStoreName : info.objectStoreNames()) {
+        auto objectStoreInfo = info.infoForExistingObjectStore(objectStoreName);
+        ASSERT(objectStoreInfo);
+        if (!objectStoreInfo)
+            continue;
+
+        if (m_transactionInfo.objectStores().contains(objectStoreName))
+            m_objectStoreIdentifiers.append(objectStoreInfo->identifier());
+    }
+
+    return m_objectStoreIdentifiers;
+}
+
+void UniqueIDBDatabaseTransaction::didActivateInBackingStore(const IDBError& error)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::didActivateInBackingStore");
+
+    m_databaseConnection->connectionToClient().didStartTransaction(m_transactionInfo.identifier(), error);
 }
 
 } // namespace IDBServer

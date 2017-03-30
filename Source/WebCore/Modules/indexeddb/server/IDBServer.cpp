@@ -168,6 +168,29 @@ void IDBServer::createObjectStore(const IDBRequestData& requestData, const IDBOb
     transaction->createObjectStore(requestData, info);
 }
 
+void IDBServer::deleteObjectStore(const IDBRequestData& requestData, const String& objectStoreName)
+{
+    LOG(IndexedDB, "IDBServer::deleteObjectStore");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    ASSERT(transaction->isVersionChange());
+    transaction->deleteObjectStore(requestData, objectStoreName);
+}
+
+void IDBServer::clearObjectStore(const IDBRequestData& requestData, uint64_t objectStoreIdentifier)
+{
+    LOG(IndexedDB, "IDBServer::clearObjectStore");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    transaction->clearObjectStore(requestData, objectStoreIdentifier);
+}
+
 void IDBServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     LOG(IndexedDB, "IDBServer::putOrAdd");
@@ -179,7 +202,7 @@ void IDBServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& ke
     transaction->putOrAdd(requestData, keyData, valueData, overwriteMode);
 }
 
-void IDBServer::getRecord(const IDBRequestData& requestData, const IDBKeyData& keyData)
+void IDBServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
 {
     LOG(IndexedDB, "IDBServer::getRecord");
 
@@ -187,7 +210,40 @@ void IDBServer::getRecord(const IDBRequestData& requestData, const IDBKeyData& k
     if (!transaction)
         return;
 
-    transaction->getRecord(requestData, keyData);
+    transaction->getRecord(requestData, keyRangeData);
+}
+
+void IDBServer::getCount(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
+{
+    LOG(IndexedDB, "IDBServer::getCount");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    transaction->getCount(requestData, keyRangeData);
+}
+
+void IDBServer::deleteRecord(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
+{
+    LOG(IndexedDB, "IDBServer::deleteRecord");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    transaction->deleteRecord(requestData, keyRangeData);
+}
+
+void IDBServer::establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo& info)
+{
+    LOG(IndexedDB, "IDBServer::establishTransaction");
+
+    auto databaseConnection = m_databaseConnections.get(databaseConnectionIdentifier);
+    if (!databaseConnection)
+        return;
+
+    databaseConnection->establishTransaction(info);
 }
 
 void IDBServer::commitTransaction(const IDBResourceIdentifier& transactionIdentifier)

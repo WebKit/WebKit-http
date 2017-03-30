@@ -12,7 +12,6 @@
       <dep package="freetype6"/>
       <dep package="harfbuzz"/>
       <dep package="glib"/>
-      <dep package="gnutls"/>
       <dep package="glib-networking"/>
       <dep package="libsoup"/>
       <dep package="elementary"/>
@@ -56,8 +55,6 @@
       href="http://llvm.org/svn/llvm-project/"/>
   <repository type="tarball" name="llvm-tar"
       href="http://llvm.org"/>
-  <repository type="tarball" name="gnutls"
-      href="ftp://ftp.gnutls.org"/>
 
   <autotools id="cairo" autogen-sh="configure"
              makeargs="CFLAGS='-fno-lto' CXXFLAGS='-fno-lto' LDFLAGS='-fno-lto'">
@@ -128,13 +125,6 @@
             md5sum="9636f60e99b98fd0fdb5239f905ac008"/>
   </autotools>
 
-  <autotools id="gnutls" autogen-sh="configure">
-    <branch module="/gcrypt/gnutls/v3.3/gnutls-3.3.0.tar.xz" version="3.3"
-            repo="gnutls"
-            hash="sha256:7b87a4319f74cae3a5f204b810000f06b8efa1ed0f57c684b9bc454f444fdf13"
-            md5sum="4aeb8014feb4016c73a60f4e1ac73c9f"/>
-  </autotools>
-
   <autotools id="glib-networking">
     <dependencies>
       <dep package="glib"/>
@@ -201,11 +191,10 @@
   </autotools>
 
  <autotools id="harfbuzz" autogen-sh="configure">
-   <branch module="software/harfbuzz/release/harfbuzz-0.9.14.tar.bz2" version="0.9.14"
-           checkoutdir="harfbuzz-0.9.14"
+   <branch module="software/harfbuzz/release/harfbuzz-0.9.35.tar.bz2" version="0.9.35"
+           checkoutdir="harfbuzz-0.9.35"
            repo="freedesktop.org"
-           hash="sha256:d07c0ffdbbbfdfbb6c65e73fe9c76466e87dbf04b094cbd0abf5fd7d571a4004"
-           md5sum="7e1990b79060e98e2d31f677a0ac9eed">
+           hash="sha256:0aa1a8aba6f502321cf6fef3c9d2c73dde48389c5ed1d3615a7691944c2a06ed">
    </branch>
  </autotools>
 
@@ -220,6 +209,7 @@
             repo="download.enlightenment.org"
             hash="sha256:2552e364e83b8b747ba6f6fcca699a025751a65407055faa9a2afce29d12b6f4">
       <patch file="ecore_remove_warnings.patch" strip="1"/>
+      <patch file="efl-remove-XPrint.patch" strip="1"/>
     </branch>
   </autotools>
 

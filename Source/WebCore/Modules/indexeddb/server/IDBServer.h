@@ -60,8 +60,13 @@ public:
     void abortTransaction(const IDBResourceIdentifier&);
     void commitTransaction(const IDBResourceIdentifier&);
     void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&);
+    void deleteObjectStore(const IDBRequestData&, const String& objectStoreName);
+    void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier);
     void putOrAdd(const IDBRequestData&, const IDBKeyData&, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode);
-    void getRecord(const IDBRequestData&, const IDBKeyData&);
+    void getRecord(const IDBRequestData&, const IDBKeyRangeData&);
+    void getCount(const IDBRequestData&, const IDBKeyRangeData&);
+    void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&);
+    void establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo&);
     void databaseConnectionClosed(uint64_t databaseConnectionIdentifier);
 
     void postDatabaseTask(std::unique_ptr<CrossThreadTask>&&);

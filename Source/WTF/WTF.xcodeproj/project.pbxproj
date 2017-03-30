@@ -25,6 +25,8 @@
 		0F2B66A617B6B4FB00A7AE3F /* DeferrableRefCounted.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2B66A417B6B4F700A7AE3F /* DeferrableRefCounted.h */; };
 		0F2B66A717B6B4FD00A7AE3F /* FlipBytes.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2B66A517B6B4F700A7AE3F /* FlipBytes.h */; };
 		0F3501641BB258D500F0A2A3 /* WeakRandom.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F3501631BB258C800F0A2A3 /* WeakRandom.h */; };
+		0F4570431BE5B58F0062A629 /* Dominators.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F4570421BE5B58F0062A629 /* Dominators.h */; };
+		0F4570451BE834410062A629 /* BubbleSort.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F4570441BE834410062A629 /* BubbleSort.h */; };
 		0F824A681B7443A0002E345D /* ParkingLot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F824A641B7443A0002E345D /* ParkingLot.cpp */; };
 		0F824A691B7443A0002E345D /* ParkingLot.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F824A651B7443A0002E345D /* ParkingLot.h */; };
 		0F87105A16643F190090B0AD /* RawPointer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F87105916643F190090B0AD /* RawPointer.h */; };
@@ -51,6 +53,7 @@
 		0FEB3DCF1BB5D684009D7AAD /* SharedTask.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FEB3DCE1BB5D684009D7AAD /* SharedTask.h */; };
 		0FEB3DD11BB7366B009D7AAD /* ParallelVectorIterator.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FEB3DD01BB7366B009D7AAD /* ParallelVectorIterator.h */; };
 		0FEC84AF1BD825310080FF74 /* GraphNodeWorklist.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FEC84AE1BD825310080FF74 /* GraphNodeWorklist.h */; };
+		0FEC84B11BDACD390080FF74 /* ScopedLambda.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FEC84B01BDACD390080FF74 /* ScopedLambda.h */; };
 		0FED67B61B22D4D80066CE15 /* TinyPtrSet.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FED67B51B22D4D80066CE15 /* TinyPtrSet.h */; };
 		0FF860951BCCBD740045127F /* PointerComparison.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FF860941BCCBD740045127F /* PointerComparison.h */; };
 		0FFF19DC1BB334EB00886D91 /* ParallelHelperPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FFF19DA1BB334EB00886D91 /* ParallelHelperPool.cpp */; };
@@ -320,6 +323,8 @@
 		0F2B66A517B6B4F700A7AE3F /* FlipBytes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FlipBytes.h; sourceTree = "<group>"; };
 		0F300B7D18AB48B400A6D72E /* HashMethod.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HashMethod.h; sourceTree = "<group>"; };
 		0F3501631BB258C800F0A2A3 /* WeakRandom.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakRandom.h; sourceTree = "<group>"; };
+		0F4570421BE5B58F0062A629 /* Dominators.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Dominators.h; sourceTree = "<group>"; };
+		0F4570441BE834410062A629 /* BubbleSort.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BubbleSort.h; sourceTree = "<group>"; };
 		0F824A641B7443A0002E345D /* ParkingLot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ParkingLot.cpp; sourceTree = "<group>"; };
 		0F824A651B7443A0002E345D /* ParkingLot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ParkingLot.h; sourceTree = "<group>"; };
 		0F87105916643F190090B0AD /* RawPointer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RawPointer.h; sourceTree = "<group>"; };
@@ -346,6 +351,7 @@
 		0FEB3DCE1BB5D684009D7AAD /* SharedTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SharedTask.h; sourceTree = "<group>"; };
 		0FEB3DD01BB7366B009D7AAD /* ParallelVectorIterator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ParallelVectorIterator.h; sourceTree = "<group>"; };
 		0FEC84AE1BD825310080FF74 /* GraphNodeWorklist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GraphNodeWorklist.h; sourceTree = "<group>"; };
+		0FEC84B01BDACD390080FF74 /* ScopedLambda.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScopedLambda.h; sourceTree = "<group>"; };
 		0FED67B51B22D4D80066CE15 /* TinyPtrSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TinyPtrSet.h; sourceTree = "<group>"; };
 		0FF860941BCCBD740045127F /* PointerComparison.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PointerComparison.h; sourceTree = "<group>"; };
 		0FFF19DA1BB334EB00886D91 /* ParallelHelperPool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ParallelHelperPool.cpp; sourceTree = "<group>"; };
@@ -738,6 +744,7 @@
 				A8A47261151A825A004123FF /* BitVector.h */,
 				A8A47264151A825A004123FF /* BlockStack.h */,
 				A8A47265151A825A004123FF /* BloomFilter.h */,
+				0F4570441BE834410062A629 /* BubbleSort.h */,
 				A8A47267151A825A004123FF /* BumpPointerAllocator.h */,
 				EB95E1EF161A72410089A2F5 /* ByteOrder.h */,
 				A8A4726A151A825A004123FF /* CheckedArithmetic.h */,
@@ -762,6 +769,7 @@
 				0F2B66A417B6B4F700A7AE3F /* DeferrableRefCounted.h */,
 				A8A4727E151A825A004123FF /* Deque.h */,
 				A8A4727F151A825A004123FF /* DisallowCType.h */,
+				0F4570421BE5B58F0062A629 /* Dominators.h */,
 				A8A47280151A825A004123FF /* DoublyLinkedList.h */,
 				A8A47297151A825A004123FF /* dtoa.cpp */,
 				A8A47298151A825A004123FF /* dtoa.h */,
@@ -870,6 +878,7 @@
 				1469419416EAAFF80024E146 /* SchedulePair.h */,
 				1469419816EAB0410024E146 /* SchedulePairCF.cpp */,
 				1469419516EAAFF80024E146 /* SchedulePairMac.mm */,
+				0FEC84B01BDACD390080FF74 /* ScopedLambda.h */,
 				A8A47306151A825B004123FF /* SegmentedVector.h */,
 				A8A47307151A825B004123FF /* SentinelLinkedList.h */,
 				A8A47308151A825B004123FF /* SHA1.cpp */,
@@ -1182,6 +1191,7 @@
 				1AFDE6531953B23D00C48FFA /* Optional.h in Headers */,
 				A8A473F6151A825B004123FF /* OSAllocator.h in Headers */,
 				7CBBA07419BB7FDC00BBF025 /* OSObjectPtr.h in Headers */,
+				0F4570431BE5B58F0062A629 /* Dominators.h in Headers */,
 				A8A473FA151A825B004123FF /* OSRandomSource.h in Headers */,
 				A8A473FE151A825B004123FF /* PackedIntVector.h in Headers */,
 				A8A473FF151A825B004123FF /* PageAllocation.h in Headers */,
@@ -1222,6 +1232,7 @@
 				FEDACD3E1630F83F00C69634 /* StackStats.h in Headers */,
 				A8A47429151A825B004123FF /* StaticConstructors.h in Headers */,
 				A8A4742A151A825B004123FF /* StdLibExtras.h in Headers */,
+				0F4570451BE834410062A629 /* BubbleSort.h in Headers */,
 				C4F8A93719C65EB400B2B15D /* Stopwatch.h in Headers */,
 				1A6BB769162F300500DD16DB /* StreamBuffer.h in Headers */,
 				A8A4743B151A825B004123FF /* StringBuffer.h in Headers */,
@@ -1244,6 +1255,7 @@
 				A8A47449151A825B004123FF /* ThreadIdentifierDataPthreads.h in Headers */,
 				A8A4744B151A825B004123FF /* Threading.h in Headers */,
 				A8A4744D151A825B004123FF /* ThreadingPrimitives.h in Headers */,
+				0FEC84B11BDACD390080FF74 /* ScopedLambda.h in Headers */,
 				A8A47454151A825B004123FF /* ThreadSafeRefCounted.h in Headers */,
 				A8A47455151A825B004123FF /* ThreadSpecific.h in Headers */,
 				0FED67B61B22D4D80066CE15 /* TinyPtrSet.h in Headers */,

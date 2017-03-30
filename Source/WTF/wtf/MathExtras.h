@@ -425,6 +425,29 @@ inline T leftShiftWithSaturation(T value, unsigned shiftAmount, T max = std::num
     return result;
 }
 
+// Pass ranges with the min being inclusive and the max being exclusive. For example, this should
+// return false:
+//
+//     rangesOverlap(0, 8, 8, 16)
+template<typename T>
+inline bool rangesOverlap(T leftMin, T leftMax, T rightMin, T rightMax)
+{
+    ASSERT(leftMin <= leftMax);
+    ASSERT(rightMin <= rightMax);
+    
+    // Empty ranges interfere with nothing.
+    if (leftMin == leftMax)
+        return false;
+    if (rightMin == rightMax)
+        return false;
+    
+    if (leftMin <= rightMin && leftMax > rightMin)
+        return true;
+    if (rightMin <= leftMin && rightMax > leftMin)
+        return true;
+    return false;
+}
+
 } // namespace WTF
 
 #endif // #ifndef WTF_MathExtras_h

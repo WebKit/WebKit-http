@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @optional=STREAMS_API
+// @conditional=ENABLE(STREAMS_API)
 
 function cancel(reason)
 {
@@ -32,14 +32,14 @@ function cancel(reason)
     if (!@isReadableStreamReader(this))
         return Promise.reject(new @TypeError("Function should be called on a ReadableStreamReader"));
 
-    if (this.@state === @readableStreamClosed)
+    if (this.@state === @streamClosed)
         return Promise.resolve();
 
-    if (this.@state === @readableStreamErrored)
+    if (this.@state === @streamErrored)
         return Promise.reject(this.@storedError);
 
-    // TODO ASSERT(@isReadableStream(this.@ownerReadableStream));
-    // TODO ASSERT(this.@ownerReadableStream.@state === @readableStreamReadable);
+    // FIXME: ASSERT(@isReadableStream(this.@ownerReadableStream));
+    // FIXME: ASSERT(this.@ownerReadableStream.@state === @streamReadable);
     return @cancelReadableStream(this.@ownerReadableStream, reason);
 }
 
@@ -76,5 +76,5 @@ function closed()
     if (!@isReadableStreamReader(this))
         return Promise.reject(new @TypeError("Callee of closed is not a ReadableStreamReader"));
 
-    return this.@closedPromise;
+    return this.@closedPromiseCapability.@promise;
 }

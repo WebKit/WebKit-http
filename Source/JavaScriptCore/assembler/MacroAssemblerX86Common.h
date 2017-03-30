@@ -418,9 +418,9 @@ public:
     void xor32(TrustedImm32 imm, RegisterID dest)
     {
         if (imm.m_value == -1)
-        m_assembler.notl_r(dest);
+            m_assembler.notl_r(dest);
         else
-        m_assembler.xorl_ir(imm.m_value, dest);
+            m_assembler.xorl_ir(imm.m_value, dest);
     }
 
     void xor32(RegisterID src, Address dest)
@@ -1052,6 +1052,11 @@ public:
             m_assembler.xchgq_rr(reg1, reg2);
     }
 
+    void signExtend32ToPtr(TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.mov_i32r(imm.m_value, dest);
+    }
+
     void signExtend32ToPtr(RegisterID src, RegisterID dest)
     {
         m_assembler.movsxd_rr(src, dest);
@@ -1496,7 +1501,7 @@ public:
     }
 
 #if ENABLE(MASM_PROBE)
-    void probe(ProbeFunction, void* arg1 = 0, void* arg2 = 0);
+    void probe(ProbeFunction, void* arg1, void* arg2);
 #endif // ENABLE(MASM_PROBE)
 
 protected:

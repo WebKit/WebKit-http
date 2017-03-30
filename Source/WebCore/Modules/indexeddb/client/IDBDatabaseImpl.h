@@ -73,9 +73,11 @@ public:
     uint64_t databaseConnectionIdentifier() const { return m_databaseConnectionIdentifier; }
 
     Ref<IDBTransaction> startVersionChangeTransaction(const IDBTransactionInfo&);
-    void commitTransaction(IDBTransaction&);
+    void didStartTransaction(IDBTransaction&);
+
+    void willCommitTransaction(IDBTransaction&);
     void didCommitTransaction(IDBTransaction&);
-    void abortTransaction(IDBTransaction&);
+    void willAbortTransaction(IDBTransaction&);
     void didAbortTransaction(IDBTransaction&);
 
     void fireVersionChangeEvent(uint64_t requestedVersion);

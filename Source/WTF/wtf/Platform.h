@@ -673,8 +673,10 @@
 #define HAVE_PTHREAD_SETNAME_NP 1
 #define HAVE_READLINE 1
 #define HAVE_SYS_TIMEB_H 1
-#define USE_ACCELERATE 1
 
+#if !PLATFORM(GTK)
+#define USE_ACCELERATE 1
+#endif
 #if !PLATFORM(IOS)
 #define HAVE_HOSTED_CORE_ANIMATION 1
 #endif
@@ -815,12 +817,20 @@
 #define ENABLE_CONCURRENT_JIT 1
 #endif
 
+/* The B3 compiler is an experimental backend that is still in development. We will keep it building
+   on Mac/x86-64 for now, though it is unused except for tests. */
+#if PLATFORM(MAC) && CPU(X86_64) && ENABLE(FTL_JIT)
+#define ENABLE_B3_JIT 1
+#endif
+
 /* If the baseline jit is not available, then disable upper tiers as well: */
 #if !ENABLE(JIT)
-#undef ENABLE_DFG_JIT      /* Undef so that we can redefine it. */
-#undef ENABLE_FTL_JIT      /* Undef so that we can redefine it. */
+#undef ENABLE_DFG_JIT
+#undef ENABLE_FTL_JIT
+#undef ENABLE_B3_JIT
 #define ENABLE_DFG_JIT 0
 #define ENABLE_FTL_JIT 0
+#define Enable_B3_JIT 0
 #endif
 
 /* Counts uses of write barriers using sampling counters. Be sure to also
@@ -1110,6 +1120,10 @@
 
 #if PLATFORM(COCOA) && !PLATFORM(IOS_SIMULATOR)
 #define USE_IOSURFACE 1
+#endif
+
+#if PLATFORM(MAC)
+#define ENABLE_RESOURCE_USAGE_OVERLAY 1
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(EFL)

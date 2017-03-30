@@ -64,11 +64,23 @@ public:
     void createObjectStore(TransactionOperation&, const IDBObjectStoreInfo&);
     void didCreateObjectStore(const IDBResultData&);
 
+    void deleteObjectStore(TransactionOperation&, const String& objectStoreName);
+    void didDeleteObjectStore(const IDBResultData&);
+
+    void clearObjectStore(TransactionOperation&, uint64_t objectStoreIdentifier);
+    void didClearObjectStore(const IDBResultData&);
+
     void putOrAdd(TransactionOperation&, RefPtr<IDBKey>&, RefPtr<SerializedScriptValue>&, const IndexedDB::ObjectStoreOverwriteMode);
     void didPutOrAdd(const IDBResultData&);
 
-    void getRecord(TransactionOperation&, RefPtr<IDBKey>&);
+    void getRecord(TransactionOperation&, const IDBKeyRangeData&);
     void didGetRecord(const IDBResultData&);
+
+    void getCount(TransactionOperation&, const IDBKeyRangeData&);
+    void didGetCount(const IDBResultData&);
+
+    void deleteRecord(TransactionOperation&, const IDBKeyRangeData&);
+    void didDeleteRecord(const IDBResultData&);
 
     void commitTransaction(IDBTransaction&);
     void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
@@ -77,6 +89,9 @@ public:
     void didAbortTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
 
     void fireVersionChangeEvent(uint64_t databaseConnectionIdentifier, uint64_t requestedVersion);
+    void didStartTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
+
+    void establishTransaction(IDBTransaction&);
 
     void databaseConnectionClosed(IDBDatabase&);
     void registerDatabaseConnection(IDBDatabase&);
@@ -88,10 +103,13 @@ private:
     void saveOperation(TransactionOperation&);
     void completeOperation(const IDBResultData&);
 
+    bool hasRecordOfTransaction(const IDBTransaction&) const;
+
     Ref<IDBConnectionToServerDelegate> m_delegate;
 
     HashMap<IDBResourceIdentifier, RefPtr<IDBClient::IDBOpenDBRequest>> m_openDBRequestMap;
     HashMap<uint64_t, IDBDatabase*> m_databaseConnectionMap;
+    HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_pendingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_abortingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<TransactionOperation>> m_activeOperations;

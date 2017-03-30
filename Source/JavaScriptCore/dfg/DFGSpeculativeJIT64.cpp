@@ -820,10 +820,10 @@ void SpeculativeJIT::emitCall(Node* node)
     }
 
     CodeOrigin staticOrigin = node->origin.semantic;
-    ASSERT(!isTail || !staticOrigin.inlineCallFrame || !staticOrigin.inlineCallFrame->getCallerSkippingDeadFrames());
-    ASSERT(!isEmulatedTail || (staticOrigin.inlineCallFrame && staticOrigin.inlineCallFrame->getCallerSkippingDeadFrames()));
+    ASSERT(!isTail || !staticOrigin.inlineCallFrame || !staticOrigin.inlineCallFrame->getCallerSkippingTailCalls());
+    ASSERT(!isEmulatedTail || (staticOrigin.inlineCallFrame && staticOrigin.inlineCallFrame->getCallerSkippingTailCalls()));
     CodeOrigin dynamicOrigin =
-    isEmulatedTail ? *staticOrigin.inlineCallFrame->getCallerSkippingDeadFrames() : staticOrigin;
+    isEmulatedTail ? *staticOrigin.inlineCallFrame->getCallerSkippingTailCalls() : staticOrigin;
 
     CallSiteIndex callSite = m_jit.recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(dynamicOrigin, m_stream->size());
     m_jit.emitStoreCallSiteIndex(callSite);
@@ -2318,7 +2318,7 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case ArithAdd:
-        compileAdd(node);
+        compileArithAdd(node);
         break;
 
     case ArithClz32:

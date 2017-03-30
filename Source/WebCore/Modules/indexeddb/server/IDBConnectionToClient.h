@@ -53,10 +53,15 @@ public:
     void didAbortTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
     void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
     void didCreateObjectStore(const IDBResultData&);
+    void didDeleteObjectStore(const IDBResultData&);
+    void didClearObjectStore(const IDBResultData&);
     void didPutOrAdd(const IDBResultData&);
     void didGetRecord(const IDBResultData&);
+    void didGetCount(const IDBResultData&);
+    void didDeleteRecord(const IDBResultData&);
 
     void fireVersionChangeEvent(UniqueIDBDatabaseConnection&, uint64_t requestedVersion);
+    void didStartTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
 
 private:
     IDBConnectionToClient(IDBConnectionToClientDelegate&);

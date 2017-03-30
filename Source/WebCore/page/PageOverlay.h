@@ -110,8 +110,13 @@ public:
     RGBA32 backgroundColor() const { return m_backgroundColor; }
     void setBackgroundColor(RGBA32);
 
+    void setShouldIgnoreMouseEventsOutsideBounds(bool flag) { m_shouldIgnoreMouseEventsOutsideBounds = flag; }
+
     // FIXME: PageOverlay should own its layer, instead of PageOverlayController.
     WEBCORE_EXPORT GraphicsLayer& layer();
+
+    bool needsSynchronousScrolling() const { return m_needsSynchronousScrolling; }
+    void setNeedsSynchronousScrolling(bool needsSynchronousScrolling) { m_needsSynchronousScrolling = needsSynchronousScrolling; }
 
 private:
     explicit PageOverlay(Client&, OverlayType);
@@ -120,10 +125,10 @@ private:
     void fadeAnimationTimerFired();
 
     Client& m_client;
-    Page* m_page;
+    Page* m_page { nullptr };
 
     Timer m_fadeAnimationTimer;
-    double m_fadeAnimationStartTime;
+    double m_fadeAnimationStartTime { 0 };
     double m_fadeAnimationDuration;
 
     enum FadeAnimationType {
@@ -132,14 +137,18 @@ private:
         FadeOutAnimation,
     };
 
-    FadeAnimationType m_fadeAnimationType;
-    float m_fractionFadedIn;
+    FadeAnimationType m_fadeAnimationType { NoAnimation };
+    float m_fractionFadedIn { 1 };
+
+    bool m_needsSynchronousScrolling;
 
     OverlayType m_overlayType;
     IntRect m_overrideFrame;
 
-    RGBA32 m_backgroundColor;
+    RGBA32 m_backgroundColor { Color::transparent };
     PageOverlayID m_pageOverlayID;
+
+    bool m_shouldIgnoreMouseEventsOutsideBounds { true };
 };
 
 } // namespace WebKit

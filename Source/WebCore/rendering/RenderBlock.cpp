@@ -900,23 +900,22 @@ void RenderBlock::removeFromUpdateScrollInfoAfterLayoutTransaction()
 
 void RenderBlock::updateScrollInfoAfterLayout()
 {
-    if (hasOverflowClip()) {
-        if (style().isFlippedBlocksWritingMode()) {
-            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=97937
-            // Workaround for now. We cannot delay the scroll info for overflow
-            // for items with opposite writing directions, as the contents needs
-            // to overflow in that direction
-            layer()->updateScrollInfoAfterLayout();
-            return;
-        }
-
+    if (!hasOverflowClip())
+        return;
+    
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=97937
+    // Workaround for now. We cannot delay the scroll info for overflow
+    // for items with opposite writing directions, as the contents needs
+    // to overflow in that direction
+    if (!style().isFlippedBlocksWritingMode()) {
         UpdateScrollInfoAfterLayoutTransaction* transaction = currentUpdateScrollInfoAfterLayoutTransaction();
         if (transaction && transaction->view == &view()) {
             transaction->blocks.add(this);
             return;
         }
-        layer()->updateScrollInfoAfterLayout();
     }
+    if (layer())
+        layer()->updateScrollInfoAfterLayout();
 }
 
 void RenderBlock::layout()
@@ -1423,9 +1422,10 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
         popContentsClip(paintInfo, phase, adjustedPaintOffset);
 
     // Our scrollbar widgets paint exactly when we tell them to, so that they work properly with
-    // z-index.  We paint after we painted the background/border, so that the scrollbars will
+    // z-index. We paint after we painted the background/border, so that the scrollbars will
     // sit above the background/border.
-    if ((phase == PaintPhaseBlockBackground || phase == PaintPhaseChildBlockBackground) && hasOverflowClip() && style().visibility() == VISIBLE && paintInfo.shouldPaintWithinRoot(*this) && !paintInfo.paintRootBackgroundOnly())
+    if ((phase == PaintPhaseBlockBackground || phase == PaintPhaseChildBlockBackground) && hasOverflowClip() && layer()
+        && style().visibility() == VISIBLE && paintInfo.shouldPaintWithinRoot(*this) && !paintInfo.paintRootBackgroundOnly())
         layer()->paintOverflowControls(paintInfo.context(), roundedIntPoint(adjustedPaintOffset), snappedIntRect(paintInfo.rect));
 }
 
@@ -2556,15 +2556,6 @@ VisiblePosition positionForPointRespectingEditingBoundaries(RenderBlock& parent,
     // If we can't find an ancestor to check editability on, or editability is unchanged, we recur like normal
     if (isEditingBoundary(ancestor, child))
         return child.positionForPoint(pointInChildCoordinates, nullptr);
-    
-#if PLATFORM(IOS)
-    // On iOS we want to constrain VisiblePositions to the editable region closest to the input position, so
-    // we will allow descent from non-editable to editable content.
-    // FIXME: This constraining must be done at a higher level once we implement contentEditable. For now, if something
-    // is editable, the whole document will be.
-    if (childElement->isContentEditable() && !ancestor->element()->isContentEditable())
-        return child.positionForPoint(pointInChildCoordinates, nullptr);
-#endif
 
     // Otherwise return before or after the child, depending on if the click was to the logical left or logical right of the child
     LayoutUnit childMiddle = parent.logicalWidthForChild(child) / 2;

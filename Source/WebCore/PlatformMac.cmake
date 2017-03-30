@@ -1,5 +1,54 @@
-find_library(QUARTZ_FRAMEWORK Quartz)
-add_definitions(-iframework ${QUARTZ_FRAMEWORK}/Frameworks)
+set(WebCore_LIBRARY_TYPE SHARED)
+
+if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
+set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
+elif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
+set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceYosemite.a)
+else ()
+set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
+endif ()
+link_directories(../../WebKitLibraries)
+
+find_library(ACCELERATE_LIBRARY accelerate)
+find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
+find_library(AUDIOUNIT_LIBRARY AudioUnit)
+find_library(CARBON_LIBRARY Carbon)
+find_library(COCOA_LIBRARY Cocoa)
+find_library(COREAUDIO_LIBRARY CoreAudio)
+find_library(DISKARBITRATION_LIBRARY DiskArbitration)
+find_library(IOKIT_LIBRARY IOKit)
+find_library(IOSURFACE_LIBRARY IOSurface)
+find_library(OPENGL_LIBRARY OpenGL)
+find_library(QUARTZ_LIBRARY Quartz)
+find_library(QUARTZCORE_LIBRARY QuartzCore)
+find_library(SECURITY_LIBRARY Security)
+find_library(SYSTEMCONFIGURATION_LIBRARY SystemConfiguration)
+find_library(SQLITE3_LIBRARY sqlite3)
+find_library(XML2_LIBRARY XML2)
+find_package(ZLIB REQUIRED)
+
+list(APPEND WebCore_LIBRARIES
+    ${ACCELERATE_LIBRARY}
+    ${AUDIOTOOLBOX_LIBRARY}
+    ${AUDIOUNIT_LIBRARY}
+    ${CARBON_LIBRARY}
+    ${COCOA_LIBRARY}
+    ${COREAUDIO_LIBRARY}
+    ${DISKARBITRATION_LIBRARY}
+    ${IOKIT_LIBRARY}
+    ${IOSURFACE_LIBRARY}
+    ${OPENGL_LIBRARY}
+    ${QUARTZ_LIBRARY}
+    ${QUARTZCORE_LIBRARY}
+    ${SECURITY_LIBRARY}
+    ${SQLITE3_LIBRARY}
+    ${SYSTEMCONFIGURATION_LIBRARY}
+    ${WEBKITSYSTEMINTERFACE_LIBRARY}
+    ${XML2_LIBRARY}
+    ${ZLIB_LIBRARIES}
+)
+
+add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
 
 find_library(DATADETECTORSCORE_FRAMEWORK DataDetectorsCore HINTS /System/Library/PrivateFrameworks)
 if (NOT DATADETECTORSCORE_FRAMEWORK-NOTFOUND)
@@ -220,13 +269,14 @@ list(APPEND WebCore_SOURCES
     page/PageDebuggable.cpp
 
     page/cocoa/UserAgent.mm
+    page/cocoa/ResourceUsageOverlayCocoa.mm
+    page/cocoa/SettingsCocoa.mm
 
     page/mac/ChromeMac.mm
     page/mac/DragControllerMac.mm
     page/mac/EventHandlerMac.mm
-    page/mac/PageMac.cpp
+    page/mac/PageMac.mm
     page/mac/ServicesOverlayController.mm
-    page/mac/SettingsMac.mm
     page/mac/TextIndicatorWindow.mm
     page/mac/UserAgentMac.mm
     page/mac/WheelEventDeltaFilterMac.mm
@@ -263,10 +313,10 @@ list(APPEND WebCore_SOURCES
     platform/cf/FileSystemCF.cpp
     platform/cf/KeyedDecoderCF.cpp
     platform/cf/KeyedEncoderCF.cpp
+    platform/cf/MainThreadSharedTimerCF.cpp
     platform/cf/MediaAccessibilitySoftLink.cpp
     platform/cf/RunLoopObserver.cpp
     platform/cf/SharedBufferCF.cpp
-    platform/cf/SharedTimerCF.cpp
     platform/cf/URLCF.cpp
 
     platform/cocoa/ContentFilterUnblockHandlerCocoa.mm
@@ -344,7 +394,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/ImageCG.cpp
     platform/graphics/cg/ImageSourceCG.cpp
     platform/graphics/cg/ImageSourceCGMac.mm
-    platform/graphics/cg/ImageSourceCGWin.cpp
     platform/graphics/cg/IntPointCG.cpp
     platform/graphics/cg/IntRectCG.cpp
     platform/graphics/cg/IntSizeCG.cpp
@@ -489,7 +538,6 @@ list(APPEND WebCore_SOURCES
     platform/network/mac/WebCoreURLResponse.mm
 
     platform/posix/FileSystemPOSIX.cpp
-    platform/posix/SharedBufferPOSIX.cpp
 
     platform/text/cf/HyphenationCF.cpp
 

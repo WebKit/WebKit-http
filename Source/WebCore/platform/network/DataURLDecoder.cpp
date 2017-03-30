@@ -29,7 +29,6 @@
 #include "DecodeEscapeSequences.h"
 #include "HTTPParsers.h"
 #include "SharedBuffer.h"
-#include "Timer.h"
 #include "URL.h"
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
@@ -55,12 +54,14 @@ struct DecodeTask {
     Result result;
 };
 
-class DecodingResultDispatcher {
+#if HAVE(RUNLOOP_TIMER)
+
+class DecodingResultDispatcher : public ThreadSafeRefCounted<DecodingResultDispatcher> {
 public:
     static void dispatch(std::unique_ptr<DecodeTask> decodeTask)
     {
-        auto& dispatcher = *new DecodingResultDispatcher(WTF::move(decodeTask));
-        dispatcher.startTimer();
+        Ref<DecodingResultDispatcher> dispatcher = adoptRef(*new DecodingResultDispatcher(WTF::move(decodeTask)));
+        dispatcher->startTimer();
     }
 
 private:
@@ -72,10 +73,10 @@ private:
 
     void startTimer()
     {
+        // Keep alive until the timer has fired.
+        ref();
         m_timer.startOneShot(0);
-#if HAVE(RUNLOOP_TIMER)
         m_timer.schedule(m_decodeTask->scheduleContext.scheduledPairs);
-#endif
     }
 
     void timerFired()
@@ -85,17 +86,14 @@ private:
         else
             m_decodeTask->completionHandler({ });
 
-        delete this;
+        deref();
     }
 
-#if HAVE(RUNLOOP_TIMER)
-    typedef RunLoopTimer<DecodingResultDispatcher> DecodingResultDispatcherTimer;
-#else
-    typedef Timer DecodingResultDispatcherTimer;
-#endif
-    DecodingResultDispatcherTimer m_timer;
+    RunLoopTimer<DecodingResultDispatcher> m_timer;
     std::unique_ptr<DecodeTask> m_decodeTask;
 };
+
+#endif // HAVE(RUNLOOP_TIMER)
 
 static Result parseMediaType(const String& mediaType)
 {
@@ -177,7 +175,18 @@ void decode(const URL& url, const ScheduleContext& scheduleContext, DecodeComple
         else
             decodeEscaped(decodeTask);
 
+#if HAVE(RUNLOOP_TIMER)
         DecodingResultDispatcher::dispatch(std::unique_ptr<DecodeTask>(decodeTaskPtr));
+#else
+        callOnMainThread([decodeTaskPtr] {
+            std::unique_ptr<DecodeTask> decodeTask(decodeTaskPtr);
+            if (!decodeTask->result.data) {
+                decodeTask->completionHandler({ });
+                return;
+            }
+            decodeTask->completionHandler(WTF::move(decodeTask->result));
+        });
+#endif
     });
 }
 

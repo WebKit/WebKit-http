@@ -93,6 +93,21 @@ UniqueIDBDatabaseTransaction& UniqueIDBDatabaseConnection::createVersionChangeTr
     return transaction.get();
 }
 
+void UniqueIDBDatabaseConnection::establishTransaction(const IDBTransactionInfo& info)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::establishTransaction");
+
+    ASSERT(info.mode() != IndexedDB::TransactionMode::VersionChange);
+
+    // No transactions should ever come from the client after the client has already told us
+    // the connection is closing.
+    ASSERT(!m_closePending);
+
+    Ref<UniqueIDBDatabaseTransaction> transaction = UniqueIDBDatabaseTransaction::create(*this, info);
+    m_transactionMap.set(transaction->info().identifier(), &transaction.get());
+    m_database.enqueueTransaction(WTF::move(transaction));
+}
+
 void UniqueIDBDatabaseConnection::didAbortTransaction(UniqueIDBDatabaseTransaction& transaction, const IDBError& error)
 {
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::didAbortTransaction");
@@ -122,6 +137,20 @@ void UniqueIDBDatabaseConnection::didCreateObjectStore(const IDBResultData& resu
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::didCreateObjectStore");
 
     m_connectionToClient.didCreateObjectStore(resultData);
+}
+
+void UniqueIDBDatabaseConnection::didDeleteObjectStore(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::didDeleteObjectStore");
+
+    m_connectionToClient.didDeleteObjectStore(resultData);
+}
+
+void UniqueIDBDatabaseConnection::didClearObjectStore(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::didClearObjectStore");
+
+    m_connectionToClient.didClearObjectStore(resultData);
 }
 
 } // namespace IDBServer

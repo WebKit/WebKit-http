@@ -33,9 +33,11 @@
 #include "IDBDatabaseImpl.h"
 #include "IDBError.h"
 #include "IDBEventDispatcher.h"
+#include "IDBKeyRangeData.h"
 #include "IDBObjectStore.h"
 #include "IDBRequestImpl.h"
 #include "IDBResultData.h"
+#include "JSDOMWindowBase.h"
 #include "Logging.h"
 #include "ScriptExecutionContext.h"
 #include "TransactionOperation.h"
@@ -55,14 +57,24 @@ IDBTransaction::IDBTransaction(IDBDatabase& database, const IDBTransactionInfo& 
     , m_operationTimer(*this, &IDBTransaction::operationTimerFired)
 
 {
-    m_activationTimer = std::make_unique<Timer>(*this, &IDBTransaction::activationTimerFired);
-    m_activationTimer->startOneShot(0);
+    relaxAdoptionRequirement();
 
-    if (m_info.mode() == IndexedDB::TransactionMode::VersionChange)
+    if (m_info.mode() == IndexedDB::TransactionMode::VersionChange) {
         m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(m_database->info());
+        m_startedOnServer = true;
+    } else {
+        activate();
+
+        RefPtr<IDBTransaction> self;
+        JSC::VM& vm = JSDOMWindowBase::commonVM();
+        vm.whenIdle([self, this]() {
+            deactivate();
+        });
+
+        establishOnServer();
+    }
 
     suspendIfNeeded();
-    m_state = IndexedDB::TransactionState::Inactive;
 }
 
 IDBTransaction::~IDBTransaction()
@@ -153,8 +165,16 @@ void IDBTransaction::abort(ExceptionCode& ec)
     }
 
     m_state = IndexedDB::TransactionState::Aborting;
+    m_database->willAbortTransaction(*this);
 
-    m_database->abortTransaction(*this);
+    auto operation = createTransactionOperation(*this, nullptr, &IDBTransaction::abortOnServer);
+    scheduleOperation(WTF::move(operation));
+}
+
+void IDBTransaction::abortOnServer(TransactionOperation&)
+{
+    LOG(IndexedDB, "IDBTransaction::abortOnServer");
+    serverConnection().abortTransaction(*this);
 }
 
 const char* IDBTransaction::activeDOMObjectName() const
@@ -187,10 +207,16 @@ bool IDBTransaction::isFinishedOrFinishing() const
         || m_state == IndexedDB::TransactionState::Finished;
 }
 
-void IDBTransaction::activationTimerFired()
+void IDBTransaction::addRequest(IDBRequest& request)
 {
-    scheduleOperationTimer();
-    m_activationTimer = nullptr;
+    ASSERT(!m_openRequests.contains(&request));
+    m_openRequests.add(&request);
+}
+
+void IDBTransaction::removeRequest(IDBRequest& request)
+{
+    ASSERT(m_openRequests.contains(&request));
+    m_openRequests.remove(&request);
 }
 
 void IDBTransaction::scheduleOperation(RefPtr<TransactionOperation>&& operation)
@@ -213,7 +239,7 @@ void IDBTransaction::operationTimerFired()
 {
     LOG(IndexedDB, "IDBTransaction::operationTimerFired");
 
-    if (m_state == IndexedDB::TransactionState::Unstarted)
+    if (!m_startedOnServer)
         return;
 
     if (!m_transactionOperationQueue.isEmpty()) {
@@ -223,6 +249,9 @@ void IDBTransaction::operationTimerFired()
         return;
     }
 
+    if (!m_transactionOperationMap.isEmpty() || !m_openRequests.isEmpty())
+        return;
+
     if (!isFinishedOrFinishing())
         commit();
 }
@@ -231,12 +260,19 @@ void IDBTransaction::commit()
 {
     LOG(IndexedDB, "IDBTransaction::commit");
 
-    if (isFinishedOrFinishing())
-        return;
+    ASSERT(!isFinishedOrFinishing());
 
     m_state = IndexedDB::TransactionState::Committing;
+    m_database->willCommitTransaction(*this);
 
-    m_database->commitTransaction(*this);
+    auto operation = createTransactionOperation(*this, nullptr, &IDBTransaction::commitOnServer);
+    scheduleOperation(WTF::move(operation));
+}
+
+void IDBTransaction::commitOnServer(TransactionOperation&)
+{
+    LOG(IndexedDB, "IDBTransaction::commitOnServer");
+    serverConnection().commitTransaction(*this);
 }
 
 void IDBTransaction::finishAbortOrCommit()
@@ -245,6 +281,24 @@ void IDBTransaction::finishAbortOrCommit()
     m_state = IndexedDB::TransactionState::Finished;
 
     m_originalDatabaseInfo = nullptr;
+}
+
+void IDBTransaction::didStart(const IDBError& error)
+{
+    LOG(IndexedDB, "IDBTransaction::didStart");
+
+    m_database->didStartTransaction(*this);
+
+    m_startedOnServer = true;
+
+    // It's possible the transaction failed to start on the server.
+    // That equates to an abort.
+    if (!error.isNull()) {
+        didAbort(error);
+        return;
+    }
+
+    scheduleOperationTimer();
 }
 
 void IDBTransaction::didAbort(const IDBError& error)
@@ -337,9 +391,6 @@ void IDBTransaction::createObjectStoreOnServer(TransactionOperation& operation, 
 
     ASSERT(isVersionChange());
 
-    if (isFinishedOrFinishing())
-        return;
-
     m_database->serverConnection().createObjectStore(operation, info);
 }
 
@@ -348,31 +399,28 @@ void IDBTransaction::didCreateObjectStoreOnServer(const IDBResultData& resultDat
     LOG(IndexedDB, "IDBTransaction::didCreateObjectStoreOnServer");
 
     ASSERT_UNUSED(resultData, resultData.type() == IDBResultType::CreateObjectStoreSuccess);
-
-    scheduleOperationTimer();
 }
 
-Ref<IDBRequest> IDBTransaction::requestGetRecord(ScriptExecutionContext& context, IDBObjectStore& objectStore, IDBKey& key)
+Ref<IDBRequest> IDBTransaction::requestGetRecord(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBKeyRangeData& keyRangeData)
 {
-    LOG(IndexedDB, "IDBTransaction::requestPutOrAdd");
+    LOG(IndexedDB, "IDBTransaction::requestGetRecord");
     ASSERT(isActive());
-    ASSERT(key.isValid());
+    ASSERT(!keyRangeData.isNull);
 
     Ref<IDBRequest> request = IDBRequest::create(context, objectStore, *this);
+    addRequest(request.get());
 
-    auto operation = createTransactionOperation(*this, request.get(), &IDBTransaction::didGetRecordOnServer, &IDBTransaction::getRecordOnServer, &key);
+    auto operation = createTransactionOperation(*this, request.get(), &IDBTransaction::didGetRecordOnServer, &IDBTransaction::getRecordOnServer, keyRangeData);
     scheduleOperation(WTF::move(operation));
 
     return WTF::move(request);
 }
 
-void IDBTransaction::getRecordOnServer(TransactionOperation& operation, RefPtr<IDBKey> key)
+void IDBTransaction::getRecordOnServer(TransactionOperation& operation, const IDBKeyRangeData& keyRange)
 {
     LOG(IndexedDB, "IDBTransaction::getRecordOnServer");
 
-    ASSERT(!isFinishedOrFinishing());
-
-    serverConnection().getRecord(operation, key);
+    serverConnection().getRecord(operation, keyRange);
 }
 
 void IDBTransaction::didGetRecordOnServer(IDBRequest& request, const IDBResultData& resultData)
@@ -380,6 +428,93 @@ void IDBTransaction::didGetRecordOnServer(IDBRequest& request, const IDBResultDa
     LOG(IndexedDB, "IDBTransaction::didGetRecordOnServer");
 
     request.setResultToStructuredClone(resultData.resultData());
+    request.requestCompleted(resultData);
+}
+
+Ref<IDBRequest> IDBTransaction::requestCount(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBKeyRangeData& range)
+{
+    LOG(IndexedDB, "IDBTransaction::requestCount");
+    ASSERT(isActive());
+    ASSERT(!range.isNull);
+
+    Ref<IDBRequest> request = IDBRequest::create(context, objectStore, *this);
+    addRequest(request.get());
+
+    scheduleOperation(createTransactionOperation(*this, request.get(), &IDBTransaction::didGetCountOnServer, &IDBTransaction::getCountOnServer, range));
+
+    return request;
+}
+
+void IDBTransaction::getCountOnServer(TransactionOperation& operation, const IDBKeyRangeData& keyRange)
+{
+    LOG(IndexedDB, "IDBTransaction::getCountOnServer");
+
+    serverConnection().getCount(operation, keyRange);
+}
+
+void IDBTransaction::didGetCountOnServer(IDBRequest& request, const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBTransaction::didGetCountOnServer");
+
+    request.setResult(resultData.resultInteger());
+    request.requestCompleted(resultData);
+}
+
+Ref<IDBRequest> IDBTransaction::requestDeleteRecord(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBKeyRangeData& range)
+{
+    LOG(IndexedDB, "IDBTransaction::requestDeleteRecord");
+    ASSERT(isActive());
+    ASSERT(!range.isNull);
+
+    Ref<IDBRequest> request = IDBRequest::create(context, objectStore, *this);
+    addRequest(request.get());
+
+    scheduleOperation(createTransactionOperation(*this, request.get(), &IDBTransaction::didDeleteRecordOnServer, &IDBTransaction::deleteRecordOnServer, range));
+    return request;
+}
+
+void IDBTransaction::deleteRecordOnServer(TransactionOperation& operation, const IDBKeyRangeData& keyRange)
+{
+    LOG(IndexedDB, "IDBTransaction::deleteRecordOnServer");
+
+    serverConnection().deleteRecord(operation, keyRange);
+}
+
+void IDBTransaction::didDeleteRecordOnServer(IDBRequest& request, const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBTransaction::didDeleteRecordOnServer");
+
+    request.setResultToUndefined();
+    request.requestCompleted(resultData);
+}
+
+Ref<IDBRequest> IDBTransaction::requestClearObjectStore(ScriptExecutionContext& context, IDBObjectStore& objectStore)
+{
+    LOG(IndexedDB, "IDBTransaction::requestClearObjectStore");
+    ASSERT(isActive());
+
+    Ref<IDBRequest> request = IDBRequest::create(context, objectStore, *this);
+    addRequest(request.get());
+
+    uint64_t objectStoreIdentifier = objectStore.info().identifier();
+    auto operation = createTransactionOperation(*this, request.get(), &IDBTransaction::didClearObjectStoreOnServer, &IDBTransaction::clearObjectStoreOnServer, objectStoreIdentifier);
+    scheduleOperation(WTF::move(operation));
+
+    return WTF::move(request);
+}
+
+void IDBTransaction::clearObjectStoreOnServer(TransactionOperation& operation, const uint64_t& objectStoreIdentifier)
+{
+    LOG(IndexedDB, "IDBTransaction::clearObjectStoreOnServer");
+
+    serverConnection().clearObjectStore(operation, objectStoreIdentifier);
+}
+
+void IDBTransaction::didClearObjectStoreOnServer(IDBRequest& request, const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBTransaction::didClearObjectStoreOnServer");
+
+    request.setResultToUndefined();
     request.requestCompleted(resultData);
 }
 
@@ -391,6 +526,7 @@ Ref<IDBRequest> IDBTransaction::requestPutOrAdd(ScriptExecutionContext& context,
     ASSERT(objectStore.info().autoIncrement() || key);
 
     Ref<IDBRequest> request = IDBRequest::create(context, objectStore, *this);
+    addRequest(request.get());
 
     auto operation = createTransactionOperation(*this, request.get(), &IDBTransaction::didPutOrAddOnServer, &IDBTransaction::putOrAddOnServer, key, &value, overwriteMode);
     scheduleOperation(WTF::move(operation));
@@ -402,7 +538,6 @@ void IDBTransaction::putOrAddOnServer(TransactionOperation& operation, RefPtr<ID
 {
     LOG(IndexedDB, "IDBTransaction::putOrAddOnServer");
 
-    ASSERT(!isFinishedOrFinishing());
     ASSERT(!isReadOnly());
 
     serverConnection().putOrAdd(operation, key, value, overwriteMode);
@@ -416,15 +551,59 @@ void IDBTransaction::didPutOrAddOnServer(IDBRequest& request, const IDBResultDat
     request.requestCompleted(resultData);
 }
 
+void IDBTransaction::deleteObjectStore(const String& objectStoreName)
+{
+    LOG(IndexedDB, "IDBTransaction::deleteObjectStore");
+
+    ASSERT(isVersionChange());
+
+    if (auto objectStore = m_referencedObjectStores.take(objectStoreName))
+        objectStore->markAsDeleted();
+
+    auto operation = createTransactionOperation(*this, &IDBTransaction::didDeleteObjectStoreOnServer, &IDBTransaction::deleteObjectStoreOnServer, objectStoreName);
+    scheduleOperation(WTF::move(operation));
+}
+
+void IDBTransaction::deleteObjectStoreOnServer(TransactionOperation& operation, const String& objectStoreName)
+{
+    LOG(IndexedDB, "IDBTransaction::deleteObjectStoreOnServer");
+    ASSERT(isVersionChange());
+
+    serverConnection().deleteObjectStore(operation, objectStoreName);
+}
+
+void IDBTransaction::didDeleteObjectStoreOnServer(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBTransaction::didDeleteObjectStoreOnServer");
+    ASSERT_UNUSED(resultData, resultData.type() == IDBResultType::DeleteObjectStoreSuccess);
+}
+
+void IDBTransaction::operationDidComplete(TransactionOperation& operation)
+{
+    ASSERT(m_transactionOperationMap.get(operation.identifier()) == &operation);
+    m_transactionOperationMap.remove(operation.identifier());
+
+    scheduleOperationTimer();
+}
+
+void IDBTransaction::establishOnServer()
+{
+    LOG(IndexedDB, "IDBTransaction::establishOnServer");
+
+    serverConnection().establishTransaction(*this);
+}
+
 void IDBTransaction::activate()
 {
-    ASSERT(m_state == IndexedDB::TransactionState::Unstarted || m_state == IndexedDB::TransactionState::Inactive);
+    if (isFinishedOrFinishing())
+        return;
+
     m_state = IndexedDB::TransactionState::Active;
 }
 
 void IDBTransaction::deactivate()
 {
-    if (m_state == IndexedDB::TransactionState::Unstarted || m_state == IndexedDB::TransactionState::Active)
+    if (m_state == IndexedDB::TransactionState::Active)
         m_state = IndexedDB::TransactionState::Inactive;
 
     scheduleOperationTimer();

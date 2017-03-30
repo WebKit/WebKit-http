@@ -297,6 +297,10 @@ private:
 static void getConnectionTimingData(NSDictionary *timingData, ResourceLoadTiming&);
 #endif
 
+#if USE(SOUP)
+    void timeoutFired();
+#endif
+
     friend class ResourceHandleInternal;
     std::unique_ptr<ResourceHandleInternal> d;
 

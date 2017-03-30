@@ -36,7 +36,7 @@
 #include <wtf/Threading.h>
 
 #if USE(GLIB)
-#include <wtf/glib/GMainLoopSource.h>
+#include <wtf/glib/GRefPtr.h>
 #endif
 
 #if PLATFORM(EFL)
@@ -72,7 +72,11 @@ public:
 #if PLATFORM(COCOA)
     WTF_EXPORT_PRIVATE void runForDuration(double duration);
 #endif
-    
+
+#if USE(GLIB) && !PLATFORM(EFL)
+    WTF_EXPORT_PRIVATE GMainContext* mainContext() const { return m_mainContext.get(); }
+#endif
+
     class TimerBase {
         friend class RunLoop;
     public:
@@ -87,6 +91,10 @@ public:
         WTF_EXPORT_PRIVATE bool isActive() const;
 
         virtual void fired() = 0;
+
+#if USE(GLIB) && !PLATFORM(EFL)
+        void setPriority(int);
+#endif
 
     private:
         WTF_EXPORT_PRIVATE void start(double nextFireInterval, bool repeat);
@@ -107,7 +115,10 @@ public:
 #elif PLATFORM(HAIKU)
         BMessageRunner* m_messageRunner;
 #elif USE(GLIB)
-        GMainLoopSource m_timerSource;
+        void updateReadyTime();
+        GRefPtr<GSource> m_source;
+        bool m_isRepeating { false };
+        std::chrono::microseconds m_fireInterval { 0 };
 #endif
     };
 
@@ -165,11 +176,9 @@ private:
     BHandler* m_handler;
     friend class LoopHandler;
 #elif USE(GLIB)
-public:
-    static gboolean queueWork(RunLoop*);
-private:
     GRefPtr<GMainContext> m_mainContext;
     Vector<GRefPtr<GMainLoop>> m_mainLoops;
+    GRefPtr<GSource> m_source;
 #endif
 };
 

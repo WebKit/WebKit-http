@@ -28,7 +28,27 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBKey.h"
+
 namespace WebCore {
+
+IDBKeyRangeData::IDBKeyRangeData(IDBKey* key)
+    : isNull(!key)
+    , lowerKey(key)
+    , upperKey(key)
+    , lowerOpen(false)
+    , upperOpen(false)
+{
+}
+
+IDBKeyRangeData::IDBKeyRangeData(const IDBKeyData& keyData)
+    : isNull(keyData.isNull())
+    , lowerKey(keyData)
+    , upperKey(keyData)
+    , lowerOpen(false)
+    , upperOpen(false)
+{
+}
 
 IDBKeyRangeData IDBKeyRangeData::isolatedCopy() const
 {
@@ -57,6 +77,20 @@ bool IDBKeyRangeData::isExactlyOneKey() const
         return false;
 
     return !lowerKey.compare(upperKey);
+}
+
+bool IDBKeyRangeData::isValid() const
+{
+    if (isNull)
+        return false;
+
+    if (!lowerKey.isValid() && !lowerKey.isNull())
+        return false;
+
+    if (!upperKey.isValid() && !upperKey.isNull())
+        return false;
+
+    return true;
 }
 
 } // namespace WebCore

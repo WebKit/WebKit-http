@@ -1,3 +1,458 @@
+2015-11-02  Filip Pizlo  <fpizlo@apple.com>
+
+        B3/Air should use bubble sort for their insertion sets, because it's faster than std::stable_sort
+        https://bugs.webkit.org/show_bug.cgi?id=150828
+
+        Reviewed by Geoffrey Garen.
+
+        Add a pretty good bubble sort implementation to WTF. This implementation has three
+        common tricks:
+
+        - Forward and backward scans. This reduces the severity of certain kinds of bubble sort
+          pathologies.
+
+        - Return if a scan finds the list to be sorted. This gives the algorithm one of its most
+          attractive properties: it's super fast when the list is already sorted.
+
+        - Each scan eliminates one element from future scans. This makes the algorithm no worse
+          than insertion sort.
+
+        Why do we want this? Because bubble sort is a really great stable sort for small lists,
+        or large lists in which only a handful of elements are out of order. Compiler insertion
+        sets tend to be one of those or somewhere in between: usually they are very small, and
+        usually they are sorted. It's rare that an element will be out of order, and when it is,
+        it's usually very close to where it's supposed to be.
+
+        This is a significant speed-up for B3 compile times.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BubbleSort.h: Added.
+        (WTF::bubbleSort):
+        * wtf/CMakeLists.txt:
+
+2015-11-02  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add tvOS and watchOS to SUPPORTED_PLATFORMS
+        https://bugs.webkit.org/show_bug.cgi?id=150819
+
+        Reviewed by Dan Bernstein.
+
+        This tells Xcode to include these platforms in its Devices dropdown, making it possible to build in the IDE.
+
+        * Configurations/Base.xcconfig:
+
+2015-11-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Remove support for GSocket main loop sources from GMainLoopSource
+        https://bugs.webkit.org/show_bug.cgi?id=150772
+
+        Reviewed by Žan Doberšek.
+
+        It complicated the code just to make generic what is only used in
+        one place.
+
+        * wtf/glib/GMainLoopSource.cpp:
+        (WTF::GMainLoopSource::cancel): Deleted.
+        (WTF::GMainLoopSource::schedule): Deleted.
+        (WTF::GMainLoopSource::scheduleTimeoutSource): Deleted.
+        (WTF::GMainLoopSource::scheduleAfterDelay): Deleted.
+        (WTF::GMainLoopSource::finishVoidCallback): Deleted.
+        (WTF::GMainLoopSource::voidCallback): Deleted.
+        (WTF::GMainLoopSource::prepareBoolCallback): Deleted.
+        * wtf/glib/GMainLoopSource.h:
+        (WTF::GMainLoopSource::Context::operator=): Deleted.
+
+2015-11-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Remove delete on destroy GMainLoopSources
+        https://bugs.webkit.org/show_bug.cgi?id=150771
+
+        Reviewed by Žan Doberšek.
+
+        Delete on destroy sources made the GMainLoopSource implementation
+        more complex and they are currently unused.
+
+        * wtf/glib/GMainLoopSource.cpp:
+        (WTF::GMainLoopSource::boolCallback):
+        (WTF::GMainLoopSource::create): Deleted.
+        (WTF::GMainLoopSource::GMainLoopSource): Deleted.
+        (WTF::GMainLoopSource::cancel): Deleted.
+        (WTF::GMainLoopSource::scheduleAndDeleteOnDestroy): Deleted.
+        (WTF::GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy): Deleted.
+        (WTF::GMainLoopSource::voidCallback): Deleted.
+        * wtf/glib/GMainLoopSource.h:
+
+2015-11-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use RunLoop in WorkQueue implementation
+        https://bugs.webkit.org/show_bug.cgi?id=150770
+
+        Reviewed by Darin Adler.
+
+        Instead of using GMainLoop directly. RunLoop already abstracts the
+        GMainLoop details and uses persistent sources making it more efficient.
+        For the dispatchAfter implementation we use a helper context class
+        and a GSource directly, since we are going to get rid of delete on
+        destroy GMainLoop soon and this is the only place where we still
+        use them.
+
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::mainContext): Return the GMainContext.
+        * wtf/WorkQueue.h:
+        * wtf/glib/WorkQueueGLib.cpp:
+        (WTF::WorkQueue::platformInitialize): The RunLoop needs to be
+        created in the worker thread now, so we now use a mutex to wait
+        until the thread has started and the RunLoop has been created.
+        (WTF::WorkQueue::platformInvalidate): Stop the RunLoop and wait
+        until the thread finishes.
+        (WTF::WorkQueue::dispatch): Use RunLoop::dispatch().
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::DispatchAfterContext::~DispatchAfterContext):
+        (WTF::DispatchAfterContext::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2015-11-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Support Generator Syntax
+        https://bugs.webkit.org/show_bug.cgi?id=150769
+
+        Reviewed by Geoffrey Garen.
+
+        Added ENABLE_ES6_GENERATORS flag.
+
+        * wtf/FeatureDefines.h:
+
+2015-11-01  Darin Adler  <darin@apple.com>
+
+        ASCIICType refinements
+        https://bugs.webkit.org/show_bug.cgi?id=150787
+
+        Reviewed by Geoffrey Garen.
+
+        Refined ASCIICType.h by using narrower types. The most valuable part of this
+        is the part where the result of toASCIIHexValue is uint8_t instead of int;
+        that's slightly better for RGB values that the compiler needs to know fit
+        into a byte (coming in some Color work I plan to do soon).
+
+        * wtf/ASCIICType.h: Used CharacterType instead of CharType throughout, and
+        also sorted the using declarations at the bottom of the header.
+        (WTF::isASCII): Use the name "character" instead of "c".
+        (WTF::isASCIIAlpha): Ditto. Also use isASCIILower and toASCIILowerUnchecked
+        instead of writing it out.
+        (WTF::isASCIIDigit): Ditto.
+        (WTF::isASCIIAlphanumeric): Ditto.
+        (WTF::isASCIIHexDigit): Ditto. Also use toASCIILowerUnchecked instead of
+        writing it out.
+        (WTF::isASCIILower): Ditto.
+        (WTF::isASCIIBinaryDigit): Ditto. Also removed unneeded parentheses to match
+        the style of the rest of the file.
+        (WTF::isASCIIOctalDigit): Ditto.
+        (WTF::isASCIIPrintable): Ditto.
+        (WTF::isASCIISpace): Ditto.
+        (WTF::isASCIIUpper): Ditto.
+        (WTF::toASCIILower): Ditto. Also use isASCIIUpper instead of writing it out.
+        (WTF::toASCIILowerUnchecked): Tweaked comment.
+        (WTF::toASCIIUpper): Ditto. Also use isASCIILower instead of writing it out.
+        (WTF::toASCIIHexValue): Ditto. Also change return type from int to uint8_t.
+        Also broke a single assertion with && into two separate assertions and got
+        rid of unnnecessary masking with 0xF0 after shifting left. Also renamed
+        arguments for the two argument value so they are more sensible.
+        (WTF::lowerNibbleToASCIIHexDigit): Changed argument type to uint8_t, since
+        this function does not take a character. Also called it "value" instead of "c".
+        Also slightly tweaked how the expression is written.
+        (WTF::upperNibbleToASCIIHexDigit): Ditto. Using the more specific type also
+        got rid of the need to explicitly mask in this function.
+        (WTF::isASCIIAlphaCaselessEqual): Renamed the arguments for greater clarity.
+        With the new clearer argument names, the comment was superfluous.
+
+2015-11-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Dominators should be factored out of the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=150764
+
+        Reviewed by Geoffrey Garen.
+
+        This takes what used to be DFGDominators.h/DFGDominators.cpp and turns it into a generic
+        algorithm that can take any abstract graph. The idea is that you create Dominators<CFG> and
+        pass it a CFG object, which defines the types of graph nodes and methods for getting
+        successors, predecessors, etc. The DFG now defines a class called CFG, which is a wrapper for
+        DFG::Graph that conforms to the thing that wtf/Dominators.h expects.
+
+        When doing things to graphs, it's common to refer to the things in the graph as "nodes".
+        Because I intend to reuse the CFG abstraction with many graph algorithms, that abstraction uses
+        the term "node" to refer to a DFG basic block. But in Dominators, the method and variable names
+        still use "block". This is because although Dominators are applicable to any kind of directed
+        graph, it's super unlikely that we will ever use them for anything but compilers. Indeed, the
+        only reason why I'm factoring them out of the DFG is so that I can use them with B3 and Air.
+
+        This has the nice side effect that a user of WTF::Dominators<JSC::DFG::CFG> will see familiar
+        terminology like "blocksStrictlyDominatedBy(...)" instead of "nodesStrictlyDominatedBy(...)",
+        which would be super confusing.
+
+        Overall, wtf/Dominators.h is a combination of what used to be in DFGDominators.h,
+        DFGDominators.cpp, DFGNaiveDominators.h, and DFGNaiveDominators.cpp. I only changed code when I
+        had to in order to make it generic.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Dominators.h: Added.
+        (WTF::Dominators::Dominators):
+        (WTF::Dominators::compute):
+        (WTF::Dominators::strictlyDominates):
+        (WTF::Dominators::dominates):
+        (WTF::Dominators::immediateDominatorOf):
+        (WTF::Dominators::forAllStrictDominatorsOf):
+        (WTF::Dominators::forAllDominatorsOf):
+        (WTF::Dominators::forAllBlocksStrictlyDominatedBy):
+        (WTF::Dominators::forAllBlocksDominatedBy):
+        (WTF::Dominators::strictDominatorsOf):
+        (WTF::Dominators::dominatorsOf):
+        (WTF::Dominators::blocksStrictlyDominatedBy):
+        (WTF::Dominators::blocksDominatedBy):
+        (WTF::Dominators::forAllBlocksInDominanceFrontierOf):
+        (WTF::Dominators::dominanceFrontierOf):
+        (WTF::Dominators::forAllBlocksInIteratedDominanceFrontierOf):
+        (WTF::Dominators::forAllBlocksInPrunedIteratedDominanceFrontierOf):
+        (WTF::Dominators::iteratedDominanceFrontierOf):
+        (WTF::Dominators::dump):
+        (WTF::Dominators::LengauerTarjan::LengauerTarjan):
+        (WTF::Dominators::LengauerTarjan::compute):
+        (WTF::Dominators::LengauerTarjan::immediateDominator):
+        (WTF::Dominators::LengauerTarjan::computeDepthFirstPreNumbering):
+        (WTF::Dominators::LengauerTarjan::computeSemiDominatorsAndImplicitImmediateDominators):
+        (WTF::Dominators::LengauerTarjan::computeExplicitImmediateDominators):
+        (WTF::Dominators::LengauerTarjan::link):
+        (WTF::Dominators::LengauerTarjan::eval):
+        (WTF::Dominators::LengauerTarjan::compress):
+        (WTF::Dominators::LengauerTarjan::BlockData::BlockData):
+        (WTF::Dominators::NaiveDominators::NaiveDominators):
+        (WTF::Dominators::NaiveDominators::dominates):
+        (WTF::Dominators::NaiveDominators::dump):
+        (WTF::Dominators::NaiveDominators::pruneDominators):
+        (WTF::Dominators::ValidationContext::ValidationContext):
+        (WTF::Dominators::ValidationContext::reportError):
+        (WTF::Dominators::ValidationContext::handleErrors):
+        (WTF::Dominators::naiveDominates):
+        (WTF::Dominators::forAllBlocksInDominanceFrontierOfImpl):
+        (WTF::Dominators::forAllBlocksInIteratedDominanceFrontierOfImpl):
+        (WTF::Dominators::BlockData::BlockData):
+
+2015-11-01  Darin Adler  <darin@apple.com>
+
+        Remove some dead and unneeded code (ScrollbarThemeSafari, RenderThemeSafari, OPENCL, a little color space logic)
+        https://bugs.webkit.org/show_bug.cgi?id=150783
+
+        Reviewed by Tim Horton.
+
+        * wtf/FeatureDefines.h: Removed the OPENCL feature, no longer supported.
+
+2015-10-31  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::reduceStrength's DCE should be more agro and less wrong
+        https://bugs.webkit.org/show_bug.cgi?id=150748
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/GraphNodeWorklist.h:
+        (WTF::GraphNodeWorklist::saw): This method is super useful.
+
+2015-11-01  Philip Chimento  <philip.chimento@gmail.com>
+
+        [GTK] Fix combinations of PLATFORM(GTK) and OS(DARWIN)
+        https://bugs.webkit.org/show_bug.cgi?id=144560
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h: Don't USE(ACCELERATE) on PLATFORM(GTK).
+        * wtf/WorkQueue.h: Change order of OS(DARWIN) and PLATFORM(GTK)
+        checks so that GTK facilities are used even when building the
+        GTK platform on Darwin.
+
+2015-11-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use RunLoop::Timer in main thread shared timer GTK+ implementation
+        https://bugs.webkit.org/show_bug.cgi?id=150754
+
+        Reviewed by Darin Adler.
+
+        Add API to set the priority of a RunLoop::Timer for GLib.
+
+        * wtf/RunLoop.h:
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::setPriority):
+
+2015-10-31  Andreas Kling  <akling@apple.com>
+
+        Add a debug overlay with information about web process resource usage.
+        <https://webkit.org/b/150599>
+
+        Reviewed by Darin Adler.
+
+        Add ENABLE(RESOURCE_USAGE_OVERLAY) flag, enabled on Mac by default.
+
+        * wtf/Platform.h:
+
+2015-10-30  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r191673): Crash in RunLoopTimer::schedule()
+        https://bugs.webkit.org/show_bug.cgi?id=150723
+
+        Reviewed by Anders Carlsson.
+
+        We were crashing in RunLoopTimer::schedule() when iterating over the
+        SchedulePairHashSet. The reason is that we were passing this
+        SchedulePairHashSet from the main thread to a background thread, which
+        was not safe because the SchedulePair objects inside the HashSet were
+        not ThreadSafeRefCounted. This patch makes them ThreadSafeRefCounted.
+
+        * wtf/SchedulePair.h:
+
+2015-10-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move the socket polling off the WorkQueue
+        https://bugs.webkit.org/show_bug.cgi?id=150593
+
+        Reviewed by Anders Carlsson.
+
+        It doesn't really belong to the WorkQueue, it's only used by the
+        WebKit2 connection, so it can be moved there.
+
+        * wtf/WorkQueue.h:
+        * wtf/glib/WorkQueueGLib.cpp:
+        (WTF::WorkQueue::registerSocketEventHandler): Deleted.
+        (WTF::WorkQueue::unregisterSocketEventHandler): Deleted.
+
+2015-10-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use a persistent main loop source in RunLoop glib implementation
+        https://bugs.webkit.org/show_bug.cgi?id=150590
+
+        Reviewed by Žan Doberšek.
+
+        It's more efficient than creating and destroying a new source for
+        every dispatch and it simplifies the code.
+
+        * wtf/RunLoop.h:
+        * wtf/glib/MainThreadGLib.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread): Use
+        RunLoop::dispatch() instead of GMainLoopSource::scheduleAndDeleteOnDestroy().
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::RunLoop): Create and setup the persistent source.
+        (WTF::RunLoop::~RunLoop): Destroy the persistent source.
+        (WTF::RunLoop::stop): Stop the persistent source before stopping
+        the main loop.
+        (WTF::RunLoop::wakeUp): Make the persistent source active. We
+        no longer need to explicitly wakeup the context.
+        (WTF::RunLoop::TimerBase::TimerBase): Create and setup the
+        persistent source.
+        (WTF::RunLoop::TimerBase::~TimerBase): Destroy the persistent source.
+        (WTF::RunLoop::TimerBase::updateReadyTime): Set the ready time
+        according to the fire interval.
+        (WTF::RunLoop::TimerBase::start): Make the persistent source active.
+        (WTF::RunLoop::TimerBase::stop): Stop the persistent source.
+        (WTF::RunLoop::TimerBase::isActive): Return whether the
+        persistent source is active.
+
+2015-10-30  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][Mac] fix WTF build
+        https://bugs.webkit.org/show_bug.cgi?id=150502
+
+        Reviewed by Alex Christensen.
+
+        * wtf/CMakeLists.txt: Add CommonCryptoSPI.h in the headers.
+
+2015-10-29  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=150686
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/CMakeLists.txt:
+        * wtf/Platform.h:
+        * wtf/PlatformMac.cmake:
+
+2015-10-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r191728.
+        https://bugs.webkit.org/show_bug.cgi?id=150668
+
+        Caused a lot of timeouts in layout tests (Requested by KaL on
+        #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Use a persistent main loop source in RunLoop glib
+        implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=150590
+        http://trac.webkit.org/changeset/191728
+
+2015-10-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use a persistent main loop source in RunLoop glib implementation
+        https://bugs.webkit.org/show_bug.cgi?id=150590
+
+        Reviewed by Žan Doberšek.
+
+        It's more efficient than creating and destroying a new source for
+        every dispatch and it simplifies the code.
+
+        * wtf/RunLoop.h:
+        * wtf/glib/MainThreadGLib.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread): Use
+        RunLoop::dispatch() instead of GMainLoopSource::scheduleAndDeleteOnDestroy().
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::RunLoop): Create and setup the persistent source.
+        (WTF::RunLoop::~RunLoop): Destroy the persistent source.
+        (WTF::RunLoop::stop): Stop the persistent source before stopping
+        the main loop.
+        (WTF::RunLoop::wakeUp): Make the persistent source active. We
+        no longer need to explicitly wakeup the context.
+        (WTF::RunLoop::TimerBase::TimerBase): Create and setup the
+        persistent source.
+        (WTF::RunLoop::TimerBase::~TimerBase): Destroy the persistent source.
+        (WTF::RunLoop::TimerBase::updateReadyTime): Set the ready time
+        according to the fire interval.
+        (WTF::RunLoop::TimerBase::start): Make the persistent source active.
+        (WTF::RunLoop::TimerBase::stop): Stop the persistent source.
+        (WTF::RunLoop::TimerBase::isActive): Return whether the
+        persistent source is active.
+
+2015-10-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, make sure B3 is disabled on iOS for now.
+
+        * wtf/Platform.h:
+
+2015-10-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Create a super rough prototype of B3
+        https://bugs.webkit.org/show_bug.cgi?id=150280
+
+        Reviewed by Benjamin Poulain.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/HashSet.h:
+        (WTF::copyToVector):
+        (WTF::=):
+        * wtf/ListDump.h:
+        (WTF::PointerListDump::PointerListDump):
+        (WTF::PointerListDump::dump):
+        (WTF::MapDump::MapDump):
+        (WTF::listDump):
+        (WTF::pointerListDump):
+        (WTF::sortedListDump):
+        * wtf/MathExtras.h:
+        (WTF::leftShiftWithSaturation):
+        (WTF::rangesOverlap):
+        * wtf/Platform.h:
+        * wtf/ScopedLambda.h: Added.
+        (WTF::scopedLambda):
+        * wtf/SharedTask.h:
+        (WTF::createSharedTask):
+
 2015-10-28  Alberto Garcia  <berto@igalia.com>
 
         [SOUP] Cannot build the network process in glibc-based BSD systems

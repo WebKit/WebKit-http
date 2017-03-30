@@ -100,7 +100,7 @@ void RadioButtonGroup::updateCheckedState(HTMLInputElement* button)
         setCheckedButton(button);
     else {
         if (m_checkedButton == button)
-            m_checkedButton = 0;
+            m_checkedButton = nullptr;
     }
     if (wasValid != isValid())
         updateValidityForAllButtons();
@@ -150,10 +150,7 @@ void RadioButtonGroup::remove(HTMLInputElement* button)
 
 void RadioButtonGroup::updateValidityForAllButtons()
 {
-    typedef HashSet<HTMLInputElement*>::const_iterator Iterator;
-    Iterator end = m_members.end();
-    for (Iterator it = m_members.begin(); it != end; ++it) {
-        HTMLInputElement* button = *it;
+    for (auto& button : m_members) {
         ASSERT(button->isRadioButton());
         button->updateValidity();
     }
@@ -224,7 +221,7 @@ HTMLInputElement* CheckedRadioButtons::checkedButtonForGroup(const AtomicString&
         return 0;
     m_nameToGroupMap->checkConsistency();
     RadioButtonGroup* group = m_nameToGroupMap->get(name.impl());
-    return group ? group->checkedButton() : 0;
+    return group ? group->checkedButton() : nullptr;
 }
 
 bool CheckedRadioButtons::isInRequiredGroup(HTMLInputElement* element) const

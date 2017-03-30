@@ -28,19 +28,20 @@
 #define WebCoreJSBuiltins_h
 
 #if ENABLE(MEDIA_STREAM)
-#include "MediaDevicesBuiltinsWrapper.h"
+#include "MediaDevicesBuiltins.h"
+#include "NavigatorUserMediaBuiltins.h"
 #endif
 
 #if ENABLE(STREAMS_API)
-#include "ByteLengthQueuingStrategyBuiltinsWrapper.h"
-#include "CountQueuingStrategyBuiltinsWrapper.h"
-#include "ReadableStreamBuiltinsWrapper.h"
-#include "ReadableStreamControllerBuiltinsWrapper.h"
-#include "ReadableStreamInternalsBuiltinsWrapper.h"
-#include "ReadableStreamReaderBuiltinsWrapper.h"
-#include "StreamInternalsBuiltinsWrapper.h"
-#include "WritableStreamBuiltinsWrapper.h"
-#include "WritableStreamInternalsBuiltinsWrapper.h"
+#include "ByteLengthQueuingStrategyBuiltins.h"
+#include "CountQueuingStrategyBuiltins.h"
+#include "ReadableStreamBuiltins.h"
+#include "ReadableStreamControllerBuiltins.h"
+#include "ReadableStreamInternalsBuiltins.h"
+#include "ReadableStreamReaderBuiltins.h"
+#include "StreamInternalsBuiltins.h"
+#include "WritableStreamBuiltins.h"
+#include "WritableStreamInternalsBuiltins.h"
 #endif
 
 #include <runtime/VM.h>
@@ -64,6 +65,7 @@ public:
 #endif
 #if ENABLE(MEDIA_STREAM)
         , m_mediaDevicesBuiltins(&vm)
+        , m_navigatorUserMediaBuiltins(&vm)
 #endif
     {
 #if ENABLE(STREAMS_API)
@@ -85,6 +87,7 @@ public:
 #endif
 #if ENABLE(MEDIA_STREAM)
     MediaDevicesBuiltinsWrapper& mediaDevicesBuiltins() { return m_mediaDevicesBuiltins; }
+    NavigatorUserMediaBuiltinsWrapper& navigatorUserMediaBuiltins() { return m_navigatorUserMediaBuiltins;}
 #endif
 
 private:
@@ -102,6 +105,7 @@ private:
 #endif
 #if ENABLE(MEDIA_STREAM)
     MediaDevicesBuiltinsWrapper m_mediaDevicesBuiltins;
+    NavigatorUserMediaBuiltinsWrapper m_navigatorUserMediaBuiltins;
 #endif
 
 };

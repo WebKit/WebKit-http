@@ -51,7 +51,7 @@ class PageClientImpl final : public PageClient
 #endif
     {
 public:
-    PageClientImpl(WKView *, WKWebView *);
+    PageClientImpl(NSView *, WKWebView *);
     virtual ~PageClientImpl();
 
     // FIXME: Eventually WebViewImpl should become the PageClient.
@@ -166,7 +166,6 @@ private:
 
     virtual void recommendedScrollbarStyleDidChange(WebCore::ScrollbarStyle) override;
 
-    virtual WKView* wkView() const override { return m_wkView; }
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize) override;
 
 #if USE(DICTATION_ALTERNATIVES)
@@ -217,7 +216,15 @@ private:
 
     virtual void didChangeBackgroundColor() override;
 
-    WKView *m_wkView;
+    virtual void startWindowDrag() override;
+    virtual NSWindow *platformWindow() override;
+
+#if WK_API_ENABLED
+    virtual NSView *inspectorAttachmentView() override;
+    virtual _WKRemoteObjectRegistry *remoteObjectRegistry() override;
+#endif
+
+    NSView *m_view;
     WKWebView *m_webView;
     WebViewImpl* m_impl { nullptr };
 #if USE(AUTOCORRECTION_PANEL)

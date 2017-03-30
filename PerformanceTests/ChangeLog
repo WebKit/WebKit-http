@@ -1,3 +1,316 @@
+2015-11-01  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Add an option to make the graphics benchmark runs a specific test with fixed complexity
+        https://bugs.webkit.org/show_bug.cgi?id=150529
+
+        Reviewed by Darin Adler.
+
+        Beside each test in the suites tree, we are going to show the complexity
+        arithmetic mean of the of the last run in an edit control. Based on a
+        new option these edit controls will all be visible or hidden. If they are
+        visible their values can be changed. The benchmark runner if it run in
+        the non-adaptive mode will set the complexity of the test to the passed
+        value and will not change it ever. The animator will animate the test and
+        frame rate will also be measured.
+
+        * Animometer/runner/animometer.html: Add a new option for the non-adaptive mode.
+        
+        * Animometer/runner/resources/animometer.css:
+        (section#home input[type="number"]): Define the width of all the edit control in the <home> section.
+        (section#home > suites input[type="number"]): The edit controls in the <suites> box will be right aligned and hidden by default.
+        (section#home > suites input[type="number"].selected): When the class "selected" is added, the edit controls will be visible.
+        (section#home > options > label > input[type="number"]): Deleted.
+        
+        * Animometer/runner/resources/animometer.js:
+        (window.benchmarkRunnerClient.didFinishLastIteration): Update the local storage with the results of each test.
+        (window.optionsManager._adaptiveTestElement): Returns the checkbox for setting the adaptive test option.
+        (window.suitesManager._editElement):  Returns the edit element associated with each test element in the suites tree.
+        (window.suitesManager._editsElements): Returns a list of all the elements in the <suites> box.
+        (window.suitesManager._localStorageNameForTest): Change this function to take strings.
+        (window.suitesManager._createTestElement): Adds an edit control beside each test.
+        (window.suitesManager.updateEditsElementsState): Adds/Removes the 'selected' class to/from all the tests edit elements.
+        (window.suitesManager.updateUIFromLocalStorage): Reads the edit control value from the local storage.
+        (window.suitesManager.updateLocalStorageFromUI): Saves the edit control value to the local storage.
+        (window.suitesManager.updateLocalStorageFromJSON): Saves the last run results to the local storage.
+        (window.benchmarkController.initialize): Shows/Hides the test edit controls based on the adaptive test option.
+        (window.benchmarkController.onChangeAdaptiveTestCheckbox): An onchange event handler for the adaptive test checkbox.
+        
+        * Animometer/tests/resources/main.js: 
+        (Benchmark.prototype.update): Fix the complexity of the test if the running mode is non-adaptive test and desired complexity is not zero.
+        (window.runBenchmark): Add the test complexity as a new benchmark option.
+
+2015-11-01  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Make the size of the benchmark canvas adaptive to the screen size and screen resolution
+        https://bugs.webkit.org/show_bug.cgi?id=150530
+
+        Reviewed by Darin Adler.
+        
+        We want to set the size of the benchmark stage dynamically such that it
+        depends on the screen resolution and the device scale factor. This patch 
+        does more than that because the home page css was not done properly. To
+        use the flex box layout, the animometer.css has to be rewritten almost from
+        scratch. The suites tree has to be rewritten also because it was not collapsing
+        and with the flex box layout it was going outside of the window area. The 
+        options handling and the local storage handling had to be rewritten to
+        allow more flexibility with this patch and the future patches. The code
+        in animometer.js was reorganized into objects to allow distributing the code
+        nicely among separate entities.
+
+        * Animometer/resources/extensions.js:
+        (Point.elementClientSize): Returns the client size of an HTMLElement as a Point object.
+        (Insets.prototype.get width): Follow the function opening brace style guidelines.
+        (Insets.prototype.get height):
+        (Insets.prototype.get size): Returns the size of an Insets as a Point object.
+        
+        (window.DocumentExtension): Provides document helper functions. It should be assailable from the runner and the tests.
+        (window.DocumentExtension.createElement): Creates an HTMLElement given its name, attributes and parentElement. 
+        (window.DocumentExtension.createSvgElement): Creates an SVGElement given its name, attributes and parentElement (moved from utilities.js). 
+        (window.DocumentExtension.insertCssRuleAfter): Inserts a CSS rule after an exiting rule given its text.
+        
+        (ResultsTable.prototype._showHeader): Use DocumentExtension functions.
+        (ResultsTable.prototype._showGraph): Use DocumentExtension functions and create a real button for "Graph..." option.
+        (ResultsTable.prototype._showJSON): Use DocumentExtension functions and create a real button for "JSON..." option.
+        (Options): Deleted.
+        
+        * Animometer/runner/animometer.html: Restructure the page to use the flex box layout.
+        
+        * Animometer/runner/resources/animometer.css:
+        (html,body):
+        (button):
+        
+        (button.large-button):The large button appears in the animometer.html.
+        (button.large-button:active):
+        (button.large-button:disabled):
+        
+        (button.small-button): The small button appears in the results table.
+        (button.small-button:active):
+        
+        (.tree): The tree class is used to list the suites and their tests.
+        (.tree .expand-button): This button expands a tree element.
+        (.tree .expand-button ~ ul): Hide the children (<ul>...</ul>) of a parent node by default.
+        (.tree .expand-button:checked ~ ul): Show the children of a parent node only when checked.
+        (.tree ul): Hide the list bullets.
+        (.tree li): Indent every node in the tree relative to its parent.
+        (.tree ul li): Indent all the non top level nodes only (the tests nodes in our case).
+        (.tree > li:last-child): Do not indent the bottom of the last child node.
+        (.tree-label): Style for all the labels in the tree.
+        (label.tree-label): Style for the labels in the top level only (the suites nodes in our case).
+        (label.tree-label:before): Style the unchecked case of the expand-button.
+        (:checked ~ label.tree-label:before): Style the checked case of the expand-button.
+        
+        (table.results-table): The results table appears while running the test and at the end.
+        (.results-table td):
+        (.results-table th):
+        
+        (div.results-json): The JSON div appears per test or for the whole run.
+        
+        (main): This is the flex box container.
+        
+        (section): A section is displayed exclusively inside the <main>. It is hidden by default.
+        (section.selected): When it is selected, its layout is flex layout.
+        (section > footer): The header or the footer of a section should not take more than 15% of the container.
+        
+        (section#home): The home section has <suites> and <options> parts to be laid out in the middle.
+        (section#home > options): 
+        (section#home > suites): The <suites> should not take more than 40% of the width.
+        (section#home > options > label): The benchmark title.
+        (section#home > header > h2): The benchmark title.
+        (section#home > options > label > input[type="number"]): Sets the width of the option edit control.
+        
+        (section#running): The running section contain the runner <iframe> which takes the whole area of the <main>.
+        (section#running > #running-test): This is the <iframe> container.
+        (section#running > #running-test > iframe): The <iframe> is created by the runner for each test.
+        (section#running > #progress): This is the progress bar.
+        (section#running > #progress > #progress-completed): This is another element which grows while the runner is progressing.
+        (section#running > #record): This the container of the record results table which is shown while running a test.
+        
+        (section#results):
+        (section#json):
+        (section#test-json):
+        (section#test-graph): All these sections have the same layout. A <data> element is laid out between <header> and <footer>.
+
+        (section#results > data):
+        (section#json > data):
+        (section#test-json > data):
+        (section#test-graph > data): The <data> element should take 70% of the <section>.
+        
+        (section#test-graph > data > svg):
+        (.axis line):
+        (.left-samples): These styles are for the d3 graph.
+        
+        (section#test-json > data): This is the style of the JSON <data> element.
+        
+        (iframe): Deleted.
+        (label, p): Deleted.
+        (section > p): Deleted.
+        (section#home > p): Deleted.
+        (section#home > p:first-child): Deleted.
+        (#testContainer): Deleted.
+        (section#running #progress-completed): Deleted.
+        (section#results > table): Deleted.
+        (section#results > table td, th): Deleted.
+        (section#results > table tr.alt, td): Deleted.
+        (section#results > table th): Deleted.
+        (section#json > textarea): Deleted.
+        (.options): Deleted.
+        (.options p): Deleted.
+        (#suites ul): Deleted.
+        (#suites ul ul): Deleted.
+        (#suites ul ul input, #suites ul ul label): Deleted.
+        (#suites.showTests ul ul): Deleted.
+        (.column): Deleted.
+        (input[type="number"]): Deleted.
+        (.buttons): Deleted.
+        (.small-button): Deleted.
+        (#graphContainer): Deleted.
+        (.right-samples): Deleted.
+        (.sample-time): Deleted.
+        (.left-mean): Deleted.
+        (.right-mean): Deleted.
+        
+        * Animometer/runner/resources/animometer.js:
+        (window.benchmarkRunnerClient.initialize): Initialize the client object with the options and the suites.
+        (window.benchmarkRunnerClient.willStartFirstIteration): Use new css selectors for results and the record table.
+        (window.benchmarkRunnerClient.didFinishLastIteration): Move the code which sets the JSON text to sectionsManager.showJSON().
+        
+        (window.sectionsManager): Responsible of managing the <section>s elements inside animometer.html.
+        (window.sectionsManager._sectionHeaderH1Element): Return the <h1> inside the <header> of a given section.
+        (window.sectionsManager._sectionDataDivElement): Return the <div> inside the <data> of a given section.
+        (window.sectionsManager.showScore): Show the score of the last benchmark run.
+        (window.sectionsManager.showTestName): Show the test name for detailed results <section>.
+        (window.sectionsManager.showJSON): Shows the JSON text of the last benchmark or for a specific test.
+        (window.sectionsManager.showSection): Shows a specific <section> in the <main> container.
+        (window.sectionsManager.setupSectionStyle): Sets css attributes for all the <section>s.
+        (window.sectionsManager.setupRunningSectionStyle): Sets the css attributes for the running <section> only.
+        
+        (window.optionsManager): Responsible of managing the user options and streaming them to/form the localStorage.
+        (window.optionsManager._optionsElements): Returns the children <input> elements of the <options>.
+        (window.optionsManager.updateUIFromLocalStorage): Restore the values of the <options> UI elements from the local storage.
+        (window.optionsManager.updateLocalStorageFromUI): Saves the values of the <options> UI elements to the local storage.
+        
+        (window.suitesManager): Responsible of managing the user suites and streaming them to/form the localStorage.
+        (window.suitesManager._treeElement): Returns the suites tree container element.
+        (window.suitesManager._suitesElements): Returns a list of the suites elements.
+        (window.suitesManager._checkboxElement): Returns the checkbox element of a given suite.
+        (window.suitesManager._localStorageNameForTest): Generates a string for the tuple <suite, test> to be saved in the localStorage.
+        (window.suitesManager._updateSuiteCheckboxState): Updates the state of a suite checkbox from the state of its tests' checkboxes.
+        (window.suitesManager._updateStartButtonState): Updates the state of the start button from the state of the suites' checkboxes.
+        (window.suitesManager._onChangeSuiteCheckbox): Called when a suite checkbox is clicked.
+        (window.suitesManager._onChangeTestCheckbox): Called when a test checkbox is clicked.
+        (window.suitesManager._createSuiteElement): Creates suite node in the suites tree.
+        (window.suitesManager._createTestElement): Creates test node in the suites tree.
+        (window.suitesManager.createElements): Creates the suites tree dynamically from the array Suites.
+        (window.suitesManager.updateUIFromLocalStorage): Restore the values of the <suites> UI elements from the local storage.
+        (window.suitesManager.updateLocalStorageFromUI): aves the values of the <suites> UI elements to the local storage.
+        
+        (window.benchmarkController): This is the UI controller of the animometer.html page.
+        (window.benchmarkController.initialize): Called when the animometer.html page is loaded.
+        (window.benchmarkController._runBenchmark): Starts a benchmark run.
+        (window.benchmarkController.startTest): Called when the "Start Test" button is clicked.
+        (window.benchmarkController.showResults): Called at the end of the test to show the final results.
+        (window.benchmarkController.showJson): Called from the results page to show the JSON of the last benchmark run.
+        (window.benchmarkController.showTestGraph): Called from the results the table to show a graph for the samples of a specific test.
+        (window.benchmarkController.showTestJSON): Called from the results the table to show a JSON for the samples of a specific test.
+        
+        (showSection): Deleted.
+        (startTest): Deleted.
+        (showResults): Deleted.
+        (showJson): Deleted.
+        (showTestGraph): Deleted.
+        (showTestJSON): Deleted.
+        (initialize.toggleTestsCheckbox.onchange): Deleted.
+        (initialize): Deleted.
+        (updateSuiteSelection): Deleted.
+        (updateTestSelection): Deleted.
+        (updateSuiteCheckbox): Deleted.
+        (localStorageNameForTest): Deleted.
+        (populateSettings.): Deleted.
+        (populateSettings): Deleted.
+        
+        * Animometer/runner/resources/benchmark-runner.js:
+        (BenchmarkRunner): Pass the frameContainer element to the BenchmarkRunner.
+        (BenchmarkRunner.prototype._appendFrame): Remove unused parameter unwanted styling code.
+        (BenchmarkRunner.prototype.runMultipleIterations):  Use the this._client.iterationCount instead of passing it as a parameter also.
+
+        * Animometer/runner/resources/graph.js:
+        (graph): Calculate the size of the chart from the container element.
+        
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-images.js:
+        (BouncingSvgImage):
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-particles.js:
+        (BouncingSvgParticlesStage.prototype._createDefs):
+        (BouncingSvgParticlesStage.prototype._createClipStar):        
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-shapes.js:
+        (BouncingSvgShape.prototype._createShape):
+        (BouncingSvgShapesStage.prototype.createGradient):
+        Call DocumentExtension.createSvgElement() instead of calling Utilities.createSvgElement().
+        
+        * Animometer/tests/resources/main.js:
+        (Animator.prototype.animate):
+        (Benchmark):
+        (Benchmark.prototype.update):
+        * Animometer/tests/resources/stage.js:
+        (StageBenchmark.prototype.showResults):
+        Rename the options to match the <input> ids in animometer.html.
+        
+        * Animometer/tests/resources/utilities.js:
+        (window.Utilities.createSvgElement): Deleted.
+        
+        * Animometer/tests/text/layering-text.html:
+        * Animometer/tests/text/resources/layering-text.js:
+        (LayeringTextStage):
+        (LayeringTextStage.prototype._setFontSize): Sets the size of the text dynamically such that they all fit in one stage.
+
+2015-10-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Animometer computes frame rate incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=150698
+
+        Reviewed by Tim Horton.
+        
+        The existing code incremented this._frameCount after checking against this._dropFrameCount.
+        This has the effect of setting this._measureTimeOffset one frame too late, so
+        we were measuring only two frames, not three, and thus computing an incorrect fps.
+
+        * Animometer/tests/resources/main.js:
+        (Animator.prototype.animate):
+
+2015-10-27  Jon Lee  <jonlee@apple.com>
+
+        Add an option to make the graphics benchmark runs a specific test
+        https://bugs.webkit.org/show_bug.cgi?id=150528
+        rdar://problem/23246614
+
+        Reviewed by Zalan Bujtas.
+
+        Add a checkbox that lets the user list all of the available tests, and select
+        the ones to run repeatedly. The test checkboxes will update the state of the suite
+        checkbox. The selected tests are stored in localStorage to make it easy to do
+        repeated runs.
+
+        * Animometer/runner/animometer.html: Add a checkbox to show individual tests.
+        Update other markup.
+        * Animometer/runner/resources/animometer.css: Make the settings area a little wider
+        to accommodate the longer names of the tests
+        * Animometer/runner/resources/animometer.js:
+        (startBenchmark): Change the way that the suites are fed into the benchmark
+        runner. Go through each of the suites and their tests, and create a new Suite
+        with just the enabled tests. While enumerating store the enabled tests into
+        localStorage.
+        (initialize): Initialization routine (taking over populateSettings). When the
+        checkbox for showing tests is toggled, add or remove a class on #suites to show
+        the individual tests.
+        (updateSuiteSelection): Called whenever the user toggles the checkbox for a suite.
+        Either select all or none of the tests.
+        (updateTestSelection): Called whenever the user toggles the checkbox for a test.
+        (updateSuiteCheckbox): Update the state of the test's suite's checkbox to
+        indeterminate if there is at least one enabled test, unchecked if none are selected,
+        and checked if all are selected.
+        (localStorageNameForTest): Helper function to get the name of the test to use as
+        a key to localStorage.
+        (populateSettings): Add the tests for each suite into an inner list.
+
 2015-10-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         Add an option to output the results of the graphics benchmark in JSON format

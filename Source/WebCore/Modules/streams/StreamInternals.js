@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @optional=STREAMS_API
+// @conditional=ENABLE(STREAMS_API)
 // @internals
 
 function invokeOrNoop(object, key, args)
@@ -88,43 +88,6 @@ function validateAndNormalizeQueuingStrategy(size, highWaterMark)
         throw new @RangeError("highWaterMark is negative");
 
     return normalizedStrategy;
-}
-
-function createNewStreamsPromise()
-{
-    "use strict";
-
-    var resolveFunction;
-    var rejectFunction;
-    var promise = new Promise(function(resolve, reject) {
-        resolveFunction = resolve;
-        rejectFunction = reject;
-    });
-    promise.@resolve = resolveFunction;
-    promise.@reject = rejectFunction;
-    return promise;
-}
-
-function resolveStreamsPromise(promise, value)
-{
-    "use strict";
-
-    if (promise && promise.@resolve) {
-        promise.@resolve(value);
-        promise.@resolve = undefined;
-        promise.@reject = undefined;
-    }
-}
-
-function rejectStreamsPromise(promise, value)
-{
-    "use strict";
-
-    if (promise && promise.@reject) {
-        promise.@reject(value);
-        promise.@resolve = undefined;
-        promise.@reject = undefined;
-    }
 }
 
 function newQueue()

@@ -1,52 +1,6 @@
-find_library(ACCELERATE_LIBRARY accelerate)
-find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
-find_library(AUDIOUNIT_LIBRARY AudioUnit)
-find_library(CARBON_LIBRARY Carbon)
-find_library(COCOA_LIBRARY Cocoa)
-find_library(COREAUDIO_LIBRARY CoreAudio)
-find_library(DISKARBITRATION_LIBRARY DiskArbitration)
-find_library(IOKIT_LIBRARY IOKit)
-find_library(IOSURFACE_LIBRARY IOSurface)
-find_library(OPENGL_LIBRARY OpenGL)
 find_library(QUARTZ_LIBRARY Quartz)
-find_library(QUARTZCORE_LIBRARY QuartzCore)
-find_library(SECURITY_LIBRARY Security)
-find_library(SQLITE3_LIBRARY sqlite3)
-find_library(SYSTEM_CONFIGURATION_LIBRARY SystemConfiguration)
-find_library(XML2_LIBRARY XML2)
-find_package(ZLIB REQUIRED)
-
 add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
-
-if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
-elif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceYosemite.a)
-else ()
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
-endif ()
 link_directories(../../WebKitLibraries)
-
-list(APPEND WebKit_LIBRARIES
-    PRIVATE ${ACCELERATE_LIBRARY}
-    PRIVATE ${AUDIOTOOLBOX_LIBRARY}
-    PRIVATE ${AUDIOUNIT_LIBRARY}
-    PRIVATE ${CARBON_LIBRARY}
-    PRIVATE ${COCOA_LIBRARY}
-    PRIVATE ${COREAUDIO_LIBRARY}
-    PRIVATE ${DISKARBITRATION_LIBRARY}
-    PRIVATE ${IOKIT_LIBRARY}
-    PRIVATE ${IOSURFACE_LIBRARY}
-    PRIVATE ${OPENGL_LIBRARY}
-    PRIVATE ${QUARTZ_LIBRARY}
-    PRIVATE ${QUARTZCORE_LIBRARY}
-    PRIVATE ${SECURITY_LIBRARY}
-    PRIVATE ${SQLITE3_LIBRARY}
-    PRIVATE ${SYSTEM_CONFIGURATION_LIBRARY}
-    PRIVATE ${WEBKITSYSTEMINTERFACE_LIBRARY}
-    PRIVATE ${XML2_LIBRARY}
-    PRIVATE ${ZLIB_LIBRARIES}
-)
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}"
@@ -333,8 +287,6 @@ set(C99_FILES
     mac/DefaultDelegates/WebDefaultPolicyDelegate.m
     mac/DefaultDelegates/WebDefaultUIDelegate.m
 
-    mac/History/WebURLsWithTitles.m
-
     mac/Misc/OldWebAssertions.c
 
     mac/Misc/WebKitErrors.m
@@ -369,7 +321,7 @@ set(C99_FILES
 foreach (_file ${WebKit_SOURCES})
     list(FIND C99_FILES ${_file} _c99_index)
     if (${_c99_index} EQUAL -1)
-        set_source_files_properties(${_file} PROPERTIES COMPILE_FLAGS -ObjC++)
+        set_source_files_properties(${_file} PROPERTIES COMPILE_FLAGS "-ObjC++ -std=c++11")
     else ()
         set_source_files_properties(${_file} PROPERTIES COMPILE_FLAGS -std=c99)
     endif ()
@@ -410,6 +362,9 @@ list(APPEND WebKit_SOURCES
 )
 
 WEBKIT_CREATE_FORWARDING_HEADERS(WebKitLegacy DIRECTORIES ${WebKitLegacy_FORWARDING_HEADERS_DIRECTORIES} FILES ${WebKitLegacy_FORWARDING_HEADERS_FILES})
+WEBKIT_CREATE_FORWARDING_HEADERS(WebKit DIRECTORIES ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy)
+
+set(WebKit_OUTPUT_NAME WebKitLegacy)
 
 set(WebKitLegacy_WebCore_FORWARDING_HEADERS
     DOMElement.h

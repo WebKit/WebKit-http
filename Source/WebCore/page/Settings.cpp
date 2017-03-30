@@ -84,6 +84,7 @@ bool Settings::gUsesOverlayScrollbars = false;
 bool Settings::gShouldUseHighResolutionTimers = true;
 #endif
     
+bool Settings::gShouldRewriteConstAsVar = false;
 bool Settings::gShouldRespectPriorityInCSSAttributeSetters = false;
 bool Settings::gLowPowerVideoAudioBufferSizeEnabled = false;
 
@@ -503,7 +504,7 @@ void Settings::setFontRenderingMode(FontRenderingMode mode)
 {
     if (fontRenderingMode() == mode)
         return;
-    m_fontRenderingMode = mode;
+    m_fontRenderingMode = static_cast<int>(mode);
     if (m_page)
         m_page->setNeedsRecalcStyleInAllFrames();
 }
@@ -530,6 +531,18 @@ void Settings::setShowTiledScrollingIndicator(bool enabled)
         
     m_showTiledScrollingIndicator = enabled;
 }
+
+#if ENABLE(RESOURCE_USAGE_OVERLAY)
+void Settings::setResourceUsageOverlayVisible(bool visible)
+{
+    if (m_resourceUsageOverlayVisible == visible)
+        return;
+
+    m_resourceUsageOverlayVisible = visible;
+    if (m_page)
+        m_page->setResourceUsageOverlayVisible(visible);
+}
+#endif
 
 #if PLATFORM(WIN)
 void Settings::setShouldUseHighResolutionTimers(bool shouldUseHighResolutionTimers)

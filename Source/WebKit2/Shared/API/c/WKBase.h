@@ -46,7 +46,7 @@
 #include <WebKit/WKBaseHaiku.h>
 #endif
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) && !defined(BUILDING_GTK__)
 #include <WebKit/WKBaseMac.h>
 #endif
 

@@ -69,9 +69,8 @@ void MessagePort::postMessage(PassRefPtr<SerializedScriptValue> message, const M
     std::unique_ptr<MessagePortChannelArray> channels;
     // Make sure we aren't connected to any of the passed-in ports.
     if (ports) {
-        for (unsigned int i = 0; i < ports->size(); ++i) {
-            MessagePort* dataPort = (*ports)[i].get();
-            if (dataPort == this || m_entangledChannel->isConnectedTo(dataPort)) {
+        for (auto& dataPort : *ports) {
+            if (dataPort == this || m_entangledChannel->isConnectedTo(dataPort.get())) {
                 ec = DATA_CLONE_ERR;
                 return;
             }
@@ -143,7 +142,7 @@ void MessagePort::contextDestroyed()
     // Must be closed before blowing away the cached context, to ensure that we get no more calls to messageAvailable().
     // ScriptExecutionContext::closeMessagePorts() takes care of that.
     ASSERT(m_closed);
-    m_scriptExecutionContext = 0;
+    m_scriptExecutionContext = nullptr;
 }
 
 void MessagePort::dispatchMessages()
@@ -180,7 +179,7 @@ bool MessagePort::hasPendingActivity()
 
 MessagePort* MessagePort::locallyEntangledPort()
 {
-    return m_entangledChannel ? m_entangledChannel->locallyEntangledPort(m_scriptExecutionContext) : 0;
+    return m_entangledChannel ? m_entangledChannel->locallyEntangledPort(m_scriptExecutionContext) : nullptr;
 }
 
 std::unique_ptr<MessagePortChannelArray> MessagePort::disentanglePorts(const MessagePortArray* ports, ExceptionCode& ec)
@@ -192,13 +191,12 @@ std::unique_ptr<MessagePortChannelArray> MessagePort::disentanglePorts(const Mes
     HashSet<MessagePort*> portSet;
 
     // Walk the incoming array - if there are any duplicate ports, or null ports or cloned ports, throw an error (per section 8.3.3 of the HTML5 spec).
-    for (unsigned int i = 0; i < ports->size(); ++i) {
-        MessagePort* port = (*ports)[i].get();
-        if (!port || port->isNeutered() || portSet.contains(port)) {
+    for (auto& port : *ports) {
+        if (!port || port->isNeutered() || portSet.contains(port.get())) {
             ec = DATA_CLONE_ERR;
             return nullptr;
         }
-        portSet.add(port);
+        portSet.add(port.get());
     }
 
     // Passed-in ports passed validity checks, so we can disentangle them.

@@ -99,6 +99,7 @@ class PortFactory(object):
         'mac.MacPort',
         'mock_drt.MockDRTPort',
         'test.TestPort',
+        'win.WinCairoPort',
         'win.WinPort',
     )
 

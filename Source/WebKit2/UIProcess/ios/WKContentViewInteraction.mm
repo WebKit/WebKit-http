@@ -69,9 +69,9 @@
 #import <WebCore/Scrollbar.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
+#import <WebCore/WebCoreNSURLExtras.h>
 #import <WebCore/WebEvent.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
-#import <WebKitSystemInterfaceIOS.h>
 #import <wtf/RetainPtr.h>
 
 @interface UIEvent(UIEventInternal)
@@ -202,7 +202,6 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 @interface UIWKSelectionAssistant (StagingToRemove)
 - (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
-- (void)showShareSheetFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)lookup:(NSString *)textWithContext fromRect:(CGRect)presentationRect;
 @end
 
@@ -1049,14 +1048,16 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (!_positionInformation.touchCalloutEnabled)
         return nil;
 
-    if (_positionInformation.clickableElementName == "IMG")
+    if (equalIgnoringCase(_positionInformation.clickableElementName, "IMG"))
         return @selector(_showImageSheet);
-    else if (_positionInformation.clickableElementName == "A") {
+
+    if (equalIgnoringCase(_positionInformation.clickableElementName, "A")) {
         NSURL *targetURL = [NSURL URLWithString:_positionInformation.url];
         if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:[targetURL scheme]])
             return @selector(_showDataDetectorsSheet);
         return @selector(_showLinkSheet);
     }
+
     return nil;
 }
 
@@ -3370,6 +3371,14 @@ static bool isAssistableInputType(InputType type)
     [self _attemptClickAtLocation:location];
 }
 
+- (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant shareElementWithURL:(NSURL *)url rect:(CGRect)boundingRect
+{
+    if (_textSelectionAssistant)
+        [_textSelectionAssistant showShareSheetFor:userVisibleString(url) fromRect:boundingRect];
+    else if (_webSelectionAssistant)
+        [_webSelectionAssistant showShareSheetFor:userVisibleString(url) fromRect:boundingRect];
+}
+
 #if HAVE(APP_LINKS)
 - (BOOL)actionSheetAssistant:(WKActionSheetAssistant *)assistant shouldIncludeAppLinkActionsForElement:(_WKActivatedElementInfo *)element
 {
@@ -3424,11 +3433,11 @@ static bool isAssistableInputType(InputType type)
         return NO;
 
     [self ensurePositionInformationIsUpToDate:position];
-    if (_positionInformation.clickableElementName != "A" && _positionInformation.clickableElementName != "IMG")
+    if (equalIgnoringCase(_positionInformation.clickableElementName, "A") && equalIgnoringCase(_positionInformation.clickableElementName, "IMG"))
         return NO;
     
     String absoluteLinkURL = _positionInformation.url;
-    if (_positionInformation.clickableElementName == "A") {
+    if (equalIgnoringCase(_positionInformation.clickableElementName, "A")) {
         if (absoluteLinkURL.isEmpty())
             return NO;
         if (WebCore::protocolIsInHTTPFamily(absoluteLinkURL))
@@ -3447,8 +3456,8 @@ static bool isAssistableInputType(InputType type)
 
     id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
     BOOL supportsImagePreview = [uiDelegate respondsToSelector:@selector(_webView:commitPreviewedImageWithURL:)];
-    BOOL canShowImagePreview = _positionInformation.clickableElementName == "IMG" && supportsImagePreview;
-    BOOL canShowLinkPreview = _positionInformation.clickableElementName == "A" || canShowImagePreview;
+    BOOL canShowImagePreview = equalIgnoringCase(_positionInformation.clickableElementName, "IMG") && supportsImagePreview;
+    BOOL canShowLinkPreview = equalIgnoringCase(_positionInformation.clickableElementName, "A") || canShowImagePreview;
     BOOL useImageURLForLink = NO;
 
     if (canShowImagePreview && _positionInformation.isAnimatedImage) {

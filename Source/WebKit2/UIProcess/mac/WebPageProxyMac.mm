@@ -29,6 +29,7 @@
 #if PLATFORM(MAC)
 
 #import "APIUIClient.h"
+#import "AppKitSPI.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
 #import "DataReference.h"
@@ -56,10 +57,6 @@
 #import <mach-o/dyld.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/text/StringConcatenate.h>
-
-@interface NSApplication ()
-- (void)speakString:(NSString *)string;
-@end
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, process().connection())
 #define MESSAGE_CHECK_URL(url) MESSAGE_CHECK_BASE(m_process->checkURLReceivedFromWebProcess(url), m_process->connection())
@@ -558,11 +555,6 @@ bool WebPageProxy::acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEven
     return result;
 }
 
-WKView* WebPageProxy::wkView() const
-{
-    return m_pageClient.wkView();
-}
-
 void WebPageProxy::intrinsicContentSizeDidChange(const IntSize& intrinsicContentSize)
 {
     m_pageClient.intrinsicContentSizeDidChange(intrinsicContentSize);
@@ -737,6 +729,28 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
     }
 #endif
 }
+
+void WebPageProxy::startWindowDrag()
+{
+    m_pageClient.startWindowDrag();
+}
+
+NSWindow *WebPageProxy::platformWindow()
+{
+    return m_pageClient.platformWindow();
+}
+
+#if WK_API_ENABLED
+NSView *WebPageProxy::inspectorAttachmentView()
+{
+    return m_pageClient.inspectorAttachmentView();
+}
+
+_WKRemoteObjectRegistry *WebPageProxy::remoteObjectRegistry()
+{
+    return m_pageClient.remoteObjectRegistry();
+}
+#endif
 
 } // namespace WebKit
 

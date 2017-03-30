@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "DOMRequestState.h"
 #include "EventQueue.h"
 #include "IDBBindingUtilities.h"
 #include "IDBEventDispatcher.h"
@@ -165,6 +166,10 @@ bool IDBRequest::dispatchEvent(PassRefPtr<Event> prpEvent)
 
     m_hasPendingActivity = false;
 
+    // FIXME: When we implement reusable requests (for cursors) it will be incorrect to always remove the request from the transaction.
+    if (m_transaction)
+        m_transaction->removeRequest(*this);
+
     return dontPreventDefault;
 }
 
@@ -179,6 +184,12 @@ void IDBRequest::setResult(const IDBKeyData* keyData)
     m_result = IDBAny::create(WTF::move(value));
 }
 
+void IDBRequest::setResult(uint64_t number)
+{
+    ASSERT(scriptExecutionContext());
+    m_result = IDBAny::create(Deprecated::ScriptValue(scriptExecutionContext()->vm(), JSC::JSValue(number)));
+}
+
 void IDBRequest::setResultToStructuredClone(const ThreadSafeDataBuffer& valueData)
 {
     LOG(IndexedDB, "IDBRequest::setResultToStructuredClone");
@@ -189,6 +200,17 @@ void IDBRequest::setResultToStructuredClone(const ThreadSafeDataBuffer& valueDat
 
     Deprecated::ScriptValue value = deserializeIDBValueData(*context, valueData);
     m_result = IDBAny::create(WTF::move(value));
+}
+
+void IDBRequest::setResultToUndefined()
+{
+    auto context = scriptExecutionContext();
+    if (!context)
+        return;
+
+    DOMRequestState state(context);
+    if (auto* execState = state.exec())
+        m_result = IDBAny::create(Deprecated::ScriptValue(execState->vm(), JSC::jsUndefined()));
 }
 
 void IDBRequest::requestCompleted(const IDBResultData& resultData)

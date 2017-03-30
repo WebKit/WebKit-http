@@ -68,6 +68,16 @@ void IDBConnectionToClient::didCreateObjectStore(const IDBResultData& result)
     m_delegate->didCreateObjectStore(result);
 }
 
+void IDBConnectionToClient::didDeleteObjectStore(const IDBResultData& result)
+{
+    m_delegate->didDeleteObjectStore(result);
+}
+
+void IDBConnectionToClient::didClearObjectStore(const IDBResultData& result)
+{
+    m_delegate->didClearObjectStore(result);
+}
+
 void IDBConnectionToClient::didPutOrAdd(const IDBResultData& result)
 {
     m_delegate->didPutOrAdd(result);
@@ -78,6 +88,16 @@ void IDBConnectionToClient::didGetRecord(const IDBResultData& result)
     m_delegate->didGetRecord(result);
 }
 
+void IDBConnectionToClient::didGetCount(const IDBResultData& result)
+{
+    m_delegate->didGetCount(result);
+}
+
+void IDBConnectionToClient::didDeleteRecord(const IDBResultData& result)
+{
+    m_delegate->didDeleteRecord(result);
+}
+
 void IDBConnectionToClient::didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError& error)
 {
     m_delegate->didCommitTransaction(transactionIdentifier, error);
@@ -86,6 +106,11 @@ void IDBConnectionToClient::didCommitTransaction(const IDBResourceIdentifier& tr
 void IDBConnectionToClient::fireVersionChangeEvent(UniqueIDBDatabaseConnection& connection, uint64_t requestedVersion)
 {
     m_delegate->fireVersionChangeEvent(connection, requestedVersion);
+}
+
+void IDBConnectionToClient::didStartTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError& error)
+{
+    m_delegate->didStartTransaction(transactionIdentifier, error);
 }
 
 } // namespace IDBServer

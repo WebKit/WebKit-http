@@ -498,8 +498,6 @@ set(WebKit2_SOURCES
     UIProcess/WebsiteData/WebsiteDataRecord.cpp
     UIProcess/WebsiteData/WebsiteDataStore.cpp
 
-    UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp
-
     WebProcess/WebConnectionToUIProcess.cpp
     WebProcess/WebProcess.cpp
 
@@ -848,7 +846,11 @@ endif ()
 POPULATE_LIBRARY_VERSION(WEBKIT2)
 set_target_properties(WebKit2 PROPERTIES VERSION ${WEBKIT2_VERSION} SOVERSION ${WEBKIT2_VERSION_MAJOR})
 
-install(TARGETS WebKit2 WebProcess
+if (APPLE)
+    WEBKIT_FRAMEWORK(WebKit2)
+else ()
+    install(TARGETS WebKit2 WebProcess
         LIBRARY DESTINATION "${LIB_INSTALL_DIR}"
         RUNTIME DESTINATION "${LIBEXEC_INSTALL_DIR}"
-)
+    )
+endif ()

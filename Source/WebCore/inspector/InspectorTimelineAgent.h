@@ -39,9 +39,7 @@
 #include <inspector/InspectorFrontendDispatchers.h>
 #include <inspector/InspectorValues.h>
 #include <inspector/ScriptDebugListener.h>
-#include <wtf/Stopwatch.h>
 #include <wtf/Vector.h>
-#include <wtf/WeakPtr.h>
 
 namespace JSC {
 class Profile;
@@ -53,13 +51,8 @@ class Event;
 class FloatQuad;
 class Frame;
 class InspectorPageAgent;
-class IntRect;
-class URL;
-class Page;
 class PageScriptDebugServer;
 class RenderObject;
-class ResourceRequest;
-class ResourceResponse;
 class RunLoopObserver;
 
 typedef String ErrorString;
@@ -73,8 +66,6 @@ enum class TimelineRecordType {
     Paint,
     Composite,
     RenderingFrame,
-
-    ParseHTML,
 
     TimerInstall,
     TimerRemove,
@@ -93,11 +84,6 @@ enum class TimelineRecordType {
     RequestAnimationFrame,
     CancelAnimationFrame,
     FireAnimationFrame,
-
-    WebSocketCreate,
-    WebSocketSendHandshakeRequest,
-    WebSocketReceiveHandshakeResponse,
-    WebSocketDestroy
 };
 
 class InspectorTimelineAgent final
@@ -149,8 +135,6 @@ public:
     void willRecalculateStyle(Frame*);
     void didRecalculateStyle();
     void didScheduleStyleRecalculation(Frame*);
-    void willWriteHTML(unsigned startLine, Frame*);
-    void didWriteHTML(unsigned endLine);
     void didTimeStamp(Frame&, const String&);
     void didRequestAnimationFrame(int callbackId, Frame*);
     void didCancelAnimationFrame(int callbackId, Frame*);
@@ -158,12 +142,6 @@ public:
     void didFireAnimationFrame();
     void time(Frame&, const String&);
     void timeEnd(Frame&, const String&);
-#if ENABLE(WEB_SOCKETS)
-    void didCreateWebSocket(unsigned long identifier, const URL&, const String& protocol, Frame*);
-    void willSendWebSocketHandshakeRequest(unsigned long identifier, Frame*);
-    void didReceiveWebSocketHandshakeResponse(unsigned long identifier, Frame*);
-    void didDestroyWebSocket(unsigned long identifier, Frame*);
-#endif
 
 protected:
     // ScriptDebugListener

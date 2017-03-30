@@ -880,6 +880,11 @@ public:
         store64(TrustedImm64(imm), address);
     }
 
+    void storePtr(TrustedImm32 imm, ImplicitAddress address)
+    {
+        store64(imm, address);
+    }
+
     void storePtr(TrustedImmPtr imm, BaseIndex address)
     {
         store64(TrustedImm64(imm), address);
@@ -1225,6 +1230,11 @@ public:
     }
 
 #endif // !CPU(X86_64)
+
+    void lea(Address address, RegisterID dest)
+    {
+        addPtr(TrustedImm32(address.offset), address.base, dest);
+    }
 
     bool shouldBlind(Imm32 imm)
     {
@@ -1585,18 +1595,32 @@ public:
     }
 
 #if ENABLE(MASM_PROBE)
+    using MacroAssemblerBase::probe;
+
     // Let's you print from your JIT generated code.
     // See comments in MacroAssemblerPrinter.h for examples of how to use this.
     template<typename... Arguments>
     void print(Arguments... args);
 
-    void callProbe(std::function<void (ProbeContext*)>);
+    void probe(std::function<void (ProbeContext*)>);
 #endif
 };
 
 } // namespace JSC
 
+namespace WTF {
+
+class PrintStream;
+
+void printInternal(PrintStream&, JSC::MacroAssembler::RelationalCondition);
+void printInternal(PrintStream&, JSC::MacroAssembler::ResultCondition);
+void printInternal(PrintStream&, JSC::MacroAssembler::DoubleCondition);
+
+} // namespace WTF
+
 #else // ENABLE(ASSEMBLER)
+
+namespace JSC {
 
 // If there is no assembler for this platform, at least allow code to make references to
 // some of the things it would otherwise define, albeit without giving that code any way
@@ -1610,6 +1634,8 @@ public:
     enum RegisterID { NoRegister };
     enum FPRegisterID { NoFPRegister };
 };
+
+} // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
 

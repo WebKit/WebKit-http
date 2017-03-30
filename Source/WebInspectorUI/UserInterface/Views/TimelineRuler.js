@@ -52,7 +52,6 @@ WebInspector.TimelineRuler = class TimelineRuler extends WebInspector.Object
         this._allowsTimeRangeSelection = false;
         this._minimumSelectionDuration = 0.01;
         this._formatLabelCallback = null;
-        this._suppressNextTimeRangeSelectionChangedEvent = false;
         this._timeRangeSelectionChanged = false;
 
         this._markerElementMap = new Map;
@@ -309,6 +308,21 @@ WebInspector.TimelineRuler = class TimelineRuler extends WebInspector.Object
 
         var markerElement = document.createElement("div");
         markerElement.classList.add(marker.type, "marker");
+
+        switch (marker.type) {
+        case WebInspector.TimelineMarker.Type.LoadEvent:
+            markerElement.title = WebInspector.UIString("Load \u2014 %s").format(Number.secondsToString(marker.time));
+            break;
+        case WebInspector.TimelineMarker.Type.DOMContentEvent:
+            markerElement.title = WebInspector.UIString("DOMContentLoaded \u2014 %s").format(Number.secondsToString(marker.time));
+            break;
+        case WebInspector.TimelineMarker.Type.TimeStamp:
+            if (marker.details)
+                markerElement.title = WebInspector.UIString("%s \u2014 %s").format(marker.details, Number.secondsToString(marker.time));
+            else
+                markerElement.title = WebInspector.UIString("Timestamp \u2014 %s").format(Number.secondsToString(marker.time));
+            break;
+        }
 
         this._markerElementMap.set(marker, markerElement);
 
@@ -649,11 +663,6 @@ WebInspector.TimelineRuler = class TimelineRuler extends WebInspector.Object
         if (!this._timeRangeSelectionChanged)
             return;
 
-        if (this._suppressNextTimeRangeSelectionChangedEvent) {
-            this._suppressNextTimeRangeSelectionChangedEvent = false;
-            return;
-        }
-
         this._timeRangeSelectionChanged = false;
 
         this.dispatchEventToListeners(WebInspector.TimelineRuler.Event.TimeRangeSelectionChanged);
@@ -695,8 +704,6 @@ WebInspector.TimelineRuler = class TimelineRuler extends WebInspector.Object
     _handleMouseMove(event)
     {
         console.assert(event.button === 0);
-
-        this._suppressNextTimeRangeSelectionChangedEvent = !this._selectionIsMove;
 
         if (this._selectionIsMove) {
             var currentMousePosition = Math.max(this._moveSelectionMaximumLeftOffset, Math.min(this._moveSelectionMaximumRightOffset, event.pageX));

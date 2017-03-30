@@ -285,7 +285,7 @@ static bool shouldIgnoreRotation(UChar32 character)
 #if PLATFORM(COCOA) || USE(CAIRO)
 static GlyphData glyphDataForCJKCharacterWithoutSyntheticItalic(UChar32 character, GlyphData& data)
 {
-    GlyphData nonItalicData = data.font->nonSyntheticItalicFont()->glyphDataForCharacter(character);
+    GlyphData nonItalicData = data.font->nonSyntheticItalicFont().glyphDataForCharacter(character);
     if (nonItalicData.font)
         return nonItalicData;
     return data;
@@ -294,8 +294,8 @@ static GlyphData glyphDataForCJKCharacterWithoutSyntheticItalic(UChar32 characte
     
 static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 character, NonCJKGlyphOrientation orientation, const GlyphData& data)
 {
-    if (orientation == NonCJKGlyphOrientationUpright || shouldIgnoreRotation(character)) {
-        GlyphData uprightData = data.font->uprightOrientationFont()->glyphDataForCharacter(character);
+    if (orientation == NonCJKGlyphOrientation::Upright || shouldIgnoreRotation(character)) {
+        GlyphData uprightData = data.font->uprightOrientationFont().glyphDataForCharacter(character);
         // If the glyphs are the same, then we know we can just use the horizontal glyph rotated vertically to be upright.
         if (data.glyph == uprightData.glyph)
             return data;
@@ -303,8 +303,8 @@ static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 charact
         // glyph, so we fall back to the upright data and use the horizontal glyph.
         if (uprightData.font)
             return uprightData;
-    } else if (orientation == NonCJKGlyphOrientationVerticalRight) {
-        GlyphData verticalRightData = data.font->verticalRightOrientationFont()->glyphDataForCharacter(character);
+    } else if (orientation == NonCJKGlyphOrientation::Mixed) {
+        GlyphData verticalRightData = data.font->verticalRightOrientationFont().glyphDataForCharacter(character);
         // If the glyphs are distinct, we will make the assumption that the font has a vertical-right glyph baked
         // into it.
         if (data.glyph != verticalRightData.glyph)
@@ -363,11 +363,9 @@ GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 c, const FontCascadeDesc
         if (data.font) {
             // The variantFont function should not normally return 0.
             // But if it does, we will just render the capital letter big.
-            RefPtr<Font> variantFont = data.font->variantFont(description, variant);
-            if (!variantFont)
-                return data;
-
-            return variantFont->glyphDataForCharacter(c);
+            if (const Font* variantFont = data.font->variantFont(description, variant))
+                return variantFont->glyphDataForCharacter(c);
+            return data;
         }
     }
 

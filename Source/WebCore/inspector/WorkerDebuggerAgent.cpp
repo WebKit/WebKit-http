@@ -58,7 +58,7 @@ WorkerDebuggerAgents& workerDebuggerAgents()
     return agents;
 }
 
-class RunInspectorCommandsTask : public ScriptDebugServer::Task {
+class RunInspectorCommandsTask : public WorkerScriptDebugServer::Task {
 public:
     RunInspectorCommandsTask(WorkerThread* thread, WorkerGlobalScope* workerGlobalScope)
         : m_thread(thread)
@@ -104,16 +104,6 @@ void WorkerDebuggerAgent::interruptAndDispatchInspectorCommands(WorkerThread* th
 
     if (WorkerDebuggerAgent* agent = workerDebuggerAgents().get(thread))
         agent->m_scriptDebugServer.interruptAndRunTask(std::make_unique<RunInspectorCommandsTask>(thread, &agent->m_inspectedWorkerGlobalScope));
-}
-
-void WorkerDebuggerAgent::startListeningScriptDebugServer()
-{
-    scriptDebugServer().addListener(this);
-}
-
-void WorkerDebuggerAgent::stopListeningScriptDebugServer(bool isBeingDestroyed)
-{
-    scriptDebugServer().removeListener(this, isBeingDestroyed);
 }
 
 void WorkerDebuggerAgent::breakpointActionLog(JSC::ExecState*, const String& message)

@@ -33,7 +33,9 @@
 #include "CSSFontFaceSource.h"
 #include "CSSFontFaceSrcValue.h"
 #include "CSSFontFamily.h"
+#include "CSSFontFeatureValue.h"
 #include "CSSPrimitiveValue.h"
+#include "CSSPrimitiveValueMappings.h"
 #include "CSSPropertyNames.h"
 #include "CSSSegmentedFontFace.h"
 #include "CSSUnicodeRangeValue.h"
@@ -43,6 +45,7 @@
 #include "Document.h"
 #include "Font.h"
 #include "FontCache.h"
+#include "FontVariantBuilder.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "SVGFontFaceElement.h"
@@ -178,13 +181,13 @@ static Optional<FontTraitsMask> computeTraitsMask(const StyleProperties& style)
     return static_cast<FontTraitsMask>(traitsMask);
 }
 
-static Ref<CSSFontFace> createFontFace(CSSValueList& srcList, FontTraitsMask traitsMask, Document* document, const StyleRuleFontFace* fontFaceRule, bool isInitiatingElementInUserAgentShadowTree)
+static Ref<CSSFontFace> createFontFace(CSSValueList& srcList, FontTraitsMask traitsMask, Document* document, const StyleRuleFontFace& fontFaceRule, bool isInitiatingElementInUserAgentShadowTree)
 {
     RefPtr<CSSFontFaceRule> rule;
 #if ENABLE(FONT_LOAD_EVENTS)
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=112116 - This CSSFontFaceRule has no parent.
     if (RuntimeEnabledFeatures::sharedFeatures().fontLoadEventsEnabled())
-        rule = static_pointer_cast<CSSFontFaceRule>(fontFaceRule->createCSSOMWrapper());
+        rule = static_pointer_cast<CSSFontFaceRule>(fontFaceRule.createCSSOMWrapper());
 #else
     UNUSED_PARAM(fontFaceRule);
 #endif
@@ -203,7 +206,7 @@ static Ref<CSSFontFace> createFontFace(CSSValueList& srcList, FontTraitsMask tra
         foundSVGFont = item.isSVGFontFaceSrc() || item.svgFontFaceElement();
 #endif
         if (!item.isLocal()) {
-            Settings* settings = document ? document->frame() ? &document->frame()->settings() : 0 : 0;
+            Settings* settings = document ? document->settings() : nullptr;
             bool allowDownloading = foundSVGFont || (settings && settings->downloadableBinaryFontsEnabled());
             if (allowDownloading && item.isSupportedFormat() && document) {
                 CachedFont* cachedFont = item.cachedFont(document, foundSVGFont, isInitiatingElementInUserAgentShadowTree);
@@ -277,12 +280,19 @@ static Vector<Ref<CSSFontFace>> constructFamilyFontFaces(const String& familyNam
     return result;
 }
 
-void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule, bool isInitiatingElementInUserAgentShadowTree)
+void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace& fontFaceRule, bool isInitiatingElementInUserAgentShadowTree)
 {
-    const StyleProperties& style = fontFaceRule->properties();
+    const StyleProperties& style = fontFaceRule.properties();
     RefPtr<CSSValue> fontFamily = style.getPropertyCSSValue(CSSPropertyFontFamily);
     RefPtr<CSSValue> src = style.getPropertyCSSValue(CSSPropertySrc);
     RefPtr<CSSValue> unicodeRange = style.getPropertyCSSValue(CSSPropertyUnicodeRange);
+    RefPtr<CSSValue> featureSettings = style.getPropertyCSSValue(CSSPropertyFontFeatureSettings);
+    RefPtr<CSSValue> variantLigatures = style.getPropertyCSSValue(CSSPropertyFontVariantLigatures);
+    RefPtr<CSSValue> variantPosition = style.getPropertyCSSValue(CSSPropertyFontVariantPosition);
+    RefPtr<CSSValue> variantCaps = style.getPropertyCSSValue(CSSPropertyFontVariantCaps);
+    RefPtr<CSSValue> variantNumeric = style.getPropertyCSSValue(CSSPropertyFontVariantNumeric);
+    RefPtr<CSSValue> variantAlternates = style.getPropertyCSSValue(CSSPropertyFontVariantAlternates);
+    RefPtr<CSSValue> variantEastAsian = style.getPropertyCSSValue(CSSPropertyFontVariantEastAsian);
     if (!is<CSSValueList>(fontFamily.get()) || !is<CSSValueList>(src.get()) || (unicodeRange && !is<CSSValueList>(*unicodeRange)))
         return;
 
@@ -312,6 +322,31 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule, boo
             fontFace->addRange(range.from(), range.to());
         }
     }
+
+    if (featureSettings) {
+        for (auto& item : downcast<CSSValueList>(*featureSettings)) {
+            auto& feature = downcast<CSSFontFeatureValue>(item.get());
+            fontFace->insertFeature(FontFeature(feature.tag(), feature.value()));
+        }
+    }
+
+    if (variantLigatures)
+        applyValueFontVariantLigatures(fontFace.get(), *variantLigatures);
+
+    if (variantPosition)
+        fontFace->setVariantPosition(downcast<CSSPrimitiveValue>(*variantPosition));
+
+    if (variantCaps)
+        fontFace->setVariantCaps(downcast<CSSPrimitiveValue>(*variantCaps));
+
+    if (variantNumeric)
+        applyValueFontVariantNumeric(fontFace.get(), *variantNumeric);
+
+    if (variantAlternates)
+        fontFace->setVariantAlternates(downcast<CSSPrimitiveValue>(*variantAlternates));
+
+    if (variantEastAsian)
+        applyValueFontVariantEastAsian(fontFace.get(), *variantEastAsian);
 
     for (auto& item : familyList) {
         String familyName = familyNameFromPrimitive(downcast<CSSPrimitiveValue>(item.get()));

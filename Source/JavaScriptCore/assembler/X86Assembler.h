@@ -910,6 +910,11 @@ public:
             m_formatter.immediate8(imm);
         }
     }
+
+    void shlq_CLr(RegisterID dst)
+    {
+        m_formatter.oneByteOp64(OP_GROUP2_EvCL, GROUP2_OP_SHL, dst);
+    }
 #endif // CPU(X86_64)
 
     void imull_rr(RegisterID src, RegisterID dst)
@@ -1486,6 +1491,12 @@ public:
     {
         m_formatter.oneByteOp64(OP_MOV_EAXIv, dst);
         m_formatter.immediate64(imm);
+    }
+
+    void mov_i32r(int32_t imm, RegisterID dst)
+    {
+        m_formatter.oneByteOp64(OP_GROUP11_EvIz, GROUP11_MOV, dst);
+        m_formatter.immediate32(imm);
     }
     
     void movsxd_rr(RegisterID src, RegisterID dst)

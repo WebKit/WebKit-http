@@ -32,23 +32,6 @@
 
 namespace WTF {
 
-GMainLoopSource& GMainLoopSource::create()
-{
-    return *new GMainLoopSource(DeleteOnDestroy);
-}
-
-GMainLoopSource::GMainLoopSource()
-    : m_deleteOnDestroy(DoNotDeleteOnDestroy)
-    , m_status(Ready)
-{
-}
-
-GMainLoopSource::GMainLoopSource(DeleteOnDestroyType deleteOnDestroy)
-    : m_deleteOnDestroy(deleteOnDestroy)
-    , m_status(Ready)
-{
-}
-
 GMainLoopSource::~GMainLoopSource()
 {
     cancel();
@@ -66,16 +49,10 @@ bool GMainLoopSource::isActive() const
 
 void GMainLoopSource::cancel()
 {
-    // Delete-on-destroy GMainLoopSource objects can't be cancelled.
-    if (m_deleteOnDestroy == DeleteOnDestroy)
-        return;
-
     // A valid context should only be present if GMainLoopSource is in the Scheduled or Dispatching state.
     ASSERT(!m_context.source || m_status == Scheduled || m_status == Dispatching);
 
     m_status = Ready;
-
-    g_cancellable_cancel(m_context.socketCancellable.get());
 
     if (!m_context.source)
         return;
@@ -105,10 +82,8 @@ void GMainLoopSource::schedule(const char* name, std::function<void ()>&& functi
     m_context = {
         adoptGRef(g_idle_source_new()),
         nullptr, // cancellable
-        nullptr, // socketCancellable
         WTF::move(function),
         nullptr, // boolCallback
-        nullptr, // socketCallback
         WTF::move(destroyFunction)
     };
     scheduleIdleSource(name, reinterpret_cast<GSourceFunc>(voidSourceCallback), priority, context);
@@ -122,36 +97,11 @@ void GMainLoopSource::schedule(const char* name, std::function<bool ()>&& functi
     m_context = {
         adoptGRef(g_idle_source_new()),
         nullptr, // cancellable
-        nullptr, // socketCancellable
         nullptr, // voidCallback
         WTF::move(function),
-        nullptr, // socketCallback
         WTF::move(destroyFunction)
     };
     scheduleIdleSource(name, reinterpret_cast<GSourceFunc>(boolSourceCallback), priority, context);
-}
-
-void GMainLoopSource::schedule(const char* name, std::function<bool (GIOCondition)>&& function, GSocket* socket, GIOCondition condition, std::function<void ()>&& destroyFunction, GMainContext* context)
-{
-    cancel();
-
-    ASSERT(!m_context.source);
-    GCancellable* socketCancellable = g_cancellable_new();
-    m_context = {
-        adoptGRef(g_socket_create_source(socket, condition, socketCancellable)),
-        nullptr, // cancellable
-        adoptGRef(socketCancellable),
-        nullptr, // voidCallback
-        nullptr, // boolCallback
-        WTF::move(function),
-        WTF::move(destroyFunction)
-    };
-
-    ASSERT(m_status == Ready);
-    m_status = Scheduled;
-    g_source_set_name(m_context.source.get(), name);
-    g_source_set_callback(m_context.source.get(), reinterpret_cast<GSourceFunc>(socketSourceCallback), this, nullptr);
-    g_source_attach(m_context.source.get(), context);
 }
 
 void GMainLoopSource::scheduleTimeoutSource(const char* name, GSourceFunc sourceFunction, int priority, GMainContext* context)
@@ -174,10 +124,8 @@ void GMainLoopSource::scheduleAfterDelay(const char* name, std::function<void ()
     m_context = {
         adoptGRef(g_timeout_source_new(delay.count())),
         nullptr, // cancellable
-        nullptr, // socketCancellable
         WTF::move(function),
         nullptr, // boolCallback
-        nullptr, // socketCallback
         WTF::move(destroyFunction)
     };
     scheduleTimeoutSource(name, reinterpret_cast<GSourceFunc>(voidSourceCallback), priority, context);
@@ -191,10 +139,8 @@ void GMainLoopSource::scheduleAfterDelay(const char* name, std::function<bool ()
     m_context = {
         adoptGRef(g_timeout_source_new(delay.count())),
         nullptr, // cancellable
-        nullptr, // socketCancellable
         nullptr, // voidCallback
         WTF::move(function),
-        nullptr, // socketCallback
         WTF::move(destroyFunction)
     };
     scheduleTimeoutSource(name, reinterpret_cast<GSourceFunc>(boolSourceCallback), priority, context);
@@ -208,10 +154,8 @@ void GMainLoopSource::scheduleAfterDelay(const char* name, std::function<void ()
     m_context = {
         adoptGRef(g_timeout_source_new_seconds(delay.count())),
         nullptr, // cancellable
-        nullptr, // socketCancellable
         WTF::move(function),
         nullptr, // boolCallback
-        nullptr, // socketCallback
         WTF::move(destroyFunction)
     };
     scheduleTimeoutSource(name, reinterpret_cast<GSourceFunc>(voidSourceCallback), priority, context);
@@ -225,10 +169,8 @@ void GMainLoopSource::scheduleAfterDelay(const char* name, std::function<bool ()
     m_context = {
         adoptGRef(g_timeout_source_new_seconds(delay.count())),
         nullptr, // cancellable
-        nullptr, // socketCancellable
         nullptr, // voidCallback
         WTF::move(function),
-        nullptr, // socketCallback
         WTF::move(destroyFunction)
     };
     scheduleTimeoutSource(name, reinterpret_cast<GSourceFunc>(boolSourceCallback), priority, context);
@@ -271,10 +213,8 @@ void GMainLoopSource::scheduleAfterDelay(const char* name, std::function<void ()
     m_context = {
         adoptGRef(createMicrosecondsTimeoutSource(delay.count())),
         nullptr, // cancellable
-        nullptr, // socketCancellable
         WTF::move(function),
         nullptr, // boolCallback
-        nullptr, // socketCallback
         WTF::move(destroyFunction)
     };
     scheduleTimeoutSource(name, reinterpret_cast<GSourceFunc>(voidSourceCallback), priority, context);
@@ -288,53 +228,11 @@ void GMainLoopSource::scheduleAfterDelay(const char* name, std::function<bool ()
     m_context = {
         adoptGRef(createMicrosecondsTimeoutSource(delay.count())),
         nullptr, // cancellable
-        nullptr, // socketCancellable
         nullptr, // voidCallback
         WTF::move(function),
-        nullptr, // socketCallback
         WTF::move(destroyFunction)
     };
     scheduleTimeoutSource(name, reinterpret_cast<GSourceFunc>(boolSourceCallback), priority, context);
-}
-
-void GMainLoopSource::scheduleAndDeleteOnDestroy(const char* name, std::function<void()>&& function, int priority, std::function<void()>&& destroyFunction, GMainContext* context)
-{
-    create().schedule(name, WTF::move(function), priority, WTF::move(destroyFunction), context);
-}
-
-void GMainLoopSource::scheduleAndDeleteOnDestroy(const char* name, std::function<bool()>&& function, int priority, std::function<void()>&& destroyFunction, GMainContext* context)
-{
-    create().schedule(name, WTF::move(function), priority, WTF::move(destroyFunction), context);
-}
-
-void GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy(const char* name, std::function<void()>&& function, std::chrono::milliseconds delay, int priority, std::function<void()>&& destroyFunction, GMainContext* context)
-{
-    create().scheduleAfterDelay(name, WTF::move(function), delay, priority, WTF::move(destroyFunction), context);
-}
-
-void GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy(const char* name, std::function<bool()>&& function, std::chrono::milliseconds delay, int priority, std::function<void()>&& destroyFunction, GMainContext* context)
-{
-    create().scheduleAfterDelay(name, WTF::move(function), delay, priority, WTF::move(destroyFunction), context);
-}
-
-void GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy(const char* name, std::function<void()>&& function, std::chrono::seconds delay, int priority, std::function<void()>&& destroyFunction, GMainContext* context)
-{
-    create().scheduleAfterDelay(name, WTF::move(function), delay, priority, WTF::move(destroyFunction), context);
-}
-
-void GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy(const char* name, std::function<bool()>&& function, std::chrono::seconds delay, int priority, std::function<void()>&& destroyFunction, GMainContext* context)
-{
-    create().scheduleAfterDelay(name, WTF::move(function), delay, priority, WTF::move(destroyFunction), context);
-}
-
-void GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy(const char* name, std::function<void()>&& function, std::chrono::microseconds delay, int priority, std::function<void()>&& destroyFunction, GMainContext* context)
-{
-    create().scheduleAfterDelay(name, WTF::move(function), delay, priority, WTF::move(destroyFunction), context);
-}
-
-void GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy(const char* name, std::function<bool()>&& function, std::chrono::microseconds delay, int priority, std::function<void()>&& destroyFunction, GMainContext* context)
-{
-    create().scheduleAfterDelay(name, WTF::move(function), delay, priority, WTF::move(destroyFunction), context);
 }
 
 bool GMainLoopSource::prepareVoidCallback(Context& context)
@@ -369,8 +267,6 @@ void GMainLoopSource::voidCallback()
     }
 
     context.destroySource();
-    if (m_deleteOnDestroy == DeleteOnDestroy)
-        delete this;
 }
 
 bool GMainLoopSource::prepareBoolCallback(Context& context)
@@ -408,43 +304,6 @@ bool GMainLoopSource::boolCallback()
         finishBoolCallback(retval, context);
     }
 
-    if (context.source) {
-        context.destroySource();
-        if (m_deleteOnDestroy == DeleteOnDestroy)
-            delete this;
-    }
-
-    return retval;
-}
-
-bool GMainLoopSource::socketCallback(GIOCondition condition)
-{
-    if (!m_context.source)
-        return Stop;
-
-    Context context;
-    context = WTF::move(m_context);
-
-    ASSERT(context.socketCallback);
-    ASSERT(m_status == Scheduled || m_status == Dispatching);
-    m_status = Dispatching;
-
-    if (g_cancellable_is_cancelled(context.socketCancellable.get())) {
-        context.destroySource();
-        return Stop;
-    }
-
-    bool retval = context.socketCallback(condition);
-
-    if (m_status != Ready && !m_context.source) {
-        // m_status should reflect whether the GMainLoopSource has been rescheduled during dispatch.
-        ASSERT((!m_context.source && m_status == Dispatching) || m_status == Scheduled);
-        if (retval && !m_context.source)
-            m_context = WTF::move(context);
-        else if (!retval)
-            m_status = Ready;
-    }
-
     if (context.source)
         context.destroySource();
 
@@ -460,11 +319,6 @@ gboolean GMainLoopSource::voidSourceCallback(GMainLoopSource* source)
 gboolean GMainLoopSource::boolSourceCallback(GMainLoopSource* source)
 {
     return source->boolCallback() == Continue;
-}
-
-gboolean GMainLoopSource::socketSourceCallback(GSocket*, GIOCondition condition, GMainLoopSource* source)
-{
-    return source->socketCallback(condition) == Continue;
 }
 
 void GMainLoopSource::Context::destroySource()
