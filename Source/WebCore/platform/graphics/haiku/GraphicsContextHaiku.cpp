@@ -278,7 +278,7 @@ void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* poin
     m_data->view()->ClipToShape(shape);
 }
 
-void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace /*colorSpace*/)
+void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
 {
     if (paintingDisabled())
         return;
@@ -309,7 +309,7 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     m_data->view()->FillRect(rect);
 }
 
-void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& roundRect, const Color& color, ColorSpace /*colorSpace*/)
+void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& roundRect, const Color& color)
 {
     if (paintingDisabled() || !color.alpha())
         return;
@@ -366,7 +366,7 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& roundRect,
     shape.Close();
 
     rgb_color oldColor = m_data->view()->HighColor();
-    setPlatformFillColor(color, ColorSpaceDeviceRGB);
+    setPlatformFillColor(color);
     m_data->view()->MovePenTo(B_ORIGIN);
     m_data->view()->FillShape(&shape);
 
@@ -456,7 +456,7 @@ void GraphicsContext::drawFocusRing(const Path& path, int width, int /*offset*/,
     width = 1;
 
     m_data->view()->PushState();
-    setPlatformFillColor(color, ColorSpaceDeviceRGB);
+    setPlatformFillColor(color);
     m_data->view()->SetPenSize(width);
     m_data->view()->StrokeShape(path.platformPath(), B_SOLID_HIGH);
     m_data->view()->PopState();
@@ -479,7 +479,7 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int width, int
     // elements. Maybe we should disable that somewhere.
     width = 1;
 
-    setPlatformFillColor(color, ColorSpaceDeviceRGB);
+    setPlatformFillColor(color);
     m_data->view()->SetPenSize(width);
     // FIXME: maybe we should implement this with BShape?
     for (unsigned i = 0; i < rectCount; ++i)
@@ -736,7 +736,7 @@ void GraphicsContext::setURLForRect(const URL& /*link*/, const IntRect& /*destRe
     notImplemented();
 }
 
-void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace /*colorSpace*/)
+void GraphicsContext::setPlatformStrokeColor(const Color& color)
 {
     if (paintingDisabled())
         return;
@@ -746,7 +746,7 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace /*co
     // below. More stuff needs to be fixed, though, it will for example
     // prevent the text caret from rendering.
 //    m_data->view()->SetLowColor(color);
-    setPlatformFillColor(color, ColorSpaceDeviceRGB);
+    setPlatformFillColor(color);
 }
 
 void GraphicsContext::setPlatformStrokeStyle(StrokeStyle strokeStyle)
@@ -779,7 +779,7 @@ void GraphicsContext::setPlatformStrokeThickness(float thickness)
     m_data->view()->SetPenSize(thickness);
 }
 
-void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace /*colorSpace*/)
+void GraphicsContext::setPlatformFillColor(const Color& color)
 {
     if (paintingDisabled())
         return;
@@ -798,7 +798,7 @@ void GraphicsContext::clearPlatformShadow()
 }
 
 void GraphicsContext::setPlatformShadow(FloatSize const& size, float /*blur*/,
-    Color const& /*color*/, ColorSpace)
+    Color const& /*color*/)
 {
     if (paintingDisabled())
         return;
@@ -813,7 +813,6 @@ void GraphicsContext::setPlatformShadow(FloatSize const& size, float /*blur*/,
     m_data->shadowBlur().setShadowValues(FloatSize(m_state.shadowBlur, m_state.shadowBlur),
                                                     m_state.shadowOffset,
                                                     m_state.shadowColor,
-                                                    m_state.shadowColorSpace,
                                                     m_state.shadowsIgnoreTransforms);
 }
 

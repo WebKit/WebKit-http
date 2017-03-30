@@ -81,7 +81,7 @@ void BitmapImage::invalidatePlatformData()
 
 // Drawing Routines
 void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatRect& src,
-    ColorSpace styleColorSpace, CompositeOperator op, BlendMode, ImageOrientationDescription)
+    CompositeOperator op, BlendMode, ImageOrientationDescription)
 {
     if (!m_source.initialized())
         return;
@@ -96,7 +96,7 @@ void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatR
         return;
 
     if (mayFillWithSolidColor()) {
-        fillWithSolidColor(ctxt, dst, solidColor(), styleColorSpace, op);
+        fillWithSolidColor(ctxt, dst, solidColor(), op);
         return;
     }
 
@@ -121,7 +121,10 @@ void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatR
         imageObserver()->didDraw(this);
 }
 
-void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& size, ColorSpace, CompositeOperator op, const FloatRect& dstRect, BlendMode)
+void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect,
+    const AffineTransform& patternTransform, const FloatPoint& phase,
+    const FloatSize& size, CompositeOperator op, const FloatRect& dstRect,
+    BlendMode)
 {
     BBitmap* image = nativeImageForCurrentFrame();
     if (!image || !image->IsValid()) // If the image hasn't fully loaded.
