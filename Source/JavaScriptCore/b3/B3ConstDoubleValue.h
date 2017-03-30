@@ -32,7 +32,7 @@
 
 namespace JSC { namespace B3 {
 
-class ConstDoubleValue : public Value {
+class JS_EXPORT_PRIVATE ConstDoubleValue : public Value {
 public:
     static bool accepts(Opcode opcode) { return opcode == ConstDouble; }
     
@@ -40,12 +40,19 @@ public:
     
     double value() const { return m_value; }
 
-    Value* negConstant(Procedure& proc) const override;
-    Value* addConstant(Procedure& proc, int32_t other) const override;
-    Value* addConstant(Procedure& proc, Value* other) const override;
-    Value* subConstant(Procedure& proc, Value* other) const override;
-    Value* equalConstant(Procedure& proc, Value* other) const override;
-    Value* notEqualConstant(Procedure& proc, Value* other) const override;
+    Value* negConstant(Procedure&) const override;
+    Value* addConstant(Procedure&, int32_t other) const override;
+    Value* addConstant(Procedure&, const Value* other) const override;
+    Value* subConstant(Procedure&, const Value* other) const override;
+    Value* divConstant(Procedure&, const Value* other) const override;
+    Value* mulConstant(Procedure&, const Value* other) const override;
+
+    TriState equalConstant(const Value* other) const override;
+    TriState notEqualConstant(const Value* other) const override;
+    TriState lessThanConstant(const Value* other) const override;
+    TriState greaterThanConstant(const Value* other) const override;
+    TriState lessEqualConstant(const Value* other) const override;
+    TriState greaterEqualConstant(const Value* other) const override;
 
 protected:
     void dumpMeta(CommaPrinter&, PrintStream&) const override;

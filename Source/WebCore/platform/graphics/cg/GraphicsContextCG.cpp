@@ -51,10 +51,6 @@
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #endif
 
-#if PLATFORM(IOS)
-#include <wtf/HashMap.h>
-#endif
-
 // FIXME: The following using declaration should be in <wtf/HashFunctions.h>.
 using WTF::pairIntHash;
 
@@ -63,16 +59,17 @@ using WTF::GenericHashTraits;
 
 namespace WebCore {
 
-static void setCGFillColor(CGContextRef context, const Color& color, ColorSpace colorSpace)
+static void setCGFillColor(CGContextRef context, const Color& color)
 {
-    CGContextSetFillColorWithColor(context, cachedCGColor(color, colorSpace));
+    CGContextSetFillColorWithColor(context, cachedCGColor(color));
 }
 
-static void setCGStrokeColor(CGContextRef context, const Color& color, ColorSpace colorSpace)
+static void setCGStrokeColor(CGContextRef context, const Color& color)
 {
-    CGContextSetStrokeColorWithColor(context, cachedCGColor(color, colorSpace));
+    CGContextSetStrokeColorWithColor(context, cachedCGColor(color));
 }
 
+// FIXME: This should be removed soon.
 CGColorSpaceRef deviceRGBColorSpaceRef()
 {
     static CGColorSpaceRef deviceSpace = CGColorSpaceCreateDeviceRGB();
@@ -81,9 +78,6 @@ CGColorSpaceRef deviceRGBColorSpaceRef()
 
 CGColorSpaceRef sRGBColorSpaceRef()
 {
-#if PLATFORM(IOS)
-    return deviceRGBColorSpaceRef();
-#else
     static CGColorSpaceRef sRGBSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
 #if PLATFORM(WIN)
     // Out-of-date CG installations will not honor kCGColorSpaceSRGB. This logic avoids
@@ -93,10 +87,9 @@ CGColorSpaceRef sRGBColorSpaceRef()
         sRGBSpace = deviceRGBColorSpaceRef();
 #endif // PLATFORM(WIN)
     return sRGBSpace;
-#endif // PLATFORM(IOS)
 }
 
-#if PLATFORM(WIN) || PLATFORM(IOS)
+#if PLATFORM(WIN)
 CGColorSpaceRef linearRGBColorSpaceRef()
 {
     // FIXME: Windows should be able to use linear sRGB, this is tracked by http://webkit.org/b/80000.
@@ -127,8 +120,8 @@ void GraphicsContext::platformInit(CGContextRef cgContext)
     setPaintingDisabled(!cgContext);
     if (cgContext) {
         // Make sure the context starts in sync with our state.
-        setPlatformFillColor(fillColor(), fillColorSpace());
-        setPlatformStrokeColor(strokeColor(), strokeColorSpace());
+        setPlatformFillColor(fillColor());
+        setPlatformStrokeColor(strokeColor());
         setPlatformStrokeThickness(strokeThickness());
         m_state.imageInterpolationQuality = convertInterpolationQuality(CGContextGetInterpolationQuality(platformContext()));
     }
@@ -163,7 +156,7 @@ void GraphicsContext::restorePlatformState()
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
 }
 
-void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSize& imageSize, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
+void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
 {
     RetainPtr<CGImageRef> image(imagePtr);
 
@@ -254,9 +247,6 @@ void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSi
     CGContextTranslateCTM(context, 0, adjustedDestRect.height());
     CGContextScaleCTM(context, 1, -1);
 
-    // Adjust the color space.
-    image = Image::imageWithColorSpace(image.get(), styleColorSpace);
-
     // Draw the image.
     CGContextDrawImage(context, adjustedDestRect, image.get());
 }
@@ -280,7 +270,7 @@ static void patternReleaseCallback(void* info)
     });
 }
 
-void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
 {
     if (!patternTransform.isInvertible())
         return;
@@ -320,9 +310,6 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
         subImage = adoptCF(CGImageCreateWithImageInRect(tileImage, tileRect));
     }
 
-    // Adjust the color space.
-    subImage = Image::imageWithColorSpace(subImage.get(), styleColorSpace);
-
     // If we need to paint gaps between tiles because we have a partially loaded image or non-zero spacing,
     // fall back to the less efficient CGPattern-based mechanism.
     float scaledTileWidth = tileRect.width() * narrowPrecisionToFloat(patternTransform.a());
@@ -350,7 +337,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
         if (!pattern)
             return;
 
-        RetainPtr<CGColorSpaceRef> patternSpace = adoptCF(CGColorSpaceCreatePattern(0));
+        RetainPtr<CGColorSpaceRef> patternSpace = adoptCF(CGColorSpaceCreatePattern(nullptr));
 
         CGFloat alpha = 1;
         RetainPtr<CGColorRef> color = adoptCF(CGColorCreateWithPattern(patternSpace.get(), pattern.get(), &alpha));
@@ -394,7 +381,7 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
         // We do a fill of four rects to simulate the stroke of a border.
         Color oldFillColor = fillColor();
         if (oldFillColor != strokeColor())
-            setCGFillColor(context, strokeColor(), strokeColorSpace());
+            setCGFillColor(context, strokeColor());
         CGRect rects[4] = {
             FloatRect(rect.x(), rect.y(), rect.width(), borderThickness),
             FloatRect(rect.x(), rect.maxY() - borderThickness, rect.width(), borderThickness),
@@ -403,7 +390,7 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
         };
         CGContextFillRects(context, rects, 4);
         if (oldFillColor != strokeColor())
-            setCGFillColor(context, oldFillColor, fillColorSpace());
+            setCGFillColor(context, oldFillColor);
     }
 }
 
@@ -432,7 +419,7 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
     if (drawsDashedLine) {
         // Figure out end points to ensure we always paint corners.
         cornerWidth = strokeStyle == DottedStroke ? thickness : std::min(2 * thickness, std::max(thickness, strokeWidth / 3));
-        setCGFillColor(context, strokeColor(), strokeColorSpace());
+        setCGFillColor(context, strokeColor());
         if (isVerticalLine) {
             CGContextFillRect(context, FloatRect(point1.x(), point1.y(), thickness, cornerWidth));
             CGContextFillRect(context, FloatRect(point1.x(), point2.y() - cornerWidth, thickness, cornerWidth));
@@ -607,7 +594,7 @@ void GraphicsContext::applyFillPattern()
     if (!platformPattern)
         return;
 
-    RetainPtr<CGColorSpaceRef> patternSpace = adoptCF(CGColorSpaceCreatePattern(0));
+    RetainPtr<CGColorSpaceRef> patternSpace = adoptCF(CGColorSpaceCreatePattern(nullptr));
     CGContextSetFillColorSpace(cgContext, patternSpace.get());
 
     const CGFloat patternAlpha = 1;
@@ -837,17 +824,16 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     CGContextFillRect(context, rect);
 }
 
-void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
 {
     if (paintingDisabled())
         return;
 
     CGContextRef context = platformContext();
     Color oldFillColor = fillColor();
-    ColorSpace oldColorSpace = fillColorSpace();
 
-    if (oldFillColor != color || oldColorSpace != colorSpace)
-        setCGFillColor(context, color, colorSpace);
+    if (oldFillColor != color)
+        setCGFillColor(context, color);
 
     bool drawOwnShadow = !isAcceleratedContext() && hasBlurredShadow() && !m_state.shadowsIgnoreTransforms; // Don't use ShadowBlur for canvas yet.
     CGContextStateSaver stateSaver(context, drawOwnShadow);
@@ -864,21 +850,20 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     if (drawOwnShadow)
         stateSaver.restore();
 
-    if (oldFillColor != color || oldColorSpace != colorSpace)
-        setCGFillColor(context, oldFillColor, oldColorSpace);
+    if (oldFillColor != color)
+        setCGFillColor(context, oldFillColor);
 }
 
-void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, const Color& color)
 {
     if (paintingDisabled())
         return;
 
     CGContextRef context = platformContext();
     Color oldFillColor = fillColor();
-    ColorSpace oldColorSpace = fillColorSpace();
 
-    if (oldFillColor != color || oldColorSpace != colorSpace)
-        setCGFillColor(context, color, colorSpace);
+    if (oldFillColor != color)
+        setCGFillColor(context, color);
 
     bool drawOwnShadow = !isAcceleratedContext() && hasBlurredShadow() && !m_state.shadowsIgnoreTransforms; // Don't use ShadowBlur for canvas yet.
     CGContextStateSaver stateSaver(context, drawOwnShadow);
@@ -906,11 +891,11 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
     if (drawOwnShadow)
         stateSaver.restore();
 
-    if (oldFillColor != color || oldColorSpace != colorSpace)
-        setCGFillColor(context, oldFillColor, oldColorSpace);
+    if (oldFillColor != color)
+        setCGFillColor(context, oldFillColor);
 }
 
-void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const FloatRoundedRect& roundedHoleRect, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const FloatRoundedRect& roundedHoleRect, const Color& color)
 {
     if (paintingDisabled())
         return;
@@ -927,10 +912,9 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
 
     WindRule oldFillRule = fillRule();
     Color oldFillColor = fillColor();
-    ColorSpace oldFillColorSpace = fillColorSpace();
     
     setFillRule(RULE_EVENODD);
-    setFillColor(color, colorSpace);
+    setFillColor(color);
 
     // fillRectWithRoundedHole() assumes that the edges of rect are clipped out, so we only care about shadows cast around inside the hole.
     bool drawOwnShadow = !isAcceleratedContext() && hasBlurredShadow() && !m_state.shadowsIgnoreTransforms;
@@ -949,7 +933,7 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
         stateSaver.restore();
     
     setFillRule(oldFillRule);
-    setFillColor(oldFillColor, oldFillColorSpace);
+    setFillColor(oldFillColor);
 }
 
 void GraphicsContext::clip(const FloatRect& rect)
@@ -1059,7 +1043,7 @@ static void applyShadowOffsetWorkaroundIfNeeded(const GraphicsContext& context, 
 #endif
 }
 
-void GraphicsContext::setPlatformShadow(const FloatSize& offset, float blur, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::setPlatformShadow(const FloatSize& offset, float blur, const Color& color)
 {
     if (paintingDisabled())
         return;
@@ -1099,7 +1083,7 @@ void GraphicsContext::setPlatformShadow(const FloatSize& offset, float blur, con
     if (!color.isValid())
         CGContextSetShadow(context, CGSizeMake(xOffset, yOffset), blurRadius);
     else
-        CGContextSetShadowWithColor(context, CGSizeMake(xOffset, yOffset), blurRadius, cachedCGColor(color, colorSpace));
+        CGContextSetShadowWithColor(context, CGSizeMake(xOffset, yOffset), blurRadius, cachedCGColor(color));
 }
 
 void GraphicsContext::clearPlatformShadow()
@@ -1396,12 +1380,12 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
     }
 
     if (fillColorIsNotEqualToStrokeColor)
-        setCGFillColor(platformContext(), localStrokeColor, strokeColorSpace());
+        setCGFillColor(platformContext(), localStrokeColor);
 
     CGContextFillRects(platformContext(), dashBounds.data(), dashBounds.size());
 
     if (fillColorIsNotEqualToStrokeColor)
-        setCGFillColor(platformContext(), fillColor(), fillColorSpace());
+        setCGFillColor(platformContext(), fillColor());
 }
 
 void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)
@@ -1501,11 +1485,11 @@ void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags mode)
     }
 }
 
-void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace colorSpace)
+void GraphicsContext::setPlatformStrokeColor(const Color& color)
 {
     if (paintingDisabled())
         return;
-    setCGStrokeColor(platformContext(), color, colorSpace);
+    setCGStrokeColor(platformContext(), color);
 }
 
 void GraphicsContext::setPlatformStrokeThickness(float thickness)
@@ -1515,11 +1499,11 @@ void GraphicsContext::setPlatformStrokeThickness(float thickness)
     CGContextSetLineWidth(platformContext(), std::max(thickness, 0.f));
 }
 
-void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace colorSpace)
+void GraphicsContext::setPlatformFillColor(const Color& color)
 {
     if (paintingDisabled())
         return;
-    setCGFillColor(platformContext(), color, colorSpace);
+    setCGFillColor(platformContext(), color);
 }
 
 void GraphicsContext::setPlatformShouldAntialias(bool enable)

@@ -1,3 +1,44 @@
+2015-11-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        XMLHttpRequestUpload should support ontimeout event handler
+        https://bugs.webkit.org/show_bug.cgi?id=128531
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt: Rebasing as test is passing.
+        * web-platform-tests/XMLHttpRequest/send-timeout-events-expected.txt: Ditto.
+
+2015-11-07  Chris Dumez  <cdumez@apple.com>
+
+        embed element without src and type attributes should represent nothing
+        https://bugs.webkit.org/show_bug.cgi?id=148853
+        <rdar://problem/22588235>
+
+        Reviewed by Zalan Bujtas.
+
+        Rebaseline existing tests.
+
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-newelements-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-05-expected.txt:
+
+2015-11-03  Dean Jackson  <dino@apple.com>
+
+        Accept 8 and 4 value hex colors (#RRGGBBAA)
+        https://bugs.webkit.org/show_bug.cgi?id=150853
+        <rdar://problem/23380930>
+
+        Reviewed by Simon Fraser.
+
+        Delete these tests. The have been updated in the original repository,
+        so we'll get the new versions soon. Meanwhile, they are covered by
+        other tests.
+
+        * canvas/2d.fillStyle.parse.invalid.hex4-expected.txt: Removed.
+        * canvas/2d.fillStyle.parse.invalid.hex4.html: Removed.
+        * canvas/2d.fillStyle.parse.invalid.hex8-expected.txt: Removed.
+        * canvas/2d.fillStyle.parse.invalid.hex8.html: Removed.
+        * css/css-color-3/t421-rgb-hex-parsing-f.xht:
+
 2015-11-02  Jon Honeycutt  <jhoneycutt@apple.com>
 
         Implement support for the autocomplete attribute

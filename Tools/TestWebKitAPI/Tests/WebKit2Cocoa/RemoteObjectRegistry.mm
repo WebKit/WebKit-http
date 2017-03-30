@@ -48,7 +48,7 @@ TEST(WebKit2, RemoteObjectRegistry)
 
         isDone = false;
 
-        _WKRemoteObjectInterface *interface = [_WKRemoteObjectInterface remoteObjectInterfaceWithProtocol:@protocol(RemoteObjectProtocol)];
+        _WKRemoteObjectInterface *interface = remoteObjectInterface();
         id <RemoteObjectProtocol> object = [[webView _remoteObjectRegistry] remoteObjectProxyWithInterface:interface];
 
         [object sayHello:@"Hello, World!"];
@@ -60,9 +60,18 @@ TEST(WebKit2, RemoteObjectRegistry)
         }];
         TestWebKitAPI::Util::run(&isDone);
 
-        [object sayHello:@"Hello Again!" completionHandler:^(NSString *) {
-            // FIXME: Check the string here.
+        isDone = false;
+        [object sayHello:@"Hello Again!" completionHandler:^(NSString *result) {
+            EXPECT_TRUE([result isKindOfClass:[NSString class]]);
+            EXPECT_WK_STREQ(result, @"Your string was 'Hello Again!'");
+            isDone = true;
         }];
+
+        isDone = false;
+        [object selectionAndClickInformationForClickAtPoint:[NSValue valueWithPoint:NSMakePoint(12, 34)] completionHandler:^(NSDictionary *result) {
+            isDone = true;
+        }];
+        TestWebKitAPI::Util::run(&isDone);
     }
 }
 

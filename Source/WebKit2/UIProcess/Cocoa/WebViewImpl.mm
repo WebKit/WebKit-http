@@ -29,7 +29,6 @@
 #if PLATFORM(MAC)
 
 #import "APILegacyContextHistoryClient.h"
-#import "AppKitSPI.h"
 #import "ColorSpaceData.h"
 #import "GenericCallback.h"
 #import "Logging.h"
@@ -74,7 +73,9 @@
 #import <WebCore/KeypressCommand.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LookupSPI.h>
+#import <WebCore/NSApplicationSPI.h>
 #import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
+#import <WebCore/NSTextFinderSPI.h>
 #import <WebCore/NSWindowSPI.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/SoftLinking.h>
@@ -549,16 +550,6 @@ bool WebViewImpl::drawsBackground() const
     return m_page->drawsBackground();
 }
 
-void WebViewImpl::setDrawsTransparentBackground(bool drawsTransparentBackground)
-{
-    m_page->setDrawsTransparentBackground(drawsTransparentBackground);
-}
-
-bool WebViewImpl::drawsTransparentBackground() const
-{
-    return m_page->drawsTransparentBackground();
-}
-
 bool WebViewImpl::isOpaque() const
 {
     return m_page->drawsBackground();
@@ -825,10 +816,7 @@ void WebViewImpl::waitForAsyncDrawingAreaSizeUpdate()
 
 void WebViewImpl::updateLayer()
 {
-    if (drawsBackground() && !drawsTransparentBackground())
-        m_view.layer.backgroundColor = CGColorGetConstantColor(kCGColorWhite);
-    else
-        m_view.layer.backgroundColor = CGColorGetConstantColor(kCGColorClear);
+    m_view.layer.backgroundColor = CGColorGetConstantColor(drawsBackground() ? kCGColorWhite : kCGColorClear);
 
     // If asynchronous geometry updates have been sent by forceAsyncDrawingAreaSizeUpdate,
     // then subsequent calls to setFrameSize should not result in us waiting for the did

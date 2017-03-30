@@ -1,3 +1,88 @@
+2015-11-11  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile and canonicalize Mul
+        https://bugs.webkit.org/show_bug.cgi?id=151124
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/MathExtras.h:
+        (WTF::fastLog2):
+
+2015-11-10  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile a program with ChillDiv
+        https://bugs.webkit.org/show_bug.cgi?id=151114
+
+        Reviewed by Benjamin Poulain.
+
+        Needed to beef up some compiler algorithms. All of the hardening was about making them
+        work with objects that have move semantics but not copy semantics. This arises in B3
+        basic block insertion sets.
+
+        * wtf/BubbleSort.h:
+        (WTF::bubbleSort):
+        * wtf/Insertion.h:
+        (WTF::Insertion::Insertion):
+        (WTF::Insertion::index):
+        (WTF::Insertion::element):
+        (WTF::Insertion::operator<):
+        (WTF::executeInsertions):
+
+2015-11-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use CROSS_PLATFORM_CONTEXT_MENUS
+        https://bugs.webkit.org/show_bug.cgi?id=150642
+
+        Reviewed by Martin Robinson.
+
+        Enable CROSS_PLATFORM_CONTEXT_MENUS for GTK+ port.
+
+        * wtf/Platform.h:
+
+2015-11-09  Anders Carlsson  <andersca@apple.com>
+
+        Introspect reply block types as well
+        https://bugs.webkit.org/show_bug.cgi?id=151048
+
+        Reviewed by Tim Horton.
+
+        Fix operator-> implementation.
+
+        * wtf/Optional.h:
+        (WTF::Optional::operator->):
+
+2015-11-05  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        Add runtime and compile time flags for enabling Web Animations API and model.
+        https://bugs.webkit.org/show_bug.cgi?id=150914
+
+        Reviewed by Benjamin Poulain.
+
+        Add ENABLE_WEB_ANIMATIONS compile time flag, runtime flag webAnimationsEnabled and Expose WK2 preference for runtime flag.
+
+        * wtf/FeatureDefines.h:
+
+2015-11-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] Avoid gint64, std::chrono::microseconds overflows in RunLoop::TimerBase
+        https://bugs.webkit.org/show_bug.cgi?id=150930
+
+        Reviewed by Carlos Garcia Campos.
+
+        In RunLoop::TimerBase::start(), avoid overflowing the std::chrono::microseconds
+        value in case the passed-in fire interval (in seconds) is too large (e.g. when
+        std::chrono::microseconds::max() is used as the desired interval). This is
+        achieved by using the passed-in fire interval, converted in microseconds, only
+        if the value of this interval is smaller than std::chrono::microseconds::max().
+
+        In RunLoop::TimerBase::updateReadyTime(), the zero-delay is still considered a
+        short cut, but we use G_MAXINT64 in case the sum of the current time and the
+        desired fire interval (now in microseconds) would overflow.
+
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::updateReadyTime):
+        (WTF::RunLoop::TimerBase::start):
+
 2015-11-02  Filip Pizlo  <fpizlo@apple.com>
 
         B3/Air should use bubble sort for their insertion sets, because it's faster than std::stable_sort

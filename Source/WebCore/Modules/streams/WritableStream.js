@@ -42,8 +42,8 @@ function initializeWritableStream(underlyingSink, strategy)
         throw new @TypeError("WritableStream constructor takes an object as second argument, if any");
 
     this.@underlyingSink = underlyingSink;
-    this.@closedPromiseCapability = @newPromiseCapability(Promise);
-    this.@readyPromiseCapability = { @promise: Promise.resolve(undefined) };
+    this.@closedPromiseCapability = @newPromiseCapability(@Promise);
+    this.@readyPromiseCapability = { @promise: @Promise.@resolve() };
     this.@queue = @newQueue();
     this.@state = @streamWritable;
     this.@started = false;
@@ -53,11 +53,12 @@ function initializeWritableStream(underlyingSink, strategy)
 
     @syncWritableStreamStateWithQueue(this);
 
-    var error = @errorWritableStream.bind(this);
-    var startResult = @invokeOrNoop(underlyingSink, "start", [error]);
-    this.@startedPromise = Promise.resolve(startResult);
-    var _this = this;
-    this.@startedPromise.then(function() {
+    const _this = this;
+    function error(e) {
+        @errorWritableStream.@call(_this, e);
+    };
+    this.@startedPromise = @Promise.@resolve(@invokeOrNoop(underlyingSink, "start", [error]));
+    @Promise.prototype.@then.@call(this.@startedPromise, function() {
         _this.@started = true;
         _this.@startedPromise = undefined;
     }, error);
@@ -70,19 +71,19 @@ function abort(reason)
     "use strict";
 
     if (!@isWritableStream(this))
-        return Promise.reject(new @TypeError("The WritableStream.abort method can only be used on instances of WritableStream"));
+        return @Promise.@reject(new @TypeError("The WritableStream.abort method can only be used on instances of WritableStream"));
 
     if (this.@state === @streamClosed)
-        return Promise.resolve(undefined);
+        return @Promise.@resolve();
 
     if (this.@state === @streamErrored)
-        return Promise.reject(this.@storedError);
+        return @Promise.@reject(this.@storedError);
 
-    @errorWritableStream.@apply(this, [reason]);
+    @errorWritableStream.@call(this, reason);
 
     const sinkAbortPromise = @promiseInvokeOrFallbackOrNoop(this.@underlyingSink, "abort", [reason], "close", []);
 
-    return sinkAbortPromise.then(function() { return undefined; });
+    return @Promise.prototype.@then.@call(sinkAbortPromise, function() { return undefined; });
 }
 
 function close()
@@ -90,16 +91,16 @@ function close()
     "use strict";
 
     if (!@isWritableStream(this))
-        return Promise.reject(new @TypeError("The WritableStream.close method can only be used on instances of WritableStream"));
+        return @Promise.@reject(new @TypeError("The WritableStream.close method can only be used on instances of WritableStream"));
 
     if (this.@state === @streamClosed || this.@state === @streamClosing)
-        return Promise.reject(new @TypeError("Cannot close a WritableString that is closed or closing"));
+        return @Promise.@reject(new @TypeError("Cannot close a WritableString that is closed or closing"));
 
     if (this.@state === @streamErrored)
-        return Promise.reject(this.@storedError);
+        return @Promise.@reject(this.@storedError);
 
     if (this.@state === @streamWaiting)
-        this.@readyPromiseCapability.@resolve.@call(undefined, undefined);
+        this.@readyPromiseCapability.@resolve.@call();
 
     this.@state = @streamClosing;
     @enqueueValueWithSize(this.@queue, "close", 0);
@@ -113,16 +114,15 @@ function write(chunk)
     "use strict";
 
     if (!@isWritableStream(this))
-        return Promise.reject(new @TypeError("The WritableStream.close method can only be used on instances of WritableStream"));
+        return @Promise.@reject(new @TypeError("The WritableStream.close method can only be used on instances of WritableStream"));
 
     if (this.@state === @streamClosed || this.@state === @streamClosing)
-        return Promise.reject(new @TypeError("Cannot write on a WritableString that is closed or closing"));
+        return @Promise.@reject(new @TypeError("Cannot write on a WritableString that is closed or closing"));
 
     if (this.@state === @streamErrored)
-        return Promise.reject(this.@storedError);
+        return @Promise.@reject(this.@storedError);
 
-    // FIXME
-    // assert(this.@state === @streamWritable || this.@state === @streamWaiting);
+    @assert(this.@state === @streamWritable || this.@state === @streamWaiting);
 
     let chunkSize = 1;
     if (this.@strategy.size !== undefined) {
@@ -130,16 +130,16 @@ function write(chunk)
             chunkSize = this.@strategy.size.@call(undefined, chunk);
         } catch(e) {
             @errorWritableStream.@call(this, e);
-            return Promise.reject(e);
+            return @Promise.@reject(e);
         }
     }
 
-    const promiseCapability = @newPromiseCapability(Promise);
+    const promiseCapability = @newPromiseCapability(@Promise);
     try {
         @enqueueValueWithSize(this.@queue, { promiseCapability: promiseCapability, chunk: chunk }, chunkSize);
     } catch (e) {
         @errorWritableStream.@call(this, e);
-        return Promise.reject(e);
+        return @Promise.@reject(e);
     }
 
     @syncWritableStreamStateWithQueue(this);
@@ -153,7 +153,7 @@ function closed()
     "use strict";
 
     if (!@isWritableStream(this))
-        return Promise.reject(new @TypeError("The WritableStream.closed getter can only be used on instances of WritableStream"));
+        return @Promise.@reject(new @TypeError("The WritableStream.closed getter can only be used on instances of WritableStream"));
 
     return this.@closedPromiseCapability.@promise;
 }
@@ -163,7 +163,7 @@ function ready()
     "use strict";
 
     if (!@isWritableStream(this))
-        return Promise.reject(new @TypeError("The WritableStream.ready getter can only be used on instances of WritableStream"));
+        return @Promise.@reject(new @TypeError("The WritableStream.ready getter can only be used on instances of WritableStream"));
 
     return this.@readyPromiseCapability.@promise;
 }
@@ -188,8 +188,5 @@ function state()
         return "writable";
     }
 
-    // FIXME
-    // assert_not_reached();
-
-    return undefined;
+    @assert(false);
 }

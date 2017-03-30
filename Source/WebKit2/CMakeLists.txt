@@ -166,6 +166,8 @@ endif ()
 
 set(NetworkProcess_COMMON_SOURCES
     NetworkProcess/NetworkConnectionToWebProcess.cpp
+    NetworkProcess/NetworkLoad.cpp
+    NetworkProcess/NetworkLoadParameters.cpp
     NetworkProcess/NetworkProcess.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
     NetworkProcess/NetworkResourceLoader.cpp
@@ -181,6 +183,8 @@ set(NetworkProcess_COMMON_SOURCES
     NetworkProcess/cache/NetworkCacheEntry.cpp
     NetworkProcess/cache/NetworkCacheFileSystem.cpp
     NetworkProcess/cache/NetworkCacheKey.cpp
+    NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp
+    NetworkProcess/cache/NetworkCacheSubresourcesEntry.cpp
     NetworkProcess/cache/NetworkCacheStatistics.cpp
     NetworkProcess/cache/NetworkCacheStorage.cpp
 )

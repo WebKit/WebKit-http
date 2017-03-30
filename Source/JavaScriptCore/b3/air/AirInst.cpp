@@ -28,10 +28,22 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirInstInlines.h"
 #include "B3Value.h"
 #include <wtf/ListDump.h>
 
 namespace JSC { namespace B3 { namespace Air {
+
+bool Inst::hasArgEffects()
+{
+    bool result = false;
+    forEachArg(
+        [&] (Arg&, Arg::Role role, Arg::Type) {
+            if (Arg::isDef(role))
+                result = true;
+        });
+    return result;
+}
 
 void Inst::dump(PrintStream& out) const
 {

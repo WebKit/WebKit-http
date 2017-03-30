@@ -33,7 +33,9 @@
 #include "AirEliminateDeadCode.h"
 #include "AirGenerationContext.h"
 #include "AirHandleCalleeSaves.h"
+#include "AirIteratedRegisterCoalescing.h"
 #include "AirReportUsedRegisters.h"
+#include "AirSimplifyCFG.h"
 #include "AirSpillEverything.h"
 #include "AirValidate.h"
 #include "B3Common.h"
@@ -67,8 +69,7 @@ void generate(Code& code, CCallHelpers& jit)
 
     // This is where we would have a real register allocator. Then, we could use spillEverything()
     // in place of the register allocator only for testing.
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=150457
-    spillEverything(code);
+    iteratedRegisterCoalescing(code);
 
     // Prior to this point the prologue and epilogue is implicit. This makes it explicit. It also
     // does things like identify which callee-saves we're using and saves them.
@@ -78,6 +79,10 @@ void generate(Code& code, CCallHelpers& jit)
     // this by first-fit allocating stack slots. It should be pretty darn close to optimal, so we
     // shouldn't have to worry about this very much.
     allocateStack(code);
+
+    // If we coalesced moves then we can unbreak critical edges. This is the main reason for this
+    // phase.
+    simplifyCFG(code);
 
     // FIXME: We should really have a code layout optimization here.
     // https://bugs.webkit.org/show_bug.cgi?id=150478
@@ -116,6 +121,7 @@ void generate(Code& code, CCallHelpers& jit)
 
     for (BasicBlock* block : code) {
         blockJumps[block].link(&jit);
+        blockLabels[block] = jit.label();
         ASSERT(block->size() >= 1);
         for (unsigned i = 0; i < block->size() - 1; ++i) {
             CCallHelpers::Jump jump = block->at(i).generate(jit, context);
@@ -135,8 +141,6 @@ void generate(Code& code, CCallHelpers& jit)
         }
         
         CCallHelpers::Jump jump = block->last().generate(jit, context);
-        for (Inst& inst : *block)
-            jump = inst.generate(jit, context);
         switch (block->numSuccessors()) {
         case 0:
             ASSERT(!jump.isSet());

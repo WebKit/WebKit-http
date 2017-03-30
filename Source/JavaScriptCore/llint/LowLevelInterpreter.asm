@@ -1567,6 +1567,12 @@ _llint_op_push_with_scope:
     dispatch(4)
 
 
+_llint_op_assert:
+    traceExecution()
+    callSlowPath(_slow_path_assert)
+    dispatch(3)
+
+
 _llint_op_create_lexical_environment:
     traceExecution()
     callSlowPath(_slow_path_create_lexical_environment)
@@ -1668,12 +1674,6 @@ _llint_op_to_index_string:
     traceExecution()
     callSlowPath(_slow_path_to_index_string)
     dispatch(3)
-
-_llint_op_profile_control_flow:
-    traceExecution()
-    loadpFromInstruction(1, t0)
-    storeb 1, BasicBlockLocation::m_hasExecuted[t0]
-    dispatch(2)
 
 # Lastly, make sure that we can link even though we don't support all opcodes.
 # These opcodes should never arise when using LLInt or either JIT. We assert

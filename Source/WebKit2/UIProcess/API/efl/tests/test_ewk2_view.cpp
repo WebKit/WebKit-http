@@ -32,6 +32,7 @@ extern EWK2UnitTestEnvironment* environment;
 static bool fullScreenCallbackCalled;
 static bool obtainedPageContents = false;
 static bool scriptExecuteCallbackCalled;
+static bool windowCloseCallbackCalled = false;
 
 static const int scrollBarWidth = 10;
 
@@ -248,6 +249,16 @@ public:
         Ewk_Focus_Direction* result = static_cast<Ewk_Focus_Direction*>(userData);
         *result = *direction;
     }
+
+    static Eina_Bool beforeUnloadCallback(Ewk_View_Smart_Data*, const char*)
+    {
+        return true;
+    }
+
+    static void windowCloseCallback(Ewk_View_Smart_Data *sd)
+    {
+        windowCloseCallbackCalled = true;
+    }
 };
 
 TEST_F(EWK2ViewTest, ewk_view_type_check)
@@ -265,6 +276,19 @@ TEST_F(EWK2ViewTest, ewk_view_add)
 
     EXPECT_TRUE(ewk_view_stop(view));
     evas_object_del(view);
+}
+
+TEST_F(EWK2ViewTest, ewk_view_try_close)
+{
+    ewkViewClass()->run_javascript_before_unload_confirm = beforeUnloadCallback;
+    ewkViewClass()->window_close = windowCloseCallback;
+
+    const char content[] = "<!doctype html><html><body onbeforeunload='return func();'><script>function func() { return 'beforeunload message'; }</script></body></html>";
+    ewk_view_html_string_load(webView(), content, 0, 0);
+    ASSERT_TRUE(waitUntilLoadFinished());
+
+    ewk_view_try_close(webView());
+    ASSERT_TRUE(waitUntilTrue(windowCloseCallbackCalled));
 }
 
 TEST_F(EWK2ViewTest, ewk_view_url_get)
@@ -694,6 +718,81 @@ TEST_F(EWK2ViewTest, ewk_view_run_javascript_prompt)
     EXPECT_TRUE(waitUntilTitleChangedTo("null"));
     EXPECT_STREQ("null", ewk_view_title_get(webView()));
     EXPECT_FALSE(promptCallbackData.called);
+}
+
+static Evas_Object* s_newWindowObject;
+
+static Evas_Object* windowCreateCallback(Ewk_View_Smart_Data* smartData, Ewk_View_Configuration* configuration, const Ewk_Window_Features*)
+{
+    s_newWindowObject = ewk_view_add_with_configuration(
+        evas_object_evas_get(smartData->self),
+        evas_smart_class_new(&smartData->api->sc),
+        configuration);
+
+    evas_object_move(s_newWindowObject, 0, 0);
+    evas_object_resize(s_newWindowObject, environment->defaultWidth(), environment->defaultHeight());
+    evas_object_show(s_newWindowObject);
+    return s_newWindowObject;
+}
+
+TEST_F(EWK2ViewTest, ewk_view_create_window)
+{
+    s_newWindowObject = nullptr;
+    ewkViewClass()->window_create = windowCreateCallback;
+
+    Eina_Stringshare* createHTML = eina_stringshare_printf("<!DOCTYPE HTML><body onload=\"window.open('%s');\"></body>", environment->urlForResource("Page1.html").data());
+    ewk_view_html_string_load(webView(), createHTML, "file:///", nullptr);
+    ASSERT_TRUE(waitUntilNotNull(&s_newWindowObject));
+    if (!ewk_view_title_get(s_newWindowObject), "Page1")
+        waitUntilTitleChangedTo(s_newWindowObject, "Page1");
+    eina_stringshare_del(createHTML);
+    evas_object_del(s_newWindowObject);
+    s_newWindowObject = nullptr;
+
+    createHTML = eina_stringshare_printf("<!DOCTYPE HTML><body><a href=\"%s\" target=\"_blank\"><div style=\"width:100px;height:100px;\">XXXXXX</div></a></body>", environment->urlForResource("Page2.html").data());
+
+    ewk_view_html_string_load(webView(), createHTML, "file:///", nullptr);
+    waitUntilLoadFinished();
+    mouseClick(50, 50);
+    ASSERT_TRUE(waitUntilNotNull(&s_newWindowObject));
+    if (!ewk_view_title_get(s_newWindowObject), "Page2")
+        waitUntilTitleChangedTo(s_newWindowObject, "Page2");
+
+    eina_stringshare_del(createHTML);
+}
+
+class EWK2ViewTestNewWindowWithMultipleProcesses : public EWK2UnitTestBase {
+protected:
+    EWK2ViewTestNewWindowWithMultipleProcesses()
+    {
+        m_multipleProcesses = true;
+    }
+};
+
+TEST_F(EWK2ViewTestNewWindowWithMultipleProcesses, ewk_view_create_window_with_multiprocesses)
+{
+    s_newWindowObject = nullptr;
+    ewkViewClass()->window_create = windowCreateCallback;
+
+    Eina_Stringshare* createHTML = eina_stringshare_printf("<!DOCTYPE HTML><body onload=\"window.open('%s');\"></body>", environment->urlForResource("Page1.html").data());
+    ewk_view_html_string_load(webView(), createHTML, "file:///", nullptr);
+    ASSERT_TRUE(waitUntilNotNull(&s_newWindowObject));
+    if (!ewk_view_title_get(s_newWindowObject), "Page1")
+        waitUntilTitleChangedTo(s_newWindowObject, "Page1");
+    eina_stringshare_del(createHTML);
+    evas_object_del(s_newWindowObject);
+    s_newWindowObject = nullptr;
+
+    createHTML = eina_stringshare_printf("<!DOCTYPE HTML><body><a href=\"%s\" target=\"_blank\"><div style=\"width:100px;height:100px;\">XXXXXX</div></a></body>", environment->urlForResource("Page2.html").data());
+
+    ewk_view_html_string_load(webView(), createHTML, "file:///", nullptr);
+    waitUntilLoadFinished();
+    mouseClick(50, 50);
+    ASSERT_TRUE(waitUntilNotNull(&s_newWindowObject));
+    if (!ewk_view_title_get(s_newWindowObject), "Page2")
+        waitUntilTitleChangedTo(s_newWindowObject, "Page2");
+
+    eina_stringshare_del(createHTML);
 }
 
 TEST_F(EWK2ViewTest, ewk_view_context_get)

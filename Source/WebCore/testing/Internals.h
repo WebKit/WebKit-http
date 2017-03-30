@@ -336,6 +336,8 @@ public:
 
     void forceReload(bool endToEnd);
 
+    void enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight);
+
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     void initializeMockCDM();
 #endif
@@ -399,6 +401,11 @@ public:
     String mediaSessionCurrentState(MediaSession*) const;
     double mediaElementPlayerVolume(HTMLMediaElement*) const;
     void sendMediaControlEvent(const String&);
+#endif
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    void setMockMediaPlaybackTargetPickerEnabled(bool);
+    void setMockMediaPlaybackTargetPickerState(const String& deviceName, const String& deviceState, ExceptionCode&);
 #endif
 
 #if ENABLE(WEB_AUDIO)

@@ -47,53 +47,144 @@ Value* Const32Value::addConstant(Procedure& proc, int32_t other) const
     return proc.add<Const32Value>(origin(), m_value + other);
 }
 
-Value* Const32Value::addConstant(Procedure& proc, Value* other) const
+Value* Const32Value::addConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt32())
         return nullptr;
     return proc.add<Const32Value>(origin(), m_value + other->asInt32());
 }
 
-Value* Const32Value::subConstant(Procedure& proc, Value* other) const
+Value* Const32Value::subConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt32())
         return nullptr;
     return proc.add<Const32Value>(origin(), m_value - other->asInt32());
 }
 
-Value* Const32Value::bitAndConstant(Procedure& proc, Value* other) const
+Value* Const32Value::mulConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasInt32())
+        return nullptr;
+    return proc.add<Const32Value>(origin(), m_value * other->asInt32());
+}
+
+Value* Const32Value::divConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasInt32())
+        return nullptr;
+    return proc.add<Const32Value>(origin(), chillDiv(m_value, other->asInt32()));
+}
+
+Value* Const32Value::bitAndConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt32())
         return nullptr;
     return proc.add<Const32Value>(origin(), m_value & other->asInt32());
 }
 
-Value* Const32Value::bitOrConstant(Procedure& proc, Value* other) const
+Value* Const32Value::bitOrConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt32())
         return nullptr;
     return proc.add<Const32Value>(origin(), m_value | other->asInt32());
 }
 
-Value* Const32Value::bitXorConstant(Procedure& proc, Value* other) const
+Value* Const32Value::bitXorConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt32())
         return nullptr;
     return proc.add<Const32Value>(origin(), m_value ^ other->asInt32());
 }
 
-Value* Const32Value::equalConstant(Procedure& proc, Value* other) const
+Value* Const32Value::shlConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt32())
         return nullptr;
-    return proc.add<Const32Value>(origin(), m_value == other->asInt32());
+    return proc.add<Const32Value>(origin(), m_value << (other->asInt32() & 31));
 }
 
-Value* Const32Value::notEqualConstant(Procedure& proc, Value* other) const
+Value* Const32Value::sShrConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt32())
         return nullptr;
-    return proc.add<Const32Value>(origin(), m_value != other->asInt32());
+    return proc.add<Const32Value>(origin(), m_value >> (other->asInt32() & 31));
+}
+
+Value* Const32Value::zShrConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasInt32())
+        return nullptr;
+    return proc.add<Const32Value>(origin(), static_cast<int32_t>(static_cast<uint32_t>(m_value) >> (other->asInt32() & 31)));
+}
+
+TriState Const32Value::equalConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(m_value == other->asInt32());
+}
+
+TriState Const32Value::notEqualConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(m_value != other->asInt32());
+}
+
+TriState Const32Value::lessThanConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(m_value < other->asInt32());
+}
+
+TriState Const32Value::greaterThanConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(m_value > other->asInt32());
+}
+
+TriState Const32Value::lessEqualConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(m_value <= other->asInt32());
+}
+
+TriState Const32Value::greaterEqualConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(m_value >= other->asInt32());
+}
+
+TriState Const32Value::aboveConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(static_cast<uint32_t>(m_value) > static_cast<uint32_t>(other->asInt32()));
+}
+
+TriState Const32Value::belowConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(static_cast<uint32_t>(m_value) < static_cast<uint32_t>(other->asInt32()));
+}
+
+TriState Const32Value::aboveEqualConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(static_cast<uint32_t>(m_value) >= static_cast<uint32_t>(other->asInt32()));
+}
+
+TriState Const32Value::belowEqualConstant(const Value* other) const
+{
+    if (!other->hasInt32())
+        return MixedTriState;
+    return triState(static_cast<uint32_t>(m_value) <= static_cast<uint32_t>(other->asInt32()));
 }
 
 void Const32Value::dumpMeta(CommaPrinter& comma, PrintStream& out) const

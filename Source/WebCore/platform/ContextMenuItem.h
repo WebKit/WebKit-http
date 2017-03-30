@@ -36,9 +36,6 @@
 #include <wtf/RetainPtr.h>
 OBJC_CLASS NSImage;
 OBJC_CLASS NSMenuItem;
-#elif PLATFORM(GTK)
-typedef struct _GtkMenuItem GtkMenuItem;
-typedef struct _GtkAction GtkAction;
 #elif PLATFORM(HAIKU)
 class BMenuItem;
 #endif
@@ -182,8 +179,6 @@ namespace WebCore {
 #if ENABLE(CONTEXT_MENUS)
 #if PLATFORM(COCOA)
     typedef NSMenuItem* PlatformMenuItemDescription;
-#elif PLATFORM(GTK)
-    typedef GtkMenuItem* PlatformMenuItemDescription;
 #elif PLATFORM(HAIKU)
     typedef BMenuItem* PlatformMenuItemDescription;
 #else
@@ -216,10 +211,6 @@ namespace WebCore {
         WEBCORE_EXPORT static ContextMenuItem shareMenuItem(const URL& absoluteLinkURL, const URL& downloadableMediaURL, NSImage *, const String& selectedText);
 #endif
 
-#if PLATFORM(GTK)
-        GtkAction* gtkAction() const;
-#endif
-
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
         ContextMenuItem(ContextMenuAction, const String&, bool enabled, bool checked, const Vector<ContextMenuItem>& subMenuItems);
         explicit ContextMenuItem(const PlatformContextMenuItem&);
@@ -243,10 +234,6 @@ namespace WebCore {
         WEBCORE_EXPORT ContextMenuItem();
 
         bool isNull() const { return !m_platformDescription; }
-
-#if PLATFORM(GTK)
-        WEBCORE_EXPORT PlatformMenuItemDescription releasePlatformDescription();
-#endif
 
         WEBCORE_EXPORT PlatformMenuItemDescription platformDescription() const;
 

@@ -32,9 +32,11 @@
 #include "B3CCallValue.h"
 #include "B3ControlValue.h"
 #include "B3MemoryValue.h"
+#include "B3ProcedureInlines.h"
 #include "B3StackSlotValue.h"
 #include "B3UpsilonValue.h"
 #include "B3ValueInlines.h"
+#include "B3ValueKeyInlines.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/StringPrintStream.h>
 
@@ -122,38 +124,112 @@ Value* Value::addConstant(Procedure&, int32_t) const
     return nullptr;
 }
 
-Value* Value::addConstant(Procedure&, Value*) const
+Value* Value::addConstant(Procedure&, const Value*) const
 {
     return nullptr;
 }
 
-Value* Value::subConstant(Procedure&, Value*) const
+Value* Value::subConstant(Procedure&, const Value*) const
 {
     return nullptr;
 }
 
-Value* Value::bitAndConstant(Procedure&, Value*) const
+Value* Value::mulConstant(Procedure&, const Value*) const
 {
     return nullptr;
 }
 
-Value* Value::bitOrConstant(Procedure&, Value*) const
+Value* Value::divConstant(Procedure&, const Value*) const
 {
     return nullptr;
 }
 
-Value* Value::bitXorConstant(Procedure&, Value*) const
+Value* Value::bitAndConstant(Procedure&, const Value*) const
 {
     return nullptr;
 }
 
-Value* Value::equalConstant(Procedure&, Value*) const
+Value* Value::bitOrConstant(Procedure&, const Value*) const
 {
     return nullptr;
 }
 
-Value* Value::notEqualConstant(Procedure&, Value*) const
+Value* Value::bitXorConstant(Procedure&, const Value*) const
 {
+    return nullptr;
+}
+
+Value* Value::shlConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::sShrConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::zShrConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+TriState Value::equalConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::notEqualConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::lessThanConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::greaterThanConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::lessEqualConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::greaterEqualConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::aboveConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::belowConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::aboveEqualConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+TriState Value::belowEqualConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
+Value* Value::invertedCompare(Procedure& proc) const
+{
+    if (!numChildren())
+        return nullptr;
+    if (Optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type()))
+        return proc.add<Value>(*invertedOpcode, type(), origin(), children());
     return nullptr;
 }
 
@@ -289,6 +365,61 @@ Effects Value::effects() const
         break;
     }
     return result;
+}
+
+ValueKey Value::key() const
+{
+    switch (opcode()) {
+    case FramePointer:
+        return ValueKey(opcode(), type());
+    case Identity:
+    case SExt8:
+    case SExt16:
+    case SExt32:
+    case ZExt32:
+    case Trunc:
+    case FRound:
+    case IToD:
+    case DToI32:
+    case Check:
+        return ValueKey(opcode(), type(), child(0));
+    case Add:
+    case Sub:
+    case Mul:
+    case ChillDiv:
+    case Mod:
+    case BitAnd:
+    case BitOr:
+    case BitXor:
+    case Shl:
+    case SShr:
+    case ZShr:
+    case Equal:
+    case NotEqual:
+    case LessThan:
+    case GreaterThan:
+    case Above:
+    case Below:
+    case AboveEqual:
+    case BelowEqual:
+    case Div:
+    case CheckAdd:
+    case CheckSub:
+    case CheckMul:
+        return ValueKey(opcode(), type(), child(0), child(1));
+    case Const32:
+        return ValueKey(Const32, type(), static_cast<int64_t>(asInt32()));
+    case Const64:
+        return ValueKey(Const64, type(), asInt64());
+    case ConstDouble:
+        return ValueKey(ConstDouble, type(), asDouble());
+    case ArgumentReg:
+        return ValueKey(
+            ArgumentReg, type(),
+            static_cast<int64_t>(as<ArgumentRegValue>()->argumentReg().index()));
+    default:
+        return ValueKey();
+    }
 }
 
 void Value::performSubstitution()

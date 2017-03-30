@@ -45,6 +45,23 @@
 #import <mach/mach_port.h>
 #endif
 
+#if __has_include(<WebKitAdditions/RemoteLayerBackingStoreAdditions.mm>)
+#import <WebKitAdditions/RemoteLayerBackingStoreAdditions.mm>
+#else
+
+namespace WebKit {
+
+#if USE(IOSURFACE)
+static WebCore::IOSurface::Format bufferFormat(bool)
+{
+    return WebCore::IOSurface::Format::RGBA;
+}
+#endif // USE(IOSURFACE)
+
+} // namespace WebKit
+
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -139,7 +156,7 @@ bool RemoteLayerBackingStore::decode(IPC::ArgumentDecoder& decoder, RemoteLayerB
         MachSendRight sendRight;
         if (!decoder.decode(sendRight))
             return false;
-        result.m_frontBuffer.surface = IOSurface::createFromSendRight(sendRight, ColorSpaceDeviceRGB);
+        result.m_frontBuffer.surface = IOSurface::createFromSendRight(sendRight, ColorSpaceSRGB);
         return true;
     }
 #endif
@@ -186,10 +203,9 @@ void RemoteLayerBackingStore::swapToValidFrontBuffer()
         std::swap(m_frontBuffer, m_backBuffer);
 
         if (!m_frontBuffer.surface)
-            m_frontBuffer.surface = IOSurface::create(expandedScaledSize, ColorSpaceDeviceRGB);
+            m_frontBuffer.surface = IOSurface::create(expandedScaledSize, ColorSpaceSRGB, bufferFormat(m_isOpaque));
 
         setBufferVolatility(BufferType::Front, false);
-
         return;
     }
 #endif
@@ -275,7 +291,7 @@ void RemoteLayerBackingStore::drawInContext(GraphicsContext& context, CGImageRef
 
 #ifndef NDEBUG
     if (m_isOpaque)
-        context.fillRect(scaledLayerBounds, Color(255, 0, 0), ColorSpaceDeviceRGB);
+        context.fillRect(scaledLayerBounds, Color(255, 0, 0));
 #endif
 
     CGContextRef cgContext = context.platformContext();

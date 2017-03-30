@@ -29,11 +29,14 @@
 #if ENABLE(B3_JIT)
 
 #include "B3FrequentedBlock.h"
+#include "B3Origin.h"
 #include "B3SuccessorCollection.h"
+#include "B3Type.h"
 #include <wtf/Vector.h>
 
 namespace JSC { namespace B3 {
 
+class BlockInsertionSet;
 class InsertionSet;
 class Procedure;
 class Value;
@@ -68,9 +71,16 @@ public:
     ValueList& values() { return m_values; }
 
     JS_EXPORT_PRIVATE void append(Value*);
+    JS_EXPORT_PRIVATE void replaceLast(Procedure&, Value*);
 
     template<typename ValueType, typename... Arguments>
     ValueType* appendNew(Procedure&, Arguments...);
+
+    Value* appendIntConstant(Procedure&, Origin, Type, int64_t value);
+    Value* appendIntConstant(Procedure&, Value* likeValue, int64_t value);
+    
+    template<typename ValueType, typename... Arguments>
+    ValueType* replaceLastWithNew(Procedure&, Arguments...);
 
     unsigned numSuccessors() const;
     const FrequentedBlock& successor(unsigned index) const;
@@ -83,15 +93,21 @@ public:
     SuccessorCollection<BasicBlock, SuccessorList> successorBlocks();
     SuccessorCollection<const BasicBlock, const SuccessorList> successorBlocks() const;
 
+    bool replaceSuccessor(BasicBlock* from, BasicBlock* to);
+
     unsigned numPredecessors() const { return m_predecessors.size(); }
     BasicBlock* predecessor(unsigned index) const { return m_predecessors[index]; }
     BasicBlock*& predecessor(unsigned index) { return m_predecessors[index]; }
     const PredecessorList& predecessors() const { return m_predecessors; }
     PredecessorList& predecessors() { return m_predecessors; }
+    bool containsPredecessor(BasicBlock* block) { return m_predecessors.contains(block); }
 
     bool addPredecessor(BasicBlock*);
     bool removePredecessor(BasicBlock*);
     bool replacePredecessor(BasicBlock* from, BasicBlock* to);
+
+    // Update predecessors starting with the successors of this block.
+    void updatePredecessorsAfter();
 
     double frequency() const { return m_frequency; }
 
@@ -99,6 +115,7 @@ public:
     void deepDump(PrintStream&) const;
 
 private:
+    friend class BlockInsertionSet;
     friend class InsertionSet;
     friend class Procedure;
     

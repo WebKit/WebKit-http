@@ -1,3 +1,93 @@
+2015-11-11  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][Mac] don't install .frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=151136
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake: Don't install framework files when building the GTK port on Mac.
+
+2015-11-10  Pranjal Jumde  <pjumde@apple.com>
+
+        Fixed crash loading Mozilla layout test editor/libeditor/crashtests/431086-1.xhtml.
+        https://bugs.webkit.org/show_bug.cgi?id=150252
+        <rdar://problem/23149470>
+
+        Reviewed by Brent Fulgham.
+
+
+        * Source/WebCore/editing/ios/EditorIOS.mm
+        * Source/WebCore/editing/mac/EditorMac.mm
+          In Editor::fontForSelection moved the node removal code, so that the
+          node is only removed if style is not NULL.
+        * Source/WebCore/editing/cocoa/EditorCocoa.mm
+          In Editor::styleForSelectionStart checking if the parentNode can 
+          accept the styleElement node.
+        * LayoutTests/editing/execCommand/150252.xhtml
+        * LayoutTests/editing/execCommand/150252_minimal.xhtml
+        * LayoutTests/editing/execCommand/150252-expected.txt
+        * LayoutTests/editing/execCommand/150252_minimal-expected.txt
+
+2015-11-09  Pranjal Jumde  <pjumde@apple.com>
+
+        Fixed crash loading Mozilla layout test editor/libeditor/crashtests/431086-1.xhtml.
+        https://bugs.webkit.org/show_bug.cgi?id=150252
+        <rdar://problem/23149470>
+
+        Reviewed by Brent Fulgham.
+
+        * Source/WebCore/editing/ios/EditorIOS.mm
+        * Source/WebCore/editing/mac/EditorMac.mm
+          In Editor::fontForSelection moved the node removal code, so that the
+          node is only removed if style is not NULL.
+        * LayoutTests/editing/execCommand/150252.xhtml
+        * LayoutTests/editing/execCommand/150252_minimal.xhtml
+        * LayoutTests/editing/execCommand/150252-expected.txt
+        * LayoutTests/editing/execCommand/150252_minimal-expected.txt
+
+2015-11-06  Daniel Bates  <dabates@apple.com>
+
+        Teach Makefile to build LayoutTestRelay when building for iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=150849
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add support for overriding the user-provided arguments SDKROOT and ARCHS
+        on a per Makefile basis.
+
+        * Makefile.shared:
+
+2015-11-06  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK build fix after r192095.
+
+        * Source/cmake/FindGTK3.cmake:
+
+2015-11-06  Philip Chimento  <philip.chimento@gmail.com> and Michael Catanzaro <mcatanzaro@igalia.com>
+
+        [GTK] Re-enable Quartz backend on cmake build system
+        https://bugs.webkit.org/show_bug.cgi?id=144561
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/FindGTK3.cmake: Set GTK3_SUPPORTS_QUARTZ based on
+        the presence of of gtk+-quartz-3.0 module.
+        * Source/cmake/OptionsGTK.cmake: Reintroduce the
+        ENABLE_QUARTZ_TARGET option to the CMake build, for building the
+        GTK+ Quartz backend on OS X.
+
+2015-11-05  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        Add runtime and compile time flags for enabling Web Animations API and model.
+        https://bugs.webkit.org/show_bug.cgi?id=150914
+
+        Reviewed by Benjamin Poulain.
+
+        Add ENABLE_WEB_ANIMATIONS compile time flag, runtime flag webAnimationsEnabled and Expose WK2 preference for runtime flag.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
 2015-11-03  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] CMake build update.

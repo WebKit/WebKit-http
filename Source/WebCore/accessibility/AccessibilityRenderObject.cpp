@@ -632,10 +632,12 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
     if (m_renderer->isBR())
         return ASCIILiteral("\n");
 
+    bool isRenderText = is<RenderText>(*m_renderer);
+
 #if ENABLE(MATHML)
     // Math operators create RenderText nodes on the fly that are not tied into the DOM in a reasonable way,
     // so rangeOfContents does not work for them (nor does regular text selection).
-    if (is<RenderText>(*m_renderer) && m_renderer->isAnonymous() && ancestorsOfType<RenderMathMLOperator>(*m_renderer).first())
+    if (isRenderText && m_renderer->isAnonymous() && ancestorsOfType<RenderMathMLOperator>(*m_renderer).first())
         return downcast<RenderText>(*m_renderer).text();
     if (is<RenderMathMLOperator>(*m_renderer) && !m_renderer->isAnonymous())
         return downcast<RenderMathMLOperator>(*m_renderer).element().textContent();
@@ -647,7 +649,8 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
 
     // We use a text iterator for text objects AND for those cases where we are
     // explicitly asking for the full text under a given element.
-    if (is<RenderText>(*m_renderer) || mode.childrenInclusion == AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren) {
+    bool shouldIncludeAllChildren = mode.childrenInclusion == AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren;
+    if (isRenderText || shouldIncludeAllChildren) {
         // If possible, use a text iterator to get the text, so that whitespace
         // is handled consistently.
         Document* nodeDocument = nullptr;
@@ -686,6 +689,12 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
                 // catch stale WebCoreAXObject (see <rdar://problem/3960196>)
                 if (frame->document() != nodeDocument)
                     return String();
+
+                // The tree should be stable before looking through the children of a non-Render Text object.
+                // Otherwise, further uses of TextIterator will force a layout update, potentially altering
+                // the accessibility tree and causing crashes in the loop that computes the result text.
+                ASSERT((isRenderText || !shouldIncludeAllChildren) || (!nodeDocument->renderView()->layoutState() && !nodeDocument->childNeedsStyleRecalc()));
+
                 return plainText(textRange.get(), textIteratorBehaviorForTextRange());
             }
         }
@@ -2544,9 +2553,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
             return RadioButtonRole;
         if (input.isTextButton())
             return buttonRoleType();
-        // On iOS, the date field is a popup button. On other platforms this is a text field.
+        // On iOS, the date field and time field are popup buttons. On other platforms they are text fields.
 #if PLATFORM(IOS)
-        if (input.isDateField())
+        if (input.isDateField() || input.isTimeField())
             return PopUpButtonRole;
 #endif
         

@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBIndexImpl.h"
 #include "IDBObjectStore.h"
 #include "IDBObjectStoreInfo.h"
 #include "IndexedDB.h"
@@ -78,8 +79,13 @@ public:
     virtual RefPtr<WebCore::IDBRequest> count(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&) override final;
 
     void markAsDeleted();
+    bool isDeleted() const { return m_deleted; }
 
     const IDBObjectStoreInfo& info() const { return m_info; }
+
+    // FIXME: After removing LegacyIDB and folding abstract/implementation classes together,
+    // this will no longer be necessary.
+    IDBTransaction& modernTransaction() { return m_transaction.get(); }
 
 private:
     IDBObjectStore(const IDBObjectStoreInfo&, IDBTransaction&);
@@ -91,6 +97,8 @@ private:
     Ref<IDBTransaction> m_transaction;
 
     bool m_deleted { false };
+
+    HashMap<String, RefPtr<IDBIndex>> m_referencedIndexes;
 };
 
 } // namespace IDBClient

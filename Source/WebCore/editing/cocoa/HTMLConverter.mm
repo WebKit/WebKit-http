@@ -873,7 +873,7 @@ static NSBundle *_webKitBundle()
 
 static inline UIColor *_platformColor(Color color)
 {
-    return [getUIColorClass() _disambiguated_due_to_CIImage_colorWithCGColor:cachedCGColor(color, WebCore::ColorSpaceDeviceRGB)];
+    return [getUIColorClass() _disambiguated_due_to_CIImage_colorWithCGColor:cachedCGColor(color)];
 }
 #else
 static inline NSColor *_platformColor(Color color)
@@ -1372,7 +1372,11 @@ static Class _WebMessageDocumentClass()
     static BOOL lookedUpClass = NO;
     if (!lookedUpClass) {
         // If the class is not there, we don't want to try again
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+        _WebMessageDocumentClass = objc_lookUpClass("WebMessageDocument");
+#else
         _WebMessageDocumentClass = objc_lookUpClass("MFWebMessageDocument");
+#endif
         if (_WebMessageDocumentClass && ![_WebMessageDocumentClass respondsToSelector:@selector(document:attachment:forURL:)])
             _WebMessageDocumentClass = Nil;
         lookedUpClass = YES;

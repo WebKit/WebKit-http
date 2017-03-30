@@ -64,13 +64,13 @@ void FETile::platformApplySoftware()
         tileRect.scale(filter.filterResolution().width(), filter.filterResolution().height());
     }
 
-    auto tileImage = SVGRenderingContext::createImageBuffer(tileRect, tileRect, ColorSpaceDeviceRGB, filter().renderingMode());
+    auto tileImage = SVGRenderingContext::createImageBuffer(tileRect, tileRect, ColorSpaceSRGB, filter().renderingMode());
     if (!tileImage)
         return;
 
     GraphicsContext& tileImageContext = tileImage->context();
     tileImageContext.translate(-inMaxEffectLocation.x(), -inMaxEffectLocation.y());
-    tileImageContext.drawImageBuffer(*inBuffer, ColorSpaceDeviceRGB, in->absolutePaintRect().location());
+    tileImageContext.drawImageBuffer(*inBuffer, in->absolutePaintRect().location());
 
     auto tileImageCopy = tileImage->copyImage(CopyBackingStore);
     if (!tileImageCopy)

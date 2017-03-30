@@ -32,7 +32,9 @@
 #include "AirGenerate.h"
 #include "AirInstInlines.h"
 #include "B3Common.h"
+#include "B3LowerMacros.h"
 #include "B3LowerToAir.h"
+#include "B3MoveConstants.h"
 #include "B3Procedure.h"
 #include "B3ReduceStrength.h"
 #include "B3TimingScope.h"
@@ -40,16 +42,16 @@
 
 namespace JSC { namespace B3 {
 
-void generate(Procedure& procedure, CCallHelpers& jit)
+void generate(Procedure& procedure, CCallHelpers& jit, unsigned optLevel)
 {
     TimingScope timingScope("generate");
 
-    Air::Code code;
-    generateToAir(procedure, code);
+    Air::Code code(procedure);
+    generateToAir(procedure, code, optLevel);
     Air::generate(code, jit);
 }
 
-void generateToAir(Procedure& procedure, Air::Code& code)
+void generateToAir(Procedure& procedure, Air::Code& code, unsigned optLevel)
 {
     TimingScope timingScope("generateToAir");
     
@@ -65,10 +67,16 @@ void generateToAir(Procedure& procedure, Air::Code& code)
         dataLog(procedure);
     }
 
-    reduceStrength(procedure);
-    
-    // FIXME: Add more optimizations here.
-    // https://bugs.webkit.org/show_bug.cgi?id=150507
+    lowerMacros(procedure);
+
+    if (optLevel >= 1) {
+        reduceStrength(procedure);
+        
+        // FIXME: Add more optimizations here.
+        // https://bugs.webkit.org/show_bug.cgi?id=150507
+    }
+
+    moveConstants(procedure);
 
     if (shouldValidateIR())
         validate(procedure);

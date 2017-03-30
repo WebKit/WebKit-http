@@ -91,7 +91,7 @@ std::unique_ptr<SVGFilterBuilder> RenderSVGResourceFilter::buildPrimitives(SVGFi
         element.setStandardAttributes(effect.get());
         effect->setEffectBoundaries(SVGLengthContext::resolveRectangle<SVGFilterPrimitiveStandardAttributes>(&element, filterElement().primitiveUnits(), targetBoundingBox));
         if (element.renderer())
-            effect->setOperatingColorSpace(element.renderer()->style().svgStyle().colorInterpolationFilters() == CI_LINEARRGB ? ColorSpaceLinearRGB : ColorSpaceDeviceRGB);
+            effect->setOperatingColorSpace(element.renderer()->style().svgStyle().colorInterpolationFilters() == CI_LINEARRGB ? ColorSpaceLinearRGB : ColorSpaceSRGB);
         builder->add(element.result(), WTF::move(effect));
     }
     return builder;
@@ -271,7 +271,7 @@ void RenderSVGResourceFilter::postApplyResource(RenderElement& renderer, Graphic
             context->concatCTM(filterData->shearFreeAbsoluteTransform.inverse());
 
             context->scale(FloatSize(1 / filterData->filter->filterResolution().width(), 1 / filterData->filter->filterResolution().height()));
-            context->drawImageBuffer(*resultImage, renderer.style().colorSpace(), lastEffect->absolutePaintRect());
+            context->drawImageBuffer(*resultImage, lastEffect->absolutePaintRect());
             context->scale(filterData->filter->filterResolution());
 
             context->concatCTM(filterData->shearFreeAbsoluteTransform);

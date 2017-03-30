@@ -66,8 +66,6 @@ extern const JSC::ConstructAbility s_arbitraryConditionalGuardIsReadableStreamLo
 WEBCORE_FOREACH_ARBITRARYCONDITIONALGUARD_BUILTIN_CODE(DECLARE_BUILTIN_GENERATOR)
 #undef DECLARE_BUILTIN_GENERATOR
 
-#define WEBCORE_BUILTIN_ARBITRARYCONDITIONALGUARD_EXISTS(object, func) defined WEBCORE_BUILTIN_ ## object ## _ ## func
-
 class ArbitraryConditionalGuardBuiltinsWrapper : private JSC::WeakHandleOwner {
 public:
     explicit ArbitraryConditionalGuardBuiltinsWrapper(JSC::VM* vm)
@@ -118,38 +116,6 @@ inline void ArbitraryConditionalGuardBuiltinsWrapper::exportNames()
     WEBCORE_FOREACH_ARBITRARYCONDITIONALGUARD_BUILTIN_FUNCTION_NAME(EXPORT_FUNCTION_NAME)
 #undef EXPORT_FUNCTION_NAME
 }
-
-class ArbitraryConditionalGuardBuiltinFunctions {
-public:
-    explicit ArbitraryConditionalGuardBuiltinFunctions(JSC::VM& vm) : m_vm(vm) { }
-
-    void init(JSC::JSGlobalObject&);
-    void visit(JSC::SlotVisitor&);
-
-public:
-    JSC::VM& m_vm;
-
-#define DECLARE_BUILTIN_SOURCE_MEMBERS(functionName) \
-    JSC::WriteBarrier<JSC::JSFunction> m_##functionName##Function;
-    WEBCORE_FOREACH_ARBITRARYCONDITIONALGUARD_BUILTIN_FUNCTION_NAME(DECLARE_BUILTIN_SOURCE_MEMBERS)
-#undef DECLARE_BUILTIN_SOURCE_MEMBERS
-};
-
-inline void ArbitraryConditionalGuardBuiltinFunctions::init(JSC::JSGlobalObject& globalObject)
-{
-#define EXPORT_FUNCTION(codeName, functionName, length)\
-    m_##functionName##Function.set(m_vm, &globalObject, JSC::JSFunction::createBuiltinFunction(m_vm, codeName##Generator(m_vm), &globalObject));
-    WEBCORE_FOREACH_ARBITRARYCONDITIONALGUARD_BUILTIN_CODE(EXPORT_FUNCTION)
-#undef EXPORT_FUNCTION
-}
-
-inline void ArbitraryConditionalGuardBuiltinFunctions::visit(JSC::SlotVisitor& visitor)
-{
-#define VISIT_FUNCTION(name) visitor.append(&m_##name##Function);
-    WEBCORE_FOREACH_ARBITRARYCONDITIONALGUARD_BUILTIN_FUNCTION_NAME(VISIT_FUNCTION)
-#undef VISIT_FUNCTION
-}
-
 
 } // namespace WebCore
 

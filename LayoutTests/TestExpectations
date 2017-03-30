@@ -120,7 +120,6 @@ webkit.org/b/83618 fast/dom/inline-event-attributes-release.html [ Failure ]
 webkit.org/b/129057 media/controls-styling-strict.html [ Pass Failure ]
 
 # These tests will be rewritten, just skip them until that time.
-webkit.org/b/148036 http/tests/inspector/console/ [ Skip ]
 webkit.org/b/148036 http/tests/inspector/css/ [ Skip ]
 webkit.org/b/148036 http/tests/inspector/page/ [ Skip ]
 webkit.org/b/148036 http/tests/inspector/replay/ [ Skip ]
@@ -294,8 +293,6 @@ imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-worker-twi
 
 # New W3C ref tests that are failing.
 webkit.org/b/148847 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-wbr-element/wbr-element.html [ ImageOnlyFailure ]
-webkit.org/b/148853 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-represent-nothing-01.html [ ImageOnlyFailure ]
-webkit.org/b/148853 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-represent-nothing-02.html [ ImageOnlyFailure ]
 webkit.org/b/148856 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_initially_paused.html [ ImageOnlyFailure ]
 
 # @supports W3C Failures
@@ -727,13 +724,7 @@ webkit.org/b/148884 imported/w3c/web-platform-tests/html/semantics/forms/textfie
 webkit.org/b/148922 svg/as-object/svg-in-object-dynamic-attribute-change.html [ Pass ImageOnlyFailure ]
 webkit.org/b/148925 svg/dom/svg-root-lengths.html [ Pass Failure ]
 
-webkit.org/b/149082 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html [ Pass Failure ]
-
 webkit.org/b/148695 fast/shadow-dom [ Failure ImageOnlyFailure ]
-
-# Marks as flaky (see also https://bugs.webkit.org/show_bug.cgi?id=132388)
-
-http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overrides.html [ Failure Pass ]
 
 # Known failures on CSS Variables Test Suite
 webkit.org/b/150183 fast/css/variables/test-suite/failures/024.html [ ImageOnlyFailure ]

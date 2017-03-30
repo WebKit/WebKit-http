@@ -25,14 +25,6 @@
 use strict;
 use Getopt::Long qw(:config pass_through);
 
-my $includeLookup = 0;
-my $includeBuiltin = 0;
-
-GetOptions('i|lookup' => \$includeLookup,    # Include "Lookup.h".
-           'b|builtin' => \$includeBuiltin,  # Include JSCBuiltins.h and builtins support.
-)
-or die("Unable to process command line options.");
-
 my $file = shift @ARGV or die("Must provide source file as final argument.");
 
 print STDERR "Creating hashtable for $file\n";
@@ -47,6 +39,7 @@ my @links = ();
 
 my $hasSetter = "false";
 
+my $includeBuiltin = 0;
 my $inside = 0;
 my $name;
 my $pefectHashSize;
@@ -81,6 +74,7 @@ while (<IN>) {
         @hashes = ();
         @table = ();
         @links = ();
+        $includeBuiltin = 0;
 
         $inside = 0;
     } elsif (/^(\S+)\s*(\S+)\s*([\w\|]*)\s*(\w*)\s*$/ && $inside) {
@@ -91,6 +85,10 @@ while (<IN>) {
 
         push(@keys, $key);
         push(@attrs, length($att) > 0 ? $att : "0");
+
+        if ($val eq "JSBuiltin") {
+            $includeBuiltin = 1;
+        }
 
         if ($att =~ m/Function/) {
             push(@values, { "type" => "Function", "function" => $val, "params" => (length($param) ? $param : "") });
@@ -260,7 +258,7 @@ sub output() {
 
     print "\n";
     print "#include \"JSCBuiltins.h\"\n" if ($includeBuiltin);
-    print "#include \"Lookup.h\"\n" if ($includeLookup);
+    print "#include \"Lookup.h\"\n";
     print "\n";
     print "namespace JSC {\n";
     print "\n";
@@ -314,16 +312,13 @@ sub output() {
             $intrinsic = "RegExpTestIntrinsic" if ($key eq "test");
         }
 
-        if ($values[$i]{"type"} eq "Function" && $includeBuiltin)  {
+        if ($values[$i]{"type"} eq "Function" && $firstValue eq "JSBuiltin")  {
             my $tableHead = $name;
             $tableHead =~ s/Table$//;
-            print " #if JSC_BUILTIN_EXISTS(" . uc($tableHead) . ", " . uc($key) .")\n";
             print "   { \"$key\", (($attrs[$i]) & ~Function) | Builtin, $intrinsic, { (intptr_t)static_cast<BuiltinGenerator>(" . $tableHead . ucfirst($key) . "CodeGenerator), (intptr_t)$secondValue } },\n";
-            print " #else\n"
         }
-        print "   { \"$key\", $attrs[$i], $intrinsic, { (intptr_t)" . $firstCastStr . "($firstValue), (intptr_t)" . $secondCastStr . "($secondValue) } },\n";
-        if ($values[$i]{"type"} eq "Function" && $includeBuiltin)  {
-            print " #endif\n";
+        else {
+            print "   { \"$key\", $attrs[$i], $intrinsic, { (intptr_t)" . $firstCastStr . "($firstValue), (intptr_t)" . $secondCastStr . "($secondValue) } },\n";
         }
         $i++;
     }

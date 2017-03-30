@@ -24,104 +24,163 @@
  */
 
 #import "config.h"
-#import "_WKRemoteObjectInterface.h"
+#import "_WKRemoteObjectInterfaceInternal.h"
 
 #if WK_API_ENABLED
 
 #import <objc/runtime.h>
 #import <wtf/HashMap.h>
-#import <wtf/Vector.h>
+#import <wtf/NeverDestroyed.h>
+#import <wtf/Optional.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/Vector.h>
+#import <wtf/text/CString.h>
 
 extern "C"
 const char *_protocol_getMethodTypeEncoding(Protocol *p, SEL sel, BOOL isRequiredMethod, BOOL isInstanceMethod);
 
-@interface NSMethodSignature (WKDetails)
+@interface NSMethodSignature ()
+- (NSMethodSignature *)_signatureForBlockAtArgumentIndex:(NSInteger)idx;
 - (Class)_classForObjectAtArgumentIndex:(NSInteger)idx;
+- (NSString *)_typeString;
 @end
 
+struct MethodInfo {
+    Vector<HashSet<Class>> allowedArgumentClasses;
+
+    struct ReplyInfo {
+        NSUInteger replyPosition;
+        CString replySignature;
+        Vector<HashSet<Class>> allowedReplyClasses;
+    };
+    Optional<ReplyInfo> replyInfo;
+};
+
 @implementation _WKRemoteObjectInterface {
-    HashMap<SEL, Vector<RetainPtr<NSSet>>> _allowedArgumentClasses;
     RetainPtr<NSString> _identifier;
+
+    HashMap<SEL, MethodInfo> _methods;
 }
 
 static bool isContainerClass(Class objectClass)
 {
     // FIXME: Add more classes here if needed.
-    static NSSet *containerClasses = [[NSSet alloc] initWithObjects:[NSArray class], [NSDictionary class], nil];
+    static LazyNeverDestroyed<HashSet<Class>> containerClasses;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        containerClasses.construct(std::initializer_list<Class> { [NSArray class], [NSDictionary class] });
+    });
 
-    return [containerClasses containsObject:objectClass];
+    return containerClasses->contains(objectClass);
 }
 
-static NSSet *propertyListClasses()
+static HashSet<Class>& propertyListClasses()
 {
-    // FIXME: Add more property list classes if needed.
-    static NSSet *propertyListClasses = [[NSSet alloc] initWithObjects:[NSArray class], [NSDictionary class], [NSNumber class], [NSString class], nil];
+    static LazyNeverDestroyed<HashSet<Class>> propertyListClasses;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        propertyListClasses.construct(std::initializer_list<Class> { [NSArray class], [NSDictionary class], [NSNumber class], [NSString class] });
+    });
 
     return propertyListClasses;
 }
 
-static Vector<RetainPtr<NSSet>> allowedArgumentClassesForMethod(NSMethodSignature *methodSignature)
+static void initializeMethod(MethodInfo& methodInfo, Protocol *protocol, SEL selector, NSMethodSignature *methodSignature, bool forReplyBlock)
 {
-    Vector<RetainPtr<NSSet>> result;
+    Vector<HashSet<Class>> allowedClasses;
 
-    NSSet *emptySet = [NSSet set];
+    NSUInteger firstArgument = forReplyBlock ? 1 : 2;
+    NSUInteger argumentCount = methodSignature.numberOfArguments;
 
-    // We ignore self and _cmd.
-    NSUInteger argumentCount = methodSignature.numberOfArguments - 2;
+    bool foundBlock = false;
+    for (NSUInteger i = firstArgument; i < argumentCount; ++i) {
+        const char* argumentType = [methodSignature getArgumentTypeAtIndex:i];
 
-    result.reserveInitialCapacity(argumentCount);
-
-    for (NSUInteger i = 0; i < argumentCount; ++i) {
-        const char* type = [methodSignature getArgumentTypeAtIndex:i + 2];
-
-        if (*type != '@') {
+        if (*argumentType != '@') {
             // This is a non-object type; we won't allow any classes to be decoded for it.
-            result.uncheckedAppend(emptySet);
+            allowedClasses.append({ });
             continue;
         }
 
-        Class objectClass = [methodSignature _classForObjectAtArgumentIndex:i + 2];
+        if (*(argumentType + 1) == '?') {
+            if (forReplyBlock)
+                [NSException raise:NSInvalidArgumentException format:@"Blocks as arguments to the reply block of method (%s / %s) are not allowed", protocol_getName(protocol), sel_getName(selector)];
+
+            if (foundBlock)
+                [NSException raise:NSInvalidArgumentException format:@"Only one reply block is allowed per method (%s / %s)", protocol_getName(protocol), sel_getName(selector)];
+            foundBlock = true;
+            NSMethodSignature *blockSignature = [methodSignature _signatureForBlockAtArgumentIndex:i];
+            ASSERT(blockSignature._typeString);
+
+            methodInfo.replyInfo = MethodInfo::ReplyInfo();
+            methodInfo.replyInfo->replyPosition = i;
+            methodInfo.replyInfo->replySignature = blockSignature._typeString.UTF8String;
+
+            initializeMethod(methodInfo, protocol, selector, blockSignature, true);
+        }
+
+        Class objectClass = [methodSignature _classForObjectAtArgumentIndex:i];
         if (!objectClass) {
-            result.uncheckedAppend(emptySet);
+            allowedClasses.append({ });
             continue;
         }
 
         if (isContainerClass(objectClass)) {
             // For container classes, we allow all simple property list classes.
-            result.uncheckedAppend(propertyListClasses());
+            allowedClasses.append(propertyListClasses());
             continue;
         }
 
-        result.uncheckedAppend([NSSet setWithObject:objectClass]);
+        allowedClasses.append({ objectClass });
     }
 
-    return result;
+    if (forReplyBlock)
+        methodInfo.replyInfo->allowedReplyClasses = WTF::move(allowedClasses);
+    else
+        methodInfo.allowedArgumentClasses = WTF::move(allowedClasses);
 }
 
-static void initializeAllowedArgumentClasses(_WKRemoteObjectInterface *interface, bool requiredMethods)
+static void initializeMethods(_WKRemoteObjectInterface *interface, Protocol *protocol, bool requiredMethods)
 {
     unsigned methodCount;
-    struct objc_method_description *methods = protocol_copyMethodDescriptionList(interface->_protocol, requiredMethods, true, &methodCount);
+    struct objc_method_description *methods = protocol_copyMethodDescriptionList(protocol, requiredMethods, true, &methodCount);
 
     for (unsigned i = 0; i < methodCount; ++i) {
         SEL selector = methods[i].name;
 
-        const char* types = _protocol_getMethodTypeEncoding(interface->_protocol, selector, requiredMethods, true);
-        if (!types)
+        ASSERT(!interface->_methods.contains(selector));
+        MethodInfo& methodInfo = interface->_methods.add(selector, MethodInfo()).iterator->value;
+
+        const char* methodTypeEncoding = _protocol_getMethodTypeEncoding(protocol, selector, requiredMethods, true);
+        if (!methodTypeEncoding)
             [NSException raise:NSInvalidArgumentException format:@"Could not find method type encoding for method \"%s\"", sel_getName(selector)];
 
-        NSMethodSignature *methodSignature = [NSMethodSignature signatureWithObjCTypes:types];
-        interface->_allowedArgumentClasses.set(selector, allowedArgumentClassesForMethod(methodSignature));
+        NSMethodSignature *methodSignature = [NSMethodSignature signatureWithObjCTypes:methodTypeEncoding];
+
+        initializeMethod(methodInfo, protocol, selector, methodSignature, false);
     }
 
     free(methods);
 }
 
-static void initializeAllowedArgumentClasses(_WKRemoteObjectInterface *interface)
+static void initializeMethods(_WKRemoteObjectInterface *interface, Protocol *protocol)
 {
-    initializeAllowedArgumentClasses(interface, true);
-    initializeAllowedArgumentClasses(interface, false);
+    unsigned conformingProtocolCount;
+    Protocol** conformingProtocols = protocol_copyProtocolList(interface->_protocol, &conformingProtocolCount);
+
+    for (unsigned i = 0; i < conformingProtocolCount; ++i) {
+        Protocol* conformingProtocol = conformingProtocols[i];
+
+        if (conformingProtocol == @protocol(NSObject))
+            continue;
+
+        initializeMethods(interface, conformingProtocol);
+    }
+
+    free(conformingProtocols);
+
+    initializeMethods(interface, protocol, true);
+    initializeMethods(interface, protocol, false);
 }
 
 - (id)initWithProtocol:(Protocol *)protocol identifier:(NSString *)identifier
@@ -132,7 +191,7 @@ static void initializeAllowedArgumentClasses(_WKRemoteObjectInterface *interface
     _protocol = protocol;
     _identifier = adoptNS([identifier copy]);
 
-    initializeAllowedArgumentClasses(self);
+    initializeMethods(self, _protocol);
 
     return self;
 }
@@ -147,31 +206,110 @@ static void initializeAllowedArgumentClasses(_WKRemoteObjectInterface *interface
     return _identifier.get();
 }
 
-- (NSString *)description
+- (NSString *)debugDescription
 {
-    return [NSString stringWithFormat:@"<%@: %p; protocol = \"%@\"; identifier = \"%@\">", NSStringFromClass(self.class), self, _identifier.get(), NSStringFromProtocol(_protocol)];
+    auto result = adoptNS([[NSMutableString alloc] initWithFormat:@"<%@: %p; protocol = \"%@\"; identifier = \"%@\"\n", NSStringFromClass(self.class), self, _identifier.get(), NSStringFromProtocol(_protocol)]);
+
+    auto descriptionForClasses = [](const Vector<HashSet<Class>>& allowedClasses) {
+        auto result = adoptNS([[NSMutableString alloc] initWithString:@"["]);
+        bool needsComma = false;
+
+        auto descriptionForArgument = [](const HashSet<Class>& allowedArgumentClasses) {
+            auto result = adoptNS([[NSMutableString alloc] initWithString:@"{"]);
+
+            Vector<Class> orderedArgumentClasses;
+            copyToVector(allowedArgumentClasses, orderedArgumentClasses);
+
+            std::sort(orderedArgumentClasses.begin(), orderedArgumentClasses.end(), [](Class a, Class b) {
+                return CString(class_getName(a)) < CString(class_getName(b));
+            });
+
+            bool needsComma = false;
+            for (auto& argumentClass : orderedArgumentClasses) {
+                if (needsComma)
+                    [result appendString:@", "];
+
+                [result appendFormat:@"%s", class_getName(argumentClass)];
+                needsComma = true;
+            }
+
+            [result appendString:@"}"];
+            return result.autorelease();
+        };
+
+        for (auto& argumentClasses : allowedClasses) {
+            if (needsComma)
+                [result appendString:@", "];
+
+            [result appendString:descriptionForArgument(argumentClasses)];
+            needsComma = true;
+        }
+
+        [result appendString:@"]"];
+        return result.autorelease();
+    };
+
+    for (auto& selectorAndMethod : _methods) {
+        [result appendFormat:@" selector = %s\n  argument classes = %@\n", sel_getName(selectorAndMethod.key), descriptionForClasses(selectorAndMethod.value.allowedArgumentClasses)];
+
+        if (auto replyInfo = selectorAndMethod.value.replyInfo)
+            [result appendFormat:@"  reply block = (argument #%lu '%s') %@\n", static_cast<unsigned long>(replyInfo->replyPosition), replyInfo->replySignature.data(), descriptionForClasses(replyInfo->allowedReplyClasses)];
+    }
+
+    [result appendString:@">\n"];
+    return result.autorelease();
 }
 
-static RetainPtr<NSSet>& classesForSelectorArgument(_WKRemoteObjectInterface *interface, SEL selector, NSUInteger argumentIndex)
+static HashSet<Class>& classesForSelectorArgument(_WKRemoteObjectInterface *interface, SEL selector, NSUInteger argumentIndex, bool replyBlock)
 {
-    auto it = interface->_allowedArgumentClasses.find(selector);
-    if (it == interface->_allowedArgumentClasses.end())
+    auto it = interface->_methods.find(selector);
+    if (it == interface->_methods.end())
         [NSException raise:NSInvalidArgumentException format:@"Interface does not contain selector \"%s\"", sel_getName(selector)];
 
-    if (argumentIndex >= it->value.size())
+    MethodInfo& methodInfo = it->value;
+    if (replyBlock) {
+        if (!methodInfo.replyInfo)
+            [NSException raise:NSInvalidArgumentException format:@"Selector \"%s\" does not have a reply block", sel_getName(selector)];
+
+        if (argumentIndex >= methodInfo.replyInfo->allowedReplyClasses.size())
+            [NSException raise:NSInvalidArgumentException format:@"Argument index %ld is out of range for reply block of selector \"%s\"", (unsigned long)argumentIndex, sel_getName(selector)];
+
+        return methodInfo.replyInfo->allowedReplyClasses[argumentIndex];
+    }
+
+    if (argumentIndex >= methodInfo.allowedArgumentClasses.size())
         [NSException raise:NSInvalidArgumentException format:@"Argument index %ld is out of range for selector \"%s\"", (unsigned long)argumentIndex, sel_getName(selector)];
 
-    return it->value[argumentIndex];
+    return methodInfo.allowedArgumentClasses[argumentIndex];
+}
+
+- (NSSet *)classesForSelector:(SEL)selector argumentIndex:(NSUInteger)argumentIndex ofReply:(BOOL)ofReply
+{
+    auto result = adoptNS([[NSMutableSet alloc] init]);
+
+    for (auto allowedClass : classesForSelectorArgument(self, selector, argumentIndex, ofReply))
+        [result addObject:allowedClass];
+
+    return result.autorelease();
+}
+
+- (void)setClasses:(NSSet *)classes forSelector:(SEL)selector argumentIndex:(NSUInteger)argumentIndex ofReply:(BOOL)ofReply
+{
+    HashSet<Class> allowedClasses;
+    for (Class allowedClass in classes)
+        allowedClasses.add(allowedClass);
+
+    classesForSelectorArgument(self, selector, argumentIndex, ofReply) = WTF::move(allowedClasses);
 }
 
 - (NSSet *)classesForSelector:(SEL)selector argumentIndex:(NSUInteger)argumentIndex
 {
-    return [[classesForSelectorArgument(self, selector, argumentIndex).get() retain] autorelease];
+    return [self classesForSelector:selector argumentIndex:argumentIndex ofReply:NO];
 }
 
 - (void)setClasses:(NSSet *)classes forSelector:(SEL)selector argumentIndex:(NSUInteger)argumentIndex
 {
-    classesForSelectorArgument(self, selector, argumentIndex) = adoptNS([classes copy]);
+    [self setClasses:classes forSelector:selector argumentIndex:argumentIndex ofReply:NO];
 }
 
 static const char* methodArgumentTypeEncodingForSelector(Protocol *protocol, SEL selector)
@@ -191,6 +329,9 @@ static const char* methodArgumentTypeEncodingForSelector(Protocol *protocol, SEL
 
 - (NSMethodSignature *)_methodSignatureForSelector:(SEL)selector
 {
+    if (!_methods.contains(selector))
+        return nil;
+
     const char* types = methodArgumentTypeEncodingForSelector(_protocol, selector);
     if (!types)
         return nil;
@@ -198,12 +339,31 @@ static const char* methodArgumentTypeEncodingForSelector(Protocol *protocol, SEL
     return [NSMethodSignature signatureWithObjCTypes:types];
 }
 
-- (const Vector<RetainPtr<NSSet>>&)_allowedArgumentClassesForSelector:(SEL)selector
+- (NSMethodSignature *)_methodSignatureForReplyBlockOfSelector:(SEL)selector
 {
-    auto it = _allowedArgumentClasses.find(selector);
-    ASSERT(it != _allowedArgumentClasses.end());
+    auto it = _methods.find(selector);
+    if (it  == _methods.end())
+        return nil;
 
-    return it->value;
+    auto& methodInfo = it->value;
+    if (!methodInfo.replyInfo)
+        return nil;
+
+    return [NSMethodSignature signatureWithObjCTypes:methodInfo.replyInfo->replySignature.data()];
+}
+
+- (const Vector<HashSet<Class>>&)_allowedArgumentClassesForSelector:(SEL)selector
+{
+    ASSERT(_methods.contains(selector));
+
+    return _methods.find(selector)->value.allowedArgumentClasses;
+}
+
+- (const Vector<HashSet<Class>>&)_allowedArgumentClassesForReplyBlockOfSelector:(SEL)selector
+{
+    ASSERT(_methods.contains(selector));
+
+    return _methods.find(selector)->value.replyInfo->allowedReplyClasses;
 }
 
 @end

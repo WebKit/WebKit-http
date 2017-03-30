@@ -133,11 +133,17 @@ public:
         return GridResolvedPosition(m_integerPosition + 1);
     }
 
+    GridResolvedPosition prev() const
+    {
+        return m_integerPosition ? m_integerPosition - 1 : 0;
+    }
+
     static GridSpan resolveGridPositionsFromAutoPlacementPosition(const RenderStyle&, const RenderBox&, GridTrackSizingDirection, const GridResolvedPosition&);
     static GridSpan resolveGridPositionsFromStyle(const GridUnresolvedSpan&, const RenderStyle&);
     static GridUnresolvedSpan unresolvedSpanFromStyle(const RenderStyle&, const RenderBox&, GridTrackSizingDirection);
     static unsigned explicitGridColumnCount(const RenderStyle&);
     static unsigned explicitGridRowCount(const RenderStyle&);
+    static bool isNonExistentNamedLineOrArea(const String& lineName, const RenderStyle&, GridPositionSide);
 
 private:
     unsigned m_integerPosition;

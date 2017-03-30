@@ -52,7 +52,7 @@
     _browserContextController = browserContextController;
     _plugInController = plugInController;
 
-    _WKRemoteObjectInterface *interface = [_WKRemoteObjectInterface remoteObjectInterfaceWithProtocol:@protocol(RemoteObjectProtocol)];
+    _WKRemoteObjectInterface *interface = remoteObjectInterface();
     [[_browserContextController _remoteObjectRegistry] registerExportedObject:self interface:interface];
 }
 
@@ -64,8 +64,16 @@
 
 - (void)sayHello:(NSString *)hello completionHandler:(void (^)(NSString *))completionHandler
 {
-    // FIXME: Actually call this.
-    // completionHandler([NSString stringWithFormat:@"Your string was '%@'", hello]);
+    completionHandler([NSString stringWithFormat:@"Your string was '%@'", hello]);
+}
+
+- (void)selectionAndClickInformationForClickAtPoint:(NSValue *)pointValue completionHandler:(void (^)(NSDictionary *))completionHandler
+{
+    NSDictionary *result = @{
+        @"URL" : [NSURL URLWithString:@"http://www.webkit.org/"],
+    };
+
+    completionHandler(result);
 }
 
 @end

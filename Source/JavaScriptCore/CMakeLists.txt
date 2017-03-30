@@ -133,6 +133,7 @@ set(JavaScriptCore_SOURCES
 
     builtins/BuiltinExecutables.cpp
 
+    bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
@@ -398,6 +399,7 @@ set(JavaScriptCore_SOURCES
     inspector/JSJavaScriptCallFrame.cpp
     inspector/JSJavaScriptCallFramePrototype.cpp
     inspector/JavaScriptCallFrame.cpp
+    inspector/PerGlobalObjectWrapperWorld.cpp
     inspector/ScriptArguments.cpp
     inspector/ScriptCallFrame.cpp
     inspector/ScriptCallStack.cpp
@@ -727,11 +729,14 @@ list(APPEND JavaScriptCore_SOURCES
     ${JavaScriptCore_RUNTIME_SOURCES}
 )
 
-set(JavaScriptCore_NATIVE_OBJECT_LUT_SOURCES
+set(JavaScriptCore_OBJECT_LUT_SOURCES
+    runtime/ArrayConstructor.cpp
+    runtime/ArrayIteratorPrototype.cpp
     runtime/BooleanPrototype.cpp
     runtime/DateConstructor.cpp
     runtime/DatePrototype.cpp
     runtime/ErrorPrototype.cpp
+    runtime/InspectorInstrumentationObject.cpp
     runtime/IntlCollatorConstructor.cpp
     runtime/IntlCollatorPrototype.cpp
     runtime/IntlDateTimeFormatConstructor.cpp
@@ -739,31 +744,22 @@ set(JavaScriptCore_NATIVE_OBJECT_LUT_SOURCES
     runtime/IntlNumberFormatConstructor.cpp
     runtime/IntlNumberFormatPrototype.cpp
     runtime/JSDataViewPrototype.cpp
-    runtime/JSONObject.cpp
-    runtime/NumberConstructor.cpp
-    runtime/NumberPrototype.cpp
-    runtime/RegExpConstructor.cpp
-    runtime/RegExpPrototype.cpp
-    runtime/SymbolConstructor.cpp
-    runtime/SymbolPrototype.cpp
-)
-
-# If an object's implementation contains at least one builtin, then it must
-# be added to this section so it is generated with builtin-specific includes.
-
-set(JavaScriptCore_BUILTIN_OBJECT_LUT_SOURCES
-    runtime/ArrayConstructor.cpp
-    runtime/ArrayIteratorPrototype.cpp
-    runtime/InspectorInstrumentationObject.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSInternalPromiseConstructor.cpp
+    runtime/JSONObject.cpp
     runtime/JSPromiseConstructor.cpp
     runtime/JSPromisePrototype.cpp
     runtime/ModuleLoaderObject.cpp
+    runtime/NumberConstructor.cpp
+    runtime/NumberPrototype.cpp
     runtime/ObjectConstructor.cpp
     runtime/ReflectObject.cpp
+    runtime/RegExpConstructor.cpp
+    runtime/RegExpPrototype.cpp
     runtime/StringConstructor.cpp
     runtime/StringIteratorPrototype.cpp
+    runtime/SymbolConstructor.cpp
+    runtime/SymbolPrototype.cpp
 )
 
 set(JavaScriptCore_LIBRARIES
@@ -990,6 +986,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLDWARFDebugLineInfo.cpp
         ftl/FTLDWARFRegister.cpp
         ftl/FTLDataSection.cpp
+        ftl/FTLExceptionHandlerManager.cpp
         ftl/FTLExitArgument.cpp
         ftl/FTLExitArgumentForOperand.cpp
         ftl/FTLExitPropertyValue.cpp
@@ -1033,13 +1030,12 @@ if (ENABLE_FTL_JIT)
 endif ()
 
 set(HASH_LUT_GENERATOR ${CMAKE_CURRENT_SOURCE_DIR}/create_hash_table)
-set(LUT_GENERATOR_FLAGS "")
 macro(GENERATE_HASH_LUT _input _output)
     add_custom_command(
         OUTPUT ${_output}
         MAIN_DEPENDENCY ${HASH_LUT_GENERATOR}
         DEPENDS ${_input}
-        COMMAND ${PERL_EXECUTABLE} ${HASH_LUT_GENERATOR} ${LUT_GENERATOR_FLAGS} ${_input} > ${_output}
+        COMMAND ${PERL_EXECUTABLE} ${HASH_LUT_GENERATOR} ${_input} > ${_output}
         VERBATIM)
     list(APPEND JavaScriptCore_HEADERS ${_output})
     ADD_SOURCE_DEPENDENCIES(${_input} ${_output})
@@ -1047,15 +1043,8 @@ endmacro()
 
 # GENERATOR 1-A: LUT creator
 
-foreach (_file ${JavaScriptCore_NATIVE_OBJECT_LUT_SOURCES})
+foreach (_file ${JavaScriptCore_OBJECT_LUT_SOURCES})
     get_filename_component(_name ${_file} NAME_WE)
-    set(LUT_GENERATOR_FLAGS -i)
-    GENERATE_HASH_LUT(${CMAKE_CURRENT_SOURCE_DIR}/${_file} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/${_name}.lut.h)
-endforeach ()
-
-foreach (_file ${JavaScriptCore_BUILTIN_OBJECT_LUT_SOURCES})
-    get_filename_component(_name ${_file} NAME_WE)
-    set(LUT_GENERATOR_FLAGS -i -b)
     GENERATE_HASH_LUT(${CMAKE_CURRENT_SOURCE_DIR}/${_file} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/${_name}.lut.h)
 endforeach ()
 
@@ -1087,7 +1076,6 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
 )
 
 # GENERATOR 1-B: particular LUT creator (for 1 file only)
-set(LUT_GENERATOR_FLAGS )
 GENERATE_HASH_LUT(${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Lexer.lut.h)
 
 #GENERATOR: "RegExpJitTables.h": tables used by Yarr
@@ -1223,22 +1211,6 @@ set(JavaScriptCore_BUILTINS_SOURCES
 )
 
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/B3AddressMatcher.h
-    MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/b3/B3AddressMatcher.patterns
-    DEPENDS ${JAVASCRIPTCORE_DIR}/b3/generate_pattern_matcher.rb
-    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/b3/generate_pattern_matcher.rb ${JAVASCRIPTCORE_DIR}/b3/B3AddressMatcher.patterns VERBATIM
-    WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
-)
-
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/B3LoweringMatcher.h
-    MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/b3/B3LoweringMatcher.patterns
-    DEPENDS ${JAVASCRIPTCORE_DIR}/b3/generate_pattern_matcher.rb
-    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/b3/generate_pattern_matcher.rb ${JAVASCRIPTCORE_DIR}/b3/B3LoweringMatcher.patterns VERBATIM
-    WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
-)
-
-add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcode.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcodeGenerated.h
     MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/b3/air/AirOpcode.opcodes
     DEPENDS ${JAVASCRIPTCORE_DIR}/b3/air/opcode_generator.rb
@@ -1249,8 +1221,6 @@ add_custom_command(
 list(APPEND JavaScriptCore_SOURCES
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcode.h
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcodeGenerated.h
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/B3AddressMatcher.h
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/B3LoweringMatcher.h
 )
 
 add_custom_command(

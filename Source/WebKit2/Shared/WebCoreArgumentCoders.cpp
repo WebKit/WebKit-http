@@ -742,7 +742,7 @@ bool ArgumentCoder<Credential>::decode(ArgumentDecoder& decoder, Credential& cre
 static void encodeImage(ArgumentEncoder& encoder, Image& image)
 {
     RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(IntSize(image.size()), ShareableBitmap::SupportsAlpha);
-    bitmap->createGraphicsContext()->drawImage(image, ColorSpaceDeviceRGB, IntPoint());
+    bitmap->createGraphicsContext()->drawImage(image, IntPoint());
 
     ShareableBitmap::Handle handle;
     bitmap->createHandle(handle);
@@ -1827,11 +1827,11 @@ bool ArgumentCoder<FilterOperations>::decode(ArgumentDecoder& decoder, FilterOpe
 
 void ArgumentCoder<IDBGetResult>::encode(ArgumentEncoder& encoder, const IDBGetResult& result)
 {
-    bool nullData = !result.valueBuffer;
+    bool nullData = !result.valueBuffer.data();
     encoder << nullData;
 
     if (!nullData)
-        encoder << DataReference(reinterpret_cast<const uint8_t*>(result.valueBuffer->data()), result.valueBuffer->size());
+        encoder << DataReference(result.valueBuffer.data()->data(), result.valueBuffer.data()->size());
 
     encoder << result.keyData << result.keyPath;
 }
@@ -1843,13 +1843,15 @@ bool ArgumentCoder<IDBGetResult>::decode(ArgumentDecoder& decoder, IDBGetResult&
         return false;
 
     if (nullData)
-        result.valueBuffer = nullptr;
+        result.valueBuffer = { };
     else {
         DataReference data;
         if (!decoder.decode(data))
             return false;
 
-        result.valueBuffer = SharedBuffer::create(data.data(), data.size());
+        Vector<uint8_t> vector(data.size());
+        memcpy(vector.data(), data.data(), data.size());
+        result.valueBuffer = ThreadSafeDataBuffer::adoptVector(vector);
     }
 
     if (!decoder.decode(result.keyData))
@@ -1967,26 +1969,47 @@ bool ArgumentCoder<TextIndicatorData>::decode(ArgumentDecoder& decoder, TextIndi
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 void ArgumentCoder<MediaPlaybackTargetContext>::encode(ArgumentEncoder& encoder, const MediaPlaybackTargetContext& target)
 {
-    int32_t targetType = target.type;
+    bool hasPlatformData = target.encodingRequiresPlatformData();
+    encoder << hasPlatformData;
+
+    int32_t targetType = target.type();
     encoder << targetType;
 
-    if (!target.encodingRequiresPlatformData())
+    if (target.encodingRequiresPlatformData()) {
+        encodePlatformData(encoder, target);
         return;
+    }
 
-    encodePlatformData(encoder, target);
+    ASSERT(targetType == MediaPlaybackTargetContext::MockType);
+    encoder << target.mockDeviceName();
+    encoder << static_cast<int32_t>(target.mockState());
 }
 
 bool ArgumentCoder<MediaPlaybackTargetContext>::decode(ArgumentDecoder& decoder, MediaPlaybackTargetContext& target)
 {
+    bool hasPlatformData;
+    if (!decoder.decode(hasPlatformData))
+        return false;
+
     int32_t targetType;
     if (!decoder.decode(targetType))
         return false;
 
-    target.type = static_cast<MediaPlaybackTargetContext::ContextType>(targetType);
-    if (!target.encodingRequiresPlatformData())
+    if (hasPlatformData)
+        return decodePlatformData(decoder, target);
+
+    ASSERT(targetType == MediaPlaybackTargetContext::MockType);
+
+    String mockDeviceName;
+    if (!decoder.decode(mockDeviceName))
         return false;
 
-    return decodePlatformData(decoder, target);
+    int32_t mockState;
+    if (!decoder.decode(mockState))
+        return false;
+
+    target = MediaPlaybackTargetContext(mockDeviceName, static_cast<MediaPlaybackTargetContext::State>(mockState));
+    return true;
 }
 #endif
 

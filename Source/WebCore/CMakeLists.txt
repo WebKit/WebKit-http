@@ -908,8 +908,11 @@ set(WebCore_SOURCES
     Modules/indexeddb/server/IDBConnectionToClient.cpp
     Modules/indexeddb/server/IDBServer.cpp
     Modules/indexeddb/server/IDBServerOperation.cpp
+    Modules/indexeddb/server/IndexValueEntry.cpp
+    Modules/indexeddb/server/IndexValueStore.cpp
     Modules/indexeddb/server/MemoryBackingStoreTransaction.cpp
     Modules/indexeddb/server/MemoryIDBBackingStore.cpp
+    Modules/indexeddb/server/MemoryIndex.cpp
     Modules/indexeddb/server/MemoryObjectStore.cpp
     Modules/indexeddb/server/UniqueIDBDatabase.cpp
     Modules/indexeddb/server/UniqueIDBDatabaseConnection.cpp
@@ -924,6 +927,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/shared/IDBResultData.cpp
     Modules/indexeddb/shared/IDBTransactionInfo.cpp
     Modules/indexeddb/shared/InProcessIDBServer.cpp
+    Modules/indexeddb/shared/IndexKey.cpp
 
     Modules/mediacontrols/MediaControlsHost.cpp
 
@@ -2308,7 +2312,10 @@ set(WebCore_SOURCES
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
     platform/mock/MediaConstraintsMock.cpp
+    platform/mock/MockRealtimeAudioSource.cpp
+    platform/mock/MockRealtimeMediaSource.cpp
     platform/mock/MockRealtimeMediaSourceCenter.cpp
+    platform/mock/MockRealtimeVideoSource.cpp
     platform/mock/RTCDTMFSenderHandlerMock.cpp
     platform/mock/RTCDataChannelHandlerMock.cpp
     platform/mock/RTCNotifiersMock.cpp

@@ -1,3 +1,2151 @@
+2015-11-10  Keith Miller  <keith_miller@apple.com>
+
+        Regression(r191815): 5.3% regression on Dromaeo JS Library Benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=150945
+
+        Reviewed by Filip Pizlo.
+
+        This patch fixes a performance regression introduced by r191815. Before adding Symbol.toStringTag
+        we would cache the value of Object.prototype.toString() in the rareData of the structure.
+        In order to cache the result of Object.prototype.toString() we now need to ensure that the
+        value stored in Symbol.toStringTag is a known constant. Thus, in order to ensure the stored Symbol.toStringTag
+        value remains constant adaptive inferred value watchpoints have been re-factored to be generalizable and
+        a new version that clears the toString value cache when fired has been added.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp: Copied from Source/JavaScriptCore/dfg/DFGAdaptiveInferredPropertyValueWatchpoint.cpp.
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::AdaptiveInferredPropertyValueWatchpointBase):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::install):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::fire):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::StructureWatchpoint::fireInternal):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::PropertyWatchpoint::fireInternal):
+        * bytecode/AdaptiveInferredPropertyValueWatchpointBase.h: Copied from Source/JavaScriptCore/dfg/DFGAdaptiveInferredPropertyValueWatchpoint.h.
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::key):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::StructureWatchpoint::StructureWatchpoint):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::PropertyWatchpoint::PropertyWatchpoint):
+        * dfg/DFGAdaptiveInferredPropertyValueWatchpoint.cpp:
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::AdaptiveInferredPropertyValueWatchpoint):
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::handleFire):
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::install): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::fire): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::StructureWatchpoint::fireInternal): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::PropertyWatchpoint::fireInternal): Deleted.
+        * dfg/DFGAdaptiveInferredPropertyValueWatchpoint.h:
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::key): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::StructureWatchpoint::StructureWatchpoint): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::PropertyWatchpoint::PropertyWatchpoint): Deleted.
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncToString):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setObjectToStringValue):
+        * runtime/StructureRareData.cpp:
+        (JSC::StructureRareData::StructureRareData):
+        (JSC::StructureRareData::setObjectToStringValue):
+        (JSC::StructureRareData::clearObjectToStringValue):
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::ObjectToStringAdaptiveStructureWatchpoint):
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::install):
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::fireInternal):
+        (JSC::ObjectToStringAdaptiveInferredPropertyValueWatchpoint::ObjectToStringAdaptiveInferredPropertyValueWatchpoint):
+        (JSC::ObjectToStringAdaptiveInferredPropertyValueWatchpoint::handleFire):
+        * runtime/StructureRareData.h:
+        * runtime/StructureRareDataInlines.h:
+        (JSC::StructureRareData::setObjectToStringValue): Deleted.
+        * tests/stress/symbol-tostringtag-watchpoints.js: Added.
+        (Base):
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp: Copied from Source/JavaScriptCore/dfg/DFGAdaptiveInferredPropertyValueWatchpoint.cpp.
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::AdaptiveInferredPropertyValueWatchpointBase):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::install):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::fire):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::StructureWatchpoint::fireInternal):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::PropertyWatchpoint::fireInternal):
+        * bytecode/AdaptiveInferredPropertyValueWatchpointBase.h: Copied from Source/JavaScriptCore/dfg/DFGAdaptiveInferredPropertyValueWatchpoint.h.
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::key):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::StructureWatchpoint::StructureWatchpoint):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::PropertyWatchpoint::PropertyWatchpoint):
+        * dfg/DFGAdaptiveInferredPropertyValueWatchpoint.cpp:
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::AdaptiveInferredPropertyValueWatchpoint):
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::handleFire):
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::install): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::fire): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::StructureWatchpoint::fireInternal): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::PropertyWatchpoint::fireInternal): Deleted.
+        * dfg/DFGAdaptiveInferredPropertyValueWatchpoint.h:
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::key): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::StructureWatchpoint::StructureWatchpoint): Deleted.
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::PropertyWatchpoint::PropertyWatchpoint): Deleted.
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncToString):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setObjectToStringValue):
+        * runtime/StructureRareData.cpp:
+        (JSC::StructureRareData::StructureRareData):
+        (JSC::StructureRareData::setObjectToStringValue):
+        (JSC::StructureRareData::clearObjectToStringValue):
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::ObjectToStringAdaptiveStructureWatchpoint):
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::install):
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::fireInternal):
+        (JSC::ObjectToStringAdaptiveInferredPropertyValueWatchpoint::ObjectToStringAdaptiveInferredPropertyValueWatchpoint):
+        (JSC::ObjectToStringAdaptiveInferredPropertyValueWatchpoint::handleFire):
+        * runtime/StructureRareData.h:
+        * runtime/StructureRareDataInlines.h:
+        (JSC::StructureRareData::setObjectToStringValue): Deleted.
+        * tests/stress/symbol-tostringtag-watchpoints.js: Added.
+        (Base):
+
+2015-11-11  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile and canonicalize Mul
+        https://bugs.webkit.org/show_bug.cgi?id=151124
+
+        Reviewed by Geoffrey Garen.
+
+        This was a strange trip. I wanted to do a quick patch to implement Mul. But then I realized
+        that our tradition when adding new lowerings was to also add the corresponding strength
+        reductions. So then I wrote the Mul->Shl strength reduction. But that reminded me that I needed
+        to canonicalize between Add(x, x) and Shl(x, 1). I decided that it would probably be better to
+        use Shl(x, 1), since that only has one use of x. But that means that we should compile
+        Shl(x, 1) to Add x, x in the backend, since that's what X86 wants. While doing that, I almost
+        introduced a bug where Shl(Load(x), 1) would cause the compiler to either crash or generate bad
+        code. That's because I was using Add(x, x) to handle Shl(x, 1), so we'd end up with
+        Add(Load(x), Load(x)) - i.e. we would try to duplicate the Load.
+
+        The instruction selector already defends against this, and the only reason why I would have
+        created the bug was by using the Add helper when compiling a Shl. Still, this was so close to
+        a bad bug that I added a ton of new tests that cover the Op(x, x) where x = Load case.
+
+        * b3/B3Compilation.cpp:
+        (JSC::B3::Compilation::Compilation):
+        * b3/B3Compilation.h:
+        (JSC::B3::Compilation::code):
+        * b3/B3Const32Value.cpp:
+        (JSC::B3::Const32Value::subConstant):
+        (JSC::B3::Const32Value::mulConstant):
+        (JSC::B3::Const32Value::bitAndConstant):
+        * b3/B3Const32Value.h:
+        * b3/B3Const64Value.cpp:
+        (JSC::B3::Const64Value::subConstant):
+        (JSC::B3::Const64Value::mulConstant):
+        (JSC::B3::Const64Value::bitAndConstant):
+        * b3/B3Const64Value.h:
+        * b3/B3ConstDoubleValue.cpp:
+        (JSC::B3::ConstDoubleValue::subConstant):
+        (JSC::B3::ConstDoubleValue::mulConstant):
+        (JSC::B3::ConstDoubleValue::equalConstant):
+        * b3/B3ConstDoubleValue.h:
+        * b3/B3Generate.cpp:
+        (JSC::B3::generate):
+        (JSC::B3::generateToAir):
+        * b3/B3Generate.h:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::appendBinOp):
+        (JSC::B3::Air::LowerToAir::createGenericCompare):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::subConstant):
+        (JSC::B3::Value::mulConstant):
+        (JSC::B3::Value::bitAndConstant):
+        * b3/B3Value.h:
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::compile):
+        (JSC::B3::testReturnConst64):
+        (JSC::B3::testAddArg):
+        (JSC::B3::testAddArgs):
+        (JSC::B3::testAddArgs32):
+        (JSC::B3::testAddLoadTwice):
+        (JSC::B3::testMulArg):
+        (JSC::B3::testMulArgs):
+        (JSC::B3::testMulArgImm):
+        (JSC::B3::testMulImmArg):
+        (JSC::B3::testMulArgs32):
+        (JSC::B3::testMulLoadTwice):
+        (JSC::B3::testSubArg):
+        (JSC::B3::testSubArgs):
+        (JSC::B3::testShlArgImm):
+        (JSC::B3::testShlArg32):
+        (JSC::B3::testShlArgs32):
+        (JSC::B3::testSShrArgImm):
+        (JSC::B3::testSShrArg32):
+        (JSC::B3::testSShrArgs32):
+        (JSC::B3::testZShrArgImm):
+        (JSC::B3::testZShrArg32):
+        (JSC::B3::testZShrArgs32):
+        (JSC::B3::genericTestCompare):
+        (JSC::B3::testCompareLoad):
+        (JSC::B3::testCompareImpl):
+        (JSC::B3::run):
+
+2015-11-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Update ES6 Generators' status to "In Development"
+        https://bugs.webkit.org/show_bug.cgi?id=151142
+
+        Reviewed by Saam Barati.
+
+        Currently, features.json raises some linting errors.
+        This should be cleaned up in another patch.
+
+        * features.json:
+
+2015-11-10  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile a program with ChillDiv
+        https://bugs.webkit.org/show_bug.cgi?id=151114
+
+        Reviewed by Benjamin Poulain.
+
+        This change is about a lot more than ChillDiv. I picked that as the next thing to lower
+        because I knew that it would force me to come up with a sensible idiom for doing
+        stepwise lowerings that require breaking basic blocks. The idea is that you want to
+        write a loop that iterates forward over the program, which turns some operations that
+        currently are just single Values into an entire little sub-CFGs. That requires splitting
+        the block that contained the original Value. That's tricky if you then want to keep
+        iterating: the index of the Value you were last looking at has now changed and your
+        InsertionSets are now invalid.
+
+        This introduces an idiom that handles this. It's BlockInsertionSet::splitBefore(). The
+        idea is that it uses the current block before the split as the continuation after the
+        split. When you call splitBefore(), you pass it your loop index and your InsertionSet
+        (if applicable). It makes sure that it changes those auxiliary things in such a way that
+        you can keep looping.
+
+        This uncovered some bugs, since this is the first time that we're compiling cross edges.
+
+        Because ChillDiv is really a division, I also had to write a bunch of code to support
+        the ordinary B3 Div. While doing that, I realized that there was asymmetry to that
+        constness of the Value constant folding methods, so I fixed that as well.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::mul32):
+        (JSC::MacroAssemblerX86Common::x86ConvertToDoubleWord32):
+        (JSC::MacroAssemblerX86Common::x86Div32):
+        (JSC::MacroAssemblerX86Common::neg32):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::mul64):
+        (JSC::MacroAssemblerX86_64::x86ConvertToQuadWord64):
+        (JSC::MacroAssemblerX86_64::x86Div64):
+        (JSC::MacroAssemblerX86_64::neg64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::idivl_r):
+        (JSC::X86Assembler::idivq_r):
+        (JSC::X86Assembler::cmpl_rr):
+        (JSC::X86Assembler::cdq):
+        (JSC::X86Assembler::cdqq):
+        (JSC::X86Assembler::fstps):
+        * b3/B3BasicBlock.cpp:
+        (JSC::B3::BasicBlock::append):
+        (JSC::B3::BasicBlock::replaceLast):
+        (JSC::B3::BasicBlock::appendIntConstant):
+        (JSC::B3::BasicBlock::replaceSuccessor):
+        (JSC::B3::BasicBlock::addPredecessor):
+        (JSC::B3::BasicBlock::replacePredecessor):
+        (JSC::B3::BasicBlock::updatePredecessors):
+        (JSC::B3::BasicBlock::dump):
+        * b3/B3BasicBlock.h:
+        (JSC::B3::BasicBlock::values):
+        (JSC::B3::BasicBlock::numPredecessors):
+        (JSC::B3::BasicBlock::predecessor):
+        (JSC::B3::BasicBlock::frequency):
+        * b3/B3BasicBlockInlines.h:
+        (JSC::B3::BasicBlock::appendNew):
+        (JSC::B3::BasicBlock::replaceLastWithNew):
+        (JSC::B3::BasicBlock::numSuccessors):
+        * b3/B3BasicBlockUtils.h:
+        (JSC::B3::replacePredecessor):
+        (JSC::B3::updatePredecessors):
+        (JSC::B3::resetReachability):
+        * b3/B3BlockInsertionSet.cpp: Added.
+        (JSC::B3::BlockInsertionSet::BlockInsertionSet):
+        (JSC::B3::BlockInsertionSet::~BlockInsertionSet):
+        (JSC::B3::BlockInsertionSet::insert):
+        (JSC::B3::BlockInsertionSet::insertBefore):
+        (JSC::B3::BlockInsertionSet::splitForward):
+        (JSC::B3::BlockInsertionSet::execute):
+        * b3/B3BlockInsertionSet.h: Added.
+        * b3/B3Common.h:
+        (JSC::B3::isRepresentableAs):
+        (JSC::B3::chillDiv):
+        * b3/B3Const32Value.cpp:
+        (JSC::B3::Const32Value::addConstant):
+        (JSC::B3::Const32Value::subConstant):
+        (JSC::B3::Const32Value::divConstant):
+        (JSC::B3::Const32Value::bitAndConstant):
+        (JSC::B3::Const32Value::bitOrConstant):
+        (JSC::B3::Const32Value::bitXorConstant):
+        (JSC::B3::Const32Value::shlConstant):
+        (JSC::B3::Const32Value::sShrConstant):
+        (JSC::B3::Const32Value::zShrConstant):
+        (JSC::B3::Const32Value::equalConstant):
+        (JSC::B3::Const32Value::notEqualConstant):
+        (JSC::B3::Const32Value::lessThanConstant):
+        (JSC::B3::Const32Value::greaterThanConstant):
+        (JSC::B3::Const32Value::lessEqualConstant):
+        (JSC::B3::Const32Value::greaterEqualConstant):
+        (JSC::B3::Const32Value::aboveConstant):
+        (JSC::B3::Const32Value::belowConstant):
+        (JSC::B3::Const32Value::aboveEqualConstant):
+        (JSC::B3::Const32Value::belowEqualConstant):
+        * b3/B3Const32Value.h:
+        * b3/B3Const64Value.cpp:
+        (JSC::B3::Const64Value::addConstant):
+        (JSC::B3::Const64Value::subConstant):
+        (JSC::B3::Const64Value::divConstant):
+        (JSC::B3::Const64Value::bitAndConstant):
+        (JSC::B3::Const64Value::bitOrConstant):
+        (JSC::B3::Const64Value::bitXorConstant):
+        (JSC::B3::Const64Value::shlConstant):
+        (JSC::B3::Const64Value::sShrConstant):
+        (JSC::B3::Const64Value::zShrConstant):
+        (JSC::B3::Const64Value::equalConstant):
+        (JSC::B3::Const64Value::notEqualConstant):
+        (JSC::B3::Const64Value::lessThanConstant):
+        (JSC::B3::Const64Value::greaterThanConstant):
+        (JSC::B3::Const64Value::lessEqualConstant):
+        (JSC::B3::Const64Value::greaterEqualConstant):
+        (JSC::B3::Const64Value::aboveConstant):
+        (JSC::B3::Const64Value::belowConstant):
+        (JSC::B3::Const64Value::aboveEqualConstant):
+        (JSC::B3::Const64Value::belowEqualConstant):
+        * b3/B3Const64Value.h:
+        * b3/B3ConstDoubleValue.cpp:
+        (JSC::B3::ConstDoubleValue::addConstant):
+        (JSC::B3::ConstDoubleValue::subConstant):
+        (JSC::B3::ConstDoubleValue::divConstant):
+        (JSC::B3::ConstDoubleValue::equalConstant):
+        (JSC::B3::ConstDoubleValue::notEqualConstant):
+        (JSC::B3::ConstDoubleValue::lessThanConstant):
+        (JSC::B3::ConstDoubleValue::greaterThanConstant):
+        (JSC::B3::ConstDoubleValue::lessEqualConstant):
+        (JSC::B3::ConstDoubleValue::greaterEqualConstant):
+        * b3/B3ConstDoubleValue.h:
+        * b3/B3ControlValue.cpp:
+        (JSC::B3::ControlValue::~ControlValue):
+        (JSC::B3::ControlValue::replaceSuccessor):
+        (JSC::B3::ControlValue::convertToJump):
+        * b3/B3ControlValue.h:
+        * b3/B3Generate.cpp:
+        (JSC::B3::generateToAir):
+        * b3/B3GenericFrequentedBlock.h:
+        (JSC::B3::GenericFrequentedBlock::block):
+        (JSC::B3::GenericFrequentedBlock::frequency):
+        (JSC::B3::GenericFrequentedBlock::dump):
+        * b3/B3InsertionSet.cpp:
+        (JSC::B3::InsertionSet::insertIntConstant):
+        (JSC::B3::InsertionSet::execute):
+        * b3/B3InsertionSet.h:
+        * b3/B3LowerMacros.cpp: Added.
+        (JSC::B3::lowerMacros):
+        * b3/B3LowerMacros.h: Added.
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3Opcode.h:
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::addBlock):
+        (JSC::B3::Procedure::addIntConstant):
+        (JSC::B3::Procedure::addBoolConstant):
+        (JSC::B3::Procedure::resetValueOwners):
+        * b3/B3Procedure.h:
+        (JSC::B3::Procedure::takeByproducts):
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3Validate.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::addConstant):
+        (JSC::B3::Value::subConstant):
+        (JSC::B3::Value::divConstant):
+        (JSC::B3::Value::bitAndConstant):
+        (JSC::B3::Value::bitOrConstant):
+        (JSC::B3::Value::bitXorConstant):
+        (JSC::B3::Value::shlConstant):
+        (JSC::B3::Value::sShrConstant):
+        (JSC::B3::Value::zShrConstant):
+        (JSC::B3::Value::equalConstant):
+        (JSC::B3::Value::notEqualConstant):
+        (JSC::B3::Value::lessThanConstant):
+        (JSC::B3::Value::greaterThanConstant):
+        (JSC::B3::Value::lessEqualConstant):
+        (JSC::B3::Value::greaterEqualConstant):
+        (JSC::B3::Value::aboveConstant):
+        (JSC::B3::Value::belowConstant):
+        (JSC::B3::Value::aboveEqualConstant):
+        (JSC::B3::Value::belowEqualConstant):
+        * b3/B3Value.h:
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::isUrshift64Valid):
+        (JSC::B3::Air::isX86DivHelperValid):
+        (JSC::B3::Air::isX86ConvertToDoubleWord32Valid):
+        (JSC::B3::Air::isX86ConvertToDoubleWord64Valid):
+        (JSC::B3::Air::isX86Div32Valid):
+        (JSC::B3::Air::isX86Div64Valid):
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/AirSimplifyCFG.cpp:
+        (JSC::B3::Air::simplifyCFG):
+        * b3/testb3.cpp:
+        (JSC::B3::testCallFunctionWithHellaDoubleArguments):
+        (JSC::B3::testChillDiv):
+        (JSC::B3::testChillDivTwice):
+        (JSC::B3::testChillDiv64):
+        (JSC::B3::run):
+        * dfg/DFGBlockInsertionSet.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithDiv):
+        (JSC::DFG::SpeculativeJIT::compileArithMod):
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_mod):
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emit_op_mod):
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::WASMFunctionCompiler::buildBinaryI32):
+
+2015-11-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Air should allocate registers
+        https://bugs.webkit.org/show_bug.cgi?id=150457
+
+        Reviewed by Filip Pizlo.
+
+        This is a direct implementation of the Iterated Register Coalescing allocator.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * b3/air/AirInstInlines.h:
+        * b3/air/AirIteratedRegisterCoalescing.cpp: Added.
+        (JSC::B3::Air::MoveInstHelper<Arg::GP>::mayBeCoalescable):
+        (JSC::B3::Air::MoveInstHelper<Arg::FP>::mayBeCoalescable):
+        (JSC::B3::Air::AbsoluteTmpHelper<Arg::GP>::absoluteIndex):
+        (JSC::B3::Air::AbsoluteTmpHelper<Arg::GP>::tmpFromAbsoluteIndex):
+        (JSC::B3::Air::AbsoluteTmpHelper<Arg::FP>::absoluteIndex):
+        (JSC::B3::Air::AbsoluteTmpHelper<Arg::FP>::tmpFromAbsoluteIndex):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::IteratedRegisterCoalescingAllocator):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::build):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::allocate):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::getAlias):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::spilledTmp):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::allocatedReg):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::tmpArraySize):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::initializeDegrees):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::addEdges):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::addEdge):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::makeWorkList):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::simplify):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::forEachAdjacent):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::hasBeenSimplified):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::decrementDegree):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::forEachNodeMoves):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::isMoveRelated):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::enableMovesOnValue):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::enableMovesOnValueAndAdjacents):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::coalesce):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::canBeSafelyCoalesced):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::precoloredCoalescingHeuristic):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::conservativeHeuristic):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::addWorkList):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::combine):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::freeze):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::freezeMoves):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::selectSpill):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::assignColors):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::dumpInterferenceGraphInDot):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::dumpWorkLists):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdge::InterferenceEdge):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdge::first):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdge::second):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdge::operator==):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdge::isHashTableDeletedValue):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdge::hash):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdgeHash::hash):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdgeHash::equal):
+        (JSC::B3::Air::isUselessMoveInst):
+        (JSC::B3::Air::assignRegisterToTmpInProgram):
+        (JSC::B3::Air::addSpillAndFillToProgram):
+        (JSC::B3::Air::iteratedRegisterCoalescingOnType):
+        (JSC::B3::Air::iteratedRegisterCoalescing):
+        * b3/air/AirIteratedRegisterCoalescing.h: Added.
+        * b3/air/AirTmp.h:
+        (JSC::B3::Air::Tmp::internalValue):
+        (JSC::B3::Air::Tmp::tmpForInternalValue):
+        * b3/testb3.cpp:
+        (JSC::B3::testSpillGP):
+        (JSC::B3::run):
+
+2015-11-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, add a FIXME referencing https://bugs.webkit.org/show_bug.cgi?id=151128.
+
+        * b3/air/AirInstInlines.h:
+
+2015-11-10  Saam barati  <sbarati@apple.com>
+
+        Create an FTLExceptionHandlerManager abstraction
+        https://bugs.webkit.org/show_bug.cgi?id=151079
+
+        Reviewed by Mark Lam.
+
+        Before, we used to manage the {stackmapRecordIndex => OSRExit} relationship
+        for exception handlers with a locally allocated HashMap and a few different
+        lambdas and random checks. It's cleaner and more manageable to just create 
+        a class that handles this abstraction for us. This class provides nice helper 
+        functions for everything we need. This abstraction makes reading the code easier.
+        And it will also makes hacking on the code in the future easier.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOSRExitBase.h:
+        (JSC::DFG::OSRExitBase::OSRExitBase):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * ftl/FTLExceptionHandlerManager.cpp: Added.
+        (JSC::FTL::ExceptionHandlerManager::ExceptionHandlerManager):
+        (JSC::FTL::ExceptionHandlerManager::addNewExit):
+        (JSC::FTL::ExceptionHandlerManager::getOrPutByIdCallOperationExceptionTarget):
+        (JSC::FTL::ExceptionHandlerManager::lazySlowPathExceptionTarget):
+        (JSC::FTL::ExceptionHandlerManager::getByIdOSRExit):
+        (JSC::FTL::ExceptionHandlerManager::getCallOSRExitCommon):
+        (JSC::FTL::ExceptionHandlerManager::getCallOSRExit):
+        (JSC::FTL::ExceptionHandlerManager::procureCallSiteIndex):
+        * ftl/FTLExceptionHandlerManager.h: Added.
+
+2015-11-10  Michael Saboff  <msaboff@apple.com>
+
+        X86_64 support for compareDouble(DoubleCondition, FPRegisterID left, FPRegisterID right, RegisterID dest)
+        https://bugs.webkit.org/show_bug.cgi?id=151009
+
+        Reviewed by Filip Pizlo.
+
+        Added compareDouble() macro assembler function and the supporting setnp_r() and setp_r() X86 assembler functions.
+        Hand tested.
+
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::compare64):
+        (JSC::MacroAssemblerX86_64::compareDouble):
+        (JSC::MacroAssemblerX86_64::branch64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::setnz_r):
+        (JSC::X86Assembler::setnp_r):
+        (JSC::X86Assembler::setp_r):
+        (JSC::X86Assembler::cdq):
+
+2015-11-10  Saam barati  <sbarati@apple.com>
+
+        Rename FTL's ExitArgumentList to something more indicative of what it is
+        https://bugs.webkit.org/show_bug.cgi?id=151078
+
+        Reviewed by Geoffrey Garen.
+
+        New name is: StackmapArgumentList
+        We use this to build patchpoint and stackmap intrinsics in FTLLowerDFGToLLVM.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * ftl/FTLExitArgumentList.h: Removed.
+        * ftl/FTLJSTailCall.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileTailCall):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileInvalidationPoint):
+        (JSC::FTL::DFG::LowerDFGToLLVM::getById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::lazySlowPath):
+        (JSC::FTL::DFG::LowerDFGToLLVM::callCheck):
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExitArgumentsForPatchpointIfWillCatchException):
+        (JSC::FTL::DFG::LowerDFGToLLVM::emitOSRExitCall):
+        (JSC::FTL::DFG::LowerDFGToLLVM::buildExitArguments):
+        (JSC::FTL::DFG::LowerDFGToLLVM::callStackmap):
+        (JSC::FTL::DFG::LowerDFGToLLVM::exitValueForAvailability):
+        (JSC::FTL::DFG::LowerDFGToLLVM::exitValueForNode):
+        (JSC::FTL::DFG::LowerDFGToLLVM::exitArgument):
+        (JSC::FTL::DFG::LowerDFGToLLVM::exitValueForTailCall):
+        * ftl/FTLOSRExit.cpp:
+        * ftl/FTLOSRExit.h:
+        * ftl/FTLStackmapArgumentList.h: Copied from Source/JavaScriptCore/ftl/FTLExitArgumentList.h.
+
+2015-11-09  Filip Pizlo  <fpizlo@apple.com>
+
+        [B3] Add more tests for Check and fix bugs this found
+        https://bugs.webkit.org/show_bug.cgi?id=151073
+
+        Reviewed by Saam Barati.
+
+        Adds tests for compare/Check fusion. The "MegaCombo" test found a bug in our implementation
+        of forEachArg: Air::spillEverything() was expecting that the Arg& to point to the actual Arg
+        so that it can mutate it. But this wasn't the case in B3::CheckSpecial. This fixes that bug.
+
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::Air::numB3Args):
+        (JSC::B3::CheckSpecial::hiddenBranch):
+        (JSC::B3::CheckSpecial::commitHiddenBranch):
+        (JSC::B3::CheckSpecial::forEachArg):
+        * b3/B3CheckSpecial.h:
+        * b3/testb3.cpp:
+        (JSC::B3::testSimpleCheck):
+        (JSC::B3::testCheckLessThan):
+        (JSC::B3::testCheckMegaCombo):
+        (JSC::B3::genericTestCompare):
+        (JSC::B3::run):
+
+2015-11-09  Filip Pizlo  <fpizlo@apple.com>
+
+        [B3] Add a test for CCall with double arguments and results
+        https://bugs.webkit.org/show_bug.cgi?id=151064
+
+        Reviewed by Saam Barati.
+
+        The test already passed on trunk. But when looking at the disassembly, I realized that I had
+        made a rookie mistake in the call argument marshalling: the stores to the stack went after the
+        moves to argument registers! This means that arguments that go to stack would be made to
+        interfere with all argument registers. That's some severe register pressure right there. So,
+        this change fixes that as well, and adds a FIXME to do it in a more principled manner in Air.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::tryAppendStoreBinOp):
+        (JSC::B3::Air::LowerToAir::createStore):
+        (JSC::B3::Air::LowerToAir::appendStore):
+        (JSC::B3::Air::LowerToAir::moveForType):
+        (JSC::B3::Air::LowerToAir::marshallCCallArgument):
+        * b3/testb3.cpp:
+        (JSC::B3::testReturnDouble):
+        (JSC::B3::simpleFunctionDouble):
+        (JSC::B3::testCallSimpleDouble):
+        (JSC::B3::functionWithHellaDoubleArguments):
+        (JSC::B3::testCallFunctionWithHellaDoubleArguments):
+        (JSC::B3::run):
+
+2015-11-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove create_hash_table options and simplify build system
+        https://bugs.webkit.org/show_bug.cgi?id=151081
+
+        Reviewed by Darin Adler.
+
+        * CMakeLists.txt: Merged native and builtin object sources and removed create_hash_table options.
+        * DerivedSources.make: Ditto.
+        * create_hash_table: Removed -b and -i options.
+
+2015-11-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        create_hash_table should know whether a function is JSBuiltin or not.
+        https://bugs.webkit.org/show_bug.cgi?id=151016
+
+        Reviewed by Darin Adler.
+
+        lut description information can explicitly state that a function is to be implemented as a JS built-in.
+        To do so, the field used to give the C++ function must be set to "JSBuiltin".
+        Updated create_hash_table script to handle that.
+        create_hash_table only includes JSCBuiltins.h if at least one function is set to "JSBuiltin".
+
+        Updated builtin generator to remove XX_BUILTIN_EXIST macro.
+        A further patch should simplify the build system by removing create_hash_table -b option.
+
+        Changes to the builtin generator are covered by rebased expectations.
+
+        Moved all lut information to using JSBuiltin whenever needed.
+
+        * Scripts/builtins/builtins_generate_combined_header.py:
+        (generate_section_for_object): Deleted.
+        (generate_section_for_code_table_macro): Deleted.
+        * Scripts/builtins/builtins_templates.py:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result:
+        * create_hash_table:
+        * runtime/ArrayConstructor.cpp:
+        * runtime/ArrayIteratorPrototype.cpp:
+        * runtime/InspectorInstrumentationObject.cpp:
+        * runtime/JSInternalPromiseConstructor.cpp:
+        * runtime/JSPromiseConstructor.cpp:
+        * runtime/JSPromisePrototype.cpp:
+        * runtime/ModuleLoaderObject.cpp:
+        * runtime/ObjectConstructor.cpp:
+        * runtime/ReflectObject.cpp:
+        * runtime/StringConstructor.cpp:
+        * runtime/StringIteratorPrototype.cpp:
+
+2015-11-09  Saam barati  <sbarati@apple.com>
+
+        Implement try/catch in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=149409
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements try/catch in the FTL in a similar
+        way to how it's implemented in the DFG. The main idea is
+        this: anytime an exception is thrown in a try block, 
+        we OSR exit into the baseline JIT's corresponding catch
+        block. We compile OSR exits in a few forms:
+        1) Explicit exception checks that check VM's exception
+        pointer. This is modeled explicitly in LLVM IR.
+        2) OSR exits that are arrived at from genericUnwind 
+        caused by an exception being thrown in a JS call (including
+        getters and setters).
+        3) Exception from lazy slow paths.
+        4) Exception from when an IC misses and makes a slow path C Call.
+
+        All stackmaps associated with the above types of exits all 
+        take arguments that correspond to variables that are 
+        bytecode-live in the catch block.
+
+        1) Item 1 is the simplest implementation. When inside
+        a try block, exception checks will emit a branch to
+        an OSR exit stackmap intrinsic. This stackmap intrinsic
+        takes as arguments the live catch variables.
+
+        2) All forms of calls and GetByIds and PutByIds are implemented
+        as patchpoints in LLVM. As a patchpoint, they have a stackmap ID.
+        We use the same stackmap ID for the OSR exit. The OSR exit arguments
+        are appended to the end of the normal arguments for the patchpoint. These
+        types of OSR exits are only reached indirectly via genericUnwind.
+        Therefore, the LLVM IR we generate never has a direct branch to them.
+        These are the OSR exits we store in the CodeBlock's exception handling
+        table. The exception handlers' code locations point to the beginning
+        of the corresponding OSR exit. There is an interesting story here
+        about how we preserve registers. LLVM patchpoints assume late clobber,
+        i.e, they assume we use the patchpoint arguments before we clobber them.
+        Therefore, it's sound for LLVM to pass us arguments in volatile registers.
+        We must take care to store the arguments in volatile registers to the
+        stack before making a call. We ensure we have stack space for these
+        by using LLVM's alloca instruction. Then, when making a call inside
+        a try block, we spill the needed registers, and if that call throws,
+        we make sure the OSR exit fills the corresponding registers.
+
+        3) Exceptions from lazy slow paths are similar to (2) except they
+        don't go through generic unwind. These OSR Exits are arrived at from explicit
+        exception checks in the generated lazy slow path. Therefore, the callframe
+        is intact when arriving at the OSR exit. We make sure such lazy slow
+        paths exception check are linked to the OSR exit's code location.
+
+        4) This has a really interesting register preservation story.
+        We may have a GetById that has an IC miss and therefore goes
+        through the FTL's callOperation machinery. LLVM may also
+        ask for the result to be placed in the same register as the
+        base. Therefore, after the call, when storing to the result,
+        we overwrite the base. This can't fly with exceptions because
+        operationGetByIdOptimize may throw an exception and return "undefined". What
+        we really want is the original base value for OSR exit value
+        recovery. In this case, we take special care to flush the base 
+        value to the stack before the callOperation GetById slow path. 
+        Like call OSR exits, these types of exits will recover the base 
+        value from the stack when necessary.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::newExceptionHandlingCallSiteIndex):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::canOptimizeStringObjectAccess):
+        (JSC::DFG::Graph::willCatchExceptionInMachineFrame):
+        * dfg/DFGGraph.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::appendExceptionHandlingOSRExit):
+        (JSC::DFG::JITCompiler::exceptionCheck):
+        (JSC::DFG::JITCompiler::recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded):
+        (JSC::DFG::JITCompiler::willCatchExceptionInMachineFrame): Deleted.
+        * dfg/DFGJITCompiler.h:
+        * dfg/DFGNodeOrigin.h:
+        (JSC::DFG::NodeOrigin::withSemantic):
+        (JSC::DFG::NodeOrigin::withForExitAndExitOK):
+        (JSC::DFG::NodeOrigin::withExitOK):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::OSRExit):
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::OSRExit::considerAddingAsFrequentExitSite):
+        * dfg/DFGOSRExitBase.h:
+        (JSC::DFG::OSRExitBase::OSRExitBase):
+        (JSC::DFG::OSRExitBase::considerAddingAsFrequentExitSite):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * ftl/FTLExitArgument.h:
+        (JSC::FTL::ExitArgument::withFormat):
+        (JSC::FTL::ExitArgument::representation):
+        * ftl/FTLExitThunkGenerator.cpp:
+        (JSC::FTL::ExitThunkGenerator::~ExitThunkGenerator):
+        (JSC::FTL::ExitThunkGenerator::emitThunk):
+        (JSC::FTL::ExitThunkGenerator::emitThunks):
+        * ftl/FTLExitThunkGenerator.h:
+        (JSC::FTL::ExitThunkGenerator::didThings):
+        * ftl/FTLExitValue.h:
+        (JSC::FTL::ExitValue::isArgument):
+        (JSC::FTL::ExitValue::isRecovery):
+        (JSC::FTL::ExitValue::isObjectMaterialization):
+        (JSC::FTL::ExitValue::hasIndexInStackmapLocations):
+        (JSC::FTL::ExitValue::exitArgument):
+        (JSC::FTL::ExitValue::rightRecoveryArgument):
+        (JSC::FTL::ExitValue::adjustStackmapLocationsIndexByOffset):
+        (JSC::FTL::ExitValue::recoveryFormat):
+        * ftl/FTLJITCode.cpp:
+        (JSC::FTL::JITCode::validateReferences):
+        (JSC::FTL::JITCode::liveRegistersToPreserveAtExceptionHandlingCallSite):
+        * ftl/FTLJSCall.cpp:
+        (JSC::FTL::JSCall::JSCall):
+        (JSC::FTL::JSCall::emit):
+        * ftl/FTLJSCall.h:
+        (JSC::FTL::JSCall::stackmapID):
+        * ftl/FTLJSCallBase.cpp:
+        (JSC::FTL::JSCallBase::JSCallBase):
+        (JSC::FTL::JSCallBase::emit):
+        * ftl/FTLJSCallBase.h:
+        (JSC::FTL::JSCallBase::setCallSiteIndex):
+        (JSC::FTL::JSCallBase::callSiteDescriptionOrigin):
+        (JSC::FTL::JSCallBase::setCorrespondingGenericUnwindOSRExit):
+        * ftl/FTLJSCallVarargs.cpp:
+        (JSC::FTL::JSCallVarargs::numSpillSlotsNeeded):
+        (JSC::FTL::JSCallVarargs::emit):
+        * ftl/FTLJSCallVarargs.h:
+        (JSC::FTL::JSCallVarargs::stackmapID):
+        (JSC::FTL::JSCallVarargs::operator<):
+        (JSC::FTL::JSCallVarargs::setCallSiteIndex):
+        (JSC::FTL::JSCallVarargs::callSiteDescriptionOrigin):
+        (JSC::FTL::JSCallVarargs::setCorrespondingGenericUnwindOSRExit):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::lower):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToLLVM::getById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::lazySlowPath):
+        (JSC::FTL::DFG::LowerDFGToLLVM::speculate):
+        (JSC::FTL::DFG::LowerDFGToLLVM::terminate):
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendTypeCheck):
+        (JSC::FTL::DFG::LowerDFGToLLVM::callPreflight):
+        (JSC::FTL::DFG::LowerDFGToLLVM::callCheck):
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExitArgumentsForPatchpointIfWillCatchException):
+        (JSC::FTL::DFG::LowerDFGToLLVM::emitBranchToOSRExitIfWillCatchException):
+        (JSC::FTL::DFG::LowerDFGToLLVM::lowBlock):
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExitDescriptor):
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExit):
+        (JSC::FTL::DFG::LowerDFGToLLVM::exitValueForNode):
+        * ftl/FTLOSRExit.cpp:
+        (JSC::FTL::OSRExitDescriptor::OSRExitDescriptor):
+        (JSC::FTL::OSRExit::OSRExit):
+        (JSC::FTL::OSRExit::codeLocationForRepatch):
+        (JSC::FTL::OSRExit::gatherRegistersToSpillForCallIfException):
+        (JSC::FTL::OSRExit::spillRegistersToSpillSlot):
+        (JSC::FTL::OSRExit::recoverRegistersFromSpillSlot):
+        * ftl/FTLOSRExit.h:
+        (JSC::FTL::OSRExit::considerAddingAsFrequentExitSite):
+        * ftl/FTLOSRExitCompilationInfo.h:
+        (JSC::FTL::OSRExitCompilationInfo::OSRExitCompilationInfo):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        (JSC::FTL::compileFTLOSRExit):
+        * ftl/FTLState.cpp:
+        (JSC::FTL::State::State):
+        * ftl/FTLState.h:
+        * interpreter/Interpreter.cpp:
+        (JSC::findExceptionHandler):
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::specialRegisters):
+        (JSC::RegisterSet::volatileRegistersForJSCall):
+        (JSC::RegisterSet::stubUnavailableRegisters):
+        * jit/RegisterSet.h:
+        * tests/stress/ftl-try-catch-getter-ic-fail-to-call-operation-throw-error.js: Added.
+        (assert):
+        (let.oThrow.get f):
+        (let.o2.get f):
+        (foo):
+        (f):
+        * tests/stress/ftl-try-catch-getter-throw.js: Added.
+        (assert):
+        (random):
+        (foo):
+        (f):
+        (let.o2.get f):
+        * tests/stress/ftl-try-catch-oom-error-lazy-slow-path.js: Added.
+        (assert):
+        (a):
+        (b):
+        (c):
+        (d):
+        (e):
+        (f):
+        (g):
+        (foo):
+        (blah):
+        * tests/stress/ftl-try-catch-patchpoint-with-volatile-registers.js: Added.
+        (assert):
+        (o1.get f):
+        (a):
+        (b):
+        (c):
+        (d):
+        (e):
+        (f):
+        (g):
+        (o2.get f):
+        (foo):
+        * tests/stress/ftl-try-catch-setter-throw.js: Added.
+        (foo):
+        (assert):
+        (f):
+        (let.o2.set f):
+        * tests/stress/ftl-try-catch-tail-call-inilned-caller.js: Added.
+        (value):
+        (assert):
+        (validate):
+        (bar):
+        (baz):
+        (jaz):
+        * tests/stress/ftl-try-catch-varargs-call-throws.js: Added.
+        (foo):
+        (f):
+        * tests/stress/try-catch-stub-routine-replaced.js:
+        (hello):
+        (foo):
+
+2015-11-09  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Built-in generator should check that there are no duplicate in JS built-in internal functions
+        https://bugs.webkit.org/show_bug.cgi?id=151018
+
+        Reviewed by Brian Burg.
+
+        Added @internal to corresponding JS built-in files.
+        Added check in built-in generator so that clashing names result in an error.
+
+        * Scripts/builtins/builtins_generate_combined_header.py:
+        (generate_section_for_code_name_macro):
+        * Scripts/builtins/builtins_model.py:
+        (BuiltinsCollection.all_internal_functions):
+        * builtins/GlobalObject.js:
+        * builtins/Operations.Promise.js:
+        * Scripts/tests/builtins/expected/JavaScriptCore-InternalClashingNames-Combined.js-error: Added.
+        * Scripts/tests/builtins/expected/JavaScriptCore-InternalClashingNames-Combined.js-result: Added.
+
+2015-11-09  Saam barati  <sbarati@apple.com>
+
+        DFG::PutStackSinkingPhase should not treat the stack variables written by LoadVarargs/ForwardVarargs as being live
+        https://bugs.webkit.org/show_bug.cgi?id=145295
+
+        Reviewed by Filip Pizlo.
+
+        This patch fixes PutStackSinkingPhase to no longer escape the stack
+        locations that LoadVarargs and ForwardVarargs write to. We used
+        to consider sinking PutStacks right before a LoadVarargs/ForwardVarargs
+        because we considered them uses of such stack locations. They aren't
+        uses of those stack locations, they unconditionally write to those
+        stack locations. Sinking PutStacks to these nodes was not needed before,
+        but seemed mostly innocent. But I ran into a problem with this while implementing 
+        FTL try/catch where we would end up having to generate a value for a sunken PutStack 
+        right before a LoadVarargs. This would cause us to issue a GetStack that loaded garbage that 
+        was then forwarded into a Phi that was used as the source as the PutStack. This caused the
+        abstract interpreter to confuse itself on type information for the garbage GetStack
+        that was fed into the Phi, which would cause the abstract interpreter to then claim 
+        that the basic block with the PutStack in it would never be reached. This isn't true, the 
+        block would indeed be reached. The solution here is to be more precise about the 
+        liveness of locals w.r.t LoadVarargs and ForwardVarargs.
+
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::PreciseLocalClobberizeAdaptor):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::write):
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        * dfg/DFGSSACalculator.h:
+
+2015-11-09  Filip Pizlo  <fpizlo@apple.com>
+
+        B3->Air lowering should support CCall
+        https://bugs.webkit.org/show_bug.cgi?id=151043
+
+        Reviewed by Geoffrey Garen.
+
+        Adds support for lowering CCall to Air, and adds a test that makes calls. I cannot test doubles
+        until https://bugs.webkit.org/show_bug.cgi?id=151002 lands, but this does test integer
+        arguments pretty thoroughly including a test for lots of arguments. That test ensures that the
+        arguments go to registers and the stack in the right order and such.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::createCompare):
+        (JSC::B3::Air::LowerToAir::marshallCCallArgument):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3Opcode.h:
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::forEachArg):
+        (JSC::B3::Air::CCallSpecial::isValid):
+        (JSC::B3::Air::CCallSpecial::admitsStack):
+        (JSC::B3::Air::CCallSpecial::generate):
+        * b3/air/AirCCallSpecial.h:
+        * b3/testb3.cpp:
+        (JSC::B3::testCompare):
+        (JSC::B3::simpleFunction):
+        (JSC::B3::testCallSimple):
+        (JSC::B3::functionWithHellaArguments):
+        (JSC::B3::testCallFunctionWithHellaArguments):
+        (JSC::B3::run):
+        * jit/FPRInfo.h:
+
+2015-11-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: $0 stops working after navigating to a different domain
+        https://bugs.webkit.org/show_bug.cgi?id=147962
+
+        Reviewed by Brian Burg.
+
+        Extract the per-GlobalObject cache of JSValue wrappers for
+        InjectedScriptHost objects to be reused by WebCore for its
+        CommandLineAPIHost objects injected into multiple contexts.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Add new files.
+
+        * inspector/PerGlobalObjectWrapperWorld.h:
+        * inspector/PerGlobalObjectWrapperWorld.cpp:
+        (Inspector::PerGlobalObjectWrapperWorld::getWrapper):
+        (Inspector::PerGlobalObjectWrapperWorld::addWrapper):
+        (Inspector::PerGlobalObjectWrapperWorld::clearAllWrappers):
+        Hold a bunch of per-global-object wrappers for an object
+        that will outlive the global object. This inspector does this
+        for host objects that it exposes into scripts it injects into
+        each execution context created by the page.
+
+        * inspector/InjectedScriptHost.cpp:
+        (Inspector::InjectedScriptHost::wrapper):
+        (Inspector::InjectedScriptHost::clearAllWrappers):
+        (Inspector::InjectedScriptHost::jsWrapper): Deleted.
+        (Inspector::clearWrapperFromValue): Deleted.
+        (Inspector::InjectedScriptHost::clearWrapper): Deleted.
+        Extract and simplify the Per-GlobalObject wrapping into a class.
+        Simplify object construction as well.
+
+        * inspector/InjectedScriptHost.h:
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::createInjectedScript):
+        (Inspector::InjectedScriptManager::discardInjectedScripts):
+        Make discarding virtual so subclasses may also discard injected scripts.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::JSInjectedScriptHost):
+        (Inspector::JSInjectedScriptHost::releaseImpl): Deleted.
+        (Inspector::JSInjectedScriptHost::~JSInjectedScriptHost): Deleted.
+        (Inspector::toJS): Deleted.
+        (Inspector::toJSInjectedScriptHost): Deleted.
+        * inspector/JSInjectedScriptHost.h:
+        (Inspector::JSInjectedScriptHost::create):
+        (Inspector::JSInjectedScriptHost::impl):
+        Update this code originally copied from older generated bindings to
+        be more like new generated bindings and remove some now unused code.
+
+2015-11-08  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile a program with a double constant
+        https://bugs.webkit.org/show_bug.cgi?id=151002
+
+        Reviewed by Benjamin Poulain.
+
+        This implements a bunch of annoying stuff that is necessary to support constants that need a
+        data section, such as double constants on X86_64:
+
+        - B3::Procedure can now tell you what to keep alive in addition to the MacroAssemblerCodeRef.
+          We call this the B3::OpaqueByproducts. It's the client's responsibility to keep this alive
+          after calling B3::generate().
+
+        - Added a new helper for compiling B3 code, called B3::Compilation. Constructing a
+          Compilation runs the compiler. Then you can pass around a Compilation the way you would
+          have passed around a MacroAssemblerCodeRef.
+
+        - Added a constant motion phase, called moveConstants(). This does very simple constant
+          hoisting/sinking: it makes sure that each constant is only materialized in one place in
+          each basic block. It uses a DataSection, which is a kind of OpaqueByproduct, to store
+          double constants.
+
+        - The way I wanted to do constant motion is to basically track what constants are of interest
+          and then recreate them as needed, so the original Values become irrelevant in the process.
+          To do that, I needed an abstraction that is almost identical to the DFG PureValue
+          abstraction that we use for CSE. So, I created such a thing, and called it ValueKey. It
+          can be used to compare and hash pure Values, and to recreate them as needed.
+
+        - Fixed the lowering's handling of constants so that we don't perturb the placement of the
+          constant materializations.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::branchConvertDoubleToInt32):
+        (JSC::MacroAssemblerX86Common::moveZeroToDouble):
+        (JSC::MacroAssemblerX86Common::branchDoubleNonZero):
+        * b3/B3Common.h:
+        (JSC::B3::isIdentical):
+        (JSC::B3::isRepresentableAsImpl):
+        * b3/B3Compilation.cpp: Added.
+        (JSC::B3::Compilation::Compilation):
+        (JSC::B3::Compilation::~Compilation):
+        * b3/B3Compilation.h: Added.
+        (JSC::B3::Compilation::code):
+        * b3/B3ConstDoubleValue.h:
+        (JSC::B3::ConstDoubleValue::accepts): Deleted.
+        * b3/B3DataSection.cpp: Added.
+        (JSC::B3::DataSection::DataSection):
+        (JSC::B3::DataSection::~DataSection):
+        (JSC::B3::DataSection::dump):
+        * b3/B3DataSection.h: Added.
+        (JSC::B3::DataSection::data):
+        (JSC::B3::DataSection::size):
+        * b3/B3Generate.cpp:
+        (JSC::B3::generate):
+        (JSC::B3::generateToAir):
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::imm):
+        (JSC::B3::Air::LowerToAir::immOrTmp):
+        (JSC::B3::Air::LowerToAir::fillStackmap):
+        (JSC::B3::Air::LowerToAir::lower):
+        (JSC::B3::Air::LowerToAir::immForMove): Deleted.
+        (JSC::B3::Air::LowerToAir::immOrTmpForMove): Deleted.
+        * b3/B3MoveConstants.cpp: Added.
+        (JSC::B3::moveConstants):
+        * b3/B3MoveConstants.h: Added.
+        * b3/B3OpaqueByproduct.h: Added.
+        (JSC::B3::OpaqueByproduct::OpaqueByproduct):
+        (JSC::B3::OpaqueByproduct::~OpaqueByproduct):
+        * b3/B3OpaqueByproducts.cpp: Added.
+        (JSC::B3::OpaqueByproducts::OpaqueByproducts):
+        (JSC::B3::OpaqueByproducts::~OpaqueByproducts):
+        (JSC::B3::OpaqueByproducts::add):
+        (JSC::B3::OpaqueByproducts::dump):
+        * b3/B3OpaqueByproducts.h: Added.
+        (JSC::B3::OpaqueByproducts::count):
+        * b3/B3Opcode.h:
+        (JSC::B3::constPtrOpcode):
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::Procedure):
+        (JSC::B3::Procedure::dump):
+        (JSC::B3::Procedure::blocksInPreOrder):
+        (JSC::B3::Procedure::deleteValue):
+        (JSC::B3::Procedure::addDataSection):
+        (JSC::B3::Procedure::addValueIndex):
+        * b3/B3Procedure.h:
+        (JSC::B3::Procedure::lastPhaseName):
+        (JSC::B3::Procedure::byproducts):
+        (JSC::B3::Procedure::takeByproducts):
+        * b3/B3Type.h:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::effects):
+        (JSC::B3::Value::key):
+        (JSC::B3::Value::performSubstitution):
+        * b3/B3Value.h:
+        * b3/B3ValueKey.cpp: Added.
+        (JSC::B3::ValueKey::dump):
+        (JSC::B3::ValueKey::materialize):
+        * b3/B3ValueKey.h: Added.
+        (JSC::B3::ValueKey::ValueKey):
+        (JSC::B3::ValueKey::opcode):
+        (JSC::B3::ValueKey::type):
+        (JSC::B3::ValueKey::childIndex):
+        (JSC::B3::ValueKey::value):
+        (JSC::B3::ValueKey::doubleValue):
+        (JSC::B3::ValueKey::operator==):
+        (JSC::B3::ValueKey::operator!=):
+        (JSC::B3::ValueKey::hash):
+        (JSC::B3::ValueKey::operator bool):
+        (JSC::B3::ValueKey::canMaterialize):
+        (JSC::B3::ValueKey::isHashTableDeletedValue):
+        (JSC::B3::ValueKeyHash::hash):
+        (JSC::B3::ValueKeyHash::equal):
+        * b3/B3ValueKeyInlines.h: Added.
+        (JSC::B3::ValueKey::ValueKey):
+        (JSC::B3::ValueKey::child):
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::Code):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::proc):
+        (JSC::B3::Air::Code::lastPhaseName):
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::compile):
+        (JSC::B3::invoke):
+        (JSC::B3::compileAndRun):
+        (JSC::B3::test42):
+        (JSC::B3::testBranch):
+        (JSC::B3::testBranchPtr):
+        (JSC::B3::testDiamond):
+        (JSC::B3::testBranchNotEqual):
+        (JSC::B3::testBranchNotEqualCommute):
+        (JSC::B3::testBranchNotEqualNotEqual):
+        (JSC::B3::testBranchEqual):
+        (JSC::B3::testBranchEqualEqual):
+        (JSC::B3::testBranchEqualCommute):
+        (JSC::B3::testBranchEqualEqual1):
+        (JSC::B3::testBranchFold):
+        (JSC::B3::testSimpleCheck):
+        (JSC::B3::testCompare):
+        (JSC::B3::testReturnDouble):
+        (JSC::B3::run):
+
+2015-11-09  Michael Saboff  <msaboff@apple.com>
+
+        Need a function that will provide Nth argument register
+        https://bugs.webkit.org/show_bug.cgi?id=151041
+
+        Reviewed by Filip Pizlo.
+
+        For 64 bit platforms, return the Nth architected argument register, otherwise InvalidGPRReg.
+
+        * jit/GPRInfo.h:
+        (JSC::argumentRegisterFor): Added to return the Nth architected argument register if defined
+        for a platform or InvalidGPRReg if not.
+
+2015-11-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [FTL] Fix the build with LLVM 3.7
+        https://bugs.webkit.org/show_bug.cgi?id=150595
+
+        Reviewed by Darin Adler.
+
+        * llvm/LLVMAPIFunctions.h: Removed the unused BuildLandingPad function.
+
+2015-11-09  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Shield implementation from mangling then and catch promise methods
+        https://bugs.webkit.org/show_bug.cgi?id=150934
+
+        Reviewed by Youenn Fablet.
+
+        Since the prototype is not deletable and readonly we only have to care about ensuring that it has the right
+        @then and @catch internal methods.
+
+        * runtime/JSPromisePrototype.h:
+        * runtime/JSPromisePrototype.cpp:
+        (JSC::JSPromisePrototype::addOwnInternalSlots): Added to create the proper @then and @catch internal slots.
+        (JSC::JSPromisePrototype::create): Call addOwnInternalSlots.
+
+2015-11-09  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        JS Built-ins functions should be able to assert
+        https://bugs.webkit.org/show_bug.cgi?id=150333
+
+        Reviewed by Yusuke Suzuki.
+
+        Introduced @assert to enable asserting in JS built-ins.
+        Adding a new bytecode 'assert' to implement it.
+        In debug builds, @assert generates 'assert' bytecodes.
+        In release builds, no byte code is produced for @assert.
+
+        In case assert is false, the JS built-in and the line number are dumped.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitAssert):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp: Generating op_assert bytecode for @assert for Debug builds.
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_assert):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_assert):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_create_assert):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/CommonIdentifiers.h: Adding @assert identifier as intrinsic.
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+
+2015-11-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Minimize ES6_CLASS_SYNTAX ifdefs
+        https://bugs.webkit.org/show_bug.cgi?id=151006
+
+        Reviewed by Darin Adler.
+
+        This patch minimizes ENABLE_ES6_CLASS_SYNTAX ifdefs.
+        It keeps several ENABLE_ES6_CLASS_SYNTAX ifdefs in Parser.cpp.
+
+        - super meta property
+        - class declaration parsing
+        - class expression parsing
+        - class with import declaration
+
+        This change makes difference minimal between the enabled and disabled configurations;
+        reducing accidental build breaks of the disabled configuration.
+
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::constructorKind): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        * parser/ASTBuilder.h:
+        * parser/NodeConstructors.h:
+        * parser/Nodes.h:
+        * parser/Parser.cpp:
+        * parser/Parser.h:
+        (JSC::Scope::hasDirectSuper): Deleted.
+        (JSC::Scope::needsSuperBinding): Deleted.
+        * parser/ParserFunctionInfo.h:
+        * parser/ParserTokens.h:
+        * parser/SyntaxChecker.h:
+
+2015-11-08  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Use StringView::upconvertedCharacters() to make a 16-bit copy in String.prototype.normalize
+        https://bugs.webkit.org/show_bug.cgi?id=151005
+
+        Reviewed by Michael Saboff.
+
+        The ICU's unorm_normalize function used by String.prototype.normalize
+        requires a 16-bit string. This patch uses StringView::upconvertedCharacters()
+        to make a 16-bit copy of a string.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncNormalize):
+
+2015-11-08  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        generate-js-builtins.js should support @internal annotation
+        https://bugs.webkit.org/show_bug.cgi?id=150929
+
+        Reviewed by Darin Adler.
+
+        * Scripts/builtins/builtins_generate_separate_header.py:
+        (BuiltinsSeparateHeaderGenerator.generate_output): Generate internal boilerplate code only if @internal annotation is available.
+        * Scripts/builtins/builtins_templates.py: Split boilerplate in two templates (one that is used for all built-ins and one dedicated to internals).
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result: Removed internal boilerplate.
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result: Ditto.
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result: Ditto.
+
+2015-11-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Minimize ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX ifdefs
+        https://bugs.webkit.org/show_bug.cgi?id=150998
+
+        Reviewed by Geoffrey Garen.
+
+        This patch minimizes ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX ifdefs.
+        It only keeps 2 ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX in Parser.cpp, one for
+        template literals and one for tagged templates.
+        This change makes difference minimal between the enabled and disabled configurations;
+        reducing accidental build breaks of the disabled configuration.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        * parser/ASTBuilder.h:
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::Lexer): Deleted.
+        (JSC::Lexer<T>::lex): Deleted.
+        * parser/Lexer.h:
+        * parser/NodeConstructors.h:
+        * parser/Nodes.h:
+        * parser/Parser.cpp:
+        * parser/Parser.h:
+        * parser/SyntaxChecker.h:
+
+2015-11-06  Filip Pizlo  <fpizlo@apple.com>
+
+        B3->Air lowering should do pattern matching the old fashioned way
+        https://bugs.webkit.org/show_bug.cgi?id=150994
+
+        Reviewed by Geoffrey Garen.
+
+        When I first wrote the B3->Air lowering prototype, I was convinced that the patterns would get
+        so gnarly that we'd want a pattern language to write them in. So I made one, and that's what
+        the lowering has used. But as we've worked with the IR, we've found that it's very easy to
+        pattern match in C++ using the B3 API, and we've also found that most of the patterns we wrote
+        using the pattern language were mostly trivial. So this change removes the pattern match code
+        generator and the patterns files, and redoes the lowering using good old fashioned switch
+        statements. This actually reduces the total code of the lowering.
+
+        I also took the opportunity to refactoring UnOp and BinOp lowering. We had a lot of repetetive
+        code for 32-vs-64-bit opcode selection, so I factored that out into a helper. This also saves a
+        lot of code.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * b3/B3AddressMatcher.patterns: Removed.
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::LowerToAir):
+        (JSC::B3::Air::LowerToAir::run):
+        (JSC::B3::Air::LowerToAir::highBitsAreZero):
+        (JSC::B3::Air::LowerToAir::tmp):
+        (JSC::B3::Air::LowerToAir::canBeInternal):
+        (JSC::B3::Air::LowerToAir::commitInternal):
+        (JSC::B3::Air::LowerToAir::crossesInterference):
+        (JSC::B3::Air::LowerToAir::effectiveAddr):
+        (JSC::B3::Air::LowerToAir::addr):
+        (JSC::B3::Air::LowerToAir::loadPromise):
+        (JSC::B3::Air::LowerToAir::imm):
+        (JSC::B3::Air::LowerToAir::immForMove):
+        (JSC::B3::Air::LowerToAir::immOrTmpForMove):
+        (JSC::B3::Air::LowerToAir::tryOpcodeForType):
+        (JSC::B3::Air::LowerToAir::opcodeForType):
+        (JSC::B3::Air::LowerToAir::appendUnOp):
+        (JSC::B3::Air::LowerToAir::appendBinOp):
+        (JSC::B3::Air::LowerToAir::appendShift):
+        (JSC::B3::Air::LowerToAir::tryAppendStoreUnOp):
+        (JSC::B3::Air::LowerToAir::tryAppendStoreBinOp):
+        (JSC::B3::Air::LowerToAir::append):
+        (JSC::B3::Air::LowerToAir::ensureSpecial):
+        (JSC::B3::Air::LowerToAir::fillStackmap):
+        (JSC::B3::Air::LowerToAir::createGenericCompare):
+        (JSC::B3::Air::LowerToAir::createBranch):
+        (JSC::B3::Air::LowerToAir::createCompare):
+        (JSC::B3::Air::LowerToAir::lower):
+        (JSC::B3::Air::LowerToAir::immOrTmp): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::AddressSelector): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::acceptRoot): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::acceptRootLate): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::acceptInternals): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::acceptInternalsLate): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::acceptOperands): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::acceptOperandsLate): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::tryAddShift1): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::tryAddShift2): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::tryAdd): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::tryFramePointer): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::tryStackSlot): Deleted.
+        (JSC::B3::Air::LowerToAir::AddressSelector::tryDirect): Deleted.
+        (JSC::B3::Air::LowerToAir::acceptRoot): Deleted.
+        (JSC::B3::Air::LowerToAir::acceptRootLate): Deleted.
+        (JSC::B3::Air::LowerToAir::acceptInternals): Deleted.
+        (JSC::B3::Air::LowerToAir::acceptInternalsLate): Deleted.
+        (JSC::B3::Air::LowerToAir::acceptOperands): Deleted.
+        (JSC::B3::Air::LowerToAir::acceptOperandsLate): Deleted.
+        (JSC::B3::Air::LowerToAir::tryLoad): Deleted.
+        (JSC::B3::Air::LowerToAir::tryLoad8S): Deleted.
+        (JSC::B3::Air::LowerToAir::tryLoad8Z): Deleted.
+        (JSC::B3::Air::LowerToAir::tryLoad16S): Deleted.
+        (JSC::B3::Air::LowerToAir::tryLoad16Z): Deleted.
+        (JSC::B3::Air::LowerToAir::tryAdd): Deleted.
+        (JSC::B3::Air::LowerToAir::trySub): Deleted.
+        (JSC::B3::Air::LowerToAir::tryAnd): Deleted.
+        (JSC::B3::Air::LowerToAir::tryOr): Deleted.
+        (JSC::B3::Air::LowerToAir::tryXor): Deleted.
+        (JSC::B3::Air::LowerToAir::tryShl): Deleted.
+        (JSC::B3::Air::LowerToAir::trySShr): Deleted.
+        (JSC::B3::Air::LowerToAir::tryZShr): Deleted.
+        (JSC::B3::Air::LowerToAir::tryStoreAddLoad): Deleted.
+        (JSC::B3::Air::LowerToAir::tryStoreSubLoad): Deleted.
+        (JSC::B3::Air::LowerToAir::tryStoreAndLoad): Deleted.
+        (JSC::B3::Air::LowerToAir::tryStore): Deleted.
+        (JSC::B3::Air::LowerToAir::tryTrunc): Deleted.
+        (JSC::B3::Air::LowerToAir::tryZExt32): Deleted.
+        (JSC::B3::Air::LowerToAir::tryArgumentReg): Deleted.
+        (JSC::B3::Air::LowerToAir::tryConst32): Deleted.
+        (JSC::B3::Air::LowerToAir::tryConst64): Deleted.
+        (JSC::B3::Air::LowerToAir::tryFramePointer): Deleted.
+        (JSC::B3::Air::LowerToAir::tryStackSlot): Deleted.
+        (JSC::B3::Air::LowerToAir::tryEqual): Deleted.
+        (JSC::B3::Air::LowerToAir::tryNotEqual): Deleted.
+        (JSC::B3::Air::LowerToAir::tryLessThan): Deleted.
+        (JSC::B3::Air::LowerToAir::tryGreaterThan): Deleted.
+        (JSC::B3::Air::LowerToAir::tryLessEqual): Deleted.
+        (JSC::B3::Air::LowerToAir::tryGreaterEqual): Deleted.
+        (JSC::B3::Air::LowerToAir::tryAbove): Deleted.
+        (JSC::B3::Air::LowerToAir::tryBelow): Deleted.
+        (JSC::B3::Air::LowerToAir::tryAboveEqual): Deleted.
+        (JSC::B3::Air::LowerToAir::tryBelowEqual): Deleted.
+        (JSC::B3::Air::LowerToAir::tryPatchpoint): Deleted.
+        (JSC::B3::Air::LowerToAir::tryCheck): Deleted.
+        (JSC::B3::Air::LowerToAir::tryUpsilon): Deleted.
+        (JSC::B3::Air::LowerToAir::tryPhi): Deleted.
+        (JSC::B3::Air::LowerToAir::tryBranch): Deleted.
+        (JSC::B3::Air::LowerToAir::tryJump): Deleted.
+        (JSC::B3::Air::LowerToAir::tryIdentity): Deleted.
+        (JSC::B3::Air::LowerToAir::tryReturn): Deleted.
+        * b3/B3LoweringMatcher.patterns: Removed.
+        * b3/generate_pattern_matcher.rb: Removed.
+
+2015-11-07  Michael Saboff  <msaboff@apple.com>
+
+        Add conditional moves to the MacroAssembler
+        https://bugs.webkit.org/show_bug.cgi?id=150761
+
+        Reviewed by Filip Pizlo.
+
+        Added moveConditionally, moveConditionallyTest & moveConditionallyDouble to X86 macro assemblers.
+        Bench tested correct opcodes and operations on X86-64 and X86 for a select number of comparisons.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::moveConditionally):
+        (JSC::MacroAssemblerX86Common::moveConditionallyTest):
+        (JSC::MacroAssemblerX86Common::moveConditionallyDouble):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::cmovcc):
+        (JSC::X86Assembler::cmovl_rr):
+        (JSC::X86Assembler::cmovl_mr):
+        (JSC::X86Assembler::cmovel_rr):
+        (JSC::X86Assembler::cmovnel_rr):
+        (JSC::X86Assembler::cmovpl_rr):
+        (JSC::X86Assembler::cmovnpl_rr):
+        (JSC::X86Assembler::cmovq_rr):
+        (JSC::X86Assembler::cmovq_mr):
+        (JSC::X86Assembler::cmoveq_rr):
+        (JSC::X86Assembler::cmovneq_rr):
+        (JSC::X86Assembler::cmovpq_rr):
+        (JSC::X86Assembler::cmovnpq_rr):
+        (JSC::X86Assembler::X86InstructionFormatter::twoByteOp64):
+
+2015-11-06  Saam barati  <sbarati@apple.com>
+
+        Control Flow Profiler should keep execution counts of basic blocks
+        https://bugs.webkit.org/show_bug.cgi?id=146099
+
+        Reviewed by Mark Lam.
+
+        This patch changes the control flow profiler to now
+        keep track of execution counts for each basic block
+        instead of a boolean indicating if the basic block has 
+        executed at all.  This has the consequence of us having to 
+        always compile all op_profile_control_flows in the baseline and DFG.
+
+        This patch adds a new "executionCount" field to the inspector protocol
+        corresponding to the execution of a basic block. This patch, for now,
+        still maintains the previous field of "hasExecuted" even though this is
+        redundant with "executionCount".
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getBasicBlocks):
+        * inspector/protocol/Runtime.json:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_profile_control_flow):
+        (JSC::JIT::emit_op_create_direct_arguments):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionHasBasicBlockExecuted):
+        (functionBasicBlockExecutionCount):
+        (functionEnableExceptionFuzz):
+        (functionDrainMicrotasks):
+        (functionIs32BitPlatform):
+        (functionLoadWebAssembly):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/BasicBlockLocation.cpp:
+        (JSC::BasicBlockLocation::BasicBlockLocation):
+        (JSC::BasicBlockLocation::dumpData):
+        (JSC::BasicBlockLocation::emitExecuteCode):
+        * runtime/BasicBlockLocation.h:
+        (JSC::BasicBlockLocation::endOffset):
+        (JSC::BasicBlockLocation::setStartOffset):
+        (JSC::BasicBlockLocation::setEndOffset):
+        (JSC::BasicBlockLocation::hasExecuted):
+        (JSC::BasicBlockLocation::executionCount):
+        * runtime/ControlFlowProfiler.cpp:
+        (JSC::ControlFlowProfiler::getBasicBlocksForSourceID):
+        (JSC::findBasicBlockAtTextOffset):
+        (JSC::ControlFlowProfiler::hasBasicBlockAtTextOffsetBeenExecuted):
+        (JSC::ControlFlowProfiler::basicBlockExecutionCountAtTextOffset):
+        * runtime/ControlFlowProfiler.h:
+        (JSC::ControlFlowProfiler::dummyBasicBlock):
+        * tests/controlFlowProfiler/execution-count.js: Added.
+        (noop):
+        (foo):
+        (a):
+        (b):
+        (baz):
+        (jaz):
+        (testWhile):
+        (is32BitPlatform.testMax):
+        (is32BitPlatform):
+
+2015-11-06  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 and Air should simplify CFGs
+        https://bugs.webkit.org/show_bug.cgi?id=150960
+
+        Reviewed by Geoffrey Garen.
+
+        This adds CFG simplification to both B3 and Air.
+
+        In B3, the simplification is done inside the B3::reduceStrength() fixpoint because we expect
+        that it will help to reveal more optimization opportunities. This is going to be particularly
+        true when we add Phi elimination.
+
+        In Air, the simplification is its own phase. We expect it to produce most of its benefits once
+        we have coalescing. Then, CFG simplification in Air will unbreak critial edges.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/AbortReason.h:
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::oops): Reveal this as a method so that we can have an Oops instruction.
+        * b3/B3BasicBlock.h:
+        (JSC::B3::BasicBlock::predecessor):
+        (JSC::B3::BasicBlock::predecessors):
+        (JSC::B3::BasicBlock::containsPredecessor):
+        * b3/B3BasicBlockUtils.h: Bunch of fixes for blocks being killed.
+        (JSC::B3::replacePredecessor):
+        (JSC::B3::resetReachability):
+        * b3/B3ReduceStrength.cpp: Implement B3 CFG simplification.
+        * b3/B3ReduceStrength.h:
+        * b3/air/AirBasicBlock.h:
+        (JSC::B3::Air::BasicBlock::resize):
+        (JSC::B3::Air::BasicBlock::insts):
+        (JSC::B3::Air::BasicBlock::appendInst):
+        (JSC::B3::Air::BasicBlock::containsPredecessor):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * b3/air/AirInst.cpp:
+        (JSC::B3::Air::Inst::hasArgEffects):
+        (JSC::B3::Air::Inst::dump):
+        * b3/air/AirInst.h:
+        * b3/air/AirLiveness.h:
+        (JSC::B3::Air::Liveness::Liveness): Fix for when blocks were killed.
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/AirSimplifyCFG.cpp: Added.
+        (JSC::B3::Air::simplifyCFG):
+        * b3/air/AirSimplifyCFG.h: Added.
+
+2015-11-05  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        Add runtime and compile time flags for enabling Web Animations API and model.
+        https://bugs.webkit.org/show_bug.cgi?id=150914
+
+        Reviewed by Benjamin Poulain.
+
+        Add ENABLE_WEB_ANIMATIONS compile time flag, runtime flag webAnimationsEnabled and Expose WK2 preference for runtime flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-11-05  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Layout Test js/intl-collator.html is crashing on win 7 debug
+        https://bugs.webkit.org/show_bug.cgi?id=150943
+
+        Reviewed by Geoffrey Garen.
+
+        The string length returned by ICU's uenum_next seems to be unreliable
+        on an old version of ICU. Since uenum_next returns a null-terminated
+        string anyway, this patch removes the use of the length.
+
+        * runtime/IntlCollatorConstructor.cpp:
+        (JSC::sortLocaleData):
+
+2015-11-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, add FIXMEs referencing https://bugs.webkit.org/show_bug.cgi?id=150958 and
+        https://bugs.webkit.org/show_bug.cgi?id=150954.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::createGenericCompare):
+        * b3/B3ReduceStrength.cpp:
+
+2015-11-05  Aleksandr Skachkov  <gskachkov@gmail.com>
+
+        Using emitResolveScope & emitGetFromScope with 'this' that is TDZ lead to segfault in DFG
+        https://bugs.webkit.org/show_bug.cgi?id=150902
+
+        Reviewed by Geoffrey Garen.
+
+        Tiny fix provided by Saam Barati. This fix prevent segfault error in arrow function, 
+        when it uses in constructor of derived class, before 'super' is called.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+2015-11-05  Filip Pizlo  <fpizlo@apple.com>
+
+        B3->Air lowering should have a story for compare-branch fusion
+        https://bugs.webkit.org/show_bug.cgi?id=150721
+
+        Reviewed by Geoffrey Garen.
+
+        This adds comprehensive support for compares and compare/branch fusion to B3. The fusion is
+        super aggressive. It can even handle things like Branch(LessThan(Load8S(...), constant)). It
+        can even handle flipping the operands to the branch, and flipping the comparison condition,
+        if it enables a more efficient instruction. This happens when there is asymmetry in the
+        admitted argument kinds. For example, Branch32 will only accept an Imm as a second operand.
+        If we do a LessThan(constant, load) then we will generate it as:
+
+            Branch32 GreaterThan, (addr), $imm
+
+        This also supports compiling and fusing tests, and to some extent, compiling and fusing
+        double compares. Though we cannot test doubles yet because we don't have enough support for
+        that.
+
+        This also supports fusing compare/branches in Checks. We basically get that for free.
+
+        Because I wanted to fuse comparisons with sub-32-bit loads, I added support for those loads
+        directly, too.
+
+        The tests are now getting super big, so I made testb3 run tests in parallel.
+
+        Finally, this slightly changes the semantics of Branch and Check. Previously they would have
+        accepted a double to branch on. I found that this is awkward. It's especially awkward since
+        we want to be explicit about when a double zero constant is materialized. So, from now on, we
+        require that to branch on a double being non-zero, you have to do Branch(NotEqual(value, 0)).
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::invert):
+        (JSC::MacroAssembler::isInvertible):
+        (JSC::MacroAssembler::flip):
+        (JSC::MacroAssembler::isSigned):
+        (JSC::MacroAssembler::isUnsigned):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::test32):
+        (JSC::MacroAssemblerX86Common::invert):
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::Key::Key):
+        (JSC::B3::CheckSpecial::Key::dump):
+        (JSC::B3::CheckSpecial::CheckSpecial):
+        (JSC::B3::CheckSpecial::~CheckSpecial):
+        * b3/B3CheckSpecial.h:
+        (JSC::B3::CheckSpecial::Key::Key):
+        (JSC::B3::CheckSpecial::Key::operator==):
+        (JSC::B3::CheckSpecial::Key::operator!=):
+        (JSC::B3::CheckSpecial::Key::operator bool):
+        (JSC::B3::CheckSpecial::Key::opcode):
+        (JSC::B3::CheckSpecial::Key::numArgs):
+        (JSC::B3::CheckSpecial::Key::isHashTableDeletedValue):
+        (JSC::B3::CheckSpecial::Key::hash):
+        (JSC::B3::CheckSpecialKeyHash::hash):
+        (JSC::B3::CheckSpecialKeyHash::equal):
+        * b3/B3Const32Value.cpp:
+        (JSC::B3::Const32Value::zShrConstant):
+        (JSC::B3::Const32Value::equalConstant):
+        (JSC::B3::Const32Value::notEqualConstant):
+        (JSC::B3::Const32Value::lessThanConstant):
+        (JSC::B3::Const32Value::greaterThanConstant):
+        (JSC::B3::Const32Value::lessEqualConstant):
+        (JSC::B3::Const32Value::greaterEqualConstant):
+        (JSC::B3::Const32Value::aboveConstant):
+        (JSC::B3::Const32Value::belowConstant):
+        (JSC::B3::Const32Value::aboveEqualConstant):
+        (JSC::B3::Const32Value::belowEqualConstant):
+        (JSC::B3::Const32Value::dumpMeta):
+        * b3/B3Const32Value.h:
+        * b3/B3Const64Value.cpp:
+        (JSC::B3::Const64Value::zShrConstant):
+        (JSC::B3::Const64Value::equalConstant):
+        (JSC::B3::Const64Value::notEqualConstant):
+        (JSC::B3::Const64Value::lessThanConstant):
+        (JSC::B3::Const64Value::greaterThanConstant):
+        (JSC::B3::Const64Value::lessEqualConstant):
+        (JSC::B3::Const64Value::greaterEqualConstant):
+        (JSC::B3::Const64Value::aboveConstant):
+        (JSC::B3::Const64Value::belowConstant):
+        (JSC::B3::Const64Value::aboveEqualConstant):
+        (JSC::B3::Const64Value::belowEqualConstant):
+        (JSC::B3::Const64Value::dumpMeta):
+        * b3/B3Const64Value.h:
+        * b3/B3ConstDoubleValue.cpp:
+        (JSC::B3::ConstDoubleValue::subConstant):
+        (JSC::B3::ConstDoubleValue::equalConstant):
+        (JSC::B3::ConstDoubleValue::notEqualConstant):
+        (JSC::B3::ConstDoubleValue::lessThanConstant):
+        (JSC::B3::ConstDoubleValue::greaterThanConstant):
+        (JSC::B3::ConstDoubleValue::lessEqualConstant):
+        (JSC::B3::ConstDoubleValue::greaterEqualConstant):
+        (JSC::B3::ConstDoubleValue::dumpMeta):
+        * b3/B3ConstDoubleValue.h:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::LowerToAir):
+        (JSC::B3::Air::LowerToAir::run):
+        (JSC::B3::Air::LowerToAir::shouldCopyPropagate):
+        (JSC::B3::Air::LowerToAir::ArgPromise::ArgPromise):
+        (JSC::B3::Air::LowerToAir::ArgPromise::tmp):
+        (JSC::B3::Air::LowerToAir::ArgPromise::operator bool):
+        (JSC::B3::Air::LowerToAir::ArgPromise::kind):
+        (JSC::B3::Air::LowerToAir::ArgPromise::peek):
+        (JSC::B3::Air::LowerToAir::ArgPromise::consume):
+        (JSC::B3::Air::LowerToAir::tmp):
+        (JSC::B3::Air::LowerToAir::tmpPromise):
+        (JSC::B3::Air::LowerToAir::canBeInternal):
+        (JSC::B3::Air::LowerToAir::addr):
+        (JSC::B3::Air::LowerToAir::loadPromise):
+        (JSC::B3::Air::LowerToAir::imm):
+        (JSC::B3::Air::LowerToAir::appendBinOp):
+        (JSC::B3::Air::LowerToAir::tryAppendStoreUnOp):
+        (JSC::B3::Air::LowerToAir::tryAppendStoreBinOp):
+        (JSC::B3::Air::LowerToAir::createGenericCompare):
+        (JSC::B3::Air::LowerToAir::createBranch):
+        (JSC::B3::Air::LowerToAir::createCompare):
+        (JSC::B3::Air::LowerToAir::tryLoad):
+        (JSC::B3::Air::LowerToAir::tryLoad8S):
+        (JSC::B3::Air::LowerToAir::tryLoad8Z):
+        (JSC::B3::Air::LowerToAir::tryLoad16S):
+        (JSC::B3::Air::LowerToAir::tryLoad16Z):
+        (JSC::B3::Air::LowerToAir::tryAdd):
+        (JSC::B3::Air::LowerToAir::tryStackSlot):
+        (JSC::B3::Air::LowerToAir::tryEqual):
+        (JSC::B3::Air::LowerToAir::tryNotEqual):
+        (JSC::B3::Air::LowerToAir::tryLessThan):
+        (JSC::B3::Air::LowerToAir::tryGreaterThan):
+        (JSC::B3::Air::LowerToAir::tryLessEqual):
+        (JSC::B3::Air::LowerToAir::tryGreaterEqual):
+        (JSC::B3::Air::LowerToAir::tryAbove):
+        (JSC::B3::Air::LowerToAir::tryBelow):
+        (JSC::B3::Air::LowerToAir::tryAboveEqual):
+        (JSC::B3::Air::LowerToAir::tryBelowEqual):
+        (JSC::B3::Air::LowerToAir::tryPatchpoint):
+        (JSC::B3::Air::LowerToAir::tryCheck):
+        (JSC::B3::Air::LowerToAir::tryBranch):
+        (JSC::B3::Air::LowerToAir::loadAddr): Deleted.
+        * b3/B3LoweringMatcher.patterns:
+        * b3/B3Opcode.cpp:
+        (JSC::B3::invertedCompare):
+        * b3/B3Opcode.h:
+        (JSC::B3::isCheckMath):
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::addBlock):
+        (JSC::B3::Procedure::addIntConstant):
+        (JSC::B3::Procedure::addBoolConstant):
+        (JSC::B3::Procedure::resetValueOwners):
+        * b3/B3Procedure.h:
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3Validate.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::zShrConstant):
+        (JSC::B3::Value::equalConstant):
+        (JSC::B3::Value::notEqualConstant):
+        (JSC::B3::Value::lessThanConstant):
+        (JSC::B3::Value::greaterThanConstant):
+        (JSC::B3::Value::lessEqualConstant):
+        (JSC::B3::Value::greaterEqualConstant):
+        (JSC::B3::Value::aboveConstant):
+        (JSC::B3::Value::belowConstant):
+        (JSC::B3::Value::aboveEqualConstant):
+        (JSC::B3::Value::belowEqualConstant):
+        (JSC::B3::Value::invertedCompare):
+        * b3/B3Value.h:
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::isRepresentableAs):
+        (JSC::B3::Air::Arg::dump):
+        (WTF::printInternal):
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::isUse):
+        (JSC::B3::Air::Arg::typeForB3Type):
+        (JSC::B3::Air::Arg::widthForB3Type):
+        (JSC::B3::Air::Arg::Arg):
+        (JSC::B3::Air::Arg::value):
+        (JSC::B3::Air::Arg::isRepresentableAs):
+        (JSC::B3::Air::Arg::asNumber):
+        (JSC::B3::Air::Arg::pointerValue):
+        (JSC::B3::Air::Arg::asDoubleCondition):
+        (JSC::B3::Air::Arg::inverted):
+        (JSC::B3::Air::Arg::flipped):
+        (JSC::B3::Air::Arg::isSignedCond):
+        (JSC::B3::Air::Arg::isUnsignedCond):
+        * b3/air/AirInst.h:
+        (JSC::B3::Air::Inst::Inst):
+        (JSC::B3::Air::Inst::operator bool):
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/opcode_generator.rb:
+        * b3/testb3.cpp:
+        (hiddenTruthBecauseNoReturnIsStupid):
+        (JSC::B3::testStoreLoadStackSlot):
+        (JSC::B3::modelLoad):
+        (JSC::B3::testLoad):
+        (JSC::B3::testBranch):
+        (JSC::B3::testComplex):
+        (JSC::B3::testSimplePatchpoint):
+        (JSC::B3::testSimpleCheck):
+        (JSC::B3::genericTestCompare):
+        (JSC::B3::modelCompare):
+        (JSC::B3::testCompareLoad):
+        (JSC::B3::testCompareImpl):
+        (JSC::B3::testCompare):
+        (JSC::B3::run):
+        (main):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithMod):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitIntTypedArrayGetByVal):
+        (JSC::JIT::emitIntTypedArrayPutByVal):
+
+2015-11-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Clean up InjectedScript uses
+        https://bugs.webkit.org/show_bug.cgi?id=150921
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::wrapCallFrames):
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::initialize): Deleted.
+        * inspector/InjectedScriptBase.h:
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::didCreateInjectedScript):
+        * inspector/InjectedScriptManager.h:
+        * inspector/InjectedScriptModule.cpp:
+        (Inspector::InjectedScriptModule::ensureInjected):
+        * inspector/InjectedScriptModule.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::currentCallFrames):
+        * inspector/agents/InspectorDebuggerAgent.h:
+
+2015-11-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Put ScriptDebugServer into InspectorEnvironment and cleanup duplicate references
+        https://bugs.webkit.org/show_bug.cgi?id=150869
+
+        Reviewed by Brian Burg.
+
+        ScriptDebugServer (JSC::Debugger) is being used by more and more agents
+        for instrumentation into JavaScriptCore. Currently the ScriptDebugServer
+        is owned by DebuggerAgent subclasses that make their own ScriptDebugServer
+        subclass. As more agents want to use it there was added boilerplate.
+        Instead, put the ScriptDebugServer in the InspectorEnvironment (Controllers).
+        Then each agent can access it during construction through the environment.
+
+        Do the same clean up for RuntimeAgent::globalVM, which is now just a
+        duplication of InspectorEnvironment::vm.
+
+        * inspector/InspectorEnvironment.h:
+        Add scriptDebugServer().
+
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::scriptDebugServer):
+        Own the JSGlobalObjectScriptDebugServer.
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::InspectorDebuggerAgent):
+        (Inspector::InspectorDebuggerAgent::enable):
+        (Inspector::InspectorDebuggerAgent::disable):
+        (Inspector::InspectorDebuggerAgent::setBreakpointsActive):
+        (Inspector::InspectorDebuggerAgent::isPaused):
+        (Inspector::InspectorDebuggerAgent::setSuppressAllPauses):
+        (Inspector::InspectorDebuggerAgent::handleConsoleAssert):
+        (Inspector::InspectorDebuggerAgent::removeBreakpoint):
+        (Inspector::InspectorDebuggerAgent::continueToLocation):
+        (Inspector::InspectorDebuggerAgent::resolveBreakpoint):
+        (Inspector::InspectorDebuggerAgent::schedulePauseOnNextStatement):
+        (Inspector::InspectorDebuggerAgent::cancelPauseOnNextStatement):
+        (Inspector::InspectorDebuggerAgent::resume):
+        (Inspector::InspectorDebuggerAgent::stepOver):
+        (Inspector::InspectorDebuggerAgent::stepInto):
+        (Inspector::InspectorDebuggerAgent::stepOut):
+        (Inspector::InspectorDebuggerAgent::setPauseOnExceptions):
+        (Inspector::InspectorDebuggerAgent::evaluateOnCallFrame):
+        (Inspector::InspectorDebuggerAgent::scriptExecutionBlockedByCSP):
+        (Inspector::InspectorDebuggerAgent::didPause):
+        (Inspector::InspectorDebuggerAgent::breakProgram):
+        (Inspector::InspectorDebuggerAgent::clearDebuggerBreakpointState):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::InspectorRuntimeAgent):
+        (Inspector::setPauseOnExceptionsState):
+        (Inspector::InspectorRuntimeAgent::parse):
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        (Inspector::InspectorRuntimeAgent::setTypeProfilerEnabledState):
+        (Inspector::InspectorRuntimeAgent::getBasicBlocks):
+        Use VM and ScriptDebugServer passed during construction.
+
+        * inspector/agents/JSGlobalObjectDebuggerAgent.h:
+        * inspector/agents/JSGlobalObjectDebuggerAgent.cpp:
+        (Inspector::JSGlobalObjectDebuggerAgent::injectedScriptForEval):
+        (Inspector::JSGlobalObjectDebuggerAgent::JSGlobalObjectDebuggerAgent): Deleted.
+        One special case needed by this subclass as a convenience to access the global object.
+
+        * inspector/agents/JSGlobalObjectRuntimeAgent.h:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.cpp:
+        (Inspector::JSGlobalObjectRuntimeAgent::globalVM): Deleted.
+        This virtual method is no longer needed, the base class has everything now.
+
+2015-11-05  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Shield implementation from user mangling Promise.reject and resolve methods
+        https://bugs.webkit.org/show_bug.cgi?id=150895
+
+        Reviewed by Youenn Fablet.
+
+        Keep Promise.resolve and reject also as internal slots for the Promise constructor given that there is no way to
+        retrieve the former implementation if the user decides to replace it. This allows to safely create vended
+        promises even if the user changes the constructor methods.
+
+        * runtime/JSPromiseConstructor.h:
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::JSPromiseConstructor::addOwnInternalSlots): Added to include @reject and @resolve.
+        (JSC::JSPromiseConstructor::create): Call addOwnInternalSlots.
+
+2015-11-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add B3-to-Air lowering for the shift opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=150919
+
+        Reviewed by Filip Pizlo.
+
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::rshift64):
+        (JSC::MacroAssemblerX86_64::urshift64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::shrq_CLr):
+        * b3/B3Const32Value.cpp:
+        (JSC::B3::Const32Value::shlConstant):
+        (JSC::B3::Const32Value::sShrConstant):
+        (JSC::B3::Const32Value::zShrConstant):
+        * b3/B3Const32Value.h:
+        * b3/B3Const64Value.cpp:
+        (JSC::B3::Const64Value::shlConstant):
+        (JSC::B3::Const64Value::sShrConstant):
+        (JSC::B3::Const64Value::zShrConstant):
+        * b3/B3Const64Value.h:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::appendShift):
+        (JSC::B3::Air::LowerToAir::tryShl):
+        (JSC::B3::Air::LowerToAir::trySShr):
+        (JSC::B3::Air::LowerToAir::tryZShr):
+        * b3/B3LoweringMatcher.patterns:
+        * b3/B3Opcode.h:
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::shlConstant):
+        (JSC::B3::Value::sShrConstant):
+        (JSC::B3::Value::zShrConstant):
+        * b3/B3Value.h:
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::isShiftValid):
+        (JSC::B3::Air::isRshift32Valid):
+        (JSC::B3::Air::isRshift64Valid):
+        (JSC::B3::Air::isUrshift32Valid):
+        (JSC::B3::Air::isUrshift64Valid):
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::testShlArgs):
+        (JSC::B3::testShlImms):
+        (JSC::B3::testShlArgImm):
+        (JSC::B3::testShlArgs32):
+        (JSC::B3::testShlImms32):
+        (JSC::B3::testShlArgImm32):
+        (JSC::B3::testSShrArgs):
+        (JSC::B3::testSShrImms):
+        (JSC::B3::testSShrArgImm):
+        (JSC::B3::testSShrArgs32):
+        (JSC::B3::testSShrImms32):
+        (JSC::B3::testSShrArgImm32):
+        (JSC::B3::testZShrArgs):
+        (JSC::B3::testZShrImms):
+        (JSC::B3::testZShrArgImm):
+        (JSC::B3::testZShrArgs32):
+        (JSC::B3::testZShrImms32):
+        (JSC::B3::testZShrArgImm32):
+        (JSC::B3::run):
+
+2015-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile a Check
+        https://bugs.webkit.org/show_bug.cgi?id=150878
+
+        Reviewed by Saam Barati.
+
+        The Check opcode in B3 is going to be our main OSR exit mechanism. It is a stackmap
+        value, so you can pass it any number of additional arguments, and you will get to find
+        out how those arguments are represented at the point that the value lands in the machine
+        code. Unlike a Patchpoint, a Check branches on a value, with the goal of supporting full
+        compare/branch fusion. The stackmap's generator runs in an out-of-line path to which
+        that branch is linked.
+
+        This change fills in the glue necessary to compile a Check and it includes a simple
+        test of this functionality. That test also happens to check that such simple code will
+        never use callee-saves, which I think is sensible.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::append):
+        (JSC::B3::Air::LowerToAir::ensureSpecial):
+        (JSC::B3::Air::LowerToAir::fillStackmap):
+        (JSC::B3::Air::LowerToAir::tryStackSlot):
+        (JSC::B3::Air::LowerToAir::tryPatchpoint):
+        (JSC::B3::Air::LowerToAir::tryCheck):
+        (JSC::B3::Air::LowerToAir::tryUpsilon):
+        * b3/B3LoweringMatcher.patterns:
+        * b3/testb3.cpp:
+        (JSC::B3::testSimplePatchpoint):
+        (JSC::B3::testSimpleCheck):
+        (JSC::B3::run):
+
+2015-10-30  Keith Miller  <keith_miller@apple.com>
+
+        Fix endless OSR exits when creating a rope that contains an object that ToPrimitive's to a number.
+        https://bugs.webkit.org/show_bug.cgi?id=150583
+
+        Reviewed by Benjamin Poulain.
+
+        Before we assumed that the result of ToPrimitive on any object was a string.
+        This had a couple of negative effects. First, the result ToPrimitive on an
+        object can be overridden to be any primitive type. In fact, as of ES6, ToPrimitive,
+        when part of a addition expression, will type hint a number value. Second, even after
+        repeatedly exiting with a bad type we would continue to think that the result
+        of ToPrimitive would be a string so we continue to convert StrCats into MakeRope.
+
+        The fix is to make Prediction Propagation match the behavior of Fixup and move
+        canOptimizeStringObjectAccess to DFGGraph.
+
+        * bytecode/SpeculatedType.h:
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::attemptToForceStringArrayModeByToStringConversion):
+        (JSC::DFG::FixupPhase::fixupToPrimitive):
+        (JSC::DFG::FixupPhase::fixupToStringOrCallStringConstructor):
+        (JSC::DFG::FixupPhase::attemptToMakeFastStringAdd):
+        (JSC::DFG::FixupPhase::isStringPrototypeMethodSane): Deleted.
+        (JSC::DFG::FixupPhase::canOptimizeStringObjectAccess): Deleted.
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::isStringPrototypeMethodSane):
+        (JSC::DFG::Graph::canOptimizeStringObjectAccess):
+        * dfg/DFGGraph.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::resultOfToPrimitive):
+        (JSC::DFG::resultOfToPrimitive): Deleted.
+
+        * bytecode/SpeculatedType.h:
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::attemptToForceStringArrayModeByToStringConversion):
+        (JSC::DFG::FixupPhase::fixupToPrimitive):
+        (JSC::DFG::FixupPhase::fixupToStringOrCallStringConstructor):
+        (JSC::DFG::FixupPhase::attemptToMakeFastStringAdd):
+        (JSC::DFG::FixupPhase::isStringPrototypeMethodSane): Deleted.
+        (JSC::DFG::FixupPhase::canOptimizeStringObjectAccess): Deleted.
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::isStringPrototypeMethodSane):
+        (JSC::DFG::Graph::canOptimizeStringObjectAccess):
+        * dfg/DFGGraph.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::resultOfToPrimitive):
+        (JSC::DFG::resultOfToPrimitive): Deleted.
+        * tests/stress/string-rope-with-custom-valueof.js: Added.
+        (catNumber):
+        (number.valueOf):
+        (catBool):
+        (bool.valueOf):
+        (catUndefined):
+        (undef.valueOf):
+        (catRandom):
+        (random.valueOf):
+
+2015-11-04  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Remove bogus global internal functions for properties and prototype retrieval
+        https://bugs.webkit.org/show_bug.cgi?id=150892
+
+        Reviewed by Darin Adler.
+
+        Global @getOwnPropertyNames and @getPrototypeOf point to the floor function, so it is bogus dead code.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): Removed global @getOwnPropertyNames and @getPrototypeOf.
+
 2015-11-03  Benjamin Poulain  <bpoulain@apple.com>
 
         [JSC] Add B3-to-Air lowering for BitXor

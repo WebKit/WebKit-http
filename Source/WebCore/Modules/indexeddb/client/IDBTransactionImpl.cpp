@@ -378,6 +378,7 @@ Ref<IDBObjectStore> IDBTransaction::createObjectStore(const IDBObjectStoreInfo& 
     ASSERT(isVersionChange());
 
     Ref<IDBObjectStore> objectStore = IDBObjectStore::create(info, *this);
+    m_referencedObjectStores.set(info.name(), &objectStore.get());
 
     auto operation = createTransactionOperation(*this, &IDBTransaction::didCreateObjectStoreOnServer, &IDBTransaction::createObjectStoreOnServer, info);
     scheduleOperation(WTF::move(operation));
@@ -401,6 +402,35 @@ void IDBTransaction::didCreateObjectStoreOnServer(const IDBResultData& resultDat
     ASSERT_UNUSED(resultData, resultData.type() == IDBResultType::CreateObjectStoreSuccess);
 }
 
+Ref<IDBIndex> IDBTransaction::createIndex(IDBObjectStore& objectStore, const IDBIndexInfo& info)
+{
+    LOG(IndexedDB, "IDBTransaction::createIndex");
+    ASSERT(isVersionChange());
+
+    Ref<IDBIndex> index = IDBIndex::create(info, objectStore);
+
+    auto operation = createTransactionOperation(*this, &IDBTransaction::didCreateIndexOnServer, &IDBTransaction::createIndexOnServer, info);
+    scheduleOperation(WTF::move(operation));
+
+    return WTF::move(index);
+}
+
+void IDBTransaction::createIndexOnServer(TransactionOperation& operation, const IDBIndexInfo& info)
+{
+    LOG(IndexedDB, "IDBTransaction::createIndexOnServer");
+
+    ASSERT(isVersionChange());
+
+    m_database->serverConnection().createIndex(operation, info);
+}
+
+void IDBTransaction::didCreateIndexOnServer(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBTransaction::didCreateIndexOnServer");
+
+    ASSERT_UNUSED(resultData, resultData.type() == IDBResultType::CreateIndexSuccess);
+}
+
 Ref<IDBRequest> IDBTransaction::requestGetRecord(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBKeyRangeData& keyRangeData)
 {
     LOG(IndexedDB, "IDBTransaction::requestGetRecord");
@@ -411,6 +441,33 @@ Ref<IDBRequest> IDBTransaction::requestGetRecord(ScriptExecutionContext& context
     addRequest(request.get());
 
     auto operation = createTransactionOperation(*this, request.get(), &IDBTransaction::didGetRecordOnServer, &IDBTransaction::getRecordOnServer, keyRangeData);
+    scheduleOperation(WTF::move(operation));
+
+    return WTF::move(request);
+}
+
+Ref<IDBRequest> IDBTransaction::requestGetValue(ScriptExecutionContext& context, IDBIndex& index, const IDBKeyRangeData& range)
+{
+    LOG(IndexedDB, "IDBTransaction::requestGetValue");
+    return requestIndexRecord(context, index, IndexedDB::IndexRecordType::Value, range);
+}
+
+Ref<IDBRequest> IDBTransaction::requestGetKey(ScriptExecutionContext& context, IDBIndex& index, const IDBKeyRangeData& range)
+{
+    LOG(IndexedDB, "IDBTransaction::requestGetValue");
+    return requestIndexRecord(context, index, IndexedDB::IndexRecordType::Key, range);
+}
+
+Ref<IDBRequest> IDBTransaction::requestIndexRecord(ScriptExecutionContext& context, IDBIndex& index, IndexedDB::IndexRecordType type, const IDBKeyRangeData&range)
+{
+    LOG(IndexedDB, "IDBTransaction::requestGetValue");
+    ASSERT(isActive());
+    ASSERT(!range.isNull);
+
+    Ref<IDBRequest> request = IDBRequest::createGet(context, index, type, *this);
+    addRequest(request.get());
+
+    auto operation = createTransactionOperation(*this, request.get(), &IDBTransaction::didGetRecordOnServer, &IDBTransaction::getRecordOnServer, range);
     scheduleOperation(WTF::move(operation));
 
     return WTF::move(request);
@@ -427,17 +484,44 @@ void IDBTransaction::didGetRecordOnServer(IDBRequest& request, const IDBResultDa
 {
     LOG(IndexedDB, "IDBTransaction::didGetRecordOnServer");
 
-    request.setResultToStructuredClone(resultData.resultData());
+    const IDBGetResult& result = resultData.getResult();
+
+    if (request.sourceIndexIdentifier() && request.requestedIndexRecordType() == IndexedDB::IndexRecordType::Key) {
+        if (!result.keyData.isNull())
+            request.setResult(&result.keyData);
+        else
+            request.setResultToUndefined();
+    } else {
+        if (resultData.getResult().valueBuffer.data())
+            request.setResultToStructuredClone(resultData.getResult().valueBuffer);
+        else
+            request.setResultToUndefined();
+    }
+
     request.requestCompleted(resultData);
 }
 
 Ref<IDBRequest> IDBTransaction::requestCount(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBKeyRangeData& range)
 {
-    LOG(IndexedDB, "IDBTransaction::requestCount");
+    LOG(IndexedDB, "IDBTransaction::requestCount (IDBObjectStore)");
     ASSERT(isActive());
     ASSERT(!range.isNull);
 
     Ref<IDBRequest> request = IDBRequest::create(context, objectStore, *this);
+    addRequest(request.get());
+
+    scheduleOperation(createTransactionOperation(*this, request.get(), &IDBTransaction::didGetCountOnServer, &IDBTransaction::getCountOnServer, range));
+
+    return request;
+}
+
+Ref<IDBRequest> IDBTransaction::requestCount(ScriptExecutionContext& context, IDBIndex& index, const IDBKeyRangeData& range)
+{
+    LOG(IndexedDB, "IDBTransaction::requestCount (IDBIndex)");
+    ASSERT(isActive());
+    ASSERT(!range.isNull);
+
+    Ref<IDBRequest> request = IDBRequest::createCount(context, index, *this);
     addRequest(request.get());
 
     scheduleOperation(createTransactionOperation(*this, request.get(), &IDBTransaction::didGetCountOnServer, &IDBTransaction::getCountOnServer, range));

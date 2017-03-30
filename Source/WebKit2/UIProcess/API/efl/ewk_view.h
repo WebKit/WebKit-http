@@ -1,6 +1,7 @@
 /*
    Copyright (C) 2011 Samsung Electronics
    Copyright (C) 2012 Intel Corporation. All rights reserved.
+   Copyright (C) 2015 Naver Corp. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -80,6 +81,7 @@
 #include "ewk_touch.h"
 #include "ewk_url_request.h"
 #include "ewk_url_response.h"
+#include "ewk_view_configuration.h"
 #include "ewk_window_features.h"
 #include <Evas.h>
 
@@ -153,6 +155,7 @@ struct Ewk_View_Smart_Class {
     void (*run_javascript_alert)(Ewk_View_Smart_Data *sd, const char *message);
     Eina_Bool (*run_javascript_confirm)(Ewk_View_Smart_Data *sd, const char *message);
     const char *(*run_javascript_prompt)(Ewk_View_Smart_Data *sd, const char *message, const char *default_value); /**< return string should be stringshared. */
+    Eina_Bool (*run_javascript_before_unload_confirm)(Ewk_View_Smart_Data *sd, const char *message);
 
     // color picker:
     //   - Shows and hides color picker.
@@ -165,7 +168,7 @@ struct Ewk_View_Smart_Class {
 
     // window creation and closing:
     //   - Create a new window with specified features and close window.
-    Evas_Object *(*window_create)(Ewk_View_Smart_Data *sd, const Ewk_Window_Features *window_features);
+    Evas_Object *(*window_create)(Ewk_View_Smart_Data *sd, Ewk_View_Configuration* configuration, const Ewk_Window_Features *window_features);
     void (*window_close)(Ewk_View_Smart_Data *sd);
 };
 
@@ -173,7 +176,7 @@ struct Ewk_View_Smart_Class {
  * The version you have to put into the version field
  * in the @a Ewk_View_Smart_Class structure.
  */
-#define EWK_VIEW_SMART_CLASS_VERSION 8UL
+#define EWK_VIEW_SMART_CLASS_VERSION 9UL
 
 /**
  * Initializer for whole Ewk_View_Smart_Class structure.
@@ -185,7 +188,7 @@ struct Ewk_View_Smart_Class {
  * @see EWK_VIEW_SMART_CLASS_INIT_VERSION
  * @see EWK_VIEW_SMART_CLASS_INIT_NAME_VERSION
  */
-#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /**
  * Initializer to zero a whole Ewk_View_Smart_Class structure.
@@ -341,8 +344,28 @@ EAPI Eina_Bool ewk_view_smart_class_set(Ewk_View_Smart_Class *api);
  * @param pageGroup Ewk_Page_Group object which is used for initializing
  *
  * @return view object on success or @c NULL on failure
+ *
+ * @see ewk_view_add_with_configuration
  */
 EAPI Evas_Object *ewk_view_smart_add(Evas *e, Evas_Smart *smart, Ewk_Context *context, Ewk_Page_Group *pageGroup);
+
+/**
+ * Creates a new EFL WebKit view object with Ewk_View_Configuration
+ *
+ * @note The Evas_Object which inherits the ewk_view should create its
+ *       Evas_Object using this API instead of evas_object_smart_add()
+ *       because the default initialization for ewk_view is done in this API.
+ *
+ * @param e canvas object where to create the view object
+ * @param smart Evas_Smart object. Its type should be EWK_VIEW_TYPE_STR
+ * @param configuration Ewk_View_Configuration object which is used for initializing or @c NULL to use default configuration
+ *
+ * @return view object on success or @c NULL on failure
+ *
+ * @see window_create
+ * @see ewk_view_configuration_new
+ */
+EAPI Evas_Object *ewk_view_add_with_configuration(Evas *e, Evas_Smart *smart, Ewk_View_Configuration *configuration);
 
 /**
  * Creates a new EFL WebKit view object.
@@ -350,6 +373,8 @@ EAPI Evas_Object *ewk_view_smart_add(Evas *e, Evas_Smart *smart, Ewk_Context *co
  * @param e canvas object where to create the view object
  *
  * @return view object on success or @c NULL on failure
+ *
+ * @see ewk_view_add_with_configuration
  */
 EAPI Evas_Object *ewk_view_add(Evas *e);
 
@@ -360,8 +385,21 @@ EAPI Evas_Object *ewk_view_add(Evas *e);
  * @param context Ewk_Context object to declare process model
  *
  * @return view object on success or @c NULL on failure
+ *
+ * @see ewk_view_add_with_configuration
  */
 EAPI Evas_Object *ewk_view_add_with_context(Evas *e, Ewk_Context *context);
+
+/**
+ * Tries to close this view.
+ *
+ * If current web page in @a o contains onbeforeunload event, this will fire
+ * run_javascript_confirm callback in smart class.
+ * If not, this will fire window_close callback in smart class.
+ *
+ * @param o the view object to try to close.
+ */
+EAPI void ewk_view_try_close(Evas_Object *o);
 
 /**
  * Gets the Ewk_Context of this view.

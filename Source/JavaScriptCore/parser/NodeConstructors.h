@@ -100,7 +100,6 @@ namespace JSC {
     {
     }
 
-#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
     inline TemplateExpressionListNode::TemplateExpressionListNode(ExpressionNode* node)
         : m_node(node)
     {
@@ -150,7 +149,6 @@ namespace JSC {
         , m_templateLiteral(templateLiteral)
     {
     }
-#endif
 
     inline RegExpNode::RegExpNode(const JSTokenLocation& location, const Identifier& pattern, const Identifier& flags)
         : ExpressionNode(location)
@@ -922,7 +920,6 @@ namespace JSC {
     {
     }
 
-#if ENABLE(ES6_CLASS_SYNTAX)
     inline ClassDeclNode::ClassDeclNode(const JSTokenLocation& location, ExpressionNode* classDeclaration)
         : StatementNode(location)
         , m_classDeclaration(classDeclaration)
@@ -939,7 +936,6 @@ namespace JSC {
         , m_staticMethods(staticMethods)
     {
     }
-#endif
 
     inline CaseClauseNode::CaseClauseNode(ExpressionNode* expr, SourceElements* statements)
         : m_expr(expr)

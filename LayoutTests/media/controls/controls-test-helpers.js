@@ -35,8 +35,11 @@ ControlsTest = class ControlsTest {
         return { idiom: "apple", status: "fail" };
     }
 
-    stateForControlsElement(elementName)
+    stateForControlsElement(elementName, flushCachedState)
     {
+        if (flushCachedState)
+            this.cachedCurrentState = null;
+            
         var state = this.cachedCurrentState || this.currentState;
         if (state.elements && state.elements.length) {
             for (var i = 0; i < state.elements.length; i++) {
@@ -146,6 +149,22 @@ ControlsTest = class ControlsTest {
             this.logFailure(`${this.currentMessage} Expected: "${value}". Actual: "${this.currentValue}"`);
     }
 
+    contains(value)
+    {
+        if (this.currentValue.indexOf(value) >= 0)
+            this.logSuccess(this.currentMessage);
+        else
+            this.logFailure(`${this.currentMessage} Expected to contain "${value}". Actual: "${this.currentValue}"`);
+    }
+
+    doesNotContain(value)
+    {
+        if (this.currentValue.indexOf(value) < 0)
+            this.logSuccess(this.currentMessage);
+        else
+            this.logFailure(`${this.currentMessage} Expected to not contain "${value}". Actual: "${this.currentValue}"`);
+    }
+
     isEmptyString()
     {
         if (!this.currentValue && typeof this.currentValue == "string")
@@ -176,6 +195,14 @@ ControlsTest = class ControlsTest {
             this.logSuccess(this.currentMessage);
         else
             this.logFailure(`${this.currentMessage} Expected a non-zero value`);
+    }
+
+    isLessThan(value)
+    {
+        if (this.currentValue < value)
+            this.logSuccess(this.currentMessage);
+        else
+            this.logFailure(`${this.currentMessage} Actual: "${this.currentValue}" is not less than Expected: "${value}"`);
     }
 
     isGreaterThan(value)

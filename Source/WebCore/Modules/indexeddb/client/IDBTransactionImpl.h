@@ -30,6 +30,7 @@
 
 #include "IDBDatabaseInfo.h"
 #include "IDBError.h"
+#include "IDBIndexImpl.h"
 #include "IDBObjectStoreImpl.h"
 #include "IDBTransaction.h"
 #include "IDBTransactionInfo.h"
@@ -40,6 +41,7 @@
 
 namespace WebCore {
 
+class IDBIndexInfo;
 class IDBObjectStoreInfo;
 class IDBResultData;
 
@@ -48,6 +50,7 @@ struct IDBKeyRangeData;
 namespace IDBClient {
 
 class IDBDatabase;
+class IDBIndex;
 class TransactionOperation;
 
 class IDBTransaction : public WebCore::IDBTransaction {
@@ -88,12 +91,16 @@ public:
     bool isActive() const;
 
     Ref<IDBObjectStore> createObjectStore(const IDBObjectStoreInfo&);
+    Ref<IDBIndex> createIndex(IDBObjectStore&, const IDBIndexInfo&);
 
     Ref<IDBRequest> requestPutOrAdd(ScriptExecutionContext&, IDBObjectStore&, IDBKey*, SerializedScriptValue&, IndexedDB::ObjectStoreOverwriteMode);
     Ref<IDBRequest> requestGetRecord(ScriptExecutionContext&, IDBObjectStore&, const IDBKeyRangeData&);
     Ref<IDBRequest> requestDeleteRecord(ScriptExecutionContext&, IDBObjectStore&, const IDBKeyRangeData&);
     Ref<IDBRequest> requestClearObjectStore(ScriptExecutionContext&, IDBObjectStore&);
     Ref<IDBRequest> requestCount(ScriptExecutionContext&, IDBObjectStore&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestCount(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestGetValue(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestGetKey(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
 
     void deleteObjectStore(const String& objectStoreName);
 
@@ -123,11 +130,16 @@ private:
     void fireOnAbort();
     void enqueueEvent(Ref<Event>);
 
+    Ref<IDBRequest> requestIndexRecord(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, const IDBKeyRangeData&);
+
     void commitOnServer(TransactionOperation&);
     void abortOnServer(TransactionOperation&);
 
     void createObjectStoreOnServer(TransactionOperation&, const IDBObjectStoreInfo&);
     void didCreateObjectStoreOnServer(const IDBResultData&);
+
+    void createIndexOnServer(TransactionOperation&, const IDBIndexInfo&);
+    void didCreateIndexOnServer(const IDBResultData&);
 
     void clearObjectStoreOnServer(TransactionOperation&, const uint64_t& objectStoreIdentifier);
     void didClearObjectStoreOnServer(IDBRequest&, const IDBResultData&);

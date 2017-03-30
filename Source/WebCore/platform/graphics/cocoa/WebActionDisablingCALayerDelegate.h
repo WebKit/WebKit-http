@@ -26,7 +26,9 @@
 #ifndef WebActionDisablingCALayerDelegate_h
 #define WebActionDisablingCALayerDelegate_h
 
-WEBCORE_EXPORT @interface WebActionDisablingCALayerDelegate : NSObject
+#import <WebCore/QuartzCoreSPI.h>
+
+WEBCORE_EXPORT @interface WebActionDisablingCALayerDelegate : NSObject <CALayerDelegate>
 
 + (instancetype)shared;
 

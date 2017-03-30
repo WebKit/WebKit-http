@@ -1488,7 +1488,14 @@ void CodeBlock::dumpBytecode(
             int debugHookID = (++it)->u.operand;
             int hasBreakpointFlag = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "debug");
-            out.printf("%s %d", debugHookName(debugHookID), hasBreakpointFlag);
+            out.printf("%s, %d", debugHookName(debugHookID), hasBreakpointFlag);
+            break;
+        }
+        case op_assert: {
+            int condition = (++it)->u.operand;
+            int line = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "assert");
+            out.printf("%s, %d", registerName(condition).data(), line);
             break;
         }
         case op_profile_will_call: {
@@ -2946,7 +2953,7 @@ HandlerInfo* CodeBlock::handlerForIndex(unsigned index, RequiredHandler required
 CallSiteIndex CodeBlock::newExceptionHandlingCallSiteIndex(CallSiteIndex originalCallSite)
 {
 #if ENABLE(DFG_JIT)
-    RELEASE_ASSERT(jitType() == JITCode::DFGJIT); // FIXME: When implementing FTL try/catch we should include that JITType here as well: https://bugs.webkit.org/show_bug.cgi?id=149409
+    RELEASE_ASSERT(JITCode::isOptimizingJIT(jitType()));
     RELEASE_ASSERT(canGetCodeOrigin(originalCallSite));
     ASSERT(!!handlerForIndex(originalCallSite.bits()));
     CodeOrigin originalOrigin = codeOrigin(originalCallSite);

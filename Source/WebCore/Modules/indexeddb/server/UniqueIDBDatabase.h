@@ -31,6 +31,7 @@
 #include "IDBBackingStore.h"
 #include "IDBDatabaseIdentifier.h"
 #include "IDBDatabaseInfo.h"
+#include "IDBGetResult.h"
 #include "IDBServerOperation.h"
 #include "ThreadSafeDataBuffer.h"
 #include "Timer.h"
@@ -48,6 +49,10 @@ class IDBError;
 class IDBRequestData;
 class IDBTransactionInfo;
 
+namespace IndexedDB {
+enum class IndexRecordType;
+}
+
 namespace IDBServer {
 
 class IDBConnectionToClient;
@@ -55,7 +60,7 @@ class IDBServer;
 
 typedef std::function<void(const IDBError&)> ErrorCallback;
 typedef std::function<void(const IDBError&, const IDBKeyData&)> KeyDataCallback;
-typedef std::function<void(const IDBError&, const ThreadSafeDataBuffer&)> ValueDataCallback;
+typedef std::function<void(const IDBError&, const IDBGetResult&)> GetResultCallback;
 typedef std::function<void(const IDBError&, uint64_t)> CountCallback;
 
 class UniqueIDBDatabase : public ThreadSafeRefCounted<UniqueIDBDatabase> {
@@ -73,8 +78,9 @@ public:
     void createObjectStore(UniqueIDBDatabaseTransaction&, const IDBObjectStoreInfo&, ErrorCallback);
     void deleteObjectStore(UniqueIDBDatabaseTransaction&, const String& objectStoreName, ErrorCallback);
     void clearObjectStore(UniqueIDBDatabaseTransaction&, uint64_t objectStoreIdentifier, ErrorCallback);
+    void createIndex(UniqueIDBDatabaseTransaction&, const IDBIndexInfo&, ErrorCallback);
     void putOrAdd(const IDBRequestData&, const IDBKeyData&, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode, KeyDataCallback);
-    void getRecord(const IDBRequestData&, const IDBKeyRangeData&, ValueDataCallback);
+    void getRecord(const IDBRequestData&, const IDBKeyRangeData&, GetResultCallback);
     void getCount(const IDBRequestData&, const IDBKeyRangeData&, CountCallback);
     void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&, ErrorCallback);
     void commitTransaction(UniqueIDBDatabaseTransaction&, ErrorCallback);
@@ -105,9 +111,11 @@ private:
     void performCreateObjectStore(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo&);
     void performDeleteObjectStore(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, const String& objectStoreName);
     void performClearObjectStore(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier);
+    void performCreateIndex(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, const IDBIndexInfo&);
     void performPutOrAdd(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData&, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode);
     void performGetRecord(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData&);
-    void performGetCount(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData&);
+    void performGetIndexRecord(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, IndexedDB::IndexRecordType, const IDBKeyRangeData&);
+    void performGetCount(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData&);
     void performDeleteRecord(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData&);
     void performActivateTransactionInBackingStore(uint64_t callbackIdentifier, const IDBTransactionInfo&);
 
@@ -116,8 +124,9 @@ private:
     void didPerformCreateObjectStore(uint64_t callbackIdentifier, const IDBError&, const IDBObjectStoreInfo&);
     void didPerformDeleteObjectStore(uint64_t callbackIdentifier, const IDBError&, const String& objectStoreName);
     void didPerformClearObjectStore(uint64_t callbackIdentifier, const IDBError&);
+    void didPerformCreateIndex(uint64_t callbackIdentifier, const IDBError&, const IDBIndexInfo&);
     void didPerformPutOrAdd(uint64_t callbackIdentifier, const IDBError&, const IDBKeyData&);
-    void didPerformGetRecord(uint64_t callbackIdentifier, const IDBError&, const ThreadSafeDataBuffer&);
+    void didPerformGetRecord(uint64_t callbackIdentifier, const IDBError&, const IDBGetResult&);
     void didPerformGetCount(uint64_t callbackIdentifier, const IDBError&, uint64_t);
     void didPerformDeleteRecord(uint64_t callbackIdentifier, const IDBError&);
     void didPerformCommitTransaction(uint64_t callbackIdentifier, const IDBError&, const IDBResourceIdentifier& transactionIdentifier);
@@ -126,12 +135,12 @@ private:
 
     uint64_t storeCallback(ErrorCallback);
     uint64_t storeCallback(KeyDataCallback);
-    uint64_t storeCallback(ValueDataCallback);
+    uint64_t storeCallback(GetResultCallback);
     uint64_t storeCallback(CountCallback);
 
     void performErrorCallback(uint64_t callbackIdentifier, const IDBError&);
     void performKeyDataCallback(uint64_t callbackIdentifier, const IDBError&, const IDBKeyData&);
-    void performValueDataCallback(uint64_t callbackIdentifier, const IDBError&, const ThreadSafeDataBuffer&);
+    void performGetResultCallback(uint64_t callbackIdentifier, const IDBError&, const IDBGetResult&);
     void performCountCallback(uint64_t callbackIdentifier, const IDBError&, uint64_t);
 
     void invokeTransactionScheduler();
@@ -155,7 +164,7 @@ private:
 
     HashMap<uint64_t, ErrorCallback> m_errorCallbacks;
     HashMap<uint64_t, KeyDataCallback> m_keyDataCallbacks;
-    HashMap<uint64_t, ValueDataCallback> m_valueDataCallbacks;
+    HashMap<uint64_t, GetResultCallback> m_getResultCallbacks;
     HashMap<uint64_t, CountCallback> m_countCallbacks;
 
     Timer m_transactionSchedulingTimer;

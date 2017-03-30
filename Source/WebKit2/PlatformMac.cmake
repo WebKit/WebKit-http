@@ -18,6 +18,7 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/cocoa/NetworkProcessCocoa.mm
 
     NetworkProcess/mac/NetworkDiskCacheMonitor.mm
+    NetworkProcess/mac/NetworkLoadMac.mm
     NetworkProcess/mac/NetworkProcessMac.mm
     NetworkProcess/mac/NetworkResourceLoaderMac.mm
     NetworkProcess/mac/RemoteNetworkingContext.mm
@@ -239,6 +240,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/mac/WKImmediateActionController.mm
     UIProcess/mac/WKPrintingView.mm
     UIProcess/mac/WKSharingServicePickerDelegate.mm
+    UIProcess/mac/WKTextFinderClient.mm
     UIProcess/mac/WKTextInputWindowController.mm
     UIProcess/mac/WKViewLayoutStrategy.mm
     UIProcess/mac/WebColorPickerMac.mm

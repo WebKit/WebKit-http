@@ -2175,10 +2175,9 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
     }
     bool elementIsLinkOrImage = false;
     if (hitNode) {
-        info.clickableElementName = hitNode->nodeName();
-
         Element* element = is<Element>(*hitNode) ? downcast<Element>(hitNode) : nullptr;
         if (element) {
+            info.isClickableElement = true;
             Element* linkElement = nullptr;
             if (element->renderer() && element->renderer()->isRenderImage()) {
                 elementIsLinkOrImage = true;
@@ -2190,6 +2189,8 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
 
             if (elementIsLinkOrImage) {
                 if (linkElement) {
+                    info.isLink = true;
+
                     // Ensure that the image contains at most 600K pixels, so that it is not too big.
                     if (RefPtr<WebImage> snapshot = snapshotNode(*element, SnapshotOptionsShareable, 600 * 1024))
                         info.image = snapshot->bitmap();
@@ -2205,6 +2206,7 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                             info.linkIndicator = textIndicator->data();
                     }
                 } else if (element->renderer() && element->renderer()->isRenderImage()) {
+                    info.isImage = true;
                     auto& renderImage = downcast<RenderImage>(*(element->renderer()));
                     if (renderImage.cachedImage() && !renderImage.cachedImage()->errorOccurred()) {
                         if (Image* image = renderImage.cachedImage()->imageForRenderer(&renderImage)) {
@@ -2217,7 +2219,7 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                                 FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
                                 if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), ShareableBitmap::SupportsAlpha)) {
                                     auto graphicsContext = sharedBitmap->createGraphicsContext();
-                                    graphicsContext->drawImage(*image, ColorSpaceDeviceRGB, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
+                                    graphicsContext->drawImage(*image, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
                                     info.image = sharedBitmap;
                                 }
                             }

@@ -225,8 +225,8 @@ void SVGInlineTextBox::paintSelectionBackground(PaintInfo& paintInfo)
         if (!fragmentTransform.isIdentity())
             paintInfo.context().concatCTM(fragmentTransform);
 
-        paintInfo.context().setFillColor(backgroundColor, style.colorSpace());
-        paintInfo.context().fillRect(selectionRectForTextFragment(fragment, fragmentStartPosition, fragmentEndPosition, &style), backgroundColor, style.colorSpace());
+        paintInfo.context().setFillColor(backgroundColor);
+        paintInfo.context().fillRect(selectionRectForTextFragment(fragment, fragmentStartPosition, fragmentEndPosition, &style), backgroundColor);
 
         m_paintingResourceMode = ApplyToDefaultMode;
     }
@@ -685,9 +685,25 @@ bool SVGInlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult&
             boxOrigin.moveBy(accumulatedOffset);
             FloatRect rect(boxOrigin, size());
             if (locationInContainer.intersects(rect)) {
-                renderer().updateHitTestResult(result, locationInContainer.point() - toLayoutSize(accumulatedOffset));
-                if (!result.addNodeToRectBasedTestResult(&renderer().textNode(), request, locationInContainer, rect))
-                    return true;
+
+                float scalingFactor = renderer().scalingFactor();
+                ASSERT(scalingFactor);
+                
+                float baseline = renderer().scaledFont().fontMetrics().floatAscent() / scalingFactor;
+
+                AffineTransform fragmentTransform;
+                for (auto& fragment : m_textFragments) {
+                    FloatQuad fragmentQuad(FloatRect(fragment.x, fragment.y - baseline, fragment.width, fragment.height));
+                    fragment.buildFragmentTransform(fragmentTransform);
+                    if (!fragmentTransform.isIdentity())
+                        fragmentQuad = fragmentTransform.mapQuad(fragmentQuad);
+                    
+                    if (fragmentQuad.containsPoint(locationInContainer.point())) {
+                        renderer().updateHitTestResult(result, locationInContainer.point() - toLayoutSize(accumulatedOffset));
+                        if (!result.addNodeToRectBasedTestResult(&renderer().textNode(), request, locationInContainer, rect))
+                            return true;
+                    }
+                }
              }
         }
     }

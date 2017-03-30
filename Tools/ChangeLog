@@ -1,3 +1,440 @@
+2015-11-11  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Unreviewed, add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-11-11  Anders Carlsson  <andersca@apple.com>
+
+        _WKRemoteObjectInterface should handle specifying allowed classes for reply block arguments
+        https://bugs.webkit.org/show_bug.cgi?id=151144
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistry.h:
+        (remoteObjectInterface):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistry.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistryPlugIn.mm:
+        (-[RemoteObjectRegistryPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[RemoteObjectRegistryPlugIn selectionAndClickInformationForClickAtPoint:completionHandler:]):
+
+2015-11-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        UI-side scripts in WebKitTestRunner should wait until event handling completes before finishing
+        https://bugs.webkit.org/show_bug.cgi?id=151101
+        <rdar://problem/23428601>
+
+        Reviewed by Simon Fraser.
+
+        WebKitTestRunner may still crash in the scenario where a marker event is dequeued and handled
+        after uiScriptComplete has been called. This patch teaches the UI script execution context to
+        defer script completion until all non-persistent tasks (currently tap, double tap and hardware
+        keyboard) have been handled, so marker events will no longer bleed through tests.
+
+        We accomplish this by changing the behavior of uiScriptComplete. When calling uiScriptComplete,
+        we store that a request to complete the UI-side script for the current parent callback has been
+        made. Subsequently, when a callback (either persistent or non-persistent) finishes invoking and
+        a request has been made to complete the UI script (this request may have been made when running
+        a previous callback) we check if all the non-persistent callbacks that have the same parent
+        callback as the current one have finished. If so, we complete the callback immediately;
+        otherwise, we wait until the in-flight non-persistent callbacks finish execution to complete the
+        UI script.
+
+        This patch also refactors some logic in UIScriptContext. It introduces a new convention for
+        assigning IDs to callbacks: IDs 1000 and above are treated as non-persistent callbacks, whereas
+        IDs between 0 and 999 are persistent task callbacks. This is similar to the existing convention
+        for assigning IDs in the 100s range to parent callbacks, and allows us to easily differentiate
+        between callbacks that are persistent and non-persistent, as well as determine when an existing
+        persistent callback must be unregistered before a new callback function can be set.
+
+        * WebKitTestRunner/UIScriptContext/UIScriptContext.cpp:
+        (isPersistentCallbackID):
+        (UIScriptContext::runUIScript):
+        (UIScriptContext::nextTaskCallbackID):
+        (UIScriptContext::prepareForAsyncTask):
+        (UIScriptContext::asyncTaskComplete):
+        (UIScriptContext::registerCallback):
+        (UIScriptContext::fireCallback):
+        (UIScriptContext::requestUIScriptCompletion):
+        (UIScriptContext::tryToCompleteUIScriptForCurrentParentCallback):
+        (UIScriptContext::currentParentCallbackHasOutstandingAsyncTasks):
+        (UIScriptContext::uiScriptComplete): Deleted.
+        * WebKitTestRunner/UIScriptContext/UIScriptContext.h:
+        (WTR::UIScriptContext::currentParentCallbackIsPendingCompletion):
+        * WebKitTestRunner/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setWillBeginZoomingCallback):
+        (WTR::UIScriptController::willBeginZoomingCallback):
+        (WTR::UIScriptController::setDidEndZoomingCallback):
+        (WTR::UIScriptController::didEndZoomingCallback):
+        (WTR::UIScriptController::setDidShowKeyboardCallback):
+        (WTR::UIScriptController::didShowKeyboardCallback):
+        (WTR::UIScriptController::setDidHideKeyboardCallback):
+        (WTR::UIScriptController::didHideKeyboardCallback):
+        (WTR::UIScriptController::uiScriptComplete):
+        * WebKitTestRunner/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::doAsyncTask):
+        (WTR::UIScriptController::zoomToScale):
+        (WTR::UIScriptController::singleTapAtPoint):
+        (WTR::UIScriptController::doubleTapAtPoint):
+        (WTR::UIScriptController::typeCharacterUsingHardwareKeyboard):
+        (WTR::UIScriptController::platformSetWillBeginZoomingCallback):
+        (WTR::UIScriptController::platformSetDidEndZoomingCallback):
+        (WTR::UIScriptController::platformSetDidShowKeyboardCallback):
+        (WTR::UIScriptController::platformSetDidHideKeyboardCallback):
+        (WTR::UIScriptController::platformClearAllCallbacks): Deleted.
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::doAsyncTask):
+
+2015-11-10  Daniel Bates  <dabates@apple.com>
+
+        Teach Makefile to build LayoutTestRelay when building for iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=150849
+
+        Reviewed by Alexey Proskuryakov.
+
+        Unless variable DO_NOT_BUILD_LAYOUT_TEST_RELAY is non-empty, build LayoutTestRelay when
+        building WebKit tools.
+
+        * Makefile:
+
+2015-11-10  David Kilzer  <ddkilzer@apple.com>
+
+        [check-webkit-style] False positive (readability/enum_casing) on CF-styled enum members
+        <http://webkit.org/b/104417>
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (_EnumState.process_clean_line): Allow 'k' to start enums.
+        (check_enum_casing): Update error message to discuss 'k'.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (NoNonVirtualDestructorsTest.test_enum_casing): Update error
+        messages, and add new tests for enums that start with lowercase
+        letters.
+
+2015-11-10  Geoffrey Garen  <ggaren@apple.com>
+
+        run-jsc-benchmarks doesn't work with internal benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=151047
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-jsc-benchmarks: Use Pathname so we get a "/" inserted when
+        we concatenate.
+
+2015-11-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use CROSS_PLATFORM_CONTEXT_MENUS
+        https://bugs.webkit.org/show_bug.cgi?id=150642
+
+        Reviewed by Martin Robinson.
+
+        Remove test for input methods submenu.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+
+2015-11-09  Joonghun Park  <jh718.park@samsung.com>
+
+        Unreviewed, add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-11-09  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Crash while opening child webview with EWK_PROCESS_MODEL_MULTIPLE_SECONDARY
+        https://bugs.webkit.org/show_bug.cgi?id=145924
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c:
+        (on_window_create):
+        (window_create):
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewUserViewportToContents.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/efl/PlatformWebView.cpp:
+        (TestWebKitAPI::PlatformWebView::PlatformWebView):
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::PlatformWebView):
+
+2015-11-09  Anders Carlsson  <andersca@apple.com>
+
+        Add reply blocks to _WKRemoteObjectInterface similar to NSXPCConnection
+        https://bugs.webkit.org/show_bug.cgi?id=151056
+        rdar://problem/23222609
+
+        Reviewed by Tim Horton.
+
+        Update test.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistry.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistryPlugIn.mm:
+        (-[RemoteObjectRegistryPlugIn sayHello:completionHandler:]):
+
+2015-11-09  Tim Horton  <timothy_horton@apple.com>
+
+        Add drawsBackground SPI to WKWebView, and get rid of drawsTransparentBackground from WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=151054
+        <rdar://problem/22907994>
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController didChangeSettings]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController didChangeSettings]):
+        Use drawsBackground instead, and make sure to set the window background color,
+        otherwise it might end up being gray anyway!
+
+        WebKit1 still doesn't work unless you turn off toolbar blurring, but at least
+        WebKit2 is working now!
+
+2015-11-09  Isaac Devine  <isaac@devinesystems.co.nz>
+
+        Fresh checkout fails to build on windows, DumpRenderTree can't find cairo_win.h
+        https://bugs.webkit.org/show_bug.cgi?id=151013
+
+        Use the variable defined in the CMake scripts to determine the cairo include location, rather
+        than relying on a environment variable to be set correctly. Otherwise the DumpRenderTreeLib.vcxproj will
+        contain "\include\cairo" rather than the fully qualified path to the cairo include location.
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/PlatformWin.cmake:
+
+2015-11-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Fix the gst-plugins-bad jhbuild module build on Ubuntu 15.10
+        https://bugs.webkit.org/show_bug.cgi?id=150928
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2015-11-07  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the Windows EWS bot after r192087
+        (https://bugs.webkit.org/show_bug.cgi?id=150859)
+
+        Following r192087 Port._build_path() stores the computed root directory path in option
+        _cached_root instead of overwriting option root. We need to teach the Windows-specific
+        logic to make use of option _cached_root instead of option root when computing its adjusted
+        path and to cache its adjusted in _cached_root instead of root.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._build_path):
+
+2015-11-06  Daniel Bates  <dabates@apple.com>
+
+        Do not build LayoutTestRelay when --root is specified to run-webkit-tests
+        https://bugs.webkit.org/show_bug.cgi?id=150989
+
+        Reviewed by Alexey Proskuryakov.
+
+        The script run-webkit-tests should only check if LayoutTestRelay exists when invoked with
+        --root and exit with an error if it does not exist. That is, we should not build LayoutTestRelay
+        when it does not exist and an explicit directory of built executables was specified via --root.
+        This will make the criterion for building LayoutTestRelay match the criterion for building
+        DumpRenderTree/WebKitTestRunner.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort._check_port_build): Moved logic from IOSSimulatorPort.{_check_build_relay, check_build} to here.
+        (IOSSimulatorPort._check_build_relay): Deleted.
+        (IOSSimulatorPort.check_build): Deleted.
+
+2015-11-06  Tim Horton  <timothy_horton@apple.com>
+
+        Add preliminary (SPI) support for NSTextFinder on WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=150907
+        <rdar://problem/19171624>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FindInPage.mm: Added.
+        (-[FindInPageNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+        Add an API test.
+
+        * WebEditingTester/WK1WebDocumentController.m:
+        * WebEditingTester/WK2WebDocumentController.m:
+        (-[WK2WebDocumentController awakeFromNib]):
+        (-[WK2WebDocumentController contentView]):
+        Use incremental find, and show the overlay/indicator.
+
+2015-11-06  Alexey Proskuryakov  <ap@apple.com>
+
+        iOS test results are not visible on the flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=150884
+
+        Reviewed by Darin Adler.
+
+        One more change was needed for the minimal fix.
+
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+
+2015-11-06  Daniel Bates  <dabates@apple.com>
+
+        Teach Makefile to build LayoutTestRelay when building for iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=150849
+
+        Reviewed by Alexey Proskuryakov.
+
+        Override the user-specified arguments SDKROOT and ARCHS to use the default SDK
+        and default ARCHS since LayoutTestRelay is a Mac command line tool.
+
+        * LayoutTestRelay/Makefile: Define OVERRIDE_SDKROOT and OVERRIDE_ARCHS.
+
+2015-11-05  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        Add runtime and compile time flags for enabling Web Animations API and model.
+        https://bugs.webkit.org/show_bug.cgi?id=150914
+
+        Reviewed by Benjamin Poulain.
+
+        Add ENABLE_WEB_ANIMATIONS compile time flag, runtime flag webAnimationsEnabled and Expose WK2 preference for runtime flag.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-11-05  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Separate beforeunload confirm callback from confirm callback
+        https://bugs.webkit.org/show_bug.cgi?id=150964
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c:
+        (on_javascript_before_unload_confirm):
+        (window_create):
+
+2015-11-05  Jason Marcell  <jmarcell@apple.com>
+
+        run-webkit-test should look in --root directory for LayoutTestRelay
+        https://bugs.webkit.org/show_bug.cgi?id=150859
+
+        Reviewed by Daniel Bates.
+
+        For iOS run-webkit-tests, use LayoutTestRelay specified by --root; otherwise find
+        LayoutTestRelay in the Mac build directory when --root is unspecified.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._build_path): Use '_cached_root' instead of 'root' so that we don't overwrite the
+        argument that was passed in via the --root argument.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.relay_path):
+
+2015-11-05  David Kilzer  <ddkilzer@apple.com>
+
+        TestWebKitAPI crashed in TestWebKitAPI: TestWebKitAPI::SharedBufferTest_copyBufferCreatedWithContentsOfExistingFile_Test::TestBody
+        <http://webkit.org/b/150931>
+        <rdar://problem/23409384>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebCore/SharedBuffer.cpp:
+        (TestWebKitAPI::TEST_F(SharedBufferTest, copyBufferCreatedWithContentsOfExistingFile)):
+        - Switch from strnstr() to memcmp() since strings are
+          not guaranteed to be NULL-terminated.
+        - Add another expectation that the size is greater than
+          zero since memcmp() returns 0 (matching) if the length
+          argument is zero.
+        (TestWebKitAPI::TEST_F(SharedBufferTest, appendBufferCreatedWithContentsOfExistingFile)):
+        - Same change to keep tests consistent, although the
+          second string is NULL-terminated in this case.
+
+2015-11-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192073.
+        https://bugs.webkit.org/show_bug.cgi?id=150962
+
+        "Broke the internal iOS build; will investigate offline"
+        (Requested by dydz on #webkit).
+
+        Reverted changeset:
+
+        "Teach Makefile to build LayoutTestRelay when building for iOS
+        Simulator"
+        https://bugs.webkit.org/show_bug.cgi?id=150849
+        http://trac.webkit.org/changeset/192073
+
+2015-11-05  Daniel Bates  <dabates@apple.com>
+
+        Teach Makefile to build LayoutTestRelay when building for iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=150849
+
+        Reviewed by Alexey Proskuryakov.
+
+        * LayoutTestRelay/Makefile: Temporarily override SDKROOT when it is iphonesimulator so
+        that we build with the default SDK. We assume that the default SDK is the OS X SDK.
+        * Makefile: Append LayoutTestRelay to the list of modules to build when building with
+        SDK iphonesimulator.
+
+2015-11-05  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Add try_close API to handle beforeunload event
+        https://bugs.webkit.org/show_bug.cgi?id=150705
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c:
+        (on_window_deletion):
+        Call ewk_view_try_close instead of removing object directly.
+        (window_create): Fixed that passes wrong data.
+
+2015-11-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Fix crashing and flaky UIScriptController-based tests in fast/events/ios
+        https://bugs.webkit.org/show_bug.cgi?id=150901
+        <rdar://problem/23261499>
+
+        Reviewed by Simon Fraser.
+
+        Clear out zooming and keyboard-related callbacks after uiScriptComplete has been invoked. This prevents
+        later tests from calling into code which previous tests attached to these callbacks and causing
+        WebKitTestRunner to crash due to accessing a deallocated UIScriptController.
+
+        * WebKitTestRunner/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::platformClearAllCallbacks):
+        (WTR::UIScriptController::uiScriptComplete):
+        * WebKitTestRunner/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::platformClearAllCallbacks):
+
+2015-11-04  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] <video> elements without audio tracks should not interrupt music
+        https://bugs.webkit.org/show_bug.cgi?id=149888
+
+        Reviewed by Eric Carlson.
+
+        Add tests to ensure that the AVAudioSession category is correctly set when playing
+        back media both with and without audio tracks.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/ios/AudioSessionCategoryIOS.mm: Added.
+        (-[AudioSessionCategoryUIWebViewDelegate webView:shouldStartLoadWithRequest:navigationType:]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/ios/video-with-audio.html: Added.
+        * TestWebKitAPI/Tests/WebKit/ios/video-with-audio.mp4: Added.
+        * TestWebKitAPI/Tests/WebKit/ios/video-without-audio.html: Added.
+        * TestWebKitAPI/Tests/WebKit/ios/video-without-audio.mp4: Added.
+
+2015-11-04  Alexey Proskuryakov  <ap@apple.com>
+
+        iOS test results are not visible on the flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=150884
+
+        Reviewed by Darin Adler.
+
+        Re-generated builders.jsonp using generate_builders_json.py.
+
+        I think that this is all that's needed for basic support. There is more work needed
+        to display test expectations, but that's already mostly broken even for Mac.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+
 2015-11-03  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r191995.

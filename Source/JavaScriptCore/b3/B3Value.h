@@ -33,6 +33,7 @@
 #include "B3Opcode.h"
 #include "B3Origin.h"
 #include "B3Type.h"
+#include "B3ValueKey.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
@@ -110,13 +111,33 @@ public:
     
     virtual Value* negConstant(Procedure&) const;
     virtual Value* addConstant(Procedure&, int32_t other) const;
-    virtual Value* addConstant(Procedure&, Value* other) const;
-    virtual Value* subConstant(Procedure&, Value* other) const;
-    virtual Value* bitAndConstant(Procedure&, Value* other) const;
-    virtual Value* bitOrConstant(Procedure&, Value* other) const;
-    virtual Value* bitXorConstant(Procedure&, Value* other) const;
-    virtual Value* equalConstant(Procedure&, Value* other) const;
-    virtual Value* notEqualConstant(Procedure&, Value* other) const;
+    virtual Value* addConstant(Procedure&, const Value* other) const;
+    virtual Value* subConstant(Procedure&, const Value* other) const;
+    virtual Value* mulConstant(Procedure&, const Value* other) const;
+    virtual Value* divConstant(Procedure&, const Value* other) const; // This chooses ChillDiv semantics for integers.
+    virtual Value* bitAndConstant(Procedure&, const Value* other) const;
+    virtual Value* bitOrConstant(Procedure&, const Value* other) const;
+    virtual Value* bitXorConstant(Procedure&, const Value* other) const;
+    virtual Value* shlConstant(Procedure&, const Value* other) const;
+    virtual Value* sShrConstant(Procedure&, const Value* other) const;
+    virtual Value* zShrConstant(Procedure&, const Value* other) const;
+    
+    virtual TriState equalConstant(const Value* other) const;
+    virtual TriState notEqualConstant(const Value* other) const;
+    virtual TriState lessThanConstant(const Value* other) const;
+    virtual TriState greaterThanConstant(const Value* other) const;
+    virtual TriState lessEqualConstant(const Value* other) const;
+    virtual TriState greaterEqualConstant(const Value* other) const;
+    virtual TriState aboveConstant(const Value* other) const;
+    virtual TriState belowConstant(const Value* other) const;
+    virtual TriState aboveEqualConstant(const Value* other) const;
+    virtual TriState belowEqualConstant(const Value* other) const;
+
+    // If the value is a comparison then this returns the inverted form of that comparison, if
+    // possible. It can be impossible for double comparisons, where for example LessThan and
+    // GreaterEqual behave differently. If this returns a value, it is a new value, which must be
+    // either inserted into some block or deleted.
+    Value* invertedCompare(Procedure&) const;
 
     bool hasInt32() const;
     int32_t asInt32() const;
@@ -149,8 +170,13 @@ public:
     TriState asTriState() const;
     bool isLikeZero() const { return asTriState() == FalseTriState; }
     bool isLikeNonZero() const { return asTriState() == TrueTriState; }
-    
+
     Effects effects() const;
+
+    // This returns a ValueKey that describes that this Value returns when it executes. Returns an
+    // empty ValueKey if this Value is impure. Note that an operation that returns Void could still
+    // have a non-empty ValueKey. This happens for example with Check operations.
+    ValueKey key() const;
 
     // Makes sure that none of the children are Identity's. If a child points to Identity, this will
     // repoint it at the Identity's child. For simplicity, this will follow arbitrarily long chains

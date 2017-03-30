@@ -30,16 +30,16 @@ function cancel(reason)
     "use strict";
 
     if (!@isReadableStreamReader(this))
-        return Promise.reject(new @TypeError("Function should be called on a ReadableStreamReader"));
+        return @Promise.@reject(new @TypeError("Function should be called on a ReadableStreamReader"));
 
     if (this.@state === @streamClosed)
-        return Promise.resolve();
+        return @Promise.@resolve();
 
     if (this.@state === @streamErrored)
-        return Promise.reject(this.@storedError);
+        return @Promise.@reject(this.@storedError);
 
-    // FIXME: ASSERT(@isReadableStream(this.@ownerReadableStream));
-    // FIXME: ASSERT(this.@ownerReadableStream.@state === @streamReadable);
+    @assert(@isReadableStream(this.@ownerReadableStream));
+    @assert(this.@ownerReadableStream.@state === @streamReadable);
     return @cancelReadableStream(this.@ownerReadableStream, reason);
 }
 
@@ -48,7 +48,7 @@ function read()
     "use strict";
 
     if (!@isReadableStreamReader(this))
-        return Promise.reject(new @TypeError("Function should be called on a ReadableStreamReader"));
+        return @Promise.@reject(new @TypeError("Function should be called on a ReadableStreamReader"));
 
     return @readFromReadableStreamReader(this);
 }
@@ -64,7 +64,7 @@ function releaseLock()
          return;
 
     if (this.@readRequests.length)
-        throw new @TypeError();
+        throw new @TypeError("There are still pending read requests, cannot release the lock");
 
     @closeReadableStreamReader(this);
 }
@@ -74,7 +74,7 @@ function closed()
     "use strict";
 
     if (!@isReadableStreamReader(this))
-        return Promise.reject(new @TypeError("Callee of closed is not a ReadableStreamReader"));
+        return @Promise.@reject(new @TypeError("Callee of closed is not a ReadableStreamReader"));
 
     return this.@closedPromiseCapability.@promise;
 }

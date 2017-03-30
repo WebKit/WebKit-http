@@ -62,6 +62,7 @@
 #include "ewk_popup_menu_private.h"
 #include "ewk_security_origin_private.h"
 #include "ewk_settings_private.h"
+#include "ewk_view_configuration_private.h"
 #include "ewk_window_features_private.h"
 #include <Ecore_Evas.h>
 #include <Edje.h>
@@ -1049,6 +1050,21 @@ WKEinaSharedString EwkView::requestJSPromptPopup(const WKEinaSharedString& messa
 
 /**
  * @internal
+ * Calls a smart member function for javascript beforeUnloadConfirm() and returns a value from the function. Returns true by default.
+ */
+bool EwkView::requestJSBeforeUnloadConfirmPopup(const WKEinaSharedString& message)
+{
+    Ewk_View_Smart_Data* sd = smartData();
+    ASSERT(sd->api);
+
+    if (!sd->api->run_javascript_before_unload_confirm)
+        return true;
+
+    return sd->api->run_javascript_before_unload_confirm(sd, message);
+}
+
+/**
+ * @internal
  * Calls exceeded_database_quota callback or falls back to default behavior returns default database quota.
  */
 unsigned long long EwkView::informDatabaseQuotaReached(const String& databaseName, const String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentDatabaseUsage, unsigned long long expectedUsage)
@@ -1116,9 +1132,13 @@ WKPageRef EwkView::createNewPage(PassRefPtr<EwkUrlRequest>, WKDictionaryRef wind
     if (!sd->api->window_create)
         return 0;
 
+    WKPageRef wkPageRef = wkPage();
     RefPtr<EwkWindowFeatures> ewkWindowFeatures = EwkWindowFeatures::create(windowFeatures, this);
+    WKRetainPtr<WKPageConfigurationRef> configuration = adoptWK(WKPageCopyPageConfiguration(wkPageRef));
+    WKPageConfigurationSetRelatedPage(configuration.get(), wkPageRef);
+    Ref<EwkViewConfiguration> ewkViewConfiguration = EwkViewConfiguration::create(configuration.get());
 
-    Evas_Object* newEwkView = sd->api->window_create(sd, ewkWindowFeatures.get());
+    Evas_Object* newEwkView = sd->api->window_create(sd, &ewkViewConfiguration.get(), ewkWindowFeatures.get());
     if (!newEwkView)
         return 0;
 

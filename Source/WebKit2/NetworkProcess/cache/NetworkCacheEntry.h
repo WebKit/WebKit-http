@@ -46,6 +46,7 @@ class Entry {
     WTF_MAKE_NONCOPYABLE(Entry); WTF_MAKE_FAST_ALLOCATED;
 public:
     Entry(const Key&, const WebCore::ResourceResponse&, RefPtr<WebCore::SharedBuffer>&&, const Vector<std::pair<String, String>>& varyingRequestHeaders);
+    explicit Entry(const Storage::Record&);
 
     Storage::Record encodeAsStorageRecord() const;
     static std::unique_ptr<Entry> decodeStorageRecord(const Storage::Record&);
@@ -68,7 +69,6 @@ public:
     void asJSON(StringBuilder&, const Storage::RecordInfo&) const;
 
 private:
-    Entry(const Storage::Record&);
     void initializeBufferFromStorageRecord() const;
 #if ENABLE(SHAREABLE_RESOURCE)
     void initializeShareableResourceHandleFromStorageRecord() const;

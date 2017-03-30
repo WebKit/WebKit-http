@@ -1563,6 +1563,9 @@
     <ClCompile Include="..\ftl\FTLDWARFRegister.cpp">
       <Filter>ftl</Filter>
     </ClCompile>
+    <ClCompile Include="..\ftl\FTLExceptionHandlerManager.cpp">
+      <Filter>ftl</Filter>
+    </ClCompile>
     <ClCompile Include="..\ftl\FTLExitArgument.cpp">
       <Filter>ftl</Filter>
     </ClCompile>
@@ -1729,6 +1732,9 @@
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\JSJavaScriptCallFramePrototype.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\inspector\PerGlobalObjectWrapperWorld.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\profiler\ProfilerJettisonReason.cpp">
@@ -4117,13 +4123,16 @@
     <ClInclude Include="..\ftl\FTLDWARFRegister.h">
       <Filter>ftl</Filter>
     </ClInclude>
+    <ClInclude Include="..\ftl\FTLExceptionHandlerManager.h">
+      <Filter>ftl</Filter>
+    </ClInclude>
     <ClInclude Include="..\ftl\FTLExitArgument.h">
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLExitArgumentForOperand.h">
       <Filter>ftl</Filter>
     </ClInclude>
-    <ClInclude Include="..\ftl\FTLExitArgumentList.h">
+    <ClInclude Include="..\ftl\FTLStackmapArgumentList.h">
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLExitThunkGenerator.h">
@@ -4325,6 +4334,9 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\JSJavaScriptCallFrame.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\PerGlobalObjectWrapperWorld.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSCInlines.h">

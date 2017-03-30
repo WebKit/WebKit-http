@@ -96,6 +96,28 @@ Neg32 UD:G
 Neg64 UD:G
     Tmp
 
+Mul32 U:G, UD:G
+    Tmp, Tmp
+    Addr, Tmp
+
+Mul32 U:G, U:G, D:G
+    Imm, Tmp, Tmp
+
+Mul64 U:G, UD:G
+    Tmp, Tmp
+
+X86ConvertToDoubleWord32 U:G, D:G
+    Tmp*, Tmp*
+
+X86ConvertToQuadWord64 U:G, D:G
+    Tmp*, Tmp*
+
+X86Div32 UD:G, UD:G, U:G
+    Tmp*, Tmp*, Tmp
+
+X86Div64 UD:G, UD:G, U:G
+    Tmp*, Tmp*, Tmp
+
 Lea UA:G, D:G
     Addr, Tmp
 
@@ -111,6 +133,26 @@ And64 U:G, UD:G
     Imm, Tmp
 
 Lshift32 U:G, UD:G
+    Tmp*, Tmp
+    Imm, Tmp
+
+Lshift64 U:G, UD:G
+    Tmp*, Tmp
+    Imm, Tmp
+
+Rshift32 U:G, UD:G
+    Tmp*, Tmp
+    Imm, Tmp
+
+Rshift64 U:G, UD:G
+    Tmp*, Tmp
+    Imm, Tmp
+
+Urshift32 U:G, UD:G
+    Tmp*, Tmp
+    Imm, Tmp
+
+Urshift64 U:G, UD:G
     Tmp*, Tmp
     Imm, Tmp
 
@@ -136,14 +178,6 @@ Xor64 U:G, UD:G
     Tmp, Tmp
     Tmp, Addr
     Imm, Tmp
-
-Lshift64 U:G, UD:G
-    Tmp*, Tmp
-    Imm, Tmp
-
-Mul32 U:G, UD:G
-    Tmp, Tmp
-    Addr, Tmp
 
 # Note that Move operates over the full register size, which is either 32-bit or 64-bit depending on
 # the platform. I'm not entirely sure that this is a good thing; it might be better to just have a
@@ -175,11 +209,68 @@ MoveDouble U:F, D:F
     Tmp, Addr as storeDouble
     Tmp, Index as storeDouble
 
+MoveZeroToDouble D:F
+    Tmp
+
 Move64ToDouble U:G, D:F
     Tmp, Tmp
 
 MoveDoubleTo64 U:F, D:G
     Tmp, Tmp
+
+Load8 U:G, D:G
+    Addr, Tmp
+    Index, Tmp
+
+Load8SignedExtendTo32 U:G, D:G
+    Addr, Tmp
+    Index, Tmp
+
+Load16 U:G, D:G
+    Addr, Tmp
+    Index, Tmp
+
+Load16SignedExtendTo32 U:G, D:G
+    Addr, Tmp
+    Index, Tmp
+
+Compare32 U:G, U:G, U:G, D:G
+    RelCond, Tmp, Tmp, Tmp
+    RelCond, Tmp, Imm, Tmp
+
+Compare64 U:G, U:G, U:G, D:G
+    RelCond, Tmp, Imm, Tmp
+    RelCond, Tmp, Tmp, Tmp
+
+Test32 U:G, U:G, U:G, D:G
+    ResCond, Addr, Imm, Tmp
+    ResCond, Tmp, Tmp, Tmp
+
+Test64 U:G, U:G, U:G, D:G
+    ResCond, Tmp, Imm, Tmp
+    ResCond, Tmp, Tmp, Tmp
+
+Branch8 U:G, U:G, U:G /branch
+    RelCond, Addr, Imm
+    RelCond, Index, Imm
+
+Branch32 U:G, U:G, U:G /branch
+    RelCond, Addr, Imm
+    RelCond, Tmp, Tmp
+    RelCond, Tmp, Imm
+    RelCond, Tmp, Addr
+    RelCond, Addr, Tmp
+    RelCond, Index, Imm
+
+Branch64 U:G, U:G, U:G /branch
+    RelCond, Tmp, Tmp
+    RelCond, Tmp, Addr
+    RelCond, Addr, Tmp
+    RelCond, Index, Tmp
+
+BranchTest8 U:G, U:G, U:G /branch
+    ResCond, Addr, Imm
+    ResCond, Index, Imm
 
 BranchTest32 U:G, U:G, U:G /branch
     ResCond, Tmp, Tmp
@@ -187,6 +278,8 @@ BranchTest32 U:G, U:G, U:G /branch
     ResCond, Addr, Imm
     ResCond, Index, Imm
 
+# Warning: forms that take an immediate will sign-extend their immediate. You probably want
+# BranchTest32 in most cases where you use an immediate.
 BranchTest64 U:G, U:G, U:G /branch
     ResCond, Tmp, Tmp
     ResCond, Tmp, Imm
@@ -222,7 +315,7 @@ Jump /branch
 
 Ret /terminal
 
-Breakpoint /effects
+Oops /terminal
 
 # Air allows for exotic behavior. A Patch's behavior is determined entirely by the Special operand,
 # which must be the first operand.

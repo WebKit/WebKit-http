@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBIndexInfo.h"
 #include "IDBKeyRangeData.h"
 #include "Logging.h"
 #include "MemoryObjectStore.h"
@@ -183,6 +184,21 @@ IDBError MemoryIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& tr
     return IDBError();
 }
 
+IDBError MemoryIDBBackingStore::createIndex(const IDBResourceIdentifier& transactionIdentifier, const IDBIndexInfo& info)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::createIndex");
+
+    auto rawTransaction = m_transactions.get(transactionIdentifier);
+    ASSERT(rawTransaction);
+    ASSERT(rawTransaction->isVersionChange());
+
+    auto* objectStore = m_objectStoresByIdentifier.get(info.objectStoreIdentifier());
+    if (!objectStore)
+        return IDBError(IDBExceptionCode::ConstraintError);
+
+    return objectStore->createIndex(*rawTransaction, info);
+}
+
 void MemoryIDBBackingStore::removeObjectStoreForVersionChangeAbort(MemoryObjectStore& objectStore)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::removeObjectStoreForVersionChangeAbort");
@@ -228,9 +244,9 @@ IDBError MemoryIDBBackingStore::deleteRange(const IDBResourceIdentifier& transac
     return IDBError();
 }
 
-IDBError MemoryIDBBackingStore::putRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
+IDBError MemoryIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
 {
-    LOG(IndexedDB, "MemoryIDBBackingStore::putRecord");
+    LOG(IndexedDB, "MemoryIDBBackingStore::addRecord");
 
     ASSERT(objectStoreIdentifier);
 
@@ -242,11 +258,10 @@ IDBError MemoryIDBBackingStore::putRecord(const IDBResourceIdentifier& transacti
     if (!objectStore)
         return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store object store found to put record"));
 
-    objectStore->putRecord(*transaction, keyData, value);
-    return IDBError();
+    return objectStore->addRecord(*transaction, keyData, value);
 }
 
-IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& keyRangeData, ThreadSafeDataBuffer& outValue)
+IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range, ThreadSafeDataBuffer& outValue)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::getRecord");
 
@@ -259,11 +274,28 @@ IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transacti
     if (!objectStore)
         return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store object store found"));
 
-    outValue = objectStore->valueForKeyRange(keyRangeData);
+    outValue = objectStore->valueForKeyRange(range);
     return IDBError();
 }
 
-IDBError MemoryIDBBackingStore::getCount(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range, uint64_t& outCount)
+IDBError MemoryIDBBackingStore::getIndexRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, IndexedDB::IndexRecordType recordType, const IDBKeyRangeData& range, IDBGetResult& outValue)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::getIndexRecord");
+
+    ASSERT(objectStoreIdentifier);
+
+    if (!m_transactions.contains(transactionIdentifier))
+        return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store transaction found to get record"));
+
+    MemoryObjectStore* objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
+    if (!objectStore)
+        return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store object store found"));
+
+    outValue = objectStore->indexValueForKeyRange(indexIdentifier, recordType, range);
+    return IDBError();
+}
+
+IDBError MemoryIDBBackingStore::getCount(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData& range, uint64_t& outCount)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::getCount");
 
@@ -276,7 +308,8 @@ IDBError MemoryIDBBackingStore::getCount(const IDBResourceIdentifier& transactio
     if (!objectStore)
         return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store object store found"));
 
-    outCount = objectStore->countForKeyRange(range);
+    outCount = objectStore->countForKeyRange(indexIdentifier, range);
+
     return IDBError();
 }
 
