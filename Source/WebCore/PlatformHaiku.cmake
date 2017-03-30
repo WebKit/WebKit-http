@@ -55,6 +55,7 @@ list(APPEND WebCore_SOURCES
   html/shadow/MediaControlsApple.cpp
 
   platform/Cursor.cpp
+  platform/KillRingNone.cpp
 
   page/haiku/DragControllerHaiku.cpp
   page/haiku/EventHandlerHaiku.cpp
@@ -78,6 +79,7 @@ list(APPEND WebCore_SOURCES
   platform/haiku/LocalizedStringsHaiku.cpp
   platform/haiku/LoggingHaiku.cpp
   platform/haiku/MIMETypeRegistryHaiku.cpp
+  platform/haiku/MainThreadSharedTimerHaiku.cpp
   platform/haiku/PasteboardHaiku.cpp
   platform/haiku/PlatformKeyboardEventHaiku.cpp
   platform/haiku/PlatformMouseEventHaiku.cpp
@@ -166,9 +168,11 @@ list(APPEND WebCore_SOURCES
 
   platform/posix/FileSystemPOSIX.cpp
 
+  platform/text/Hyphenation.cpp
+  platform/text/LocaleICU.cpp
+
   platform/text/haiku/TextBreakIteratorInternalICUHaiku.cpp
   platform/text/haiku/StringHaiku.cpp
-  platform/text/LocaleICU.cpp
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
