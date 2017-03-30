@@ -81,7 +81,7 @@ void Font::platformDestroy()
 {
 }
 
-PassRefPtr<Font> Font::platformCreateScaledFont(const FontDescription& fontDescription, float scaleFactor) const
+RefPtr<Font> Font::platformCreateScaledFont(const FontDescription& fontDescription, float scaleFactor) const
 {
     const float scaledSize = lroundf(fontDescription.computedSize() * scaleFactor);
     return Font::create(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false);
