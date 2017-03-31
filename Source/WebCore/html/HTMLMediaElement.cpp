@@ -2732,6 +2732,14 @@ void HTMLMediaElement::cdmClientAttemptToDecryptWithKeys(const Vector<std::pair<
         m_player->haveSomeKeys(keys);
 }
 
+#if USE(OCDM)
+void HTMLMediaElement::emitSession(String& sessionId)
+{
+    if (m_player)
+        m_player->emitSession(sessionId);
+}
+#endif
+
 void HTMLMediaElement::attemptToDecrypt()
 {
     // https://w3c.github.io/encrypted-media/#attempt-to-decrypt

@@ -64,6 +64,9 @@ public:
     void detachCDMClient(CDMClient&);
     void attemptToResumePlaybackOnClients();
     void attemptToDecrypt(CDMClient&);
+#if USE(OCDM)
+    void decryptWithSession(String&);
+#endif
 
 protected:
     MediaKeys(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>&, Ref<CDM>&&, Ref<CDMInstance>&&);

@@ -159,6 +159,11 @@ public:
     virtual void resetOpenCDMSession();
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+    virtual void emitSession(String&);
+    virtual void resetOpenCDMFlag();
+#endif
+
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
     static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&, MediaPlayer::SupportsType);
 
@@ -284,6 +289,10 @@ private:
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(OCDM)
     std::unique_ptr<CDMSession> m_cdmSession;
     Lock m_cdmSessionMutex;
+#endif
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+    Lock m_protectInitDataProcessing;
+    bool m_initDataProcessed;
 #endif
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*) override;

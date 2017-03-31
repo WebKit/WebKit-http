@@ -241,6 +241,9 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&) { }
+#if USE(OCDM)
+    virtual void emitSession(String&) { }
+#endif
 #endif
 
 #if ENABLE(VIDEO_TRACK)

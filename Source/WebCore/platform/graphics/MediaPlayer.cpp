@@ -623,6 +623,13 @@ void MediaPlayer::haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<Sha
 {
     m_private->haveSomeKeys(keys);
 }
+
+#if USE(OCDM)
+void MediaPlayer::emitSession(String& sessionId)
+{
+    m_private->emitSession(sessionId);
+}
+#endif
 #endif
 
 MediaTime MediaPlayer::duration() const

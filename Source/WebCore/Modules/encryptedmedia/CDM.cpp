@@ -29,6 +29,9 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 
 #include "CDMClearKey.h"
+#if USE(OCDM)
+#include "CDMOpenCDM.h"
+#endif
 #include "CDMPrivate.h"
 #include "Document.h"
 #include "InitDataRegistry.h"
@@ -47,6 +50,9 @@ static Vector<CDMFactory*>& cdmFactories()
     static NeverDestroyed<Vector<CDMFactory*>> factories;
     if (factories.get().isEmpty()) {
         factories.get().append(new CDMFactoryClearKey);
+#if USE(OCDM)
+        factories.get().append(new CDMFactoryOpenCDM);
+#endif
     }
 
     return factories;
@@ -56,7 +62,7 @@ static std::unique_ptr<CDMPrivate> createCDMPrivateForKeySystem(const String& ke
 {
     for (auto* factory : cdmFactories()) {
         if (factory->supportsKeySystem(keySystem))
-            return factory->createCDM(cdm);
+            return factory->createCDM(cdm, keySystem);
     }
     ASSERT_NOT_REACHED();
     return nullptr;
@@ -98,7 +104,7 @@ CDM::CDM(Document& document, const String& keySystem)
     for (auto* factory : cdmFactories()) {
         if (!factory->supportsKeySystem(keySystem))
             continue;
-        m_private = factory->createCDM(*this);
+        m_private = factory->createCDM(*this, keySystem);
     }
 }
 
@@ -495,12 +501,14 @@ std::optional<Vector<MediaKeySystemMediaCapability>> CDM::getSupportedCapabiliti
         MediaEngineSupportParameters parameters;
         parameters.type = contentType.mimeType();
         parameters.codecs = codecs;
+#if !USE(OCDM)
         if (true /* !MediaPlayer::supportsType(parameters, nullptr) */) {
             // Try with Media Source:
             parameters.isMediaSource = true;
             if (!MediaPlayer::supportsType(parameters, nullptr))
                 continue;
         }
+#endif
 
         if (!m_private->supportsConfigurationWithRestrictions(accumulatedConfiguration, restrictions))
             continue;

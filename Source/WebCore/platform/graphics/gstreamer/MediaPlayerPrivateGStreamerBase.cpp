@@ -107,13 +107,15 @@
 #include <runtime/Uint8Array.h>
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDMPRSessionGStreamer.h"
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
-#if USE(OCDM)
+#if USE(OCDM)&& (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
 #include "CDMPrivateOpenCDM.h"
 #include "CDMSessionOpenCDM.h"
+#endif // USE(OCDM)&& (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
+#if USE(OCDM)
 #include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
 #include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
 #endif // USE(OCDM)
@@ -162,7 +164,7 @@ void registerWebKitGStreamerElements()
         gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT);
 #endif
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(OCDM)
     GRefPtr<GstElementFactory> widevineDecryptorFactory = gst_element_factory_find("webkitopencdmwidevine");
     if (!widevineDecryptorFactory)
         gst_element_register(0, "webkitopencdmwidevine", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT);
@@ -269,6 +271,9 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_usingFallbackVideoSink(false)
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     , m_cdmSession(nullptr)
+#endif
+#if ENABLE(ENCRYPTED_MEDIA)
+    , m_initDataProcessed(false)
 #endif
 {
     g_mutex_init(&m_sampleMutex);
@@ -446,7 +451,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             }
 #endif
 
-#if USE(OCDM)
+#if USE(OCDM) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
             LockHolder locker(m_cdmSessionMutex);
 #endif
@@ -471,7 +476,13 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 GST_WARNING("cannot map %s protection data", eventKeySystemId);
                 break;
             }
-
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+            LockHolder locker(m_protectInitDataProcessing);
+            if (m_initDataProcessed)
+                return false;
+            else
+                m_initDataProcessed = true;
+#endif
             GST_TRACE("appending init data for %s of size %" G_GSIZE_FORMAT, eventKeySystemId, mapInfo.size);
             GST_MEMDUMP("init data", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
             concatenatedInitDataChunks.append(mapInfo.data, mapInfo.size);
@@ -507,7 +518,11 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             needKey(initDataArray);
 #elif ENABLE(ENCRYPTED_MEDIA)
             fprintf(stderr, "MediaPlayerPrivateGStreamerBase: got init data of size %zu\n", initData.size());
+#if USE(OCDM)
+            m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(initData.data(), initData.size()));
+#else
             m_player->initializationDataEncountered(ASCIILiteral("hoi"), ArrayBuffer::create(initData.data(), initData.size()));
+#endif
 
             // FIXME: ClearKey BestKey
             LockHolder lock(m_protectionMutex);
@@ -1518,7 +1533,7 @@ void MediaPlayerPrivateGStreamerBase::emitPlayReadySession()
 }
 #endif
 
-#if USE(OCDM)
+#if USE(OCDM) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
 void MediaPlayerPrivateGStreamerBase::emitOpenCDMSession()
 {
     if (!m_cdmSession)
@@ -1547,7 +1562,23 @@ void MediaPlayerPrivateGStreamerBase::resetOpenCDMSession()
     m_cdmSession.reset();
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 }
-#endif // USE(OCDM)
+#endif // USE(OCDM) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
+
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+void MediaPlayerPrivateGStreamerBase::emitSession(String& sessionId)
+{
+    if (sessionId.isEmpty())
+        return;
+    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+        gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
+    GST_TRACE("emitted OCDM session on pipeline, event handled %s", eventHandled ? "yes" : "no");
+}
+
+void MediaPlayerPrivateGStreamerBase::resetOpenCDMFlag()
+{
+    m_initDataProcessed = false;
+}
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const String& keySystem, const unsigned char* keyData, unsigned keyLength, const unsigned char* /* initData */, unsigned /* initDataLength */ , const String& sessionID)
@@ -1809,7 +1840,7 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
     }
 #endif
 
-#if USE(OCDM)
+#if USE(OCDM) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
     LockHolder locker(m_cdmSessionMutex);
 #endif
@@ -1856,13 +1887,13 @@ static AtomicString keySystemIdToUuid(const AtomicString& id)
         return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
 #endif
 
-#if USE(PLAYREADY) || USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && (USE(PLAYREADY) || USE(OCDM))
     if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
         return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
 #endif
 
-#if USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(OCDM)
     if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
         return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
 #endif
@@ -1877,12 +1908,12 @@ static AtomicString keySystemUuidToId(const AtomicString& uuid)
     if (equalIgnoringASCIICase(uuid, CLEAR_KEY_PROTECTION_SYSTEM_UUID))
         return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_ID);
 
-#if USE(PLAYREADY) || USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && (USE(PLAYREADY) || USE(OCDM))
     if (equalIgnoringASCIICase(uuid, PLAYREADY_PROTECTION_SYSTEM_UUID))
         return AtomicString(PLAYREADY_PROTECTION_SYSTEM_ID);
 #endif
 
-#if USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(OCDM)
     if (equalIgnoringASCIICase(uuid, WIDEVINE_PROTECTION_SYSTEM_UUID))
         return AtomicString(WIDEVINE_PROTECTION_SYSTEM_ID);
 #endif

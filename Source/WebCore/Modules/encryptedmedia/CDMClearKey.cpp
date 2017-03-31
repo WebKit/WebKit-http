@@ -150,7 +150,7 @@ CDMFactoryClearKey::CDMFactoryClearKey() = default;
 
 CDMFactoryClearKey::~CDMFactoryClearKey() = default;
 
-std::unique_ptr<CDMPrivate> CDMFactoryClearKey::createCDM(CDM&)
+std::unique_ptr<CDMPrivate> CDMFactoryClearKey::createCDM(CDM&, const String&)
 {
     return std::unique_ptr<CDMPrivate>(new CDMPrivateClearKey);
 }

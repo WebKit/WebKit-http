@@ -51,7 +51,7 @@ struct MediaKeysRestrictions;
 class CDMFactory {
 public:
     virtual ~CDMFactory() { };
-    virtual std::unique_ptr<CDMPrivate> createCDM(CDM&) = 0;
+    virtual std::unique_ptr<CDMPrivate> createCDM(CDM&, const String&) = 0;
     virtual bool supportsKeySystem(const String&) = 0;
 };
 

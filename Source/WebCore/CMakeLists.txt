@@ -3069,6 +3069,7 @@ set(WebCore_PLUG_INS_RESOURCES
 
 set(WebCore_LIBRARIES
     ${ICU_LIBRARIES}
+    ${OCDM_LIBRARIES}
     JavaScriptCore${DEBUG_SUFFIX}
     PAL${DEBUG_SUFFIX}
 )
@@ -3104,6 +3105,7 @@ if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
         Modules/encryptedmedia/CDM.cpp
         Modules/encryptedmedia/CDMClearKey.cpp
+        Modules/encryptedmedia/CDMOpenCDM.cpp
         Modules/encryptedmedia/InitDataRegistry.cpp
         Modules/encryptedmedia/MediaKeyMessageEvent.cpp
         Modules/encryptedmedia/MediaKeySession.cpp

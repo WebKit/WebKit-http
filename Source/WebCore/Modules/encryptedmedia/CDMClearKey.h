@@ -11,7 +11,7 @@ public:
     CDMFactoryClearKey();
     virtual ~CDMFactoryClearKey();
 
-    std::unique_ptr<CDMPrivate> createCDM(CDM&) override;
+    std::unique_ptr<CDMPrivate> createCDM(CDM&, const String&) override;
     bool supportsKeySystem(const String&) override;
 };
 

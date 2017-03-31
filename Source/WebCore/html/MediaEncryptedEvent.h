@@ -50,12 +50,13 @@ public:
 
     virtual ~MediaEncryptedEvent();
 
-    String initDataType();
-    JSC::ArrayBuffer* initData();
+    String initDataType() { return m_initDataType; }
+    RefPtr<JSC::ArrayBuffer> initData() {return m_initData; }
 
 private:
     MediaEncryptedEvent(const AtomicString&, const MediaEncryptedEventInit&, IsTrusted);
-
+    String m_initDataType;
+    RefPtr<JSC::ArrayBuffer> m_initData;
     // Event
     EventInterface eventInterface() const override;
 };

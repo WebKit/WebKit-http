@@ -387,6 +387,9 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&);
+#if USE(OCDM)
+    void emitSession(String&);
+#endif
 #endif
 
     bool paused() const;
