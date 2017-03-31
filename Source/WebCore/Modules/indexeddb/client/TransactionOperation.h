@@ -59,6 +59,7 @@ public:
     IDBResourceIdentifier transactionIdentifier() const { return m_transaction->info().identifier(); }
     uint64_t objectStoreIdentifier() const { return m_objectStoreIdentifier; }
     uint64_t indexIdentifier() const { return m_indexIdentifier; }
+    IDBResourceIdentifier* cursorIdentifier() const { return m_cursorIdentifier.get(); }
     IDBTransaction& transaction() { return m_transaction.get(); }
     IndexedDB::IndexRecordType indexRecordType() const { return m_indexRecordType; }
 
@@ -75,6 +76,7 @@ protected:
     IDBResourceIdentifier m_identifier;
     uint64_t m_objectStoreIdentifier { 0 };
     uint64_t m_indexIdentifier { 0 };
+    std::unique_ptr<IDBResourceIdentifier> m_cursorIdentifier;
     IndexedDB::IndexRecordType m_indexRecordType;
     std::function<void ()> m_performFunction;
     std::function<void (const IDBResultData&)> m_completeFunction;
@@ -145,6 +147,19 @@ RefPtr<TransactionOperation> createTransactionOperation(
     const P1& parameter1)
 {
     auto operation = new TransactionOperationImpl<MP1>(transaction, request, complete, perform, parameter1);
+    return adoptRef(operation);
+}
+
+template<typename MP1, typename P1, typename MP2, typename P2>
+RefPtr<TransactionOperation> createTransactionOperation(
+    IDBTransaction& transaction,
+    IDBRequest& request,
+    void (IDBTransaction::*complete)(IDBRequest&, const IDBResultData&),
+    void (IDBTransaction::*perform)(TransactionOperation&, MP1, MP2),
+    const P1& parameter1,
+    const P2& parameter2)
+{
+    auto operation = new TransactionOperationImpl<MP1, MP2>(transaction, request, complete, perform, parameter1, parameter2);
     return adoptRef(operation);
 }
 

@@ -161,6 +161,14 @@ table.results-table {
     color: black;
 }
 
+.results-table td.noisy-results {
+    color: red;
+}
+
+.results-table td.suites-separator {
+    background-color: yellow;
+}
+ 
 /* -------------------------------------------------------------------------- */
 /*                              Results JSON                                  */
 /* -------------------------------------------------------------------------- */
@@ -230,6 +238,13 @@ section > footer {
     -webkit-justify-content: center;
     -ms-flex-pack: center;
     justify-content: center;
+}
+
+@media screen and (min-device-width: 1800px) {
+    section {
+        width: 1600px;
+        height: 800px;
+    }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -313,9 +328,10 @@ section#running > #running-test {
 }
 
 section#running > #running-test > iframe {
-    width: 100%;
-    height: 100%;
+    width: 800px;
+    height: 600px;
     border: 0px none;
+    overflow: hidden;
 }
 
 section#running > #progress {
@@ -344,6 +360,13 @@ section#running > #record {
     left: 0px;
     right: 0px;
     padding: 16px;
+}
+
+@media screen and (min-device-width: 1800px) {
+    section#running > #running-test > iframe {
+        width: 1600px;
+        height: 800px;
+    }
 }
 
 /* -------------------------------------------------------------------------- */

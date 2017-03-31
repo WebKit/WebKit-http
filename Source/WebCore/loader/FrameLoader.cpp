@@ -410,7 +410,7 @@ void FrameLoader::submitForm(PassRefPtr<FormSubmission> submission)
 
     // We do not want to submit more than one form from the same page, nor do we want to submit a single
     // form more than once. This flag prevents these from happening; not sure how other browsers prevent this.
-    // The flag is reset in each time we start handle a new mouse or key down event, and
+    // The flag is reset in each time we start dispatching a new mouse or key down event, and
     // also in setView since this part may get reused for a page from the back/forward cache.
     // The form multi-submit logic here is only needed when we are submitting a form that affects this frame.
 
@@ -437,7 +437,7 @@ void FrameLoader::stopLoading(UnloadEventPolicy unloadEventPolicy)
         m_frame.document()->parser()->stopParsing();
 
     if (unloadEventPolicy != UnloadEventPolicyNone)
-        handleUnloadEvents(unloadEventPolicy);
+        dispatchUnloadEvents(unloadEventPolicy);
 
     m_isComplete = true; // to avoid calling completed() in finishedParsing()
     m_didCallImplicitClose = true; // don't want that one either
@@ -2451,12 +2451,12 @@ String FrameLoader::userAgent(const URL& url) const
     return m_client.userAgent(url);
 }
 
-void FrameLoader::handledOnloadEvents()
+void FrameLoader::dispatchOnloadEvents()
 {
-    m_client.dispatchDidHandleOnloadEvents();
+    m_client.dispatchDidDispatchOnloadEvents();
 
     if (documentLoader())
-        documentLoader()->handledOnloadEvents();
+        documentLoader()->dispatchOnloadEvents();
 }
 
 void FrameLoader::frameDetached()
@@ -2822,7 +2822,7 @@ bool FrameLoader::shouldClose()
         for (i = 0; i < targetFrames.size(); i++) {
             if (!targetFrames[i]->tree().isDescendantOf(&m_frame))
                 continue;
-            if (!targetFrames[i]->loader().handleBeforeUnloadEvent(page->chrome(), this))
+            if (!targetFrames[i]->loader().dispatchBeforeUnloadEvent(page->chrome(), this))
                 break;
         }
 
@@ -2837,7 +2837,7 @@ bool FrameLoader::shouldClose()
     return shouldClose;
 }
 
-void FrameLoader::handleUnloadEvents(UnloadEventPolicy unloadEventPolicy)
+void FrameLoader::dispatchUnloadEvents(UnloadEventPolicy unloadEventPolicy)
 {
     if (!m_frame.document())
         return;
@@ -2859,7 +2859,7 @@ void FrameLoader::handleUnloadEvents(UnloadEventPolicy unloadEventPolicy)
             // https://bugs.webkit.org/show_bug.cgi?id=116770
 
             if (!m_frame.document()->inPageCache()) {
-                RefPtr<Event> unloadEvent(Event::create(eventNames().unloadEvent, false, false));
+                Ref<Event> unloadEvent(Event::create(eventNames().unloadEvent, false, false));
                 // The DocumentLoader (and thus its DocumentLoadTiming) might get destroyed
                 // while dispatching the event, so protect it to prevent writing the end
                 // time into freed memory.
@@ -2895,7 +2895,7 @@ void FrameLoader::handleUnloadEvents(UnloadEventPolicy unloadEventPolicy)
         m_frame.document()->removeAllEventListeners();
 }
 
-bool FrameLoader::handleBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLoaderBeingNavigated)
+bool FrameLoader::dispatchBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLoaderBeingNavigated)
 {
     DOMWindow* domWindow = m_frame.document()->domWindow();
     if (!domWindow)
@@ -2905,18 +2905,18 @@ bool FrameLoader::handleBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLoad
     if (!document->bodyOrFrameset())
         return true;
     
-    RefPtr<BeforeUnloadEvent> beforeUnloadEvent = BeforeUnloadEvent::create();
+    Ref<BeforeUnloadEvent> beforeUnloadEvent = BeforeUnloadEvent::create();
     m_pageDismissalEventBeingDispatched = PageDismissalType::BeforeUnload;
 
     {
         ForbidPromptsScope forbidPrompts(m_frame.page());
-        domWindow->dispatchEvent(beforeUnloadEvent.get(), domWindow->document());
+        domWindow->dispatchEvent(beforeUnloadEvent, domWindow->document());
     }
 
     m_pageDismissalEventBeingDispatched = PageDismissalType::None;
 
     if (!beforeUnloadEvent->defaultPrevented())
-        document->defaultEventHandler(beforeUnloadEvent.get());
+        document->defaultEventHandler(beforeUnloadEvent.ptr());
     if (beforeUnloadEvent->returnValue().isNull())
         return true;
 

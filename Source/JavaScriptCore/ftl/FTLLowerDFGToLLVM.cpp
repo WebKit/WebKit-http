@@ -37,6 +37,7 @@
 #include "DirectArguments.h"
 #include "FTLAbstractHeapRepository.h"
 #include "FTLAvailableRecovery.h"
+#include "FTLB3Output.h"
 #include "FTLForOSREntryJITCode.h"
 #include "FTLFormattedValue.h"
 #include "FTLInlineCacheSize.h"
@@ -208,17 +209,19 @@ public:
                             maxNumberOfCatchSpills = std::max(maxNumberOfCatchSpills, m_graph.localsLiveInBytecode(opCatchOrigin).bitCount());
                         break;
                     }
+                    case ArithSub:
                     case GetById:
                     case GetByIdFlush: {
-                        // We may have to flush one thing for GetByIds when the base and result
-                        // are assigned the same register. For a more comprehensive overview, look
-                        // at the comment in FTLCompile.cpp
+                        // We may have to flush one thing for GetByIds/ArithSubs when the base and result or the left/right and the result
+                        // are assigned the same register. For a more comprehensive overview, look at the comment in FTLCompile.cpp
+                        if (node->op() == ArithSub && node->binaryUseKind() != UntypedUse)
+                            break; // We only compile patchpoints for ArithSub UntypedUse.
                         CodeOrigin opCatchOrigin;
                         HandlerInfo* exceptionHandler;
                         bool willCatchException = m_graph.willCatchExceptionInMachineFrame(node->origin.forExit, opCatchOrigin, exceptionHandler);
                         if (willCatchException) {
-                            static const size_t numberOfGetByIdSpills = 1;
-                            maxNumberOfCatchSpills = std::max(maxNumberOfCatchSpills, numberOfGetByIdSpills);
+                            static const size_t numberOfGetByIdOrSubSpills = 1;
+                            maxNumberOfCatchSpills = std::max(maxNumberOfCatchSpills, numberOfGetByIdOrSubSpills);
                         }
                         break;
                     }
@@ -366,7 +369,7 @@ private:
                     DFG_CRASH(m_graph, node, "Bad Phi node result type");
                     break;
                 }
-                m_phis.add(node, buildAlloca(m_out.m_builder, type));
+                m_phis.add(node, m_out.alloca(type));
             }
         }
     }
@@ -1543,10 +1546,17 @@ private:
             LValue right = lowJSValue(m_node->child2());
 
             // Arguments: id, bytes, target, numArgs, args...
-            LValue call = m_out.call(
-                m_out.patchpointInt64Intrinsic(),
-                m_out.constInt64(stackmapID), m_out.constInt32(sizeOfArithSub()),
-                constNull(m_out.ref8), m_out.constInt32(2), left, right);
+            StackmapArgumentList arguments;
+            arguments.append(m_out.constInt64(stackmapID));
+            arguments.append(m_out.constInt32(sizeOfArithSub()));
+            arguments.append(constNull(m_out.ref8));
+            arguments.append(m_out.constInt32(2));
+            arguments.append(left);
+            arguments.append(right);
+
+            appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, ExceptionType::SubGenerator, 3); // left, right, and result show up in the stackmap locations.
+
+            LValue call = m_out.call(m_out.patchpointInt64Intrinsic(), arguments);
             setInstructionCallingConvention(call, LLVMAnyRegCallConv);
 
             m_ftlState.arithSubs.append(ArithSubDescriptor(stackmapID, m_node->origin.semantic,
@@ -2026,8 +2036,7 @@ private:
     
     void compileArithFRound()
     {
-        LValue floatValue = m_out.fpCast(lowDouble(m_node->child1()), m_out.floatType);
-        setDouble(m_out.fpCast(floatValue, m_out.doubleType));
+        setDouble(m_out.fround(lowDouble(m_node->child1())));
     }
     
     void compileArithNegate()
@@ -2365,7 +2374,7 @@ private:
         arguments.append(base); 
         arguments.append(value);
 
-        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, LLVMAnyRegCallConv, 2); // 2 arguments show up in the stackmap locations: the base and the value.
+        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, ExceptionType::PutById, 2); // 2 arguments show up in the stackmap locations: the base and the value.
 
         arguments.insert(0, m_out.constInt32(2)); 
         arguments.insert(0, constNull(m_out.ref8)); 
@@ -2502,7 +2511,7 @@ private:
             LValue arguments = lowCell(m_node->child1());
             speculate(
                 ExoticObjectMode, noValue(), nullptr,
-                m_out.notZero8(m_out.load8(arguments, m_heaps.ScopedArguments_overrodeThings)));
+                m_out.notZero32(m_out.load8ZeroExt32(arguments, m_heaps.ScopedArguments_overrodeThings)));
             setInt32(m_out.load32NonNegative(arguments, m_heaps.ScopedArguments_totalLength));
             return;
         }
@@ -2742,10 +2751,10 @@ private:
                     LValue result;
                     switch (elementSize(type)) {
                     case 1:
-                        result = m_out.load8(pointer);
+                        result = isSigned(type) ? m_out.load8SignExt32(pointer) :  m_out.load8ZeroExt32(pointer);
                         break;
                     case 2:
-                        result = m_out.load16(pointer);
+                        result = isSigned(type) ? m_out.load16SignExt32(pointer) :  m_out.load16ZeroExt32(pointer);
                         break;
                     case 4:
                         result = m_out.load32(pointer);
@@ -2754,20 +2763,11 @@ private:
                         DFG_CRASH(m_graph, m_node, "Bad element size");
                     }
                     
-                    if (elementSize(type) < 4) {
-                        if (isSigned(type))
-                            result = m_out.signExt(result, m_out.int32);
-                        else
-                            result = m_out.zeroExt(result, m_out.int32);
+                    if (elementSize(type) < 4 || isSigned(type)) {
                         setInt32(result);
                         return;
                     }
-                    
-                    if (isSigned(type)) {
-                        setInt32(result);
-                        return;
-                    }
-                    
+
                     if (m_node->shouldSpeculateInt32()) {
                         speculate(
                             Overflow, noValue(), 0, m_out.lessThan(result, m_out.int32Zero));
@@ -2789,7 +2789,7 @@ private:
                 LValue result;
                 switch (type) {
                 case TypeFloat32:
-                    result = m_out.fpCast(m_out.loadFloat(pointer), m_out.doubleType);
+                    result = m_out.loadFloatToDouble(pointer);
                     break;
                 case TypeFloat64:
                     result = m_out.loadDouble(pointer);
@@ -3062,7 +3062,7 @@ private:
                     LValue value = lowDouble(child3);
                     switch (type) {
                     case TypeFloat32:
-                        valueToStore = m_out.fpCast(value, m_out.floatType);
+                        valueToStore = value;
                         refType = m_out.refFloat;
                         break;
                     case TypeFloat64:
@@ -3989,20 +3989,18 @@ private:
             
         m_out.appendTo(is8Bit, is16Bit);
             
-        ValueFromBlock char8Bit = m_out.anchor(m_out.zeroExt(
-            m_out.load8(m_out.baseIndex(
+        ValueFromBlock char8Bit = m_out.anchor(
+            m_out.load8ZeroExt32(m_out.baseIndex(
                 m_heaps.characters8, storage, m_out.zeroExtPtr(index),
-                provenValue(m_node->child2()))),
-            m_out.int32));
+                provenValue(m_node->child2()))));
         m_out.jump(bitsContinuation);
             
         m_out.appendTo(is16Bit, bigCharacter);
             
-        ValueFromBlock char16Bit = m_out.anchor(m_out.zeroExt(
-            m_out.load16(m_out.baseIndex(
+        ValueFromBlock char16Bit = m_out.anchor(
+            m_out.load16ZeroExt32(m_out.baseIndex(
                 m_heaps.characters16, storage, m_out.zeroExtPtr(index),
-                provenValue(m_node->child2()))),
-            m_out.int32));
+                provenValue(m_node->child2()))));
         m_out.branch(
             m_out.aboveOrEqual(char16Bit.value(), m_out.constInt32(0x100)),
             rarely(bigCharacter), usually(bitsContinuation));
@@ -4087,20 +4085,18 @@ private:
             
         LBasicBlock lastNext = m_out.appendTo(is8Bit, is16Bit);
             
-        ValueFromBlock char8Bit = m_out.anchor(m_out.zeroExt(
-            m_out.load8(m_out.baseIndex(
+        ValueFromBlock char8Bit = m_out.anchor(
+            m_out.load8ZeroExt32(m_out.baseIndex(
                 m_heaps.characters8, storage, m_out.zeroExtPtr(index),
-                provenValue(m_node->child2()))),
-            m_out.int32));
+                provenValue(m_node->child2()))));
         m_out.jump(continuation);
             
         m_out.appendTo(is16Bit, continuation);
             
-        ValueFromBlock char16Bit = m_out.anchor(m_out.zeroExt(
-            m_out.load16(m_out.baseIndex(
+        ValueFromBlock char16Bit = m_out.anchor(
+            m_out.load16ZeroExt32(m_out.baseIndex(
                 m_heaps.characters16, storage, m_out.zeroExtPtr(index),
-                provenValue(m_node->child2()))),
-            m_out.int32));
+                provenValue(m_node->child2()))));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
@@ -4300,9 +4296,9 @@ private:
         LBasicBlock isNotInvalidated = FTL_NEW_BLOCK(m_out, ("NotifyWrite not invalidated case"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NotifyWrite continuation"));
         
-        LValue state = m_out.load8(m_out.absolute(set->addressOfState()));
+        LValue state = m_out.load8ZeroExt32(m_out.absolute(set->addressOfState()));
         m_out.branch(
-            m_out.equal(state, m_out.constInt8(IsInvalidated)),
+            m_out.equal(state, m_out.constInt32(IsInvalidated)),
             usually(continuation), rarely(isNotInvalidated));
         
         LBasicBlock lastNext = m_out.appendTo(isNotInvalidated, continuation);
@@ -4589,7 +4585,7 @@ private:
         for (unsigned i = 0; i < padding; ++i)
             arguments.append(getUndef(m_out.int64));
 
-        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, LLVMWebKitJSCallConv, 0); // No call arguments show up in the stackmap locations.
+        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, ExceptionType::JSCall, 0); // No call arguments show up in the stackmap locations.
 
         arguments.insert(0, m_out.constInt32(1 + alignedFrameSize - JSStack::CallerFrameAndPCSize));
         arguments.insert(0, constNull(m_out.ref8));
@@ -4672,7 +4668,7 @@ private:
         ASSERT(thisArg);
         arguments.append(thisArg);
 
-        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, LLVMCCallConv, 0); // No call arguments show up in stackmap locations.
+        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, ExceptionType::JSCall, 0); // No call arguments show up in stackmap locations.
 
         arguments.insert(0, m_out.constInt32(2 + !!jsArguments));
         arguments.insert(0, constNull(m_out.ref8));
@@ -4935,16 +4931,15 @@ private:
             
             Vector<ValueFromBlock, 2> characters;
             m_out.appendTo(is8Bit, is16Bit);
-            characters.append(m_out.anchor(
-                m_out.zeroExt(m_out.load8(characterData, m_heaps.characters8[0]), m_out.int16)));
+            characters.append(m_out.anchor(m_out.load8ZeroExt32(characterData, m_heaps.characters8[0])));
             m_out.jump(continuation);
             
             m_out.appendTo(is16Bit, continuation);
-            characters.append(m_out.anchor(m_out.load16(characterData, m_heaps.characters16[0])));
+            characters.append(m_out.anchor(m_out.load16ZeroExt32(characterData, m_heaps.characters16[0])));
             m_out.jump(continuation);
             
             m_out.appendTo(continuation, lastNext);
-            buildSwitch(data, m_out.int16, m_out.phi(m_out.int16, characters));
+            buildSwitch(data, m_out.int32, m_out.phi(m_out.int32, characters));
             return;
         }
         
@@ -5054,11 +5049,8 @@ private:
 
         DFG_ASSERT(m_graph, m_node, m_origin.exitOK);
         
-        m_ftlState.jitCode->osrExitDescriptors.append(OSRExitDescriptor(
-            UncountableInvalidation, DataFormatNone, MethodOfGettingAValueProfile(),
-            m_origin.forExit, m_origin.semantic,
-            availabilityMap().m_locals.numberOfArguments(),
-            availabilityMap().m_locals.numberOfLocals()));
+
+        appendOSRExitDescriptor(UncountableInvalidation, ExceptionType::None, noValue(), nullptr, m_origin);
         
         OSRExitDescriptor& exitDescriptor = m_ftlState.jitCode->osrExitDescriptors.last();
         
@@ -5275,9 +5267,9 @@ private:
     {
         speculate(
             Uncountable, noValue(), 0,
-            m_out.testIsZero8(
-                m_out.load8(lowCell(m_node->child1()), m_heaps.JSCell_typeInfoFlags),
-                m_out.constInt8(ImplementsDefaultHasInstance)));
+            m_out.testIsZero32(
+                m_out.load8ZeroExt32(lowCell(m_node->child1()), m_heaps.JSCell_typeInfoFlags),
+                m_out.constInt32(ImplementsDefaultHasInstance)));
     }
     
     void compileInstanceOf()
@@ -5770,8 +5762,8 @@ private:
         LBasicBlock timerDidFire = FTL_NEW_BLOCK(m_out, ("CheckWatchdogTimer timer did fire"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CheckWatchdogTimer continuation"));
         
-        LValue state = m_out.load8(m_out.absolute(vm().watchdog->timerDidFireAddress()));
-        m_out.branch(m_out.equal(state, m_out.constInt8(0)),
+        LValue state = m_out.load8ZeroExt32(m_out.absolute(vm().watchdog->timerDidFireAddress()));
+        m_out.branch(m_out.isZero32(state),
             usually(continuation), rarely(timerDidFire));
 
         LBasicBlock lastNext = m_out.appendTo(timerDidFire, continuation);
@@ -6241,7 +6233,7 @@ private:
         StackmapArgumentList arguments;
         arguments.append(base);
 
-        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, LLVMAnyRegCallConv, 2, false, true); // 2 arguments show up in the stackmap locations: the result and the base.
+        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, ExceptionType::GetById, 2); // 2 arguments show up in the stackmap locations: the result and the base.
 
         arguments.insert(0, m_out.constInt32(1)); 
         arguments.insert(0, constNull(m_out.ref8));
@@ -6447,9 +6439,9 @@ private:
         FTL_TYPE_CHECK(jsValueValue(cell), edge, filter, isNotObject(cell));
         speculate(
             BadType, jsValueValue(cell), edge.node(),
-            m_out.testNonZero8(
-                m_out.load8(cell, m_heaps.JSCell_typeInfoFlags),
-                m_out.constInt8(MasqueradesAsUndefined)));
+            m_out.testNonZero32(
+                m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoFlags),
+                m_out.constInt32(MasqueradesAsUndefined)));
     }
     
     void nonSpeculativeCompare(LIntPredicate intCondition, S_JITOperation_EJJ helperFunction)
@@ -6797,9 +6789,9 @@ private:
                 results.append(m_out.anchor(m_out.booleanTrue));
                 
                 m_out.branch(
-                    m_out.testIsZero8(
-                        m_out.load8(value, m_heaps.JSCell_typeInfoFlags),
-                        m_out.constInt8(MasqueradesAsUndefined)),
+                    m_out.testIsZero32(
+                        m_out.load8ZeroExt32(value, m_heaps.JSCell_typeInfoFlags),
+                        m_out.constInt32(MasqueradesAsUndefined)),
                     usually(continuation), rarely(masqueradesCase));
                 
                 m_out.appendTo(masqueradesCase);
@@ -6895,9 +6887,9 @@ private:
             results.append(m_out.anchor(m_out.booleanFalse));
             
             m_out.branch(
-                m_out.testNonZero8(
-                    m_out.load8(value, m_heaps.JSCell_typeInfoFlags),
-                    m_out.constInt8(MasqueradesAsUndefined)),
+                m_out.testNonZero32(
+                    m_out.load8ZeroExt32(value, m_heaps.JSCell_typeInfoFlags),
+                    m_out.constInt32(MasqueradesAsUndefined)),
                 rarely(masqueradesCase), usually(continuation));
             
             m_out.appendTo(masqueradesCase, primitiveCase);
@@ -7151,8 +7143,8 @@ private:
         for (unsigned i = numChecked; i < commonChars; ++i) {
             m_out.check(
                 m_out.notEqual(
-                    m_out.load8(buffer, m_heaps.characters8[i]),
-                    m_out.constInt8(cases[begin].string->at(i))),
+                    m_out.load8ZeroExt32(buffer, m_heaps.characters8[i]),
+                    m_out.constInt32(static_cast<uint16_t>(cases[begin].string->at(i)))),
                 unsure(fallThrough));
         }
         
@@ -7189,7 +7181,7 @@ private:
         
         DFG_ASSERT(m_graph, m_node, end >= begin + 2);
         
-        LValue uncheckedChar = m_out.load8(buffer, m_heaps.characters8[commonChars]);
+        LValue uncheckedChar = m_out.load8ZeroExt32(buffer, m_heaps.characters8[commonChars]);
         
         Vector<CharacterCase> characterCases;
         CharacterCase currentCase(cases[begin].string->at(commonChars), begin, begin + 1);
@@ -7213,7 +7205,7 @@ private:
             if (i)
                 DFG_ASSERT(m_graph, m_node, characterCases[i - 1].character < characterCases[i].character);
             switchCases.append(SwitchCase(
-                m_out.constInt8(characterCases[i].character), characterBlocks[i], Weight()));
+                m_out.constInt32(characterCases[i].character), characterBlocks[i], Weight()));
         }
         m_out.switchInstruction(uncheckedChar, switchCases, fallThrough, Weight());
         
@@ -7596,7 +7588,7 @@ private:
         arguments.append(m_out.constInt32(userArguments.size()));
         arguments.appendVector(userArguments);
 
-        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, LLVMAnyRegCallConv, userArguments.size() + 1, true); // All the arguments plus the result show up in the stackmap locations.
+        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, ExceptionType::LazySlowPath, userArguments.size() + 1); // All the arguments plus the result show up in the stackmap locations.
 
         LValue call = m_out.call(m_out.patchpointInt64Intrinsic(), arguments);
         setInstructionCallingConvention(call, LLVMAnyRegCallConv);
@@ -8307,8 +8299,8 @@ private:
         if (LValue proven = isProvenValue(type & SpecCell, SpecObject))
             return proven;
         return m_out.aboveOrEqual(
-            m_out.load8(cell, m_heaps.JSCell_typeInfoType),
-            m_out.constInt8(ObjectType));
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt32(ObjectType));
     }
 
     LValue isNotObject(LValue cell, SpeculatedType type = SpecFullTop)
@@ -8316,8 +8308,8 @@ private:
         if (LValue proven = isProvenValue(type & SpecCell, ~SpecObject))
             return proven;
         return m_out.below(
-            m_out.load8(cell, m_heaps.JSCell_typeInfoType),
-            m_out.constInt8(ObjectType));
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt32(ObjectType));
     }
 
     LValue isNotString(LValue cell, SpeculatedType type = SpecFullTop)
@@ -8353,7 +8345,7 @@ private:
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous: {
-            LValue indexingType = m_out.load8(cell, m_heaps.JSCell_indexingType);
+            LValue indexingType = m_out.load8ZeroExt32(cell, m_heaps.JSCell_indexingType);
             
             switch (arrayMode.arrayClass()) {
             case Array::OriginalArray:
@@ -8362,19 +8354,19 @@ private:
                 
             case Array::Array:
                 return m_out.equal(
-                    m_out.bitAnd(indexingType, m_out.constInt8(IsArray | IndexingShapeMask)),
-                    m_out.constInt8(IsArray | arrayMode.shapeMask()));
+                    m_out.bitAnd(indexingType, m_out.constInt32(IsArray | IndexingShapeMask)),
+                    m_out.constInt32(IsArray | arrayMode.shapeMask()));
                 
             case Array::NonArray:
             case Array::OriginalNonArray:
                 return m_out.equal(
-                    m_out.bitAnd(indexingType, m_out.constInt8(IsArray | IndexingShapeMask)),
-                    m_out.constInt8(arrayMode.shapeMask()));
+                    m_out.bitAnd(indexingType, m_out.constInt32(IsArray | IndexingShapeMask)),
+                    m_out.constInt32(arrayMode.shapeMask()));
                 
             case Array::PossiblyArray:
                 return m_out.equal(
-                    m_out.bitAnd(indexingType, m_out.constInt8(IndexingShapeMask)),
-                    m_out.constInt8(arrayMode.shapeMask()));
+                    m_out.bitAnd(indexingType, m_out.constInt32(IndexingShapeMask)),
+                    m_out.constInt32(arrayMode.shapeMask()));
             }
             
             DFG_CRASH(m_graph, m_node, "Corrupt array class");
@@ -8382,18 +8374,18 @@ private:
             
         case Array::DirectArguments:
             return m_out.equal(
-                m_out.load8(cell, m_heaps.JSCell_typeInfoType),
-                m_out.constInt8(DirectArgumentsType));
+                m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+                m_out.constInt32(DirectArgumentsType));
             
         case Array::ScopedArguments:
             return m_out.equal(
-                m_out.load8(cell, m_heaps.JSCell_typeInfoType),
-                m_out.constInt8(ScopedArgumentsType));
+                m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+                m_out.constInt32(ScopedArgumentsType));
             
         default:
             return m_out.equal(
-                m_out.load8(cell, m_heaps.JSCell_typeInfoType), 
-                m_out.constInt8(typeForTypedArrayType(arrayMode.typedArrayType())));
+                m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+                m_out.constInt32(typeForTypedArrayType(arrayMode.typedArrayType())));
         }
     }
     
@@ -8414,16 +8406,16 @@ private:
     {
         if (!(type & SpecObjectOther))
             return m_out.booleanFalse;
-        return m_out.testNonZero8(
-            m_out.load8(cell, m_heaps.JSCell_typeInfoFlags),
-            m_out.constInt8(MasqueradesAsUndefined | TypeOfShouldCallGetCallData));
+        return m_out.testNonZero32(
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoFlags),
+            m_out.constInt32(MasqueradesAsUndefined | TypeOfShouldCallGetCallData));
     }
     
     LValue isType(LValue cell, JSType type)
     {
         return m_out.equal(
-            m_out.load8(cell, m_heaps.JSCell_typeInfoType),
-            m_out.constInt8(type));
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt32(type));
     }
     
     LValue isNotType(LValue cell, JSType type)
@@ -8588,9 +8580,9 @@ private:
         
         speculate(
             BadType, jsValueValue(cell), edge.node(),
-            m_out.testNonZero8(
-                m_out.load8(cell, m_heaps.JSCell_typeInfoFlags),
-                m_out.constInt8(MasqueradesAsUndefined)));
+            m_out.testNonZero32(
+                m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoFlags),
+                m_out.constInt32(MasqueradesAsUndefined)));
     }
     
     void speculateNumber(Edge edge)
@@ -8707,7 +8699,7 @@ private:
     
     LValue loadCellState(LValue base)
     {
-        return m_out.load8(base, m_heaps.JSCell_cellState);
+        return m_out.load8ZeroExt32(base, m_heaps.JSCell_cellState);
     }
 
     void emitStoreBarrier(LValue base)
@@ -8716,7 +8708,7 @@ private:
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Store barrier continuation"));
 
         m_out.branch(
-            m_out.notZero8(loadCellState(base)), usually(continuation), rarely(slowPath));
+            m_out.notZero32(loadCellState(base)), usually(continuation), rarely(slowPath));
 
         LBasicBlock lastNext = m_out.appendTo(slowPath, continuation);
 
@@ -8845,7 +8837,7 @@ private:
         m_out.appendTo(continuation);
     }
 
-    void appendOSRExitArgumentsForPatchpointIfWillCatchException(StackmapArgumentList& arguments, LCallConv callingConvention, unsigned offsetOfExitArguments, bool isLazySlowPath = false, bool isGetBydId = false)
+    void appendOSRExitArgumentsForPatchpointIfWillCatchException(StackmapArgumentList& arguments, ExceptionType exceptionType, unsigned offsetOfExitArguments)
     {
         CodeOrigin opCatchOrigin;
         HandlerInfo* exceptionHandler;
@@ -8853,27 +8845,15 @@ private:
         if (!willCatchException)
             return;
 
-        appendOSRExitDescriptor(Uncountable, noValue(), nullptr, m_origin.withForExitAndExitOK(opCatchOrigin, true));
+        appendOSRExitDescriptor(Uncountable, exceptionType, noValue(), nullptr, m_origin.withForExitAndExitOK(opCatchOrigin, true));
         OSRExitDescriptor& exitDescriptor = m_ftlState.jitCode->osrExitDescriptors.last();
         exitDescriptor.m_semanticCodeOriginForCallFrameHeader = codeOriginDescriptionOfCallSite();
-        exitDescriptor.m_isExceptionHandler = true;
-        exitDescriptor.m_willArriveAtOSRExitFromGenericUnwind = !isLazySlowPath;
-        exitDescriptor.m_isExceptionFromLazySlowPath = isLazySlowPath;
-        exitDescriptor.m_isExceptionFromJSCall = callingConvention == LLVMWebKitJSCallConv || callingConvention == LLVMCCallConv;
-        exitDescriptor.m_isExceptionFromGetById = isGetBydId;
         exitDescriptor.m_baselineExceptionHandler = *exceptionHandler;
         exitDescriptor.m_stackmapID = m_stackmapIDs - 1;
 
         StackmapArgumentList freshList;
-        buildExitArguments(exitDescriptor, freshList, noValue(), exitDescriptor.m_codeOrigin);
+        buildExitArguments(exitDescriptor, freshList, noValue(), exitDescriptor.m_codeOrigin, offsetOfExitArguments);
         arguments.appendVector(freshList);
-
-        if (offsetOfExitArguments) {
-            for (size_t i = 0; i < exitDescriptor.m_values.size(); i++) {
-                if (exitDescriptor.m_values[i].hasIndexInStackmapLocations())
-                    exitDescriptor.m_values[i].adjustStackmapLocationsIndexByOffset(offsetOfExitArguments);
-            }
-        }
     }
 
     bool emitBranchToOSRExitIfWillCatchException(LValue hadException)
@@ -8893,10 +8873,10 @@ private:
         return m_blocks.get(block);
     }
 
-    void appendOSRExitDescriptor(ExitKind kind, FormattedValue lowValue, Node* highValue, NodeOrigin origin)
+    void appendOSRExitDescriptor(ExitKind kind, ExceptionType exceptionType, FormattedValue lowValue, Node* highValue, NodeOrigin origin)
     {
         m_ftlState.jitCode->osrExitDescriptors.append(OSRExitDescriptor(
-            kind, lowValue.format(), m_graph.methodOfGettingAValueProfileFor(highValue),
+            kind, exceptionType, lowValue.format(), m_graph.methodOfGettingAValueProfileFor(highValue),
             origin.forExit, origin.semantic,
             availabilityMap().m_locals.numberOfArguments(),
             availabilityMap().m_locals.numberOfLocals()));
@@ -8936,9 +8916,8 @@ private:
         if (failCondition == m_out.booleanFalse)
             return;
 
-        appendOSRExitDescriptor(kind, lowValue, highValue, origin);
+        appendOSRExitDescriptor(kind, isExceptionHandler ? ExceptionType::CCallException : ExceptionType::None, lowValue, highValue, origin);
         OSRExitDescriptor& exitDescriptor = m_ftlState.jitCode->osrExitDescriptors.last();
-        exitDescriptor.m_isExceptionHandler = isExceptionHandler;
 
         if (failCondition == m_out.booleanTrue) {
             emitOSRExitCall(exitDescriptor, lowValue);
@@ -8975,7 +8954,7 @@ private:
     
     void buildExitArguments(
         OSRExitDescriptor& exitDescriptor, StackmapArgumentList& arguments, FormattedValue lowValue,
-        CodeOrigin codeOrigin)
+        CodeOrigin codeOrigin, unsigned offsetOfExitArgumentsInStackmapLocations = 0)
     {
         if (!!lowValue)
             arguments.append(lowValue.value());
@@ -9010,16 +8989,21 @@ private:
                     m_graph, m_node,
                     (!(availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), codeOrigin))) || m_graph.m_plan.mode == FTLForOSREntryMode);
             }
-            
-            exitDescriptor.m_values[i] = exitValueForAvailability(arguments, map, availability);
+            ExitValue exitValue = exitValueForAvailability(arguments, map, availability);
+            if (exitValue.hasIndexInStackmapLocations())
+                exitValue.adjustStackmapLocationsIndexByOffset(offsetOfExitArgumentsInStackmapLocations);
+            exitDescriptor.m_values[i] = exitValue;
         }
         
         for (auto heapPair : availabilityMap.m_heap) {
             Node* node = heapPair.key.base();
             ExitTimeObjectMaterialization* materialization = map.get(node);
+            ExitValue exitValue = exitValueForAvailability(arguments, map, heapPair.value);
+            if (exitValue.hasIndexInStackmapLocations())
+                exitValue.adjustStackmapLocationsIndexByOffset(offsetOfExitArgumentsInStackmapLocations);
             materialization->add(
                 heapPair.key.descriptor(),
-                exitValueForAvailability(arguments, map, heapPair.value));
+                exitValue);
         }
         
         if (verboseCompilationEnabled()) {
@@ -9397,6 +9381,15 @@ private:
         return abstractStructure(edge.node());
     }
     
+#if ENABLE(MASM_PROBE)
+    void probe(std::function<void (CCallHelpers::ProbeContext*)> probeFunc)
+    {
+        uint32_t stackmapID = m_stackmapIDs++;
+        m_ftlState.probes.append(ProbeDescriptor(stackmapID, probeFunc));
+        m_out.call(m_out.stackmapIntrinsic(), m_out.constInt64(stackmapID), m_out.constInt32(sizeOfProbe()));
+    }
+#endif
+
     void crash()
     {
         crash(m_highBlock->index, m_node->index());

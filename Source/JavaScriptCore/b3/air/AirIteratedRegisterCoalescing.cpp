@@ -34,12 +34,14 @@
 #include "AirLiveness.h"
 #include "AirPhaseScope.h"
 #include "AirRegisterPriority.h"
+#include <wtf/ListDump.h>
 #include <wtf/ListHashSet.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
 static bool debug = false;
 static bool traceDebug = false;
+static bool reportStats = false;
 
 template<Arg::Type type>
 struct MoveInstHelper;
@@ -128,22 +130,11 @@ struct AbsoluteTmpHelper<Arg::FP> {
 };
 
 template<Arg::Type type>
-struct Bank;
-
-template<>
-struct Bank<Arg::GP> {
-    typedef GPRInfo Info;
-};
-
-template<>
-struct Bank<Arg::FP> {
-    typedef FPRInfo Info;
-};
-
-template<Arg::Type type>
 class IteratedRegisterCoalescingAllocator {
 public:
-    IteratedRegisterCoalescingAllocator(Code& code)
+    IteratedRegisterCoalescingAllocator(Code& code, const HashSet<Tmp>& unspillableTmp)
+        : m_unspillableTmp(unspillableTmp)
+        , m_numberOfRegisters(regsInPriorityOrder(type).size())
     {
         initializeDegrees(code);
 
@@ -156,29 +147,20 @@ public:
 
     void build(Inst& inst, const Liveness<Tmp>::LocalCalc& localCalc)
     {
-        // All the Def()s interfere with eachother.
-        inst.forEachTmp([&] (Tmp& arg, Arg::Role role, Arg::Type argType) {
-            if (argType != type)
-                return;
+        inst.forEachDefAndExtraClobberedTmp(type, [&] (Tmp& arg) {
+            // All the Def()s interfere with each other and with all the extra clobbered Tmps.
+            // We should not use forEachDefAndExtraClobberedTmp() here since colored Tmps
+            // do not need interference edges in our implementation.
+            inst.forEachTmp([&] (Tmp& otherArg, Arg::Role role, Arg::Type otherArgType) {
+                if (otherArgType != type)
+                    return;
 
-            if (Arg::isDef(role)) {
-                inst.forEachTmp([&] (Tmp& otherArg, Arg::Role role, Arg::Type) {
-                    if (argType != type)
-                        return;
-
-                    if (Arg::isDef(role))
-                        addEdge(arg, otherArg);
-                });
-            }
+                if (Arg::isDef(role))
+                    addEdge(arg, otherArg);
+            });
         });
 
         if (MoveInstHelper<type>::mayBeCoalescable(inst)) {
-            for (const Arg& arg : inst.args) {
-                HashSet<Inst*>& list = m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(arg.tmp())];
-                list.add(&inst);
-            }
-            m_worklistMoves.add(&inst);
-
             // We do not want the Use() of this move to interfere with the Def(), even if it is live
             // after the Move. If we were to add the interference edge, it would be impossible to
             // coalesce the Move even if the two Tmp never interfere anywhere.
@@ -188,12 +170,26 @@ public:
                 if (Arg::isDef(role))
                     defTmp = argTmp;
                 else {
-                    ASSERT(Arg::isUse(role));
+                    ASSERT(Arg::isEarlyUse(role));
                     useTmp = argTmp;
                 }
             });
             ASSERT(defTmp);
             ASSERT(useTmp);
+
+            unsigned nextMoveIndex = m_coalescingCandidates.size();
+            m_coalescingCandidates.append({ useTmp, defTmp });
+
+            unsigned newIndexInWorklist = m_worklistMoves.addMove();
+            ASSERT_UNUSED(newIndexInWorklist, newIndexInWorklist == nextMoveIndex);
+
+            ASSERT(nextMoveIndex <= m_activeMoves.size());
+            m_activeMoves.ensureSize(nextMoveIndex + 1);
+
+            for (const Arg& arg : inst.args) {
+                auto& list = m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(arg.tmp())];
+                list.add(nextMoveIndex);
+            }
 
             for (const Tmp& liveTmp : localCalc.live()) {
                 if (liveTmp != useTmp && liveTmp.isGP() == (type == Arg::GP))
@@ -205,9 +201,12 @@ public:
 
     void allocate()
     {
+        ASSERT_WITH_MESSAGE(m_activeMoves.size() >= m_coalescingCandidates.size(), "The activeMove set should be big enough for the quick operations of BitVector.");
+
         makeWorkList();
 
         if (debug) {
+            dataLog("Interference: ", listDump(m_interferenceEdges), "\n");
             dumpInterferenceGraphInDot(WTF::dataFile());
             dataLog("Initial work list\n");
             dumpWorkLists(WTF::dataFile());
@@ -284,12 +283,10 @@ private:
     void addEdges(Inst& inst, const HashSet<Tmp>& liveTmp)
     {
         // All the Def()s interfere with everthing live.
-        inst.forEachTmp([&] (Tmp& arg, Arg::Role role, Arg::Type argType) {
-            if (argType == type && Arg::isDef(role)) {
-                for (const Tmp& liveTmp : liveTmp) {
-                    if (liveTmp.isGP() == (type == Arg::GP))
-                        addEdge(arg, liveTmp);
-                }
+        inst.forEachDefAndExtraClobberedTmp(type, [&] (Tmp& arg) {
+            for (const Tmp& liveTmp : liveTmp) {
+                if (liveTmp.isGP() == (type == Arg::GP))
+                    addEdge(arg, liveTmp);
             }
         });
     }
@@ -324,7 +321,7 @@ private:
 
             Tmp tmp = AbsoluteTmpHelper<type>::tmpFromAbsoluteIndex(i);
 
-            if (degree >= Bank<type>::Info::numberOfRegisters)
+            if (degree >= m_numberOfRegisters)
                 m_spillWorklist.add(tmp);
             else if (!m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(tmp)].isEmpty())
                 m_freezeWorklist.add(tmp);
@@ -366,7 +363,7 @@ private:
         ASSERT(m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(tmp)]);
 
         unsigned oldDegree = m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(tmp)]--;
-        if (oldDegree == Bank<type>::Info::numberOfRegisters) {
+        if (oldDegree == m_numberOfRegisters) {
             enableMovesOnValueAndAdjacents(tmp);
             m_spillWorklist.remove(tmp);
             if (isMoveRelated(tmp))
@@ -379,16 +376,16 @@ private:
     template<typename Function>
     void forEachNodeMoves(Tmp tmp, Function function)
     {
-        for (Inst* inst : m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(tmp)]) {
-            if (m_activeMoves.contains(inst) || m_worklistMoves.contains(inst))
-                function(*inst);
+        for (unsigned moveIndex : m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(tmp)]) {
+            if (m_activeMoves.quickGet(moveIndex) || m_worklistMoves.contains(moveIndex))
+                function(moveIndex);
         }
     }
 
     bool isMoveRelated(Tmp tmp)
     {
-        for (Inst* inst : m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(tmp)]) {
-            if (m_activeMoves.contains(inst) || m_worklistMoves.contains(inst))
+        for (unsigned moveIndex : m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(tmp)]) {
+            if (m_activeMoves.quickGet(moveIndex) || m_worklistMoves.contains(moveIndex))
                 return true;
         }
         return false;
@@ -396,9 +393,9 @@ private:
 
     void enableMovesOnValue(Tmp tmp)
     {
-        for (Inst* inst : m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(tmp)]) {
-            if (m_activeMoves.remove(inst))
-                m_worklistMoves.add(inst);
+        for (unsigned moveIndex : m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(tmp)]) {
+            if (m_activeMoves.quickClear(moveIndex))
+                m_worklistMoves.returnMove(moveIndex);
         }
     }
 
@@ -413,19 +410,18 @@ private:
 
     void coalesce()
     {
-        Inst* moveInst = m_worklistMoves.takeLast();
-        ASSERT(moveInst->args.size() == 2);
-
-        Tmp u = moveInst->args[0].tmp();
+        unsigned moveIndex = m_worklistMoves.takeLastMove();
+        const MoveOperands& moveOperands = m_coalescingCandidates[moveIndex];
+        Tmp u = moveOperands.src;
         u = getAlias(u);
-        Tmp v = moveInst->args[1].tmp();
+        Tmp v = moveOperands.dst;
         v = getAlias(v);
 
         if (v.isReg())
             std::swap(u, v);
 
         if (traceDebug)
-            dataLog("Coalescing ", *moveInst, " u = ", u, " v = ", v, "\n");
+            dataLog("Coalescing move at index", moveIndex, " u = ", u, " v = ", v, "\n");
 
         if (u == v) {
             addWorkList(u);
@@ -445,7 +441,7 @@ private:
             if (traceDebug)
                 dataLog("    Safe Coalescing\n");
         } else {
-            m_activeMoves.add(moveInst);
+            m_activeMoves.quickSet(moveIndex);
 
             if (traceDebug)
                 dataLog("    Failed coalescing, added to active moves.\n");
@@ -468,11 +464,11 @@ private:
         // If any adjacent of the non-colored node is not an adjacent of the colored node AND has a degree >= K
         // there is a risk that this node needs to have the same color as our precolored node. If we coalesce such
         // move, we may create an uncolorable graph.
-        auto adjacentsOfV = m_adjacencyList[AbsoluteTmpHelper<type>::absoluteIndex(v)];
+        const auto& adjacentsOfV = m_adjacencyList[AbsoluteTmpHelper<type>::absoluteIndex(v)];
         for (Tmp adjacentTmp : adjacentsOfV) {
             if (!adjacentTmp.isReg()
                 && !hasBeenSimplified(adjacentTmp)
-                && m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(adjacentTmp)] >= Bank<type>::Info::numberOfRegisters
+                && m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(adjacentTmp)] >= m_numberOfRegisters
                 && !m_interferenceEdges.contains(InterferenceEdge(u, adjacentTmp)))
                 return false;
         }
@@ -490,10 +486,10 @@ private:
         ASSERT(!u.isReg());
         ASSERT(!v.isReg());
 
-        auto adjacentsOfU = m_adjacencyList[AbsoluteTmpHelper<type>::absoluteIndex(u)];
-        auto adjacentsOfV = m_adjacencyList[AbsoluteTmpHelper<type>::absoluteIndex(v)];
+        const auto& adjacentsOfU = m_adjacencyList[AbsoluteTmpHelper<type>::absoluteIndex(u)];
+        const auto& adjacentsOfV = m_adjacencyList[AbsoluteTmpHelper<type>::absoluteIndex(v)];
 
-        if (adjacentsOfU.size() + adjacentsOfV.size() < Bank<type>::Info::numberOfRegisters) {
+        if (adjacentsOfU.size() + adjacentsOfV.size() < m_numberOfRegisters) {
             // Shortcut: if the total number of adjacents is less than the number of register, the condition is always met.
             return true;
         }
@@ -503,29 +499,29 @@ private:
         for (Tmp adjacentTmp : adjacentsOfU) {
             ASSERT(adjacentTmp != v);
             ASSERT(adjacentTmp != u);
-            if (!hasBeenSimplified(adjacentTmp) && m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(adjacentTmp)] >= Bank<type>::Info::numberOfRegisters) {
+            if (!hasBeenSimplified(adjacentTmp) && m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(adjacentTmp)] >= m_numberOfRegisters) {
                 auto addResult = highOrderAdjacents.add(adjacentTmp);
-                if (addResult.isNewEntry && highOrderAdjacents.size() >= Bank<type>::Info::numberOfRegisters)
+                if (addResult.isNewEntry && highOrderAdjacents.size() >= m_numberOfRegisters)
                     return false;
             }
         }
         for (Tmp adjacentTmp : adjacentsOfV) {
             ASSERT(adjacentTmp != u);
             ASSERT(adjacentTmp != v);
-            if (!hasBeenSimplified(adjacentTmp) && m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(adjacentTmp)] >= Bank<type>::Info::numberOfRegisters) {
+            if (!hasBeenSimplified(adjacentTmp) && m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(adjacentTmp)] >= m_numberOfRegisters) {
                 auto addResult = highOrderAdjacents.add(adjacentTmp);
-                if (addResult.isNewEntry && highOrderAdjacents.size() >= Bank<type>::Info::numberOfRegisters)
+                if (addResult.isNewEntry && highOrderAdjacents.size() >= m_numberOfRegisters)
                     return false;
             }
         }
 
-        ASSERT(highOrderAdjacents.size() < Bank<type>::Info::numberOfRegisters);
+        ASSERT(highOrderAdjacents.size() < m_numberOfRegisters);
         return true;
     }
 
     void addWorkList(Tmp tmp)
     {
-        if (!tmp.isReg() && m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(tmp)] < Bank<type>::Info::numberOfRegisters && !isMoveRelated(tmp)) {
+        if (!tmp.isReg() && m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(tmp)] < m_numberOfRegisters && !isMoveRelated(tmp)) {
             m_freezeWorklist.remove(tmp);
             m_simplifyWorklist.append(tmp);
         }
@@ -539,7 +535,7 @@ private:
         ASSERT(!m_coalescedTmps[AbsoluteTmpHelper<type>::absoluteIndex(v)]);
         m_coalescedTmps[AbsoluteTmpHelper<type>::absoluteIndex(v)] = u;
 
-        HashSet<Inst*>& vMoves = m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(v)];
+        auto& vMoves = m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(v)];
         m_moveList[AbsoluteTmpHelper<type>::absoluteIndex(u)].add(vMoves.begin(), vMoves.end());
 
         forEachAdjacent(v, [this, u] (Tmp adjacentTmp) {
@@ -547,27 +543,30 @@ private:
             decrementDegree(adjacentTmp);
         });
 
-        if (m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(u)] >= Bank<type>::Info::numberOfRegisters && m_freezeWorklist.remove(u))
+        if (m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(u)] >= m_numberOfRegisters && m_freezeWorklist.remove(u))
             m_spillWorklist.add(u);
     }
 
     void freeze()
     {
         Tmp victim = m_freezeWorklist.takeAny();
+        ASSERT_WITH_MESSAGE(getAlias(victim) == victim, "coalesce() should not leave aliased Tmp in the worklist.");
         m_simplifyWorklist.append(victim);
         freezeMoves(victim);
     }
 
     void freezeMoves(Tmp tmp)
     {
-        forEachNodeMoves(tmp, [this, tmp] (Inst& inst) {
-            if (!m_activeMoves.remove(&inst))
-                m_worklistMoves.remove(&inst);
+        forEachNodeMoves(tmp, [this, tmp] (unsigned moveIndex) {
+            if (!m_activeMoves.quickClear(moveIndex))
+                m_worklistMoves.takeMove(moveIndex);
 
-            Tmp otherTmp = inst.args[0].tmp() != tmp ? inst.args[0].tmp() : inst.args[1].tmp();
-            if (m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(otherTmp)] < Bank<type>::Info::numberOfRegisters && !isMoveRelated(otherTmp)) {
-                m_freezeWorklist.remove(otherTmp);
-                m_simplifyWorklist.append(otherTmp);
+            const MoveOperands& moveOperands = m_coalescingCandidates[moveIndex];
+            Tmp originalOtherTmp = moveOperands.src != tmp ? moveOperands.src : moveOperands.dst;
+            Tmp otherTmp = getAlias(originalOtherTmp);
+            if (m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(otherTmp)] < m_numberOfRegisters && !isMoveRelated(otherTmp)) {
+                if (m_freezeWorklist.remove(otherTmp))
+                    m_simplifyWorklist.append(otherTmp);
             }
         });
     }
@@ -575,9 +574,12 @@ private:
     void selectSpill()
     {
         // FIXME: we should select a good candidate based on all the information we have.
-        // FIXME: we should never select a spilled tmp as we would never converge.
-
         auto iterator = m_spillWorklist.begin();
+
+        while (iterator != m_spillWorklist.end() && m_unspillableTmp.contains(*iterator))
+            ++iterator;
+
+        RELEASE_ASSERT_WITH_MESSAGE(iterator != m_spillWorklist.end(), "It is not possible to color the Air graph with the number of available registers.");
 
         auto victimIterator = iterator;
         unsigned maxDegree = m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(*iterator)];
@@ -586,6 +588,9 @@ private:
         for (;iterator != m_spillWorklist.end(); ++iterator) {
             unsigned tmpDegree = m_degrees[AbsoluteTmpHelper<type>::absoluteIndex(*iterator)];
             if (tmpDegree > maxDegree) {
+                if (m_unspillableTmp.contains(*iterator))
+                    continue;
+
                 victimIterator = iterator;
                 maxDegree = tmpDegree;
             }
@@ -609,7 +614,6 @@ private:
         m_degrees.clear();
         m_moveList.clear();
         m_worklistMoves.clear();
-        m_activeMoves.clear();
         m_simplifyWorklist.clear();
         m_spillWorklist.clear();
         m_freezeWorklist.clear();
@@ -679,9 +683,7 @@ private:
         out.print("Simplify work list:\n");
         for (Tmp tmp : m_simplifyWorklist)
             out.print("    ", tmp, "\n");
-        out.print("Moves work list:\n");
-        for (Inst* inst : m_worklistMoves)
-            out.print("    ", *inst, "\n");
+        out.printf("Moves work list is empty? %d\n", m_worklistMoves.isEmpty());
         out.print("Freeze work list:\n");
         for (Tmp tmp : m_freezeWorklist)
             out.print("    ", tmp, "\n");
@@ -743,6 +745,11 @@ private:
             return WTF::IntHash<uint64_t>::hash(m_value);
         }
 
+        void dump(PrintStream& out) const
+        {
+            out.print(first(), "<=>", second());
+        }
+
     private:
         uint64_t m_value { 0 };
     };
@@ -754,13 +761,24 @@ private:
     };
     typedef SimpleClassHashTraits<InterferenceEdge> InterferenceEdgeHashTraits;
 
+    const HashSet<Tmp>& m_unspillableTmp;
+    unsigned m_numberOfRegisters { 0 };
+
     // The interference graph.
     HashSet<InterferenceEdge, InterferenceEdgeHash, InterferenceEdgeHashTraits> m_interferenceEdges;
     Vector<Vector<Tmp, 0, UnsafeVectorOverflow, 4>, 0, UnsafeVectorOverflow> m_adjacencyList;
     Vector<unsigned, 0, UnsafeVectorOverflow> m_degrees;
 
+    // Instead of keeping track of the move instructions, we just keep their operands around and use the index
+    // in the vector as the "identifier" for the move.
+    struct MoveOperands {
+        Tmp src;
+        Tmp dst;
+    };
+    Vector<MoveOperands, 0, UnsafeVectorOverflow> m_coalescingCandidates;
+
     // List of every move instruction associated with a Tmp.
-    Vector<HashSet<Inst*>> m_moveList;
+    Vector<HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>> m_moveList;
 
     // Colors.
     Vector<Reg, 0, UnsafeVectorOverflow> m_coloredTmp;
@@ -773,11 +791,84 @@ private:
     BitVector m_isOnSelectStack;
     Vector<Tmp> m_selectStack;
 
+    struct OrderedMoveSet {
+        unsigned addMove()
+        {
+            unsigned nextIndex = m_moveList.size();
+            m_moveList.append(nextIndex);
+            m_positionInMoveList.append(nextIndex);
+            return nextIndex;
+        }
+
+        bool isEmpty() const
+        {
+            return m_moveList.isEmpty();
+        }
+
+        bool contains(unsigned index)
+        {
+            return m_positionInMoveList[index] != std::numeric_limits<unsigned>::max();
+        }
+
+        void takeMove(unsigned moveIndex)
+        {
+            unsigned positionInMoveList = m_positionInMoveList[moveIndex];
+            if (positionInMoveList == std::numeric_limits<unsigned>::max())
+                return;
+
+            ASSERT(m_moveList[positionInMoveList] == moveIndex);
+            unsigned lastIndex = m_moveList.last();
+            m_positionInMoveList[lastIndex] = positionInMoveList;
+            m_moveList[positionInMoveList] = lastIndex;
+            m_moveList.removeLast();
+
+            m_positionInMoveList[moveIndex] = std::numeric_limits<unsigned>::max();
+
+            ASSERT(!contains(moveIndex));
+        }
+
+        unsigned takeLastMove()
+        {
+            ASSERT(!isEmpty());
+
+            unsigned lastIndex = m_moveList.takeLast();
+            ASSERT(m_positionInMoveList[lastIndex] == m_moveList.size());
+            m_positionInMoveList[lastIndex] = std::numeric_limits<unsigned>::max();
+
+            ASSERT(!contains(lastIndex));
+            return lastIndex;
+        }
+
+        void returnMove(unsigned index)
+        {
+            // This assertion is a bit strict but that is how the move list should be used. The only kind of moves that can
+            // return to the list are the ones that we previously failed to coalesce with the conservative heuristics.
+            // Values should not be added back if they were never taken out when attempting coalescing.
+            ASSERT(!contains(index));
+
+            unsigned position = m_moveList.size();
+            m_moveList.append(index);
+            m_positionInMoveList[index] = position;
+
+            ASSERT(contains(index));
+        }
+
+        void clear()
+        {
+            m_positionInMoveList.clear();
+            m_moveList.clear();
+        }
+
+    private:
+        Vector<unsigned, 0, UnsafeVectorOverflow> m_positionInMoveList;
+        Vector<unsigned, 0, UnsafeVectorOverflow> m_moveList;
+    };
+
     // Work lists.
     // Set of "move" enabled for possible coalescing.
-    ListHashSet<Inst*> m_worklistMoves;
+    OrderedMoveSet m_worklistMoves;
     // Set of "move" not yet ready for coalescing.
-    HashSet<Inst*> m_activeMoves;
+    BitVector m_activeMoves;
     // Low-degree, non-Move related.
     Vector<Tmp> m_simplifyWorklist;
     // High-degree Tmp.
@@ -823,8 +914,11 @@ static void assignRegisterToTmpInProgram(Code& code, const IteratedRegisterCoale
 }
 
 template<Arg::Type type>
-static void addSpillAndFillToProgram(Code& code, const HashSet<Tmp>& spilledTmp)
+static void addSpillAndFillToProgram(Code& code, const HashSet<Tmp>& spilledTmp, HashSet<Tmp>& unspillableTmp)
 {
+    // All the spilled values become unspillable.
+    unspillableTmp.add(spilledTmp.begin(), spilledTmp.end());
+
     // Allocate stack slot for each spilled value.
     HashMap<Tmp, StackSlot*> stackSlots;
     for (Tmp tmp : spilledTmp) {
@@ -865,10 +959,13 @@ static void addSpillAndFillToProgram(Code& code, const HashSet<Tmp>& spilledTmp)
                 Arg arg = Arg::stack(stackSlotEntry->value);
                 Opcode move = type == Arg::GP ? Move : MoveDouble;
 
-                if (Arg::isUse(role)) {
+                if (Arg::isAnyUse(role)) {
                     Tmp newTmp = code.newTmp(type);
                     insertionSet.insert(instIndex, move, inst.origin, arg, newTmp);
                     tmp = newTmp;
+
+                    // Any new Fill() should never be spilled.
+                    unspillableTmp.add(tmp);
                 }
                 if (Arg::isDef(role))
                     insertionSet.insert(instIndex + 1, move, inst.origin, tmp, arg);
@@ -879,17 +976,18 @@ static void addSpillAndFillToProgram(Code& code, const HashSet<Tmp>& spilledTmp)
 }
 
 template<Arg::Type type>
-static void iteratedRegisterCoalescingOnType(Code& code)
+static void iteratedRegisterCoalescingOnType(Code& code, HashSet<Tmp>& unspillableTmps, unsigned& numIterations)
 {
     while (true) {
-        IteratedRegisterCoalescingAllocator<type> allocator(code);
+        numIterations++;
+        IteratedRegisterCoalescingAllocator<type> allocator(code, unspillableTmps);
         Liveness<Tmp> liveness(code);
         for (BasicBlock* block : code) {
             Liveness<Tmp>::LocalCalc localCalc(liveness, block);
             for (unsigned instIndex = block->size(); instIndex--;) {
                 Inst& inst = block->at(instIndex);
                 allocator.build(inst, localCalc);
-                localCalc.execute(inst);
+                localCalc.execute(instIndex);
             }
         }
 
@@ -898,7 +996,7 @@ static void iteratedRegisterCoalescingOnType(Code& code)
             assignRegisterToTmpInProgram(code, allocator);
             return;
         }
-        addSpillAndFillToProgram<type>(code, allocator.spilledTmp());
+        addSpillAndFillToProgram<type>(code, allocator.spilledTmp(), unspillableTmps);
     }
 }
 
@@ -908,11 +1006,16 @@ void iteratedRegisterCoalescing(Code& code)
 
     bool gpIsColored = false;
     bool fpIsColored = false;
+    unsigned numIterations = 0;
+
+    HashSet<Tmp> unspillableGPs;
+    HashSet<Tmp> unspillableFPs;
 
     // First we run both allocator together as long as they both spill.
     while (!gpIsColored && !fpIsColored) {
-        IteratedRegisterCoalescingAllocator<Arg::GP> gpAllocator(code);
-        IteratedRegisterCoalescingAllocator<Arg::FP> fpAllocator(code);
+        numIterations++;
+        IteratedRegisterCoalescingAllocator<Arg::GP> gpAllocator(code, unspillableGPs);
+        IteratedRegisterCoalescingAllocator<Arg::FP> fpAllocator(code, unspillableFPs);
 
         // Liveness Analysis can be prohibitively expensive. It is shared
         // between the two allocators to avoid doing it twice.
@@ -925,29 +1028,33 @@ void iteratedRegisterCoalescing(Code& code)
                 gpAllocator.build(inst, localCalc);
                 fpAllocator.build(inst, localCalc);
 
-                localCalc.execute(inst);
+                localCalc.execute(instIndex);
             }
         }
 
         gpAllocator.allocate();
+        fpAllocator.allocate();
+
         if (gpAllocator.spilledTmp().isEmpty()) {
             assignRegisterToTmpInProgram(code, gpAllocator);
             gpIsColored = true;
         } else
-            addSpillAndFillToProgram<Arg::GP>(code, gpAllocator.spilledTmp());
+            addSpillAndFillToProgram<Arg::GP>(code, gpAllocator.spilledTmp(), unspillableGPs);
 
-        fpAllocator.allocate();
         if (fpAllocator.spilledTmp().isEmpty()) {
             assignRegisterToTmpInProgram(code, fpAllocator);
             fpIsColored = true;
         } else
-            addSpillAndFillToProgram<Arg::FP>(code, fpAllocator.spilledTmp());
+            addSpillAndFillToProgram<Arg::FP>(code, fpAllocator.spilledTmp(), unspillableFPs);
     };
 
     if (!gpIsColored)
-        iteratedRegisterCoalescingOnType<Arg::GP>(code);
+        iteratedRegisterCoalescingOnType<Arg::GP>(code, unspillableGPs, numIterations);
     if (!fpIsColored)
-        iteratedRegisterCoalescingOnType<Arg::FP>(code);
+        iteratedRegisterCoalescingOnType<Arg::FP>(code, unspillableFPs, numIterations);
+
+    if (reportStats)
+        dataLog("Num iterations = ", numIterations, "\n");
 }
 
 } } } // namespace JSC::B3::Air

@@ -35,8 +35,6 @@
 
 namespace JSC { namespace B3 {
 
-class BasicBlock;
-
 typedef GraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock>> BlockWorklist;
 
 // When you say BlockWith<int> you should read it as "block with an int".

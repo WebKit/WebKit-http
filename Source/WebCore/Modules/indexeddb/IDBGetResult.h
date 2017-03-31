@@ -83,12 +83,14 @@ struct IDBGetResult {
         IDBGetResult result;
         result.valueBuffer = valueBuffer;
         result.keyData = keyData.isolatedCopy();
+        result.primaryKeyData = primaryKeyData.isolatedCopy();
         result.keyPath = keyPath.isolatedCopy();
         return result;
     }
 
     ThreadSafeDataBuffer valueBuffer;
     IDBKeyData keyData;
+    IDBKeyData primaryKeyData;
     IDBKeyPath keyPath;
 };
 

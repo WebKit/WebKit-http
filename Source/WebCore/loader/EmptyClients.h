@@ -272,7 +272,7 @@ public:
     virtual void dispatchDidFailLoading(DocumentLoader*, unsigned long, const ResourceError&) override { }
     virtual bool dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int) override { return false; }
 
-    virtual void dispatchDidHandleOnloadEvents() override { }
+    virtual void dispatchDidDispatchOnloadEvents() override { }
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() override { }
     virtual void dispatchDidCancelClientRedirect() override { }
     virtual void dispatchWillPerformClientRedirect(const URL&, double, double) override { }
@@ -550,16 +550,12 @@ public:
     virtual ~EmptyContextMenuClient() {  }
     virtual void contextMenuDestroyed() override { }
 
-    virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*) override { }
-
     virtual void downloadURL(const URL&) override { }
     virtual void searchWithGoogle(const Frame*) override { }
     virtual void lookUpInDictionary(Frame*) override { }
     virtual bool isSpeaking() override { return false; }
     virtual void speak(const String&) override { }
     virtual void stopSpeaking() override { }
-
-    virtual ContextMenuItem shareMenuItem(const HitTestResult&) override { return ContextMenuItem(); }
 
 #if PLATFORM(COCOA)
     virtual void searchWithSpotlight() override { }

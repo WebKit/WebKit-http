@@ -8182,8 +8182,6 @@
     <ClCompile Include="..\platform\win\BitmapInfo.cpp" />
     <ClCompile Include="..\platform\win\BString.cpp" />
     <ClCompile Include="..\platform\win\ClipboardUtilitiesWin.cpp" />
-    <ClCompile Include="..\platform\win\ContextMenuItemWin.cpp" />
-    <ClCompile Include="..\platform\win\ContextMenuWin.cpp" />
     <ClCompile Include="..\platform\win\CursorWin.cpp" />
     <ClCompile Include="..\platform\win\DefWndProcWindowClass.cpp" />
     <ClCompile Include="..\platform\win\DelayLoadedModulesEnumerator.cpp" />
@@ -21050,7 +21048,6 @@
     <ClInclude Include="..\platform\Pasteboard.h" />
     <ClInclude Include="..\platform\PlatformEvent.h" />
     <ClInclude Include="..\platform\PlatformKeyboardEvent.h" />
-    <ClInclude Include="..\platform\PlatformMenuDescription.h" />
     <ClInclude Include="..\platform\PlatformMouseEvent.h" />
     <ClInclude Include="..\platform\PlatformScreen.h" />
     <ClInclude Include="..\platform\PlatformStrategies.h" />

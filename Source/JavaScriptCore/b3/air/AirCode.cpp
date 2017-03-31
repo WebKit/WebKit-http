@@ -68,6 +68,7 @@ StackSlot* Code::addStackSlot(StackSlotValue* value)
 Special* Code::addSpecial(std::unique_ptr<Special> special)
 {
     Special* result = special.get();
+    result->m_code = this;
     m_specials.append(WTF::move(special));
     return result;
 }
@@ -127,7 +128,10 @@ unsigned Code::findNextBlockIndex(unsigned index) const
 
 BasicBlock* Code::findNextBlock(BasicBlock* block) const
 {
-    return at(findNextBlockIndex(block->index()));
+    unsigned index = findNextBlockIndex(block->index());
+    if (index < size())
+        return at(index);
+    return nullptr;
 }
 
 } } } // namespace JSC::B3::Air

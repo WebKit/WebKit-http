@@ -30,9 +30,11 @@
 
 #include "DOMError.h"
 #include "EventQueue.h"
+#include "IDBCursorWithValueImpl.h"
 #include "IDBDatabaseImpl.h"
 #include "IDBError.h"
 #include "IDBEventDispatcher.h"
+#include "IDBKeyData.h"
 #include "IDBKeyRangeData.h"
 #include "IDBObjectStore.h"
 #include "IDBRequestImpl.h"
@@ -209,7 +211,6 @@ bool IDBTransaction::isFinishedOrFinishing() const
 
 void IDBTransaction::addRequest(IDBRequest& request)
 {
-    ASSERT(!m_openRequests.contains(&request));
     m_openRequests.add(&request);
 }
 
@@ -237,7 +238,7 @@ void IDBTransaction::scheduleOperationTimer()
 
 void IDBTransaction::operationTimerFired()
 {
-    LOG(IndexedDB, "IDBTransaction::operationTimerFired");
+    LOG(IndexedDB, "IDBTransaction::operationTimerFired (%p)", this);
 
     if (!m_startedOnServer)
         return;
@@ -346,7 +347,7 @@ void IDBTransaction::fireOnAbort()
     enqueueEvent(Event::create(eventNames().abortEvent, true, false));
 }
 
-void IDBTransaction::enqueueEvent(Ref<Event> event)
+void IDBTransaction::enqueueEvent(Ref<Event>&& event)
 {
     ASSERT(m_state != IndexedDB::TransactionState::Finished);
 
@@ -354,22 +355,22 @@ void IDBTransaction::enqueueEvent(Ref<Event> event)
         return;
 
     event->setTarget(this);
-    scriptExecutionContext()->eventQueue().enqueueEvent(&event.get());
+    scriptExecutionContext()->eventQueue().enqueueEvent(WTF::move(event));
 }
 
-bool IDBTransaction::dispatchEvent(PassRefPtr<Event> event)
+bool IDBTransaction::dispatchEvent(Event& event)
 {
     LOG(IndexedDB, "IDBTransaction::dispatchEvent");
 
     ASSERT(scriptExecutionContext());
-    ASSERT(event->target() == this);
-    ASSERT(event->type() == eventNames().completeEvent || event->type() == eventNames().abortEvent);
+    ASSERT(event.target() == this);
+    ASSERT(event.type() == eventNames().completeEvent || event.type() == eventNames().abortEvent);
 
     Vector<RefPtr<EventTarget>> targets;
     targets.append(this);
     targets.append(db());
 
-    return IDBEventDispatcher::dispatch(event.get(), targets);
+    return IDBEventDispatcher::dispatch(event, targets);
 }
 
 Ref<IDBObjectStore> IDBTransaction::createObjectStore(const IDBObjectStoreInfo& info)
@@ -429,6 +430,76 @@ void IDBTransaction::didCreateIndexOnServer(const IDBResultData& resultData)
     LOG(IndexedDB, "IDBTransaction::didCreateIndexOnServer");
 
     ASSERT_UNUSED(resultData, resultData.type() == IDBResultType::CreateIndexSuccess);
+}
+
+Ref<IDBRequest> IDBTransaction::requestOpenCursor(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBCursorInfo& info)
+{
+    LOG(IndexedDB, "IDBTransaction::requestOpenCursor");
+
+    return doRequestOpenCursor(context, IDBCursorWithValue::create(*this, objectStore, info));
+}
+
+Ref<IDBRequest> IDBTransaction::requestOpenCursor(ScriptExecutionContext& context, IDBIndex& index, const IDBCursorInfo& info)
+{
+    LOG(IndexedDB, "IDBTransaction::requestOpenCursor");
+
+    if (info.cursorType() == IndexedDB::CursorType::KeyOnly)
+        return doRequestOpenCursor(context, IDBCursor::create(*this, index, info));
+
+    return doRequestOpenCursor(context, IDBCursorWithValue::create(*this, index, info));
+}
+
+Ref<IDBRequest> IDBTransaction::doRequestOpenCursor(ScriptExecutionContext& context, Ref<IDBCursor>&& cursor)
+{
+    ASSERT(isActive());
+
+    Ref<IDBRequest> request = IDBRequest::create(context, cursor.get(), *this);
+    addRequest(request.get());
+
+    auto operation = createTransactionOperation(*this, request.get(), &IDBTransaction::didOpenCursorOnServer, &IDBTransaction::openCursorOnServer, cursor->info());
+    scheduleOperation(WTF::move(operation));
+
+    return WTF::move(request);
+}
+
+void IDBTransaction::openCursorOnServer(TransactionOperation& operation, const IDBCursorInfo& info)
+{
+    LOG(IndexedDB, "IDBTransaction::openCursorOnServer");
+
+    m_database->serverConnection().openCursor(operation, info);
+}
+
+void IDBTransaction::didOpenCursorOnServer(IDBRequest& request, const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBTransaction::didOpenCursorOnServer");
+
+    request.didOpenOrIterateCursor(resultData);
+}
+
+void IDBTransaction::iterateCursor(IDBCursor& cursor, const IDBKeyData& key, unsigned long count)
+{
+    LOG(IndexedDB, "IDBTransaction::iterateCursor");
+    ASSERT(isActive());
+    ASSERT(cursor.request());
+
+    addRequest(*cursor.request());
+
+    auto operation = createTransactionOperation(*this, *cursor.request(), &IDBTransaction::didIterateCursorOnServer, &IDBTransaction::iterateCursorOnServer, key, count);
+    scheduleOperation(WTF::move(operation));
+}
+
+void IDBTransaction::iterateCursorOnServer(TransactionOperation& operation, const IDBKeyData& key, const unsigned long& count)
+{
+    LOG(IndexedDB, "IDBTransaction::iterateCursorOnServer");
+
+    serverConnection().iterateCursor(operation, key, count);
+}
+
+void IDBTransaction::didIterateCursorOnServer(IDBRequest& request, const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBTransaction::didIterateCursorOnServer");
+
+    request.didOpenOrIterateCursor(resultData);
 }
 
 Ref<IDBRequest> IDBTransaction::requestGetRecord(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBKeyRangeData& keyRangeData)

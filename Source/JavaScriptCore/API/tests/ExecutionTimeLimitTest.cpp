@@ -128,7 +128,6 @@ int testExecutionTimeLimit()
         JSObjectRef globalObject = JSContextGetGlobalObject(context);
         ASSERT(JSValueIsObject(context, globalObject));
 
-        JSValueRef scriptResult = nullptr;
         JSValueRef exception = nullptr;
 
         JSStringRef currentCPUTimeStr = JSStringCreateWithUTF8CString("currentCPUTime");
@@ -140,7 +139,7 @@ int testExecutionTimeLimit()
         timeLimit = (100 + tierAdjustmentMillis) / 1000.0;
         JSContextGroupSetExecutionTimeLimit(contextGroup, timeLimit, shouldTerminateCallback, 0);
         {
-            unsigned timeAfterWatchdogShouldHaveFired = 150 + tierAdjustmentMillis;
+            unsigned timeAfterWatchdogShouldHaveFired = 300 + tierAdjustmentMillis;
 
             StringBuilder scriptBuilder;
             scriptBuilder.append("function foo() { var startTime = currentCPUTime(); while (true) { for (var i = 0; i < 1000; i++); if (currentCPUTime() - startTime > ");
@@ -151,7 +150,7 @@ int testExecutionTimeLimit()
             exception = nullptr;
             shouldTerminateCallbackWasCalled = false;
             auto startTime = currentCPUTime();
-            scriptResult = JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
+            JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
             auto endTime = currentCPUTime();
 
             if (((endTime - startTime) < milliseconds(timeAfterWatchdogShouldHaveFired)) && shouldTerminateCallbackWasCalled)
@@ -176,7 +175,7 @@ int testExecutionTimeLimit()
         timeLimit = (100 + tierAdjustmentMillis) / 1000.0;
         JSContextGroupSetExecutionTimeLimit(contextGroup, timeLimit, shouldTerminateCallback, 0);
         {
-            unsigned timeAfterWatchdogShouldHaveFired = 150 + tierAdjustmentMillis;
+            unsigned timeAfterWatchdogShouldHaveFired = 300 + tierAdjustmentMillis;
             
             StringBuilder scriptBuilder;
             scriptBuilder.append("function foo() { var startTime = currentCPUTime(); try { while (true) { for (var i = 0; i < 1000; i++); if (currentCPUTime() - startTime > ");
@@ -188,7 +187,7 @@ int testExecutionTimeLimit()
             shouldTerminateCallbackWasCalled = false;
 
             auto startTime = currentCPUTime();
-            scriptResult = JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
+            JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
             auto endTime = currentCPUTime();
             
             if (((endTime - startTime) >= milliseconds(timeAfterWatchdogShouldHaveFired)) || !shouldTerminateCallbackWasCalled) {
@@ -213,7 +212,7 @@ int testExecutionTimeLimit()
         timeLimit = (100 + tierAdjustmentMillis) / 1000.0;
         JSContextGroupSetExecutionTimeLimit(contextGroup, timeLimit, 0, 0);
         {
-            unsigned timeAfterWatchdogShouldHaveFired = 150 + tierAdjustmentMillis;
+            unsigned timeAfterWatchdogShouldHaveFired = 300 + tierAdjustmentMillis;
             
             StringBuilder scriptBuilder;
             scriptBuilder.append("function foo() { var startTime = currentCPUTime(); while (true) { for (var i = 0; i < 1000; i++); if (currentCPUTime() - startTime > ");
@@ -225,7 +224,7 @@ int testExecutionTimeLimit()
             shouldTerminateCallbackWasCalled = false;
 
             auto startTime = currentCPUTime();
-            scriptResult = JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
+            JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
             auto endTime = currentCPUTime();
             
             if (((endTime - startTime) < milliseconds(timeAfterWatchdogShouldHaveFired)) && !shouldTerminateCallbackWasCalled)
@@ -250,7 +249,7 @@ int testExecutionTimeLimit()
         timeLimit = (100 + tierAdjustmentMillis) / 1000.0;
         JSContextGroupSetExecutionTimeLimit(contextGroup, timeLimit, cancelTerminateCallback, 0);
         {
-            unsigned timeAfterWatchdogShouldHaveFired = 150 + tierAdjustmentMillis;
+            unsigned timeAfterWatchdogShouldHaveFired = 300 + tierAdjustmentMillis;
             
             StringBuilder scriptBuilder;
             scriptBuilder.append("function foo() { var startTime = currentCPUTime(); while (true) { for (var i = 0; i < 1000; i++); if (currentCPUTime() - startTime > ");
@@ -262,7 +261,7 @@ int testExecutionTimeLimit()
             cancelTerminateCallbackWasCalled = false;
 
             auto startTime = currentCPUTime();
-            scriptResult = JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
+            JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
             auto endTime = currentCPUTime();
             
             if (((endTime - startTime) >= milliseconds(timeAfterWatchdogShouldHaveFired)) && cancelTerminateCallbackWasCalled && !exception)
@@ -285,9 +284,9 @@ int testExecutionTimeLimit()
         timeLimit = (100 + tierAdjustmentMillis) / 1000.0;
         JSContextGroupSetExecutionTimeLimit(contextGroup, timeLimit, extendTerminateCallback, 0);
         {
-            unsigned timeBeforeExtendedDeadline = 200 + tierAdjustmentMillis;
-            unsigned timeAfterExtendedDeadline = 400 + tierAdjustmentMillis;
-            unsigned maxBusyLoopTime = 600 + tierAdjustmentMillis;
+            unsigned timeBeforeExtendedDeadline = 250 + tierAdjustmentMillis;
+            unsigned timeAfterExtendedDeadline = 600 + tierAdjustmentMillis;
+            unsigned maxBusyLoopTime = 750 + tierAdjustmentMillis;
 
             StringBuilder scriptBuilder;
             scriptBuilder.append("function foo() { var startTime = currentCPUTime(); while (true) { for (var i = 0; i < 1000; i++); if (currentCPUTime() - startTime > ");
@@ -299,7 +298,7 @@ int testExecutionTimeLimit()
             extendTerminateCallbackCalled = 0;
 
             auto startTime = currentCPUTime();
-            scriptResult = JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
+            JSEvaluateScript(context, script, nullptr, nullptr, 1, &exception);
             auto endTime = currentCPUTime();
             auto deltaTime = endTime - startTime;
             

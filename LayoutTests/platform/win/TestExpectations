@@ -3188,6 +3188,7 @@ fast/inline/padding-ellipsis-right.html [ ImageOnlyFailure ]
 
 # This test hardcodes the result of a platform-dependent font lookup algorithm.
 fast/text/fallback-language-han.html [ Skip ]
+fast/text/fallback-language-han-2.html [ Skip ]
 
 # Changing system language is not supported.
 fast/text/international/system-language [ Skip ]
@@ -3231,7 +3232,6 @@ webkit.org/b/148888 http/tests/navigation/slowmetaredirect-basic.html [ Pass Fai
 # Imported Blink tests.
 imported/blink/compositing/iframes/ancestor-clipping-layer.html [ Skip ]
 imported/blink/compositing/perspective-origin-overflow-hidden.html [ Skip ]
-imported/blink/editing/execCommand/indent-button-crash.html [ Skip ]
 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Skip ]
 imported/blink/plugins/empty-per-context-data.html [ Skip ]
 imported/blink/animations/animation-iteration-event-short-iterations.html [ Failure Pass ]

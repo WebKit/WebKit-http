@@ -24,9 +24,12 @@
  */
 
 #include "config.h"
+
+#include "DFGCommon.h"
 #include "FTLOutput.h"
 
 #if ENABLE(FTL_JIT)
+#if !FTL_USES_B3
 
 namespace JSC { namespace FTL {
 
@@ -91,6 +94,8 @@ LValue Output::load(TypedPointer pointer, LType refType)
 
 void Output::store(LValue value, TypedPointer pointer, LType refType)
 {
+    if (refType == refFloat)
+        value = buildFPCast(m_builder, value, floatType);
     LValue result = set(value, intToPtr(pointer.value(), refType));
     pointer.heap().decorateInstruction(result, *m_heaps);
 }
@@ -152,5 +157,6 @@ void Output::check(LValue condition, WeightedTarget taken)
 
 } } // namespace JSC::FTL
 
+#endif // !FTL_USES_B3
 #endif // ENABLE(FTL_JIT)
 

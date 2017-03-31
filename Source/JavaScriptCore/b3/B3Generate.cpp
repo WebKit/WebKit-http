@@ -42,30 +42,33 @@
 
 namespace JSC { namespace B3 {
 
-void generate(Procedure& procedure, CCallHelpers& jit, unsigned optLevel)
+void prepareForGeneration(Procedure& procedure, unsigned optLevel)
 {
-    TimingScope timingScope("generate");
+    TimingScope timingScope("prepareForGeneration");
 
-    Air::Code code(procedure);
-    generateToAir(procedure, code, optLevel);
-    Air::generate(code, jit);
+    generateToAir(procedure, optLevel);
+    Air::prepareForGeneration(procedure.code());
 }
 
-void generateToAir(Procedure& procedure, Air::Code& code, unsigned optLevel)
+void generate(Procedure& procedure, CCallHelpers& jit)
+{
+    Air::generate(procedure.code(), jit);
+}
+
+void generateToAir(Procedure& procedure, unsigned optLevel)
 {
     TimingScope timingScope("generateToAir");
     
+    if (shouldDumpIR() && !shouldDumpIRAtEachPhase()) {
+        dataLog("Initial B3:\n");
+        dataLog(procedure);
+    }
+
     // We don't require the incoming IR to have predecessors computed.
     procedure.resetReachability();
     
     if (shouldValidateIR())
         validate(procedure);
-
-    // If we're doing super verbose dumping, the phase scope of any phase will already do a dump.
-    if (shouldDumpIR() && !shouldDumpIRAtEachPhase()) {
-        dataLog("Initial B3:\n");
-        dataLog(procedure);
-    }
 
     lowerMacros(procedure);
 
@@ -88,7 +91,7 @@ void generateToAir(Procedure& procedure, Air::Code& code, unsigned optLevel)
         dataLog(procedure);
     }
 
-    lowerToAir(procedure, code);
+    lowerToAir(procedure);
 }
 
 } } // namespace JSC::B3

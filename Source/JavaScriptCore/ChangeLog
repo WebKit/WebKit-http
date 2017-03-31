@@ -1,3 +1,1591 @@
+2015-11-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Untangle the dependencies on FTLAbbreviations a bit
+        https://bugs.webkit.org/show_bug.cgi?id=151375
+
+        Reviewed by Geoffrey Garen.
+
+        FTLAbbreviations was included in many places but in most cases
+        we just need the Abbreviated types. Update the #include accordingly.
+
+        Also remove the IntrinsicRepository dependency from the B3Output.
+
+        * ftl/FTLAbstractHeap.cpp:
+        * ftl/FTLAbstractHeap.h:
+        * ftl/FTLAbstractHeapRepository.cpp:
+        * ftl/FTLB3Output.h:
+        (JSC::FTL::Output::Output):
+        (JSC::FTL::Output::stackmapIntrinsic):
+        (JSC::FTL::Output::frameAddressIntrinsic):
+        (JSC::FTL::Output::patchpointInt64Intrinsic):
+        (JSC::FTL::Output::patchpointVoidIntrinsic):
+        * ftl/FTLCommonValues.cpp:
+        * ftl/FTLCommonValues.h:
+        * ftl/FTLFormattedValue.h:
+        * ftl/FTLIntrinsicRepository.cpp:
+        * ftl/FTLOSRExit.h:
+        * ftl/FTLOSRExitCompilationInfo.h:
+        * ftl/FTLStackmapArgumentList.h:
+        * ftl/FTLState.cpp:
+        * ftl/FTLState.h:
+        * ftl/FTLTypedPointer.h:
+
+2015-11-17  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::generate should separate out the final Air codegen, so that it can be done outside the Graph safepoint
+        https://bugs.webkit.org/show_bug.cgi?id=151371
+
+        Reviewed by Benjamin Poulain.
+
+        One of the FTL optimizations is that while the expensive backend is running, we are at a "graph
+        safepoint" that allows the VM to do GCs and other dangerous and time-sensitive things without
+        waiting for the compilation thread. While in the safepoint, we cannot do anything that touches
+        anything other than the backend's state. That means, for example, that we wouldn't be able to run
+        any of the stackmap generation callbacks, since those need to mess with DFG state.
+
+        That means that we need to separate the B3 pipeline into "preparation" and "generation".
+        Preparation is all of the expensive stuff: all B3 phases, lowering to Air, all Air phases.
+        Generation is just the part where we turn fully lowered Air into machine code. Generation also
+        happens to be the part where we call stackmap generation callbacks. In other words, preparation
+        is exactly the stuff that should go into the graph safepoint, while generation is the stuff that
+        we want to do after we emerge from the safepoint.
+
+        Because the tests were using the higher-level Compilation API, I didn't have to change any test
+        code. The FTL will not use that high-level API.
+
+        * b3/B3Compilation.cpp:
+        (JSC::B3::Compilation::Compilation):
+        * b3/B3Generate.cpp:
+        (JSC::B3::prepareForGeneration):
+        (JSC::B3::generate):
+        (JSC::B3::generateToAir):
+        * b3/B3Generate.h:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::LowerToAir):
+        (JSC::B3::lowerToAir):
+        * b3/B3LowerToAir.h:
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::Procedure):
+        * b3/B3Procedure.h:
+        (JSC::B3::Procedure::takeByproducts):
+        (JSC::B3::Procedure::code):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::proc):
+        (JSC::B3::Air::Code::lastPhaseName):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::prepareForGeneration):
+        (JSC::B3::Air::generate):
+        * b3/air/AirGenerate.h:
+
+2015-11-17  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL::State should be able to refer to B3::Procedure
+
+        Rubber stamped by Benjamin Poulain.
+
+        * ftl/FTLState.h:
+
+2015-11-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add an empty FTLOutput for B3 that crashes on any operation
+        https://bugs.webkit.org/show_bug.cgi?id=151366
+
+        Reviewed by Filip Pizlo.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * ftl/FTLB3Output.h: Added.
+        * ftl/FTLAbbreviatedTypes.h:
+        * ftl/FTLAbstractHeap.cpp:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::createPhiVariables):
+        * ftl/FTLOutput.cpp:
+        * ftl/FTLOutput.h:
+
+2015-11-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Do not copy the adjacency list when we just need to manipulate them
+        https://bugs.webkit.org/show_bug.cgi?id=151343
+
+        Reviewed by Geoffrey Garen.
+
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::precoloredCoalescingHeuristic):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::conservativeHeuristic):
+
+2015-11-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Remove FTLOutput operations that act directly on floats
+        https://bugs.webkit.org/show_bug.cgi?id=151342
+
+        Reviewed by Geoffrey Garen.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileArithFRound):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileGetByVal):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutByVal):
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::store):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::loadFloatToDouble):
+        (JSC::FTL::Output::fround):
+        (JSC::FTL::Output::loadFloat): Deleted.
+
+2015-11-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Add a FTL_USES_B3 compile-time setting and set it to 0.
+
+        Rubber stamped by Benjamin Poulain.
+
+        * dfg/DFGCommon.h:
+
+2015-11-17  Filip Pizlo  <fpizlo@apple.com>
+
+        CheckAdd/Mul should have commutativity optimizations in B3->Air lowering
+        https://bugs.webkit.org/show_bug.cgi?id=151214
+
+        Reviewed by Geoffrey Garen.
+
+        This is an overhaul of CheckAdd/CheckSub/CheckMul that fixes bugs, improves codegen, and
+        simplifies the contract between B3 and its client.
+
+        Previously, the idea was that the operands to the Air BranchAdd/Sub/Mul matched the children of
+        the B3 CheckAdd/Sub/Mul, or at least, that's what the B3::CheckSpecial would make you believe.
+        This meant that B3/Air had to avoid optimizations that would break this protocol. This prevented
+        commutativity optimizations on CheckAdd/Mul and it also prevented strength reduction from
+        CheckMul(x, 2) to CheckAdd(x, x), for example. Those optimizations would break things because the
+        client's Stackmap generation callback was allowed to assume that the first entry in params.reps
+        was the first child. Also, there was a contract between B3 and its client that for CheckAdd/Sub,
+        the client would undo the operation by doing the opposite operation with the params.reps[0] as the
+        source and params.reps[1] as the destination.
+
+        This not only prevented commutativity optimizations, it also led to bugs. Here are two bugs that
+        we had:
+
+        - Add(x, x) would not work. The client would be told to undo the add using %x as both the source
+          and destination. The client would use a sub() instruction. The result would not be x - it would
+          be zero.
+
+        - Mul where the result got coalesced with one of the sources. You can't undo a multiplication, so
+          you need to keep the inputs alive until after the result is computed - i.e. the inputs are late
+          uses. I initially thought I worked around this by using a three-operand form of Mul, but of
+          course that doesn't actually fix the issue.
+
+        This patch fixes these issues comprehensively by introducing the following changes:
+
+        The params.reps corresponding to the first two children of CheckAdd/Sub/Mul and the first child of
+        Check are always garbage: if you want to know the values of those children in the slow path, pass
+        them as additional stackmap children. This makes it clear to the compiler whose values you
+        actually care about, and frees the compiler to reorder and commute the non-stackmap children.
+
+        The "undo" of an Add or Sub is handled internally by B3: the client doesn't have to know anything
+        about undoing. B3 does it. The contract is simply that if a B3::Value* is a stackmap child of a
+        CheckXYZ, then the corresponding entry in params.reps inside the stackmap generator callback will
+        contain the value of that Value*. For Add and Sub, B3 undoes the operation. For Add(x, x), the
+        undo uses the carry flag and some shift magic. For Mul, B3 uses LateUse:
+
+        A new kind of Arg::Role called Arg::LateUse is introduced: This kind of use means that the use
+        happens at the start of the execution of the next instruction. None of the built-in Air opcodes
+        use LateUse, but it is used by B3::CheckSpecial. We use it to implement CheckMul.
+
+        Finally, this change fixes testComplex to actually create many live variables. This revealed a
+        really dumb pathology in allocateStack(), and this patch fixes it. Basically, it's a bad idea to
+        build interference graphs by repeatedly recreating the same cliques.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::test32):
+        (JSC::MacroAssemblerX86Common::setCarry):
+        (JSC::MacroAssemblerX86Common::invert):
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::Air::numB3Args):
+        (JSC::B3::CheckSpecial::Key::Key):
+        (JSC::B3::CheckSpecial::Key::dump):
+        (JSC::B3::CheckSpecial::CheckSpecial):
+        (JSC::B3::CheckSpecial::forEachArg):
+        (JSC::B3::CheckSpecial::isValid):
+        (JSC::B3::CheckSpecial::generate):
+        (JSC::B3::CheckSpecial::dumpImpl):
+        (JSC::B3::CheckSpecial::deepDumpImpl):
+        * b3/B3CheckSpecial.h:
+        (JSC::B3::CheckSpecial::Key::Key):
+        (JSC::B3::CheckSpecial::Key::operator==):
+        (JSC::B3::CheckSpecial::Key::operator!=):
+        (JSC::B3::CheckSpecial::Key::opcode):
+        (JSC::B3::CheckSpecial::Key::numArgs):
+        (JSC::B3::CheckSpecial::Key::stackmapRole):
+        (JSC::B3::CheckSpecial::Key::hash):
+        * b3/B3CheckValue.cpp:
+        (JSC::B3::CheckValue::~CheckValue):
+        (JSC::B3::CheckValue::convertToAdd):
+        (JSC::B3::CheckValue::CheckValue):
+        * b3/B3CheckValue.h:
+        * b3/B3Const32Value.cpp:
+        (JSC::B3::Const32Value::checkMulConstant):
+        (JSC::B3::Const32Value::checkNegConstant):
+        (JSC::B3::Const32Value::divConstant):
+        * b3/B3Const32Value.h:
+        * b3/B3Const64Value.cpp:
+        (JSC::B3::Const64Value::checkMulConstant):
+        (JSC::B3::Const64Value::checkNegConstant):
+        (JSC::B3::Const64Value::divConstant):
+        * b3/B3Const64Value.h:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::appendBinOp):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3Opcode.h:
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::~PatchpointSpecial):
+        (JSC::B3::PatchpointSpecial::forEachArg):
+        (JSC::B3::PatchpointSpecial::isValid):
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::forEachArgImpl):
+        * b3/B3StackmapSpecial.h:
+        * b3/B3StackmapValue.cpp:
+        (JSC::B3::StackmapValue::append):
+        (JSC::B3::StackmapValue::appendSomeRegister):
+        (JSC::B3::StackmapValue::setConstrainedChild):
+        * b3/B3StackmapValue.h:
+        * b3/B3Validate.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::checkMulConstant):
+        (JSC::B3::Value::checkNegConstant):
+        (JSC::B3::Value::divConstant):
+        * b3/B3Value.h:
+        * b3/air/AirAllocateStack.cpp:
+        (JSC::B3::Air::allocateStack):
+        * b3/air/AirArg.cpp:
+        (WTF::printInternal):
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::isAnyUse):
+        (JSC::B3::Air::Arg::isEarlyUse):
+        (JSC::B3::Air::Arg::isLateUse):
+        (JSC::B3::Air::Arg::isDef):
+        (JSC::B3::Air::Arg::forEachTmp):
+        (JSC::B3::Air::Arg::isUse): Deleted.
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::build):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::allocate):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdge::hash):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::InterferenceEdge::dump):
+        (JSC::B3::Air::addSpillAndFillToProgram):
+        (JSC::B3::Air::iteratedRegisterCoalescingOnType):
+        (JSC::B3::Air::iteratedRegisterCoalescing):
+        * b3/air/AirLiveness.h:
+        (JSC::B3::Air::Liveness::Liveness):
+        (JSC::B3::Air::Liveness::LocalCalc::LocalCalc):
+        (JSC::B3::Air::Liveness::LocalCalc::live):
+        (JSC::B3::Air::Liveness::LocalCalc::takeLive):
+        (JSC::B3::Air::Liveness::LocalCalc::execute):
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/AirReportUsedRegisters.cpp:
+        (JSC::B3::Air::reportUsedRegisters):
+        * b3/air/AirSpillEverything.cpp:
+        (JSC::B3::Air::spillEverything):
+        * b3/testb3.cpp:
+        (JSC::B3::testMulArg):
+        (JSC::B3::testMulArgStore):
+        (JSC::B3::testMulAddArg):
+        (JSC::B3::testMulArgs):
+        (JSC::B3::testComplex):
+        (JSC::B3::testSimpleCheck):
+        (JSC::B3::testCheckLessThan):
+        (JSC::B3::testCheckMegaCombo):
+        (JSC::B3::testCheckAddImm):
+        (JSC::B3::testCheckAddImmCommute):
+        (JSC::B3::testCheckAddImmSomeRegister):
+        (JSC::B3::testCheckAdd):
+        (JSC::B3::testCheckAdd64):
+        (JSC::B3::testCheckSubImm):
+        (JSC::B3::testCheckSubBadImm):
+        (JSC::B3::testCheckSub):
+        (JSC::B3::testCheckSub64):
+        (JSC::B3::testCheckNeg):
+        (JSC::B3::testCheckNeg64):
+        (JSC::B3::testCheckMul):
+        (JSC::B3::testCheckMulMemory):
+        (JSC::B3::testCheckMul2):
+        (JSC::B3::testCheckMul64):
+        (JSC::B3::run):
+
+2015-11-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Air should lay out code optimally
+        https://bugs.webkit.org/show_bug.cgi?id=150478
+
+        Reviewed by Geoffrey Garen.
+
+        This adds a phase that optimizes code layout using something that's worked well for me in the past.
+        Basically, it just forces pre-ordering on the CFG, except that:
+
+        - Blocks that are only reachable by Rare control flow are scheduled separately, all the way at the
+          end.
+
+        - Successors of the same frequency class are pushed in ascending order of frequency, so that the most
+          frequent successor is scheduled immediately after.
+
+        This also adds the requisite branch flipping, so that a branch's taken successor is not the
+        fall-through block. We want the fall-through to be the not-taken successor if at all possible.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3BlockWorklist.h:
+        * b3/B3GenericFrequentedBlock.h:
+        (JSC::B3::GenericFrequentedBlock::frequency):
+        (JSC::B3::GenericFrequentedBlock::isRare):
+        (JSC::B3::GenericFrequentedBlock::dump):
+        * b3/B3Procedure.h:
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::isDoubleCond):
+        (JSC::B3::Air::Arg::isCondition):
+        (JSC::B3::Air::Arg::isSpecial):
+        (JSC::B3::Air::Arg::asDoubleCondition):
+        (JSC::B3::Air::Arg::isInvertible):
+        (JSC::B3::Air::Arg::inverted):
+        * b3/air/AirBasicBlock.h:
+        (JSC::B3::Air::BasicBlock::index):
+        (JSC::B3::Air::BasicBlock::setIndex):
+        (JSC::B3::Air::BasicBlock::size):
+        (JSC::B3::Air::BasicBlock::begin):
+        (JSC::B3::Air::BasicBlock::containsPredecessor):
+        (JSC::B3::Air::BasicBlock::frequency):
+        * b3/air/AirBlockWorklist.h: Added.
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::findNextBlock):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::proc):
+        (JSC::B3::Air::Code::at):
+        (JSC::B3::Air::Code::operator[]):
+        (JSC::B3::Air::Code::blockList):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/AirOptimizeBlockOrder.cpp: Added.
+        (JSC::B3::Air::optimizeBlockOrder):
+        * b3/air/AirOptimizeBlockOrder.h: Added.
+
+2015-11-17  Andreas Kling  <akling@apple.com>
+
+        [JSC] JSPropertyNameEnumerator could be destructorless.
+        <https://webkit.org/b/151242>
+
+        Reviewed by Mark Lam.
+
+        Make JSPropertyNameEnumerator destructorless and have it store the property names
+        cache in CopiedSpace. This was the most popular occupant of 64-byte destructor cells
+        in MarkedSpace, so making it destructorless gets rid of some ill-filled MarkedBlocks.
+
+        This patch had two issues on 32-bit platforms when first landed:
+
+        - Copied space allocations are required to be 8-byte divisible in size.
+
+        - WriteBarrier<Unknown> and WriteBarrier<JSString> are not the same size on 32-bit;
+          the former is a 64-bit EncodedJSValue internally, and the latter is a 32-bit JSCell*.
+          My patch was reinterpret_cast'ing a WriteBarrier<JSString> to a WriteBarrier<Unknown>
+          when passing to SlotVisitor::appendValues(), which led to invalid addresses getting
+          marked and strings getting GC'd prematurely.
+
+        * heap/CopyToken.h:
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::finishCreation):
+        (JSC::JSPropertyNameEnumerator::visitChildren):
+        (JSC::JSPropertyNameEnumerator::copyBackingStore):
+        (JSC::JSPropertyNameEnumerator::destroy): Deleted.
+        * runtime/JSPropertyNameEnumerator.h:
+
+2015-11-17  Mark Lam  <mark.lam@apple.com>
+
+        Refactoring: move branchMul32's imm arg to the 3rd argument to be consistent.
+        https://bugs.webkit.org/show_bug.cgi?id=151358
+
+        Reviewed by Saam Barati.
+
+        branch32, branchAdd32, and branchSub32 all have it as the 3rd argument.
+        branchMul32 is the odd man out.  This patch makes branchMul32 consistent with
+        the others.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::branchAdd32):
+        (JSC::MacroAssembler::branchMul32):
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::branchMul32):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::branchMul32):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::branchMul32):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::branchMul32):
+        * assembler/MacroAssemblerSH4.h:
+        (JSC::MacroAssemblerSH4::branchNeg32):
+        (JSC::MacroAssemblerSH4::branchMul32):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::branchMul32):
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_mul):
+
+2015-11-17  Mark Lam  <mark.lam@apple.com>
+
+        Use the JITAddGenerator snippet in the DFG.
+        https://bugs.webkit.org/show_bug.cgi?id=151266
+
+        Reviewed by Geoffrey Garen.
+
+        No tests added because the op_add.js stress test already tests for correctness
+        (using the LLINT as a reference).
+
+        Performance-wise, the difference from the pre-existing DFG implementation is
+        insignificant (at least as measured on x86 and x86_64).  We're moving forward
+        with adopting this implementation because it unifies the 32-bit and 64-bit
+        implementations, as well as lays ground work for a repatching inline cache
+        implementation of op_add later.
+
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::resultType):
+        - Made an assertion less restrictive.  For ValueAdd operands, the DFG thinks that
+          the operand can also be empty (though we should never see this in practice).
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        - Add fallback to unused type operands.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueAdd):
+        - Introduce a common function to compile the ValueAdd node.
+
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::JSValueOperand::JSValueOperand):
+        - Add the forwarding constructor so that we can use Optional<JSValueOperand>.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        - Changed to use the common compileValueAdd().
+
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::moveValue):
+        - Similar to moveTrustedValue() but used for untrusted constants.
+
+        * jit/JITAddGenerator.cpp:
+        (JSC::JITAddGenerator::generateFastPath):
+        * jit/JITAddGenerator.h:
+        (JSC::JITAddGenerator::JITAddGenerator):
+        - Updated to take the left or right operand as a constant.  This is necessary
+          because the client should not be making assumptions about whether the snippet
+          will determine the operation to be commutative or not.  Instead, the client
+          should just pass in the operands and let the snippet do any operand order
+          swapping if necessary.
+
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_add):
+        - Updated to use the new JITAddGenerator interface.
+
+        * tests/stress/op_add.js:
+        (stringifyIfNeeded):
+        (runTest):
+        - Made test output more clear about when string results are expected.
+
+2015-11-17  Filip Pizlo  <fpizlo@apple.com>
+
+        It's best for the DFG to always have some guess of basic block frequency
+        https://bugs.webkit.org/show_bug.cgi?id=151350
+
+        Reviewed by Geoffrey Garen.
+
+        It'll simplify things for B3 if we always have some estimate of block frequency, even if it's not
+        a great estimate. Using NaN as an estimate is probably worse than using any non-NaN number.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        (JSC::DFG::ByteCodeParser::parseCodeBlock):
+        * dfg/DFGCriticalEdgeBreakingPhase.cpp:
+        (JSC::DFG::CriticalEdgeBreakingPhase::breakCriticalEdge):
+        * dfg/DFGLoopPreHeaderCreationPhase.cpp:
+        (JSC::DFG::createPreHeader):
+
+2015-11-17  Michael Saboff  <msaboff@apple.com>
+
+        Reserved VM pool established in r187125 is likely too conservative
+        https://bugs.webkit.org/show_bug.cgi?id=151351
+
+        Reviewed by Filip Pizlo.
+
+        Reduce the VM allocation reserved pool from 25% to 15% for ARM32.
+
+        * jit/ExecutableAllocator.h:
+
+2015-11-17  Saam barati  <sbarati@apple.com>
+
+        FTLLazySlowPaths should be able to handle being passed the zero register as a location
+        https://bugs.webkit.org/show_bug.cgi?id=151193
+
+        Reviewed by Geoffrey Garen.
+
+        On arm64, SP and ZR are the same register number. The meaning
+        of the register number being SP or ZR is dependent on context of
+        the instruction and the register within the instruction. LLVM may
+        prove that a value is zero, or sometimes, we will lower a
+        value as a constant zero (for example, we might compile
+        CreateDirectArguments of an inlined call frame and we might know
+        that the arguments have a length of zero). LazySlowPaths should
+        be able to gracefully handle being passed a stackmap location
+        with a gpr value of SP by moving zero into another register
+        and replacing the location's register with the new register.
+        This way, no lazy slow path will ever have access to a location with a GPR
+        value of SP.  This patch makes this work by using a scratch register 
+        allocator when we need to do this maneuver of moving zero into a scratch
+        register.  Inside FTLCompile, we track if we need to move zero into a register,
+        and if so, into which register. We actually emit the necessary
+        instructions to move zero into this register, and to spill reused
+        registers if necessary, while generating the code for the lazy slow
+        path itself.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * ftl/FTLDWARFRegister.cpp:
+        (JSC::FTL::DWARFRegister::reg):
+        * ftl/FTLLazySlowPath.cpp:
+        (JSC::FTL::LazySlowPath::LazySlowPath):
+        (JSC::FTL::LazySlowPath::generate):
+        * ftl/FTLLazySlowPath.h:
+        (JSC::FTL::LazySlowPath::createGenerator):
+
+2015-11-17  Mark Lam  <mark.lam@apple.com>
+
+        [JSC] Support Doubles with B3's Mul.
+        https://bugs.webkit.org/show_bug.cgi?id=151355
+
+        Reviewed by Filip Pizlo.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::testMulLoadTwice):
+        (JSC::B3::testMulArgDouble):
+        (JSC::B3::testMulArgsDouble):
+        (JSC::B3::testMulArgImmDouble):
+        (JSC::B3::testMulImmArgDouble):
+        (JSC::B3::testMulImmsDouble):
+        (JSC::B3::testDivArgDouble):
+        (JSC::B3::run):
+
+2015-11-17  Matthew Daiter  <mdaiter8121@gmail.com>
+
+        Removed useless variable scriptResult from testExecutionTimeLimit
+        https://bugs.webkit.org/show_bug.cgi?id=151331
+
+        Reviewed by Alex Christensen.
+
+        * API/tests/ExecutionTimeLimitTest.cpp: Removed scriptResult
+        (testExecutionTimeLimit):
+
+2015-11-16  Mark Lam  <mark.lam@apple.com>
+
+        [JSC] Support Doubles with B3's Sub.
+        https://bugs.webkit.org/show_bug.cgi?id=151322
+
+        Reviewed by Filip Pizlo.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/air/AirOpcode.opcodes:
+
+        * b3/testb3.cpp:
+        (JSC::B3::testSubImmArg32):
+        (JSC::B3::testSubArgDouble):
+        (JSC::B3::testSubArgsDouble):
+        (JSC::B3::testSubArgImmDouble):
+        (JSC::B3::testSubImmArgDouble):
+        (JSC::B3::testSubImmsDouble):
+        (JSC::B3::testBitAndArgs):
+        (JSC::B3::negativeZero):
+        (JSC::B3::posInfinity):
+        (JSC::B3::negInfinity):
+        (JSC::B3::doubleOperands):
+        (JSC::B3::run):
+        - Added RUN_UNARY and RUN_BINARY macros to auto generate permutations
+          of operands for the tests.
+        - Added SubDouble tests using the new macros.
+
+2015-11-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] IteratedRegisterCoalescingAllocator's freeze can add zombie Tmps to our coloring algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=151345
+
+        Reviewed by Filip Pizlo.
+
+        The extended test of https://bugs.webkit.org/show_bug.cgi?id=151214 revealed a problem with
+        the Move freezing step of the iterated register allocator.
+
+        When freezing a move related Tmp, we go over all the move instructions and update the other
+        Tmp of the move as needed. If that Tmp is no longer Move related and is of low degree it can
+        be simplified too.
+
+        The problem arise when one of those Tmp was already coalesced. For example, say we have
+
+          1: move %tmp42, %tmp43
+          2: move %tmp42, %tmp44
+
+        The first move cannot be coalesced for some reason and is moved to the Active worklist.
+        The second move is coalesced and %tmp42 is now %tmp44.
+
+        When nothing can be simplified or coalesced, we look at freezing a Move-related Tmp.
+        Let's say we pick %tmp43. The code of freeze() was going to all the Move instructions
+        to update them. Here you would find @1 above, get %tmp42 as the other Tmp. Since %tmp42
+        is no longer move related, it is added to the simplify work list.
+        -> We just added a coalesced Tmp to our worklist!
+
+        To fix that, I get the alias of every other Tmp before updating its status.
+
+        There is still a problem: multiple Moves instructions may have been coalesced to the same
+        Tmp. We must not add a Tmp twice to a worklist.
+        To avoid duplicates, I rely on the fact that the freeze worklist should not contains
+        aliased Tmps. Before adding something to the simplify worklist, I check that it was
+        in the freeze worklist.
+
+        I cannot find how this problem would have been avoided in the original paper. I suspect
+        that may have been a bug in the pseudo-code.
+
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::freeze):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::freezeMoves):
+
+2015-11-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make FTLOutput's load8() and load16() compatible with B3
+        https://bugs.webkit.org/show_bug.cgi?id=151336
+
+        Reviewed by Filip Pizlo.
+
+        B3 does not have 8bit and 16bit types. Make FTLOutput abstract enough
+        to handle LLVM IR and B3.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileGetArrayLength):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileGetByVal):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileStringCharAt):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileStringCharCodeAt):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNotifyWrite):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileSwitch):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCheckHasInstance):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCheckWatchdogTimer):
+        (JSC::FTL::DFG::LowerDFGToLLVM::speculateTruthyObject):
+        (JSC::FTL::DFG::LowerDFGToLLVM::boolify):
+        (JSC::FTL::DFG::LowerDFGToLLVM::equalNullOrUndefined):
+        (JSC::FTL::DFG::LowerDFGToLLVM::switchStringRecurse):
+        (JSC::FTL::DFG::LowerDFGToLLVM::isObject):
+        (JSC::FTL::DFG::LowerDFGToLLVM::isNotObject):
+        (JSC::FTL::DFG::LowerDFGToLLVM::isArrayType):
+        (JSC::FTL::DFG::LowerDFGToLLVM::isExoticForTypeof):
+        (JSC::FTL::DFG::LowerDFGToLLVM::isType):
+        (JSC::FTL::DFG::LowerDFGToLLVM::speculateNonNullObject):
+        (JSC::FTL::DFG::LowerDFGToLLVM::loadCellState):
+        (JSC::FTL::DFG::LowerDFGToLLVM::emitStoreBarrier):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::load8SignExt32):
+        (JSC::FTL::Output::load8ZeroExt32):
+        (JSC::FTL::Output::load16SignExt32):
+        (JSC::FTL::Output::load16ZeroExt32):
+        (JSC::FTL::Output::constInt8): Deleted.
+        (JSC::FTL::Output::load8): Deleted.
+        (JSC::FTL::Output::load16): Deleted.
+        (JSC::FTL::Output::store8): Deleted.
+        (JSC::FTL::Output::storeFloat): Deleted.
+        (JSC::FTL::Output::isZero8): Deleted.
+        (JSC::FTL::Output::notZero8): Deleted.
+        (JSC::FTL::Output::testIsZero8): Deleted.
+        (JSC::FTL::Output::testNonZero8): Deleted.
+
+2015-11-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        Fix a typo in AirIteratedRegisterCoalescing
+
+        I forgot to fix that review comment from Geoff.
+
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::build):
+
+2015-11-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add support for the extra registers that can be clobbered by Specials
+        https://bugs.webkit.org/show_bug.cgi?id=151246
+
+        Reviewed by Geoffrey Garen.
+
+        Specials can clobber arbitrary registers. This was not handled correctly by Air
+        and nothing was preventing us from re-allocating those registers.
+
+        This patch adds support for the extra clobbered registers in the two register allocators.
+
+        I also fixed the re-spilling FIXME of the iterated allocator because the test might
+        not always converge without it. Since we are at maximum register pressure at the patch point,
+        we could be always spilling the return value, which would loop forever.
+
+        To fix the re-spilling, I just kept a Set of every value spilled or filled so far. When selecting
+        a spill candidate, we never pick a Tmp from that set.
+
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * b3/air/AirHandleCalleeSaves.cpp:
+        (JSC::B3::Air::handleCalleeSaves):
+        * b3/air/AirInst.h:
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::forEachDefAndExtraClobberedTmp):
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::IteratedRegisterCoalescingAllocator):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::build):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::addEdges):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::selectSpill):
+        (JSC::B3::Air::addSpillAndFillToProgram):
+        (JSC::B3::Air::iteratedRegisterCoalescingOnType):
+        (JSC::B3::Air::iteratedRegisterCoalescing):
+        * b3/air/AirSpillEverything.cpp:
+        (JSC::B3::Air::spillEverything):
+        * b3/testb3.cpp:
+        (JSC::B3::testSimplePatchpointWithoutOuputClobbersGPArgs):
+        (JSC::B3::testSimplePatchpointWithOuputClobbersGPArgs):
+        (JSC::B3::testSimplePatchpointWithoutOuputClobbersFPArgs):
+        (JSC::B3::testSimplePatchpointWithOuputClobbersFPArgs):
+        (JSC::B3::run):
+        * jit/RegisterSet.h:
+
+2015-11-16  Benjamin Poulain  <benjamin@webkit.org>
+
+        Build fix after r192492
+
+        Last second change broke the build.
+
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::contains):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::takeMove):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::takeLastMove):
+
+2015-11-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add trivial lowering for B3's Div with doubles
+        https://bugs.webkit.org/show_bug.cgi?id=151292
+
+        Reviewed by Geoffrey Garen.
+
+        Filip had already made the constant propagation for it.
+        The Air Opcode was all we had left.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::testDivArgDouble):
+        (JSC::B3::testDivArgsDouble):
+        (JSC::B3::testDivArgImmDouble):
+        (JSC::B3::testDivImmArgDouble):
+        (JSC::B3::testDivImmsDouble):
+        (JSC::B3::run):
+
+2015-11-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Speed up the coalescing-related operation of the iterated register allocator
+        https://bugs.webkit.org/show_bug.cgi?id=151290
+
+        Reviewed by Geoffrey Garen.
+
+        One step closer to removing the Hash structures:
+
+        For the coalescing operation, we need to keep track of Move instructions. We do not strictly
+        need those to be the Air Move, just any abstract operation that copy a Tmp into another Tmp.
+
+        In this patch, I exploit that to remove the Hash structure related to the Inst. Instead of
+        using the Move Inst, we just keep track of the Use() and Def() of the instructions.
+        Those are added in the global list m_coalescingCandidates and the index in that list represent
+        the move for the remaining of the algorithm.
+
+        With Moves transformed into dense indices, we can start using arrays to make fast sets.
+
+        The m_activeMoves Set is easy since we only need simple add/remove/contains. It is transformed
+        into a BitVector.
+        The bit vector is always fully allocated to allow for quick uniform access. The assumtion is that
+        activeMoves will contains a few values for non trivial cases.
+
+        The worklist m_worklistMoves is more complicated. I want it to be ordered to coalesce moves starting
+        at the top of blocks. Having a fast remove() operation is also useful for mass coalescing.
+        It also needs Set operations, especially a fast contains().
+
+        For m_worklistMoves, I created a new structure: OrderedMoveSet.
+        It contains a list of ordered values, and a map of each value to its position in the list.
+
+        This resembles Briggs' Sparse Set but it is not exactly the same. When removing a value,
+        I set a special marker in the map (UINT_MAX). The reason is that I want contains() to be fast
+        instead of remove(). The marker in the map allows contains() with a single memory operation instead of two.
+
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::build):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::allocate):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::forEachNodeMoves):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::isMoveRelated):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::enableMovesOnValue):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::coalesce):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::combine):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::freezeMoves):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::dumpWorkLists):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::addMove):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::isEmpty):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::contains):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::takeMove):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::takeLastMove):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::returnMove):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::OrderedMoveSet::clear):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::assignColors): Deleted.
+
+2015-11-16  Saam barati  <sbarati@apple.com>
+
+        DFGEdge's dump method should print "Untyped:" for untyped uses.
+        https://bugs.webkit.org/show_bug.cgi?id=151314
+
+        Rubber stamped by Filip Pizlo.
+
+        * dfg/DFGEdge.cpp:
+        (JSC::DFG::Edge::dump):
+
+2015-11-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Make sure that the address matcher correctly handles Shl(x, 1)
+        https://bugs.webkit.org/show_bug.cgi?id=151316
+
+        Reviewed by Geoffrey Garen.
+
+        This optimization isn't really that awesome, but the nicest part of the change is just the
+        testing. If we ever do more cleverness with shifts, these tests will come in handy.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::effectiveAddr):
+        * b3/testb3.cpp:
+        (JSC::B3::testLoadOffsetUsingAddNotConstant):
+        (JSC::B3::testLoadAddrShift):
+        (JSC::B3::testFramePointer):
+        (JSC::B3::run):
+
+2015-11-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use FTL by default when LLVM 3.7 is available
+        https://bugs.webkit.org/show_bug.cgi?id=142128
+
+        Reviewed by Csaba Osztrogonác.
+
+        * PlatformGTK.cmake: Install libllvmForJSC.so.
+        * llvm/InitializeLLVMLinux.cpp:
+        (JSC::getLLVMInitializerFunction): For developer build try to load first
+        libllvmForJSC.so from standard paths since not installed binaries
+        have the RPATH set. If it fails try the installed one. For
+        production buils load always the installed one.
+
+2015-11-15  Saam barati  <sbarati@apple.com>
+
+        64-bit in the DFG: non tail Calls unnecessarily store the argument count twice on the callee frame and tails calls unnecessarily store it once
+        https://bugs.webkit.org/show_bug.cgi?id=151297
+
+        Reviewed by Geoffrey Garen.
+
+        Non tail calls only need to store the count once. Tail calls
+        never need to store the count on the callee frame because they
+        will be reusing the caller's frame.
+
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+
+2015-11-15  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Update RTCPeerConnection API and introduce PeerConnectionBackend
+        https://bugs.webkit.org/show_bug.cgi?id=150166
+
+        Reviewed by Eric Carlson and Youenn Fablet
+
+        Added generic isDictionary() function to GlobalObject.js that tests if a
+        value can be interpreted as a dictionary.
+
+        * builtins/GlobalObject.js:
+        (isDictionary):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+
+2015-11-14  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r190370): CrashTracer: [USER] com.apple.WebKit.WebContent at com.apple.JavaScriptCore: JSC::JITCode::execute + 158
+        https://bugs.webkit.org/show_bug.cgi?id=151279
+
+        Reviewed by Geoffrey Garen.
+
+        We need to restore callee saves even when we take the slow path in a polymorphic call stub.
+        Move the restoration to the top of the stub so that it is done for all paths.
+
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall):
+
+2015-11-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192416 and r192443.
+        https://bugs.webkit.org/show_bug.cgi?id=151285
+
+        Broke 32-bit in some mysterious way I need to understand
+        (Requested by kling on #webkit).
+
+        Reverted changesets:
+
+        "[JSC] JSPropertyNameEnumerator could be destructorless."
+        https://bugs.webkit.org/show_bug.cgi?id=151242
+        http://trac.webkit.org/changeset/192416
+
+        "Follow-up for 32-bit test failures after..."
+        https://bugs.webkit.org/show_bug.cgi?id=151242
+        http://trac.webkit.org/changeset/192443
+
+2015-11-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192401.
+        https://bugs.webkit.org/show_bug.cgi?id=151282
+
+        "caused crashes on animometer" (Requested by thorton on
+        #webkit).
+
+        Reverted changeset:
+
+        "Restore CodeBlock jettison code I accidentally removed"
+        https://bugs.webkit.org/show_bug.cgi?id=151241
+        http://trac.webkit.org/changeset/192401
+
+2015-11-13  Andreas Kling  <akling@apple.com>
+
+        Follow-up for 32-bit test failures after...
+        [JSC] JSPropertyNameEnumerator could be destructorless.
+        <https://webkit.org/b/151242>
+
+        Reviewed by Mark Lam
+
+        Apparently copied space allocations need to be in multiples of 8 bytes.
+        Have JSPropertyNameEnumerator do what other copied space clients already do
+        and round the allocation size up to a multiple of 8.
+
+        Added a little helper function to compute the allocation size so this doesn't
+        have to be repeated everywhere.
+
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::finishCreation):
+        (JSC::JSPropertyNameEnumerator::visitChildren):
+        (JSC::JSPropertyNameEnumerator::copyBackingStore):
+        * runtime/JSPropertyNameEnumerator.h:
+
+2015-11-13  Saam barati  <sbarati@apple.com>
+
+        sub IC does not properly handle exception handling now that try/catch is compiled in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=151080
+
+        Reviewed by Geoffrey Garen.
+
+        This patch implements proper exception handling for ArithSubs with binaryUseKind as
+        UntypedUse inside try/catch.  We implement this in a very similar way as we implement 
+        exception handling from GetById/PutById/LazySlowPaths callOperation calls. We do the needed 
+        spilling if the result is the same register as the left/right register because in the event
+        of an exception, we don't want to do value recovery on the garbage result, we
+        want to do it on the original lhs/rhs of the operation.
+
+        This patch also does some refactoring. No longer does OSRExitDescriptor
+        have a long list of booleans that correspond to different OSR exit types.
+        It now just has an enum property called ExceptionType that tells us
+        what type of exception handler the OSR exit is. Then, we can just ask
+        interesting questions about the OSR exit and get answers based on its
+        ExceptionType property.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * ftl/FTLExceptionHandlerManager.cpp:
+        (JSC::FTL::ExceptionHandlerManager::addNewExit):
+        (JSC::FTL::ExceptionHandlerManager::callOperationExceptionTarget):
+        (JSC::FTL::ExceptionHandlerManager::lazySlowPathExceptionTarget):
+        (JSC::FTL::ExceptionHandlerManager::getByIdOSRExit):
+        (JSC::FTL::ExceptionHandlerManager::subOSRExit):
+        (JSC::FTL::ExceptionHandlerManager::getCallOSRExitCommon):
+        (JSC::FTL::ExceptionHandlerManager::getOrPutByIdCallOperationExceptionTarget): Deleted.
+        * ftl/FTLExceptionHandlerManager.h:
+        * ftl/FTLExitThunkGenerator.cpp:
+        (JSC::FTL::ExitThunkGenerator::emitThunk):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::lower):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileArithAddOrSub):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compilePutById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileInvalidationPoint):
+        (JSC::FTL::DFG::LowerDFGToLLVM::getById):
+        (JSC::FTL::DFG::LowerDFGToLLVM::lazySlowPath):
+        (JSC::FTL::DFG::LowerDFGToLLVM::callCheck):
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExitArgumentsForPatchpointIfWillCatchException):
+        (JSC::FTL::DFG::LowerDFGToLLVM::emitBranchToOSRExitIfWillCatchException):
+        (JSC::FTL::DFG::LowerDFGToLLVM::lowBlock):
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExitDescriptor):
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExit):
+        (JSC::FTL::DFG::LowerDFGToLLVM::buildExitArguments):
+        * ftl/FTLOSRExit.cpp:
+        (JSC::FTL::OSRExitDescriptor::OSRExitDescriptor):
+        (JSC::FTL::OSRExitDescriptor::willArriveAtExitFromIndirectExceptionCheck):
+        (JSC::FTL::OSRExitDescriptor::mightArriveAtOSRExitFromGenericUnwind):
+        (JSC::FTL::OSRExitDescriptor::mightArriveAtOSRExitFromCallOperation):
+        (JSC::FTL::OSRExitDescriptor::needsRegisterRecoveryOnGenericUnwindOSRExitPath):
+        (JSC::FTL::OSRExitDescriptor::isExceptionHandler):
+        (JSC::FTL::OSRExitDescriptor::validateReferences):
+        (JSC::FTL::OSRExit::OSRExit):
+        (JSC::FTL::OSRExit::codeLocationForRepatch):
+        (JSC::FTL::OSRExit::gatherRegistersToSpillForCallIfException):
+        (JSC::FTL::OSRExit::spillRegistersToSpillSlot):
+        (JSC::FTL::OSRExit::recoverRegistersFromSpillSlot):
+        * ftl/FTLOSRExit.h:
+        * ftl/FTLOSRExitCompilationInfo.h:
+        (JSC::FTL::OSRExitCompilationInfo::OSRExitCompilationInfo):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileFTLOSRExit):
+        * tests/stress/ftl-try-catch-arith-sub-exception.js: Added.
+        (assert):
+        (let.o.valueOf):
+        (baz):
+        (foo):
+        (bar):
+
+2015-11-13  Caitlin Potter  <caitpotter88@gmail.com>
+
+        Allow any LeftHandSideExpression as a valid AssignmentElement
+        https://bugs.webkit.org/show_bug.cgi?id=151026
+
+        Reviewed by Geoffrey Garen.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::AssignmentElementNode::collectBoundIdentifiers):
+        (JSC::AssignmentElementNode::bindValue):
+        (JSC::AssignmentElementNode::toString):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::isAssignmentLocation):
+        (JSC::ASTBuilder::createAssignmentElement):
+        * parser/NodeConstructors.h:
+        (JSC::AssignmentElementNode::AssignmentElementNode):
+        * parser/Nodes.h:
+        (JSC::AssignmentElementNode::assignmentTarget):
+        (JSC::AssignmentElementNode::divotStart):
+        (JSC::AssignmentElementNode::divotEnd):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::createAssignmentElement):
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        * parser/Parser.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::operatorStackPop):
+
+2015-11-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        op_assert should declare that it uses the first register argument
+        https://bugs.webkit.org/show_bug.cgi?id=151183
+
+        Reviewed by Geoffrey Garen.
+
+        op_assert(conditionRegister, lineNumber) should declare that it
+        *uses* (in terms of use-def) the first `conditionRegister` and
+        it does not define any variables.
+
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+
+2015-11-13  Andreas Kling  <akling@apple.com>
+
+        [JSC] JSPropertyNameEnumerator could be destructorless.
+        <https://webkit.org/b/151242>
+
+        Reviewed by Mark Lam.
+
+        Make JSPropertyNameEnumerator destructorless and have it store the property names
+        cache in CopiedSpace. This was the most popular occupant of 64-byte destructor cells
+        in MarkedSpace, so making it destructorless gets rid of some ill-filled MarkedBlocks.
+
+        * heap/CopyToken.h:
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::finishCreation):
+        (JSC::JSPropertyNameEnumerator::visitChildren):
+        (JSC::JSPropertyNameEnumerator::copyBackingStore):
+        (JSC::JSPropertyNameEnumerator::destroy): Deleted.
+        * runtime/JSPropertyNameEnumerator.h:
+
+2015-11-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Do not generate an Add when adding a zero immediate to something
+        https://bugs.webkit.org/show_bug.cgi?id=151171
+
+        Reviewed by Geoffrey Garen.
+
+        Avoid generating an add if one of arguments is a zero immediate.
+
+        On x86, the add32/64() were also used internally for branchAdd32/64.
+        I split the code that sets flag to add32AndSetFlags() to make sure
+        we always force the flags before testing.
+
+        I could have used CMp to set the flags but I would gain nothing from
+        that, cmp is just a SUB.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::add32):
+        (JSC::MacroAssemblerARM64::add64):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::add32):
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::add32):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::add32):
+        (JSC::MacroAssemblerX86Common::branchAdd32):
+        (JSC::MacroAssemblerX86Common::add32AndSetFlags):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::add32):
+        (JSC::MacroAssemblerX86_64::add64):
+        (JSC::MacroAssemblerX86_64::branchAdd64):
+        (JSC::MacroAssemblerX86_64::add64AndSetFlags):
+
+2015-11-12  Geoffrey Garen  <ggaren@apple.com>
+
+        Restore CodeBlock jettison code I accidentally removed
+        https://bugs.webkit.org/show_bug.cgi?id=151241
+
+        Reviewed by Andreas Kling.
+
+        I meant to add this back in <http://trac.webkit.org/changeset/190827>
+        but I missed.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::timeToLive):
+        (JSC::CodeBlock::shouldJettisonDueToOldAge):
+
+2015-11-12  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile programs with CheckAdd, CheckSub, and CheckMul
+        https://bugs.webkit.org/show_bug.cgi?id=151213
+
+        Reviewed by Benjamin Poulain.
+
+        This adds lowering code for CheckAdd, CheckSub, and CheckMul along with support for CheckNeg
+        (i.e. CheckSub with the left child being zero).
+
+        This adds tests for these things, by simulating what JS would do: if there is overflow, revert
+        to double math. To write the test, I needed support for IToD so I added that support.
+
+        This also fixes a memory corruption bug in the register allocator.
+
+        Also fixes a bug in opcode_generator.rb where we were emitting stray "return" statements inside
+        switch statements. I think this was benign, but I'm not sure, so I fixed it.
+
+        Note that I had to convert CheckMul handling to always use a three-operand form. That's because
+        there is no other way to tell Air that we need the original value alive. This means that on X86
+        we'll emit an extra Move just before the checked mul. That's probably fine since that's
+        necessary anyway.
+
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::branchMul64):
+        (JSC::MacroAssemblerX86_64::branchSub64):
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::generate):
+        * b3/B3Const32Value.cpp:
+        (JSC::B3::Const32Value::mulConstant):
+        (JSC::B3::Const32Value::checkAddConstant):
+        (JSC::B3::Const32Value::checkSubConstant):
+        (JSC::B3::Const32Value::checkMulConstant):
+        (JSC::B3::Const32Value::divConstant):
+        * b3/B3Const32Value.h:
+        * b3/B3Const64Value.cpp:
+        (JSC::B3::Const64Value::mulConstant):
+        (JSC::B3::Const64Value::checkAddConstant):
+        (JSC::B3::Const64Value::checkSubConstant):
+        (JSC::B3::Const64Value::checkMulConstant):
+        (JSC::B3::Const64Value::divConstant):
+        * b3/B3Const64Value.h:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::appendUnOp):
+        (JSC::B3::Air::LowerToAir::ensureSpecial):
+        (JSC::B3::Air::LowerToAir::ensureCheckSpecial):
+        (JSC::B3::Air::LowerToAir::fillStackmap):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::mulConstant):
+        (JSC::B3::Value::checkAddConstant):
+        (JSC::B3::Value::checkSubConstant):
+        (JSC::B3::Value::checkMulConstant):
+        (JSC::B3::Value::divConstant):
+        * b3/B3Value.h:
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::iteratedRegisterCoalescing):
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/opcode_generator.rb:
+        * b3/testb3.cpp:
+        (JSC::B3::testCheckMegaCombo):
+        (JSC::B3::testCheckAddImm):
+        (JSC::B3::testCheckAdd):
+        (JSC::B3::testCheckAdd64):
+        (JSC::B3::testCheckAddFold):
+        (JSC::B3::testCheckAddFoldFail):
+        (JSC::B3::testCheckSubImm):
+        (JSC::B3::testCheckSub):
+        (JSC::B3::doubleSub):
+        (JSC::B3::testCheckSub64):
+        (JSC::B3::testCheckSubFold):
+        (JSC::B3::testCheckSubFoldFail):
+        (JSC::B3::testCheckNeg):
+        (JSC::B3::testCheckNeg64):
+        (JSC::B3::testCheckMul):
+        (JSC::B3::testCheckMul64):
+        (JSC::B3::testCheckMulFold):
+        (JSC::B3::testCheckMulFoldFail):
+        (JSC::B3::genericTestCompare):
+        (JSC::B3::run):
+
+2015-11-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce list of saved console messages
+        https://bugs.webkit.org/show_bug.cgi?id=151225
+
+        Reviewed by Geoffrey Garen.
+
+        Inspector saves messages so that when an inspector frontend opens it can report
+        these messages to the frontend. However we were saving a rather large list of
+        1000 messages. Most pages do not produce a large number of console messages.
+        However pages that live for a long time can generate many errors over time,
+        especially periodic engine issues such as cross-origin access errors. This could
+        result in a lot of wasted memory for console messages that may never be used.
+
+        Likewise when an inspector first open sending all 1000 messages to the frontend
+        results in a poor experience.
+
+        Lets reduce the list of saved messages. Developer will still be able to see
+        all messages as long as they have Web Inspector open at the time the messages
+        are generated.
+
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        Reduce the list from 1000 to 100. Also, when expiring
+        messages from this list, chunk in 10s instead of 100s.
+
+2015-11-12  Mark Lam  <mark.lam@apple.com>
+
+        Adjust timeout values in ExecutionTimeLimitTest.
+        https://bugs.webkit.org/show_bug.cgi?id=151223
+
+        Reviewed by Geoffrey Garen.
+
+        Some bots were not happy with the existing time out values.  I adjusted them to give
+        the system a little more time to fire the timer events, and this made the bots happy.
+
+        * API/tests/ExecutionTimeLimitTest.cpp:
+        (testExecutionTimeLimit):
+
+2015-11-12  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile Patchpoints with Register and Any constraints
+        https://bugs.webkit.org/show_bug.cgi?id=151209
+
+        Reviewed by Geoffrey Garen.
+
+        Most of this patch is about adding tests, since Register constraints already worked but
+        were untested, and almost all forms of the Any constraint worked.
+
+        One change that I'm making is that Patchpoints now default to forCall effects rather
+        than no effects. I think this is better because if a client of Patchpoint never supplies
+        any effects, it's best to assume the worst.
+
+        My testing uncovered only one real bug: moveConstants() would turn all non-zero double
+        constants into Loads, so the optimization to fold constants into a Stackmap would stop
+        working. Instead of telling the Stackmap that the double value it wanted is actually a
+        constant, we would tell it that it's a register and it would emit code to materialize
+        the double into that register. I worked around this by having moveConstants() create
+        ConstDoubleValue's just for the Stackmaps, which lowerToAir() recognizes and does the
+        right thing with (i.e. folds into the stackmap instead of materializing).
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::fillStackmap):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3MoveConstants.cpp:
+        * b3/B3PatchpointValue.cpp:
+        (JSC::B3::PatchpointValue::PatchpointValue):
+        * b3/testb3.cpp:
+        (JSC::B3::testPatchpointCallArg):
+        (JSC::B3::testPatchpointFixedRegister):
+        (JSC::B3::testPatchpointAny):
+        (JSC::B3::testPatchpointAnyImm):
+        (JSC::B3::testPatchpointManyImms):
+        (JSC::B3::testSimpleCheck):
+        (JSC::B3::run):
+
+2015-11-12  Mark Lam  <mark.lam@apple.com>
+
+        Move some prototypes to header files.
+        https://bugs.webkit.org/show_bug.cgi?id=151194
+
+        Reviewed by Michael Saboff.
+
+        * assembler/MacroAssemblerPrinter.cpp:
+        (JSC::printIndent):
+        * assembler/MacroAssemblerPrinter.h:
+        (JSC::MacroAssembler::print):
+
+2015-11-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SATURATED_LAYOUT_ARITHMETIC) guards
+        https://bugs.webkit.org/show_bug.cgi?id=150972
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-11-11  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Air: we have more register than what the allocator believed
+        https://bugs.webkit.org/show_bug.cgi?id=151182
+
+        Reviewed by Michael Saboff.
+
+        I was using GPRInfo/FPRInfo to get the number of register while coloring the interference graph.
+        The problem is, those classes are lying about register availability.
+
+        They don't report stuff reserved by the MacroAssembler and reserve some registers.
+        FPRInfo is the worst, reporting only 6 of the 15 registers we have.
+
+        The ground truth in our case is that we can color with all the registers returned
+        by regsInPriorityOrder(). I changed IteratedRegisterCoalescingAllocator to use that value.
+
+        The new test testSpillFP() covers simple spilling of doubles.
+
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::IteratedRegisterCoalescingAllocator):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::makeWorkList):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::decrementDegree):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::precoloredCoalescingHeuristic):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::conservativeHeuristic):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::addWorkList):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::combine):
+        (JSC::B3::Air::IteratedRegisterCoalescingAllocator::freezeMoves):
+        * b3/testb3.cpp:
+        (JSC::B3::testSpillFP):
+        (JSC::B3::run):
+
+2015-11-11  Mark Lam  <mark.lam@apple.com>
+
+        The BinarySnippetRegisterContext needs to copy the result back from the scratch register.
+        https://bugs.webkit.org/show_bug.cgi?id=150712
+
+        Reviewed by Geoffrey Garen.
+
+        If the BinarySnippetRegisterContext had re-assigned the result register to a scratch
+        before emitting the snippet, it needs to copy the result back from the scratch after
+        the snippet is done.
+
+        This fixes the cdjs-tests.yaml/main.js.ftl failure reported in
+        https://bugs.webkit.org/show_bug.cgi?id=150687.
+
+        Also added an optimization to check for the case where any of the left, right,
+        or result registers are aliased together, and to map them to the corresponding
+        allocated scratch register for their alias instead of allocating separate ones.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        - Added JITSubGenerator.h to these project files for completeness.
+
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        - Re-enable ArithSub handling of UntypedUse operands.
+
+        * ftl/FTLCompile.cpp:
+
+        * ftl/FTLInlineCacheSize.cpp:
+        (JSC::FTL::sizeOfArithSub):
+        - Adjusted IC sizes to account for the snippet changes.
+
+2015-11-11  Mark Lam  <mark.lam@apple.com>
+
+        Crash in sorting-benchmark.js on ARM64 with full op_sub FTL coverage.
+        https://bugs.webkit.org/show_bug.cgi?id=150936
+
+        Reviewed by Michael Saboff.
+
+        The OSR entry thunk does not currently restore the callee saved registers that the baseline
+        JIT saves but the DFG does not.  As a result, sorting-benchmark.js was crashing with the
+        following scenario:
+
+            1. There exists 2 functions: benchmark() and bottom_up_merge_sort().
+               Let's call them A() and B() respectively for brevity.
+            2. A() is FTL compiled.
+            3. B() is FTL compiled.
+            4. FTL A() calls FTL B().  FTL B() trashes register x26.
+            5. FTL B() goes through an OSR exit, and deopts to baseline.  The OSR exit off-ramp
+               puts x26's original value in the baseline B()'s stash location for x26 in its stack
+               frame.  It expects baseline B() to restore x26 when it returns.
+            6. Baseline B() gets DFG optimized, and we OSR enter into DFG B().
+               The OSR entry thunk does nothing to restore x26's original value.  Hence, x26 contains
+               whatever value FTL B() left in it.
+            7. DFG B() returns to FTL A().
+               x26 is not one of the callee saved registers used by DFG B().  Hence, it does nothing
+               to restore it.
+            8. FTL A() tries to use x26 and crashes, because x26 contains FTL B()'s value for it, and
+               not FTL A()'s.
+
+        This patch fixes this issue by having the OSR entry thunk restore all the callee saved
+        registers before running the DFG code.
+
+        No new test needed because this issue will be covered by sorting-benchmark.js as soon as
+        https://bugs.webkit.org/show_bug.cgi?id=150712 lands.
+
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrEntryThunkGenerator):
+
+2015-11-11  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add a comment explaining the opcode suffixes on x86
+        https://bugs.webkit.org/show_bug.cgi?id=151176
+
+        Reviewed by Alex Christensen.
+
+        * assembler/X86Assembler.h:
+        I was always confused with the prefixes. Gavin pointed out the Intel documentation
+        explains everything.
+        I added a comment to help the next person confused about those suffixes.
+
+2015-11-11  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Support Doubles with B3's Add
+        https://bugs.webkit.org/show_bug.cgi?id=151164
+
+        Reviewed by Filip Pizlo.
+
+        I tweaked ReduceStrength a bit to maintain correctness.
+        Nothing fancy otherwise.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3Value.h:
+        * b3/B3ValueInlines.h:
+        (JSC::B3::Value::isInteger):
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::bitWiseEqual):
+        (JSC::B3::testAddArgDouble):
+        (JSC::B3::testAddArgsDouble):
+        (JSC::B3::testAddArgImmDouble):
+        (JSC::B3::testAddImmArgDouble):
+        (JSC::B3::testAddImmsDouble):
+        (JSC::B3::run):
+
+2015-11-11  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should be able to compile a program with Switch
+        https://bugs.webkit.org/show_bug.cgi?id=151115
+
+        Reviewed by Benjamin Poulain.
+
+        Adds lowering of Switch to a binary switch. This doesn't require any Air support.
+
+        * b3/B3BasicBlock.cpp:
+        (JSC::B3::BasicBlock::append):
+        (JSC::B3::BasicBlock::removeLast):
+        (JSC::B3::BasicBlock::replaceLast):
+        * b3/B3BasicBlock.h:
+        * b3/B3BlockInsertionSet.cpp:
+        (JSC::B3::BlockInsertionSet::insertBefore):
+        (JSC::B3::BlockInsertionSet::insertAfter):
+        (JSC::B3::BlockInsertionSet::splitForward):
+        * b3/B3BlockInsertionSet.h:
+        * b3/B3ControlValue.h:
+        * b3/B3Generate.cpp:
+        (JSC::B3::generateToAir):
+        * b3/B3LowerMacros.cpp:
+        * b3/B3SwitchValue.cpp:
+        (JSC::B3::SwitchValue::dumpMeta):
+        (JSC::B3::SwitchValue::SwitchValue):
+        * b3/B3SwitchValue.h:
+        * b3/testb3.cpp:
+        (JSC::B3::testChillDiv64):
+        (JSC::B3::testSwitch):
+        (JSC::B3::run):
+
+2015-11-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Patchpoints with stackArgument constraints should work
+        https://bugs.webkit.org/show_bug.cgi?id=151177
+
+        Reviewed by Saam Barati.
+
+        The only thing broken was that StackmapSpecial's isValidForm would reject Arg::addr, so
+        validation would fail after allocateStack.
+
+        In order for StackmapSpecial to validate Arg::addr, it needs to know the frame size. To know
+        the frame size, it needs access to Code&. So, this changes Air::Special to always have a
+        pointer back to Code.
+
+        Other than this already worked.
+
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::isValidImpl):
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::addSpecial):
+        * b3/air/AirSpecial.cpp:
+        (JSC::B3::Air::Special::Special):
+        * b3/air/AirSpecial.h:
+        (JSC::B3::Air::Special::code):
+        * b3/testb3.cpp:
+        (JSC::B3::testSimplePatchpoint):
+        (JSC::B3::testPatchpointCallArg):
+        (JSC::B3::testSimpleCheck):
+        (JSC::B3::run):
+
+2015-11-11  Mark Lam  <mark.lam@apple.com>
+
+        Add ability to insert probes in LLVM IR that we generate.
+        https://bugs.webkit.org/show_bug.cgi?id=151159
+
+        Reviewed by Geoffrey Garen.
+
+        This is done by inserting a stackmap intrinsic and emitting the probe there.
+
+        We can now insert probes that take a lambda like so:
+
+            probe([] (CCallHelpers::ProbeContext*) {
+                dataLog("Hello FTL\n");
+            });
+
+        * ftl/FTLCompile.cpp:
+        * ftl/FTLInlineCacheDescriptor.h:
+        (JSC::FTL::ProbeDescriptor::ProbeDescriptor):
+        (JSC::FTL::ProbeDescriptor::probeFunction):
+        * ftl/FTLInlineCacheSize.cpp:
+        (JSC::FTL::sizeOfProbe):
+        * ftl/FTLInlineCacheSize.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::probe):
+        * ftl/FTLState.h:
+
+2015-11-11  Mark Lam  <mark.lam@apple.com>
+
+        Change probe CPUState gpr() and fpr() to return references.
+        https://bugs.webkit.org/show_bug.cgi?id=151154
+
+        Reviewed by Saam Barati.
+
+        This will allow us to set their values as well as reading them.
+
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::AbstractMacroAssembler::CPUState::gpr):
+        (JSC::AbstractMacroAssembler::CPUState::fpr):
+        (JSC::AbstractMacroAssembler::ProbeContext::gpr):
+        (JSC::AbstractMacroAssembler::ProbeContext::fpr):
+
+2015-11-11  Mark Lam  <mark.lam@apple.com>
+
+        Add convenience utility to support dataLogging opcodeIDs.
+        https://bugs.webkit.org/show_bug.cgi?id=151117
+
+        Reviewed by Saam Barati.
+
+        * bytecode/Opcode.cpp:
+        (WTF::printInternal):
+        * bytecode/Opcode.h:
+
 2015-11-10  Keith Miller  <keith_miller@apple.com>
 
         Regression(r191815): 5.3% regression on Dromaeo JS Library Benchmark

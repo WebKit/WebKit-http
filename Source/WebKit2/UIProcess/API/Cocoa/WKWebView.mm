@@ -76,6 +76,7 @@
 #import "_WKDiagnosticLoggingDelegate.h"
 #import "_WKFindDelegate.h"
 #import "_WKFormDelegate.h"
+#import "_WKFrameHandleInternal.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKInputDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
@@ -92,7 +93,6 @@
 #import <wtf/TemporaryChange.h>
 
 #if PLATFORM(IOS)
-#import "_WKFrameHandleInternal.h"
 #import "_WKWebViewPrintFormatter.h"
 #import "PrintInfo.h"
 #import "ProcessThrottler.h"
@@ -1309,12 +1309,15 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     return true;
 }
 
-- (void)_scrollByOffset:(WebCore::FloatPoint)offset
+- (void)_scrollByContentOffset:(WebCore::FloatPoint)contentOffsetDelta
 {
-    CGPoint currentOffset = ([_scrollView _isAnimatingScroll]) ? [_scrollView _animatedTargetOffset] : [_scrollView contentOffset];
+    WebCore::FloatPoint scaledOffsetDelta = contentOffsetDelta;
+    CGFloat zoomScale = contentZoomScale(self);
+    scaledOffsetDelta.scale(zoomScale, zoomScale);
 
-    CGPoint boundedOffset = contentOffsetBoundedInValidRange(_scrollView.get(), currentOffset + offset);
-    
+    CGPoint currentOffset = [_scrollView _isAnimatingScroll] ? [_scrollView _animatedTargetOffset] : [_scrollView contentOffset];
+    CGPoint boundedOffset = contentOffsetBoundedInValidRange(_scrollView.get(), currentOffset + scaledOffsetDelta);
+
     if (CGPointEqualToPoint(boundedOffset, currentOffset))
         return;
     [_contentView willStartZoomOrScroll];
@@ -3063,6 +3066,22 @@ static int32_t activeOrientation(WKWebView *webView)
 #endif
 }
 
+- (NSString *)_remoteInspectionNameOverride
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    return _page->remoteInspectionNameOverride();
+#else
+    return nil;
+#endif
+}
+
+- (void)_setRemoteInspectionNameOverride:(NSString *)name
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    _page->setRemoteInspectionNameOverride(name);
+#endif
+}
+
 - (BOOL)_addsVisitedLinks
 {
     return _page->addsVisitedLinks();
@@ -4045,6 +4064,20 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _page->setMainFrameIsScrollable(!expandsToFit);
 
     _impl->setClipsToVisibleRect(expandsToFit);
+}
+
+- (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo
+{
+    if (auto webFrameProxy = _page->mainFrame())
+        return _impl->printOperationWithPrintInfo(printInfo, *webFrameProxy);
+    return nil;
+}
+
+- (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo forFrame:(_WKFrameHandle *)frameHandle
+{
+    if (auto webFrameProxy = _page->process().webFrame(frameHandle._frameID))
+        return _impl->printOperationWithPrintInfo(printInfo, *webFrameProxy);
+    return nil;
 }
 
 #endif

@@ -28,9 +28,10 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "B3Procedure.h"
 #include "DFGCommon.h"
 #include "DFGGraph.h"
-#include "FTLAbbreviations.h"
+#include "FTLAbbreviatedTypes.h"
 #include "FTLGeneratedFunction.h"
 #include "FTLInlineCacheDescriptor.h"
 #include "FTLJITCode.h"
@@ -64,6 +65,9 @@ public:
     // None of these things is owned by State. It is the responsibility of
     // FTL phases to properly manage the lifecycle of the module and function.
     DFG::Graph& graph;
+#if FTL_USES_B3
+    std::unique_ptr<B3::Procedure> proc;
+#endif
     LContext context;
     LModule module;
     LValue function;
@@ -81,6 +85,9 @@ public:
     SegmentedVector<CheckInDescriptor> checkIns;
     SegmentedVector<ArithSubDescriptor> arithSubs;
     SegmentedVector<LazySlowPathDescriptor> lazySlowPaths;
+#if ENABLE(MASM_PROBE)
+    SegmentedVector<ProbeDescriptor> probes;
+#endif
     Vector<JSCall> jsCalls;
     Vector<JSCallVarargs> jsCallVarargses;
     Vector<JSTailCall> jsTailCalls;

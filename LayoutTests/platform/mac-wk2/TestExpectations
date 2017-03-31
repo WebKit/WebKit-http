@@ -280,6 +280,7 @@ webkit.org/b/150942 animations/multiple-backgrounds.html [ Pass ImageOnlyFailure
 
 webkit.org/b/151053 http/tests/security/cross-frame-access-put.html [ Pass Failure ]
 
+webkit.org/b/151326 [ Yosemite+ ] webarchive/loading/missing-data.html [ Pass Crash ]
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -535,8 +536,6 @@ webkit.org/b/140607 [ Yosemite+ ] http/tests/navigation/navigation-interrupted-b
 
 webkit.org/b/141322 [ Debug Yosemite+ ] fast/images/destroyed-image-load-event.html [ Pass Timeout ]
 
-webkit.org/b/141325 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-abortedonmain.html [ Pass Failure ]
-
 webkit.org/b/141085 http/tests/media/video-query-url.html [ Pass Timeout ]
 
 webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout ]
@@ -563,3 +562,6 @@ imported/blink/fast/transforms/transform-update-frame-overflow.html [ Pass Image
 imported/blink/fast/multicol/vertical-rl/float-big-line.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/span/adjacent-spanners-with-margin.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/overflow/hidden-html-auto-body.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/151304 [ Debug ] fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Pass Crash ]
+webkit.org/b/151304 [ Debug ] fast/mediastream/RTCPeerConnection-overloaded-operations.html [ Pass Crash ]

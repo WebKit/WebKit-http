@@ -785,12 +785,12 @@ void JIT::emit_op_mul(Instruction* currentInstruction)
     if (isOperandConstantInt(op1) && ((value = getOperandConstantInt(op1)) > 0)) {
         emitGetVirtualRegister(op2, regT0);
         emitJumpSlowCaseIfNotInt(regT0);
-        addSlowCase(branchMul32(Overflow, Imm32(value), regT0, regT1));
+        addSlowCase(branchMul32(Overflow, regT0, Imm32(value), regT1));
         emitTagInt(regT1, regT0);
     } else if (isOperandConstantInt(op2) && ((value = getOperandConstantInt(op2)) > 0)) {
         emitGetVirtualRegister(op1, regT0);
         emitJumpSlowCaseIfNotInt(regT0);
-        addSlowCase(branchMul32(Overflow, Imm32(value), regT0, regT1));
+        addSlowCase(branchMul32(Overflow, regT0, Imm32(value), regT1));
         emitTagInt(regT1, regT0);
     } else
         compileBinaryArithOp(op_mul, result, op1, op2, types);
@@ -934,34 +934,26 @@ void JIT::emit_op_add(Instruction* currentInstruction)
 
     bool leftIsConstInt32 = isOperandConstantInt(op1);
     bool rightIsConstInt32 = isOperandConstantInt(op2);
-    JITAddGenerator::OperandsConstness operandsConstness;
-    int32_t rightConstInt32 = 0;
     ResultType leftType = types.first();
     ResultType rightType = types.second();
+    int32_t leftConstInt32 = 0;
+    int32_t rightConstInt32 = 0;
 
     ASSERT(!leftIsConstInt32 || !rightIsConstInt32);
 
     if (leftIsConstInt32) {
-        // JITAddGenerator expects the const value in the right operand.
-        // Let's swap the operands.
-        operandsConstness = JITAddGenerator::RightIsConstInt32;
-        rightConstInt32 = getOperandConstantInt(op1);
-        rightType = types.first();
-        emitGetVirtualRegister(op2, leftRegs);
-        leftType = types.second();
+        leftConstInt32 = getOperandConstantInt(op1);
+        emitGetVirtualRegister(op2, rightRegs);
     } else if (rightIsConstInt32) {
-        operandsConstness = JITAddGenerator::RightIsConstInt32;
-        rightConstInt32 = getOperandConstantInt(op2);
         emitGetVirtualRegister(op1, leftRegs);
+        rightConstInt32 = getOperandConstantInt(op2);
     } else {
-        operandsConstness = JITAddGenerator::NeitherAreConstInt32;
         emitGetVirtualRegister(op1, leftRegs);
         emitGetVirtualRegister(op2, rightRegs);
     }
 
-    JITAddGenerator gen(resultRegs, leftRegs, rightRegs,
-        operandsConstness, rightConstInt32,
-        leftType, rightType,
+    JITAddGenerator gen(resultRegs, leftRegs, rightRegs, leftType, rightType,
+        leftIsConstInt32, rightIsConstInt32, leftConstInt32, rightConstInt32,
         fpRegT0, fpRegT1, scratchGPR, scratchFPR);
 
     gen.generateFastPath(*this);

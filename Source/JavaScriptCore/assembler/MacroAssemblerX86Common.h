@@ -114,15 +114,16 @@ public:
 
     void add32(TrustedImm32 imm, Address address)
     {
-        m_assembler.addl_im(imm.m_value, address.offset, address.base);
+        if (!imm.m_value)
+            return;
+        add32AndSetFlags(imm, address);
     }
 
     void add32(TrustedImm32 imm, RegisterID dest)
     {
-        if (imm.m_value == 1)
-            m_assembler.inc_r(dest);
-        else
-            m_assembler.addl_ir(imm.m_value, dest);
+        if (!imm.m_value)
+            return;
+        add32AndSetFlags(imm, dest);
     }
     
     void add32(Address src, RegisterID dest)
@@ -137,6 +138,11 @@ public:
 
     void add32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
+        if (!imm.m_value) {
+            move(src, dest);
+            return;
+        }
+
         m_assembler.leal_mr(imm.m_value, src, dest);
     }
     
@@ -1400,13 +1406,13 @@ public:
 
     Jump branchAdd32(ResultCondition cond, TrustedImm32 imm, RegisterID dest)
     {
-        add32(imm, dest);
+        add32AndSetFlags(imm, dest);
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
     
     Jump branchAdd32(ResultCondition cond, TrustedImm32 src, Address dest)
     {
-        add32(src, dest);
+        add32AndSetFlags(src, dest);
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
 
@@ -1452,7 +1458,7 @@ public:
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
     
-    Jump branchMul32(ResultCondition cond, TrustedImm32 imm, RegisterID src, RegisterID dest)
+    Jump branchMul32(ResultCondition cond, RegisterID src, TrustedImm32 imm, RegisterID dest)
     {
         mul32(imm, src, dest);
         if (cond != Overflow)
@@ -1605,6 +1611,11 @@ public:
         set32(x86Condition(cond), dest);
     }
 
+    void setCarry(RegisterID dest)
+    {
+        set32(X86Assembler::ConditionC, dest);
+    }
+
     // Invert a relational condition, e.g. == becomes !=, < becomes >=, etc.
     static RelationalCondition invert(RelationalCondition cond)
     {
@@ -1682,6 +1693,19 @@ private:
             m_assembler.testb_im(mask.m_value >> 24, address.offset + 3, address.base);
         else
             m_assembler.testl_i32m(mask.m_value, address.offset, address.base);
+    }
+
+    void add32AndSetFlags(TrustedImm32 imm, RegisterID dest)
+    {
+        if (imm.m_value == 1)
+            m_assembler.inc_r(dest);
+        else
+            m_assembler.addl_ir(imm.m_value, dest);
+    }
+
+    void add32AndSetFlags(TrustedImm32 imm, Address address)
+    {
+        m_assembler.addl_im(imm.m_value, address.offset, address.base);
     }
 
 #if CPU(X86)

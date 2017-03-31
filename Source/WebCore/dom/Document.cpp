@@ -2666,7 +2666,7 @@ void Document::implicitClose()
         enqueuePopstateEvent(m_pendingStateObject.release());
     
     if (f)
-        f->loader().handledOnloadEvents();
+        f->loader().dispatchOnloadEvents();
 #ifdef INSTRUMENT_LAYOUT_SCHEDULING
     if (!ownerElement())
         printf("onload fired at %lld\n", elapsedTime().count());
@@ -4050,7 +4050,7 @@ EventListener* Document::getWindowAttributeEventListener(const AtomicString& eve
     return m_domWindow->getAttributeEventListener(eventType);
 }
 
-void Document::dispatchWindowEvent(PassRefPtr<Event> event,  PassRefPtr<EventTarget> target)
+void Document::dispatchWindowEvent(Event& event, EventTarget* target)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     if (!m_domWindow)
@@ -4068,21 +4068,21 @@ void Document::dispatchWindowLoadEvent()
     m_cachedResourceLoader->documentDidFinishLoadEvent();
 }
 
-void Document::enqueueWindowEvent(PassRefPtr<Event> event)
+void Document::enqueueWindowEvent(Ref<Event>&& event)
 {
     event->setTarget(m_domWindow.get());
-    m_eventQueue.enqueueEvent(event);
+    m_eventQueue.enqueueEvent(WTF::move(event));
 }
 
-void Document::enqueueDocumentEvent(PassRefPtr<Event> event)
+void Document::enqueueDocumentEvent(Ref<Event>&& event)
 {
     event->setTarget(this);
-    m_eventQueue.enqueueEvent(event);
+    m_eventQueue.enqueueEvent(WTF::move(event));
 }
 
-void Document::enqueueOverflowEvent(PassRefPtr<Event> event)
+void Document::enqueueOverflowEvent(Ref<Event>&& event)
 {
-    m_eventQueue.enqueueEvent(event);
+    m_eventQueue.enqueueEvent(WTF::move(event));
 }
 
 RefPtr<Event> Document::createEvent(const String& eventType, ExceptionCode& ec)
@@ -5374,8 +5374,7 @@ void Document::enqueueHashchangeEvent(const String& oldURL, const String& newURL
 
 void Document::enqueuePopstateEvent(PassRefPtr<SerializedScriptValue> stateObject)
 {
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=36202 Popstate event needs to fire asynchronously
-    dispatchWindowEvent(PopStateEvent::create(stateObject, m_domWindow ? m_domWindow->history() : nullptr));
+    enqueueWindowEvent(PopStateEvent::create(stateObject, m_domWindow ? m_domWindow->history() : nullptr));
 }
 
 void Document::addMediaCanStartListener(MediaCanStartListener* listener)
@@ -5980,24 +5979,24 @@ void Document::sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, con
     // Bottom edge.
     if (newPosition.y() >= willRevealBottomNotificationPoint && newPosition.y() > oldPosition.y()
         && willRevealBottomNotificationPoint >= oldPosition.y()) {
-        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealbottomEvent, false, false);
+        Ref<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealbottomEvent, false, false);
         if (!target)
-            enqueueWindowEvent(willRevealEvent.release());
+            enqueueWindowEvent(WTF::move(willRevealEvent));
         else {
             willRevealEvent->setTarget(target);
-            m_eventQueue.enqueueEvent(willRevealEvent.release());
+            m_eventQueue.enqueueEvent(WTF::move(willRevealEvent));
         }
     }
 
     // Top edge.
     if (newPosition.y() <= willRevealTopNotificationPoint && newPosition.y() < oldPosition.y()
         && willRevealTopNotificationPoint <= oldPosition.y()) {
-        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealtopEvent, false, false);
+        Ref<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealtopEvent, false, false);
         if (!target)
-            enqueueWindowEvent(willRevealEvent.release());
+            enqueueWindowEvent(WTF::move(willRevealEvent));
         else {
             willRevealEvent->setTarget(target);
-            m_eventQueue.enqueueEvent(willRevealEvent.release());
+            m_eventQueue.enqueueEvent(WTF::move(willRevealEvent));
         }
     }
 
@@ -6007,24 +6006,24 @@ void Document::sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, con
     // Right edge.
     if (newPosition.x() >= willRevealRightNotificationPoint && newPosition.x() > oldPosition.x()
         && willRevealRightNotificationPoint >= oldPosition.x()) {
-        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealrightEvent, false, false);
+        Ref<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealrightEvent, false, false);
         if (!target)
-            enqueueWindowEvent(willRevealEvent.release());
+            enqueueWindowEvent(WTF::move(willRevealEvent));
         else {
             willRevealEvent->setTarget(target);
-            m_eventQueue.enqueueEvent(willRevealEvent.release());
+            m_eventQueue.enqueueEvent(WTF::move(willRevealEvent));
         }
     }
 
     // Left edge.
     if (newPosition.x() <= willRevealLeftNotificationPoint && newPosition.x() < oldPosition.x()
         && willRevealLeftNotificationPoint <= oldPosition.x()) {
-        RefPtr<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealleftEvent, false, false);
+        Ref<Event> willRevealEvent = Event::create(eventNames().webkitwillrevealleftEvent, false, false);
         if (!target)
-            enqueueWindowEvent(willRevealEvent.release());
+            enqueueWindowEvent(WTF::move(willRevealEvent));
         else {
             willRevealEvent->setTarget(target);
-            m_eventQueue.enqueueEvent(willRevealEvent.release());
+            m_eventQueue.enqueueEvent(WTF::move(willRevealEvent));
         }
     }
 #else

@@ -74,6 +74,7 @@ BEGIN {
        &productDir
        &quitIOSSimulator
        &relaunchIOSSimulator
+       &restartIOSSimulatorDevice
        &runIOSWebKitApp
        &runMacWebKitApp
        &safariPath
@@ -82,6 +83,9 @@ BEGIN {
        &setupMacWebKitEnvironment
        &sharedCommandLineOptions
        &sharedCommandLineOptionsUsage
+       &shutDownIOSSimulatorDevice
+       &willUseIOSDeviceSDK
+       &willUseIOSSimulatorSDK
        SIMULATOR_DEVICE_SUFFIX_FOR_WEBKIT_DEVELOPMENT
        USE_OPEN_COMMAND
    );
@@ -707,7 +711,7 @@ sub XcodeOptions
     push @options, @baseProductDirOption;
     push @options, "ARCHS=$architecture" if $architecture;
     push @options, "SDKROOT=$xcodeSDK" if $xcodeSDK;
-    if (willUseIOSDeviceSDKWhenBuilding()) {
+    if (willUseIOSDeviceSDK()) {
         push @options, "ENABLE_BITCODE=NO";
         if (hasIOSDevelopmentCertificate()) {
             # FIXME: May match more than one installed development certificate.
@@ -1169,6 +1173,11 @@ sub isARM()
     return ($Config{archname} =~ /^arm[v\-]/) || ($Config{archname} =~ /^aarch64[v\-]/);
 }
 
+sub isX86_64()
+{
+    return (architecture() eq "x86_64") || 0;
+}
+
 sub isCrossCompilation()
 {
   my $compiler = "";
@@ -1246,12 +1255,12 @@ sub createiOSSimulatorDevice
     die "Device $name $deviceTypeId $runtimeId wasn't found in " . iOSSimulatorDevicesPath();
 }
 
-sub willUseIOSDeviceSDKWhenBuilding()
+sub willUseIOSDeviceSDK()
 {
     return xcodeSDKPlatformName() eq "iphoneos";
 }
 
-sub willUseIOSSimulatorSDKWhenBuilding()
+sub willUseIOSSimulatorSDK()
 {
     return xcodeSDKPlatformName() eq "iphonesimulator";
 }
@@ -1259,7 +1268,7 @@ sub willUseIOSSimulatorSDKWhenBuilding()
 sub isIOSWebKit()
 {
     determineXcodeSDK();
-    return isAppleMacWebKit() && (willUseIOSDeviceSDKWhenBuilding() || willUseIOSSimulatorSDKWhenBuilding());
+    return isAppleMacWebKit() && (willUseIOSDeviceSDK() || willUseIOSSimulatorSDK());
 }
 
 sub determineNmPath()
@@ -2235,6 +2244,20 @@ sub waitUntilIOSSimulatorDeviceIsInState($$)
     }
 }
 
+sub shutDownIOSSimulatorDevice($)
+{
+    my ($simulatorDevice) = @_;
+    system("xcrun --sdk iphonesimulator simctl shutdown $simulatorDevice->{UDID} > /dev/null 2>&1");
+}
+
+sub restartIOSSimulatorDevice($)
+{
+    my ($simulatorDevice) = @_;
+    shutDownIOSSimulatorDevice($simulatorDevice);
+
+    exitStatus(system("xcrun", "--sdk", "iphonesimulator", "simctl", "boot", $simulatorDevice->{UDID})) == 0 or die "Failed to boot simulator device $simulatorDevice->{UDID}";
+}
+
 sub relaunchIOSSimulator($)
 {
     my ($simulatedDevice) = @_;
@@ -2421,10 +2444,10 @@ sub runIOSWebKitAppInSimulator($;$)
 sub runIOSWebKitApp($)
 {
     my ($appBundle) = @_;
-    if (willUseIOSDeviceSDKWhenBuilding()) {
+    if (willUseIOSDeviceSDK()) {
         die "Only running Safari in iOS Simulator is supported now.";
     }
-    if (willUseIOSSimulatorSDKWhenBuilding()) {
+    if (willUseIOSSimulatorSDK()) {
         return runIOSWebKitAppInSimulator($appBundle);
     }
     die "Not using an iOS SDK."

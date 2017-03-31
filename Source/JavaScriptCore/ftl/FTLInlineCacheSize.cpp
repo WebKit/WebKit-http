@@ -132,18 +132,25 @@ size_t sizeOfArithSub()
 {
 #if CPU(ARM64)
 #ifdef NDEBUG
-    return 192; // ARM64 release.
+    return 216; // ARM64 release.
 #else
-    return 288; // ARM64 debug.
+    return 312; // ARM64 debug.
 #endif
 #else // CPU(X86_64)
 #ifdef NDEBUG
-    return 184; // X86_64 release.
+    return 223; // X86_64 release.
 #else
-    return 259; // X86_64 debug.
+    return 298; // X86_64 debug.
 #endif
 #endif
 }
+
+#if ENABLE(MASM_PROBE)
+size_t sizeOfProbe()
+{
+    return 132; // Based on ARM64.
+}
+#endif
 
 size_t sizeOfICFor(Node* node)
 {

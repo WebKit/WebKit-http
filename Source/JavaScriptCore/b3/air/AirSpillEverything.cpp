@@ -58,17 +58,18 @@ void spillEverything(Code& code)
 
             // Gotta account for dead assignments to registers. These may happen because the input
             // code is suboptimal.
-            inst.forEachArg(
-                [&] (Arg& arg, Arg::Role role, Arg::Type) {
-                    if (Arg::isDef(role) && arg.isReg())
-                        registerSet.set(arg.reg());
-                });
+            auto updateRegisterSet = [&registerSet] (const Tmp& tmp) {
+                if (tmp.isReg())
+                    registerSet.set(tmp.reg());
+            };
+            inst.forEachDefAndExtraClobberedTmp(Arg::GP, updateRegisterSet);
+            inst.forEachDefAndExtraClobberedTmp(Arg::FP, updateRegisterSet);
         };
 
         for (unsigned instIndex = block->size(); instIndex--;) {
             Inst& inst = block->at(instIndex);
             setUsedRegisters(instIndex + 1, inst);
-            localCalc.execute(inst);
+            localCalc.execute(instIndex);
         }
 
         Inst nop;
@@ -139,6 +140,7 @@ void spillEverything(Code& code)
                         }
                         break;
                     case Arg::UseDef:
+                    case Arg::LateUse:
                         for (Reg reg : regsInPriorityOrder(type)) {
                             if (!setBefore.get(reg) && !setAfter.get(reg)) {
                                 setAfter.set(reg);
@@ -159,7 +161,7 @@ void spillEverything(Code& code)
 
                     Opcode move = type == Arg::GP ? Move : MoveDouble;
 
-                    if (Arg::isUse(role)) {
+                    if (Arg::isAnyUse(role)) {
                         insertionSet.insert(
                             instIndex, move, inst.origin, arg, tmp);
                     }

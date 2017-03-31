@@ -1,3 +1,252 @@
+2015-11-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Move Timeline creation into a recording
+        https://bugs.webkit.org/show_bug.cgi?id=151367
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._loadNewRecording): Deleted.
+        * UserInterface/Models/Timeline.js:
+        (WebInspector.Timeline.create):
+        (WebInspector.Timeline.prototype.get type):
+        (WebInspector.Timeline): Deleted.
+        (WebInspector.Timeline.prototype.get recording): Deleted.
+        * UserInterface/Models/TimelineRecording.js:
+        (WebInspector.TimelineRecording):
+        (WebInspector.TimelineRecording.prototype.get readonly):
+        (WebInspector.TimelineRecording.prototype.unloaded):
+        (WebInspector.TimelineRecording.prototype.reset):
+        (WebInspector.TimelineRecording.prototype.isWritable): Deleted.
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype.shown):
+
+2015-11-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Breakpoint condition field should use CodeMirror
+        https://bugs.webkit.org/show_bug.cgi?id=151333
+
+        Reviewed by Joseph Pecoraro.
+
+        Updated breakpoint popover's condition field to use CodeMirror.
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        Removed keyboard shortcuts. Now handled by CodeMirror.
+        (WebInspector.BreakpointPopoverController.prototype.completionControllerShouldAllowEscapeCompletion):
+        Prevent handling of escape to allow tabbing to next element.
+        (WebInspector.BreakpointPopoverController.prototype._createPopoverContent):
+        Create CodeMirror instance.
+        (WebInspector.BreakpointPopoverController.prototype._conditionCodeMirrorChanged):
+        (WebInspector.BreakpointPopoverController.prototype._conditionCodeMirrorBeforeChange):
+        Enforce single-line editor.
+        (WebInspector.BreakpointPopoverController.prototype._conditionCodeMirrorEscapeOrEnterKey):
+        (WebInspector.BreakpointPopoverController): Deleted.
+        (WebInspector.BreakpointPopoverController.prototype.appendContextMenuItems.editBreakpoint):
+        Removed condition element select. CodeMirror sets focus when popover content is created.
+        (WebInspector.BreakpointPopoverController.prototype._popoverConditionInputChanged): Deleted.
+        Replaced by BreakpointPopoverController.prototype._conditionCodeMirrorChanged.
+        (WebInspector.BreakpointPopoverController.prototype._popoverConditionInputKeyDown): Deleted.
+        Replaced by BreakpointPopoverController.prototype._conditionCodeMirrorEscapeOrEnterKey.
+
+        * UserInterface/Views/BreakpointPopoverController.css:
+        (.edit-breakpoint-popover-condition):
+        (.edit-breakpoint-popover-condition > .CodeMirror):
+        (#edit-breakpoint-popover-condition): Deleted.
+        Replace selector id with class, styled CodeMirror element to match original input element.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-placeholder): Deleted.
+        Moved common CodeMirror placeholder text style to CodeMirrorOverrides.css.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.CodeMirror .CodeMirror-placeholder):
+        Add placeholder style.
+
+2015-11-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Deleting a probe should remove probe breakpoint actions only.
+        https://bugs.webkit.org/show_bug.cgi?id=151245
+
+        Reviewed by Brian Burg.
+
+        Fixed breakpoint action filter.
+
+        * UserInterface/Models/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype.clearActions):
+        Missing return in named function expression.
+
+2015-11-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Auto-log inspect node selected elements to the console
+        https://bugs.webkit.org/show_bug.cgi?id=151178
+
+        Reviewed by Brian Burg.
+
+        Auto-logging user selected elements to the console helps with
+        quick use in the console. $0 is not very discoverable, and $n
+        values are expendable. This also makes it convenient to use the
+        inspect node toolbar search option to select a few different
+        nodes and use each of them in the console without extra work.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype.inspectNodeObject.nodeAvailable):
+        (WebInspector.DOMTreeManager.prototype.inspectNodeObject):
+        Log selected nodes to the console. Treat this as a synthetic log that
+        will not immediately open the console like normal evaluation results.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.appendImmediateExecutionWithResult.saveResultCallback):
+        (WebInspector.JavaScriptLogViewController.prototype.appendImmediateExecutionWithResult):
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted.printResult):
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted):
+        Initialize ConsoleCommandResultMessage's synthetic properties.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu.logElement):
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu):
+        * UserInterface/Controllers/RuntimeManager.js:
+        Create a global for the special "console" object group used in multiple places.
+
+        * UserInterface/Models/ConsoleCommandResultMessage.js:
+        (WebInspector.ConsoleCommandResultMessage):
+        (WebInspector.ConsoleCommandResultMessage.prototype.get synthetic):
+        Add a synthetic property.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessageView):
+        When the ConsoleResult is a synthetic result, do not auto-open the console.
+
+2015-11-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: timeline event markers are added to overview even when not capturing a timeline recording
+        https://bugs.webkit.org/show_bug.cgi?id=151166
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/TimelineRecording.js:
+        (WebInspector.TimelineRecording.prototype.addEventMarker):
+        Do not add event markers when not capturing. This would have resulted in more
+        and more markers showing in the Timeline for page loads when the Timeline was
+        not active. For example reloading when a non-Timeline tab was active.
+
+2015-11-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Debug toolbar button to toggle InspectorBackend.dumpInspectorProtocolMessages
+        https://bugs.webkit.org/show_bug.cgi?id=151175
+
+        Reviewed by Brian Burg.
+
+        Add debug UI and a way to toggle it on and off in non-production builds.
+        To enable the debug UI use a keyboard shortcut in Inspector:
+        Option+Shift+Command+D (Mac) or Option+Shift+Ctrl+D (Windows / Linux)
+
+        The debug UI setting is a persistent setting, so those of use developing
+        Web Inspector will turn it on and leave it on.
+
+        Currently the only debug UI is a new toolbar button to toggle
+        the frontend logging on or off.
+
+        * Scripts/combine-resources.pl:
+        (concatenateFiles):
+        Exclude "Debug" files when combining resources for minification.
+
+        * UserInterface/Main.html:
+        Rename "Base/Bootstrap.js" to "Debug/Bootstrap" so that we can easily exclude it.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Only evaluate bootstrap functions if they exist.
+
+        * UserInterface/Debug/Bootstrap.js: Renamed from Source/WebInspectorUI/UserInterface/Base/Bootstrap.js.
+        (WebInspector.runBootstrapOperations):
+        Add a debug setting, toolbar button, and keyboard shortcut.
+
+2015-11-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: blank debugger tab when opening inspector on unvisited website
+        https://bugs.webkit.org/show_bug.cgi?id=151149
+
+        Reviewed by Joseph Pecoraro.
+
+        When Inspector tries to show default content when initially showing a tab upon opening,
+        there may not be any tree elements added to the navigation bar yet. In the case of an
+        unvisited website, there will be no state restoration cookie to trigger deferred selection.
+        So, showDefaultContentView finds no tree elements it can show, and the main view is blank.
+
+        We can fix this by speculatively showing the first script/resource that's added to the tree
+        if no content view is being shown. If a state restoration cookie exists, it will take priority
+        over the default-displayed content view.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._addResource):
+        (WebInspector.DebuggerSidebarPanel.prototype._addScript):
+
+2015-11-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Convert sidebars to use View base class
+        https://bugs.webkit.org/show_bug.cgi?id=151057
+
+        Reviewed by Timothy Hatcher.
+
+        This patch makes Sidebar a subclass of View. Mostly mechanical changes and cleanup,
+        such as adding navigation bars and panels as subviews, removing element getters,
+        and replacing external properties with symbols.
+
+        * UserInterface/Base/Main.js:
+        Added sidebars to view hierarchy.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        Add navigation bar as a subview.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        Add navigation bar as a subview.
+        (WebInspector.NetworkSidebarPanel):
+        (WebInspector.NetworkSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WebInspector.NetworkSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.NetworkSidebarPanel.prototype.treeElementAddedOrChanged):
+        (WebInspector.NetworkSidebarPanel.prototype._treeElementGoToArrowWasClicked):
+        External properties replaced with symbols.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        Add navigation bar as a subview.
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WebInspector.ResourceSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        External properties replaced with symbols.
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar):
+        (WebInspector.Sidebar.prototype.addSidebarPanel):
+        (WebInspector.Sidebar.prototype.removeSidebarPanel):
+        Panels are now added and removed as subviews.
+        (WebInspector.Sidebar.prototype.get width):
+        (WebInspector.Sidebar.prototype.set width):
+        (WebInspector.Sidebar.prototype.get collapsed):
+        (WebInspector.Sidebar.prototype.set collapsed):
+        "collapsed" property now backed by private class variable, not DOM state.
+        (WebInspector.Sidebar.prototype.get element): Deleted.
+
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel):
+        (WebInspector.SidebarPanel.prototype.get visible):
+        (WebInspector.SidebarPanel.prototype.get selected):
+        (WebInspector.SidebarPanel.prototype.set selected):
+        "selected" property now backed by private class variable, not DOM state.
+        (WebInspector.SidebarPanel.prototype.get parentSidebar):
+        No longer stored as separate property. Wrapper around View.prototype.parentView.
+        Original getter retained for clarity.
+        (WebInspector.SidebarPanel.prototype.show):
+        (WebInspector.SidebarPanel.prototype.hide):
+        (WebInspector.SidebarPanel.prototype.added):
+        (WebInspector.SidebarPanel.prototype.removed):
+        (WebInspector.SidebarPanel.prototype.get element): Deleted.
+
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel):
+        Add navigation bar as a subview.
+
 2015-11-10  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Enable/disable All Breakpoints not usable when "No Filter Results" displayed

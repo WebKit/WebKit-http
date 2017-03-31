@@ -28,7 +28,7 @@
 
 #if ENABLE(FTL_JIT)
 
-#include "FTLAbbreviations.h"
+#include "FTLAbbreviatedTypes.h"
 #include "MacroAssembler.h"
 
 namespace JSC { namespace FTL {
@@ -39,7 +39,7 @@ struct OSRExitCompilationInfo {
     }
     
     MacroAssembler::Label m_thunkLabel;
-    MacroAssembler::Label m_getAndPutByIdCallOperationExceptionOSRExitEntrance;
+    MacroAssembler::Label m_callOperationExceptionOSRExitEntrance;
     MacroAssembler::PatchableJump m_thunkJump;
     CodeLocationLabel m_thunkAddress;
 };

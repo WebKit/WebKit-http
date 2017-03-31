@@ -56,6 +56,7 @@
 #import "_WKFocusedElementInfo.h"
 #import "_WKFormInputSession.h"
 #import "_WKInputDelegate.h"
+#import "_WKPreviewElementInfoInternal.h"
 #import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
 #import <MobileCoreServices/UTCoreTypes.h>
@@ -76,6 +77,20 @@
 
 @interface UIEvent(UIEventInternal)
 @property (nonatomic, assign) UIKeyboardInputFlags _inputFlags;
+@end
+
+@interface WKWebEvent : WebEvent
+@property (nonatomic, retain) UIEvent *uiEvent;
+@end
+
+@implementation WKWebEvent
+
+- (void)dealloc
+{
+    [_uiEvent release];
+    [super dealloc];
+}
+
 @end
 
 using namespace WebCore;
@@ -2789,15 +2804,21 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 {
     // We only want to handle key event from the hardware keyboard when we are
     // first responder and we are not interacting with editable content.
-    if ([self isFirstResponder] && event._hidEvent && !_page->editorState().isContentEditable)
+    if ([self isFirstResponder] && event._hidEvent && !_page->editorState().isContentEditable) {
         [self handleKeyEvent:event];
+        return;
+    }
 
     [super _handleKeyUIEvent:event];
 }
 
 - (void)handleKeyEvent:(::UIEvent *)event
 {
-    ::WebEvent *webEvent = [[[::WebEvent alloc] initWithKeyEventType:(event._isKeyDown) ? WebEventKeyDown : WebEventKeyUp
+    // WebCore has already seen the event, no need for custom processing.
+    if (event == _uiEventBeingResent)
+        return;
+
+    WKWebEvent *webEvent = [[[WKWebEvent alloc] initWithKeyEventType:(event._isKeyDown) ? WebEventKeyDown : WebEventKeyUp
                                                            timeStamp:event.timestamp
                                                           characters:event._modifiedInput
                                          charactersIgnoringModifiers:event._unmodifiedInput
@@ -2807,6 +2828,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
                                                              keyCode:0
                                                             isTabKey:[event._modifiedInput isEqualToString:@"\t"]
                                                         characterSet:WebEventCharacterSetUnicode] autorelease];
+    webEvent.uiEvent = event;
     
     [self handleKeyWebEvent:webEvent];    
 }
@@ -2816,7 +2838,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
 }
 
-- (void)_didHandleKeyEvent:(WebIOSEvent *)event
+- (void)_didHandleKeyEvent:(WebIOSEvent *)event eventWasHandled:(BOOL)eventWasHandled
 {
     if (event.type == WebEventKeyDown) {
         // FIXME: This is only for staging purposes.
@@ -2825,6 +2847,22 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
         else
             [[UIKeyboardImpl sharedInstance] didHandleWebKeyEvent];
     }
+
+    if (eventWasHandled)
+        return;
+
+    if (![event isKindOfClass:[WKWebEvent class]])
+        return;
+
+    // Resending the event may destroy this WKContentView.
+    RetainPtr<WKContentView> protector(self);
+
+    // We keep here the event when resending it to the application to distinguish
+    // the case of a new event from one that has been already sent to WebCore.
+    ASSERT(!_uiEventBeingResent);
+    _uiEventBeingResent = [(WKWebEvent *)event uiEvent];
+    [super _handleKeyUIEvent:_uiEventBeingResent.get()];
+    _uiEventBeingResent = nil;
 }
 
 - (BOOL)_interpretKeyEvent:(WebIOSEvent *)event isCharEvent:(BOOL)isCharEvent
@@ -2837,6 +2875,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     static const unsigned kWebSpaceKey = 0x20;
 
     BOOL contentEditable = _page->editorState().isContentEditable;
+    WebCore::FloatRect unobscuredContentRect = _page->unobscuredContentRect();
 
     if (!contentEditable && event.isTabKey)
         return NO;
@@ -2852,29 +2891,29 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
         scrollOffset.setX(-Scrollbar::pixelsPerLineStep());
     else if ([charactersIgnoringModifiers isEqualToString:UIKeyInputUpArrow]) {
         if (option)
-            scrollOffset.setY(-_page->unobscuredContentRect().height());
+            scrollOffset.setY(-unobscuredContentRect.height());
         else if (command)
-            scrollOffset.setY(-[self bounds].size.height);
+            scrollOffset.setY(-self.bounds.size.height);
         else
             scrollOffset.setY(-Scrollbar::pixelsPerLineStep());
     } else if ([charactersIgnoringModifiers isEqualToString:UIKeyInputRightArrow])
             scrollOffset.setX(Scrollbar::pixelsPerLineStep());
     else if ([charactersIgnoringModifiers isEqualToString:UIKeyInputDownArrow]) {
         if (option)
-            scrollOffset.setY(_page->unobscuredContentRect().height());
+            scrollOffset.setY(unobscuredContentRect.height());
         else if (command)
-            scrollOffset.setY([self bounds].size.height);
+            scrollOffset.setY(self.bounds.size.height);
         else
             scrollOffset.setY(Scrollbar::pixelsPerLineStep());
     } else if ([charactersIgnoringModifiers isEqualToString:UIKeyInputPageDown])
-        scrollOffset.setY(_page->unobscuredContentRect().height());
+        scrollOffset.setY(unobscuredContentRect.height());
     else if ([charactersIgnoringModifiers isEqualToString:UIKeyInputPageUp])
-        scrollOffset.setY(-_page->unobscuredContentRect().height());
+        scrollOffset.setY(-unobscuredContentRect.height());
     else
         shouldScroll = NO;
 
     if (shouldScroll) {
-        [_webView _scrollByOffset:scrollOffset];
+        [_webView _scrollByContentOffset:scrollOffset];
         return YES;
     }
 
@@ -2899,7 +2938,8 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 
     case kWebSpaceKey:
         if (!contentEditable) {
-            [_webView _scrollByOffset:FloatPoint(0, shift ? -_page->unobscuredContentRect().height() : _page->unobscuredContentRect().height())];
+            int pageStep = Scrollbar::pageStep(unobscuredContentRect.height(), self.bounds.size.height);
+            [_webView _scrollByContentOffset:FloatPoint(0, shift ? -pageStep : pageStep)];
             return YES;
         }
         if (isCharEvent) {
@@ -3439,11 +3479,16 @@ static bool isAssistableInputType(InputType type)
     
     String absoluteLinkURL = _positionInformation.url;
     if (_positionInformation.isLink) {
+        NSURL *targetURL = [NSURL _web_URLWithWTFString:_positionInformation.url];
+        id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+        if ([uiDelegate respondsToSelector:@selector(_webView:shouldPreviewElement:)]) {
+            auto previewElementInfo = adoptNS([[_WKPreviewElementInfo alloc] _initWithLinkURL:targetURL]);
+            return [uiDelegate _webView:_webView shouldPreviewElement:previewElementInfo.get()];
+        }
         if (absoluteLinkURL.isEmpty())
             return NO;
         if (WebCore::protocolIsInHTTPFamily(absoluteLinkURL))
             return YES;
-        NSURL *targetURL = [NSURL _web_URLWithWTFString:_positionInformation.url];
         if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:[targetURL scheme]])
             return YES;
         return NO;
@@ -3522,6 +3567,12 @@ static bool isAssistableInputType(InputType type)
         RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
 
         RetainPtr<NSArray> actions = [_actionSheetAssistant defaultActionsForLinkSheet:elementInfo.get()];
+        if ([uiDelegate respondsToSelector:@selector(_webView:previewingViewControllerForElement:defaultActions:)]) {
+            auto previewElementInfo = adoptNS([[_WKPreviewElementInfo alloc] _initWithLinkURL:targetURL]);
+            if (UIViewController *controller = [uiDelegate _webView:_webView previewingViewControllerForElement:previewElementInfo.get() defaultActions:actions.get()])
+                return controller;
+        }
+
         if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:defaultActions:elementInfo:)])
             return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL defaultActions:actions.get() elementInfo:elementInfo.get()];
 
@@ -3556,6 +3607,11 @@ static bool isAssistableInputType(InputType type)
             [uiDelegate _webView:_webView commitPreviewedImageWithURL:[NSURL _web_URLWithWTFString:absoluteImageURL]];
             return;
         }
+        return;
+    }
+
+    if ([uiDelegate respondsToSelector:@selector(_webView:commitPreviewingViewController:)]) {
+        [uiDelegate _webView:_webView commitPreviewingViewController:viewController];
         return;
     }
 

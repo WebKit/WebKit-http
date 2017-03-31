@@ -35,19 +35,14 @@ Rotater.prototype =
 function Stage(element, options)
 {
     this.element = element;
+    this._size = Point.elementClientSize(element).subtract(Insets.elementPadding(element).size);
 }
 
 Stage.prototype =
 {
     get size()
     {
-        var styles = window.getComputedStyle(this.element);
-        var padding = new Insets(
-            parseFloat(styles.paddingTop),
-            parseFloat(styles.paddingRight),
-            parseFloat(styles.paddingBottom),
-            parseFloat(styles.paddingTop));
-        return new Point(this.element.clientWidth - padding.width, this.element.clientHeight - padding.height);
+        return this._size
     },
     
     random: function(min, max)
@@ -117,9 +112,9 @@ Stage.prototype =
     }
 }
 
-function StageAnimator(benchmark)
+function StageAnimator(benchmark, options)
 {
-    Animator.call(this, benchmark);
+    Animator.call(this, benchmark, options);
 };
 
 StageAnimator.prototype = Object.create(Animator.prototype);
@@ -159,7 +154,7 @@ StageBenchmark.prototype.createStage = function(element)
 
 StageBenchmark.prototype.createAnimator = function()
 {
-    return new StageAnimator(this);
+    return new StageAnimator(this, this._options);
 }
 
 StageBenchmark.prototype.tune = function(count)
@@ -177,8 +172,8 @@ StageBenchmark.prototype.showResults = function(message, progress)
     if (!this._recordTable || !this._progressBar || !this._test)
         return;
 
-    if (this.options["show-running-results"])
-        this._recordTable.showRecord(this._test.name, message, this._sampler.toJSON(true, false));
+    if (this._options["show-running-results"])
+        this._recordTable.showRecord(this._test.name, message, this._sampler.toJSON(true, false), this._options);
 
     this._progressBar.setPos(progress);
 }

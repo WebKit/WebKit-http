@@ -68,6 +68,16 @@ function Insets(top, right, bottom, left)
     this.left = left;
 }
 
+Insets.elementPadding = function(element)
+{
+    var styles = window.getComputedStyle(element);
+    return new Insets(
+        parseFloat(styles.paddingTop),
+        parseFloat(styles.paddingRight),
+        parseFloat(styles.paddingBottom),
+        parseFloat(styles.paddingTop));
+}
+
 Insets.prototype =
 {
     get width()
@@ -150,22 +160,6 @@ window.DocumentExtension =
             
         parentElement.appendChild(element);
         return element;
-    },
-    
-    insertCssRuleAfter: function(newRule, referenceRule)
-    {
-        var styleSheets = document.styleSheets;
-
-        for (var i = 0; i < styleSheets.length; ++i) {       
-            for (var j = 0; j < styleSheets[i].cssRules.length; ++j) {
-                if (styleSheets[i].cssRules[j].selectorText == referenceRule) {
-                    styleSheets[i].insertRule(newRule, j + 1);
-                    return true;
-                }
-            }
-        }
-        
-        return false;
     }
 }
 
@@ -225,24 +219,24 @@ ResultsDashboard.prototype =
                 for (var testName in suiteSamplers) {
                     var sampler = suiteSamplers[testName];
                     testsResults[testName] = sampler.toJSON(statistics, graph);
-                    testsScores.push(testsResults[testName][Strings["JSON_SCORE"]]);
+                    testsScores.push(testsResults[testName][Strings.json.score]);
                 }
 
                 suitesResults[suiteName] =  {};
-                suitesResults[suiteName][Strings["JSON_SCORE"]] = Statistics.geometricMean(testsScores);
-                suitesResults[suiteName][Strings["JSON_RESULTS"][2]] = testsResults;
-                suitesScores.push(suitesResults[suiteName][Strings["JSON_SCORE"]]);
+                suitesResults[suiteName][Strings.json.score] = Statistics.geometricMean(testsScores);
+                suitesResults[suiteName][Strings.json.results.tests] = testsResults;
+                suitesScores.push(suitesResults[suiteName][Strings.json.score]);
             }
             
             iterationsResults[index] = {};
-            iterationsResults[index][Strings["JSON_SCORE"]] = Statistics.geometricMean(suitesScores);
-            iterationsResults[index][Strings["JSON_RESULTS"][1]] = suitesResults;
-            iterationsScores.push(iterationsResults[index][Strings["JSON_SCORE"]]);
+            iterationsResults[index][Strings.json.score] = Statistics.geometricMean(suitesScores);
+            iterationsResults[index][Strings.json.results.suites] = suitesResults;
+            iterationsScores.push(iterationsResults[index][Strings.json.score]);
         });
 
         var json = {};
-        json[Strings["JSON_SCORE"]] = Statistics.sampleMean(iterationsScores.length, iterationsScores.reduce(function(a, b) { return a * b; }));
-        json[Strings["JSON_RESULTS"][0]] = iterationsResults;
+        json[Strings.json.score] = Statistics.sampleMean(iterationsScores.length, iterationsScores.reduce(function(a, b) { return a * b; }));
+        json[Strings.json.results.iterations] = iterationsResults;
         return json;
     }
 }
@@ -264,16 +258,14 @@ ResultsTable.prototype =
     _showHeaderRow: function(row, queue, headers, message)
     {
         headers.forEach(function (header) {
-            var th = document.createElement("th");
+            var th = DocumentExtension.createElement("th", {}, row);
             th.textContent = header.text;
             if (typeof message != "undefined" && message.length) {
-                th.appendChild(document.createElement('br'));
-                th.appendChild(document.createTextNode('[' + message +']'));
+                th.innerHTML += "<br>" + '[' + message +']';
                 message = "";
             }
             if ("width" in header)
                 th.width = header.width + "%";
-            row.appendChild(th);
             queue.push({element: th, headers: header.children });
         });
     },
@@ -313,92 +305,126 @@ ResultsTable.prototype =
         }
     },
     
-    _showEmpty: function(row)
+    _showEmptyCell: function(row, className)
     {
-        var td = document.createElement("td");
-        row.appendChild(td);
+        return DocumentExtension.createElement("td", { class: className }, row);
     },
 
-    _showText: function(row, text)
+    _showText: function(row, text, className)
     {
-        var td = document.createElement("td");
+        var td = DocumentExtension.createElement("td", { class: className }, row);
         td.textContent = text;
-        row.appendChild(td);
     },
 
-    _showFixedNumber: function(row, value, digits)
+    _showFixedNumber: function(row, value, digits, className)
     {
-        var td = document.createElement("td");
+        var td = DocumentExtension.createElement("td", { class: className }, row);
         td.textContent = value.toFixed(digits || 2);
-        row.appendChild(td);
     },
     
     _showGraph: function(row, testName, testResults)
     {
-        var data = testResults[Strings["JSON_SAMPLES"][0]];
+        var data = testResults[Strings.json.samples];
         if (!data) {
-            this._showEmpty(row);
+            this._showEmptyCell(row, "");
             return;
         }
         
-        var td = document.createElement("td");
-        var button = document.createElement("button");
-        button.className = "small-button";
+        var td = DocumentExtension.createElement("td", {}, row);
+        var button = DocumentExtension.createElement("button", { class: "small-button" }, td);
 
         button.addEventListener("click", function() {
-            var samples = data[Strings["JSON_GRAPH"][0]];
-            var samplingTimeOffset = data[Strings["JSON_GRAPH"][1]];
-            var axes = Strings["TEXT_EXPERIMENTS"];
+            var samples = data[Strings.json.graph.points];
+            var samplingTimeOffset = data[Strings.json.graph.samplingTimeOffset];
+            var axes = [Strings.text.experiments.complexity, Strings.text.experiments.frameRate];
             benchmarkController.showTestGraph(testName, axes, samples, samplingTimeOffset);
         });
             
-        button.textContent = Strings["TEXT_RESULTS"][1] + "...";
-        td.appendChild(button);
-        row.appendChild(td);
+        button.textContent = Strings.text.results.graph + "...";
     },
 
     _showJSON: function(row, testName, testResults)
     {
-        var data = testResults[Strings["JSON_SAMPLES"][0]];
+        var data = testResults[Strings.json.samples];
         if (!data) {
-            this._showEmpty(row);
+            this._showEmptyCell(row, "");
             return;
         }
-        
-        var td = document.createElement("td");
-        var button = document.createElement("button");
-        button.className = "small-button";
+
+        var td = DocumentExtension.createElement("td", {}, row);
+        var button = DocumentExtension.createElement("button", { class: "small-button" }, td);
 
         button.addEventListener("click", function() {
             benchmarkController.showTestJSON(testName, testResults);
         });
             
-        button.textContent = Strings["TEXT_RESULTS"][2] + "...";
-        td.appendChild(button);
-        row.appendChild(td);
+        button.textContent = Strings.text.results.json + "...";
+    },
+    
+    _isNoisyMeasurement: function(experiment, data, measurement, options)
+    {
+        const percentThreshold = 10;
+        const averageThreshold = 2;
+         
+        if (measurement == Strings.json.measurements.percent)
+            return data[Strings.json.measurements.percent] >= percentThreshold;
+            
+        if (experiment == Strings.json.experiments.frameRate && measurement == Strings.json.measurements.average)
+            return Math.abs(data[Strings.json.measurements.average] - options["frame-rate"]) >= averageThreshold;
+
+        return false;
     },
 
-    _showTest: function(testName, testResults)
+    _isNoisyTest: function(testResults, options)
     {
-        var row = document.createElement("tr");
+        for (var experiment in testResults) {
+            var data = testResults[experiment];
+            for (var measurement in data) {
+                if (this._isNoisyMeasurement(experiment, data, measurement, options))
+                    return true;
+            }
+        }
+        return false;
+    },
+
+    _showEmptyCells: function(row, headers)
+    {
+        for (var index = 0; index < headers.length; ++index) {
+            if (!headers[index].children.length)
+                this._showEmptyCell(row, "suites-separator");
+            else
+                this._showEmptyCells(row, headers[index].children);
+        }
+    },
+
+    _showEmptyRow: function()
+    {
+        var row = DocumentExtension.createElement("tr", {}, this.element);
+        this._showEmptyCells(row, this._headers);
+    },
+
+    _showTest: function(testName, testResults, options)
+    {
+        var row = DocumentExtension.createElement("tr", {}, this.element);
+        var className = this._isNoisyTest(testResults, options) ? "noisy-results" : "";
         
         for (var index = 0; index < this._headers.length; ++index) {
 
             switch (index) {
             case 0:
-                this._showText(row, testName);
+                this._showText(row, testName, className);
                 break;
 
             case 1:
-                var data = testResults[Strings["JSON_SCORE"][0]];
+                var data = testResults[Strings.json.score];
                 this._showFixedNumber(row, data, 2);
                 break;
 
             case 2:
             case 3:
-                var data = testResults[Strings["JSON_EXPERIMENTS"][index - 2]];
+                var data = testResults[index == 2 ? Strings.json.experiments.complexity : Strings.json.experiments.frameRate];
                 for (var measurement in data)
-                    this._showFixedNumber(row, data[measurement], 2);
+                    this._showFixedNumber(row, data[measurement], 2, this._isNoisyMeasurement(index - 2, data, measurement, options) ? className : "");
                 break;
                 
             case 4:
@@ -407,38 +433,38 @@ ResultsTable.prototype =
                 break;
             }
         }
-        
-        this.element.appendChild(row);
     },
 
-    _showSuite: function(suiteName, suiteResults)
+    _showSuite: function(suiteName, suiteResults, options)
     {
-        for (var testName in suiteResults[Strings["JSON_RESULTS"][2]]) {
-            this._showTest(testName, suiteResults[Strings["JSON_RESULTS"][2]][testName]);
+        for (var testName in suiteResults[Strings.json.results.tests]) {
+            this._showTest(testName, suiteResults[Strings.json.results.tests][testName], options);
         }
     },
     
-    _showIteration : function(iterationResults)
+    _showIteration : function(iterationResults, options)
     {
-        for (var suiteName in iterationResults[Strings["JSON_RESULTS"][1]]) {
-            this._showSuite(suiteName, iterationResults[Strings["JSON_RESULTS"][1]][suiteName]);
+        for (var suiteName in iterationResults[Strings.json.results.suites]) {
+            if (suiteName != Object.keys(iterationResults[Strings.json.results.suites])[0])
+                this._showEmptyRow();
+            this._showSuite(suiteName, iterationResults[Strings.json.results.suites][suiteName], options);
         }
     },
     
-    showRecord: function(testName, message, testResults)
+    showRecord: function(testName, message, testResults, options)
     {
         this.clear();
         this._showHeader(message);
-        this._showTest(testName, testResults);
+        this._showTest(testName, testResults, options);
     },
 
-    showIterations: function(iterationsResults)
+    showIterations: function(iterationsResults, options)
     {
         this.clear();
         this._showHeader("");
         
         iterationsResults.forEach(function(iterationResults) {
-            this._showIteration(iterationResults);
+            this._showIteration(iterationResults, options);
         }, this);
     }
 }

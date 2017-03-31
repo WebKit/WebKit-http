@@ -44,15 +44,12 @@ public:
 private:
     virtual void contextMenuDestroyed() override;
 
-    virtual void contextMenuItemSelected(WebCore::ContextMenuItem*, const WebCore::ContextMenu*) override;
-    
     virtual void downloadURL(const WebCore::URL&) override;
     virtual void searchWithGoogle(const WebCore::Frame*) override;
     virtual void lookUpInDictionary(WebCore::Frame*) override;
     virtual bool isSpeaking() override;
     virtual void speak(const String&) override;
     virtual void stopSpeaking() override;
-    virtual WebCore::ContextMenuItem shareMenuItem(const WebCore::HitTestResult&) override;
 
 #if PLATFORM(COCOA)
     virtual void searchWithSpotlight() override;

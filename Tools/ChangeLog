@@ -1,3 +1,482 @@
+2015-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Update xserver version in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=151383
+
+        Reviewed by Alejandro G. Castro.
+
+        In r192568 I assumed the bots would have a recent enough Xvfb
+        to use the -displayfd option, but I forgot we build our own
+        xserver just for Xvfb. The version we build is too old, so
+        we could just use an updated version (the same bots have
+        installed, for example) to use the -displayfd option.
+
+        * gtk/jhbuild.modules: Update xserver to 1.16.4.
+        * gtk/patches/xserver-fix-glx-init.patch: Deleted.
+        * gtk/patches/xserver-remove-bogus-dependencies.patch: Updated to
+        apply on 1.16.4.
+
+2015-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix webkitpy tests after r192568.
+
+        Instead of ignoring exception when closing mock fds, use a helper
+        function that the unit test can override to do nothing.
+
+        * Scripts/webkitpy/port/xvfbdriver.py:
+        (XvfbDriver._xvfb_close_pipe):
+        (XvfbDriver._xvfb_run):
+        * Scripts/webkitpy/port/xvfbdriver_unittest.py:
+        (XvfbDriverTest.make_driver):
+
+2015-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [XvfbDriver] Fail to run all layout tests when X server started with -displayfd option
+        https://bugs.webkit.org/show_bug.cgi?id=151135
+
+        Reviewed by Darin Adler.
+
+        The XvfbDriver uses the x server command line to check the
+        displays that are currently in use. This doesn't work when X
+        server was started with -displayfd option. This option is used to let
+        the server find the display id available that is written to the
+        given file descriptor. With this option xorg doesn't need to
+        create the lock files in tmp either. The -displayfd option is also
+        available in Xvfb, so we could use it too. That would simplify the
+        code, fixing also race conditions between the check for available
+        displays and Xvfb opening the connection, we wouldn't need to wait
+        for 4 seconds after launching Xvfb, and all lock files we are
+        using won't be needed either.
+
+        * Scripts/webkitpy/port/xvfbdriver.py:
+        (XvfbDriver._xvfb_pipe): Helper function to create the pipe, only
+        needed to be overriden by unit tests.
+        (XvfbDriver._xvfb_read_display_id): Helper function to read from
+        the pipe, only needed to be overriden by unit tests.
+        (XvfbDriver._xvfb_run): Run Xvfb with -displayfd option, using a
+        pipe to read the display id.
+        (XvfbDriver._start): Call _xvfb_run() and remove the code to run
+        Xvfb for a given display.
+        (XvfbDriver.stop): Remove code to release and delete file locks.
+        * Scripts/webkitpy/port/xvfbdriver_unittest.py:
+        (XvfbDriverTest.make_driver):
+        (XvfbDriverTest.test_start):
+        (XvfbDriverTest.test_start_arbitrary_worker_number):
+        (XvfbDriverTest.test_stop):
+        (XvfbDriverTest.assertDriverStartSuccessful): Deleted.
+        (XvfbDriverTest): Deleted.
+        (XvfbDriverTest.test_stop.FakeXvfbProcess): Deleted.
+
+2015-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        run-webkit-tests should not truncate persistent lines
+        https://bugs.webkit.org/show_bug.cgi?id=151376
+        rdar://problem/23162775
+
+        Reviewed by Antti Koivisto.
+
+        It is OK to truncate progress lines, but it's not OK to truncate error (or otherwise
+        unexpected result) messages that remain on the screen to be read. In practice, this
+        almost always truncates the test path, which is important to see.
+
+        * Scripts/webkitpy/layout_tests/views/printing.py:
+        (Printer._test_status_line):
+        (Printer.print_finished_test):
+        * Scripts/webkitpy/layout_tests/views/printing_unittest.py:
+        (Testprinter.test_test_status_line):
+
+2015-11-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ unit tests after r192469.
+
+        In r192469 jhbuild version was updated and coinfig lcas API changed.
+
+        * jhbuild/jhbuildutils.py:
+        (enter_jhbuild_environment_if_available): Pass an empty list for
+        conditions to the Config constructor.
+
+2015-11-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Use commit id instead of tag name for jhbuild revision.
+
+        In r192469 I updated the jhbuild version to 3.12.0, and used the
+        tag instead of the commit id to make it easier to read and
+        remember. But we use the commit id to check if the current
+        revision is up to date, and when compared to the tag id it always
+        fails and jhbuild is always updated.
+
+        * jhbuild/jhbuild-wrapper: Use commit id and add a comment to
+        remember this is the id of 3.12.0.
+
+2015-11-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ layout tests running after r192469.
+
+        We fail to find the Gallium llvmpipe driver because of the build
+        directory change in r192469.
+
+        * gtk/jhbuildrc: Use buildroot instead of checkoutdir to build
+        the LLVMPIPE_LIBGL_PATH.
+
+2015-11-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use FTL by default when LLVM 3.7 is available
+        https://bugs.webkit.org/show_bug.cgi?id=142128
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/run-javascriptcore-tests: Enable FTL for GTK+ port when
+        architecture is x86_64.
+        * Scripts/update-webkit-libs-jhbuild:
+        (cleanJhbuild): Remove also the separate Build directory used by
+        GTK+ port now.
+        * Scripts/webkitdirs.pm:
+        (isX86_64):
+        * Scripts/webkitperl/FeatureList.pm: Enable FTL by default for
+        GTK+ port when architecture is x86_64.
+        * gtk/jhbuild-optional.modules: Remove llvm.
+        * gtk/jhbuild.modules: Add llvm 3.7 and include it as dependecy
+        only when architecture is x86_64.
+        * gtk/jhbuildrc: Set a buildroot to use a separate build
+        directory. LLVM 3.7 fails to build if configure script is run from
+        source dir. Since it's not possible to use a separate build dir
+        only for llvm, we do it now globally. Modules not supporting non
+        source build dirs are marked in the moduleset. Also set x86_64
+        condition when the architecture is x86_64.
+        * gtk/patches/llvm-elf-add-stackmaps-arm64.patch: Removed.
+        * gtk/patches/llvm-elf-add-stackmaps.patch: Removed.
+        * gtk/patches/llvm-elf-allow-fde-references-outside-the-2gb-range-arm64.patch: Removed.
+        * gtk/patches/llvm-elf-allow-fde-references-outside-the-2gb-range.patch: Removed.
+        * jhbuild/jhbuild-wrapper: Use a newer jhbuild version to be able
+        to use conditions.
+
+2015-11-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192462.
+        https://bugs.webkit.org/show_bug.cgi?id=151295
+
+        failing python tests (Requested by youenn on #webkit).
+
+        Reverted changeset:
+
+        "WPT server should use its own testharness.js file and
+        generate a warning when it does not match WebKit version"
+        https://bugs.webkit.org/show_bug.cgi?id=150332
+        http://trac.webkit.org/changeset/192462
+
+2015-11-15  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        WPT server should use its own testharness.js file and generate a warning when it does not match WebKit version
+        https://bugs.webkit.org/show_bug.cgi?id=150332
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer.__init__): Removed testharness.js as file to copy from WK to WPT.
+        (WebPlatformTestServer._copy_webkit_test_files): Added warning generation when WK testharness.js is not matching WPT version.
+
+2015-11-14  Nan Wang  <n_wang@apple.com>
+
+        AX: add a new trait for elements in fieldset on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=151281
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (assistiveTechnologySimulatedFocusCallback):
+        (fieldsetAncestorElementCallback):
+        (childAtIndexCallback):
+        (getElementTextLengthCallback):
+        (hasContainedByFieldsetTraitCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::elementTextLength):
+        (AccessibilityUIElement::hasContainedByFieldsetTrait):
+        (AccessibilityUIElement::fieldsetAncestorElement):
+        (AccessibilityUIElement::url):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::scrollPageDown):
+        (WTR::AccessibilityUIElement::scrollPageLeft):
+        (WTR::AccessibilityUIElement::scrollPageRight):
+        (WTR::AccessibilityUIElement::hasContainedByFieldsetTrait):
+        (WTR::AccessibilityUIElement::fieldsetAncestorElement):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::identifier):
+        (WTR::AccessibilityUIElement::hasContainedByFieldsetTrait):
+        (WTR::AccessibilityUIElement::fieldsetAncestorElement):
+        (WTR::AccessibilityUIElement::rowCount):
+
+2015-11-13  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, change JavaScriptCore watchlist to exclude inspector things.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-11-13  Tim Horton  <timothy_horton@apple.com>
+
+        Support printing in WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=151276
+        <rdar://problem/23525715>
+
+        Reviewed by Beth Dakin.
+
+        * MiniBrowser/mac/MainMenu.xib:
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController printWebView:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController printWebView:]):
+        Hook up printing to Minibrowser!
+
+2015-11-13  Tim Horton  <timothy_horton@apple.com>
+
+        Hardware keyboard spacebar scrolls too far on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=151227
+        <rdar://problem/23500681>
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/UIScriptContext/Bindings/UIScriptController.idl:
+        * WebKitTestRunner/UIScriptContext/UIScriptContext.h:
+        * WebKitTestRunner/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setDidEndScrollingCallback):
+        (WTR::UIScriptController::didEndScrollingCallback):
+        (WTR::UIScriptController::platformSetDidEndScrollingCallback):
+        * WebKitTestRunner/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView dealloc]):
+        (-[TestRunnerWKWebView _didFinishScrolling]):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::platformSetDidEndScrollingCallback):
+        (WTR::UIScriptController::platformClearAllCallbacks):
+        Expose _didFinishScrolling on WKWebView to the UIScriptController.
+
+2015-11-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test fix.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.results_directory): Our 'results_directory' should be an absolute path (even when not
+        using Cygwin), but should be in DOS format for non-Cygwin clients.
+
+2015-11-12  Daniel Bates  <dabates@apple.com>
+
+        Add my apple.com email address to contributors.json
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-11-12  Daniel Bates  <dabates@apple.com>
+
+        webkitpy: Remove extraneous word "the" from the description of command attach-to-bug
+
+        * Scripts/webkitpy/tool/commands/upload.py:
+        (AttachToBug):
+
+2015-11-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] webkitpy is applying abspath to DOS paths, yielding invalid paths
+        https://bugs.webkit.org/show_bug.cgi?id=151156
+
+        Reviewed by Anders Carlsson.
+
+        My earlier patch was incomplete. There are some Python libraries that want
+        to receive UNIX style paths, even though all of our applications and tools
+        use DOS paths. To handle this special case, we need to track a UNIX-style
+        absolute path that can be given to things like the Python socket server.
+        
+        When we cut over to all-native Windows Python we can get rid of this
+        special case code.
+        
+        * Scripts/webkitpy/common/system/filesystem.py:
+        (FileSystem.abspath): Add special code for Cygwin to convert a DOS-style
+        path into something Cygwin can use internally.
+        * Scripts/webkitpy/port/base.py:
+        (Port.results_directory): Remove custom Windows code. Instead, override
+        the method in the windows port object.
+        (Port.abs_results_directory): Add stub.
+        (Port.to.start_websocket_server): For Cygwin, use special cygwin absolute
+        path.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.__init__): Added to initialze new _abs_results_directory value.
+        (WinPort.abs_results_directory): Added,
+        (WinPort.results_directory): Modified to also create a value for
+        _abs_results_directory
+
+2015-11-12  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, add Michael Saboff to the JavaScriptCore watchlist, per request.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-11-12  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, add watchlist for Source/JavaScriptCore and add myself, Saam, and Mark.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-11-12  Daniel Bates  <dabates@apple.com>
+
+        Support building configuration Production of DumpRenderTree and WebKitTestRunner for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=151191
+
+        Reviewed by Andy Estes.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Remove hardcoded SKIP_INTALL.
+        Will override this setting in DumpRenderTree.xcconfig.
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig: When building for iOS we now
+        compile source file DumpRenderTreeMain.mm to produce a built product and make the Apple
+        Internal build system happy. Do not waste time coping OpenType font files (*.otf files)
+        and skip installation when building for iOS since we are not interested in the build product
+        and are only building this target to make the Apple Internal build system happy.
+        * DumpRenderTree/mac/DumpRenderTreeMain.mm:
+        (main): Added dummy implementation for iOS so that we build an actual command line tool to
+        make the Apple Internal build system happy.
+        * WebKitTestRunner/Configurations/Base.xcconfig: Add iOS-specific definition for WEBKIT_UMBRELLA_FRAMEWORKS_DIR.
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig: Remove variable WEBKIT_UMBRELLA_FRAMEWORKS_DIR.
+        * WebKitTestRunner/Configurations/WebKitTestRunner.xcconfig: Build file WebKitTestRunner/mac/main.mm
+        on iOS Only to produce a built product and make the Apple Internal build system happy. No need
+        to define OTHER_LDFLAGS when building this target for iOS as the default linker flags are sufficient.
+        * WebKitTestRunner/mac/main.mm:
+        (main): Added dummy implementation for iOS so that we build an actual command line tool to
+        make the Apple Internal build system happy.
+
+2015-11-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, add watchlist for history/ and add myself.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-11-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, update my watchlists.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-11-12  Daniel Bates  <dabates@apple.com>
+
+        Rename webkitdirs::willUseIOS{Device, Simulator}SDKWhenBuilding() to willUseIOS{Device, Simulator}SDK()
+        https://bugs.webkit.org/show_bug.cgi?id=151207
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        The functions webkitdirs::willUseIOS{Device, Simulator}SDKWhenBuilding() are not specific to building
+        iOS software. We should rename these functions to webkitdirs::willUseIOS{Device, Simulator}SDK() to
+        convey their general-purpose nature of determining whether we are using the iphoneos or iphonesimulator SDK.
+
+        * Scripts/build-jsc:
+        * Scripts/build-layouttestrelay:
+        * Scripts/build-webkit:
+        * Scripts/copy-webkitlibraries-to-product-directory:
+        * Scripts/run-api-tests:
+        (runTest):
+        (prepareEnvironmentForRunningTestTool):
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/webkitdirs.pm:
+        (XcodeOptions):
+        (willUseIOSDeviceSDK): Formerly named willUseIOSDeviceSDKWhenBuilding.
+        (willUseIOSSimulatorSDK): Formerly name willUseIOSSimulatorSDKWhenBuilding.
+        (isIOSWebKit):
+        (runIOSWebKitApp):
+        (willUseIOSDeviceSDKWhenBuilding): Deleted.
+        (willUseIOSSimulatorSDKWhenBuilding): Deleted.
+
+2015-11-12  Daniel Bates  <dabates@apple.com>
+
+        run-api-tests fails to run with public iOS SDK
+        https://bugs.webkit.org/show_bug.cgi?id=151076
+
+        Reviewed by Alexey Proskuryakov.
+
+        Use the command line tool simctl as the sim tool was removed from the public iOS 9 SDK.
+
+        A side benefit of this change it is sufficient to run the tests without launching Simulator.app
+        to boot the simulator device beforehand because simctl will boot the device for us.
+
+        Additionally, use Perl pragma sigtrap to install signal handlers to catch SIG{HUP, INT, PIPE, TERM}
+        signals and ultimately run our END block so that we shutdown the simulator device (if applicable).
+        This makes Control-C terminate the app gracefully.
+
+        * Scripts/run-api-tests:
+        (runTest):
+        (listAllTests):
+        (prepareEnvironmentForRunningTestTool): When running for iOS Simulator use setupIOSWebKitEnvironment()
+        to setup the environment variables for iOS instead of using setupMacWebKitEnvironment(). We also
+        prefix the name of these environment variables with "SIMCTL_CHILD_" so that simctl sets these environment
+        variables in the simulator environment.
+        * Scripts/webkitdirs.pm:
+        (shutDownIOSSimulatorDevice): Added.
+        (restartIOSSimulatorDevice): Added.
+
+2015-11-12  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] fix EvasGL configuration error
+        https://bugs.webkit.org/show_bug.cgi?id=151180
+
+        Reviewed by Csaba Osztrogonác.
+
+        EvasGL backend and depth, stencil buffer size should be specified before elm_win_add to let EvasGL keep quiet.
+        Additionally, duplicated elm_config_accel_preference_set() call is eleminated.  
+
+        * MiniBrowser/efl/main.c:
+        (window_create):
+        (elm_main):
+
+2015-11-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Fix EFL 1.16 with enabled NEON support
+        https://bugs.webkit.org/show_bug.cgi?id=151188
+
+        Unreviewed buildfix, disable NEON temporarily after r192358.
+
+        * efl/jhbuild.modules:
+
+2015-11-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump EFL version to 1.16.0
+        https://bugs.webkit.org/show_bug.cgi?id=150228
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+        * efl/patches/efl-remove-XPrint.patch: Removed.
+
+2015-11-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SATURATED_LAYOUT_ARITHMETIC) guards
+        https://bugs.webkit.org/show_bug.cgi?id=150972
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/LayoutUnit.cpp:
+
+2015-11-12  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] fix EvasGL configuration error
+        https://bugs.webkit.org/show_bug.cgi?id=151180
+
+        Reviewed by Gyuyoung Kim.
+
+        EvasGL backend and depth, stencil buffer size should be specified before elm_win_add to let EvasGL keep quiet
+
+        * MiniBrowser/efl/main.c:
+        (window_create):
+
+2015-11-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] webkitpy is applying abspath to DOS paths, yielding invalid paths
+        https://bugs.webkit.org/show_bug.cgi?id=151156
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.results_directory): Don't pass paths through 'abspath'
+        (Port._build_path): Ditto.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._build_path): Ditto.
+
 2015-11-11  Akos Kiss  <akiss@inf.u-szeged.hu>
 
         Unreviewed, add myself to the committers list.

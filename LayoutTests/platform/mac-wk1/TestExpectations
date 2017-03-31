@@ -86,6 +86,10 @@ webkit.org/b/119094 fast/forms/color/color-suggestion-picker-crash-on-set-value.
 # WK1 and WK2 mousemove events are subtly different in ways that break this test on WK1.
 fast/events/ghostly-mousemoves-in-subframe.html [ Skip ]
 
+# Media Stream API testing is not supported for WK1 yet.
+fast/mediastream
+http/tests/media/media-stream
+
 # Disable snapshotting tests on WK1 only
 plugins/snapshotting
 
@@ -139,6 +143,12 @@ webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/oes-texture-half-float.html 
 
 [ ElCapitan+ ] css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
 
+webkit.org/b/151219 storage/indexeddb/modern/idbindex-properties-basic.html [ Pass Timeout ]
+
+webkit.org/b/151364 storage/indexeddb/modern/get-index-failures.html [ Pass Timeout ]
+
+webkit.org/b/151389 storage/indexeddb/modern/aborted-put.html [ Pass Timeout ]
+
 ### END OF (2) Failures without bug reports
 ########################################
 
@@ -166,3 +176,6 @@ imported/blink/compositing/reorder-z-with-style.html [ Pass Timeout ]
 imported/blink/svg/custom/marker-layout-invalidation.html [ Pass Timeout ]
 imported/blink/fast/css/crash-corner-present.html [ Pass Timeout ]
 imported/blink/compositing/layer-creation/iframe-clip-removed.html [ Pass Timeout ]
+
+# ASAN test only fails on WK1:
+webgl/1.0.3/151055_asan.html [ Failure ]

@@ -41,6 +41,7 @@
 namespace JSC { namespace B3 {
 
 class BasicBlock;
+class CheckValue;
 class Procedure;
 
 class JS_EXPORT_PRIVATE Value {
@@ -108,12 +109,17 @@ public:
     // ourselves to any particular idiom.
 
     bool isConstant() const;
+    bool isInteger() const;
     
     virtual Value* negConstant(Procedure&) const;
     virtual Value* addConstant(Procedure&, int32_t other) const;
     virtual Value* addConstant(Procedure&, const Value* other) const;
     virtual Value* subConstant(Procedure&, const Value* other) const;
     virtual Value* mulConstant(Procedure&, const Value* other) const;
+    virtual Value* checkAddConstant(Procedure&, const Value* other) const;
+    virtual Value* checkSubConstant(Procedure&, const Value* other) const;
+    virtual Value* checkMulConstant(Procedure&, const Value* other) const;
+    virtual Value* checkNegConstant(Procedure&) const;
     virtual Value* divConstant(Procedure&, const Value* other) const; // This chooses ChillDiv semantics for integers.
     virtual Value* bitAndConstant(Procedure&, const Value* other) const;
     virtual Value* bitOrConstant(Procedure&, const Value* other) const;
@@ -166,6 +172,8 @@ public:
     // Booleans in B3 are Const32(0) or Const32(1). So this is true if the type is Int32 and the only
     // possible return values are 0 or 1. It's OK for this method to conservatively return false.
     bool returnsBool() const;
+
+    bool isNegativeZero() const;
 
     TriState asTriState() const;
     bool isLikeZero() const { return asTriState() == FalseTriState; }
@@ -266,6 +274,8 @@ protected:
     }
 
 private:
+    friend class CheckValue; // CheckValue::convertToAdd() modifies m_opcode.
+    
     static Type typeFor(Opcode, Value* firstChild);
 
     // This group of fields is arranged to fit in 64 bits.

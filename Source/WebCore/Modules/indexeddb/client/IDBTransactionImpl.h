@@ -41,7 +41,9 @@
 
 namespace WebCore {
 
+class IDBCursorInfo;
 class IDBIndexInfo;
+class IDBKeyData;
 class IDBObjectStoreInfo;
 class IDBResultData;
 
@@ -49,6 +51,7 @@ struct IDBKeyRangeData;
 
 namespace IDBClient {
 
+class IDBCursor;
 class IDBDatabase;
 class IDBIndex;
 class TransactionOperation;
@@ -71,7 +74,7 @@ public:
     virtual void refEventTarget() override final { ref(); }
     virtual void derefEventTarget() override final { deref(); }
     using EventTarget::dispatchEvent;
-    virtual bool dispatchEvent(PassRefPtr<Event>) override final;
+    virtual bool dispatchEvent(Event&) override final;
 
     virtual const char* activeDOMObjectName() const override final;
     virtual bool canSuspendForPageCache() const override final;
@@ -101,6 +104,9 @@ public:
     Ref<IDBRequest> requestCount(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
     Ref<IDBRequest> requestGetValue(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
     Ref<IDBRequest> requestGetKey(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestOpenCursor(ScriptExecutionContext&, IDBObjectStore&, const IDBCursorInfo&);
+    Ref<IDBRequest> requestOpenCursor(ScriptExecutionContext&, IDBIndex&, const IDBCursorInfo&);
+    void iterateCursor(IDBCursor&, const IDBKeyData&, unsigned long count);
 
     void deleteObjectStore(const String& objectStoreName);
 
@@ -128,7 +134,7 @@ private:
 
     void fireOnComplete();
     void fireOnAbort();
-    void enqueueEvent(Ref<Event>);
+    void enqueueEvent(Ref<Event>&&);
 
     Ref<IDBRequest> requestIndexRecord(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, const IDBKeyRangeData&);
 
@@ -158,6 +164,13 @@ private:
 
     void deleteObjectStoreOnServer(TransactionOperation&, const String& objectStoreName);
     void didDeleteObjectStoreOnServer(const IDBResultData&);
+
+    Ref<IDBRequest> doRequestOpenCursor(ScriptExecutionContext&, Ref<IDBCursor>&&);
+    void openCursorOnServer(TransactionOperation&, const IDBCursorInfo&);
+    void didOpenCursorOnServer(IDBRequest&, const IDBResultData&);
+
+    void iterateCursorOnServer(TransactionOperation&, const IDBKeyData&, const unsigned long& count);
+    void didIterateCursorOnServer(IDBRequest&, const IDBResultData&);
 
     void establishOnServer();
 
