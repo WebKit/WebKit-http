@@ -52,12 +52,19 @@ public:
 
     void requestCompleted(const IDBResultData&);
 
+    void versionChangeTransactionWillFinish();
+    void fireSuccessAfterVersionChangeCommit();
+    void fireErrorAfterVersionChangeAbort();
+
 private:
     IDBOpenDBRequest(IDBConnectionToServer&, ScriptExecutionContext*, const IDBDatabaseIdentifier&, uint64_t version);
 
     void onError(const IDBResultData&);
     void onSuccess(const IDBResultData&);
     void onUpgradeNeeded(const IDBResultData&);
+    void onDeleteDatabaseSuccess(const IDBResultData&);
+
+    virtual bool isOpenDBRequest() const override { return true; }
 
     IDBDatabaseIdentifier m_databaseIdentifier;
     uint64_t m_version { 0 };

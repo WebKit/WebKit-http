@@ -26,8 +26,6 @@
 #include "config.h"
 #include "NetworkConnectionToWebProcess.h"
 
-#if ENABLE(NETWORK_PROCESS)
-
 #include "NetworkBlobRegistry.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkLoad.h"
@@ -179,17 +177,16 @@ static NetworkStorageSession& storageSession(SessionID sessionID)
     return NetworkStorageSession::defaultStorageSession();
 }
 
-void NetworkConnectionToWebProcess::startDownload(SessionID, uint64_t downloadID, const ResourceRequest& request)
+void NetworkConnectionToWebProcess::startDownload(SessionID sessionID, uint64_t downloadID, const ResourceRequest& request)
 {
-    // FIXME: Do something with the session ID.
-    NetworkProcess::singleton().downloadManager().startDownload(downloadID, request);
+    NetworkProcess::singleton().downloadManager().startDownload(sessionID, downloadID, request);
 }
 
-void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(uint64_t mainResourceLoadIdentifier, uint64_t downloadID, const ResourceRequest& request, const ResourceResponse& response)
+void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(WebCore::SessionID sessionID, uint64_t mainResourceLoadIdentifier, uint64_t downloadID, const ResourceRequest& request, const ResourceResponse& response)
 {
     auto& networkProcess = NetworkProcess::singleton();
     if (!mainResourceLoadIdentifier) {
-        networkProcess.downloadManager().startDownload(downloadID, request);
+        networkProcess.downloadManager().startDownload(sessionID, downloadID, request);
         return;
     }
 
@@ -275,5 +272,3 @@ void NetworkConnectionToWebProcess::blobSize(const URL& url, uint64_t& resultSiz
 }
 
 } // namespace WebKit
-
-#endif // ENABLE(NETWORK_PROCESS)

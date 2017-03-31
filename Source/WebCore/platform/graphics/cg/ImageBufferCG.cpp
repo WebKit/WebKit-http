@@ -185,7 +185,7 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavio
         image = createCroppedImageIfNecessary(image.get(), internalSize());
     } else {
         image = copyNativeImage(DontCopyBackingStore);
-        RetainPtr<CGContextRef> context = adoptCF(CGBitmapContextCreate(0, logicalSize().width(), logicalSize().height(), 8, 4 * logicalSize().width(), deviceRGBColorSpaceRef(), kCGImageAlphaPremultipliedLast));
+        RetainPtr<CGContextRef> context = adoptCF(CGBitmapContextCreate(0, logicalSize().width(), logicalSize().height(), 8, 4 * logicalSize().width(), sRGBColorSpaceRef(), kCGImageAlphaPremultipliedLast));
         CGContextSetBlendMode(context.get(), kCGBlendModeCopy);
         CGContextClipToRect(context.get(), FloatRect(FloatPoint::zero(), logicalSize()));
         FloatSize imageSizeInUserSpace = scaleSizeToUserSpace(logicalSize(), m_data.backingStoreSize, internalSize());
@@ -318,10 +318,14 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
     // Set up context for using drawImage as a direct bit copy
     CGContextRef destContext = context().platformContext();
     CGContextSaveGState(destContext);
-    if (coordinateSystem == LogicalCoordinateSystem)
-        CGContextConcatCTM(destContext, AffineTransform(getUserToBaseCTM(destContext)).inverse());
-    else
-        CGContextConcatCTM(destContext, AffineTransform(CGContextGetCTM(destContext)).inverse());
+    
+    if (coordinateSystem == LogicalCoordinateSystem) {
+        if (auto inverse = AffineTransform(getUserToBaseCTM(destContext)).inverse())
+            CGContextConcatCTM(destContext, inverse.value());
+    } else {
+        if (auto inverse = AffineTransform(CGContextGetCTM(destContext)).inverse())
+            CGContextConcatCTM(destContext, inverse.value());
+    }
     CGContextResetClip(destContext);
     CGContextSetInterpolationQuality(destContext, kCGInterpolationNone);
     CGContextSetAlpha(destContext, 1.0);
@@ -438,14 +442,14 @@ String ImageBuffer::toDataURL(const String& mimeType, const double* quality, Coo
             return "data:,";
 
         image = adoptCF(CGImageCreate(logicalSize().width(), logicalSize().height(), 8, 32, 4 * logicalSize().width(),
-                                    deviceRGBColorSpaceRef(), kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast,
+                                    sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast,
                                     dataProvider.get(), 0, false, kCGRenderingIntentDefault));
     } else if (m_resolutionScale == 1) {
         image = copyNativeImage(CopyBackingStore);
         image = createCroppedImageIfNecessary(image.get(), internalSize());
     } else {
         image = copyNativeImage(DontCopyBackingStore);
-        RetainPtr<CGContextRef> context = adoptCF(CGBitmapContextCreate(0, logicalSize().width(), logicalSize().height(), 8, 4 * logicalSize().width(), deviceRGBColorSpaceRef(), kCGImageAlphaPremultipliedLast));
+        RetainPtr<CGContextRef> context = adoptCF(CGBitmapContextCreate(0, logicalSize().width(), logicalSize().height(), 8, 4 * logicalSize().width(), sRGBColorSpaceRef(), kCGImageAlphaPremultipliedLast));
         CGContextSetBlendMode(context.get(), kCGBlendModeCopy);
         CGContextClipToRect(context.get(), CGRectMake(0, 0, logicalSize().width(), logicalSize().height()));
         FloatSize imageSizeInUserSpace = scaleSizeToUserSpace(logicalSize(), m_data.backingStoreSize, internalSize());
@@ -499,7 +503,7 @@ String ImageDataToDataURL(const ImageData& source, const String& mimeType, const
 
     RetainPtr<CGImageRef> image;
     image = adoptCF(CGImageCreate(source.width(), source.height(), 8, 32, 4 * source.width(),
-                                deviceRGBColorSpaceRef(), kCGBitmapByteOrderDefault | dataAlphaInfo,
+                                sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | dataAlphaInfo,
                                 dataProvider.get(), 0, false, kCGRenderingIntentDefault));
 
     return CGImageToDataURL(image.get(), mimeType, quality);

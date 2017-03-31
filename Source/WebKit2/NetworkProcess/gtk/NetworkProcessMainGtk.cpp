@@ -27,8 +27,6 @@
 #include "config.h"
 #include "NetworkProcessMainUnix.h"
 
-#if ENABLE(NETWORK_PROCESS)
-
 #include "ChildProcessMain.h"
 #include "NetworkProcess.h"
 #include <WebCore/SoupNetworkSession.h>
@@ -45,16 +43,6 @@ public:
         SoupNetworkSession::defaultSession().setSSLPolicy(SoupNetworkSession::SSLUseSystemCAFile);
         return true;
     }
-
-    void platformFinalize() override
-    {
-#if !ENABLE(NETWORK_CACHE)
-        if (SoupCache* soupCache = SoupNetworkSession::defaultSession().cache()) {
-            soup_cache_flush(soupCache);
-            soup_cache_dump(soupCache);
-        }
-#endif
-    }
 };
 
 int NetworkProcessMainUnix(int argc, char** argv)
@@ -63,5 +51,3 @@ int NetworkProcessMainUnix(int argc, char** argv)
 }
 
 } // namespace WebKit
-
-#endif // ENABLE(NETWORK_PROCESS)

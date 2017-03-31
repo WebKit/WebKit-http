@@ -390,13 +390,6 @@ void PageClientImpl::notifyInputContextAboutDiscardedComposition()
     m_impl->notifyInputContextAboutDiscardedComposition();
 }
 
-#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
-void PageClientImpl::notifyApplicationAboutInputContextChange()
-{
-    [NSApp updateWindows];
-}
-#endif
-
 FloatRect PageClientImpl::convertToDeviceSpace(const FloatRect& rect)
 {
     return toDeviceSpace(rect, [m_view window]);
@@ -833,6 +826,11 @@ _WKRemoteObjectRegistry *PageClientImpl::remoteObjectRegistry()
     return m_impl->remoteObjectRegistry();
 }
 #endif
+
+void PageClientImpl::didRestoreScrollPosition()
+{
+    m_impl->didRestoreScrollPosition();
+}
 
 } // namespace WebKit
 

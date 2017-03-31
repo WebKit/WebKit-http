@@ -106,10 +106,10 @@ public:
 
     WebPageProxy* page() { return m_page.get(); }
 
-    void didChangeContentSize(const WebCore::IntSize&);
+    void didChangeContentSize(const WebCore::IntSize&) override;
     const WebCore::IntSize& contentsSize() const { return m_contentsSize; }
     WebCore::FloatSize visibleContentsSize() const;
-    void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
+    void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&) override;
 
     // FIXME: Should become private when Web Events creation is moved to WebView.
     WebCore::AffineTransform transformFromScene() const;
@@ -213,6 +213,8 @@ protected:
 
     virtual void didChangeBackgroundColor() override { }
     virtual void didFailLoadForMainFrame() override { }
+
+    virtual void didRestoreScrollPosition() override { }
 
     WebViewClient m_client;
     RefPtr<WebPageProxy> m_page;

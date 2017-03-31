@@ -20,8 +20,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#if ENABLE(NETWORK_PROCESS)
-
 messages -> NetworkProcess LegacyReceiver {
     # Initializes the network process.
     InitializeNetworkProcess(struct WebKit::NetworkProcessCreationParameters processCreationParameters)
@@ -41,7 +39,7 @@ messages -> NetworkProcess LegacyReceiver {
     DeleteWebsiteData(WebCore::SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
     DeleteWebsiteDataForOrigins(WebCore::SessionID sessionID, uint64_t websiteDataTypes, Vector<WebCore::SecurityOriginData> origins, Vector<String> cookieHostNames, uint64_t callbackID)
 
-    DownloadRequest(uint64_t downloadID, WebCore::ResourceRequest request)
+    DownloadRequest(WebCore::SessionID sessionID, uint64_t downloadID, WebCore::ResourceRequest request)
     ResumeDownload(uint64_t downloadID, IPC::DataReference resumeData, String path, WebKit::SandboxExtension::Handle sandboxExtensionHandle)
     CancelDownload(uint64_t downloadID)
 
@@ -63,5 +61,3 @@ messages -> NetworkProcess LegacyReceiver {
     CancelPrepareToSuspend()
     ProcessDidResume()
 }
-
-#endif // ENABLE(NETWORK_PROCESS)

@@ -148,7 +148,7 @@ private:
 
     // ActiveDOMObject
     void contextDestroyed() override;
-    bool canSuspendForPageCache() const override;
+    bool canSuspendForDocumentSuspension() const override;
     void suspend(ReasonForSuspension) override;
     void resume() override;
     void stop() override;
@@ -175,9 +175,6 @@ private:
 
     bool initSend(ExceptionCode&);
     void sendBytesData(const void*, size_t, ExceptionCode&);
-
-    String getRequestHeader(const String& name) const;
-    void setRequestHeaderInternal(const String& name, const String& value);
 
     void changeState(State newState);
     void callReadyStateChangeListener();

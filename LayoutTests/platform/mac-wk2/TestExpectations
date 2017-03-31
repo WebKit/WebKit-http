@@ -257,8 +257,6 @@ webkit.org/b/148408 tiled-drawing/scrolling/root-overflow-with-mousewheel.html [
 webkit.org/b/139820 fast/frames/lots-of-objects.html [ Timeout ]
 webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Pass Timeout ]
 
-webkit.org/b/140217 http/tests/navigation/forward-and-cancel.html [ Pass Failure ]
-
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 # A lot of the disk-cache tests are flaky on mac-wk2
@@ -281,6 +279,16 @@ webkit.org/b/150942 animations/multiple-backgrounds.html [ Pass ImageOnlyFailure
 webkit.org/b/151053 http/tests/security/cross-frame-access-put.html [ Pass Failure ]
 
 webkit.org/b/151326 [ Yosemite+ ] webarchive/loading/missing-data.html [ Pass Crash ]
+
+webkit.org/b/151455 [ Yosemite ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
+
+webkit.org/b/151661 [ Yosemite ] http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
+
+webkit.org/b/150542 fast/forms/state-restore-per-form.html [ Pass Timeout ]
+
+webkit.org/b/151709 [ Yosemite ] http/tests/xmlhttprequest/workers/methods.html [ Pass Timeout ]
+
+webkit.org/b/151729 [ Yosemite ] http/tests/xmlhttprequest/methods-async.html [ Pass Timeout ]
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -350,6 +358,9 @@ webkit.org/b/139828 svg/animations/animateMotion-additive-2b.svg [ Pass ImageOnl
 webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
 
 [ Debug ] editing/undo/remove-css-property-and-remove-style.html [ Pass Failure ]
+
+# Test for WK1 only
+fast/dom/Window/property-access-on-cached-window-after-frame-removed.html [ Skip ]
 
 ### END OF (3) Unclassified failures
 ########################################
@@ -562,6 +573,3 @@ imported/blink/fast/transforms/transform-update-frame-overflow.html [ Pass Image
 imported/blink/fast/multicol/vertical-rl/float-big-line.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/span/adjacent-spanners-with-margin.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/overflow/hidden-html-auto-body.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/151304 [ Debug ] fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Pass Crash ]
-webkit.org/b/151304 [ Debug ] fast/mediastream/RTCPeerConnection-overloaded-operations.html [ Pass Crash ]

@@ -818,6 +818,16 @@ JSCell* JIT_OPERATION operationCreateClonedArgumentsDuringExit(ExecState* exec, 
     return result;
 }
 
+void JIT_OPERATION operationCopyRest(ExecState* exec, JSCell* arrayAsCell, Register* argumentStart, unsigned numberOfParamsToSkip, unsigned arraySize)
+{
+    ASSERT(arraySize);
+    JSArray* array = jsCast<JSArray*>(arrayAsCell);
+    ASSERT(arraySize == array->length());
+    array->setLength(exec, arraySize);
+    for (unsigned i = 0; i < arraySize; i++)
+        array->putDirectIndex(exec, i, argumentStart[i + numberOfParamsToSkip].jsValue());
+}
+
 size_t JIT_OPERATION operationObjectIsObject(ExecState* exec, JSGlobalObject* globalObject, JSCell* object)
 {
     VM& vm = exec->vm();

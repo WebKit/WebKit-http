@@ -37,8 +37,9 @@ LegacyVersionChangeEvent::LegacyVersionChangeEvent(unsigned long long oldVersion
 {
 }
 
-LegacyVersionChangeEvent::~LegacyVersionChangeEvent()
+Optional<uint64_t> LegacyVersionChangeEvent::newVersion() const
 {
+    return m_newVersion;
 }
 
 EventInterface LegacyVersionChangeEvent::eventInterface() const

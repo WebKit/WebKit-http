@@ -41,6 +41,7 @@ struct IDBKeyRangeData;
 
 namespace IDBClient {
 
+class IDBRequest;
 class IDBTransaction;
 
 class IDBObjectStore : public WebCore::IDBObjectStore {
@@ -78,6 +79,8 @@ public:
     virtual RefPtr<WebCore::IDBRequest> count(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> count(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&) override final;
 
+    RefPtr<IDBRequest> putForCursorUpdate(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCode&);
+
     RefPtr<WebCore::IDBRequest> deleteFunction(ScriptExecutionContext*, JSC::JSValue key, ExceptionCode&);
 
     void markAsDeleted();
@@ -92,7 +95,12 @@ public:
 private:
     IDBObjectStore(const IDBObjectStoreInfo&, IDBTransaction&);
 
-    RefPtr<WebCore::IDBRequest> putOrAdd(JSC::ExecState&, JSC::JSValue, RefPtr<IDBKey>, IndexedDB::ObjectStoreOverwriteMode, ExceptionCode&);
+    enum class InlineKeyCheck {
+        Perform,
+        DoNotPerform,
+    };
+
+    RefPtr<IDBRequest> putOrAdd(JSC::ExecState&, JSC::JSValue, RefPtr<IDBKey>, IndexedDB::ObjectStoreOverwriteMode, InlineKeyCheck, ExceptionCode&);
     RefPtr<WebCore::IDBRequest> doCount(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCode&);
 
     IDBObjectStoreInfo m_info;

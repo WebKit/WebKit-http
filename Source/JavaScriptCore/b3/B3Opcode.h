@@ -81,7 +81,12 @@ enum Opcode : int16_t {
     SShr, // Arithmetic Shift.
     ZShr, // Logical Shift.
 
+    // Double math.
+    Sqrt,
+
     // Casts and such.
+    // Bitwise Cast of Double->Int64 or Int64->Double
+    BitwiseCast,
     // Takes and returns Int32:
     SExt8,
     SExt16,
@@ -111,6 +116,10 @@ enum Opcode : int16_t {
     Below,
     AboveEqual,
     BelowEqual,
+
+    // SSA form of conditional move. The first child is evaluated for truthiness. If true, the second child
+    // is returned. Otherwise, the third child is returned.
+    Select,
 
     // Memory loads. Opcode indicates how we load and the loaded type. These use MemoryValue.
     // These return Int32:

@@ -29,20 +29,20 @@
 #if ENABLE(JIT)
 
 #include "CCallHelpers.h"
-#include "ResultType.h"
+#include "SnippetOperand.h"
 
 namespace JSC {
 
 class JITSubGenerator {
 public:
-    JITSubGenerator(JSValueRegs result, JSValueRegs left, JSValueRegs right,
-        ResultType leftType, ResultType rightType, FPRReg leftFPR, FPRReg rightFPR,
-        GPRReg scratchGPR, FPRReg scratchFPR)
-        : m_result(result)
+    JITSubGenerator(SnippetOperand leftOperand, SnippetOperand rightOperand,
+        JSValueRegs result, JSValueRegs left, JSValueRegs right,
+        FPRReg leftFPR, FPRReg rightFPR, GPRReg scratchGPR, FPRReg scratchFPR)
+        : m_leftOperand(leftOperand)
+        , m_rightOperand(rightOperand)
+        , m_result(result)
         , m_left(left)
         , m_right(right)
-        , m_leftType(leftType)
-        , m_rightType(rightType)
         , m_leftFPR(leftFPR)
         , m_rightFPR(rightFPR)
         , m_scratchGPR(scratchGPR)
@@ -51,19 +51,21 @@ public:
 
     void generateFastPath(CCallHelpers&);
 
-    CCallHelpers::JumpList endJumpList() { return m_endJumpList; }
-    CCallHelpers::JumpList slowPathJumpList() { return m_slowPathJumpList; }
+    bool didEmitFastPath() const { return m_didEmitFastPath; }
+    CCallHelpers::JumpList& endJumpList() { return m_endJumpList; }
+    CCallHelpers::JumpList& slowPathJumpList() { return m_slowPathJumpList; }
 
 private:
+    SnippetOperand m_leftOperand;
+    SnippetOperand m_rightOperand;
     JSValueRegs m_result;
     JSValueRegs m_left;
     JSValueRegs m_right;
-    ResultType m_leftType;
-    ResultType m_rightType;
     FPRReg m_leftFPR;
     FPRReg m_rightFPR;
     GPRReg m_scratchGPR;
     FPRReg m_scratchFPR;
+    bool m_didEmitFastPath { false };
 
     CCallHelpers::JumpList m_endJumpList;
     CCallHelpers::JumpList m_slowPathJumpList;

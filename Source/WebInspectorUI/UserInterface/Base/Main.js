@@ -175,6 +175,10 @@ WebInspector.loaded = function()
 
 WebInspector.contentLoaded = function()
 {
+    // If a loading error page was already shown, then don't set up the Inspector UI.
+    if (window.__earlyErrors)
+        return;
+
     // Register for global events.
     document.addEventListener("beforecopy", this._beforecopy.bind(this));
     document.addEventListener("copy", this._copy.bind(this));
@@ -190,6 +194,7 @@ WebInspector.contentLoaded = function()
     window.addEventListener("keyup", this._windowKeyUp.bind(this));
     window.addEventListener("mousemove", this._mouseMoved.bind(this), true);
     window.addEventListener("pagehide", this._pageHidden.bind(this));
+    window.addEventListener("contextmenu", this._contextMenuRequested.bind(this));
 
     // Add platform style classes so the UI can be tweaked per-platform.
     document.body.classList.add(WebInspector.Platform.name + "-platform");
@@ -244,11 +249,14 @@ WebInspector.contentLoaded = function()
     this._saveKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "S", this._save.bind(this));
     this._saveAsKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Shift | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "S", this._saveAs.bind(this));
 
-    this.navigationSidebarKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "0", this.toggleNavigationSidebar.bind(this));
-    this.detailsSidebarKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Option, "0", this.toggleDetailsSidebar.bind(this));
+    this.navigationSidebarKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Option, "L", this.toggleNavigationSidebar.bind(this));
+    this.detailsSidebarKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Option, "R", this.toggleDetailsSidebar.bind(this));
 
     this._increaseZoomKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, WebInspector.KeyboardShortcut.Key.Plus, this._increaseZoom.bind(this));
     this._decreaseZoomKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, WebInspector.KeyboardShortcut.Key.Minus, this._decreaseZoom.bind(this));
+    this._resetZoomKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "0", this._resetZoom.bind(this));
+
+    this._showTabAtIndexKeyboardShortcuts = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, `${i}`, this._showTabAtIndex.bind(this, i)));
 
     this.tabBrowser = new WebInspector.TabBrowser(document.getElementById("tab-browser"), this.tabBar, this.navigationSidebar, this.detailsSidebar);
     this.tabBrowser.addEventListener(WebInspector.TabBrowser.Event.SelectedTabContentViewDidChange, this._tabBrowserSelectedTabContentViewDidChange, this);
@@ -879,6 +887,14 @@ WebInspector.showTimelineTab = function()
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
+WebInspector.unlocalizedString = function(string)
+{
+    // Intentionally do nothing, since this is for engineering builds
+    // (such as in Debug UI) or in text that is standardized in English.
+    // For example, CSS property names and values are never localized.
+    return string;
+}
+
 WebInspector.UIString = function(string, vararg)
 {
     if (WebInspector.dontLocalizeUserInterface)
@@ -1320,6 +1336,27 @@ WebInspector._mouseMoved = function(event)
 WebInspector._pageHidden = function(event)
 {
     this._saveCookieForOpenTabs();
+};
+
+WebInspector._contextMenuRequested = function(event)
+{
+    let proposedContextMenu;
+
+    // This is setting is only defined in engineering builds.
+    let showDebugUI = WebInspector.showDebugUISetting && WebInspector.showDebugUISetting.value;
+    if (showDebugUI) {
+        proposedContextMenu = WebInspector.ContextMenu.createFromEvent(event);
+        proposedContextMenu.appendSeparator();
+        proposedContextMenu.appendItem(WebInspector.unlocalizedString("Reload Web Inspector"), () => {
+            window.location.reload();
+        });
+    } else {
+        const onlyExisting = true;
+        proposedContextMenu = WebInspector.ContextMenu.createFromEvent(event, onlyExisting);
+    }
+
+    if (proposedContextMenu)
+        proposedContextMenu.show();
 };
 
 WebInspector._undock = function(event)
@@ -1844,6 +1881,18 @@ WebInspector._decreaseZoom = function(event) {
     InspectorFrontendHost.setZoomFactor(currentZoom - 0.2);
     event.preventDefault();
 };
+
+WebInspector._resetZoom = function(event) {
+    InspectorFrontendHost.setZoomFactor(1);
+    event.preventDefault();
+};
+
+WebInspector._showTabAtIndex = function(i, event) {
+    if (i <= WebInspector.tabBar.tabBarItems.length)
+        WebInspector.tabBar.selectedTabBarItem = i - 1;
+
+    event.preventDefault();
+}
 
 WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, event, cursor, eventTarget)
 {

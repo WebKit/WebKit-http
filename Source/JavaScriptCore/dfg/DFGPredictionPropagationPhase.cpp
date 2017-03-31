@@ -219,6 +219,11 @@ private:
             break;
         }
 
+        case GetRestLength: {
+            changed |= setPrediction(SpecInt32);
+            break;
+        }
+
         case GetTypedArrayByteOffset:
         case GetArrayLength: {
             changed |= setPrediction(SpecInt32);
@@ -676,6 +681,7 @@ private:
         case ZombieHint:
         case ExitOK:
         case LoadVarargs:
+        case CopyRest:
             break;
             
         // This gets ignored because it only pretends to produce a value.

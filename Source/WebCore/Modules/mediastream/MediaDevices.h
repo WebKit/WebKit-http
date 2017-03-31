@@ -46,6 +46,7 @@ namespace WebCore {
 class Dictionary;
 class Document;
 class MediaStream;
+class MediaTrackSupportedConstraints;
 class NavigatorUserMediaError;
 
 typedef int ExceptionCode;
@@ -57,11 +58,12 @@ public:
 
     Document* document() const;
 
-    typedef DOMPromiseWithCallback<RefPtr<MediaStream>, RefPtr<NavigatorUserMediaError>> Promise;
-    typedef DOMPromiseWithCallback<MediaDeviceInfoVector, ExceptionCode> EnumerateDevicesPromise;
+    typedef DOMPromise<RefPtr<MediaStream>, RefPtr<NavigatorUserMediaError>> Promise;
+    typedef DOMPromise<MediaDeviceInfoVector, ExceptionCode> EnumerateDevicesPromise;
 
     void getUserMedia(const Dictionary&, Promise&&, ExceptionCode&) const;
     void enumerateDevices(EnumerateDevicesPromise&&, ExceptionCode&) const;
+    RefPtr<MediaTrackSupportedConstraints> getSupportedConstraints();
 
 private:
     explicit MediaDevices(ScriptExecutionContext*);

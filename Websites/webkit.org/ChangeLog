@@ -1,3 +1,189 @@
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Updated favicon.ico with the new logo.
+
+        * favicon.ico:
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Improved accessibility handling for the small drop-down menu.
+
+        * wp-content/themes/webkit/scripts/global.js:
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Fixed font rendering. Fixed SVG rendering for Firefox.
+
+        * wp-content/themes/webkit/images/icons.svg:
+        * wp-content/themes/webkit/images/inspector.svg:
+        * wp-content/themes/webkit/images/twitter.svg:
+        * wp-content/themes/webkit/style.css:
+        (code):
+        (a[name]):
+        (.screen-reader-text:focus):
+        (.page-width):
+        (.tile.category-web-inspector .background-image):
+        (.tile.category-performance .background-image):
+        (.tile.category-javascript .background-image):
+        (.tile.category-css .background-image):
+        (.tile.category-standards .background-image):
+        (.tile.category-contributing .background-image):
+        (.tile.category-storage .background-image):
+        (.tile.category-layout .background-image):
+        (.tile.tag-timeline .background-image):
+        (.tile.tag-console .background-image):
+        (.tile.tag-debugger .background-image):
+        (.tile.tag-shortcuts .background-image):
+        (.tile .background-image.loaded):
+        (body, input, textarea, select, button): Deleted.
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Removed escpaes to correctly pass query string arguments.
+
+        * .htaccess:
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Corrected rewrite rules to restore convenience paths.
+
+        * .htaccess:
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Fixed static reference PHP syntax for compatibility with the server environment.
+
+        * wp-content/plugins/table-of-contents.php:
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Fixed PHP syntax for compatibility with the server environment.
+
+        * wp-content/plugins/social-meta.php:
+        * wp-content/themes/webkit/functions.php:
+        * wp-content/themes/webkit/widgets/twitter.php:
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Updated webkit.org to use the new theme and WordPress deployment.
+
+        * .htaccess:
+        * blog/.htaccess:
+        * index.php: Added.
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Fixed data return format for tweets when updating cache.
+
+        * wp-content/themes/webkit/widgets/twitter.php:
+
+2015-12-01  Jonathan Davis  <jond@apple.com>
+
+        Theme update to tidy styles and add a theme screenshot.
+
+        * wp-content/themes/webkit/screenshot.png: Added.
+        * wp-content/themes/webkit/style.css:
+        (.featured-tile):
+        (.tile .background-image):
+
+2015-11-30  Jonathan Davis  <jond@apple.com>
+
+        Set max-height to prevent narrow images from upscaling.
+
+        * wp-content/themes/webkit/style.css:
+        (article figure > img):
+        (figure.widescreen):
+        (figure.widescreen figcaption):
+        (figure.widescreen img): Deleted.
+
+2015-11-30  Jonathan Davis  <jond@apple.com>
+
+        Added a new theme and plugins for a redesigned webkit.org.
+
+        Reviewed by Timothy Hatcher.
+
+        * apple-touch-icon-precomposed.png: Added.
+        * code-style.md: Added.
+        * commit-review.md: Added.
+        * favicon.png: Added.
+        * security-policy.md: Added.
+        * tabicon.svg: Added.
+        * wp-content: Added.
+        * wp-content/index.php: Added.
+        * wp-content/maintenance.php: Added.
+        * wp-content/plugins: Added.
+        * wp-content/plugins/analytics.php: Added.
+        * wp-content/plugins/hyperlight: Added.
+        * wp-content/plugins/hyperlight/hyperlight: Added.
+        * wp-content/plugins/hyperlight/hyperlight.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/hyperlight.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/apache.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/blocklist.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/code.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/cpp.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/csharp.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/css.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/diff.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/filetypes: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/html.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/ini.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/iphp.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/javascript.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/php.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/python.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/syntax.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/vb.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/languages/xml.php: Added.
+        * wp-content/plugins/hyperlight/hyperlight/preg_helper.php: Added.
+        * wp-content/plugins/index.php: Added.
+        * wp-content/plugins/social-meta.php: Added.
+        * wp-content/plugins/table-of-contents.php: Added.
+        * wp-content/plugins/visual-preview.php: Added.
+        * wp-content/themes: Added.
+        * wp-content/themes/index.php: Added.
+        * wp-content/themes/webkit: Added.
+        * wp-content/themes/webkit/404.php: Added.
+        * wp-content/themes/webkit/444.php: Added.
+        * wp-content/themes/webkit/footer.php: Added.
+        * wp-content/themes/webkit/front-header.php: Added.
+        * wp-content/themes/webkit/front-page.php: Added.
+        * wp-content/themes/webkit/functions.php: Added.
+        * wp-content/themes/webkit/header.php: Added.
+        * wp-content/themes/webkit/images: Added.
+        * wp-content/themes/webkit/images/download.svg: Added.
+        * wp-content/themes/webkit/images/icons.svg: Added.
+        * wp-content/themes/webkit/images/inspector.svg: Added.
+        * wp-content/themes/webkit/images/menu-down.svg: Added.
+        * wp-content/themes/webkit/images/squirrelfish-lives.svg: Added.
+        * wp-content/themes/webkit/images/twitter.svg: Added.
+        * wp-content/themes/webkit/images/webkit.svg: Added.
+        * wp-content/themes/webkit/includes.php: Added.
+        * wp-content/themes/webkit/index.php: Added.
+        * wp-content/themes/webkit/loop.php: Added.
+        * wp-content/themes/webkit/nightly.php: Added.
+        * wp-content/themes/webkit/page.php: Added.
+        * wp-content/themes/webkit/scripts: Added.
+        * wp-content/themes/webkit/scripts/global.js: Added.
+        * wp-content/themes/webkit/single.php: Added.
+        * wp-content/themes/webkit/sitemap.php: Added.
+        * wp-content/themes/webkit/status.php: Added.
+        * wp-content/themes/webkit/style.css: Added.
+        * wp-content/themes/webkit/team.php: Added.
+        * wp-content/themes/webkit/widgets: Added.
+        * wp-content/themes/webkit/widgets/icon.php: Added.
+        * wp-content/themes/webkit/widgets/page.php: Added.
+        * wp-content/themes/webkit/widgets/post.php: Added.
+        * wp-content/themes/webkit/widgets/twitter.php: Added.
+
+2015-11-18  Jonathan Davis  <jond@apple.com>
+
+        Adding a maintenance file for the old WordPress blog.
+
+        Reviewed by Timothy Hatcher.
+
+        * blog/wp-content/maintenance.php: Added.
+
 2015-10-26  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add images needed for shadow DOM blog post

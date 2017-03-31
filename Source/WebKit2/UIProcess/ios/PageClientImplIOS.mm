@@ -681,7 +681,7 @@ void PageClientImpl::didFinishDrawingPagesToPDF(const IPC::DataReference& pdfDat
 
 Vector<String> PageClientImpl::mimeTypesWithCustomContentProviders()
 {
-    return m_webView.configuration._contentProviderRegistry._mimeTypesWithCustomContentProviders;
+    return m_webView._contentProviderRegistry._mimeTypesWithCustomContentProviders;
 }
 
 void PageClientImpl::navigationGestureDidBegin()
@@ -750,6 +750,10 @@ void PageClientImpl::derefView()
 {
     [m_contentView release];
     [m_webView release];
+}
+
+void PageClientImpl::didRestoreScrollPosition()
+{
 }
 
 } // namespace WebKit

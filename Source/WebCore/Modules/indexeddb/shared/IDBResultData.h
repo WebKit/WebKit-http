@@ -45,6 +45,7 @@ enum class IDBResultType {
     Error,
     OpenDatabaseSuccess,
     OpenDatabaseUpgradeNeeded,
+    DeleteDatabaseSuccess,
     CreateObjectStoreSuccess,
     DeleteObjectStoreSuccess,
     ClearObjectStoreSuccess,
@@ -53,6 +54,7 @@ enum class IDBResultType {
     GetCountSuccess,
     DeleteRecordSuccess,
     CreateIndexSuccess,
+    DeleteIndexSuccess,
     OpenCursorSuccess,
     IterateCursorSuccess,
 };
@@ -67,10 +69,12 @@ public:
     static IDBResultData error(const IDBResourceIdentifier&, const IDBError&);
     static IDBResultData openDatabaseSuccess(const IDBResourceIdentifier&, IDBServer::UniqueIDBDatabaseConnection&);
     static IDBResultData openDatabaseUpgradeNeeded(const IDBResourceIdentifier&, IDBServer::UniqueIDBDatabaseTransaction&);
+    static IDBResultData deleteDatabaseSuccess(const IDBResourceIdentifier&, const IDBDatabaseInfo&);
     static IDBResultData createObjectStoreSuccess(const IDBResourceIdentifier&);
     static IDBResultData deleteObjectStoreSuccess(const IDBResourceIdentifier&);
     static IDBResultData clearObjectStoreSuccess(const IDBResourceIdentifier&);
     static IDBResultData createIndexSuccess(const IDBResourceIdentifier&);
+    static IDBResultData deleteIndexSuccess(const IDBResourceIdentifier&);
     static IDBResultData putOrAddSuccess(const IDBResourceIdentifier&, const IDBKeyData&);
     static IDBResultData getRecordSuccess(const IDBResourceIdentifier&, const IDBGetResult&);
     static IDBResultData getCountSuccess(const IDBResourceIdentifier&, uint64_t count);

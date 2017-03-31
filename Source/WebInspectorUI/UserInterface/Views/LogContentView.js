@@ -126,7 +126,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
     {
         console.assert(messageView instanceof WebInspector.ConsoleMessageView || messageView instanceof WebInspector.ConsoleCommandView);
 
-        WebInspector.quickConsole.updateLayout();
+        WebInspector.quickConsole.needsLayout();
 
         // Nest the message.
         var type = messageView instanceof WebInspector.ConsoleCommandView ? null : messageView.message.type;
@@ -164,11 +164,6 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             WebInspector.showSplitConsole();
 
         this._logViewController.scrollToBottom();
-    }
-
-    promptDidChangeHeight()
-    {
-        WebInspector.quickConsole.updateLayout();
     }
 
     get supportsSearch()
@@ -357,15 +352,12 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
         if (event.target.enclosingNodeOrSelfWithNodeName("a"))
             return;
 
-        var contextMenu = new WebInspector.ContextMenu(event);
+        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
         contextMenu.appendItem(WebInspector.UIString("Clear Log"), this._clearLog.bind(this));
         contextMenu.appendSeparator();
 
-        var clearLogOnReloadUIString = WebInspector.logManager.clearLogOnNavigateSetting.value ? WebInspector.UIString("Keep Log on Navigation") : WebInspector.UIString("Clear Log on Navigation");
-
+        let clearLogOnReloadUIString = WebInspector.logManager.clearLogOnNavigateSetting.value ? WebInspector.UIString("Keep Log on Navigation") : WebInspector.UIString("Clear Log on Navigation");
         contextMenu.appendItem(clearLogOnReloadUIString, this._toggleClearLogOnNavigateSetting.bind(this));
-
-        contextMenu.show();
     }
 
     _mousedown(event)

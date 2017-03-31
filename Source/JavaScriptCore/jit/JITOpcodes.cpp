@@ -967,7 +967,7 @@ void JIT::emit_op_new_regexp(Instruction* currentInstruction)
     callOperation(operationNewRegexp, currentInstruction[1].u.operand, m_codeBlock->regexp(currentInstruction[2].u.operand));
 }
 
-void JIT::emit_op_new_func(Instruction* currentInstruction)
+void JIT::emitNewFuncCommon(Instruction* currentInstruction)
 {
     Jump lazyJump;
     int dst = currentInstruction[1].u.operand;
@@ -978,14 +978,26 @@ void JIT::emit_op_new_func(Instruction* currentInstruction)
     emitLoadPayload(currentInstruction[2].u.operand, regT0);
 #endif
     FunctionExecutable* funcExec = m_codeBlock->functionDecl(currentInstruction[3].u.operand);
-    callOperation(operationNewFunction, dst, regT0, funcExec);
+
+    OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
+    if (opcodeID == op_new_func)
+        callOperation(operationNewFunction, dst, regT0, funcExec);
+    else {
+        ASSERT(opcodeID == op_new_generator_func);
+        callOperation(operationNewGeneratorFunction, dst, regT0, funcExec);
+    }
 }
 
-void JIT::emit_op_new_func_exp(Instruction* currentInstruction)
+void JIT::emit_op_new_func(Instruction* currentInstruction)
 {
-    emitNewFuncExprCommon(currentInstruction);
+    emitNewFuncCommon(currentInstruction);
 }
-    
+
+void JIT::emit_op_new_generator_func(Instruction* currentInstruction)
+{
+    emitNewFuncCommon(currentInstruction);
+}
+
 void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
 {
     OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
@@ -1018,11 +1030,27 @@ void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
 #else 
         callOperation(operationNewArrowFunction, dst, regT0, function, regT3, regT2);
 #endif
-    else
-        callOperation(operationNewFunction, dst, regT0, function);
+    else {
+        if (opcodeID == op_new_func_exp)
+            callOperation(operationNewFunction, dst, regT0, function);
+        else {
+            ASSERT(opcodeID == op_new_generator_func_exp);
+            callOperation(operationNewGeneratorFunction, dst, regT0, function);
+        }
+    }
     done.link(this);
 }
-    
+
+void JIT::emit_op_new_func_exp(Instruction* currentInstruction)
+{
+    emitNewFuncExprCommon(currentInstruction);
+}
+
+void JIT::emit_op_new_generator_func_exp(Instruction* currentInstruction)
+{
+    emitNewFuncExprCommon(currentInstruction);
+}
+
 void JIT::emit_op_new_arrow_func_exp(Instruction* currentInstruction)
 {
     emitNewFuncExprCommon(currentInstruction);
@@ -1396,6 +1424,53 @@ void JIT::emit_op_create_scoped_arguments(Instruction* currentInstruction)
 void JIT::emit_op_create_out_of_band_arguments(Instruction* currentInstruction)
 {
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_create_out_of_band_arguments);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_copy_rest(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_copy_rest);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_get_rest_length(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    unsigned numParamsToSkip = currentInstruction[2].u.unsignedValue;
+    load32(payloadFor(JSStack::ArgumentCount), regT0);
+    sub32(TrustedImm32(1), regT0);
+    Jump zeroLength = branch32(LessThanOrEqual, regT0, Imm32(numParamsToSkip));
+    sub32(Imm32(numParamsToSkip), regT0);
+#if USE(JSVALUE64)
+    boxInt32(regT0, JSValueRegs(regT0));
+#endif
+    Jump done = jump();
+
+    zeroLength.link(this);
+#if USE(JSVALUE64)
+    move(TrustedImm64(JSValue::encode(jsNumber(0))), regT0);
+#else
+    move(TrustedImm32(0), regT0);
+#endif
+
+    done.link(this);
+#if USE(JSVALUE64)
+    emitPutVirtualRegister(dst, regT0);
+#else
+    move(TrustedImm32(JSValue::Int32Tag), regT1);
+    emitPutVirtualRegister(dst, JSValueRegs(regT1, regT0));
+#endif
+}
+
+void JIT::emit_op_save(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_save);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_resume(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_resume);
     slowPathCall.call();
 }
 

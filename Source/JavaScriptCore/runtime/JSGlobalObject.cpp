@@ -50,6 +50,9 @@
 #include "ErrorPrototype.h"
 #include "FunctionConstructor.h"
 #include "FunctionPrototype.h"
+#include "GeneratorFunctionConstructor.h"
+#include "GeneratorFunctionPrototype.h"
+#include "GeneratorPrototype.h"
 #include "GetterSetter.h"
 #include "HeapIterationScope.h"
 #include "InspectorInstrumentationObject.h"
@@ -72,6 +75,7 @@
 #include "JSDollarVM.h"
 #include "JSDollarVMPrototype.h"
 #include "JSFunction.h"
+#include "JSGeneratorFunction.h"
 #include "JSGenericTypedArrayViewConstructorInlines.h"
 #include "JSGenericTypedArrayViewInlines.h"
 #include "JSGenericTypedArrayViewPrototypeInlines.h"
@@ -286,8 +290,8 @@ void JSGlobalObject::init(VM& vm)
     m_callFunction.set(vm, this, callFunction);
     m_applyFunction.set(vm, this, applyFunction);
     m_arrayProtoValuesFunction.set(vm, this, JSFunction::create(vm, this, 0, vm.propertyNames->values.string(), arrayProtoFuncValues));
-    m_initializePromiseFunction.set(vm, this, JSFunction::createBuiltinFunction(vm, operationsPromiseInitializePromiseCodeGenerator(vm), this));
-    m_newPromiseCapabilityFunction.set(vm, this, JSFunction::createBuiltinFunction(vm, operationsPromiseNewPromiseCapabilityCodeGenerator(vm), this));
+    m_initializePromiseFunction.set(vm, this, JSFunction::createBuiltinFunction(vm, promiseOperationsInitializePromiseCodeGenerator(vm), this));
+    m_newPromiseCapabilityFunction.set(vm, this, JSFunction::createBuiltinFunction(vm, promiseOperationsNewPromiseCapabilityCodeGenerator(vm), this));
     m_nullGetterFunction.set(vm, this, NullGetterFunction::create(vm, NullGetterFunction::createStructure(vm, this, m_functionPrototype.get())));
     m_nullSetterFunction.set(vm, this, NullSetterFunction::create(vm, NullSetterFunction::createStructure(vm, this, m_functionPrototype.get())));
     m_objectPrototype.set(vm, this, ObjectPrototype::create(vm, this, ObjectPrototype::createStructure(vm, this, jsNull())));
@@ -384,6 +388,7 @@ m_ ## properName ## Structure.set(vm, this, instanceType::createStructure(vm, th
     
     FOR_EACH_BUILTIN_DERIVED_ITERATOR_TYPE(CREATE_PROTOTYPE_FOR_DERIVED_ITERATOR_TYPE)
     m_propertyNameIteratorStructure.set(vm, this, JSPropertyNameIterator::createStructure(vm, this, m_iteratorPrototype.get()));
+    m_generatorPrototype.set(vm, this, GeneratorPrototype::create(vm, this, GeneratorPrototype::createStructure(vm, this, m_iteratorPrototype.get())));
     
 #undef CREATE_PROTOTYPE_FOR_DERIVED_ITERATOR_TYPE
 
@@ -420,6 +425,14 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     m_syntaxErrorConstructor.set(vm, this, NativeErrorConstructor::create(vm, this, nativeErrorStructure, nativeErrorPrototypeStructure, ASCIILiteral("SyntaxError")));
     m_typeErrorConstructor.set(vm, this, NativeErrorConstructor::create(vm, this, nativeErrorStructure, nativeErrorPrototypeStructure, ASCIILiteral("TypeError")));
     m_URIErrorConstructor.set(vm, this, NativeErrorConstructor::create(vm, this, nativeErrorStructure, nativeErrorPrototypeStructure, ASCIILiteral("URIError")));
+
+    m_generatorFunctionPrototype.set(vm, this, GeneratorFunctionPrototype::create(vm, GeneratorFunctionPrototype::createStructure(vm, this, m_functionPrototype.get())));
+    GeneratorFunctionConstructor* generatorFunctionConstructor = GeneratorFunctionConstructor::create(vm, GeneratorFunctionConstructor::createStructure(vm, this, functionConstructor), m_generatorFunctionPrototype.get());
+    m_generatorFunctionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, generatorFunctionConstructor, DontEnum);
+    m_generatorFunctionStructure.set(vm, this, JSGeneratorFunction::createStructure(vm, this, m_generatorFunctionPrototype.get()));
+
+    m_generatorPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_generatorFunctionPrototype.get(), DontEnum);
+    m_generatorFunctionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->prototype, m_generatorPrototype.get(), DontEnum);
     
     m_objectPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, objectConstructor, DontEnum);
     m_functionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, functionConstructor, DontEnum);
@@ -500,6 +513,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     JSFunction* privateFuncAbs = JSFunction::create(vm, this, 0, String(), mathProtoFuncAbs, AbsIntrinsic);
     JSFunction* privateFuncFloor = JSFunction::create(vm, this, 0, String(), mathProtoFuncFloor, FloorIntrinsic);
     JSFunction* privateFuncIsFinite = JSFunction::create(vm, this, 0, String(), globalFuncIsFinite);
+    JSFunction* privateFuncIsNaN = JSFunction::create(vm, this, 0, String(), globalFuncIsNaN);
 
     JSFunction* privateFuncGetTemplateObject = JSFunction::create(vm, this, 0, String(), getTemplateObject);
     JSFunction* privateFuncToLength = JSFunction::createBuiltinFunction(vm, globalObjectToLengthCodeGenerator(vm), this);
@@ -527,6 +541,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->absPrivateName, privateFuncAbs, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->floorPrivateName, privateFuncFloor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->isFinitePrivateName, privateFuncIsFinite, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->isNaNPrivateName, privateFuncIsNaN, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->arrayIterationKindKeyPrivateName, jsNumber(ArrayIterateKey), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->arrayIterationKindValuePrivateName, jsNumber(ArrayIterateValue), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->arrayIterationKindKeyValuePrivateName, jsNumber(ArrayIterateKeyValue), DontEnum | DontDelete | ReadOnly),
@@ -540,17 +555,18 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->builtinNames().toIntegerPrivateName(), privateFuncToInteger, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().isObjectPrivateName(), JSFunction::createBuiltinFunction(vm, globalObjectIsObjectCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().isDictionaryPrivateName(), JSFunction::createBuiltinFunction(vm, globalObjectIsDictionaryCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().isPromisePrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromiseIsPromiseCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().newPromiseReactionPrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromiseNewPromiseReactionCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().isPromisePrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsIsPromiseCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().newPromiseReactionPrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsNewPromiseReactionCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().newPromiseCapabilityPrivateName(), m_newPromiseCapabilityFunction.get(), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().triggerPromiseReactionsPrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromiseTriggerPromiseReactionsCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().rejectPromisePrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromiseRejectPromiseCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().fulfillPromisePrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromiseFulfillPromiseCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().createResolvingFunctionsPrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromiseCreateResolvingFunctionsCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseReactionJobPrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromisePromiseReactionJobCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseResolveThenableJobPrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromisePromiseResolveThenableJobCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().triggerPromiseReactionsPrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsTriggerPromiseReactionsCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().rejectPromisePrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsRejectPromiseCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().fulfillPromisePrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsFulfillPromiseCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().createResolvingFunctionsPrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsCreateResolvingFunctionsCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseReactionJobPrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsPromiseReactionJobCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseResolveThenableJobPrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsPromiseResolveThenableJobCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().InspectorInstrumentationPrivateName(), InspectorInstrumentationObject::create(vm, this, InspectorInstrumentationObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->MapPrivateName, mapConstructor, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().generatorResumePrivateName(), JSFunction::createBuiltinFunction(vm, generatorPrototypeGeneratorResumeCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
     };
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
     
@@ -818,6 +834,8 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_arrayPrototype);
     visitor.append(&thisObject->m_errorPrototype);
     visitor.append(&thisObject->m_iteratorPrototype);
+    visitor.append(&thisObject->m_generatorFunctionPrototype);
+    visitor.append(&thisObject->m_generatorPrototype);
 
     visitor.append(&thisObject->m_debuggerScopeStructure);
     visitor.append(&thisObject->m_withScopeStructure);
@@ -850,6 +868,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_namedFunctionStructure);
     visitor.append(&thisObject->m_symbolObjectStructure);
     visitor.append(&thisObject->m_regExpStructure);
+    visitor.append(&thisObject->m_generatorFunctionStructure);
     visitor.append(&thisObject->m_regExpMatchesArrayStructure);
     visitor.append(&thisObject->m_moduleRecordStructure);
     visitor.append(&thisObject->m_moduleNamespaceObjectStructure);
@@ -1014,10 +1033,10 @@ void JSGlobalObject::setInputCursor(PassRefPtr<InputCursor> prpCursor)
     // Save or set the random seed. This performed here rather than the constructor
     // to avoid threading the input cursor through all the abstraction layers.
     if (cursor.isCapturing())
-        cursor.appendInput<SetRandomSeed>(m_weakRandom.seedUnsafe());
+        cursor.appendInput<SetRandomSeed>(m_weakRandom.seed());
     else if (cursor.isReplaying()) {
         if (SetRandomSeed* input = cursor.fetchInput<SetRandomSeed>())
-            m_weakRandom.initializeSeed(static_cast<unsigned>(input->randomSeed()));
+            m_weakRandom.setSeed(static_cast<unsigned>(input->randomSeed()));
     }
 }
 #endif

@@ -105,7 +105,6 @@ my %baseTypeHash = ("Object" => 1, "Node" => 1, "NodeList" => 1, "NamedNodeMap" 
 
 # Constants
 my $shouldUseCGColor = defined $ENV{PLATFORM_NAME} && $ENV{PLATFORM_NAME} ne "macosx";
-my $nullableInit = "bool isNull = false;";
 my $exceptionInit = "WebCore::ExceptionCode ec = 0;";
 my $jsContextSetter = "WebCore::JSMainThreadNullState state;";
 my $exceptionRaiseOnError = "WebCore::raiseOnDOMError(ec);";
@@ -1298,7 +1297,7 @@ sub GenerateImplementation
             if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
                 my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
                 $implIncludes{"${implementedBy}.h"} = 1;
-                $getterContentHead = "${implementedBy}::${getterExpressionPrefix}IMPL";
+                $getterContentHead = "WebCore::${implementedBy}::${getterExpressionPrefix}IMPL";
             } else {
                 $getterContentHead = "IMPL->$getterExpressionPrefix";
             }
@@ -1360,14 +1359,14 @@ sub GenerateImplementation
                 $getterContentTail .= "))";
             }
 
+            # It would be easy to add nullable support here if we ever need it, but we probably never
+            # will since we are unlikely to add Objective-C bindings that require it in the future.
+            # In particular, we'd have to decide what return type to use for "number or null".
+
             my $getterContent;
-            if ($hasGetterException || $attribute->signature->isNullable) {
+            if ($hasGetterException) {
                 $getterContent = $getterContentHead;
                 my $getterWithoutAttributes = $getterContentHead =~ /\($|, $/ ? "ec" : ", ec";
-                if ($attribute->signature->isNullable) {
-                    $getterContent .= $getterWithoutAttributes ? "isNull" : ", isNull";
-                    $getterWithoutAttributes = 0;
-                }
                 if ($hasGetterException) {
                     $getterContent .= $getterWithoutAttributes ? "ec" : ", ec";
                 }
@@ -1382,11 +1381,6 @@ sub GenerateImplementation
             push(@implContent, "{\n");
             push(@implContent, "    $jsContextSetter\n");
             push(@implContent, @customGetterContent);
-
-            # FIXME: Should we return a default value when isNull == true?
-            if ($attribute->signature->isNullable) {
-                push(@implContents, "    $nullableInit\n");
-            }
 
             if ($hasGetterException) {
                 # Differentiated between when the return type is a pointer and
@@ -1444,7 +1438,7 @@ sub GenerateImplementation
                     my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
                     $implIncludes{"${implementedBy}.h"} = 1;
                     unshift(@arguments, "IMPL");
-                    $functionName = "${implementedBy}::${functionName}";
+                    $functionName = "WebCore::${implementedBy}::${functionName}";
                 } else {
                     $functionName = "IMPL->${functionName}";
                 }
@@ -1572,7 +1566,7 @@ sub GenerateImplementation
                 my $implementedBy = $function->signature->extendedAttributes->{"ImplementedBy"};
                 $implIncludes{"${implementedBy}.h"} = 1;
                 unshift(@parameterNames, $caller);
-                $content = "${implementedBy}::" . $codeGenerator->WK_lcfirst($functionName) . "(" . join(", ", @parameterNames) . ")";
+                $content = "WebCore::${implementedBy}::" . $codeGenerator->WK_lcfirst($functionName) . "(" . join(", ", @parameterNames) . ")";
             } else {
                 my $functionImplementationName = $function->signature->extendedAttributes->{"ImplementedAs"} || $codeGenerator->WK_lcfirst($functionName);
                 $content = "$caller->" . $functionImplementationName . "(" . join(", ", @parameterNames) . ")";

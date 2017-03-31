@@ -797,7 +797,11 @@ void ContextMenuController::populate()
     ContextMenuItem SelectAllItem(ActionType, ContextMenuItemTagSelectAll, contextMenuItemTagSelectAll());
 #endif
 
+#if PLATFORM(GTK) || PLATFORM(EFL)
+    ContextMenuItem ShareMenuItem;
+#else
     ContextMenuItem ShareMenuItem(SubmenuType, ContextMenuItemTagShareMenu, emptyString());
+#endif
 
     Node* node = m_context.hitTestResult().innerNonSharedNode();
     if (!node)
@@ -893,7 +897,7 @@ void ContextMenuController::populate()
                 appendItem(SpeechMenuItem, m_contextMenu.get());
 #endif                
             } else {
-                if (!(frame->page() && (frame->page()->inspectorController().hasInspectorFrontendClient() || frame->page()->inspectorController().hasRemoteFrontend()))) {
+                if (!(frame->page() && (frame->page()->inspectorController().inspectionLevel() > 0 || frame->page()->inspectorController().hasRemoteFrontend()))) {
 
                 // In GTK+ unavailable items are not hidden but insensitive.
 #if PLATFORM(GTK)
@@ -920,10 +924,12 @@ void ContextMenuController::populate()
                 if (frame->page() && !frame->isMainFrame())
                     appendItem(OpenFrameItem, m_contextMenu.get());
 
-                appendItem(*separatorItem(), m_contextMenu.get());
-                appendItem(ShareMenuItem, m_contextMenu.get());
+                if (!ShareMenuItem.isNull()) {
+                    appendItem(*separatorItem(), m_contextMenu.get());
+                    appendItem(ShareMenuItem, m_contextMenu.get());
+                }
             }
-        } else {
+        } else if (!ShareMenuItem.isNull()) {
             appendItem(*separatorItem(), m_contextMenu.get());
             appendItem(ShareMenuItem, m_contextMenu.get());
         }

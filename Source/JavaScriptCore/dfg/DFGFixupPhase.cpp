@@ -1368,6 +1368,12 @@ private:
             break;
         }
 
+        case CopyRest: {
+            fixEdge<KnownCellUse>(node->child1());
+            fixEdge<KnownInt32Use>(node->child2());
+            break;
+        }
+
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
@@ -1376,6 +1382,7 @@ private:
         case GetLocal:
         case GetCallee:
         case GetArgumentCount:
+        case GetRestLength:
         case Flush:
         case PhantomLocal:
         case GetLocalUnlinked:

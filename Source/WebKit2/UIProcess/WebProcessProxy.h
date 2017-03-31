@@ -58,7 +58,6 @@ struct PluginInfo;
 
 namespace WebKit {
 
-class DownloadProxyMap;
 class NetworkProcessProxy;
 class WebBackForwardListItem;
 class WebPageGroup;
@@ -120,8 +119,6 @@ public:
 
     static bool fullKeyboardAccessEnabled();
 
-    DownloadProxy* createDownloadProxy(const WebCore::ResourceRequest&);
-
     void didSaveToPageCache();
     void releasePageCache();
 
@@ -152,9 +149,10 @@ public:
 
     ProcessThrottler& throttler() { return m_throttler; }
 
-#if ENABLE(NETWORK_PROCESS)
     void reinstateNetworkProcessAssertionState(NetworkProcessProxy&);
-#endif
+
+    void sendMainThreadPing();
+    void didReceiveMainThreadPing();
 
 private:
     explicit WebProcessProxy(WebProcessPool&);
@@ -186,9 +184,7 @@ private:
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>);
 #endif
-#if ENABLE(NETWORK_PROCESS)
     void getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>);
-#endif
 #if ENABLE(DATABASE_PROCESS)
     void getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>);
 #endif
@@ -243,7 +239,6 @@ private:
     HashSet<VisitedLinkStore*> m_visitedLinkStores;
     HashSet<WebUserContentControllerProxy*> m_webUserContentControllerProxies;
 
-    std::unique_ptr<DownloadProxyMap> m_downloadProxyMap;
     CustomProtocolManagerProxy m_customProtocolManagerProxy;
 
     HashMap<uint64_t, std::function<void (WebsiteData)>> m_pendingFetchWebsiteDataCallbacks;
@@ -253,7 +248,7 @@ private:
     int m_numberOfTimesSuddenTerminationWasDisabled;
     ProcessThrottler m_throttler;
     ProcessThrottler::BackgroundActivityToken m_tokenForHoldingLockedFiles;
-#if PLATFORM(IOS) && ENABLE(NETWORK_PROCESS)
+#if PLATFORM(IOS)
     ProcessThrottler::ForegroundActivityToken m_foregroundTokenForNetworkProcess;
     ProcessThrottler::BackgroundActivityToken m_backgroundTokenForNetworkProcess;
 #endif

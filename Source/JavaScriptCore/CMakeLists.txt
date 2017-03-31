@@ -79,9 +79,12 @@ set(JavaScriptCore_SOURCES
     b3/air/AirHandleCalleeSaves.cpp
     b3/air/AirInsertionSet.cpp
     b3/air/AirInst.cpp
+    b3/air/AirIteratedRegisterCoalescing.cpp
+    b3/air/AirOptimizeBlockOrder.cpp
     b3/air/AirPhaseScope.cpp
     b3/air/AirRegisterPriority.cpp
     b3/air/AirReportUsedRegisters.cpp
+    b3/air/AirSimplifyCFG.cpp
     b3/air/AirSpecial.cpp
     b3/air/AirSpillEverything.cpp
     b3/air/AirStackSlot.cpp
@@ -90,27 +93,35 @@ set(JavaScriptCore_SOURCES
 
     b3/B3ArgumentRegValue.cpp
     b3/B3BasicBlock.cpp
+    b3/B3BlockInsertionSet.cpp
+    b3/B3CCallValue.cpp
     b3/B3CheckSpecial.cpp
     b3/B3CheckValue.cpp
-    b3/B3ConstrainedValue.cpp
     b3/B3Common.cpp
     b3/B3Commutativity.cpp
+    b3/B3Compilation.cpp
     b3/B3Const32Value.cpp
     b3/B3Const64Value.cpp
     b3/B3ConstDoubleValue.cpp
+    b3/B3ConstrainedValue.cpp
     b3/B3ControlValue.cpp
+    b3/B3DataSection.cpp
     b3/B3Effects.cpp
     b3/B3FrequencyClass.cpp
     b3/B3Generate.cpp
     b3/B3HeapRange.cpp
     b3/B3InsertionSet.cpp
+    b3/B3LowerMacros.cpp
     b3/B3LowerToAir.cpp
     b3/B3MemoryValue.cpp
+    b3/B3MoveConstants.cpp
+    b3/B3OpaqueByproducts.cpp
     b3/B3Opcode.cpp
     b3/B3Origin.cpp
     b3/B3PatchpointSpecial.cpp
     b3/B3PatchpointValue.cpp
     b3/B3PhaseScope.cpp
+    b3/B3PhiChildren.cpp
     b3/B3Procedure.cpp
     b3/B3ReduceStrength.cpp
     b3/B3StackmapSpecial.cpp
@@ -125,6 +136,7 @@ set(JavaScriptCore_SOURCES
     b3/B3UseCounts.cpp
     b3/B3Validate.cpp
     b3/B3Value.cpp
+    b3/B3ValueKey.cpp
     b3/B3ValueRep.cpp
 
     bindings/ScriptFunctionCall.cpp
@@ -443,8 +455,10 @@ set(JavaScriptCore_SOURCES
     jit/JITCall32_64.cpp
     jit/JITCode.cpp
     jit/JITDisassembler.cpp
+    jit/JITDivGenerator.cpp
     jit/JITExceptions.cpp
     jit/JITInlineCacheGenerator.cpp
+    jit/JITMulGenerator.cpp
     jit/JITOpcodes.cpp
     jit/JITOpcodes32_64.cpp
     jit/JITOperations.cpp
@@ -562,6 +576,10 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/FunctionHasExecutedCache.cpp
     runtime/FunctionPrototype.cpp
     runtime/FunctionRareData.cpp
+    runtime/GeneratorFrame.cpp
+    runtime/GeneratorFunctionConstructor.cpp
+    runtime/GeneratorFunctionPrototype.cpp
+    runtime/GeneratorPrototype.cpp
     runtime/GetterSetter.cpp
     runtime/Identifier.cpp
     runtime/IndexingType.cpp
@@ -601,6 +619,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSDateMath.cpp
     runtime/JSEnvironmentRecord.cpp
     runtime/JSFunction.cpp
+    runtime/JSGeneratorFunction.cpp
     runtime/JSGlobalLexicalEnvironment.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectDebuggable.cpp
@@ -736,6 +755,7 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/DateConstructor.cpp
     runtime/DatePrototype.cpp
     runtime/ErrorPrototype.cpp
+    runtime/GeneratorPrototype.cpp
     runtime/InspectorInstrumentationObject.cpp
     runtime/IntlCollatorConstructor.cpp
     runtime/IntlCollatorPrototype.cpp
@@ -983,6 +1003,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLCapabilities.cpp
         ftl/FTLCommonValues.cpp
         ftl/FTLCompile.cpp
+        ftl/FTLCompileBinaryOp.cpp
         ftl/FTLDWARFDebugLineInfo.cpp
         ftl/FTLDWARFRegister.cpp
         ftl/FTLDataSection.cpp
@@ -1191,23 +1212,24 @@ set(BUILTINS_GENERATOR_SCRIPTS
 
 set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayConstructor.js
-    ${JAVASCRIPTCORE_DIR}/builtins/ArrayIterator.prototype.js
-    ${JAVASCRIPTCORE_DIR}/builtins/Array.prototype.js
-    ${JAVASCRIPTCORE_DIR}/builtins/Function.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ArrayIteratorPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ArrayPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/FunctionPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/GeneratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/GlobalObject.js
     ${JAVASCRIPTCORE_DIR}/builtins/InspectorInstrumentationObject.js
     ${JAVASCRIPTCORE_DIR}/builtins/InternalPromiseConstructor.js
-    ${JAVASCRIPTCORE_DIR}/builtins/Iterator.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/IteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ModuleLoaderObject.js
     ${JAVASCRIPTCORE_DIR}/builtins/ObjectConstructor.js
-    ${JAVASCRIPTCORE_DIR}/builtins/Operations.Promise.js
     ${JAVASCRIPTCORE_DIR}/builtins/PromiseConstructor.js
-    ${JAVASCRIPTCORE_DIR}/builtins/Promise.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/PromiseOperations.js
+    ${JAVASCRIPTCORE_DIR}/builtins/PromisePrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ReflectObject.js
     ${JAVASCRIPTCORE_DIR}/builtins/StringConstructor.js
-    ${JAVASCRIPTCORE_DIR}/builtins/StringIterator.prototype.js
-    ${JAVASCRIPTCORE_DIR}/builtins/TypedArray.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/StringIteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayPrototype.js
 )
 
 add_custom_command(

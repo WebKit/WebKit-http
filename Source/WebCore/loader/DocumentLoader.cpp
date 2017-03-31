@@ -144,9 +144,6 @@ DocumentLoader::DocumentLoader(const ResourceRequest& req, const SubstituteData&
     , m_dataLoadTimer(*this, &DocumentLoader::handleSubstituteDataLoadNow)
     , m_subresourceLoadersArePageCacheAcceptable(false)
     , m_applicationCacheHost(std::make_unique<ApplicationCacheHost>(*this))
-#if ENABLE(CONTENT_FILTERING)
-    , m_contentFilter(!substituteData.isValid() ? ContentFilter::createIfEnabled(*this) : nullptr)
-#endif
 {
 }
 
@@ -728,11 +725,15 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
         // Download may use this knowledge for purposes unrelated to cookies, notably for setting file quarantine data.
         frameLoader()->setOriginalURLForDownloadRequest(m_request);
 
+        SessionID sessionID = SessionID::defaultSessionID();
+        if (frame() && frame()->page())
+            sessionID = frame()->page()->sessionID();
+
         if (m_request.url().protocolIsData()) {
             // We decode data URL internally, there is no resource load to convert.
             frameLoader()->client().startDownload(m_request);
         } else
-            frameLoader()->client().convertMainResourceLoadToDownload(this, m_request, m_response);
+            frameLoader()->client().convertMainResourceLoadToDownload(this, sessionID, m_request, m_response);
 
         // It might have gone missing
         if (mainResourceLoader())
@@ -744,9 +745,6 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
             InspectorInstrumentation::continueWithPolicyIgnore(m_frame, *this, mainResourceLoader->identifier(), m_response);
         stopLoadingForPolicyChange();
         return;
-    
-    default:
-        ASSERT_NOT_REACHED();
     }
 
     if (m_response.isHTTP()) {
@@ -962,7 +960,8 @@ void DocumentLoader::detachFromFrame()
     if (m_mainResource && m_mainResource->hasClient(this))
         m_mainResource->removeClient(this);
 #if ENABLE(CONTENT_FILTERING)
-    m_contentFilter = nullptr;
+    if (m_contentFilter)
+        m_contentFilter->stopFilteringMainResource();
 #endif
 
     m_applicationCacheHost->setDOMApplicationCache(nullptr);
@@ -1418,6 +1417,10 @@ void DocumentLoader::startLoadingMainResource()
     if (maybeLoadEmpty())
         return;
 
+#if ENABLE(CONTENT_FILTERING)
+    m_contentFilter = !m_originalSubstituteDataWasValid ? ContentFilter::createIfEnabled(*this) : nullptr;
+#endif
+
     // FIXME: Is there any way the extra fields could have not been added by now?
     // If not, it would be great to remove this line of code.
     // Note that currently, some requests may have incorrect extra fields even if this function has been called,
@@ -1523,7 +1526,8 @@ void DocumentLoader::clearMainResource()
     if (m_mainResource && m_mainResource->hasClient(this))
         m_mainResource->removeClient(this);
 #if ENABLE(CONTENT_FILTERING)
-    m_contentFilter = nullptr;
+    if (m_contentFilter)
+        m_contentFilter->stopFilteringMainResource();
 #endif
 
     m_mainResource = nullptr;

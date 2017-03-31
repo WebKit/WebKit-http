@@ -778,9 +778,6 @@ class Port(object):
             self._results_directory = self._filesystem.abspath(option_val)
         return self._results_directory
 
-    def abs_results_directory(self):
-        return self.results_directory()
-
     def perf_results_directory(self):
         return self._build_path()
 
@@ -907,19 +904,14 @@ class Port(object):
         Ports can stub this out if they don't need a websocket server to be running."""
         assert not self._websocket_server, 'Already running a websocket server.'
 
-        work_directory = self.results_directory()
-        if self.host.platform.is_cygwin():
-            # Cygwin socket server needs a UNIX path.
-            work_directory = self.abs_results_directory()
-
-        server = websocket_server.PyWebSocket(self, work_directory)
+        server = websocket_server.PyWebSocket(self, self.results_directory())
         server.start()
         self._websocket_server = server
 
     def start_web_platform_test_server(self, additional_dirs=None, number_of_servers=None):
         assert not self._web_platform_test_server, 'Already running a Web Platform Test server.'
 
-        self._web_platform_test_server = web_platform_test_server.WebPlatformTestServer(self, "wptwk", self.results_directory())
+        self._web_platform_test_server = web_platform_test_server.WebPlatformTestServer(self, "wptwk")
         self._web_platform_test_server.start()
 
     def web_platform_test_server_doc_root(self):

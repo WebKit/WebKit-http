@@ -428,6 +428,10 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(AbstractHeap(Stack, JSStack::ArgumentCount));
         def(HeapLocation(StackPayloadLoc, AbstractHeap(Stack, JSStack::ArgumentCount)), LazyNode(node));
         return;
+
+    case GetRestLength:
+        read(Stack);
+        return;
         
     case GetLocal:
         read(AbstractHeap(Stack, node->local()));
@@ -980,6 +984,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
                     LazyNode(graph.freeze(data[index]), op));
             }
         }
+        return;
+    }
+
+    case CopyRest: {
+        read(Stack);
+        write(Heap);
         return;
     }
 

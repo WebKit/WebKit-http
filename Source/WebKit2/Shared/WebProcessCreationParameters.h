@@ -99,14 +99,6 @@ struct WebProcessCreationParameters {
 #if ENABLE(CACHE_PARTITIONING)
     Vector<String> urlSchemesRegisteredAsCachePartitioned;
 #endif
-    Vector<String> urlSchemesRegisteredForCustomProtocols;
-#if USE(SOUP)
-    String diskCacheDirectory;
-    String cookiePersistentStoragePath;
-    uint32_t cookiePersistentStorageType;
-    HTTPCookieAcceptPolicy cookieAcceptPolicy;
-    bool ignoreTLSErrors;
-#endif
 
     CacheModel cacheModel;
 
@@ -152,10 +144,6 @@ struct WebProcessCreationParameters {
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     HashMap<String, bool> notificationPermissions;
-#endif
-
-#if ENABLE(NETWORK_PROCESS)
-    bool usesNetworkProcess;
 #endif
 
     HashMap<WebCore::SessionID, HashMap<unsigned, double>> plugInAutoStartOriginHashes;

@@ -34,11 +34,6 @@
 namespace WebCore {
 namespace IDBServer {
 
-std::unique_ptr<MemoryObjectStoreCursor> MemoryObjectStoreCursor::create(MemoryObjectStore& objectStore, const IDBCursorInfo& info)
-{
-    return std::make_unique<MemoryObjectStoreCursor>(objectStore, info);
-}
-
 MemoryObjectStoreCursor::MemoryObjectStoreCursor(MemoryObjectStore& objectStore, const IDBCursorInfo& info)
     : MemoryCursor(info)
     , m_objectStore(objectStore)
@@ -67,8 +62,6 @@ void MemoryObjectStoreCursor::keyDeleted(const IDBKeyData& key)
 
 void MemoryObjectStoreCursor::keyAdded(std::set<IDBKeyData>::iterator iterator)
 {
-    ASSERT(m_currentPositionKey.isValid());
-
     if (hasIterators())
         return;
 
@@ -181,9 +174,7 @@ void MemoryObjectStoreCursor::currentData(IDBGetResult& data)
         }
 
         m_currentPositionKey = **m_forwardIterator;
-        data.keyData = **m_forwardIterator;
-        data.primaryKeyData = **m_forwardIterator;
-        data.valueBuffer = m_objectStore.valueForKeyRange(**m_forwardIterator);
+        data = { **m_forwardIterator, **m_forwardIterator, m_objectStore.valueForKeyRange(**m_forwardIterator) };
     } else {
         if (!m_reverseIterator || *m_reverseIterator == set->rend()) {
             data = { };
@@ -191,9 +182,7 @@ void MemoryObjectStoreCursor::currentData(IDBGetResult& data)
         }
 
         m_currentPositionKey = **m_reverseIterator;
-        data.keyData = **m_reverseIterator;
-        data.primaryKeyData = **m_reverseIterator;
-        data.valueBuffer = m_objectStore.valueForKeyRange(**m_reverseIterator);
+        data = { **m_reverseIterator, **m_reverseIterator, m_objectStore.valueForKeyRange(**m_reverseIterator) };
     }
 }
 
@@ -248,8 +237,10 @@ void MemoryObjectStoreCursor::incrementForwardIterator(std::set<IDBKeyData>& set
         if (*m_forwardIterator == set.end())
             return;
 
-        if (!m_info.range().containsKey(**m_forwardIterator))
+        if (!m_info.range().containsKey(**m_forwardIterator)) {
+            m_forwardIterator = set.end();
             return;
+        }
     }
 }
 
@@ -305,8 +296,10 @@ void MemoryObjectStoreCursor::incrementReverseIterator(std::set<IDBKeyData>& set
         if (*m_reverseIterator == set.rend())
             return;
 
-        if (!m_info.range().containsKey(**m_reverseIterator))
+        if (!m_info.range().containsKey(**m_reverseIterator)) {
+            m_reverseIterator = set.rend();
             return;
+        }
     }
 }
 

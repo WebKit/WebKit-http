@@ -54,11 +54,13 @@ namespace IDBClient {
 class IDBCursor;
 class IDBDatabase;
 class IDBIndex;
+class IDBOpenDBRequest;
 class TransactionOperation;
 
 class IDBTransaction : public WebCore::IDBTransaction {
 public:
     static Ref<IDBTransaction> create(IDBDatabase&, const IDBTransactionInfo&);
+    static Ref<IDBTransaction> create(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest&);
 
     virtual ~IDBTransaction() override final;
 
@@ -77,7 +79,7 @@ public:
     virtual bool dispatchEvent(Event&) override final;
 
     virtual const char* activeDOMObjectName() const override final;
-    virtual bool canSuspendForPageCache() const override final;
+    virtual bool canSuspendForDocumentSuspension() const override final;
     virtual bool hasPendingActivity() const override final;
 
     const IDBTransactionInfo info() const { return m_info; }
@@ -109,6 +111,7 @@ public:
     void iterateCursor(IDBCursor&, const IDBKeyData&, unsigned long count);
 
     void deleteObjectStore(const String& objectStoreName);
+    void deleteIndex(uint64_t objectStoreIdentifier, const String& indexName);
 
     void addRequest(IDBRequest&);
     void removeRequest(IDBRequest&);
@@ -120,13 +123,14 @@ public:
 
     void operationDidComplete(TransactionOperation&);
 
-private:
-    IDBTransaction(IDBDatabase&, const IDBTransactionInfo&);
-
     bool isFinishedOrFinishing() const;
+
+private:
+    IDBTransaction(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest*);
 
     void commit();
 
+    void notifyDidAbort(const IDBError&);
     void finishAbortOrCommit();
 
     void scheduleOperation(RefPtr<TransactionOperation>&&);
@@ -139,7 +143,7 @@ private:
     Ref<IDBRequest> requestIndexRecord(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, const IDBKeyRangeData&);
 
     void commitOnServer(TransactionOperation&);
-    void abortOnServer(TransactionOperation&);
+    void abortOnServerAndCancelRequests(TransactionOperation&);
 
     void createObjectStoreOnServer(TransactionOperation&, const IDBObjectStoreInfo&);
     void didCreateObjectStoreOnServer(const IDBResultData&);
@@ -165,6 +169,9 @@ private:
     void deleteObjectStoreOnServer(TransactionOperation&, const String& objectStoreName);
     void didDeleteObjectStoreOnServer(const IDBResultData&);
 
+    void deleteIndexOnServer(TransactionOperation&, const uint64_t& objectStoreIdentifier, const String& indexName);
+    void didDeleteIndexOnServer(const IDBResultData&);
+
     Ref<IDBRequest> doRequestOpenCursor(ScriptExecutionContext&, Ref<IDBCursor>&&);
     void openCursorOnServer(TransactionOperation&, const IDBCursorInfo&);
     void didOpenCursorOnServer(IDBRequest&, const IDBResultData&);
@@ -188,7 +195,10 @@ private:
     Timer m_operationTimer;
     std::unique_ptr<Timer> m_activationTimer;
 
+    RefPtr<IDBOpenDBRequest> m_openDBRequest;
+
     Deque<RefPtr<TransactionOperation>> m_transactionOperationQueue;
+    Deque<RefPtr<TransactionOperation>> m_abortQueue;
     HashMap<IDBResourceIdentifier, RefPtr<TransactionOperation>> m_transactionOperationMap;
 
     HashMap<String, RefPtr<IDBObjectStore>> m_referencedObjectStores;

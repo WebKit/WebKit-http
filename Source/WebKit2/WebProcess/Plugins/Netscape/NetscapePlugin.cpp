@@ -400,16 +400,12 @@ bool NetscapePlugin::getAuthenticationInfo(const ProtectionSpace& protectionSpac
 
 void NetscapePlugin::registerRedirect(NetscapePluginStream* stream, const URL& requestURL, int redirectResponseStatus, void* notificationData)
 {
-#if ENABLE(NETWORK_PROCESS)
     // NPP_URLRedirectNotify may synchronously request this stream back out, so set it first
     m_redirects.set(notificationData, std::make_pair(stream, requestURL.string()));
     if (!NPP_URLRedirectNotify(requestURL.string().utf8().data(), redirectResponseStatus, notificationData)) {
         m_redirects.take(notificationData);
         controller()->continueStreamLoad(stream->streamID());
     }
-#else
-    controller()->continueStreamLoad(stream->streamID());
-#endif
 }
 
 void NetscapePlugin::urlRedirectResponse(void* notifyData, bool allow)
@@ -1126,11 +1122,11 @@ IntPoint NetscapePlugin::convertToRootView(const IntPoint& pointInPluginCoordina
 
 bool NetscapePlugin::convertFromRootView(const IntPoint& pointInRootViewCoordinates, IntPoint& pointInPluginCoordinates)
 {
-    if (!m_pluginToRootViewTransform.isInvertible())
-        return false;
-
-    pointInPluginCoordinates = m_pluginToRootViewTransform.inverse().mapPoint(pointInRootViewCoordinates);
-    return true;
+    if (auto inverse = m_pluginToRootViewTransform.inverse()) {
+        pointInPluginCoordinates = inverse.value().mapPoint(pointInRootViewCoordinates);
+        return true;
+    }
+    return false;
 }
 
 void NetscapePlugin::mutedStateChanged(bool muted)

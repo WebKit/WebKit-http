@@ -108,9 +108,6 @@ private:
     virtual void resetSecureInputState() override;
     virtual void notifyInputContextAboutDiscardedComposition() override;
     virtual void selectionDidChange() override;
-#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
-    virtual void notifyApplicationAboutInputContextChange() override;
-#endif
 
     virtual WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) override;
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) override;
@@ -240,6 +237,8 @@ private:
 
     virtual void refView() override;
     virtual void derefView() override;
+
+    virtual void didRestoreScrollPosition() override;
 };
 
 } // namespace WebKit

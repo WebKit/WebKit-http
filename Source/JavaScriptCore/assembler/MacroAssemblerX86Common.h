@@ -36,7 +36,16 @@ namespace JSC {
 class MacroAssemblerX86Common : public AbstractMacroAssembler<X86Assembler, MacroAssemblerX86Common> {
 public:
 #if CPU(X86_64)
-    static const X86Registers::RegisterID scratchRegister = X86Registers::r11;
+    // Use this directly only if you're not generating code with it.
+    static const X86Registers::RegisterID s_scratchRegister = X86Registers::r11;
+
+    // Use this when generating code so that we get enforcement of the disallowing of scratch register
+    // usage.
+    X86Registers::RegisterID scratchRegister()
+    {
+        RELEASE_ASSERT(m_allowScratchRegister);
+        return s_scratchRegister;
+    }
 #endif
 
 protected:
@@ -481,9 +490,24 @@ public:
         xor32(imm, dest);
     }
 
+    void not32(RegisterID srcDest)
+    {
+        m_assembler.notl_r(srcDest);
+    }
+
+    void not32(Address dest)
+    {
+        m_assembler.notl_m(dest.offset, dest.base);
+    }
+
     void sqrtDouble(FPRegisterID src, FPRegisterID dst)
     {
         m_assembler.sqrtsd_rr(src, dst);
+    }
+
+    void sqrtDouble(Address src, FPRegisterID dst)
+    {
+        m_assembler.sqrtsd_mr(src.offset, src.base, dst);
     }
 
     void absDouble(FPRegisterID src, FPRegisterID dst)
@@ -732,8 +756,8 @@ public:
         ASSERT(isSSE2Present());
         m_assembler.movsd_mr(address.m_value, dest);
 #else
-        move(address, scratchRegister);
-        loadDouble(scratchRegister, dest);
+        move(address, scratchRegister());
+        loadDouble(scratchRegister(), dest);
 #endif
     }
 
@@ -954,8 +978,8 @@ public:
 #if CPU(X86_64)
         if (negZeroCheck) {
             Jump valueIsNonZero = branchTest32(NonZero, dest);
-            m_assembler.movmskpd_rr(src, scratchRegister);
-            failureCases.append(branchTest32(NonZero, scratchRegister, TrustedImm32(1)));
+            m_assembler.movmskpd_rr(src, scratchRegister());
+            failureCases.append(branchTest32(NonZero, scratchRegister(), TrustedImm32(1)));
             valueIsNonZero.link(this);
         }
 #else
@@ -1081,18 +1105,6 @@ public:
         m_assembler.movq_i64r(imm.m_value, dest);
     }
 
-    void moveConditionally(RelationalCondition cond, RegisterID left, RegisterID right, RegisterID src, RegisterID dest)
-    {
-        m_assembler.cmpq_rr(right, left);
-        m_assembler.cmovq_rr(x86Condition(cond), src, dest);
-    }
-
-    void moveConditionallyTest(ResultCondition cond, RegisterID testReg, RegisterID mask, RegisterID src, RegisterID dest)
-    {
-        m_assembler.testq_rr(testReg, mask);
-        m_assembler.cmovq_rr(x86Condition(cond), src, dest);
-    }
-    
     void moveConditionallyDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID src, RegisterID dest)
     {
         ASSERT(isSSE2Present());
@@ -1161,18 +1173,6 @@ public:
         m_assembler.movl_i32r(imm.asIntptr(), dest);
     }
 
-    void moveConditionally(RelationalCondition cond, RegisterID left, RegisterID right, RegisterID src, RegisterID dest)
-    {
-        m_assembler.cmpl_rr(right, left);
-        m_assembler.cmovl_rr(x86Condition(cond), src, dest);
-    }
-
-    void moveConditionallyTest(ResultCondition cond, RegisterID testReg, RegisterID mask, RegisterID src, RegisterID dest)
-    {
-        m_assembler.testl_rr(testReg, mask);
-        m_assembler.cmovl_rr(x86Condition(cond), src, dest);
-    }
-
     void moveConditionallyDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID src, RegisterID dest)
     {
         ASSERT(isSSE2Present());
@@ -1226,6 +1226,24 @@ public:
     }
 #endif
 
+    void moveConditionally32(RelationalCondition cond, RegisterID left, RegisterID right, RegisterID src, RegisterID dest)
+    {
+        m_assembler.cmpl_rr(right, left);
+        cmov(x86Condition(cond), src, dest);
+    }
+
+    void moveConditionallyTest32(ResultCondition cond, RegisterID testReg, RegisterID mask, RegisterID src, RegisterID dest)
+    {
+        m_assembler.testl_rr(testReg, mask);
+        cmov(x86Condition(cond), src, dest);
+    }
+    
+    void moveConditionallyTest32(ResultCondition cond, RegisterID testReg, TrustedImm32 mask, RegisterID src, RegisterID dest)
+    {
+        test32(cond, testReg, mask);
+        cmov(x86Condition(cond), src, dest);
+    }
+    
 
     // Forwards / external control flow operations:
     //
@@ -1674,6 +1692,15 @@ protected:
         m_assembler.movzbl_rr(dest, dest);
     }
 
+    void cmov(X86Assembler::Condition cond, RegisterID src, RegisterID dest)
+    {
+#if CPU(X86_64)
+        m_assembler.cmovq_rr(cond, src, dest);
+#else
+        m_assembler.cmovl_rr(cond, src, dest);
+#endif
+    }
+    
 private:
     // Only MacroAssemblerX86 should be using the following method; SSE2 is always available on
     // x86_64, and clients & subclasses of MacroAssembler should be using 'supportsFloatingPoint()'.

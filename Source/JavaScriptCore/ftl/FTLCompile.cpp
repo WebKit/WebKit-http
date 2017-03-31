@@ -28,7 +28,7 @@
 #include "config.h"
 #include "FTLCompile.h"
 
-#if ENABLE(FTL_JIT)
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #include "CodeBlockWithJITType.h"
 #include "CCallHelpers.h"
@@ -37,13 +37,14 @@
 #include "DFGOperations.h"
 #include "DataView.h"
 #include "Disassembler.h"
+#include "FTLCompileBinaryOp.h"
 #include "FTLExceptionHandlerManager.h"
 #include "FTLExitThunkGenerator.h"
+#include "FTLInlineCacheDescriptorInlines.h"
 #include "FTLInlineCacheSize.h"
 #include "FTLJITCode.h"
 #include "FTLThunks.h"
 #include "FTLUnwindInfo.h"
-#include "JITSubGenerator.h"
 #include "LLVMAPI.h"
 #include "LinkBuffer.h"
 #include "ScratchRegisterAllocator.h"
@@ -307,125 +308,12 @@ static void generateCheckInICFastPath(
     }
 }
 
-class BinarySnippetRegisterContext {
-    // The purpose of this class is to shuffle registers to get them into the state
-    // that baseline code expects so that we can use the baseline snippet generators i.e.
-    //    1. Ensure that the inputs and output are not in reserved registers (which
-    //       include the tag registers). The snippet will use these reserved registers.
-    //       Hence, we need to put the inputs and output in other scratch registers.
-    //    2. Tag registers are loaded with the expected values.
-    //
-    // When the snippet is done:
-    //    1. If we had re-assigned the result register to a scratch, we need to copy the
-    //       result back from the scratch.
-    //    2. Restore the input and tag registers to the values that LLVM put there originally.
-    //       That is unless when one of them is also the result register. In that case, we
-    //       don't want to trash the result, and hence, should not restore into it.
-
-public:
-    BinarySnippetRegisterContext(ScratchRegisterAllocator& allocator, GPRReg& result, GPRReg& left, GPRReg& right)
-        : m_allocator(allocator)
-        , m_result(result)
-        , m_left(left)
-        , m_right(right)
-        , m_origResult(result)
-        , m_origLeft(left)
-        , m_origRight(right)
-    {
-        m_allocator.lock(m_result);
-        m_allocator.lock(m_left);
-        m_allocator.lock(m_right);
-
-        RegisterSet inputAndOutputRegisters = RegisterSet(m_left, m_right, m_result);
-        RegisterSet reservedRegisters;
-        for (GPRReg reg : GPRInfo::reservedRegisters())
-            reservedRegisters.set(reg);
-
-        if (reservedRegisters.get(m_left))
-            m_left = m_allocator.allocateScratchGPR();
-        if (reservedRegisters.get(m_right)) {
-            if (m_origRight == m_origLeft)
-                m_right = m_left;
-            else
-                m_right = m_allocator.allocateScratchGPR();
-        }
-        if (reservedRegisters.get(m_result)) {
-            if (m_origResult == m_origLeft)
-                m_result = m_left;
-            else if (m_origResult == m_origRight)
-                m_result = m_right;
-            else
-                m_result = m_allocator.allocateScratchGPR();
-        }
-
-        if (!inputAndOutputRegisters.get(GPRInfo::tagMaskRegister))
-            m_savedTagMaskRegister = m_allocator.allocateScratchGPR();
-        if (!inputAndOutputRegisters.get(GPRInfo::tagTypeNumberRegister))
-            m_savedTagTypeNumberRegister = m_allocator.allocateScratchGPR();
-    }
-
-    void initializeRegisters(CCallHelpers& jit)
-    {
-        if (m_left != m_origLeft)
-            jit.move(m_origLeft, m_left);
-        if (m_right != m_origRight && m_origRight != m_origLeft)
-            jit.move(m_origRight, m_right);
-
-        if (m_savedTagMaskRegister != InvalidGPRReg)
-            jit.move(GPRInfo::tagMaskRegister, m_savedTagMaskRegister);
-        if (m_savedTagTypeNumberRegister != InvalidGPRReg)
-            jit.move(GPRInfo::tagTypeNumberRegister, m_savedTagTypeNumberRegister);
-
-        jit.emitMaterializeTagCheckRegisters();
-    }
-
-    void restoreRegisters(CCallHelpers& jit)
-    {
-        if (m_origResult != m_result)
-            jit.move(m_result, m_origResult);
-        if (m_origLeft != m_left && m_origLeft != m_origResult)
-            jit.move(m_left, m_origLeft);
-        if (m_origRight != m_right && m_origRight != m_origResult && m_origRight != m_origLeft)
-            jit.move(m_right, m_origRight);
-
-        // We are guaranteed that the tag registers are not the same as the original input
-        // or output registers. Otherwise, we would not have allocated a scratch for them.
-        // Hence, we don't need to need to check for overlap like we do for the input registers.
-        if (m_savedTagMaskRegister != InvalidGPRReg) {
-            ASSERT(GPRInfo::tagMaskRegister != m_origLeft);
-            ASSERT(GPRInfo::tagMaskRegister != m_origRight);
-            ASSERT(GPRInfo::tagMaskRegister != m_origResult);
-            jit.move(m_savedTagMaskRegister, GPRInfo::tagMaskRegister);
-        }
-        if (m_savedTagTypeNumberRegister != InvalidGPRReg) {
-            ASSERT(GPRInfo::tagTypeNumberRegister != m_origLeft);
-            ASSERT(GPRInfo::tagTypeNumberRegister != m_origRight);
-            ASSERT(GPRInfo::tagTypeNumberRegister != m_origResult);
-            jit.move(m_savedTagTypeNumberRegister, GPRInfo::tagTypeNumberRegister);
-        }
-    }
-
-private:
-    ScratchRegisterAllocator& m_allocator;
-
-    GPRReg& m_result;
-    GPRReg& m_left;
-    GPRReg& m_right;
-
-    GPRReg m_origResult;
-    GPRReg m_origLeft;
-    GPRReg m_origRight;
-
-    GPRReg m_savedTagMaskRegister { InvalidGPRReg };
-    GPRReg m_savedTagTypeNumberRegister { InvalidGPRReg };
-};
-
-static void generateArithSubICFastPath(
+static void generateBinaryOpICFastPath(
     State& state, CodeBlock* codeBlock, GeneratedFunction generatedFunction,
-    StackMaps::RecordMap& recordMap, ArithSubDescriptor& ic)
+    StackMaps::RecordMap& recordMap, BinaryOpDescriptor& ic)
 {
     VM& vm = state.graph.m_vm;
-    size_t sizeOfIC = sizeOfArithSub();
+    size_t sizeOfIC = ic.size();
 
     StackMaps::RecordMap::iterator iter = recordMap.find(ic.stackmapID());
     if (iter == recordMap.end())
@@ -443,39 +331,22 @@ static void generateArithSubICFastPath(
         GPRReg result = record.locations[0].directGPR();
         GPRReg left = record.locations[1].directGPR();
         GPRReg right = record.locations[2].directGPR();
-
         RegisterSet usedRegisters = usedRegistersFor(record);
-        ScratchRegisterAllocator allocator(usedRegisters);
 
-        BinarySnippetRegisterContext context(allocator, result, left, right);
+        CCallHelpers::Jump done;
+        CCallHelpers::Jump slowPathStart;
 
-        GPRReg scratchGPR = allocator.allocateScratchGPR();
-        FPRReg leftFPR = allocator.allocateScratchFPR();
-        FPRReg rightFPR = allocator.allocateScratchFPR();
-        FPRReg scratchFPR = InvalidFPRReg;
-
-        JITSubGenerator gen(JSValueRegs(result), JSValueRegs(left), JSValueRegs(right), ic.leftType(), ic.rightType(), leftFPR, rightFPR, scratchGPR, scratchFPR);
-
-        auto numberOfBytesUsedToPreserveReusedRegisters =
-            allocator.preserveReusedRegistersByPushing(fastPathJIT, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
-
-        context.initializeRegisters(fastPathJIT);
-        gen.generateFastPath(fastPathJIT);
-
-        gen.endJumpList().link(&fastPathJIT);
-        context.restoreRegisters(fastPathJIT);
-        allocator.restoreReusedRegistersByPopping(fastPathJIT, numberOfBytesUsedToPreserveReusedRegisters,
-            ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
-        CCallHelpers::Jump done = fastPathJIT.jump();
-
-        gen.slowPathJumpList().link(&fastPathJIT);
-        context.restoreRegisters(fastPathJIT);
-        allocator.restoreReusedRegistersByPopping(fastPathJIT, numberOfBytesUsedToPreserveReusedRegisters,
-            ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
-        CCallHelpers::Jump slowPathStart = fastPathJIT.jump();
+        switch (ic.nodeType()) {
+        case ArithSub:
+            generateArithSubFastPath(ic, fastPathJIT, result, left, right, usedRegisters, done, slowPathStart);
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
 
         char* startOfIC = bitwise_cast<char*>(generatedFunction) + record.instructionOffset;
-        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, "ArithSub inline cache fast path", [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
+        const char* fastPathICName = ic.fastPathICName();
+        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, fastPathICName, [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
             linkBuffer.link(done, CodeLocationLabel(startOfIC + sizeOfIC));
             state.finalizer->sideCodeLinkBuffer->link(ic.m_slowPathDone[i], CodeLocationLabel(startOfIC + sizeOfIC));
             
@@ -639,12 +510,39 @@ static void fixFunctionBasedOnStackMaps(
             }
 
             OSRExit& exit = state.jitCode->osrExit.last();
-            if (exitDescriptor.willArriveAtExitFromIndirectExceptionCheck()) {
+            if (exit.willArriveAtExitFromIndirectExceptionCheck()) {
                 StackMaps::Record& record = iter->value[j].record;
                 RELEASE_ASSERT(exit.m_descriptor.m_semanticCodeOriginForCallFrameHeader.isSet());
                 CallSiteIndex callSiteIndex = state.jitCode->common.addUniqueCallSiteIndex(exit.m_descriptor.m_semanticCodeOriginForCallFrameHeader);
                 exit.m_exceptionHandlerCallSiteIndex = callSiteIndex;
-                exceptionHandlerManager.addNewExit(iter->value[j].index, state.jitCode->osrExit.size() - 1);
+
+                OSRExit* callOperationExit = nullptr;
+                if (exitDescriptor.m_exceptionType == ExceptionType::BinaryOpGenerator) {
+                    exceptionHandlerManager.addNewCallOperationExit(iter->value[j].index, state.jitCode->osrExit.size() - 1);
+                    callOperationExit = &exit;
+                } else
+                    exceptionHandlerManager.addNewExit(iter->value[j].index, state.jitCode->osrExit.size() - 1);
+                
+                if (exitDescriptor.m_exceptionType == ExceptionType::GetById || exitDescriptor.m_exceptionType == ExceptionType::PutById) {
+                    // We create two different OSRExits for GetById and PutById.
+                    // One exit that will be arrived at from the genericUnwind exception handler path,
+                    // and the other that will be arrived at from the callOperation exception handler path.
+                    // This code here generates the second callOperation variant.
+                    uint32_t stackmapRecordIndex = iter->value[j].index;
+                    OSRExit exit(exitDescriptor, stackmapRecordIndex);
+                    if (exitDescriptor.m_exceptionType == ExceptionType::GetById)
+                        exit.m_exceptionType = ExceptionType::GetByIdCallOperation;
+                    else
+                        exit.m_exceptionType = ExceptionType::PutByIdCallOperation;
+                    CallSiteIndex callSiteIndex = state.jitCode->common.addUniqueCallSiteIndex(exit.m_descriptor.m_semanticCodeOriginForCallFrameHeader);
+                    exit.m_exceptionHandlerCallSiteIndex = callSiteIndex;
+
+                    state.jitCode->osrExit.append(exit);
+                    state.finalizer->osrExit.append(OSRExitCompilationInfo());
+
+                    exceptionHandlerManager.addNewCallOperationExit(iter->value[j].index, state.jitCode->osrExit.size() - 1);
+                    callOperationExit = &state.jitCode->osrExit.last();
+                }
 
                 // Subs and GetByIds have an interesting register preservation story,
                 // see comment below at GetById to read about it.
@@ -662,13 +560,13 @@ static void fixFunctionBasedOnStackMaps(
                     GPRReg result = record.locations[0].directGPR();
                     GPRReg base = record.locations[1].directGPR();
                     if (base == result)
-                        exit.registersToPreserveForCallThatMightThrow.set(base);
-                } else if (exitDescriptor.m_exceptionType == ExceptionType::SubGenerator) {
+                        callOperationExit->registersToPreserveForCallThatMightThrow.set(base);
+                } else if (exitDescriptor.m_exceptionType == ExceptionType::BinaryOpGenerator) {
                     GPRReg result = record.locations[0].directGPR();
                     GPRReg left = record.locations[1].directGPR();
                     GPRReg right = record.locations[2].directGPR();
                     if (result == left || result == right)
-                        exit.registersToPreserveForCallThatMightThrow.set(result);
+                        callOperationExit->registersToPreserveForCallThatMightThrow.set(result);
                 }
             }
         }
@@ -699,7 +597,7 @@ static void fixFunctionBasedOnStackMaps(
             info.m_thunkAddress = linkBuffer->locationOf(info.m_thunkLabel);
             exit.m_patchableCodeOffset = linkBuffer->offsetOf(info.m_thunkJump);
 
-            if (exit.m_descriptor.mightArriveAtOSRExitFromGenericUnwind()) {
+            if (exit.willArriveAtOSRExitFromGenericUnwind()) {
                 HandlerInfo newHandler = exit.m_descriptor.m_baselineExceptionHandler;
                 newHandler.start = exit.m_exceptionHandlerCallSiteIndex.bits();
                 newHandler.end = exit.m_exceptionHandlerCallSiteIndex.bits() + 1;
@@ -724,7 +622,7 @@ static void fixFunctionBasedOnStackMaps(
     if (!state.getByIds.isEmpty()
         || !state.putByIds.isEmpty()
         || !state.checkIns.isEmpty()
-        || !state.arithSubs.isEmpty()
+        || !state.binaryOps.isEmpty()
         || !state.lazySlowPaths.isEmpty()) {
         CCallHelpers slowPathJIT(&vm, codeBlock);
         
@@ -777,7 +675,7 @@ static void fixFunctionBasedOnStackMaps(
                     // register that we would like to do value recovery on. We combat this situation from ever
                     // taking place by ensuring we spill the original base value and then recover it from
                     // the spill slot as the first step in OSR exit.
-                    if (OSRExit* exit = exceptionHandlerManager.getByIdOSRExit(iter->value[i].index))
+                    if (OSRExit* exit = exceptionHandlerManager.callOperationOSRExit(iter->value[i].index))
                         exit->spillRegistersToSpillSlot(slowPathJIT, jsCallThatMightThrowSpillOffset);
                 }
                 MacroAssembler::Call call = callOperation(
@@ -872,17 +770,17 @@ static void fixFunctionBasedOnStackMaps(
             }
         }
 
-        for (size_t i = state.arithSubs.size(); i--;) {
-            ArithSubDescriptor& arithSub = state.arithSubs[i];
+        for (size_t i = state.binaryOps.size(); i--;) {
+            BinaryOpDescriptor& binaryOp = state.binaryOps[i];
             
             if (verboseCompilationEnabled())
-                dataLog("Handling ArithSub stackmap #", arithSub.stackmapID(), "\n");
+                dataLog("Handling ", binaryOp.name(), " stackmap #", binaryOp.stackmapID(), "\n");
             
-            auto iter = recordMap.find(arithSub.stackmapID());
+            auto iter = recordMap.find(binaryOp.stackmapID());
             if (iter == recordMap.end())
                 continue; // It was optimized out.
             
-            CodeOrigin codeOrigin = arithSub.codeOrigin();
+            CodeOrigin codeOrigin = binaryOp.codeOrigin();
             for (unsigned i = 0; i < iter->value.size(); ++i) {
                 StackMaps::Record& record = iter->value[i].record;
                 RegisterSet usedRegisters = usedRegistersFor(record);
@@ -891,19 +789,19 @@ static void fixFunctionBasedOnStackMaps(
                 GPRReg left = record.locations[1].directGPR();
                 GPRReg right = record.locations[2].directGPR();
 
-                arithSub.m_slowPathStarts.append(slowPathJIT.label());
+                binaryOp.m_slowPathStarts.append(slowPathJIT.label());
                 bool addedUniqueExceptionJump = addNewExceptionJumpIfNecessary(iter->value[i].index);
                 if (result == left || result == right) {
                     // This situation has a really interesting register preservation story.
                     // See comment above for GetByIds.
-                    if (OSRExit* exit = exceptionHandlerManager.subOSRExit(iter->value[i].index))
+                    if (OSRExit* exit = exceptionHandlerManager.callOperationOSRExit(iter->value[i].index))
                         exit->spillRegistersToSpillSlot(slowPathJIT, jsCallThatMightThrowSpillOffset);
                 }
 
                 callOperation(state, usedRegisters, slowPathJIT, codeOrigin, addedUniqueExceptionJump ? &exceptionJumpsToLink.last().first : &exceptionTarget,
-                    operationValueSub, result, left, right).call();
+                    binaryOp.slowPathFunction(), result, left, right).call();
 
-                arithSub.m_slowPathDone.append(slowPathJIT.jump());
+                binaryOp.m_slowPathDone.append(slowPathJIT.jump());
             }
         }
 
@@ -991,9 +889,9 @@ static void fixFunctionBasedOnStackMaps(
                 state, codeBlock, generatedFunction, recordMap, state.checkIns[i],
                 sizeOfIn()); 
         }
-        for (unsigned i = state.arithSubs.size(); i--;) {
-            ArithSubDescriptor& arithSub = state.arithSubs[i];
-            generateArithSubICFastPath(state, codeBlock, generatedFunction, recordMap, arithSub);
+        for (unsigned i = state.binaryOps.size(); i--;) {
+            BinaryOpDescriptor& binaryOp = state.binaryOps[i];
+            generateBinaryOpICFastPath(state, codeBlock, generatedFunction, recordMap, binaryOp);
         }
         for (unsigned i = state.lazySlowPaths.size(); i--;) {
             LazySlowPathDescriptor& lazySlowPath = state.lazySlowPaths[i];
@@ -1095,7 +993,7 @@ static void fixFunctionBasedOnStackMaps(
         OSRExit& exit = jitCode->osrExit[exitIndex];
         Vector<const void*> codeAddresses;
 
-        if (exit.m_descriptor.willArriveAtExitFromIndirectExceptionCheck()) // This jump doesn't happen directly from a patchpoint/stackmap we compile. It happens indirectly through an exception check somewhere.
+        if (exit.willArriveAtExitFromIndirectExceptionCheck()) // This jump doesn't happen directly from a patchpoint/stackmap we compile. It happens indirectly through an exception check somewhere.
             continue;
         
         StackMaps::Record& record = jitCode->stackmaps.records[exit.m_stackmapRecordIndex];
@@ -1318,5 +1216,5 @@ void compile(State& state, Safepoint::Result& safepointResult)
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && FTL_USES_B3
 

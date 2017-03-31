@@ -30,7 +30,7 @@
 
 namespace JSC {
 
-#if USE(CF) || PLATFORM(EFL)
+#if USE(CF) || USE(GLIB)
 
 EdenGCActivityCallback::EdenGCActivityCallback(Heap* heap)
     : GCActivityCallback(heap)
@@ -54,6 +54,12 @@ double EdenGCActivityCallback::deathRate()
     size_t sizeAfter = heap->sizeAfterLastEdenCollection();
     if (!sizeBefore)
         return 1.0;
+    if (sizeAfter > sizeBefore) {
+        // GC caused the heap to grow(!)
+        // This could happen if the we visited more extra memory than was reported allocated.
+        // We don't return a negative death rate, since that would schedule the next GC in the past.
+        return 0;
+    }
     return static_cast<double>(sizeBefore - sizeAfter) / static_cast<double>(sizeBefore);
 }
 

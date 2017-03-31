@@ -44,6 +44,7 @@
 #include "B3PatchpointSpecial.h"
 #include "B3PatchpointValue.h"
 #include "B3PhaseScope.h"
+#include "B3PhiChildren.h"
 #include "B3Procedure.h"
 #include "B3StackSlotValue.h"
 #include "B3UpsilonValue.h"
@@ -65,6 +66,7 @@ public:
         : m_valueToTmp(procedure.values().size())
         , m_blockToBlock(procedure.size())
         , m_useCounts(procedure)
+        , m_phiChildren(procedure)
         , m_procedure(procedure)
         , m_code(procedure.code())
     {
@@ -117,8 +119,10 @@ public:
 
             // Make sure that the successors are set up correctly.
             ASSERT(block->successors().size() <= 2);
-            for (B3::BasicBlock* successor : block->successorBlocks())
-                m_blockToBlock[block]->successors().append(m_blockToBlock[successor]);
+            for (B3::FrequentedBlock successor : block->successors()) {
+                m_blockToBlock[block]->successors().append(
+                    Air::FrequentedBlock(m_blockToBlock[successor.block()], successor.frequency()));
+            }
         }
 
         Air::InsertionSet insertionSet(m_code);
@@ -317,8 +321,11 @@ private:
         if (m_valueToTmp[value])
             return false;
         
-        // We require internals to have only one use - us.
-        if (m_useCounts[value] != 1)
+        // We require internals to have only one use - us. It's not clear if this should be numUses() or
+        // numUsingInstructions(). Ideally, it would be numUsingInstructions(), except that it's not clear
+        // if we'd actually do the right thing when matching over such a DAG pattern. For now, it simply
+        // doesn't matter because we don't implement patterns that would trigger this.
+        if (m_useCounts.numUses(value) != 1)
             return false;
 
         return true;
@@ -525,6 +532,36 @@ private:
         append(opcode, result);
     }
 
+    // Call this method when doing two-operand lowering of a commutative operation. You have a choice of
+    // which incoming Value is moved into the result. This will select which one is likely to be most
+    // profitable to use as the result. Doing the right thing can have big performance consequences in tight
+    // kernels.
+    bool preferRightForResult(Value* left, Value* right)
+    {
+        // The default is to move left into result, because that's required for non-commutative instructions.
+        // The value that we want to move into result position is the one that dies here. So, if we're
+        // compiling a commutative operation and we know that actually right is the one that dies right here,
+        // then we can flip things around to help coalescing, which then kills the move instruction.
+        //
+        // But it's more complicated:
+        // - Used-once is a bad estimate of whether the variable dies here.
+        // - A child might be a candidate for coalescing with this value.
+        //
+        // Currently, we have machinery in place to recognize super obvious forms of the latter issue.
+
+        bool result = m_useCounts.numUsingInstructions(right) == 1;
+        
+        // We recognize when a child is a Phi that has this value as one of its children. We're very
+        // conservative about this; for example we don't even consider transitive Phi children.
+        bool leftIsPhiWithThis = m_phiChildren[left].transitivelyUses(m_value);
+        bool rightIsPhiWithThis = m_phiChildren[right].transitivelyUses(m_value);
+        
+        if (leftIsPhiWithThis != rightIsPhiWithThis)
+            result = rightIsPhiWithThis;
+
+        return result;
+    }
+
     template<
         Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble,
         Commutativity commutativity = NotCommutative>
@@ -598,9 +635,11 @@ private:
             return;
         }
 
-        // FIXME: If we're going to use a two-operand instruction, and the operand is commutative, we
-        // should coalesce the result with the operand that is killed.
-        // https://bugs.webkit.org/show_bug.cgi?id=151321
+        if (commutativity == Commutative && preferRightForResult(left, right)) {
+            append(relaxedMoveForType(m_value->type()), tmp(right), result);
+            append(opcode, tmp(left), result);
+            return;
+        }
         
         append(relaxedMoveForType(m_value->type()), tmp(left), result);
         append(opcode, tmp(right), result);
@@ -804,7 +843,7 @@ private:
             if (!canBeInternal(value) && value != m_value)
                 break;
             bool shouldInvert =
-                (value->opcode() == BitXor && value->child(1)->isInt(1) && value->child(0)->returnsBool())
+                (value->opcode() == BitXor && value->child(1)->hasInt() && (value->child(1)->asInt() & 1) && value->child(0)->returnsBool())
                 || (value->opcode() == Equal && value->child(1)->isInt(0));
             if (!shouldInvert)
                 break;
@@ -1185,6 +1224,82 @@ private:
             inverted);
     }
 
+    struct MoveConditionallyConfig {
+        Air::Opcode moveConditionally32;
+        Air::Opcode moveConditionally64;
+        Air::Opcode moveConditionallyTest32;
+        Air::Opcode moveConditionallyTest64;
+        Air::Opcode moveConditionallyDouble;
+        Tmp source;
+        Tmp destination;
+    };
+    Inst createSelect(Value* value, const MoveConditionallyConfig& config, bool inverted = false)
+    {
+        return createGenericCompare(
+            value,
+            [&] (
+                Arg::Width width, const Arg& relCond,
+                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                switch (width) {
+                case Arg::Width8:
+                    // FIXME: Support these things.
+                    // https://bugs.webkit.org/show_bug.cgi?id=151504
+                    return Inst();
+                case Arg::Width16:
+                    return Inst();
+                case Arg::Width32:
+                    if (isValidForm(config.moveConditionally32, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                        return Inst(
+                            config.moveConditionally32, m_value, relCond,
+                            left.consume(*this), right.consume(*this), config.source, config.destination);
+                    }
+                    return Inst();
+                case Arg::Width64:
+                    if (isValidForm(config.moveConditionally64, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                        return Inst(
+                            config.moveConditionally64, m_value, relCond,
+                            left.consume(*this), right.consume(*this), config.source, config.destination);
+                    }
+                    return Inst();
+                }
+            },
+            [&] (
+                Arg::Width width, const Arg& resCond,
+                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                switch (width) {
+                case Arg::Width8:
+                    // FIXME: Support more things.
+                    // https://bugs.webkit.org/show_bug.cgi?id=151504
+                    return Inst();
+                case Arg::Width16:
+                    return Inst();
+                case Arg::Width32:
+                    if (isValidForm(config.moveConditionallyTest32, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                        return Inst(
+                            config.moveConditionallyTest32, m_value, resCond,
+                            left.consume(*this), right.consume(*this), config.source, config.destination);
+                    }
+                    return Inst();
+                case Arg::Width64:
+                    if (isValidForm(config.moveConditionallyTest64, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                        return Inst(
+                            config.moveConditionallyTest64, m_value, resCond,
+                            left.consume(*this), right.consume(*this), config.source, config.destination);
+                    }
+                    return Inst();
+                }
+            },
+            [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+                if (isValidForm(config.moveConditionallyDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                    return Inst(
+                        config.moveConditionallyDouble, m_value, doubleCond,
+                        left.consume(*this), right.consume(*this), config.source, config.destination);
+                }
+                return Inst();
+            },
+            inverted);
+    }
+
     template<typename BankInfo>
     Arg marshallCCallArgument(unsigned& argumentCount, unsigned& stackCount, Value* child)
     {
@@ -1315,6 +1430,10 @@ private:
         }
 
         case BitXor: {
+            if (m_value->child(1)->isInt(-1)) {
+                appendUnOp<Not32, Not64, Air::Oops>(m_value->child(0));
+                return;
+            }
             appendBinOp<Xor32, Xor64, Air::Oops, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
@@ -1344,6 +1463,16 @@ private:
             return;
         }
 
+        case Sqrt: {
+            appendUnOp<Air::Oops, Air::Oops, SqrtDouble>(m_value->child(0));
+            return;
+        }
+
+        case BitwiseCast: {
+            appendUnOp<Air::Oops, Move64ToDouble, MoveDoubleTo64>(m_value->child(0));
+            return;
+        }
+
         case Store: {
             Value* valueToStore = m_value->child(0);
             if (canBeInternal(valueToStore)) {
@@ -1363,6 +1492,14 @@ private:
                     break;
                 case BitAnd:
                     matched = tryAppendStoreBinOp<And32, And64, Commutative>(
+                        valueToStore->child(0), valueToStore->child(1));
+                    break;
+                case BitXor:
+                    if (valueToStore->child(1)->isInt(-1)) {
+                        matched = tryAppendStoreUnOp<Not32, Not64>(valueToStore->child(0));
+                        break;
+                    }
+                    matched = tryAppendStoreBinOp<Xor32, Xor64, Commutative>(
                         valueToStore->child(0), valueToStore->child(1));
                     break;
                 default:
@@ -1390,6 +1527,11 @@ private:
             }
 
             append(Move32, tmp(m_value->child(0)), tmp(m_value));
+            return;
+        }
+
+        case SExt32: {
+            append(SignExtend32ToPtr, tmp(m_value->child(0)), tmp(m_value));
             return;
         }
 
@@ -1445,6 +1587,33 @@ private:
         case AboveEqual:
         case BelowEqual: {
             m_insts.last().append(createCompare(m_value));
+            return;
+        }
+
+        case Select: {
+            Tmp result = tmp(m_value);
+            append(relaxedMoveForType(m_value->type()), tmp(m_value->child(2)), result);
+
+            MoveConditionallyConfig config;
+            config.source = tmp(m_value->child(1));
+            config.destination = result;
+
+            if (isInt(m_value->type())) {
+                config.moveConditionally32 = MoveConditionally32;
+                config.moveConditionally64 = MoveConditionally64;
+                config.moveConditionallyTest32 = MoveConditionallyTest32;
+                config.moveConditionallyTest64 = MoveConditionallyTest64;
+                config.moveConditionallyDouble = MoveConditionallyDouble;
+            } else {
+                // FIXME: it's not obvious that these are particularly efficient.
+                config.moveConditionally32 = MoveDoubleConditionally32;
+                config.moveConditionally64 = MoveDoubleConditionally64;
+                config.moveConditionallyTest32 = MoveDoubleConditionallyTest32;
+                config.moveConditionallyTest64 = MoveDoubleConditionallyTest64;
+                config.moveConditionallyDouble = MoveDoubleConditionallyDouble;
+            }
+            
+            m_insts.last().append(createSelect(m_value->child(0), config));
             return;
         }
 
@@ -1533,7 +1702,8 @@ private:
         }
 
         case CheckAdd:
-        case CheckSub: {
+        case CheckSub:
+        case CheckMul: {
             CheckValue* checkValue = m_value->as<CheckValue>();
 
             Value* left = checkValue->child(0);
@@ -1559,18 +1729,20 @@ private:
                 return;
             }
 
-            // FIXME: Use commutativity of CheckAdd to increase the likelihood of coalescing.
-            // https://bugs.webkit.org/show_bug.cgi?id=151321
-
-            append(Move, tmp(left), result);
-            
             Air::Opcode opcode = Air::Oops;
+            Commutativity commutativity = NotCommutative;
+            Arg::Role stackmapRole = Arg::Use;
             switch (m_value->opcode()) {
             case CheckAdd:
                 opcode = opcodeForType(BranchAdd32, BranchAdd64, Air::Oops, m_value->type());
+                commutativity = Commutative;
                 break;
             case CheckSub:
                 opcode = opcodeForType(BranchSub32, BranchSub64, Air::Oops, m_value->type());
+                break;
+            case CheckMul:
+                opcode = opcodeForType(BranchMul32, BranchMul64, Air::Oops, checkValue->type());
+                stackmapRole = Arg::LateUse;
                 break;
             default:
                 RELEASE_ASSERT_NOT_REACHED();
@@ -1582,11 +1754,20 @@ private:
             // this rule here.
             // https://bugs.webkit.org/show_bug.cgi?id=151228
 
-            Arg source;
-            if (imm(right) && isValidForm(opcode, Arg::ResCond, Arg::Imm, Arg::Tmp))
-                source = imm(right);
-            else
-                source = tmp(right);
+            Vector<Arg, 2> sources;
+            if (imm(right) && isValidForm(opcode, Arg::ResCond, Arg::Tmp, Arg::Imm, Arg::Tmp)) {
+                sources.append(tmp(left));
+                sources.append(imm(right));
+            } else if (imm(right) && isValidForm(opcode, Arg::ResCond, Arg::Imm, Arg::Tmp)) {
+                sources.append(imm(right));
+                append(Move, tmp(left), result);
+            } else if (commutativity == Commutative && preferRightForResult(left, right)) {
+                sources.append(tmp(left));
+                append(Move, tmp(right), result);
+            } else {
+                sources.append(tmp(right));
+                append(Move, tmp(left), result);
+            }
 
             // There is a really hilarious case that arises when we do BranchAdd32(%x, %x). We won't emit
             // such code, but the coalescing in our register allocator also does copy propagation, so
@@ -1611,45 +1792,17 @@ private:
             // optimizations remove other Move's or identity-like operations. That's why we don't use
             // LateUse here to take care of add-to-self.
             
-            CheckSpecial* special = ensureCheckSpecial(opcode, 3);
+            CheckSpecial* special = ensureCheckSpecial(opcode, 2 + sources.size(), stackmapRole);
             
             Inst inst(Patch, checkValue, Arg::special(special));
 
             inst.args.append(Arg::resCond(MacroAssembler::Overflow));
 
-            inst.args.append(source);
+            inst.args.appendVector(sources);
             inst.args.append(result);
 
             fillStackmap(inst, checkValue, 2);
 
-            m_insts.last().append(WTF::move(inst));
-            return;
-        }
-
-        case CheckMul: {
-            CheckValue* checkValue = m_value->as<CheckValue>();
-
-            Value* left = checkValue->child(0);
-            Value* right = checkValue->child(1);
-
-            Tmp result = tmp(m_value);
-
-            Air::Opcode opcode =
-                opcodeForType(BranchMul32, BranchMul64, Air::Oops, checkValue->type());
-            CheckSpecial* special = ensureCheckSpecial(opcode, 3, Arg::LateUse);
-
-            // FIXME: Handle immediates.
-            // https://bugs.webkit.org/show_bug.cgi?id=151230
-
-            append(Move, tmp(left), result);
-
-            Inst inst(Patch, checkValue, Arg::special(special));
-            inst.args.append(Arg::resCond(MacroAssembler::Overflow));
-            inst.args.append(tmp(right));
-            inst.args.append(result);
-
-            fillStackmap(inst, checkValue, 2);
-            
             m_insts.last().append(WTF::move(inst));
             return;
         }
@@ -1714,6 +1867,11 @@ private:
             return;
         }
 
+        case B3::Oops: {
+            append(Air::Oops);
+            return;
+        }
+
         default:
             break;
         }
@@ -1728,6 +1886,7 @@ private:
     HashMap<StackSlotValue*, Air::StackSlot*> m_stackToStack;
 
     UseCounts m_useCounts;
+    PhiChildren m_phiChildren;
 
     Vector<Vector<Inst, 4>> m_insts;
     Vector<Inst> m_prologue;

@@ -156,14 +156,6 @@ fast/mediastream/MediaStream-MediaElement-srcObject.html
 fast/mediastream/MediaStreamTrack-onended.html
 fast/mediastream/MediaStreamTrack.html
 
-# Media Stream tests that crash unexpectedly under GuardMalloc, see https://bugs.webkit.org/show_bug.cgi?id=151353
-fast/mediastream/getusermedia.html
-fast/mediastream/MediaDevices-getUserMedia.html
-fast/mediastream/MediaStream-clone.html
-fast/mediastream/MediaStream-video-element-track-stop.html
-fast/mediastream/MediaStream-video-element.html
-fast/mediastream/MediaStreamConstructor.html
-
 # WebRTC is not supported yet.
 fast/mediastream/RTCIceCandidate.html
 fast/mediastream/RTCPeerConnection-AddRemoveStream.html
@@ -1388,6 +1380,7 @@ imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ 
 
 # Promises callbacks issues create problems in the writable stream tests
 webkit.org/b/147933 streams/reference-implementation/count-queuing-strategy.html [ Pass Failure ]
+webkit.org/b/147933 streams/reference-implementation/pipe-to.html [ Pass Failure ]
 webkit.org/b/147933 streams/reference-implementation/writable-stream-abort.html [ Pass Failure ]
 
 webkit.org/b/150806 imported/w3c/web-platform-tests/XMLHttpRequest/send-timeout-events.htm [ Pass Failure ]
@@ -1400,3 +1393,7 @@ webkit.org/b/150830 [ Mavericks Yosemite ElCapitan ] fast/text/woff2.html [ Imag
 [ Mavericks Yosemite ] media/controls/airplay-picker.html
 
 webkit.org/b/150956 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_loadeddata.html [ Pass Timeout ]
+
+webkit.org/b/140217 http/tests/navigation/forward-and-cancel.html [ Pass Failure ]
+
+webkit.org/b/151469 imported/w3c/html-templates/parsing-html-templates/creating-an-element-for-the-token/template-owner-document.html [ Pass Crash ]

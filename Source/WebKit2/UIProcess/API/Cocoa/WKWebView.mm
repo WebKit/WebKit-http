@@ -360,6 +360,7 @@ static bool shouldAllowPictureInPictureMediaPlayback()
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::inlineMediaPlaybackRequiresPlaysInlineAttributeKey(), WebKit::WebPreferencesStore::Value(!![_configuration _inlineMediaPlaybackRequiresPlaysInlineAttribute]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback()));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::requiresUserGestureForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration requiresUserActionForMediaPlayback]));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::requiresUserGestureForAudioPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration _requiresUserActionForAudioPlayback]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::mediaDataLoadsAutomaticallyKey(), WebKit::WebPreferencesStore::Value(!![_configuration _mediaDataLoadsAutomatically]));
 #endif
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -802,6 +803,16 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
 - (UIView *)_currentContentView
 {
     return _customContentView ? _customContentView.get() : _contentView.get();
+}
+
+- (WKWebViewContentProviderRegistry *)_contentProviderRegistry
+{
+    return [_configuration _contentProviderRegistry];
+}
+
+- (WKSelectionGranularity)_selectionGranularity
+{
+    return [_configuration selectionGranularity];
 }
 
 - (void)_setHasCustomContentView:(BOOL)pageHasCustomContentView loadedMIMEType:(const WTF::String&)mimeType
@@ -2389,8 +2400,6 @@ WEBCORE_COMMAND(yankAndSelect)
     return _impl->firstRectForCharacterRange(theRange, actualRange);
 }
 
-#if USE(ASYNC_NSTEXTINPUTCLIENT)
-
 - (void)selectedRangeWithCompletionHandler:(void(^)(NSRange selectedRange))completionHandlerPtr
 {
     _impl->selectedRangeWithCompletionHandler(completionHandlerPtr);
@@ -2420,8 +2429,6 @@ WEBCORE_COMMAND(yankAndSelect)
 {
     _impl->characterIndexForPoint(thePoint, completionHandlerPtr);
 }
-
-#endif // USE(ASYNC_NSTEXTINPUTCLIENT)
 
 - (NSArray *)validAttributesForMarkedText
 {

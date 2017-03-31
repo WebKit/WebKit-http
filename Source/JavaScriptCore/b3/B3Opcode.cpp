@@ -137,6 +137,12 @@ void printInternal(PrintStream& out, Opcode opcode)
     case ZShr:
         out.print("ZShr");
         return;
+    case Sqrt:
+        out.print("Sqrt");
+        return;
+    case BitwiseCast:
+        out.print("BitwiseCast");
+        return;
     case SExt8:
         out.print("SExt8");
         return;
@@ -190,6 +196,9 @@ void printInternal(PrintStream& out, Opcode opcode)
         return;
     case BelowEqual:
         out.print("BelowEqual");
+        return;
+    case Select:
+        out.print("Select");
         return;
     case Load8Z:
         out.print("Load8Z");

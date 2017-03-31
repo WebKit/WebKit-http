@@ -46,11 +46,6 @@ State::State(Graph& graph)
     , module(0)
     , function(0)
     , generatedFunction(0)
-    , handleStackOverflowExceptionStackmapID(UINT_MAX)
-    , handleExceptionStackmapID(UINT_MAX)
-    , capturedStackmapID(UINT_MAX)
-    , varargsSpillSlotsStackmapID(UINT_MAX)
-    , exceptionHandlingSpillSlotStackmapID(UINT_MAX)
     , unwindDataSection(0)
     , unwindDataSectionSize(0)
 {
@@ -61,7 +56,7 @@ State::State(Graph& graph)
     }
     case FTLForOSREntryMode: {
         RefPtr<ForOSREntryJITCode> code = adoptRef(new ForOSREntryJITCode());
-        code->initializeEntryBuffer(graph.m_vm, graph.m_profiledBlock->m_numCalleeRegisters);
+        code->initializeEntryBuffer(graph.m_vm, graph.m_profiledBlock->m_numCalleeLocals);
         code->setBytecodeIndex(graph.m_plan.osrEntryBytecodeIndex);
         jitCode = code;
         break;
@@ -87,8 +82,14 @@ void State::dumpState(const char* when)
 
 void State::dumpState(LModule module, const char* when)
 {
+#if FTL_USES_B3
+    UNUSED_PARAM(module);
+    if (!when || !!when)
+        CRASH();
+#else
     dataLog("LLVM IR for ", CodeBlockWithJITType(graph.m_codeBlock, FTL::JITCode::FTLJIT), " ", when, ":\n");
     dumpModule(module);
+#endif
 }
 
 } } // namespace JSC::FTL

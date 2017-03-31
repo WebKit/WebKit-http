@@ -26,8 +26,7 @@ var connection2;
 
 request.onsuccess = function()
 {
-    alert("Unexpected success (firstPhase)");
-	done();
+    alert("First version change successful");
 }
 request.onerror = function(e)
 {
@@ -37,11 +36,14 @@ request.onerror = function(e)
 
 request.onupgradeneeded = function(e)
 {
+    var database = event.target.result;
+
     alert("upgradeneeded (firstPhase): old version - " + e.oldVersion + " new version - " + e.newVersion);
     request.transaction.oncomplete = function()
     {
-        alert("Version change complete (firstPhase). Database version is now - " + request.transaction.db.version);
-        connection1 = request.transaction.db;
+        alert("Version change complete (firstPhase). Database version is now - " + database.version);
+
+        connection1 = database;
         connection1.onversionchange = function(e)
         {
             connection1.oldVersion = e.oldVersion;
@@ -95,8 +97,7 @@ function thirdPhase()
     alert("thirdPhase - Requested database connection with version 2");
     request.onsuccess = function()
     {
-        alert("Unexpected open success (thirdPhase)");
-        done();
+        alert("Version change to version 2 successful");
     }
     request.onerror = function(e)
     {

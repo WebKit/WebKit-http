@@ -73,7 +73,7 @@ function teeReadableStream(stream, shouldClone)
     @assert(@isReadableStream(stream));
     @assert(typeof(shouldClone) === "boolean");
 
-    const reader = stream.getReader();
+    const reader = new @ReadableStreamReader(stream);
 
     const teeState = {
         closedOrErrored: false,
@@ -96,7 +96,7 @@ function teeReadableStream(stream, shouldClone)
         "cancel": @teeReadableStreamBranch2CancelFunction(teeState, stream)
     });
 
-    @Promise.prototype.@catch.@call(reader.closed, function(e) {
+    @Promise.prototype.@then.@call(reader.closed, undefined, function(e) {
         if (teeState.closedOrErrored)
             return;
         @errorReadableStream(branch1, e);
@@ -116,7 +116,7 @@ function teeReadableStreamPullFunction(teeState, reader, shouldClone)
     "use strict";
 
     return function() {
-        @Promise.prototype.@then.@call(reader.read(), function(result) {
+        @Promise.prototype.@then.@call(@readFromReadableStreamReader(reader), function(result) {
             @assert(@isObject(result));
             @assert(typeof result.done === "boolean");
             if (result.done && !teeState.closedOrErrored) {
@@ -266,6 +266,7 @@ function cancelReadableStream(stream, reason)
 {
     "use strict";
 
+    stream.@disturbed = true;
     if (stream.@state === @streamClosed)
         return @Promise.@resolve();
     if (stream.@state === @streamErrored)
@@ -321,8 +322,8 @@ function enqueueInReadableStream(stream, chunk)
     try {
         let size = 1;
         if (stream.@strategy.size) {
-            size = Number(stream.@strategy.size(chunk));
-            if (Number.isNaN(size) || size === +Infinity || size < 0)
+            size = @Number(stream.@strategy.size(chunk));
+            if (!@isFinite(size) || size < 0)
                 throw new @RangeError("Chunk size is not valid");
         }
         @enqueueValueWithSize(stream.@queue, chunk, size);
@@ -340,6 +341,7 @@ function readFromReadableStreamReader(reader)
 
     const stream = reader.@ownerReadableStream;
     @assert(!!stream);
+    stream.@disturbed = true;
     if (stream.@state === @streamClosed)
         return @Promise.@resolve({value: undefined, done: true});
     if (stream.@state === @streamErrored)
@@ -357,4 +359,12 @@ function readFromReadableStreamReader(reader)
     reader.@readRequests.push(readPromiseCapability);
     @requestReadableStreamPull(stream);
     return readPromiseCapability.@promise;
+}
+
+function isReadableStreamDisturbed(stream)
+{
+    "use strict";
+
+    @assert(@isReadableStream(stream));
+    return stream.@disturbed;
 }

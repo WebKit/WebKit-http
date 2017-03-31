@@ -522,6 +522,7 @@
     <ClCompile Include="..\ftl\FTLCapabilities.cpp" />
     <ClCompile Include="..\ftl\FTLCommonValues.cpp" />
     <ClCompile Include="..\ftl\FTLCompile.cpp" />
+    <ClCompile Include="..\ftl\FTLCompileBinaryOp.cpp" />
     <ClCompile Include="..\ftl\FTLDataSection.cpp" />
     <ClCompile Include="..\ftl\FTLDWARFDebugLineInfo.cpp" />
     <ClCompile Include="..\ftl\FTLDWARFRegister.cpp" />
@@ -647,8 +648,10 @@
     <ClCompile Include="..\jit\JITCall32_64.cpp" />
     <ClCompile Include="..\jit\JITCode.cpp" />
     <ClCompile Include="..\jit\JITDisassembler.cpp" />
+    <ClCompile Include="..\jit\JITDivGenerator.cpp" />
     <ClCompile Include="..\jit\JITExceptions.cpp" />
     <ClCompile Include="..\jit\JITInlineCacheGenerator.cpp" />
+    <ClCompile Include="..\jit\JITMulGenerator.cpp" />
     <ClCompile Include="..\jit\JITOpcodes.cpp" />
     <ClCompile Include="..\jit\JITOpcodes32_64.cpp" />
     <ClCompile Include="..\jit\JITOperations.cpp" />
@@ -755,6 +758,10 @@
     <ClCompile Include="..\runtime\FunctionHasExecutedCache.cpp" />
     <ClCompile Include="..\runtime\FunctionPrototype.cpp" />
     <ClCompile Include="..\runtime\FunctionRareData.cpp" />
+    <ClCompile Include="..\runtime\GeneratorFrame.cpp" />
+    <ClCompile Include="..\runtime\GeneratorFunctionConstructor.cpp" />
+    <ClCompile Include="..\runtime\GeneratorFunctionPrototype.cpp" />
+    <ClCompile Include="..\runtime\GeneratorPrototype.cpp" />
     <ClCompile Include="..\runtime\GetterSetter.cpp" />
     <ClCompile Include="..\runtime\Identifier.cpp" />
     <ClCompile Include="..\runtime\IndexingType.cpp" />
@@ -794,6 +801,7 @@
     <ClCompile Include="..\runtime\JSDataViewPrototype.cpp" />
     <ClCompile Include="..\runtime\JSDateMath.cpp" />
     <ClCompile Include="..\runtime\JSFunction.cpp" />
+    <ClCompile Include="..\runtime\JSGeneratorFunction.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObject.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObjectFunctions.cpp" />
     <ClCompile Include="..\runtime\JSGlobalLexicalEnvironment.cpp" />
@@ -944,6 +952,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\DateConstructor.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\DatePrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ErrorPrototype.lut.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\GeneratorPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HeaderDetection.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InjectedScriptSource.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorBackendDispatchers.h" />
@@ -1288,6 +1297,7 @@
     <ClInclude Include="..\ftl\FTLCapabilities.h" />
     <ClInclude Include="..\ftl\FTLCommonValues.h" />
     <ClInclude Include="..\ftl\FTLCompile.h" />
+    <ClInclude Include="..\ftl\FTLCompileBinaryOp.h" />
     <ClInclude Include="..\ftl\FTLDataSection.h" />
     <ClInclude Include="..\ftl\FTLDWARFDebugLineInfo.h" />
     <ClInclude Include="..\ftl\FTLDWARFRegister.h" />
@@ -1304,6 +1314,7 @@
     <ClInclude Include="..\ftl\FTLForOSREntryJITCode.h" />
     <ClInclude Include="..\ftl\FTLGeneratedFunction.h" />
     <ClInclude Include="..\ftl\FTLInlineCacheDescriptor.h" />
+    <ClInclude Include="..\ftl\FTLInlineCacheDescriptorInlines.h" />
     <ClInclude Include="..\ftl\FTLInlineCacheSize.h" />
     <ClInclude Include="..\ftl\FTLIntrinsicRepository.h" />
     <ClInclude Include="..\ftl\FTLJITCode.h" />
@@ -1464,9 +1475,11 @@
     <ClInclude Include="..\jit\JITCode.h" />
     <ClInclude Include="..\jit\JITCompilationEffort.h" />
     <ClInclude Include="..\jit\JITDisassembler.h" />
+    <ClInclude Include="..\jit\JITDivGenerator.h" />
     <ClInclude Include="..\jit\JITExceptions.h" />
     <ClInclude Include="..\jit\JITInlineCacheGenerator.h" />
     <ClInclude Include="..\jit\JITInlines.h" />
+    <ClInclude Include="..\jit\JITMulGenerator.h" />
     <ClInclude Include="..\jit\JITOperations.h" />
     <ClInclude Include="..\jit\JITStubRoutine.h" />
     <ClInclude Include="..\jit\JITSubGenerator.h" />
@@ -1483,6 +1496,7 @@
     <ClInclude Include="..\jit\RegisterSet.h" />
     <ClInclude Include="..\jit\Repatch.h" />
     <ClInclude Include="..\jit\ScratchRegisterAllocator.h" />
+    <ClInclude Include="..\jit\SnippetOperand.h" />
     <ClInclude Include="..\jit\SpecializedThunkJIT.h" />
     <ClInclude Include="..\jit\TempRegisterSet.h" />
     <ClInclude Include="..\jit\ThunkGenerator.h" />
@@ -1513,6 +1527,7 @@
     <ClInclude Include="..\parser\ParserTokens.h" />
     <ClInclude Include="..\parser\ResultType.h" />
     <ClInclude Include="..\parser\SourceCode.h" />
+    <ClInclude Include="..\parser\SourceCodeKey.h" />
     <ClInclude Include="..\parser\SourceProvider.h" />
     <ClInclude Include="..\parser\SourceProviderCache.h" />
     <ClInclude Include="..\parser\SourceProviderCacheItem.h" />
@@ -1599,6 +1614,11 @@
     <ClInclude Include="..\runtime\FunctionHasExecutedCache.h" />
     <ClInclude Include="..\runtime\FunctionPrototype.h" />
     <ClInclude Include="..\runtime\FunctionRareData.h" />
+    <ClInclude Include="..\runtime\GeneratorFrame.h" />
+    <ClInclude Include="..\runtime\GeneratorFunctionConstructor.h" />
+    <ClInclude Include="..\runtime\GeneratorFunctionPrototype.h" />
+    <ClInclude Include="..\runtime\GeneratorPrototype.h" />
+    <ClInclude Include="..\runtime\GeneratorThisMode.h" />
     <ClInclude Include="..\runtime\GenericArguments.h" />
     <ClInclude Include="..\runtime\GenericArgumentsInlines.h" />
     <ClInclude Include="..\runtime\GenericOffset.h" />
@@ -1658,6 +1678,7 @@
     <ClInclude Include="..\runtime\JSFloat32Array.h" />
     <ClInclude Include="..\runtime\JSFloat64Array.h" />
     <ClInclude Include="..\runtime\JSFunction.h" />
+    <ClInclude Include="..\runtime\JSGeneratorFunction.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayView.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructor.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructorInlines.h" />

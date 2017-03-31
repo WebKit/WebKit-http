@@ -135,11 +135,22 @@ void IDBServer::deleteDatabase(const IDBRequestData& requestData)
         // well as no way to message back failure.
         return;
     }
-    
-    // FIXME: During bringup of modern IDB, the database deletion is a no-op, and is
-    // immediately reported back to the WebProcess as failure.
-    auto result = IDBResultData::error(requestData.requestIdentifier(), IDBError(IDBExceptionCode::Unknown));
-    connection->didDeleteDatabase(result);
+
+    auto* database = m_uniqueIDBDatabaseMap.get(requestData.databaseIdentifier());
+    if (!database) {
+        connection->didDeleteDatabase(IDBResultData::deleteDatabaseSuccess(requestData.requestIdentifier(), IDBDatabaseInfo(requestData.databaseIdentifier().databaseName(), 0)));
+        return;
+    }
+
+    database->handleDelete(*connection, requestData);
+}
+
+void IDBServer::deleteUniqueIDBDatabase(UniqueIDBDatabase& database)
+{
+    LOG(IndexedDB, "IDBServer::deleteUniqueIDBDatabase");
+
+    auto deletedDatabase = m_uniqueIDBDatabaseMap.take(database.identifier());
+    ASSERT_UNUSED(deletedDatabase, deletedDatabase.get() == &database);
 }
 
 void IDBServer::abortTransaction(const IDBResourceIdentifier& transactionIdentifier)
@@ -201,6 +212,18 @@ void IDBServer::createIndex(const IDBRequestData& requestData, const IDBIndexInf
 
     ASSERT(transaction->isVersionChange());
     transaction->createIndex(requestData, info);
+}
+
+void IDBServer::deleteIndex(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, const String& indexName)
+{
+    LOG(IndexedDB, "IDBServer::deleteIndex");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    ASSERT(transaction->isVersionChange());
+    transaction->deleteIndex(requestData, objectStoreIdentifier, indexName);
 }
 
 void IDBServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode overwriteMode)

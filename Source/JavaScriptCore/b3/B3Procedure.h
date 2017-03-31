@@ -28,9 +28,11 @@
 
 #if ENABLE(B3_JIT)
 
+#include "B3OpaqueByproducts.h"
 #include "B3Origin.h"
 #include "B3Type.h"
 #include "PureNaN.h"
+#include "RegisterAtOffsetList.h"
 #include <wtf/Bag.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
@@ -42,7 +44,6 @@ namespace JSC { namespace B3 {
 
 class BasicBlock;
 class BlockInsertionSet;
-class OpaqueByproducts;
 class Value;
 
 namespace Air { class Code; }
@@ -221,6 +222,8 @@ public:
     std::unique_ptr<OpaqueByproducts> takeByproducts() { return WTF::move(m_byproducts); }
 
     Air::Code& code() { return *m_code; }
+
+    const RegisterAtOffsetList& calleeSaveRegisters();
 
 private:
     friend class BlockInsertionSet;

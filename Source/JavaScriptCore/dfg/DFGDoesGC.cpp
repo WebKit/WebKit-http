@@ -50,6 +50,7 @@ bool doesGC(Graph& graph, Node* node)
     case Identity:
     case GetCallee:
     case GetArgumentCount:
+    case GetRestLength:
     case GetLocal:
     case SetLocal:
     case MovHint:
@@ -224,6 +225,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetStack:
     case GetFromArguments:
     case PutToArguments:
+    case CopyRest:
         return false;
 
     case CreateActivation:

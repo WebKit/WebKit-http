@@ -67,12 +67,12 @@ public:
     virtual void derefEventTarget() override final { deref(); }
 
     virtual const char* activeDOMObjectName() const override final;
-    virtual bool canSuspendForPageCache() const override final;
+    virtual bool canSuspendForDocumentSuspension() const override final;
 
     const IDBDatabaseInfo& info() const { return m_info; }
     uint64_t databaseConnectionIdentifier() const { return m_databaseConnectionIdentifier; }
 
-    Ref<IDBTransaction> startVersionChangeTransaction(const IDBTransactionInfo&);
+    Ref<IDBTransaction> startVersionChangeTransaction(const IDBTransactionInfo&, IDBOpenDBRequest&);
     void didStartTransaction(IDBTransaction&);
 
     void willCommitTransaction(IDBTransaction&);
@@ -85,6 +85,7 @@ public:
     IDBConnectionToServer& serverConnection() { return m_serverConnection.get(); }
 
     void didCreateIndexInfo(const IDBIndexInfo&);
+    void didDeleteIndexInfo(const IDBIndexInfo&);
 
 private:
     IDBDatabase(ScriptExecutionContext&, IDBConnectionToServer&, const IDBResultData&);
@@ -92,6 +93,8 @@ private:
     void didCommitOrAbortTransaction(IDBTransaction&);
 
     void maybeCloseInServer();
+
+    virtual bool hasPendingActivity() const override final;
 
     Ref<IDBConnectionToServer> m_serverConnection;
     IDBDatabaseInfo m_info;

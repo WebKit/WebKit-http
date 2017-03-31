@@ -38,6 +38,7 @@ App.DashboardRow = Ember.Object.extend({
             store: this.get('store'),
             platformId: paneInfo ? paneInfo[0] : null,
             metricId: paneInfo ? paneInfo[1] : null,
+            inDashboard: true
         });
 
         return App.DashboardPaneProxyForPicker.create({content: pane});
@@ -300,6 +301,7 @@ App.Pane = Ember.Object.extend({
     selectedPoints: null,
     hoveredOrSelectedItem: null,
     showFullYAxis: false,
+    inDashboard: false,
     searchCommit: function (repository, keyword) {
         var self = this;
         var repositoryId = repository.get('id');
@@ -353,12 +355,15 @@ App.Pane = Ember.Object.extend({
             var useCache = true;
             App.Manifest.fetchRunsWithPlatformAndMetric(this.get('store'), platformId, metricId, null, useCache)
                 .then(function (result) {
-                    if (result || result.shouldRefetch)
+                    if (!result || !result.data || result.shouldRefetch)
                         self.refetchRuns(platformId, metricId);
                     else
                         self._didFetchRuns(result);
-                }, this._handleFetchErrors.bind(this, platformId, metricId));
-            this.fetchAnalyticRanges();
+                }, function () {
+                    self.refetchRuns(platformId, metricId);
+                });
+            if (!this.get('inDashboard'))
+                this.fetchAnalyticRanges();
         }
     }.observes('platformId', 'metricId').on('init'),
     refetchRuns: function (platformId, metricId) {
@@ -481,15 +486,27 @@ App.Pane = Ember.Object.extend({
         var className = '';
         var formatter = d3.format('.3p');
 
+        function labelForDiff(diff, name) { return formatter(Math.abs(diff)) + ' ' + (diff > 0 ? 'above' : 'below') + ' ' + name; }
+
         var smallerIsBetter = chartData.smallerIsBetter;
-        if (diffFromBaseline !== undefined && diffFromBaseline > 0 == smallerIsBetter) {
-            label = formatter(Math.abs(diffFromBaseline)) + ' ' + (smallerIsBetter ? 'above' : 'below') + ' baseline';
-            className = 'worse';
-        } else if (diffFromTarget !== undefined && diffFromTarget < 0 == smallerIsBetter) {
-            label = formatter(Math.abs(diffFromTarget)) + ' ' + (smallerIsBetter ? 'below' : 'above') + ' target';
-            className = 'better';
-        } else if (diffFromTarget !== undefined)
-            label = formatter(Math.abs(diffFromTarget)) + ' until target';
+        if (diffFromBaseline !== undefined && diffFromTarget !== undefined) {
+            if (diffFromBaseline > 0 == smallerIsBetter) {
+                label = labelForDiff(diffFromBaseline, 'baseline');
+                className = 'worse';
+            } else if (diffFromTarget < 0 == smallerIsBetter) {
+                label = labelForDiff(diffFromBaseline, 'target');
+                className = 'better';
+            } else
+                label = formatter(Math.abs(diffFromTarget)) + ' until target';
+        } else if (diffFromBaseline !== undefined) {
+            label = labelForDiff(diffFromBaseline, 'baseline');
+            if (diffFromBaseline > 0 == smallerIsBetter)
+                className = 'worse';
+        } else if (diffFromTarget !== undefined) {
+            label = labelForDiff(diffFromTarget, 'target');
+            if (diffFromTarget < 0 == smallerIsBetter)
+                className = 'better';
+        }
 
         var valueDelta = null;
         var relativeDelta = null;

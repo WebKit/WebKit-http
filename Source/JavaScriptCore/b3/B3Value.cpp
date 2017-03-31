@@ -194,6 +194,11 @@ Value* Value::zShrConstant(Procedure&, const Value*) const
     return nullptr;
 }
 
+Value* Value::bitwiseCastConstant(Procedure&) const
+{
+    return nullptr;
+}
+
 TriState Value::equalConstant(const Value*) const
 {
     return MixedTriState;
@@ -320,6 +325,8 @@ Effects Value::effects() const
     case Shl:
     case SShr:
     case ZShr:
+    case Sqrt:
+    case BitwiseCast:
     case SExt8:
     case SExt16:
     case SExt32:
@@ -338,6 +345,7 @@ Effects Value::effects() const
     case Below:
     case AboveEqual:
     case BelowEqual:
+    case Select:
         break;
     case Div:
         result.controlDependent = true;
@@ -393,6 +401,7 @@ ValueKey Value::key() const
     case FramePointer:
         return ValueKey(opcode(), type());
     case Identity:
+    case Sqrt:
     case SExt8:
     case SExt16:
     case SExt32:
@@ -427,6 +436,8 @@ ValueKey Value::key() const
     case CheckSub:
     case CheckMul:
         return ValueKey(opcode(), type(), child(0), child(1));
+    case Select:
+        return ValueKey(opcode(), type(), child(0), child(1), child(2));
     case Const32:
         return ValueKey(Const32, type(), static_cast<int64_t>(asInt32()));
     case Const64:
@@ -471,7 +482,7 @@ void Value::checkOpcode(Opcode opcode)
 }
 #endif // !ASSERT_DISABLED
 
-Type Value::typeFor(Opcode opcode, Value* firstChild)
+Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
 {
     switch (opcode) {
     case Identity:
@@ -487,6 +498,7 @@ Type Value::typeFor(Opcode opcode, Value* firstChild)
     case Shl:
     case SShr:
     case ZShr:
+    case Sqrt:
     case CheckAdd:
     case CheckSub:
     case CheckMul:
@@ -514,8 +526,18 @@ Type Value::typeFor(Opcode opcode, Value* firstChild)
     case FRound:
     case IToD:
         return Double;
+    case BitwiseCast:
+        if (firstChild->type() == Int64)
+            return Double;
+        if (firstChild->type() == Double)
+            return Int64;
+        ASSERT_NOT_REACHED();
+        return Void;
     case Nop:
         return Void;
+    case Select:
+        ASSERT(secondChild);
+        return secondChild->type();
     default:
         RELEASE_ASSERT_NOT_REACHED();
     }

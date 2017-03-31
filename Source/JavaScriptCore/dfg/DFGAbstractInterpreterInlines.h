@@ -1763,6 +1763,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(SpecInt32);
         break;
         
+    case GetRestLength:
+        forNode(node).setType(SpecInt32);
+        break;
+        
     case GetGetter: {
         JSValue base = forNode(node->child1()).m_value;
         if (base) {
@@ -2508,6 +2512,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CheckTierUpAtReturn:
         break;
 
+    case CopyRest:
+        break;
+            
     case Check: {
         // Simplify out checks that don't actually do checking.
         for (unsigned i = 0; i < AdjacencyList::Size; ++i) {

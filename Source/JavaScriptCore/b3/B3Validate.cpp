@@ -172,6 +172,14 @@ public:
                 VALIDATE(value->child(1)->type() == Int32, ("At ", *value));
                 VALIDATE(isInt(value->type()), ("At ", *value));
                 break;
+            case BitwiseCast:
+                VALIDATE(value->numChildren() == 1, ("At ", *value));
+                VALIDATE(value->type() != value->child(0)->type(), ("At ", *value));
+                VALIDATE(
+                    (value->type() == Int64 && value->child(0)->type() == Double)
+                    || (value->type() == Double && value->child(0)->type() == Int64),
+                    ("At ", *value));
+                break;
             case SExt8:
             case SExt16:
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
@@ -189,6 +197,7 @@ public:
                 VALIDATE(value->child(0)->type() == Int64, ("At ", *value));
                 VALIDATE(value->type() == Int32, ("At ", *value));
                 break;
+            case Sqrt:
             case FRound:
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->child(0)->type() == Double, ("At ", *value));
@@ -222,6 +231,12 @@ public:
                 VALIDATE(value->child(0)->type() == value->child(1)->type(), ("At ", *value));
                 VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
                 VALIDATE(value->type() == Int32, ("At ", *value));
+                break;
+            case Select:
+                VALIDATE(value->numChildren() == 3, ("At ", *value));
+                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->type() == value->child(1)->type(), ("At ", *value));
+                VALIDATE(value->type() == value->child(2)->type(), ("At ", *value));
                 break;
             case Load8Z:
             case Load8S:

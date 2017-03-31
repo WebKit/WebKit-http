@@ -1238,6 +1238,14 @@ void webkit_dom_test_obj_method_with_exception(WebKitDOMTestObj* self, GError** 
     }
 }
 
+void webkit_dom_test_obj_method_with_exception_with_message(WebKitDOMTestObj* self)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithExceptionWithMessage();
+}
+
 void webkit_dom_test_obj_with_script_state_void(WebKitDOMTestObj* self)
 {
     WebCore::JSMainThreadNullState state;
@@ -2415,8 +2423,7 @@ gdouble webkit_dom_test_obj_get_nullable_double_attribute(WebKitDOMTestObj* self
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
     WebCore::TestObj* item = WebKit::core(self);
-    bool isNull = false;
-    gdouble result = item->nullableDoubleAttribute(isNull);
+    gdouble result = item->nullableDoubleAttribute().valueOr(0);
     return result;
 }
 
@@ -2425,8 +2432,7 @@ glong webkit_dom_test_obj_get_nullable_long_attribute(WebKitDOMTestObj* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
     WebCore::TestObj* item = WebKit::core(self);
-    bool isNull = false;
-    glong result = item->nullableLongAttribute(isNull);
+    glong result = item->nullableLongAttribute().valueOr(0);
     return result;
 }
 
@@ -2435,8 +2441,7 @@ gboolean webkit_dom_test_obj_get_nullable_boolean_attribute(WebKitDOMTestObj* se
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), FALSE);
     WebCore::TestObj* item = WebKit::core(self);
-    bool isNull = false;
-    gboolean result = item->nullableBooleanAttribute(isNull);
+    gboolean result = item->nullableBooleanAttribute().valueOr(0);
     return result;
 }
 
@@ -2445,8 +2450,7 @@ gchar* webkit_dom_test_obj_get_nullable_string_attribute(WebKitDOMTestObj* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
     WebCore::TestObj* item = WebKit::core(self);
-    bool isNull = false;
-    gchar* result = convertToUTF8String(item->nullableStringAttribute(isNull));
+    gchar* result = convertToUTF8String(item->nullableStringAttribute());
     return result;
 }
 
@@ -2455,8 +2459,7 @@ glong webkit_dom_test_obj_get_nullable_long_settable_attribute(WebKitDOMTestObj*
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
     WebCore::TestObj* item = WebKit::core(self);
-    bool isNull = false;
-    glong result = item->nullableLongSettableAttribute(isNull);
+    glong result = item->nullableLongSettableAttribute().valueOr(0);
     return result;
 }
 
@@ -2474,9 +2477,8 @@ glong webkit_dom_test_obj_get_nullable_string_value(WebKitDOMTestObj* self, GErr
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
     g_return_val_if_fail(!error || !*error, 0);
     WebCore::TestObj* item = WebKit::core(self);
-    bool isNull = false;
     WebCore::ExceptionCode ec = 0;
-    glong result = item->nullableStringValue(isNull, ec);
+    glong result = item->nullableStringValue(ec).valueOr(0);
     if (ec) {
         WebCore::ExceptionCodeDescription ecdesc(ec);
         g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
@@ -2515,8 +2517,7 @@ WebKitDOMTestNode* webkit_dom_test_obj_get_put_forwards_nullable_attribute(WebKi
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
     WebCore::TestObj* item = WebKit::core(self);
-    bool isNull = false;
-    RefPtr<WebCore::TestNode> gobjectResult = WTF::getPtr(item->putForwardsNullableAttribute(isNull));
+    RefPtr<WebCore::TestNode> gobjectResult = WTF::getPtr(item->putForwardsNullableAttribute());
     return WebKit::kit(gobjectResult.get());
 }
 

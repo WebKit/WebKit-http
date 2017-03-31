@@ -52,6 +52,7 @@ void link(State& state)
     // LLVM will create its own jump tables as needed.
     codeBlock->clearSwitchJumpTables();
 
+#if !FTL_USES_B3
     // What LLVM's stackmaps call stackSizeForLocals and what we call frameRegisterCount have a simple
     // relationship, though it's not obvious from reading the code. The easiest way to understand them
     // is to look at stackOffset, i.e. what you have to add to FP to get SP. For LLVM that is just:
@@ -77,6 +78,7 @@ void link(State& state)
     //     frameRegisterCount == -(-state.jitCode->stackmaps.stackSizeForLocals()) / sizeof(Register)
     //     frameRegisterCount == state.jitCode->stackmaps.stackSizeForLocals() / sizeof(Register)
     state.jitCode->common.frameRegisterCount = state.jitCode->stackmaps.stackSizeForLocals() / sizeof(void*);
+#endif
     
     state.jitCode->common.requiredRegisterCountForExit = graph.requiredRegisterCountForExit();
     
@@ -143,8 +145,11 @@ void link(State& state)
         dumpContext.dump(out, prefix);
         compilation->addDescription(Profiler::OriginStack(), out.toCString());
         out.reset();
-        
+
         out.print("    Disassembly:\n");
+#if FTL_USES_B3
+        out.print("        <not implemented yet>\n");
+#else
         for (unsigned i = 0; i < state.jitCode->handles().size(); ++i) {
             if (state.codeSectionNames[i] != SECTION_NAME("text"))
                 continue;
@@ -154,6 +159,7 @@ void link(State& state)
                 MacroAssemblerCodePtr(handle->start()), handle->sizeInBytes(),
                 "      ", out, LLVMSubset);
         }
+#endif
         compilation->addDescription(Profiler::OriginStack(), out.toCString());
         out.reset();
         

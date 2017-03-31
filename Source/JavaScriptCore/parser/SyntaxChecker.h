@@ -75,7 +75,7 @@ public:
         FunctionExpr, ClassExpr, SuperExpr, BracketExpr, DotExpr, CallExpr,
         NewExpr, PreExpr, PostExpr, UnaryExpr, BinaryExpr,
         ConditionalExpr, AssignmentExpr, TypeofExpr, NewTargetExpr,
-        DeleteExpr, ArrayLiteralExpr, BindingDestructuring,
+        DeleteExpr, ArrayLiteralExpr, BindingDestructuring, RestParameter,
         ArrayDestructuring, ObjectDestructuring, SourceElementsResult,
         FunctionBodyResult, SpreadExpr, ArgumentsResult,
         PropertyListResult, ArgumentsListResult, ElementsListResult,
@@ -135,6 +135,7 @@ public:
     typedef int DestructuringPattern;
     typedef DestructuringPattern ArrayPattern;
     typedef DestructuringPattern ObjectPattern;
+    typedef DestructuringPattern RestPattern;
 
     static const bool CreatesAST = false;
     static const bool NeedsFreeVariableInfo = false;
@@ -179,10 +180,10 @@ public:
     ExpressionType createEmptyVarExpression(const JSTokenLocation&, const Identifier&) { return AssignmentExpr; }
     ExpressionType createEmptyLetExpression(const JSTokenLocation&, const Identifier&) { return AssignmentExpr; }
     ExpressionType createYield(const JSTokenLocation&) { return YieldExpr; }
-    ExpressionType createYield(const JSTokenLocation&, ExpressionType, bool) { return YieldExpr; }
+    ExpressionType createYield(const JSTokenLocation&, ExpressionType, bool, int, int, int) { return YieldExpr; }
     ClassExpression createClassExpr(const JSTokenLocation&, const Identifier&, VariableEnvironment&, ExpressionType, ExpressionType, PropertyList, PropertyList) { return ClassExpr; }
     ExpressionType createFunctionExpr(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return FunctionExpr; }
-    int createFunctionMetadata(const JSTokenLocation&, const JSTokenLocation&, int, int, bool, int, int, int, ConstructorKind, unsigned, SourceParseMode, bool, bool) { return FunctionBodyResult; }
+    int createFunctionMetadata(const JSTokenLocation&, const JSTokenLocation&, int, int, bool, int, int, int, ConstructorKind, SuperBinding, unsigned, SourceParseMode, bool) { return FunctionBodyResult; }
     ExpressionType createArrowFunctionExpr(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return FunctionExpr; }
     void setFunctionNameStart(int, int) { }
     int createArguments() { return ArgumentsResult; }
@@ -342,9 +343,17 @@ public:
     void appendObjectPatternEntry(ArrayPattern, const JSTokenLocation&, bool, const Identifier&, DestructuringPattern, int)
     {
     }
+    void appendObjectPatternEntry(ArrayPattern, const JSTokenLocation&, Expression, DestructuringPattern, Expression)
+    {
+    }
+
     DestructuringPattern createBindingLocation(const JSTokenLocation&, const Identifier&, const JSTextPosition&, const JSTextPosition&, AssignmentContext)
     {
         return BindingDestructuring;
+    }
+    RestPattern createRestParameter(const Identifier&, size_t, const JSTextPosition&, const JSTextPosition&)
+    { 
+        return RestParameter;
     }
     DestructuringPattern createAssignmentElement(const Expression&, const JSTextPosition&, const JSTextPosition&)
     {
@@ -379,6 +388,8 @@ public:
     void setEndOffset(int, int) { }
     int endOffset(int) { return 0; }
     void setStartOffset(int, int) { }
+
+    void propagateArgumentsUse() { }
 
 private:
     int m_topBinaryExpr;

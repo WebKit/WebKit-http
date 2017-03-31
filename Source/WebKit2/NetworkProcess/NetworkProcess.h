@@ -26,8 +26,6 @@
 #ifndef NetworkProcess_h
 #define NetworkProcess_h
 
-#if ENABLE(NETWORK_PROCESS)
-
 #include "CacheModel.h"
 #include "ChildProcess.h"
 #include "DownloadManager.h"
@@ -47,6 +45,7 @@ namespace WebCore {
 class CertificateInfo;
 class NetworkStorageSession;
 class SecurityOrigin;
+class SessionID;
 struct SecurityOriginData;
 }
 
@@ -150,7 +149,7 @@ private:
     // FIXME: This should take a session ID so we can identify which disk cache to delete.
     void clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler);
 
-    void downloadRequest(uint64_t downloadID, const WebCore::ResourceRequest&);
+    void downloadRequest(WebCore::SessionID, uint64_t downloadID, const WebCore::ResourceRequest&);
     void resumeDownload(uint64_t downloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
     void cancelDownload(uint64_t downloadID);
     void setCacheModel(uint32_t);
@@ -195,7 +194,5 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // ENABLE(NETWORK_PROCESS)
 
 #endif // NetworkProcess_h

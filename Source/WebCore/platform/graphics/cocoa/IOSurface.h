@@ -46,10 +46,12 @@ public:
     };
 
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, ColorSpace, Format = Format::RGBA);
-    WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, IntSize contextSize, ColorSpace);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, IntSize contextSize, ColorSpace, Format = Format::RGBA);
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromSendRight(const MachSendRight&, ColorSpace);
     static std::unique_ptr<IOSurface> createFromSurface(IOSurfaceRef, ColorSpace);
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromImage(CGImageRef);
+
+    WEBCORE_EXPORT static void moveToPool(std::unique_ptr<IOSurface>&&);
 
     static IntSize maximumSize();
 
@@ -80,7 +82,7 @@ public:
     IntSize size() const { return m_size; }
     size_t totalBytes() const { return m_totalBytes; }
     ColorSpace colorSpace() const { return m_colorSpace; }
-    Format format() const;
+    WEBCORE_EXPORT Format format() const;
 
     WEBCORE_EXPORT bool isInUse() const;
 
@@ -89,15 +91,16 @@ public:
     WEBCORE_EXPORT void releaseGraphicsContext();
 
 #if PLATFORM(IOS)
+    WEBCORE_EXPORT void copyToSurface(IOSurface&);
     WEBCORE_EXPORT static void convertToFormat(std::unique_ptr<WebCore::IOSurface>&& inSurface, Format, std::function<void(std::unique_ptr<WebCore::IOSurface>)>);
 #endif
 
 private:
     IOSurface(IntSize, ColorSpace, Format);
-    IOSurface(IntSize, IntSize contextSize, ColorSpace);
+    IOSurface(IntSize, IntSize contextSize, ColorSpace, Format);
     IOSurface(IOSurfaceRef, ColorSpace);
 
-    static std::unique_ptr<IOSurface> surfaceFromPool(IntSize, IntSize contextSize, ColorSpace);
+    static std::unique_ptr<IOSurface> surfaceFromPool(IntSize, IntSize contextSize, ColorSpace, Format);
     IntSize contextSize() const { return m_contextSize; }
     void setContextSize(IntSize);
 

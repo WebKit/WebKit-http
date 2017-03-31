@@ -92,6 +92,7 @@ typedef char* UnusedPtr;
     Vm: VM*
     Ws: WatchpointSet*
     Z: int32_t
+    Ui: uint32_t
 */
 
 typedef CallFrame* JIT_OPERATION (*F_JITOperation_EFJZZ)(ExecState*, CallFrame*, EncodedJSValue, int32_t, int32_t);
@@ -219,6 +220,7 @@ typedef void JIT_OPERATION (*V_JITOperation_EZJZZZ)(ExecState*, int32_t, Encoded
 typedef void JIT_OPERATION (*V_JITOperation_EVm)(ExecState*, VM*);
 typedef void JIT_OPERATION (*V_JITOperation_J)(EncodedJSValue);
 typedef void JIT_OPERATION (*V_JITOperation_Z)(int32_t);
+typedef void JIT_OPERATION (*V_JITOperation_ECRUiUi)(ExecState*, JSCell*, Register*, uint32_t, uint32_t);
 typedef char* JIT_OPERATION (*P_JITOperation_E)(ExecState*);
 typedef char* JIT_OPERATION (*P_JITOperation_EC)(ExecState*, JSCell*);
 typedef char* JIT_OPERATION (*P_JITOperation_ECli)(ExecState*, CallLinkInfo*);
@@ -299,6 +301,8 @@ EncodedJSValue JIT_OPERATION operationNewArrayBufferWithProfile(ExecState*, Arra
 EncodedJSValue JIT_OPERATION operationNewArrayWithSizeAndProfile(ExecState*, ArrayAllocationProfile*, EncodedJSValue size) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewFunction(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewFunctionWithInvalidatedReallocationWatchpoint(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationNewGeneratorFunction(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationNewGeneratorFunctionWithInvalidatedReallocationWatchpoint(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewArrowFunction(ExecState*, JSScope*, JSCell*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewArrowFunctionWithInvalidatedReallocationWatchpoint(ExecState*, JSScope*, JSCell*, EncodedJSValue) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationNewObject(ExecState*, Structure*) WTF_INTERNAL;

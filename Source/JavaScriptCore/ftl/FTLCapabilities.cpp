@@ -210,6 +210,8 @@ inline CapabilityLevel canCompile(Node* node)
     case PutGetterSetterById:
     case PutGetterByVal:
     case PutSetterByVal:
+    case CopyRest:
+    case GetRestLength:
         // These are OK.
         break;
 

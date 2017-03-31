@@ -44,32 +44,40 @@ void spillEverything(Code& code)
 
     // We want to know the set of registers used at every point in every basic block.
     IndexMap<BasicBlock, Vector<RegisterSet>> usedRegisters(code.size());
-    Liveness<Tmp> liveness(code);
+    GPLiveness gpLiveness(code);
+    FPLiveness fpLiveness(code);
     for (BasicBlock* block : code) {
-        Liveness<Tmp>::LocalCalc localCalc(liveness, block);
+        GPLiveness::LocalCalc gpLocalCalc(gpLiveness, block);
+        FPLiveness::LocalCalc fpLocalCalc(fpLiveness, block);
+
         usedRegisters[block].resize(block->size() + 1);
 
         auto setUsedRegisters = [&] (unsigned index, Inst& inst) {
             RegisterSet& registerSet = usedRegisters[block][index];
-            for (Tmp tmp : localCalc.live()) {
+            for (Tmp tmp : gpLocalCalc.live()) {
+                if (tmp.isReg())
+                    registerSet.set(tmp.reg());
+            }
+            for (Tmp tmp : fpLocalCalc.live()) {
                 if (tmp.isReg())
                     registerSet.set(tmp.reg());
             }
 
             // Gotta account for dead assignments to registers. These may happen because the input
             // code is suboptimal.
-            auto updateRegisterSet = [&registerSet] (const Tmp& tmp) {
-                if (tmp.isReg())
-                    registerSet.set(tmp.reg());
-            };
-            inst.forEachDefAndExtraClobberedTmp(Arg::GP, updateRegisterSet);
-            inst.forEachDefAndExtraClobberedTmp(Arg::FP, updateRegisterSet);
+            inst.forEachTmpWithExtraClobberedRegs(
+                index < block->size() ? &block->at(index) : nullptr,
+                [&registerSet] (const Tmp& tmp, Arg::Role role, Arg::Type) {
+                    if (tmp.isReg() && Arg::isDef(role))
+                        registerSet.set(tmp.reg());
+                });
         };
 
         for (unsigned instIndex = block->size(); instIndex--;) {
             Inst& inst = block->at(instIndex);
             setUsedRegisters(instIndex + 1, inst);
-            localCalc.execute(instIndex);
+            gpLocalCalc.execute(instIndex);
+            fpLocalCalc.execute(instIndex);
         }
 
         Inst nop;
@@ -122,6 +130,7 @@ void spillEverything(Code& code)
                     Reg chosenReg;
                     switch (role) {
                     case Arg::Use:
+                    case Arg::ColdUse:
                         for (Reg reg : regsInPriorityOrder(type)) {
                             if (!setBefore.get(reg)) {
                                 setBefore.set(reg);

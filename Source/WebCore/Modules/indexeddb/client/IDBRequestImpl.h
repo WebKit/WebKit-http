@@ -97,6 +97,8 @@ public:
 
     const IDBCursor* pendingCursor() const { return m_pendingCursor.get(); }
 
+    void setSource(IDBCursor&);
+
 protected:
     IDBRequest(IDBConnectionToServer&, ScriptExecutionContext*);
     IDBRequest(ScriptExecutionContext&, IDBObjectStore&, IDBTransaction&);
@@ -106,16 +108,19 @@ protected:
 
     // ActiveDOMObject.
     virtual const char* activeDOMObjectName() const override final;
-    virtual bool canSuspendForPageCache() const override final;
+    virtual bool canSuspendForDocumentSuspension() const override final;
     virtual bool hasPendingActivity() const override final;
     
     // EventTarget.
     virtual void refEventTarget() override final { RefCounted<IDBRequest>::ref(); }
     virtual void derefEventTarget() override final { RefCounted<IDBRequest>::deref(); }
 
+    virtual bool isOpenDBRequest() const { return false; }
+
     IDBRequestReadyState m_readyState { IDBRequestReadyState::Pending };
     RefPtr<IDBAny> m_result;
     RefPtr<IDBTransaction> m_transaction;
+    bool m_shouldExposeTransactionToDOM { true };
     RefPtr<DOMError> m_domError;
     IDBError m_idbError;
 

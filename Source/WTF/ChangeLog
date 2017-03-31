@@ -1,3 +1,154 @@
+2015-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement LLInt/Baseline Support for ES6 Generators and enable this feature
+        https://bugs.webkit.org/show_bug.cgi?id=150792
+
+        Reviewed by Saam Barati.
+
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::forEachSetBit):
+        * wtf/FeatureDefines.h:
+
+2015-12-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192914.
+        https://bugs.webkit.org/show_bug.cgi?id=151734
+
+        JSC tests for this change are failing on 32 and 64-bit bots
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Implement LLInt/Baseline Support for ES6 Generators and
+        enable this feature"
+        https://bugs.webkit.org/show_bug.cgi?id=150792
+        http://trac.webkit.org/changeset/192914
+
+2015-12-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Give String and AtomicString an existingHash() function
+        https://bugs.webkit.org/show_bug.cgi?id=151717
+
+        Reviewed by Andreas Kling.
+
+        Test: WTF.AtomicStringExistingHash
+              WTF.StringExistingHash
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::existingHash):
+        * wtf/text/WTFString.h:
+        (WTF::String::existingHash):
+
+2015-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement LLInt/Baseline Support for ES6 Generators and enable this feature
+        https://bugs.webkit.org/show_bug.cgi?id=150792
+
+        Reviewed by Saam Barati.
+
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::forEachSetBit):
+        * wtf/FeatureDefines.h:
+
+2015-11-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Use a better RNG for Math.random()
+        https://bugs.webkit.org/show_bug.cgi?id=151641
+
+        Reviewed by Anders Carlsson.
+
+        Use 64 bits in the random number generator instead of 32 bit. (In
+        the end, JavaScript, which uses doubles, will only see 52 bits.) This
+        prevents programs that multiply a random number by a large constant from
+        seeing non-random "banding" caused by zeroes in the low 20 bits.
+
+        I also took the opportunity to upgrade from GameRandom to Xorshift+,
+        since Xorshift+ passes more benchmarks for randomness, and is not any
+        slower or more complicated.
+
+        Now let us all remember the fateful words of Steve Weibe, who would be
+        King of Kong: "The randomness went the opposite way that it usually goes."
+
+        * wtf/WeakRandom.h:
+        (WTF::WeakRandom::WeakRandom):
+        (WTF::WeakRandom::setSeed): Use standard naming.
+
+        (WTF::WeakRandom::seed): This function is safe now. "Unsafe" in function
+        names makes me itch.
+
+        (WTF::WeakRandom::get):
+        (WTF::WeakRandom::getUint32): Update to 64bit.
+
+        (WTF::WeakRandom::advance): The Xorshift+ algorithm.
+
+        (WTF::WeakRandom::initializeSeed): Deleted.
+        (WTF::WeakRandom::seedUnsafe): Deleted.
+
+2015-11-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Speed up Air Liveness Analysis on Tmps
+        https://bugs.webkit.org/show_bug.cgi?id=151556
+
+        Reviewed by Filip Pizlo.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/IndexSparseSet.h: Added.
+        (WTF::IndexSparseSet<OverflowHandler>::IndexSparseSet):
+        (WTF::IndexSparseSet<OverflowHandler>::add):
+        (WTF::IndexSparseSet<OverflowHandler>::remove):
+        (WTF::IndexSparseSet<OverflowHandler>::clear):
+        (WTF::IndexSparseSet<OverflowHandler>::size):
+        (WTF::IndexSparseSet<OverflowHandler>::isEmpty):
+        (WTF::IndexSparseSet<OverflowHandler>::contains):
+
+2015-11-30  Tim Horton  <timothy_horton@apple.com>
+
+        Get rid of the !USE(ASYNC_NSTEXTINPUTCLIENT) codepath
+        https://bugs.webkit.org/show_bug.cgi?id=151673
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Platform.h:
+
+2015-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Remove GMainLoopSource and GThreadSafeMainLoopSource
+        https://bugs.webkit.org/show_bug.cgi?id=151633
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/glib/GMainLoopSource.cpp: Removed.
+        * wtf/glib/GMainLoopSource.h: Removed.
+        * wtf/glib/GThreadSafeMainLoopSource.cpp: Removed.
+        * wtf/glib/GThreadSafeMainLoopSource.h: Removed.
+
+2015-11-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix build warning in bignum.cc
+        https://bugs.webkit.org/show_bug.cgi?id=150797
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/dtoa/bignum.cc:
+
+2015-11-18  Daniel Bates  <dabates@apple.com>
+
+        [iOS] ASSERTION FAILED: temporaryFilePath.last() == '/' in WebCore::openTemporaryFile()
+        https://bugs.webkit.org/show_bug.cgi?id=151392
+        <rdar://problem/23595341>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Workaround <rdar://problem/23579077> where confstr(_CS_DARWIN_USER_TEMP_DIR, ..., ...) retrieves
+        the path to the user temporary directory without a trailing slash in the iOS simulator.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+
 2015-11-17  Filip Pizlo  <fpizlo@apple.com>
 
         CheckAdd/Mul should have commutativity optimizations in B3->Air lowering

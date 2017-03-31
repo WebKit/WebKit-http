@@ -622,6 +622,18 @@ public:
         m_formatter.oneByteOp(OP_GROUP3_Ev, GROUP3_OP_NOT, base, offset);
     }
 
+#if CPU(X86_64)
+    void notq_r(RegisterID dst)
+    {
+        m_formatter.oneByteOp64(OP_GROUP3_Ev, GROUP3_OP_NOT, dst);
+    }
+
+    void notq_m(int offset, RegisterID base)
+    {
+        m_formatter.oneByteOp64(OP_GROUP3_Ev, GROUP3_OP_NOT, base, offset);
+    }
+#endif
+
     void orl_rr(RegisterID src, RegisterID dst)
     {
         m_formatter.oneByteOp(OP_OR_EvGv, src, dst);
@@ -1638,7 +1650,7 @@ public:
 
     void cmovl_rr(Condition cond, RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp(cmovcc(cond), src, dst);
+        m_formatter.twoByteOp(cmovcc(cond), dst, src);
     }
 
     void cmovl_mr(Condition cond, int offset, RegisterID base, RegisterID dst)
@@ -1653,28 +1665,28 @@ public:
 
     void cmovel_rr(RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp(cmovcc(ConditionE), src, dst);
+        m_formatter.twoByteOp(cmovcc(ConditionE), dst, src);
     }
     
     void cmovnel_rr(RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp(cmovcc(ConditionNE), src, dst);
+        m_formatter.twoByteOp(cmovcc(ConditionNE), dst, src);
     }
     
     void cmovpl_rr(RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp(cmovcc(ConditionP), src, dst);
+        m_formatter.twoByteOp(cmovcc(ConditionP), dst, src);
     }
     
     void cmovnpl_rr(RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp(cmovcc(ConditionNP), src, dst);
+        m_formatter.twoByteOp(cmovcc(ConditionNP), dst, src);
     }
 
 #if CPU(X86_64)
     void cmovq_rr(Condition cond, RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp64(cmovcc(cond), src, dst);
+        m_formatter.twoByteOp64(cmovcc(cond), dst, src);
     }
 
     void cmovq_mr(Condition cond, int offset, RegisterID base, RegisterID dst)
@@ -1689,22 +1701,22 @@ public:
 
     void cmoveq_rr(RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp64(cmovcc(ConditionE), src, dst);
+        m_formatter.twoByteOp64(cmovcc(ConditionE), dst, src);
     }
 
     void cmovneq_rr(RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp64(cmovcc(ConditionNE), src, dst);
+        m_formatter.twoByteOp64(cmovcc(ConditionNE), dst, src);
     }
 
     void cmovpq_rr(RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp64(cmovcc(ConditionP), src, dst);
+        m_formatter.twoByteOp64(cmovcc(ConditionP), dst, src);
     }
 
     void cmovnpq_rr(RegisterID src, RegisterID dst)
     {
-        m_formatter.twoByteOp64(cmovcc(ConditionNP), src, dst);
+        m_formatter.twoByteOp64(cmovcc(ConditionNP), dst, src);
     }
 #else
     void cmovl_mr(Condition cond, const void* addr, RegisterID dst)
@@ -2125,7 +2137,13 @@ public:
         m_formatter.prefix(PRE_SSE_F2);
         m_formatter.twoByteOp(OP2_SQRTSD_VsdWsd, (RegisterID)dst, (RegisterID)src);
     }
-    
+
+    void sqrtsd_mr(int offset, RegisterID base, XMMRegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F2);
+        m_formatter.twoByteOp(OP2_SQRTSD_VsdWsd, (RegisterID)dst, base, offset);
+    }
+
     // Misc instructions:
 
     void int3()

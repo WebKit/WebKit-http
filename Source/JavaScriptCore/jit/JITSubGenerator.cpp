@@ -24,9 +24,9 @@
  */
 
 #include "config.h"
+#include "JITSubGenerator.h"
 
 #if ENABLE(JIT)
-#include "JITSubGenerator.h"
 
 namespace JSC {
 
@@ -40,6 +40,9 @@ void JITSubGenerator::generateFastPath(CCallHelpers& jit)
     ASSERT(m_scratchGPR != m_right.tagGPR());
     ASSERT(m_scratchFPR != InvalidFPRReg);
 #endif
+
+    m_didEmitFastPath = true;
+
     CCallHelpers::Jump leftNotInt = jit.branchIfNotInt32(m_left);
     CCallHelpers::Jump rightNotInt = jit.branchIfNotInt32(m_right);
 
@@ -57,9 +60,9 @@ void JITSubGenerator::generateFastPath(CCallHelpers& jit)
     }
 
     leftNotInt.link(&jit);
-    if (!m_leftType.definitelyIsNumber())
+    if (!m_leftOperand.definitelyIsNumber())
         m_slowPathJumpList.append(jit.branchIfNotNumber(m_left, m_scratchGPR));
-    if (!m_rightType.definitelyIsNumber())
+    if (!m_rightOperand.definitelyIsNumber())
         m_slowPathJumpList.append(jit.branchIfNotNumber(m_right, m_scratchGPR));
 
     jit.unboxDoubleNonDestructive(m_left, m_leftFPR, m_scratchGPR, m_scratchFPR);
@@ -69,7 +72,7 @@ void JITSubGenerator::generateFastPath(CCallHelpers& jit)
     CCallHelpers::Jump rightWasInteger = jit.jump();
 
     rightNotInt.link(&jit);
-    if (!m_rightType.definitelyIsNumber())
+    if (!m_rightOperand.definitelyIsNumber())
         m_slowPathJumpList.append(jit.branchIfNotNumber(m_right, m_scratchGPR));
 
     jit.convertInt32ToDouble(m_left.payloadGPR(), m_leftFPR);
@@ -81,8 +84,6 @@ void JITSubGenerator::generateFastPath(CCallHelpers& jit)
 
     jit.subDouble(m_rightFPR, m_leftFPR);
     jit.boxDouble(m_leftFPR, m_result);
-
-    m_endJumpList.append(jit.jump());
 }
 
 } // namespace JSC

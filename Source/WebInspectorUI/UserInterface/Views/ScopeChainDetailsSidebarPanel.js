@@ -32,31 +32,31 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         this._callFrame = null;
 
         this._watchExpressionsSetting = new WebInspector.Setting("watch-expressions", []);
+        this._watchExpressionsSetting.addEventListener(WebInspector.Setting.Event.Changed, this._updateWatchExpressionsNavigationBar, this);
 
         this._watchExpressionOptionsElement = document.createElement("div");
         this._watchExpressionOptionsElement.classList.add("options");
 
-        let refreshAllWatchExpressionButton = this._watchExpressionOptionsElement.appendChild(document.createElement("img"));
-        refreshAllWatchExpressionButton.classList.add("watch-expression-refresh");
-        refreshAllWatchExpressionButton.setAttribute("role", "button");
-        refreshAllWatchExpressionButton.title = WebInspector.UIString("Refresh All Watch Expressions");
-        refreshAllWatchExpressionButton.addEventListener("click", this._refreshAllWatchExpressionsButtonClicked.bind(this));
+        this._navigationBar = new WebInspector.NavigationBar;
+        this._watchExpressionOptionsElement.appendChild(this._navigationBar.element);
 
-        let clearAllWatchExpressionButton = this._watchExpressionOptionsElement.appendChild(document.createElement("img"));
-        clearAllWatchExpressionButton.classList.add("watch-expression-clear");
-        clearAllWatchExpressionButton.setAttribute("role", "button");
-        clearAllWatchExpressionButton.title = WebInspector.UIString("Clear All Watch Expressions");
-        clearAllWatchExpressionButton.addEventListener("click", this._clearAllWatchExpressionsButtonClicked.bind(this));
+        let addWatchExpressionButton = new WebInspector.ButtonNavigationItem("add-watch-expression", WebInspector.UIString("Add watch expression"), "Images/Plus13.svg", 13, 13);
+        addWatchExpressionButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._addWatchExpressionButtonClicked, this);
+        this._navigationBar.addNavigationItem(addWatchExpressionButton);
 
-        let addWatchExpressionButton = this._watchExpressionOptionsElement.appendChild(document.createElement("img"));
-        addWatchExpressionButton.classList.add("watch-expression-add");
-        addWatchExpressionButton.title = WebInspector.UIString("Add Watch Expression");
-        addWatchExpressionButton.setAttribute("role", "button");
-        addWatchExpressionButton.addEventListener("click", this._addWatchExpressionButtonClicked.bind(this));
+        this._clearAllWatchExpressionButton = new WebInspector.ButtonNavigationItem("clear-watch-expressions", WebInspector.UIString("Clear watch expressions"), "Images/NavigationItemTrash.svg", 14, 14);
+        this._clearAllWatchExpressionButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._clearAllWatchExpressionsButtonClicked, this);
+        this._navigationBar.addNavigationItem(this._clearAllWatchExpressionButton);
+
+        this._refreshAllWatchExpressionButton = new WebInspector.ButtonNavigationItem("refresh-watch-expressions", WebInspector.UIString("Refresh watch expressions"), "Images/ReloadFull.svg", 13, 13);
+        this._refreshAllWatchExpressionButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._refreshAllWatchExpressionsButtonClicked, this);
+        this._navigationBar.addNavigationItem(this._refreshAllWatchExpressionButton);
 
         this._watchExpressionsSectionGroup = new WebInspector.DetailsSectionGroup;
         this._watchExpressionsSection = new WebInspector.DetailsSection("watch-expressions", WebInspector.UIString("Watch Expressions"), [this._watchExpressionsSectionGroup], this._watchExpressionOptionsElement);
         this.contentElement.appendChild(this._watchExpressionsSection.element);
+
+        this._updateWatchExpressionsNavigationBar();
 
         this.needsRefresh();
 
@@ -221,9 +221,8 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
                 objectTree.appendExtraPropertyDescriptor(extraPropertyDescriptor);
 
             let treeOutline = objectTree.treeOutline;
-            treeOutline.onadd = this._objectTreeAddHandler.bind(this, detailsSectionIdentifier);
-            treeOutline.onexpand = this._objectTreeExpandHandler.bind(this, detailsSectionIdentifier);
-            treeOutline.oncollapse = this._objectTreeCollapseHandler.bind(this, detailsSectionIdentifier);
+            treeOutline.addEventListener(WebInspector.TreeOutline.Event.ElementAdded, this._treeElementAdded.bind(this, detailsSectionIdentifier), this);
+            treeOutline.addEventListener(WebInspector.TreeOutline.Event.ElementDisclosureDidChanged, this._treeElementDisclosureDidChange.bind(this, detailsSectionIdentifier), this);
 
             let detailsSection = new WebInspector.DetailsSection(detailsSectionIdentifier, title, null, null, collapsedByDefault);
             detailsSection.groups[0].rows = [new WebInspector.DetailsSectionPropertiesRow(objectTree)];
@@ -254,9 +253,8 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
 
         let treeOutline = objectTree.treeOutline;
         const watchExpressionSectionIdentifier = "watch-expressions";
-        treeOutline.onadd = this._objectTreeAddHandler.bind(this, watchExpressionSectionIdentifier);
-        treeOutline.onexpand = this._objectTreeExpandHandler.bind(this, watchExpressionSectionIdentifier);
-        treeOutline.oncollapse = this._objectTreeCollapseHandler.bind(this, watchExpressionSectionIdentifier);
+        treeOutline.addEventListener(WebInspector.TreeOutline.Event.ElementAdded, this._treeElementAdded.bind(this, watchExpressionSectionIdentifier), this);
+        treeOutline.addEventListener(WebInspector.TreeOutline.Event.ElementDisclosureDidChanged, this._treeElementDisclosureDidChange.bind(this, watchExpressionSectionIdentifier), this);
         treeOutline.objectTreeElementAddContextMenuItems = this._objectTreeElementAddContextMenuItems.bind(this);
 
         let promises = [];
@@ -304,7 +302,7 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
     {
         function presentPopoverOverTargetElement()
         {
-            let target = WebInspector.Rect.rectFromClientRect(event.target.getBoundingClientRect());
+            let target = WebInspector.Rect.rectFromClientRect(event.target.element.getBoundingClientRect());
             popover.present(target, [WebInspector.RectEdge.MAX_Y, WebInspector.RectEdge.MIN_Y, WebInspector.RectEdge.MAX_X]);
         }
 
@@ -316,7 +314,7 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         let editorElement = content.appendChild(document.createElement("div"));
         editorElement.classList.add("watch-expression-editor", WebInspector.SyntaxHighlightedStyleClassName);
 
-        this._codeMirror = CodeMirror(editorElement, {
+        this._codeMirror = WebInspector.CodeMirrorEditor.create(editorElement, {
             lineWrapping: true,
             mode: "text/javascript",
             indentWithTabs: true,
@@ -422,8 +420,9 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         return identifier + "-" + propertyPath.fullPath;
     }
 
-    _objectTreeAddHandler(identifier, treeElement)
+    _treeElementAdded(identifier, event)
     {
+        let treeElement = event.data.element;
         let propertyPathIdentifier = this._propertyPathIdentifierForTreeElement(identifier, treeElement);
         if (!propertyPathIdentifier)
             return;
@@ -432,22 +431,24 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
             treeElement.expand();
     }
 
-    _objectTreeExpandHandler(identifier, treeElement)
+    _treeElementDisclosureDidChange(identifier, event)
     {
+        let treeElement = event.data.element;
         let propertyPathIdentifier = this._propertyPathIdentifierForTreeElement(identifier, treeElement);
         if (!propertyPathIdentifier)
             return;
 
-        WebInspector.ScopeChainDetailsSidebarPanel._autoExpandProperties.add(propertyPathIdentifier);
+        if (treeElement.expanded)
+            WebInspector.ScopeChainDetailsSidebarPanel._autoExpandProperties.add(propertyPathIdentifier);
+        else
+            WebInspector.ScopeChainDetailsSidebarPanel._autoExpandProperties.delete(propertyPathIdentifier);
     }
 
-    _objectTreeCollapseHandler(identifier, treeElement)
+    _updateWatchExpressionsNavigationBar()
     {
-        let propertyPathIdentifier = this._propertyPathIdentifierForTreeElement(identifier, treeElement);
-        if (!propertyPathIdentifier)
-            return;
-
-        WebInspector.ScopeChainDetailsSidebarPanel._autoExpandProperties.delete(propertyPathIdentifier);
+        let enabled = this._watchExpressionsSetting.value.length;
+        this._refreshAllWatchExpressionButton.enabled = enabled;
+        this._clearAllWatchExpressionButton.enabled = enabled;
     }
 };
 

@@ -504,7 +504,7 @@ private:
 
     // ActiveDOMObject API.
     const char* activeDOMObjectName() const override;
-    bool canSuspendForPageCache() const override;
+    bool canSuspendForDocumentSuspension() const override;
     void suspend(ReasonForSuspension) override;
     void resume() override;
     void stop() override;
@@ -747,8 +747,8 @@ private:
     void updateCaptionContainer();
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    virtual void documentWillSuspendForPageCache() override final;
-    virtual void documentDidResumeFromPageCache() override final;
+    virtual void prepareForDocumentSuspension() override final;
+    virtual void resumeFromDocumentSuspension() override final;
 
     enum class UpdateMediaState {
         Asynchronously,

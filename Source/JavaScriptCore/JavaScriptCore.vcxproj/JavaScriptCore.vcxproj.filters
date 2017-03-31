@@ -441,7 +441,13 @@
     <ClCompile Include="..\jit\JITDisassembler.cpp">
       <Filter>jit</Filter>
     </ClCompile>
+    <ClCompile Include="..\jit\JITDivGenerator.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
     <ClCompile Include="..\jit\JITExceptions.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\JITMulGenerator.cpp">
       <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="..\jit\JITOpcodes.cpp">
@@ -663,6 +669,18 @@
     <ClCompile Include="..\runtime\FunctionRareData.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\GeneratorFrame.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\GeneratorFunctionConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\GeneratorFunctionPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\GeneratorPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\GetterSetter.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -742,6 +760,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSFunction.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSGeneratorFunction.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSGlobalObject.cpp">
@@ -1552,6 +1573,9 @@
       <Filter>ftl</Filter>
     </ClCompile>
     <ClCompile Include="..\ftl\FTLCompile.cpp">
+      <Filter>ftl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ftl\FTLCompileBinaryOp.cpp">
       <Filter>ftl</Filter>
     </ClCompile>
     <ClCompile Include="..\ftl\FTLDataSection.cpp">
@@ -2513,10 +2537,16 @@
     <ClInclude Include="..\jit\JITDisassembler.h">
       <Filter>jit</Filter>
     </ClInclude>
+    <ClInclude Include="..\jit\JITDivGenerator.h">
+      <Filter>jit</Filter>
+    </ClInclude>
     <ClInclude Include="..\jit\JITExceptions.h">
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\JITInlines.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITMulGenerator.h">
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\JITStubRoutine.h">
@@ -2535,6 +2565,9 @@
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\SpecializedThunkJIT.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\SnippetOperand.h">
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\ThunkGenerator.h">
@@ -2604,6 +2637,9 @@
       <Filter>parser</Filter>
     </ClInclude>
     <ClInclude Include="..\parser\SourceCode.h">
+      <Filter>parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\parser\SourceCodeKey.h">
       <Filter>parser</Filter>
     </ClInclude>
     <ClInclude Include="..\parser\SourceProvider.h">
@@ -2807,6 +2843,21 @@
     <ClInclude Include="..\runtime\FunctionRareData.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\GeneratorFrame.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\GeneratorFunctionConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\GeneratorFunctionPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\GeneratorPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\GeneratorThisMode.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\GetPutInfo.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2910,6 +2961,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSFunction.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGeneratorFunction.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSGlobalObject.h">
@@ -3274,6 +3328,9 @@
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ErrorPrototype.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\GeneratorPrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HeaderDetection.h">
@@ -4117,6 +4174,9 @@
     <ClInclude Include="..\ftl\FTLCompile.h">
       <Filter>ftl</Filter>
     </ClInclude>
+    <ClInclude Include="..\ftl\FTLCompileBinaryOp.h">
+      <Filter>ftl</Filter>
+    </ClInclude>
     <ClInclude Include="..\ftl\FTLDataSection.h">
       <Filter>ftl</Filter>
     </ClInclude>
@@ -4157,6 +4217,9 @@
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLInlineCacheDescriptor.h">
+      <Filter>ftl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ftl\FTLInlineCacheDescriptorInlines.h">
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLInlineCacheSize.h">

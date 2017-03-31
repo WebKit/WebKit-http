@@ -34,6 +34,7 @@
 namespace WebCore {
 
 class IDBCursorInfo;
+class IDBGetResult;
 class IDBIndexInfo;
 class IDBKeyData;
 class IDBObjectStoreInfo;
@@ -41,7 +42,6 @@ class IDBResourceIdentifier;
 class IDBTransactionInfo;
 class ThreadSafeDataBuffer;
 
-struct IDBGetResult;
 struct IDBKeyRangeData;
 
 namespace IndexedDB {
@@ -64,6 +64,7 @@ public:
     virtual IDBError deleteObjectStore(const IDBResourceIdentifier& transactionIdentifier, const String& objectStoreName) = 0;
     virtual IDBError clearObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier) = 0;
     virtual IDBError createIndex(const IDBResourceIdentifier& transactionIdentifier, const IDBIndexInfo&) = 0;
+    virtual IDBError deleteIndex(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const String& indexName) = 0;
     virtual IDBError keyExistsInObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData&, bool& keyExists) = 0;
     virtual IDBError deleteRange(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData&) = 0;
     virtual IDBError addRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData&, const ThreadSafeDataBuffer& value) = 0;

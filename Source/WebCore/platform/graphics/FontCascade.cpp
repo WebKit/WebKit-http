@@ -352,10 +352,10 @@ float FontCascade::width(const TextRun& run, HashSet<const Font*>* fallbackFonts
     if (codePathToUse != Complex) {
         // The complex path is more restrictive about returning fallback fonts than the simple path, so we need an explicit test to make their behaviors match.
         if (!canReturnFallbackFontsForComplexText())
-            fallbackFonts = 0;
+            fallbackFonts = nullptr;
         // The simple path can optimize the case where glyph overflow is not observable.
         if (codePathToUse != SimpleWithGlyphOverflow && (glyphOverflow && !glyphOverflow->computeBounds))
-            glyphOverflow = 0;
+            glyphOverflow = nullptr;
     }
 
     bool hasWordSpacingOrLetterSpacing = wordSpacing() || letterSpacing();
@@ -1154,6 +1154,7 @@ GlyphToPathTranslator::GlyphUnderlineType computeUnderlineType(const TextRun& te
 
     if (offsetInString == GlyphBuffer::noOffset || offsetInString >= textRun.length()) {
         // We have no idea which character spawned this glyph. Bail.
+        ASSERT_WITH_SECURITY_IMPLICATION(offsetInString < textRun.length());
         return GlyphToPathTranslator::GlyphUnderlineType::DrawOverGlyph;
     }
     

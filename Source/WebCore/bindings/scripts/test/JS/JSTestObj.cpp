@@ -104,6 +104,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodThatRequiresAl
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSerializedValue(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOptionsObject(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithException(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionWithMessage(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPrivateMethod(JSC::ExecState*);
@@ -605,6 +606,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "serializedValue", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionSerializedValue), (intptr_t) (1) } },
     { "optionsObject", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOptionsObject), (intptr_t) (1) } },
     { "methodWithException", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithException), (intptr_t) (0) } },
+    { "methodWithExceptionWithMessage", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithExceptionWithMessage), (intptr_t) (0) } },
     { "customMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomMethod), (intptr_t) (0) } },
     { "customMethodWithArgs", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomMethodWithArgs), (intptr_t) (3) } },
     { "customBindingMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomBindingMethod), (intptr_t) (0) } },
@@ -1824,11 +1826,8 @@ EncodedJSValue jsTestObjNullableDoubleAttribute(ExecState* state, JSObject* slot
             return reportDeprecatedGetterError(*state, "TestObj", "nullableDoubleAttribute");
         return throwGetterTypeError(*state, "TestObj", "nullableDoubleAttribute");
     }
-    bool isNull = false;
     auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.nullableDoubleAttribute(isNull));
-    if (isNull)
-        return JSValue::encode(jsNull());
+    JSValue result = toNullableJSNumber(impl.nullableDoubleAttribute());
     return JSValue::encode(result);
 }
 
@@ -1844,11 +1843,8 @@ EncodedJSValue jsTestObjNullableLongAttribute(ExecState* state, JSObject* slotBa
             return reportDeprecatedGetterError(*state, "TestObj", "nullableLongAttribute");
         return throwGetterTypeError(*state, "TestObj", "nullableLongAttribute");
     }
-    bool isNull = false;
     auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.nullableLongAttribute(isNull));
-    if (isNull)
-        return JSValue::encode(jsNull());
+    JSValue result = toNullableJSNumber(impl.nullableLongAttribute());
     return JSValue::encode(result);
 }
 
@@ -1864,11 +1860,8 @@ EncodedJSValue jsTestObjNullableBooleanAttribute(ExecState* state, JSObject* slo
             return reportDeprecatedGetterError(*state, "TestObj", "nullableBooleanAttribute");
         return throwGetterTypeError(*state, "TestObj", "nullableBooleanAttribute");
     }
-    bool isNull = false;
     auto& impl = castedThis->wrapped();
-    JSValue result = jsBoolean(impl.nullableBooleanAttribute(isNull));
-    if (isNull)
-        return JSValue::encode(jsNull());
+    JSValue result = jsBoolean(impl.nullableBooleanAttribute());
     return JSValue::encode(result);
 }
 
@@ -1884,11 +1877,8 @@ EncodedJSValue jsTestObjNullableStringAttribute(ExecState* state, JSObject* slot
             return reportDeprecatedGetterError(*state, "TestObj", "nullableStringAttribute");
         return throwGetterTypeError(*state, "TestObj", "nullableStringAttribute");
     }
-    bool isNull = false;
     auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.nullableStringAttribute(isNull));
-    if (isNull)
-        return JSValue::encode(jsNull());
+    JSValue result = jsStringWithCache(state, impl.nullableStringAttribute());
     return JSValue::encode(result);
 }
 
@@ -1904,11 +1894,8 @@ EncodedJSValue jsTestObjNullableLongSettableAttribute(ExecState* state, JSObject
             return reportDeprecatedGetterError(*state, "TestObj", "nullableLongSettableAttribute");
         return throwGetterTypeError(*state, "TestObj", "nullableLongSettableAttribute");
     }
-    bool isNull = false;
     auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.nullableLongSettableAttribute(isNull));
-    if (isNull)
-        return JSValue::encode(jsNull());
+    JSValue result = toNullableJSNumber(impl.nullableLongSettableAttribute());
     return JSValue::encode(result);
 }
 
@@ -1925,12 +1912,9 @@ EncodedJSValue jsTestObjNullableStringValue(ExecState* state, JSObject* slotBase
         return throwGetterTypeError(*state, "TestObj", "nullableStringValue");
     }
     ExceptionCode ec = 0;
-    bool isNull = false;
     auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.nullableStringValue(isNull, ec));
+    JSValue result = toNullableJSNumber(impl.nullableStringValue(ec));
     setDOMException(state, ec);
-    if (isNull)
-        return JSValue::encode(jsNull());
     return JSValue::encode(result);
 }
 
@@ -3497,6 +3481,21 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithException(ExecS
     ExceptionCode ec = 0;
     impl.methodWithException(ec);
     setDOMException(state, ec);
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionWithMessage(ExecState* state)
+{
+    JSValue thisValue = state->thisValue();
+    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(thisValue);
+    if (UNLIKELY(!castedThis))
+        return throwThisTypeError(*state, "TestObj", "methodWithExceptionWithMessage");
+    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    auto& impl = castedThis->wrapped();
+    ExceptionCode ec = 0;
+    String exceptionMessage;
+    impl.methodWithExceptionWithMessage(ec, exceptionMessage);
+    setDOMException(state, ec, exceptionMessage);
     return JSValue::encode(jsUndefined());
 }
 

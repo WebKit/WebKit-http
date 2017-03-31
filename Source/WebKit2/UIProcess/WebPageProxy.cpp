@@ -60,6 +60,7 @@
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
 #include "NavigationActionData.h"
+#include "NetworkProcessMessages.h"
 #include "NotificationPermissionRequest.h"
 #include "NotificationPermissionRequestManager.h"
 #include "PageClient.h"
@@ -136,10 +137,6 @@
 
 #ifndef NDEBUG
 #include <wtf/RefCountedLeakCounter.h>
-#endif
-
-#if ENABLE(NETWORK_PROCESS)
-#include "NetworkProcessMessages.h"
 #endif
 
 #if PLATFORM(COCOA)
@@ -348,9 +345,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_maintainsInactiveSelection(false)
     , m_isEditable(false)
-#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
-    , m_temporarilyClosedComposition(false)
-#endif
     , m_textZoomFactor(1)
     , m_pageZoomFactor(1)
     , m_pageScaleFactor(1)
@@ -487,10 +481,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
-#if ENABLE(NETWORK_PROCESS)
     if (m_sessionID.isEphemeral())
         m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(m_sessionID));
-#endif
 
 #if PLATFORM(COCOA)
     const CFIndex viewStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
@@ -696,10 +688,7 @@ void WebPageProxy::reattachToWebProcess()
     m_process->removeWebPage(m_pageID);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
-    if (m_process->processPool().processModel() == ProcessModelSharedSecondaryProcess)
-        m_process = m_process->processPool().ensureSharedWebProcess();
-    else
-        m_process = m_process->processPool().createNewWebProcessRespectingProcessCountLimit();
+    m_process = m_process->processPool().createNewWebProcessRespectingProcessCountLimit();
 
     ASSERT(m_process->state() != ChildProcessProxy::State::Terminated);
     if (m_process->state() == ChildProcessProxy::State::Running)
@@ -774,10 +763,8 @@ void WebPageProxy::setSessionID(SessionID sessionID)
     m_sessionID = sessionID;
     m_process->send(Messages::WebPage::SetSessionID(sessionID), m_pageID);
 
-#if ENABLE(NETWORK_PROCESS)
     if (sessionID.isEphemeral())
         m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(sessionID));
-#endif
 }
 
 void WebPageProxy::initializeWebPage()
@@ -1804,8 +1791,6 @@ void WebPageProxy::processNextQueuedWheelEvent()
 
 void WebPageProxy::sendWheelEvent(const WebWheelEvent& event)
 {
-    m_process->responsivenessTimer().start();
-
     m_process->send(
         Messages::EventDispatcher::WheelEvent(
             m_pageID,
@@ -1815,6 +1800,8 @@ void WebPageProxy::sendWheelEvent(const WebWheelEvent& event)
             rubberBandsAtTop(),
             rubberBandsAtBottom()
         ), 0);
+
+    m_process->sendMainThreadPing();
 }
 
 void WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
@@ -4507,6 +4494,7 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     switch (type) {
     case WebEvent::NoType:
     case WebEvent::MouseMove:
+    case WebEvent::Wheel:
         break;
 
     case WebEvent::MouseDown:
@@ -4514,7 +4502,6 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     case WebEvent::MouseForceChanged:
     case WebEvent::MouseForceDown:
     case WebEvent::MouseForceUp:
-    case WebEvent::Wheel:
     case WebEvent::KeyDown:
     case WebEvent::KeyUp:
     case WebEvent::RawKeyDown:
@@ -5053,9 +5040,6 @@ void WebPageProxy::resetStateAfterProcessExited()
     m_isPageSuspended = false;
 
     m_editorState = EditorState();
-#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
-    m_temporarilyClosedComposition = false;
-#endif
 
     m_pageClient.processDidExit();
 
@@ -6099,6 +6083,11 @@ void WebPageProxy::setShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocu
         return;
 
     m_process->send(Messages::WebPage::SetShouldScaleViewToFitDocument(shouldScaleViewToFitDocument), m_pageID);
+}
+
+void WebPageProxy::didRestoreScrollPosition()
+{
+    m_pageClient.didRestoreScrollPosition();
 }
 
 } // namespace WebKit

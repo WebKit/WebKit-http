@@ -52,7 +52,7 @@ WebInspectorUI::WebInspectorUI(WebPage& page)
 {
 }
 
-void WebInspectorUI::establishConnection(IPC::Attachment encodedConnectionIdentifier, uint64_t inspectedPageIdentifier, bool underTest)
+void WebInspectorUI::establishConnection(IPC::Attachment encodedConnectionIdentifier, uint64_t inspectedPageIdentifier, bool underTest, unsigned inspectionLevel)
 {
 #if USE(UNIX_DOMAIN_SOCKETS)
     IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.releaseFileDescriptor());
@@ -69,6 +69,7 @@ void WebInspectorUI::establishConnection(IPC::Attachment encodedConnectionIdenti
     m_inspectedPageIdentifier = inspectedPageIdentifier;
     m_frontendAPIDispatcher.reset();
     m_underTest = underTest;
+    m_inspectionLevel = inspectionLevel;
 
     m_frontendController = &m_page.corePage()->inspectorController();
     m_frontendController->setInspectorFrontendClient(this);
@@ -89,6 +90,11 @@ void WebInspectorUI::windowObjectCleared()
 void WebInspectorUI::frontendLoaded()
 {
     m_frontendAPIDispatcher.frontendLoaded();
+
+    // Tell the new frontend about the current dock state. If the window object
+    // cleared due to a reload, the dock state won't be resent from UIProcess.
+    setDockingUnavailable(m_dockingUnavailable);
+    setDockSide(m_dockSide);
 
     bringToFront();
 }
@@ -168,6 +174,7 @@ void WebInspectorUI::setDockSide(DockSide side)
 void WebInspectorUI::setDockingUnavailable(bool unavailable)
 {
     m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setDockingUnavailable"), unavailable);
+    m_dockingUnavailable = unavailable;
 }
 
 void WebInspectorUI::changeAttachedWindowHeight(unsigned height)

@@ -87,6 +87,7 @@
     <link rel="stylesheet" href="Views/FontResourceContentView.css">
     <link rel="stylesheet" href="Views/FormattedValue.css">
     <link rel="stylesheet" href="Views/GoToLineDialog.css">
+    <link rel="stylesheet" href="Views/GradientEditor.css">
     <link rel="stylesheet" href="Views/GradientSlider.css">
     <link rel="stylesheet" href="Views/HierarchicalPathComponent.css">
     <link rel="stylesheet" href="Views/HoverMenu.css">
@@ -164,6 +165,7 @@
     <link rel="stylesheet" href="Views/TypeTreeElement.css">
     <link rel="stylesheet" href="Views/TypeTreeView.css">
     <link rel="stylesheet" href="Views/Variables.css">
+    <link rel="stylesheet" href="Views/VisualStyleBackgroundPicker.css">
     <link rel="stylesheet" href="Views/VisualStyleColorPicker.css">
     <link rel="stylesheet" href="Views/VisualStyleCommaSeparatedKeywordEditor.css">
     <link rel="stylesheet" href="Views/VisualStyleDetailsPanel.css">
@@ -181,8 +183,11 @@
 
     <link rel="stylesheet" href="Controllers/CodeMirrorCompletionController.css">
     <link rel="stylesheet" href="Controllers/CodeMirrorDragToAdjustNumberController.css">
-    <link rel="stylesheet" href="Controllers/CodeMirrorGradientEditingController.css">
     <link rel="stylesheet" href="Controllers/CodeMirrorTokenTrackingController.css">
+
+    <link rel="stylesheet" href="Debug/CatchEarlyErrors.css">
+
+    <script src="Debug/CatchEarlyErrors.js"></script>
 
     <script src="External/CodeMirror/codemirror.js"></script>
 
@@ -243,6 +248,7 @@
 
     <script src="Models/BreakpointAction.js"></script>
     <script src="Models/ConsoleMessage.js"></script>
+    <script src="Models/Instrument.js"></script>
     <script src="Models/SourceCode.js"></script>
     <script src="Models/SourceCodeLocation.js"></script>
     <script src="Models/Timeline.js"></script>
@@ -281,6 +287,7 @@
     <script src="Models/ExecutionContext.js"></script>
     <script src="Models/ExecutionContextList.js"></script>
     <script src="Models/Frame.js"></script>
+    <script src="Models/FPSInstrument.js"></script>
     <script src="Models/GarbageCollection.js"></script>
     <script src="Models/Geometry.js"></script>
     <script src="Models/Gradient.js"></script>
@@ -289,11 +296,13 @@
     <script src="Models/IndexedDatabaseObjectStoreIndex.js"></script>
     <script src="Models/IssueMessage.js"></script>
     <script src="Models/KeyboardShortcut.js"></script>
+    <script src="Models/LayoutInstrument.js"></script>
     <script src="Models/LayoutTimelineRecord.js"></script>
     <script src="Models/LazySourceCodeLocation.js"></script>
     <script src="Models/LineWidget.js"></script>
     <script src="Models/LogObject.js"></script>
     <script src="Models/NativeFunctionParameters.js"></script>
+    <script src="Models/NetworkInstrument.js"></script>
     <script src="Models/NetworkTimeline.js"></script>
     <script src="Models/ObjectPreview.js"></script>
     <script src="Models/Probe.js"></script>
@@ -316,6 +325,7 @@
     <script src="Models/Revision.js"></script>
     <script src="Models/ScopeChainNode.js"></script>
     <script src="Models/Script.js"></script>
+    <script src="Models/ScriptInstrument.js"></script>
     <script src="Models/ScriptSyntaxTree.js"></script>
     <script src="Models/ScriptTimelineRecord.js"></script>
     <script src="Models/Setting.js"></script>
@@ -417,6 +427,7 @@
     <script src="Views/ChartDetailsSectionRow.js"></script>
     <script src="Views/ClusterContentView.js"></script>
     <script src="Views/CodeMirrorAdditions.js"></script>
+    <script src="Views/CodeMirrorEditor.js"></script>
     <script src="Views/CodeMirrorFormatters.js"></script>
     <script src="Views/CodeMirrorTextMarkers.js"></script>
     <script src="Views/ColorPicker.js"></script>
@@ -469,6 +480,7 @@
     <script src="Views/GeneralTreeElementPathComponent.js"></script>
     <script src="Views/GenericResourceContentView.js"></script>
     <script src="Views/GoToLineDialog.js"></script>
+    <script src="Views/GradientEditor.js"></script>
     <script src="Views/GradientSlider.js"></script>
     <script src="Views/HierarchicalPathNavigationItem.js"></script>
     <script src="Views/HoverMenu.js"></script>
@@ -565,6 +577,7 @@
 
     <script src="Views/VisualStyleDetailsPanel.js"></script>
     <script src="Views/VisualStylePropertyEditor.js"></script>
+    <script src="Views/VisualStyleBackgroundPicker.js"></script>
     <script src="Views/VisualStyleColorPicker.js"></script>
     <script src="Views/VisualStyleCommaSeparatedKeywordEditor.js"></script>
     <script src="Views/VisualStyleFontFamilyListEditor.js"></script>
@@ -582,7 +595,6 @@
     <script src="Views/VisualStyleTabbedPropertiesRow.js"></script>
     <script src="Views/VisualStyleTimingEditor.js"></script>
     <script src="Views/VisualStyleUnitSlider.js"></script>
-    <script src="Views/VisualStyleURLInput.js"></script>
 
     <script src="Controllers/Annotator.js"></script>
     <script src="Controllers/CodeMirrorEditingController.js"></script>
@@ -599,6 +611,7 @@
     <script src="Controllers/CodeMirrorDragToAdjustNumberController.js"></script>
     <script src="Controllers/CodeMirrorGradientEditingController.js"></script>
     <script src="Controllers/CodeMirrorTokenTrackingController.js"></script>
+    <script src="Controllers/CodeMirrorTextKillController.js"></script>
     <script src="Controllers/DOMTreeManager.js"></script>
     <script src="Controllers/DashboardManager.js"></script>
     <script src="Controllers/DebuggerManager.js"></script>

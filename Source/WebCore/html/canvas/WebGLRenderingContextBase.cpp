@@ -3264,7 +3264,7 @@ void WebGLRenderingContextBase::texImage2D(GC3Denum target, GC3Dint level, GC3De
         && type == GraphicsContext3D::UNSIGNED_BYTE
         && (texture->getType(target, level) == GraphicsContext3D::UNSIGNED_BYTE || !texture->isValid(target, level))
         && !level) {
-        if (video->copyVideoTextureToPlatformTexture(m_context.get(), texture->object(), level, type, internalformat, m_unpackPremultiplyAlpha, m_unpackFlipY)) {
+        if (video->copyVideoTextureToPlatformTexture(m_context.get(), texture->object(), target, level, internalformat, format, type, m_unpackPremultiplyAlpha, m_unpackFlipY)) {
             texture->setLevelInfo(target, level, internalformat, video->videoWidth(), video->videoHeight(), type);
             return;
         }
@@ -3927,7 +3927,7 @@ const char* WebGLRenderingContextBase::activeDOMObjectName() const
     return "WebGLRenderingContext";
 }
 
-bool WebGLRenderingContextBase::canSuspendForPageCache() const
+bool WebGLRenderingContextBase::canSuspendForDocumentSuspension() const
 {
     // FIXME: We should try and do better here.
     return false;

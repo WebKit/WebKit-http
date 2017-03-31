@@ -30,6 +30,7 @@
 
 #include "CodeBlockWithJITType.h"
 #include "DFGPlan.h"
+#include "FTLState.h"
 #include "FTLThunks.h"
 #include "ProfilerDatabase.h"
 
@@ -49,18 +50,23 @@ JITFinalizer::~JITFinalizer()
 size_t JITFinalizer::codeSize()
 {
     size_t result = 0;
-    
+
+#if FTL_USES_B3
+    if (b3CodeLinkBuffer)
+        result += b3CodeLinkBuffer->size();
+#else // FTL_USES_B3
     if (exitThunksLinkBuffer)
         result += exitThunksLinkBuffer->size();
-    if (entrypointLinkBuffer)
-        result += entrypointLinkBuffer->size();
     if (sideCodeLinkBuffer)
         result += sideCodeLinkBuffer->size();
     if (handleExceptionsLinkBuffer)
         result += handleExceptionsLinkBuffer->size();
-    
     for (unsigned i = jitCode->handles().size(); i--;)
         result += jitCode->handles()[i]->sizeInBytes();
+#endif // FTL_USES_B3
+    
+    if (entrypointLinkBuffer)
+        result += entrypointLinkBuffer->size();
     
     return result;
 }
@@ -73,11 +79,27 @@ bool JITFinalizer::finalize()
 
 bool JITFinalizer::finalizeFunction()
 {
+    bool dumpDisassembly = shouldDumpDisassembly() || Options::asyncDisassembly();
+    
+#if FTL_USES_B3
+    for (OSRExitCompilationInfo& info : osrExit) {
+        b3CodeLinkBuffer->link(
+            info.m_thunkJump,
+            CodeLocationLabel(
+                m_plan.vm.getCTIStub(osrExitGenerationThunkGenerator).code()));
+    }
+    
+    jitCode->initializeB3Code(
+        FINALIZE_CODE_IF(
+            dumpDisassembly, *b3CodeLinkBuffer,
+            ("FTL B3 code for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data())));
+
+#else // FTL_USES_B3
     for (unsigned i = jitCode->handles().size(); i--;) {
         MacroAssembler::cacheFlush(
             jitCode->handles()[i]->start(), jitCode->handles()[i]->sizeInBytes());
     }
-    
+
     if (exitThunksLinkBuffer) {
         for (unsigned i = 0; i < osrExit.size(); ++i) {
             OSRExitCompilationInfo& info = osrExit[i];
@@ -88,8 +110,8 @@ bool JITFinalizer::finalizeFunction()
         }
         
         jitCode->initializeExitThunks(
-            FINALIZE_DFG_CODE(
-                *exitThunksLinkBuffer,
+            FINALIZE_CODE_IF(
+                dumpDisassembly, *exitThunksLinkBuffer,
                 ("FTL exit thunks for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data())));
     } // else this function had no OSR exits, so no exit thunks.
     
@@ -104,35 +126,37 @@ bool JITFinalizer::finalizeFunction()
                     m_plan.vm.getCTIStub(lazySlowPathGenerationThunkGenerator).code()));
         }
         
-        jitCode->addHandle(FINALIZE_DFG_CODE(
-            *sideCodeLinkBuffer,
+        jitCode->addHandle(FINALIZE_CODE_IF(
+            dumpDisassembly, *sideCodeLinkBuffer,
             ("FTL side code for %s",
                 toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data()))
             .executableMemory());
     }
     
     if (handleExceptionsLinkBuffer) {
-        jitCode->addHandle(FINALIZE_DFG_CODE(
-            *handleExceptionsLinkBuffer,
+        jitCode->addHandle(FINALIZE_CODE_IF(
+            dumpDisassembly, *handleExceptionsLinkBuffer,
             ("FTL exception handler for %s",
                 toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data()))
             .executableMemory());
     }
 
     for (unsigned i = 0; i < outOfLineCodeInfos.size(); ++i) {
-        jitCode->addHandle(FINALIZE_DFG_CODE(
-            *outOfLineCodeInfos[i].m_linkBuffer,
+        jitCode->addHandle(FINALIZE_CODE_IF(
+            dumpDisassembly, *outOfLineCodeInfos[i].m_linkBuffer,
             ("FTL out of line code for %s", outOfLineCodeInfos[i].m_codeDescription)).executableMemory());
     }
+#endif // FTL_USES_B3
 
     jitCode->initializeArityCheckEntrypoint(
-        FINALIZE_DFG_CODE(
-            *entrypointLinkBuffer,
+        FINALIZE_CODE_IF(
+            dumpDisassembly, *entrypointLinkBuffer,
             ("FTL entrypoint thunk for %s with LLVM generated code at %p", toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data(), function)));
     
     m_plan.codeBlock->setJITCode(jitCode);
-
+#if !FTL_USES_B3
     m_plan.vm.updateFTLLargestStackSize(jitCode->stackmaps.stackSize());
+#endif
 
     if (m_plan.compilation)
         m_plan.vm.m_perBytecodeProfiler->addCompilation(m_plan.compilation);

@@ -39,6 +39,10 @@ namespace JSC { namespace B3 {
 
 class StackmapValue;
 
+namespace Air {
+struct GenerationContext;
+}
+
 struct StackmapGenerationParams {
     // This is the stackmap value that we're generating.
     StackmapValue* value;
@@ -49,6 +53,9 @@ struct StackmapGenerationParams {
     
     // This tells you the registers that were used.
     RegisterSet usedRegisters;
+
+    // The Air::GenerationContext gives you even more power.
+    Air::GenerationContext* context;
 };
 
 typedef void StackmapGeneratorFunction(CCallHelpers&, const StackmapGenerationParams&);
@@ -77,18 +84,37 @@ public:
     // children().append(). That will work fine, but it's not recommended.
     void append(const ConstrainedValue&);
 
+    template<typename VectorType>
+    void appendAnys(const VectorType& vector)
+    {
+        for (Value* value : vector)
+            append(value);
+    }
+
     // This is a helper for something you might do a lot of: append a value that should be constrained
     // to SomeRegister.
     void appendSomeRegister(Value*);
 
     const Vector<ValueRep>& reps() const { return m_reps; }
 
-    void clobber(const RegisterSet& set)
+    void clobberEarly(const RegisterSet& set)
     {
-        m_clobbered.merge(set);
+        m_earlyClobbered.merge(set);
     }
 
-    const RegisterSet& clobbered() const { return m_clobbered; }
+    void clobberLate(const RegisterSet& set)
+    {
+        m_lateClobbered.merge(set);
+    }
+
+    void clobber(const RegisterSet& set)
+    {
+        clobberEarly(set);
+        clobberLate(set);
+    }
+
+    const RegisterSet& earlyClobbered() const { return m_earlyClobbered; }
+    const RegisterSet& lateClobbered() const { return m_lateClobbered; }
 
     void setGenerator(RefPtr<StackmapGenerator> generator)
     {
@@ -189,7 +215,8 @@ private:
     
     Vector<ValueRep> m_reps;
     RefPtr<StackmapGenerator> m_generator;
-    RegisterSet m_clobbered;
+    RegisterSet m_earlyClobbered;
+    RegisterSet m_lateClobbered;
     RegisterSet m_usedRegisters; // Stackmaps could be further duplicated by Air, but that's unlikely, so we just merge the used registers sets if that were to happen.
 };
 

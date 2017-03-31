@@ -3827,6 +3827,11 @@ void SpeculativeJIT::compile(Node* node)
         int32Result(result.gpr(), node);
         break;
     }
+
+    case GetRestLength: {
+        compileGetRestLength(node);
+        break;
+    }
         
     case GetScope:
         compileGetScope(node);
@@ -4425,6 +4430,10 @@ void SpeculativeJIT::compile(Node* node)
         
     case CreateClonedArguments: {
         compileCreateClonedArguments(node);
+        break;
+    }
+    case CopyRest: {
+        compileCopyRest(node);
         break;
     }
 
