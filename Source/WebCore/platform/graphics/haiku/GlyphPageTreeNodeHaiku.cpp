@@ -37,12 +37,12 @@
 
 namespace WebCore {
 
-bool GlyphPage::fill(UChar* buffer, unsigned bufferLength, const Font* fontData)
+bool GlyphPage::fill(UChar* buffer, unsigned bufferLength)
 {
     bool haveGlyphs[bufferLength];
     bool hasOneGlyph = false;
 
-    const BFont* font = fontData->platformData().font();
+    const BFont* font = m_font.platformData().font();
 
     // Unfortunately our API expects utf-8 as input...
     StringView v(buffer, bufferLength);
