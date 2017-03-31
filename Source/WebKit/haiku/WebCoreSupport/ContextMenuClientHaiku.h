@@ -45,14 +45,12 @@ public:
 #if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
     PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) override;
 #endif
-    void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*) override;
 
     void downloadURL(const URL& url) override;
     void lookUpInDictionary(Frame*) override;
     void speak(const String&) override;
     bool isSpeaking() override;
     void stopSpeaking() override;
-    WebCore::ContextMenuItem shareMenuItem(const WebCore::HitTestResult&) override;
     void searchWithGoogle(const Frame*) override;
 
 private:

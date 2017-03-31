@@ -55,27 +55,6 @@ void ContextMenuClientHaiku::contextMenuDestroyed()
     delete this;
 }
 
-#if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
-PlatformMenuDescription ContextMenuClientHaiku::getCustomMenuFromDefaultItems(ContextMenu* menu)
-{
-    // This method appears to allow some form of filtering. I.e. we get the
-    // current platform menu, have the chance to mess with it, including
-    // the addition of some items, and return the changed menu. In
-    // ContextMenuController, what we return here is immediately passed back
-    // into menu->setPlatformDescription().
-    WebCore::Page* page = m_webPage->page();
-    if (page)
-        menu->setController(&page->contextMenuController());
-
-    return menu->platformDescription();
-}
-#endif
-
-void ContextMenuClientHaiku::contextMenuItemSelected(ContextMenuItem*, const ContextMenu*)
-{
-    notImplemented();
-}
-
 void ContextMenuClientHaiku::downloadURL(const URL& url)
 {
 	ResourceRequest request(url);
@@ -88,7 +67,7 @@ void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
     searchString.stripWhiteSpace();
     String encoded = encodeWithURLEscapeSequences(searchString);
     encoded.replace("%20", "+");
-    
+
     String url("http://www.google.com/search?q=");
     url.append(encoded);
 
@@ -118,12 +97,6 @@ bool ContextMenuClientHaiku::isSpeaking()
 void ContextMenuClientHaiku::stopSpeaking()
 {
     notImplemented();
-}
-
-ContextMenuItem ContextMenuClientHaiku::shareMenuItem(const HitTestResult& hitTestResult)
-{
-    notImplemented();
-    return ContextMenuItem();
 }
 
 } // namespace WebCore

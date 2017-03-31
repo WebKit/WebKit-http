@@ -97,7 +97,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchDidFailLoading(DocumentLoader*, unsigned long,
                                         const ResourceError&) override;
 
-    void dispatchDidHandleOnloadEvents() override;
+    void dispatchDidDispatchOnloadEvents() override;
     void dispatchDidReceiveServerRedirectForProvisionalLoad() override;
     void dispatchDidCancelClientRedirect() override;
     void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate) override;

@@ -65,8 +65,6 @@ list(APPEND WebCore_SOURCES
 
   page/PointerLockController.cpp
 
-  platform/haiku/ContextMenuHaiku.cpp
-  platform/haiku/ContextMenuItemHaiku.cpp
   platform/haiku/CursorHaiku.cpp
   platform/haiku/DragImageHaiku.cpp
   platform/haiku/DragDataHaiku.cpp

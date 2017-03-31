@@ -291,7 +291,7 @@ void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsi
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
+void FrameLoaderClientHaiku::dispatchDidDispatchOnloadEvents()
 {
     CALLED();
     BMessage message(LOAD_ONLOAD_HANDLE);

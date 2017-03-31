@@ -1160,6 +1160,37 @@ void BWebPage::handleActivated(const BMessage* message)
     focusController.setActive(activated);
 }
 
+
+static BPopUpMenu*
+createPlatformContextMenu(ContextMenu& contents)
+{
+    const Vector<ContextMenuItem>& items = contents.items();
+    BPopUpMenu* menu = new BPopUpMenu("ContextMenu");
+
+    for (auto& item: items) {
+        BMessage* message = new BMessage(item.action());
+        message->AddPointer("ContextMenuItem", &item);
+        BMenuItem* native = nullptr;
+        if (item.type() == SeparatorType)
+        {
+            native = new BSeparatorItem(message);
+        } else {
+            native = new BMenuItem(item.title().utf8().data(), message);
+            native->SetEnabled(item.enabled());
+            native->SetMarked(item.checked());
+        }
+
+        if (native) {
+            menu->AddItem(native);
+        } else {
+            delete message;
+        }
+    }
+
+    return menu;
+}
+
+
 void BWebPage::handleMouseEvent(const BMessage* message)
 {
     WebCore::Frame* frame = fMainFrame->Frame();
@@ -1193,11 +1224,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
             // also swallow the event.
             ContextMenu* contextMenu = fPage->contextMenuController().contextMenu();
             if (contextMenu) {
-#if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-                BPopUpMenu* platformMenu = contextMenu->platformContextMenu();
-#else
-                BPopUpMenu* platformMenu = dynamic_cast<BPopUpMenu*>(contextMenu->releasePlatformDescription());
-#endif
+                BPopUpMenu* platformMenu = createPlatformContextMenu(*contextMenu);
                 if (platformMenu) {
                     BPoint screenLocation(event.globalPosition().x() + 2,
                         event.globalPosition().y() + 2);
@@ -1208,7 +1235,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
                         ContextMenuItem* itemHandle;
                         message->FindPointer("ContextMenuItem", (void**)&itemHandle);
                         fPage->contextMenuController().contextMenuItemSelected(
-                            itemHandle);
+                            itemHandle->action(), itemHandle->title());
                     }
                 }
             }
