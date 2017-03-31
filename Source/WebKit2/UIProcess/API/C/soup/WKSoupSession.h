@@ -9,6 +9,8 @@ extern "C" {
 
 WK_EXPORT void WKSoupSessionSetIgnoreTLSErrors(WKContextRef context, bool ignore);
 
+WK_EXPORT void WKSoupSessionSetPreferredLanguages(WKContextRef context, WKArrayRef languages);
+
 #ifdef __cplusplus
 }
 #endif
