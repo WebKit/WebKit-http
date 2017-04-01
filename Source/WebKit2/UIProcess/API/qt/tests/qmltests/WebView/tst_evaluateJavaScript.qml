@@ -78,7 +78,7 @@ Item {
             resultSpy.wait()
 
             compare(JSON.stringify(webView.lastResult),
-                '{"child":{"level":2},"level":"1"}')
+                '{"level":"1","child":{"level":2}}')
         }
 
         function test_booleanValue() {
