@@ -40,8 +40,8 @@ class Download;
 class QtFileDownloader : public QObject {
     Q_OBJECT
 public:
-    QtFileDownloader(Download*, const QNetworkRequest&);
-    QtFileDownloader(Download*, QNetworkReply*);
+    QtFileDownloader(Download&, const QNetworkRequest&);
+    QtFileDownloader(Download&, QNetworkReply*);
     virtual ~QtFileDownloader();
 
     void cancel();
@@ -67,7 +67,7 @@ private:
     void abortDownloadWritingAndEmitError(QtFileDownloader::DownloadError);
     void handleDownloadResponse();
 
-    Download* m_download;
+    Download& m_download;
     std::unique_ptr<QNetworkReply> m_reply;
     std::unique_ptr<QFile> m_destinationFile;
     QNetworkReply::NetworkError m_error;

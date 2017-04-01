@@ -38,7 +38,7 @@ using namespace WTF;
 
 namespace WebKit {
 
-QtFileDownloader::QtFileDownloader(Download* download, const QNetworkRequest& request)
+QtFileDownloader::QtFileDownloader(Download& download, const QNetworkRequest& request)
     : m_download(download)
     , m_reply(NetworkProcess::singleton().networkAccessManager()->get(request))
     , m_error(QNetworkReply::NoError)
@@ -46,7 +46,7 @@ QtFileDownloader::QtFileDownloader(Download* download, const QNetworkRequest& re
     makeConnections();
 }
 
-QtFileDownloader::QtFileDownloader(Download* download, QNetworkReply* reply)
+QtFileDownloader::QtFileDownloader(Download& download, QNetworkReply* reply)
     : m_download(download)
     , m_reply(reply)
     , m_error(reply->error())
@@ -100,7 +100,7 @@ void QtFileDownloader::startTransfer(const QString& decidedFilePath)
     // finished shall be called in the end.
     m_destinationFile = WTFMove(downloadFile);
 
-    m_download->didCreateDestination(m_destinationFile->fileName());
+    m_download.didCreateDestination(m_destinationFile->fileName());
 
     // We might have gotten readyRead already even before this function
     // was called.
@@ -119,7 +119,7 @@ void QtFileDownloader::abortDownloadWritingAndEmitError(QtFileDownloader::Downlo
 
     // On network failures it's QNetworkReplyHandler::errorForReply who will handle errors.
     if (errorCode == QtFileDownloader::DownloadErrorNetworkFailure) {
-        m_download->didFail(QNetworkReplyHandler::errorForReply(m_reply.get()), IPC::DataReference(0, 0));
+        m_download.didFail(QNetworkReplyHandler::errorForReply(m_reply.get()), IPC::DataReference(0, 0));
         return;
     }
 
@@ -149,7 +149,7 @@ void QtFileDownloader::abortDownloadWritingAndEmitError(QtFileDownloader::Downlo
 
     ResourceError downloadError("Download", errorCode, m_reply->url(), translatedErrorMessage);
 
-    m_download->didFail(downloadError, IPC::DataReference(0, 0));
+    m_download.didFail(downloadError, IPC::DataReference(0, 0));
 }
 
 void QtFileDownloader::handleDownloadResponse()
@@ -165,7 +165,7 @@ void QtFileDownloader::handleDownloadResponse()
         mimeType = MIMETypeRegistry::getMIMETypeForPath(m_reply->url().path());
 
     ResourceResponse response(m_reply->url(), mimeType, m_reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(), encoding);
-    m_download->didReceiveResponse(response);
+    m_download.didReceiveResponse(response);
 }
 
 void QtFileDownloader::onReadyRead()
@@ -186,7 +186,7 @@ void QtFileDownloader::onReadyRead()
         // does not actually represent an error.
         ASSERT(bytesWritten == content.size());
 
-        m_download->didReceiveData(bytesWritten);
+        m_download.didReceiveData(bytesWritten);
     } else if (!m_headersRead) {
         handleDownloadResponse();
         m_headersRead = true;
@@ -209,7 +209,7 @@ void QtFileDownloader::onFinished()
     m_destinationFile = nullptr;
 
     if (m_error == QNetworkReply::NoError)
-        m_download->didFinish();
+        m_download.didFinish();
     else if  (m_error == QNetworkReply::OperationCanceledError)
         abortDownloadWritingAndEmitError(QtFileDownloader::DownloadErrorCancelled);
     else
