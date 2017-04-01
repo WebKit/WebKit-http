@@ -145,24 +145,24 @@ IDBError MemoryIDBBackingStore::createObjectStore(const IDBResourceIdentifier& t
     return IDBError();
 }
 
-IDBError MemoryIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& transactionIdentifier, const String& objectStoreName)
+IDBError MemoryIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::deleteObjectStore");
 
     ASSERT(m_databaseInfo);
-    if (!m_databaseInfo->hasObjectStore(objectStoreName))
+    if (!m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier))
         return IDBError(IDBDatabaseException::ConstraintError);
 
     auto transaction = m_transactions.get(transactionIdentifier);
     ASSERT(transaction);
     ASSERT(transaction->isVersionChange());
 
-    auto objectStore = takeObjectStoreByName(objectStoreName);
+    auto objectStore = takeObjectStoreByIdentifier(objectStoreIdentifier);
     ASSERT(objectStore);
     if (!objectStore)
         return IDBError(IDBDatabaseException::ConstraintError);
 
-    m_databaseInfo->deleteObjectStore(objectStoreName);
+    m_databaseInfo->deleteObjectStore(objectStore->info().name());
     transaction->objectStoreDeleted(*objectStore);
 
     return IDBError();
@@ -204,7 +204,7 @@ IDBError MemoryIDBBackingStore::createIndex(const IDBResourceIdentifier& transac
     return objectStore->createIndex(*rawTransaction, info);
 }
 
-IDBError MemoryIDBBackingStore::deleteIndex(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const String& indexName)
+IDBError MemoryIDBBackingStore::deleteIndex(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::deleteIndex");
 
@@ -216,7 +216,7 @@ IDBError MemoryIDBBackingStore::deleteIndex(const IDBResourceIdentifier& transac
     if (!objectStore)
         return IDBError(IDBDatabaseException::ConstraintError);
 
-    return objectStore->deleteIndex(*rawTransaction, indexName);
+    return objectStore->deleteIndex(*rawTransaction, indexIdentifier);
 }
 
 void MemoryIDBBackingStore::removeObjectStoreForVersionChangeAbort(MemoryObjectStore& objectStore)
@@ -266,17 +266,17 @@ IDBError MemoryIDBBackingStore::deleteRange(const IDBResourceIdentifier& transac
     return IDBError();
 }
 
-IDBError MemoryIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
+IDBError MemoryIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& objectStoreInfo, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::addRecord");
 
-    ASSERT(objectStoreIdentifier);
+    ASSERT(objectStoreInfo.identifier());
 
     auto transaction = m_transactions.get(transactionIdentifier);
     if (!transaction)
         return IDBError(IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found to put record"));
 
-    MemoryObjectStore* objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
+    MemoryObjectStore* objectStore = m_objectStoresByIdentifier.get(objectStoreInfo.identifier());
     if (!objectStore)
         return IDBError(IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found to put record"));
 
@@ -469,16 +469,16 @@ void MemoryIDBBackingStore::unregisterObjectStore(MemoryObjectStore& objectStore
     m_objectStoresByIdentifier.remove(objectStore.info().identifier());
 }
 
-RefPtr<MemoryObjectStore> MemoryIDBBackingStore::takeObjectStoreByName(const String& name)
+RefPtr<MemoryObjectStore> MemoryIDBBackingStore::takeObjectStoreByIdentifier(uint64_t identifier)
 {
-    auto objectStoreByName = m_objectStoresByName.take(name);
-    if (!objectStoreByName)
+    auto objectStoreByIdentifier = m_objectStoresByIdentifier.take(identifier);
+    if (!objectStoreByIdentifier)
         return nullptr;
 
-    auto objectStore = m_objectStoresByIdentifier.take(objectStoreByName->info().identifier());
-    ASSERT(objectStore);
+    auto objectStore = m_objectStoresByName.take(objectStoreByIdentifier->info().name());
+    ASSERT_UNUSED(objectStore, objectStore);
 
-    return objectStore;
+    return objectStoreByIdentifier;
 }
 
 void MemoryIDBBackingStore::deleteBackingStore()

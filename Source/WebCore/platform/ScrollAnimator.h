@@ -85,23 +85,23 @@ public:
 #endif
 
     void setCurrentPosition(const FloatPoint&);
-    FloatPoint currentPosition() const { return FloatPoint(m_currentPosX, m_currentPosY); }
+    const FloatPoint& currentPosition() const { return m_currentPosition; }
 
     virtual void cancelAnimations() { }
     virtual void serviceScrollAnimations() { }
 
     virtual void contentAreaWillPaint() const { }
-    virtual void mouseEnteredContentArea() const { }
-    virtual void mouseExitedContentArea() const { }
-    virtual void mouseMovedInContentArea() const { }
+    virtual void mouseEnteredContentArea() { }
+    virtual void mouseExitedContentArea() { }
+    virtual void mouseMovedInContentArea() { }
     virtual void mouseEnteredScrollbar(Scrollbar*) const { }
     virtual void mouseExitedScrollbar(Scrollbar*) const { }
     virtual void mouseIsDownInScrollbar(Scrollbar*, bool) const { }
     virtual void willStartLiveResize() { }
     virtual void contentsResized() const { }
     virtual void willEndLiveResize() { }
-    virtual void contentAreaDidShow() const { }
-    virtual void contentAreaDidHide() const { }
+    virtual void contentAreaDidShow() { }
+    virtual void contentAreaDidHide() { }
 
     virtual void lockOverlayScrollbarStateToHidden(bool) { }
     virtual bool scrollbarsCanBeActive() const { return true; }
@@ -145,19 +145,12 @@ protected:
     virtual void notifyPositionChanged(const FloatSize& delta);
     void updateActiveScrollSnapIndexForOffset();
 
-    void setCurrentPositionInternal(const FloatPoint& p)
-    {
-        m_currentPosX = p.x();
-        m_currentPosY = p.y();
-    }
-
     ScrollableArea& m_scrollableArea;
     RefPtr<WheelEventTestTrigger> m_wheelEventTestTrigger;
 #if ENABLE(CSS_SCROLL_SNAP) || ENABLE(RUBBER_BANDING)
     ScrollController m_scrollController;
 #endif
-    float m_currentPosX { 0 }; // ScrollAnimatorNone takes addresses of these, so can't use a FloatPoint.
-    float m_currentPosY { 0 };
+    FloatPoint m_currentPosition;
 };
 
 } // namespace WebCore

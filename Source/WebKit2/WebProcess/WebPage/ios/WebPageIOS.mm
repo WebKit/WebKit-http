@@ -50,6 +50,7 @@
 #import "WebProcess.h"
 #import <CoreText/CTFont.h>
 #import <WebCore/Chrome.h>
+#import <WebCore/DataDetection.h>
 #import <WebCore/DiagnosticLoggingClient.h>
 #import <WebCore/DiagnosticLoggingKeys.h>
 #import <WebCore/Element.h>
@@ -676,9 +677,13 @@ void WebPage::commitPotentialTap(uint64_t lastLayerTreeTransactionId)
         return;
     }
 
-    if (m_potentialTapNode == nodeRespondingToClick)
-        handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
-    else
+    if (m_potentialTapNode == nodeRespondingToClick) {
+        if (is<Element>(*nodeRespondingToClick) && DataDetection::shouldCancelDefaultAction(&downcast<Element>(*nodeRespondingToClick))) {
+            requestPositionInformation(roundedIntPoint(m_potentialTapLocation));
+            commitPotentialTapFailed();
+        } else
+            handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
+    } else
         commitPotentialTapFailed();
 
     m_potentialTapNode = nullptr;
@@ -2202,6 +2207,13 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                         if (textIndicator)
                             info.linkIndicator = textIndicator->data();
                     }
+#if ENABLE(DATA_DETECTION)
+                    info.isDataDetectorLink = DataDetection::isDataDetectorLink(element);
+                    if (info.isDataDetectorLink) {
+                        info.dataDetectorIdentifier = DataDetection::dataDetectorIdentifier(element);
+                        info.dataDetectorResults = element->document().frame()->dataDetectionResults();
+                    }
+#endif
                 } else if (element->renderer() && element->renderer()->isRenderImage()) {
                     info.isImage = true;
                     auto& renderImage = downcast<RenderImage>(*(element->renderer()));

@@ -255,6 +255,11 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
 #endif
 }
 
+void NetworkProcess::clearCachedCredentials()
+{
+    NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
+}
+
 void NetworkProcess::ensurePrivateBrowsingSession(SessionID sessionID)
 {
     RemoteNetworkingContext::ensurePrivateBrowsingSession(sessionID);
@@ -451,6 +456,11 @@ void NetworkProcess::cancelDownload(DownloadID downloadID)
 void NetworkProcess::continueCanAuthenticateAgainstProtectionSpace(DownloadID downloadID, bool canAuthenticate)
 {
     downloadManager().continueCanAuthenticateAgainstProtectionSpace(downloadID, canAuthenticate);
+}
+
+void NetworkProcess::continueWillSendRequest(DownloadID downloadID, const WebCore::ResourceRequest& request)
+{
+    downloadManager().continueWillSendRequest(downloadID, request);
 }
 #endif
 

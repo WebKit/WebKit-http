@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -141,6 +141,7 @@ typedef const char* optionString;
     v(bool, dumpFTLDisassembly, false, "dumps disassembly of FTL function upon compilation") \
     v(bool, dumpAllDFGNodes, false, nullptr) \
     v(optionRange, bytecodeRangeToDFGCompile, 0, "bytecode size range to allow DFG compilation on, e.g. 1:100") \
+    v(optionRange, bytecodeRangeToFTLCompile, 0, "bytecode size range to allow FTL compilation on, e.g. 1:100") \
     v(optionString, dfgWhitelist, nullptr, "file with list of function signatures to allow DFG compilation on") \
     v(bool, dumpSourceAtDFGTime, false, "dumps source code of JS function being DFG compiled") \
     v(bool, dumpBytecodeAtDFGTime, false, "dumps bytecode of JS function being DFG compiled") \
@@ -344,6 +345,8 @@ typedef const char* optionString;
     v(double, rareBlockPenalty, 0.001, nullptr) \
     v(bool, airSpillsEverything, false, nullptr) \
     v(bool, logAirRegisterPressure, false, nullptr) \
+    v(unsigned, maxB3TailDupBlockSize, 3, nullptr) \
+    v(unsigned, maxB3TailDupBlockSuccessors, 3, nullptr) \
     \
     v(bool, useDollarVM, false, "installs the $vm debugging tool in global objects") \
     v(optionString, functionOverrides, nullptr, "file with debugging overrides for function bodies") \

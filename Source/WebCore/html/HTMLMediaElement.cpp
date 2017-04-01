@@ -108,6 +108,10 @@
 #include "MediaElementAudioSourceNode.h"
 #endif
 
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#include "WebVideoFullscreenInterface.h"
+#endif
+
 #if PLATFORM(IOS)
 #include "RuntimeApplicationChecksIOS.h"
 #include "WebVideoFullscreenInterfaceAVKit.h"
@@ -336,7 +340,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_lastTimeUpdateEventMovieTime(MediaTime::positiveInfiniteTime())
     , m_loadState(WaitingForSource)
     , m_videoFullscreenMode(VideoFullscreenModeNone)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     , m_videoFullscreenGravity(MediaPlayer::VideoGravityResizeAspect)
 #endif
     , m_preload(MediaPlayer::Auto)
@@ -659,9 +663,9 @@ void HTMLMediaElement::parseAttribute(const QualifiedName& name, const AtomicStr
     else if (name == loopAttr)
         updateSleepDisabling();
     else if (name == preloadAttr) {
-        if (equalIgnoringCase(value, "none"))
+        if (equalLettersIgnoringASCIICase(value, "none"))
             m_preload = MediaPlayer::None;
-        else if (equalIgnoringCase(value, "metadata"))
+        else if (equalLettersIgnoringASCIICase(value, "metadata"))
             m_preload = MediaPlayer::MetaData;
         else {
             // The spec does not define an "invalid value default" but "auto" is suggested as the
@@ -2687,6 +2691,7 @@ void HTMLMediaElement::refreshCachedTime() const
 
 void HTMLMediaElement::invalidateCachedTime() const
 {
+    m_cachedTime = MediaTime::invalidTime();
     if (!m_player || !m_player->maximumDurationToCacheMediaTime())
         return;
 
@@ -2701,7 +2706,6 @@ void HTMLMediaElement::invalidateCachedTime() const
     static const double minimumTimePlayingBeforeCacheSnapshot = 0.5;
 
     m_minimumClockTimeToUpdateCachedTime = monotonicallyIncreasingTime() + minimumTimePlayingBeforeCacheSnapshot;
-    m_cachedTime = MediaTime::invalidTime();
 }
 
 // playback state
@@ -4546,7 +4550,7 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
     }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     if (!m_player)
         return;
     m_player->setVideoFullscreenFrame(m_videoFullscreenFrame);
@@ -5291,7 +5295,7 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
         return;
 
 #if ENABLE(FULLSCREEN_API)
-    if (document().settings() && document().settings()->fullScreenEnabled()) {
+    if (mode == VideoFullscreenModeStandard && document().settings() && document().settings()->fullScreenEnabled()) {
         document().requestFullScreenForElement(this, 0, Document::ExemptIFrameAllowFullScreenRequirement);
         return;
     }
@@ -5302,7 +5306,7 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
         mediaControls()->enteredFullscreen();
     if (document().page() && is<HTMLVideoElement>(*this)) {
         HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
-        if (document().page()->chrome().client().supportsVideoFullscreen()) {
+        if (document().page()->chrome().client().supportsVideoFullscreen(m_videoFullscreenMode)) {
             document().page()->chrome().client().enterVideoFullscreenForVideoElement(asVideo, m_videoFullscreenMode);
             scheduleEvent(eventNames().webkitbeginfullscreenEvent);
         }
@@ -5319,13 +5323,15 @@ void HTMLMediaElement::exitFullscreen()
     LOG(Media, "HTMLMediaElement::exitFullscreen(%p)", this);
 
 #if ENABLE(FULLSCREEN_API)
-    if (document().settings() && document().settings()->fullScreenEnabled()) {
-        if (document().webkitIsFullScreen() && document().webkitCurrentFullScreenElement() == this)
+    if (document().settings() && document().settings()->fullScreenEnabled() && document().webkitCurrentFullScreenElement() == this) {
+        if (document().webkitIsFullScreen())
             document().webkitCancelFullScreen();
         return;
     }
 #endif
+
     ASSERT(m_videoFullscreenMode != VideoFullscreenModeNone);
+    VideoFullscreenMode oldVideoFullscreenMode = m_videoFullscreenMode;
     fullscreenModeChanged(VideoFullscreenModeNone);
     if (hasMediaControls())
         mediaControls()->exitedFullscreen();
@@ -5333,7 +5339,7 @@ void HTMLMediaElement::exitFullscreen()
         if (m_mediaSession->requiresFullscreenForVideoPlayback(*this))
             pauseInternal();
 
-        if (document().page()->chrome().client().supportsVideoFullscreen()) {
+        if (document().page()->chrome().client().supportsVideoFullscreen(oldVideoFullscreenMode)) {
             document().page()->chrome().client().exitVideoFullscreenForVideoElement(downcast<HTMLVideoElement>(*this));
             scheduleEvent(eventNames().webkitendfullscreenEvent);
         }
@@ -5362,7 +5368,7 @@ PlatformLayer* HTMLMediaElement::platformLayer() const
     return m_player ? m_player->platformLayer() : nullptr;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer)
 {
     m_videoFullscreenLayer = platformLayer;
@@ -6554,7 +6560,7 @@ bool HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(PlatformMedia
 #endif
     if (m_videoFullscreenMode & VideoFullscreenModePictureInPicture)
         return true;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     if (m_videoFullscreenMode == VideoFullscreenModeStandard && supportsPictureInPicture() && isPlaying())
         return true;
 #endif

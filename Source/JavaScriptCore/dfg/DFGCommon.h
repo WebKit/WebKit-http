@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,10 +35,13 @@
 
 namespace JSC { namespace DFG {
 
-// We are in the middle of an experimental transition from LLVM to B3 as the backend for the FTL. We don't
-// yet know how it will turn out. For now, this flag will control whether FTL uses B3. Remember to set this
-// to 0 before committing!
+// We are in the middle of a transition from LLVM to B3 as the backend for the FTL. This flag will go
+// away once that transition is finished. For now, we enable B3 only on some platforms.
+#if CPU(X86_64) && PLATFORM(MAC)
+#define FTL_USES_B3 1
+#else
 #define FTL_USES_B3 0
+#endif
 
 struct Node;
 

@@ -62,6 +62,7 @@
 #import <MobileCoreServices/UTCoreTypes.h>
 #import <WebCore/Color.h>
 #import <WebCore/CoreGraphicsSPI.h>
+#import <WebCore/DataDetectorsCoreSPI.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/Pasteboard.h>
 #import <WebCore/Path.h>
@@ -236,6 +237,10 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 @property (strong, nonatomic, readonly) UIGestureRecognizer *presentationSecondaryGestureRecognizer;
 @end
 #endif
+
+@interface DDDetectionController (StagingToRemove)
+- (DDResultRef)resultForURL:(NSURL *)url identifier:(NSString *)identifier selectedText:(NSString *)selectedText results:(NSArray *)results context:(NSDictionary *)context extendedContext:(NSDictionary **)extendedContext;
+@end
 
 @interface WKFocusedElementInfo : NSObject <_WKFocusedElementInfo>
 - (instancetype)initWithAssistedNodeInformation:(const AssistedNodeInformation&)information isUserInitiated:(BOOL)isUserInitiated;
@@ -664,6 +669,8 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
 - (BOOL)canBecomeFirstResponder
 {
+    if (_resigningFirstResponder)
+        return NO;
     // We might want to return something else
     // if we decide to enable/disable interaction programmatically.
     return YES;
@@ -671,6 +678,8 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
 - (BOOL)becomeFirstResponder
 {
+    if (_resigningFirstResponder)
+        return NO;
     BOOL didBecomeFirstResponder = [super becomeFirstResponder];
     if (didBecomeFirstResponder)
         [_textSelectionAssistant activateSelection];
@@ -683,6 +692,8 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     // FIXME: Maybe we should call resignFirstResponder on the superclass
     // and do nothing if the return value is NO.
 
+    _resigningFirstResponder = YES;
+
     if (!_webView->_activeFocusedStateRetainCount) {
         // We need to complete the editing operation before we blur the element.
         [_inputPeripheral endEditing];
@@ -693,7 +704,11 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     [_webSelectionAssistant resignedFirstResponder];
     [_textSelectionAssistant deactivateSelection];
 
-    return [super resignFirstResponder];
+    bool superDidResign = [super resignFirstResponder];
+
+    _resigningFirstResponder = NO;
+
+    return superDidResign;
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -1085,6 +1100,13 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     }
 }
 
+#if ENABLE(DATA_DETECTION)
+- (NSArray *)_dataDetectionResults
+{
+    return _page->dataDetectionResults();
+}
+#endif
+
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
     CGPoint point = [gestureRecognizer locationInView:self];
@@ -1378,6 +1400,14 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 - (void)clearSelection
 {
     _page->clearSelection();
+}
+
+- (void)_didNotHandleTapAsClick:(const WebCore::IntPoint&)point
+{
+    // FIXME: we should also take into account whether or not the UI delegate
+    // has handled this notification.
+    if (_hasValidPositionInformation && point == _positionInformation.point && _positionInformation.isDataDetectorLink)
+        [self _showDataDetectorsSheet];
 }
 
 - (void)_positionInformationDidChange:(const InteractionInformationAtPosition&)info
@@ -3471,6 +3501,20 @@ static bool isAssistableInputType(InputType type)
     _page->stopInteraction();
 }
 
+- (NSDictionary *)dataDetectionContextForActionSheetAssistant:(WKActionSheetAssistant *)assistant
+{
+    NSDictionary *context = nil;
+    id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+    if ([uiDelegate respondsToSelector:@selector(_dataDetectionContextForWebView:)])
+        context = [uiDelegate _dataDetectionContextForWebView:_webView];
+    return context;
+}
+
+- (NSString *)selectedTextForActionSheetAssistant:(WKActionSheetAssistant *)assistant
+{
+    return [self selectedText];
+}
+
 @end
 
 #if HAVE(LINK_PREVIEW)
@@ -3545,7 +3589,7 @@ static bool isAssistableInputType(InputType type)
         return nil;
 
     String absoluteLinkURL = _positionInformation.url;
-    if (!useImageURLForLink && (absoluteLinkURL.isEmpty() || !WebCore::protocolIsInHTTPFamily(absoluteLinkURL))) {
+    if (!useImageURLForLink && (absoluteLinkURL.isEmpty() || (!WebCore::protocolIsInHTTPFamily(absoluteLinkURL) && !_positionInformation.isDataDetectorLink))) {
         if (canShowLinkPreview && !canShowImagePreview)
             return nil;
         canShowLinkPreview = NO;
@@ -3558,6 +3602,22 @@ static bool isAssistableInputType(InputType type)
             dataForPreview[UIPreviewDataLink] = [NSURL _web_URLWithWTFString:_positionInformation.imageURL];
         else
             dataForPreview[UIPreviewDataLink] = [NSURL _web_URLWithWTFString:_positionInformation.url];
+        if (_positionInformation.isDataDetectorLink) {
+            NSDictionary *context = nil;
+            id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+            if ([uiDelegate respondsToSelector:@selector(_dataDetectionContextForWebView:)])
+                context = [uiDelegate _dataDetectionContextForWebView:_webView];
+
+            DDDetectionController *controller = [getDDDetectionControllerClass() sharedController];
+            if ([controller respondsToSelector:@selector(resultForURL:identifier:selectedText:results:context:extendedContext:)]) {
+                NSDictionary *newContext = nil;
+                DDResultRef ddResult = [controller resultForURL:dataForPreview[UIPreviewDataLink] identifier:_positionInformation.dataDetectorIdentifier selectedText:[self selectedText] results:_positionInformation.dataDetectorResults.get() context:context extendedContext:&newContext];
+                if (ddResult)
+                    dataForPreview[UIPreviewDataDDResult] = (__bridge id)ddResult;
+                if (newContext)
+                    dataForPreview[UIPreviewDataDDContext] = newContext;
+            }
+        }
     } else if (canShowImagePreview) {
         *type = UIPreviewItemTypeImage;
         dataForPreview[UIPreviewDataLink] = [NSURL _web_URLWithWTFString:_positionInformation.imageURL];

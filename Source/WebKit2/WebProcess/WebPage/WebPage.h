@@ -109,6 +109,7 @@
 #include "ViewGestureGeometryCollector.h"
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
+OBJC_CLASS NSArray;
 OBJC_CLASS NSDictionary;
 OBJC_CLASS NSObject;
 OBJC_CLASS WKAccessibilityWebPageObject;
@@ -248,8 +249,10 @@ public:
     WebInspectorUI* inspectorUI();
     bool isInspectorPage() { return !!m_inspectorUI; }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     WebVideoFullscreenManager* videoFullscreenManager();
+#endif
+#if PLATFORM(IOS)
     void setAllowsMediaDocumentInlinePlayback(bool);
     bool allowsMediaDocumentInlinePlayback() const { return m_allowsMediaDocumentInlinePlayback; }
 #endif
@@ -866,6 +869,10 @@ public:
     bool plugInIsPrimarySize(WebCore::HTMLPlugInImageElement& pluginImageElement, unsigned &pluginArea);
 #endif
 
+#if ENABLE(DATA_DETECTION)
+    void setDataDetectionResults(NSArray *);
+#endif
+
     unsigned extendIncrementalRenderingSuppression();
     void stopExtendingIncrementalRenderingSuppression(unsigned token);
     bool shouldExtendIncrementalRenderingSuppression() { return !m_activeRenderingSuppressionTokens.isEmpty(); }
@@ -1276,8 +1283,10 @@ private:
 
     RefPtr<WebInspector> m_inspector;
     RefPtr<WebInspectorUI> m_inspectorUI;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     RefPtr<WebVideoFullscreenManager> m_videoFullscreenManager;
+#endif
+#if PLATFORM(IOS)
     bool m_allowsMediaDocumentInlinePlayback { false };
 #endif
 #if ENABLE(FULLSCREEN_API)

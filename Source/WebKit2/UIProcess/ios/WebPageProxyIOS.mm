@@ -31,6 +31,7 @@
 #import "APIUIClient.h"
 #import "DataReference.h"
 #import "EditingRange.h"
+#import "InteractionInformationAtPosition.h"
 #import "NativeWebKeyboardEvent.h"
 #import "PageClient.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
@@ -931,6 +932,7 @@ void WebPageProxy::commitPotentialTapFailed()
 
 void WebPageProxy::didNotHandleTapAsClick(const WebCore::IntPoint& point)
 {
+    m_pageClient.didNotHandleTapAsClick(point);
     m_uiClient->didNotHandleTapAsClick(point);
 }
 

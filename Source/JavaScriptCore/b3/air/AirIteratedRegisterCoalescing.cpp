@@ -53,9 +53,10 @@ bool reportStats = false;
 template<typename IndexType>
 class AbstractColoringAllocator {
 public:
-    AbstractColoringAllocator(const Vector<Reg>& regsInPriorityOrder, IndexType lastPrecoloredRegisterIndex, unsigned tmpArraySize)
+    AbstractColoringAllocator(const Vector<Reg>& regsInPriorityOrder, IndexType lastPrecoloredRegisterIndex, unsigned tmpArraySize, const HashSet<unsigned>& unspillableTmp)
         : m_regsInPriorityOrder(regsInPriorityOrder)
         , m_lastPrecoloredRegisterIndex(lastPrecoloredRegisterIndex)
+        , m_unspillableTmps(unspillableTmp)
     {
         initializeDegrees(tmpArraySize);
 
@@ -90,12 +91,20 @@ protected:
                 continue;
 
             if (degree >= m_regsInPriorityOrder.size())
-                m_spillWorklist.add(i);
+                addToSpill(i);
             else if (!m_moveList[i].isEmpty())
                 m_freezeWorklist.add(i);
             else
                 m_simplifyWorklist.append(i);
         }
+    }
+
+    void addToSpill(unsigned toSpill)
+    {
+        if (m_unspillableTmps.contains(toSpill))
+            return;
+
+        m_spillWorklist.add(toSpill);
     }
 
     // Low-degree vertex can always be colored: just pick any of the color taken by any
@@ -282,6 +291,25 @@ private:
         }
     }
 
+
+    bool addEdgeDistinctWithoutDegreeChange(IndexType a, IndexType b)
+    {
+        ASSERT(a != b);
+        if (m_interferenceEdges.add(InterferenceEdge(a, b)).isNewEntry) {
+            if (!isPrecolored(a)) {
+                ASSERT(!m_adjacencyList[a].contains(b));
+                m_adjacencyList[a].append(b);
+            }
+
+            if (!isPrecolored(b)) {
+                ASSERT(!m_adjacencyList[b].contains(a));
+                m_adjacencyList[b].append(a);
+            }
+            return true;
+        }
+        return false;
+    }
+
     bool isMoveRelated(IndexType tmpIndex)
     {
         for (unsigned moveIndex : m_moveList[tmpIndex]) {
@@ -356,12 +384,23 @@ private:
         m_moveList[u].add(vMoves.begin(), vMoves.end());
 
         forEachAdjacent(v, [this, u] (IndexType adjacentTmpIndex) {
-            addEdgeDistinct(adjacentTmpIndex, u);
-            decrementDegree(adjacentTmpIndex);
+            if (addEdgeDistinctWithoutDegreeChange(adjacentTmpIndex, u)) {
+                // If we added a new edge between the adjacentTmp and u, it replaces the edge
+                // that existed with v.
+                // The degree of adjacentTmp remains the same since the edge just changed from u to v.
+                // All we need to do is update the degree of u.
+                if (!isPrecolored(u))
+                    m_degrees[u]++;
+            } else {
+                // If we already had an edge between the adjacentTmp and u, the degree of u
+                // is already correct. The degree of the adjacentTmp decreases since the edge
+                // with v is no longer relevant (we can think of it as merged with the edge with u).
+                decrementDegree(adjacentTmpIndex);
+            }
         });
 
         if (m_degrees[u] >= m_regsInPriorityOrder.size() && m_freezeWorklist.remove(u))
-            m_spillWorklist.add(u);
+            addToSpill(u);
     }
 
     bool canBeSafelyCoalesced(IndexType u, IndexType v)
@@ -625,6 +664,8 @@ protected:
 
     // The mapping of Tmp to their alias for Moves that are always coalescing regardless of spilling.
     Vector<IndexType, 0, UnsafeVectorOverflow> m_coalescedTmpsAtSpill;
+    
+    const HashSet<unsigned>& m_unspillableTmps;
 };
 
 // This perform all the tasks that are specific to certain register type.
@@ -632,11 +673,10 @@ template<Arg::Type type>
 class ColoringAllocator : public AbstractColoringAllocator<unsigned> {
 public:
     ColoringAllocator(Code& code, TmpWidth& tmpWidth, const UseCounts<Tmp>& useCounts, const HashSet<unsigned>& unspillableTmp)
-        : AbstractColoringAllocator<unsigned>(regsInPriorityOrder(type), AbsoluteTmpMapper<type>::lastMachineRegisterIndex(), tmpArraySize(code))
+        : AbstractColoringAllocator<unsigned>(regsInPriorityOrder(type), AbsoluteTmpMapper<type>::lastMachineRegisterIndex(), tmpArraySize(code), unspillableTmp)
         , m_code(code)
         , m_tmpWidth(tmpWidth)
         , m_useCounts(useCounts)
-        , m_unspillableTmps(unspillableTmp)
     {
         initializePrecoloredTmp();
         build();
@@ -794,7 +834,7 @@ private:
                         if (argType != type)
                             return;
                         
-                        addEdge(arg, otherArg);
+                        this->addEdge(arg, otherArg);
                     });
             });
 
@@ -927,10 +967,8 @@ private:
 
         auto iterator = m_spillWorklist.begin();
 
-        while (iterator != m_spillWorklist.end() && m_unspillableTmps.contains(*iterator))
-            ++iterator;
-
-        RELEASE_ASSERT_WITH_MESSAGE(iterator != m_spillWorklist.end(), "It is not possible to color the Air graph with the number of available registers.");
+        RELEASE_ASSERT_WITH_MESSAGE(iterator != m_spillWorklist.end(), "selectSpill() called when there was no spill.");
+        RELEASE_ASSERT_WITH_MESSAGE(!m_unspillableTmps.contains(*iterator), "trying to spill unspillable tmp");
 
         // Higher score means more desirable to spill. Lower scores maximize the likelihood that a tmp
         // gets a register.
@@ -945,12 +983,15 @@ private:
 
             // All else being equal, the score should be inversely related to the number of warm uses and
             // defs.
-            const UseCounts<Tmp>::Counts& counts = m_useCounts[tmp];
-            double uses = counts.numWarmUses + counts.numDefs;
+            const UseCounts<Tmp>::Counts* counts = m_useCounts[tmp];
+            if (!counts)
+                return std::numeric_limits<double>::infinity();
+            
+            double uses = counts->numWarmUses + counts->numDefs;
 
             // If it's a constant, then it's not as bad to spill. We can rematerialize it in many
             // cases.
-            if (counts.numConstDefs == counts.numDefs)
+            if (counts->numConstDefs == counts->numDefs)
                 uses /= 2;
 
             return degree / uses;
@@ -963,9 +1004,7 @@ private:
         for (;iterator != m_spillWorklist.end(); ++iterator) {
             double tmpScore = score(AbsoluteTmpMapper<type>::tmpFromAbsoluteIndex(*iterator));
             if (tmpScore > maxScore) {
-                if (m_unspillableTmps.contains(*iterator))
-                    continue;
-
+                ASSERT(!m_unspillableTmps.contains(*iterator));
                 victimIterator = iterator;
                 maxScore = tmpScore;
             }
@@ -1058,7 +1097,6 @@ private:
     TmpWidth& m_tmpWidth;
     // FIXME: spilling should not type specific. It is only a side effect of using UseCounts.
     const UseCounts<Tmp>& m_useCounts;
-    const HashSet<unsigned>& m_unspillableTmps;
 };
 
 class IteratedRegisterCoalescing {

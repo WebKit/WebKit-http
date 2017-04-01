@@ -27,16 +27,13 @@
 #ifndef WebCoreJSBuiltins_h
 #define WebCoreJSBuiltins_h
 
-#if ENABLE(MEDIA_STREAM)
+#include "ByteLengthQueuingStrategyBuiltins.h"
+#include "CountQueuingStrategyBuiltins.h"
+#include "FetchHeadersBuiltins.h"
 #include "MediaDevicesBuiltins.h"
 #include "NavigatorUserMediaBuiltins.h"
 #include "RTCPeerConnectionBuiltins.h"
 #include "RTCPeerConnectionInternalsBuiltins.h"
-#endif
-
-#if ENABLE(STREAMS_API)
-#include "ByteLengthQueuingStrategyBuiltins.h"
-#include "CountQueuingStrategyBuiltins.h"
 #include "ReadableStreamBuiltins.h"
 #include "ReadableStreamControllerBuiltins.h"
 #include "ReadableStreamInternalsBuiltins.h"
@@ -44,8 +41,6 @@
 #include "StreamInternalsBuiltins.h"
 #include "WritableStreamBuiltins.h"
 #include "WritableStreamInternalsBuiltins.h"
-#endif
-
 #include <runtime/VM.h>
 
 namespace WebCore {
@@ -54,6 +49,9 @@ class JSBuiltinFunctions {
 public:
     explicit JSBuiltinFunctions(JSC::VM& v)
         : vm(v)
+#if ENABLE(FETCH_API)
+        , m_fetchHeadersBuiltins(&vm)
+#endif
 #if ENABLE(STREAMS_API)
         , m_byteLengthQueuingStrategyBuiltins(&vm)
         , m_countQueuingStrategyBuiltins(&vm)
@@ -81,6 +79,9 @@ public:
         m_rtcPeerConnectionInternalsBuiltins.exportNames();
 #endif
     }
+#if ENABLE(FETCH_API)
+    FetchHeadersBuiltinsWrapper& fetchHeadersBuiltins() { return m_fetchHeadersBuiltins; }
+#endif
 #if ENABLE(STREAMS_API)
     ByteLengthQueuingStrategyBuiltinsWrapper& byteLengthQueuingStrategyBuiltins() { return m_byteLengthQueuingStrategyBuiltins; }
     CountQueuingStrategyBuiltinsWrapper& countQueuingStrategyBuiltins() { return m_countQueuingStrategyBuiltins; }
@@ -101,6 +102,9 @@ public:
 
 private:
     JSC::VM& vm;
+#if ENABLE(FETCH_API)
+    FetchHeadersBuiltinsWrapper m_fetchHeadersBuiltins;
+#endif
 #if ENABLE(STREAMS_API)
     ByteLengthQueuingStrategyBuiltinsWrapper m_byteLengthQueuingStrategyBuiltins;
     CountQueuingStrategyBuiltinsWrapper m_countQueuingStrategyBuiltins;

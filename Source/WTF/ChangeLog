@@ -1,3 +1,338 @@
+2016-01-28  Darin Adler  <darin@apple.com>
+
+        Remove equalIgnoringCase since all callers really wanted equalIgnoringASCIICase
+        https://bugs.webkit.org/show_bug.cgi?id=153411
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/text/AtomicString.h: Removed equalIgnoringCase.
+        Added some overloads for equalIgnoringASCIICase and moved the function bodies to
+        bottom of the file to make the function declarations easier to read and scan through.
+        I plan to do this for more of the functions in this class in the future.
+
+        * wtf/text/StringCommon.h: Added overloads for equalIgnoringASCIICase,
+        equalPossiblyIgnoringASCIICase, and a helper named equalIgnoringASCIICaseCommon.
+        Added an overload for equalLettersIgnoringASCIICase.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::equalIgnoringCase): Made the few remaining versions of this function private
+        to this file. Once we get done moving every client that should be using ASCII case
+        instead to new functions, these will almost certainly be deleted.
+        (WTF::equalIgnoringASCIICaseNonNull): Tweaked implementation a tiny bit.
+
+        * wtf/text/StringImpl.h: Sorted forward declarations at the top of the file.
+        Fixed some small formatting mistakes. Removed equalIgnoringCase, but left
+        equalIgnoringCaseNonNull behind for use by CaseFoldingHash until it is replaced
+        with ASCIICaseFoldingHash. Improved equalIgnoringASCIICase implementation.
+        Removed unneeded using for equalIgnoringASCIICase now that StringCommon.h takes
+        care of it.
+
+        * wtf/text/StringView.cpp:
+        (WTF::equalIgnoringASCIICase): Deleted. We no longer pass in the length for this,
+        so the arguments have changed and the implementation is also now in ASCIICommon.h
+        so it's an inline in the header file.
+
+        * wtf/text/StringView.h: Added an overload of equalIgnoringASCIICase,while
+        removing another.
+
+        * wtf/text/WTFString.h: Removed some unneeded forward delcarations. Fixed formatting
+        of the type name NSString *. Improved some comments. Removed equalIgnoringCase.
+        Separated declaration from implementation in a few cases to start making the
+        function declarations easier to read and scan through. I plan to do more in the future.
+
+2016-01-27  Chris Dumez  <cdumez@apple.com>
+
+        window.atob() should ignore spaces in input
+        https://bugs.webkit.org/show_bug.cgi?id=153522
+        <rdar://problem/24357822>
+
+        Reviewed by Benjamin Poulain.
+
+        Turn Base64DecodePolicy enum into flags so that the caller can indicate
+        to both validate padding AND ignore spaces.
+
+        Also make sure that the output Vector size is properly shrunk when
+        spaces are ignored.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64DecodeInternal):
+        (WTF::base64Decode):
+        (WTF::base64URLDecode):
+        * wtf/text/Base64.h:
+
+2016-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove ENABLE_CURRENTSRC
+        https://bugs.webkit.org/show_bug.cgi?id=153545
+
+        Reviewed by Simon Fraser.
+
+        * wtf/FeatureDefines.h:
+
+2016-01-26  I-Ting Liu  <iting_liu@apple.com>
+
+        Implement wildcard matching for plug-in policy host.
+        https://bugs.webkit.org/show_bug.cgi?id=153090
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        Add __bridge to allow compilation.
+
+2016-01-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Generalize ResourceUsageData gathering to be used outside of ResourceUsageOverlay
+        https://bugs.webkit.org/show_bug.cgi?id=153509
+        <rdar://problem/24354291>
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Platform.h:
+        Rename the ENABLE flag.
+
+2016-01-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Make HashTable iterators STL iterators compatible
+        https://bugs.webkit.org/show_bug.cgi?id=153512
+
+        Reviewed by Alex Christensen.
+
+        While r178581 makes many hash table iterators STL compatible, still several iterators are not.
+        This patch fixes that; inheriting std::iterator correctly to meet STL iterator requirements (like iterator_category etc.)
+        It could recover Windows build failure.
+
+        * wtf/HashTable.h:
+
+2016-01-26  Anders Carlsson  <andersca@apple.com>
+
+        BlockPtr needs boolean operators
+        https://bugs.webkit.org/show_bug.cgi?id=153506
+
+        Reviewed by Tim Horton.
+
+        * wtf/BlockPtr.h:
+
+2016-01-25  Filip Pizlo  <fpizlo@apple.com>
+
+        FTLB3Output should maintain good block order like the LLVM one does
+        https://bugs.webkit.org/show_bug.cgi?id=152222
+
+        Reviewed by Geoffrey Garen.
+
+        In the FTL we need to be able to construct a list by inserting elements before other
+        specific elements. We didn't already have a scalable way to do this, so this adds such a
+        data structure to WTF. This also has changes to SentinelLinkedList to make it support
+        these kinds of insertions.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/OrderMaker.h: Added.
+        (WTF::OrderMaker::Node::Node):
+        (WTF::OrderMaker::OrderMaker):
+        (WTF::OrderMaker::prepend):
+        (WTF::OrderMaker::append):
+        (WTF::OrderMaker::insertBefore):
+        (WTF::OrderMaker::insertAfter):
+        (WTF::OrderMaker::iterator::iterator):
+        (WTF::OrderMaker::iterator::operator*):
+        (WTF::OrderMaker::iterator::operator++):
+        (WTF::OrderMaker::iterator::operator==):
+        (WTF::OrderMaker::iterator::operator!=):
+        (WTF::OrderMaker::begin):
+        (WTF::OrderMaker::end):
+        (WTF::OrderMaker::newNode):
+        * wtf/SentinelLinkedList.h:
+        (WTF::BasicRawSentinelNode::isOnList):
+        (WTF::BasicRawSentinelNode<T>::remove):
+        (WTF::BasicRawSentinelNode<T>::prepend):
+        (WTF::BasicRawSentinelNode<T>::append):
+        (WTF::RawNode>::SentinelLinkedList):
+        (WTF::RawNode>::push):
+        (WTF::RawNode>::append):
+        (WTF::RawNode>::remove):
+        (WTF::RawNode>::prepend):
+        (WTF::RawNode>::isOnList):
+
+2016-01-25  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Copy forwarding headers before building a project
+        https://bugs.webkit.org/show_bug.cgi?id=153434
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformWin.cmake:
+
+2016-01-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        HTMLElement::nodeName should not upper case non-ASCII characters
+        https://bugs.webkit.org/show_bug.cgi?id=153231
+
+        Reviewed by Darin Adler.
+
+        Added convertToASCIIUppercase to AtomicString, String, and StringImpl. 
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::convertASCIICase): Generalized from convertToASCIILowercase.
+        (WTF::AtomicString::convertToASCIILowercase):
+        (WTF::AtomicString::convertToASCIIUppercase):
+        * wtf/text/AtomicString.h:
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::convertASCIICase): Generalized from convertToASCIILowercase.
+        (WTF::StringImpl::convertToASCIILowercase):
+        (WTF::StringImpl::convertToASCIIUppercase):
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.cpp:
+        (WTF::String::convertToASCIIUppercase): Added.
+        * wtf/text/WTFString.h:
+
+2016-01-22  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix the Windows build after r195452.
+
+        * wtf/text/WTFString.h:
+
+2016-01-22  Darin Adler  <darin@apple.com>
+
+        Reduce use of equalIgnoringCase to just ignore ASCII case
+        https://bugs.webkit.org/show_bug.cgi?id=153266
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/ASCIICType.h:
+        (WTF::isASCIIAlphaCaselessEqual): Loosened the assertion in this function
+        so it can work with ASCII spaces, numeric digits, and some punctuation.
+        Commented that we might want to change its name later.
+
+        * wtf/Assertions.cpp:
+        (WTFInitializeLogChannelStatesFromString): Use equalLettersIgnoringASCIICase.
+
+        * wtf/text/AtomicString.h:
+        (WTF::equalLettersIgnoringASCIICase): Added. Calls the version that takes a String.
+
+        * wtf/text/StringCommon.h:
+        (WTF::equalLettersIgnoringASCIICase): Added. Takes a pointer to characters.
+        (WTF::equalLettersIgnoringASCIICaseCommonWithoutLength): Added.
+        (WTF::equalLettersIgnoringASCIICaseCommon): Added.
+
+        * wtf/text/StringImpl.h:
+        (WTF::equalLettersIgnoringASCIICase): Added. Calls equalLettersIgnoringASCIICaseCommon.
+
+        * wtf/text/StringView.h:
+        (WTF::equalLettersIgnoringASCIICase): Added. Calls equalLettersIgnoringASCIICaseCommon.
+
+        * wtf/text/WTFString.h: Reordered/reformatted a little.
+        (WTF::equalIgnoringASCIICase): Added. Calls the version that takes a StringImpl.
+
+2016-01-22  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Buildfix for older GCCs after r195142
+        https://bugs.webkit.org/show_bug.cgi?id=153351
+
+        Unreviewed buildfix.
+
+        * wtf/SystemTracing.h:
+
+2016-01-21  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r195417): many tests crash
+        https://bugs.webkit.org/show_bug.cgi?id=153316
+
+        Reviewed by Saam Barati.
+
+        This rolls out the StdLibExtras.h change, and simplifies RangeSet to not use binary search.
+        That's fine for now, since B3 doesn't stress RangeSet enough right now.
+
+        * wtf/RangeSet.h:
+        (WTF::RangeSet::contains):
+        (WTF::RangeSet::overlaps):
+        (WTF::RangeSet::clear):
+        (WTF::RangeSet::findRange):
+        * wtf/StdLibExtras.h:
+        (WTF::binarySearchImpl):
+        (WTF::binarySearch):
+        (WTF::tryBinarySearch):
+        (WTF::approximateBinarySearch):
+
+2016-01-21  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should have load elimination
+        https://bugs.webkit.org/show_bug.cgi?id=153288
+
+        Reviewed by Geoffrey Garen.
+
+        I needed a way to track sets of ranges, where there is a high likelihood that all of the
+        ranges overlap. So I created RangeSet. It's a usually-sorted list of coalesced ranges.
+        Practically this means that right now, FTL B3 will end up with two kinds of range sets: a set
+        that just contains top and a set that contains nothing. In the future, most sets will either
+        be top of empty but some of them will contain a handful of other things.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MathExtras.h:
+        (WTF::leftShiftWithSaturation):
+        (WTF::nonEmptyRangesOverlap):
+        (WTF::rangesOverlap):
+        * wtf/RangeSet.h: Added.
+        (WTF::RangeSet::RangeSet):
+        (WTF::RangeSet::~RangeSet):
+        (WTF::RangeSet::add):
+        (WTF::RangeSet::contains):
+        (WTF::RangeSet::overlaps):
+        (WTF::RangeSet::clear):
+        (WTF::RangeSet::dump):
+        (WTF::RangeSet::dumpRaw):
+        (WTF::RangeSet::compact):
+        (WTF::RangeSet::overlapsNonEmpty):
+        (WTF::RangeSet::subsumesNonEmpty):
+        (WTF::RangeSet::findRange):
+        * wtf/StdLibExtras.h:
+        (WTF::binarySearchImpl):
+        (WTF::binarySearch):
+        (WTF::tryBinarySearch):
+        (WTF::approximateBinarySearch):
+
+2016-01-19  Ada Chan  <adachan@apple.com>
+
+        Make it possible to enable VIDEO_PRESENTATION_MODE on other Cocoa platforms.
+        https://bugs.webkit.org/show_bug.cgi?id=153218
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h:
+
+2016-01-19  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should have basic path specialization
+        https://bugs.webkit.org/show_bug.cgi?id=153200
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/GraphNodeWorklist.h:
+        (WTF::GraphNodeWorklist::push):
+        (WTF::GraphNodeWorklist::pushAll):
+        (WTF::GraphNodeWorklist::isEmpty):
+        (WTF::GraphNodeWorklist::notEmpty):
+
+2016-01-20  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Refactor AtomicStringKeyedMRUCache to be a generic LRU cache
+        https://bugs.webkit.org/show_bug.cgi?id=153109
+
+        Reviewed by Darin Adler.
+
+        Refactor AtomicStringKeyedMRUCache, move it to WTF project and rename it
+        to be TinyLRUCache. Define another template and call it TinyLRUCachePolicy.
+        This one can be overridden for different keys and values. Its function is 
+        creating the cached values.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/TinyLRUCache.h: Added.
+        (WebCore::TinyLRUCachePolicy::isKeyNull):
+        (WebCore::TinyLRUCachePolicy::createValueForNullKey):
+        (WebCore::TinyLRUCachePolicy::createValueForKey):
+        (WebCore::TinyLRUCache::get):
+
 2016-01-19  Saam barati  <sbarati@apple.com>
 
         WTF::Bag should be non-copyable

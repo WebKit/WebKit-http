@@ -106,14 +106,14 @@ static void registerUserDefaultsIfNeeded()
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitJSCFTLJITEnabledDefaultsKey];
 
 #if PLATFORM(MAC)
-    [registrationDictionary setObject:[NSNumber numberWithBool:NO] forKey:WebKitTabSuspension];
+    [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitTabSuspension];
 #endif
 
 #if ENABLE(NETWORK_CACHE)
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitNetworkCacheEnabledDefaultsKey];
     [registrationDictionary setObject:[NSNumber numberWithBool:NO] forKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-    [registrationDictionary setObject:[NSNumber numberWithBool:NO] forKey:WebKitNetworkCacheSpeculativeRevalidationEnabledDefaultsKey];
+    [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitNetworkCacheSpeculativeRevalidationEnabledDefaultsKey];
 #endif
 #endif
 

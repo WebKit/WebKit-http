@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,8 @@
 #include "B3Dominators.h"
 #include "B3MemoryValue.h"
 #include "B3Procedure.h"
-#include "B3StackSlotValue.h"
+#include "B3SlotBaseValue.h"
+#include "B3StackSlot.h"
 #include "B3UpsilonValue.h"
 #include "B3ValueInlines.h"
 #include <wtf/HashSet.h>
@@ -152,7 +153,7 @@ public:
                 VALIDATE(!value->numChildren(), ("At ", *value));
                 VALIDATE(value->type() == Float, ("At ", *value));
                 break;
-            case StackSlot:
+            case SlotBase:
             case FramePointer:
                 VALIDATE(!value->numChildren(), ("At ", *value));
                 VALIDATE(value->type() == pointerType(), ("At ", *value));
@@ -352,6 +353,7 @@ public:
             case Upsilon:
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->as<UpsilonValue>()->phi(), ("At ", *value));
+                VALIDATE(value->as<UpsilonValue>()->phi()->opcode() == Phi, ("At ", *value));
                 VALIDATE(value->child(0)->type() == value->as<UpsilonValue>()->phi()->type(), ("At ", *value));
                 VALIDATE(valueInProc.contains(value->as<UpsilonValue>()->phi()), ("At ", *value));
                 break;
@@ -370,6 +372,8 @@ public:
                 VALIDATE(value->type() == Void, ("At ", *value));
                 break;
             }
+
+            VALIDATE(!(value->effects().writes && value->key()), ("At ", *value));
         }
     }
 
@@ -407,9 +411,11 @@ private:
     void validateStackAccess(Value* value)
     {
         MemoryValue* memory = value->as<MemoryValue>();
-        StackSlotValue* stack = value->lastChild()->as<StackSlotValue>();
-        if (!stack)
+        SlotBaseValue* slotBase = value->lastChild()->as<SlotBaseValue>();
+        if (!slotBase)
             return;
+
+        StackSlot* stack = slotBase->slot();
 
         VALIDATE(memory->offset() >= 0, ("At ", *value));
         VALIDATE(memory->offset() + memory->accessByteSize() <= stack->byteSize(), ("At ", *value));

@@ -83,6 +83,7 @@ list(APPEND WebKit2_SOURCES
     Shared/Cocoa/APIDataCocoa.mm
     Shared/Cocoa/APIObject.mm
     Shared/Cocoa/CompletionHandlerCallChecker.mm
+    Shared/Cocoa/DataDetectionResult.mm
     Shared/Cocoa/WKNSArray.mm
     Shared/Cocoa/WKNSData.mm
     Shared/Cocoa/WKNSDictionary.mm
@@ -331,6 +332,8 @@ file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/icu"
+    "${WEBCORE_DIR}/editing/cocoa"
+    "${WEBCORE_DIR}/editing/mac"
     "${WEBCORE_DIR}/platform/cf"
     "${WEBCORE_DIR}/platform/cocoa"
     "${WEBCORE_DIR}/platform/graphics/cocoa"

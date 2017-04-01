@@ -65,7 +65,7 @@ namespace WebCore {
         WEBCORE_EXPORT const URL& url() const;
         WEBCORE_EXPORT void setURL(const URL& url);
 
-        void removeCredentials();
+        WEBCORE_EXPORT void removeCredentials();
 
         WEBCORE_EXPORT ResourceRequestCachePolicy cachePolicy() const;
         WEBCORE_EXPORT void setCachePolicy(ResourceRequestCachePolicy cachePolicy);
@@ -121,8 +121,8 @@ namespace WebCore {
         WEBCORE_EXPORT void setResponseContentDispositionEncodingFallbackArray(const String& encoding1, const String& encoding2 = String(), const String& encoding3 = String());
 
         WEBCORE_EXPORT FormData* httpBody() const;
-        WEBCORE_EXPORT void setHTTPBody(PassRefPtr<FormData> httpBody);
-        
+        WEBCORE_EXPORT void setHTTPBody(RefPtr<FormData>&&);
+
         bool allowCookies() const;
         void setAllowCookies(bool allowCookies);
 

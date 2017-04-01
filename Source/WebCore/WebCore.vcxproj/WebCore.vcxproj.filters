@@ -677,8 +677,8 @@
     <ClCompile Include="..\page\animation\CompositeAnimation.cpp">
       <Filter>page</Filter>
     </ClCompile>
-    <ClCompile Include="..\page\ContentSecurityPolicy.cpp">
-      <Filter>page</Filter>
+    <ClCompile Include="..\page\csp\ContentSecurityPolicy.cpp">
+      <Filter>page\csp</Filter>
     </ClCompile>
     <ClCompile Include="..\page\ContextMenuController.cpp">
       <Filter>page</Filter>
@@ -1770,6 +1770,9 @@
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\NetworkStorageSessionStub.cpp">
+      <Filter>platform\network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\ParsedContentRange.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\ParsedContentType.cpp">
@@ -2921,9 +2924,6 @@
     <ClCompile Include="..\xml\XMLHttpRequest.cpp">
       <Filter>xml</Filter>
     </ClCompile>
-    <ClCompile Include="..\xml\XMLHttpRequestException.cpp">
-      <Filter>xml</Filter>
-    </ClCompile>
     <ClCompile Include="..\xml\XMLHttpRequestProgressEventThrottle.cpp">
       <Filter>xml</Filter>
     </ClCompile>
@@ -3714,6 +3714,9 @@
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="..\html\HTMLCollection.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\HTMLDataElement.cpp">
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="..\html\HTMLDataListElement.cpp">
@@ -5319,6 +5322,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLCollection.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLDataElement.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLDataListElement.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6231,10 +6237,10 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWorkerNavigator.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequest.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLDocument.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequestException.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequest.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequestProgressEvent.cpp">
@@ -7660,8 +7666,8 @@
     <ClInclude Include="..\page\animation\CompositeAnimation.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClInclude Include="..\page\ContentSecurityPolicy.h">
-      <Filter>page</Filter>
+    <ClInclude Include="..\page\csp\ContentSecurityPolicy.h">
+      <Filter>page\csp</Filter>
     </ClInclude>
     <ClInclude Include="..\page\ContextMenuClient.h">
       <Filter>page</Filter>
@@ -8774,6 +8780,9 @@
       <Filter>platform\network</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\network\NetworkStorageSession.h">
+      <Filter>platform\network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\ParsedContenRange.h">
       <Filter>platform\network</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\network\ParsedContentType.h">
@@ -9973,9 +9982,6 @@
     <ClInclude Include="..\xml\XMLHttpRequest.h">
       <Filter>xml</Filter>
     </ClInclude>
-    <ClInclude Include="..\xml\XMLHttpRequestException.h">
-      <Filter>xml</Filter>
-    </ClInclude>
     <ClInclude Include="..\xml\XMLHttpRequestProgressEvent.h">
       <Filter>xml</Filter>
     </ClInclude>
@@ -10880,6 +10886,9 @@
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\HTMLCollection.h">
+      <Filter>html</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\HTMLDataElement.h">
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\HTMLDataListElement.h">
@@ -12735,6 +12744,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLCollection.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLDataElement.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLDataListElement.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -13641,10 +13653,10 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWritableStream.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequest.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLDocument.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequestException.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequest.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequestProgressEvent.h">

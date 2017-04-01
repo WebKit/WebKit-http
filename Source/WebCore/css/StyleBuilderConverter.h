@@ -880,7 +880,7 @@ inline void StyleBuilderConverter::createImplicitNamedGridLinesFromGridArea(cons
         }
         {
             auto& endVector = namedGridLines.add(area.key + "-end", Vector<unsigned>()).iterator->value;
-            endVector.append(areaSpan.resolvedFinalPosition.next().toInt());
+            endVector.append(areaSpan.resolvedFinalPosition.toInt());
             std::sort(endVector.begin(), endVector.end());
         }
     }
@@ -1025,7 +1025,7 @@ inline FontFeatureSettings StyleBuilderConverter::convertFontFeatureSettings(Sty
 #if PLATFORM(IOS)
 inline bool StyleBuilderConverter::convertTouchCallout(StyleResolver&, CSSValue& value)
 {
-    return !equalIgnoringCase(downcast<CSSPrimitiveValue>(value).getStringValue(), "none");
+    return !equalLettersIgnoringASCIICase(downcast<CSSPrimitiveValue>(value).getStringValue(), "none");
 }
 #endif
 

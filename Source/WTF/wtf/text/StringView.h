@@ -162,13 +162,11 @@ template<typename CharacterType, size_t inlineCapacity> void append(Vector<Chara
 bool equal(StringView, StringView);
 bool equal(StringView, const LChar*);
 bool equal(StringView, const char*);
+
 bool equalIgnoringASCIICase(StringView, StringView);
-WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(StringView a, const char* b, unsigned bLength);
-template<unsigned charactersCount>
-bool equalIgnoringASCIICase(StringView a, const char (&b)[charactersCount])
-{
-    return equalIgnoringASCIICase(a, b, charactersCount - 1);
-}
+bool equalIgnoringASCIICase(StringView, const char*);
+
+template<unsigned length> bool equalLettersIgnoringASCIICase(StringView, const char (&lowercaseLetters)[length]);
 
 inline bool operator==(StringView a, StringView b) { return equal(a, b); }
 inline bool operator==(StringView a, const LChar* b) { return equal(a, b); }
@@ -537,6 +535,11 @@ inline bool equalIgnoringASCIICase(StringView a, StringView b)
     return equalIgnoringASCIICaseCommon(a, b);
 }
 
+inline bool equalIgnoringASCIICase(StringView a, const char* b)
+{
+    return equalIgnoringASCIICaseCommon(a, b);
+}
+
 class StringView::CodePoints {
 public:
     explicit CodePoints(const StringView&);
@@ -702,6 +705,11 @@ inline auto StringView::CodeUnits::begin() const -> Iterator
 inline auto StringView::CodeUnits::end() const -> Iterator
 {
     return Iterator(m_stringView, m_stringView.length());
+}
+
+template<unsigned length> inline bool equalLettersIgnoringASCIICase(StringView string, const char (&lowercaseLetters)[length])
+{
+    return equalLettersIgnoringASCIICaseCommon(string, lowercaseLetters);
 }
 
 } // namespace WTF

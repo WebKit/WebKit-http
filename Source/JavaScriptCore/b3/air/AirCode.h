@@ -28,6 +28,7 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirArg.h"
 #include "AirBasicBlock.h"
 #include "AirSpecial.h"
 #include "AirStackSlot.h"
@@ -67,8 +68,8 @@ public:
     // of any prior stack slot. In fact, all stack slots you create in the future will have an index
     // that is >= stackSlots().size().
     JS_EXPORT_PRIVATE StackSlot* addStackSlot(
-        unsigned byteSize, StackSlotKind, StackSlotValue* = nullptr);
-    StackSlot* addStackSlot(StackSlotValue*);
+        unsigned byteSize, StackSlotKind, B3::StackSlot* = nullptr);
+    StackSlot* addStackSlot(B3::StackSlot*);
 
     Special* addSpecial(std::unique_ptr<Special>);
 

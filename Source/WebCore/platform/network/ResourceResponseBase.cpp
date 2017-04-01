@@ -30,6 +30,7 @@
 #include "CacheValidation.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
+#include "ParsedContentRange.h"
 #include "ResourceResponse.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
@@ -96,13 +97,12 @@ std::unique_ptr<CrossThreadResourceResponseData> ResourceResponseBase::copyData(
     return asResourceResponse().doPlatformCopyData(WTFMove(data));
 }
 
+// FIXME: Name does not make it clear this is true for HTTPS!
 bool ResourceResponseBase::isHTTP() const
 {
     lazyInit(CommonFieldsOnly);
 
-    String protocol = m_url.protocol();
-
-    return equalIgnoringCase(protocol, "http")  || equalIgnoringCase(protocol, "https");
+    return m_url.protocolIsInHTTPFamily();
 }
 
 const URL& ResourceResponseBase::url() const
@@ -301,6 +301,10 @@ void ResourceResponseBase::updateHeaderParsedState(HTTPHeaderName name)
         m_haveParsedLastModifiedHeader = false;
         break;
 
+    case HTTPHeaderName::ContentRange:
+        m_haveParsedContentRangeHeader = false;
+        break;
+
     default:
         break;
     }
@@ -462,19 +466,35 @@ Optional<std::chrono::system_clock::time_point> ResourceResponseBase::lastModifi
     return m_lastModified;
 }
 
+static ParsedContentRange parseContentRangeInHeader(const HTTPHeaderMap& headers)
+{
+    String contentRangeValue = headers.get(HTTPHeaderName::ContentRange);
+    if (contentRangeValue.isEmpty())
+        return ParsedContentRange();
+
+    return ParsedContentRange(contentRangeValue);
+}
+
+ParsedContentRange& ResourceResponseBase::contentRange() const
+{
+    lazyInit(CommonFieldsOnly);
+
+    if (!m_haveParsedContentRangeHeader) {
+        m_contentRange = parseContentRangeInHeader(m_httpHeaderFields);
+        m_haveParsedContentRangeHeader = true;
+    }
+
+    return m_contentRange;
+}
+
 bool ResourceResponseBase::isAttachment() const
 {
     lazyInit(AllFields);
 
-    String value = m_httpHeaderFields.get(HTTPHeaderName::ContentDisposition);
-    size_t loc = value.find(';');
-    if (loc != notFound)
-        value = value.left(loc);
-    value = value.stripWhiteSpace();
-
-    return equalIgnoringCase(value, "attachment");
+    auto value = m_httpHeaderFields.get(HTTPHeaderName::ContentDisposition);
+    return equalLettersIgnoringASCIICase(value.left(value.find(';')).stripWhiteSpace(), "attachment");
 }
-  
+
 ResourceResponseBase::Source ResourceResponseBase::source() const
 {
     lazyInit(AllFields);

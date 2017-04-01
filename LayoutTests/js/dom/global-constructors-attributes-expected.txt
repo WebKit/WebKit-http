@@ -13,6 +13,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'AnimationEvent').hasOwnProperty('g
 PASS Object.getOwnPropertyDescriptor(global, 'AnimationEvent').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'AnimationEvent').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'AnimationEvent').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'ApplicationCache').value is ApplicationCache
+PASS Object.getOwnPropertyDescriptor(global, 'ApplicationCache').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ApplicationCache').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ApplicationCache').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'ApplicationCache').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'Attr').value is Attr
 PASS Object.getOwnPropertyDescriptor(global, 'Attr').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'Attr').hasOwnProperty('set') is false
@@ -743,6 +748,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'HashChangeEvent').hasOwnProperty('
 PASS Object.getOwnPropertyDescriptor(global, 'HashChangeEvent').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'HashChangeEvent').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'HashChangeEvent').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'Headers').value is Headers
+PASS Object.getOwnPropertyDescriptor(global, 'Headers').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'Headers').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'Headers').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'Headers').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'History').value is History
 PASS Object.getOwnPropertyDescriptor(global, 'History').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'History').hasOwnProperty('set') is false
@@ -1788,6 +1798,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').hasOwnProperty('get') is 
 PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'VTTCue').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'ValidityState').value is ValidityState
+PASS Object.getOwnPropertyDescriptor(global, 'ValidityState').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ValidityState').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ValidityState').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'ValidityState').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'WaveShaperNode').value is WaveShaperNode
 PASS Object.getOwnPropertyDescriptor(global, 'WaveShaperNode').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WaveShaperNode').hasOwnProperty('set') is false

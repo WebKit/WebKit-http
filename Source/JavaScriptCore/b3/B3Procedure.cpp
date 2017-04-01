@@ -36,6 +36,7 @@
 #include "B3DataSection.h"
 #include "B3Dominators.h"
 #include "B3OpaqueByproducts.h"
+#include "B3StackSlot.h"
 #include "B3ValueInlines.h"
 
 namespace JSC { namespace B3 {
@@ -45,6 +46,7 @@ Procedure::Procedure()
     , m_lastPhaseName("initial")
     , m_byproducts(std::make_unique<OpaqueByproducts>())
     , m_code(new Air::Code(*this))
+    , m_valuesCollection(*this)
 {
 }
 
@@ -68,6 +70,53 @@ BasicBlock* Procedure::addBlock(double frequency)
     return result;
 }
 
+void Procedure::setBlockOrderImpl(Vector<BasicBlock*>& blocks)
+{
+    IndexSet<BasicBlock> blocksSet;
+    blocksSet.addAll(blocks);
+
+    for (BasicBlock* block : *this) {
+        if (!blocksSet.contains(block))
+            blocks.append(block);
+    }
+
+    // Place blocks into this's block list by first leaking all of the blocks and then readopting
+    // them.
+    for (auto& entry : m_blocks)
+        entry.release();
+
+    m_blocks.resize(blocks.size());
+    for (unsigned i = 0; i < blocks.size(); ++i) {
+        BasicBlock* block = blocks[i];
+        block->m_index = i;
+        m_blocks[i] = std::unique_ptr<BasicBlock>(block);
+    }
+}
+
+StackSlot* Procedure::addStackSlot(unsigned byteSize, StackSlotKind kind)
+{
+    size_t index = addStackSlotIndex();
+    std::unique_ptr<StackSlot> slot(new StackSlot(index, byteSize, kind));
+    StackSlot* result = slot.get();
+    m_stackSlots[index] = WTFMove(slot);
+    return result;
+}
+
+StackSlot* Procedure::addAnonymousStackSlot(Type type)
+{
+    return addStackSlot(sizeofType(type), StackSlotKind::Anonymous);
+}
+
+Value* Procedure::clone(Value* value)
+{
+    std::unique_ptr<Value> clone(value->cloneImpl());
+    Value* result = clone.get();
+    clone->m_index = addValueIndex();
+    clone->owner = nullptr;
+    m_values[clone->m_index] = WTFMove(clone);
+    return result;
+}
+
 Value* Procedure::addIntConstant(Origin origin, Type type, int64_t value)
 {
     switch (type) {
@@ -88,6 +137,16 @@ Value* Procedure::addIntConstant(Origin origin, Type type, int64_t value)
 Value* Procedure::addIntConstant(Value* likeValue, int64_t value)
 {
     return addIntConstant(likeValue->origin(), likeValue->type(), value);
+}
+
+Value* Procedure::addBottom(Origin origin, Type type)
+{
+    return addIntConstant(origin, type, 0);
+}
+
+Value* Procedure::addBottom(Value* value)
+{
+    return addBottom(value->origin(), value->type());
 }
 
 Value* Procedure::addBoolConstant(Origin origin, TriState triState)
@@ -149,6 +208,11 @@ void Procedure::dump(PrintStream& out) const
         }
         dataLog("    ", deepDump(*this, value), "\n");
     }
+    if (stackSlots().size()) {
+        out.print("Stack slots:\n");
+        for (StackSlot* slot : stackSlots())
+            out.print("    ", pointerDump(slot), ": ", deepDump(slot), "\n");
+    }
     if (m_byproducts->count())
         out.print(*m_byproducts);
 }
@@ -163,9 +227,17 @@ Vector<BasicBlock*> Procedure::blocksInPostOrder()
     return B3::blocksInPostOrder(at(0));
 }
 
+void Procedure::deleteStackSlot(StackSlot* stackSlot)
+{
+    RELEASE_ASSERT(m_stackSlots[stackSlot->index()].get() == stackSlot);
+    RELEASE_ASSERT(!stackSlot->isLocked());
+    m_stackSlotIndexFreeList.append(stackSlot->index());
+    m_stackSlots[stackSlot->index()] = nullptr;
+}
+
 void Procedure::deleteValue(Value* value)
 {
-    ASSERT(m_values[value->index()].get() == value);
+    RELEASE_ASSERT(m_values[value->index()].get() == value);
     m_valueIndexFreeList.append(value->index());
     m_values[value->index()] = nullptr;
 }
@@ -237,6 +309,17 @@ unsigned Procedure::frameSize() const
 const RegisterAtOffsetList& Procedure::calleeSaveRegisters() const
 {
     return code().calleeSaveRegisters();
+}
+
+size_t Procedure::addStackSlotIndex()
+{
+    if (m_stackSlotIndexFreeList.isEmpty()) {
+        size_t index = m_stackSlots.size();
+        m_stackSlots.append(nullptr);
+        return index;
+    }
+    
+    return m_stackSlotIndexFreeList.takeLast();
 }
 
 size_t Procedure::addValueIndex()

@@ -31,7 +31,7 @@
     readonly attribute DOMImplementation implementation;
     readonly attribute Element documentElement;
 
-    [NewObject, RaisesException] Element createElement(DOMString tagName);
+    [NewObject, RaisesException, ImplementedAs=createElementForBindings] Element createElement(DOMString tagName);
     [NewObject] DocumentFragment   createDocumentFragment();
     [NewObject] Text createTextNode([Default=Undefined] optional DOMString data);
     [NewObject] Comment createComment([Default=Undefined] optional DOMString data);
@@ -82,7 +82,7 @@
     // read-only for other clients.
              [TreatReturnedNullStringAs=Null, TreatNullAs=NullString] attribute DOMString documentURI;
 #else
-    [TreatReturnedNullStringAs=Null] readonly attribute DOMString documentURI;
+    [ImplementedAs=urlForBindings] readonly attribute DOMString documentURI;
 #endif
 
     // DOM Level 2 Events (DocumentEvents interface)
@@ -165,7 +165,7 @@
 #else
     readonly attribute DOMString domain;
 #endif
-    readonly attribute DOMString URL;
+    [ImplementedAs=urlForBindings] readonly attribute DOMString URL;
 
     [TreatNullAs=NullString, GetterRaisesException, SetterRaisesException] attribute DOMString cookie;
 
@@ -187,7 +187,11 @@
 
     // IE extensions
 
-             [TreatReturnedNullStringAs=Undefined, TreatNullAs=NullString] attribute DOMString charset;
+#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
+    [TreatReturnedNullStringAs=Undefined, TreatNullAs=NullString] attribute DOMString charset;
+#else
+    [ImplementedAs=characterSetWithUTF8Fallback] readonly attribute DOMString charset;
+#endif
     [TreatReturnedNullStringAs=Undefined] readonly attribute DOMString defaultCharset;
     [TreatReturnedNullStringAs=Undefined] readonly attribute DOMString readyState;
 
@@ -321,7 +325,7 @@
     [NotEnumerable] attribute EventHandler onselectionchange;
 
     // Unique to Document
-    [NotEnumerable] attribute EventHandler onreadystatechange;
+    [LenientThis] attribute EventHandler onreadystatechange;
     [NotEnumerable, Conditional=CSP_NEXT] attribute EventHandler onsecuritypolicyviolation;
     [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockchange;
     [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockerror;

@@ -52,3 +52,8 @@ void WKBundleScriptWorldClearWrappers(WKBundleScriptWorldRef scriptWorldRef)
 {
     toImpl(scriptWorldRef)->clearWrappers();
 }
+
+void WKBundleScriptWorldMakeAllShadowRootsOpen(WKBundleScriptWorldRef scriptWorldRef)
+{
+    toImpl(scriptWorldRef)->makeAllShadowRootsOpen();
+}

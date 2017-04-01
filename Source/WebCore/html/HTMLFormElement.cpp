@@ -388,13 +388,14 @@ void HTMLFormElement::reset()
 }
 
 #if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
-// FIXME: We should look to share these methods with class HTMLFormControlElement instead of duplicating them.
+
+// FIXME: We should look to share this code with class HTMLFormControlElement instead of duplicating the logic.
 
 bool HTMLFormElement::autocorrect() const
 {
     const AtomicString& autocorrectValue = fastGetAttribute(autocorrectAttr);
     if (!autocorrectValue.isEmpty())
-        return !equalIgnoringCase(autocorrectValue, "off");
+        return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
     if (HTMLFormElement* form = this->form())
         return form->autocorrect();
     return true;
@@ -480,9 +481,16 @@ void HTMLFormElement::requestAutocompleteTimerFired()
 
 void HTMLFormElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (name == actionAttr)
+    if (name == actionAttr) {
         m_attributes.parseAction(value);
-    else if (name == targetAttr)
+        
+        if (!m_attributes.action().isEmpty()) {
+            if (Frame* f = document().frame()) {
+                Frame& topFrame = f->tree().top();
+                topFrame.loader().mixedContentChecker().checkFormForMixedContent(topFrame.document()->securityOrigin(), document().completeURL(m_attributes.action()));
+            }
+        }
+    } else if (name == targetAttr)
         m_attributes.setTarget(value);
     else if (name == methodAttr)
         m_attributes.updateMethodType(value);
@@ -495,8 +503,7 @@ void HTMLFormElement::parseAttribute(const QualifiedName& name, const AtomicStri
             document().registerForDocumentSuspensionCallbacks(this);
         else
             document().unregisterForDocumentSuspensionCallbacks(this);
-    }
-    else
+    } else
         HTMLElement::parseAttribute(name, value);
 }
 
@@ -833,7 +840,7 @@ void HTMLFormElement::didMoveToNewDocument(Document* oldDocument)
 
 bool HTMLFormElement::shouldAutocomplete() const
 {
-    return !equalIgnoringCase(fastGetAttribute(autocompleteAttr), "off");
+    return !equalLettersIgnoringASCIICase(fastGetAttribute(autocompleteAttr), "off");
 }
 
 void HTMLFormElement::finishParsingChildren()

@@ -528,6 +528,10 @@ void WebFrameLoaderClient::dispatchDidReceiveContentLength(DocumentLoader* loade
     }
 }
 
+void WebFrameLoaderClient::dispatchDidFinishDataDetection(NSArray *)
+{
+}
+
 void WebFrameLoaderClient::dispatchDidFinishLoading(DocumentLoader* loader, unsigned long identifier)
 {
     WebView *webView = getWebView(m_webFrame.get());
@@ -1722,12 +1726,12 @@ static NSMutableArray* kit(const Vector<String>& vector)
     return array;
 }
 
-static String parameterValue(const Vector<String>& paramNames, const Vector<String>& paramValues, const String& name)
+static String parameterValue(const Vector<String>& paramNames, const Vector<String>& paramValues, const char* name)
 {
     size_t size = paramNames.size();
     ASSERT(size == paramValues.size());
     for (size_t i = 0; i < size; ++i) {
-        if (equalIgnoringCase(paramNames[i], name))
+        if (equalIgnoringASCIICase(paramNames[i], name))
             return paramValues[i];
     }
     return String();
@@ -1940,7 +1944,7 @@ RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLPlugI
 #endif
     NSMutableArray *attributeKeys = kit(paramNames);
 #if !PLATFORM(IOS)
-    if (frame && frame->settings().needsSiteSpecificQuirks() && equalIgnoringCase(mimeType, "application/x-snkp")) {
+    if (frame && frame->settings().needsSiteSpecificQuirks() && equalLettersIgnoringASCIICase(mimeType, "application/x-snkp")) {
         for (NSUInteger i = 0; i < [attributeKeys count]; ++i)
             [attributeKeys replaceObjectAtIndex:i withObject:[[attributeKeys objectAtIndex:i] lowercaseString]];
     }

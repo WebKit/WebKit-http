@@ -48,7 +48,6 @@
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
 #include "ThreadableLoader.h"
-#include "XMLHttpRequestException.h"
 #include "XMLHttpRequestProgressEvent.h"
 #include "XMLHttpRequestUpload.h"
 #include "markup.h"
@@ -77,7 +76,7 @@ enum XMLHttpRequestSendArrayBufferOrView {
 
 static bool isSetCookieHeader(const String& name)
 {
-    return equalIgnoringCase(name, "set-cookie") || equalIgnoringCase(name, "set-cookie2");
+    return equalLettersIgnoringASCIICase(name, "set-cookie") || equalLettersIgnoringASCIICase(name, "set-cookie2");
 }
 
 static void replaceCharsetInMediaType(String& mediaType, const String& charsetValue)
@@ -204,7 +203,7 @@ Document* XMLHttpRequest::responseXML(ExceptionCode& ec)
 
     if (!m_createdDocument) {
         String mimeType = responseMIMEType();
-        bool isHTML = equalIgnoringCase(mimeType, "text/html");
+        bool isHTML = equalLettersIgnoringASCIICase(mimeType, "text/html");
 
         // The W3C spec requires the final MIME type to be some valid XML type, or text/html.
         // If it is text/html, then the responseType of "document" must have been supplied explicitly.
@@ -216,7 +215,7 @@ Document* XMLHttpRequest::responseXML(ExceptionCode& ec)
             if (isHTML)
                 m_responseDocument = HTMLDocument::create(0, m_url);
             else
-                m_responseDocument = Document::create(0, m_url);
+                m_responseDocument = XMLDocument::create(0, m_url);
             // FIXME: Set Last-Modified.
             m_responseDocument->setContent(m_responseBuilder.toStringPreserveCapacity());
             m_responseDocument->setSecurityOriginPolicy(scriptExecutionContext()->securityOriginPolicy());
@@ -397,16 +396,16 @@ void XMLHttpRequest::setWithCredentials(bool value, ExceptionCode& ec)
 
 bool XMLHttpRequest::isAllowedHTTPMethod(const String& method)
 {
-    return !equalIgnoringCase(method, "TRACE")
-        && !equalIgnoringCase(method, "TRACK")
-        && !equalIgnoringCase(method, "CONNECT");
+    return !equalLettersIgnoringASCIICase(method, "trace")
+        && !equalLettersIgnoringASCIICase(method, "track")
+        && !equalLettersIgnoringASCIICase(method, "connect");
 }
 
 String XMLHttpRequest::uppercaseKnownHTTPMethod(const String& method)
 {
     const char* const methods[] = { "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT" };
     for (auto* value : methods) {
-        if (equalIgnoringCase(method, value)) {
+        if (equalIgnoringASCIICase(method, value)) {
             // Don't bother allocating a new string if it's already all uppercase.
             if (method == value)
                 break;
@@ -712,7 +711,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
 {
     // Only GET request is supported for blob URL.
     if (m_url.protocolIs("blob") && m_method != "GET") {
-        ec = XMLHttpRequestException::NETWORK_ERR;
+        ec = NETWORK_ERR;
         return;
     }
 
@@ -743,7 +742,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     if (m_requestEntityBody) {
         ASSERT(m_method != "GET");
         ASSERT(m_method != "HEAD");
-        request.setHTTPBody(m_requestEntityBody.release());
+        request.setHTTPBody(WTFMove(m_requestEntityBody));
     }
 
     if (!m_requestHeaders.isEmpty())
@@ -796,7 +795,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     }
 
     if (!m_exceptionCode && m_error)
-        m_exceptionCode = XMLHttpRequestException::NETWORK_ERR;
+        m_exceptionCode = NETWORK_ERR;
     ec = m_exceptionCode;
 }
 
@@ -1066,7 +1065,7 @@ void XMLHttpRequest::didFail(const ResourceError& error)
         return;
 
     if (error.isCancellation()) {
-        m_exceptionCode = XMLHttpRequestException::ABORT_ERR;
+        m_exceptionCode = ABORT_ERR;
         abortError();
         return;
     }
@@ -1083,7 +1082,7 @@ void XMLHttpRequest::didFail(const ResourceError& error)
         logConsoleError(scriptExecutionContext(), message);
     }
 
-    m_exceptionCode = XMLHttpRequestException::NETWORK_ERR;
+    m_exceptionCode = NETWORK_ERR;
     networkError();
 }
 
@@ -1170,7 +1169,7 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
             m_decoder = TextResourceDecoder::create("application/xml");
             // Don't stop on encoding errors, unlike it is done for other kinds of XML resources. This matches the behavior of previous WebKit versions, Firefox and Opera.
             m_decoder->useLenientXMLDecoding();
-        } else if (equalIgnoringCase(responseMIMEType(), "text/html"))
+        } else if (equalLettersIgnoringASCIICase(responseMIMEType(), "text/html"))
             m_decoder = TextResourceDecoder::create("text/html", "UTF-8");
         else
             m_decoder = TextResourceDecoder::create("text/plain", "UTF-8");
@@ -1236,7 +1235,7 @@ void XMLHttpRequest::didReachTimeout()
 
     m_sendFlag = false;
     m_error = true;
-    m_exceptionCode = XMLHttpRequestException::TIMEOUT_ERR;
+    m_exceptionCode = TIMEOUT_ERR;
 
     if (!m_async) {
         m_state = DONE;

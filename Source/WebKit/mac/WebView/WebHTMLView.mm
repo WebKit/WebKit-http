@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2010, 2016 Apple Inc. All rights reserved.
  *           (C) 2006, 2007 Graham Dennis (graham.dennis@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -109,6 +109,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
+#import <WebCore/NSSpellCheckerSPI.h>
 #import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/Page.h>
@@ -977,6 +978,7 @@ struct WebHTMLViewInterpretKeyEventsParameters {
 #if !PLATFORM(IOS)
     BOOL installedTrackingArea;
     id flagsChangedEventMonitor;
+    NSRange softSpaceRange;
 #endif
 
 #ifndef NDEBUG
@@ -2136,8 +2138,10 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 #endif
                 ) {
                 coreFrame->eventHandler().mouseMoved(event, [[self _webView] _pressureEvent]);
-            } else
+            } else {
+                [self removeAllToolTips];
                 coreFrame->eventHandler().passMouseMovedEventToScrollbars(event, [[self _webView] _pressureEvent]);
+            }
         }
 
         [view release];
@@ -2846,6 +2850,8 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
     [[NSNotificationCenter defaultCenter] 
             addObserver:self selector:@selector(markedTextUpdate:) 
                    name:WebMarkedTextUpdatedNotification object:nil];
+#else
+    _private->softSpaceRange = NSMakeRange(NSNotFound, 0);
 #endif
     
     return self;
@@ -6124,7 +6130,12 @@ static BOOL writingDirectionKeyBindingsEnabled()
     [fontManager setSelectedFont:font isMultiple:multipleFonts];
     [fontManager setSelectedAttributes:(attributes ? attributes : @{ }) isMultiple:multipleFonts];
 }
-#endif
+
+- (void)_setSoftSpaceRange:(NSRange)range
+{
+    _private->softSpaceRange = range;
+}
+#endif // !PLATFORM(IOS)
 
 - (BOOL)_canSmartCopyOrDelete
 {
@@ -7083,6 +7094,14 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     if (!coreFrame || !coreFrame->editor().canEdit())
         return;
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    if (_private->softSpaceRange.location != NSNotFound && (replacementRange.location == NSMaxRange(_private->softSpaceRange) || replacementRange.location == NSNotFound) && replacementRange.length == 0 && [[NSSpellChecker sharedSpellChecker] deletesAutospaceBeforeString:text language:nil])
+        replacementRange = _private->softSpaceRange;
+#endif
+#if !PLATFORM(IOS)
+    _private->softSpaceRange = NSMakeRange(NSNotFound, 0);
+#endif
 
     if (replacementRange.location != NSNotFound)
         [[self _frame] _selectNSRange:replacementRange];

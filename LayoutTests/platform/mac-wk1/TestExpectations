@@ -60,6 +60,12 @@ webkit.org/b/152506 webgl/1.0.2/conformance/extensions/get-extension.html [ Pass
 
 webkit.org/b/152789 webarchive/adopt-attribute-styled-body-webarchive.html [ Pass Crash ]
 
+webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
+
+webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
+
+webkit.org/b/153438 imported/w3c/indexeddb/keyorder-private.html [ Pass Failure ]
+
 ### END OF (1) Failures with bug reports
 ########################################
 
@@ -88,11 +94,15 @@ fast/history/page-cache-indexed-closed-db.html [ Failure ]
 storage/indexeddb/open-db-private-browsing.html [ Failure ]
 
 # Relies on internals.observeGC
+storage/indexeddb/connection-leak-private.html [ Skip ]
 storage/indexeddb/connection-leak.html [ Skip ]
-storage/indexeddb/cursor-leak.html [ Failure ]
-storage/indexeddb/cursor-request-cycle.html [ Failure ]
-storage/indexeddb/delete-closed-database-object.html [ Skip ]
+storage/indexeddb/cursor-leak-private.html [ Failure ]
+storage/indexeddb/cursor-leak.html [ Skip ]
+storage/indexeddb/cursor-request-cycle-private.html [ Failure ]
+storage/indexeddb/cursor-request-cycle.html [ Skip ]
 storage/indexeddb/delete-closed-database-object-private.html [ Skip ]
+storage/indexeddb/delete-closed-database-object.html [ Skip ]
+storage/indexeddb/request-leak-private.html [ Failure ]
 storage/indexeddb/request-leak.html [ Failure ]
 
 # No workers support in Modern IDB yet
@@ -101,19 +111,21 @@ http/tests/security/cross-origin-worker-indexeddb.html
 storage/indexeddb/basics-workers.html
 storage/indexeddb/cursor-advance-workers.html
 storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-workers.html
+storage/indexeddb/dont-commit-on-blocked-private.html
 storage/indexeddb/dont-commit-on-blocked.html
 storage/indexeddb/factory-basics-workers.html
 storage/indexeddb/index-basics-workers.html
 storage/indexeddb/objectstore-basics-workers.html
 storage/indexeddb/open-twice-workers.html
 storage/indexeddb/pending-activity-workers.html
-storage/indexeddb/pending-version-change-on-exit.html
 storage/indexeddb/pending-version-change-on-exit-private.html
+storage/indexeddb/pending-version-change-on-exit.html
+storage/indexeddb/pending-version-change-stuck-private.html
+storage/indexeddb/pending-version-change-stuck-works-with-terminate-private.html
 storage/indexeddb/pending-version-change-stuck-works-with-terminate.html
 storage/indexeddb/pending-version-change-stuck.html
-storage/indexeddb/pending-version-change-stuck-private.html
-storage/indexeddb/transaction-complete-workers.html
 storage/indexeddb/transaction-complete-workers-private.html
+storage/indexeddb/transaction-complete-workers.html
 storage/indexeddb/unprefix-workers.html
 
 # Need a different way to get database names to the web inspector
@@ -237,3 +249,33 @@ webgl/1.0.3/151055_asan.html [ Failure ]
 
 # Lacking WK1 TestRunner API that evaluates JavaScript through JSC APIs and not WebCore APIs
 inspector/script-profiler/event-type-API.html
+
+########################################
+### START OF (3) IndexedDB failures with SQLite
+
+# SQLite backend tests with text failures
+imported/w3c/indexeddb/idbindex-multientry-big.htm [ Failure ]
+storage/indexeddb/cursor-continue-validity.html [ Failure ]
+storage/indexeddb/cursor-primary-key-order.html [ Failure ]
+storage/indexeddb/get-keyrange.html [ Failure ]
+storage/indexeddb/modern/get-keyrange.html [ Failure ]
+storage/indexeddb/modern/index-3.html [ Failure ]
+
+# SQLite backend tests that timeout
+storage/indexeddb/modern/transaction-scheduler-1.html [ Skip ]
+storage/indexeddb/modern/transaction-scheduler-2.html [ Skip ]
+storage/indexeddb/modern/transaction-scheduler-5.html [ Skip ]
+storage/indexeddb/modern/transaction-scheduler-6.html [ Skip ]
+storage/indexeddb/prefetch-invalidation.html [ Skip ]
+storage/indexeddb/transaction-coordination-within-database.html [ Skip ]
+
+# SQLite backend tests that crash or ASSERT
+storage/indexeddb/database-odd-names.html [ Skip ]
+storage/indexeddb/odd-strings.html [ Skip ]
+
+# SQLite backend tests that wedge the entire testing harness
+imported/w3c/indexeddb/keyorder.htm [ Skip ]
+storage/indexeddb/key-type-array.html [ Skip ]
+
+### END OF (3) IndexedDB failures with SQLite
+########################################

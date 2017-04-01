@@ -89,13 +89,6 @@ struct CSSParserString {
         return m_data.characters16[i];
     }
 
-    bool equalIgnoringCase(const char* str) const
-    {
-        if (is8Bit())
-            return WTF::equalIgnoringCase(str, characters8(), length());
-        return WTF::equalIgnoringCase(str, characters16(), length());
-    }
-
     operator String() const { return is8Bit() ? String(m_data.characters8, m_length) : String(m_data.characters16, m_length); }
     operator AtomicString() const { return is8Bit() ? AtomicString(m_data.characters8, m_length) : AtomicString(m_data.characters16, m_length); }
 
@@ -106,6 +99,8 @@ struct CSSParserString {
     unsigned m_length;
     bool m_is8Bit;
 };
+
+template<unsigned length> bool equalLettersIgnoringASCIICase(const CSSParserString&, const char (&lowercaseLetters)[length]);
 
 struct CSSParserFunction;
 struct CSSParserVariable;
@@ -275,6 +270,12 @@ inline void CSSParserValue::setFromValueList(std::unique_ptr<CSSParserValueList>
     this->valueList = valueList.release();
     unit = ValueList;
 }
+
+template<unsigned length> inline bool equalLettersIgnoringASCIICase(const CSSParserString& string, const char (&lowercaseLetters)[length])
+{
+    return WTF::equalLettersIgnoringASCIICaseCommon(string, lowercaseLetters);
+}
+
 }
 
 #endif

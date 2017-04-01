@@ -168,7 +168,7 @@ void AXObjectCache::findAriaModalNodes()
         // Must have dialog or alertdialog role
         if (!nodeHasRole(element, "dialog") && !nodeHasRole(element, "alertdialog"))
             continue;
-        if (!equalIgnoringCase(element->fastGetAttribute(aria_modalAttr), "true"))
+        if (!equalLettersIgnoringASCIICase(element->fastGetAttribute(aria_modalAttr), "true"))
             continue;
         
         m_ariaModalNodesSet.add(element);
@@ -948,7 +948,7 @@ void AXObjectCache::handleMenuItemSelected(Node* node)
     if (!nodeHasRole(node, "menuitem") && !nodeHasRole(node, "menuitemradio") && !nodeHasRole(node, "menuitemcheckbox"))
         return;
     
-    if (!downcast<Element>(*node).focused() && !equalIgnoringCase(downcast<Element>(*node).fastGetAttribute(aria_selectedAttr), "true"))
+    if (!downcast<Element>(*node).focused() && !equalLettersIgnoringASCIICase(downcast<Element>(*node).fastGetAttribute(aria_selectedAttr), "true"))
         return;
     
     postNotification(getOrCreate(node), &document(), AXMenuListItemSelected);
@@ -1357,7 +1357,7 @@ void AXObjectCache::handleAriaModalChange(Node* node)
         return;
     
     stopCachingComputedObjectAttributes();
-    if (equalIgnoringCase(downcast<Element>(*node).fastGetAttribute(aria_modalAttr), "true")) {
+    if (equalLettersIgnoringASCIICase(downcast<Element>(*node).fastGetAttribute(aria_modalAttr), "true")) {
         // Add the newly modified node to the modal nodes set, and set it to be the current valid aria modal node.
         // We will recompute the current valid aria modal node in ariaModalNode() when this node is not visible.
         m_ariaModalNodesSet.add(node);
@@ -1545,6 +1545,23 @@ static bool characterOffsetsInOrder(const CharacterOffset& characterOffset1, con
     return range1->compareBoundaryPoints(Range::START_TO_START, range2.get(), IGNORE_EXCEPTION) <= 0;
 }
 
+static Node* resetNodeAndOffsetForReplacedNode(Node* replacedNode, int& offset, int characterCount)
+{
+    // Use this function to include the replaced node itself in the range we are creating.
+    if (!replacedNode)
+        return nullptr;
+    
+    RefPtr<Range> nodeRange = AXObjectCache::rangeForNodeContents(replacedNode);
+    int nodeLength = TextIterator::rangeLength(nodeRange.get());
+    offset = characterCount <= nodeLength ? replacedNode->computeNodeIndex() : replacedNode->computeNodeIndex() + 1;
+    return replacedNode->parentNode();
+}
+
+static bool isReplacedNodeOrBR(Node* node)
+{
+    return AccessibilityObject::replacedNodeNeedsCharacter(node) || node->hasTagName(brTag);
+}
+
 RefPtr<Range> AXObjectCache::rangeForUnorderedCharacterOffsets(const CharacterOffset& characterOffset1, const CharacterOffset& characterOffset2)
 {
     if (characterOffset1.isNull() || characterOffset2.isNull())
@@ -1554,30 +1571,33 @@ RefPtr<Range> AXObjectCache::rangeForUnorderedCharacterOffsets(const CharacterOf
     CharacterOffset startCharacterOffset = alreadyInOrder ? characterOffset1 : characterOffset2;
     CharacterOffset endCharacterOffset = alreadyInOrder ? characterOffset2 : characterOffset1;
     
-    int endOffset = endCharacterOffset.offset;
-    
-    // endOffset can be out of bounds sometimes if the node is a replaced node or has brTag.
-    if (startCharacterOffset.node == endCharacterOffset.node) {
-        RefPtr<Range> nodeRange = AXObjectCache::rangeForNodeContents(startCharacterOffset.node);
-        int nodeLength = TextIterator::rangeLength(nodeRange.get());
-        if (endOffset > nodeLength)
-            endOffset = nodeLength;
-    }
-    
     int startOffset = startCharacterOffset.startIndex + startCharacterOffset.offset;
-    endOffset = endCharacterOffset.startIndex + endOffset;
-    
-    // If start node is a replaced node and it has children, we want to include the replaced node itself in the range.
+    int endOffset = endCharacterOffset.startIndex + endCharacterOffset.offset;
     Node* startNode = startCharacterOffset.node;
-    if (AccessibilityObject::replacedNodeNeedsCharacter(startNode) && (startNode->hasChildNodes() || startNode != endCharacterOffset.node)) {
-        startOffset = startNode->computeNodeIndex();
-        startNode = startNode->parentNode();
+    Node* endNode = endCharacterOffset.node;
+    
+    // Consider the case when the replaced node is at the start/end of the range.
+    bool startNodeIsReplacedOrBR = isReplacedNodeOrBR(startNode);
+    bool endNodeIsReplacedOrBR = isReplacedNodeOrBR(endNode);
+    if (startNodeIsReplacedOrBR || endNodeIsReplacedOrBR) {
+        // endOffset can be out of bounds sometimes if the node is a replaced node or has brTag and it has no children.
+        if (startNode == endNode && !startNode->hasChildNodes()) {
+            RefPtr<Range> nodeRange = AXObjectCache::rangeForNodeContents(startNode);
+            int nodeLength = TextIterator::rangeLength(nodeRange.get());
+            if (endCharacterOffset.offset > nodeLength)
+                endOffset = endCharacterOffset.startIndex + nodeLength;
+        } else {
+            if (startNodeIsReplacedOrBR)
+                startNode = resetNodeAndOffsetForReplacedNode(startNode, startOffset, startCharacterOffset.offset);
+            if (endNodeIsReplacedOrBR)
+                endNode = resetNodeAndOffsetForReplacedNode(startNode, endOffset, startCharacterOffset.offset);
+        }
     }
     
     RefPtr<Range> result = Range::create(m_document);
     ExceptionCode ecStart = 0, ecEnd = 0;
     result->setStart(startNode, startOffset, ecStart);
-    result->setEnd(endCharacterOffset.node, endOffset, ecEnd);
+    result->setEnd(endNode, endOffset, ecEnd);
     if (ecStart || ecEnd)
         return nullptr;
     
@@ -1596,6 +1616,8 @@ void AXObjectCache::setTextMarkerDataWithCharacterOffset(TextMarkerData& textMar
     }
     
     RefPtr<AccessibilityObject> obj = this->getOrCreate(domNode);
+    if (!obj)
+        return;
     
     // Convert to visible position.
     VisiblePosition visiblePosition = visiblePositionFromCharacterOffset(obj.get(), characterOffset);
@@ -1834,10 +1856,10 @@ bool isNodeAriaVisible(Node* node)
     for (Node* testNode = node; testNode; testNode = testNode->parentNode()) {
         if (is<Element>(*testNode)) {
             const AtomicString& ariaHiddenValue = downcast<Element>(*testNode).fastGetAttribute(aria_hiddenAttr);
-            if (equalIgnoringCase(ariaHiddenValue, "true"))
+            if (equalLettersIgnoringASCIICase(ariaHiddenValue, "true"))
                 return false;
             
-            bool ariaHiddenFalse = equalIgnoringCase(ariaHiddenValue, "false");
+            bool ariaHiddenFalse = equalLettersIgnoringASCIICase(ariaHiddenValue, "false");
             if (!testNode->renderer() && !ariaHiddenFalse)
                 return false;
             if (!ariaHiddenFalsePresent && ariaHiddenFalse)

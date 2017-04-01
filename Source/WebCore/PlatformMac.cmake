@@ -228,11 +228,11 @@ list(APPEND WebCore_SOURCES
     editing/SelectionRectGatherer.cpp
     editing/SmartReplaceCF.cpp
 
+    editing/cocoa/DataDetection.mm
     editing/cocoa/EditorCocoa.mm
     editing/cocoa/HTMLConverter.mm
 
     editing/mac/AlternativeTextUIController.mm
-    editing/mac/DataDetection.mm
     editing/mac/DictionaryLookup.mm
     editing/mac/EditorMac.mm
     editing/mac/FrameSelectionMac.mm
@@ -271,6 +271,7 @@ list(APPEND WebCore_SOURCES
 
     page/cocoa/UserAgent.mm
     page/cocoa/ResourceUsageOverlayCocoa.mm
+    page/cocoa/ResourceUsageThreadCocoa.mm
     page/cocoa/SettingsCocoa.mm
 
     page/mac/ChromeMac.mm
@@ -335,6 +336,7 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/TelephoneNumberDetectorCocoa.cpp
     platform/cocoa/ThemeCocoa.cpp
     platform/cocoa/VNodeTrackerCocoa.cpp
+    platform/cocoa/WebCoreNSErrorExtras.mm
 
     platform/graphics/DisplayRefreshMonitor.cpp
     platform/graphics/DisplayRefreshMonitorManager.cpp

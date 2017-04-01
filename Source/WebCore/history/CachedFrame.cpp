@@ -92,8 +92,8 @@ void CachedFrameBase::restore()
         m_document->accessSVGExtensions().unpauseAnimations();
 
     frame.animation().resumeAnimationsForDocument(m_document.get());
-    m_document->resumeActiveDOMObjects(ActiveDOMObject::PageCache);
-    m_document->resumeScriptedAnimationControllerCallbacks();
+
+    m_document->resume(ActiveDOMObject::PageCache);
 
     // It is necessary to update any platform script objects after restoring the
     // cached page.
@@ -135,7 +135,6 @@ void CachedFrameBase::restore()
         m_document->page()->chrome().client().needTouchEvents(true);
 #endif
 
-    m_document->resume();
 }
 
 CachedFrame::CachedFrame(Frame& frame)
@@ -154,19 +153,14 @@ CachedFrame::CachedFrame(Frame& frame)
     // Custom scrollbar renderers will get reattached when the document comes out of the page cache
     m_view->detachCustomScrollbars();
 
-    m_document->setInPageCache(true);
-    frame.loader().stopLoading(UnloadEventPolicyUnloadAndPageHide);
+    ASSERT(m_document->inPageCache());
 
     // Create the CachedFrames for all Frames in the FrameTree.
     for (Frame* child = frame.tree().firstChild(); child; child = child->tree().nextSibling())
         m_childFrames.append(std::make_unique<CachedFrame>(*child));
 
-    // Active DOM objects must be suspended before we cache the frame script data,
-    // but after we've fired the pagehide event, in case that creates more objects.
-    // Suspending must also happen after we've recursed over child frames, in case
-    // those create more objects.
-
-    m_document->suspend();
+    // Active DOM objects must be suspended before we cache the frame script data.
+    m_document->suspend(ActiveDOMObject::PageCache);
 
     m_cachedFrameScriptData = std::make_unique<ScriptCachedFrameData>(frame);
 

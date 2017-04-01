@@ -57,6 +57,12 @@ enum MediaControlEvent {
     "previous-track"
 };
 
+enum AutoFillButtonType {
+    "AutoFillButtonTypeNone",
+    "AutoFillButtonTypeContacts",
+    "AutoFillButtonTypeCredentials"
+};
+
 [
     NoInterfaceObject,
 ] interface Internals {
@@ -151,7 +157,7 @@ enum MediaControlEvent {
     [RaisesException] boolean elementShouldAutoComplete(Element inputElement);
     [RaisesException] void setEditingValue(Element inputElement, DOMString value);
     [RaisesException] void setAutofilled(Element inputElement, boolean enabled);
-    [RaisesException] void setShowAutoFillButton(Element inputElement, boolean enabled);
+    [RaisesException] void setShowAutoFillButton(Element inputElement, AutoFillButtonType autoFillButtonType);
     [RaisesException] unsigned long countMatchesForText(DOMString text, unsigned long findOptions, DOMString markMatches);
 
     [RaisesException] void paintControlTints();
@@ -226,10 +232,14 @@ enum MediaControlEvent {
 
     // These throw if the element does not have a compositing layer.
     [RaisesException] void setElementUsesDisplayListDrawing(Element element, boolean usesDisplayListDrawing);
+    [RaisesException] void setElementTracksDisplayListReplay(Element element, boolean trackReplay);
 
     // Flags for displayListForElement.
     const unsigned short DISPLAY_LIST_INCLUDES_PLATFORM_OPERATIONS = 1;
+    // Returns the recorded display list.
     [RaisesException] DOMString displayListForElement(Element element, optional unsigned short flags);
+    // Returns the display list that was actually painted.
+    [RaisesException] DOMString replayDisplayListForElement(Element element, optional unsigned short flags);
 
     [RaisesException] void garbageCollectDocumentResources();
 
@@ -253,7 +263,7 @@ enum MediaControlEvent {
     unsigned long numberOfLiveDocuments();
     DOMWindow openDummyInspectorFrontend(DOMString url);
     void closeDummyInspectorFrontend();
-    [RaisesException] void setJavaScriptProfilingEnabled(boolean creates);
+    [RaisesException] void setLegacyJavaScriptProfilingEnabled(boolean enabled);
     [RaisesException] void setInspectorIsUnderTest(boolean isUnderTest);
 
     DOMString counterValue(Element element);

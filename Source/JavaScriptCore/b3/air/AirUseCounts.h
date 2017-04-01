@@ -97,7 +97,13 @@ public:
         }
     }
 
-    const Counts& operator[](const Thing& arg) const { return m_counts.find(arg)->value; }
+    const Counts* operator[](const Thing& arg) const
+    {
+        auto iter = m_counts.find(arg);
+        if (iter == m_counts.end())
+            return nullptr;
+        return &iter->value;
+    }
 
     void dump(PrintStream& out) const
     {

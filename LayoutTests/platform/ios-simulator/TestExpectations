@@ -148,6 +148,7 @@ fast/events/clear-drag-state.html
 fast/events/clear-edit-drag-state.html
 fast/events/content-changed-during-drop.html
 fast/events/crash-on-mutate-during-drop.html
+fast/events/drag-and-drop-link-fast-multiple-times-does-not-crash.html
 fast/events/drag-and-drop-autoscroll-inner-frame.html
 fast/events/drag-and-drop-autoscroll.html
 fast/events/drag-and-drop-dataTransfer-types-nocrash.html
@@ -209,6 +210,10 @@ fast/events/touch [ Skip ]
 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Skip ]
 fast/scrolling/overflow-scroll-past-max.html [ Skip ]
 pageoverlay/overlay-small-frame-mouse-events.html [ Skip ]
+loader/stateobjects/pushstate-size.html [ Skip ]
+loader/stateobjects/pushstate-size-iframe.html [ Skip ]
+fast/loader/stateobjects/replacestate-frequency-with-user-gesture.html [ Skip ]
+fast/loader/stateobjects/pushstate-frequency-with-user-gesture.html [ Skip ]
 
 ###
 # Known failures
@@ -2764,6 +2769,9 @@ webkit.org/b/149297 accessibility/aria-current.html [ Pass ]
 # Enable "aria-table-attributes" test for iOS
 webkit.org/b/150366 accessibility/aria-table-attributes.html [ Pass ]
 
+# Enable Text marker tests for iOS
+webkit.org/b/153292 accessibility/text-marker [ Pass ]
+
 # More flaky tests (Sept 18, 2015)
 
 fast/forms/select-element-focus-ring.html [ Failure Pass ]
@@ -2835,6 +2843,7 @@ webkit.org/b/152134 fast/events/ios/keyboard-should-not-trigger-resize.html [ Pa
 webkit.org/b/152134 fast/events/ios/single-tap-generates-click.html [ Pass Timeout ]
 webkit.org/b/152134 fast/events/ios/unscalable-viewport-clicks-on-doubletap.html [ Pass Timeout ]
 webkit.org/b/152134 fast/events/ios/viewport-device-width-at-initial-scale-fast-clicks.html  [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/viewport-no-width-value-allows-double-tap.html  [ Pass Timeout ]
 
 # Failing tests related to picture element
 webkit.org/b/152141 fast/picture/image-picture-1x.html [ Skip ]
@@ -2873,3 +2882,21 @@ webkit.org/b/152282 css3/filters/composited-during-transition-layertree.html [ F
 webkit.org/b/152448 js/intl-collator.html [ Failure ]
 
 webkit.org/b/152935 fast/scrolling/scroll-position-on-reload-rtl.html [ Failure ]
+
+# Since this test directory is explicitly enabled for iOS, the passing tests are being re-enabled individually until flakiness is resolved
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing.html [ Pass Failure ]
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
+fast/viewport/ios/width-is-device-width.html [ Pass ]
+fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit.html [ Pass ]
+
+webkit.org/b/153371 imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm [ Pass Failure ]
+
+webkit.org/b/152446 http/tests/loading/preload-no-store-frame-src.html [ Failure ]
+
+webkit.org/b/153498 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
+
+# displaylist tests are flaky on ios-simulator wk2
+webkit.org/b/153656 displaylists/canvas-display-list.html [ Pass Failure ]
+webkit.org/b/153656 displaylists/extent-includes-shadow.html [ Pass Failure ]
+webkit.org/b/153656 displaylists/extent-includes-transforms.html [ Pass Failure ]

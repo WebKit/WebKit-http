@@ -177,7 +177,7 @@ public:
     bool elementShouldAutoComplete(Element* inputElement, ExceptionCode&);
     void setEditingValue(Element* inputElement, const String&, ExceptionCode&);
     void setAutofilled(Element*, bool enabled, ExceptionCode&);
-    void setShowAutoFillButton(Element*, bool enabled, ExceptionCode&);
+    void setShowAutoFillButton(Element*, const String& autoFillButtonType, ExceptionCode&);
     void scrollElementToRect(Element*, long x, long y, long w, long h, ExceptionCode&);
 
     void paintControlTints(ExceptionCode&);
@@ -254,6 +254,7 @@ public:
     RefPtr<ClientRectList> nonFastScrollableRects(ExceptionCode&) const;
 
     void setElementUsesDisplayListDrawing(Element*, bool usesDisplayListDrawing, ExceptionCode&);
+    void setElementTracksDisplayListReplay(Element*, bool isTrackingReplay, ExceptionCode&);
 
     enum {
         // Values need to be kept in sync with Internals.idl.
@@ -261,6 +262,9 @@ public:
     };
     String displayListForElement(Element*, unsigned flags, ExceptionCode&);
     String displayListForElement(Element*, ExceptionCode&);
+
+    String replayDisplayListForElement(Element*, unsigned flags, ExceptionCode&);
+    String replayDisplayListForElement(Element*, ExceptionCode&);
 
     void garbageCollectDocumentResources(ExceptionCode&) const;
 
@@ -274,7 +278,7 @@ public:
 
     RefPtr<DOMWindow> openDummyInspectorFrontend(const String& url);
     void closeDummyInspectorFrontend();
-    void setJavaScriptProfilingEnabled(bool enabled, ExceptionCode&);
+    void setLegacyJavaScriptProfilingEnabled(bool enabled, ExceptionCode&);
     void setInspectorIsUnderTest(bool isUnderTest, ExceptionCode&);
 
     String counterValue(Element*);

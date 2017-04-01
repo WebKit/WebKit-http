@@ -777,7 +777,7 @@ protected:
 };
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, nullptr, CREATE_METHOD_TABLE(GlobalObject) };
-const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, nullptr };
+const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsLegacyProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, nullptr };
 
 
 GlobalObject::GlobalObject(VM& vm, Structure* structure)
@@ -1642,7 +1642,7 @@ EncodedJSValue JSC_HOST_CALL functionStartSamplingProfiler(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecState* exec)
 {
     RELEASE_ASSERT(exec->vm().samplingProfiler());
-    String jsonString = exec->vm().samplingProfiler()->stacktracesAsJSON();
+    String jsonString = exec->vm().samplingProfiler()->stackTracesAsJSON();
     exec->vm().samplingProfiler()->clearData();
     EncodedJSValue result = JSValue::encode(JSONParse(exec, jsonString));
     RELEASE_ASSERT(!exec->hadException());

@@ -35,6 +35,8 @@
 #include "FrameLoaderClient.h"
 #include "FTPDirectoryDocument.h"
 #include "HTMLDocument.h"
+#include "HTMLHeadElement.h"
+#include "HTMLTitleElement.h"
 #include "Image.h"
 #include "ImageDocument.h"
 #include "MainFrame.h"
@@ -51,12 +53,16 @@
 #include "Settings.h"
 #include "StyleSheetContents.h"
 #include "SubframeLoader.h"
+#include "Text.h"
 #include "TextDocument.h"
+#include "XMLDocument.h"
 #include "XMLNames.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
+
+using namespace HTMLNames;
 
 typedef HashSet<String, CaseFoldingHash> FeatureSet;
 
@@ -215,16 +221,16 @@ DOMImplementation* DOMImplementation::getInterface(const String& /*feature*/)
     return 0;
 }
 
-RefPtr<Document> DOMImplementation::createDocument(const String& namespaceURI,
+RefPtr<XMLDocument> DOMImplementation::createDocument(const String& namespaceURI,
     const String& qualifiedName, DocumentType* doctype, ExceptionCode& ec)
 {
-    RefPtr<Document> doc;
+    RefPtr<XMLDocument> doc;
     if (namespaceURI == SVGNames::svgNamespaceURI)
         doc = SVGDocument::create(0, URL());
     else if (namespaceURI == HTMLNames::xhtmlNamespaceURI)
-        doc = Document::createXHTML(0, URL());
+        doc = XMLDocument::createXHTML(0, URL());
     else
-        doc = Document::create(0, URL());
+        doc = XMLDocument::create(0, URL());
 
     doc->setSecurityOriginPolicy(m_document.securityOriginPolicy());
 
@@ -296,13 +302,17 @@ bool DOMImplementation::isTextMIMEType(const String& mimeType)
 
 Ref<HTMLDocument> DOMImplementation::createHTMLDocument(const String& title)
 {
-    Ref<HTMLDocument> doc = HTMLDocument::create(nullptr, URL());
-    doc->open();
-    doc->write("<!doctype html><html><body></body></html>");
-    if (!title.isNull())
-        doc->setTitle(title);
-    doc->setSecurityOriginPolicy(m_document.securityOriginPolicy());
-    return doc;
+    auto document = HTMLDocument::create(nullptr, URL());
+    document->open();
+    document->write("<!doctype html><html><head></head><body></body></html>");
+    if (!title.isNull()) {
+        auto titleElement = HTMLTitleElement::create(titleTag, document);
+        titleElement->appendChild(document->createTextNode(title));
+        ASSERT(document->head());
+        document->head()->appendChild(WTFMove(titleElement));
+    }
+    document->setSecurityOriginPolicy(m_document.securityOriginPolicy());
+    return document;
 }
 
 Ref<Document> DOMImplementation::createDocument(const String& type, Frame* frame, const URL& url)
@@ -311,7 +321,7 @@ Ref<Document> DOMImplementation::createDocument(const String& type, Frame* frame
     if (type == "text/html")
         return HTMLDocument::create(frame, url);
     if (type == "application/xhtml+xml")
-        return Document::createXHTML(frame, url);
+        return XMLDocument::createXHTML(frame, url);
 
 #if ENABLE(FTPDIR)
     // Plugins cannot take FTP from us either
@@ -362,7 +372,7 @@ Ref<Document> DOMImplementation::createDocument(const String& type, Frame* frame
         return SVGDocument::create(frame, url);
 
     if (isXMLMIMEType(type))
-        return Document::create(frame, url);
+        return XMLDocument::create(frame, url);
 
     return HTMLDocument::create(frame, url);
 }

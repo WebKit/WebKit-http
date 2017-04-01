@@ -81,10 +81,11 @@ enum SourceElementsMode { CheckForStrictMode, DontCheckForStrictMode };
 enum FunctionBodyType { ArrowFunctionBodyExpression, ArrowFunctionBodyBlock, StandardFunctionBodyBlock };
 enum FunctionRequirements { FunctionNoRequirements, FunctionNeedsName };
 
-enum DestructuringKind {
+enum class DestructuringKind {
     DestructureToVariables,
     DestructureToLet,
     DestructureToConst,
+    DestructureToCatchParameters,
     DestructureToParameters,
     DestructureToExpressions
 };
@@ -169,6 +170,7 @@ struct Scope {
         , m_strictMode(strictMode)
         , m_isFunction(isFunction)
         , m_isGenerator(isGenerator)
+        , m_isArrowFunction(false)
         , m_isLexicalScope(false)
         , m_isFunctionBoundary(false)
         , m_isValidStrictMode(true)
@@ -190,6 +192,7 @@ struct Scope {
         , m_strictMode(rhs.m_strictMode)
         , m_isFunction(rhs.m_isFunction)
         , m_isGenerator(rhs.m_isGenerator)
+        , m_isArrowFunction(rhs.m_isArrowFunction)
         , m_isLexicalScope(rhs.m_isLexicalScope)
         , m_isFunctionBoundary(rhs.m_isFunctionBoundary)
         , m_isValidStrictMode(rhs.m_isValidStrictMode)
@@ -256,8 +259,11 @@ struct Scope {
         case SourceParseMode::GetterMode:
         case SourceParseMode::SetterMode:
         case SourceParseMode::MethodMode:
-        case SourceParseMode::ArrowFunctionMode:
             setIsFunction();
+            break;
+
+        case SourceParseMode::ArrowFunctionMode:
+            setIsArrowFunction();
             break;
 
         case SourceParseMode::ProgramMode:
@@ -445,6 +451,7 @@ struct Scope {
 
     void setNeedsFullActivation() { m_needsFullActivation = true; }
     bool needsFullActivation() const { return m_needsFullActivation; }
+    bool isArrowFunction() { return m_isArrowFunction; }
 
     bool hasDirectSuper() { return m_hasDirectSuper; }
     void setHasDirectSuper() { m_hasDirectSuper = true; }
@@ -463,7 +470,7 @@ struct Scope {
                     continue;
 
                 // "arguments" reference should be resolved at function boudary.
-                if (nestedScope->isFunctionBoundary() && nestedScope->hasArguments() && impl == m_vm->propertyNames->arguments.impl())
+                if (nestedScope->isFunctionBoundary() && nestedScope->hasArguments() && impl == m_vm->propertyNames->arguments.impl() && !nestedScope->isArrowFunction())
                     continue;
 
                 m_usedVariables.add(impl);
@@ -579,6 +586,12 @@ private:
         m_isGenerator = true;
         m_hasArguments = false;
     }
+    
+    void setIsArrowFunction()
+    {
+        setIsFunction();
+        m_isArrowFunction = true;
+    }
 
     void setIsModule()
     {
@@ -596,6 +609,7 @@ private:
     bool m_strictMode : 1;
     bool m_isFunction : 1;
     bool m_isGenerator : 1;
+    bool m_isArrowFunction : 1;
     bool m_isLexicalScope : 1;
     bool m_isFunctionBoundary : 1;
     bool m_isValidStrictMode : 1;
@@ -801,15 +815,15 @@ private:
     {
         switch (type) {
         case DeclarationType::VarDeclaration:
-            return DestructureToVariables;
+            return DestructuringKind::DestructureToVariables;
         case DeclarationType::LetDeclaration:
-            return DestructureToLet;
+            return DestructuringKind::DestructureToLet;
         case DeclarationType::ConstDeclaration:
-            return DestructureToConst;
+            return DestructuringKind::DestructureToConst;
         }
 
         RELEASE_ASSERT_NOT_REACHED();
-        return DestructureToVariables;
+        return DestructuringKind::DestructureToVariables;
     }
 
     ALWAYS_INLINE AssignmentContext assignmentContextFromDeclarationType(DeclarationType type)
@@ -1268,20 +1282,67 @@ private:
         return !m_errorMessage.isNull();
     }
 
-    struct SavePoint {
+    enum class FunctionParsePhase { Parameters, Body };
+    struct ParserState {
+        int assignmentCount { 0 };
+        int nonLHSCount { 0 };
+        int nonTrivialExpressionCount { 0 };
+        FunctionParsePhase functionParsePhase { FunctionParsePhase::Body };
+        const Identifier* lastIdentifier { nullptr };
+        const Identifier* lastFunctionName { nullptr };
+    };
+
+    // If you're using this directly, you probably should be using
+    // createSavePoint() instead.
+    ALWAYS_INLINE ParserState internalSaveParserState()
+    {
+        return m_parserState;
+    }
+
+    ALWAYS_INLINE void restoreParserState(const ParserState& state)
+    {
+        m_parserState = state;
+    }
+
+    struct LexerState {
         int startOffset;
         unsigned oldLineStartOffset;
         unsigned oldLastLineNumber;
         unsigned oldLineNumber;
     };
-    
-    ALWAYS_INLINE SavePoint createSavePointForError()
+
+    // If you're using this directly, you probably should be using
+    // createSavePoint() instead.
+    // i.e, if you parse any kind of AssignmentExpression between
+    // saving/restoring, you should definitely not be using this directly.
+    ALWAYS_INLINE LexerState internalSaveLexerState()
     {
-        SavePoint result;
+        LexerState result;
         result.startOffset = m_token.m_location.startOffset;
         result.oldLineStartOffset = m_token.m_location.lineStartOffset;
         result.oldLastLineNumber = m_lexer->lastLineNumber();
         result.oldLineNumber = m_lexer->lineNumber();
+        return result;
+    }
+
+    ALWAYS_INLINE void restoreLexerState(const LexerState& lexerState)
+    {
+        m_lexer->setOffset(lexerState.startOffset, lexerState.oldLineStartOffset);
+        next();
+        m_lexer->setLastLineNumber(lexerState.oldLastLineNumber);
+        m_lexer->setLineNumber(lexerState.oldLineNumber);
+    }
+
+    struct SavePoint {
+        ParserState parserState;
+        LexerState lexerState;
+    };
+    
+    ALWAYS_INLINE SavePoint createSavePointForError()
+    {
+        SavePoint result;
+        result.parserState = internalSaveParserState();
+        result.lexerState = internalSaveLexerState();
         return result;
     }
     
@@ -1294,10 +1355,8 @@ private:
     ALWAYS_INLINE void restoreSavePointWithError(const SavePoint& savePoint, const String& message)
     {
         m_errorMessage = message;
-        m_lexer->setOffset(savePoint.startOffset, savePoint.oldLineStartOffset);
-        next();
-        m_lexer->setLastLineNumber(savePoint.oldLastLineNumber);
-        m_lexer->setLineNumber(savePoint.oldLineNumber);
+        restoreLexerState(savePoint.lexerState);
+        restoreParserState(savePoint.parserState);
     }
 
     ALWAYS_INLINE void restoreSavePoint(const SavePoint& savePoint)
@@ -1305,51 +1364,21 @@ private:
         restoreSavePointWithError(savePoint, String());
     }
 
-    enum class FunctionParsePhase { Parameters, Body };
-    struct ParserState {
-        int assignmentCount;
-        int nonLHSCount;
-        int nonTrivialExpressionCount;
-        FunctionParsePhase functionParsePhase;
-    };
-
-    ALWAYS_INLINE ParserState saveState()
-    {
-        ParserState result;
-        result.assignmentCount = m_assignmentCount;
-        result.nonLHSCount = m_nonLHSCount;
-        result.nonTrivialExpressionCount = m_nonTrivialExpressionCount;
-        result.functionParsePhase = m_functionParsePhase;
-        return result;
-    }
-
-    ALWAYS_INLINE void restoreState(const ParserState& state)
-    {
-        m_assignmentCount = state.assignmentCount;
-        m_nonLHSCount = state.nonLHSCount;
-        m_nonTrivialExpressionCount = state.nonTrivialExpressionCount;
-        m_functionParsePhase = state.functionParsePhase;
-    }
-
     VM* m_vm;
     const SourceCode* m_source;
     ParserArena m_parserArena;
     std::unique_ptr<LexerType> m_lexer;
     FunctionParameters* m_parameters { nullptr };
+
+    ParserState m_parserState;
     
     bool m_hasStackOverflow;
     String m_errorMessage;
     JSToken m_token;
     bool m_allowsIn;
     JSTextPosition m_lastTokenEndPosition;
-    int m_assignmentCount;
-    int m_nonLHSCount;
     bool m_syntaxAlreadyValidated;
     int m_statementDepth;
-    int m_nonTrivialExpressionCount;
-    FunctionParsePhase m_functionParsePhase;
-    const Identifier* m_lastIdentifier;
-    const Identifier* m_lastFunctionName;
     RefPtr<SourceProviderCache> m_functionCache;
     SourceElements* m_sourceElements;
     bool m_parsingBuiltin;

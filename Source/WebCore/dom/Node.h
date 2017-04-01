@@ -146,7 +146,8 @@ public:
         DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20,
     };
 
-    static bool isSupported(const String& feature, const String& version);
+    // Only used by ObjC / GObject bindings.
+    static bool isSupportedForBindings(const String& feature, const String& version);
 
     WEBCORE_EXPORT static void startIgnoringLeaks();
     WEBCORE_EXPORT static void stopIgnoringLeaks();
@@ -283,6 +284,11 @@ public:
 
 #if ENABLE(SHADOW_DOM)
     HTMLSlotElement* assignedSlot() const;
+#endif
+
+#if ENABLE(CUSTOM_ELEMENTS)
+    bool isCustomElement() const { return getFlag(IsCustomElement); }
+    void setIsCustomElement() { return setFlag(IsCustomElement); }
 #endif
 
     // Returns null, a child of ShadowRoot, or a legacy shadow root.
@@ -616,7 +622,7 @@ protected:
         HasSyntheticAttrChildNodesFlag = 1 << 19,
         HasCustomStyleResolveCallbacksFlag = 1 << 20,
         HasEventTargetDataFlag = 1 << 21,
-        // HeyItIsAFreeBit = 1 << 22,
+        IsCustomElement = 1 << 22,
         IsInShadowTreeFlag = 1 << 23,
         IsMathMLFlag = 1 << 24,
 

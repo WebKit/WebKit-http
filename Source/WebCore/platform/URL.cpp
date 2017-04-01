@@ -518,7 +518,7 @@ void URL::init(const URL& base, const String& relative, const TextEncoding& enco
             ++p;
         }
         if (*p == ':') {
-            if (p[1] != '/' && equalIgnoringCase(base.protocol(), String(str, p - str)) && base.isHierarchical())
+            if (p[1] != '/' && equalIgnoringASCIICase(base.protocol(), StringView(reinterpret_cast<LChar*>(str), p - str)) && base.isHierarchical())
                 str = p + 1;
             else
                 absolute = true;
@@ -787,7 +787,7 @@ bool URL::protocolIs(const char* protocol) const
 
     // JavaScript URLs are "valid" and should be executed even if URL decides they are invalid.
     // The free function protocolIsJavaScript() should be used instead. 
-    ASSERT(!equalIgnoringCase(protocol, String("javascript")));
+    ASSERT(!equalLettersIgnoringASCIICase(StringView(protocol), "javascript"));
 
     if (!m_isValid)
         return false;

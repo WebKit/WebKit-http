@@ -3,25 +3,25 @@ It then reopens the database, making sure it's a default, empty database, and ch
 It then reopens the database, upgrading it's version. It aborts this versionchange, as well. \
 Finally it reopens the database again, upgrading its version, making sure things had reverted back to before the second aborted versionchange.");
 
+indexedDBTest(prepareDatabase);
 
-if (window.testRunner) {
-    testRunner.waitUntilDone();
-    testRunner.dumpAsText();
-}
 
 function done()
 {
     finishJSTest();
 }
 
-var createRequest = window.indexedDB.open("VersionChangeAbortTestDatabase", 1);
-
-createRequest.onupgradeneeded = function(event) {
+var dbname;
+function prepareDatabase(event)
+{
     debug("Initial upgrade needed: Old version - " + event.oldVersion + " New version - " + event.newVersion);
 
-    var versionTransaction = createRequest.transaction;
-    var database = event.target.result;
+    event.target.onerror = null;
 
+    var versionTransaction = event.target.transaction;
+    var database = event.target.result;
+    dbname = database.name;
+    
     versionTransaction.abort();
 
     versionTransaction.onabort = function(event) {
@@ -42,12 +42,12 @@ createRequest.onupgradeneeded = function(event) {
 
 function continueTest1()
 {
-    createRequest = window.indexedDB.open("VersionChangeAbortTestDatabase", 1);
+    createRequest = window.indexedDB.open(dbname, 1);
 
     createRequest.onupgradeneeded = function(event) {
         debug("Second upgrade needed: Old version - " + event.oldVersion + " New version - " + event.newVersion);
 
-        var versionTransaction = createRequest.transaction;
+        var versionTransaction = event.target.transaction;
         var database = event.target.result;
 
         versionTransaction.onabort = function(event) {
@@ -70,12 +70,12 @@ function continueTest1()
 
 function continueTest2()
 {
-    createRequest = window.indexedDB.open("VersionChangeAbortTestDatabase", 2);
+    createRequest = window.indexedDB.open(dbname, 2);
 
     createRequest.onupgradeneeded = function(event) {
         debug("Third upgrade needed: Old version - " + event.oldVersion + " New version - " + event.newVersion);
 
-        var versionTransaction = createRequest.transaction;
+        var versionTransaction = event.target.transaction;
         var database = event.target.result;
 
         versionTransaction.abort();
@@ -99,7 +99,7 @@ function continueTest2()
 
 function continueTest3()
 {
-    createRequest = window.indexedDB.open("VersionChangeAbortTestDatabase", 2);
+    createRequest = window.indexedDB.open(dbname, 2);
 
     createRequest.onupgradeneeded = function(event) {
         debug("Fourth upgrade needed: Old version - " + event.oldVersion + " New version - " + event.newVersion);

@@ -218,6 +218,8 @@ public:
 
     bool shouldSendResourceLoadCallbacks() const { return m_options.sendLoadCallbacks() == SendCallbacks; }
     DataBufferingPolicy dataBufferingPolicy() const { return m_options.dataBufferingPolicy(); }
+
+    bool allowsCaching() const { return m_options.cachingPolicy() == CachingPolicy::AllowCaching; }
     
     virtual void destroyDecodedData() { }
 
@@ -266,6 +268,8 @@ protected:
     void setEncodedSize(unsigned);
     void setDecodedSize(unsigned);
     void didAccessDecodedData(double timeStamp);
+
+    virtual void didReplaceSharedBufferContents() { }
 
     // FIXME: Make the rest of these data members private and use functions in derived classes instead.
     HashCountedSet<CachedResourceClient*> m_clients;

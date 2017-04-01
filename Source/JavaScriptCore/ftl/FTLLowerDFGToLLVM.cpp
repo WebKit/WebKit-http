@@ -109,14 +109,17 @@ NO_RETURN_DUE_TO_CRASH static void ftlUnreachable(
 
 // Using this instead of typeCheck() helps to reduce the load on LLVM, by creating
 // significantly less dead code.
-#define FTL_TYPE_CHECK(lowValue, highValue, typesPassedThrough, failCondition) do { \
+#define FTL_TYPE_CHECK_WITH_EXIT_KIND(exitKind, lowValue, highValue, typesPassedThrough, failCondition) do { \
         FormattedValue _ftc_lowValue = (lowValue);                      \
         Edge _ftc_highValue = (highValue);                              \
         SpeculatedType _ftc_typesPassedThrough = (typesPassedThrough);  \
         if (!m_interpreter.needsTypeCheck(_ftc_highValue, _ftc_typesPassedThrough)) \
             break;                                                      \
-        typeCheck(_ftc_lowValue, _ftc_highValue, _ftc_typesPassedThrough, (failCondition)); \
+        typeCheck(_ftc_lowValue, _ftc_highValue, _ftc_typesPassedThrough, (failCondition), exitKind); \
     } while (false)
+
+#define FTL_TYPE_CHECK(lowValue, highValue, typesPassedThrough, failCondition) \
+    FTL_TYPE_CHECK_WITH_EXIT_KIND(BadType, lowValue, highValue, typesPassedThrough, failCondition)
 
 class LowerDFGToLLVM {
     WTF_MAKE_NONCOPYABLE(LowerDFGToLLVM);
@@ -204,9 +207,9 @@ public:
 
 #if FTL_USES_B3
         size_t sizeOfCaptured = sizeof(JSValue) * m_graph.m_nextMachineLocal;
-        B3::StackSlotValue* capturedBase = m_out.lockedStackSlot(sizeOfCaptured);
+        B3::SlotBaseValue* capturedBase = m_out.lockedStackSlot(sizeOfCaptured);
         m_captured = m_out.add(capturedBase, m_out.constIntPtr(sizeOfCaptured));
-        state->capturedValue = capturedBase;
+        state->capturedValue = capturedBase->slot();
 #else // FTL_USES_B3
         LValue capturedAlloca = m_out.alloca(arrayType(m_out.int64, m_graph.m_nextMachineLocal));
         
@@ -451,6 +454,9 @@ public:
         // write a B3 phase that so aggressively assumes the lack of orphans that it would crash
         // if any orphans were around. We might even have such phases already.
         m_proc.deleteOrphans();
+
+        // We put the blocks into the B3 procedure in a super weird order. Now we reorder them.
+        m_out.applyBlockOrder();
 #endif // FTL_USES_B3
 
 #if !FTL_USES_B3
@@ -5481,6 +5487,7 @@ private:
                 CCallHelpers::Jump done;
                 
                 if (isTailCall) {
+                    jit.emitRestoreCalleeSaves();
                     jit.prepareForTailCallSlow();
                     fastCall = jit.nearTailCall();
                 } else {
@@ -5489,7 +5496,9 @@ private:
                 }
                 
                 slowPath.link(&jit);
-                
+
+                if (isTailCall)
+                    jit.emitRestoreCalleeSaves();
                 jit.move(CCallHelpers::TrustedImmPtr(callLinkInfo), GPRInfo::regT2);
                 CCallHelpers::Call slowCall = jit.nearCall();
                 
@@ -8974,19 +8983,19 @@ private:
     
     void typeCheck(
         FormattedValue lowValue, Edge highValue, SpeculatedType typesPassedThrough,
-        LValue failCondition)
+        LValue failCondition, ExitKind exitKind = BadType)
     {
-        appendTypeCheck(lowValue, highValue, typesPassedThrough, failCondition);
+        appendTypeCheck(lowValue, highValue, typesPassedThrough, failCondition, exitKind);
     }
     
     void appendTypeCheck(
         FormattedValue lowValue, Edge highValue, SpeculatedType typesPassedThrough,
-        LValue failCondition)
+        LValue failCondition, ExitKind exitKind)
     {
         if (!m_interpreter.needsTypeCheck(highValue, typesPassedThrough))
             return;
         ASSERT(mayHaveTypeCheck(highValue.useKind()));
-        appendOSRExit(BadType, lowValue, highValue.node(), failCondition, m_origin);
+        appendOSRExit(exitKind, lowValue, highValue.node(), failCondition, m_origin);
         m_interpreter.filter(highValue, typesPassedThrough);
     }
     
@@ -9399,7 +9408,7 @@ private:
     {
         LValue possibleResult = m_out.call(
             m_out.int64, m_out.operation(operationConvertDoubleToInt52), value);
-        FTL_TYPE_CHECK(
+        FTL_TYPE_CHECK_WITH_EXIT_KIND(Int52Overflow,
             doubleValue(value), edge, SpecInt52AsDouble,
             m_out.equal(possibleResult, m_out.constInt64(JSValue::notInt52)));
         

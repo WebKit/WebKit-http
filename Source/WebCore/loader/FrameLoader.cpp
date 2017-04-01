@@ -77,6 +77,7 @@
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "IconController.h"
+#include "IgnoreOpensDuringUnloadCountIncrementer.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
 #include "LoaderStrategy.h"
@@ -1771,9 +1772,8 @@ void FrameLoader::commitProvisionalLoad()
 
     // Check to see if we need to cache the page we are navigating away from into the back/forward cache.
     // We are doing this here because we know for sure that a new page is about to be loaded.
-    HistoryItem& item = *history().currentItem();
-    if (!m_frame.tree().parent() && PageCache::singleton().canCache(m_frame.page()) && !item.isInPageCache())
-        PageCache::singleton().add(item, *m_frame.page());
+    if (!m_frame.tree().parent() && history().currentItem())
+        PageCache::singleton().addIfCacheable(*history().currentItem(), m_frame.page());
 
     if (m_loadType != FrameLoadType::Replace)
         closeOldDataSources();
@@ -1845,7 +1845,7 @@ void FrameLoader::commitProvisionalLoad()
         if (m_frame.document()->doctype() && m_frame.page())
             m_frame.page()->chrome().didReceiveDocType(&m_frame);
 #endif
-        m_frame.document()->resume();
+        m_frame.document()->resume(ActiveDOMObject::PageCache);
 
         // Force a layout to update view size and thereby update scrollbars.
 #if PLATFORM(IOS)
@@ -2279,14 +2279,16 @@ void FrameLoader::checkLoadCompleteForThisFrame()
                 m_client.dispatchDidFailLoad(error);
                 loadingEvent = AXObjectCache::AXLoadingFailed;
             } else {
-                m_client.dispatchDidFinishLoad();
-                loadingEvent = AXObjectCache::AXLoadingFinished;
 #if ENABLE(DATA_DETECTION)
                 if (m_frame.settings().dataDetectorTypes() != DataDetectorTypeNone) {
                     RefPtr<Range> documentRange = makeRange(firstPositionInNode(m_frame.document()->documentElement()), lastPositionInNode(m_frame.document()->documentElement()));
-                    DataDetection::detectContentInRange(documentRange, m_frame.settings().dataDetectorTypes());
+                    m_frame.setDataDetectionResults(DataDetection::detectContentInRange(documentRange, m_frame.settings().dataDetectorTypes()));
+                    if (m_frame.isMainFrame())
+                        m_client.dispatchDidFinishDataDetection(m_frame.dataDetectionResults());
                 }
 #endif
+                m_client.dispatchDidFinishLoad();
+                loadingEvent = AXObjectCache::AXLoadingFinished;
             }
 
             // Notify accessibility.
@@ -2426,6 +2428,12 @@ void FrameLoader::frameLoadCompleted()
 
 void FrameLoader::detachChildren()
 {
+    // detachChildren() will fire the unload event in each subframe and the
+    // HTML specification states that the parent document's ignore-opens-during-unload counter while
+    // this event is being fired in its subframes:
+    // https://html.spec.whatwg.org/multipage/browsers.html#unload-a-document
+    IgnoreOpensDuringUnloadCountIncrementer ignoreOpensDuringUnloadCountIncrementer(m_frame.document());
+
     Vector<Ref<Frame>, 16> childrenToDetach;
     childrenToDetach.reserveInitialCapacity(m_frame.tree().childCount());
     for (Frame* child = m_frame.tree().lastChild(); child; child = child->tree().previousSibling())
@@ -2654,7 +2662,6 @@ void FrameLoader::loadPostRequest(const FrameLoadRequest& request, const String&
 
     const ResourceRequest& inRequest = request.resourceRequest();
     const URL& url = inRequest.url();
-    RefPtr<FormData> formData = inRequest.httpBody();
     const String& contentType = inRequest.httpContentType();
     String origin = inRequest.httpOrigin();
 
@@ -2664,7 +2671,7 @@ void FrameLoader::loadPostRequest(const FrameLoadRequest& request, const String&
         workingResourceRequest.setHTTPReferrer(referrer);
     workingResourceRequest.setHTTPOrigin(origin);
     workingResourceRequest.setHTTPMethod("POST");
-    workingResourceRequest.setHTTPBody(formData);
+    workingResourceRequest.setHTTPBody(inRequest.httpBody());
     workingResourceRequest.setHTTPContentType(contentType);
     addExtraFieldsToRequest(workingResourceRequest, loadType, true);
 
@@ -2807,7 +2814,7 @@ bool FrameLoader::shouldPerformFragmentNavigation(bool isFormSubmission, const S
 
     // FIXME: What about load types other than Standard and Reload?
 
-    return (!isFormSubmission || equalIgnoringCase(httpMethod, "GET"))
+    return (!isFormSubmission || equalLettersIgnoringASCIICase(httpMethod, "get"))
         && loadType != FrameLoadType::Reload
         && loadType != FrameLoadType::ReloadFromOrigin
         && loadType != FrameLoadType::Same
@@ -2879,6 +2886,7 @@ void FrameLoader::dispatchUnloadEvents(UnloadEventPolicy unloadEventPolicy)
 
     // We store the frame's page in a local variable because the frame might get detached inside dispatchEvent.
     ForbidPromptsScope forbidPrompts(m_frame.page());
+    IgnoreOpensDuringUnloadCountIncrementer ignoreOpensDuringUnloadCountIncrementer(m_frame.document());
 
     if (m_didCallImplicitClose && !m_wasUnloadEventEmitted) {
         auto* currentFocusedElement = m_frame.document()->focusedElement();
@@ -2945,6 +2953,7 @@ bool FrameLoader::dispatchBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLo
 
     {
         ForbidPromptsScope forbidPrompts(m_frame.page());
+        IgnoreOpensDuringUnloadCountIncrementer ignoreOpensDuringUnloadCountIncrementer(m_frame.document());
         domWindow->dispatchEvent(beforeUnloadEvent, domWindow->document());
     }
 
@@ -3217,7 +3226,7 @@ bool FrameLoader::shouldTreatURLAsSameAsCurrent(const URL& url) const
 
 bool FrameLoader::shouldTreatURLAsSrcdocDocument(const URL& url) const
 {
-    if (!equalIgnoringCase(url.string(), "about:srcdoc"))
+    if (!equalLettersIgnoringASCIICase(url.string(), "about:srcdoc"))
         return false;
     HTMLFrameOwnerElement* ownerElement = m_frame.ownerElement();
     if (!ownerElement)
@@ -3299,7 +3308,7 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem& item, FrameLoadType loa
         formData->generateFiles(m_frame.document());
 
         request.setHTTPMethod("POST");
-        request.setHTTPBody(formData);
+        request.setHTTPBody(WTFMove(formData));
         request.setHTTPContentType(item.formContentType());
         RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::createFromString(item.referrer());
         addHTTPOriginIfNeeded(request, securityOrigin->toString());

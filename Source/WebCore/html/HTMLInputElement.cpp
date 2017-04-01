@@ -105,7 +105,7 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
     , m_isActivatedSubmit(false)
     , m_autocomplete(Uninitialized)
     , m_isAutoFilled(false)
-    , m_showAutoFillButton(false)
+    , m_autoFillButtonType(static_cast<uint8_t>(AutoFillButtonType::None))
 #if ENABLE(DATALIST_ELEMENT)
     , m_hasNonEmptyList(false)
 #endif
@@ -641,7 +641,7 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
         addToRadioButtonGroup();
         HTMLTextFormControlElement::parseAttribute(name, value);
     } else if (name == autocompleteAttr) {
-        if (equalIgnoringCase(value, "off")) {
+        if (equalLettersIgnoringASCIICase(value, "off")) {
             m_autocomplete = Off;
             registerForSuspensionCallbackIfNeeded();
         } else {
@@ -983,7 +983,7 @@ void HTMLInputElement::setValue(const String& value, ExceptionCode& ec, TextFiel
         ec = INVALID_STATE_ERR;
         return;
     }
-    setValue(value, eventBehavior);
+    setValue(value.isNull() ? emptyString() : value, eventBehavior);
 }
 
 void HTMLInputElement::setValue(const String& value, TextFieldEventBehavior eventBehavior)
@@ -1300,12 +1300,12 @@ void HTMLInputElement::setAutoFilled(bool autoFilled)
     setNeedsStyleRecalc();
 }
 
-void HTMLInputElement::setShowAutoFillButton(bool showAutoFillButton)
+void HTMLInputElement::setShowAutoFillButton(AutoFillButtonType autoFillButtonType)
 {
-    if (showAutoFillButton == m_showAutoFillButton)
+    if (static_cast<uint8_t>(autoFillButtonType) == m_autoFillButtonType)
         return;
 
-    m_showAutoFillButton = showAutoFillButton;
+    m_autoFillButtonType = static_cast<uint8_t>(autoFillButtonType);
     m_inputType->updateAutoFillButton();
 }
 

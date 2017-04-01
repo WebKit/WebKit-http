@@ -763,7 +763,7 @@ void ScrollAnimatorMac::immediateScrollToPosition(const FloatPoint& newPosition)
         return;
 
     FloatSize delta = adjustedPosition - currentPosition;
-    setCurrentPositionInternal(adjustedPosition);
+    m_currentPosition = adjustedPosition;
     notifyPositionChanged(delta);
     updateActiveScrollSnapIndexForOffset();
 }
@@ -806,7 +806,7 @@ void ScrollAnimatorMac::contentAreaWillPaint() const
     [m_scrollbarPainterController contentAreaWillDraw];
 }
 
-void ScrollAnimatorMac::mouseEnteredContentArea() const
+void ScrollAnimatorMac::mouseEnteredContentArea()
 {
     if ([m_scrollbarPainterController overlayScrollerStateIsLocked])
         return;
@@ -814,7 +814,7 @@ void ScrollAnimatorMac::mouseEnteredContentArea() const
     [m_scrollbarPainterController mouseEnteredContentArea];
 }
 
-void ScrollAnimatorMac::mouseExitedContentArea() const
+void ScrollAnimatorMac::mouseExitedContentArea()
 {
     if ([m_scrollbarPainterController overlayScrollerStateIsLocked])
         return;
@@ -822,7 +822,7 @@ void ScrollAnimatorMac::mouseExitedContentArea() const
     [m_scrollbarPainterController mouseExitedContentArea];
 }
 
-void ScrollAnimatorMac::mouseMovedInContentArea() const
+void ScrollAnimatorMac::mouseMovedInContentArea()
 {
     if ([m_scrollbarPainterController overlayScrollerStateIsLocked])
         return;
@@ -898,7 +898,7 @@ void ScrollAnimatorMac::willEndLiveResize()
     [m_scrollbarPainterController endLiveResize];
 }
 
-void ScrollAnimatorMac::contentAreaDidShow() const
+void ScrollAnimatorMac::contentAreaDidShow()
 {
     if ([m_scrollbarPainterController overlayScrollerStateIsLocked])
         return;
@@ -906,7 +906,7 @@ void ScrollAnimatorMac::contentAreaDidShow() const
     [m_scrollbarPainterController windowOrderedIn];
 }
 
-void ScrollAnimatorMac::contentAreaDidHide() const
+void ScrollAnimatorMac::contentAreaDidHide()
 {
     if ([m_scrollbarPainterController overlayScrollerStateIsLocked])
         return;
@@ -1304,7 +1304,7 @@ void ScrollAnimatorMac::immediateScrollBy(const FloatSize& delta)
         return;
 
     FloatSize adjustedDelta = newPosition - currentPosition;
-    setCurrentPositionInternal(newPosition);
+    m_currentPosition = newPosition;
     notifyPositionChanged(adjustedDelta);
     updateActiveScrollSnapIndexForOffset();
 }

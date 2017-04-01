@@ -45,7 +45,7 @@
 #include <wtf/NeverDestroyed.h>
 
 #if ENABLE(VIDEO_PRESENTATION_MODE)
-#include "WebVideoFullscreenInterfaceAVKit.h"
+#include "WebVideoFullscreenInterface.h"
 #endif
 
 namespace WebCore {
@@ -135,7 +135,7 @@ void HTMLVideoElement::parseAttribute(const QualifiedName& name, const AtomicStr
 #if PLATFORM(IOS) && ENABLE(WIRELESS_PLAYBACK_TARGET)
         if (name == webkitairplayAttr) {
             bool disabled = false;
-            if (equalIgnoringCase(fastGetAttribute(HTMLNames::webkitairplayAttr), "deny"))
+            if (equalLettersIgnoringASCIICase(fastGetAttribute(HTMLNames::webkitairplayAttr), "deny"))
                 disabled = true;
             mediaSession().setWirelessVideoPlaybackDisabled(*this, disabled);
         }
@@ -144,7 +144,7 @@ void HTMLVideoElement::parseAttribute(const QualifiedName& name, const AtomicStr
 
 }
 
-bool HTMLVideoElement::supportsFullscreen() const
+bool HTMLVideoElement::supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenMode videoFullscreenMode) const
 {
     Page* page = document().page();
     if (!page) 
@@ -154,20 +154,21 @@ bool HTMLVideoElement::supportsFullscreen() const
         return false;
 
 #if PLATFORM(IOS)
+    UNUSED_PARAM(videoFullscreenMode);
     // Fullscreen implemented by player.
     return true;
 #else
 #if ENABLE(FULLSCREEN_API)
     // If the full screen API is enabled and is supported for the current element
     // do not require that the player has a video track to enter full screen.
-    if (page->chrome().client().supportsFullScreenForElement(this, false))
+    if (videoFullscreenMode == HTMLMediaElementEnums::VideoFullscreenModeStandard && page->chrome().client().supportsFullScreenForElement(this, false))
         return true;
 #endif
 
     if (!player()->hasVideo())
         return false;
 
-    return page->chrome().client().supportsVideoFullscreen();
+    return page->chrome().client().supportsVideoFullscreen(videoFullscreenMode);
 #endif // PLATFORM(IOS)
 }
 
@@ -279,7 +280,7 @@ void HTMLVideoElement::webkitEnterFullscreen(ExceptionCode& ec)
 
     // Generate an exception if this isn't called in response to a user gesture, or if the 
     // element does not support fullscreen.
-    if (!mediaSession().fullscreenPermitted(*this) || !supportsFullscreen()) {
+    if (!mediaSession().fullscreenPermitted(*this) || !supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
         ec = INVALID_STATE_ERR;
         return;
     }
@@ -295,7 +296,7 @@ void HTMLVideoElement::webkitExitFullscreen()
 
 bool HTMLVideoElement::webkitSupportsFullscreen()
 {
-    return supportsFullscreen();
+    return supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard);
 }
 
 bool HTMLVideoElement::webkitDisplayingFullscreen()
@@ -371,10 +372,16 @@ static const AtomicString& presentationModeInline()
 bool HTMLVideoElement::webkitSupportsPresentationMode(const String& mode) const
 {
     if (mode == presentationModeFullscreen())
-        return mediaSession().fullscreenPermitted(*this) && supportsFullscreen();
+        return mediaSession().fullscreenPermitted(*this) && supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard);
 
-    if (mode == presentationModePictureInPicture())
-        return supportsPictureInPicture() && mediaSession().allowsPictureInPicture(*this) && supportsFullscreen();
+    if (mode == presentationModePictureInPicture()) {
+#if PLATFORM(COCOA)
+        if (!supportsPictureInPicture())
+            return false;
+#endif
+
+        return mediaSession().allowsPictureInPicture(*this) && supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
+    }
 
     if (mode == presentationModeInline())
         return !mediaSession().requiresFullscreenForVideoPlayback(*this);
@@ -418,7 +425,7 @@ void HTMLVideoElement::setFullscreenMode(HTMLMediaElementEnums::VideoFullscreenM
         return;
     }
 
-    if (!mediaSession().fullscreenPermitted(*this) || !supportsFullscreen())
+    if (!mediaSession().fullscreenPermitted(*this) || !supportsFullscreen(mode))
         return;
 
     enterFullscreen(mode);

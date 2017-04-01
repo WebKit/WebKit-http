@@ -6,6 +6,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/airplay"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
+    "${WEBCORE_DIR}/Modules/fetch"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indexeddb/client"
@@ -60,6 +61,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/mathml"
     "${WEBCORE_DIR}/page"
     "${WEBCORE_DIR}/page/animation"
+    "${WEBCORE_DIR}/page/csp"
     "${WEBCORE_DIR}/page/scrolling"
     "${WEBCORE_DIR}/platform/animation"
     "${WEBCORE_DIR}/platform/audio"
@@ -144,6 +146,7 @@ set(WebCore_IDL_INCLUDES
     Modules/airplay
     Modules/battery
     Modules/encryptedmedia
+    Modules/fetch
     Modules/geolocation
     Modules/indexeddb
     Modules/indieui
@@ -174,6 +177,8 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/battery/BatteryManager.idl
     Modules/battery/NavigatorBattery.idl
+
+    Modules/fetch/FetchHeaders.idl
 
     Modules/geolocation/Coordinates.idl
     Modules/geolocation/Geolocation.idl
@@ -424,6 +429,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/WebKitNamedFlow.idl
     dom/WebKitTransitionEvent.idl
     dom/WheelEvent.idl
+    dom/XMLDocument.idl
 
     fileapi/Blob.idl
     fileapi/File.idl
@@ -450,6 +456,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/HTMLCanvasElement.idl
     html/HTMLCollection.idl
     html/HTMLDListElement.idl
+    html/HTMLDataElement.idl
     html/HTMLDataListElement.idl
     html/HTMLDetailsElement.idl
     html/HTMLDirectoryElement.idl
@@ -639,7 +646,6 @@ set(WebCore_NON_SVG_IDL_FILES
 
     xml/DOMParser.idl
     xml/XMLHttpRequest.idl
-    xml/XMLHttpRequestException.idl
     xml/XMLHttpRequestProgressEvent.idl
     xml/XMLHttpRequestUpload.idl
     xml/XMLSerializer.idl
@@ -815,6 +821,8 @@ set(WebCore_SOURCES
     Modules/battery/BatteryStatus.cpp
     Modules/battery/NavigatorBattery.cpp
 
+    Modules/fetch/FetchHeaders.cpp
+
     Modules/geolocation/Coordinates.cpp
     Modules/geolocation/GeoNotifier.cpp
     Modules/geolocation/Geolocation.cpp
@@ -880,6 +888,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/legacy/LegacyVersionChangeEvent.cpp
 
     Modules/indexeddb/server/IDBConnectionToClient.cpp
+    Modules/indexeddb/server/IDBSerialization.cpp
     Modules/indexeddb/server/IDBServer.cpp
     Modules/indexeddb/server/IndexValueEntry.cpp
     Modules/indexeddb/server/IndexValueStore.cpp
@@ -891,6 +900,8 @@ set(WebCore_SOURCES
     Modules/indexeddb/server/MemoryObjectStore.cpp
     Modules/indexeddb/server/MemoryObjectStoreCursor.cpp
     Modules/indexeddb/server/SQLiteIDBBackingStore.cpp
+    Modules/indexeddb/server/SQLiteIDBCursor.cpp
+    Modules/indexeddb/server/SQLiteIDBTransaction.cpp
     Modules/indexeddb/server/ServerOpenDBRequest.cpp
     Modules/indexeddb/server/UniqueIDBDatabase.cpp
     Modules/indexeddb/server/UniqueIDBDatabaseConnection.cpp
@@ -1653,6 +1664,7 @@ set(WebCore_SOURCES
     html/HTMLCanvasElement.cpp
     html/HTMLCollection.cpp
     html/HTMLDListElement.cpp
+    html/HTMLDataElement.cpp
     html/HTMLDataListElement.cpp
     html/HTMLDetailsElement.cpp
     html/HTMLDirectoryElement.cpp
@@ -1985,7 +1997,6 @@ set(WebCore_SOURCES
     page/BarProp.cpp
     page/CaptionUserPreferences.cpp
     page/Chrome.cpp
-    page/ContentSecurityPolicy.cpp
     page/ContextMenuContext.cpp
     page/ContextMenuController.cpp
     page/Crypto.cpp
@@ -2034,7 +2045,9 @@ set(WebCore_SOURCES
     page/PerformanceUserTiming.cpp
     page/PointerLockController.cpp
     page/PrintContext.cpp
+    page/ResourceUsageData.cpp
     page/ResourceUsageOverlay.cpp
+    page/ResourceUsageThread.cpp
     page/Screen.cpp
     page/SecurityOrigin.cpp
     page/SecurityOriginData.cpp
@@ -2058,6 +2071,8 @@ set(WebCore_SOURCES
     page/animation/CompositeAnimation.cpp
     page/animation/ImplicitAnimation.cpp
     page/animation/KeyframeAnimation.cpp
+
+    page/csp/ContentSecurityPolicy.cpp
 
     page/scrolling/AxisScrollSnapOffsets.cpp
     page/scrolling/ScrollLatchingState.cpp
@@ -2323,6 +2338,7 @@ set(WebCore_SOURCES
     platform/network/HTTPParsers.cpp
     platform/network/MIMEHeader.cpp
     platform/network/NetworkStateNotifier.cpp
+    platform/network/ParsedContentRange.cpp
     platform/network/ParsedContentType.cpp
     platform/network/ProtectionSpaceBase.cpp
     platform/network/ProxyServer.cpp
@@ -2810,7 +2826,6 @@ set(WebCore_SOURCES
     xml/NativeXPathNSResolver.cpp
     xml/XMLErrors.cpp
     xml/XMLHttpRequest.cpp
-    xml/XMLHttpRequestException.cpp
     xml/XMLHttpRequestProgressEventThrottle.cpp
     xml/XMLHttpRequestUpload.cpp
     xml/XMLSerializer.cpp
@@ -3484,7 +3499,7 @@ add_custom_command(
     MAIN_DEPENDENCY ${WEBCORE_DIR}/platform/network/HTTPHeaderNames.in
     DEPENDS ${WEBCORE_DIR}/platform/network/create-http-header-name-table
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/platform/network/create-http-header-name-table ${WEBCORE_DIR}/platform/network/HTTPHeaderNames.in
+    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/platform/network/create-http-header-name-table ${WEBCORE_DIR}/platform/network/HTTPHeaderNames.in "${GPERF_EXECUTABLE}"
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTTPHeaderNames.cpp)
 
@@ -3495,7 +3510,7 @@ add_custom_command(
     DEPENDS ${WebCore_CSS_PROPERTY_NAMES}
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
     COMMAND ${PERL_EXECUTABLE} -ne "print" ${WebCore_CSS_PROPERTY_NAMES} > ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.in
-    COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/css/makeprop.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}"
+    COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/css/makeprop.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --gperf-executable "${GPERF_EXECUTABLE}"
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/StyleBuilder.cpp)
@@ -3523,14 +3538,14 @@ add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoClassAndCompatibilityElementMap.gperf ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoClassAndCompatibilityElementMap.cpp
     MAIN_DEPENDENCY ${WEBCORE_DIR}/css/makeSelectorPseudoClassAndCompatibilityElementMap.py
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/css/makeSelectorPseudoClassAndCompatibilityElementMap.py ${WEBCORE_DIR}/css/SelectorPseudoClassAndCompatibilityElementMap.in "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}"
+    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/css/makeSelectorPseudoClassAndCompatibilityElementMap.py ${WEBCORE_DIR}/css/SelectorPseudoClassAndCompatibilityElementMap.in "${GPERF_EXECUTABLE}" "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}"
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoClassAndCompatibilityElementMap.cpp)
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.gperf ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.cpp
     MAIN_DEPENDENCY ${WEBCORE_DIR}/css/makeSelectorPseudoElementsMap.py
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/css/makeSelectorPseudoElementsMap.py ${WEBCORE_DIR}/css/SelectorPseudoElementTypeMap.in "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}"
+    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/css/makeSelectorPseudoElementsMap.py ${WEBCORE_DIR}/css/SelectorPseudoElementTypeMap.in "${GPERF_EXECUTABLE}" "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}"
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.cpp)
 
@@ -3643,6 +3658,7 @@ GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
 # WebCore JS Builtins
 
 set(WebCore_BUILTINS_SOURCES
+    ${WEBCORE_DIR}/Modules/fetch/FetchHeaders.js
     ${WEBCORE_DIR}/Modules/mediastream/MediaDevices.js
     ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js

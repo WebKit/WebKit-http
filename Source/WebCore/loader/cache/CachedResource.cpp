@@ -159,7 +159,7 @@ CachedResource::~CachedResource()
     ASSERT(canDelete());
     ASSERT(!inCache());
     ASSERT(!m_deleted);
-    ASSERT(url().isNull() || MemoryCache::singleton().resourceForRequest(resourceRequest(), sessionID()) != this);
+    ASSERT(url().isNull() || !allowsCaching() || MemoryCache::singleton().resourceForRequest(resourceRequest(), sessionID()) != this);
 
 #ifndef NDEBUG
     m_deleted = true;
@@ -174,7 +174,7 @@ void CachedResource::failBeforeStarting()
 {
     // FIXME: What if resources in other frames were waiting for this revalidation?
     LOG(ResourceLoading, "Cannot start loading '%s'", url().string().latin1().data());
-    if (m_resourceToRevalidate) 
+    if (allowsCaching() && m_resourceToRevalidate)
         MemoryCache::singleton().revalidationFailed(*this);
     error(CachedResource::LoadError);
 }
@@ -362,10 +362,14 @@ bool CachedResource::isExpired() const
 static inline bool shouldCacheSchemeIndefinitely(const String& scheme)
 {
 #if PLATFORM(COCOA)
-    if (equalIgnoringCase(scheme, "applewebdata"))
+    if (equalLettersIgnoringASCIICase(scheme, "applewebdata"))
         return true;
 #endif
-    return equalIgnoringCase(scheme, "data");
+#if USE(SOUP)
+    if (equalLettersIgnoringASCIICase(scheme, "resource"))
+        return true;
+#endif
+    return equalLettersIgnoringASCIICase(scheme, "data");
 }
 
 std::chrono::microseconds CachedResource::freshnessLifetime(const ResourceResponse& response) const
@@ -448,7 +452,7 @@ bool CachedResource::addClientToSet(CachedResourceClient* client)
         else
             m_preloadResult = PreloadReferenced;
     }
-    if (!hasClients() && inCache())
+    if (allowsCaching() && !hasClients() && inCache())
         MemoryCache::singleton().addToLiveResourcesSize(*this);
 
     if ((m_type == RawResource || m_type == MainResource) && !m_response.isNull() && !m_proxyResource) {
@@ -479,7 +483,7 @@ void CachedResource::removeClient(CachedResourceClient* client)
     }
 
     bool deleted = deleteIfPossible();
-    if (!deleted && !hasClients()) {
+    if (allowsCaching() && !deleted && !hasClients()) {
         auto& memoryCache = MemoryCache::singleton();
         if (inCache()) {
             memoryCache.removeFromLiveResourcesSize(*this);
@@ -537,12 +541,12 @@ void CachedResource::setDecodedSize(unsigned size)
 
     // The object must be moved to a different queue, since its size has been changed.
     // Remove before updating m_decodedSize, so we find the resource in the correct LRU list.
-    if (inCache())
+    if (allowsCaching() && inCache())
         MemoryCache::singleton().removeFromLRUList(*this);
     
     m_decodedSize = size;
    
-    if (inCache()) {
+    if (allowsCaching() && inCache()) {
         auto& memoryCache = MemoryCache::singleton();
         // Now insert into the new LRU list.
         memoryCache.insertInLRUList(*this);
@@ -574,12 +578,12 @@ void CachedResource::setEncodedSize(unsigned size)
 
     // The object must be moved to a different queue, since its size has been changed.
     // Remove before updating m_encodedSize, so we find the resource in the correct LRU list.
-    if (inCache())
+    if (allowsCaching() && inCache())
         MemoryCache::singleton().removeFromLRUList(*this);
 
     m_encodedSize = size;
 
-    if (inCache()) {
+    if (allowsCaching() && inCache()) {
         auto& memoryCache = MemoryCache::singleton();
         memoryCache.insertInLRUList(*this);
         memoryCache.adjustSize(hasClients(), delta);
@@ -590,7 +594,7 @@ void CachedResource::didAccessDecodedData(double timeStamp)
 {
     m_lastDecodedAccessTime = timeStamp;
     
-    if (inCache()) {
+    if (allowsCaching() && inCache()) {
         auto& memoryCache = MemoryCache::singleton();
         if (memoryCache.inLiveDecodedResourcesList(*this)) {
             memoryCache.removeFromLiveDecodedResourcesList(*this);
@@ -803,9 +807,8 @@ void CachedResource::tryReplaceEncodedData(SharedBuffer& newBuffer)
     if (m_data->size() != newBuffer.size() || memcmp(m_data->data(), newBuffer.data(), m_data->size()))
         return;
 
-    if (m_data->tryReplaceContentsWithPlatformBuffer(newBuffer)) {
-        // FIXME: Should we call checkNotify() here to move already-decoded images to the new data source?
-    }
+    if (m_data->tryReplaceContentsWithPlatformBuffer(newBuffer))
+        didReplaceSharedBufferContents();
 }
 
 #endif

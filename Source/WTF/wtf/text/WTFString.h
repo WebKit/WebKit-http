@@ -1,6 +1,6 @@
 /*
  * (C) 1999 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -37,9 +37,6 @@ class BString;
 #endif
 
 namespace WTF {
-
-class CString;
-struct StringHash;
 
 // Declarations of string operations
 
@@ -343,6 +340,7 @@ public:
     // want to do any conversion for non-ASCII letters.
     WTF_EXPORT_STRING_API String convertToASCIILowercase() const;
     WTF_EXPORT_STRING_API String lower() const;
+    WTF_EXPORT_STRING_API String convertToASCIIUppercase() const;
     WTF_EXPORT_STRING_API String upper() const;
 
     WTF_EXPORT_STRING_API String lower(const AtomicString& localeIdentifier) const;
@@ -409,7 +407,7 @@ public:
     WTF_EXPORT_STRING_API bool isSafeToSendToAnotherThread() const;
 
     // Prevent Strings from being implicitly convertable to bool as it will be ambiguous on any platform that
-    // allows implicit conversion to another pointer type (e.g., Mac allows implicit conversion to NSString*).
+    // allows implicit conversion to another pointer type (e.g., Mac allows implicit conversion to NSString *).
     typedef struct ImplicitConversionFromWTFStringToBoolDisallowedA* (String::*UnspecifiedBoolTypeA);
     typedef struct ImplicitConversionFromWTFStringToBoolDisallowedB* (String::*UnspecifiedBoolTypeB);
     operator UnspecifiedBoolTypeA() const;
@@ -421,11 +419,12 @@ public:
 #endif
 
 #ifdef __OBJC__
-    WTF_EXPORT_STRING_API String(NSString*);
+    WTF_EXPORT_STRING_API String(NSString *);
     
-    // This conversion maps NULL to "", which loses the meaning of NULL, but we
-    // need this mapping because AppKit crashes when passed nil NSStrings.
-    operator NSString*() const { if (!m_impl) return @""; return *m_impl; }
+    // This conversion converts the null string to an empty NSString rather than to nil.
+    // Given Cocoa idioms, this is a more useful default. Clients that need to preserve the
+    // null string can check isNull explicitly.
+    operator NSString *() const;
 #endif
 
 #if PLATFORM(HAIKU)
@@ -501,10 +500,8 @@ inline bool operator==(const String& a, const LChar* b) { return equal(a.impl(),
 inline bool operator==(const String& a, const char* b) { return equal(a.impl(), reinterpret_cast<const LChar*>(b)); }
 inline bool operator==(const LChar* a, const String& b) { return equal(a, b.impl()); }
 inline bool operator==(const char* a, const String& b) { return equal(reinterpret_cast<const LChar*>(a), b.impl()); }
-template<size_t inlineCapacity>
-inline bool operator==(const Vector<char, inlineCapacity>& a, const String& b) { return equal(b.impl(), a.data(), a.size()); }
-template<size_t inlineCapacity>
-inline bool operator==(const String& a, const Vector<char, inlineCapacity>& b) { return b == a; }
+template<size_t inlineCapacity> inline bool operator==(const Vector<char, inlineCapacity>& a, const String& b) { return equal(b.impl(), a.data(), a.size()); }
+template<size_t inlineCapacity> inline bool operator==(const String& a, const Vector<char, inlineCapacity>& b) { return b == a; }
 
 
 inline bool operator!=(const String& a, const String& b) { return !equal(a.impl(), b.impl()); }
@@ -512,34 +509,27 @@ inline bool operator!=(const String& a, const LChar* b) { return !equal(a.impl()
 inline bool operator!=(const String& a, const char* b) { return !equal(a.impl(), reinterpret_cast<const LChar*>(b)); }
 inline bool operator!=(const LChar* a, const String& b) { return !equal(a, b.impl()); }
 inline bool operator!=(const char* a, const String& b) { return !equal(reinterpret_cast<const LChar*>(a), b.impl()); }
-template<size_t inlineCapacity>
-inline bool operator!=(const Vector<char, inlineCapacity>& a, const String& b) { return !(a == b); }
-template<size_t inlineCapacity>
-inline bool operator!=(const String& a, const Vector<char, inlineCapacity>& b) { return b != a; }
+template<size_t inlineCapacity> inline bool operator!=(const Vector<char, inlineCapacity>& a, const String& b) { return !(a == b); }
+template<size_t inlineCapacity> inline bool operator!=(const String& a, const Vector<char, inlineCapacity>& b) { return b != a; }
 
-inline bool equalIgnoringCase(const String& a, const String& b) { return equalIgnoringCase(a.impl(), b.impl()); }
-inline bool equalIgnoringCase(const String& a, const LChar* b) { return equalIgnoringCase(a.impl(), b); }
-inline bool equalIgnoringCase(const String& a, const char* b) { return equalIgnoringCase(a.impl(), reinterpret_cast<const LChar*>(b)); }
-inline bool equalIgnoringCase(const LChar* a, const String& b) { return equalIgnoringCase(a, b.impl()); }
-inline bool equalIgnoringCase(const char* a, const String& b) { return equalIgnoringCase(reinterpret_cast<const LChar*>(a), b.impl()); }
+bool equalIgnoringASCIICase(const String&, const String&);
+bool equalIgnoringASCIICase(const String&, const char*);
 
-inline bool equalIgnoringASCIICase(const String& a, const String& b) { return equalIgnoringASCIICase(a.impl(), b.impl()); }
-template<unsigned charactersCount>
-inline bool equalIgnoringASCIICase(const String& a, const char (&b)[charactersCount]) { return equalIgnoringASCIICase<charactersCount>(a.impl(), b); }
-
-inline bool equalPossiblyIgnoringCase(const String& a, const String& b, bool ignoreCase) 
-{
-    return ignoreCase ? equalIgnoringCase(a, b) : (a == b);
-}
+template<unsigned length> bool equalLettersIgnoringASCIICase(const String&, const char (&lowercaseLetters)[length]);
 
 inline bool equalIgnoringNullity(const String& a, const String& b) { return equalIgnoringNullity(a.impl(), b.impl()); }
-
-template<size_t inlineCapacity>
-inline bool equalIgnoringNullity(const Vector<UChar, inlineCapacity>& a, const String& b) { return equalIgnoringNullity(a, b.impl()); }
+template<size_t inlineCapacity> inline bool equalIgnoringNullity(const Vector<UChar, inlineCapacity>& a, const String& b) { return equalIgnoringNullity(a, b.impl()); }
 
 inline bool operator!(const String& str) { return str.isNull(); }
 
 inline void swap(String& a, String& b) { a.swap(b); }
+
+#ifdef __OBJC__
+
+// Used in a small number of places where the long standing behavior has been "nil if empty".
+NSString * nsStringNilIfEmpty(const String&);
+
+#endif
 
 // Definitions of string operations
 
@@ -613,12 +603,22 @@ inline bool String::containsOnlyLatin1() const
     return !(ored & 0xFF00);
 }
 
-
 #ifdef __OBJC__
-// This is for situations in WebKit where the long standing behavior has been
-// "nil if empty", so we try to maintain longstanding behavior for the sake of
-// entrenched clients
-inline NSString* nsStringNilIfEmpty(const String& str) {  return str.isEmpty() ? nil : (NSString*)str; }
+
+inline String::operator NSString *() const
+{
+    if (!m_impl)
+        return @"";
+    return *m_impl;
+}
+
+inline NSString * nsStringNilIfEmpty(const String& string)
+{
+    if (string.isEmpty())
+        return nil;
+    return *string.impl();
+}
+
 #endif
 
 inline bool String::containsOnlyASCII() const
@@ -724,6 +724,21 @@ private:
 // Shared global empty string.
 WTF_EXPORT_STRING_API const String& emptyString();
 
+template<unsigned length> inline bool equalLettersIgnoringASCIICase(const String& string, const char (&lowercaseLetters)[length])
+{
+    return equalLettersIgnoringASCIICase(string.impl(), lowercaseLetters);
+}
+
+inline bool equalIgnoringASCIICase(const String& a, const String& b)
+{
+    return equalIgnoringASCIICase(a.impl(), b.impl());
+}
+
+inline bool equalIgnoringASCIICase(const String& a, const char* b)
+{
+    return equalIgnoringASCIICase(a.impl(), b);
+}
+
 }
 
 using WTF::CString;
@@ -745,7 +760,6 @@ using WTF::charactersToIntPtr;
 using WTF::charactersToDouble;
 using WTF::charactersToFloat;
 using WTF::equal;
-using WTF::equalIgnoringCase;
 using WTF::find;
 using WTF::isAllSpecialCharacters;
 using WTF::isSpaceOrNewline;
@@ -754,4 +768,5 @@ using WTF::ASCIILiteral;
 using WTF::StringCapture;
 
 #include <wtf/text/AtomicString.h>
+
 #endif

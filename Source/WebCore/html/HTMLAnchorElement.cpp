@@ -95,12 +95,9 @@ bool HTMLAnchorElement::supportsFocus() const
 
 bool HTMLAnchorElement::isMouseFocusable() const
 {
-#if !(PLATFORM(EFL) || PLATFORM(GTK))
     // Only allow links with tabIndex or contentEditable to be mouse focusable.
-    // This is our rule for the Mac platform; on many other platforms we focus any link you click on.
     if (isLink())
         return HTMLElement::supportsFocus();
-#endif
 
     return HTMLElement::isMouseFocusable();
 }
@@ -288,11 +285,10 @@ bool HTMLAnchorElement::canStartSelection() const
 
 bool HTMLAnchorElement::draggable() const
 {
-    // Should be draggable if we have an href attribute.
     const AtomicString& value = fastGetAttribute(draggableAttr);
-    if (equalIgnoringCase(value, "true"))
+    if (equalLettersIgnoringASCIICase(value, "true"))
         return true;
-    if (equalIgnoringCase(value, "false"))
+    if (equalLettersIgnoringASCIICase(value, "false"))
         return false;
     return hasAttribute(hrefAttr);
 }

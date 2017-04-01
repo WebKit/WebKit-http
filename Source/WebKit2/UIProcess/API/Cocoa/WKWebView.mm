@@ -201,6 +201,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     CGSize _maximumUnobscuredSizeOverride;
     CGRect _inputViewBounds;
     CGFloat _viewportMetaTagWidth;
+    BOOL _viewportMetaTagWidthWasExplicit;
+    BOOL _viewportMetaTagCameFromImageDocument;
     CGFloat _initialScaleFactor;
     BOOL _fastClickingIsDisabled;
 
@@ -315,7 +317,7 @@ static bool shouldAllowPictureInPictureMediaPlayback()
 #endif
 
 #if ENABLE(DATA_DETECTION)
-static WebCore::DataDetectorTypes fromWKDataDetectorTypes(uint32_t types)
+static WebCore::DataDetectorTypes fromWKDataDetectorTypes(uint64_t types)
 {
     if (static_cast<WKDataDetectorTypes>(types) == WKDataDetectorTypeNone)
         return WebCore::DataDetectorTypeNone;
@@ -484,6 +486,8 @@ static WebCore::DataDetectorTypes fromWKDataDetectorTypes(uint32_t types)
 #endif
 
 #if PLATFORM(IOS)
+    [_contentView _webViewDestroyed];
+
     if (_remoteObjectRegistry)
         _page->process().processPool().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID());
 
@@ -837,6 +841,8 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 
 - (BOOL)canBecomeFirstResponder
 {
+    if (self._currentContentView == _contentView && [_contentView isResigningFirstResponder])
+        return NO;
     return YES;
 }
 
@@ -1116,6 +1122,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
 
     _viewportMetaTagWidth = layerTreeTransaction.viewportMetaTagWidth();
+    _viewportMetaTagWidthWasExplicit = layerTreeTransaction.viewportMetaTagWidthWasExplicit();
+    _viewportMetaTagCameFromImageDocument = layerTreeTransaction.viewportMetaTagCameFromImageDocument();
     _initialScaleFactor = layerTreeTransaction.initialScaleFactor();
     if (![_contentView _mayDisableDoubleTapGesturesDuringSingleTap])
         [_contentView _setDoubleTapGesturesEnabled:self._allowsDoubleTapGestures];
@@ -1582,6 +1590,26 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     [super setBackgroundColor:backgroundColor];
     [_contentView setBackgroundColor:backgroundColor];
+}
+
+- (BOOL)_allowsDoubleTapGestures
+{
+    if (_fastClickingIsDisabled)
+        return YES;
+
+    // If the page is not user scalable, we don't allow double tap gestures.
+    if (![_scrollView isZoomEnabled] || [_scrollView minimumZoomScale] >= [_scrollView maximumZoomScale])
+        return NO;
+
+    // If the viewport width was not explicit, we allow double tap gestures.
+    if (!_viewportMetaTagWidthWasExplicit || _viewportMetaTagCameFromImageDocument)
+        return YES;
+
+    // For scalable viewports, only disable double tap gestures if the viewport width is device width.
+    if (_viewportMetaTagWidth != WebCore::ViewportArguments::ValueDeviceWidth)
+        return YES;
+
+    return !areEssentiallyEqualAsFloat(contentZoomScale(self), _initialScaleFactor);
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -3094,6 +3122,10 @@ static int32_t activeOrientation(WKWebView *webView)
     return nil;
 }
 
+- (NSArray *)_dataDetectionResults
+{
+    return [_contentView _dataDetectionResults];
+}
 #endif
 
 - (void)_didRelaunchProcess
@@ -4053,22 +4085,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return [(WKPDFView *)_customContentView.get() suggestedFilename];
 }
 
-- (BOOL)_allowsDoubleTapGestures
-{
-    if (_fastClickingIsDisabled)
-        return YES;
-
-    // If the page is not user scalable, we don't allow double tap gestures.
-    if (![_scrollView isZoomEnabled] || [_scrollView minimumZoomScale] >= [_scrollView maximumZoomScale])
-        return NO;
-
-    // For scalable viewports, only disable double tap gestures if the viewport width is device width.
-    if (_viewportMetaTagWidth != WebCore::ViewportArguments::ValueDeviceWidth)
-        return YES;
-
-    return !areEssentiallyEqualAsFloat(contentZoomScale(self), _initialScaleFactor);
-}
-
 - (_WKWebViewPrintFormatter *)_webViewPrintFormatter
 {
     UIViewPrintFormatter *viewPrintFormatter = self.viewPrintFormatter;
@@ -4345,6 +4361,10 @@ static constexpr std::chrono::milliseconds didFinishLoadingTimeout = std::chrono
 
 #if PLATFORM(IOS) && USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WKWebViewAdditions.mm>
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WKWebViewAdditionsMac.mm>
 #endif
 
 #endif // WK_API_ENABLED

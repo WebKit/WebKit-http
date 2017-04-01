@@ -665,19 +665,10 @@ sub InterfaceRequiresAttributesOnInstance
 {
     my $interface = shift;
     my $interfaceName = $interface->name;
-    my $namedGetterFunction = GetNamedGetterFunction($interface);
-    my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
     # FIXME: All these return 1 if ... should ideally be removed.
     # Some of them are unavoidable due to DOM weirdness, in which case we should
     # add an IDL attribute for them
-
-    # FIXME: We should rearrange how custom named getters and getOwnPropertySlot
-    # overrides are handled so that we get the correct semantics and lookup ordering
-    my $hasImpureNamedGetter = $namedGetterFunction
-        || $interface->extendedAttributes->{"CustomNamedGetter"};
-    return 1 if $hasImpureNamedGetter
-        || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"};
 
     # FIXME: These two should be fixed by removing the custom override of message, etc
     return 1 if $interfaceName =~ "Exception";
@@ -686,9 +677,6 @@ sub InterfaceRequiresAttributesOnInstance
     return 1 if IsDOMGlobalObject($interface);
 
     return 1 if InterfaceRequiresAttributesOnInstanceForCompatibility($interface);
-
-    #FIXME: We currently clobber performance for a number of the list types
-    return 1 if $interfaceName =~ "List" && !($interfaceName =~ "Element");
 
     return 0;
 }
@@ -2309,11 +2297,12 @@ sub GenerateImplementation
                     }
                 } else {
                     push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
-                    push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
-                    push(@implContent, "        if (jsDynamicCast<${className}Prototype*>(slotBase))\n");
-                    push(@implContent, "            return reportDeprecatedGetterError(*state, \"$interfaceName\", \"$name\");\n");
-                    push(@implContent, "        return throwGetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
-                    push(@implContent, "    }\n");
+                    push(@implContent, "    if (UNLIKELY(!castedThis))\n");
+                    if ($attribute->signature->extendedAttributes->{"LenientThis"}) {
+                        push(@implContent, "        return JSValue::encode(jsUndefined());\n");
+                    } else {
+                        push(@implContent, "        return throwGetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
+                    }
                 }
             }
 
@@ -2648,10 +2637,9 @@ sub GenerateImplementation
                 } else {
                     push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
                     push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
-                    push(@implContent, "        if (jsDynamicCast<${className}Prototype*>(JSValue::decode(thisValue)))\n");
-                    push(@implContent, "            reportDeprecatedSetterError(*state, \"$interfaceName\", \"$name\");\n");
-                    push(@implContent, "        else\n");
-                    push(@implContent, "            throwSetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
+                    if (!$attribute->signature->extendedAttributes->{"LenientThis"}) {
+                        push(@implContent, "        throwSetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
+                    }
                     push(@implContent, "        return;\n");
                     push(@implContent, "    }\n");
                 }
@@ -4085,7 +4073,7 @@ sub JSValueToNative
         if (($signature->extendedAttributes->{"TreatNullAs"} and $signature->extendedAttributes->{"TreatNullAs"} eq "NullString") and ($signature->extendedAttributes->{"TreatUndefinedAs"} and $signature->extendedAttributes->{"TreatUndefinedAs"} eq "NullString")) {
             return "valueToStringWithUndefinedOrNullCheck(state, $value)"
         }
-        if (($signature->extendedAttributes->{"TreatNullAs"} and $signature->extendedAttributes->{"TreatNullAs"} eq "NullString") or $signature->extendedAttributes->{"Reflect"}) {
+        if ($signature->extendedAttributes->{"TreatNullAs"} and $signature->extendedAttributes->{"TreatNullAs"} eq "NullString") {
             return "valueToStringWithNullCheck(state, $value)"
         }
         if ($signature->extendedAttributes->{"AtomicString"}) {

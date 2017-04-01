@@ -34,7 +34,8 @@
 #include "B3MemoryValue.h"
 #include "B3OriginDump.h"
 #include "B3ProcedureInlines.h"
-#include "B3StackSlotValue.h"
+#include "B3SlotBaseValue.h"
+#include "B3StackSlot.h"
 #include "B3UpsilonValue.h"
 #include "B3ValueInlines.h"
 #include "B3ValueKeyInlines.h"
@@ -89,9 +90,59 @@ void Value::replaceWithNop()
     this->owner = owner;
 }
 
+void Value::replaceWithPhi()
+{
+    if (m_type == Void) {
+        replaceWithNop();
+        return;
+    }
+    
+    unsigned index = m_index;
+    Origin origin = m_origin;
+    BasicBlock* owner = this->owner;
+    Type type = m_type;
+
+    this->Value::~Value();
+
+    new (this) Value(index, Phi, type, origin);
+
+    this->owner = owner;
+}
+
 void Value::dump(PrintStream& out) const
 {
+    bool isConstant = false;
+
+    switch (m_opcode) {
+    case Const32:
+        out.print("$", asInt32(), "(");
+        isConstant = true;
+        break;
+    case Const64:
+        out.print("$", asInt64(), "(");
+        isConstant = true;
+        break;
+    case ConstFloat:
+        out.print("$", asFloat(), "(");
+        isConstant = true;
+        break;
+    case ConstDouble:
+        out.print("$", asDouble(), "(");
+        isConstant = true;
+        break;
+    default:
+        break;
+    }
+    
     out.print(dumpPrefix, m_index);
+
+    if (isConstant)
+        out.print(")");
+}
+
+Value* Value::cloneImpl() const
+{
+    return new Value(*this);
 }
 
 void Value::dumpChildren(CommaPrinter& comma, PrintStream& out) const
@@ -100,9 +151,9 @@ void Value::dumpChildren(CommaPrinter& comma, PrintStream& out) const
         out.print(comma, pointerDump(child));
 }
 
-void Value::deepDump(const Procedure& proc, PrintStream& out) const
+void Value::deepDump(const Procedure* proc, PrintStream& out) const
 {
-    out.print(m_type, " ", *this, " = ", m_opcode);
+    out.print(m_type, " ", dumpPrefix, m_index, " = ", m_opcode);
 
     out.print("(");
     CommaPrinter comma;
@@ -359,7 +410,7 @@ Effects Value::effects() const
     case Const64:
     case ConstDouble:
     case ConstFloat:
-    case StackSlot:
+    case SlotBase:
     case ArgumentReg:
     case FramePointer:
     case Add:
@@ -511,6 +562,10 @@ ValueKey Value::key() const
         return ValueKey(
             ArgumentReg, type(),
             static_cast<int64_t>(as<ArgumentRegValue>()->argumentReg().index()));
+    case SlotBase:
+        return ValueKey(
+            SlotBase, type(),
+            static_cast<int64_t>(as<SlotBaseValue>()->slot()->index()));
     default:
         return ValueKey();
     }
@@ -541,7 +596,7 @@ void Value::checkOpcode(Opcode opcode)
     ASSERT(!ControlValue::accepts(opcode));
     ASSERT(!MemoryValue::accepts(opcode));
     ASSERT(!PatchpointValue::accepts(opcode));
-    ASSERT(!StackSlotValue::accepts(opcode));
+    ASSERT(!SlotBaseValue::accepts(opcode));
     ASSERT(!UpsilonValue::accepts(opcode));
 }
 #endif // !ASSERT_DISABLED

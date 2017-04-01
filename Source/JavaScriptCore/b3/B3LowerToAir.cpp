@@ -39,6 +39,7 @@
 #include "B3CCallValue.h"
 #include "B3CheckSpecial.h"
 #include "B3Commutativity.h"
+#include "B3Dominators.h"
 #include "B3IndexMap.h"
 #include "B3IndexSet.h"
 #include "B3MemoryValue.h"
@@ -47,7 +48,8 @@
 #include "B3PhaseScope.h"
 #include "B3PhiChildren.h"
 #include "B3Procedure.h"
-#include "B3StackSlotValue.h"
+#include "B3SlotBaseValue.h"
+#include "B3StackSlot.h"
 #include "B3UpsilonValue.h"
 #include "B3UseCounts.h"
 #include "B3ValueInlines.h"
@@ -74,6 +76,7 @@ public:
         , m_blockToBlock(procedure.size())
         , m_useCounts(procedure)
         , m_phiChildren(procedure)
+        , m_dominators(procedure.dominators())
         , m_procedure(procedure)
         , m_code(procedure.code())
     {
@@ -88,17 +91,17 @@ public:
             switch (value->opcode()) {
             case Phi: {
                 m_phiToTmp[value] = m_code.newTmp(Arg::typeForB3Type(value->type()));
-                break;
-            }
-            case B3::StackSlot: {
-                StackSlotValue* stackSlotValue = value->as<StackSlotValue>();
-                m_stackToStack.add(stackSlotValue, m_code.addStackSlot(stackSlotValue));
+                if (verbose)
+                    dataLog("Phi tmp for ", *value, ": ", m_phiToTmp[value], "\n");
                 break;
             }
             default:
                 break;
             }
         }
+
+        for (B3::StackSlot* stack : m_procedure.stackSlots())
+            m_stackToStack.add(stack, m_code.addStackSlot(stack));
 
         // Figure out which blocks are not rare.
         m_fastWorklist.push(m_procedure[0]);
@@ -306,6 +309,8 @@ private:
                 realTmp = m_code.newTmp(Arg::typeForB3Type(value->type()));
                 if (m_procedure.isFastConstant(value->key()))
                     m_code.addFastTmp(realTmp);
+                if (verbose)
+                    dataLog("Tmp for ", *value, ": ", realTmp, "\n");
             }
             tmp = realTmp;
         }
@@ -429,8 +434,8 @@ private:
         case FramePointer:
             return Arg::addr(Tmp(GPRInfo::callFrameRegister), offset);
 
-        case B3::StackSlot:
-            return Arg::stack(m_stackToStack.get(address->as<StackSlotValue>()), offset);
+        case SlotBase:
+            return Arg::stack(m_stackToStack.get(address->as<SlotBaseValue>()->slot()), offset);
 
         default:
             return fallback();
@@ -454,15 +459,20 @@ private:
         return result;
     }
 
-    ArgPromise loadPromise(Value* loadValue, B3::Opcode loadOpcode)
+    ArgPromise loadPromiseAnyOpcode(Value* loadValue)
     {
-        if (loadValue->opcode() != loadOpcode)
-            return Arg();
         if (!canBeInternal(loadValue))
             return Arg();
         if (crossesInterference(loadValue))
             return Arg();
         return ArgPromise(addr(loadValue), loadValue);
+    }
+
+    ArgPromise loadPromise(Value* loadValue, B3::Opcode loadOpcode)
+    {
+        if (loadValue->opcode() != loadOpcode)
+            return Arg();
+        return loadPromiseAnyOpcode(loadValue);
     }
 
     ArgPromise loadPromise(Value* loadValue)
@@ -575,18 +585,31 @@ private:
         // - A child might be a candidate for coalescing with this value.
         //
         // Currently, we have machinery in place to recognize super obvious forms of the latter issue.
-
-        bool result = m_useCounts.numUsingInstructions(right) == 1;
         
         // We recognize when a child is a Phi that has this value as one of its children. We're very
         // conservative about this; for example we don't even consider transitive Phi children.
         bool leftIsPhiWithThis = m_phiChildren[left].transitivelyUses(m_value);
         bool rightIsPhiWithThis = m_phiChildren[right].transitivelyUses(m_value);
-        
-        if (leftIsPhiWithThis != rightIsPhiWithThis)
-            result = rightIsPhiWithThis;
 
-        return result;
+        if (leftIsPhiWithThis != rightIsPhiWithThis)
+            return rightIsPhiWithThis;
+
+        if (m_useCounts.numUsingInstructions(right) != 1)
+            return false;
+        
+        if (m_useCounts.numUsingInstructions(left) != 1)
+            return true;
+
+        // The use count might be 1 if the variable is live around a loop. We can guarantee that we
+        // pick the the variable that is least likely to suffer this problem if we pick the one that
+        // is closest to us in an idom walk. By convention, we slightly bias this in favor of
+        // returning true.
+
+        // We cannot prefer right if right is further away in an idom walk.
+        if (m_dominators.strictlyDominates(right->owner, left->owner))
+            return false;
+
+        return true;
     }
 
     template<Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble, Air::Opcode opcodeFloat, Commutativity commutativity = NotCommutative>
@@ -740,14 +763,34 @@ private:
         Arg storeAddr = addr(m_value);
         ASSERT(storeAddr);
 
+        auto getLoadPromise = [&] (Value* load) -> ArgPromise {
+            switch (m_value->opcode()) {
+            case B3::Store:
+                if (load->opcode() != B3::Load)
+                    return ArgPromise();
+                break;
+            case B3::Store8:
+                if (load->opcode() != B3::Load8Z && load->opcode() != B3::Load8S)
+                    return ArgPromise();
+                break;
+            case B3::Store16:
+                if (load->opcode() != B3::Load16Z && load->opcode() != B3::Load16S)
+                    return ArgPromise();
+                break;
+            default:
+                return ArgPromise();
+            }
+            return loadPromiseAnyOpcode(load);
+        };
+        
         ArgPromise loadPromise;
         Value* otherValue = nullptr;
-        
-        loadPromise = this->loadPromise(left);
+
+        loadPromise = getLoadPromise(left);
         if (loadPromise.peek() == storeAddr)
             otherValue = right;
         else if (commutativity == Commutative) {
-            loadPromise = this->loadPromise(right);
+            loadPromise = getLoadPromise(right);
             if (loadPromise.peek() == storeAddr)
                 otherValue = left;
         }
@@ -1775,12 +1818,42 @@ private:
 
         case B3::Store8: {
             Value* valueToStore = m_value->child(0);
+            if (canBeInternal(valueToStore)) {
+                bool matched = false;
+                switch (valueToStore->opcode()) {
+                case Add:
+                    matched = tryAppendStoreBinOp<Add8, Air::Oops, Commutative>(
+                        valueToStore->child(0), valueToStore->child(1));
+                    break;
+                default:
+                    break;
+                }
+                if (matched) {
+                    commitInternal(valueToStore);
+                    return;
+                }
+            }
             m_insts.last().append(createStore(Air::Store8, valueToStore, addr(m_value)));
             return;
         }
 
         case B3::Store16: {
             Value* valueToStore = m_value->child(0);
+            if (canBeInternal(valueToStore)) {
+                bool matched = false;
+                switch (valueToStore->opcode()) {
+                case Add:
+                    matched = tryAppendStoreBinOp<Add16, Air::Oops, Commutative>(
+                        valueToStore->child(0), valueToStore->child(1));
+                    break;
+                default:
+                    break;
+                }
+                if (matched) {
+                    commitInternal(valueToStore);
+                    return;
+                }
+            }
             m_insts.last().append(createStore(Air::Store16, valueToStore, addr(m_value)));
             return;
         }
@@ -1855,10 +1928,10 @@ private:
             return;
         }
 
-        case B3::StackSlot: {
+        case SlotBase: {
             append(
                 Lea,
-                Arg::stack(m_stackToStack.get(m_value->as<StackSlotValue>())),
+                Arg::stack(m_stackToStack.get(m_value->as<SlotBaseValue>()->slot())),
                 tmp(m_value));
             return;
         }
@@ -2225,11 +2298,12 @@ private:
     IndexMap<Value, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".
     IndexMap<Value, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
     IndexMap<B3::BasicBlock, Air::BasicBlock*> m_blockToBlock;
-    HashMap<StackSlotValue*, Air::StackSlot*> m_stackToStack;
+    HashMap<B3::StackSlot*, Air::StackSlot*> m_stackToStack;
 
     UseCounts m_useCounts;
     PhiChildren m_phiChildren;
     BlockWorklist m_fastWorklist;
+    Dominators& m_dominators;
 
     Vector<Vector<Inst, 4>> m_insts;
     Vector<Inst> m_prologue;

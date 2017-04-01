@@ -38,7 +38,6 @@
 #include "EditingRange.h"
 #include "EditorState.h"
 #include "GeolocationPermissionRequestManagerProxy.h"
-#include "InteractionInformationAtPosition.h"
 #include "LayerTreeContext.h"
 #include "MessageSender.h"
 #include "NotificationPermissionRequestManagerProxy.h"
@@ -121,6 +120,10 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 #include <WebCore/MediaPlaybackTargetPicker.h>
 #include <WebCore/WebMediaSessionManagerClient.h>
+#endif
+
+#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageProxyIncludes.h>)
+#include <WebKitAdditions/WebPageProxyIncludes.h>
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -293,6 +296,10 @@ public:
 
     WebsiteDataStore& websiteDataStore() { return m_websiteDataStore; }
 
+#if ENABLE(DATA_DETECTION)
+    NSArray *dataDetectionResults() { return m_dataDetectionResults.get(); }
+#endif
+        
 #if ENABLE(ASYNC_SCROLLING)
     RemoteScrollingCoordinatorProxy* scrollingCoordinatorProxy() const { return m_scrollingCoordinatorProxy.get(); }
 #endif
@@ -322,9 +329,11 @@ public:
 #if ENABLE(FULLSCREEN_API)
     WebFullScreenManagerProxy* fullScreenManager();
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     RefPtr<WebVideoFullscreenManagerProxy> videoFullscreenManager();
+#endif
 
+#if PLATFORM(IOS)
     bool allowsMediaDocumentInlinePlayback() const;
     void setAllowsMediaDocumentInlinePlayback(bool);
 #endif
@@ -514,7 +523,9 @@ public:
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
     void getLookupContextAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
 #endif
-
+#if ENABLE(DATA_DETECTION)
+    void setDataDetectionResult(const DataDetectionResult&);
+#endif
     void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -1405,6 +1416,10 @@ private:
     void disableInspectorNodeSearch();
 #endif // PLATFORM(IOS)
 
+#if ENABLE(DATA_DETECTION)
+    RetainPtr<NSArray> m_dataDetectionResults;
+#endif
+
     void clearLoadDependentCallbacks();
 
     void performDragControllerAction(DragControllerAction, WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
@@ -1463,6 +1478,8 @@ private:
 
     void handleAutoFillButtonClick(const UserData&);
 
+    void finishInitializingWebPageAfterProcessLaunch();
+
     void handleMessage(IPC::Connection&, const String& messageName, const UserData& messageBody);
     void handleSynchronousMessage(IPC::Connection&, const String& messageName, const UserData& messageBody, UserData& returnUserData);
 
@@ -1520,8 +1537,10 @@ private:
 #if ENABLE(FULLSCREEN_API)
     RefPtr<WebFullScreenManagerProxy> m_fullScreenManager;
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     RefPtr<WebVideoFullscreenManagerProxy> m_videoFullscreenManager;
+#endif
+#if PLATFORM(IOS)
     VisibleContentRectUpdateInfo m_lastVisibleContentRectUpdate;
     bool m_hasReceivedLayerTreeTransactionAfterDidCommitLoad;
     uint64_t m_firstLayerTreeTransactionIdAfterDidCommitLoad;
@@ -1536,6 +1555,10 @@ private:
 
 #if ENABLE(VIBRATION)
     RefPtr<WebVibrationProxy> m_vibration;
+#endif
+
+#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageProxyMembers.h>)
+#include <WebKitAdditions/WebPageProxyMembers.h>
 #endif
 
     CallbackMap m_callbacks;
@@ -1612,6 +1635,8 @@ private:
 
     // Whether it can run modal child web pages.
     bool m_canRunModal;
+
+    bool m_needsToFinishInitializingWebPageAfterProcessLaunch { false };
 
     bool m_isInPrintingMode;
     bool m_isPerformingDOMPrintOperation;

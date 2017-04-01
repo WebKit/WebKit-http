@@ -1052,7 +1052,7 @@ bool AccessibilityRenderObject::supportsARIADropping() const
 bool AccessibilityRenderObject::supportsARIADragging() const
 {
     const AtomicString& grabbed = getAttribute(aria_grabbedAttr);
-    return equalIgnoringCase(grabbed, "true") || equalIgnoringCase(grabbed, "false");   
+    return equalLettersIgnoringASCIICase(grabbed, "true") || equalLettersIgnoringASCIICase(grabbed, "false");
 }
 
 bool AccessibilityRenderObject::isARIAGrabbed()
@@ -1156,7 +1156,7 @@ AccessibilityObjectInclusion AccessibilityRenderObject::defaultObjectInclusion()
 
     if (m_renderer->style().visibility() != VISIBLE) {
         // aria-hidden is meant to override visibility as the determinant in AX hierarchy inclusion.
-        if (equalIgnoringCase(getAttribute(aria_hiddenAttr), "false"))
+        if (equalLettersIgnoringASCIICase(getAttribute(aria_hiddenAttr), "false"))
             return DefaultBehavior;
         
         return IgnoreObject;
@@ -1386,6 +1386,9 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (node && node->hasTagName(dfnTag))
         return false;
     
+    if (isStyleFormatGroup())
+        return false;
+    
     // Make sure that ruby containers are not ignored.
     if (m_renderer->isRubyRun() || m_renderer->isRubyBlock() || m_renderer->isRubyInline())
         return false;
@@ -1493,7 +1496,8 @@ PlainTextRange AccessibilityRenderObject::selectedTextRange() const
         return PlainTextRange();
     
     AccessibilityRole ariaRole = ariaRoleAttribute();
-    if (isNativeTextControl() && ariaRole == UnknownRole) {
+    // Use the text control native range if it's a native object and it has no ARIA role (or has a text based ARIA role).
+    if (isNativeTextControl() && (ariaRole == UnknownRole || isARIATextControl())) {
         HTMLTextFormControlElement& textControl = downcast<RenderTextControl>(*m_renderer).textFormControlElement();
         return PlainTextRange(textControl.selectionStart(), textControl.selectionEnd() - textControl.selectionStart());
     }
@@ -1583,7 +1587,7 @@ bool AccessibilityRenderObject::elementAttributeValue(const QualifiedName& attri
     if (!m_renderer)
         return false;
     
-    return equalIgnoringCase(getAttribute(attributeName), "true");
+    return equalLettersIgnoringASCIICase(getAttribute(attributeName), "true");
 }
     
 bool AccessibilityRenderObject::isSelected() const
@@ -1591,12 +1595,10 @@ bool AccessibilityRenderObject::isSelected() const
     if (!m_renderer)
         return false;
     
-    Node* node = m_renderer->node();
-    if (!node)
+    if (!m_renderer->node())
         return false;
     
-    const AtomicString& ariaSelected = getAttribute(aria_selectedAttr);
-    if (equalIgnoringCase(ariaSelected, "true"))
+    if (equalLettersIgnoringASCIICase(getAttribute(aria_selectedAttr), "true"))
         return true;    
     
     if (isTabItem() && isTabItemSelected())
@@ -2558,11 +2560,8 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         if (input.isDateField() || input.isTimeField())
             return PopUpButtonRole;
 #endif
-        
 #if ENABLE(INPUT_TYPE_COLOR)
-        // FIXME: Shouldn't this use input.isColorControl()?
-        const AtomicString& type = input.getAttribute(typeAttr);
-        if (equalIgnoringCase(type, "color"))
+        if (input.isColorControl())
             return ColorWellRole;
 #endif
     }
@@ -2585,7 +2584,10 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         return SVGRootRole;
     if (node && node->hasTagName(SVGNames::gTag))
         return GroupRole;
-
+    
+    if (isStyleFormatGroup())
+        return GroupRole;
+    
 #if ENABLE(MATHML)
     if (node && node->hasTagName(MathMLNames::mathTag))
         return DocumentMathRole;
@@ -2728,11 +2730,11 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 AccessibilityOrientation AccessibilityRenderObject::orientation() const
 {
     const AtomicString& ariaOrientation = getAttribute(aria_orientationAttr);
-    if (equalIgnoringCase(ariaOrientation, "horizontal"))
+    if (equalLettersIgnoringASCIICase(ariaOrientation, "horizontal"))
         return AccessibilityOrientationHorizontal;
-    if (equalIgnoringCase(ariaOrientation, "vertical"))
+    if (equalLettersIgnoringASCIICase(ariaOrientation, "vertical"))
         return AccessibilityOrientationVertical;
-    if (equalIgnoringCase(ariaOrientation, "undefined"))
+    if (equalLettersIgnoringASCIICase(ariaOrientation, "undefined"))
         return AccessibilityOrientationUndefined;
 
     // ARIA 1.1 Implicit defaults are defined on some roles.
@@ -2832,7 +2834,7 @@ bool AccessibilityRenderObject::canSetExpandedAttribute() const
     
     // An object can be expanded if it aria-expanded is true or false.
     const AtomicString& ariaExpanded = getAttribute(aria_expandedAttr);
-    return equalIgnoringCase(ariaExpanded, "true") || equalIgnoringCase(ariaExpanded, "false");
+    return equalLettersIgnoringASCIICase(ariaExpanded, "true") || equalLettersIgnoringASCIICase(ariaExpanded, "false");
 }
 
 bool AccessibilityRenderObject::canSetValueAttribute() const
@@ -2846,10 +2848,10 @@ bool AccessibilityRenderObject::canSetValueAttribute() const
     if (isMeter())
         return false;
 
-    if (equalIgnoringCase(getAttribute(aria_readonlyAttr), "true"))
+    auto& readOnly = getAttribute(aria_readonlyAttr);
+    if (equalLettersIgnoringASCIICase(readOnly, "true"))
         return false;
-    
-    if (equalIgnoringCase(getAttribute(aria_readonlyAttr), "false"))
+    if (equalLettersIgnoringASCIICase(readOnly, "false"))
         return true;
 
     if (isProgressIndicator() || isSlider())
@@ -3190,10 +3192,11 @@ const AtomicString& AccessibilityRenderObject::ariaLiveRegionRelevant() const
 bool AccessibilityRenderObject::ariaLiveRegionAtomic() const
 {
     const AtomicString& atomic = getAttribute(aria_atomicAttr);
-    if (equalIgnoringCase(atomic, "true"))
+    if (equalLettersIgnoringASCIICase(atomic, "true"))
         return true;
-    if (equalIgnoringCase(atomic, "false"))
+    if (equalLettersIgnoringASCIICase(atomic, "false"))
         return false;
+
     // WAI-ARIA "alert" and "status" roles have an implicit aria-atomic value of true.
     switch (roleValue()) {
     case ApplicationAlertRole:

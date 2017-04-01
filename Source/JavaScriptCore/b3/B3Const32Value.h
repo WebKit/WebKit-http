@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +36,7 @@ class JS_EXPORT_PRIVATE Const32Value : public Value {
 public:
     static bool accepts(Opcode opcode) { return opcode == Const32; }
     
-    JS_EXPORT_PRIVATE ~Const32Value();
+    ~Const32Value();
     
     int32_t value() const { return m_value; }
 
@@ -71,7 +71,9 @@ public:
     TriState belowEqualConstant(const Value* other) const override;
 
 protected:
-    JS_EXPORT_PRIVATE void dumpMeta(CommaPrinter&, PrintStream&) const override;
+    void dumpMeta(CommaPrinter&, PrintStream&) const override;
+
+    Value* cloneImpl() const override;
 
     friend class Procedure;
 
