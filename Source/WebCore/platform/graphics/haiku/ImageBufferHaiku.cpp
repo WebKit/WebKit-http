@@ -168,33 +168,6 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& src
         m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, size, op, destRect);
 }
 
-void ImageBuffer::clip(GraphicsContext& context, const FloatRect& maskRect) const
-{
-    BPicture picture;
-    BView* view = context.platformContext();
-
-    if (!view)
-        return;
-
-    view->LockLooper();
-
-    view->BeginPicture(&picture);
-    view->PushState();
-
-    view->SetLowColor(make_color(255, 255, 255, 0));
-    view->SetViewColor(make_color(255, 255, 255, 0));
-    view->SetHighColor(make_color(0, 0, 0, 255));
-    view->SetDrawingMode(B_OP_ALPHA);
-    view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
-
-    view->DrawBitmap(&m_data.m_bitmap, maskRect);
-
-    view->PopState();
-    view->EndPicture();
-    view->ClipToPicture(&picture);
-    view->UnlockLooper();
-}
-
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
 {
     uint8* rowData = reinterpret_cast<uint8*>(m_data.m_bitmap.Bits());

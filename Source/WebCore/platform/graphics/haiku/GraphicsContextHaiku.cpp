@@ -32,6 +32,7 @@
 
 #include "AffineTransform.h"
 #include "Color.h"
+#include "ImageBuffer.h"
 #include "NotImplemented.h"
 #include "Path.h"
 #include "ShadowBlur.h"
@@ -425,6 +426,41 @@ void GraphicsContext::clipPath(const Path& path, WindRule windRule)
     // TODO: reset wind rule
 }
 
+void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& destRect)
+{
+    if (paintingDisabled())
+        return;
+
+    RefPtr<Image> image = buffer.copyImage(DontCopyBackingStore);
+    BBitmap* surface = image->nativeImageForCurrentFrame();
+    if (surface)
+    {
+        BPicture picture;
+        BView* view = platformContext();
+
+        if (!view)
+            return;
+
+        view->LockLooper();
+        view->BeginPicture(&picture);
+        view->PushState();
+
+        view->SetLowColor(make_color(255, 255, 255, 0));
+        view->SetViewColor(make_color(255, 255, 255, 0));
+        view->SetHighColor(make_color(0, 0, 0, 255));
+        view->SetDrawingMode(B_OP_ALPHA);
+        view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+
+        view->DrawBitmap(surface, destRect);
+
+        view->PopState();
+        view->EndPicture();
+        view->ClipToPicture(&picture);
+        view->UnlockLooper();
+    }
+    delete surface;
+}
+
 void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
 {
     clipPath(path, windRule);
@@ -446,7 +482,7 @@ void GraphicsContext::clipOut(const FloatRect& rect)
     m_data->view()->ClipToInverseRect(rect);
 }
 
-void GraphicsContext::drawFocusRing(const Path& path, int width, int /*offset*/, const Color& color)
+void GraphicsContext::drawFocusRing(const Path& path, float width, float /*offset*/, const Color& color)
 {
     if (paintingDisabled() || width <= 0 || color.alpha() == 0)
         return;
@@ -462,7 +498,7 @@ void GraphicsContext::drawFocusRing(const Path& path, int width, int /*offset*/,
     m_data->view()->PopState();
 }
 
-void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int width, int /* offset */, const Color& color)
+void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, float width, float /* offset */, const Color& color)
 {
     if (paintingDisabled() || width <= 0 || color.alpha() == 0)
         return;
