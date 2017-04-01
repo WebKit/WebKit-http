@@ -125,7 +125,7 @@ void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
     m_textureMapper->beginClip(TransformationMatrix(), updateRect);
 
     currentRootLayer.paint();
-    m_fpsCounter.updateFPSAndDisplay(m_textureMapper.get());
+    m_fpsCounter.updateFPSAndDisplay(*m_textureMapper);
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 

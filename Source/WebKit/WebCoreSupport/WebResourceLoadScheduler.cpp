@@ -24,18 +24,18 @@
 
 #include "WebResourceLoadScheduler.h"
 
-#include <WebCore/Document.h>
-#include <WebCore/DocumentLoader.h>
-#include <WebCore/Frame.h>
-#include <WebCore/FrameLoader.h>
-#include <WebCore/Logging.h>
-#include <WebCore/NetscapePlugInStreamLoader.h>
-#include <WebCore/PingHandle.h>
-#include <WebCore/PlatformStrategies.h>
-#include <WebCore/ResourceHandle.h>
-#include <WebCore/ResourceRequest.h>
-#include <WebCore/SubresourceLoader.h>
-#include <WebCore/URL.h>
+#include <WebCore/dom/Document.h>
+#include <WebCore/loader/DocumentLoader.h>
+#include <WebCore/page/Frame.h>
+#include <WebCore/loader/FrameLoader.h>
+#include <WebCore/platform/Logging.h>
+#include <WebCore/loader/NetscapePlugInStreamLoader.h>
+#include <WebCore/platform/network/PingHandle.h>
+#include <WebCore/platform/PlatformStrategies.h>
+#include <WebCore/platform/network/ResourceHandle.h>
+#include <WebCore/platform/network/haiku/ResourceRequest.h>
+#include <WebCore/loader/SubresourceLoader.h>
+#include <WebCore/platform/URL.h>
 #include <wtf/MainThread.h>
 #include <wtf/TemporaryChange.h>
 #include <wtf/text/CString.h>

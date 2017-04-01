@@ -47,6 +47,11 @@ bool FontCascade::canReturnFallbackFontsForComplexText()
     return false;
 }
 
+float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, int from, int to, GlyphBuffer& glyphBuffer, ForTextEmphasisOrNot forTextEmphasis) const
+{
+    return getGlyphsAndAdvancesForSimpleText(run, from, to, glyphBuffer);
+}
+
 void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
 {
     notImplemented();
@@ -92,34 +97,6 @@ bool FontCascade::canExpandAroundIdeographsInComplexText()
 {
     return false;
 }
-
-/* the "complex" text is used for text-rendering: optimizeLegibility, and other
- * cases such as SVG text. Other platforms use HarfBuzz for layouting the text,
- * but we should handle this all on BView size and make use of
- * ICU LayoutEngine - once properly integrated in the BeAPI, that is.
- *
- * For now, we just call the usual DrawString method. It's better to at least
- * try displaying something.
- */
-float FontCascade::drawComplexText(GraphicsContext& context, const TextRun& run, const FloatPoint& point,
-                           int from, int to) const
-{
-    BView* view = context.platformContext();
-    view->SetFont(primaryFont().platformData().font());
-
-    // The "point" is where the complete run starts. We need to offset it
-    // because we don't draw the characters before "from".
-    TextRun before = run.subRun(0, from);
-    float offset = floatWidthForComplexText(before);
-    BPoint p(point);
-    p.x += offset;
-
-    CString string = run.subRun(from,to).string().utf8();
-    view->DrawString(string.data(), p);
-
-    return view->StringWidth(string.data());
-}
-
 
 float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Font*>* /*fallbackFonts*/, GlyphOverflow* /*glyphOverflow*/) const
 {

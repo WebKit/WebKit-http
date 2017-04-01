@@ -26,12 +26,16 @@
 #include "config.h"
 #include "PlatformStrategiesHaiku.h"
 
+#include "BlobRegistryImpl.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PageGroup.h"
 #include "PlatformCookieJar.h"
+#include "WebResourceLoadScheduler.h"
+
 
 using namespace WebCore;
+
 
 void PlatformStrategiesHaiku::initialize()
 {
@@ -50,7 +54,7 @@ CookiesStrategy* PlatformStrategiesHaiku::createCookiesStrategy()
 
 LoaderStrategy* PlatformStrategiesHaiku::createLoaderStrategy()
 {
-    return this;
+    return new WebResourceLoadScheduler();
 }
 
 PasteboardStrategy* PlatformStrategiesHaiku::createPasteboardStrategy()
@@ -62,6 +66,11 @@ PasteboardStrategy* PlatformStrategiesHaiku::createPasteboardStrategy()
 PluginStrategy* PlatformStrategiesHaiku::createPluginStrategy()
 {
     return this;
+}
+
+WebCore::BlobRegistry* PlatformStrategiesHaiku::createBlobRegistry()
+{
+    return new BlobRegistryImpl();
 }
 
 // CookiesStrategy

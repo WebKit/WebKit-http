@@ -23,11 +23,11 @@
 #ifndef WebResourceLoadScheduler_h
 #define WebResourceLoadScheduler_h
 
-#include <WebCore/FrameLoaderTypes.h>
-#include <WebCore/LoaderStrategy.h>
-#include <WebCore/ResourceLoadPriority.h>
-#include <WebCore/ResourceLoaderOptions.h>
-#include <WebCore/Timer.h>
+#include <WebCore/loader/FrameLoaderTypes.h>
+#include <WebCore/loader/LoaderStrategy.h>
+#include <WebCore/platform/network/ResourceLoadPriority.h>
+#include <WebCore/loader/ResourceLoaderOptions.h>
+#include <WebCore/platform/Timer.h>
 #include <array>
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>

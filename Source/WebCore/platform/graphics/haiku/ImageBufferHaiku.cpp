@@ -109,6 +109,11 @@ GraphicsContext& ImageBuffer::context() const
     return *m_data.m_context;
 }
 
+RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior scaleBehavior)
+{
+    return imageBuffer->copyImage(DontCopyBackingStore, scaleBehavior);
+}
+
 RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
     if (m_data.m_view)
@@ -123,6 +128,11 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavio
 BackingStoreCopy ImageBuffer::fastCopyImageMode()
 {
     return DontCopyBackingStore;
+}
+
+void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
+{
+    imageBuffer->draw(destContext, destRect, srcRect, op, blendMode, useLowQualityScale);
 }
 
 void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect,
