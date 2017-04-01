@@ -1,0 +1,86 @@
+From 63a512023e861380f4489b103212769b741a93dc Mon Sep 17 00:00:00 2001
+From: Thiago Macieira <thiago.macieira@intel.com>
+Date: Thu, 30 Oct 2014 20:44:43 -0700
+Subject: [PATCH 1/1] Add macros for enabling/disabling warnings
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This allows us to avoid the ugly #if for compiler versions. We might
+still need for when a warning only occurs in one compiler version, but
+otherwise the code will be much cleaner.
+
+Change-Id: Ibc941d898b3dad2e3d87c11378f29139c31f0fff
+Reviewed-by: Olivier Goffart <ogoffart@woboq.com>
+Reviewed-by: Jędrzej Nowacki <jedrzej.nowacki@theqtcompany.com>
+---
+ src/corelib/global/qcompilerdetection.h | 46 ++++++++++++++++++++++++++++++++-
+ 1 file changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/src/corelib/global/qcompilerdetection.h b/src/corelib/global/qcompilerdetection.h
+index ee396409d8..dcd185742a 100644
+--- a/src/corelib/global/qcompilerdetection.h
++++ b/src/corelib/global/qcompilerdetection.h
+@@ -1,7 +1,7 @@
+ /****************************************************************************
+ **
+ ** Copyright (C) 2014 Digia Plc and/or its subsidiary(-ies).
+-** Copyright (C) 2012 Intel Corporation
++** Copyright (C) 2014 Intel Corporation
+ ** Contact: http://www.qt-project.org/legal
+ **
+ ** This file is part of the QtCore module of the Qt Toolkit.
+@@ -1060,6 +1060,50 @@
+ #  define Q_DECL_CONST_FUNCTION Q_DECL_PURE_FUNCTION
+ #endif
+ 
++/*
++ * Warning/diagnostic handling
++ */
++
++#define QT_DO_PRAGMA(text)                      _Pragma(#text)
++#if defined(Q_CC_INTEL)
++#  define QT_WARNING_PUSH                       QT_DO_PRAGMA(warning(push))
++#  define QT_WARNING_POP                        QT_DO_PRAGMA(warning(pop))
++#  define QT_WARNING_DISABLE_INTEL(number)      QT_DO_PRAGMA(warning(disable: number))
++#  define QT_WARNING_DISABLE_MSVC(number)
++#  define QT_WARNING_DISABLE_CLANG(text)
++#  define QT_WARNING_DISABLE_GCC(text)
++#elif defined(Q_CC_MSVC) && _MSC_VER >= 1500
++#  undef QT_DO_PRAGMA                           /* not needed */
++#  define QT_WARNING_PUSH                       __pragma(warning(push))
++#  define QT_WARNING_POP                        __pragma(warning(pop))
++#  define QT_WARNING_DISABLE_MSVC(number)       __pragma(warning(disable: number))
++#  define QT_WARNING_DISABLE_INTEL(number)
++#  define QT_WARNING_DISABLE_CLANG(text)
++#  define QT_WARNING_DISABLE_GCC(text)
++#elif defined(Q_CC_CLANG)
++#  define QT_WARNING_PUSH                       QT_DO_PRAGMA(clang diagnostic push)
++#  define QT_WARNING_POP                        QT_DO_PRAGMA(clang diagnostic pop)
++#  define QT_WARNING_DISABLE_CLANG(text)        QT_DO_PRAGMA(clang diagnostic ignored text)
++#  define QT_WARNING_DISABLE_GCC(text)          QT_DO_PRAGMA(GCC diagnostic ignored text)   // GCC directives work in Clang too
++#  define QT_WARNING_DISABLE_INTEL(number)
++#  define QT_WARNING_DISABLE_MSVC(number)
++#elif defined(Q_CC_GNU) && (__GNUC__ * 100 + __GNUC_MINOR__ >= 405)
++#  define QT_WARNING_PUSH                       QT_DO_PRAGMA(GCC diagnostic push)
++#  define QT_WARNING_POP                        QT_DO_PRAGMA(GCC diagnostic pop)
++#  define QT_WARNING_DISABLE_GCC(text)          QT_DO_PRAGMA(GCC diagnostic ignored text)
++#  define QT_WARNING_DISABLE_CLANG(text)
++#  define QT_WARNING_DISABLE_INTEL(number)
++#  define QT_WARNING_DISABLE_MSVC(number)
++#else       // All other compilers, GCC < 4.6 and MSVC < 2008
++#  define QT_WARNING_DISABLE_GCC(text)
++#  define QT_WARNING_PUSH
++#  define QT_WARNING_POP
++#  define QT_WARNING_DISABLE_INTEL(number)
++#  define QT_WARNING_DISABLE_MSVC(number)
++#  define QT_WARNING_DISABLE_CLANG(text)
++#  define QT_WARNING_DISABLE_GCC(text)
++#endif
++
+ /*
+    Proper for-scoping in MIPSpro CC
+ */
+-- 
+2.11.0
+

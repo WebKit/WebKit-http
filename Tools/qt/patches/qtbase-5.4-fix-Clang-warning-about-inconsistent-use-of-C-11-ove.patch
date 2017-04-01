@@ -1,0 +1,62 @@
+From 3092bd56c394f22e027be59368789546afb5ca98 Mon Sep 17 00:00:00 2001
+From: Thiago Macieira <thiago.macieira@intel.com>
+Date: Wed, 17 Dec 2014 18:59:17 -0800
+Subject: [PATCH 1/1] Fix Clang warning about inconsistent use of C++11
+ override
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+We cannot use override in the Q_OBJECT macro, so tell Clang not to warn
+about our lack of use of the keyword in the three virtuals that Q_OBJECT
+overrides when the user uses Q_DECL_OVERRIDE in their own functions.
+
+We can't use Q_DECL_OVERRIDE for two reasons:
+ 1) because that would trigger the warning in any and all virtual
+    overrides the user may have in their own class (and most of Qt)
+ 2) because when Q_OBJECT is used in QObject, it's not overriding
+    anything -- it's the base declaration
+
+For #2, we could add a different macro exclusively for QObject that moc
+would expand, but it's unnecessary work.
+
+Change-Id: Ic9cb7896f93f06f4e86b6a42dc08f96d257f7550
+Reviewed-by: Jędrzej Nowacki <jedrzej.nowacki@theqtcompany.com>
+Reviewed-by: Olivier Goffart <ogoffart@woboq.com>
+---
+ src/corelib/kernel/qobjectdefs.h | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/src/corelib/kernel/qobjectdefs.h b/src/corelib/kernel/qobjectdefs.h
+index a495bce7ec..84e7a65a54 100644
+--- a/src/corelib/kernel/qobjectdefs.h
++++ b/src/corelib/kernel/qobjectdefs.h
+@@ -138,15 +138,24 @@ inline void qYouForgotTheQ_OBJECT_Macro(T1, T2) {}
+ # define Q_DECL_HIDDEN_STATIC_METACALL Q_DECL_HIDDEN
+ #endif
+ 
++#if defined(Q_CC_CLANG) && Q_CC_CLANG >= 306
++#  define Q_OBJECT_NO_OVERRIDE_WARNING      QT_WARNING_DISABLE_CLANG("-Winconsistent-missing-override")
++#else
++#  define Q_OBJECT_NO_OVERRIDE_WARNING
++#endif
++
+ /* qmake ignore Q_OBJECT */
+ #define Q_OBJECT \
+ public: \
+     Q_OBJECT_CHECK \
++    QT_WARNING_PUSH \
++    Q_OBJECT_NO_OVERRIDE_WARNING \
+     static const QMetaObject staticMetaObject; \
+     virtual const QMetaObject *metaObject() const; \
+     virtual void *qt_metacast(const char *); \
+-    QT_TR_FUNCTIONS \
+     virtual int qt_metacall(QMetaObject::Call, int, void **); \
++    QT_WARNING_POP \
++    QT_TR_FUNCTIONS \
+ private: \
+     Q_DECL_HIDDEN_STATIC_METACALL static void qt_static_metacall(QObject *, QMetaObject::Call, int, void **); \
+     struct QPrivateSignal {};
+-- 
+2.11.0
+

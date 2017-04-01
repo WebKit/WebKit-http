@@ -64,6 +64,9 @@
       <patch file="qtbase-5.4-fontconfig-fix.patch" strip="1"/>
       <patch file="qtbase-5.4-no-sslv3.patch" strip="1"/>
       <patch file="qtbase-5.4-no-sslv2_3.patch" strip="1"/>
+      <patch file="qtbase-5.4-add-macros-for-enabling-disabling-warnings.patch" strip="1"/>
+      <patch file="qtbase-5.4-fix-Clang-warning-about-inconsistent-use-of-C-11-ove.patch" strip="1"/>
+      <patch file="qtbase-5.4-fix-gcc-Wsuggest-override-warning-on-Q_OBJECT.patch" strip="1"/>
     </branch>
     <dependencies>
       <dep package="fontconfig"/>
