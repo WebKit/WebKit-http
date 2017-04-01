@@ -600,7 +600,7 @@ void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* /*loa
         return;
 
     BMessage message(MAIN_DOCUMENT_ERROR);
-    message.AddString("url", error.failingURL());
+    message.AddString("url", error.failingURL().string().utf8().data());
     message.AddString("error", error.localizedDescription());
     dispatchMessage(message);
 }
@@ -690,7 +690,7 @@ void FrameLoaderClientHaiku::convertMainResourceLoadToDownload(DocumentLoader*,
 WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::ResourceRequest& request)
 {
     ResourceError error = ResourceError(String(), WebKitErrorCannotShowURL,
-                                        request.url().string(), "Load request cancelled");
+                                        request.url(), "Load request cancelled");
     error.setIsCancellation(true);
     return error;
 }
@@ -698,25 +698,25 @@ WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::Res
 WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceRequest& request)
 {
     return ResourceError(String(), WebKitErrorCannotUseRestrictedPort,
-                         request.url().string(), "Not allowed to use restricted network port");
+                         request.url(), "Not allowed to use restricted network port");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::blockedByContentBlockerError(const ResourceRequest& request)
 {
     return ResourceError(String(), WebKitErrorCannotShowURL,
-        request.url().string(), "Blocked by content blocker");
+        request.url(), "Blocked by content blocker");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
     return ResourceError(String(), WebKitErrorCannotShowURL,
-                         request.url().string(), "URL cannot be shown");
+                         request.url(), "URL cannot be shown");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::interruptedForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
     ResourceError error = ResourceError(String(), WebKitErrorFrameLoadInterruptedByPolicyChange,
-                                        request.url().string(), "Frame load was interrupted");
+                                        request.url(), "Frame load was interrupted");
     error.setIsCancellation(true);
     return error;
 }
@@ -728,19 +728,19 @@ WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const Web
     // it could remember doing so and then we could ask here if we are the main frame,
     // have no content, but did download something -- then we could asked to be closed.
     return ResourceError(String(), WebKitErrorCannotShowMIMEType,
-                         response.url().string(), "Content with the specified MIME type cannot be shown");
+                         response.url(), "Content with the specified MIME type cannot be shown");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::fileDoesNotExistError(const WebCore::ResourceResponse& response)
 {
     return ResourceError(String(), WebKitErrorCannotShowURL,
-                         response.url().string(), "File does not exist");
+                         response.url(), "File does not exist");
 }
 
 ResourceError FrameLoaderClientHaiku::pluginWillHandleLoadError(const ResourceResponse& response)
 {
     return ResourceError(String(), WebKitErrorPlugInWillHandleLoad,
-                         response.url().string(), "Plugin will handle load");
+                         response.url(), "Plugin will handle load");
 }
 
 bool FrameLoaderClientHaiku::shouldFallBack(const WebCore::ResourceError& error)

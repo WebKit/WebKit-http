@@ -323,7 +323,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
             return;
 
         ResourceError error("BUrlProtocol", 42,
-            handle->firstRequest().url().string().utf8().data(),
+            handle->firstRequest().url(),
             "The service kit failed to start the request.");
         client->didFail(m_resourceHandle, error);
     }
@@ -379,13 +379,13 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 
         if (httpStatusCode != 0) {
             ResourceError error("HTTP", httpStatusCode,
-                caller->Url().UrlString().String(), strerror(caller->Status()));
+                URL(caller->Url()), strerror(caller->Status()));
 
             client->didFail(m_resourceHandle, error);
             return;
         }
     } else {
-        ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), strerror(caller->Status()));
+        ResourceError error("BUrlRequest", caller->Status(), URL(caller->Url()), strerror(caller->Status()));
         client->didFail(m_resourceHandle, error);
     }
 }
@@ -438,7 +438,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
     }
 
     ProtectionSpace protectionSpace(url.host(), url.port(), serverType, realm, scheme);
-    ResourceError resourceError(url.host(), 401, url.string(), String());
+    ResourceError resourceError(url.host(), 401, url, String());
 
     m_redirectionTries--;
     if(m_redirectionTries == 0)
@@ -542,7 +542,7 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
         m_redirectionTries--;
 
         if (m_redirectionTries == 0) {
-            ResourceError error(url.host(), 400, url.string(),
+            ResourceError error(url.host(), 400, url,
                 "Redirection limit reached");
             client->didFail(m_resourceHandle, error);
             return;
