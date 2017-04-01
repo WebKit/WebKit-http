@@ -58,7 +58,8 @@ void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */
 }
 
 void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
-                      const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
+    const GlyphBuffer& glyphBuffer, int from, int numGlyphs,
+    const FloatPoint& point, WebCore::FontSmoothingMode smoothing)
 {
     BView* view = graphicsContext.platformContext();
     view->PushState();
@@ -70,15 +71,20 @@ void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
     else
         view->SetDrawingMode(B_OP_OVER);
     view->SetHighColor(color);
-    view->SetFont(font.platformData().font());
+    BFont bfont(*font.platformData().font());
+    if (smoothing == NoSmoothing)
+        bfont.SetFlags(B_DISABLE_ANTIALIASING);
+    else
+        bfont.SetFlags(B_FORCE_ANTIALIASING);
+    view->SetFont(&bfont);
 
     const GlyphBufferGlyph* glyphs = glyphBuffer.glyphs(from);
 
 
-	BPoint offsets[numGlyphs];
+    BPoint offsets[numGlyphs];
     char buffer[4];
     BString utf8;
-	float offset = point.x();
+    float offset = point.x();
     for (int i = 0; i < numGlyphs; i++) {
         offsets[i].x = offset;
         offsets[i].y = point.y();

@@ -247,38 +247,6 @@ void GraphicsContext::strokePath(const Path& path)
     }
 }
 
-void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* points, bool /*shouldAntialias*/)
-{
-    if (paintingDisabled())
-        return;
-
-    BPoint bPoints[pointsLength];
-    for (size_t i = 0; i < pointsLength; i++) {
-        bPoints[i] = points[i];
-    }
-
-    if (fillColor().alpha())
-        m_data->view()->FillPolygon(bPoints, pointsLength);
-
-    if (strokeStyle() != NoStroke) {
-        // Stroke with low color
-        m_data->view()->StrokePolygon(bPoints, pointsLength, true, m_data->m_strokeStyle);
-    }
-}
-
-void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* points, bool /*antialiased*/)
-{
-    if (paintingDisabled())
-        return;
-
-    BShape* shape = new BShape();
-    shape->MoveTo(points[0]);
-    for(unsigned int i = 1; i < numPoints; i ++)
-        shape->LineTo(points[i]);
-    shape->Close();
-    m_data->view()->ClipToShape(shape);
-}
-
 void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
 {
     if (paintingDisabled())
