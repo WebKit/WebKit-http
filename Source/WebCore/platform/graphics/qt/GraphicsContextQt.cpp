@@ -1259,7 +1259,7 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& frect, RoundingM
     return FloatRect(roundedOrigin, roundedLowerRight - roundedOrigin);
 }
 
-void GraphicsContext::setPlatformShadow(const FloatSize& size, float blur, const Color& color)
+void GraphicsContext::setPlatformShadow(const FloatSize& size, float, const Color&)
 {
     // Qt doesn't support shadows natively, they are drawn manually in the draw*
     // functions
@@ -1583,7 +1583,8 @@ void GraphicsContext::setURLForRect(const URL& url, const IntRect& rect)
     if (p->paintEngine()->type() == QPaintEngine::Pdf)
         static_cast<QPdfEngine *>(p->paintEngine())->drawHyperlink(p->worldTransform().mapRect(rect), url);
 #else
-    notImplemented();
+    UNUSED_PARAM(url);
+    UNUSED_PARAM(rect);
 #endif
 }
 

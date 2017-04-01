@@ -92,10 +92,9 @@ void FormDataIODevice::prepareFormElements()
 }
 
 
-qint64 FormDataIODevice::computeSize() 
+qint64 FormDataIODevice::computeSize()
 {
-    for (int i = 0; i < m_formElements.size(); ++i) {
-        const FormDataElement& element = m_formElements[i];
+    for (const auto& element : m_formElements) {
         if (element.m_type == FormDataElement::Type::Data)
             m_dataSize += element.m_data.size();
         else {

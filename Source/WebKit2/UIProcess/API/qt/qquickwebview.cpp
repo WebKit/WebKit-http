@@ -806,7 +806,7 @@ void QQuickWebViewPrivate::chooseFiles(WKOpenPanelResultListenerRef listenerRef,
         QStringList selectedPaths = dialogRunner.filePaths();
 
         Vector<RefPtr<API::Object> > wkFiles(selectedPaths.size());
-        for (unsigned i = 0; i < selectedPaths.size(); ++i)
+        for (int i = 0; i < selectedPaths.size(); ++i)
             wkFiles[i] = API::URL::create(QUrl::fromLocalFile(selectedPaths.at(i)).toString());
 
         WKOpenPanelResultListenerChooseFiles(listenerRef, toAPI(&API::Array::create(WTFMove(wkFiles)).leakRef()));

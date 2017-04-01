@@ -120,7 +120,7 @@ static JSValueRef getPixmapHeight(JSContextRef context, JSObjectRef object, JSSt
     return JSValueMakeNumber(context, imageSizeForVariant(data).height());
 }
 
-static JSValueRef assignToHTMLImageElement(JSContextRef context, JSObjectRef function, JSObjectRef object, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+static JSValueRef assignToHTMLImageElement(JSContextRef context, JSObjectRef /*function*/, JSObjectRef object, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     if (!argumentCount)
         return JSValueMakeUndefined(context);
@@ -143,7 +143,7 @@ static JSValueRef assignToHTMLImageElement(JSContextRef context, JSObjectRef fun
     return JSValueMakeUndefined(context);
 }
 
-static JSValueRef pixmapToImageData(JSContextRef context, JSObjectRef function, JSObjectRef object, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+static JSValueRef pixmapToImageData(JSContextRef context, JSObjectRef /*function*/, JSObjectRef object, size_t /*argumentCount*/, const JSValueRef /*arguments*/[], JSValueRef* /*exception*/)
 {
     QVariant& data = *static_cast<QVariant*>(JSObjectGetPrivate(object));
     QImage image = toImage(data);
@@ -160,7 +160,7 @@ static JSValueRef pixmapToImageData(JSContextRef context, JSObjectRef function, 
     return ::toRef(exec, toJS(exec, globalObject, imageData.get()));
 }
 
-static JSValueRef pixmapToDataUrl(JSContextRef context, JSObjectRef function, JSObjectRef object, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+static JSValueRef pixmapToDataUrl(JSContextRef context, JSObjectRef /*function*/, JSObjectRef object, size_t /*argumentCount*/, const JSValueRef /*arguments*/[], JSValueRef* /*exception*/)
 {
     QVariant& data = *static_cast<QVariant*>(JSObjectGetPrivate(object));
     QByteArray byteArray;
@@ -173,7 +173,7 @@ static JSValueRef pixmapToDataUrl(JSContextRef context, JSObjectRef function, JS
     return value;
 }
 
-static JSValueRef pixmapToString(JSContextRef context, JSObjectRef function, JSObjectRef object, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+static JSValueRef pixmapToString(JSContextRef context, JSObjectRef /*function*/, JSObjectRef object, size_t /*argumentCount*/, const JSValueRef /*arguments*/[], JSValueRef* /*exception*/)
 {
     QVariant& data = *static_cast<QVariant*>(JSObjectGetPrivate(object));
     QSize size = imageSizeForVariant(data);
@@ -189,7 +189,7 @@ static void finalizePixmap(JSObjectRef object)
     delete static_cast<QVariant*>(JSObjectGetPrivate(object));
 }
 
-JSObjectRef QtPixmapRuntime::toJS(JSContextRef context, const QVariant& value, JSValueRef* exception)
+JSObjectRef QtPixmapRuntime::toJS(JSContextRef context, const QVariant& value, JSValueRef* /*exception*/)
 {
     return JSObjectMake(context, getClassRef(), new QVariant(value));
 }
@@ -203,7 +203,7 @@ static QVariant emptyVariantForHint(QMetaType::Type hint)
     return QVariant();
 }
 
-QVariant QtPixmapRuntime::toQt(JSContextRef context, JSObjectRef obj, QMetaType::Type hint, JSValueRef* exception)
+QVariant QtPixmapRuntime::toQt(JSContextRef context, JSObjectRef obj, QMetaType::Type hint, JSValueRef* /*exception*/)
 {
     if (!obj)
         return emptyVariantForHint(hint);

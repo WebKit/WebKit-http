@@ -59,7 +59,7 @@ public:
         return reinterpret_cast<uint8_t*>(ptr);
     }
 
-    virtual void copy(const CString& source)
+    void copy(const CString& source) override
     {
         m_buffer = source;
     }

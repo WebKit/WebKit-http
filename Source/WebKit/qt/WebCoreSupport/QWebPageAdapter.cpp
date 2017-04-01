@@ -896,8 +896,7 @@ QList<MenuItem> descriptionForPlatformMenu(const Vector<ContextMenuItem>& items,
     QList<MenuItem> itemDescriptions;
     if (!items.size())
         return itemDescriptions;
-    for (int i = 0; i < items.size(); ++i) {
-        const ContextMenuItem &item = items.at(i);
+    for (const auto& item : items) {
         MenuItem description;
         switch (item.type()) {
         case WebCore::CheckableActionType: /* fall through */

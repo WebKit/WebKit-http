@@ -760,25 +760,25 @@ String validationMessagePatternMismatchText()
     return String();
 }
 
-String validationMessageTooLongText(int valueLength, int maxLength)
+String validationMessageTooLongText(int, int)
 {
     notImplemented();
     return String();
 }
 
-String validationMessageRangeUnderflowText(const String& minimum)
+String validationMessageRangeUnderflowText(const String&)
 {
     notImplemented();
     return String();
 }
 
-String validationMessageRangeOverflowText(const String& maximum)
+String validationMessageRangeOverflowText(const String&)
 {
     notImplemented();
     return String();
 }
 
-String validationMessageStepMismatchText(const String& base, const String& step)
+String validationMessageStepMismatchText(const String&, const String&)
 {
     notImplemented();
     return String();

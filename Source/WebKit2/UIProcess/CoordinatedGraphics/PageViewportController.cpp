@@ -78,10 +78,12 @@ float PageViewportController::deviceScaleFactor() const
     return m_webPageProxy->deviceScaleFactor();
 }
 
+#if PLATFORM(EFL)
 static inline bool isIntegral(float value)
 {
     return static_cast<int>(value) == value;
 }
+#endif
 
 FloatPoint PageViewportController::pixelAlignedFloatPoint(const FloatPoint& framePosition)
 {

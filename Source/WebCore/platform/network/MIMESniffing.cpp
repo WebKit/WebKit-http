@@ -331,7 +331,8 @@ static inline const char* findSimpleMIMEType(const char* data, size_t dataSize, 
     return 0;
 }
 
-bool isTypeInList(const char* type, const MagicNumbers* types, size_t typesCount)
+#if !ASSERT_DISABLED
+static bool isTypeInList(const char* type, const MagicNumbers* types, size_t typesCount)
 {
     for (size_t i = 0; i < typesCount; ++i) {
         if (!strcmp(type, types[i].mimeType))
@@ -339,6 +340,7 @@ bool isTypeInList(const char* type, const MagicNumbers* types, size_t typesCount
     }
     return false;
 }
+#endif
 
 // http://tools.ietf.org/html/draft-abarth-mime-sniff-06#page-8
 static const char* internalTextOrBinaryTypeSniffingProcedure(const char* data, size_t dataSize)

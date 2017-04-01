@@ -380,7 +380,7 @@ Vector<String> Pasteboard::readFilenames()
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void Pasteboard::setDragImage(DragImageRef, const IntPoint& hotSpot)
+void Pasteboard::setDragImage(DragImageRef, const IntPoint&)
 {
     notImplemented();
 }

@@ -49,7 +49,7 @@
 
 namespace WebKit {
 
-class PluginProcessCreationParameters;
+struct PluginProcessCreationParameters;
 
 void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
 {
