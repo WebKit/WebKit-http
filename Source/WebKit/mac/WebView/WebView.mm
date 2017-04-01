@@ -95,6 +95,7 @@
 #import "WebPreferenceKeysPrivate.h"
 #import "WebPreferencesPrivate.h"
 #import "WebProgressTrackerClient.h"
+#import "WebResourceLoadScheduler.h"
 #import "WebScriptDebugDelegate.h"
 #import "WebScriptWorldInternal.h"
 #import "WebSelectionServiceController.h"
@@ -167,7 +168,6 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/RenderWidget.h>
 #import <WebCore/ResourceHandle.h>
-#import <WebCore/ResourceLoadScheduler.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/RuntimeEnabledFeatures.h>
@@ -192,7 +192,6 @@
 #import <WebKitSystemInterface.h>
 #import <bindings/ScriptValue.h>
 #import <mach-o/dyld.h>
-#import <objc/objc-auto.h>
 #import <objc/runtime.h>
 #import <runtime/ArrayPrototype.h>
 #import <runtime/DateInstance.h>
@@ -264,6 +263,7 @@
 #import <WebCore/WebCoreThreadRun.h>
 #import <WebCore/WebEvent.h>
 #import <WebCore/WebVideoFullscreenControllerAVKit.h>
+#import <libkern/OSAtomic.h>
 #import <wtf/FastMalloc.h>
 #endif // !PLATFORM(IOS)
 
@@ -761,7 +761,7 @@ static bool shouldRestrictWindowFocus()
 
 - (void)_dispatchPendingLoadRequests
 {
-    resourceLoadScheduler()->servePendingRequests();
+    webResourceLoadScheduler().servePendingRequests();
 }
 
 #if !PLATFORM(IOS)
@@ -910,6 +910,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         [recognizer setDelaysPrimaryMouseButtonEvents:NO];
     }
 #endif
+
+    [self updateWebViewAdditions];
 
 #if !PLATFORM(IOS)
     static bool didOneTimeInitialization = false;
@@ -1616,9 +1618,9 @@ static NSMutableSet *knownPluginMIMETypes()
 - (void)_setResourceLoadSchedulerSuspended:(BOOL)suspend
 {
     if (suspend)
-        resourceLoadScheduler()->suspendPendingRequests();
+        webResourceLoadScheduler().suspendPendingRequests();
     else
-        resourceLoadScheduler()->resumePendingRequests();
+        webResourceLoadScheduler().resumePendingRequests();
 }
 
 + (void)_setAllowCookies:(BOOL)allow
@@ -2306,6 +2308,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setAudioPlaybackRequiresUserGesture([preferences audioPlaybackRequiresUserGesture]);
     settings.setAllowsInlineMediaPlayback([preferences mediaPlaybackAllowsInline]);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute([preferences inlineMediaPlaybackRequiresPlaysInlineAttribute]);
+    settings.setInvisibleAutoplayNotPermitted([preferences invisibleAutoplayNotPermitted]);
     settings.setAllowsPictureInPictureMediaPlayback([preferences allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback());
     settings.setMediaControlsScaleWithPageZoom([preferences mediaControlsScaleWithPageZoom]);
     settings.setSuppressesIncrementalRendering([preferences suppressesIncrementalRendering]);
@@ -2422,6 +2425,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
 #if USE(AVFOUNDATION)
     settings.setAVFoundationEnabled([preferences isAVFoundationEnabled]);
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+    settings.setMockCaptureDevicesEnabled([preferences mockCaptureDevicesEnabled]);
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -3730,26 +3737,27 @@ static inline IMP getMethod(id o, SEL s)
 
     NSMutableArray *eventRegionArray = [[[NSMutableArray alloc] initWithCapacity:rects.size()] autorelease];
 
+    NSView <WebDocumentView> *documentView = [[[self mainFrame] frameView] documentView];
     Vector<IntRect>::const_iterator end = rects.end();
     for (Vector<IntRect>::const_iterator it = rects.begin(); it != end; ++it) {
         const IntRect& rect = *it;
         if (rect.isEmpty())
             continue;
 
-        // Note that these rectangles are in the coordinate system of the document (inside the WebHTMLView), which is not
-        // the same as the coordinate system of the WebView. If you want to do comparisons with locations in the WebView,
-        // you must convert between the two using WAKView's convertRect:toView: selector. This will take care of scaling
-        // and translations (which are relevant for right-to-left column layout).
+        // The touch rectangles are in the coordinate system of the document (inside the WebHTMLView), which is not
+        // the same as the coordinate system of the WebView. UIWebView currently expects view coordinates, so we'll
+        // convert them here now.
+        IntRect viewRect = IntRect([documentView convertRect:rect toView:self]);
 
         // The event region wants this points in this order:
         //  p2------p3
         //  |       |
         //  p1------p4
         //
-        WebEventRegion *eventRegion = [[WebEventRegion alloc] initWithPoints:FloatPoint(rect.x(), rect.maxY())
-                                                                            :FloatPoint(rect.x(), rect.y())
-                                                                            :FloatPoint(rect.maxX(), rect.y())
-                                                                            :FloatPoint(rect.maxX(), rect.maxY())];
+        WebEventRegion *eventRegion = [[WebEventRegion alloc] initWithPoints:FloatPoint(viewRect.x(), viewRect.maxY())
+                                                                            :FloatPoint(viewRect.x(), viewRect.y())
+                                                                            :FloatPoint(viewRect.maxX(), viewRect.y())
+                                                                            :FloatPoint(viewRect.maxX(), viewRect.maxY())];
         if (eventRegion) {
             [eventRegionArray addObject:eventRegion];
             [eventRegion release];
@@ -4482,7 +4490,8 @@ static Vector<String> toStringVector(NSArray* patterns)
 + (void)_setLoadResourcesSerially:(BOOL)serialize 
 {
     WebPlatformStrategies::initializeIfNecessary();
-    resourceLoadScheduler()->setSerialLoadingEnabled(serialize);
+
+    webResourceLoadScheduler().setSerialLoadingEnabled(serialize);
 }
 
 + (BOOL)_HTTPPipeliningEnabled
@@ -5146,15 +5155,6 @@ static bool needsWebViewInitThreadWorkaround()
     }
 
     [super dealloc];
-}
-
-- (void)finalize
-{
-    ASSERT(_private->closed);
-
-    --WebViewCount;
-
-    [super finalize];
 }
 
 - (void)close
@@ -6603,6 +6603,18 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 #endif // !PLATFORM(IOS)
 
 @end
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebViewAdditions.mm>
+#else
+@implementation WebView (WebUpdateWebViewAdditions)
+
+- (void)updateWebViewAdditions
+{
+}
+
+@end
+#endif // PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
 
 @implementation WebView (WebPendingPublic)
 

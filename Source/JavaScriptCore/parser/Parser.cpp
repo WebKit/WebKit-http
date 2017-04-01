@@ -827,21 +827,27 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseBi
 template <typename LexerType>
 template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseAssignmentElement(TreeBuilder& context, DestructuringKind kind, ExportType exportType, const Identifier** duplicateIdentifier, bool* hasDestructuringPattern, AssignmentContext bindingContext, int depth)
 {
-    SavePoint savePoint = createSavePoint();
     TreeDestructuringPattern assignmentTarget = 0;
 
-    if (match(OPENBRACE) || match(OPENBRACKET))
+    if (match(OPENBRACE) || match(OPENBRACKET)) {
+        SavePoint savePoint = createSavePoint();
         assignmentTarget = parseDestructuringPattern(context, kind, exportType, duplicateIdentifier, hasDestructuringPattern, bindingContext, depth);
-    if (!assignmentTarget || match(DOT) || match(OPENBRACKET) || match(OPENPAREN) || match(TEMPLATE)) {
+        if (assignmentTarget && !match(DOT) && !match(OPENBRACKET) && !match(OPENPAREN) && !match(TEMPLATE))
+            return assignmentTarget;
         restoreSavePoint(savePoint);
-        JSTextPosition startPosition = tokenStartPosition();
-        auto element = parseMemberExpression(context);
-
-        semanticFailIfFalse(element && context.isAssignmentLocation(element), "Invalid destructuring assignment target");
-
-        return createAssignmentElement(context, element, startPosition, lastTokenEndPosition());
     }
-    return assignmentTarget;
+
+    JSTextPosition startPosition = tokenStartPosition();
+    auto element = parseMemberExpression(context);
+
+    semanticFailIfFalse(element && context.isAssignmentLocation(element), "Invalid destructuring assignment target");
+
+    if (strictMode() && m_lastIdentifier && context.isResolve(element)) {
+        bool isEvalOrArguments = m_vm->propertyNames->eval == *m_lastIdentifier || m_vm->propertyNames->arguments == *m_lastIdentifier;
+        failIfTrueIfStrict(isEvalOrArguments, "Cannot modify '", m_lastIdentifier->impl(), "' in strict mode");
+    }
+
+    return createAssignmentElement(context, element, startPosition, lastTokenEndPosition());
 }
 
 template <typename LexerType>
@@ -924,8 +930,15 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseDe
                 next();
                 if (consume(COLON))
                     innerPattern = parseBindingOrAssignmentElement(context, kind, exportType, duplicateIdentifier, hasDestructuringPattern, bindingContext, depth + 1);
-                else
+                else {
+                    if (kind == DestructureToExpressions) {
+                        bool isEvalOrArguments = m_vm->propertyNames->eval == *propertyName || m_vm->propertyNames->arguments == *propertyName;
+                        if (isEvalOrArguments && strictMode())
+                            reclassifyExpressionError(ErrorIndicatesPattern, ErrorIndicatesNothing);
+                        failIfTrueIfStrict(isEvalOrArguments, "Cannot modify '", propertyName->impl(), "' in strict mode");
+                    }
                     innerPattern = createBindingPattern(context, kind, exportType, *propertyName, identifierToken, bindingContext, duplicateIdentifier);
+                }
             } else {
                 JSTokenType tokenType = m_token.m_type;
                 switch (m_token.m_type) {
@@ -1978,11 +1991,11 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
         semanticFailIfTrue(m_vm->propertyNames->arguments == *functionInfo.name, "'", functionInfo.name->impl(), "' is not a valid function name in strict mode");
         semanticFailIfTrue(m_vm->propertyNames->eval == *functionInfo.name, "'", functionInfo.name->impl(), "' is not a valid function name in strict mode");
     }
-    if (functionScope->hasDirectSuper()) {
+    if (functionScope->hasDirectSuper() && functionBodyType == StandardFunctionBodyBlock) {
         semanticFailIfTrue(!isClassConstructor, "Cannot call super() outside of a class constructor");
         semanticFailIfTrue(constructorKind != ConstructorKind::Derived, "Cannot call super() in a base class constructor");
     }
-    if (functionScope->needsSuperBinding())
+    if (functionScope->needsSuperBinding() && functionBodyType == StandardFunctionBodyBlock)
         semanticFailIfTrue(expectedSuperBinding == SuperBinding::NotNeeded, "super can only be used in a method of a derived class");
 
     JSTokenLocation location = JSTokenLocation(m_token.m_location);

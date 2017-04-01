@@ -26,7 +26,7 @@
 #include "config.h"
 #include "FTLExceptionHandlerManager.h"
 
-#if ENABLE(FTL_JIT)
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #include "FTLState.h"
 
@@ -82,7 +82,7 @@ CodeLocationLabel ExceptionHandlerManager::lazySlowPathExceptionTarget(uint32_t 
         return CodeLocationLabel();
 
     size_t osrExitIndex = findResult->value;
-    RELEASE_ASSERT(m_state.jitCode->osrExit[osrExitIndex].m_descriptor.m_exceptionType == ExceptionType::LazySlowPath);
+    RELEASE_ASSERT(m_state.jitCode->osrExit[osrExitIndex].m_exceptionType == ExceptionType::LazySlowPath);
     OSRExitCompilationInfo& info = m_state.finalizer->osrExit[osrExitIndex];
     RELEASE_ASSERT(info.m_thunkLabel.isSet());
     return m_state.finalizer->exitThunksLinkBuffer->locationOf(info.m_thunkLabel);
@@ -109,7 +109,7 @@ OSRExit* ExceptionHandlerManager::getCallOSRExitCommon(uint32_t stackmapRecordIn
         return nullptr;
     size_t osrExitIndex = findResult->value;
     OSRExit* exit = &m_state.jitCode->osrExit[osrExitIndex];
-    RELEASE_ASSERT(exit->m_descriptor.m_exceptionType == ExceptionType::JSCall);
+    RELEASE_ASSERT(exit->m_exceptionType == ExceptionType::JSCall);
     return exit; 
 }
 
@@ -164,4 +164,4 @@ CallSiteIndex ExceptionHandlerManager::procureCallSiteIndex(uint32_t stackmapRec
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && !FTL_USES_B3

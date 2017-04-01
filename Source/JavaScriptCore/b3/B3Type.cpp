@@ -46,6 +46,9 @@ void printInternal(PrintStream& out, Type type)
     case Int64:
         out.print("Int64");
         return;
+    case Float:
+        out.print("Float");
+        return;
     case Double:
         out.print("Double");
         return;

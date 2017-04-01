@@ -242,11 +242,14 @@ void RenderBlock::styleWillChange(StyleDifference diff, const RenderStyle& newSt
 
     setReplaced(newStyle.isDisplayInlineType());
 
+    if (oldStyle && oldStyle->hasTransformRelatedProperty() && !newStyle.hasTransformRelatedProperty())
+        removePositionedObjects(nullptr, NewContainingBlock);
+
     if (oldStyle && parent() && diff == StyleDifferenceLayout && oldStyle->position() != newStyle.position()) {
         if (newStyle.position() == StaticPosition)
             // Clear our positioned objects list. Our absolutely positioned descendants will be
             // inserted into our containing block's positioned objects list during layout.
-            removePositionedObjects(0, NewContainingBlock);
+            removePositionedObjects(nullptr, NewContainingBlock);
         else if (oldStyle->position() == StaticPosition) {
             // Remove our absolutely positioned descendants from their current containing block.
             // They will be inserted into our positioned objects list during layout.
@@ -2748,8 +2751,27 @@ void RenderBlock::computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth
             childBox.computeLogicalHeight(childBox.borderAndPaddingLogicalHeight(), 0, computedValues);
             childMinPreferredLogicalWidth = childMaxPreferredLogicalWidth = computedValues.m_extent;
         } else {
-            childMinPreferredLogicalWidth = child->minPreferredLogicalWidth();
-            childMaxPreferredLogicalWidth = child->maxPreferredLogicalWidth();
+            if (is<RenderBlock>(*child) && !is<RenderTable>(*child)) {
+                const Length& computedInlineSize = child->style().logicalWidth();
+                if (computedInlineSize.isFitContent() || computedInlineSize.isFillAvailable() || computedInlineSize.isAuto()
+                    || computedInlineSize.isPercentOrCalculated()) {
+                    // FIXME: we could do a lot better for percents (we're considering them always indefinite)
+                    // but we need https://bugs.webkit.org/show_bug.cgi?id=152262 to be fixed first
+                    childMinPreferredLogicalWidth = child->minPreferredLogicalWidth();
+                    childMaxPreferredLogicalWidth = child->maxPreferredLogicalWidth();
+                } else {
+                    ASSERT(computedInlineSize.isMinContent() || computedInlineSize.isMaxContent() || computedInlineSize.isFixed());
+                    LogicalExtentComputedValues computedValues;
+                    downcast<RenderBlock>(*child).computeLogicalWidthInRegion(computedValues);
+                    childMinPreferredLogicalWidth = childMaxPreferredLogicalWidth = computedValues.m_extent;
+                    child->setPreferredLogicalWidthsDirty(false);
+                }
+            } else {
+                // FIXME: we leave the original implementation as default fallback. Still need to specialcase
+                // some other situations: https://drafts.csswg.org/css-sizing/#intrinsic
+                childMinPreferredLogicalWidth = child->minPreferredLogicalWidth();
+                childMaxPreferredLogicalWidth = child->maxPreferredLogicalWidth();
+            }
         }
 
         LayoutUnit w = childMinPreferredLogicalWidth + margin;

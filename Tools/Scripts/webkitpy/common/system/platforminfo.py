@@ -142,7 +142,7 @@ class PlatformInfo(object):
             return 'linux'
         if sys_platform.startswith('haiku'):
             return 'haiku'
-        if sys_platform in ('win32', 'cygwin'):
+        if sys_platform.startswith('win') or sys_platform == 'cygwin':
             return 'win'
         if sys_platform.startswith('freebsd'):
             return 'freebsd'

@@ -148,7 +148,7 @@ public:
     int offsetForPosition(const TextRun&, float position, bool includePartialGlyphs) const;
     void adjustSelectionRectForText(const TextRun&, LayoutRect& selectionRect, int from = 0, int to = -1) const;
 
-    bool isSmallCaps() const { return m_fontDescription.smallCaps(); }
+    bool isSmallCaps() const { return m_fontDescription.variantCaps() == FontVariantCaps::Small; }
 
     float wordSpacing() const { return m_wordSpacing; }
     float letterSpacing() const { return m_letterSpacing; }
@@ -187,7 +187,7 @@ public:
     GlyphData glyphDataForCharacter(UChar32, bool mirror, FontVariant = AutoVariant) const;
     
 #if PLATFORM(COCOA)
-    const Font* fontForCombiningCharacterSequence(const UChar*, size_t length, FontVariant) const;
+    const Font* fontForCombiningCharacterSequence(const UChar*, size_t length) const;
 #endif
 
     static bool isCJKIdeograph(UChar32);
@@ -222,9 +222,9 @@ public:
 private:
     enum ForTextEmphasisOrNot { NotForTextEmphasis, ForTextEmphasis };
 
+    float glyphBufferForTextRun(CodePath, const TextRun&, int from, int to, GlyphBuffer&) const;
     // Returns the initial in-stream advance.
     float getGlyphsAndAdvancesForSimpleText(const TextRun&, int from, int to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
-    float drawSimpleText(GraphicsContext&, const TextRun&, const FloatPoint&, int from, int to) const;
     void drawEmphasisMarksForSimpleText(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, int from, int to) const;
     void drawGlyphBuffer(GraphicsContext&, const TextRun&, const GlyphBuffer&, FloatPoint&) const;
     void drawEmphasisMarks(GraphicsContext&, const TextRun&, const GlyphBuffer&, const AtomicString&, const FloatPoint&) const;
@@ -239,7 +239,6 @@ private:
 
     // Returns the initial in-stream advance.
     float getGlyphsAndAdvancesForComplexText(const TextRun&, int from, int to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
-    float drawComplexText(GraphicsContext&, const TextRun&, const FloatPoint&, int from, int to) const;
     void drawEmphasisMarksForComplexText(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, int from, int to) const;
     float floatWidthForComplexText(const TextRun&, HashSet<const Font*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
     int offsetForPositionForComplexText(const TextRun&, float position, bool includePartialGlyphs) const;
@@ -324,10 +323,12 @@ private:
 
     bool computeRequiresShaping() const
     {
+#if PLATFORM(COCOA)
         if (!m_fontDescription.variantSettings().isAllNormal())
             return true;
         if (m_fontDescription.featureSettings().size())
             return true;
+#endif
         return advancedTextRenderingMode();
     }
 

@@ -26,8 +26,12 @@
 #ifndef FTLJSTailCall_h
 #define FTLJSTailCall_h
 
-#if ENABLE(FTL_JIT)
+#include "DFGCommon.h"
 
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
+
+#include "B3PatchpointValue.h"
+#include "DFGCommon.h"
 #include "FTLExitValue.h"
 #include "FTLJSCallBase.h"
 #include "FTLStackmapArgumentList.h"
@@ -42,10 +46,12 @@ namespace FTL {
 
 class JSTailCall : public JSCallBase {
 public:
-    JSTailCall(unsigned stackmapID, DFG::Node*, Vector<ExitValue> arguments);
+    JSTailCall(
+        unsigned stackmapID,
+        DFG::Node*, const Vector<ExitValue>& arguments);
 
     void emit(JITCode&, CCallHelpers&);
-    
+
     unsigned stackmapID() const { return m_stackmapID; }
 
     unsigned estimatedSize() const { return m_estimatedSize; }
@@ -68,7 +74,7 @@ public:
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #endif // FTLJSTailCall_h
 

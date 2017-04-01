@@ -65,6 +65,7 @@ EventTarget
 ForwardDeclareInHeader
 GenerateIsReachable=|Impl|ImplWebGLRenderingContext|ImplDocument|ImplElementRoot|ImplFrame|ImplOwnerNodeRoot
 GetterRaisesException
+GetterRaisesExceptionWithMessage
 GlobalContext=DOMWindow|WorkerGlobalScope|DedicatedWorkerGlobalScope
 Immutable
 ImplementationLacksVTable
@@ -106,12 +107,14 @@ PassContext
 Private
 PutForwards=*
 RaisesException
+RaisesExceptionWithMessage
 Reflect=*
 Replaceable
 ReplaceableConstructor
 ReportExtraMemoryCost
 RequiresExistingAtomicString
 SetterRaisesException
+SetterRaisesExceptionWithMessage
 SetterCallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow
 SkipVTableValidation
 StrictTypeChecking

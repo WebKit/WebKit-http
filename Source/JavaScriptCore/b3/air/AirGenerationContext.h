@@ -29,8 +29,15 @@
 #if ENABLE(B3_JIT)
 
 #include <wtf/SharedTask.h>
+#include <wtf/Vector.h>
 
-namespace JSC { namespace B3 { namespace Air {
+namespace JSC {
+
+class CCallHelpers;
+
+namespace B3 { namespace Air {
+
+class Code;
 
 struct GenerationContext {
     typedef void LatePathFunction(CCallHelpers&, GenerationContext&);

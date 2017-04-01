@@ -32,7 +32,13 @@ namespace WebKit {
 
 void WebPreferences::platformInitializeStore()
 {
-    notImplemented();
+    setWebGLEnabled(true);
+    setFullScreenEnabled(true);
+    setWebAudioEnabled(true);
+#if ENABLE(SPELLCHECK)
+    setAsynchronousSpellCheckingEnabled(true);
+#endif
+    setInteractiveFormValidationEnabled(true);
 }
 
 void WebPreferences::platformUpdateStringValueForKey(const String&, const String&)

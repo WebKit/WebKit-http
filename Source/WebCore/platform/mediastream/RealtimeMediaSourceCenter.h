@@ -44,7 +44,7 @@ namespace WebCore {
 class MediaConstraints;
 class MediaStreamCreationClient;
 class MediaStreamTrackSourcesRequestClient;
-class RealtimeMediaSourceStates;
+class RealtimeMediaSourceSettings;
 class RealtimeMediaSourceSupportedConstraints;
 class TrackSourceInfo;
 
@@ -53,7 +53,7 @@ public:
     virtual ~RealtimeMediaSourceCenter();
 
     WEBCORE_EXPORT static RealtimeMediaSourceCenter& singleton();
-    static void setSharedStreamCenter(RealtimeMediaSourceCenter*);
+    static void setSharedStreamCenterOverride(RealtimeMediaSourceCenter*);
 
     virtual void validateRequestConstraints(MediaStreamCreationClient*, RefPtr<MediaConstraints>& audioConstraints, RefPtr<MediaConstraints>& videoConstraints) = 0;
 

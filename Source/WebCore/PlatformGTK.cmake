@@ -77,19 +77,20 @@ list(APPEND WebCore_SOURCES
     platform/KillRingNone.cpp
     platform/PlatformStrategies.cpp
 
+    platform/audio/glib/AudioBusGLib.cpp
+
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
     platform/audio/gstreamer/AudioSourceProviderGStreamer.cpp
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
 
-    platform/audio/gtk/AudioBusGtk.cpp
-
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
     platform/glib/KeyedDecoderGlib.cpp
     platform/glib/KeyedEncoderGlib.cpp
+    platform/glib/MainThreadSharedTimerGLib.cpp
 
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
@@ -162,7 +163,6 @@ list(APPEND WebCore_SOURCES
     platform/gtk/LanguageGtk.cpp
     platform/gtk/LoggingGtk.cpp
     platform/gtk/MIMETypeRegistryGtk.cpp
-    platform/gtk/MainThreadSharedTimerGtk.cpp
     platform/gtk/SharedBufferGtk.cpp
     platform/gtk/TemporaryLinkStubs.cpp
     platform/gtk/UserAgentGtk.cpp
@@ -442,6 +442,8 @@ if (ENABLE_THREADED_COMPOSITOR)
         page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
         page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
 
+        platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
+        platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
         platform/graphics/texmap/coordinated/AreaAllocator.cpp
         platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
         platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp

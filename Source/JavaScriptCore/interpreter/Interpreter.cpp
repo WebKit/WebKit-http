@@ -144,8 +144,13 @@ JSValue eval(CallFrame* callFrame)
     JSValue program = callFrame->argument(0);
     if (!program.isString())
         return program;
-    
+
     TopCallFrameSetter topCallFrame(callFrame->vm(), callFrame);
+    JSGlobalObject* globalObject = callFrame->lexicalGlobalObject();
+    if (!globalObject->evalEnabled()) {
+        callFrame->vm().throwException(callFrame, createEvalError(callFrame, globalObject->evalDisabledErrorMessage()));
+        return jsUndefined();
+    }
     String programSource = asString(program)->value(callFrame);
     if (callFrame->hadException())
         return JSValue();
@@ -180,7 +185,8 @@ JSValue eval(CallFrame* callFrame)
         // If the literal parser bailed, it should not have thrown exceptions.
         ASSERT(!callFrame->vm().exception());
 
-        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, callerCodeBlock->isStrictMode(), thisTDZMode, sourceCode, callerScopeChain);
+        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, callerCodeBlock->isStrictMode(), thisTDZMode, callerCodeBlock->unlinkedCodeBlock()->isDerivedConstructorContext(), callerCodeBlock->unlinkedCodeBlock()->isArrowFunction(), sourceCode, callerScopeChain);
+
         if (!eval)
             return jsUndefined();
     }
@@ -843,7 +849,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
 
     Vector<JSONPData> JSONPData;
     bool parseResult;
-    const String programSource = program->source().toString();
+    StringView programSource = program->source().view();
     if (programSource.isNull())
         return jsUndefined();
     if (programSource.is8Bit()) {
@@ -1304,7 +1310,7 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
         return checkedReturn(callFrame->vm().throwException(callFrame, compileError));
     ModuleProgramCodeBlock* codeBlock = executable->codeBlock();
 
-    if (UNLIKELY(vm.watchdog && vm.watchdog->didFire(callFrame)))
+    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
         return throwTerminatedExecutionException(callFrame);
 
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.

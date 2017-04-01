@@ -4902,7 +4902,8 @@ void WebPageProxy::processDidCrash()
 #if PLATFORM(IOS)
 void WebPageProxy::processWillBecomeSuspended()
 {
-    ASSERT(m_isValid);
+    if (!isValid())
+        return;
 
     m_hasNetworkRequestsOnSuspended = m_pageLoadState.networkRequestsInProgress();
     if (m_hasNetworkRequestsOnSuspended)
@@ -4911,7 +4912,8 @@ void WebPageProxy::processWillBecomeSuspended()
 
 void WebPageProxy::processWillBecomeForeground()
 {
-    ASSERT(m_isValid);
+    if (!isValid())
+        return;
 
     if (m_hasNetworkRequestsOnSuspended) {
         setNetworkRequestsInProgress(true);
@@ -5257,6 +5259,18 @@ void WebPageProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint
 
     if (!m_uiClient->decidePolicyForUserMediaPermissionRequest(*this, *frame, *origin.get(), *request.get()))
         request->deny();
+}
+
+void WebPageProxy::checkUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier)
+{
+    WebFrameProxy* frame = m_process->webFrame(frameID);
+    MESSAGE_CHECK(frame);
+
+    RefPtr<API::SecurityOrigin> origin = API::SecurityOrigin::create(SecurityOrigin::createFromDatabaseIdentifier(originIdentifier));
+    RefPtr<UserMediaPermissionCheckProxy> request = m_userMediaPermissionRequestManager.createUserMediaPermissionCheck(userMediaID);
+
+    if (!m_uiClient->checkUserMediaPermissionForOrigin(*this, *frame, *origin.get(), *request.get()))
+        request->setHasPersistentPermission(false);
 }
 
 void WebPageProxy::requestNotificationPermission(uint64_t requestID, const String& originString)

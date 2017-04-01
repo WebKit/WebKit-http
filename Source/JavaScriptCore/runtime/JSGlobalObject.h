@@ -665,11 +665,12 @@ public:
 
     TemplateRegistry& templateRegistry() { return m_templateRegistry; }
 
+    static ptrdiff_t weakRandomOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_weakRandom); }
     double weakRandomNumber() { return m_weakRandom.get(); }
     unsigned weakRandomInteger() { return m_weakRandom.getUint32(); }
 
     UnlinkedProgramCodeBlock* createProgramCodeBlock(CallFrame*, ProgramExecutable*, JSObject** exception);
-    UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, ThisTDZMode, const VariableEnvironment*);
+    UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, ThisTDZMode, bool isArrowFunctionContext, const VariableEnvironment*);
     UnlinkedModuleProgramCodeBlock* createModuleProgramCodeBlock(CallFrame*, ModuleProgramExecutable*);
 
 protected:

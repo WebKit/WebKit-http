@@ -302,8 +302,11 @@ private:
             while (shouldCopyPropagate(value))
                 value = value->child(0);
             Tmp& realTmp = m_valueToTmp[value];
-            if (!realTmp)
+            if (!realTmp) {
                 realTmp = m_code.newTmp(Arg::typeForB3Type(value->type()));
+                if (m_procedure.isFastConstant(value->key()))
+                    m_code.addFastTmp(realTmp);
+            }
             tmp = realTmp;
         }
         return tmp;
@@ -366,9 +369,10 @@ private:
     // This turns the given operand into an address.
     Arg effectiveAddr(Value* address)
     {
-        // FIXME: Consider matching an address expression even if we've already assigned a
-        // Tmp to it. https://bugs.webkit.org/show_bug.cgi?id=150777
-        if (m_valueToTmp[address])
+        static const unsigned lotsOfUses = 10; // This is arbitrary and we should tune it eventually.
+        
+        // Only match if the address value isn't used in some large number of places.
+        if (m_useCounts.numUses(address) > lotsOfUses)
             return Arg::addr(tmp(address));
         
         switch (address->opcode()) {
@@ -475,7 +479,7 @@ private:
 
     // By convention, we use Oops to mean "I don't know".
     Air::Opcode tryOpcodeForType(
-        Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble, Type type)
+        Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble, Air::Opcode opcodeFloat, Type type)
     {
         Air::Opcode opcode;
         switch (type) {
@@ -484,6 +488,9 @@ private:
             break;
         case Int64:
             opcode = opcode64;
+            break;
+        case Float:
+            opcode = opcodeFloat;
             break;
         case Double:
             opcode = opcodeDouble;
@@ -496,18 +503,28 @@ private:
         return opcode;
     }
 
-    Air::Opcode opcodeForType(
-        Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble, Type type)
+    Air::Opcode tryOpcodeForType(Air::Opcode opcode32, Air::Opcode opcode64, Type type)
     {
-        Air::Opcode opcode = tryOpcodeForType(opcode32, opcode64, opcodeDouble, type);
+        return tryOpcodeForType(opcode32, opcode64, Air::Oops, Air::Oops, type);
+    }
+
+    Air::Opcode opcodeForType(
+        Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble, Air::Opcode opcodeFloat, Type type)
+    {
+        Air::Opcode opcode = tryOpcodeForType(opcode32, opcode64, opcodeDouble, opcodeFloat, type);
         RELEASE_ASSERT(opcode != Air::Oops);
         return opcode;
     }
 
-    template<Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble>
+    Air::Opcode opcodeForType(Air::Opcode opcode32, Air::Opcode opcode64, Type type)
+    {
+        return tryOpcodeForType(opcode32, opcode64, Air::Oops, Air::Oops, type);
+    }
+
+    template<Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble = Air::Oops, Air::Opcode opcodeFloat = Air::Oops>
     void appendUnOp(Value* value)
     {
-        Air::Opcode opcode = opcodeForType(opcode32, opcode64, opcodeDouble, value->type());
+        Air::Opcode opcode = opcodeForType(opcode32, opcode64, opcodeDouble, opcodeFloat, value->type());
         
         Tmp result = tmp(m_value);
 
@@ -562,12 +579,10 @@ private:
         return result;
     }
 
-    template<
-        Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble,
-        Commutativity commutativity = NotCommutative>
+    template<Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble, Air::Opcode opcodeFloat, Commutativity commutativity = NotCommutative>
     void appendBinOp(Value* left, Value* right)
     {
-        Air::Opcode opcode = opcodeForType(opcode32, opcode64, opcodeDouble, left->type());
+        Air::Opcode opcode = opcodeForType(opcode32, opcode64, opcodeDouble, opcodeFloat, left->type());
         
         Tmp result = tmp(m_value);
         
@@ -607,21 +622,23 @@ private:
 
         // At this point, we prefer versions of the operation that have a fused load or an immediate
         // over three operand forms.
-        
-        if (commutativity == Commutative) {
-            ArgPromise leftAddr = loadPromise(left);
-            if (isValidForm(opcode, leftAddr.kind(), Arg::Tmp)) {
-                append(relaxedMoveForType(m_value->type()), tmp(right), result);
-                append(opcode, leftAddr.consume(*this), result);
+
+        if (left != right) {
+            if (commutativity == Commutative) {
+                ArgPromise leftAddr = loadPromise(left);
+                if (isValidForm(opcode, leftAddr.kind(), Arg::Tmp)) {
+                    append(relaxedMoveForType(m_value->type()), tmp(right), result);
+                    append(opcode, leftAddr.consume(*this), result);
+                    return;
+                }
+            }
+
+            ArgPromise rightAddr = loadPromise(right);
+            if (isValidForm(opcode, rightAddr.kind(), Arg::Tmp)) {
+                append(relaxedMoveForType(m_value->type()), tmp(left), result);
+                append(opcode, rightAddr.consume(*this), result);
                 return;
             }
-        }
-
-        ArgPromise rightAddr = loadPromise(right);
-        if (isValidForm(opcode, rightAddr.kind(), Arg::Tmp)) {
-            append(relaxedMoveForType(m_value->type()), tmp(left), result);
-            append(opcode, rightAddr.consume(*this), result);
-            return;
         }
 
         if (imm(right) && isValidForm(opcode, Arg::Imm, Arg::Tmp)) {
@@ -645,10 +662,16 @@ private:
         append(opcode, tmp(right), result);
     }
 
+    template<Air::Opcode opcode32, Air::Opcode opcode64, Commutativity commutativity = NotCommutative>
+    void appendBinOp(Value* left, Value* right)
+    {
+        appendBinOp<opcode32, opcode64, Air::Oops, Air::Oops, commutativity>(left, right);
+    }
+
     template<Air::Opcode opcode32, Air::Opcode opcode64>
     void appendShift(Value* value, Value* amount)
     {
-        Air::Opcode opcode = opcodeForType(opcode32, opcode64, Air::Oops, value->type());
+        Air::Opcode opcode = opcodeForType(opcode32, opcode64, value->type());
         
         if (imm(amount)) {
             append(Move, tmp(value), tmp(m_value));
@@ -664,7 +687,7 @@ private:
     template<Air::Opcode opcode32, Air::Opcode opcode64>
     bool tryAppendStoreUnOp(Value* value)
     {
-        Air::Opcode opcode = tryOpcodeForType(opcode32, opcode64, Air::Oops, value->type());
+        Air::Opcode opcode = tryOpcodeForType(opcode32, opcode64, value->type());
         if (opcode == Air::Oops)
             return false;
         
@@ -687,7 +710,7 @@ private:
         Air::Opcode opcode32, Air::Opcode opcode64, Commutativity commutativity = NotCommutative>
     bool tryAppendStoreBinOp(Value* left, Value* right)
     {
-        Air::Opcode opcode = tryOpcodeForType(opcode32, opcode64, Air::Oops, left->type());
+        Air::Opcode opcode = tryOpcodeForType(opcode32, opcode64, left->type());
         if (opcode == Air::Oops)
             return false;
         
@@ -723,14 +746,18 @@ private:
         return true;
     }
 
-    Inst createStore(Value* value, const Arg& dest)
+    Inst createStore(Air::Opcode move, Value* value, const Arg& dest)
     {
-        Air::Opcode move = moveForType(value->type());
-
         if (imm(value) && isValidForm(move, Arg::Imm, dest.kind()))
             return Inst(move, m_value, imm(value), dest);
 
         return Inst(move, m_value, tmp(value), dest);
+    }
+
+    Inst createStore(Value* value, const Arg& dest)
+    {
+        Air::Opcode moveOpcode = moveForType(value->type());
+        return createStore(moveOpcode, value, dest);
     }
 
     void appendStore(Value* value, const Arg& dest)
@@ -746,11 +773,15 @@ private:
         case Int64:
             RELEASE_ASSERT(is64Bit());
             return Move;
+        case Float:
+            return MoveFloat;
         case Double:
             return MoveDouble;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
+        case Void:
+            break;
         }
+        RELEASE_ASSERT_NOT_REACHED();
+        return Air::Oops;
     }
 
     Air::Opcode relaxedMoveForType(Type type)
@@ -759,11 +790,14 @@ private:
         case Int32:
         case Int64:
             return Move;
+        case Float:
         case Double:
             return MoveDouble;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
+        case Void:
+            break;
         }
+        RELEASE_ASSERT_NOT_REACHED();
+        return Air::Oops;
     }
 
     template<typename... Arguments>
@@ -797,7 +831,9 @@ private:
 
             Arg arg;
             switch (value.rep().kind()) {
-            case ValueRep::Any:
+            case ValueRep::WarmAny:
+            case ValueRep::ColdAny:
+            case ValueRep::LateColdAny:
                 if (imm(value.value()))
                     arg = imm(value.value());
                 else if (value.value()->hasInt64())
@@ -828,28 +864,153 @@ private:
     }
     
     // Create an Inst to do the comparison specified by the given value.
-    template<typename CompareFunctor, typename TestFunctor, typename CompareDoubleFunctor>
+    template<typename CompareFunctor, typename TestFunctor, typename CompareDoubleFunctor, typename CompareFloatFunctor>
     Inst createGenericCompare(
         Value* value,
         const CompareFunctor& compare, // Signature: (Arg::Width, Arg relCond, Arg, Arg) -> Inst
         const TestFunctor& test, // Signature: (Arg::Width, Arg resCond, Arg, Arg) -> Inst
         const CompareDoubleFunctor& compareDouble, // Signature: (Arg doubleCond, Arg, Arg) -> Inst
+        const CompareFloatFunctor& compareFloat, // Signature: (Arg doubleCond, Arg, Arg) -> Inst
         bool inverted = false)
     {
-        // Chew through any negations. It's not strictly necessary for this to be a loop, but we like
-        // to follow the rule that the instruction selector reduces strength whenever it doesn't
-        // require making things more complicated.
+        // NOTE: This is totally happy to match comparisons that have already been computed elsewhere
+        // since on most architectures, the cost of branching on a previously computed comparison
+        // result is almost always higher than just doing another fused compare/branch. The only time
+        // it could be worse is if we have a binary comparison and both operands are variables (not
+        // constants), and we encounter register pressure. Even in this case, duplicating the compare
+        // so that we can fuse it to the branch will be more efficient most of the time, since
+        // register pressure is not *that* common. For this reason, this algorithm will always
+        // duplicate the comparison.
+        //
+        // However, we cannot duplicate loads. The canBeInternal() on a load will assume that we
+        // already validated canBeInternal() on all of the values that got us to the load. So, even
+        // if we are sharing a value, we still need to call canBeInternal() for the purpose of
+        // tracking whether we are still in good shape to fuse loads.
+        //
+        // We could even have a chain of compare values that we fuse, and any member of the chain
+        // could be shared. Once any of them are shared, then the shared one's transitive children
+        // cannot be locked (i.e. commitInternal()). But if none of them are shared, then we want to
+        // lock all of them because that's a prerequisite to fusing the loads so that the loads don't
+        // get duplicated. For example, we might have: 
+        //
+        //     @tmp1 = LessThan(@a, @b)
+        //     @tmp2 = Equal(@tmp1, 0)
+        //     Branch(@tmp2)
+        //
+        // If either @a or @b are loads, then we want to have locked @tmp1 and @tmp2 so that they
+        // don't emit the loads a second time. But if we had another use of @tmp2, then we cannot
+        // lock @tmp1 (or @a or @b) because then we'll get into trouble when the other values that
+        // try to share @tmp1 with us try to do their lowering.
+        //
+        // There's one more wrinkle. If we don't lock an internal value, then this internal value may
+        // have already separately locked its children. So, if we're not locking a value then we need
+        // to make sure that its children aren't locked. We encapsulate this in two ways:
+        //
+        // canCommitInternal: This variable tells us if the values that we've fused so far are
+        // locked. This means that we're not sharing any of them with anyone. This permits us to fuse
+        // loads. If it's false, then we cannot fuse loads and we also need to ensure that the
+        // children of any values we try to fuse-by-sharing are not already locked. You don't have to
+        // worry about the children locking thing if you use prepareToFuse() before trying to fuse a
+        // sharable value. But, you do need to guard any load fusion by checking if canCommitInternal
+        // is true.
+        //
+        // FusionResult prepareToFuse(value): Call this when you think that you would like to fuse
+        // some value and that value is not a load. It will automatically handle the shared-or-locked
+        // issues and it will clear canCommitInternal if necessary. This will return CannotFuse
+        // (which acts like false) if the value cannot be locked and its children are locked. That's
+        // rare, but you just need to make sure that you do smart things when this happens (i.e. just
+        // use the value rather than trying to fuse it). After you call prepareToFuse(), you can
+        // still change your mind about whether you will actually fuse the value. If you do fuse it,
+        // you need to call commitFusion(value, fusionResult).
+        //
+        // commitFusion(value, fusionResult): Handles calling commitInternal(value) if fusionResult
+        // is FuseAndCommit.
+        
+        bool canCommitInternal = true;
+
+        enum FusionResult {
+            CannotFuse,
+            FuseAndCommit,
+            Fuse
+        };
+        auto prepareToFuse = [&] (Value* value) -> FusionResult {
+            if (value == m_value) {
+                // It's not actually internal. It's the root value. We're good to go.
+                return Fuse;
+            }
+
+            if (canCommitInternal && canBeInternal(value)) {
+                // We are the only users of this value. This also means that the value's children
+                // could not have been locked, since we have now proved that m_value dominates value
+                // in the data flow graph. To only other way to value is from a user of m_value. If
+                // value's children are shared with others, then they could not have been locked
+                // because their use count is greater than 1. If they are only used from value, then
+                // in order for value's children to be locked, value would also have to be locked,
+                // and we just proved that it wasn't.
+                return FuseAndCommit;
+            }
+
+            // We're going to try to share value with others. It's possible that some other basic
+            // block had already emitted code for value and then matched over its children and then
+            // locked them, in which case we just want to use value instead of duplicating it. So, we
+            // validate the children. Note that this only arises in linear chains like:
+            //
+            //     BB#1:
+            //         @1 = Foo(...)
+            //         @2 = Bar(@1)
+            //         Jump(#2)
+            //     BB#2:
+            //         @3 = Baz(@2)
+            //
+            // Notice how we could start by generating code for BB#1 and then decide to lock @1 when
+            // generating code for @2, if we have some way of fusing Bar and Foo into a single
+            // instruction. This is legal, since indeed @1 only has one user. The fact that @2 now
+            // has a tmp (i.e. @2 is pinned), canBeInternal(@2) will return false, which brings us
+            // here. In that case, we cannot match over @2 because then we'd hit a hazard if we end
+            // up deciding not to fuse Foo into the fused Baz/Bar.
+            //
+            // Happily, there are only two places where this kind of child validation happens is in
+            // rules that admit sharing, like this and effectiveAddress().
+            //
+            // N.B. We could probably avoid the need to do value locking if we committed to a well
+            // chosen code generation order. For example, if we guaranteed that all of the users of
+            // a value get generated before that value, then there's no way for the lowering of @3 to
+            // see @1 locked. But we don't want to do that, since this is a greedy instruction
+            // selector and so we want to be able to play with order.
+            for (Value* child : value->children()) {
+                if (m_locked.contains(child))
+                    return CannotFuse;
+            }
+
+            // It's safe to share value, but since we're sharing, it means that we aren't locking it.
+            // If we don't lock it, then fusing loads is off limits and all of value's children will
+            // have to go through the sharing path as well.
+            canCommitInternal = false;
+            
+            return Fuse;
+        };
+
+        auto commitFusion = [&] (Value* value, FusionResult result) {
+            if (result == FuseAndCommit)
+                commitInternal(value);
+        };
+        
+        // Chew through any inversions. This loop isn't necessary for comparisons and branches, but
+        // we do need at least one iteration of it for Check.
         for (;;) {
-            if (!canBeInternal(value) && value != m_value)
-                break;
             bool shouldInvert =
                 (value->opcode() == BitXor && value->child(1)->hasInt() && (value->child(1)->asInt() & 1) && value->child(0)->returnsBool())
                 || (value->opcode() == Equal && value->child(1)->isInt(0));
             if (!shouldInvert)
                 break;
+
+            FusionResult fusionResult = prepareToFuse(value);
+            if (fusionResult == CannotFuse)
+                break;
+            commitFusion(value, fusionResult);
+            
             value = value->child(0);
             inverted = !inverted;
-            commitInternal(value);
         }
 
         auto createRelCond = [&] (
@@ -894,51 +1055,55 @@ private:
                     return Inst();
                 };
 
-                // First handle compares that involve fewer bits than B3's type system supports.
-                // This is pretty important. For example, we want this to be a single instruction:
-                //
-                //     @1 = Load8S(...)
-                //     @2 = Const32(...)
-                //     @3 = LessThan(@1, @2)
-                //     Branch(@3)
-                
-                if (relCond.isSignedCond()) {
-                    if (Inst result = tryCompareLoadImm(Arg::Width8, Load8S, Arg::Signed))
-                        return result;
-                }
-                
-                if (relCond.isUnsignedCond()) {
-                    if (Inst result = tryCompareLoadImm(Arg::Width8, Load8Z, Arg::Unsigned))
-                        return result;
-                }
-
-                if (relCond.isSignedCond()) {
-                    if (Inst result = tryCompareLoadImm(Arg::Width16, Load16S, Arg::Signed))
-                        return result;
-                }
-                
-                if (relCond.isUnsignedCond()) {
-                    if (Inst result = tryCompareLoadImm(Arg::Width16, Load16Z, Arg::Unsigned))
-                        return result;
-                }
-
-                // Now handle compares that involve a load and an immediate.
-
                 Arg::Width width = Arg::widthForB3Type(value->child(0)->type());
-                if (Inst result = tryCompareLoadImm(width, Load, Arg::Signed))
-                    return result;
-
-                // Now handle compares that involve a load. It's not obvious that it's better to
-                // handle this before the immediate cases or not. Probably doesn't matter.
-
-                if (Inst result = tryCompare(width, loadPromise(left), tmpPromise(right))) {
-                    commitInternal(left);
-                    return result;
-                }
                 
-                if (Inst result = tryCompare(width, tmpPromise(left), loadPromise(right))) {
-                    commitInternal(right);
-                    return result;
+                if (canCommitInternal) {
+                    // First handle compares that involve fewer bits than B3's type system supports.
+                    // This is pretty important. For example, we want this to be a single
+                    // instruction:
+                    //
+                    //     @1 = Load8S(...)
+                    //     @2 = Const32(...)
+                    //     @3 = LessThan(@1, @2)
+                    //     Branch(@3)
+                
+                    if (relCond.isSignedCond()) {
+                        if (Inst result = tryCompareLoadImm(Arg::Width8, Load8S, Arg::Signed))
+                            return result;
+                    }
+                
+                    if (relCond.isUnsignedCond()) {
+                        if (Inst result = tryCompareLoadImm(Arg::Width8, Load8Z, Arg::Unsigned))
+                            return result;
+                    }
+
+                    if (relCond.isSignedCond()) {
+                        if (Inst result = tryCompareLoadImm(Arg::Width16, Load16S, Arg::Signed))
+                            return result;
+                    }
+                
+                    if (relCond.isUnsignedCond()) {
+                        if (Inst result = tryCompareLoadImm(Arg::Width16, Load16Z, Arg::Unsigned))
+                            return result;
+                    }
+
+                    // Now handle compares that involve a load and an immediate.
+
+                    if (Inst result = tryCompareLoadImm(width, Load, Arg::Signed))
+                        return result;
+
+                    // Now handle compares that involve a load. It's not obvious that it's better to
+                    // handle this before the immediate cases or not. Probably doesn't matter.
+
+                    if (Inst result = tryCompare(width, loadPromise(left), tmpPromise(right))) {
+                        commitInternal(left);
+                        return result;
+                    }
+                
+                    if (Inst result = tryCompare(width, tmpPromise(left), loadPromise(right))) {
+                        commitInternal(right);
+                        return result;
+                    }
                 }
 
                 // Now handle compares that involve an immediate and a tmp.
@@ -957,13 +1122,24 @@ private:
                 return compare(width, relCond, tmpPromise(left), tmpPromise(right));
             }
 
-            // Double comparisons can't really do anything smart.
+            // Floating point comparisons can't really do anything smart.
+            if (value->child(0)->type() == Float)
+                return compareFloat(doubleCond, tmpPromise(left), tmpPromise(right));
             return compareDouble(doubleCond, tmpPromise(left), tmpPromise(right));
         };
 
         Arg::Width width = Arg::widthForB3Type(value->type());
         Arg resCond = Arg::resCond(MacroAssembler::NonZero).inverted(inverted);
         
+        auto tryTest = [&] (
+            Arg::Width width, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            if (Inst result = test(width, resCond, left, right))
+                return result;
+            if (Inst result = test(width, resCond, right, left))
+                return result;
+            return Inst();
+        };
+
         auto attemptFused = [&] () -> Inst {
             switch (value->opcode()) {
             case NotEqual:
@@ -998,15 +1174,6 @@ private:
                 Arg leftImm = imm(left);
                 Arg rightImm = imm(right);
                 
-                auto tryTest = [&] (
-                    Arg::Width width, const ArgPromise& left, const ArgPromise& right) -> Inst {
-                    if (Inst result = test(width, resCond, left, right))
-                        return result;
-                    if (Inst result = test(width, resCond, right, left))
-                        return result;
-                    return Inst();
-                };
-
                 auto tryTestLoadImm = [&] (Arg::Width width, B3::Opcode loadOpcode) -> Inst {
                     if (rightImm && rightImm.isRepresentableAs(width, Arg::Unsigned)) {
                         if (Inst result = tryTest(width, loadPromise(left, loadOpcode), rightImm)) {
@@ -1023,39 +1190,41 @@ private:
                     return Inst();
                 };
 
-                // First handle test's that involve fewer bits than B3's type system supports.
+                if (canCommitInternal) {
+                    // First handle test's that involve fewer bits than B3's type system supports.
 
-                if (Inst result = tryTestLoadImm(Arg::Width8, Load8Z))
-                    return result;
+                    if (Inst result = tryTestLoadImm(Arg::Width8, Load8Z))
+                        return result;
+                    
+                    if (Inst result = tryTestLoadImm(Arg::Width8, Load8S))
+                        return result;
+                    
+                    if (Inst result = tryTestLoadImm(Arg::Width16, Load16Z))
+                        return result;
+                    
+                    if (Inst result = tryTestLoadImm(Arg::Width16, Load16S))
+                        return result;
 
-                if (Inst result = tryTestLoadImm(Arg::Width8, Load8S))
-                    return result;
-
-                if (Inst result = tryTestLoadImm(Arg::Width16, Load16Z))
-                    return result;
-
-                if (Inst result = tryTestLoadImm(Arg::Width16, Load16S))
-                    return result;
-
-                // Now handle test's that involve a load and an immediate. Note that immediates are
-                // 32-bit, and we want zero-extension. Hence, the immediate form is compiled as a
-                // 32-bit test. Note that this spits on the grave of inferior endians, such as the
-                // big one.
-                
-                if (Inst result = tryTestLoadImm(Arg::Width32, Load))
-                    return result;
-
-                // Now handle test's that involve a load.
-
-                Arg::Width width = Arg::widthForB3Type(value->child(0)->type());
-                if (Inst result = tryTest(width, loadPromise(left), tmpPromise(right))) {
-                    commitInternal(left);
-                    return result;
-                }
-
-                if (Inst result = tryTest(width, tmpPromise(left), loadPromise(right))) {
-                    commitInternal(right);
-                    return result;
+                    // Now handle test's that involve a load and an immediate. Note that immediates
+                    // are 32-bit, and we want zero-extension. Hence, the immediate form is compiled
+                    // as a 32-bit test. Note that this spits on the grave of inferior endians, such
+                    // as the big one.
+                    
+                    if (Inst result = tryTestLoadImm(Arg::Width32, Load))
+                        return result;
+                    
+                    // Now handle test's that involve a load.
+                    
+                    Arg::Width width = Arg::widthForB3Type(value->child(0)->type());
+                    if (Inst result = tryTest(width, loadPromise(left), tmpPromise(right))) {
+                        commitInternal(left);
+                        return result;
+                    }
+                    
+                    if (Inst result = tryTest(width, tmpPromise(left), loadPromise(right))) {
+                        commitInternal(right);
+                        return result;
+                    }
                 }
 
                 // Now handle test's that involve an immediate and a tmp.
@@ -1078,8 +1247,37 @@ private:
             }
         };
 
-        if (canBeInternal(value) || value == m_value) {
+        if (FusionResult fusionResult = prepareToFuse(value)) {
             if (Inst result = attemptFused()) {
+                commitFusion(value, fusionResult);
+                return result;
+            }
+        }
+
+        if (canCommitInternal && value->as<MemoryValue>()) {
+            // Handle things like Branch(Load8Z(value))
+
+            if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8Z), Arg::imm(-1))) {
+                commitInternal(value);
+                return result;
+            }
+
+            if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8S), Arg::imm(-1))) {
+                commitInternal(value);
+                return result;
+            }
+
+            if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16Z), Arg::imm(-1))) {
+                commitInternal(value);
+                return result;
+            }
+
+            if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16S), Arg::imm(-1))) {
+                commitInternal(value);
+                return result;
+            }
+
+            if (Inst result = tryTest(width, loadPromise(value), Arg::imm(-1))) {
                 commitInternal(value);
                 return result;
             }
@@ -1163,6 +1361,14 @@ private:
                 }
                 return Inst();
             },
+            [this] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+                if (isValidForm(BranchFloat, Arg::DoubleCond, left.kind(), right.kind())) {
+                    return Inst(
+                        BranchFloat, m_value, doubleCond,
+                        left.consume(*this), right.consume(*this));
+                }
+                return Inst();
+            },
             inverted);
     }
 
@@ -1221,6 +1427,10 @@ private:
                 // https://bugs.webkit.org/show_bug.cgi?id=150903
                 return Inst();
             },
+            [this] (const Arg&, const ArgPromise&, const ArgPromise&) -> Inst {
+                // FIXME: Implement this.
+                return Inst();
+            },
             inverted);
     }
 
@@ -1230,6 +1440,7 @@ private:
         Air::Opcode moveConditionallyTest32;
         Air::Opcode moveConditionallyTest64;
         Air::Opcode moveConditionallyDouble;
+        Air::Opcode moveConditionallyFloat;
         Tmp source;
         Tmp destination;
     };
@@ -1293,6 +1504,14 @@ private:
                 if (isValidForm(config.moveConditionallyDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
                     return Inst(
                         config.moveConditionallyDouble, m_value, doubleCond,
+                        left.consume(*this), right.consume(*this), config.source, config.destination);
+                }
+                return Inst();
+            },
+            [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+                if (isValidForm(config.moveConditionallyFloat, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                    return Inst(
+                        config.moveConditionallyFloat, m_value, doubleCond,
                         left.consume(*this), right.consume(*this), config.source, config.destination);
                 }
                 return Inst();
@@ -1365,87 +1584,83 @@ private:
         }
 
         case Add: {
-            appendBinOp<Add32, Add64, AddDouble, Commutative>(
+            appendBinOp<Add32, Add64, AddDouble, AddFloat, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
 
         case Sub: {
             if (m_value->child(0)->isInt(0))
-                appendUnOp<Neg32, Neg64, Air::Oops>(m_value->child(1));
+                appendUnOp<Neg32, Neg64>(m_value->child(1));
             else
-                appendBinOp<Sub32, Sub64, SubDouble>(m_value->child(0), m_value->child(1));
+                appendBinOp<Sub32, Sub64, SubDouble, SubFloat>(m_value->child(0), m_value->child(1));
             return;
         }
 
         case Mul: {
-            appendBinOp<Mul32, Mul64, MulDouble, Commutative>(
+            appendBinOp<Mul32, Mul64, MulDouble, MulFloat, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
 
         case Div: {
             if (isInt(m_value->type())) {
-                Tmp eax = Tmp(X86Registers::eax);
-                Tmp edx = Tmp(X86Registers::edx);
-
-                Air::Opcode convertToDoubleWord;
-                Air::Opcode div;
-                switch (m_value->type()) {
-                case Int32:
-                    convertToDoubleWord = X86ConvertToDoubleWord32;
-                    div = X86Div32;
-                    break;
-                case Int64:
-                    convertToDoubleWord = X86ConvertToQuadWord64;
-                    div = X86Div64;
-                    break;
-                default:
-                    RELEASE_ASSERT_NOT_REACHED();
-                    return;
-                }
-                
-                append(Move, tmp(m_value->child(0)), eax);
-                append(convertToDoubleWord, eax, edx);
-                append(div, eax, edx, tmp(m_value->child(1)));
-                append(Move, eax, tmp(m_value));
+                lowerX86Div();
+                append(Move, Tmp(X86Registers::eax), tmp(m_value));
                 return;
             }
             ASSERT(isFloat(m_value->type()));
 
-            appendBinOp<Air::Oops, Air::Oops, DivDouble>(m_value->child(0), m_value->child(1));
+            appendBinOp<Air::Oops, Air::Oops, DivDouble, DivFloat>(m_value->child(0), m_value->child(1));
+            return;
+        }
+
+        case Mod: {
+            lowerX86Div();
+            append(Move, Tmp(X86Registers::edx), tmp(m_value));
             return;
         }
 
         case BitAnd: {
-            appendBinOp<And32, And64, Air::Oops, Commutative>(
+            if (m_value->child(1)->isInt(0xff)) {
+                appendUnOp<ZeroExtend8To32, ZeroExtend8To32>(m_value->child(0));
+                return;
+            }
+            
+            if (m_value->child(1)->isInt(0xffff)) {
+                appendUnOp<ZeroExtend16To32, ZeroExtend16To32>(m_value->child(0));
+                return;
+            }
+
+            if (m_value->child(1)->isInt(0xffffffff)) {
+                appendUnOp<Move32, Move32>(m_value->child(0));
+                return;
+            }
+            
+            appendBinOp<And32, And64, AndDouble, AndFloat, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
 
         case BitOr: {
-            appendBinOp<Or32, Or64, Air::Oops, Commutative>(
+            appendBinOp<Or32, Or64, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
 
         case BitXor: {
             if (m_value->child(1)->isInt(-1)) {
-                appendUnOp<Not32, Not64, Air::Oops>(m_value->child(0));
+                appendUnOp<Not32, Not64>(m_value->child(0));
                 return;
             }
-            appendBinOp<Xor32, Xor64, Air::Oops, Commutative>(
+            appendBinOp<Xor32, Xor64, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
 
         case Shl: {
             if (m_value->child(1)->isInt32(1)) {
-                // This optimization makes sense on X86. I don't know if it makes sense anywhere else.
-                append(Move, tmp(m_value->child(0)), tmp(m_value));
-                append(
-                    opcodeForType(Add32, Add64, Air::Oops, m_value->child(0)->type()),
-                    tmp(m_value), tmp(m_value));
+                appendBinOp<Add32, Add64, AddDouble, AddFloat, Commutative>(m_value->child(0), m_value->child(0));
                 return;
             }
             
@@ -1463,13 +1678,23 @@ private:
             return;
         }
 
+        case Clz: {
+            appendUnOp<CountLeadingZeros32, CountLeadingZeros64>(m_value->child(0));
+            return;
+        }
+
+        case Ceil: {
+            appendUnOp<Air::Oops, Air::Oops, CeilDouble, CeilFloat>(m_value->child(0));
+            return;
+        }
+
         case Sqrt: {
-            appendUnOp<Air::Oops, Air::Oops, SqrtDouble>(m_value->child(0));
+            appendUnOp<Air::Oops, Air::Oops, SqrtDouble, SqrtFloat>(m_value->child(0));
             return;
         }
 
         case BitwiseCast: {
-            appendUnOp<Air::Oops, Move64ToDouble, MoveDoubleTo64>(m_value->child(0));
+            appendUnOp<MoveInt32ToPacked, Move64ToDouble, MoveDoubleTo64, MovePackedToInt32>(m_value->child(0));
             return;
         }
 
@@ -1515,8 +1740,24 @@ private:
             return;
         }
 
+        case B3::Store8: {
+            Value* valueToStore = m_value->child(0);
+            m_insts.last().append(createStore(Air::Store8, valueToStore, addr(m_value)));
+            return;
+        }
+
         case Trunc: {
             ASSERT(tmp(m_value->child(0)) == tmp(m_value));
+            return;
+        }
+
+        case SExt8: {
+            appendUnOp<SignExtend8To32, Air::Oops>(m_value->child(0));
+            return;
+        }
+
+        case SExt16: {
+            appendUnOp<SignExtend16To32, Air::Oops>(m_value->child(0));
             return;
         }
 
@@ -1526,12 +1767,25 @@ private:
                 return;
             }
 
-            append(Move32, tmp(m_value->child(0)), tmp(m_value));
+            appendUnOp<Move32, Air::Oops>(m_value->child(0));
             return;
         }
 
         case SExt32: {
-            append(SignExtend32ToPtr, tmp(m_value->child(0)), tmp(m_value));
+            // FIXME: We should have support for movsbq/movswq
+            // https://bugs.webkit.org/show_bug.cgi?id=152232
+            
+            appendUnOp<SignExtend32ToPtr, Air::Oops>(m_value->child(0));
+            return;
+        }
+
+        case FloatToDouble: {
+            appendUnOp<Air::Oops, Air::Oops, Air::Oops, ConvertFloatToDouble>(m_value->child(0));
+            return;
+        }
+
+        case DoubleToFloat: {
+            appendUnOp<Air::Oops, Air::Oops, ConvertDoubleToFloat>(m_value->child(0));
             return;
         }
 
@@ -1555,10 +1809,12 @@ private:
             return;
         }
 
-        case ConstDouble: {
+        case ConstDouble:
+        case ConstFloat: {
             // We expect that the moveConstants() phase has run, and any doubles referenced from
             // stackmaps get fused.
-            RELEASE_ASSERT(isIdentical(m_value->asDouble(), 0.0));
+            RELEASE_ASSERT(m_value->opcode() == ConstFloat || isIdentical(m_value->asDouble(), 0.0));
+            RELEASE_ASSERT(m_value->opcode() == ConstDouble || isIdentical(m_value->asFloat(), 0.0));
             append(MoveZeroToDouble, tmp(m_value));
             return;
         }
@@ -1604,6 +1860,7 @@ private:
                 config.moveConditionallyTest32 = MoveConditionallyTest32;
                 config.moveConditionallyTest64 = MoveConditionallyTest64;
                 config.moveConditionallyDouble = MoveConditionallyDouble;
+                config.moveConditionallyFloat = MoveConditionallyFloat;
             } else {
                 // FIXME: it's not obvious that these are particularly efficient.
                 config.moveConditionally32 = MoveDoubleConditionally32;
@@ -1611,6 +1868,7 @@ private:
                 config.moveConditionallyTest32 = MoveDoubleConditionallyTest32;
                 config.moveConditionallyTest64 = MoveDoubleConditionallyTest64;
                 config.moveConditionallyDouble = MoveDoubleConditionallyDouble;
+                config.moveConditionallyFloat = MoveDoubleConditionallyFloat;
             }
             
             m_insts.last().append(createSelect(m_value->child(0), config));
@@ -1618,7 +1876,7 @@ private:
         }
 
         case IToD: {
-            appendUnOp<ConvertInt32ToDouble, ConvertInt64ToDouble, Air::Oops>(m_value->child(0));
+            appendUnOp<ConvertInt32ToDouble, ConvertInt64ToDouble>(m_value->child(0));
             return;
         }
 
@@ -1679,6 +1937,7 @@ private:
             case Int64:
                 append(Move, Tmp(GPRInfo::returnValueGPR), tmp(cCall));
                 break;
+            case Float:
             case Double:
                 append(MoveDouble, Tmp(FPRInfo::returnValueFPR), tmp(cCall));
                 break;
@@ -1691,13 +1950,40 @@ private:
             ensureSpecial(m_patchpointSpecial);
             
             Inst inst(Patch, patchpointValue, Arg::special(m_patchpointSpecial));
-            
-            if (patchpointValue->type() != Void)
-                inst.args.append(tmp(patchpointValue));
+
+            Vector<Inst> after;
+            if (patchpointValue->type() != Void) {
+                switch (patchpointValue->resultConstraint.kind()) {
+                case ValueRep::WarmAny:
+                case ValueRep::ColdAny:
+                case ValueRep::LateColdAny:
+                case ValueRep::SomeRegister:
+                    inst.args.append(tmp(patchpointValue));
+                    break;
+                case ValueRep::Register: {
+                    Tmp reg = Tmp(patchpointValue->resultConstraint.reg());
+                    inst.args.append(reg);
+                    after.append(Inst(
+                        relaxedMoveForType(patchpointValue->type()), m_value, reg, tmp(patchpointValue)));
+                    break;
+                }
+                case ValueRep::StackArgument: {
+                    Arg arg = Arg::callArg(patchpointValue->resultConstraint.offsetFromSP());
+                    inst.args.append(arg);
+                    after.append(Inst(
+                        moveForType(patchpointValue->type()), m_value, arg, tmp(patchpointValue)));
+                    break;
+                }
+                default:
+                    RELEASE_ASSERT_NOT_REACHED();
+                    break;
+                }
+            }
             
             fillStackmap(inst, patchpointValue, 0);
             
             m_insts.last().append(WTF::move(inst));
+            m_insts.last().appendVector(after);
             return;
         }
 
@@ -1716,7 +2002,7 @@ private:
                 append(Move, tmp(right), result);
 
                 Air::Opcode opcode =
-                    opcodeForType(BranchNeg32, BranchNeg64, Air::Oops, checkValue->type());
+                    opcodeForType(BranchNeg32, BranchNeg64, checkValue->type());
                 CheckSpecial* special = ensureCheckSpecial(opcode, 2);
 
                 Inst inst(Patch, checkValue, Arg::special(special));
@@ -1731,18 +2017,18 @@ private:
 
             Air::Opcode opcode = Air::Oops;
             Commutativity commutativity = NotCommutative;
-            Arg::Role stackmapRole = Arg::Use;
+            StackmapSpecial::RoleMode stackmapRole = StackmapSpecial::SameAsRep;
             switch (m_value->opcode()) {
             case CheckAdd:
-                opcode = opcodeForType(BranchAdd32, BranchAdd64, Air::Oops, m_value->type());
+                opcode = opcodeForType(BranchAdd32, BranchAdd64, m_value->type());
                 commutativity = Commutative;
                 break;
             case CheckSub:
-                opcode = opcodeForType(BranchSub32, BranchSub64, Air::Oops, m_value->type());
+                opcode = opcodeForType(BranchSub32, BranchSub64, m_value->type());
                 break;
             case CheckMul:
-                opcode = opcodeForType(BranchMul32, BranchMul64, Air::Oops, checkValue->type());
-                stackmapRole = Arg::LateUse;
+                opcode = opcodeForType(BranchMul32, BranchMul64, checkValue->type());
+                stackmapRole = StackmapSpecial::ForceLateUse;
                 break;
             default:
                 RELEASE_ASSERT_NOT_REACHED();
@@ -1878,6 +2164,32 @@ private:
 
         dataLog("FATAL: could not lower ", deepDump(m_value), "\n");
         RELEASE_ASSERT_NOT_REACHED();
+    }
+
+    void lowerX86Div()
+    {
+        Tmp eax = Tmp(X86Registers::eax);
+        Tmp edx = Tmp(X86Registers::edx);
+
+        Air::Opcode convertToDoubleWord;
+        Air::Opcode div;
+        switch (m_value->type()) {
+        case Int32:
+            convertToDoubleWord = X86ConvertToDoubleWord32;
+            div = X86Div32;
+            break;
+        case Int64:
+            convertToDoubleWord = X86ConvertToQuadWord64;
+            div = X86Div64;
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return;
+        }
+        
+        append(Move, tmp(m_value->child(0)), eax);
+        append(convertToDoubleWord, eax, edx);
+        append(div, eax, edx, tmp(m_value->child(1)));
     }
     
     IndexSet<Value> m_locked; // These are values that will have no Tmp in Air.

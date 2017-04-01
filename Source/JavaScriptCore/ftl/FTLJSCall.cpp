@@ -26,7 +26,7 @@
 #include "config.h"
 #include "FTLJSCall.h"
 
-#if ENABLE(FTL_JIT)
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #include "DFGNode.h"
 #include "FTLState.h"
@@ -54,10 +54,14 @@ void JSCall::emit(CCallHelpers& jit, State& state, int32_t osrExitFromGenericUnw
 {
     JSCallBase::emit(jit, state, osrExitFromGenericUnwindSpillSlots);
 
+#if FTL_USES_B3
+    jit.addPtr(CCallHelpers::TrustedImm32(- static_cast<int64_t>(state.jitCode->common.frameRegisterCount * sizeof(EncodedJSValue))), CCallHelpers::framePointerRegister, CCallHelpers::stackPointerRegister);
+#else // FTL_USES_B3
     jit.addPtr(CCallHelpers::TrustedImm32(- static_cast<int64_t>(state.jitCode->stackmaps.stackSizeForLocals())), CCallHelpers::framePointerRegister, CCallHelpers::stackPointerRegister);
+#endif // FTL_USES_B3
 }
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && !FTL_USES_B3
 

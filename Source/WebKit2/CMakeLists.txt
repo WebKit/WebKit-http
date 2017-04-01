@@ -351,6 +351,7 @@ set(WebKit2_SOURCES
     UIProcess/ResponsivenessTimer.cpp
     UIProcess/StatisticsRequest.cpp
     UIProcess/TextCheckerCompletion.cpp
+    UIProcess/UserMediaPermissionCheckProxy.cpp
     UIProcess/UserMediaPermissionRequestManagerProxy.cpp
     UIProcess/UserMediaPermissionRequestProxy.cpp
     UIProcess/VisitedLinkStore.cpp
@@ -458,6 +459,7 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKSessionStateRef.cpp
     UIProcess/API/C/WKTextChecker.cpp
     UIProcess/API/C/WKUserContentControllerRef.cpp
+    UIProcess/API/C/WKUserMediaPermissionCheck.cpp
     UIProcess/API/C/WKUserMediaPermissionRequest.cpp
     UIProcess/API/C/WKVibration.cpp
     UIProcess/API/C/WKViewportAttributes.cpp
@@ -567,7 +569,7 @@ set(WebKit2_SOURCES
     WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp
 
     WebProcess/Network/NetworkProcessConnection.cpp
-    WebProcess/Network/WebResourceLoadScheduler.cpp
+    WebProcess/Network/WebLoaderStrategy.cpp
     WebProcess/Network/WebResourceLoader.cpp
 
     WebProcess/Notifications/NotificationPermissionRequestManager.cpp

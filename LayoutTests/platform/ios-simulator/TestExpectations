@@ -545,13 +545,6 @@ fast/css3-text/css3-text-decoration/no-gap-between-two-rounded-textboxes.html [ 
 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-inherit.html [ ImageOnlyFailure ]
 
 # CSS3 Text tests that fail:
-css3/blending/blend-mode-accelerated-parent-overflow-hidden.html [ ImageOnlyFailure ]
-css3/blending/blend-mode-body-composited-child-background-color.html [ ImageOnlyFailure ]
-css3/blending/blend-mode-body-composited-child.html [ ImageOnlyFailure ]
-css3/blending/blend-mode-clip-accelerated-blending-child.html [ ImageOnlyFailure ]
-css3/blending/blend-mode-clip-accelerated-blending-double.html [ ImageOnlyFailure ]
-css3/blending/blend-mode-clip-accelerated-blending-with-siblings.html [ ImageOnlyFailure ]
-css3/blending/blend-mode-clip-rect-accelerated-blending.html [ ImageOnlyFailure ]
 fast/css3-text/css3-text-align-last/text-align-last-with-text-align-justify.html [ ImageOnlyFailure ]
 
 # Font tests that fail:
@@ -2523,6 +2516,9 @@ platform/ios-simulator/ios/scrolling/touch-stacking.html [ Failure ]
 platform/ios-simulator/ios/touch [ Skip ]
 fast/events/ios/focused-input-should-assist-on-touch.html [ Skip ]
 
+webkit.org/b/152276 platform/ios-simulator/ios/scrolling/scroll-events-back-forward-after-pageshow.html [ Failure ]
+webkit.org/b/152276 platform/ios-simulator/ios/scrolling/scroll-events-back-forward.html [ Failure ]
+
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 # iOS tests that assert:
@@ -2766,7 +2762,6 @@ webkit.org/b/150366 accessibility/aria-table-attributes.html [ Pass ]
 
 fast/forms/select-element-focus-ring.html [ Failure Pass ]
 animations/keyframe-multiple-timing-functions-transform.html [ Failure Pass ]
-streams/reference-implementation/readable-stream-cancel.html [ Failure Pass ]
 compositing/visible-rect/coverage-scrolling.html [ Failure Pass ]
 
 # Imported Blink tests.
@@ -2826,3 +2821,18 @@ imported/blink/svg/text/text-outline-2.html [ ImageOnlyFailure Pass ]
 imported/blink/svg/text/tspan-outline-crash.html [ ImageOnlyFailure Pass ]
 imported/blink/transitions/transition-shape-outside-crash.html [ Pass Timeout ]
 imported/blink/webexposed/webkit-focus-ring-exposed-to-quirks-mode.html [ ImageOnlyFailure ]
+
+webkit.org/b/152134 fast/events/ios/clicking-document-should-not-trigger-focus.html [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/focused-input-should-assist-on-touch.html [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/input-value-after-oninput.html [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/keyboard-should-not-trigger-resize.html [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/single-tap-generates-click.html [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/unscalable-viewport-clicks-on-doubletap.html [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/viewport-device-width-at-initial-scale-fast-clicks.html  [ Pass Timeout ]
+
+webkit.org/b/152141 fast/picture/image-picture-1x.html [ Failure ]
+webkit.org/b/152141 fast/picture/image-picture-invalid.html [ Failure ]
+webkit.org/b/152141 fast/picture/image-picture-nested.html [ Failure ]
+
+webkit.org/b/152279 http/tests/misc/large-js-program.php [ Pass Crash ]
+webkit.org/b/152279 js/dom/line-column-numbers.html [ Pass Crash ]

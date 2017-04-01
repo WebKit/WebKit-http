@@ -32,7 +32,12 @@
 #include "HTMLDocument.h"
 #include "HTMLFormElement.h"
 #include "HTMLParserIdioms.h"
+#include "HTMLPictureElement.h"
+#include "HTMLSourceElement.h"
 #include "HTMLSrcsetParser.h"
+#include "MIMETypeRegistry.h"
+#include "MediaList.h"
+#include "MediaQueryEvaluator.h"
 #include "Page.h"
 #include "RenderImage.h"
 #include "Settings.h"
@@ -51,7 +56,8 @@ using namespace HTMLNames;
 HTMLImageElement::HTMLImageElement(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
     : HTMLElement(tagName, document)
     , m_imageLoader(*this)
-    , m_form(form)
+    , m_form(nullptr)
+    , m_formSetByParser(form)
     , m_compositeOperator(CompositeSourceOver)
     , m_imageDevicePixelRatio(1.0f)
 #if ENABLE(SERVICE_CONTROLS)
@@ -60,8 +66,6 @@ HTMLImageElement::HTMLImageElement(const QualifiedName& tagName, Document& docum
 {
     ASSERT(hasTagName(imgTag));
     setHasCustomStyleResolveCallbacks();
-    if (form)
-        form->registerImgElement(this);
 }
 
 Ref<HTMLImageElement> HTMLImageElement::create(Document& document)
@@ -127,13 +131,64 @@ const AtomicString& HTMLImageElement::imageSourceURL() const
 void HTMLImageElement::setBestFitURLAndDPRFromImageCandidate(const ImageCandidate& candidate)
 {
     m_bestFitImageURL = candidate.string.toString();
-#if ENABLE(CURRENTSRC)
     m_currentSrc = AtomicString(document().completeURL(imageSourceURL()).string());
-#endif
     if (candidate.density >= 0)
         m_imageDevicePixelRatio = 1 / candidate.density;
     if (is<RenderImage>(renderer()))
         downcast<RenderImage>(*renderer()).setImageDevicePixelRatio(m_imageDevicePixelRatio);
+}
+
+ImageCandidate HTMLImageElement::bestFitSourceFromPictureElement()
+{
+    auto* parent = parentNode();
+    if (!is<HTMLPictureElement>(parent))
+        return { };
+    auto* picture = downcast<HTMLPictureElement>(parent);
+    picture->clearViewportDependentResults();
+    document().removeViewportDependentPicture(*picture);
+    for (Node* child = parent->firstChild(); child && child != this; child = child->nextSibling()) {
+        if (!is<HTMLSourceElement>(*child))
+            continue;
+        auto& source = downcast<HTMLSourceElement>(*child);
+        auto& srcset = source.fastGetAttribute(srcsetAttr);
+        if (srcset.isEmpty())
+            continue;
+        if (source.hasAttribute(typeAttr)) {
+            String type = source.fastGetAttribute(typeAttr).string();
+            int indexOfSemicolon = type.find(';');
+            if (indexOfSemicolon >= 0)
+                type.truncate(indexOfSemicolon);
+            type = stripLeadingAndTrailingHTMLSpaces(type);
+            type = type.lower();
+            if (!type.isEmpty() && !MIMETypeRegistry::isSupportedImageMIMEType(type) && type != "image/svg+xml")
+                continue;
+        }
+        MediaQueryEvaluator evaluator(document().printing() ? "print" : "screen", document().frame(), computedStyle());
+        bool evaluation = evaluator.evalCheckingViewportDependentResults(source.mediaQuerySet(), picture->viewportDependentResults());
+        if (picture->hasViewportDependentResults())
+            document().addViewportDependentPicture(*picture);
+        if (!evaluation)
+            continue;
+
+        float sourceSize = parseSizesAttribute(source.fastGetAttribute(sizesAttr).string(), document().renderView(), document().frame());
+        ImageCandidate candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), nullAtom, source.fastGetAttribute(srcsetAttr), sourceSize);
+        if (!candidate.isEmpty())
+            return candidate;
+    }
+    return { };
+}
+
+void HTMLImageElement::selectImageSource()
+{
+    // First look for the best fit source from our <picture> parent if we have one.
+    ImageCandidate candidate = bestFitSourceFromPictureElement();
+    if (candidate.isEmpty()) {
+        // If we don't have a <picture> or didn't find a source, then we use our own attributes.
+        float sourceSize = parseSizesAttribute(fastGetAttribute(sizesAttr).string(), document().renderView(), document().frame());
+        candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr), sourceSize);
+    }
+    setBestFitURLAndDPRFromImageCandidate(candidate);
+    m_imageLoader.updateFromElementIgnoringPreviousError();
 }
 
 void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -141,12 +196,9 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
     if (name == altAttr) {
         if (is<RenderImage>(renderer()))
             downcast<RenderImage>(*renderer()).updateAltText();
-    } else if (name == srcAttr || name == srcsetAttr) {
-        float sourceSize = parseSizesAttribute(fastGetAttribute(sizesAttr).string(), document().renderView(), document().frame());
-        ImageCandidate candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr), sourceSize);
-        setBestFitURLAndDPRFromImageCandidate(candidate);
-        m_imageLoader.updateFromElementIgnoringPreviousError();
-    } else if (name == usemapAttr) {
+    } else if (name == srcAttr || name == srcsetAttr || name == sizesAttr)
+        selectImageSource();
+    else if (name == usemapAttr) {
         if (inDocument() && !m_lowercasedUsemap.isNull())
             document().removeImageElementByLowercasedUsemap(*m_lowercasedUsemap.impl(), *this);
 
@@ -243,11 +295,16 @@ void HTMLImageElement::didAttachRenderers()
 
 Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode& insertionPoint)
 {
-    if (!m_form) { // m_form can be non-null if it was set in constructor.
-        m_form = HTMLFormElement::findClosestFormAncestor(*this);
-        if (m_form)
-            m_form->registerImgElement(this);
+    if (m_formSetByParser) {
+        m_form = m_formSetByParser;
+        m_formSetByParser = nullptr;
     }
+
+    if (!m_form)
+        m_form = HTMLFormElement::findClosestFormAncestor(*this);
+
+    if (m_form)
+        m_form->registerImgElement(this);
 
     // Insert needs to complete first, before we start updating the loader. Loader dispatches events which could result
     // in callbacks back to this node.
@@ -255,6 +312,9 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
 
     if (insertionPoint.inDocument() && !m_lowercasedUsemap.isNull())
         document().addImageElementByLowercasedUsemap(*m_lowercasedUsemap.impl(), *this);
+
+    if (is<HTMLPictureElement>(parentNode()))
+        selectImageSource();
 
     // If we have been inserted from a renderer-less document,
     // our loader may have not fetched the image, so do it now.
@@ -272,7 +332,7 @@ void HTMLImageElement::removedFrom(ContainerNode& insertionPoint)
     if (insertionPoint.inDocument() && !m_lowercasedUsemap.isNull())
         document().removeImageElementByLowercasedUsemap(*m_lowercasedUsemap.impl(), *this);
 
-    m_form = 0;
+    m_form = nullptr;
     HTMLElement::removedFrom(insertionPoint);
 }
 
@@ -469,7 +529,7 @@ bool HTMLImageElement::isServerMap() const
         return false;
 
     const AtomicString& usemap = fastGetAttribute(usemapAttr);
-    
+
     // If the usemap attribute starts with '#', it refers to a map element in the document.
     if (usemap.string()[0] == '#')
         return false;

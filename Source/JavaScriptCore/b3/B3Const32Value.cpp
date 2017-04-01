@@ -112,6 +112,13 @@ Value* Const32Value::divConstant(Procedure& proc, const Value* other) const
     return proc.add<Const32Value>(origin(), chillDiv(m_value, other->asInt32()));
 }
 
+Value* Const32Value::modConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasInt32())
+        return nullptr;
+    return proc.add<Const32Value>(origin(), chillMod(m_value, other->asInt32()));
+}
+
 Value* Const32Value::bitAndConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt32())
@@ -152,6 +159,11 @@ Value* Const32Value::zShrConstant(Procedure& proc, const Value* other) const
     if (!other->hasInt32())
         return nullptr;
     return proc.add<Const32Value>(origin(), static_cast<int32_t>(static_cast<uint32_t>(m_value) >> (other->asInt32() & 31)));
+}
+
+Value* Const32Value::bitwiseCastConstant(Procedure& proc) const
+{
+    return proc.add<ConstFloatValue>(origin(), bitwise_cast<float>(m_value));
 }
 
 TriState Const32Value::equalConstant(const Value* other) const

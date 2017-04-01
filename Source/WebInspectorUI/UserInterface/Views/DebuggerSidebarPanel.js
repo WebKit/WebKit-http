@@ -122,12 +122,14 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         this._globalBreakpointsFolderTreeElement.appendChild(this._allUncaughtExceptionsBreakpointTreeElement);
         this._globalBreakpointsFolderTreeElement.expand();
 
+        this.suppressFilteringOnTreeElements([this._globalBreakpointsFolderTreeElement, this._allExceptionsBreakpointTreeElement, this._allUncaughtExceptionsBreakpointTreeElement]);
+
         var breakpointsRow = new WebInspector.DetailsSectionRow;
         breakpointsRow.element.appendChild(this._breakpointsContentTreeOutline.element);
 
         var breakpointsGroup = new WebInspector.DetailsSectionGroup([breakpointsRow]);
         var breakpointsSection = new WebInspector.DetailsSection("scripts", WebInspector.UIString("Scripts"), [breakpointsGroup]);
-        this.contentElement.appendChild(breakpointsSection.element);
+        this.contentView.element.appendChild(breakpointsSection.element);
 
         this._callStackContentTreeOutline = this.createContentTreeOutline(true, true);
         this._callStackContentTreeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
@@ -246,9 +248,9 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
 
     _debuggerDidPause(event)
     {
-        this.contentElement.insertBefore(this._callStackSection.element, this.contentElement.firstChild);
+        this.contentView.element.insertBefore(this._callStackSection.element, this.contentView.element.firstChild);
         if (this._updatePauseReason())
-            this.contentElement.insertBefore(this._pauseReasonSection.element, this.contentElement.firstChild);
+            this.contentView.element.insertBefore(this._pauseReasonSection.element, this.contentView.element.firstChild);
 
         this._debuggerPauseResumeButtonItem.enabled = true;
         this._debuggerPauseResumeButtonItem.toggled = true;

@@ -34,8 +34,11 @@ int main(int argc, const char *argv[])
 
 #else
 
+#include <wtf/Assertions.h>
+
 int main(int, const char*[])
 {
+    RELEASE_ASSERT_WITH_MESSAGE(false, "DumpRenderTree command is not supported on iOS; use DumpRenderTree.app.");
     return 0;
 }
 

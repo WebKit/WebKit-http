@@ -87,7 +87,7 @@ IDBRequest::IDBRequest(ScriptExecutionContext& context, IDBCursor& cursor, IDBTr
     , m_transaction(&transaction)
     , m_connection(transaction.serverConnection())
     , m_resourceIdentifier(transaction.serverConnection())
-    , m_source(IDBAny::create(cursor))
+    , m_source(cursor.source())
     , m_pendingCursor(&cursor)
 {
     suspendIfNeeded();
@@ -120,12 +120,13 @@ IDBRequest::~IDBRequest()
     }
 }
 
-RefPtr<WebCore::IDBAny> IDBRequest::result(ExceptionCode& ec) const
+RefPtr<WebCore::IDBAny> IDBRequest::result(ExceptionCodeWithMessage& ec) const
 {
     if (m_readyState == IDBRequestReadyState::Done)
         return m_result;
 
-    ec = IDBDatabaseException::InvalidStateError;
+    ec.code = IDBDatabaseException::InvalidStateError;
+    ec.message = ASCIILiteral("Failed to read the 'result' property from 'IDBRequest': The request has not finished.");
     return nullptr;
 }
 
@@ -134,12 +135,13 @@ unsigned short IDBRequest::errorCode(ExceptionCode&) const
     return 0;
 }
 
-RefPtr<DOMError> IDBRequest::error(ExceptionCode& ec) const
+RefPtr<DOMError> IDBRequest::error(ExceptionCodeWithMessage& ec) const
 {
     if (m_readyState == IDBRequestReadyState::Done)
         return m_domError;
 
-    ec = IDBDatabaseException::InvalidStateError;
+    ec.code = IDBDatabaseException::InvalidStateError;
+    ec.message = ASCIILiteral("Failed to read the 'error' property from 'IDBRequest': The request has not finished.");
     return nullptr;
 }
 
@@ -151,6 +153,15 @@ RefPtr<WebCore::IDBAny> IDBRequest::source() const
 void IDBRequest::setSource(IDBCursor& cursor)
 {
     m_source = IDBAny::create(cursor);
+}
+
+void IDBRequest::setVersionChangeTransaction(IDBTransaction& transaction)
+{
+    ASSERT(!m_transaction);
+    ASSERT(transaction.isVersionChange());
+    ASSERT(!transaction.isFinishedOrFinishing());
+
+    m_transaction = &transaction;
 }
 
 RefPtr<WebCore::IDBTransaction> IDBRequest::transaction() const
@@ -235,9 +246,15 @@ bool IDBRequest::hasPendingActivity() const
     return m_hasPendingActivity;
 }
 
+void IDBRequest::stop()
+{
+    ASSERT(!m_contextStopped);
+    m_contextStopped = true;
+}
+
 void IDBRequest::enqueueEvent(Ref<Event>&& event)
 {
-    if (!scriptExecutionContext())
+    if (!scriptExecutionContext() || m_contextStopped)
         return;
 
     event->setTarget(this);
@@ -249,6 +266,7 @@ bool IDBRequest::dispatchEvent(Event& event)
     LOG(IndexedDB, "IDBRequest::dispatchEvent - %s (%p)", event.type().characters8(), this);
 
     ASSERT(m_hasPendingActivity);
+    ASSERT(!m_contextStopped);
 
     if (event.type() != eventNames().blockedEvent)
         m_readyState = IDBRequestReadyState::Done;
@@ -257,8 +275,10 @@ bool IDBRequest::dispatchEvent(Event& event)
     targets.append(this);
 
     if (m_transaction) {
-        targets.append(m_transaction);
-        targets.append(m_transaction->db());
+        if (!m_transaction->isFinished())
+            targets.append(m_transaction);
+        if (!m_transaction->database().isClosingOrClosed())
+            targets.append(m_transaction->db());
     }
 
     m_hasPendingActivity = false;
@@ -272,13 +292,26 @@ bool IDBRequest::dispatchEvent(Event& event)
     // IDBEventDispatcher::dispatch() might have set the pending activity flag back to true, suggesting the request will be reused.
     // We might also re-use the request if this event was the upgradeneeded event for an IDBOpenDBRequest.
     if (!m_hasPendingActivity)
-        m_hasPendingActivity = isOpenDBRequest() && event.type() == eventNames().upgradeneededEvent;
+        m_hasPendingActivity = isOpenDBRequest() && (event.type() == eventNames().upgradeneededEvent || event.type() == eventNames().blockedEvent);
 
-    // The request should only remain in the transaction's request list if it represents a pending cursor operation.
-    if (m_transaction && !m_pendingCursor)
+    // The request should only remain in the transaction's request list if it represents a pending cursor operation, or this is an open request that was blocked.
+    if (m_transaction && !m_pendingCursor && event.type() != eventNames().blockedEvent)
         m_transaction->removeRequest(*this);
 
+    if (dontPreventDefault && event.type() == eventNames().errorEvent && m_transaction && !m_transaction->isFinishedOrFinishing()) {
+        ASSERT(m_domError);
+        m_transaction->abortDueToFailedRequest(*m_domError);
+    }
+
     return dontPreventDefault;
+}
+
+void IDBRequest::uncaughtExceptionInEventHandler()
+{
+    LOG(IndexedDB, "IDBRequest::uncaughtExceptionInEventHandler");
+
+    if (m_transaction && m_idbError.code() != IDBDatabaseException::AbortError)
+        m_transaction->abortDueToFailedRequest(DOMError::create(IDBDatabaseException::getErrorName(IDBDatabaseException::AbortError)));
 }
 
 void IDBRequest::setResult(const IDBKeyData* keyData)

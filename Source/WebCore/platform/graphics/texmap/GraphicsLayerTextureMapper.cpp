@@ -26,7 +26,7 @@
 #include "TextureMapperAnimation.h"
 #include <wtf/CurrentTime.h>
 
-#if USE(TEXTURE_MAPPER)
+#if USE(TEXTURE_MAPPER) && !USE(COORDINATED_GRAPHICS)
 
 namespace WebCore {
 
@@ -549,7 +549,7 @@ void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded()
     backingStore->updateContentsScale(pageScaleFactor() * deviceScaleFactor());
 
     dirtyRect.scale(pageScaleFactor() * deviceScaleFactor());
-    backingStore->updateContents(textureMapper, this, m_size, dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
+    backingStore->updateContents(*textureMapper, this, m_size, dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
 
     m_needsDisplay = false;
     m_needsDisplayRect = IntRect();

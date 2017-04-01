@@ -36,6 +36,7 @@
 #include "IDBKeyPath.h"
 #include "IDBObjectStore.h"
 #include "JSDOMBinding.h"
+#include "JSDOMStringList.h"
 #include "JSIDBObjectStore.h"
 #include <runtime/Error.h>
 #include <runtime/JSString.h>
@@ -75,7 +76,7 @@ JSValue JSIDBDatabase::createObjectStore(ExecState& state)
             return jsUndefined();
     }
 
-    ExceptionCode ec = 0;
+    ExceptionCodeWithMessage ec;
     JSValue result = toJS(&state, globalObject(), wrapped().createObjectStore(name, keyPath, autoIncrement, ec).get());
     setDOMException(&state, ec);
     return result;
@@ -93,11 +94,13 @@ JSValue JSIDBDatabase::transaction(ExecState& exec)
 
     Vector<String> scope;
     JSValue scopeArg(exec.argument(0));
-    if (scopeArg.isObject() && isJSArray(scopeArg)) {
-        scope = toNativeArray<String>(&exec, scopeArg);
-        if (exec.hadException())
-            return jsUndefined();
-    } else {
+    auto domStringList = JSDOMStringList::toWrapped(&exec, scopeArg);
+    if (exec.hadException())
+        return jsUndefined();
+
+    if (domStringList)
+        scope = *domStringList;
+    else {
         scope.append(scopeArg.toString(&exec)->value(&exec));
         if (exec.hadException())
             return jsUndefined();
@@ -112,7 +115,7 @@ JSValue JSIDBDatabase::transaction(ExecState& exec)
             return jsUndefined();
     }
 
-    ExceptionCode ec = 0;
+    ExceptionCodeWithMessage ec;
     JSValue result = toJS(&exec, globalObject(), wrapped().transaction(scriptContext, scope, mode, ec).get());
     setDOMException(&exec, ec);
     return result;

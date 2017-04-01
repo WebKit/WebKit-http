@@ -141,6 +141,8 @@ RenderElement::~RenderElement()
     }
     if (m_hasPausedImageAnimations)
         view().removeRendererWithPausedImageAnimations(*this);
+    if (isRegisteredForVisibleInViewportCallback())
+        view().unregisterForVisibleInViewportCallback(*this);
 }
 
 RenderPtr<RenderElement> RenderElement::createFor(Element& element, Ref<RenderStyle>&& style)
@@ -1433,10 +1435,6 @@ static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const 
     const Document& document = renderer.document();
     if (document.inPageCache())
         return false;
-#if PLATFORM(IOS)
-    if (document.frame()->timersPaused())
-        return false;
-#endif
     if (document.activeDOMObjectsAreSuspended())
         return false;
     if (renderer.style().visibility() != VISIBLE)
@@ -1462,6 +1460,35 @@ static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const 
         return false;
 
     return true;
+}
+
+void RenderElement::registerForVisibleInViewportCallback()
+{
+    if (isRegisteredForVisibleInViewportCallback())
+        return;
+    setIsRegisteredForVisibleInViewportCallback(true);
+
+    view().registerForVisibleInViewportCallback(*this);
+}
+
+void RenderElement::unregisterForVisibleInViewportCallback()
+{
+    if (!isRegisteredForVisibleInViewportCallback())
+        return;
+    setIsRegisteredForVisibleInViewportCallback(false);
+
+    view().unregisterForVisibleInViewportCallback(*this);
+    m_visibleInViewportState = VisibilityUnknown;
+}
+
+void RenderElement::visibleInViewportStateChanged(VisibleInViewportState state)
+{
+    if (state == visibleInViewportState())
+        return;
+    setVisibleInViewportState(state);
+
+    if (element())
+        element()->isVisibleInViewportChanged();
 }
 
 void RenderElement::newImageAnimationFrameAvailable(CachedImage& image)
@@ -1798,6 +1825,13 @@ const RenderElement* RenderElement::enclosingRendererWithTextDecoration(TextDeco
 
 void RenderElement::drawLineForBoxSide(GraphicsContext& graphicsContext, const FloatRect& rect, BoxSide side, Color color, EBorderStyle borderStyle, float adjacentWidth1, float adjacentWidth2, bool antialias) const
 {
+    auto drawBorderRect = [&graphicsContext] (const FloatRect& rect)
+    {
+        if (rect.isEmpty())
+            return;
+        graphicsContext.drawRect(rect);
+    };
+
     float x1 = rect.x();
     float x2 = rect.maxX();
     float y1 = rect.y();
@@ -1852,13 +1886,13 @@ void RenderElement::drawLineForBoxSide(GraphicsContext& graphicsContext, const F
             switch (side) {
             case BSTop:
             case BSBottom:
-                graphicsContext.drawRect(snapRectToDevicePixels(x1, y1, length, thirdOfThickness, deviceScaleFactor));
-                graphicsContext.drawRect(snapRectToDevicePixels(x1, y2 - thirdOfThickness, length, thirdOfThickness, deviceScaleFactor));
+                drawBorderRect(snapRectToDevicePixels(x1, y1, length, thirdOfThickness, deviceScaleFactor));
+                drawBorderRect(snapRectToDevicePixels(x1, y2 - thirdOfThickness, length, thirdOfThickness, deviceScaleFactor));
                 break;
             case BSLeft:
             case BSRight:
-                graphicsContext.drawRect(snapRectToDevicePixels(x1, y1, thirdOfThickness, length, deviceScaleFactor));
-                graphicsContext.drawRect(snapRectToDevicePixels(x2 - thirdOfThickness, y1, thirdOfThickness, length, deviceScaleFactor));
+                drawBorderRect(snapRectToDevicePixels(x1, y1, thirdOfThickness, length, deviceScaleFactor));
+                drawBorderRect(snapRectToDevicePixels(x2 - thirdOfThickness, y1, thirdOfThickness, length, deviceScaleFactor));
                 break;
             }
 
@@ -1998,7 +2032,7 @@ void RenderElement::drawLineForBoxSide(GraphicsContext& graphicsContext, const F
             graphicsContext.setFillColor(color);
             bool wasAntialiased = graphicsContext.shouldAntialias();
             graphicsContext.setShouldAntialias(antialias);
-            graphicsContext.drawRect(snapRectToDevicePixels(x1, y1, x2 - x1, y2 - y1, deviceScaleFactor));
+            drawBorderRect(snapRectToDevicePixels(x1, y1, x2 - x1, y2 - y1, deviceScaleFactor));
             graphicsContext.setShouldAntialias(wasAntialiased);
             graphicsContext.setStrokeStyle(oldStrokeStyle);
             return;

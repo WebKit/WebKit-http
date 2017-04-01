@@ -35,13 +35,16 @@
 #include <wtf/HashSet.h>
 #include <wtf/WTFThreadData.h>
 
-#if USE(GLIB) && !PLATFORM(EFL)
+#if PLATFORM(EFL)
+#include <Ecore.h>
+#include <wtf/CurrentTime.h>
+#elif USE(GLIB)
 #include <glib.h>
 #endif
 
 namespace JSC {
 
-#if USE(CF) || (USE(GLIB) && !PLATFORM(EFL))
+#if USE(CF) || PLATFORM(EFL) || USE(GLIB)
 
 static const double sweepTimeSlice = .01; // seconds
 static const double sweepTimeTotal = .10;
@@ -62,6 +65,26 @@ void IncrementalSweeper::scheduleTimer()
 void IncrementalSweeper::cancelTimer()
 {
     CFRunLoopTimerSetNextFireDate(m_timer.get(), CFAbsoluteTimeGetCurrent() + s_decade);
+}
+#elif PLATFORM(EFL)
+IncrementalSweeper::IncrementalSweeper(Heap* heap)
+    : HeapTimer(heap->vm())
+    , m_blocksToSweep(heap->m_blockSnapshot)
+{
+}
+
+void IncrementalSweeper::scheduleTimer()
+{
+    if (ecore_timer_freeze_get(m_timer))
+        ecore_timer_thaw(m_timer);
+
+    double targetTime = currentTime() + (sweepTimeSlice * sweepTimeMultiplier);
+    ecore_timer_interval_set(m_timer, targetTime);
+}
+
+void IncrementalSweeper::cancelTimer()
+{
+    ecore_timer_freeze(m_timer);
 }
 #elif USE(GLIB)
 IncrementalSweeper::IncrementalSweeper(Heap* heap)

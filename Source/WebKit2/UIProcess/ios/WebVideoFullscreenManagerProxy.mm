@@ -39,11 +39,11 @@
 #import <WebCore/TimeRanges.h>
 #import <WebKitSystemInterface.h>
 
-@interface WebLayerHostView : UIView
+@interface WKLayerHostView : UIView
 @property (nonatomic, assign) uint32_t contextID;
 @end
 
-@implementation WebLayerHostView
+@implementation WKLayerHostView
 
 + (Class)layerClass {
     return [CALayerHost class];
@@ -89,6 +89,11 @@ bool WebVideoFullscreenManagerProxy::mayAutomaticallyShowVideoPictureInPicture()
 }
 
 void WebVideoFullscreenManagerProxy::requestHideAndExitFullscreen()
+{
+
+}
+
+void WebVideoFullscreenManagerProxy::applicationDidBecomeActive()
 {
 
 }
@@ -156,10 +161,10 @@ void WebVideoFullscreenModelContext::endScanning()
         m_manager->endScanning(m_contextId);
 }
 
-void WebVideoFullscreenModelContext::requestExitFullscreen()
+void WebVideoFullscreenModelContext::requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
     if (m_manager)
-        m_manager->requestExitFullscreen(m_contextId);
+        m_manager->requestFullscreenMode(m_contextId, mode);
 }
 
 void WebVideoFullscreenModelContext::setVideoLayerFrame(WebCore::FloatRect frame)
@@ -190,6 +195,11 @@ void WebVideoFullscreenModelContext::fullscreenModeChanged(WebCore::HTMLMediaEle
 {
     if (m_manager)
         m_manager->fullscreenModeChanged(m_contextId, mode);
+}
+
+bool WebVideoFullscreenModelContext::isVisible() const
+{
+    return m_manager ? m_manager->isVisible() : false;
 }
 
 void WebVideoFullscreenModelContext::didSetupFullscreen()
@@ -284,6 +294,12 @@ bool WebVideoFullscreenManagerProxy::mayAutomaticallyShowVideoPictureInPicture()
     return false;
 }
 
+void WebVideoFullscreenManagerProxy::applicationDidBecomeActive()
+{
+    for (auto& tuple : m_contextMap.values())
+        std::get<1>(tuple)->applicationDidBecomeActive();
+}
+
 WebVideoFullscreenManagerProxy::ModelInterfaceTuple WebVideoFullscreenManagerProxy::createModelAndInterface(uint64_t contextId)
 {
     Ref<WebVideoFullscreenModelContext> model = WebVideoFullscreenModelContext::create(*this, contextId);
@@ -323,13 +339,16 @@ void WebVideoFullscreenManagerProxy::setupFullscreenWithID(uint64_t contextId, u
 
     std::tie(model, interface) = ensureModelAndInterface(contextId);
 
-    RetainPtr<WebLayerHostView> view = adoptNS([[WebLayerHostView alloc] init]);
+    RetainPtr<WKLayerHostView> view = static_cast<WKLayerHostView*>(model->layerHostView());
+    if (!view) {
+        view = adoptNS([[WKLayerHostView alloc] init]);
+        model->setLayerHostView(view);
+    }
     [view setContextID:videoLayerID];
-    model->setLayerHostView(view);
     if (hostingDeviceScaleFactor != 1) {
         // Invert the scale transform added in the WebProcess to fix <rdar://problem/18316542>.
         float inverseScale = 1 / hostingDeviceScaleFactor;
-        [[model->layerHostView() layer] setSublayerTransform:CATransform3DMakeScale(inverseScale, inverseScale, 1)];
+        [[view layer] setSublayerTransform:CATransform3DMakeScale(inverseScale, inverseScale, 1)];
     }
 
     UIView *parentView = downcast<RemoteLayerTreeDrawingAreaProxy>(*m_page->drawingArea()).remoteLayerTreeHost().rootLayer();
@@ -494,9 +513,9 @@ void WebVideoFullscreenManagerProxy::endScanning(uint64_t contextId)
     m_page->send(Messages::WebVideoFullscreenManager::EndScanning(contextId), m_page->pageID());
 }
 
-void WebVideoFullscreenManagerProxy::requestExitFullscreen(uint64_t contextId)
+void WebVideoFullscreenManagerProxy::requestFullscreenMode(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
-    m_page->send(Messages::WebVideoFullscreenManager::RequestExitFullscreen(contextId), m_page->pageID());
+    m_page->send(Messages::WebVideoFullscreenManager::RequestFullscreenMode(contextId, mode), m_page->pageID());
 }
 
 void WebVideoFullscreenManagerProxy::didSetupFullscreen(uint64_t contextId)
@@ -555,6 +574,11 @@ void WebVideoFullscreenManagerProxy::selectLegibleMediaOption(uint64_t contextId
 void WebVideoFullscreenManagerProxy::fullscreenModeChanged(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
     m_page->send(Messages::WebVideoFullscreenManager::FullscreenModeChanged(contextId, mode), m_page->pageID());
+}
+
+bool WebVideoFullscreenManagerProxy::isVisible() const
+{
+    return m_page->isViewVisible() && m_page->isInWindow();
 }
 
 void WebVideoFullscreenManagerProxy::fullscreenMayReturnToInline(uint64_t contextId)

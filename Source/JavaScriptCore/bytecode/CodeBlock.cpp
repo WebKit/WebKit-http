@@ -196,7 +196,7 @@ CString CodeBlock::sourceCodeForTools() const
     unsigned rangeEnd = delta + unlinked->startOffset() + unlinked->sourceLength();
     return toCString(
         "function ",
-        provider->source().impl()->utf8ForRange(rangeStart, rangeEnd - rangeStart));
+        provider->source().substring(rangeStart, rangeEnd - rangeStart).utf8());
 }
 
 CString CodeBlock::sourceCodeOnOneLine() const
@@ -554,14 +554,14 @@ void CodeBlock::dumpSource(PrintStream& out)
     ScriptExecutable* executable = ownerScriptExecutable();
     if (executable->isFunctionExecutable()) {
         FunctionExecutable* functionExecutable = reinterpret_cast<FunctionExecutable*>(executable);
-        String source = functionExecutable->source().provider()->getRange(
+        StringView source = functionExecutable->source().provider()->getRange(
             functionExecutable->parametersStartOffset(),
             functionExecutable->typeProfilingEndOffset() + 1); // Type profiling end offset is the character before the '}'.
         
         out.print("function ", inferredName(), source);
         return;
     }
-    out.print(executable->source().toString());
+    out.print(executable->source().view());
 }
 
 void CodeBlock::dumpBytecode()
@@ -767,11 +767,6 @@ void CodeBlock::dumpBytecode(
         case op_get_scope: {
             int r0 = (++it)->u.operand;
             printLocationOpAndRegisterOperand(out, exec, location, it, "get_scope", r0);
-            break;
-        }
-        case op_load_arrowfunction_this: {
-            int r0 = (++it)->u.operand;
-            printLocationOpAndRegisterOperand(out, exec, location, it, "load_arrowfunction_this", r0);
             break;
         }
         case op_create_direct_arguments: {
@@ -1283,6 +1278,10 @@ void CodeBlock::dumpBytecode(
             printLocationAndOp(out, exec, location, it, "loop_hint");
             break;
         }
+        case op_watchdog: {
+            printLocationAndOp(out, exec, location, it, "watchdog");
+            break;
+        }
         case op_switch_imm: {
             int tableIndex = (++it)->u.operand;
             int defaultTarget = (++it)->u.operand;
@@ -1327,9 +1326,8 @@ void CodeBlock::dumpBytecode(
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             int f0 = (++it)->u.operand;
-            int r2 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "op_new_arrow_func_exp");
-            out.printf("%s, %s, f%d, %s", registerName(r0).data(), registerName(r1).data(), f0, registerName(r2).data());
+            out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
             break;
         }
         case op_new_func_exp: {

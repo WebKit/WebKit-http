@@ -31,6 +31,7 @@
 #include "ShareableBitmap.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebEvent.h"
+#include "WebLoaderStrategy.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcess.h"
@@ -62,7 +63,6 @@
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/ProxyServer.h>
 #include <WebCore/RenderEmbeddedObject.h>
-#include <WebCore/ResourceLoadScheduler.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/ScrollView.h>
 #include <WebCore/SecurityOrigin.h>
@@ -160,7 +160,7 @@ void PluginView::Stream::start()
     Frame* frame = m_pluginView->m_pluginElement->document().frame();
     ASSERT(frame);
 
-    m_loader = resourceLoadScheduler()->schedulePluginStreamLoad(frame, this, m_request);
+    m_loader = WebProcess::singleton().webLoaderStrategy().schedulePluginStreamLoad(frame, this, m_request);
 }
 
 void PluginView::Stream::cancel()

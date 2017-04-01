@@ -136,7 +136,7 @@ CommitLogs._cacheConsecutiveCommits = function (repository, from, to, consecutiv
         cachedCommits.commitsByTime.push(commit);
     });
 
-    cachedCommits.commitsByTime.sort(function (a, b) { return a.time - b.time; });
+    cachedCommits.commitsByTime.sort(function (a, b) { return a.time && b.time ? (a.time - b.time) : (a.order - b.order); });
     cachedCommits.commitsByTime.forEach(function (commit, index) { commit.cacheIndex = index; });
 }
 
@@ -154,7 +154,7 @@ function Measurement(rawData)
 
     for (var repositoryId in revisions) {
         var commitTimeOrUndefined = revisions[repositoryId][1]; // e.g. ["162190", 1389945046000]
-        if (latestTime < commitTimeOrUndefined)
+        if (commitTimeOrUndefined && latestTime < commitTimeOrUndefined)
             latestTime = commitTimeOrUndefined;
     }
     this._latestCommitTime = latestTime !== -1 ? new Date(latestTime) : null;

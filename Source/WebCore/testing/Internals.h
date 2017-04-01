@@ -58,6 +58,7 @@ class InternalSettings;
 class MallocStatistics;
 class MediaSession;
 class MemoryInfo;
+class MockPageOverlay;
 class Node;
 class Page;
 class Range;
@@ -349,6 +350,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     void enableMockRTCPeerConnectionHandler();
+    void setMockMediaCaptureDevicesEnabled(bool);
 #endif
 
     String getImageSourceURL(Element*, ExceptionCode&);
@@ -416,7 +418,7 @@ public:
     void simulateSystemSleep() const;
     void simulateSystemWake() const;
 
-    void installMockPageOverlay(const String& overlayType, ExceptionCode&);
+    RefPtr<MockPageOverlay> installMockPageOverlay(const String& overlayType, ExceptionCode&);
     String pageOverlayLayerTreeAsText(ExceptionCode&) const;
 
     void setPageMuted(bool);

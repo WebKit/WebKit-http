@@ -263,6 +263,11 @@ public:
         m_assembler.addq_mr(src.offset, src.base, dest);
     }
 
+    void add64(RegisterID src, Address dest)
+    {
+        m_assembler.addq_rm(src, dest.offset, dest.base);
+    }
+
     void add64(AbsoluteAddress src, RegisterID dest)
     {
         move(TrustedImmPtr(src.m_ptr), scratchRegister());
@@ -313,6 +318,26 @@ public:
         add64(imm, Address(scratchRegister()));
     }
 
+    void add64(RegisterID a, RegisterID b, RegisterID dest)
+    {
+        x86Lea64(BaseIndex(a, b, TimesOne), dest);
+    }
+
+    void x86Lea64(BaseIndex index, RegisterID dest)
+    {
+        if (!index.scale && !index.offset) {
+            if (index.base == dest) {
+                add64(index.index, dest);
+                return;
+            }
+            if (index.index == dest) {
+                add64(index.base, dest);
+                return;
+            }
+        }
+        m_assembler.leaq_mr(index.offset, index.base, index.index, index.scale, dest);
+    }
+
     void addPtrNoFlags(TrustedImm32 imm, RegisterID srcDest)
     {
         m_assembler.leaq_mr(imm.m_value, srcDest, srcDest);
@@ -332,6 +357,26 @@ public:
     {
         move(imm, scratchRegister());
         and64(scratchRegister(), srcDest);
+    }
+
+    void countLeadingZeros64(RegisterID src, RegisterID dst)
+    {
+        if (supportsLZCNT()) {
+            m_assembler.lzcntq_rr(src, dst);
+            return;
+        }
+        m_assembler.bsrq_rr(src, dst);
+        clz64AfterBsr(dst);
+    }
+
+    void countLeadingZeros64(Address src, RegisterID dst)
+    {
+        if (supportsLZCNT()) {
+            m_assembler.lzcntq_mr(src.offset, src.base, dst);
+            return;
+        }
+        m_assembler.bsrq_mr(src.offset, src.base, dst);
+        clz64AfterBsr(dst);
     }
 
     void lshift64(TrustedImm32 imm, RegisterID dest)
@@ -485,6 +530,21 @@ public:
             move(imm, scratchRegister());
             sub64(scratchRegister(), dest);
         }
+    }
+
+    void sub64(TrustedImm32 imm, Address address)
+    {
+        m_assembler.subq_im(imm.m_value, address.offset, address.base);
+    }
+
+    void sub64(Address src, RegisterID dest)
+    {
+        m_assembler.subq_mr(src.offset, src.base, dest);
+    }
+
+    void sub64(RegisterID src, Address dest)
+    {
+        m_assembler.subq_rm(src, dest.offset, dest.base);
     }
 
     void xor64(RegisterID src, RegisterID dest)
@@ -1045,6 +1105,19 @@ private:
             move(imm, scratchRegister());
             add64(scratchRegister(), dest);
         }
+    }
+
+    // If lzcnt is not available, use this after BSR
+    // to count the leading zeros.
+    void clz64AfterBsr(RegisterID dst)
+    {
+        Jump srcIsNonZero = m_assembler.jCC(x86Condition(NonZero));
+        move(TrustedImm32(64), dst);
+
+        Jump skipNonZeroCase = jump();
+        srcIsNonZero.link(this);
+        xor64(TrustedImm32(0x3f), dst);
+        skipNonZeroCase.link(this);
     }
 
     friend class LinkBuffer;

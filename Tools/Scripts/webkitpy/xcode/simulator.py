@@ -215,6 +215,15 @@ class Device(object):
         Simulator.wait_until_device_is_in_state(device_udid, Simulator.DeviceState.SHUTDOWN)
         return Simulator().find_device_by_udid(device_udid)
 
+    @classmethod
+    def delete(cls, udid):
+        """
+        Delete the given CoreSimulator device.
+        :param udid: The udid of the device.
+        :type udid: str
+        """
+        subprocess.call(['xcrun', 'simctl', 'delete', udid])
+
     def __eq__(self, other):
         return self.udid == other.udid
 
@@ -265,6 +274,15 @@ class Simulator(object):
         SHUTTING_DOWN = 4
 
     @staticmethod
+    def wait_until_device_is_booted(udid, timeout_seconds=60 * 5):
+        with timeout(seconds=timeout_seconds):
+            while True:
+                state = subprocess.check_output(['xcrun', 'simctl', 'spawn', udid, 'launchctl', 'print', 'system']).strip()
+                if re.search("A[\s]+com.apple.springboard.services", state):
+                    return
+                time.sleep(1)
+
+    @staticmethod
     def wait_until_device_is_in_state(udid, wait_until_state, timeout_seconds=60 * 5):
         with timeout(seconds=timeout_seconds):
             while (Simulator.device_state(udid) != wait_until_state):
@@ -281,23 +299,8 @@ class Simulator(object):
     def device_directory(udid):
         return os.path.realpath(os.path.expanduser(os.path.join('~/Library/Developer/CoreSimulator/Devices', udid)))
 
-    @staticmethod
-    def _boot_and_shutdown_simulator_device(host, udid):
-        exit_code = host.executive.run_command(['xcrun', 'simctl', 'boot', udid], return_exit_code=True)
-        if exit_code:
-            return exit_code
-        exit_code = host.executive.run_command(['xcrun', 'simctl', 'shutdown', udid], return_exit_code=True)
-        return exit_code
-
-    @staticmethod
-    def check_simulator_device_and_erase_if_needed(host, udid):
-        exit_code = Simulator._boot_and_shutdown_simulator_device(host, udid)
-        if not exit_code:
-            return True  # Can boot device
-        # Try erasing the simulator device to restore it to a known good state.
-        if not host.executive.run_command(['xcrun', 'simctl', 'erase', udid], return_exit_code=True):
-            return Simulator._boot_and_shutdown_simulator_device(host, udid) == 0  # Can boot device
-        return False  # Cannot boot or erase device
+    def delete_device(self, udid):
+        Device.delete(udid)
 
     def refresh(self):
         """

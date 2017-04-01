@@ -1118,7 +1118,7 @@
 #define USE_IOSURFACE 1
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 #define ENABLE_RESOURCE_USAGE_OVERLAY 1
 #endif
 

@@ -35,74 +35,87 @@
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
 #include "TextureMapperPlatformLayer.h"
 #endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperPlatformLayerProxy.h"
+#endif
 
 typedef struct _GstMessage GstMessage;
 typedef struct _GstStreamVolume GstStreamVolume;
+typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
 typedef struct _GstGLDisplay GstGLDisplay;
 
 namespace WebCore {
 
+class BitmapTextureGL;
 class GraphicsContext;
+class GraphicsContext3D;
 class IntSize;
 class IntRect;
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     , public TextureMapperPlatformLayer
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+    , public TextureMapperPlatformLayerProxyProvider
 #endif
 {
 
 public:
     virtual ~MediaPlayerPrivateGStreamerBase();
 
-    FloatSize naturalSize() const;
+    virtual FloatSize naturalSize() const override;
 
-    void setVolume(float);
-    float volume() const;
+    virtual void setVolume(float) override;
+    virtual float volume() const;
 
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();
 #endif
 
-    bool supportsMuting() const { return true; }
-    void setMuted(bool);
+    virtual bool supportsMuting() const override { return true; }
+    virtual void setMuted(bool) override;
     bool muted() const;
 
-    MediaPlayer::NetworkState networkState() const;
-    MediaPlayer::ReadyState readyState() const;
+    virtual MediaPlayer::NetworkState networkState() const override;
+    virtual MediaPlayer::ReadyState readyState() const override;
 
-    void setVisible(bool) { }
-    void setSize(const IntSize&);
+    virtual void setVisible(bool) override { }
+    virtual void setSize(const IntSize&) override;
     void sizeChanged();
 
-    void paint(GraphicsContext&, const FloatRect&);
+    virtual void paint(GraphicsContext&, const FloatRect&) override;
 
-    virtual bool hasSingleSecurityOrigin() const { return true; }
+    virtual bool hasSingleSecurityOrigin() const override { return true; }
     virtual float maxTimeLoaded() const { return 0.0; }
 
-    bool supportsFullscreen() const;
-    PlatformMedia platformMedia() const;
+    virtual bool supportsFullscreen() const override;
+    virtual PlatformMedia platformMedia() const override;
 
-    MediaPlayer::MovieLoadType movieLoadType() const;
+    virtual MediaPlayer::MovieLoadType movieLoadType() const override;
     virtual bool isLiveStream() const = 0;
 
     MediaPlayer* mediaPlayer() const { return m_player; }
 
-    unsigned decodedFrameCount() const;
-    unsigned droppedFrameCount() const;
-    unsigned audioDecodedByteCount() const;
-    unsigned videoDecodedByteCount() const;
+    virtual unsigned decodedFrameCount() const override;
+    virtual unsigned droppedFrameCount() const override;
+    virtual unsigned audioDecodedByteCount() const override;
+    virtual unsigned videoDecodedByteCount() const override;
 
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
-    virtual PlatformLayer* platformLayer() const { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
+    virtual PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
 #if PLATFORM(WIN_CAIRO)
     // FIXME: Accelerated rendering has not been implemented for WinCairo yet.
-    virtual bool supportsAcceleratedRendering() const { return false; }
+    virtual bool supportsAcceleratedRendering() const override { return false; }
 #else
-    virtual bool supportsAcceleratedRendering() const { return true; }
+    virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix&, float);
+    virtual void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix&, float) override;
+#endif
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    virtual PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
+    virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
 protected:
@@ -122,7 +135,7 @@ protected:
 
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
 #if USE(GSTREAMER_GL)
-    static gboolean drawCallback(MediaPlayerPrivateGStreamerBase*, GstContext*, GstSample*);
+    static gboolean drawCallback(MediaPlayerPrivateGStreamerBase*, GstGLContext*, GstSample*);
 #endif
 
     void notifyPlayerOfVolumeChange();
@@ -155,17 +168,28 @@ protected:
     GRefPtr<GstSample> m_sample;
 #if USE(GSTREAMER_GL)
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
-    Condition m_drawCondition;
-    Lock m_drawMutex;
 #endif
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
-    PassRefPtr<BitmapTexture> updateTexture(TextureMapper*);
+#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
+    void updateTexture(BitmapTextureGL&, GstVideoInfo&);
 #endif
 #if USE(GSTREAMER_GL)
     GRefPtr<GstGLContext> m_glContext;
     GRefPtr<GstGLDisplay> m_glDisplay;
+#endif
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
+    virtual void swapBuffersIfNeeded() override { };
+    void pushTextureToCompositor();
+    RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
+#endif
+
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
+    RefPtr<GraphicsContext3D> m_context3D;
+    Condition m_drawCondition;
+    Lock m_drawMutex;
 #endif
 };
 }

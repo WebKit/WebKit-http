@@ -26,7 +26,9 @@
 #ifndef FTLExitThunkGenerator_h
 #define FTLExitThunkGenerator_h
 
-#if ENABLE(FTL_JIT)
+#include "DFGCommon.h"
+
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #include "CCallHelpers.h"
 
@@ -40,8 +42,8 @@ public:
     ExitThunkGenerator(State& state);
     ~ExitThunkGenerator();
     
-    void emitThunk(unsigned index, int32_t osrExitFromGenericUnwindStackSpillSlot);
-    void emitThunks(int32_t osrExitFromGenericUnwindStackSpillSlot);
+    void emitThunk(unsigned index);
+    void emitThunks();
     
     bool didThings() const { return m_didThings; }
 
@@ -52,7 +54,7 @@ private:
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #endif // FTLExitThunkGenerator_h
 

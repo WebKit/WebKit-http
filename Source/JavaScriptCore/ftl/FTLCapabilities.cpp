@@ -94,6 +94,7 @@ inline CapabilityLevel canCompile(Node* node)
     case ArithSin:
     case ArithCos:
     case ArithPow:
+    case ArithRandom:
     case ArithRound:
     case ArithSqrt:
     case ArithLog:
@@ -152,7 +153,6 @@ inline CapabilityLevel canCompile(Node* node)
     case CountExecution:
     case GetExecutable:
     case GetScope:
-    case LoadArrowFunctionThis:
     case GetCallee:
     case GetArgumentCount:
     case ToString:

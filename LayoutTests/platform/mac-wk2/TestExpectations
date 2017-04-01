@@ -280,13 +280,13 @@ webkit.org/b/151053 http/tests/security/cross-frame-access-put.html [ Pass Failu
 
 webkit.org/b/151326 [ Yosemite+ ] webarchive/loading/missing-data.html [ Pass Crash ]
 
-webkit.org/b/151455 [ Yosemite ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
+webkit.org/b/151455 [ Release ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
 
-webkit.org/b/151661 [ Yosemite ] http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
+webkit.org/b/151661 http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
 
 webkit.org/b/150542 fast/forms/state-restore-per-form.html [ Pass Timeout ]
 
-webkit.org/b/151709 [ Yosemite ] http/tests/xmlhttprequest/workers/methods.html [ Pass Timeout ]
+webkit.org/b/151709 [ Release ] http/tests/xmlhttprequest/workers/methods.html [ Pass Timeout ]
 
 webkit.org/b/151729 [ Yosemite ] http/tests/xmlhttprequest/methods-async.html [ Pass Timeout ]
 ### END OF (1) Classified failures with bug reports
@@ -387,7 +387,6 @@ storage/indexeddb/create-object-store-options.html [ Skip ]
 storage/indexeddb/cursor-advance.html [ Skip ]
 storage/indexeddb/cursor-basics.html [ Skip ]
 storage/indexeddb/cursor-continue-validity.html [ Skip ]
-storage/indexeddb/cursor-continueprimarykey.html [ Skip ]
 storage/indexeddb/cursor-index-delete.html [ Skip ]
 storage/indexeddb/cursor-key-order.html [ Skip ]
 storage/indexeddb/cursor-leak.html [ Skip ] # Missing needed WKTR feature?
@@ -395,12 +394,10 @@ storage/indexeddb/cursor-overloads.html [ Skip ]
 storage/indexeddb/cursor-primary-key-order.html [ Skip ]
 storage/indexeddb/cursor-request-cycle.html [ Skip ] # Missing needed WKTR feature?
 storage/indexeddb/cursor-update.html [ Skip ]
-storage/indexeddb/data-corruption.html [ Skip ]
 storage/indexeddb/database-close.html [ Skip ]
 storage/indexeddb/database-quota.html [ Skip ]
 storage/indexeddb/duplicates.html [ Skip ] # Difference between null + undefined
 storage/indexeddb/events.html [ Skip ]
-storage/indexeddb/factory-basics.html [ Skip ] # indexedDB.webkitGetDatabaseNames is missing)
 storage/indexeddb/factory-cmp.html [ Skip ]
 storage/indexeddb/get-keyrange.html [ Skip ]
 storage/indexeddb/index-basics.html [ Skip ] # Difference between null + undefined
@@ -416,7 +413,6 @@ storage/indexeddb/key-type-binary.html [ Skip ]
 storage/indexeddb/lazy-index-population.html [ Skip ]
 storage/indexeddb/noblobs.html [ Skip ] # Missing DRT file/blob support
 storage/indexeddb/objectstore-autoincrement.html [ Skip ]
-storage/indexeddb/objectstore-keycursor.html [ Skip ]
 storage/indexeddb/optional-arguments.html [ Skip ]
 storage/indexeddb/request-leak.html [ Skip ] # Missing WKTR support? GC?
 storage/indexeddb/setversion-blocked-by-versionchange-close.html [ Skip ]

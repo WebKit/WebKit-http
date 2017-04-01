@@ -600,6 +600,9 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA_V2)
         @"~/Library/WebKit/MediaKeys", WebKitMediaKeysStorageDirectoryKey,
 #endif
+#if ENABLE(MEDIA_STREAM)
+        [NSNumber numberWithBool:NO], WebKitMockCaptureDevicesEnabledPreferenceKey,
+#endif
         nil];
 
 #if !PLATFORM(IOS)
@@ -2218,6 +2221,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey];
 }
 
+- (BOOL)invisibleAutoplayNotPermitted
+{
+    return [self _boolValueForKey:WebKitInvisibleAutoplayNotPermittedKey];
+}
+
+- (void)setInvisibleAutoplayNotPermitted:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitInvisibleAutoplayNotPermittedKey];
+}
+
 - (BOOL)mediaControlsScaleWithPageZoom
 {
     return [self _boolValueForKey:WebKitMediaControlsScaleWithPageZoomPreferenceKey];
@@ -2595,6 +2608,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMediaDataLoadsAutomatically:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMediaDataLoadsAutomaticallyPreferenceKey];
+}
+
+- (BOOL)mockCaptureDevicesEnabled
+{
+    return [self _boolValueForKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
+}
+
+- (void)setMockCaptureDevicesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
 }
 
 @end

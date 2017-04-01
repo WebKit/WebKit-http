@@ -133,7 +133,6 @@ my %conflictMethod = (
     "description" => "NSObject",
     "doesNotRecognizeSelector:" => "NSObject",
     "encodeWithCoder:" => "NSObject",
-    "finalize" => "NSObject",
     "forwardInvocation:" => "NSObject",
     "hash" => "NSObject",
     "init" => "NSObject",
@@ -1215,7 +1214,7 @@ sub GenerateImplementation
     # START implementation
     push(@implContent, "\@implementation $className\n\n");
 
-    # Only generate 'dealloc' and 'finalize' methods for direct subclasses of DOMObject.
+    # Only generate 'dealloc' for direct subclasses of DOMObject.
     if ($parentImplClassName eq "Object") {
         $implIncludes{"WebCoreObjCExtras.h"} = 1;
         push(@implContent, "- (void)dealloc\n");
@@ -1234,21 +1233,6 @@ sub GenerateImplementation
         }
         push(@implContent, "    [super dealloc];\n");
         push(@implContent, "}\n\n");
-
-        push(@implContent, "- (void)finalize\n");
-        push(@implContent, "{\n");
-        if ($interfaceName eq "NodeIterator") {
-            push(@implContent, "    if (_internal) {\n");
-            push(@implContent, "        [self detach];\n");
-            push(@implContent, "        IMPL->deref();\n");
-            push(@implContent, "    };\n");
-        } else {
-            push(@implContent, "    if (_internal)\n");
-            push(@implContent, "        IMPL->deref();\n");
-        }
-        push(@implContent, "    [super finalize];\n");
-        push(@implContent, "}\n\n");
-        
     }
 
     %attributeNames = ();
@@ -1297,7 +1281,7 @@ sub GenerateImplementation
             if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
                 my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
                 $implIncludes{"${implementedBy}.h"} = 1;
-                $getterContentHead = "WebCore::${implementedBy}::${getterExpressionPrefix}IMPL";
+                $getterContentHead = "WebCore::${implementedBy}::${getterExpressionPrefix}*IMPL";
             } else {
                 $getterContentHead = "IMPL->$getterExpressionPrefix";
             }
@@ -1437,7 +1421,7 @@ sub GenerateImplementation
                 if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
                     my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
                     $implIncludes{"${implementedBy}.h"} = 1;
-                    unshift(@arguments, "IMPL");
+                    unshift(@arguments, "*IMPL");
                     $functionName = "WebCore::${implementedBy}::${functionName}";
                 } else {
                     $functionName = "IMPL->${functionName}";
@@ -1565,7 +1549,7 @@ sub GenerateImplementation
             if ($function->signature->extendedAttributes->{"ImplementedBy"}) {
                 my $implementedBy = $function->signature->extendedAttributes->{"ImplementedBy"};
                 $implIncludes{"${implementedBy}.h"} = 1;
-                unshift(@parameterNames, $caller);
+                unshift(@parameterNames, "*" . $caller);
                 $content = "WebCore::${implementedBy}::" . $codeGenerator->WK_lcfirst($functionName) . "(" . join(", ", @parameterNames) . ")";
             } else {
                 my $functionImplementationName = $function->signature->extendedAttributes->{"ImplementedAs"} || $codeGenerator->WK_lcfirst($functionName);

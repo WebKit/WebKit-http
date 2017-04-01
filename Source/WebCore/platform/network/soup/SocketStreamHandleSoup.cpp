@@ -245,7 +245,7 @@ void SocketStreamHandle::beginWaitingForSocketWritability()
 
     m_writeReadySource = adoptGRef(g_pollable_output_stream_create_source(m_outputStream.get(), 0));
     g_source_set_callback(m_writeReadySource.get(), reinterpret_cast<GSourceFunc>(writeReadyCallback), m_id, 0);
-    g_source_attach(m_writeReadySource.get(), 0);
+    g_source_attach(m_writeReadySource.get(), g_main_context_get_thread_default());
 }
 
 void SocketStreamHandle::stopWaitingForSocketWritability()
@@ -253,8 +253,8 @@ void SocketStreamHandle::stopWaitingForSocketWritability()
     if (!m_writeReadySource) // Not waiting.
         return;
 
-    g_source_remove(g_source_get_id(m_writeReadySource.get()));
-    m_writeReadySource = 0;
+    g_source_destroy(m_writeReadySource.get());
+    m_writeReadySource = nullptr;
 }
 
 static void connectedCallback(GSocketClient* client, GAsyncResult* result, void* id)

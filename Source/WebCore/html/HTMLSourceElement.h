@@ -26,8 +26,8 @@
 #ifndef HTMLSourceElement_h
 #define HTMLSourceElement_h
 
-#if ENABLE(VIDEO)
 #include "HTMLElement.h"
+#include "MediaList.h"
 #include "Timer.h"
 
 namespace WebCore {
@@ -45,6 +45,8 @@ public:
     void scheduleErrorEvent();
     void cancelPendingErrorEvent();
 
+    MediaQuerySet* mediaQuerySet() const { return m_mediaQuerySet.get(); }
+
 private:
     HTMLSourceElement(const QualifiedName&, Document&);
     
@@ -59,13 +61,16 @@ private:
     void resume() override;
     void stop() override;
 
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+
     void errorEventTimerFired();
 
     Timer m_errorEventTimer;
     bool m_shouldRescheduleErrorEventOnResume { false };
+    RefPtr<MediaQuerySet> m_mediaQuerySet;
 };
 
 } //namespace
 
 #endif
-#endif
+

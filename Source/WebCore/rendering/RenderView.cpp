@@ -204,8 +204,8 @@ bool RenderView::hitTest(const HitTestRequest& request, const HitTestLocation& l
     if (request.allowsFrameScrollbars()) {
         // ScrollView scrollbars are not the same as RenderLayer scrollbars tested by RenderLayer::hitTestOverflowControls,
         // so we need to test ScrollView scrollbars separately here.
-        Scrollbar* frameScrollbar = frameView().scrollbarAtPoint(location.roundedPoint());
-        if (frameScrollbar) {
+        IntPoint windowPoint = frameView().contentsToWindow(location.roundedPoint());
+        if (Scrollbar* frameScrollbar = frameView().scrollbarAtPoint(windowPoint)) {
             result.setScrollbar(frameScrollbar);
             return true;
         }
@@ -1337,6 +1337,26 @@ ImageQualityController& RenderView::imageQualityController()
     if (!m_imageQualityController)
         m_imageQualityController = std::make_unique<ImageQualityController>(*this);
     return *m_imageQualityController;
+}
+
+void RenderView::registerForVisibleInViewportCallback(RenderElement& renderer)
+{
+    ASSERT(!m_visibleInViewportRenderers.contains(&renderer));
+    m_visibleInViewportRenderers.add(&renderer);
+}
+
+void RenderView::unregisterForVisibleInViewportCallback(RenderElement& renderer)
+{
+    ASSERT(m_visibleInViewportRenderers.contains(&renderer));
+    m_visibleInViewportRenderers.remove(&renderer);
+}
+
+void RenderView::updateVisibleViewportRect(const IntRect& visibleRect)
+{
+    resumePausedImageAnimationsIfNeeded(visibleRect);
+
+    for (auto* renderer : m_visibleInViewportRenderers)
+        renderer->visibleInViewportStateChanged(visibleRect.intersects(enclosingIntRect(renderer->absoluteClippedOverflowRect())) ? RenderElement::VisibleInViewport : RenderElement::NotVisibleInViewport);
 }
 
 void RenderView::addRendererWithPausedImageAnimations(RenderElement& renderer)

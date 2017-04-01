@@ -28,6 +28,7 @@
 
 #if ENABLE(B3_JIT)
 
+#include "B3ConstFloatValue.h"
 #include "B3ProcedureInlines.h"
 #include "B3ValueInlines.h"
 
@@ -68,9 +69,37 @@ Value* ConstDoubleValue::mulConstant(Procedure& proc, const Value* other) const
     return proc.add<ConstDoubleValue>(origin(), m_value * other->asDouble());
 }
 
+Value* ConstDoubleValue::bitAndConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasDouble())
+        return nullptr;
+    double result = bitwise_cast<double>(bitwise_cast<uint64_t>(m_value) & bitwise_cast<uint64_t>(other->asDouble()));
+    return proc.add<ConstDoubleValue>(origin(), result);
+}
+
 Value* ConstDoubleValue::bitwiseCastConstant(Procedure& proc) const
 {
     return proc.add<Const64Value>(origin(), bitwise_cast<int64_t>(m_value));
+}
+
+Value* ConstDoubleValue::doubleToFloatConstant(Procedure& proc) const
+{
+    return proc.add<ConstFloatValue>(origin(), static_cast<float>(m_value));
+}
+
+Value* ConstDoubleValue::absConstant(Procedure& proc) const
+{
+    return proc.add<ConstDoubleValue>(origin(), fabs(m_value));
+}
+
+Value* ConstDoubleValue::ceilConstant(Procedure& proc) const
+{
+    return proc.add<ConstDoubleValue>(origin(), ceil(m_value));
+}
+
+Value* ConstDoubleValue::sqrtConstant(Procedure& proc) const
+{
+    return proc.add<ConstDoubleValue>(origin(), sqrt(m_value));
 }
 
 Value* ConstDoubleValue::divConstant(Procedure& proc, const Value* other) const
@@ -78,6 +107,13 @@ Value* ConstDoubleValue::divConstant(Procedure& proc, const Value* other) const
     if (!other->hasDouble())
         return nullptr;
     return proc.add<ConstDoubleValue>(origin(), m_value / other->asDouble());
+}
+
+Value* ConstDoubleValue::modConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasDouble())
+        return nullptr;
+    return proc.add<ConstDoubleValue>(origin(), fmod(m_value, other->asDouble()));
 }
 
 TriState ConstDoubleValue::equalConstant(const Value* other) const

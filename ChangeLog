@@ -1,3 +1,51 @@
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add fetch API compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=152254
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-12-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Support building under Cygwin or native Perl
+        https://bugs.webkit.org/show_bug.cgi?id=152145
+        <rdar://problem/23839868>
+
+        Reviewed by David Kilzer.
+
+        * Source/cmake/tools/scripts/auto-version.pl: Correct handling of mixed DOS filenames when used in a
+        Cygwin context.
+        
+
+2015-12-09  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Suspend and resume device motion and device orientation updates when page is hidden and visible, respectively
+        https://bugs.webkit.org/show_bug.cgi?id=151840
+        <rdar://problem/23753931>
+
+        Reviewed by Simon Fraser.
+
+        Add a manual test that can be used to verify that we suspend dispatching device motion and
+        device orientation events when the page is hidden.
+
+        * ManualTests/ios/resources/suspend-orientation-and-motion-events-when-page-becomes-hidden.js: Added.
+        (resetTest):
+        (checkEvent):
+        (handleVisibilityChange):
+        * ManualTests/ios/suspend-orientation-and-motion-events-when-page-becomes-hidden.html: Added.
+
+2015-12-07  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=151950
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/tools/scripts/auto-version.pl:
+
 2015-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ES6] Implement LLInt/Baseline Support for ES6 Generators and enable this feature

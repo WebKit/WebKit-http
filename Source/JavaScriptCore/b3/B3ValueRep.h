@@ -30,6 +30,7 @@
 
 #include "FPRInfo.h"
 #include "GPRInfo.h"
+#include "JSCJSValue.h"
 #include "Reg.h"
 #include <wtf/PrintStream.h>
 
@@ -43,11 +44,18 @@ namespace JSC { namespace B3 {
 class ValueRep {
 public:
     enum Kind {
-        // As an input representation, this means that B3 can pick any representation. It also currently
-        // implies that the use is cold: the register allocator doesn't count it. As an output
+        // As an input representation, this means that B3 can pick any representation. As an output
         // representation, this means that we don't know. This will only arise as an output
         // representation for the active arguments of Check/CheckAdd/CheckSub/CheckMul.
-        Any,
+        WarmAny,
+
+        // Same as WarmAny, but implies that the use is cold. A cold use is not counted as a use for
+        // computing the priority of the used temporary.
+        ColdAny,
+
+        // Same as ColdAny, but also implies that the use occurs after all other effects of the stackmap
+        // value.
+        LateColdAny,
 
         // As an input representation, this means that B3 should pick some register. It could be a
         // register that this claims to clobber!
@@ -70,7 +78,7 @@ public:
     };
     
     ValueRep()
-        : m_kind(Any)
+        : m_kind(WarmAny)
     {
     }
 
@@ -83,7 +91,7 @@ public:
     ValueRep(Kind kind)
         : m_kind(kind)
     {
-        ASSERT(kind == Any || kind == SomeRegister);
+        ASSERT(kind == WarmAny || kind == ColdAny || kind == LateColdAny || kind == SomeRegister);
     }
 
     static ValueRep reg(Reg reg)
@@ -145,9 +153,9 @@ public:
         return !(*this == other);
     }
 
-    explicit operator bool() const { return kind() != Any; }
+    explicit operator bool() const { return kind() != WarmAny; }
 
-    bool isAny() const { return kind() == Any; }
+    bool isAny() const { return kind() == WarmAny || kind() == ColdAny || kind() == LateColdAny; }
 
     bool isSomeRegister() const { return kind() == SomeRegister; }
     
@@ -194,7 +202,19 @@ public:
         return bitwise_cast<double>(value());
     }
 
-    void dump(PrintStream&) const;
+    ValueRep withOffset(intptr_t offset)
+    {
+        switch (kind()) {
+        case Stack:
+            return stack(offsetFromFP() + offset);
+        case StackArgument:
+            return stackArgument(offsetFromSP() + offset);
+        default:
+            return *this;
+        }
+    }
+
+    JS_EXPORT_PRIVATE void dump(PrintStream&) const;
 
 private:
     Kind m_kind;

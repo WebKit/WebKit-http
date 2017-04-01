@@ -61,7 +61,7 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
         this._recordingTreeElementMap = new Map;
         this._recordingsTreeOutline = this.createContentTreeOutline(true, true);
         this._recordingsTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.HideDisclosureButtonsStyleClassName);
-        this._recordingsTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementHiddenStyleClassName);
+        this._recordingsTreeOutline.hidden = true;
         this._recordingsTreeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._recordingsTreeSelectionDidChange, this);
         this._timelinesContentContainerElement.appendChild(this._recordingsTreeOutline.element);
 
@@ -175,9 +175,11 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
 
         this._toggleRecordingShortcut = new WebInspector.KeyboardShortcut(null, WebInspector.KeyboardShortcut.Key.Space, this._toggleRecordingOnSpacebar.bind(this));
         this._toggleRecordingShortcut.implicitlyPreventsDefault = false;
+        this._toggleRecordingShortcut.disabled = true;
 
         this._toggleNewRecordingShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.Space, this._toggleNewRecordingOnSpacebar.bind(this));
         this._toggleNewRecordingShortcut.implicitlyPreventsDefault = false;
+        this._toggleNewRecordingShortcut.disabled = true;
     }
 
     // Static
@@ -871,7 +873,7 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
         }
 
         this._timelineEventsTitleBarContainer.style.top = (overviewHeight + eventTitleBarOffset) + "px";
-        this.contentElement.style.top = (overviewHeight + contentElementOffset) + "px";
+        this.contentView.element.style.top = (overviewHeight + contentElementOffset) + "px";
     }
 
     _recordGlyphMousedOver(event)
@@ -930,10 +932,10 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
         this._viewModeNavigationBar.selectedNavigationItem = this._viewMode;
 
         if (this._viewMode === WebInspector.TimelineSidebarPanel.ViewMode.Timelines) {
-            this._timelinesTreeOutline.element.classList.remove(WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementHiddenStyleClassName);
+            this._timelinesTreeOutline.hidden = false;
             this._frameSelectionChartSection.collapsed = true;
         } else {
-            this._timelinesTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementHiddenStyleClassName);
+            this._timelinesTreeOutline.hidden = true;
             this._frameSelectionChartSection.collapsed = false;
         }
 

@@ -28,7 +28,7 @@ class WebKitTableOfContents {
 
     public static function filterIndex($value, $key) {
         list($level, $anchor) = explode('::', $key);
-        if ( $level < 4 ) self::$toc[ $key ] = $value;
+        if ( $level < 3 ) self::$toc[ $key ] = $value;
     }
 
     public static function renderMarkup() {
@@ -92,15 +92,6 @@ class WebKitTableOfContents {
     public static function parse( $content ) {
         $markup = preg_replace_callback('{
                 ^<h([1-6])[^>]*>(.+?)<\/h[1-6]>* # HTML tags
-                |
-                ^(\#{1,6})    # $1 = string of #\'s
-                [ ]*
-                (.+?)        # $2 = Header text
-                [ ]*
-                \#*            # optional closing #\'s (not counted)
-                (?:[ ]+ ' . self::$attr_regex . ' )?     # $3 = id/class attributes
-                [ ]*
-                \n+
             }xm',
             array('WebKitTableOfContents', 'index'),
             $content

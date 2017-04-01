@@ -63,6 +63,8 @@ public:
     virtual void play();
     virtual void pause();
 
+    virtual bool supportsFullscreen() const;
+
     virtual FloatSize naturalSize() const;
 
     virtual bool hasVideo() const;
@@ -72,6 +74,9 @@ public:
 
     virtual bool seeking() const;
     virtual void seekDouble(double) override;
+
+    virtual void setRateDouble(double) override;
+
     virtual double durationDouble() const override;
 
     virtual float currentTime() const override;
@@ -231,6 +236,10 @@ private:
         float m_playbackRate { 1.0f };
         MFTIME m_frameDuration { 0 };
         MFTIME m_lastSampleTime { 0 };
+
+        std::atomic<bool> m_exitThread { false };
+
+        void stopThread() { m_exitThread = true; }
     };
 
     class Direct3DPresenter {

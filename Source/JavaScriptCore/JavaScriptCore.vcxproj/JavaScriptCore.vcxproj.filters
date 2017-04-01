@@ -429,6 +429,15 @@
     <ClCompile Include="..\jit\JITArithmetic32_64.cpp">
       <Filter>jit</Filter>
     </ClCompile>
+    <ClCompile Include="..\jit\JITBitAndGenerator.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\JITBitOrGenerator.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\JITBitXorGenerator.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
     <ClCompile Include="..\jit\JITCall.cpp">
       <Filter>jit</Filter>
     </ClCompile>
@@ -447,6 +456,9 @@
     <ClCompile Include="..\jit\JITExceptions.cpp">
       <Filter>jit</Filter>
     </ClCompile>
+    <ClCompile Include="..\jit\JITLeftShiftGenerator.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
     <ClCompile Include="..\jit\JITMulGenerator.cpp">
       <Filter>jit</Filter>
     </ClCompile>
@@ -460,6 +472,9 @@
       <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="..\jit\JITPropertyAccess32_64.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\JITRightShiftGenerator.cpp">
       <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="..\jit\JITStubRoutine.cpp">
@@ -2528,6 +2543,18 @@
     <ClInclude Include="..\jit\JITAddGenerator.h">
       <Filter>jit</Filter>
     </ClInclude>
+    <ClInclude Include="..\jit\JITBitAndGenerator.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITBitBinaryOpGenerator.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITBitOrGenerator.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITBitXorGenerator.h">
+      <Filter>jit</Filter>
+    </ClInclude>
     <ClInclude Include="..\jit\JITCode.h">
       <Filter>jit</Filter>
     </ClInclude>
@@ -2546,7 +2573,13 @@
     <ClInclude Include="..\jit\JITInlines.h">
       <Filter>jit</Filter>
     </ClInclude>
+    <ClInclude Include="..\jit\JITLeftShiftGenerator.h">
+      <Filter>jit</Filter>
+    </ClInclude>
     <ClInclude Include="..\jit\JITMulGenerator.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITRightShiftGenerator.h">
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\JITStubRoutine.h">
@@ -4217,9 +4250,6 @@
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLInlineCacheDescriptor.h">
-      <Filter>ftl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ftl\FTLInlineCacheDescriptorInlines.h">
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLInlineCacheSize.h">

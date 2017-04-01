@@ -83,13 +83,6 @@
     [super dealloc];
 }
 
-- (void)finalize
-{
-    if (_internal)
-        IMPL->deref();
-    [super finalize];
-}
-
 - (int)readOnlyLongAttr
 {
     WebCore::JSMainThreadNullState state;
@@ -381,6 +374,18 @@
     IMPL->setAttrWithGetterException(newAttrWithGetterException);
 }
 
+- (int)attrWithGetterExceptionWithMessage
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->attrWithGetterExceptionWithMessage();
+}
+
+- (void)setAttrWithGetterExceptionWithMessage:(int)newAttrWithGetterExceptionWithMessage
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setAttrWithGetterExceptionWithMessage(newAttrWithGetterExceptionWithMessage);
+}
+
 - (int)attrWithSetterException
 {
     WebCore::JSMainThreadNullState state;
@@ -393,6 +398,18 @@
     WebCore::ExceptionCode ec = 0;
     IMPL->setAttrWithSetterException(newAttrWithSetterException, ec);
     WebCore::raiseOnDOMError(ec);
+}
+
+- (int)attrWithSetterExceptionWithMessage
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->attrWithSetterExceptionWithMessage();
+}
+
+- (void)setAttrWithSetterExceptionWithMessage:(int)newAttrWithSetterExceptionWithMessage
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setAttrWithSetterExceptionWithMessage(newAttrWithSetterExceptionWithMessage);
 }
 
 - (NSString *)stringAttrWithGetterException

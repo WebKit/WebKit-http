@@ -67,10 +67,10 @@ void IDBOpenDBRequest::onError(const IDBResultData& data)
     enqueueEvent(Event::create(eventNames().errorEvent, true, true));
 }
 
-void IDBOpenDBRequest::versionChangeTransactionWillFinish()
+void IDBOpenDBRequest::versionChangeTransactionDidFinish()
 {
     // 3.3.7 "versionchange" transaction steps
-    // When the transaction is finished, immediately set request's transaction property to null.
+    // When the transaction is finished, after firing complete/abort on the transaction, immediately set request's transaction property to null.
     m_shouldExposeTransactionToDOM = false;
 }
 
@@ -86,14 +86,15 @@ void IDBOpenDBRequest::fireSuccessAfterVersionChangeCommit()
     enqueueEvent(Event::create(eventNames().successEvent, false, false));
 }
 
-void IDBOpenDBRequest::fireErrorAfterVersionChangeAbort()
+void IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()
 {
-    LOG(IndexedDB, "IDBOpenDBRequest::fireErrorAfterVersionChangeAbort()");
+    LOG(IndexedDB, "IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()");
 
     ASSERT(hasPendingActivity());
 
-    IDBError idbError(IDBExceptionCode::AbortError);
+    IDBError idbError(IDBDatabaseException::AbortError);
     m_domError = DOMError::create(idbError.name());
+    m_result = IDBAny::createUndefined();
 
     m_transaction->addRequest(*this);
     enqueueEvent(Event::create(eventNames().errorEvent, true, true));
@@ -119,8 +120,9 @@ void IDBOpenDBRequest::onUpgradeNeeded(const IDBResultData& resultData)
     Ref<IDBTransaction> transaction = database->startVersionChangeTransaction(resultData.transactionInfo(), *this);
 
     ASSERT(transaction->info().mode() == IndexedDB::TransactionMode::VersionChange);
+    ASSERT(transaction->originalDatabaseInfo());
 
-    uint64_t oldVersion = database->info().version();
+    uint64_t oldVersion = transaction->originalDatabaseInfo()->version();
     uint64_t newVersion = transaction->info().newVersion();
 
     LOG(IndexedDB, "IDBOpenDBRequest::onUpgradeNeeded() - current version is %" PRIu64 ", new is %" PRIu64, oldVersion, newVersion);
@@ -140,6 +142,7 @@ void IDBOpenDBRequest::onDeleteDatabaseSuccess(const IDBResultData& resultData)
     LOG(IndexedDB, "IDBOpenDBRequest::onDeleteDatabaseSuccess() - current version is %" PRIu64, oldVersion);
 
     m_readyState = IDBRequestReadyState::Done;
+    m_result = IDBAny::createUndefined();
 
     enqueueEvent(IDBVersionChangeEvent::create(oldVersion, 0, eventNames().successEvent));
 }
@@ -164,6 +167,12 @@ void IDBOpenDBRequest::requestCompleted(const IDBResultData& data)
     default:
         RELEASE_ASSERT_NOT_REACHED();
     }
+}
+
+void IDBOpenDBRequest::requestBlocked(uint64_t oldVersion, uint64_t newVersion)
+{
+    LOG(IndexedDB, "IDBOpenDBRequest::requestBlocked");
+    enqueueEvent(IDBVersionChangeEvent::create(oldVersion, newVersion, eventNames().blockedEvent));
 }
 
 } // namespace IDBClient

@@ -74,6 +74,8 @@ public:
     ~Output();
     
     void initialize(LModule, LValue, AbstractHeapRepository&);
+
+    void setFrequency(double) { }
     
     LBasicBlock insertNewBlocksBefore(LBasicBlock nextBlock)
     {
@@ -123,14 +125,16 @@ public:
     LValue sub(LValue left, LValue right) { return buildSub(m_builder, left, right); }
     LValue mul(LValue left, LValue right) { return buildMul(m_builder, left, right); }
     LValue div(LValue left, LValue right) { return buildDiv(m_builder, left, right); }
-    LValue rem(LValue left, LValue right) { return buildRem(m_builder, left, right); }
+    LValue chillDiv(LValue left, LValue right);
+    LValue mod(LValue left, LValue right) { return buildRem(m_builder, left, right); }
+    LValue chillMod(LValue left, LValue right);
     LValue neg(LValue value) { return buildNeg(m_builder, value); }
 
     LValue doubleAdd(LValue left, LValue right) { return buildFAdd(m_builder, left, right); }
     LValue doubleSub(LValue left, LValue right) { return buildFSub(m_builder, left, right); }
     LValue doubleMul(LValue left, LValue right) { return buildFMul(m_builder, left, right); }
     LValue doubleDiv(LValue left, LValue right) { return buildFDiv(m_builder, left, right); }
-    LValue doubleRem(LValue left, LValue right) { return buildFRem(m_builder, left, right); }
+    LValue doubleMod(LValue left, LValue right) { return buildFRem(m_builder, left, right); }
     LValue doubleNeg(LValue value) { return buildFNeg(m_builder, value); }
 
     LValue bitAnd(LValue left, LValue right) { return buildAnd(m_builder, left, right); }
@@ -143,13 +147,9 @@ public:
     
     LValue insertElement(LValue vector, LValue element, LValue index) { return buildInsertElement(m_builder, vector, element, index); }
 
-    LValue ceil64(LValue operand)
+    LValue ctlz32(LValue operand)
     {
-        return call(doubleType, ceil64Intrinsic(), operand);
-    }
-    LValue ctlz32(LValue xOperand, LValue yOperand)
-    {
-        return call(int32, ctlz32Intrinsic(), xOperand, yOperand);
+        return call(int32, ctlz32Intrinsic(), operand, booleanFalse);
     }
     LValue addWithOverflow32(LValue left, LValue right)
     {
@@ -178,6 +178,10 @@ public:
     LValue doubleAbs(LValue value)
     {
         return call(doubleType, doubleAbsIntrinsic(), value);
+    }
+    LValue doubleCeil(LValue operand)
+    {
+        return call(doubleType, ceil64Intrinsic(), operand);
     }
 
     LValue doubleSin(LValue value)
@@ -211,21 +215,17 @@ public:
 
     static bool hasSensibleDoubleToInt() { return isX86(); }
     LValue sensibleDoubleToInt(LValue);
-    
-    LValue signExt(LValue value, LType type) { return buildSExt(m_builder, value, type); }
+
+    LValue signExt32To64(LValue value) { return signExt(value, int64); }
     LValue zeroExt(LValue value, LType type) { return buildZExt(m_builder, value, type); }
     LValue zeroExtPtr(LValue value) { return zeroExt(value, intPtr); }
-    LValue fpToInt(LValue value, LType type) { return buildFPToSI(m_builder, value, type); }
-    LValue fpToUInt(LValue value, LType type) { return buildFPToUI(m_builder, value, type); }
     LValue fpToInt32(LValue value) { return fpToInt(value, int32); }
     LValue fpToUInt32(LValue value) { return fpToUInt(value, int32); }
-    LValue intToFP(LValue value, LType type) { return buildSIToFP(m_builder, value, type); }
     LValue intToDouble(LValue value) { return intToFP(value, doubleType); }
-    LValue unsignedToFP(LValue value, LType type) { return buildUIToFP(m_builder, value, type); }
     LValue unsignedToDouble(LValue value) { return unsignedToFP(value, doubleType); }
-    LValue intCast(LValue value, LType type) { return buildIntCast(m_builder, value, type); }
     LValue castToInt32(LValue value) { return intCast(value, int32); }
-    LValue fpCast(LValue value, LType type) { return buildFPCast(m_builder, value, type); }
+    LValue doubleToFloat(LValue value) { return fpCast(value, floatType); }
+    LValue floatToDouble(LValue value) { return fpCast(value, doubleType); }
     LValue intToPtr(LValue value, LType type) { return buildIntToPtr(m_builder, value, type); }
     LValue ptrToInt(LValue value, LType type) { return buildPtrToInt(m_builder, value, type); }
     LValue bitCast(LValue value, LType type) { return buildBitCast(m_builder, value, type); }
@@ -256,13 +256,42 @@ public:
     LValue load32(TypedPointer pointer) { return load(pointer, ref32); }
     LValue load64(TypedPointer pointer) { return load(pointer, ref64); }
     LValue loadPtr(TypedPointer pointer) { return load(pointer, refPtr); }
-    LValue loadFloatToDouble(TypedPointer pointer) { return buildFPCast(m_builder, load(pointer, refFloat), doubleType); }
+    LValue loadFloat(TypedPointer pointer) { return load(pointer, refFloat); }
     LValue loadDouble(TypedPointer pointer) { return load(pointer, refDouble); }
-    void store16(LValue value, TypedPointer pointer) { store(value, pointer, ref16); }
+
+    enum LoadType {
+        Load8SignExt32,
+        Load8ZeroExt32,
+        Load16SignExt32,
+        Load16ZeroExt32,
+        Load32,
+        Load64,
+        LoadPtr,
+        LoadFloat,
+        LoadDouble
+    };
+
+    LValue load(TypedPointer, LoadType);
+    
+    void store32As8(LValue value, TypedPointer pointer) { store(intCast(value, int8), pointer, ref8); }
+    void store32As16(LValue value, TypedPointer pointer) { store(intCast(value, int16), pointer, ref16); }
     void store32(LValue value, TypedPointer pointer) { store(value, pointer, ref32); }
     void store64(LValue value, TypedPointer pointer) { store(value, pointer, ref64); }
     void storePtr(LValue value, TypedPointer pointer) { store(value, pointer, refPtr); }
+    void storeFloat(LValue value, TypedPointer pointer) { store(value, pointer, refFloat); }
     void storeDouble(LValue value, TypedPointer pointer) { store(value, pointer, refDouble); }
+
+    enum StoreType {
+        Store32As8,
+        Store32As16,
+        Store32,
+        Store64,
+        StorePtr,
+        StoreFloat,
+        StoreDouble
+    };
+
+    void store(LValue, TypedPointer, StoreType);
 
     LValue addPtr(LValue value, ptrdiff_t immediate = 0)
     {
@@ -347,7 +376,6 @@ public:
     LValue doubleLessThanOrEqual(LValue left, LValue right) { return fcmp(LLVMRealOLE, left, right); }
     LValue doubleGreaterThan(LValue left, LValue right) { return fcmp(LLVMRealOGT, left, right); }
     LValue doubleGreaterThanOrEqual(LValue left, LValue right) { return fcmp(LLVMRealOGE, left, right); }
-    LValue doubleEqualOrUnordered(LValue left, LValue right) { return fcmp(LLVMRealUEQ, left, right); }
     LValue doubleNotEqual(LValue left, LValue right) { return fcmp(LLVMRealONE, left, right); }
     LValue doubleLessThanOrUnordered(LValue left, LValue right) { return fcmp(LLVMRealULT, left, right); }
     LValue doubleLessThanOrEqualOrUnordered(LValue left, LValue right) { return fcmp(LLVMRealULE, left, right); }
@@ -370,9 +398,6 @@ public:
     
     LValue select(LValue value, LValue taken, LValue notTaken) { return buildSelect(m_builder, value, taken, notTaken); }
     LValue extractValue(LValue aggVal, unsigned index) { return buildExtractValue(m_builder, aggVal, index); }
-    
-    LValue fence(LAtomicOrdering ordering = LLVMAtomicOrderingSequentiallyConsistent, SynchronizationScope scope = CrossThread) { return buildFence(m_builder, ordering, scope); }
-    LValue fenceAcqRel() { return fence(LLVMAtomicOrderingAcquireRelease); }
     
     template<typename VectorType>
     LValue call(LType, LValue function, const VectorType& vector) { return buildCall(m_builder, function, vector); }
@@ -444,6 +469,15 @@ public:
     LBuilder m_builder;
     LBasicBlock m_block;
     LBasicBlock m_nextBlock;
+
+private:
+    LValue intCast(LValue value, LType type) { return buildIntCast(m_builder, value, type); }
+    LValue fpToInt(LValue value, LType type) { return buildFPToSI(m_builder, value, type); }
+    LValue fpToUInt(LValue value, LType type) { return buildFPToUI(m_builder, value, type); }
+    LValue fpCast(LValue value, LType type) { return buildFPCast(m_builder, value, type); }
+    LValue intToFP(LValue value, LType type) { return buildSIToFP(m_builder, value, type); }
+    LValue unsignedToFP(LValue value, LType type) { return buildUIToFP(m_builder, value, type); }
+    LValue signExt(LValue value, LType type) { return buildSExt(m_builder, value, type); }
 };
 
 inline LValue Output::load8SignExt32(TypedPointer pointer)

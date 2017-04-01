@@ -40,7 +40,6 @@
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
 #include "InjectedBundleBackForwardList.h"
-#include "LayerTreeHost.h"
 #include "Logging.h"
 #include "NetscapePlugin.h"
 #include "NotificationPermissionRequestManager.h"
@@ -210,6 +209,10 @@
 
 #ifndef NDEBUG
 #include <wtf/RefCountedLeakCounter.h>
+#endif
+
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+#include "LayerTreeHost.h"
 #endif
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -1459,8 +1462,10 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
     for (auto* pluginView : m_pluginViews)
         pluginView->pageScaleFactorDidChange();
 
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
     if (m_drawingArea->layerTreeHost())
         m_drawingArea->layerTreeHost()->deviceOrPageScaleFactorChanged();
+#endif
 
     send(Messages::WebPageProxy::PageScaleFactorDidChange(scale));
 }
@@ -1535,8 +1540,10 @@ void WebPage::setDeviceScaleFactor(float scaleFactor)
         m_findController.deviceScaleFactorDidChange();
     }
 
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
     if (m_drawingArea->layerTreeHost())
         m_drawingArea->layerTreeHost()->deviceOrPageScaleFactorChanged();
+#endif
 }
 
 float WebPage::deviceScaleFactor() const
@@ -2783,6 +2790,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAudioPlaybackRequiresUserGesture(store.getBoolValueForKey(WebPreferencesKey::requiresUserGestureForAudioPlaybackKey()));
     settings.setAllowsInlineMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsInlineMediaPlaybackKey()));
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(store.getBoolValueForKey(WebPreferencesKey::inlineMediaPlaybackRequiresPlaysInlineAttributeKey()));
+    settings.setInvisibleAutoplayNotPermitted(store.getBoolValueForKey(WebPreferencesKey::invisibleAutoplayNotPermittedKey()));
     settings.setMediaDataLoadsAutomatically(store.getBoolValueForKey(WebPreferencesKey::mediaDataLoadsAutomaticallyKey()));
     settings.setAllowsPictureInPictureMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey()));
     settings.setMediaControlsScaleWithPageZoom(store.getBoolValueForKey(WebPreferencesKey::mediaControlsScaleWithPageZoomKey()));
@@ -2899,6 +2907,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(MEDIA_SOURCE)
     settings.setMediaSourceEnabled(store.getBoolValueForKey(WebPreferencesKey::mediaSourceEnabledKey()));
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+    settings.setMockCaptureDevicesEnabled(store.getBoolValueForKey(WebPreferencesKey::mockCaptureDevicesEnabledKey()));
 #endif
 
     settings.setShouldConvertPositionStyleOnCopy(store.getBoolValueForKey(WebPreferencesKey::shouldConvertPositionStyleOnCopyKey()));
@@ -3363,6 +3375,11 @@ void WebPage::didReceiveNotificationPermissionDecision(uint64_t notificationID, 
 void WebPage::didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed, const String& audioDeviceUID, const String& videoDeviceUID)
 {
     m_userMediaPermissionRequestManager.didReceiveUserMediaPermissionDecision(userMediaID, allowed, audioDeviceUID, videoDeviceUID);
+}
+
+void WebPage::didCompleteUserMediaPermissionCheck(uint64_t userMediaID, bool allowed)
+{
+    m_userMediaPermissionRequestManager.didCompleteUserMediaPermissionCheck(userMediaID, allowed);
 }
 #endif
 

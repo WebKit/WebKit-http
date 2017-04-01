@@ -54,7 +54,7 @@ public:
     static const char* supplementName();
 
 #if USE(NETWORK_SESSION)
-    typedef std::function<void(AuthenticationChallengeDisposition, const WebCore::Credential&)> ChallengeCompletionHandler;
+    typedef NetworkSessionTaskClient::ChallengeCompletionHandler ChallengeCompletionHandler;
     void didReceiveAuthenticationChallenge(uint64_t pageID, uint64_t frameID, const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler);
 #endif
     // Called for resources in the WebProcess (NetworkProcess disabled)
@@ -74,6 +74,7 @@ public:
 
 private:
     struct Challenge {
+        uint64_t pageID;
         WebCore::AuthenticationChallenge challenge;
 #if USE(NETWORK_SESSION)
         ChallengeCompletionHandler completionHandler;
@@ -86,7 +87,7 @@ private:
     bool tryUseCertificateInfoForChallenge(const WebCore::AuthenticationChallenge&, const WebCore::CertificateInfo&);
 
     uint64_t addChallengeToChallengeMap(const Challenge&);
-    bool shouldCoalesceChallenge(uint64_t challengeID, const WebCore::AuthenticationChallenge&) const;
+    bool shouldCoalesceChallenge(uint64_t pageID, uint64_t challengeID, const WebCore::AuthenticationChallenge&) const;
 
     void useCredentialForSingleChallenge(uint64_t challengeID, const WebCore::Credential&, const WebCore::CertificateInfo&);
     void continueWithoutCredentialForSingleChallenge(uint64_t challengeID);

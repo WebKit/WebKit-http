@@ -31,6 +31,7 @@
 #include "ExceptionInterfaces.h"
 #include "Frame.h"
 #include "HTMLParserIdioms.h"
+#include "IDBDatabaseException.h"
 #include "JSDOMWindowCustom.h"
 #include "JSExceptionBase.h"
 #include "SecurityOrigin.h"
@@ -223,33 +224,61 @@ void reportCurrentException(ExecState* exec)
         errorObject = toJS(exec, globalObject, interfaceName::create(description)); \
         break;
 
-JSValue createDOMException(ExecState* exec, ExceptionCode ec)
+static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String* message)
 {
     if (!ec)
         return jsUndefined();
 
     // FIXME: Handle other WebIDL exception types.
-    if (ec == TypeError)
-        return createTypeError(exec);
-    if (ec == RangeError)
-        return createRangeError(exec, ASCIILiteral("Bad value"));
+    if (ec == TypeError) {
+        if (!message || message->isEmpty())
+            return createTypeError(exec);
+        return createTypeError(exec, *message);
+    }
 
+    if (ec == RangeError) {
+        if (!message || message->isEmpty())
+            return createRangeError(exec, ASCIILiteral("Bad value"));
+        return createRangeError(exec, *message);
+    }
 
     // FIXME: All callers to setDOMException need to pass in the right global object
-    // for now, we're going to assume the lexicalGlobalObject.  Which is wrong in cases like this:
+    // for now, we're going to assume the lexicalGlobalObject. Which is wrong in cases like this:
     // frames[0].document.createElement(null, null); // throws an exception which should have the subframes prototypes.
     JSDOMGlobalObject* globalObject = deprecatedGlobalObjectForPrototype(exec);
 
     ExceptionCodeDescription description(ec);
 
+    CString messageCString;
+    if (message)
+        messageCString = message->utf8();
+    if (message && !message->isEmpty()) {
+        // It is safe to do this because the char* contents of the CString are copied into a new WTF::String before the CString is destroyed.
+        description.description = messageCString.data();
+    }
+
     JSValue errorObject;
     switch (description.type) {
         DOM_EXCEPTION_INTERFACES_FOR_EACH(TRY_TO_CREATE_EXCEPTION)
+#if ENABLE(INDEXED_DATABASE)
+    case IDBDatabaseExceptionType:
+        errorObject = toJS(exec, globalObject, DOMCoreException::createWithDescriptionAsMessage(description));
+#endif
     }
     
     ASSERT(errorObject);
     addErrorInfo(exec, asObject(errorObject), true);
     return errorObject;
+}
+
+static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String& message)
+{
+    return createDOMException(exec, ec, &message);
+}
+
+JSValue createDOMException(ExecState* exec, ExceptionCode ec)
+{
+    return createDOMException(exec, ec, nullptr);
 }
 
 void setDOMException(ExecState* exec, ExceptionCode ec)
@@ -258,6 +287,14 @@ void setDOMException(ExecState* exec, ExceptionCode ec)
         return;
 
     exec->vm().throwException(exec, createDOMException(exec, ec));
+}
+
+void setDOMException(JSC::ExecState* exec, const ExceptionCodeWithMessage& ec)
+{
+    if (!ec.code || exec->hadException())
+        return;
+
+    exec->vm().throwException(exec, createDOMException(exec, ec.code, ec.message));
 }
 
 #undef TRY_TO_CREATE_EXCEPTION

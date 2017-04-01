@@ -26,15 +26,6 @@
 #ifndef TextFlags_h
 #define TextFlags_h
 
-// <rdar://problem/16980736>: Web fonts crash on certain OSes when using CTFontManagerCreateFontDescriptorFromData()
-// FIXME: When we have moved entirely to CORETEXT_WEB_FONTS, remove the isCustomFont member variable from Font, since it will no longer be used.
-// See https://bug-145873-attachments.webkit.org/attachment.cgi?id=254710
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101000
-#define CORETEXT_WEB_FONTS 0
-#else
-#define CORETEXT_WEB_FONTS 1
-#endif
-
 namespace WebCore {
 
 enum TextRenderingMode { AutoTextRendering, OptimizeSpeed, OptimizeLegibility, GeometricPrecision };
@@ -139,8 +130,8 @@ enum class FontVariantEastAsianVariant {
 
 enum class FontVariantEastAsianWidth {
     Normal,
-    FullWidth,
-    ProportionalWidth
+    Full,
+    Proportional
 };
 
 enum class FontVariantEastAsianRuby {
@@ -219,6 +210,25 @@ struct FontVariantSettings {
             && eastAsianVariant == FontVariantEastAsianVariant::Normal
             && eastAsianWidth == FontVariantEastAsianWidth::Normal
             && eastAsianRuby == FontVariantEastAsianRuby::Normal;
+    }
+
+    bool operator==(const FontVariantSettings& other)
+    {
+        return commonLigatures == other.commonLigatures
+            && discretionaryLigatures == other.discretionaryLigatures
+            && historicalLigatures == other.historicalLigatures
+            && contextualAlternates == other.contextualAlternates
+            && position == other.position
+            && caps == other.caps
+            && numericFigure == other.numericFigure
+            && numericSpacing == other.numericSpacing
+            && numericFraction == other.numericFraction
+            && numericOrdinal == other.numericOrdinal
+            && numericSlashedZero == other.numericSlashedZero
+            && alternates == other.alternates
+            && eastAsianVariant == other.eastAsianVariant
+            && eastAsianWidth == other.eastAsianWidth
+            && eastAsianRuby == other.eastAsianRuby;
     }
 
     FontVariantLigatures commonLigatures;

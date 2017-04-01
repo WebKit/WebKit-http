@@ -34,6 +34,7 @@
 		0F8F2B91172E00FC007DBDA5 /* CompilationThread.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F8F2B90172E00F0007DBDA5 /* CompilationThread.h */; };
 		0F8F2B92172E0103007DBDA5 /* CompilationThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F8F2B8F172E00F0007DBDA5 /* CompilationThread.cpp */; };
 		0F8F2B9C172F2596007DBDA5 /* ConversionMode.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F8F2B9B172F2594007DBDA5 /* ConversionMode.h */; };
+		0F93274B1C17F4B700CF6564 /* Box.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F93274A1C17F4B700CF6564 /* Box.h */; };
 		0F9D3360165DBA73005AD387 /* FilePrintStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F9D335B165DBA73005AD387 /* FilePrintStream.cpp */; };
 		0F9D3361165DBA73005AD387 /* FilePrintStream.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F9D335C165DBA73005AD387 /* FilePrintStream.h */; };
 		0F9D3362165DBA73005AD387 /* PrintStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F9D335D165DBA73005AD387 /* PrintStream.cpp */; };
@@ -114,6 +115,8 @@
 		974CFC8E16A4F327006D5404 /* WeakPtr.h in Headers */ = {isa = PBXBuildFile; fileRef = 974CFC8D16A4F327006D5404 /* WeakPtr.h */; };
 		9BC70F05176C379D00101DEC /* AtomicStringTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9BC70F04176C379D00101DEC /* AtomicStringTable.cpp */; };
 		9BD8F40B176C2B470002D865 /* AtomicStringTable.h in Headers */ = {isa = PBXBuildFile; fileRef = 9BD8F40A176C2AD80002D865 /* AtomicStringTable.h */; };
+		A5098B001C169E0700087797 /* SandboxSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = A5098AFF1C169E0700087797 /* SandboxSPI.h */; };
+		A5098B021C16A4F900087797 /* SecuritySPI.h in Headers */ = {isa = PBXBuildFile; fileRef = A5098B011C16A4F900087797 /* SecuritySPI.h */; };
 		A5BA15F3182433A900A82E69 /* StringMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = A5BA15F2182433A900A82E69 /* StringMac.mm */; };
 		A5BA15F51824348000A82E69 /* StringImplMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = A5BA15F41824348000A82E69 /* StringImplMac.mm */; };
 		A5BA15FA182435A600A82E69 /* AtomicStringImplCF.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A5BA15F7182435A600A82E69 /* AtomicStringImplCF.cpp */; };
@@ -333,6 +336,7 @@
 		0F8F2B8F172E00F0007DBDA5 /* CompilationThread.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CompilationThread.cpp; sourceTree = "<group>"; };
 		0F8F2B90172E00F0007DBDA5 /* CompilationThread.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CompilationThread.h; sourceTree = "<group>"; };
 		0F8F2B9B172F2594007DBDA5 /* ConversionMode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ConversionMode.h; sourceTree = "<group>"; };
+		0F93274A1C17F4B700CF6564 /* Box.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Box.h; sourceTree = "<group>"; };
 		0F9D335B165DBA73005AD387 /* FilePrintStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FilePrintStream.cpp; sourceTree = "<group>"; };
 		0F9D335C165DBA73005AD387 /* FilePrintStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FilePrintStream.h; sourceTree = "<group>"; };
 		0F9D335D165DBA73005AD387 /* PrintStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PrintStream.cpp; sourceTree = "<group>"; };
@@ -420,6 +424,8 @@
 		974CFC8D16A4F327006D5404 /* WeakPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakPtr.h; sourceTree = "<group>"; };
 		9BC70F04176C379D00101DEC /* AtomicStringTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AtomicStringTable.cpp; sourceTree = "<group>"; };
 		9BD8F40A176C2AD80002D865 /* AtomicStringTable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AtomicStringTable.h; sourceTree = "<group>"; };
+		A5098AFF1C169E0700087797 /* SandboxSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SandboxSPI.h; sourceTree = "<group>"; };
+		A5098B011C16A4F900087797 /* SecuritySPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SecuritySPI.h; sourceTree = "<group>"; };
 		A5BA15F2182433A900A82E69 /* StringMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = StringMac.mm; path = mac/StringMac.mm; sourceTree = "<group>"; };
 		A5BA15F41824348000A82E69 /* StringImplMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = StringImplMac.mm; path = mac/StringImplMac.mm; sourceTree = "<group>"; };
 		A5BA15F7182435A600A82E69 /* AtomicStringImplCF.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AtomicStringImplCF.cpp; path = cf/AtomicStringImplCF.cpp; sourceTree = "<group>"; };
@@ -746,6 +752,7 @@
 				A8A47261151A825A004123FF /* BitVector.h */,
 				A8A47264151A825A004123FF /* BlockStack.h */,
 				A8A47265151A825A004123FF /* BloomFilter.h */,
+				0F93274A1C17F4B700CF6564 /* Box.h */,
 				0F4570441BE834410062A629 /* BubbleSort.h */,
 				A8A47267151A825A004123FF /* BumpPointerAllocator.h */,
 				EB95E1EF161A72410089A2F5 /* ByteOrder.h */,
@@ -1049,6 +1056,7 @@
 			isa = PBXGroup;
 			children = (
 				CE46516D19DB1FB4003ECA05 /* NSMapTableSPI.h */,
+				A5098B011C16A4F900087797 /* SecuritySPI.h */,
 			);
 			path = cocoa;
 			sourceTree = "<group>";
@@ -1057,6 +1065,7 @@
 			isa = PBXGroup;
 			children = (
 				DE5A09FB1BA36992003D4424 /* CommonCryptoSPI.h */,
+				A5098AFF1C169E0700087797 /* SandboxSPI.h */,
 				CE73E02419DCB7AB00580D5C /* XPCSPI.h */,
 			);
 			path = darwin;
@@ -1113,6 +1122,7 @@
 				A8A47452151A825B004123FF /* BinarySemaphore.h in Headers */,
 				A8A4738A151A825B004123FF /* Bitmap.h in Headers */,
 				A8A4738C151A825B004123FF /* BitVector.h in Headers */,
+				A5098B021C16A4F900087797 /* SecuritySPI.h in Headers */,
 				A8A4738E151A825B004123FF /* BlockStack.h in Headers */,
 				A8A4738F151A825B004123FF /* BloomFilter.h in Headers */,
 				A8A47391151A825B004123FF /* BumpPointerAllocator.h in Headers */,
@@ -1243,6 +1253,7 @@
 				A8A4743D151A825B004123FF /* StringBuilder.h in Headers */,
 				430B47891AAAAC1A001223DA /* StringCommon.h in Headers */,
 				A8A4743E151A825B004123FF /* StringConcatenate.h in Headers */,
+				0F93274B1C17F4B700CF6564 /* Box.h in Headers */,
 				A8A4742C151A825B004123FF /* StringExtras.h in Headers */,
 				A8A4743F151A825B004123FF /* StringHash.h in Headers */,
 				A748745417A0BDAE00FA04CB /* StringHashDumpContext.h in Headers */,
@@ -1274,6 +1285,7 @@
 				A8A4747D151A825B004123FF /* ValueCheck.h in Headers */,
 				A8A4747E151A825B004123FF /* Vector.h in Headers */,
 				A8A4747F151A825B004123FF /* VectorTraits.h in Headers */,
+				A5098B001C169E0700087797 /* SandboxSPI.h in Headers */,
 				A8A47480151A825B004123FF /* VMTags.h in Headers */,
 				974CFC8E16A4F327006D5404 /* WeakPtr.h in Headers */,
 				1FA47C8B152502DA00568D1B /* WebCoreThread.h in Headers */,

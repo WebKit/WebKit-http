@@ -58,10 +58,6 @@
 #include <OS.h>
 #endif
 
-#if PLATFORM(MAC)
-#include <objc/objc-auto.h>
-#endif
-
 namespace WTF {
 
 class PthreadState {
@@ -203,12 +199,6 @@ void initializeCurrentThreadInternal(const char* threadName)
     rename_thread(find_thread(NULL), threadName);
 #else
     UNUSED_PARAM(threadName);
-#endif
-
-#if PLATFORM(MAC)
-    // All threads that potentially use APIs above the BSD layer must be registered with the Objective-C
-    // garbage collector in case API implementations use garbage-collected memory.
-    objc_registerThreadWithCollector();
 #endif
 
     ThreadIdentifier id = identifierByPthreadHandle(pthread_self());

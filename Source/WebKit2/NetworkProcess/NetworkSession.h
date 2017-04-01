@@ -61,11 +61,15 @@ class NetworkSession;
 
 class NetworkSessionTaskClient {
 public:
-    virtual void willPerformHTTPRedirection(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, std::function<void(const WebCore::ResourceRequest&)>) = 0;
-    virtual void didReceiveChallenge(const WebCore::AuthenticationChallenge&, std::function<void(AuthenticationChallengeDisposition, const WebCore::Credential&)>) = 0;
-    virtual void didReceiveResponse(const WebCore::ResourceResponse&, std::function<void(WebCore::PolicyAction)>) = 0;
+    typedef std::function<void(const WebCore::ResourceRequest&)> RedirectCompletionHandler;
+    virtual void willPerformHTTPRedirection(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, RedirectCompletionHandler) = 0;
+    typedef std::function<void(AuthenticationChallengeDisposition, const WebCore::Credential&)> ChallengeCompletionHandler;
+    virtual void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler) = 0;
+    typedef std::function<void(WebCore::PolicyAction)> ResponseCompletionHandler;
+    virtual void didReceiveResponse(const WebCore::ResourceResponse&, ResponseCompletionHandler) = 0;
     virtual void didReceiveData(RefPtr<WebCore::SharedBuffer>&&) = 0;
     virtual void didCompleteWithError(const WebCore::ResourceError&) = 0;
+    virtual void didBecomeDownload() = 0;
 
     virtual ~NetworkSessionTaskClient() { }
 };
@@ -102,7 +106,7 @@ public:
         Ephemeral
     };
     NetworkSession(Type, WebCore::SessionID);
-    ~NetworkSession() { ASSERT(m_dataTaskMap.isEmpty()); }
+    ~NetworkSession();
 
     static NetworkSession& defaultSession();
     

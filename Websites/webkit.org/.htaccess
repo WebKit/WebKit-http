@@ -1,21 +1,23 @@
-DirectoryIndex index.php
+DirectoryIndex index.php index.html
 AddType application/x-httpd-php html
 AddType text/cache-manifest manifest
 
 RewriteRule .*\.svn.* - [F]
 
-RewriteCond %{HTTP_HOST} ^queues.webkit.org$
-RewriteRule (.*) https://webkit-queues.webkit.org$1 [L,R=301]
-
-RewriteCond %{HTTP_HOST} ^blog.webkit.org$
-RewriteRule (.*) https://webkit.org/blog$1 [L,R=301]
-
-RewriteCond %{HTTPS} off
-RewriteCond %{HTTP_HOST} ^(www\.)?(.*)$
-RewriteRule ^(.*)$ https://%2/$1 [L,R=301]
-
 RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)
 RewriteRule .* - [F]
+
+RewriteCond %{HTTP_HOST} ^queues.webkit.org$
+RewriteRule (.*) https://webkit-queues.webkit.org/$1 [L,R=301]
+
+RewriteCond %{HTTP_HOST} ^blog.webkit.org$
+RewriteRule (.*) https://webkit.org/blog/$1 [L,R=301]
+
+RewriteCond %{HTTP_HOST} ^(www\.)(.*)$
+RewriteRule (.*) https://%2/$1 [L,R=301]
+
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}/$1 [L,R=301]
 
 # Old Sunspider versions
 Redirect 301 /perf/sunspider-0.9/sunspider.html /perf/sunspider/sunspider.html
@@ -45,29 +47,10 @@ Redirect 301 /coding/scripts.html /script-tools/
 Redirect 301 /coding/technical-articles.html /blog/
 Redirect 301 /conference /meeting/
 Redirect 301 /contact.html /getting-started/#staying-in-touch
-Redirect 301 /projects/accessibility/index.html /project/
-Redirect 301 /projects/cleanup/index.html /project/
-Redirect 301 /projects/compat/index.html /project/
-Redirect 301 /projects/css/index.html /project/
-Redirect 301 /projects/documentation/index.html /project/
-Redirect 301 /projects/dom/index.html /project/
-Redirect 301 /projects/editing/index.html /project/
-Redirect 301 /projects/forms/index.html /project/
-Redirect 301 /projects/forms/survey.html /project/
-Redirect 301 /projects/goals.html /project/
-Redirect 301 /projects/html/index.html /project/
-Redirect 301 /projects/index.html /project/
-Redirect 301 /projects/javascript/index.html /project/
-Redirect 301 /projects/layout/index.html /project/
-Redirect 301 /projects/mathml/index.html /project/
-Redirect 301 /projects/performance/index.html /project/
-Redirect 301 /projects/plugins/index.html /project/
-Redirect 301 /projects/portability/index.html /project/
-Redirect 301 /projects/printing/index.html /project/
-Redirect 301 /projects/svg/index.html /project/
-Redirect 301 /projects/webkit/index.html /project/
-Redirect 301 /projects/xml/index.html /project/
-Redirect 301 /projects/xslt/index.html /project/
+Redirect 301 /demos/index.html /demo-content/
+RedirectMatch 301 ^/demos/$ /demo-content/
+RedirectMatch 301 ^/projects/ /project/
+Redirect 301 /projects /project/
 Redirect 301 /quality/bugpriorities.html /bug-prioritization/
 Redirect 301 /quality/bugwriting.html /bug-report-guidelines/
 Redirect 301 /quality/bugzilla.html /bugzilla-bits/
@@ -79,7 +62,9 @@ Redirect 301 /quality/reporting.html /reporting-bugs/
 Redirect 301 /quality/testing.html /testing-contributions/
 Redirect 301 /quality/testwriting.html /writing-new-tests/
 Redirect 301 /security/index.html /security-policy/
-Redirect 301 /security/security-group-members.html /security-policy/
+Redirect 301 /security/security-group-members.html /security-team/
+Redirect 301 /security/ /security-policy/
+Redirect 301 /security /security-policy/
 Redirect 301 /status.html /status/
 Redirect 301 /team.html /team/
 
@@ -107,6 +92,10 @@ Redirect 301 /recently-resolved https://bugs.webkit.org/buglist.cgi?query_format
 Redirect 301 /new-bugs https://bugs.webkit.org/buglist.cgi?query_format=advanced&short_desc_type=allwordssubstr&short_desc=&long_desc_type=substring&long_desc=&bug_file_loc_type=allwordssubstr&bug_file_loc=&keywords_type=allwords&keywords=&bug_status=UNCONFIRMED&bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&bug_status=RESOLVED&bug_status=VERIFIED&bug_status=CLOSED&emailassigned_to1=1&emailtype1=substring&email1=&emailassigned_to2=1&emailreporter2=1&emailcc2=1&emailtype2=substring&email2=&bugidtype=include&bug_id=&votes=&chfieldfrom=1d&chfieldto=Now&chfield=%5BBug+creation%5D&chfieldvalue=&cmdtype=doit&order=Reuse+same+sort+as+last+time&field0-0-0=noop&type0-0-0=noop&value0-0-0=
 Redirect 301 /svg-bugs https://bugs.webkit.org/buglist.cgi?query_format=advanced&short_desc_type=allwordssubstr&short_desc=&component=SVG&long_desc_type=substring&long_desc=&bug_file_loc_type=allwordssubstr&bug_file_loc=&bug_status=UNCONFIRMED&bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&emailassigned_to1=1&emailtype1=substring&email1=&emailassigned_to2=1&emailreporter2=1&emailcc2=1&emailtype2=substring&email2=&bugidtype=include&bug_id=&votes=&chfieldfrom=&chfieldto=Now&chfieldvalue=&cmdtype=doit&order=Reuse+same+sort+as+last+time&field0-0-0=noop&type0-0-0=noop&value0-0-0=
 
+# Archived webkit.org
+
+RewriteRule ^css/(.*)$ /old/css/$1 [NC,L]
+RewriteRule ^images/(.*)$ /old/images/$1 [NC,L]
 
 # BEGIN WordPress
 <IfModule mod_rewrite.c>

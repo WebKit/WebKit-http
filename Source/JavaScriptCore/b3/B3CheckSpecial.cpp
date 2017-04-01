@@ -31,6 +31,7 @@
 #include "AirCode.h"
 #include "AirGenerationContext.h"
 #include "AirInstInlines.h"
+#include "B3StackmapGenerationParams.h"
 #include "B3ValueInlines.h"
 
 namespace JSC { namespace B3 {
@@ -70,7 +71,7 @@ CheckSpecial::Key::Key(const Inst& inst)
 {
     m_opcode = inst.opcode;
     m_numArgs = inst.args.size();
-    m_stackmapRole = Arg::Use;
+    m_stackmapRole = SameAsRep;
 }
 
 void CheckSpecial::Key::dump(PrintStream& out) const
@@ -78,7 +79,7 @@ void CheckSpecial::Key::dump(PrintStream& out) const
     out.print(m_opcode, "(", m_numArgs, ",", m_stackmapRole, ")");
 }
 
-CheckSpecial::CheckSpecial(Air::Opcode opcode, unsigned numArgs, Arg::Role stackmapRole)
+CheckSpecial::CheckSpecial(Air::Opcode opcode, unsigned numArgs, RoleMode stackmapRole)
     : m_checkOpcode(opcode)
     , m_stackmapRole(stackmapRole)
     , m_numCheckArgs(numArgs)
@@ -142,9 +143,6 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
     ASSERT(value);
 
     Vector<ValueRep> reps;
-    for (unsigned i = numB3Args(value); i--;)
-        reps.append(ValueRep());
-
     appendRepsImpl(context, m_numCheckArgs + 1, inst, reps);
 
     // Set aside the args that are relevant to undoing the operation. This is because we don't want to
@@ -208,13 +206,7 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
                     break;
                 }
                 
-                StackmapGenerationParams params;
-                params.value = value;
-                params.reps = reps;
-                params.usedRegisters = value->m_usedRegisters;
-                params.context = &context;
-
-                value->m_generator->run(jit, params);
+                value->m_generator->run(jit, StackmapGenerationParams(value, reps, context));
             }));
 
     return CCallHelpers::Jump(); // As far as Air thinks, we are not a terminal.

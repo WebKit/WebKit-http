@@ -30,6 +30,7 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
+#include "GraphicsLayerFactory.h"
 #include "Page.h"
 #include "ScrollableArea.h"
 #include <wtf/CurrentTime.h>
@@ -40,6 +41,14 @@
 #include <wtf/text/CString.h>
 
 namespace WebCore {
+
+std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient& client, Type layerType)
+{
+    if (!factory)
+        return std::make_unique<CoordinatedGraphicsLayer>(layerType, client);
+
+    return factory->createGraphicsLayer(layerType, client);
+}
 
 static CoordinatedLayerID toCoordinatedLayerID(GraphicsLayer* layer)
 {
@@ -119,6 +128,9 @@ CoordinatedGraphicsLayer::CoordinatedGraphicsLayer(Type layerType, GraphicsLayer
 #if USE(GRAPHICS_SURFACE)
     , m_isValidPlatformLayer(false)
     , m_pendingPlatformLayerOperation(None)
+#endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    , m_shouldSyncPlatformLayer(false)
 #endif
     , m_coordinator(0)
     , m_compositedNativeImagePtr(0)
@@ -381,6 +393,9 @@ void CoordinatedGraphicsLayer::setContentsNeedsDisplay()
 #if USE(GRAPHICS_SURFACE)
     if (m_platformLayer)
         m_pendingPlatformLayerOperation |= SyncPlatformLayer;
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+    if (m_platformLayer)
+        m_shouldSyncPlatformLayer = true;
 #endif
 
     notifyFlushRequired();
@@ -411,6 +426,12 @@ void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platfor
     m_platformLayerToken = m_platformLayer ? m_platformLayer->graphicsSurfaceToken() : GraphicsSurfaceToken();
     ASSERT(!(!m_platformLayerToken.isValid() && m_platformLayer));
 
+    notifyFlushRequired();
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+    if (m_platformLayer != platformLayer)
+        m_shouldSyncPlatformLayer = true;
+
+    m_platformLayer = platformLayer;
     notifyFlushRequired();
 #else
     UNUSED_PARAM(platformLayer);
@@ -700,9 +721,9 @@ void CoordinatedGraphicsLayer::syncAnimations()
     m_layerState.animationsChanged = true;
 }
 
-#if USE(GRAPHICS_SURFACE)
 void CoordinatedGraphicsLayer::syncPlatformLayer()
 {
+#if USE(GRAPHICS_SURFACE)
     destroyPlatformLayerIfNeeded();
     createPlatformLayerIfNeeded();
 
@@ -717,8 +738,20 @@ void CoordinatedGraphicsLayer::syncPlatformLayer()
     ASSERT(m_platformLayer);
     m_layerState.platformLayerFrontBuffer = m_platformLayer->copyToGraphicsSurface();
     m_layerState.platformLayerShouldSwapBuffers = true;
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+    if (!m_shouldSyncPlatformLayer)
+        return;
+
+    m_shouldSyncPlatformLayer = false;
+    m_layerState.platformLayerChanged = true;
+    if (m_platformLayer) {
+        m_platformLayer->swapBuffersIfNeeded();
+        m_layerState.platformLayerProxy = m_platformLayer->proxy();
+    }
+#endif
 }
 
+#if USE(GRAPHICS_SURFACE)
 void CoordinatedGraphicsLayer::destroyPlatformLayerIfNeeded()
 {
     if (!(m_pendingPlatformLayerOperation & DestroyPlatformLayer))
@@ -769,9 +802,7 @@ void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly(bool)
     computeTransformedVisibleRect();
     syncChildren();
     syncFilters();
-#if USE(GRAPHICS_SURFACE)
     syncPlatformLayer();
-#endif
 
     // Only unset m_movingVisibleRect after we have updated the visible rect after the animation stopped.
     if (!hasActiveTransformAnimation)
@@ -1195,5 +1226,17 @@ void CoordinatedGraphicsLayer::animationStartedTimerFired()
 {
     client().notifyAnimationStarted(this, "", m_lastAnimationStartTime);
 }
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void CoordinatedGraphicsLayer::platformLayerWillBeDestroyed()
+{
+}
+
+void CoordinatedGraphicsLayer::setPlatformLayerNeedsDisplay()
+{
+}
+#endif
+
 } // namespace WebCore
+
 #endif // USE(COORDINATED_GRAPHICS)

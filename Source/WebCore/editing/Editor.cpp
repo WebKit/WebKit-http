@@ -851,7 +851,7 @@ bool Editor::dispatchCPPEvent(const AtomicString& eventType, DataTransferAccessP
 
     RefPtr<DataTransfer> dataTransfer = DataTransfer::createForCopyAndPaste(policy);
 
-    Ref<Event> event = ClipboardEvent::create(eventType, true, true, dataTransfer);
+    Ref<Event> event = ClipboardEvent::create(eventType, true, true, dataTransfer.get());
     target->dispatchEvent(event);
     bool noDefaultProcessing = event->defaultPrevented();
     if (noDefaultProcessing && policy == DataTransferAccessPolicy::Writable) {
@@ -3263,6 +3263,11 @@ void Editor::respondToChangedSelection(const VisibleSelection&, FrameSelection::
 
     if (client())
         client()->respondToChangedSelection(&m_frame);
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    if (client() && canEdit())
+        client()->requestCandidatesForSelection(m_frame.selection().selection());
+#endif
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
     if (shouldDetectTelephoneNumbers())

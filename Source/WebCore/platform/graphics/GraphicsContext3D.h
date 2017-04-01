@@ -60,7 +60,7 @@
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
 OBJC_CLASS WebGLLayer;
-#elif PLATFORM(GTK) || PLATFORM(EFL)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN_CAIRO)
 typedef unsigned int GLuint;
 #endif
 
@@ -1301,6 +1301,7 @@ private:
 
     bool reshapeFBOs(const IntSize&);
     void resolveMultisamplingIfNecessary(const IntRect& = IntRect());
+    void attachDepthAndStencilBufferIfNeeded(GLuint internalDepthStencilFormat, int width, int height);
 #if PLATFORM(EFL) && USE(GRAPHICS_SURFACE)
     void createGraphicsSurfaces(const IntSize&);
 #endif
@@ -1425,6 +1426,9 @@ private:
     GC3Duint m_texture;
     GC3Duint m_compositorTexture;
     GC3Duint m_fbo;
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    GC3Duint m_compositorFBO;
+#endif
 
     GC3Duint m_depthBuffer;
     GC3Duint m_stencilBuffer;

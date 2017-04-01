@@ -35,7 +35,7 @@ namespace FTL {
 
 class BinaryOpDescriptor;
 
-void generateArithSubFastPath(BinaryOpDescriptor&, CCallHelpers&,
+void generateBinaryOpFastPath(BinaryOpDescriptor&, CCallHelpers&,
     GPRReg result, GPRReg left, GPRReg right, RegisterSet usedRegisters,
     CCallHelpers::Jump& done, CCallHelpers::Jump& slowPathStart);
 

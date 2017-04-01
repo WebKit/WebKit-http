@@ -1,3 +1,743 @@
+2015-12-16  Tim Horton  <timothy_horton@apple.com>
+
+        [mac-wk2] fast/events force click tests crashing
+        https://bugs.webkit.org/show_bug.cgi?id=152339
+
+        Reviewed by Beth Dakin.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (-[EventSenderSyntheticEvent initPressureEventAtLocation:globalLocation:stage:pressure:stageTransition:phase:time:eventNumber:window:]):
+        Set the NSEvent's _type member in addition to overriding -type,
+        because there are assertions in touch event handling code that depend on it.
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Enforce temporarily bots to sync WebKit and WPT testharness.js
+        https://bugs.webkit.org/show_bug.cgi?id=152334
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._copy_webkit_test_files): Temporarily overwrite wpt testharness.js with WebKit testharness.js.
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add fetch API compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=152254
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-12-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed.
+
+        Added files that have impact in building Streams API to the watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-12-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed.
+
+        Added imported tests to Streams API watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove default copy of wpt testharness.js when launching wpt server
+        https://bugs.webkit.org/show_bug.cgi?id=152298
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._copy_webkit_test_files): Deleted default copy of WebKit testharness.js to WPT.
+
+2015-12-15  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r192375): DumpRenderTree.app exits immediately with no error
+        <http://webkit.org/b/152314>
+
+        Reviewed by Daniel Bates.
+
+        The change to DumpRenderTreeMain.mm in r192375 caused the iOS
+        code path to exit immediately when calling main().
+        Unfortunately, DumpRenderTreeMain.mm was used for both
+        DumpRenderTree command-line binary and DumpRenderTree.app, which
+        meant that the app would exit immediately with no error code
+        when run!
+
+        The workaround is to introduce a separate source file called
+        DumpRenderTreeAppMain.mm, similar to what WebKitTestRunner
+        already does.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Add
+        DumpRenderTreeAppMain.mm to the project.  Make it the only
+        compiled source for the DumpRenderTree.app target.
+        * DumpRenderTree/ios/DumpRenderTreeAppMain.mm: Copied from Tools/DumpRenderTree/mac/DumpRenderTreeMain.mm.
+        (main): Call DumpRenderTreeMain() on iOS.  Assert on OS X in
+        case someone tries mistakenly to use the app.
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig:
+        Link to JavaScriptCore.framework on iOS for the assert.
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig:
+        Link to JavaScriptCore.framework on OS X for the assert.  Remove
+        unneeded EXCLUDED_SOURCE_FILE_NAMES setting.
+        * DumpRenderTree/mac/DumpRenderTreeMain.mm:
+        (main): Add assert for iOS so that a crash occurs if someone
+        tries to run the wrong command.
+
+2015-12-14  Tim Horton  <timothy_horton@apple.com>
+
+        Frequent crash under -[WKPDFView web_setMinimumSize:]_block_invoke
+        https://bugs.webkit.org/show_bug.cgi?id=152266
+        <rdar://problem/22092676>
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKPDFViewResizeCrash.mm: Added.
+        Add a test that crashed before this change, and doesn't crash after.
+
+2015-12-14  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS: Text field variations do not have the correct traits
+        https://bugs.webkit.org/show_bug.cgi?id=152237
+
+        Reviewed by Mario Sanchez Prada.
+
+        Add iOS calls for determing if an object is a search field or a text area.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (getIsSearchFieldCallback):
+        (getIsTextAreaCallback):
+        (stringForSelectionCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::identifier):
+        (AccessibilityUIElement::isTextArea):
+        (AccessibilityUIElement::isSearchField):
+        (AccessibilityUIElement::traits):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::scrollPageRight):
+        (WTR::AccessibilityUIElement::hasContainedByFieldsetTrait):
+        (WTR::AccessibilityUIElement::fieldsetAncestorElement):
+        (WTR::AccessibilityUIElement::isSearchField):
+        (WTR::AccessibilityUIElement::isTextArea):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::fieldsetAncestorElement):
+        (WTR::AccessibilityUIElement::isTextArea):
+        (WTR::AccessibilityUIElement::isSearchField):
+        (WTR::AccessibilityUIElement::rowCount):
+
+2015-12-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [JHBuild] package libtool-bin is now required on Debian systems.
+        https://bugs.webkit.org/show_bug.cgi?id=152252
+
+        Reviewed by Sergio Villar Senin.
+
+        * gtk/install-dependencies: Add libtool-bin to the list of packages required
+        for building the JHBuild on Debian systems.
+
+2015-12-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        check-for-inappropriate-objc-class-names should check all class names, not just externally visible ones
+        https://bugs.webkit.org/show_bug.cgi?id=152156
+
+        Reviewed by Dan Bernstein.
+
+        Our frameworks should appropriately prefix all ObjC classes,
+        not just external symbols.
+
+        * Scripts/check-for-inappropriate-objc-class-names:
+        Remove the -g switch to check all ObjC class names.
+
+2015-12-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Expose media capture devices persistent permissions to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=152087
+
+        Add support for the new user media permission checker page UI client method.
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::decidePolicyForUserMediaPermissionRequest):
+        (WTR::checkUserMediaPermissionForOrigin):
+        (WTR::TestController::createOtherPage): Add checkUserMediaPermissionForOrigin.
+        (WTR::TestController::createWebViewWithOptions): Ditto.
+        (WTR::TestController::resetStateToConsistentValues): Clear m_userMediaOriginPermissions.
+        (WTR::originUserVisibleName): New, create a string for the origin.
+        (WTR::TestController::handleCheckOfUserMediaPermissionForOrigin): Set the WKUserMediaPermissionCheckRef
+          according to the state of the origin permission map.
+        (WTR::TestController::handleUserMediaPermissionRequest): Remember both the origin and the
+          request so we can update the origin permission map in decidePolicyForUserMediaPermissionRequestIfPossible.
+        (WTR::TestController::decidePolicyForUserMediaPermissionRequestIfPossible): Update the
+          origin permission map.
+        * WebKitTestRunner/TestController.h:
+
+2015-12-10  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (r192796) WKBundlePageResourceLoadClient should be able to setHTTPBody in willSendRequestForFrame
+        https://bugs.webkit.org/show_bug.cgi?id=152022
+        rdar://problem/23763584
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::willSendRequestForFrame):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::setWillSendRequestReturnsNull):
+        (WTR::TestRunner::willSendRequestReturnsNullOnRedirect):
+        (WTR::TestRunner::setWillSendRequestReturnsNullOnRedirect):
+        (WTR::TestRunner::setWillSendRequestAddsHTTPBody):
+        (WTR::TestRunner::willSendRequestHTTPBody):
+        Added setWillSendRequestAddsHTTPBody that uses new SPI for testing.
+
+2015-12-10  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove additional simulator checks before running layout-tests
+        https://bugs.webkit.org/show_bug.cgi?id=152146
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.check_sys_deps): Removed additional simulators verifications.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator._boot_and_shutdown_simulator_device): Deleted.
+        (Simulator.check_simulator_device_and_erase_if_needed): Deleted.
+
+2015-12-09  Aakash Jain  <aakash_jain@apple.com>
+
+        Run atleast one simulator even if max process limit is low
+        https://bugs.webkit.org/show_bug.cgi?id=152081
+        <rdar://problem/23819694>
+
+        Reviewed by Alexey Proskuryakov.
+
+2015-12-09  Mario Sanchez Prada  <mario@endlessm.com>
+
+        [GTK] Crash in WebProcess when loading large content with custom URI schemes
+        https://bugs.webkit.org/show_bug.cgi?id=144262
+
+        Reviewed by Carlos Garcia Campos.
+
+        Added new unit test to check the additional scenarios we now
+        handle for custom URI schemes.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (generateHTMLContent): New helper function to generate big enough content.
+        (testWebContextURIScheme): New unit test.
+
+2015-12-09  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Fix unhandled web process message when launching MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=152048
+
+        Reviewed by Gyuyoung Kim.
+
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewUserViewportToContents.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-12-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to handle beforeunload events
+        https://bugs.webkit.org/show_bug.cgi?id=139090
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowConstructed):
+        (browserWindowDeleteEvent):
+        (browser_window_class_init):
+        Handle delete-event to prevent the window from being closed when
+        the page has beforeunload handlers. Use
+        webkit_web_view_try_close() when the window is requested to be
+        closed.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        (testWebViewJavaScriptDialogs):
+        Add a test case for the WEBKIT_SCRIPT_DIALOG_BEFORE_UNLOAD_CONFIRM
+        script dialog type.
+
+2015-12-09  Mario Sanchez Prada  <mario@endlessm.com>
+
+        Refactored initialization code in LoadTrackingTest.
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        Small refactoring to make sure that the state of a LoadTrackingTest
+        gets properly reset before loading new web content.
+
+        * TestWebKitAPI/gtk/WebKit2Gtk/LoadTrackingTest.h:
+        * TestWebKitAPI/gtk/WebKit2Gtk/LoadTrackingTest.cpp:
+        (LoadTrackingTest::reset): New, refactored code from *load*() and go*()
+        functions and reset the remaining local variables.
+        (LoadTrackingTest::loadURI): Call reset();
+        (LoadTrackingTest::loadHtml): Ditto.
+        (LoadTrackingTest::loadPlainText): Ditto.
+        (LoadTrackingTest::loadBytes): Ditto.
+        (LoadTrackingTest::loadRequest): Ditto.
+        (LoadTrackingTest::reload): Ditto.
+        (LoadTrackingTest::goBack): Ditto.
+        (LoadTrackingTest::goForward): Ditto.
+
+2015-12-09  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] REGRESSION(r193616): WKPreferences test has been failed since r193616
+        https://bugs.webkit.org/show_bug.cgi?id=151942
+
+        Reviewed by Darin Adler.
+
+        * MiniBrowser/efl/main.c:
+        (window_create): Enable offline web application cache feature on MiniBrowser.
+        (elm_main):
+
+2015-12-08  Aakash Jain  <aakash_jain@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=151243
+        <rdar://problem/22955197>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * LayoutTestRelay/LayoutTestRelay/main.m:
+        (getTestingSimDevice): Use separate testing device for each worker.
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.run): Perform cleanup even if setup fails.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.default_child_processes): Calculate number of simulators to use.
+        (IOSSimulatorPort.child_processes): Gets the number of simulators from options variable.
+        (IOSSimulatorPort.setup_test_run): Handle mulitple simulators.
+        (IOSSimulatorPort._quit_ios_simulator): Same
+        (IOSSimulatorPort.clean_up_test_run): Same
+        (IOSSimulatorPort.check_sys_deps): Same
+        (IOSSimulatorPort.testing_device): Same
+        (IOSSimulatorPort.reset_preferences): Same
+        (IOSSimulatorPort.get_simulator_path): Return simulator path.
+        (IOSSimulatorPort._createSimulatorApp): Create the copy of simulator app.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Device.delete): Delete the simulator device.
+        (Simulator.delete_device): Same
+        (Simulator.wait_until_device_is_booted): Wait for device booting.
+
+2015-12-08  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Add API to provide preferences before creating ewk_view
+        https://bugs.webkit.org/show_bug.cgi?id=151587
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c:
+        (on_key_down):
+        (quit):
+        (window_create):
+        Moved settings related code to configuration() not to update settings
+        whenever ewk_view is created.
+        (configuration):
+        (elm_main):
+
+2015-12-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ API tests after r193639.
+
+        The new jhbuild version needs some more variables ot be present in
+        the builtin dict, even if they are set to None.
+
+        * jhbuild/jhbuildutils.py:
+        (enter_jhbuild_environment_if_available):
+
+2015-12-07  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Notify WebCore when notification is clicked
+        https://bugs.webkit.org/show_bug.cgi?id=151951
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewNotification): test the new API.
+
+2015-12-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        'jhbuild build' should fail immediately when building any module fails
+        https://bugs.webkit.org/show_bug.cgi?id=145697
+
+        Reviewed by Carlos Garcia Campos.
+
+        * efl/jhbuildrc: Update jhbuildrc to account for the removal of the use_lib64 option.
+        * gtk/jhbuildrc: Update jhbuildrc to account for the removal of the use_lib64 option.
+        Everything is placed under lib instead of lib64 now.
+        * jhbuild/jhbuild-wrapper: Update jhbuild to the latest upstream commit, and pass
+        --exit-on-error when running 'jhbuild build'.
+        * jhbuild/jhbuildrc_common.py:
+        (init): Don't override PKG_CONFIG_PATH, CMAKE_PREFIX_PATH, or CMAKE_LIBRARY_PATH. Modern
+        jhbuild should be able to handle these for us without breaking things....
+
+2015-12-07  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Add support to import w3c tests from a repository with a different root that the main repo dir
+        https://bugs.webkit.org/show_bug.cgi?id=151751
+
+        Reviewed by Ryosuke Niwa and Youenn Fablet.
+
+        We should be able to import tests from repositories that are not pure test repositories and where tests are kept
+        in a different directory than the repository root.
+
+        This patch introduces a new parameter tests_directory that we will use as root directory to search for
+        tests. All paths will be flattened when copying tests to have a less complicated directory structure. This
+        requires having the copy_path lists including tuples of origin and destination directories.
+
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader._add_test_suite_paths): Adds the paths as a tuple of origin and destination directory.
+        (TestDownloader.copy_tests): Uses the origin and destination tuple for the paths to copy when copying files.
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest.test_tests_directory): Test.
+
+2015-12-07  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Mock TestRepositories in W3C importer tests
+        https://bugs.webkit.org/show_bug.cgi?id=151938
+
+        Reviewed by Youenn Fablet.
+
+        The test importer tests should use a fake repository instead of using the real one. The reason why this happened
+        is because the test repository method reading the file was using the filesystem directly instead of taking the
+        host one. This patch changes that.
+
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader.load_test_repositories): Take a filesystem and use it. If we get no filesystem, we use the
+        default one.
+        (TestDownloader.__init__): When loading the repositories, pass the host filesystem.
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest.test_harnesslinks_conversion):
+        (TestImporterTest.test_submodules_generation): Use a fake test repository file.
+
+2015-12-07  David Kilzer  <ddkilzer@apple.com>
+
+        TestNetscapePlugIn: Address review comment on 193607
+        <http://webkit.org/b/151881>
+
+        * DumpRenderTree/TestNetscapePlugIn/PluginObject.cpp:
+        (testSetStatus): Initializing std::unique_ptr<char[]> with
+        nullptr is redundant.
+
+2015-12-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add webkit_uri_request_get_http_method
+        https://bugs.webkit.org/show_bug.cgi?id=151601
+
+        Reviewed by Martin Robinson.
+
+        Add test case to check HTTP method of WebKitURIRequest.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestLoaderClient.cpp:
+        (testURIRequestHTTPMethod):
+        (serverCallback):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (sendRequestCallback):
+
+2015-12-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add WebKitWebPage::console-message-sent signal to Web Extensions API
+        https://bugs.webkit.org/show_bug.cgi?id=79918
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add unit tests to check the different console messages.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestConsoleMessage.cpp: Added.
+        (ConsoleMessageTest::ConsoleMessage::operator==):
+        (ConsoleMessageTest::consoleMessageReceivedCallback):
+        (ConsoleMessageTest::ConsoleMessageTest):
+        (ConsoleMessageTest::~ConsoleMessageTest):
+        (ConsoleMessageTest::waitUntilConsoleMessageReceived):
+        (testWebKitConsoleMessageConsoleAPI):
+        (testWebKitConsoleMessageJavaScriptException):
+        (testWebKitConsoleMessageNetworkError):
+        (testWebKitConsoleMessageSecurityError):
+        (beforeAll):
+        (afterAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (consoleMessageSentCallback):
+        (pageCreatedCallback):
+
+2015-12-07  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] MiniBrowser doesn't exit when called ewk_view_try_close()
+        https://bugs.webkit.org/show_bug.cgi?id=151934
+
+        Reviewed by Csaba Osztrogonác.
+
+        * MiniBrowser/efl/main.c:
+        (on_window_deletion): Revert the changes of r192767.
+
+2015-12-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] update-webkitgtk-libs cannot build mesa
+        https://bugs.webkit.org/show_bug.cgi?id=151535
+
+        Reviewed by Martin Robinson.
+
+        Upgrade to newer mesa in order to build successfully against LLVM 3.7. Add missing
+        dependency of mesa on LLVM, to ensure LLVM is built first. Build LLVM unconditionally, even
+        on architectures where FTL is not supported, to ensure mesa is always buildable, since LLVM
+        does not have a stable API and we cannot expect mesa to be buildable unless we control the
+        LLVM version. Build mesa with --disable-egl since --enable-egl conflicts with
+        --enable-xlib-glx. This fixes update-webkitgtk-libs on distros with LLVM 3.7.
+
+        * gtk/jhbuild.modules:
+
+2015-12-07  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][Mac] libWebExtensionTest link error
+        https://bugs.webkit.org/show_bug.cgi?id=150802
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt: add dependencies to the webextension library.
+
+2015-12-06  David Kilzer  <ddkilzer@apple.com>
+
+        TestNetscapePlugIn: Fix leaks found by static analyzer
+        <http://webkit.org/b/151881>
+
+        Reviewed by Darin Adler.
+
+        Fixes the following leaks found by the static analyzer:
+            DumpRenderTree/TestNetscapePlugIn/PluginObject.cpp:808:16: warning: Potential leak of memory pointed to by 'path'
+                    return false;
+                           ^~~~~
+            DumpRenderTree/TestNetscapePlugIn/PluginObject.cpp:808:16: warning: Potential leak of memory pointed to by 'target'
+                    return false;
+                           ^~~~~
+            DumpRenderTree/TestNetscapePlugIn/PluginObject.cpp:808:16: warning: Potential leak of memory pointed to by 'url'
+                    return false;
+                           ^~~~~
+
+        * DumpRenderTree/TestNetscapePlugIn/PluginObject.cpp:
+        (toCString): Switch to returning std::unique_ptr<char[]>.  Add
+        early return if allocation fails.
+        (testPostURLFile): Switch to using std::unique_ptr<char[]>.
+        Make sure to call fclose() on filehandle, even for an early
+        return.
+        (testSetStatus): Switch to using std::unique_ptr<char[]>.
+
+2015-12-05  David Kilzer  <ddkilzer@apple.com>
+
+        prepare-ChangeLog: Fix some warning messages when using svn
+        <http://webkit.org/b/151914>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/prepare-ChangeLog:
+        (generateFunctionLists): Simplify logic so that we never call
+        normalizePath() with an undefined value.
+        (attributeCommand): Quote $subPath for the shell so that we
+        don't try to run "svn propget" on invalid paths.
+
+2015-12-04  David Kilzer  <ddkilzer@apple.com>
+
+        TestNetscapePlugIn: Fix remaining static analyzer warnings
+        <http://webkit.org/b/151888>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fixes the following static analyzer warnings:
+            Tools/DumpRenderTree/TestNetscapePlugIn/main.cpp:101:9: warning: Called function pointer is null (null dereference)
+                    CRASH();
+                    ^~~~~~~
+            Tools/DumpRenderTree/TestNetscapePlugIn/main.cpp:46:5: note: expanded from macro 'CRASH'
+                ((void(*)())0)(); /* More reliable, but doesn't say BBADBEEF */ \
+                ^~~~~~~~~~~~~~~~
+            Tools/DumpRenderTree/TestNetscapePlugIn/main.cpp:375:12: warning: Access to field 'pluginTest' results in a dereference of a null pointer (loaded from variable 'obj')
+                return obj->pluginTest->NPP_SetWindow(window);
+                       ^~~~~~~~~~~~~~~
+            2 warnings generated.
+
+        * DumpRenderTree/TestNetscapePlugIn/main.cpp:
+        (CRASH): Use __builtin_trap() for gcc/clang.
+        (NPP_SetWindow): Add early return if obj is nullptr.
+
+2015-12-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test /webkit2/WebKitWebResource/get-data is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=151797
+
+        Reviewed by Martin Robinson.
+
+        Since we switched to use the network process to run the unit tests
+        the test /webkit2/WebKitWebResource/get-data sometimes fails and
+        sometimes passes. We are now also getting the notification for the
+        css image. Since we wait for 3 resources, sometimes the css image
+        is loaded before and then checkResourceData is called for it, but
+        not handled. When the css image is the last one loaded the test
+        passes. So, we just need to wait for the 4 resources.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (testWebResourceGetData):
+
+2015-12-03  David Kilzer  <ddkilzer@apple.com>
+
+        DumpRenderTree: Use-after-free in createBitmapContext() in PixelDumpSupportMac.mm
+        <http://webkit.org/b/151845>
+
+        Reviewed by Simon Fraser.
+
+        Fixes the following static analyzer warning:
+            DumpRenderTree/mac/PixelDumpSupportMac.mm:67:9: warning: Use of memory after it is freed
+                    WTFLogAlways("DumpRenderTree: CGBitmapContextCreate(%p, %llu, %llu, 8, %llu, %p, 0x%x) failed\n", buffer, pixelsHigh, pixelsWide, rowBytes, colorSpace.get(), kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host);
+                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        (createBitmapContext): Free 'buffer' after using it in logging
+        to fix the use-after-free.  Assign a value of nullptr to buffer
+        so we don't return with it set to a freed address.
+
+2015-12-03  Jer Noble  <jer.noble@apple.com>
+
+        Expose WebCore's InvisibleAutoplayNotPermitted setting to WebKit & WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=151830
+
+        Reviewed by Anders Carlsson.
+
+        Set invisibleAutoplayNotPermitted to NO by default both in WKTR and DRT.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2015-12-03  Anders Carlsson  <andersca@apple.com>
+
+        Remove Objective-C GC support
+        https://bugs.webkit.org/show_bug.cgi?id=151819
+        rdar://problem/23746991
+
+        Reviewed by Dan Bernstein.
+
+        * asan/asan.xcconfig:
+
+2015-12-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Allow nil for unspecified benchmark pathes
+        https://bugs.webkit.org/show_bug.cgi?id=151784
+
+        Reviewed by Filip Pizlo.
+
+        `Pathname.new(nil)` will raise an error.
+        Only generate Pathname if the benchmark path is specified.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-12-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Run non-http tests without Cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=151721
+
+        Reviewed by Andy Estes.
+
+        Support native 32-bit and 64-bit Python (and Perl) builds
+        for running tests:
+
+        1. Use "startswith('win')", rather than "== 'win32'" to support
+        various Windows build types.
+        2. Supply full path for some native Windows utilities, since the
+        path environment does not always have the specified, and they are
+        guaranteed to exist in those specific locations.
+        3. Make sure native Windows Python test runs pass proper environment
+        variables to run programs.
+        4. Append 'exe' suffix when running Windows executables.
+        5. Use the _winreg Python module on Windows, since the Cygwin 'regtool'
+        command doesn't exist.
+        
+        * Scripts/update-webkit: Use Perl $^X command to refer to the path of
+        the current Perl executable, rather than requiring a new path search.
+        * Scripts/webkitpy/common/find_files_unittest.py:
+        (TestWinNormalize.test_win): Use startswith('win').
+        * Scripts/webkitpy/common/prettypatch_unittest.py:
+        (test_pretty_diff_encodings): Ditto.
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive._should_close_fds): Ditto.
+        (Executive.shell_command_for_script): Use startswith('win').
+        (Executive.kill_process): Use full path to killall executable.
+        (Executive.check_running_pid): Use startswith('win').
+        (Executive.running_pids): Ditto.
+        (Executive.kill_all): Ditto. Also use path to 'killall' executable when
+        running under native Windows Python.
+        (Executive._child_process_encoding): Use startswith('win').
+        (Executive._should_encode_child_process_arguments): Ditto.
+        (Executive.popen): Recognize proper script engine on Windows, since it
+        does not support the shebang syntax.
+        (Executive.run_in_parallel): Use startswith('win').
+        * Scripts/webkitpy/common/system/executive_unittest.py:
+        (never_ending_command): Ditto.
+        (ExecutiveTest.test_run_command_with_unicode): Ditto.
+        (ExecutiveTest.serial_test_kill_process): Ditto.
+        (ExecutiveTest.serial_test_kill_all): Ditto.
+        (ExecutiveTest.serial_test_check_running_pid): Ditto.
+        (ExecutiveTest.serial_test_run_in_parallel): Ditto.
+        (main): Ditto.
+        * Scripts/webkitpy/common/system/file_lock.py:
+        (FileLock._create_lock): Ditto.
+        (FileLock._remove_lock): Ditto.
+        * Scripts/webkitpy/common/system/filesystem_unittest.py:
+        (RealFileSystemTest.test_chdir): Ditto.
+        (RealFileSystemTest.test_chdir__notexists): Ditto.
+        (RealFileSystemTest.test_maybe_make_directory__failure): Ditto.
+        * Scripts/webkitpy/common/system/path_unittest.py:
+        (AbspathTest.test_abspath_to_uri_win): Ditto.
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo._determine_os_name): Ditto.
+        * Scripts/webkitpy/common/system/user.py: Ditto.
+        * Scripts/webkitpy/layout_tests/controllers/manager_unittest.py:
+        (ManagerTest.integration_test_needs_servers): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__): Handle upper and lower-case
+        driver letters.
+        (LayoutTestApacheHttpd._get_apache_config_file_path): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server_unittest.py:
+        (TestLayoutTestApacheHttpd.test_start_cmd): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/http_server_base.py:
+        (HttpServerBase._check_that_all_ports_are_available): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/http_server_unittest.py:
+        (TestHttpServer.test_start_cmd): Ditto.
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.setup_environ_for_server): Include 'COMSPEC', 'SYSTEMDRIVE',
+        and 'SYSTEMROOT' in environment passed to test runners.
+        (Port._apache_config_file_name_for_platform): Use startswith('win').
+        (Port._build_path): Ditto.
+        (Port._path_to_driver): Include 'exe' suffix when running under native
+        Windows.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._setup_environ_for_driver): Explicitly make some environment
+        variables strings.
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess.__init__): Use startswith('win').
+        * Scripts/webkitpy/port/win.py:
+        (WinPort): Use the win32 registry utilities on Windows, and appropriate
+        registry key formats.
+        (WinPort._ntsd_location): Revise tool search paths for Windows 10.
+        (WinPort.read_registry_value): Revise to use _winreg library on Windows,
+        and regtool on Cygwin.
+        (WinPort.write_registry_value): Ditto.
+        (WinPort.setup_crash_log_saving): Ditto.
+        (WinPort.restore_crash_log_saving): Ditto.
+        (WinPort.prevent_error_dialogs): Ditto.
+        (WinPort.allow_error_dialogs): Ditto.
+        (WinPort.find_system_pid): Revise to use Windows management
+        infrastructure on native Windows, continue using 'ps' on Cygwin.
+        (WinPort.read_registry_string): Deleted.
+        (WinPort.write_registry_string): Deleted.
+        * Scripts/webkitpy/test/main.py:
+        (main): Use startswith('win').
+        (Tester._parse_args): Ditto.
+
 2015-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ES6] Implement LLInt/Baseline Support for ES6 Generators and enable this feature

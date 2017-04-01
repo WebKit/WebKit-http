@@ -66,7 +66,6 @@
 #include <WebCore/PageGroup.h>
 #include <WebCore/PrintContext.h>
 #include <WebCore/ResourceHandle.h>
-#include <WebCore/ResourceLoadScheduler.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityPolicy.h>
@@ -341,18 +340,6 @@ void InjectedBundle::setAsynchronousSpellCheckingEnabled(WebPageGroupProxy* page
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->settings().setAsynchronousSpellCheckingEnabled(enabled);
-}
-
-void InjectedBundle::clearAllDatabases()
-{
-    WebProcess::singleton().supplement<WebDatabaseManager>()->deleteAllDatabases();
-}
-
-void InjectedBundle::setDatabaseQuota(uint64_t quota)
-{
-    // Historically, we've used the following (somewhat non-sensical) string
-    // for the databaseIdentifier of local files.
-    WebProcess::singleton().supplement<WebDatabaseManager>()->setQuotaForOrigin("file__0", quota);
 }
 
 int InjectedBundle::numberOfPages(WebFrame* frame, double pageWidthInPixels, double pageHeightInPixels)

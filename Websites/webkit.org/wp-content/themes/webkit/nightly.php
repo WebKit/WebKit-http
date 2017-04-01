@@ -30,7 +30,7 @@ function get_nightly_download_details( $type = 'mac' ) {
     
     if ( ! empty($data) ) {
         $record = explode(',', $data);
-        set_transient($cachekey, json_encode($record), DAY_IN_SECONDS);
+        set_transient($cachekey, json_encode($record), HOUR_IN_SECONDS * 6); // Expire every 6 hours
         return $record;
 	}
     

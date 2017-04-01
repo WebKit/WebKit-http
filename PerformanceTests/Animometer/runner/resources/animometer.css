@@ -1,7 +1,6 @@
 /* -------------------------------------------------------------------------- */
 /*                                HTML and Body                               */
 /* -------------------------------------------------------------------------- */
-
 html,body {
     height: 100%;
     margin: 0px;
@@ -60,14 +59,19 @@ button.small-button:active {
     border-color: DarkCyan !important;
 }
 
+@media screen and (max-device-width: 414px) {
+    button.large-button {
+        margin: 1em 0;
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                               Tree                                         */
 /* -------------------------------------------------------------------------- */
 
 .tree {
-    margin: 1em;
-    overflow-y: scroll;
-    height: 80%;
+    padding: 0;
+    list-style-type: none;
 }
 
 .tree .expand-button {
@@ -110,23 +114,32 @@ label.tree-label {
     cursor: pointer;
 }
 
-label.tree-label:before {
-    background: black;
-    color: white;
+.tree > li > label.tree-label:before {
     position: relative;
     z-index: 1;
     float: left;
-    margin: 0 1em 0 -2.1em;
+    margin: 0 0 0 -2em;
     width: 1em;
     height: 1em;
-    border-radius: 1em;
-    content: '+';
+    content: '\25BA';
     text-align: center;
-    line-height: .9em;
+    line-height: 2.5em;
+    font-size: .5em;
 }
 
-:checked ~ label.tree-label:before {
-    content: '\2013';
+.tree > li > :checked ~ label.tree-label:before {
+    content: '\25BC';
+}
+
+@media screen and (max-device-width: 414px) {
+    .tree {
+        padding-left: 1em;
+    }
+    .tree > li > label.tree-label:before {
+        font-size: 1em;
+        margin-left: -1.75em;
+        line-height: 1em;
+    }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -191,13 +204,25 @@ main {
     display: -ms-flexbox;
     display: -webkit-flex;
     display: flex;
+
     -ms-flex-align: center;
     -webkit-align-items: center;
     -webkit-box-align: center;
     align-items: center;
-    -webkit-justify-content: center;
-    -ms-flex-pack: center;
-    justify-content: center;
+
+    -webkit-justify-content: flex-start;
+    -ms-flex-pack: flex-start;
+    justify-content: flex-start;
+
+    -webkit-flex-flow: column;
+    flex-flow: column;
+}
+
+.spacer {
+    -webkit-flex: 1 0 20px;
+    -ms-flex: 1 0 20px;
+    flex: 1 0 20px;
+    width: 10px;
 }
 
 section {
@@ -205,6 +230,15 @@ section {
     height: 600px;
     display: none;
     padding: 10px;
+}
+
+#home {
+    min-height: 600px;
+    height: auto;
+}
+
+.display-progress-bar section,
+.display-statistics-table section {
     border: 6px solid rgb(235, 235, 235);
     border-radius: 20px;
 }
@@ -245,13 +279,49 @@ section > footer {
         width: 1600px;
         height: 800px;
     }
+
+    #home {
+        min-height: 800px;
+    }
+}
+
+@media screen and (max-device-width: 414px) {
+    .spacer {
+        -webkit-flex: 0 0 0;
+        -ms-flex: 0 0 0;
+        flex: 0 0 0;
+    }
+
+    section {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        align-self: stretch;
+        padding: 0 5px;
+    }
+
+    #home {
+        min-height: 100%;
+    }
+
+    .display-progress-bar section,
+    .display-statistics-table section {
+        border: 0;
+    }
+
+    section > footer {
+        -webkit-flex-direction: column;
+        -ms-flex-direction: column;
+        flex-direction: column;
+        max-height: initial;
+    }
 }
 
 /* -------------------------------------------------------------------------- */
 /*                                 Home Section                               */
 /* -------------------------------------------------------------------------- */
 
-section#home {
+#home {
     -webkit-flex-direction: row;
     -ms-flex-direction: row;
     flex-direction: row;
@@ -260,58 +330,101 @@ section#home {
     flex-wrap: wrap;
     -webkit-align-content: center;
     -ms-flex-line-pack: center;
-    align-content: center;
+    align-content: flex-start;
 }
 
-section#home > suites,
-section#home > options {
+#home h2 {
+    font-size: 1.2em;
+}
+
+#suites,
+#options {
     padding: 10px;
     margin: 10px;
-    height: 50%;
 }
 
-section#home > suites {
-    padding-left: 80px;
+#suites {
+    padding-left: 40px;
     -webkit-flex: 0 1 40%;
     -ms-flex: 0 1 40%;
     flex: 0 1 40%;
 }
 
-section#home > options {
+#options {
     -webkit-flex: 1 1 auto;
     -ms-flex: 1 1 auto;
     flex: 1 1 auto;
 }
 
-section#home > options > label {
-    margin: 2em;
-    line-height: 2;
-}
-
-section#home > header > h2 {
+#home > header > h1 {
     margin: 0 auto;
     width: 70%;
     text-align: center;
 }
 
-section#home input[type="number"] {
-    width: 70px;
+#home input[type="number"] {
+    width: 50px;
 }
  
-section#home > suites input[type="number"] {
+#suites input[type="number"] {
     display: none;
     float: right;
 }
 
-section#home > suites input[type="number"].selected {
+#suites input[type="number"].selected {
     display: inline;
+    margin: 0;
+}
+
+#suites ul ul {
+    font-size: .8em;
+    margin: 0;
+    padding: 0 0 0 1em;
+}
+
+#options ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#options h3 {
+    font-size: 1em;
+    font-weight: inherit;
+    margin: 0 0 .3em 0;
+    padding: 0;
+}
+
+#options > form > ul > li {
+    padding: 0 0 1em 0;
+}
+
+#options ul ul {
+    padding: 0;
+}
+
+#options li {
+    padding: .1em 0;
+}
+
+@media screen and (max-device-width: 414px) {
+    #suites,
+    #options {
+        padding: 0 5px;
+        margin: 0;
+    }
+    #suites {
+        -webkit-flex: 0 1 100%;
+        -ms-flex: 0 1 100%;
+        flex: 0 1 100%;
+    }
 }
 
 /* -------------------------------------------------------------------------- */
 /*                           Running Section                                  */
 /* -------------------------------------------------------------------------- */
 
-section#running {
+#running {
     position: relative;
     -ms-flex-align: center;
     -webkit-align-items: center;
@@ -322,19 +435,25 @@ section#running {
     justify-content: center;
 }
 
-section#running > #running-test {
+#running-test {
     width: 100%;
     height: 100%;
 }
 
-section#running > #running-test > iframe {
+#running-test > iframe {
     width: 800px;
     height: 600px;
     border: 0px none;
     overflow: hidden;
 }
 
-section#running > #progress {
+#progress, #record {
+    display: none;
+}
+
+.display-progress-bar #progress,
+.display-statistics-table #progress {
+    display: block;
     position: absolute;
     bottom: -6px;
     left: 60px;
@@ -345,7 +464,8 @@ section#running > #progress {
     border-right: 6px solid rgb(46, 51, 55);
 }
 
-section#running > #progress > #progress-completed {
+.display-progress-bar #progress-completed,
+.display-statistics-table #progress-completed {
     position: absolute;
     top: 0;
     left: 0;
@@ -354,7 +474,9 @@ section#running > #progress > #progress-completed {
     background-color: rgb(235, 235, 235);
 }
 
-section#running > #record {
+.display-progress-bar #record,
+.display-statistics-table #record {
+    display: block;
     position: absolute;
     bottom: -95px;
     left: 0px;
@@ -363,12 +485,26 @@ section#running > #record {
 }
 
 @media screen and (min-device-width: 1800px) {
-    section#running > #running-test > iframe {
+    #running-test > iframe {
         width: 1600px;
         height: 800px;
     }
 }
 
+@media screen and (max-device-width: 414px) {
+    #running {
+        padding: 0;
+    }
+
+    #running-test {
+        overflow: hidden;
+    }
+
+    #running-test > iframe {
+        width: calc(100%);
+        height: calc(100%);
+    }
+}
 /* -------------------------------------------------------------------------- */
 /*                           Results Section                                  */
 /* -------------------------------------------------------------------------- */

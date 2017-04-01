@@ -123,6 +123,7 @@
 #define WebKitRequiresUserGestureForAudioPlaybackPreferenceKey @"WebKitAudioPlaybackRequiresUserGesture"
 #define WebKitAllowsInlineMediaPlaybackPreferenceKey @"WebKitMediaPlaybackAllowsInline"
 #define WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey @"InlineMediaPlaybackRequiresPlaysInlineAttribute"
+#define WebKitInvisibleAutoplayNotPermittedKey @"InvisibleAutoplayNotPermitted"
 #define WebKitAllowsPictureInPictureMediaPlaybackPreferenceKey @"WebKitAllowsPictureInPictureMediaPlayback"
 #define WebKitAllowsAirPlayForMediaPlaybackPreferenceKey @"WebKitMediaPlaybackAllowsAirPlay"
 #define WebKitMediaControlsScaleWithPageZoomPreferenceKey @"WebKitMediaControlsScaleWithPageZoom"
@@ -195,3 +196,5 @@
 
 #define WebKitEnableInheritURIQueryComponentPreferenceKey @"WebKitEnableInheritURIQueryComponent"
 #define WebKitMediaDataLoadsAutomaticallyPreferenceKey @"WebKitMediaDataLoadsAutomatically"
+#define WebKitMockCaptureDevicesEnabledPreferenceKey @"WebKitMockCaptureDevicesEnabled"
+

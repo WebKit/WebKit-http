@@ -49,6 +49,18 @@ public:
         m_vector.fill(Value(), size);
     }
 
+    size_t size() const { return m_vector.size(); }
+
+    Value& operator[](size_t index)
+    {
+        return m_vector[index];
+    }
+
+    const Value& operator[](size_t index) const
+    {
+        return m_vector[index];
+    }
+    
     Value& operator[](Key* key)
     {
         return m_vector[key->index()];

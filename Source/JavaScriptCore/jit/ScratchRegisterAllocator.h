@@ -67,8 +67,26 @@ public:
     RegisterSet usedRegisters() const { return m_usedRegisters; }
     
     enum class ExtraStackSpace { SpaceForCCall, NoExtraSpace };
-    unsigned preserveReusedRegistersByPushing(MacroAssembler& jit, ExtraStackSpace);
-    void restoreReusedRegistersByPopping(MacroAssembler& jit, unsigned numberOfBytesUsedToPreserveReusedRegisters, ExtraStackSpace);
+
+    struct PreservedState {
+        PreservedState()
+            : numberOfBytesPreserved(std::numeric_limits<unsigned>::max())
+            , extraStackSpaceRequirement(ExtraStackSpace::SpaceForCCall)
+        { }
+
+        PreservedState(unsigned numberOfBytes, ExtraStackSpace extraStackSpace)
+            : numberOfBytesPreserved(numberOfBytes)
+            , extraStackSpaceRequirement(extraStackSpace)
+        { }
+
+        explicit operator bool() const { return numberOfBytesPreserved != std::numeric_limits<unsigned>::max(); }
+
+        unsigned numberOfBytesPreserved;
+        ExtraStackSpace extraStackSpaceRequirement;
+    };
+
+    PreservedState preserveReusedRegistersByPushing(MacroAssembler& jit, ExtraStackSpace);
+    void restoreReusedRegistersByPopping(MacroAssembler& jit, const PreservedState&);
     
     RegisterSet usedRegistersForCall() const;
     

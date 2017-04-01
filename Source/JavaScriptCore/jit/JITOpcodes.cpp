@@ -401,23 +401,6 @@ void JIT::emit_op_neq(Instruction* currentInstruction)
 
 }
 
-void JIT::emit_op_bitxor(Instruction* currentInstruction)
-{
-    emitGetVirtualRegisters(currentInstruction[2].u.operand, regT0, currentInstruction[3].u.operand, regT1);
-    emitJumpSlowCaseIfNotInt(regT0, regT1, regT2);
-    xor64(regT1, regT0);
-    emitTagInt(regT0, regT0);
-    emitPutVirtualRegister(currentInstruction[1].u.operand);
-}
-
-void JIT::emit_op_bitor(Instruction* currentInstruction)
-{
-    emitGetVirtualRegisters(currentInstruction[2].u.operand, regT0, currentInstruction[3].u.operand, regT1);
-    emitJumpSlowCaseIfNotInt(regT0, regT1, regT2);
-    or64(regT1, regT0);
-    emitPutVirtualRegister(currentInstruction[1].u.operand);
-}
-
 void JIT::emit_op_throw(Instruction* currentInstruction)
 {
     ASSERT(regT0 == returnValueGPR);
@@ -684,14 +667,6 @@ void JIT::emit_op_get_scope(Instruction* currentInstruction)
     loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT0);
     emitStoreCell(dst, regT0);
 }
-    
-void JIT::emit_op_load_arrowfunction_this(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    emitGetFromCallFrameHeaderPtr(JSStack::Callee, regT0);
-    loadPtr(Address(regT0, JSArrowFunction::offsetOfThisValue()), regT0);
-    emitStoreCell(dst, regT0);
-}
 
 void JIT::emit_op_to_this(Instruction* currentInstruction)
 {
@@ -819,20 +794,6 @@ void JIT::emitSlow_op_jtrue(Instruction* currentInstruction, Vector<SlowCaseEntr
     emitJumpSlowToHot(branchTest32(NonZero, returnValueGPR), currentInstruction[2].u.operand);
 }
 
-void JIT::emitSlow_op_bitxor(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    linkSlowCase(iter);
-    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_bitxor);
-    slowPathCall.call();
-}
-
-void JIT::emitSlow_op_bitor(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    linkSlowCase(iter);
-    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_bitor);
-    slowPathCall.call();
-}
-
 void JIT::emitSlow_op_eq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkSlowCase(iter);
@@ -923,10 +884,6 @@ void JIT::emit_op_loop_hint(Instruction*)
         addSlowCase(branchAdd32(PositiveOrZero, TrustedImm32(Options::executionCounterIncrementForLoop()),
             AbsoluteAddress(m_codeBlock->addressOfJITExecuteCounter())));
     }
-
-    // Emit the watchdog timer check:
-    if (m_vm->watchdog)
-        addSlowCase(branchTest8(NonZero, AbsoluteAddress(m_vm->watchdog->timerDidFireAddress())));
 }
 
 void JIT::emitSlow_op_loop_hint(Instruction*, Vector<SlowCaseEntry>::iterator& iter)
@@ -950,16 +907,22 @@ void JIT::emitSlow_op_loop_hint(Instruction*, Vector<SlowCaseEntry>::iterator& i
 
         emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_loop_hint));
     }
+#else
+    UNUSED_PARAM(iter);
 #endif
+}
 
-    // Emit the slow path of the watchdog timer check:
-    if (m_vm->watchdog) {
-        linkSlowCase(iter);
-        callOperation(operationHandleWatchdogTimer);
+void JIT::emit_op_watchdog(Instruction*)
+{
+    ASSERT(m_vm->watchdog());
+    addSlowCase(branchTest8(NonZero, AbsoluteAddress(m_vm->watchdog()->timerDidFireAddress())));
+}
 
-        emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_loop_hint));
-    }
-
+void JIT::emitSlow_op_watchdog(Instruction*, Vector<SlowCaseEntry>::iterator& iter)
+{
+    ASSERT(m_vm->watchdog());
+    linkSlowCase(iter);
+    callOperation(operationHandleWatchdogTimer);
 }
 
 void JIT::emit_op_new_regexp(Instruction* currentInstruction)
@@ -1000,23 +963,14 @@ void JIT::emit_op_new_generator_func(Instruction* currentInstruction)
 
 void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
 {
-    OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
-    bool isArrowFunction = opcodeID == op_new_arrow_func_exp;
-    
     Jump notUndefinedScope;
     int dst = currentInstruction[1].u.operand;
 #if USE(JSVALUE64)
     emitGetVirtualRegister(currentInstruction[2].u.operand, regT0);
-    if (isArrowFunction)
-        emitGetVirtualRegister(currentInstruction[4].u.operand, regT1);
     notUndefinedScope = branch64(NotEqual, regT0, TrustedImm64(JSValue::encode(jsUndefined())));
     store64(TrustedImm64(JSValue::encode(jsUndefined())), Address(callFrameRegister, sizeof(Register) * dst));
 #else
     emitLoadPayload(currentInstruction[2].u.operand, regT0);
-    if (isArrowFunction) {
-        int value = currentInstruction[4].u.operand;
-        emitLoad(value, regT3, regT2);
-    }
     notUndefinedScope = branch32(NotEqual, tagFor(currentInstruction[2].u.operand), TrustedImm32(JSValue::UndefinedTag));
     emitStore(dst, jsUndefined());
 #endif
@@ -1024,20 +978,15 @@ void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
     notUndefinedScope.link(this);
         
     FunctionExecutable* function = m_codeBlock->functionExpr(currentInstruction[3].u.operand);
-    if (isArrowFunction)
-#if USE(JSVALUE64)
-        callOperation(operationNewArrowFunction, dst, regT0, function, regT1);
-#else 
-        callOperation(operationNewArrowFunction, dst, regT0, function, regT3, regT2);
-#endif
+    OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
+
+    if (opcodeID == op_new_func_exp || opcodeID == op_new_arrow_func_exp)
+        callOperation(operationNewFunction, dst, regT0, function);
     else {
-        if (opcodeID == op_new_func_exp)
-            callOperation(operationNewFunction, dst, regT0, function);
-        else {
-            ASSERT(opcodeID == op_new_generator_func_exp);
-            callOperation(operationNewGeneratorFunction, dst, regT0, function);
-        }
+        ASSERT(opcodeID == op_new_generator_func_exp);
+        callOperation(operationNewGeneratorFunction, dst, regT0, function);
     }
+
     done.link(this);
 }
 

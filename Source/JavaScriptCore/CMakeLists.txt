@@ -74,6 +74,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirCCallSpecial.cpp
     b3/air/AirCode.cpp
     b3/air/AirEliminateDeadCode.cpp
+    b3/air/AirFixPartialRegisterStalls.cpp
     b3/air/AirGenerate.cpp
     b3/air/AirGenerated.cpp
     b3/air/AirHandleCalleeSaves.cpp
@@ -103,6 +104,7 @@ set(JavaScriptCore_SOURCES
     b3/B3Const32Value.cpp
     b3/B3Const64Value.cpp
     b3/B3ConstDoubleValue.cpp
+    b3/B3ConstFloatValue.cpp
     b3/B3ConstrainedValue.cpp
     b3/B3ControlValue.cpp
     b3/B3DataSection.cpp
@@ -112,7 +114,9 @@ set(JavaScriptCore_SOURCES
     b3/B3HeapRange.cpp
     b3/B3InsertionSet.cpp
     b3/B3LowerMacros.cpp
+    b3/B3LowerMacrosAfterOptimizations.cpp
     b3/B3LowerToAir.cpp
+    b3/B3MathExtras.cpp
     b3/B3MemoryValue.cpp
     b3/B3MoveConstants.cpp
     b3/B3OpaqueByproducts.cpp
@@ -123,7 +127,9 @@ set(JavaScriptCore_SOURCES
     b3/B3PhaseScope.cpp
     b3/B3PhiChildren.cpp
     b3/B3Procedure.cpp
+    b3/B3ReduceDoubleToFloat.cpp
     b3/B3ReduceStrength.cpp
+    b3/B3StackmapGenerationParams.cpp
     b3/B3StackmapSpecial.cpp
     b3/B3StackmapValue.cpp
     b3/B3StackSlotKind.cpp
@@ -445,12 +451,16 @@ set(JavaScriptCore_SOURCES
     jit/ExecutableAllocator.cpp
     jit/ExecutableAllocatorFixedVMPool.cpp
     jit/GCAwareJITStubRoutine.cpp
+    jit/GPRInfo.cpp
     jit/HostCallReturnValue.cpp
     jit/IntrinsicEmitter.cpp
     jit/JIT.cpp
     jit/JITAddGenerator.cpp
     jit/JITArithmetic.cpp
     jit/JITArithmetic32_64.cpp
+    jit/JITBitAndGenerator.cpp
+    jit/JITBitOrGenerator.cpp
+    jit/JITBitXorGenerator.cpp
     jit/JITCall.cpp
     jit/JITCall32_64.cpp
     jit/JITCode.cpp
@@ -458,12 +468,14 @@ set(JavaScriptCore_SOURCES
     jit/JITDivGenerator.cpp
     jit/JITExceptions.cpp
     jit/JITInlineCacheGenerator.cpp
+    jit/JITLeftShiftGenerator.cpp
     jit/JITMulGenerator.cpp
     jit/JITOpcodes.cpp
     jit/JITOpcodes32_64.cpp
     jit/JITOperations.cpp
     jit/JITPropertyAccess.cpp
     jit/JITPropertyAccess32_64.cpp
+    jit/JITRightShiftGenerator.cpp
     jit/JITStubRoutine.cpp
     jit/JITSubGenerator.cpp
     jit/JITThunks.cpp
@@ -983,7 +995,10 @@ if (ENABLE_FTL_JIT)
 
     WEBKIT_WRAP_SOURCELIST(${llvmForJSC_SOURCES})
     add_library(llvmForJSC SHARED ${llvmForJSC_SOURCES} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h)
-    target_link_libraries(llvmForJSC ${LLVM_STATIC_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES} -Wl,--version-script=${JAVASCRIPTCORE_DIR}/llvm/library/libllvmForJSC.version)
+    target_link_libraries(llvmForJSC ${LLVM_STATIC_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES})
+    if (NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
+        ADD_TARGET_PROPERTIES(llvmForJSC LINK_FLAGS "-Wl,--version-script=${JAVASCRIPTCORE_DIR}/llvm/library/libllvmForJSC.version")
+    endif ()
 
     # Added extra items for JavaScriptCore
     list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -1000,6 +1015,8 @@ if (ENABLE_FTL_JIT)
         ftl/FTLAbstractHeap.cpp
         ftl/FTLAbstractHeapRepository.cpp
         ftl/FTLAvailableRecovery.cpp
+        ftl/FTLB3Compile.cpp
+        ftl/FTLB3Output.cpp
         ftl/FTLCapabilities.cpp
         ftl/FTLCommonValues.cpp
         ftl/FTLCompile.cpp
@@ -1031,6 +1048,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLOSREntry.cpp
         ftl/FTLOSRExit.cpp
         ftl/FTLOSRExitCompiler.cpp
+        ftl/FTLOSRExitHandle.cpp
         ftl/FTLOperations.cpp
         ftl/FTLOutput.cpp
         ftl/FTLRecoveryOpcode.cpp
@@ -1157,7 +1175,6 @@ set(JavaScriptCore_INSPECTOR_DOMAINS
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Page.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Runtime.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Timeline.json
-    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Worker.json
 )
 
 if (ENABLE_INDEXED_DATABASE)
@@ -1221,6 +1238,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/InternalPromiseConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/IteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ModuleLoaderObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/NumberPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ObjectConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/PromiseConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/PromiseOperations.js

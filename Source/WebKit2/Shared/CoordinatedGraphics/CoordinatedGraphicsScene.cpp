@@ -83,6 +83,11 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     if (!currentRootLayer)
         return;
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    for (auto& proxy : m_platformLayerProxies.values())
+        proxy->swapBuffer();
+#endif
+
     currentRootLayer->setTextureMapper(m_textureMapper.get());
     currentRootLayer->applyAnimationsRecursively();
     m_textureMapper->beginPainting(PaintFlags);
@@ -105,7 +110,7 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     }
 
     currentRootLayer->paint();
-    m_fpsCounter.updateFPSAndDisplay(m_textureMapper.get(), clipRect.location(), matrix);
+    m_fpsCounter.updateFPSAndDisplay(*m_textureMapper, clipRect.location(), matrix);
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
@@ -138,7 +143,7 @@ void CoordinatedGraphicsScene::paintToGraphicsContext(PlatformGraphicsContext* p
         m_textureMapper->drawSolidColor(clipRect, TransformationMatrix(), m_viewBackgroundColor);
 
     layer->paint();
-    m_fpsCounter.updateFPSAndDisplay(m_textureMapper.get(), clipRect.location());
+    m_fpsCounter.updateFPSAndDisplay(*m_textureMapper, clipRect.location());
     m_textureMapper->endPainting();
     m_textureMapper->setGraphicsContext(0);
 }
@@ -164,20 +169,9 @@ void CoordinatedGraphicsScene::adjustPositionForFixedLayers(const FloatPoint& co
         fixedLayer->setScrollPositionDeltaIfNeeded(delta);
 }
 
-#if USE(GRAPHICS_SURFACE)
-void CoordinatedGraphicsScene::createPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
-{
-    if (!state.platformLayerToken.isValid())
-        return;
-
-    RefPtr<TextureMapperSurfaceBackingStore> platformLayerBackingStore(TextureMapperSurfaceBackingStore::create());
-    m_surfaceBackingStores.set(layer, platformLayerBackingStore);
-    platformLayerBackingStore->setGraphicsSurface(GraphicsSurface::create(state.platformLayerSize, state.platformLayerSurfaceFlags, state.platformLayerToken));
-    layer->setContentsLayer(platformLayerBackingStore.get());
-}
-
 void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
 {
+#if USE(GRAPHICS_SURFACE)
     ASSERT(m_textureMapper);
 
     if (state.platformLayerChanged) {
@@ -191,6 +185,41 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
         RefPtr<TextureMapperSurfaceBackingStore> platformLayerBackingStore = it->value;
         platformLayerBackingStore->swapBuffersIfNeeded(state.platformLayerFrontBuffer);
     }
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+    if (!state.platformLayerChanged)
+        return;
+
+    if (state.platformLayerProxy) {
+        m_platformLayerProxies.set(layer, state.platformLayerProxy);
+        state.platformLayerProxy->activateOnCompositingThread(this, layer);
+    } else
+        m_platformLayerProxies.remove(layer);
+#else
+    UNUSED_PARAM(layer);
+    UNUSED_PARAM(state);
+#endif
+}
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void CoordinatedGraphicsScene::onNewBufferAvailable()
+{
+    RefPtr<CoordinatedGraphicsScene> protector(this);
+    dispatchOnClientRunLoop([=] {
+        protector->updateViewport();
+    });
+}
+#endif
+
+#if USE(GRAPHICS_SURFACE)
+void CoordinatedGraphicsScene::createPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+{
+    if (!state.platformLayerToken.isValid())
+        return;
+
+    RefPtr<TextureMapperSurfaceBackingStore> platformLayerBackingStore(TextureMapperSurfaceBackingStore::create());
+    m_surfaceBackingStores.set(layer, platformLayerBackingStore);
+    platformLayerBackingStore->setGraphicsSurface(GraphicsSurface::create(state.platformLayerSize, state.platformLayerSurfaceFlags, state.platformLayerToken));
+    layer->setContentsLayer(platformLayerBackingStore.get());
 }
 
 void CoordinatedGraphicsScene::destroyPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
@@ -217,11 +246,10 @@ void CoordinatedGraphicsScene::setLayerChildrenIfNeeded(TextureMapperLayer* laye
         return;
 
     Vector<TextureMapperLayer*> children;
+    children.reserveCapacity(state.children.size());
+    for (auto& child : state.children)
+        children.append(layerByID(child));
 
-    for (auto& child : state.children) {
-        TextureMapperLayer* childLayer = layerByID(child);
-        children.append(childLayer);
-    }
     layer->setChildren(children);
 }
 
@@ -313,9 +341,7 @@ void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const Coordi
     updateTilesIfNeeded(layer, layerState);
     setLayerFiltersIfNeeded(layer, layerState);
     setLayerAnimationsIfNeeded(layer, layerState);
-#if USE(GRAPHICS_SURFACE)
     syncPlatformLayerIfNeeded(layer, layerState);
-#endif
     setLayerRepaintCountIfNeeded(layer, layerState);
 }
 
@@ -353,6 +379,10 @@ void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
     m_fixedLayers.remove(layerID);
 #if USE(GRAPHICS_SURFACE)
     m_surfaceBackingStores.remove(layer.get());
+#endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    if (auto platformLayerProxy = m_platformLayerProxies.take(layer.get()))
+        platformLayerProxy->invalidate();
 #endif
 }
 
@@ -554,7 +584,7 @@ void CoordinatedGraphicsScene::removeReleasedImageBackingsIfNeeded()
 void CoordinatedGraphicsScene::commitPendingBackingStoreOperations()
 {
     for (auto& backingStore : m_backingStoresWithPendingBuffers)
-        backingStore->commitTileOperations(m_textureMapper.get());
+        backingStore->commitTileOperations(*m_textureMapper);
 
     m_backingStoresWithPendingBuffers.clear();
 }
@@ -631,6 +661,9 @@ void CoordinatedGraphicsScene::purgeGLResources()
     m_releasedImageBackings.clear();
 #if USE(GRAPHICS_SURFACE)
     m_surfaceBackingStores.clear();
+#endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    m_platformLayerProxies.clear();
 #endif
     m_surfaces.clear();
 

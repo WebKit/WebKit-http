@@ -29,6 +29,7 @@
 #if ENABLE(B3_JIT)
 
 #include "AirGenerationContext.h"
+#include "B3StackmapGenerationParams.h"
 #include "B3ValueInlines.h"
 
 namespace JSC { namespace B3 {
@@ -49,12 +50,12 @@ void PatchpointSpecial::forEachArg(Inst& inst, const ScopedLambda<Inst::EachArgC
     // https://bugs.webkit.org/show_bug.cgi?id=151335
     
     if (inst.origin->type() == Void) {
-        forEachArgImpl(0, 1, inst, Arg::Use, callback);
+        forEachArgImpl(0, 1, inst, SameAsRep, callback);
         return;
     }
 
     callback(inst.args[1], Arg::Def, inst.origin->airType());
-    forEachArgImpl(0, 2, inst, Arg::Use, callback);
+    forEachArgImpl(0, 2, inst, SameAsRep, callback);
 }
 
 bool PatchpointSpecial::isValid(Inst& inst)
@@ -64,9 +65,10 @@ bool PatchpointSpecial::isValid(Inst& inst)
 
     if (inst.args.size() < 2)
         return false;
-    if (inst.args[1].kind() != Arg::Tmp)
+    PatchpointValue* patchpoint = inst.origin->as<PatchpointValue>();
+    if (!isArgValidForValue(inst.args[1], patchpoint))
         return false;
-    if (!inst.args[1].isType(inst.origin->airType()))
+    if (!isArgValidForRep(code(), inst.args[1], patchpoint->resultConstraint))
         return false;
 
     return isValidImpl(0, 2, inst);
@@ -77,8 +79,19 @@ bool PatchpointSpecial::admitsStack(Inst& inst, unsigned argIndex)
     if (inst.origin->type() == Void)
         return admitsStackImpl(0, 1, inst, argIndex);
 
-    if (argIndex == 1)
-        return false;
+    if (argIndex == 1) {
+        switch (inst.origin->as<PatchpointValue>()->resultConstraint.kind()) {
+        case ValueRep::WarmAny:
+        case ValueRep::StackArgument:
+            return true;
+        case ValueRep::SomeRegister:
+        case ValueRep::Register:
+            return false;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return false;
+        }
+    }
 
     return admitsStackImpl(0, 2, inst, argIndex);
 }
@@ -95,13 +108,7 @@ CCallHelpers::Jump PatchpointSpecial::generate(
         reps.append(repForArg(*context.code, inst.args[offset++]));
     appendRepsImpl(context, offset, inst, reps);
     
-    StackmapGenerationParams params;
-    params.value = value;
-    params.reps = reps;
-    params.usedRegisters = value->m_usedRegisters;
-    params.context = &context;
-
-    value->m_generator->run(jit, params);
+    value->m_generator->run(jit, StackmapGenerationParams(value, reps, context));
 
     return CCallHelpers::Jump();
 }

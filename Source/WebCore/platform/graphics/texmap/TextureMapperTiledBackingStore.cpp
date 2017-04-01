@@ -23,18 +23,22 @@
 #include "TextureMapperTiledBackingStore.h"
 
 #include "ImageBuffer.h"
+#include "ImageObserver.h"
 #include "TextureMapper.h"
 
 namespace WebCore {
 
 class GraphicsLayer;
 
-void TextureMapperTiledBackingStore::updateContentsFromImageIfNeeded(TextureMapper* textureMapper)
+void TextureMapperTiledBackingStore::updateContentsFromImageIfNeeded(TextureMapper& textureMapper)
 {
     if (!m_image)
         return;
 
     updateContents(textureMapper, m_image.get(), m_image->size(), enclosingIntRect(m_image->rect()), BitmapTexture::UpdateCannotModifyOriginalImageData);
+
+    if (m_image->imageObserver())
+        m_image->imageObserver()->didDraw(m_image.get());
     m_image = nullptr;
 }
 
@@ -43,7 +47,7 @@ TransformationMatrix TextureMapperTiledBackingStore::adjustedTransformForRect(co
     return TransformationMatrix::rectToRect(rect(), targetRect);
 }
 
-void TextureMapperTiledBackingStore::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& transform, float opacity)
+void TextureMapperTiledBackingStore::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& transform, float opacity)
 {
     updateContentsFromImageIfNeeded(textureMapper);
     TransformationMatrix adjustedTransform = transform * adjustedTransformForRect(targetRect);
@@ -51,18 +55,18 @@ void TextureMapperTiledBackingStore::paintToTextureMapper(TextureMapper* texture
         tile.paint(textureMapper, adjustedTransform, opacity, calculateExposedTileEdges(rect(), tile.rect()));
 }
 
-void TextureMapperTiledBackingStore::drawBorder(TextureMapper* textureMapper, const Color& borderColor, float borderWidth, const FloatRect& targetRect, const TransformationMatrix& transform)
+void TextureMapperTiledBackingStore::drawBorder(TextureMapper& textureMapper, const Color& borderColor, float borderWidth, const FloatRect& targetRect, const TransformationMatrix& transform)
 {
     TransformationMatrix adjustedTransform = transform * adjustedTransformForRect(targetRect);
     for (auto& tile : m_tiles)
-        textureMapper->drawBorder(borderColor, borderWidth, tile.rect(), adjustedTransform);
+        textureMapper.drawBorder(borderColor, borderWidth, tile.rect(), adjustedTransform);
 }
 
-void TextureMapperTiledBackingStore::drawRepaintCounter(TextureMapper* textureMapper, int repaintCount, const Color& borderColor, const FloatRect& targetRect, const TransformationMatrix& transform)
+void TextureMapperTiledBackingStore::drawRepaintCounter(TextureMapper& textureMapper, int repaintCount, const Color& borderColor, const FloatRect& targetRect, const TransformationMatrix& transform)
 {
     TransformationMatrix adjustedTransform = transform * adjustedTransformForRect(targetRect);
     for (auto& tile : m_tiles)
-        textureMapper->drawNumber(repaintCount, borderColor, tile.rect().location(), adjustedTransform);
+        textureMapper.drawNumber(repaintCount, borderColor, tile.rect().location(), adjustedTransform);
 }
 
 void TextureMapperTiledBackingStore::updateContentsScale(float scale)
@@ -146,16 +150,16 @@ void TextureMapperTiledBackingStore::createOrDestroyTilesIfNeeded(const FloatSiz
     }
 }
 
-void TextureMapperTiledBackingStore::updateContents(TextureMapper* textureMapper, Image* image, const FloatSize& totalSize, const IntRect& dirtyRect, BitmapTexture::UpdateContentsFlag updateContentsFlag)
+void TextureMapperTiledBackingStore::updateContents(TextureMapper& textureMapper, Image* image, const FloatSize& totalSize, const IntRect& dirtyRect, BitmapTexture::UpdateContentsFlag updateContentsFlag)
 {
-    createOrDestroyTilesIfNeeded(totalSize, textureMapper->maxTextureSize(), !image->currentFrameKnownToBeOpaque());
+    createOrDestroyTilesIfNeeded(totalSize, textureMapper.maxTextureSize(), !image->currentFrameKnownToBeOpaque());
     for (auto& tile : m_tiles)
         tile.updateContents(textureMapper, image, dirtyRect, updateContentsFlag);
 }
 
-void TextureMapperTiledBackingStore::updateContents(TextureMapper* textureMapper, GraphicsLayer* sourceLayer, const FloatSize& totalSize, const IntRect& dirtyRect, BitmapTexture::UpdateContentsFlag updateContentsFlag)
+void TextureMapperTiledBackingStore::updateContents(TextureMapper& textureMapper, GraphicsLayer* sourceLayer, const FloatSize& totalSize, const IntRect& dirtyRect, BitmapTexture::UpdateContentsFlag updateContentsFlag)
 {
-    createOrDestroyTilesIfNeeded(totalSize, textureMapper->maxTextureSize(), true);
+    createOrDestroyTilesIfNeeded(totalSize, textureMapper.maxTextureSize(), true);
     for (auto& tile : m_tiles)
         tile.updateContents(textureMapper, sourceLayer, dirtyRect, updateContentsFlag, m_contentsScale);
 }

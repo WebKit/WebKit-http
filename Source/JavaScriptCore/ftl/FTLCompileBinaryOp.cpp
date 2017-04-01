@@ -31,6 +31,14 @@
 #include "DFGNodeType.h"
 #include "FTLInlineCacheDescriptor.h"
 #include "GPRInfo.h"
+#include "JITAddGenerator.h"
+#include "JITBitAndGenerator.h"
+#include "JITBitOrGenerator.h"
+#include "JITBitXorGenerator.h"
+#include "JITDivGenerator.h"
+#include "JITLeftShiftGenerator.h"
+#include "JITMulGenerator.h"
+#include "JITRightShiftGenerator.h"
 #include "JITSubGenerator.h"
 #include "ScratchRegisterAllocator.h"
 
@@ -151,11 +159,82 @@ private:
     GPRReg m_savedTagTypeNumberRegister { InvalidGPRReg };
 };
 
-void generateArithSubFastPath(BinaryOpDescriptor& ic, CCallHelpers& jit,
+enum ScratchFPRUsage {
+    DontNeedScratchFPR,
+    NeedScratchFPR
+};
+
+template<typename SnippetGenerator>
+void generateBinaryBitOpFastPath(BinaryOpDescriptor& ic, CCallHelpers& jit,
     GPRReg result, GPRReg left, GPRReg right, RegisterSet usedRegisters,
     CCallHelpers::Jump& done, CCallHelpers::Jump& slowPathStart)
 {
-    ASSERT(ic.nodeType() == ArithSub);
+    ScratchRegisterAllocator allocator(usedRegisters);
+
+    BinarySnippetRegisterContext context(allocator, result, left, right);
+
+    GPRReg scratchGPR = allocator.allocateScratchGPR();
+
+    SnippetGenerator gen(ic.leftOperand(), ic.rightOperand(), JSValueRegs(result),
+        JSValueRegs(left), JSValueRegs(right), scratchGPR);
+
+    ScratchRegisterAllocator::PreservedState preservedState =
+        allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
+
+    context.initializeRegisters(jit);
+    gen.generateFastPath(jit);
+
+    ASSERT(gen.didEmitFastPath());
+    gen.endJumpList().link(&jit);
+
+    context.restoreRegisters(jit);
+    allocator.restoreReusedRegistersByPopping(jit, preservedState);
+    done = jit.jump();
+
+    gen.slowPathJumpList().link(&jit);
+    context.restoreRegisters(jit);
+    allocator.restoreReusedRegistersByPopping(jit, preservedState);
+    slowPathStart = jit.jump();
+}
+
+static void generateRightShiftFastPath(BinaryOpDescriptor& ic, CCallHelpers& jit,
+    GPRReg result, GPRReg left, GPRReg right, RegisterSet usedRegisters,
+    CCallHelpers::Jump& done, CCallHelpers::Jump& slowPathStart,
+    JITRightShiftGenerator::ShiftType shiftType)
+{
+    ScratchRegisterAllocator allocator(usedRegisters);
+
+    BinarySnippetRegisterContext context(allocator, result, left, right);
+
+    FPRReg leftFPR = allocator.allocateScratchFPR();
+    GPRReg scratchGPR = allocator.allocateScratchGPR();
+
+    JITRightShiftGenerator gen(ic.leftOperand(), ic.rightOperand(), JSValueRegs(result),
+        JSValueRegs(left), JSValueRegs(right), leftFPR, scratchGPR, InvalidFPRReg, shiftType);
+
+    ScratchRegisterAllocator::PreservedState preservedState =
+        allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
+
+    context.initializeRegisters(jit);
+    gen.generateFastPath(jit);
+
+    ASSERT(gen.didEmitFastPath());
+    gen.endJumpList().link(&jit);
+    context.restoreRegisters(jit);
+    allocator.restoreReusedRegistersByPopping(jit, preservedState);
+    done = jit.jump();
+
+    gen.slowPathJumpList().link(&jit);
+    context.restoreRegisters(jit);
+    allocator.restoreReusedRegistersByPopping(jit, preservedState);
+    slowPathStart = jit.jump();
+}
+
+template<typename BinaryArithOpGenerator, ScratchFPRUsage scratchFPRUsage = DontNeedScratchFPR>
+void generateBinaryArithOpFastPath(BinaryOpDescriptor& ic, CCallHelpers& jit,
+    GPRReg result, GPRReg left, GPRReg right, RegisterSet usedRegisters,
+    CCallHelpers::Jump& done, CCallHelpers::Jump& slowPathStart)
+{
     ScratchRegisterAllocator allocator(usedRegisters);
 
     BinarySnippetRegisterContext context(allocator, result, left, right);
@@ -164,12 +243,14 @@ void generateArithSubFastPath(BinaryOpDescriptor& ic, CCallHelpers& jit,
     FPRReg leftFPR = allocator.allocateScratchFPR();
     FPRReg rightFPR = allocator.allocateScratchFPR();
     FPRReg scratchFPR = InvalidFPRReg;
+    if (scratchFPRUsage == NeedScratchFPR)
+        scratchFPR = allocator.allocateScratchFPR();
 
-    JITSubGenerator gen(ic.leftOperand(), ic.rightOperand(), JSValueRegs(result),
+    BinaryArithOpGenerator gen(ic.leftOperand(), ic.rightOperand(), JSValueRegs(result),
         JSValueRegs(left), JSValueRegs(right), leftFPR, rightFPR, scratchGPR, scratchFPR);
 
-    auto numberOfBytesUsedToPreserveReusedRegisters =
-    allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
+    ScratchRegisterAllocator::PreservedState preservedState =
+        allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
 
     context.initializeRegisters(jit);
     gen.generateFastPath(jit);
@@ -177,15 +258,53 @@ void generateArithSubFastPath(BinaryOpDescriptor& ic, CCallHelpers& jit,
     ASSERT(gen.didEmitFastPath());
     gen.endJumpList().link(&jit);
     context.restoreRegisters(jit);
-    allocator.restoreReusedRegistersByPopping(jit, numberOfBytesUsedToPreserveReusedRegisters,
-        ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
+    allocator.restoreReusedRegistersByPopping(jit, preservedState);
     done = jit.jump();
 
     gen.slowPathJumpList().link(&jit);
     context.restoreRegisters(jit);
-    allocator.restoreReusedRegistersByPopping(jit, numberOfBytesUsedToPreserveReusedRegisters,
-        ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
+    allocator.restoreReusedRegistersByPopping(jit, preservedState);
     slowPathStart = jit.jump();
+}
+
+void generateBinaryOpFastPath(BinaryOpDescriptor& ic, CCallHelpers& jit,
+    GPRReg result, GPRReg left, GPRReg right, RegisterSet usedRegisters,
+    CCallHelpers::Jump& done, CCallHelpers::Jump& slowPathStart)
+{
+    switch (ic.nodeType()) {
+    case BitAnd:
+        generateBinaryBitOpFastPath<JITBitAndGenerator>(ic, jit, result, left, right, usedRegisters, done, slowPathStart);
+        break;
+    case BitOr:
+        generateBinaryBitOpFastPath<JITBitOrGenerator>(ic, jit, result, left, right, usedRegisters, done, slowPathStart);
+        break;
+    case BitXor:
+        generateBinaryBitOpFastPath<JITBitXorGenerator>(ic, jit, result, left, right, usedRegisters, done, slowPathStart);
+        break;
+    case BitLShift:
+        generateBinaryBitOpFastPath<JITLeftShiftGenerator>(ic, jit, result, left, right, usedRegisters, done, slowPathStart);
+        break;
+    case BitRShift:
+        generateRightShiftFastPath(ic, jit, result, left, right, usedRegisters, done, slowPathStart, JITRightShiftGenerator::SignedShift);
+        break;
+    case BitURShift:
+        generateRightShiftFastPath(ic, jit, result, left, right, usedRegisters, done, slowPathStart, JITRightShiftGenerator::UnsignedShift);
+        break;
+    case ArithDiv:
+        generateBinaryArithOpFastPath<JITDivGenerator, NeedScratchFPR>(ic, jit, result, left, right, usedRegisters, done, slowPathStart);
+        break;
+    case ArithMul:
+        generateBinaryArithOpFastPath<JITMulGenerator>(ic, jit, result, left, right, usedRegisters, done, slowPathStart);
+        break;
+    case ArithSub:
+        generateBinaryArithOpFastPath<JITSubGenerator>(ic, jit, result, left, right, usedRegisters, done, slowPathStart);
+        break;
+    case ValueAdd:
+        generateBinaryArithOpFastPath<JITAddGenerator>(ic, jit, result, left, right, usedRegisters, done, slowPathStart);
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
 }
 
 } } // namespace JSC::FTL

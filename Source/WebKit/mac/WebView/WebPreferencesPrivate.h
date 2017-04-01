@@ -254,6 +254,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setInlineMediaPlaybackRequiresPlaysInlineAttribute:(BOOL)flag;
 - (BOOL)inlineMediaPlaybackRequiresPlaysInlineAttribute;
 
+- (void)setInvisibleAutoplayNotPermitted:(BOOL)flag;
+- (BOOL)invisibleAutoplayNotPermitted;
+
 - (void)setMediaControlsScaleWithPageZoom:(BOOL)flag;
 - (BOOL)mediaControlsScaleWithPageZoom;
 
@@ -454,6 +457,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setHTTPEquivEnabled:(BOOL)flag;
 - (BOOL)httpEquivEnabled;
+
+- (void)setMockCaptureDevicesEnabled:(BOOL)flag;
+- (BOOL)mockCaptureDevicesEnabled;
 
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
 @property (nonatomic) BOOL mediaDataLoadsAutomatically;

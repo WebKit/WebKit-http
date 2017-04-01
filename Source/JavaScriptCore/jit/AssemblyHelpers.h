@@ -149,6 +149,14 @@ public:
 #endif
     }
 
+    void moveValueRegs(JSValueRegs srcRegs, JSValueRegs destRegs)
+    {
+#if USE(JSVALUE32_64)
+        move(srcRegs.tagGPR(), destRegs.tagGPR());
+#endif
+        move(srcRegs.payloadGPR(), destRegs.payloadGPR());
+    }
+
     void moveValue(JSValue value, JSValueRegs regs)
     {
 #if USE(JSVALUE64)
@@ -386,6 +394,11 @@ public:
     {
         push(framePointerRegister);
         move(stackPointerRegister, framePointerRegister);
+    }
+
+    void emitFunctionEpilogueWithEmptyFrame()
+    {
+        pop(framePointerRegister);
     }
 
     void emitFunctionEpilogue()
@@ -680,13 +693,20 @@ public:
         return branch32(Equal, regs.tagGPR(), TrustedImm32(JSValue::Int32Tag));
 #endif
     }
-    
+
+#if USE(JSVALUE64)
+    Jump branchIfNotInt32(GPRReg gpr, TagRegistersMode mode = HaveTagRegisters)
+    {
+        if (mode == HaveTagRegisters)
+            return branch64(Below, gpr, GPRInfo::tagTypeNumberRegister);
+        return branch64(Below, gpr, TrustedImm64(TagTypeNumber));
+    }
+#endif
+
     Jump branchIfNotInt32(JSValueRegs regs, TagRegistersMode mode = HaveTagRegisters)
     {
 #if USE(JSVALUE64)
-        if (mode == HaveTagRegisters)
-            return branch64(Below, regs.gpr(), GPRInfo::tagTypeNumberRegister);
-        return branch64(Below, regs.gpr(), TrustedImm64(TagTypeNumber));
+        return branchIfNotInt32(regs.gpr(), mode);
 #else
         UNUSED_PARAM(mode);
         return branch32(NotEqual, regs.tagGPR(), TrustedImm32(JSValue::Int32Tag));
@@ -990,7 +1010,6 @@ public:
     void jitAssertIsNull(GPRReg);
     void jitAssertTagsInPlace();
     void jitAssertArgumentCountSane();
-    void jitAssertNoException();
 #else
     void jitAssertIsInt32(GPRReg) { }
     void jitAssertIsJSInt32(GPRReg) { }
@@ -1001,8 +1020,9 @@ public:
     void jitAssertIsNull(GPRReg) { }
     void jitAssertTagsInPlace() { }
     void jitAssertArgumentCountSane() { }
-    void jitAssertNoException() { }
 #endif
+
+    void jitReleaseAssertNoException();
     
     void purifyNaN(FPRReg);
 
@@ -1351,6 +1371,11 @@ public:
         if (stackOffset)
             addPtr(TrustedImm32(stackOffset), stackPointerRegister);
     }
+
+#if USE(JSVALUE64)
+    void emitRandomThunk(JSGlobalObject*, GPRReg scratch0, GPRReg scratch1, GPRReg scratch2, FPRReg result);
+    void emitRandomThunk(GPRReg scratch0, GPRReg scratch1, GPRReg scratch2, GPRReg scratch3, FPRReg result);
+#endif
     
 protected:
     VM* m_vm;

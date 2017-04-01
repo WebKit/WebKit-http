@@ -26,7 +26,7 @@
 #include "config.h"
 #include "FTLJSTailCall.h"
 
-#if ENABLE(FTL_JIT)
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #include "CallFrameShuffler.h"
 #include "DFGNode.h"
@@ -180,10 +180,10 @@ uint32_t sizeFor(DataFormat format)
 
 } // anonymous namespace
 
-JSTailCall::JSTailCall(unsigned stackmapID, Node* node, Vector<ExitValue> arguments)
+JSTailCall::JSTailCall(unsigned stackmapID, Node* node, const Vector<ExitValue>& arguments)
     : JSCallBase(CallLinkInfo::TailCall, node->origin.semantic, node->origin.semantic)
     , m_stackmapID(stackmapID)
-    , m_arguments { WTF::move(arguments) }
+    , m_arguments(arguments)
     , m_instructionOffset(0)
 {
     ASSERT(node->op() == TailCall);
@@ -325,4 +325,4 @@ void JSTailCall::emit(JITCode& jitCode, CCallHelpers& jit)
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && !FTL_USES_B3

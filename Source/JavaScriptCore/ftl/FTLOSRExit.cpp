@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,37 +28,33 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "AirGenerationContext.h"
+#include "B3StackmapGenerationParams.h"
+#include "B3StackmapValue.h"
 #include "CodeBlock.h"
 #include "DFGBasicBlock.h"
 #include "DFGNode.h"
 #include "FTLExitArgument.h"
 #include "FTLJITCode.h"
 #include "FTLLocation.h"
+#include "FTLState.h"
 #include "JSCInlines.h"
 
 namespace JSC { namespace FTL {
 
+using namespace B3;
 using namespace DFG;
 
 OSRExitDescriptor::OSRExitDescriptor(
-    ExitKind exitKind, ExceptionType exceptionType, DataFormat profileDataFormat,
-    MethodOfGettingAValueProfile valueProfile, CodeOrigin codeOrigin,
-    CodeOrigin originForProfile, unsigned numberOfArguments,
-    unsigned numberOfLocals)
-    : m_kind(exitKind)
-    , m_exceptionType(exceptionType)
-    , m_codeOrigin(codeOrigin)
-    , m_codeOriginForExitProfile(originForProfile)
-    , m_profileDataFormat(profileDataFormat)
+    DataFormat profileDataFormat, MethodOfGettingAValueProfile valueProfile,
+    unsigned numberOfArguments, unsigned numberOfLocals)
+    : m_profileDataFormat(profileDataFormat)
     , m_valueProfile(valueProfile)
     , m_values(numberOfArguments, numberOfLocals)
+#if !FTL_USES_B3
     , m_isInvalidationPoint(false)
+#endif // !FTL_USES_B3
 {
-}
-
-bool OSRExitDescriptor::isExceptionHandler() const
-{
-    return m_exceptionType != ExceptionType::None;
 }
 
 void OSRExitDescriptor::validateReferences(const TrackedReferences& trackedReferences)
@@ -70,23 +66,73 @@ void OSRExitDescriptor::validateReferences(const TrackedReferences& trackedRefer
         materialization->validateReferences(trackedReferences);
 }
 
+#if FTL_USES_B3
+RefPtr<OSRExitHandle> OSRExitDescriptor::emitOSRExit(
+    State& state, ExitKind exitKind, const NodeOrigin& nodeOrigin, CCallHelpers& jit,
+    const StackmapGenerationParams& params, unsigned offset, bool isExceptionHandler)
+{
+    RefPtr<OSRExitHandle> handle =
+        prepareOSRExitHandle(state, exitKind, nodeOrigin, params, offset, isExceptionHandler);
+    handle->emitExitThunk(jit);
+    return handle;
+}
 
-OSRExit::OSRExit(OSRExitDescriptor& descriptor, uint32_t stackmapRecordIndex)
-    : OSRExitBase(descriptor.m_kind, descriptor.m_codeOrigin, descriptor.m_codeOriginForExitProfile)
+RefPtr<OSRExitHandle> OSRExitDescriptor::emitOSRExitLater(
+    State& state, ExitKind exitKind, const NodeOrigin& nodeOrigin,
+    const StackmapGenerationParams& params, unsigned offset, bool isExceptionHandler)
+{
+    RefPtr<OSRExitHandle> handle =
+        prepareOSRExitHandle(state, exitKind, nodeOrigin, params, offset, isExceptionHandler);
+    params.addLatePath(
+        [handle] (CCallHelpers& jit) {
+            handle->emitExitThunk(jit);
+        });
+    return handle;
+}
+
+RefPtr<OSRExitHandle> OSRExitDescriptor::prepareOSRExitHandle(
+    State& state, ExitKind exitKind, const NodeOrigin& nodeOrigin,
+    const StackmapGenerationParams& params, unsigned offset, bool isExceptionHandler)
+{
+    unsigned index = state.jitCode->osrExit.size();
+    OSRExit& exit = state.jitCode->osrExit.alloc(
+        this, exitKind, nodeOrigin.forExit, nodeOrigin.semantic, isExceptionHandler);
+    RefPtr<OSRExitHandle> handle = adoptRef(new OSRExitHandle(index, exit));
+    for (unsigned i = offset; i < params.size(); ++i)
+        exit.m_valueReps.append(params[i]);
+    exit.m_valueReps.shrinkToFit();
+    return handle;
+}
+#endif // FTL_USES_B3
+
+#if FTL_USES_B3
+OSRExit::OSRExit(
+    OSRExitDescriptor* descriptor,
+    ExitKind exitKind, CodeOrigin codeOrigin, CodeOrigin codeOriginForExitProfile,
+    bool isExceptionHandler)
+    : OSRExitBase(exitKind, codeOrigin, codeOriginForExitProfile)
+    , m_descriptor(descriptor)
+{
+    m_isExceptionHandler = isExceptionHandler;
+}
+#else // FTL_USES_B3
+OSRExit::OSRExit(
+    OSRExitDescriptor* descriptor, OSRExitDescriptorImpl& exitDescriptorImpl,
+    uint32_t stackmapRecordIndex)
+    : OSRExitBase(exitDescriptorImpl.m_kind, exitDescriptorImpl.m_codeOrigin, exitDescriptorImpl.m_codeOriginForExitProfile)
     , m_descriptor(descriptor)
     , m_stackmapRecordIndex(stackmapRecordIndex)
-    , m_exceptionType(descriptor.m_exceptionType)
+    , m_exceptionType(exitDescriptorImpl.m_exceptionType)
 {
-    m_isExceptionHandler = descriptor.isExceptionHandler();
+    m_isExceptionHandler = exitDescriptorImpl.m_exceptionType != ExceptionType::None;
 }
+#endif // FTL_USES_B3
 
 CodeLocationJump OSRExit::codeLocationForRepatch(CodeBlock* ftlCodeBlock) const
 {
 #if FTL_USES_B3
-    return CodeLocationJump(
-        reinterpret_cast<char*>(
-            ftlCodeBlock->jitCode()->ftl()->b3Code().code().dataLocation()) +
-        m_patchableCodeOffset);
+    UNUSED_PARAM(ftlCodeBlock);
+    return m_patchableJump;
 #else // FTL_USES_B3
     return CodeLocationJump(
         reinterpret_cast<char*>(
@@ -95,9 +141,10 @@ CodeLocationJump OSRExit::codeLocationForRepatch(CodeBlock* ftlCodeBlock) const
 #endif // FTL_USES_B3
 }
 
+#if !FTL_USES_B3
 void OSRExit::gatherRegistersToSpillForCallIfException(StackMaps& stackmaps, StackMaps::Record& record)
 {
-    RELEASE_ASSERT(m_descriptor.m_exceptionType == ExceptionType::JSCall);
+    RELEASE_ASSERT(m_exceptionType == ExceptionType::JSCall);
 
     RegisterSet volatileRegisters = RegisterSet::volatileRegistersForJSCall();
 
@@ -121,12 +168,12 @@ void OSRExit::gatherRegistersToSpillForCallIfException(StackMaps& stackmaps, Sta
             break;
         }
     };
-    for (ExitTimeObjectMaterialization* materialization : m_descriptor.m_materializations) {
+    for (ExitTimeObjectMaterialization* materialization : m_descriptor->m_materializations) {
         for (unsigned propertyIndex = materialization->properties().size(); propertyIndex--;)
             addNeededRegisters(materialization->properties()[propertyIndex].value());
     }
-    for (unsigned index = m_descriptor.m_values.size(); index--;)
-        addNeededRegisters(m_descriptor.m_values[index]);
+    for (unsigned index = m_descriptor->m_values.size(); index--;)
+        addNeededRegisters(m_descriptor->m_values[index]);
 }
 
 void OSRExit::spillRegistersToSpillSlot(CCallHelpers& jit, int32_t stackSpillSlot)
@@ -182,9 +229,9 @@ bool OSRExit::willArriveAtExitFromIndirectExceptionCheck() const
     RELEASE_ASSERT_NOT_REACHED();
 }
 
-bool OSRExit::willArriveAtOSRExitFromGenericUnwind() const
+bool exceptionTypeWillArriveAtOSRExitFromGenericUnwind(ExceptionType exceptionType)
 {
-    switch (m_exceptionType) {
+    switch (exceptionType) {
     case ExceptionType::JSCall:
     case ExceptionType::GetById:
     case ExceptionType::PutById:
@@ -193,6 +240,11 @@ bool OSRExit::willArriveAtOSRExitFromGenericUnwind() const
         return false;
     }
     RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool OSRExit::willArriveAtOSRExitFromGenericUnwind() const
+{
+    return exceptionTypeWillArriveAtOSRExitFromGenericUnwind(m_exceptionType);
 }
 
 bool OSRExit::willArriveAtOSRExitFromCallOperation() const
@@ -222,6 +274,7 @@ bool OSRExit::needsRegisterRecoveryOnGenericUnwindOSRExitPath() const
     // recover the spilled registers.
     return m_exceptionType == ExceptionType::JSCall;
 }
+#endif // !FTL_USES_B3
 
 } } // namespace JSC::FTL
 

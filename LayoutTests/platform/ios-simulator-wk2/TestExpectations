@@ -10,7 +10,6 @@ fast/harness/ui-side-scripts.html [ Pass ]
 fast/harness/concurrent-ui-side-scripts.html [ Pass ]
 fast/zooming/ios [ Pass ]
 fast/viewport/ios [ Pass ]
-fast/events/ios [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -494,7 +493,6 @@ http/tests/uri/css-href.php [ Failure ]
 http/tests/appcache/crash-when-navigating-away-then-back.html
 http/tests/cache/display-image-unset-allows-cached-image-load.html
 http/tests/cache/history-only-cached-subresource-loads.html
-http/tests/inspector/console/access-inspected-object.html
 http/tests/inspector/page/loading-iframe-document-node.html
 http/tests/misc/iframe-reparenting-id-collision.html
 http/tests/misc/set-window-opener-to-null.html
@@ -2041,3 +2039,4 @@ webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-she
 
 # eventSender.mouseDown is not implemented
 fast/loader/location-hash-user-gesture.html [ Skip ]
+

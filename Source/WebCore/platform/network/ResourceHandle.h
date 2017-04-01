@@ -139,7 +139,6 @@ public:
 #endif
         
 #if PLATFORM(COCOA) && ENABLE(WEB_TIMING)
-    void setCollectsTimingData();
 #if USE(CFNETWORK)
     static void getConnectionTimingData(CFURLConnectionRef, ResourceLoadTiming&);
 #else
@@ -291,10 +290,6 @@ private:
 
 #if PLATFORM(IOS) && !USE(CFNETWORK)
     void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, SchedulingBehavior, NSDictionary *connectionProperties);
-#endif
-
-#if PLATFORM(COCOA) && ENABLE(WEB_TIMING)
-static void getConnectionTimingData(NSDictionary *timingData, ResourceLoadTiming&);
 #endif
 
 #if USE(SOUP)

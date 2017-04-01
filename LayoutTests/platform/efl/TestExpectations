@@ -1821,17 +1821,6 @@ webkit.org/b/112014 accessibility/textarea-insertion-point-line-number.html [ Fa
 webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
 webkit.org/b/112021 accessibility/visible-elements.html [ Failure Crash ]
 
-webkit.org/b/111985 accessibility/image-link.html [ Failure ]
-webkit.org/b/111985 accessibility/image-map2.html [ Failure ]
-webkit.org/b/111985 accessibility/lists.html [ Failure ]
-webkit.org/b/111985 accessibility/table-attributes.html [ Failure ]
-webkit.org/b/111985 accessibility/table-cell-spans.html [ Failure ]
-webkit.org/b/111985 accessibility/table-cells.html [ Failure ]
-webkit.org/b/111985 accessibility/table-detection.html [ Failure ]
-webkit.org/b/111985 accessibility/table-one-cell.html [ Failure ]
-webkit.org/b/111985 accessibility/table-sections.html [ Failure ]
-webkit.org/b/111985 accessibility/table-with-rules.html [ Failure ]
-
 # New accessibility test added in r151079 that is failing for EFL.
 webkit.org/b/117182 accessibility/text-role-with-aria-hidden-inside.html [ Failure ]
 
@@ -2343,15 +2332,7 @@ editing/selection/designmode-no-caret.html [ Missing ]
 accessibility/content-editable-as-textarea.html [ Missing ]
 
 webkit.org/b/146887 accessibility/aria-roledescription.html [ Failure ]
-webkit.org/b/146887 accessibility/aria-table-hierarchy.html [ Failure ]
-webkit.org/b/146887 accessibility/aria-table-with-presentational-elements.html [ Failure ]
-webkit.org/b/146887 accessibility/aria-tables.html [ Failure ]
 webkit.org/b/146887 accessibility/list-detection.html [ Failure ]
-webkit.org/b/146887 accessibility/poorly-formed-aria-table.html [ Failure ]
-webkit.org/b/146887 accessibility/roles-exposed.html [ Failure ]
-webkit.org/b/146887 accessibility/table-fallback-roles-expose-element-attributes.html [ Failure ]
-webkit.org/b/146887 accessibility/table-with-footer-section-above-body.html [ Failure ]
-webkit.org/b/146887 accessibility/table-with-missing-aria-role-rows.html [ Failure ]
 
 # This test hardcodes the result of a platform-dependent font lookup algorithm.
 fast/text/fallback-language-han.html [ Skip ]
@@ -2711,3 +2692,12 @@ css2.1/tables/table-anonymous-objects-205.xht [ Missing ]
 css2.1/tables/table-anonymous-objects-206.xht [ Missing ]
 css2.1/tables/table-anonymous-objects-207.xht [ Missing ]
 css2.1/tables/table-anonymous-objects-208.xht [ Missing ]
+
+webkit.org/b/151943 imported/blink/editing/execCommand/4128080-2.html [ Failure ]
+webkit.org/b/151943 imported/blink/fast/events/click-with-large-negative-text-indent.html [ Failure ]
+webkit.org/b/151943 imported/blink/fast/replaced/image-map-alt-content.html [ Failure ]
+webkit.org/b/151943 imported/blink/http/tests/security/contentSecurityPolicy/object-src-applet-archive-codebase.html [ Failure ]
+webkit.org/b/151943 imported/blink/http/tests/security/contentSecurityPolicy/object-src-applet-archive.html [ Failure ]
+webkit.org/b/151943 imported/blink/http/tests/security/contentSecurityPolicy/object-src-applet-code-codebase.html [ Failure ]
+webkit.org/b/151943 imported/blink/http/tests/security/contentSecurityPolicy/object-src-applet-code.html [ Failure ]
+webkit.org/b/151943 imported/blink/media/track/media-element-move-to-new-document-assert.html [ Failure ]

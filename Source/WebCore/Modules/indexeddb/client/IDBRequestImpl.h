@@ -60,9 +60,9 @@ public:
 
     virtual ~IDBRequest() override;
 
-    virtual RefPtr<WebCore::IDBAny> result(ExceptionCode&) const override;
+    virtual RefPtr<WebCore::IDBAny> result(ExceptionCodeWithMessage&) const override;
     virtual unsigned short errorCode(ExceptionCode&) const override;
-    virtual RefPtr<DOMError> error(ExceptionCode&) const override;
+    virtual RefPtr<DOMError> error(ExceptionCodeWithMessage&) const override;
     virtual RefPtr<WebCore::IDBAny> source() const override;
     virtual RefPtr<WebCore::IDBTransaction> transaction() const override;
     virtual const String& readyState() const override;
@@ -98,6 +98,7 @@ public:
     const IDBCursor* pendingCursor() const { return m_pendingCursor.get(); }
 
     void setSource(IDBCursor&);
+    void setVersionChangeTransaction(IDBTransaction&);
 
 protected:
     IDBRequest(IDBConnectionToServer&, ScriptExecutionContext*);
@@ -110,10 +111,12 @@ protected:
     virtual const char* activeDOMObjectName() const override final;
     virtual bool canSuspendForDocumentSuspension() const override final;
     virtual bool hasPendingActivity() const override final;
-    
+    virtual void stop() override final;
+
     // EventTarget.
     virtual void refEventTarget() override final { RefCounted<IDBRequest>::ref(); }
     virtual void derefEventTarget() override final { RefCounted<IDBRequest>::deref(); }
+    virtual void uncaughtExceptionInEventHandler() override final;
 
     virtual bool isOpenDBRequest() const { return false; }
 
@@ -137,6 +140,8 @@ private:
     IndexedDB::IndexRecordType m_requestedIndexRecordType;
 
     RefPtr<IDBCursor> m_pendingCursor;
+
+    bool m_contextStopped { false };
 };
 
 } // namespace IDBClient

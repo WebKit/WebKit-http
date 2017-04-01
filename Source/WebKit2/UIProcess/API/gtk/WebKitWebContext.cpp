@@ -188,7 +188,6 @@ struct _WebKitWebContextPrivate {
     GRefPtr<GVariant> webExtensionsInitializationUserData;
 
     CString localStorageDirectory;
-    CString indexedDBDirectory;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -1293,6 +1292,11 @@ void webkitWebContextStopLoadingCustomProtocol(WebKitWebContext* context, uint64
 void webkitWebContextDidFinishLoadingCustomProtocol(WebKitWebContext* context, uint64_t customProtocolID)
 {
     context->priv->uriSchemeRequests.remove(customProtocolID);
+}
+
+bool webkitWebContextIsLoadingCustomProtocol(WebKitWebContext* context, uint64_t customProtocolID)
+{
+    return context->priv->uriSchemeRequests.get(customProtocolID);
 }
 
 void webkitWebContextCreatePageForWebView(WebKitWebContext* context, WebKitWebView* webView, WebKitUserContentManager* userContentManager, WebKitWebView* relatedView)

@@ -32,6 +32,8 @@
 #include <WebKit/WKRetainPtr.h>
 #include <wtf/RefPtr.h>
 
+class EwkPageGroup;
+
 class EwkViewConfiguration : public EwkObject {
 public:
     EWK_OBJECT_DECLARE(EwkViewConfiguration);
@@ -40,10 +42,14 @@ public:
 
     WKPageConfigurationRef wkPageConfiguration() const { return m_pageConfiguration.get(); }
 
+    EwkPageGroup* pageGroup() const { return m_pageGroup.get(); }
+
 private:
     explicit EwkViewConfiguration(WKPageConfigurationRef);
 
     WKRetainPtr<WKPageConfigurationRef> m_pageConfiguration;
+
+    RefPtr<EwkPageGroup> m_pageGroup;
 };
 
 #endif

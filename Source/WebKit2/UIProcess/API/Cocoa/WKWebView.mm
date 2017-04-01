@@ -361,6 +361,7 @@ static bool shouldAllowPictureInPictureMediaPlayback()
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback()));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::requiresUserGestureForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration requiresUserActionForMediaPlayback]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::requiresUserGestureForAudioPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration _requiresUserActionForAudioPlayback]));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::invisibleAutoplayNotPermittedKey(), WebKit::WebPreferencesStore::Value(!![_configuration _invisibleAutoplayNotPermitted]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::mediaDataLoadsAutomaticallyKey(), WebKit::WebPreferencesStore::Value(!![_configuration _mediaDataLoadsAutomatically]));
 #endif
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -749,6 +750,15 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS)
+
+- (BOOL)_isBackground
+{
+    if ([self _isDisplayingPDF])
+        return [(WKPDFView *)_customContentView isBackground];
+
+    return [_contentView isBackground];
+}
+
 - (void)setFrame:(CGRect)frame
 {
     CGRect oldFrame = self.frame;
@@ -2701,6 +2711,26 @@ WEBCORE_COMMAND(yankAndSelect)
     [[self _ensureTextFinderClient] selectFindMatch:findMatch completionHandler:completionHandler];
 }
 
+- (void)touchesBeganWithEvent:(NSEvent *)event
+{
+    _impl->touchesBeganWithEvent(event);
+}
+
+- (void)touchesMovedWithEvent:(NSEvent *)event
+{
+    _impl->touchesMovedWithEvent(event);
+}
+
+- (void)touchesEndedWithEvent:(NSEvent *)event
+{
+    _impl->touchesEndedWithEvent(event);
+}
+
+- (void)touchesCancelledWithEvent:(NSEvent *)event
+{
+    _impl->touchesCancelledWithEvent(event);
+}
+
 - (NSTextInputContext *)_web_superInputContext
 {
     return [super inputContext];
@@ -2761,7 +2791,8 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (id)_web_immediateActionAnimationControllerForHitTestResultInternal:(API::HitTestResult*)hitTestResult withType:(uint32_t)type userData:(API::Object*)userData
 {
-    return [self _immediateActionAnimationControllerForHitTestResult:wrapper(*hitTestResult) withType:(_WKImmediateActionType)type userData:(id)userData];
+    id<NSSecureCoding> data = userData ? static_cast<id<NSSecureCoding>>(userData->wrapper()) : nil;
+    return [self _immediateActionAnimationControllerForHitTestResult:wrapper(*hitTestResult) withType:(_WKImmediateActionType)type userData:data];
 }
 
 // We don't expose these various bits of SPI like WKView does,

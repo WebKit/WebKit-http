@@ -303,6 +303,10 @@ webkit.org/b/53675 fast/events/scroll-event-during-modal-dialog.html [ Skip ]
 webkit.org/b/53675 fast/dom/Window/open-window-min-size.html [ Skip ]
 webkit.org/b/53675 js/dom/function-length.html [ Skip ]
 
+webkit.org/b/151506 fast/events/beforeunload-showModalDialog.html [ Skip ]
+webkit.org/b/151506 fast/events/pagehide-showModalDialog.html [ Skip ]
+webkit.org/b/151506 fast/events/unload-showModalDialog.html [ Skip ]
+
 # Datalist is not yet enabled.
 fast/forms/datalist/ [ Skip ]
 
@@ -473,6 +477,10 @@ css3/font-feature-settings-rendering.html [ Skip ]
 webkit.org/b/149771 css3/font-feature-settings-font-face-rendering.html [ Skip ] # WontFix
 webkit.org/b/149771 css3/font-variant-font-face-all.html [ Skip ] # WontFix
 webkit.org/b/149771 css3/font-variant-font-face-override.html [ Skip ] # WontFix
+webkit.org/b/149774 css3/font-variant-petite-caps-synthesis-coverage.html [ Skip ] # WontFix
+webkit.org/b/149774 css3/font-variant-petite-caps-synthesis.html [ Skip ] # WontFix
+webkit.org/b/149774 css3/font-variant-small-caps-synthesis-coverage.html [ Skip ] # WontFix
+webkit.org/b/149774 css3/font-variant-small-caps-synthesis.html [ Skip ] # WontFix
 
 # TODO HiDPI tests require test infrastructure enhancements (e.g. testRunner.setBackingScaleFactor)
 # https://bugs.webkit.org/show_bug.cgi?id=87919
@@ -500,6 +508,8 @@ webkit.org/b/87919 fast/repaint/hidpi-content-inside-iframe-leaves-trails.html [
 webkit.org/b/87919 fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html [ Failure ]
 webkit.org/b/87919 fast/repaint/hidpi-transform-on-subpixel-repaintrect.html [ Failure ]
 webkit.org/b/87919 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
+
+webkit.org/b/151754 fast/borders/hidpi-border-clipping-right-after-move.html [ ImageOnlyFailure ]
 
 # Skip because this platform does not support a paging mouse wheel event
 fast/events/platform-wheelevent-paging-x-in-non-scrolling-div.html [ Skip ]
@@ -649,6 +659,12 @@ sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression
 webkit.org/b/150973 sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.1_T2.html [ Pass Timeout ]
 webkit.org/b/150973 sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A2.1_T2.html [ Pass Timeout ]
 webkit.org/b/150973 sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A2.4_T2.html [ Pass Timeout ]
+
+# Skipping these failing tests pending further investigation
+webkit.org/b/151505 sputnik/Unicode/Unicode_510/S7.6_A3.1.html [ Skip ]
+webkit.org/b/151505 sputnik/Unicode/Unicode_510/S7.6_A3.2.html [ Skip ]
+webkit.org/b/151505 sputnik/Unicode/Unicode_510/S7.6_A5.3_T1.html [ Skip ]
+webkit.org/b/151505 sputnik/Unicode/Unicode_510/S7.6_A5.3_T2.html [ Skip ]
 ################################################################################
 ##############               End Sputnik Errors                 ################
 ################################################################################
@@ -2133,8 +2149,6 @@ fast/forms/state-restore-to-non-autocomplete-form.html [ Skip ]
 fast/forms/state-restore-to-non-edited-controls.html [ Skip ]
 fast/forms/state-save-of-detached-control.html [ Skip ]
 fast/forms/textarea/textarea-state-restore.html [ Skip ]
-
-webkit.org/b/150909 fast/forms/HTMLOptionElement_label03.html [ ImageOnlyFailure ]
 ################################################################################
 #################          End Forms Issues              #######################
 ################################################################################
@@ -3124,6 +3138,10 @@ accessibility/treeitem-child-exposed.html [ Failure ]
 
 webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
 
+webkit.org/b/151759 fast/dom/Window/property-access-on-cached-window-after-frame-removed.html [ Failure ]
+
+webkit.org/b/152009 fast/canvas/canvas-too-large-to-draw.html [ Skip ]
+
 ################################################################################
 ######################### End list of UNREVIEWED failures ##########################
 ################################################################################
@@ -3297,10 +3315,8 @@ webkit.org/b/150684 editing/input/reveal-caret-of-multiline-input.html [ Pass Fa
 
 webkit.org/b/150808 fast/text/multiple-feature-properties.html [ ImageOnlyFailure ]
 
-webkit.org/b/147933 streams/reference-implementation/count-queuing-strategy.html [ Pass Failure ]
-webkit.org/b/147933 streams/reference-implementation/pipe-to.html [ Pass Failure ]
-webkit.org/b/147933 streams/reference-implementation/writable-stream-abort.html [ Pass Failure ]
-
 webkit.org/b/150946 [ Debug ] scrollbars/custom-scrollbar-appearance-property.html [ Crash ]
 
 webkit.org/b/150948 [ Debug ] imported/blink/transitions/unprefixed-transform.html [ Pass Failure ]
+
+webkit.org/b/151756 fast/css/pseudo-visited-background-color-on-input.html [ ImageOnlyFailure ]

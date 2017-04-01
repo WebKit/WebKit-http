@@ -3802,8 +3802,7 @@ static bool inContainingBlockChain(RenderLayer* startLayer, RenderLayer* endLaye
 void RenderLayer::clipToRect(const LayerPaintingInfo& paintingInfo, GraphicsContext& context, const ClipRect& clipRect, BorderRadiusClippingRule rule)
 {
     float deviceScaleFactor = renderer().document().deviceScaleFactor();
-
-    bool needsClipping = clipRect.rect() != paintingInfo.paintDirtyRect;
+    bool needsClipping = !clipRect.isInfinite() && clipRect.rect() != paintingInfo.paintDirtyRect;
     if (needsClipping || clipRect.affectedByRadius())
         context.save();
 
@@ -3832,7 +3831,7 @@ void RenderLayer::clipToRect(const LayerPaintingInfo& paintingInfo, GraphicsCont
 
 void RenderLayer::restoreClip(GraphicsContext& context, const LayoutRect& paintDirtyRect, const ClipRect& clipRect)
 {
-    if (clipRect.rect() != paintDirtyRect || clipRect.affectedByRadius())
+    if ((!clipRect.isInfinite() && clipRect.rect() != paintDirtyRect) || clipRect.affectedByRadius())
         context.restore();
 }
 
@@ -4405,7 +4404,7 @@ void RenderLayer::paintLayerByApplyingTransform(GraphicsContext& context, const 
     // Translate the graphics context to the snapping position to avoid off-device-pixel positing.
     transform.translateRight(devicePixelSnappedOffsetForThisLayer.width(), devicePixelSnappedOffsetForThisLayer.height());
     // Apply the transform.
-    GraphicsContextStateSaver stateSaver(context);
+    AffineTransform oldTransfrom = context.getCTM();
     context.concatCTM(transform.toAffineTransform());
 
     // Now do a paint with the root layer shifted to be us.
@@ -4413,6 +4412,7 @@ void RenderLayer::paintLayerByApplyingTransform(GraphicsContext& context, const 
     LayerPaintingInfo transformedPaintingInfo(this, LayoutRect(encloseRectToDevicePixels(transform.inverse().valueOr(AffineTransform()).mapRect(paintingInfo.paintDirtyRect), deviceScaleFactor)),
         paintingInfo.paintBehavior, adjustedSubpixelAccumulation, paintingInfo.subtreePaintRoot, paintingInfo.overlapTestRequests);
     paintLayerContentsAndReflection(context, transformedPaintingInfo, paintFlags);
+    context.setCTM(oldTransfrom);
 }
 
 void RenderLayer::paintList(Vector<RenderLayer*>* list, GraphicsContext& context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
@@ -5761,6 +5761,9 @@ bool RenderLayer::intersectsDamageRect(const LayoutRect& layerBounds, const Layo
     if (isRootLayer() || renderer().isDocumentElementRenderer())
         return true;
 
+    if (damageRect.isInfinite())
+        return true;
+
     if (damageRect.isEmpty())
         return false;
 
@@ -7070,7 +7073,7 @@ void showLayerTree(const WebCore::RenderLayer* layer)
     if (!layer)
         return;
 
-    WTF::String output = externalRepresentation(&layer->renderer().frame(), WebCore::RenderAsTextShowAllLayers | WebCore::RenderAsTextShowLayerNesting | WebCore::RenderAsTextShowCompositedLayers | WebCore::RenderAsTextShowAddresses | WebCore::RenderAsTextShowIDAndClass | WebCore::RenderAsTextDontUpdateLayout | WebCore::RenderAsTextShowLayoutState | WebCore::RenderAsTextShowOverflow);
+    WTF::String output = externalRepresentation(&layer->renderer().frame(), WebCore::RenderAsTextShowAllLayers | WebCore::RenderAsTextShowLayerNesting | WebCore::RenderAsTextShowCompositedLayers | WebCore::RenderAsTextShowAddresses | WebCore::RenderAsTextShowIDAndClass | WebCore::RenderAsTextDontUpdateLayout | WebCore::RenderAsTextShowLayoutState | WebCore::RenderAsTextShowOverflow | WebCore::RenderAsTextShowSVGGeometry);
     fprintf(stderr, "%s\n", output.utf8().data());
 }
 

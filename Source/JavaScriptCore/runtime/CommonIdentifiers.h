@@ -316,11 +316,13 @@
     macro(promiseFulfillReactions) \
     macro(promiseRejectReactions) \
     macro(promiseResult) \
+    macro(push) \
     macro(capabilities) \
     macro(starDefault) \
     macro(InspectorInstrumentation) \
     macro(get) \
     macro(set) \
+    macro(shift) \
     macro(allocateTypedArray) \
     macro(Int8Array) \
     macro(Int16Array) \
@@ -338,6 +340,11 @@
     macro(generatorValue) \
     macro(generatorThis) \
     macro(generatorResumeMode) \
+    macro(Collator) \
+    macro(DateTimeFormat) \
+    macro(NumberFormat) \
+    macro(newTargetLocal) \
+    macro(derivedConstructor) \
 
 
 namespace JSC {

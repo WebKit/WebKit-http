@@ -1,3 +1,166 @@
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add fetch API compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=152254
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+
+2015-12-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Math.random should have an intrinsic thunk and it should be later handled as a DFG Node
+        https://bugs.webkit.org/show_bug.cgi?id=152133
+
+        Reviewed by Geoffrey Garen.
+
+        Change 64bit random to double logic to convert efficiently.
+
+        * wtf/WeakRandom.h:
+        (WTF::WeakRandom::get):
+        (WTF::WeakRandom::lowOffset):
+        (WTF::WeakRandom::highOffset):
+
+2015-12-14  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Make UCharIterator createIterator(StringView) visible to other classes
+        https://bugs.webkit.org/show_bug.cgi?id=151917
+
+        Reviewed by Darin Adler.
+
+        Make UCharIterator createIterator(StringView) in CollatorICU.cpp visible
+        to other classes so that future patches that will ucol_strcollIter
+        (including Bug 147604) can use it.
+
+        * wtf/unicode/Collator.h:
+        * wtf/unicode/icu/CollatorICU.cpp:
+        (WTF::createIterator):
+
+2015-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r162777): Remove Boost Software License from WTF
+        <http://webkit.org/b/152243>
+
+        Reviewed by Darin Adler.
+
+        The source code that the Boost Software License was referring to
+        was removed in r162777 by switching to std::atomic.
+
+        * wtf/Atomics.cpp:
+        * wtf/Atomics.h:
+        * wtf/ThreadSafeRefCounted.h:
+        - Remove Boost Software License.
+        - Update Apple Inc. copyright as needed.
+        - Refresh Apple Inc. license text.
+
+2015-12-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remote Inspector: Verify the identity of the other side of XPC connections
+        https://bugs.webkit.org/show_bug.cgi?id=152153
+
+        Reviewed by Brian Burg.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/spi/cocoa/SecuritySPI.h: Renamed from Source/WebCore/platform/spi/cocoa/SecuritySPI.h.
+        Push this down into WTF from WebCore and add a new method.
+
+2015-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL B3 should have basic GetById support
+        https://bugs.webkit.org/show_bug.cgi?id=152035
+
+        Reviewed by Saam Barati.
+
+        When dealing with shared task lambdas, you often want to force a value to be allocated so that it
+        has reference semantics, but you still want the lambda to execute OK when we pop stack. In PL we
+        usually call this a "box". This is easy to do if the value that happened to be stack-allocated
+        is also RefCounted, but that's rare, since stack-allocated values often have copy semantics. So,
+        I've added a Box type to WTF. Behind the scenes, it allocates your object with fast malloc inside
+        a ThreadSAfeRefCounted. When you pass Box<T>, you're passing the reference. This makes it a lot
+        easier to work with by-reference capture.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Box.h: Added.
+        (WTF::Box::Box):
+        (WTF::Box::create):
+        (WTF::Box::get):
+        (WTF::Box::operator*):
+        (WTF::Box::operator->):
+        (WTF::Box::operator bool):
+        (WTF::Box::Data::Data):
+
+2015-12-09  Andreas Kling  <akling@apple.com>
+
+        [iOS] ResourceUsageOverlay should work on iOS.
+        <https://webkit.org/b/152021>
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/Platform.h: Enable RESOURCE_USAGE_OVERLAY for all COCOA platforms.
+
+2015-12-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Create a Sandbox SPI header
+        https://bugs.webkit.org/show_bug.cgi?id=151981
+
+        Reviewed by Andy Estes.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/spi/darwin/SandboxSPI.h: Added.
+
+2015-12-07  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL B3 should be able to flag the tag constants as being super important so that B3 can hoist them and Air can force them into registers
+        https://bugs.webkit.org/show_bug.cgi?id=151955
+
+        Reviewed by Geoffrey Garen.
+
+        Remove some remaining DFG-specific snippets from Dominators. This used to be a non-template
+        DFG class, and some time ago I hoisted it into WTF and made it generic. But since the only
+        user of the class was the DFG, this class still had a handful of DFG-specific snippets that
+        didn't compile when I started using it from B3.
+
+        Also renamed immediateDominatorOf() to idom(). This is the sort of abbreviation that we
+        wouldn't ordinarily want to have in WebKit. But WebKit does allow for abbreviations that are
+        "more canonical". The term "idom" is definitely more canonical than "immediateDominatorOf".
+
+        * wtf/Dominators.h:
+        (WTF::Dominators::dominates):
+        (WTF::Dominators::idom):
+        (WTF::Dominators::forAllStrictDominatorsOf):
+        (WTF::Dominators::NaiveDominators::dominates):
+        (WTF::Dominators::NaiveDominators::dump):
+        (WTF::Dominators::ValidationContext::handleErrors):
+
+2015-12-03  Anders Carlsson  <andersca@apple.com>
+
+        Remove Objective-C GC support
+        https://bugs.webkit.org/show_bug.cgi?id=151819
+        rdar://problem/23746991
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::initializeCurrentThreadInternal): Deleted.
+        * wtf/text/cf/StringImplCF.cpp:
+        (WTF::StringImpl::createCFString):
+        (garbageCollectionEnabled): Deleted.
+        (WTF::StringWrapperCFAllocator::create): Deleted.
+
+2015-12-02  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL B3 should support OSR exit
+        https://bugs.webkit.org/show_bug.cgi?id=151710
+
+        Reviewed by Saam Barati.
+
+        Make sure that this has perfect forwarding.
+
+        * wtf/SegmentedVector.h:
+        (WTF::SegmentedVector::append):
+        (WTF::SegmentedVector::alloc):
+
 2015-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ES6] Implement LLInt/Baseline Support for ES6 Generators and enable this feature

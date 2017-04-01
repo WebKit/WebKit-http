@@ -33,7 +33,11 @@
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #include "TextureMapper.h"
+#if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperPlatformLayerProxy.h"
+#else
 #include "TextureMapperPlatformLayer.h"
+#endif
 #endif
 
 namespace WebCore {
@@ -42,7 +46,11 @@ class IntSize;
 
 class ImageBufferData
 #if ENABLE(ACCELERATED_2D_CANVAS)
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    : public TextureMapperPlatformLayerProxyProvider
+#else
     : public TextureMapperPlatformLayer
+#endif
 #endif
 {
 public:
@@ -54,7 +62,20 @@ public:
     IntSize m_size;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity);
+    void createCairoGLSurface();
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
+    virtual void swapBuffersIfNeeded() override;
+    void createCompositorBuffer();
+
+    RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
+    RefPtr<cairo_surface_t> m_compositorSurface;
+    uint32_t m_compositorTexture;
+    RefPtr<cairo_t> m_compositorCr;
+#else
+    virtual void paintToTextureMapper(TextureMapper&, const FloatRect& target, const TransformationMatrix&, float opacity);
+#endif
     uint32_t m_texture;
 #endif
 };

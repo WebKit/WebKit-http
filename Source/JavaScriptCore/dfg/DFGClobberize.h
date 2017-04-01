@@ -121,12 +121,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CheckStructureImmediate:
         return;
         
-    case BitAnd:
-    case BitOr:
-    case BitXor:
-    case BitLShift:
-    case BitRShift:
-    case BitURShift:
     case ArithIMul:
     case ArithAbs:
     case ArithClz32:
@@ -139,7 +133,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithCos:
     case ArithLog:
     case GetScope:
-    case LoadArrowFunctionThis:
     case SkipScope:
     case StringCharCodeAt:
     case StringFromCharCode:
@@ -163,6 +156,25 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case BottomValue:
     case TypeOf:
         def(PureValue(node));
+        return;
+
+    case BitAnd:
+    case BitOr:
+    case BitXor:
+    case BitLShift:
+    case BitRShift:
+    case BitURShift:
+        if (node->child1().useKind() == UntypedUse || node->child2().useKind() == UntypedUse) {
+            read(World);
+            write(Heap);
+            return;
+        }
+        def(PureValue(node));
+        return;
+
+    case ArithRandom:
+        read(MathDotRandomState);
+        write(MathDotRandomState);
         return;
         
     case HasGenericProperty:
@@ -247,15 +259,29 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     }
 
     case ArithAdd:
-    case ArithSub:
     case ArithNegate:
-    case ArithMul:
-    case ArithDiv:
     case ArithMod:
     case DoubleAsInt32:
     case UInt32ToNumber:
         def(PureValue(node, node->arithMode()));
         return;
+
+    case ArithDiv:
+    case ArithMul:
+    case ArithSub:
+        switch (node->binaryUseKind()) {
+        case Int32Use:
+        case Int52RepUse:
+        case DoubleRepUse:
+            def(PureValue(node, node->arithMode()));
+            return;
+        case UntypedUse:
+            read(World);
+            write(Heap);
+            return;
+        default:
+            DFG_CRASH(graph, node, "Bad use kind");
+        }
 
     case ArithRound:
         def(PureValue(node, static_cast<uintptr_t>(node->arithRoundingMode())));

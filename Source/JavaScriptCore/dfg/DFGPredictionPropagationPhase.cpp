@@ -269,8 +269,7 @@ private:
             break;
         }
 
-        case ArithAdd:
-        case ArithSub: {
+        case ArithAdd: {
             SpeculatedType left = node->child1()->prediction();
             SpeculatedType right = node->child2()->prediction();
             
@@ -285,6 +284,25 @@ private:
             break;
         }
             
+        case ArithSub: {
+            SpeculatedType left = node->child1()->prediction();
+            SpeculatedType right = node->child2()->prediction();
+
+            if (left && right) {
+                if (isFullNumberOrBooleanSpeculationExpectingDefined(left)
+                    && isFullNumberOrBooleanSpeculationExpectingDefined(right)) {
+                    if (m_graph.addSpeculationMode(node, m_pass) != DontSpeculateInt32)
+                        changed |= mergePrediction(SpecInt32);
+                    else if (m_graph.addShouldSpeculateMachineInt(node))
+                        changed |= mergePrediction(SpecInt52);
+                    else
+                        changed |= mergePrediction(speculatedDoubleTypeForPredictions(left, right));
+                } else
+                    changed |= mergePrediction(SpecInt32 | SpecBytecodeDouble);
+            }
+            break;
+        }
+
         case ArithNegate:
             if (node->child1()->prediction()) {
                 if (m_graph.negateShouldSpeculateInt32(node, m_pass))
@@ -316,12 +334,16 @@ private:
             SpeculatedType right = node->child2()->prediction();
             
             if (left && right) {
-                if (m_graph.mulShouldSpeculateInt32(node, m_pass))
-                    changed |= mergePrediction(SpecInt32);
-                else if (m_graph.mulShouldSpeculateMachineInt(node, m_pass))
-                    changed |= mergePrediction(SpecInt52);
-                else
-                    changed |= mergePrediction(speculatedDoubleTypeForPredictions(left, right));
+                if (isFullNumberOrBooleanSpeculationExpectingDefined(left)
+                    && isFullNumberOrBooleanSpeculationExpectingDefined(right)) {
+                    if (m_graph.mulShouldSpeculateInt32(node, m_pass))
+                        changed |= mergePrediction(SpecInt32);
+                    else if (m_graph.mulShouldSpeculateMachineInt(node, m_pass))
+                        changed |= mergePrediction(SpecInt52);
+                    else
+                        changed |= mergePrediction(speculatedDoubleTypeForPredictions(left, right));
+                } else
+                    changed |= mergePrediction(SpecInt32 | SpecBytecodeDouble);
             }
             break;
         }
@@ -332,11 +354,15 @@ private:
             SpeculatedType right = node->child2()->prediction();
             
             if (left && right) {
-                if (Node::shouldSpeculateInt32OrBooleanForArithmetic(node->child1().node(), node->child2().node())
-                    && node->canSpeculateInt32(m_pass))
-                    changed |= mergePrediction(SpecInt32);
-                else
-                    changed |= mergePrediction(SpecBytecodeDouble);
+                if (isFullNumberOrBooleanSpeculationExpectingDefined(left)
+                    && isFullNumberOrBooleanSpeculationExpectingDefined(right)) {
+                    if (Node::shouldSpeculateInt32OrBooleanForArithmetic(node->child1().node(), node->child2().node())
+                        && node->canSpeculateInt32(m_pass))
+                        changed |= mergePrediction(SpecInt32);
+                    else
+                        changed |= mergePrediction(SpecBytecodeDouble);
+                } else
+                    changed |= mergePrediction(SpecInt32 | SpecBytecodeDouble);
             }
             break;
         }
@@ -348,6 +374,11 @@ private:
         case ArithCos:
         case ArithLog: {
             changed |= setPrediction(SpecBytecodeDouble);
+            break;
+        }
+
+        case ArithRandom: {
+            changed |= setPrediction(SpecDoubleReal);
             break;
         }
 
@@ -592,10 +623,6 @@ private:
     
         case GetScope:
             changed |= setPrediction(SpecObjectOther);
-            break;
-
-        case LoadArrowFunctionThis:
-            changed |= setPrediction(SpecFinalObject);
             break;
 
         case In:

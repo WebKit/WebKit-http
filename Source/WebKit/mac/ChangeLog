@@ -1,3 +1,302 @@
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add fetch API compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=152254
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-12-13  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt CGIOSurfaceContextCreateImageReference to avoid unnecessary readback
+        https://bugs.webkit.org/show_bug.cgi?id=150988
+        <rdar://problem/18993594>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem):
+        Adopt sinkIntoImage and drawConsumingImageBuffer in a few places.
+
+2015-12-11  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Add a setting to allow the mock media capture devices to be enabled and disabled
+        https://bugs.webkit.org/show_bug.cgi?id=152197
+
+        Reviewed by Dean Jackson.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences mockCaptureDevicesEnabled]):
+        (-[WebPreferences setMockCaptureDevicesEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2015-12-11  Beth Dakin  <bdakin@apple.com>
+
+        _touchEventRegions should return regions in the view's coordinates
+        https://bugs.webkit.org/show_bug.cgi?id=152189
+        -and corresponding-
+        rdar://problem/23188605
+
+        Reviewed by Dan Bernstein.
+
+        The comment here was actually out of date. It claimed that touch rectangles 
+        are in the coordinate system of the document, but we had actually changed 
+        them to be in the view’s coordinate system in order to fix issues with 
+        handling touch events in UIWebView. But now we are going back to having the 
+        touch rectangles be in the document’s coordinate system, so we should fix the 
+        rtl bugs here by converting to view coordinates before handing the rects off 
+        to iOS WK1 clients.
+        * WebView/WebView.mm:
+        (-[WebView _touchEventRegions]):
+
+2015-12-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Expose media capture devices persistent permissions to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=152087
+
+        Reviewed by Chris Dumez.
+
+        Add methods and helpers for WK1 permission checker interface.
+        * WebCoreSupport/WebUserMediaClient.h:
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (userMediaRequestsMap):
+        (AddRequestToRequestMap):
+        (RemoveRequestFromRequestMap):
+        (userMediaCheckMap):
+        (AddPermissionCheckToMap):
+        (RemovePermissionCheckFromMap):
+        (WebUserMediaClient::WebUserMediaClient):
+        (WebUserMediaClient::requestUserMediaAccess):
+        (WebUserMediaClient::cancelUserMediaAccessRequest):
+        (WebUserMediaClient::checkUserMediaPermission):
+        (WebUserMediaClient::cancelUserMediaPermissionCheck):
+        (-[WebUserMediaPolicyListener allow]):
+        (-[WebUserMediaPolicyListener deny]):
+        (-[WebUserMediaPolicyCheckerListener initWithUserMediaPermissionCheck:]):
+        (-[WebUserMediaPolicyCheckerListener cancelUserMediaPermissionCheck]):
+        (-[WebUserMediaPolicyCheckerListener allow]):
+        (-[WebUserMediaPolicyCheckerListener deny]):
+        (-[WebUserMediaPolicyCheckerListener denyOnlyThisRequest]):
+        (-[WebUserMediaPolicyCheckerListener shouldClearCache]):
+        (AddRequestToMap): Deleted.
+        (RemoveRequestFromMap): Deleted.
+        * WebView/WebUIDelegatePrivate.h:
+
+2015-12-08  Beth Dakin  <bdakin@apple.com>
+
+        Follow-up to:
+        Add support for WebViewAdditions
+        https://bugs.webkit.org/show_bug.cgi?id=151967
+
+        Rubber-stamped by Dan Bernstein.
+
+        We should use the Web prefix for all category names.
+        * WebView/WebView.mm:
+        (-[WebView updateWebViewAdditions]):
+        * WebView/WebViewInternal.h:
+
+2015-12-08  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Rename UserMediaClient and UserMediaController methods
+        https://bugs.webkit.org/show_bug.cgi?id=152001
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebUserMediaClient.h:
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (WebUserMediaClient::pageDestroyed):
+        (WebUserMediaClient::requestUserMediaAccess):
+        (WebUserMediaClient::cancelUserMediaAccessRequest):
+        (-[WebUserMediaPolicyListener initWithUserMediaRequest:]):
+        (-[WebUserMediaPolicyListener cancelUserMediaAccessRequest]):
+        (WebUserMediaClient::requestPermission): Deleted.
+        (WebUserMediaClient::cancelRequest): Deleted.
+        (-[WebUserMediaPolicyListener cancelRequest]): Deleted.
+
+2015-12-07  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r193675.
+
+        * WebView/WebViewData.h:
+
+2015-12-07  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r193661.
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebViewData.h:
+
+2015-12-07  Beth Dakin  <bdakin@apple.com>
+
+        Add support for WebViewAdditions
+        https://bugs.webkit.org/show_bug.cgi?id=151967
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::respondToChangedSelection):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView updateWebViewAdditions]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewInternal.h:
+
+2015-12-07  Beth Dakin  <bdakin@apple.com>
+
+        Hook up request and show for typing candidates in WK1
+        https://bugs.webkit.org/show_bug.cgi?id=151831
+        -and corresponding-
+        <rdar://problem/23751214>
+
+        Reviewed by Enrica Casucci.
+
+        Add member variables to WebEditorClient. One is a WeakPtrFactory for the 
+        asynchronous handlers, and the other caches the VisibleSelection at the time 
+        candidates were requested so that we can make sure the candidates are still 
+        valid once we receive them.
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::WebEditorClient):
+
+        Call [NSSpellChecker requestCandidatesForSelectedRange] with the appropriate 
+        parameters.
+        (WebEditorClient::requestCandidatesForSelection):
+
+        Two helpers to compute information that we need for both of the handlers 
+        below.
+        (candidateRangeForSelection):
+        (candidateWouldReplaceText):
+
+        In this handler, we just need to call [NSSpellChecker showCandidates] with 
+        the appropriate parameters.
+        (WebEditorClient::handleRequestedCandidates):
+
+        Once a candidate is accepted, it should be inserted in the right way.
+        (WebEditorClient::handleAcceptedCandidate):
+
+2015-12-03  Jer Noble  <jer.noble@apple.com>
+
+        Expose WebCore's InvisibleAutoplayNotPermitted setting to WebKit & WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=151830
+
+        Reviewed by Anders Carlsson.
+
+        Add a new WebPreferences property invisibleAutoplayNotPermitted.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences invisibleAutoplayNotPermitted]):
+        (-[WebPreferences setInvisibleAutoplayNotPermitted:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2015-12-03  Anders Carlsson  <andersca@apple.com>
+
+        Remove Objective-C GC support
+        https://bugs.webkit.org/show_bug.cgi?id=151819
+        rdar://problem/23746991
+
+        Reviewed by Dan Bernstein.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (+[CarbonWindowAdapter initialize]): Deleted.
+        (-[CarbonWindowAdapter finalize]): Deleted.
+        * Configurations/Base.xcconfig:
+        * History/WebBackForwardList.mm:
+        (+[WebBackForwardList initialize]): Deleted.
+        (-[WebBackForwardList finalize]): Deleted.
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate finalize]): Deleted.
+        (-[WebHistory finalize]): Deleted.
+        * History/WebHistoryItem.mm:
+        (+[WebHistoryItem initialize]): Deleted.
+        (-[WebHistoryItem finalize]): Deleted.
+        * Misc/WebElementDictionary.mm:
+        (+[WebElementDictionary initialize]): Deleted.
+        (-[WebElementDictionary finalize]): Deleted.
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (+[WebHostedNetscapePluginView initialize]): Deleted.
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView finalize]): Deleted.
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage finalize]): Deleted.
+        * Plugins/WebNetscapePluginView.mm:
+        (+[WebNetscapePluginView initialize]): Deleted.
+        (-[WebNetscapePluginView finalize]): Deleted.
+        * Plugins/WebPluginContainerCheck.mm:
+        (-[WebPluginContainerCheck finalize]): Deleted.
+        * WebCoreSupport/WebEditorClient.mm:
+        (+[WebUndoStep initialize]): Deleted.
+        (-[WebUndoStep finalize]): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebCoreSupport/WebOpenPanelResultListener.mm:
+        (-[WebOpenPanelResultListener finalize]): Deleted.
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin finalize]): Deleted.
+        * WebView/WebArchive.mm:
+        (+[WebArchivePrivate initialize]): Deleted.
+        * WebView/WebDataSource.mm:
+        (+[WebDataSource initialize]): Deleted.
+        (-[WebDataSource finalize]): Deleted.
+        * WebView/WebDynamicScrollBarsView.mm:
+        (-[WebDynamicScrollBarsView finalize]): Deleted.
+        * WebView/WebFrame.mm:
+        (-[WebFramePrivate setWebFrameView:]):
+        (-[WebFramePrivate finalize]): Deleted.
+        (-[WebFrame finalize]): Deleted.
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView finalize]): Deleted.
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation finalize]): Deleted.
+        * WebView/WebHTMLView.mm:
+        (+[WebHTMLViewPrivate initialize]):
+        (-[WebHTMLViewPrivate finalize]): Deleted.
+        (+[WebHTMLView initialize]): Deleted.
+        (-[WebHTMLView finalize]): Deleted.
+        * WebView/WebResource.mm:
+        (+[WebResourcePrivate initialize]): Deleted.
+        (-[WebResourcePrivate finalize]): Deleted.
+        * WebView/WebTextIterator.mm:
+        (+[WebTextIteratorPrivate initialize]): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView finalize]): Deleted.
+        * WebView/WebViewData.mm:
+        (+[WebViewPrivate initialize]): Deleted.
+        (-[WebViewPrivate init]): Deleted.
+        (-[WebViewPrivate finalize]): Deleted.
+
+2015-12-02  Antti Koivisto  <antti@apple.com>
+
+        Move ResourceLoadScheduler to WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=151743
+
+        Reviewed by Alex Christensen.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::start):
+        (WebKit::HostedNetscapePluginStream::stop):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::start):
+        (WebNetscapePluginStream::stop):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createLoaderStrategy):
+        (WebPlatformStrategies::createPasteboardStrategy):
+        (WebPlatformStrategies::createPluginStrategy):
+        (WebPlatformStrategies::createBlobRegistry):
+        (WebPlatformStrategies::cookiesForDOM):
+        * WebView/WebView.mm:
+        (-[WebView _dispatchPendingLoadRequests]):
+        (+[WebView _setLoadResourcesSerially:]):
+        (+[WebView _HTTPPipeliningEnabled]):
+
 2015-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ES6] Implement LLInt/Baseline Support for ES6 Generators and enable this feature

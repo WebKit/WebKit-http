@@ -117,16 +117,11 @@ NON_SVG_BINDING_IDLS = \
 	$(WebCore)/Modules/mediasource/TextTrackMediaSource.idl \
 	$(WebCore)/Modules/mediasource/VideoTrackMediaSource.idl \
 	$(WebCore)/Modules/mediasource/VideoPlaybackQuality.idl \
-	$(WebCore)/Modules/mediastream/AllVideoCapabilities.idl \
-	$(WebCore)/Modules/mediastream/AllAudioCapabilities.idl \
-    $(WebCore)/Modules/mediastream/CapabilityRange.idl \
 	$(WebCore)/Modules/mediastream/DOMURLMediaStream.idl \
     $(WebCore)/Modules/mediastream/HTMLMediaElementMediaStream.idl \
-    $(WebCore)/Modules/mediastream/MediaSourceStates.idl \
     $(WebCore)/Modules/mediastream/MediaDeviceInfo.idl \
     $(WebCore)/Modules/mediastream/MediaDevices.idl \
 	$(WebCore)/Modules/mediastream/MediaStream.idl \
-	$(WebCore)/Modules/mediastream/MediaStreamCapabilities.idl \
     $(WebCore)/Modules/mediastream/MediaStreamEvent.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrack.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrackEvent.idl \
@@ -395,6 +390,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLOutputElement.idl \
     $(WebCore)/html/HTMLParagraphElement.idl \
     $(WebCore)/html/HTMLParamElement.idl \
+	$(WebCore)/html/HTMLPictureElement.idl \
     $(WebCore)/html/HTMLPreElement.idl \
     $(WebCore)/html/HTMLProgressElement.idl \
     $(WebCore)/html/HTMLQuoteElement.idl \
@@ -529,6 +525,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/testing/MallocStatistics.idl \
     $(WebCore)/testing/MemoryInfo.idl \
     $(WebCore)/testing/MockContentFilterSettings.idl \
+	$(WebCore)/testing/MockPageOverlay.idl \
     $(WebCore)/testing/TypeConversions.idl \
     $(WebCore)/workers/AbstractWorker.idl \
     $(WebCore)/workers/DedicatedWorkerGlobalScope.idl \
@@ -803,7 +800,7 @@ all : \
     CSSValueKeywords.cpp \
     CSSValueKeywords.h \
     ColorData.cpp \
-    EventFactory.cpp \
+    EventInterfaces.h \
     EventTargetInterfaces.h \
     ExceptionCodeDescription.cpp \
     HTMLElementFactory.cpp \

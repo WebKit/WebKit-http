@@ -949,7 +949,15 @@ struct Node {
             return false;
         }
     }
-    
+
+    // Return the indexing type that an array allocation *wants* to use. It may end up using a different
+    // type if we're having a bad time. You can determine the actual indexing type by asking the global
+    // object:
+    //
+    //     m_graph.globalObjectFor(node->origin.semantic)->arrayStructureForIndexingTypeDuringAllocation(node->indexingType())
+    //
+    // This will give you a Structure*, and that will have some indexing type that may be different from
+    // the this one.
     IndexingType indexingType()
     {
         ASSERT(hasIndexingType());
@@ -2023,6 +2031,16 @@ struct Node {
     static bool shouldSpeculateUntypedForArithmetic(Node* op1, Node* op2)
     {
         return op1->shouldSpeculateUntypedForArithmetic() || op2->shouldSpeculateUntypedForArithmetic();
+    }
+    
+    bool shouldSpeculateUntypedForBitOps()
+    {
+        return isUntypedSpeculationForBitOps(prediction());
+    }
+    
+    static bool shouldSpeculateUntypedForBitOps(Node* op1, Node* op2)
+    {
+        return op1->shouldSpeculateUntypedForBitOps() || op2->shouldSpeculateUntypedForBitOps();
     }
     
     static bool shouldSpeculateBoolean(Node* op1, Node* op2)

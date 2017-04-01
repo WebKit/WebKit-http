@@ -28,18 +28,18 @@
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
+#import "AVCaptureDeviceManager.h"
 #import "AudioSourceProvider.h"
+#import "CoreMediaSoftLink.h"
 #import "Logging.h"
 #import "MediaConstraints.h"
-#import "RealtimeMediaSourceStates.h"
+#import "RealtimeMediaSourceSettings.h"
 #import "SoftLinking.h"
 #import "UUID.h"
 #import <AVFoundation/AVFoundation.h>
 #import <objc/runtime.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
-
-#import "CoreMediaSoftLink.h"
 
 typedef AVCaptureConnection AVCaptureConnectionType;
 typedef AVCaptureDevice AVCaptureDeviceType;
@@ -132,7 +132,6 @@ AVMediaCaptureSource::AVMediaCaptureSource(AVCaptureDeviceType* device, const At
 {
     setName(device.localizedName);
     setPersistentID(device.uniqueID);
-    m_currentStates.setSourceType(type == RealtimeMediaSource::Video ? RealtimeMediaSourceStates::Camera : RealtimeMediaSourceStates::Microphone);
 }
 
 AVMediaCaptureSource::~AVMediaCaptureSource()
@@ -165,18 +164,33 @@ void AVMediaCaptureSource::stopProducingData()
     [m_session.get() stopRunning];
 }
 
-const RealtimeMediaSourceStates& AVMediaCaptureSource::states()
+const RealtimeMediaSourceSettings& AVMediaCaptureSource::settings()
 {
-    m_currentStates.setSourceId(id());
-    updateStates();
-    return m_currentStates;
+    if (m_currentSettings.deviceId().isEmpty())
+        m_currentSettings.setSupportedConstraits(supportedConstraints());
+
+    m_currentSettings.setDeviceId(id());
+    updateSettings(m_currentSettings);
+    return m_currentSettings;
+}
+
+RealtimeMediaSourceSupportedConstraints& AVMediaCaptureSource::supportedConstraints()
+{
+    if (m_supportedConstraints.supportsDeviceId())
+        return m_supportedConstraints;
+
+    m_supportedConstraints.setSupportsDeviceId(true);
+    initializeSupportedConstraints(m_supportedConstraints);
+
+    return m_supportedConstraints;
 }
 
 RefPtr<RealtimeMediaSourceCapabilities> AVMediaCaptureSource::capabilities()
 {
     if (!m_capabilities) {
-        m_capabilities = RealtimeMediaSourceCapabilities::create();
-        m_capabilities->setSourceId(id());
+        m_capabilities = RealtimeMediaSourceCapabilities::create(AVCaptureDeviceManager::singleton().supportedConstraints());
+        m_capabilities->setDeviceId(id());
+
         initializeCapabilities(*m_capabilities.get());
     }
     return m_capabilities;

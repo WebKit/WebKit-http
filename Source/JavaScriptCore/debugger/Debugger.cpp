@@ -113,14 +113,13 @@ private:
     Debugger& m_debugger;
 };
 
-Debugger::Debugger(VM& vm, bool isInWorkerThread)
+Debugger::Debugger(VM& vm)
     : m_vm(vm)
     , m_pauseOnExceptionsState(DontPauseOnExceptions)
     , m_pauseOnNextStatement(false)
     , m_isPaused(false)
     , m_breakpointsActivated(true)
     , m_hasHandlerForExceptionCallback(false)
-    , m_isInWorkerThread(isInWorkerThread)
     , m_suppressAllPauses(false)
     , m_steppingMode(SteppingModeDisabled)
     , m_reasonForPause(NotPaused)
@@ -213,6 +212,8 @@ void Debugger::setSteppingMode(SteppingMode mode)
     if (mode == m_steppingMode)
         return;
 
+    m_vm.heap.completeAllDFGPlans();
+
     m_steppingMode = mode;
     SetSteppingModeFunctor functor(this, mode);
     m_vm.heap.forEachCodeBlock(functor);
@@ -220,10 +221,6 @@ void Debugger::setSteppingMode(SteppingMode mode)
 
 void Debugger::registerCodeBlock(CodeBlock* codeBlock)
 {
-    // FIXME: We should never have to jettison a code block (due to pending breakpoints
-    // or stepping mode) that is being registered. operationOptimize() should have
-    // prevented the optimizing of such code blocks in the first place. Find a way to
-    // express this with greater clarity in the code. See <https://webkit.org/b131771>.
     applyBreakpoints(codeBlock);
     if (isStepping())
         codeBlock->setSteppingMode(CodeBlock::SteppingModeEnabled);
@@ -300,6 +297,8 @@ private:
 
 void Debugger::toggleBreakpoint(Breakpoint& breakpoint, Debugger::BreakpointState enabledOrNot)
 {
+    m_vm.heap.completeAllDFGPlans();
+
     ToggleBreakpointFunctor functor(this, breakpoint, enabledOrNot);
     m_vm.heap.forEachCodeBlock(functor);
 }
@@ -471,6 +470,8 @@ private:
 
 void Debugger::clearBreakpoints()
 {
+    m_vm.heap.completeAllDFGPlans();
+
     m_topBreakpointID = noBreakpointID;
     m_breakpointIDToBreakpoint.clear();
     m_sourceIDToBreakpoints.clear();
@@ -499,6 +500,8 @@ private:
 
 void Debugger::clearDebuggerRequests(JSGlobalObject* globalObject)
 {
+    m_vm.heap.completeAllDFGPlans();
+
     ClearDebuggerRequestsFunctor functor(globalObject);
     m_vm.heap.forEachCodeBlock(functor);
 }
@@ -707,13 +710,7 @@ void Debugger::willExecuteProgram(CallFrame* callFrame)
         return;
 
     PauseReasonDeclaration reason(*this, PausedAtStartOfProgram);
-    // FIXME: This check for whether we're debugging a worker thread is a workaround
-    // for https://bugs.webkit.org/show_bug.cgi?id=102637. Remove it when we rework
-    // the debugger implementation to not require callbacks.
-    if (!m_isInWorkerThread)
-        updateCallFrameAndPauseIfNeeded(callFrame);
-    else if (isStepping())
-        updateCallFrame(callFrame);
+    updateCallFrameAndPauseIfNeeded(callFrame);
 }
 
 void Debugger::didExecuteProgram(CallFrame* callFrame)

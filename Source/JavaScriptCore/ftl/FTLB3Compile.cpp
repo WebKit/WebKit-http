@@ -30,6 +30,7 @@
 
 #include "B3Generate.h"
 #include "B3ProcedureInlines.h"
+#include "B3StackSlotValue.h"
 #include "CodeBlockWithJITType.h"
 #include "CCallHelpers.h"
 #include "DFGCommon.h"
@@ -77,6 +78,36 @@ void compile(State& state, Safepoint::Result& safepointResult)
         dataLog("    ", *registerOffsets, "\n");
     }
     state.graph.m_codeBlock->setCalleeSaveRegisters(WTF::move(registerOffsets));
+    ASSERT(!(state.proc->frameSize() % sizeof(EncodedJSValue)));
+    state.jitCode->common.frameRegisterCount = state.proc->frameSize() / sizeof(EncodedJSValue);
+
+    int localsOffset =
+        state.capturedValue->offsetFromFP() / sizeof(EncodedJSValue) + graph.m_nextMachineLocal;
+    for (unsigned i = graph.m_inlineVariableData.size(); i--;) {
+        InlineCallFrame* inlineCallFrame = graph.m_inlineVariableData[i].inlineCallFrame;
+        
+        if (inlineCallFrame->argumentCountRegister.isValid())
+            inlineCallFrame->argumentCountRegister += localsOffset;
+        
+        for (unsigned argument = inlineCallFrame->arguments.size(); argument-- > 1;) {
+            inlineCallFrame->arguments[argument] =
+                inlineCallFrame->arguments[argument].withLocalsOffset(localsOffset);
+        }
+        
+        if (inlineCallFrame->isClosureCall) {
+            inlineCallFrame->calleeRecovery =
+                inlineCallFrame->calleeRecovery.withLocalsOffset(localsOffset);
+        }
+
+        if (graph.hasDebuggerEnabled())
+            codeBlock->setScopeRegister(codeBlock->scopeRegister() + localsOffset);
+    }
+    for (OSRExitDescriptor& descriptor : state.jitCode->osrExitDescriptors) {
+        for (unsigned i = descriptor.m_values.size(); i--;)
+            descriptor.m_values[i] = descriptor.m_values[i].withLocalsOffset(localsOffset);
+        for (ExitTimeObjectMaterialization* materialization : descriptor.m_materializations)
+            materialization->accountForLocalsOffset(localsOffset);
+    }
 
     CCallHelpers jit(&vm, codeBlock);
     B3::generate(*state.proc, jit);
@@ -90,6 +121,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
 
     state.generatedFunction = bitwise_cast<GeneratedFunction>(
         state.finalizer->b3CodeLinkBuffer->entrypoint().executableAddress());
+    state.jitCode->initializeB3Byproducts(state.proc->releaseByproducts());
 }
 
 } } // namespace JSC::FTL
