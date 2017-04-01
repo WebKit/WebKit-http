@@ -121,7 +121,7 @@ ParsedContentRange::ParsedContentRange(int64_t firstBytePosition, int64_t lastBy
     m_isValid = areContentRangeValuesValid(m_firstBytePosition, m_lastBytePosition, m_instanceLength);
 }
 
-#if OS(WINDOWS) && !defined(PRId64)
+#if (OS(WINDOWS) || OS(HAIKU)) && !defined(PRId64)
 #define PRId64 "lld"
 #endif
 
