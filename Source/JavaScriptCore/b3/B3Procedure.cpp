@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,11 +52,19 @@ Procedure::~Procedure()
 {
 }
 
+void Procedure::printOrigin(PrintStream& out, Origin origin) const
+{
+    if (m_originPrinter)
+        m_originPrinter->run(out, origin);
+    else
+        out.print(origin);
+}
+
 BasicBlock* Procedure::addBlock(double frequency)
 {
     std::unique_ptr<BasicBlock> block(new BasicBlock(m_blocks.size(), frequency));
     BasicBlock* result = block.get();
-    m_blocks.append(WTF::move(block));
+    m_blocks.append(WTFMove(block));
     return result;
 }
 
@@ -125,8 +133,22 @@ void Procedure::invalidateCFG()
 
 void Procedure::dump(PrintStream& out) const
 {
-    for (BasicBlock* block : *this)
-        out.print(deepDump(block));
+    IndexSet<Value> valuesInBlocks;
+    for (BasicBlock* block : *this) {
+        out.print(deepDump(*this, block));
+        valuesInBlocks.addAll(*block);
+    }
+    bool didPrint = false;
+    for (Value* value : values()) {
+        if (valuesInBlocks.contains(value))
+            continue;
+
+        if (!didPrint) {
+            dataLog("Orphaned values:\n");
+            didPrint = true;
+        }
+        dataLog("    ", deepDump(*this, value), "\n");
+    }
     if (m_byproducts->count())
         out.print(*m_byproducts);
 }
@@ -146,6 +168,25 @@ void Procedure::deleteValue(Value* value)
     ASSERT(m_values[value->index()].get() == value);
     m_valueIndexFreeList.append(value->index());
     m_values[value->index()] = nullptr;
+}
+
+void Procedure::deleteOrphans()
+{
+    IndexSet<Value> valuesInBlocks;
+    for (BasicBlock* block : *this)
+        valuesInBlocks.addAll(*block);
+
+    // Since this method is not on any hot path, we do it conservatively: first a pass to
+    // identify the values to be removed, and then a second pass to remove them. This avoids any
+    // risk of the value iteration being broken by removals.
+    Vector<Value*, 16> toRemove;
+    for (Value* value : values()) {
+        if (!valuesInBlocks.contains(value))
+            toRemove.append(value);
+    }
+
+    for (Value* value : toRemove)
+        deleteValue(value);
 }
 
 Dominators& Procedure::dominators()
@@ -174,7 +215,7 @@ void* Procedure::addDataSection(size_t size)
         return nullptr;
     std::unique_ptr<DataSection> dataSection = std::make_unique<DataSection>(size);
     void* result = dataSection->data();
-    m_byproducts->add(WTF::move(dataSection));
+    m_byproducts->add(WTFMove(dataSection));
     return result;
 }
 

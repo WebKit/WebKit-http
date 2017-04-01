@@ -32,6 +32,7 @@
 #include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "BackForwardController.h"
+#include "BitmapImage.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
@@ -234,7 +235,6 @@ public:
 protected:
     virtual void setAttachedWindowHeight(unsigned) override { }
     virtual void setAttachedWindowWidth(unsigned) override { }
-    virtual void setToolbarHeight(unsigned) override { }
 
 public:
     // Inspector::FrontendChannel API
@@ -587,6 +587,21 @@ void Internals::pruneMemoryCacheToSize(unsigned size)
 unsigned Internals::memoryCacheSize() const
 {
     return MemoryCache::singleton().size();
+}
+
+size_t Internals::imageFrameIndex(Element* element, ExceptionCode& ec)
+{
+    if (!is<HTMLImageElement>(element)) {
+        ec = TypeError;
+        return 0;
+    }
+
+    auto* cachedImage = downcast<HTMLImageElement>(*element).cachedImage();
+    if (!cachedImage)
+        return 0;
+
+    auto* image = cachedImage->image();
+    return is<BitmapImage>(image) ? downcast<BitmapImage>(*image).currentFrame() : 0;
 }
 
 void Internals::clearPageCache()
@@ -1802,7 +1817,7 @@ RefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
     RefPtr<DOMWindow> frontendWindow = window->open(url, "", "", *window, *window);
     m_inspectorFrontend = std::make_unique<InspectorStubFrontend>(inspectedPage, frontendWindow.copyRef());
 
-    return WTF::move(frontendWindow);
+    return frontendWindow;
 }
 
 void Internals::closeDummyInspectorFrontend()
@@ -1984,7 +1999,7 @@ void Internals::insertAuthorCSS(const String& css, ExceptionCode& ec) const
     auto parsedSheet = StyleSheetContents::create(*document);
     parsedSheet.get().setIsUserStyleSheet(false);
     parsedSheet.get().parseString(css);
-    document->extensionStyleSheets().addAuthorStyleSheetForTesting(WTF::move(parsedSheet));
+    document->extensionStyleSheets().addAuthorStyleSheetForTesting(WTFMove(parsedSheet));
 }
 
 void Internals::insertUserCSS(const String& css, ExceptionCode& ec) const
@@ -1998,7 +2013,7 @@ void Internals::insertUserCSS(const String& css, ExceptionCode& ec) const
     auto parsedSheet = StyleSheetContents::create(*document);
     parsedSheet.get().setIsUserStyleSheet(true);
     parsedSheet.get().parseString(css);
-    document->extensionStyleSheets().addUserStyleSheet(WTF::move(parsedSheet));
+    document->extensionStyleSheets().addUserStyleSheet(WTFMove(parsedSheet));
 }
 
 String Internals::counterValue(Element* element)
@@ -2978,10 +2993,14 @@ void Internals::setMockMediaPlaybackTargetPickerState(const String& deviceName, 
     Page* page = contextDocument()->frame()->page();
     ASSERT(page);
 
-    MediaPlaybackTargetContext::State state = MediaPlaybackTargetContext::Unavailable;
+    MediaPlaybackTargetContext::State state = MediaPlaybackTargetContext::Unknown;
 
     if (equalIgnoringCase(deviceState, "DeviceAvailable"))
         state = MediaPlaybackTargetContext::OutputDeviceAvailable;
+    else if (equalIgnoringCase(deviceState, "DeviceUnavailable"))
+        state = MediaPlaybackTargetContext::OutputDeviceUnavailable;
+    else if (equalIgnoringCase(deviceState, "Unknown"))
+        state = MediaPlaybackTargetContext::Unknown;
     else {
         ec = INVALID_ACCESS_ERR;
         return;
@@ -3066,7 +3085,7 @@ void Internals::queueMicroTask(int testNumber)
         document->addConsoleMessage(MessageSource::JS, MessageLevel::Debug, makeString("MicroTask #", String::number(testNumber), " has run."));
     });
 
-    MicrotaskQueue::mainThreadQueue().append(WTF::move(microtask));
+    MicrotaskQueue::mainThreadQueue().append(WTFMove(microtask));
 }
 
 #if ENABLE(CONTENT_FILTERING)

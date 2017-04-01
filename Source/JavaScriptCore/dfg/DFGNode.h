@@ -585,8 +585,18 @@ struct Node {
 
     void convertToPhantomNewFunction()
     {
-        ASSERT(m_op == NewFunction || m_op == NewArrowFunction);
+        ASSERT(m_op == NewFunction || m_op == NewArrowFunction || m_op == NewGeneratorFunction);
         m_op = PhantomNewFunction;
+        m_flags |= NodeMustGenerate;
+        m_opInfo = 0;
+        m_opInfo2 = 0;
+        children = AdjacencyList();
+    }
+
+    void convertToPhantomNewGeneratorFunction()
+    {
+        ASSERT(m_op == NewGeneratorFunction);
+        m_op = PhantomNewGeneratorFunction;
         m_flags |= NodeMustGenerate;
         m_opInfo = 0;
         m_opInfo2 = 0;
@@ -916,7 +926,12 @@ struct Node {
             return result;
         return result & ~NodeBytecodeNeedsNegZero;
     }
-    
+
+    bool mayHaveNonIntResult()
+    {
+        return m_flags & NodeMayHaveNonIntResult;
+    }
+
     bool hasConstantBuffer()
     {
         return op() == NewArrayBuffer;
@@ -1354,8 +1369,10 @@ struct Node {
     {
         switch (op()) {
         case CheckCell:
+        case OverridesHasInstance:
         case NewFunction:
         case NewArrowFunction:
+        case NewGeneratorFunction:
         case CreateActivation:
         case MaterializeCreateActivation:
             return true;
@@ -1413,6 +1430,17 @@ struct Node {
     {
         ASSERT(hasUidOperand());
         return reinterpret_cast<UniquedStringImpl*>(m_opInfo);
+    }
+
+    bool hasTypeInfoOperand()
+    {
+        return op() == CheckTypeInfoFlags;
+    }
+
+    unsigned typeInfoOperand()
+    {
+        ASSERT(hasTypeInfoOperand() && m_opInfo <= UCHAR_MAX);
+        return static_cast<unsigned>(m_opInfo);
     }
 
     bool hasTransition()
@@ -1574,6 +1602,7 @@ struct Node {
         switch (op()) {
         case NewArrowFunction:
         case NewFunction:
+        case NewGeneratorFunction:
             return true;
         default:
             return false;
@@ -1584,6 +1613,7 @@ struct Node {
     {
         switch (op()) {
         case PhantomNewFunction:
+        case PhantomNewGeneratorFunction:
             return true;
         default:
             return false;
@@ -1597,6 +1627,7 @@ struct Node {
         case PhantomDirectArguments:
         case PhantomClonedArguments:
         case PhantomNewFunction:
+        case PhantomNewGeneratorFunction:
         case PhantomCreateActivation:
             return true;
         default:

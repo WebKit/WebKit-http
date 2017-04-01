@@ -73,9 +73,11 @@ static GRefPtr<GstSample> webkitVideoSinkRequestRender(WebKitVideoSink*, GstBuff
 class VideoRenderRequestScheduler {
 public:
     VideoRenderRequestScheduler()
+#if !USE(COORDINATED_GRAPHICS_THREADED)
         : m_timer(RunLoop::main(), this, &VideoRenderRequestScheduler::render)
+#endif
     {
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) && !USE(COORDINATED_GRAPHICS_THREADED)
         // Use a higher priority than WebCore timers (G_PRIORITY_HIGH_IDLE + 20).
         m_timer.setPriority(G_PRIORITY_HIGH_IDLE + 19);
 #endif
@@ -90,10 +92,12 @@ public:
     void stop()
     {
         LockHolder locker(m_sampleMutex);
-        m_timer.stop();
         m_sample = nullptr;
         m_unlocked = true;
+#if !USE(COORDINATED_GRAPHICS_THREADED)
+        m_timer.stop();
         m_dataCondition.notifyOne();
+#endif
     }
 
     bool requestRender(WebKitVideoSink* sink, GstBuffer* buffer)
@@ -106,29 +110,40 @@ public:
         if (!m_sample)
             return false;
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+        if (LIKELY(GST_IS_SAMPLE(m_sample.get())))
+            webkitVideoSinkRepaintRequested(sink, m_sample.get());
+        m_sample = nullptr;
+#else
         m_sink = sink;
         m_timer.startOneShot(0);
         m_dataCondition.wait(m_sampleMutex);
+#endif
         return true;
     }
 
 private:
 
+#if !USE(COORDINATED_GRAPHICS_THREADED)
     void render()
     {
         LockHolder locker(m_sampleMutex);
-        GRefPtr<GstSample> sample = WTF::move(m_sample);
-        GRefPtr<WebKitVideoSink> sink = WTF::move(m_sink);
+        GRefPtr<GstSample> sample = WTFMove(m_sample);
+        GRefPtr<WebKitVideoSink> sink = WTFMove(m_sink);
         if (sample && !m_unlocked && LIKELY(GST_IS_SAMPLE(sample.get())))
             webkitVideoSinkRepaintRequested(sink.get(), sample.get());
         m_dataCondition.notifyOne();
     }
+#endif
 
-    RunLoop::Timer<VideoRenderRequestScheduler> m_timer;
     Lock m_sampleMutex;
-    Condition m_dataCondition;
     GRefPtr<GstSample> m_sample;
+
+#if !USE(COORDINATED_GRAPHICS_THREADED)
+    RunLoop::Timer<VideoRenderRequestScheduler> m_timer;
+    Condition m_dataCondition;
     GRefPtr<WebKitVideoSink> m_sink;
+#endif
 
     // If this is true all processing should finish ASAP
     // This is necessary because there could be a race between

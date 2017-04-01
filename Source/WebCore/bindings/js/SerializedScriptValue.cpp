@@ -1815,31 +1815,31 @@ private:
             arrayBufferView = getJSValue(DataView::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Int8ArrayTag:
-            arrayBufferView = getJSValue(Int8Array::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Int8Array::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Uint8ArrayTag:
-            arrayBufferView = getJSValue(Uint8Array::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Uint8Array::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Uint8ClampedArrayTag:
-            arrayBufferView = getJSValue(Uint8ClampedArray::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Uint8ClampedArray::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Int16ArrayTag:
-            arrayBufferView = getJSValue(Int16Array::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Int16Array::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Uint16ArrayTag:
-            arrayBufferView = getJSValue(Uint16Array::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Uint16Array::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Int32ArrayTag:
-            arrayBufferView = getJSValue(Int32Array::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Int32Array::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Uint32ArrayTag:
-            arrayBufferView = getJSValue(Uint32Array::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Uint32Array::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Float32ArrayTag:
-            arrayBufferView = getJSValue(Float32Array::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Float32Array::create(arrayBuffer, byteOffset, length).get());
             return true;
         case Float64ArrayTag:
-            arrayBufferView = getJSValue(Float64Array::create(arrayBuffer, byteOffset, length).get());
+            arrayBufferView = toJS(m_exec, m_globalObject, Float64Array::create(arrayBuffer, byteOffset, length).get());
             return true;
         default:
             return false;
@@ -2024,7 +2024,7 @@ private:
         if (type == CryptoKeyAsymmetricTypeSubtag::Public) {
             auto keyData = CryptoKeyDataRSAComponents::createPublic(modulus, exponent);
             auto key = CryptoKeyRSA::create(algorithm, hash, isRestrictedToHash, *keyData, extractable, usages);
-            result = WTF::move(key);
+            result = WTFMove(key);
             return true;
         }
 
@@ -2039,7 +2039,7 @@ private:
         if (!primeCount) {
             auto keyData = CryptoKeyDataRSAComponents::createPrivate(modulus, exponent, privateExponent);
             auto key = CryptoKeyRSA::create(algorithm, hash, isRestrictedToHash, *keyData, extractable, usages);
-            result = WTF::move(key);
+            result = WTFMove(key);
             return true;
         }
 
@@ -2071,7 +2071,7 @@ private:
 
         auto keyData = CryptoKeyDataRSAComponents::createPrivateWithAdditionalData(modulus, exponent, privateExponent, firstPrimeInfo, secondPrimeInfo, otherPrimeInfos);
         auto key = CryptoKeyRSA::create(algorithm, hash, isRestrictedToHash, *keyData, extractable, usages);
-        result = WTF::move(key);
+        result = WTFMove(key);
         return true;
     }
 
@@ -2229,11 +2229,11 @@ private:
                 if (!readFile(file))
                     return JSValue();
                 if (m_isDOMGlobalObject)
-                    files.append(WTF::move(file));
+                    files.append(WTFMove(file));
             }
             if (!m_isDOMGlobalObject)
                 return jsNull();
-            return getJSValue(FileList::create(WTF::move(files)).get());
+            return getJSValue(FileList::create(WTFMove(files)).get());
         }
         case ImageDataTag: {
             int32_t width;
@@ -2330,7 +2330,7 @@ private:
                 fail();
                 return JSValue();
             }
-            JSValue result = getJSValue(arrayBuffer.get());
+            JSValue result = JSArrayBuffer::create(m_exec->vm(), m_globalObject->arrayBufferStructure(), arrayBuffer.release());
             m_gcBuffer.append(result);
             return result;
         }
@@ -2613,7 +2613,7 @@ SerializedScriptValue::SerializedScriptValue(Vector<uint8_t>& buffer, Vector<Str
 }
 
 SerializedScriptValue::SerializedScriptValue(Vector<uint8_t>& buffer, Vector<String>& blobURLs, std::unique_ptr<ArrayBufferContentsArray> arrayBufferContentsArray)
-    : m_arrayBufferContentsArray(WTF::move(arrayBufferContentsArray))
+    : m_arrayBufferContentsArray(WTFMove(arrayBufferContentsArray))
 {
     m_data.swap(buffer);
     for (auto& string : blobURLs)
@@ -2666,7 +2666,7 @@ RefPtr<SerializedScriptValue> SerializedScriptValue::create(ExecState* exec, JSV
     if (!serializationDidCompleteSuccessfully(code))
         return nullptr;
 
-    return adoptRef(*new SerializedScriptValue(buffer, blobURLs, WTF::move(arrayBufferContentsArray)));
+    return adoptRef(*new SerializedScriptValue(buffer, blobURLs, WTFMove(arrayBufferContentsArray)));
 }
 
 RefPtr<SerializedScriptValue> SerializedScriptValue::create(const String& string)

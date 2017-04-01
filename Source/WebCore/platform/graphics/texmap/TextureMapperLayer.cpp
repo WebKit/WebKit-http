@@ -486,7 +486,7 @@ void TextureMapperLayer::removeFromParent()
 
 void TextureMapperLayer::removeAllChildren()
 {
-    auto oldChildren = WTF::move(m_children);
+    auto oldChildren = WTFMove(m_children);
     for (auto* child : oldChildren)
         child->m_parent = nullptr;
 }
@@ -658,7 +658,7 @@ void TextureMapperLayer::applyAnimationsRecursively()
 
 void TextureMapperLayer::syncAnimations()
 {
-    m_animations.apply(this);
+    m_animations.apply(*this);
     if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyTransform))
         m_currentTransform.setLocalTransform(m_state.transform);
     if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyOpacity))

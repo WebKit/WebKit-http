@@ -79,7 +79,7 @@ public:
     using RefCounted<IDBRequest>::deref;
 
     void enqueueEvent(Ref<Event>&&);
-    virtual bool dispatchEvent(Event&) override final;
+    virtual bool dispatchEvent(Event&) override;
 
     IDBConnectionToServer& connection() { return m_connection; }
 
@@ -99,6 +99,8 @@ public:
 
     void setSource(IDBCursor&);
     void setVersionChangeTransaction(IDBTransaction&);
+
+    IndexedDB::RequestType requestType() const { return m_requestType; }
 
 protected:
     IDBRequest(IDBConnectionToServer&, ScriptExecutionContext*);
@@ -126,6 +128,8 @@ protected:
     bool m_shouldExposeTransactionToDOM { true };
     RefPtr<DOMError> m_domError;
     IDBError m_idbError;
+    IndexedDB::RequestType m_requestType = { IndexedDB::RequestType::Other };
+    bool m_contextStopped { false };
 
 private:
     void onError();
@@ -140,8 +144,6 @@ private:
     IndexedDB::IndexRecordType m_requestedIndexRecordType;
 
     RefPtr<IDBCursor> m_pendingCursor;
-
-    bool m_contextStopped { false };
 };
 
 } // namespace IDBClient

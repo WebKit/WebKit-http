@@ -248,7 +248,7 @@ void JIT_OPERATION operationPutByIdStrict(ExecState* exec, StructureStubInfo* st
     
     Identifier ident = Identifier::fromUid(vm, uid);
     PutPropertySlot slot(JSValue::decode(encodedBase), true, exec->codeBlock()->putByIdContext());
-    JSValue::decode(encodedBase).put(exec, ident, JSValue::decode(encodedValue), slot);
+    JSValue::decode(encodedBase).putInline(exec, ident, JSValue::decode(encodedValue), slot);
 }
 
 void JIT_OPERATION operationPutByIdNonStrict(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue encodedValue, EncodedJSValue encodedBase, UniquedStringImpl* uid)
@@ -260,7 +260,7 @@ void JIT_OPERATION operationPutByIdNonStrict(ExecState* exec, StructureStubInfo*
     
     Identifier ident = Identifier::fromUid(vm, uid);
     PutPropertySlot slot(JSValue::decode(encodedBase), false, exec->codeBlock()->putByIdContext());
-    JSValue::decode(encodedBase).put(exec, ident, JSValue::decode(encodedValue), slot);
+    JSValue::decode(encodedBase).putInline(exec, ident, JSValue::decode(encodedValue), slot);
 }
 
 void JIT_OPERATION operationPutByIdDirectStrict(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue encodedValue, EncodedJSValue encodedBase, UniquedStringImpl* uid)
@@ -300,7 +300,7 @@ void JIT_OPERATION operationPutByIdStrictOptimize(ExecState* exec, StructureStub
     PutPropertySlot slot(baseValue, true, exec->codeBlock()->putByIdContext());
 
     Structure* structure = baseValue.isCell() ? baseValue.asCell()->structure(*vm) : nullptr;
-    baseValue.put(exec, ident, value, slot);
+    baseValue.putInline(exec, ident, value, slot);
     
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
@@ -322,7 +322,7 @@ void JIT_OPERATION operationPutByIdNonStrictOptimize(ExecState* exec, StructureS
     PutPropertySlot slot(baseValue, false, exec->codeBlock()->putByIdContext());
 
     Structure* structure = baseValue.isCell() ? baseValue.asCell()->structure(*vm) : nullptr;    
-    baseValue.put(exec, ident, value, slot);
+    baseValue.putInline(exec, ident, value, slot);
     
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
@@ -422,7 +422,7 @@ static void putByVal(CallFrame* callFrame, JSValue baseValue, JSValue subscript,
         byValInfo->tookSlowPath = true;
 
     PutPropertySlot slot(baseValue, callFrame->codeBlock()->isStrictMode());
-    baseValue.put(callFrame, property, value, slot);
+    baseValue.putInline(callFrame, property, value, slot);
 }
 
 static void directPutByVal(CallFrame* callFrame, JSObject* baseObject, JSValue subscript, JSValue value, ByValInfo* byValInfo)
@@ -1487,25 +1487,19 @@ void JIT_OPERATION operationProfileWillCall(ExecState* exec, EncodedJSValue enco
         profiler->willExecute(exec, JSValue::decode(encodedValue));
 }
 
-EncodedJSValue JIT_OPERATION operationCheckHasInstance(ExecState* exec, EncodedJSValue encodedValue, EncodedJSValue encodedBaseVal)
+int32_t JIT_OPERATION operationInstanceOfCustom(ExecState* exec, EncodedJSValue encodedValue, JSObject* constructor, EncodedJSValue encodedHasInstance)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
     JSValue value = JSValue::decode(encodedValue);
-    JSValue baseVal = JSValue::decode(encodedBaseVal);
+    JSValue hasInstanceValue = JSValue::decode(encodedHasInstance);
 
-    if (baseVal.isObject()) {
-        JSObject* baseObject = asObject(baseVal);
-        ASSERT(!baseObject->structure(vm)->typeInfo().implementsDefaultHasInstance());
-        if (baseObject->structure(vm)->typeInfo().implementsHasInstance()) {
-            bool result = baseObject->methodTable(vm)->customHasInstance(baseObject, exec, value);
-            return JSValue::encode(jsBoolean(result));
-        }
-    }
+    ASSERT(hasInstanceValue != exec->lexicalGlobalObject()->functionProtoHasInstanceSymbolFunction() || !constructor->structure()->typeInfo().implementsDefaultHasInstance());
 
-    vm.throwException(exec, createInvalidInstanceofParameterError(exec, baseVal));
-    return JSValue::encode(JSValue());
+    if (constructor->hasInstance(exec, value, hasInstanceValue))
+        return 1;
+    return 0;
 }
 
 }
@@ -2228,7 +2222,7 @@ asm (
 HIDE_SYMBOL(getHostCallReturnValue) "\n"
 SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
     LOAD_FUNCTION_TO_T9(getHostCallReturnValueWithExecState)
-    "subi $a0, $sp, 8" "\n"
+    "addi $a0, $sp, -8" "\n"
     "b " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "\n"
 );
 

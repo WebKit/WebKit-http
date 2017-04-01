@@ -27,6 +27,7 @@
 #include "WebProcessPool.h"
 
 #include "APIArray.h"
+#include "APIAutomationClient.h"
 #include "APIDownloadClient.h"
 #include "APILegacyContextHistoryClient.h"
 #include "APIPageConfiguration.h"
@@ -46,7 +47,6 @@
 #include "WebContextSupplement.h"
 #include "WebCookieManagerProxy.h"
 #include "WebCoreArgumentCoders.h"
-#include "WebDatabaseManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebIconDatabase.h"
 #include "WebKit2Initialize.h"
@@ -139,6 +139,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_haveInitialEmptyProcess(false)
     , m_processWithPageCache(0)
     , m_defaultPageGroup(WebPageGroup::createNonNull())
+    , m_automationClient(std::make_unique<API::AutomationClient>())
     , m_downloadClient(std::make_unique<API::DownloadClient>())
     , m_historyClient(std::make_unique<API::LegacyContextHistoryClient>())
     , m_visitedLinkStore(VisitedLinkStore::create())
@@ -176,7 +177,6 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     addSupplement<WebGeolocationManagerProxy>();
     addSupplement<WebMediaCacheManagerProxy>();
     addSupplement<WebNotificationManagerProxy>();
-    addSupplement<WebDatabaseManagerProxy>();
 #if USE(SOUP)
     addSupplement<WebSoupCustomProtocolRequestManager>();
 #endif
@@ -268,7 +268,7 @@ void WebProcessPool::setHistoryClient(std::unique_ptr<API::LegacyContextHistoryC
     if (!historyClient)
         m_historyClient = std::make_unique<API::LegacyContextHistoryClient>();
     else
-        m_historyClient = WTF::move(historyClient);
+        m_historyClient = WTFMove(historyClient);
 }
 
 void WebProcessPool::setDownloadClient(std::unique_ptr<API::DownloadClient> downloadClient)
@@ -276,7 +276,15 @@ void WebProcessPool::setDownloadClient(std::unique_ptr<API::DownloadClient> down
     if (!downloadClient)
         m_downloadClient = std::make_unique<API::DownloadClient>();
     else
-        m_downloadClient = WTF::move(downloadClient);
+        m_downloadClient = WTFMove(downloadClient);
+}
+
+void WebProcessPool::setAutomationClient(std::unique_ptr<API::AutomationClient> automationClient)
+{
+    if (!automationClient)
+        m_automationClient = std::make_unique<API::AutomationClient>();
+    else
+        m_automationClient = WTFMove(automationClient);
 }
 
 void WebProcessPool::setMaximumNumberOfProcesses(unsigned maximumNumberOfProcesses)
@@ -760,7 +768,7 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
     } else
         process = &createNewWebProcessRespectingProcessCountLimit();
 
-    return process->createWebPage(pageClient, WTF::move(pageConfiguration));
+    return process->createWebPage(pageClient, WTFMove(pageConfiguration));
 }
 
 DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const ResourceRequest& request)
@@ -786,7 +794,8 @@ DownloadProxy* WebProcessPool::resumeDownload(const API::Data* resumeData, const
         SandboxExtension::createHandle(path, SandboxExtension::ReadWrite, sandboxExtensionHandle);
 
     if (networkProcess()) {
-        networkProcess()->send(Messages::NetworkProcess::ResumeDownload(downloadProxy->downloadID(), resumeData->dataReference(), path, sandboxExtensionHandle), 0);
+        // FIXME: If we started a download in an ephemeral session and that session still exists, we should find a way to use that same session.
+        networkProcess()->send(Messages::NetworkProcess::ResumeDownload(SessionID::defaultSessionID(), downloadProxy->downloadID(), resumeData->dataReference(), path, sandboxExtensionHandle), 0);
         return downloadProxy;
     }
 
@@ -1066,6 +1075,13 @@ void WebProcessPool::allowSpecificHTTPSCertificateForHost(const WebCertificateIn
         m_networkProcess->send(Messages::NetworkProcess::AllowSpecificHTTPSCertificateForHost(certificate->certificateInfo(), host), 0);
 }
 
+void WebProcessPool::updateAutomationCapabilities() const
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    Inspector::RemoteInspector::singleton().clientCapabilitiesDidChange();
+#endif
+}
+
 void WebProcessPool::setHTTPPipeliningEnabled(bool enabled)
 {
 #if PLATFORM(COCOA)
@@ -1091,7 +1107,7 @@ void WebProcessPool::getStatistics(uint32_t statisticsMask, std::function<void (
         return;
     }
 
-    RefPtr<StatisticsRequest> request = StatisticsRequest::create(DictionaryCallback::create(WTF::move(callbackFunction)));
+    RefPtr<StatisticsRequest> request = StatisticsRequest::create(DictionaryCallback::create(WTFMove(callbackFunction)));
 
     if (statisticsMask & StatisticsRequestTypeWebContent)
         requestWebContentStatistics(request.get());
@@ -1221,17 +1237,17 @@ void WebProcessPool::pluginInfoStoreDidLoadPlugins(PluginInfoStore* store)
         mimeTypes.reserveInitialCapacity(pluginModule.info.mimes.size());
         for (const auto& mimeClassInfo : pluginModule.info.mimes)
             mimeTypes.uncheckedAppend(API::String::create(mimeClassInfo.type));
-        map.set(ASCIILiteral("mimes"), API::Array::create(WTF::move(mimeTypes)));
+        map.set(ASCIILiteral("mimes"), API::Array::create(WTFMove(mimeTypes)));
 
 #if PLATFORM(COCOA)
         map.set(ASCIILiteral("bundleId"), API::String::create(pluginModule.bundleIdentifier));
         map.set(ASCIILiteral("version"), API::String::create(pluginModule.versionString));
 #endif
 
-        plugins.uncheckedAppend(API::Dictionary::create(WTF::move(map)));
+        plugins.uncheckedAppend(API::Dictionary::create(WTFMove(map)));
     }
 
-    m_client.plugInInformationBecameAvailable(this, API::Array::create(WTF::move(plugins)).ptr());
+    m_client.plugInInformationBecameAvailable(this, API::Array::create(WTFMove(plugins)).ptr());
 }
 
 void WebProcessPool::setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)

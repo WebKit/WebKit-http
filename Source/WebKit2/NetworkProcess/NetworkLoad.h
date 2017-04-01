@@ -31,6 +31,7 @@
 #include "RemoteNetworkingContext.h"
 
 #if USE(NETWORK_SESSION)
+#include "DownloadID.h"
 #include "NetworkSession.h"
 #include <WebCore/AuthenticationChallenge.h>
 #else
@@ -53,13 +54,15 @@ public:
     void setDefersLoading(bool);
     void cancel();
 
+    const WebCore::ResourceRequest& currentRequest() const { return m_currentRequest; }
     void clearCurrentRequest() { m_currentRequest = WebCore::ResourceRequest(); }
 
     void continueWillSendRequest(const WebCore::ResourceRequest&);
     void continueDidReceiveResponse();
 
 #if USE(NETWORK_SESSION)
-    void convertTaskToDownload();
+    void convertTaskToDownload(DownloadID);
+    void setPendingDownloadID(DownloadID);
     
     // NetworkSessionTaskClient.
     virtual void willPerformHTTPRedirection(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, std::function<void(const WebCore::ResourceRequest&)>) final override;
@@ -118,7 +121,7 @@ private:
     const NetworkLoadParameters m_parameters;
     RefPtr<RemoteNetworkingContext> m_networkingContext;
 #if USE(NETWORK_SESSION)
-    Ref<NetworkDataTask> m_task;
+    std::unique_ptr<NetworkDataTask> m_task;
     WebCore::AuthenticationChallenge m_challenge;
     ChallengeCompletionHandler m_challengeCompletionHandler;
     ResponseCompletionHandler m_responseCompletionHandler;

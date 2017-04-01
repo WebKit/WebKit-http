@@ -65,9 +65,11 @@ static UnlinkedFunctionCodeBlock* generateUnlinkedFunctionCodeBlock(
 
     function->finishParsing(executable->name(), executable->functionMode());
     executable->recordParse(function->features(), function->hasCapturedVariables());
-    
+
+    bool isClassContext = executable->superBinding() == SuperBinding::Needed;
+
     UnlinkedFunctionCodeBlock* result = UnlinkedFunctionCodeBlock::create(&vm, FunctionCode,
-        ExecutableInfo(function->needsActivation(), function->usesEval(), function->isStrictMode(), kind == CodeForConstruct, functionKind == UnlinkedBuiltinFunction, executable->constructorKind(), executable->generatorThisMode(), executable->superBinding(), parseMode,  executable->isDerivedConstructorContext(), false));
+        ExecutableInfo(function->needsActivation(), function->usesEval(), function->isStrictMode(), kind == CodeForConstruct, functionKind == UnlinkedBuiltinFunction, executable->constructorKind(), executable->superBinding(), parseMode, executable->derivedContextType(), false, isClassContext));
 
     auto generator(std::make_unique<BytecodeGenerator>(vm, function.get(), result, debuggerMode, profilerMode, executable->parentScopeTDZVariables()));
     error = generator->generate();
@@ -76,11 +78,11 @@ static UnlinkedFunctionCodeBlock* generateUnlinkedFunctionCodeBlock(
     return result;
 }
 
-UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& source, RefPtr<SourceProvider>&& sourceOverride, FunctionMetadataNode* node, UnlinkedFunctionKind kind, ConstructAbility constructAbility, GeneratorThisMode generatorThisMode, VariableEnvironment& parentScopeTDZVariables, bool isDerivedConstructorContext)
+UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& source, RefPtr<SourceProvider>&& sourceOverride, FunctionMetadataNode* node, UnlinkedFunctionKind kind, ConstructAbility constructAbility, VariableEnvironment& parentScopeTDZVariables, DerivedContextType derivedContextType)
     : Base(*vm, structure)
     , m_name(node->ident())
     , m_inferredName(node->inferredName())
-    , m_sourceOverride(WTF::move(sourceOverride))
+    , m_sourceOverride(WTFMove(sourceOverride))
     , m_firstLineOffset(node->firstLine() - source.firstLine())
     , m_lineCount(node->lastLine() - node->firstLine())
     , m_unlinkedFunctionNameStart(node->functionNameStart() - source.startOffset())
@@ -100,9 +102,8 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     , m_constructAbility(static_cast<unsigned>(constructAbility))
     , m_constructorKind(static_cast<unsigned>(node->constructorKind()))
     , m_functionMode(node->functionMode())
-    , m_generatorThisMode(static_cast<unsigned>(generatorThisMode))
     , m_superBinding(static_cast<unsigned>(node->superBinding()))
-    , m_isDerivedConstructorContext(isDerivedConstructorContext)
+    , m_derivedContextType(static_cast<unsigned>(derivedContextType))
 {
     ASSERT(m_constructorKind == static_cast<unsigned>(node->constructorKind()));
     m_parentScopeTDZVariables.swap(parentScopeTDZVariables);

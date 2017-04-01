@@ -472,11 +472,7 @@ public:
 #endif
             ;
     }
-    bool isAnonymousInlineBlock() const
-    {
-        return isAnonymous() && style().display() == INLINE_BLOCK && style().styleType() == NOPSEUDO && isRenderBlockFlow() && !isRubyRun() && !isRubyBase();
-    }
-
+    bool isAnonymousInlineBlock() const;
     bool isElementContinuation() const { return node() && node()->renderer() != this; }
     bool isInlineElementContinuation() const { return isElementContinuation() && isInline(); }
     bool isBlockElementContinuation() const { return isElementContinuation() && !isInline(); }
@@ -706,7 +702,7 @@ public:
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const;
 
     void getTextDecorationColorsAndStyles(int decorations, Color& underlineColor, Color& overlineColor, Color& linethroughColor,
-        TextDecorationStyle& underlineStyle, TextDecorationStyle& overlineStyle, TextDecorationStyle& linethroughStyle, bool firstlineStyle = false);
+        TextDecorationStyle& underlineStyle, TextDecorationStyle& overlineStyle, TextDecorationStyle& linethroughStyle, bool firstlineStyle = false) const;
 
     // Return the RenderLayerModelObject in the container chain which is responsible for painting this object, or nullptr
     // if painting is root-relative. This is the container that should be passed to the 'forRepaint'

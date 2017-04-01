@@ -1107,9 +1107,37 @@ Object.defineProperty(Array.prototype, "binaryIndexOf",
     }
 });
 
+(function() {
+    const debounceSymbol = Symbol("function-debounce-timeout");
+    Object.defineProperty(Function.prototype, "debounce",
+    {
+        value: function(delay, thisObject)
+        {
+            let callback = this.bind(thisObject);
+            return function() {
+                clearTimeout(callback[debounceSymbol]);
+                let args = arguments;
+                callback[debounceSymbol] = setTimeout(() => {
+                    callback.apply(null, args);
+                }, delay);
+            };
+        }
+    });
+})();
+
 function appendWebInspectorSourceURL(string)
 {
     return string + "\n//# sourceURL=__WebInspectorInternal__\n";
+}
+
+function isWebInspectorInternalScript(url)
+{
+    return url === "__WebInspectorInternal__";
+}
+
+function isWebInspectorDebugScript(url)
+{
+    return url && url.startsWith("__WebInspector");
 }
 
 function isFunctionStringNativeCode(str)

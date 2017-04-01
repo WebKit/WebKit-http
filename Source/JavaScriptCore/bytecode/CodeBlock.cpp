@@ -741,6 +741,15 @@ void CodeBlock::dumpRareCaseProfile(PrintStream& out, const char* name, RareCase
     out.print(name, profile->m_counter);
 }
 
+void CodeBlock::dumpResultProfile(PrintStream& out, ResultProfile* profile, bool& hasPrintedProfiling)
+{
+    if (!profile)
+        return;
+    
+    beginDumpProfiling(out, hasPrintedProfiling);
+    out.print("results: ", *profile);
+}
+
 void CodeBlock::printLocationAndOp(PrintStream& out, ExecState*, int location, const Instruction*&, const char* op)
 {
     out.printf("[%4d] %-17s ", location, op);
@@ -1013,13 +1022,12 @@ void CodeBlock::dumpBytecode(
             ++it;
             break;
         }
-        case op_check_has_instance: {
+        case op_overrides_has_instance: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             int r2 = (++it)->u.operand;
-            int offset = (++it)->u.operand;
-            printLocationAndOp(out, exec, location, it, "check_has_instance");
-            out.printf("%s, %s, %s, %d(->%d)", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), offset, location + offset);
+            printLocationAndOp(out, exec, location, it, "overrides_has_instance");
+            out.printf("%s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data());
             break;
         }
         case op_instanceof: {
@@ -1028,6 +1036,15 @@ void CodeBlock::dumpBytecode(
             int r2 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "instanceof");
             out.printf("%s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data());
+            break;
+        }
+        case op_instanceof_custom: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "instanceof_custom");
+            out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data());
             break;
         }
         case op_unsigned: {
@@ -1643,7 +1660,7 @@ void CodeBlock::dumpBytecode(
     }
 
     dumpRareCaseProfile(out, "rare case: ", rareCaseProfileForBytecodeOffset(location), hasPrintedProfiling);
-    dumpRareCaseProfile(out, "special fast case: ", specialFastCaseProfileForBytecodeOffset(location), hasPrintedProfiling);
+    dumpResultProfile(out, resultProfileForBytecodeOffset(location), hasPrintedProfiling);
     
 #if ENABLE(DFG_JIT)
     Vector<DFG::FrequentExitSite> exitSites = exitProfile().exitSitesFor(location);
@@ -2266,7 +2283,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
     if (vm.controlFlowProfiler())
         insertBasicBlockBoundariesForControlFlowProfiler(instructions);
 
-    m_instructions = WTF::move(instructions);
+    m_instructions = WTFMove(instructions);
 
     // Perform bytecode liveness analysis to determine which locals are live and should be resumed when executing op_resume.
     if (unlinkedCodeBlock->parseMode() == SourceParseMode::GeneratorBodyMode) {
@@ -3123,7 +3140,7 @@ bool CodeBlock::hasOpDebugForLineAndColumn(unsigned line, unsigned column)
 void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
 {
     m_rareCaseProfiles.shrinkToFit();
-    m_specialFastCaseProfiles.shrinkToFit();
+    m_resultProfiles.shrinkToFit();
     
     if (shrinkMode == EarlyShrink) {
         m_constantRegisters.shrinkToFit();
@@ -3481,7 +3498,7 @@ void CodeBlock::setCalleeSaveRegisters(RegisterSet calleeSaveRegisters)
 
 void CodeBlock::setCalleeSaveRegisters(std::unique_ptr<RegisterAtOffsetList> registerAtOffsetList)
 {
-    m_calleeSaveRegisters = WTF::move(registerAtOffsetList);
+    m_calleeSaveRegisters = WTFMove(registerAtOffsetList);
 }
     
 static size_t roundCalleeSaveSpaceAsVirtualRegisters(size_t calleeSaveRegisters)
@@ -3968,10 +3985,10 @@ void CodeBlock::dumpValueProfiles()
         RareCaseProfile* profile = rareCaseProfile(i);
         dataLogF("   bc = %d: %u\n", profile->m_bytecodeOffset, profile->m_counter);
     }
-    dataLog("SpecialFastCaseProfile for ", *this, ":\n");
-    for (unsigned i = 0; i < numberOfSpecialFastCaseProfiles(); ++i) {
-        RareCaseProfile* profile = specialFastCaseProfile(i);
-        dataLogF("   bc = %d: %u\n", profile->m_bytecodeOffset, profile->m_counter);
+    dataLog("ResultProfile for ", *this, ":\n");
+    for (unsigned i = 0; i < numberOfResultProfiles(); ++i) {
+        const ResultProfile& profile = *resultProfile(i);
+        dataLog("   bc = ", profile.bytecodeOffset(), ": ", profile, "\n");
     }
 }
 #endif // ENABLE(VERBOSE_VALUE_PROFILE)
@@ -4167,6 +4184,14 @@ unsigned CodeBlock::rareCaseProfileCountForBytecodeOffset(int bytecodeOffset)
     if (profile)
         return profile->m_counter;
     return 0;
+}
+
+ResultProfile* CodeBlock::resultProfileForBytecodeOffset(int bytecodeOffset)
+{
+    auto iterator = m_bytecodeOffsetToResultProfileIndexMap.find(bytecodeOffset);
+    if (iterator == m_bytecodeOffsetToResultProfileIndexMap.end())
+        return nullptr;
+    return &m_resultProfiles[iterator->value];
 }
 
 #if ENABLE(JIT)

@@ -92,6 +92,7 @@ RefPtr<WebCore::IDBRequest> IDBIndex::openCursor(ScriptExecutionContext* context
 
     if (m_deleted || m_objectStore->isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'openCursor' on 'IDBIndex': The index or its object store has been deleted.");
         return nullptr;
     }
 
@@ -115,7 +116,7 @@ RefPtr<WebCore::IDBRequest> IDBIndex::openCursor(ScriptExecutionContext* context
 
     auto info = IDBCursorInfo::indexCursor(m_objectStore->modernTransaction(), m_objectStore->info().identifier(), m_info.identifier(), rangeData, direction, IndexedDB::CursorType::KeyAndValue);
     Ref<IDBRequest> request = m_objectStore->modernTransaction().requestOpenCursor(*context, *this, info);
-    return WTF::move(request);
+    return WTFMove(request);
 }
 
 RefPtr<WebCore::IDBRequest> IDBIndex::openCursor(ScriptExecutionContext* context, const Deprecated::ScriptValue& key, const String& direction, ExceptionCodeWithMessage& ec)
@@ -178,6 +179,7 @@ RefPtr<WebCore::IDBRequest> IDBIndex::doCount(ScriptExecutionContext& context, c
 {
     if (m_deleted || m_objectStore->isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'count' on 'IDBIndex': The index or its object store has been deleted.");
         return nullptr;
     }
 
@@ -202,6 +204,7 @@ RefPtr<WebCore::IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext* cont
 
     if (m_deleted || m_objectStore->isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'openKeyCursor' on 'IDBIndex': The index or its object store has been deleted.");
         return nullptr;
     }
 
@@ -219,7 +222,7 @@ RefPtr<WebCore::IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext* cont
 
     auto info = IDBCursorInfo::indexCursor(m_objectStore->modernTransaction(), m_objectStore->info().identifier(), m_info.identifier(), range, direction, IndexedDB::CursorType::KeyOnly);
     Ref<IDBRequest> request = m_objectStore->modernTransaction().requestOpenCursor(*context, *this, info);
-    return WTF::move(request);
+    return WTFMove(request);
 }
 
 RefPtr<WebCore::IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext* context, const Deprecated::ScriptValue& key, const String& direction, ExceptionCodeWithMessage& ec)
@@ -269,6 +272,7 @@ RefPtr<WebCore::IDBRequest> IDBIndex::doGet(ScriptExecutionContext& context, con
 {
     if (m_deleted || m_objectStore->isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBIndex': The index or its object store has been deleted.");
         return nullptr;
     }
 
@@ -323,6 +327,7 @@ RefPtr<WebCore::IDBRequest> IDBIndex::doGetKey(ScriptExecutionContext& context, 
 {
     if (m_deleted || m_objectStore->isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'getKey' on 'IDBIndex': The index or its object store has been deleted.");
         return nullptr;
     }
 

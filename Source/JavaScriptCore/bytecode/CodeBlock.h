@@ -267,7 +267,7 @@ public:
 
     void setJITCodeMap(std::unique_ptr<CompactJITCodeMap> jitCodeMap)
     {
-        m_jitCodeMap = WTF::move(jitCodeMap);
+        m_jitCodeMap = WTFMove(jitCodeMap);
     }
     CompactJITCodeMap* jitCodeMap()
     {
@@ -452,25 +452,26 @@ public:
         return value >= Options::couldTakeSlowCaseMinimumCount();
     }
 
-    RareCaseProfile* addSpecialFastCaseProfile(int bytecodeOffset)
+    ResultProfile* ensureResultProfile(int bytecodeOffset)
     {
-        m_specialFastCaseProfiles.append(RareCaseProfile(bytecodeOffset));
-        return &m_specialFastCaseProfiles.last();
+        ResultProfile* profile = resultProfileForBytecodeOffset(bytecodeOffset);
+        if (!profile) {
+            m_resultProfiles.append(ResultProfile(bytecodeOffset));
+            profile = &m_resultProfiles.last();
+            ASSERT(&m_resultProfiles.last() == &m_resultProfiles[m_resultProfiles.size() - 1]);
+            m_bytecodeOffsetToResultProfileIndexMap.add(bytecodeOffset, m_resultProfiles.size() - 1);
+        }
+        return profile;
     }
-    unsigned numberOfSpecialFastCaseProfiles() { return m_specialFastCaseProfiles.size(); }
-    RareCaseProfile* specialFastCaseProfile(int index) { return &m_specialFastCaseProfiles[index]; }
-    RareCaseProfile* specialFastCaseProfileForBytecodeOffset(int bytecodeOffset)
-    {
-        return tryBinarySearch<RareCaseProfile, int>(
-            m_specialFastCaseProfiles, m_specialFastCaseProfiles.size(), bytecodeOffset,
-            getRareCaseProfileBytecodeOffset);
-    }
+    unsigned numberOfResultProfiles() { return m_resultProfiles.size(); }
+    ResultProfile* resultProfileForBytecodeOffset(int bytecodeOffset);
+
     unsigned specialFastCaseProfileCountForBytecodeOffset(int bytecodeOffset)
     {
-        RareCaseProfile* profile = specialFastCaseProfileForBytecodeOffset(bytecodeOffset);
+        ResultProfile* profile = resultProfileForBytecodeOffset(bytecodeOffset);
         if (!profile)
             return 0;
-        return profile->m_counter;
+        return profile->specialFastPathCount();
     }
 
     bool couldTakeSpecialFastCase(int bytecodeOffset)
@@ -479,16 +480,6 @@ public:
             return false;
         unsigned specialFastCaseCount = specialFastCaseProfileCountForBytecodeOffset(bytecodeOffset);
         return specialFastCaseCount >= Options::couldTakeSlowCaseMinimumCount();
-    }
-
-    bool likelyToTakeDeepestSlowCase(int bytecodeOffset)
-    {
-        if (!hasBaselineJITProfiling())
-            return false;
-        unsigned slowCaseCount = rareCaseProfileCountForBytecodeOffset(bytecodeOffset);
-        unsigned specialFastCaseCount = specialFastCaseProfileCountForBytecodeOffset(bytecodeOffset);
-        unsigned value = slowCaseCount - specialFastCaseCount;
-        return value >= Options::likelyToTakeSlowCaseMinimumCount();
     }
 
     unsigned numberOfArrayProfiles() const { return m_arrayProfiles.size(); }
@@ -635,7 +626,7 @@ public:
         {
             ConcurrentJITLocker locker(m_lock);
             if (!m_livenessAnalysis)
-                m_livenessAnalysis = WTF::move(analysis);
+                m_livenessAnalysis = WTFMove(analysis);
             return *m_livenessAnalysis;
         }
     }
@@ -994,7 +985,8 @@ private:
     void dumpValueProfiling(PrintStream&, const Instruction*&, bool& hasPrintedProfiling);
     void dumpArrayProfiling(PrintStream&, const Instruction*&, bool& hasPrintedProfiling);
     void dumpRareCaseProfile(PrintStream&, const char* name, RareCaseProfile*, bool& hasPrintedProfiling);
-        
+    void dumpResultProfile(PrintStream&, ResultProfile*, bool& hasPrintedProfiling);
+
     bool shouldVisitStrongly();
     bool shouldJettisonDueToWeakReference();
     bool shouldJettisonDueToOldAge();
@@ -1069,7 +1061,8 @@ private:
     Vector<ValueProfile> m_argumentValueProfiles;
     Vector<ValueProfile> m_valueProfiles;
     SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
-    SegmentedVector<RareCaseProfile, 8> m_specialFastCaseProfiles;
+    SegmentedVector<ResultProfile, 8> m_resultProfiles;
+    HashMap<unsigned, unsigned, IntHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> m_bytecodeOffsetToResultProfileIndexMap;
     Vector<ArrayAllocationProfile> m_arrayAllocationProfiles;
     ArrayProfileVector m_arrayProfiles;
     Vector<ObjectAllocationProfile> m_objectAllocationProfiles;

@@ -50,6 +50,7 @@
 #include "JSArrowFunction.h"
 #include "JSCInlines.h"
 #include "JSEnvironmentRecord.h"
+#include "JSGeneratorFunction.h"
 #include "JSLexicalEnvironment.h"
 #include "LinkBuffer.h"
 #include "ScopedArguments.h"
@@ -327,7 +328,7 @@ RegisterSet SpeculativeJIT::usedRegisters()
 
 void SpeculativeJIT::addSlowPathGenerator(std::unique_ptr<SlowPathGenerator> slowPathGenerator)
 {
-    m_slowPathGenerators.append(WTF::move(slowPathGenerator));
+    m_slowPathGenerators.append(WTFMove(slowPathGenerator));
 }
 
 void SpeculativeJIT::runSlowPathGenerators()
@@ -973,7 +974,7 @@ void SpeculativeJIT::compileIn(Node* node)
             stubInfo->patch.usedRegisters = usedRegisters();
 
             m_jit.addIn(InRecord(jump, done, slowPath.get(), stubInfo));
-            addSlowPathGenerator(WTF::move(slowPath));
+            addSlowPathGenerator(WTFMove(slowPath));
 
             base.use();
 
@@ -2743,6 +2744,17 @@ void SpeculativeJIT::compileInstanceOfForObject(Node*, GPRReg valueReg, GPRReg p
     putResult.link(&m_jit);
 }
 
+void SpeculativeJIT::compileCheckTypeInfoFlags(Node* node)
+{
+    SpeculateCellOperand base(this, node->child1());
+
+    GPRReg baseGPR = base.gpr();
+
+    speculationCheck(BadTypeInfoFlags, JSValueRegs(), 0, m_jit.branchTest8(MacroAssembler::Zero, MacroAssembler::Address(baseGPR, JSCell::typeInfoFlagsOffset()), MacroAssembler::TrustedImm32(node->typeInfoOperand())));
+
+    noResult(node);
+}
+
 void SpeculativeJIT::compileInstanceOf(Node* node)
 {
     if (node->child1().useKind() == UntypedUse) {
@@ -3179,6 +3191,28 @@ void SpeculativeJIT::compileValueAdd(Node* node)
     gen.endJumpList().link(&m_jit);
     jsValueResult(resultRegs, node);
     return;
+}
+
+void SpeculativeJIT::compileInstanceOfCustom(Node* node)
+{
+    // We could do something smarter here but this case is currently super rare and unless
+    // Symbol.hasInstance becomes popular will likely remain that way.
+
+    JSValueOperand value(this, node->child1());
+    SpeculateCellOperand constructor(this, node->child2());
+    JSValueOperand hasInstanceValue(this, node->child3());
+    GPRTemporary result(this);
+
+    JSValueRegs valueRegs = value.jsValueRegs();
+    GPRReg constructorGPR = constructor.gpr();
+    JSValueRegs hasInstanceRegs = hasInstanceValue.jsValueRegs();
+    GPRReg resultGPR = result.gpr();
+
+    MacroAssembler::Jump slowCase = m_jit.jump();
+
+    addSlowPathGenerator(slowPathCall(slowCase, this, operationInstanceOfCustom, resultGPR, valueRegs, constructorGPR, hasInstanceRegs));
+
+    unblessedBooleanResult(resultGPR, node);
 }
 
 void SpeculativeJIT::compileArithAdd(Node* node)
@@ -5372,7 +5406,7 @@ template <typename ClassType> void SpeculativeJIT::compileNewFunctionCommon(GPRR
 void SpeculativeJIT::compileNewFunction(Node* node)
 {
     NodeType nodeType = node->op();
-    ASSERT(nodeType == NewFunction || nodeType == NewArrowFunction);
+    ASSERT(nodeType == NewFunction || nodeType == NewArrowFunction || nodeType == NewGeneratorFunction);
     
     SpeculateCellOperand scope(this, node->child1());
 #if USE(JSVALUE64)
@@ -5410,6 +5444,8 @@ void SpeculativeJIT::compileNewFunction(Node* node)
 #else
             callOperation(operationNewArrowFunction, resultGPR, scopeGPR, executable, thisValueTagGPR, thisValuePayloadGPR);
 #endif
+        else if (nodeType == NewGeneratorFunction)
+            callOperation(operationNewGeneratorFunction, resultGPR, scopeGPR, executable);
         else
             callOperation(operationNewFunction, resultGPR, scopeGPR, executable);
         m_jit.exceptionCheck();
@@ -5417,9 +5453,10 @@ void SpeculativeJIT::compileNewFunction(Node* node)
         return;
     }
 
-    Structure* structure = nodeType == NewArrowFunction
-        ? m_jit.graph().globalObjectFor(node->origin.semantic)->arrowFunctionStructure()
-        : m_jit.graph().globalObjectFor(node->origin.semantic)->functionStructure();
+    Structure* structure =
+        nodeType == NewArrowFunction ? m_jit.graph().globalObjectFor(node->origin.semantic)->arrowFunctionStructure() :
+        nodeType == NewGeneratorFunction ? m_jit.graph().globalObjectFor(node->origin.semantic)->generatorFunctionStructure() :
+        m_jit.graph().globalObjectFor(node->origin.semantic)->functionStructure();
     
     GPRTemporary result(this);
     GPRTemporary scratch1(this);
@@ -5435,6 +5472,12 @@ void SpeculativeJIT::compileNewFunction(Node* node)
         compileNewFunctionCommon<JSFunction>(resultGPR, structure, scratch1GPR, scratch2GPR, scopeGPR, slowPath, JSFunction::allocationSize(0), executable, JSFunction::offsetOfScopeChain(), JSFunction::offsetOfExecutable(), JSFunction::offsetOfRareData());
             
         addSlowPathGenerator(slowPathCall(slowPath, this, operationNewFunctionWithInvalidatedReallocationWatchpoint, resultGPR, scopeGPR, executable));
+    }
+
+    if (nodeType == NewGeneratorFunction) {
+        compileNewFunctionCommon<JSGeneratorFunction>(resultGPR, structure, scratch1GPR, scratch2GPR, scopeGPR, slowPath, JSGeneratorFunction::allocationSize(0), executable, JSGeneratorFunction::offsetOfScopeChain(), JSGeneratorFunction::offsetOfExecutable(), JSGeneratorFunction::offsetOfRareData());
+
+        addSlowPathGenerator(slowPathCall(slowPath, this, operationNewGeneratorFunctionWithInvalidatedReallocationWatchpoint, resultGPR, scopeGPR, executable));
     }
     
     if (nodeType == NewArrowFunction) {
@@ -5677,7 +5720,7 @@ void SpeculativeJIT::compileCreateDirectArguments(Node* node)
     } else {
         auto generator = std::make_unique<CallCreateDirectArgumentsSlowPathGenerator>(
             slowPath, this, resultGPR, structure, lengthGPR, minCapacity);
-        addSlowPathGenerator(WTF::move(generator));
+        addSlowPathGenerator(WTFMove(generator));
     }
         
     if (node->origin.semantic.inlineCallFrame) {

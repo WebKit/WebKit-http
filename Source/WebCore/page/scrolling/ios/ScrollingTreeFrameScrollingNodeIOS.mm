@@ -102,8 +102,7 @@ FloatPoint ScrollingTreeFrameScrollingNodeIOS::scrollPosition() const
     if (shouldUpdateScrollLayerPositionSynchronously())
         return m_probableMainThreadScrollPosition;
 
-    CGPoint scrollLayerPosition = m_scrollLayer.get().position;
-    return IntPoint(-scrollLayerPosition.x + scrollOrigin().x(), -scrollLayerPosition.y + scrollOrigin().y());
+    return -m_scrollLayer.get().position;
 }
 
 void ScrollingTreeFrameScrollingNodeIOS::setScrollPositionWithoutContentEdgeConstraints(const FloatPoint& scrollPosition)
@@ -121,7 +120,7 @@ void ScrollingTreeFrameScrollingNodeIOS::setScrollPositionWithoutContentEdgeCons
 void ScrollingTreeFrameScrollingNodeIOS::setScrollLayerPosition(const FloatPoint& scrollPosition)
 {
     ASSERT(!shouldUpdateScrollLayerPositionSynchronously());
-    [m_scrollLayer setPosition:CGPointMake(-scrollPosition.x() + scrollOrigin().x(), -scrollPosition.y() + scrollOrigin().y())];
+    [m_scrollLayer setPosition:-scrollPosition];
 
     updateChildNodesAfterScroll(scrollPosition);
 }
@@ -146,19 +145,18 @@ void ScrollingTreeFrameScrollingNodeIOS::updateLayersAfterDelegatedScroll(const 
 void ScrollingTreeFrameScrollingNodeIOS::updateChildNodesAfterScroll(const FloatPoint& scrollPosition)
 {
     ScrollBehaviorForFixedElements behaviorForFixed = scrollBehaviorForFixedElements();
-    FloatPoint scrollOffset = scrollPosition - toIntSize(scrollOrigin());
-    FloatRect viewportRect(FloatPoint(), scrollableAreaSize());
-    FloatSize scrollOffsetForFixedChildren = FrameView::scrollOffsetForFixedPosition(enclosingLayoutRect(viewportRect), LayoutSize(totalContentsSize()), LayoutPoint(scrollOffset), scrollOrigin(), frameScaleFactor(), fixedElementsLayoutRelativeToFrame(), behaviorForFixed, headerHeight(), footerHeight());
+    FloatRect viewportRect(scrollPosition, scrollableAreaSize());
+    FloatPoint scrollPositionForFixedChildren = FrameView::scrollPositionForFixedPosition(enclosingLayoutRect(viewportRect), LayoutSize(totalContentsSize()), LayoutPoint(scrollPosition), scrollOrigin(), frameScaleFactor(), fixedElementsLayoutRelativeToFrame(), behaviorForFixed, headerHeight(), footerHeight());
 
-    [m_counterScrollingLayer setPosition:FloatPoint(scrollOffsetForFixedChildren)];
+    [m_counterScrollingLayer setPosition:scrollPositionForFixedChildren];
 
     if (m_headerLayer || m_footerLayer) {
         // Generally the banners should have the same horizontal-position computation as a fixed element. However,
         // the banners are not affected by the frameScaleFactor(), so if there is currently a non-1 frameScaleFactor()
-        // then we should recompute scrollOffsetForFixedChildren for the banner with a scale factor of 1.
-        float horizontalScrollOffsetForBanner = scrollOffsetForFixedChildren.width();
+        // then we should recompute scrollPositionForFixedChildren for the banner with a scale factor of 1.
+        float horizontalScrollOffsetForBanner = scrollPositionForFixedChildren.x();
         if (frameScaleFactor() != 1)
-            horizontalScrollOffsetForBanner = FrameView::scrollOffsetForFixedPosition(enclosingLayoutRect(viewportRect), LayoutSize(totalContentsSize()), LayoutPoint(scrollOffset), scrollOrigin(), 1, fixedElementsLayoutRelativeToFrame(), behaviorForFixed, headerHeight(), footerHeight()).width();
+            horizontalScrollOffsetForBanner = FrameView::scrollPositionForFixedPosition(enclosingLayoutRect(viewportRect), LayoutSize(totalContentsSize()), LayoutPoint(scrollPosition), scrollOrigin(), 1, fixedElementsLayoutRelativeToFrame(), behaviorForFixed, headerHeight(), footerHeight()).x();
 
         if (m_headerLayer)
             [m_headerLayer setPosition:FloatPoint(horizontalScrollOffsetForBanner, 0)];
@@ -175,7 +173,7 @@ void ScrollingTreeFrameScrollingNodeIOS::updateChildNodesAfterScroll(const Float
     if (!parent())
         fixedPositionRect = scrollingTree().fixedPositionRect();
     else
-        fixedPositionRect = FloatRect(scrollOffset, scrollableAreaSize());
+        fixedPositionRect = FloatRect(scrollPosition, scrollableAreaSize());
 
     for (auto& child : *m_children)
         child->updateLayersAfterAncestorChange(*this, fixedPositionRect, FloatSize());
@@ -183,7 +181,7 @@ void ScrollingTreeFrameScrollingNodeIOS::updateChildNodesAfterScroll(const Float
 
 FloatPoint ScrollingTreeFrameScrollingNodeIOS::minimumScrollPosition() const
 {
-    FloatPoint position;
+    FloatPoint position = ScrollableArea::scrollPositionFromOffset(FloatPoint(), toFloatSize(scrollOrigin()));
     
     if (scrollingTree().rootNode() == this && scrollingTree().scrollPinningBehavior() == PinToBottom)
         position.setY(maximumScrollPosition().y());
@@ -193,9 +191,7 @@ FloatPoint ScrollingTreeFrameScrollingNodeIOS::minimumScrollPosition() const
 
 FloatPoint ScrollingTreeFrameScrollingNodeIOS::maximumScrollPosition() const
 {
-    FloatPoint position(totalContentsSizeForRubberBand().width() - scrollableAreaSize().width(),
-        totalContentsSizeForRubberBand().height() - scrollableAreaSize().height());
-
+    FloatPoint position = ScrollableArea::scrollPositionFromOffset(FloatPoint(totalContentsSizeForRubberBand() - scrollableAreaSize()), toFloatSize(scrollOrigin()));
     position = position.expandedTo(FloatPoint());
 
     if (scrollingTree().rootNode() == this && scrollingTree().scrollPinningBehavior() == PinToTop)

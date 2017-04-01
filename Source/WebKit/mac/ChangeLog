@@ -1,3 +1,223 @@
+2016-01-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a setting and preferences to enable display-list drawing. Does nothing yet.
+        https://bugs.webkit.org/show_bug.cgi?id=152807
+
+        Reviewed by Zalan Bujtas.
+        
+        WK1 pref for display-list drawing, defaults to off.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences displayListDrawingEnabled]):
+        (-[WebPreferences setDisplayListDrawingEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView _preferencesChanged:]):
+
+2016-01-06  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Revert overflow:hidden on the body affecting viewport scale (r186786)
+        https://bugs.webkit.org/show_bug.cgi?id=152803
+        rdar://problem/22242515
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _contentsSizeRespectingOverflow]): Keep this function which is used
+        by UIKit, but change the implementation to just return the document size.
+
+2016-01-04  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on gesture events when building for Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=152704
+        rdar://problem/24042472
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Replace WTF::move with WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Brady Eidson.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::willSendRequest):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        (WebKit::NetscapePluginInstanceProxy::setCurrentReply):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::willSendRequest):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView scheduleTimerWithInterval:repeat:timerFunc:]):
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+        (WebFrameLoaderClient::createDocumentLoader):
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::WebInspectorFrontendClient):
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithMainResource:subresources:subframeArchives:]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _documentFragmentWithNodesAsParagraphs:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _applyEditingStyleToSelection:withUndoAction:]):
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::setPlaybackTarget):
+        * WebView/WebView.mm:
+        (-[WebView _loadBackForwardListFromOtherView:]):
+        (+[WebView _addUserScriptToGroup:world:source:url:whitelist:blacklist:injectionTime:injectedFrames:]):
+        (+[WebView _addUserStyleSheetToGroup:world:source:url:whitelist:blacklist:injectedFrames:]):
+
+2016-01-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the iOS and EFL builds, after an over-eager commit-queue commit.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+
+2016-01-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix naming in HistoryItem to refer to scrollPositions
+        https://bugs.webkit.org/show_bug.cgi?id=152646
+
+        Reviewed by Zalan Bujtas.
+
+        HistoryItem stores a scrollPosition, so call it that.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem scrollPoint]):
+
+2016-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2016
+        https://bugs.webkit.org/show_bug.cgi?id=152531
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Info.plist:
+
+2015-12-31  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using USE(CFNETWORK) path on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=142540
+
+        Step 1/2: Do everything but turn off USE(CFNETWORK) internally.
+
+        Original patch by Antti Koivisto <antti@apple.com> on 2015-03-10
+        Reviewed by Daniel Bates.
+
+        * Misc/WebDownload.h: Add header guard to make
+        NSURLDownloadSPI.h work when pre-declaring NSURLDownload object.
+        * Misc/WebKitVersionChecks.h: Define
+        WEBKIT_FIRST_VERSION_WITH_LOADING_DURING_COMMON_RUNLOOP_MODES
+        for iOS.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Use
+        the correct runloop on iOS.
+        * WebView/WebViewPrivate.h:
+        (-[WebView(WebPendingPublic) scheduleInRunLoop:forMode:]):
+        (-[WebView(WebPendingPublic) unscheduleFromRunLoop:forMode:]):
+        - These are available on iOS now.
+
+2015-12-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Clarify that scrollPositionChangedViaPlatformWidget takes offsets
+        https://bugs.webkit.org/show_bug.cgi?id=152606
+
+        Reviewed by Zalan Bujtas.
+
+        scrollPositionChangedViaPlatformWidget actually gets scroll offsets, since the
+        values we get from AppKit are zero-based, so rename to scrollOffsetChangedViaPlatformWidget().
+        
+        Change ScrollableArea's setScrollPosition() and requestScrollPositionUpdate() to take
+        ScrollPositions.
+        
+        Add a FIXME noting that willRevealEdge events are probably broken in RTL documents.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _frameOrBoundsChanged]):
+
+2015-12-22  Andy Estes  <aestes@apple.com>
+
+        [CF] Replace CFNetwork-related WebKitSystemInterface calls with SPI
+        https://bugs.webkit.org/show_bug.cgi?id=152463
+
+        Reviewed by Alexey Proskuryakov.
+
+        Replaced WebkitSystemInterface calls that wrapped CFNetwork SPI with direct calls to SPI that is now forward
+        declared in CFNetworkSPI.h.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::didReceiveResponse):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::didReceiveResponse):
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]):
+
+2015-12-20  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused setToolbarHeight
+        https://bugs.webkit.org/show_bug.cgi?id=152466
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm::
+        (WebInspectorFrontendClient::setToolbarHeight): Deleted.
+
+2015-12-19  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] WebKit contains dead source code for OS X Mavericks and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=152462
+
+        Reviewed by Alexey Proskuryakov.
+
+        - Removed build setting definitions for OS X 10.9 and earlier, and simplified defintions
+          that became uniform across all OS X versions as a result:
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitLegacy.xcconfig:
+
+        - Simplified expressions involving __MAC_OS_X_VERSION_MIN_REQUIRED and removed code that was
+          never getting compiled:
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        * WebView/WebDynamicScrollBarsView.mm:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebImmediateActionController.h:
+        * WebView/WebImmediateActionController.mm:
+        * WebView/WebView.mm:
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        * WebView/WebViewInternal.h:
+
+2015-12-17  Tim Horton  <timothy_horton@apple.com>
+
+        Data detector yellow highlight location is vertically mirrored in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=152216
+        <rdar://problem/23848003>
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]):
+        Match the conversion we do at every other WK1 TextIndicator construction.
+
 2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         [Fetch API] Add fetch API compile time flag

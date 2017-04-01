@@ -124,6 +124,9 @@ webkit.org/b/76173 fast/css3-text/css3-text-align-last
 webkit.org/b/99945 fast/css3-text/css3-text-justify
 webkit.org/b/112755 fast/css3-text/css3-text-indent
 
+# Unsupported on certain OS versions
+webkit.org/b/152491 fast/text/woff2.html [ Skip ]
+
 # Needs testRunner.enableAutoResizeMode()
 fast/autoresize
 
@@ -219,9 +222,6 @@ svg/clip-path/clip-path-line-use-before-defined.svg [ ImageOnlyFailure ]
 # SVG
 webkit.org/b/137574 svg/dom/SVGAnimatedAngle.html [ Skip ] # Pass, Crash
 webkit.org/b/137574 svg/css/arrow-with-shadow.svg [ Skip ] # Pass, Crash
-
-# window.requestAnimationFrame() broken in iOS Simulator
-webkit.org/b/137588 fast/animation
 
 # Animation tests that fail:
 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
@@ -2836,3 +2836,19 @@ webkit.org/b/152141 fast/picture/image-picture-nested.html [ Failure ]
 
 webkit.org/b/152279 http/tests/misc/large-js-program.php [ Pass Crash ]
 webkit.org/b/152279 js/dom/line-column-numbers.html [ Pass Crash ]
+
+webkit.org/b/152137 fast/media/mq-any-hover-matchMedia.html [ Failure ]
+webkit.org/b/152137 fast/media/mq-any-hover-styling.html [ Failure ]
+webkit.org/b/152137 fast/media/mq-any-pointer-matchMedia.html [ Failure ]
+webkit.org/b/152137 fast/media/mq-any-pointer-styling.html [ Failure ]
+webkit.org/b/152137 fast/media/mq-hover-matchMedia.html [ Failure ]
+webkit.org/b/152137 fast/media/mq-hover-styling.html [ Failure ]
+webkit.org/b/152137 fast/media/mq-pointer-matchMedia.html [ Failure ]
+webkit.org/b/152137 fast/media/mq-pointer-styling.html [ Failure ]
+webkit.org/b/152137 fast/media/mq-pointer.html [ Failure ]
+
+webkit.org/b/152442 fast/scrolling/rtl-point-in-iframe.html [ Skip ]
+
+webkit.org/b/152449 fast/events/can-click-element-on-page-with-active-pseudo-class-and-search-field.html [ Skip ]
+
+webkit.org/b/152701 fast/animation/request-animation-frame-disabled.html [ Skip ]

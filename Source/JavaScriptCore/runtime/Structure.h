@@ -238,7 +238,7 @@ public:
         return !!(indexingTypeIncludingHistory() & MayHaveIndexedAccessors);
     }
         
-    bool anyObjectInChainMayInterceptIndexedAccesses() const;
+    JS_EXPORT_PRIVATE bool anyObjectInChainMayInterceptIndexedAccesses() const;
     bool holesMustForwardToPrototype(VM&) const;
         
     bool needsSlowPutIndexing() const;
@@ -258,7 +258,7 @@ public:
     static void visitChildren(JSCell*, SlotVisitor&);
         
     // Will just the prototype chain intercept this property access?
-    bool prototypeChainMayInterceptStoreTo(VM&, PropertyName);
+    JS_EXPORT_PRIVATE bool prototypeChainMayInterceptStoreTo(VM&, PropertyName);
         
     Structure* previousID() const
     {
@@ -413,6 +413,7 @@ public:
     }
 
     static Structure* createStructure(VM&);
+    static Structure* createSubclassStructure(VM&, Structure* baseStructure, JSValue prototype);
         
     bool transitionWatchpointSetHasBeenInvalidated() const
     {

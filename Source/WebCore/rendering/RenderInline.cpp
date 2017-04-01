@@ -53,13 +53,13 @@
 namespace WebCore {
 
 RenderInline::RenderInline(Element& element, Ref<RenderStyle>&& style)
-    : RenderBoxModelObject(element, WTF::move(style), RenderInlineFlag)
+    : RenderBoxModelObject(element, WTFMove(style), RenderInlineFlag)
 {
     setChildrenInline(true);
 }
 
 RenderInline::RenderInline(Document& document, Ref<RenderStyle>&& style)
-    : RenderBoxModelObject(document, WTF::move(style), RenderInlineFlag)
+    : RenderBoxModelObject(document, WTFMove(style), RenderInlineFlag)
 {
     setChildrenInline(true);
 }
@@ -160,7 +160,7 @@ static void updateStyleOfAnonymousBlockContinuations(const RenderBlock& block, c
             continue;
         auto blockStyle = RenderStyle::createAnonymousStyleWithDisplay(&block.style(), BLOCK);
         blockStyle.get().setPosition(newStyle->position());
-        block.setStyle(WTF::move(blockStyle));
+        block.setStyle(WTFMove(blockStyle));
     }
 }
 
@@ -338,7 +338,7 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
         if (auto positionedAncestor = inFlowPositionedInlineAncestor(this))
             newStyle.get().setPosition(positionedAncestor->style().position());
 
-        RenderBlock* newBox = new RenderBlockFlow(document(), WTF::move(newStyle));
+        RenderBlock* newBox = new RenderBlockFlow(document(), WTFMove(newStyle));
         newBox->initializeStyle();
         RenderBoxModelObject* oldContinuation = continuation();
         setContinuation(newBox);
@@ -490,7 +490,7 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
     while (current && current != fromBlock) {
         if (splitDepth < cMaxSplitDepth) {
             // Create a new clone.
-            RenderPtr<RenderInline> cloneChild = WTF::move(cloneInline);
+            RenderPtr<RenderInline> cloneChild = WTFMove(cloneInline);
             cloneInline = downcast<RenderInline>(*current).clone();
 
             // Insert our child clone as the first child.
@@ -1496,7 +1496,7 @@ InlineFlowBox* RenderInline::createAndAppendInlineFlowBox()
     setAlwaysCreateLineBoxes();
     auto newFlowBox = createInlineFlowBox();
     auto flowBox = newFlowBox.get();
-    m_lineBoxes.appendLineBox(WTF::move(newFlowBox));
+    m_lineBoxes.appendLineBox(WTFMove(newFlowBox));
     return flowBox;
 }
 
@@ -1642,12 +1642,12 @@ void RenderInline::paintOutlineForLine(GraphicsContext& graphicsContext, const L
                                        const Color outlineColor)
 {
     const RenderStyle& styleToUse = style();
-    int outlineWidth = styleToUse.outlineWidth();
+    float outlineWidth = styleToUse.outlineWidth();
     EBorderStyle outlineStyle = styleToUse.outlineStyle();
 
     bool antialias = shouldAntialiasLines(graphicsContext);
 
-    int offset = style().outlineOffset();
+    float offset = style().outlineOffset();
 
     LayoutRect box(LayoutPoint(paintOffset.x() + thisline.x() - offset, paintOffset.y() + thisline.y() - offset),
         LayoutSize(thisline.width() + offset, thisline.height() + offset));
@@ -1686,7 +1686,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext& graphicsContext, const L
         drawLineForBoxSide(graphicsContext,
             FloatRect(FloatPoint(pixelSnappedBox.x() - outlineWidth,
             pixelSnappedBox.y() - outlineWidth),
-            FloatPoint(std::min(pixelSnappedBox.maxX() + outlineWidth, (lastline.isEmpty() ? 1000000 : pixelSnappedLastLine.x())),
+            FloatPoint(std::min<float>(pixelSnappedBox.maxX() + outlineWidth, (lastline.isEmpty() ? 1000000 : pixelSnappedLastLine.x())),
             pixelSnappedBox.y())),
             BSTop, outlineColor, outlineStyle,
             outlineWidth,
@@ -1695,7 +1695,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext& graphicsContext, const L
     
     if (lastline.maxX() < thisline.maxX())
         drawLineForBoxSide(graphicsContext,
-            FloatRect(FloatPoint(std::max(lastline.isEmpty() ? -1000000 : pixelSnappedLastLine.maxX(), pixelSnappedBox.x() - outlineWidth),
+            FloatRect(FloatPoint(std::max<float>(lastline.isEmpty() ? -1000000 : pixelSnappedLastLine.maxX(), pixelSnappedBox.x() - outlineWidth),
             pixelSnappedBox.y() - outlineWidth),
             FloatPoint(pixelSnappedBox.maxX() + outlineWidth,
             pixelSnappedBox.y())),
@@ -1719,7 +1719,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext& graphicsContext, const L
         drawLineForBoxSide(graphicsContext,
             FloatRect(FloatPoint(pixelSnappedBox.x() - outlineWidth,
             pixelSnappedBox.maxY()),
-            FloatPoint(std::min(pixelSnappedBox.maxX() + outlineWidth, !nextline.isEmpty() ? pixelSnappedNextLine.x() + 1 : 1000000),
+            FloatPoint(std::min<float>(pixelSnappedBox.maxX() + outlineWidth, !nextline.isEmpty() ? pixelSnappedNextLine.x() + 1 : 1000000),
             pixelSnappedBox.maxY() + outlineWidth)),
             BSBottom, outlineColor, outlineStyle,
             outlineWidth,
@@ -1728,7 +1728,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext& graphicsContext, const L
     
     if (nextline.maxX() < thisline.maxX())
         drawLineForBoxSide(graphicsContext,
-            FloatRect(FloatPoint(std::max(!nextline.isEmpty() ? pixelSnappedNextLine.maxX() : -1000000, pixelSnappedBox.x() - outlineWidth),
+            FloatRect(FloatPoint(std::max<float>(!nextline.isEmpty() ? pixelSnappedNextLine.maxX() : -1000000, pixelSnappedBox.x() - outlineWidth),
             pixelSnappedBox.maxY()),
             FloatPoint(pixelSnappedBox.maxX() + outlineWidth,
             pixelSnappedBox.maxY() + outlineWidth)),

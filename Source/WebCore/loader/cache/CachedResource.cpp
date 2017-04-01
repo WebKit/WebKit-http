@@ -504,10 +504,14 @@ void CachedResource::decodedDataDeletionTimerFired()
 
 bool CachedResource::deleteIfPossible()
 {
-    if (canDelete() && !inCache()) {
-        InspectorInstrumentation::willDestroyCachedResource(*this);
-        delete this;
-        return true;
+    if (canDelete()) {
+        if (!inCache()) {
+            InspectorInstrumentation::willDestroyCachedResource(*this);
+            delete this;
+            return true;
+        }
+        if (m_data)
+            m_data->hintMemoryNotNeededSoon();
     }
     return false;
 }
@@ -788,7 +792,6 @@ void CachedResource::tryReplaceEncodedData(SharedBuffer& newBuffer)
         return;
 
     if (m_data->tryReplaceContentsWithPlatformBuffer(newBuffer)) {
-        didReplaceSharedBufferContents();
         // FIXME: Should we call checkNotify() here to move already-decoded images to the new data source?
     }
 }

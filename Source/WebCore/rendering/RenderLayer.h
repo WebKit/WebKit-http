@@ -191,14 +191,16 @@ public:
     };
 
     // Scrolling methods for layers that can scroll their overflow.
-    void scrollByRecursively(const IntSize&, ScrollOffsetClamping = ScrollOffsetUnclamped, ScrollableArea** scrolledArea = nullptr);
-    void scrollToOffset(const IntSize&, ScrollOffsetClamping = ScrollOffsetUnclamped);
-    void scrollToXOffset(int x, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(IntSize(x, scrollYOffset()), clamp); }
-    void scrollToYOffset(int y, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(IntSize(scrollXOffset(), y), clamp); }
+    void scrollByRecursively(const IntSize& delta, ScrollOffsetClamping = ScrollOffsetUnclamped, ScrollableArea** scrolledArea = nullptr);
 
-    int scrollXOffset() const { return m_scrollOffset.width() + scrollOrigin().x(); }
-    int scrollYOffset() const { return m_scrollOffset.height() + scrollOrigin().y(); }
-    IntSize scrollOffset() const { return IntSize(scrollXOffset(), scrollYOffset()); }
+    void scrollToOffset(const ScrollOffset&, ScrollOffsetClamping = ScrollOffsetUnclamped);
+    void scrollToXOffset(int x, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(ScrollOffset(x, scrollOffset().y()), clamp); }
+    void scrollToYOffset(int y, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(ScrollOffset(scrollOffset().x(), y), clamp); }
+
+    void scrollToXPosition(int x, ScrollOffsetClamping = ScrollOffsetUnclamped);
+    void scrollToYPosition(int y, ScrollOffsetClamping = ScrollOffsetUnclamped);
+
+    ScrollOffset scrollOffset() const { return scrollOffsetFromPosition(m_scrollPosition); }
     IntSize scrollableContentsSize() const;
 
     void scrollRectToVisible(const LayoutRect&, const ScrollAlignment& alignX, const ScrollAlignment& alignY);
@@ -217,6 +219,8 @@ public:
     bool hasVerticalScrollbar() const { return verticalScrollbar(); }
 
     // ScrollableArea overrides
+    virtual ScrollPosition scrollPosition() const override { return m_scrollPosition; }
+
     virtual Scrollbar* horizontalScrollbar() const override { return m_hBar.get(); }
     virtual Scrollbar* verticalScrollbar() const override { return m_vBar.get(); }
     virtual ScrollableArea* enclosingScrollableArea() const override;
@@ -404,7 +408,7 @@ public:
     RenderLayer* enclosingAncestorForPosition(EPosition) const;
 
     // Returns the nearest enclosing layer that is scrollable.
-    RenderLayer* enclosingScrollableLayer(LayoutRect* = nullptr) const;
+    RenderLayer* enclosingScrollableLayer() const;
 
     // The layer relative to which clipping rects for this layer are computed.
     RenderLayer* clippingRootForPainting() const;
@@ -751,9 +755,10 @@ private:
     void updateLayerPositionsAfterScroll(RenderGeometryMap*, UpdateLayerPositionsAfterScrollFlags = NoFlag);
 
     friend IntSize RenderBox::scrolledContentOffset() const;
-    IntSize scrolledContentOffset() const { return m_scrollOffset; }
+    // FIXME: rename this toscrolledContentPosition(), or remove it.
+    IntSize scrolledContentOffset() const { return toIntSize(m_scrollPosition); }
 
-    IntSize clampScrollOffset(const IntSize&) const;
+    ScrollOffset clampScrollOffset(const ScrollOffset&) const;
 
     RenderLayer* enclosingPaginationLayerInSubtree(const RenderLayer* rootLayer, PaginationInclusionMode) const;
 
@@ -850,7 +855,7 @@ private:
 
     bool shouldBeSelfPaintingLayer() const;
 
-    virtual int scrollPosition(Scrollbar*) const override;
+    virtual int scrollOffset(ScrollbarOrientation) const override;
     
     // ScrollableArea interface
     virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) override;
@@ -863,10 +868,8 @@ private:
     virtual IntPoint convertFromScrollbarToContainingView(const Scrollbar*, const IntPoint&) const override;
     virtual IntPoint convertFromContainingViewToScrollbar(const Scrollbar*, const IntPoint&) const override;
     virtual int scrollSize(ScrollbarOrientation) const override;
-    virtual void setScrollOffset(const IntPoint&) override;
-    virtual IntPoint scrollPosition() const override;
-    virtual IntPoint minimumScrollPosition() const override;
-    virtual IntPoint maximumScrollPosition() const override;
+    virtual void setScrollOffset(const ScrollOffset&) override;
+
     virtual IntRect visibleContentRectInternal(VisibleContentRectIncludesScrollbars, VisibleContentRectBehavior) const override;
     virtual IntSize visibleSize() const override;
     virtual IntSize contentsSize() const override;
@@ -891,12 +894,14 @@ private:
     LayoutRect scrollCornerAndResizerRect() const;
 
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
-    void scrollTo(int, int);
+    void scrollTo(const ScrollPosition&);
     void updateCompositingLayersAfterScroll();
 
     IntSize scrollbarOffset(const Scrollbar*) const;
     
     void updateScrollableAreaSet(bool hasOverflow);
+    
+    bool allowsCurrentScroll() const;
 
     void dirtyAncestorChainVisibleDescendantStatus();
     void setAncestorChainHasVisibleDescendant();
@@ -1090,8 +1095,7 @@ private:
     // The layer's width/height
     IntSize m_layerSize;
 
-    // This is the (scroll) offset from scrollOrigin().
-    IntSize m_scrollOffset;
+    ScrollPosition m_scrollPosition;
 
     // The width/height of our scrolled area.
     LayoutSize m_scrollSize;

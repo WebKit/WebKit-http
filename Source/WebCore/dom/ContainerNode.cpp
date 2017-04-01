@@ -54,6 +54,7 @@
 #include "SVGElement.h"
 #include "SVGNames.h"
 #include "SelectorQuery.h"
+#include "StyleTreeResolver.h"
 #include "TemplateContentDocumentFragment.h"
 #include <algorithm>
 #include <wtf/CurrentTime.h>
@@ -240,7 +241,7 @@ bool ContainerNode::insertBefore(Ref<Node>&& newChild, Node* refChild, Exception
 
     // insertBefore(node, 0) is equivalent to appendChild(node)
     if (!refChild)
-        return appendChild(WTF::move(newChild), ec);
+        return appendChild(WTFMove(newChild), ec);
 
     // Make sure adding the new child is OK.
     if (!ensurePreInsertionValidity(newChild, refChild, ec))
@@ -924,7 +925,7 @@ unsigned ContainerNode::childElementCount() const
 
 void ContainerNode::append(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
 {
-    RefPtr<Node> node = convertNodesOrStringsIntoNode(*this, WTF::move(nodeOrStringVector), ec);
+    RefPtr<Node> node = convertNodesOrStringsIntoNode(*this, WTFMove(nodeOrStringVector), ec);
     if (ec || !node)
         return;
 
@@ -933,7 +934,7 @@ void ContainerNode::append(Vector<NodeOrString>&& nodeOrStringVector, ExceptionC
 
 void ContainerNode::prepend(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
 {
-    RefPtr<Node> node = convertNodesOrStringsIntoNode(*this, WTF::move(nodeOrStringVector), ec);
+    RefPtr<Node> node = convertNodesOrStringsIntoNode(*this, WTFMove(nodeOrStringVector), ec);
     if (ec || !node)
         return;
 

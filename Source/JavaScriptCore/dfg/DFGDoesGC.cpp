@@ -142,8 +142,9 @@ bool doesGC(Graph& graph, Node* node)
     case ProfileDidCall:
     case ProfileType:
     case ProfileControlFlow:
-    case CheckHasInstance:
+    case OverridesHasInstance:
     case InstanceOf:
+    case InstanceOfCustom:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -181,6 +182,7 @@ bool doesGC(Graph& graph, Node* node)
     case CheckInBounds:
     case ConstantStoragePointer:
     case Check:
+    case CheckTypeInfoFlags:
     case MultiGetByOffset:
     case ValueRep:
     case DoubleRep:
@@ -213,6 +215,7 @@ bool doesGC(Graph& graph, Node* node)
     case BottomValue:
     case PhantomNewObject:
     case PhantomNewFunction:
+    case PhantomNewGeneratorFunction:
     case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
@@ -247,6 +250,7 @@ bool doesGC(Graph& graph, Node* node)
     case MakeRope:
     case NewArrowFunction:
     case NewFunction:
+    case NewGeneratorFunction:
     case NewTypedArray:
     case ThrowReferenceError:
     case GetPropertyEnumerator:

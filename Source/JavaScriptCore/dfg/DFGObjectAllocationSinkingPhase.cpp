@@ -139,7 +139,7 @@ public:
     // once it is escaped if it still has pointers to it in order to
     // replace any use of those pointers by the corresponding
     // materialization
-    enum class Kind { Escaped, Object, Activation, Function, NewArrowFunction };
+    enum class Kind { Escaped, Object, Activation, Function, ArrowFunction, GeneratorFunction };
 
     explicit Allocation(Node* identifier = nullptr, Kind kind = Kind::Escaped)
         : m_identifier(identifier)
@@ -233,12 +233,7 @@ public:
 
     bool isFunctionAllocation() const
     {
-        return m_kind == Kind::Function || m_kind == Kind::NewArrowFunction;
-    }
-    
-    bool isArrowFunctionAllocation() const
-    {
-        return m_kind == Kind::NewArrowFunction;
+        return m_kind == Kind::Function || m_kind == Kind::ArrowFunction || m_kind == Kind::GeneratorFunction;
     }
 
     bool operator==(const Allocation& other) const
@@ -274,8 +269,12 @@ public:
             out.print("Function");
             break;
                 
-        case Kind::NewArrowFunction:
-            out.print("NewArrowFunction");
+        case Kind::ArrowFunction:
+            out.print("ArrowFunction");
+            break;
+
+        case Kind::GeneratorFunction:
+            out.print("GeneratorFunction");
             break;
 
         case Kind::Activation:
@@ -418,7 +417,7 @@ public:
 
     HashMap<Node*, Allocation> takeEscapees()
     {
-        return WTF::move(m_escapees);
+        return WTFMove(m_escapees);
     }
 
     void escape(Node* node)
@@ -644,14 +643,14 @@ private:
         if (allocation.isEscapedAllocation())
             return;
 
-        Allocation unescaped = WTF::move(allocation);
+        Allocation unescaped = WTFMove(allocation);
         allocation = Allocation(unescaped.identifier(), Allocation::Kind::Escaped);
 
         for (const auto& entry : unescaped.fields())
             escapeAllocation(entry.value);
 
         if (m_wantEscapees)
-            m_escapees.add(unescaped.identifier(), WTF::move(unescaped));
+            m_escapees.add(unescaped.identifier(), WTFMove(unescaped));
     }
 
     void prune()
@@ -837,13 +836,19 @@ private:
             break;
 
         case NewFunction:
-        case NewArrowFunction: {
+        case NewArrowFunction:
+        case NewGeneratorFunction: {
             if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid()) {
                 m_heap.escape(node->child1().node());
                 break;
             }
             
-            target = &m_heap.newAllocation(node, Allocation::Kind::Function);
+            if (node->op() == NewGeneratorFunction)
+                target = &m_heap.newAllocation(node, Allocation::Kind::GeneratorFunction);
+            else if (node->op() == NewArrowFunction)
+                target = &m_heap.newAllocation(node, Allocation::Kind::ArrowFunction);
+            else
+                target = &m_heap.newAllocation(node, Allocation::Kind::Function);
             writes.add(FunctionExecutablePLoc, LazyNode(node->cellOperand()));
             writes.add(FunctionActivationPLoc, LazyNode(node->child1().node()));
             break;
@@ -1213,7 +1218,7 @@ private:
                     if (mustEscape)
                         escapingOnEdge.add(entry.key, entry.value);
                 }
-                placeMaterializations(WTF::move(escapingOnEdge), block->terminal());
+                placeMaterializations(WTFMove(escapingOnEdge), block->terminal());
             }
         }
 
@@ -1327,7 +1332,7 @@ private:
             // We need to insert *after* the current position
             if (firstPos != toMaterialize.end())
                 ++firstPos;
-            firstPos = toMaterialize.insert(firstPos, WTF::move(allocation));
+            firstPos = toMaterialize.insert(firstPos, WTFMove(allocation));
         };
 
         // Nodes that no other unmaterialized node points to will be
@@ -1336,7 +1341,7 @@ private:
         auto lastPos = toMaterialize.end();
         auto materializeLast = [&] (Allocation&& allocation) {
             materialize(allocation.identifier());
-            lastPos = toMaterialize.insert(lastPos, WTF::move(allocation));
+            lastPos = toMaterialize.insert(lastPos, WTFMove(allocation));
         };
 
         // These are the promoted locations that contains some of the
@@ -1357,12 +1362,12 @@ private:
                     continue;
 
                 if (dependencies.find(entry.key)->value.isEmpty()) {
-                    materializeFirst(WTF::move(entry.value));
+                    materializeFirst(WTFMove(entry.value));
                     continue;
                 }
 
                 if (reverseDependencies.find(entry.key)->value.isEmpty()) {
-                    materializeLast(WTF::move(entry.value));
+                    materializeLast(WTFMove(entry.value));
                     continue;
                 }
             }
@@ -1387,7 +1392,7 @@ private:
                 }
                 RELEASE_ASSERT(maxEvaluation > 0);
 
-                materializeFirst(WTF::move(*bestAllocation));
+                materializeFirst(WTFMove(*bestAllocation));
             }
             RELEASE_ASSERT(!materialized.isEmpty());
 
@@ -1446,11 +1451,14 @@ private:
                 OpInfo(set), OpInfo(data), 0, 0);
         }
 
-        case Allocation::Kind::NewArrowFunction:
+        case Allocation::Kind::ArrowFunction:
+        case Allocation::Kind::GeneratorFunction:
         case Allocation::Kind::Function: {
             FrozenValue* executable = allocation.identifier()->cellOperand();
             
-            NodeType nodeType = allocation.kind() == Allocation::Kind::NewArrowFunction ? NewArrowFunction : NewFunction;
+            NodeType nodeType =
+                allocation.kind() == Allocation::Kind::ArrowFunction ? NewArrowFunction :
+                allocation.kind() == Allocation::Kind::GeneratorFunction ? NewGeneratorFunction : NewFunction;
             
             return m_graph.addNode(
                 allocation.identifier()->prediction(), nodeType,
@@ -1785,6 +1793,10 @@ private:
                         node->convertToPhantomNewFunction();
                         break;
 
+                    case NewGeneratorFunction:
+                        node->convertToPhantomNewGeneratorFunction();
+                        break;
+
                     case CreateActivation:
                         node->convertToPhantomCreateActivation();
                         break;
@@ -2033,7 +2045,8 @@ private:
         }
         
         case NewFunction:
-        case NewArrowFunction: {
+        case NewArrowFunction:
+        case NewGeneratorFunction: {
             Vector<PromotedHeapLocation> locations = m_locationsForAllocation.get(escapee);
             ASSERT(locations.size() == 2);
                 

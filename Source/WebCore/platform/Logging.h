@@ -48,6 +48,7 @@ namespace WebCore {
     M(Archives) \
     M(Compositing) \
     M(ContentFiltering) \
+    M(DisplayLists) \
     M(DOMTimers) \
     M(Editing) \
     M(Events) \
@@ -77,6 +78,7 @@ namespace WebCore {
     M(SQLDatabase) \
     M(SVG) \
     M(Services) \
+    M(Scrolling) \
     M(SpellingAndGrammar) \
     M(StorageAPI) \
     M(Threading) \

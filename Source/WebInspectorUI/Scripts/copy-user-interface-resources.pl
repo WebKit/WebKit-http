@@ -94,6 +94,7 @@ my $inspectorLicense = <<'EOF';
  * Copyright (C) 2014-2015 Saam Barati <saambarati1@gmail.com>
  * Copyright (C) 2014 Antoine Quint
  * Copyright (C) 2015 Tobias Reiss <tobi+webkit@basecode.de>
+ * Copyright (C) 2015-2016 Devin Rousso <dcrousso+webkit@gmail.com>. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -226,9 +227,6 @@ if ($shouldCombineMain) {
     copy($derivedSourcesMainHTML, File::Spec->catfile($targetResourcePath, 'Main.html'));
 
     ditto(File::Spec->catdir($uiRoot, 'Images'), File::Spec->catdir($targetResourcePath, 'Images'));
-
-    # Remove Images/Legacy on modern systems (OS X 10.10 Yosemite and greater or Windows).
-    remove_tree(File::Spec->catdir($targetResourcePath, 'Images', 'Legacy')) if (defined $ENV{'MAC_OS_X_VERSION_MAJOR'} && $ENV{'MAC_OS_X_VERSION_MAJOR'} ge 101000) or defined $ENV{'OFFICIAL_BUILD'};
 
     # Remove Images/gtk on Mac and Windows builds.
     remove_tree(File::Spec->catdir($targetResourcePath, 'Images', 'gtk')) if defined $ENV{'MAC_OS_X_VERSION_MAJOR'} or defined $ENV{'OFFICIAL_BUILD'};

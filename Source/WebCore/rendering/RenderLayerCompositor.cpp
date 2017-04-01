@@ -1769,7 +1769,7 @@ void RenderLayerCompositor::updateScrollLayerPosition()
     m_scrollLayer->setPosition(FloatPoint(-scrollPosition.x(), -scrollPosition.y()));
 
     if (GraphicsLayer* fixedBackgroundLayer = fixedRootBackgroundLayer())
-        fixedBackgroundLayer->setPosition(toLayoutPoint(frameView.scrollOffsetForFixedPosition()));
+        fixedBackgroundLayer->setPosition(frameView.scrollPositionForFixedPosition());
 }
 
 FloatPoint RenderLayerCompositor::positionForClipLayer() const
@@ -4045,7 +4045,7 @@ void RenderLayerCompositor::registerAllViewportConstrainedLayers()
         else
             continue;
 
-        layerMap.add(layer->backing()->graphicsLayer()->platformLayer(), WTF::move(constraints));
+        layerMap.add(layer->backing()->graphicsLayer()->platformLayer(), WTFMove(constraints));
     }
     
     if (ChromeClient* client = this->chromeClient())

@@ -223,16 +223,35 @@ WebInspector.DOMNodeStyles = class DOMNodeStyles extends WebInspector.Object
         CSSAgent.getComputedStyleForNode.invoke({nodeId: this._node.id}, fetchedComputedStyle.bind(this));
     }
 
-    addRule(selector = this._node.appropriateSelectorFor(true))
+    addRule(selector, text)
     {
+        selector = selector || this._node.appropriateSelectorFor(true);
+
+        function completed()
+        {
+            DOMAgent.markUndoableState();
+            this.refresh();
+        }
+
+        function styleChanged(error, stylePayload)
+        {
+            if (error)
+                return;
+
+            completed.call(this);
+        }
+
         function addedRule(error, rulePayload)
         {
             if (error)
                 return;
 
-            DOMAgent.markUndoableState();
+            if (!text || !text.length) {
+                completed.call(this);
+                return;
+            }
 
-            this.refresh();
+            CSSAgent.setStyleText(rulePayload.style.styleId, text, styleChanged.bind(this));
         }
 
         // COMPATIBILITY (iOS 9): Before CSS.createStyleSheet, CSS.addRule could be called with a contextNode.
@@ -247,6 +266,22 @@ WebInspector.DOMNodeStyles = class DOMNodeStyles extends WebInspector.Object
         }
 
         WebInspector.cssStyleManager.preferredInspectorStyleSheetForFrame(this._node.frame, inspectorStyleSheetAvailable.bind(this));
+    }
+
+    rulesForSelector(selector)
+    {
+        selector = selector || this._node.appropriateSelectorFor(true);
+
+        function ruleHasSelector(rule) {
+            return !rule.mediaList.length && rule.selectorText === selector;
+        }
+
+        let rules = this._matchedRules.filter(ruleHasSelector);
+
+        for (let id in this._pseudoElements)
+            rules = rules.concat(this._pseudoElements[id].matchedRules.filter(ruleHasSelector));
+
+        return rules;
     }
 
     get matchedRules()

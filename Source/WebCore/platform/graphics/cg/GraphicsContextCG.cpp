@@ -24,7 +24,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#define _USE_MATH_DEFINES 1
 #include "config.h"
 #include "GraphicsContextCG.h"
 
@@ -351,14 +350,20 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
     }
 }
 
-void GraphicsContext::clipToNativeImage(PassNativeImagePtr image, const FloatRect& destRect, const FloatSize& bufferSize)
+void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& destRect)
 {
+    if (paintingDisabled())
+        return;
+
+    FloatSize bufferDestinationSize = buffer.sizeForDestinationSize(destRect.size());
+    RetainPtr<CGImageRef> image = buffer.copyNativeImage(DontCopyBackingStore);
+
     CGContextRef context = platformContext();
     // FIXME: This image needs to be grayscale to be used as an alpha mask here.
-    CGContextTranslateCTM(context, destRect.x(), destRect.y() + bufferSize.height());
+    CGContextTranslateCTM(context, destRect.x(), destRect.y() + bufferDestinationSize.height());
     CGContextScaleCTM(context, 1, -1);
-    CGContextClipToRect(context, FloatRect(FloatPoint(0, bufferSize.height() - destRect.height()), destRect.size()));
-    CGContextClipToMask(context, FloatRect(FloatPoint(), bufferSize), image);
+    CGContextClipToRect(context, FloatRect(FloatPoint(0, bufferDestinationSize.height() - destRect.height()), destRect.size()));
+    CGContextClipToMask(context, FloatRect(FloatPoint(), bufferDestinationSize), image.get());
     CGContextScaleCTM(context, 1, -1);
     CGContextTranslateCTM(context, -destRect.x(), -destRect.y() - destRect.height());
 }
@@ -482,30 +487,6 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
     if (shouldAntialias())
         CGContextSetShouldAntialias(context, true);
 }
-
-#if PLATFORM(IOS)
-void GraphicsContext::drawJoinedLines(CGPoint points[], unsigned count, bool antialias, CGLineCap lineCap)
-{
-    if (paintingDisabled() || !count)
-        return;
-
-    CGContextRef context = platformContext();
-    float width = CGContextGetLineWidth(context);
-
-    CGContextStateSaver stateSaver(context);
-    
-    CGContextSetShouldAntialias(context, antialias);
-    CGContextSetLineWidth(context, width < 1 ? 1 : width);
-    CGContextBeginPath(context);
-    CGContextSetLineCap(context, lineCap);
-    CGContextMoveToPoint(context, points[0].x, points[0].y);
-    
-    for (unsigned i = 1; i < count; ++i)
-        CGContextAddLineToPoint(context, points[i].x, points[i].y);
-
-    CGContextStrokePath(context);
-}
-#endif
 
 void GraphicsContext::drawEllipse(const FloatRect& rect)
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #if ENABLE(B3_JIT)
 
 #include "AirCode.h"
+#include "AirFixSpillSlotZDef.h"
 #include "AirInsertionSet.h"
 #include "AirInstInlines.h"
 #include "AirLiveness.h"
@@ -52,7 +53,7 @@ void spillEverything(Code& code)
 
         usedRegisters[block].resize(block->size() + 1);
 
-        auto setUsedRegisters = [&] (unsigned index, Inst& inst) {
+        auto setUsedRegisters = [&] (unsigned index) {
             RegisterSet& registerSet = usedRegisters[block][index];
             for (Tmp tmp : gpLocalCalc.live()) {
                 if (tmp.isReg())
@@ -65,27 +66,25 @@ void spillEverything(Code& code)
 
             // Gotta account for dead assignments to registers. These may happen because the input
             // code is suboptimal.
-            inst.forEachTmpWithExtraClobberedRegs(
-                index < block->size() ? &block->at(index) : nullptr,
-                [&registerSet] (const Tmp& tmp, Arg::Role role, Arg::Type) {
-                    if (tmp.isReg() && Arg::isDef(role))
+            Inst::forEachDefWithExtraClobberedRegs<Tmp>(
+                block->get(index - 1), block->get(index),
+                [&] (const Tmp& tmp, Arg::Role, Arg::Type, Arg::Width) {
+                    if (tmp.isReg())
                         registerSet.set(tmp.reg());
                 });
         };
 
         for (unsigned instIndex = block->size(); instIndex--;) {
-            Inst& inst = block->at(instIndex);
-            setUsedRegisters(instIndex + 1, inst);
+            setUsedRegisters(instIndex + 1);
             gpLocalCalc.execute(instIndex);
             fpLocalCalc.execute(instIndex);
         }
-
-        Inst nop;
-        setUsedRegisters(0, nop);
+        setUsedRegisters(0);
     }
 
     // Allocate a stack slot for each tmp.
     Vector<StackSlot*> allStackSlots[Arg::numTypes];
+    unsigned newStackSlotThreshold = code.stackSlots().size();
     for (unsigned typeIndex = 0; typeIndex < Arg::numTypes; ++typeIndex) {
         Vector<StackSlot*>& stackSlots = allStackSlots[typeIndex];
         Arg::Type type = static_cast<Arg::Type>(typeIndex);
@@ -109,7 +108,7 @@ void spillEverything(Code& code)
                     if (arg.isReg())
                         continue;
 
-                    if (inst.admitsStack(i)) { 
+                    if (inst.admitsStack(i)) {
                         StackSlot* stackSlot = allStackSlots[arg.type()][arg.tmpIndex()];
                         arg = Arg::stack(stackSlot);
                         continue;
@@ -119,7 +118,7 @@ void spillEverything(Code& code)
 
             // Now fall back on spilling using separate Move's to load/store the tmp.
             inst.forEachTmp(
-                [&] (Tmp& tmp, Arg::Role role, Arg::Type type) {
+                [&] (Tmp& tmp, Arg::Role role, Arg::Type type, Arg::Width) {
                     if (tmp.isReg())
                         return;
                     
@@ -131,6 +130,7 @@ void spillEverything(Code& code)
                     switch (role) {
                     case Arg::Use:
                     case Arg::ColdUse:
+                    case Arg::EarlyDef:
                         for (Reg reg : regsInPriorityOrder(type)) {
                             if (!setBefore.get(reg)) {
                                 setBefore.set(reg);
@@ -140,6 +140,7 @@ void spillEverything(Code& code)
                         }
                         break;
                     case Arg::Def:
+                    case Arg::ZDef:
                         for (Reg reg : regsInPriorityOrder(type)) {
                             if (!setAfter.get(reg)) {
                                 setAfter.set(reg);
@@ -149,7 +150,10 @@ void spillEverything(Code& code)
                         }
                         break;
                     case Arg::UseDef:
+                    case Arg::UseZDef:
                     case Arg::LateUse:
+                    case Arg::LateColdUse:
+                    case Arg::Scratch:
                         for (Reg reg : regsInPriorityOrder(type)) {
                             if (!setBefore.get(reg) && !setAfter.get(reg)) {
                                 setAfter.set(reg);
@@ -170,18 +174,20 @@ void spillEverything(Code& code)
 
                     Opcode move = type == Arg::GP ? Move : MoveDouble;
 
-                    if (Arg::isAnyUse(role)) {
-                        insertionSet.insert(
-                            instIndex, move, inst.origin, arg, tmp);
-                    }
-                    if (Arg::isDef(role)) {
-                        insertionSet.insert(
-                            instIndex + 1, move, inst.origin, tmp, arg);
-                    }
+                    if (Arg::isAnyUse(role) && role != Arg::Scratch)
+                        insertionSet.insert(instIndex, move, inst.origin, arg, tmp);
+                    if (Arg::isAnyDef(role))
+                        insertionSet.insert(instIndex + 1, move, inst.origin, tmp, arg);
                 });
         }
         insertionSet.execute(block);
     }
+
+    fixSpillSlotZDef(
+        code,
+        [&] (StackSlot* stackSlot) -> bool {
+            return stackSlot->index() >= newStackSlotThreshold;
+        });
 }
 
 } } } // namespace JSC::B3::Air

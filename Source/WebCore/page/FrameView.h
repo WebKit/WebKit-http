@@ -105,8 +105,6 @@ public:
     virtual void setContentsSize(const IntSize&) override;
     virtual void updateContentsSize() override;
 
-    WEBCORE_EXPORT IntSize contentsSizeRespectingOverflow() const;
-
     void layout(bool allowSubtree = true);
     WEBCORE_EXPORT bool didFirstLayout() const;
     void layoutTimerFired();
@@ -237,13 +235,13 @@ public:
 #if USE(COORDINATED_GRAPHICS)
     virtual void setFixedVisibleContentRect(const IntRect&) override;
 #endif
-    WEBCORE_EXPORT virtual void setScrollPosition(const IntPoint&) override;
+    WEBCORE_EXPORT virtual void setScrollPosition(const ScrollPosition&) override;
     virtual void updateLayerPositionsAfterScrolling() override;
     virtual void updateCompositingLayersAfterScrolling() override;
-    virtual bool requestScrollPositionUpdate(const IntPoint&) override;
+    virtual bool requestScrollPositionUpdate(const ScrollPosition&) override;
     virtual bool isRubberBandInProgress() const override;
-    WEBCORE_EXPORT virtual IntPoint minimumScrollPosition() const override;
-    WEBCORE_EXPORT virtual IntPoint maximumScrollPosition() const override;
+    WEBCORE_EXPORT virtual ScrollPosition minimumScrollPosition() const override;
+    WEBCORE_EXPORT virtual ScrollPosition maximumScrollPosition() const override;
 
     void viewportContentsChanged();
     WEBCORE_EXPORT void resumeVisibleImageAnimationsIncludingSubframes();
@@ -278,13 +276,13 @@ public:
 
     // Functions for querying the current scrolled position, negating the effects of overhang
     // and adjusting for page scale.
-    LayoutSize scrollOffsetForFixedPosition() const
+    LayoutPoint scrollPositionForFixedPosition() const
     {
-        return scrollOffsetForFixedPosition(visibleContentRect(), totalContentsSize(), scrollPosition(), scrollOrigin(), frameScaleFactor(), fixedElementsLayoutRelativeToFrame(), scrollBehaviorForFixedElements(), headerHeight(), footerHeight());
+        return scrollPositionForFixedPosition(visibleContentRect(), totalContentsSize(), scrollPosition(), scrollOrigin(), frameScaleFactor(), fixedElementsLayoutRelativeToFrame(), scrollBehaviorForFixedElements(), headerHeight(), footerHeight());
     }
     
     // Static function can be called from another thread.
-    static LayoutSize scrollOffsetForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
+    static LayoutPoint scrollPositionForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
 
     // These layers are positioned differently when there is a topContentInset, a header, or a footer. These value need to be computed
     // on both the main thread and the scrolling thread.
@@ -496,7 +494,7 @@ public:
 #endif
 
     LayoutRect fixedScrollableAreaBoundsInflatedForScrolling(const LayoutRect& uninflatedBounds) const;
-    LayoutSize scrollOffsetRespectingCustomFixedPosition() const;
+    LayoutPoint scrollPositionRespectingCustomFixedPosition() const;
 
     virtual int headerHeight() const override { return m_headerHeight; }
     WEBCORE_EXPORT void setHeaderHeight(int);
@@ -597,7 +595,7 @@ private:
 
     virtual bool shouldDeferScrollUpdateAfterContentSizeChange() override;
 
-    virtual void scrollPositionChangedViaPlatformWidgetImpl(const IntPoint& oldPosition, const IntPoint& newPosition) override;
+    virtual void scrollOffsetChangedViaPlatformWidgetImpl(const ScrollOffset& oldOffset, const ScrollOffset& newOffset) override;
 
     void applyOverflowToViewport(const RenderElement&, ScrollbarMode& hMode, ScrollbarMode& vMode);
     void applyPaginationToViewport();
@@ -624,7 +622,7 @@ private:
 
     // ScrollableArea interface
     virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) override;
-    virtual void scrollTo(const IntSize&) override;
+    virtual void scrollTo(const ScrollPosition&) override;
     virtual void setVisibleScrollerThumbRect(const IntRect&) override;
     virtual ScrollableArea* enclosingScrollableArea() const override;
     virtual IntRect scrollableAreaBoundingBox(bool* = nullptr) const override;
@@ -658,7 +656,7 @@ private:
     bool updateEmbeddedObjects();
     void updateEmbeddedObject(RenderEmbeddedObject&);
     void scrollToAnchor();
-    void scrollPositionChanged(const IntPoint& oldPosition, const IntPoint& newPosition);
+    void scrollPositionChanged(const ScrollPosition& oldPosition, const ScrollPosition& newPosition);
     void scrollableAreaSetChanged();
     void sendScrollEvent();
 

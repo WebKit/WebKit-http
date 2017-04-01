@@ -130,7 +130,7 @@ static RefPtr<TextResourceDecoder> createXHRTextDecoder(const String& mimeType, 
         decoder = TextResourceDecoder::create("text/html", "UTF-8");
     else
         decoder = TextResourceDecoder::create("text/plain", "UTF-8");
-    return WTF::move(decoder);
+    return decoder;
 }
 
 bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, String* result, bool* base64Encoded)
@@ -443,7 +443,7 @@ static Ref<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>> buildA
     for (const auto& cookie : cookiesList)
         cookies->addItem(buildObjectForCookie(cookie));
 
-    return WTF::move(cookies);
+    return cookies;
 }
 
 static Vector<CachedResource*> cachedResourcesForFrame(Frame* frame)
@@ -908,7 +908,7 @@ Ref<Inspector::Protocol::Page::Frame> InspectorPageAgent::buildObjectForFrame(Fr
         frameObject->setName(name);
     }
 
-    return WTF::move(frameObject);
+    return frameObject;
 }
 
 Ref<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjectForFrameTree(Frame* frame)
@@ -918,7 +918,7 @@ Ref<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjec
     Ref<Inspector::Protocol::Page::Frame> frameObject = buildObjectForFrame(frame);
     auto subresources = Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResource>::create();
     auto result = Inspector::Protocol::Page::FrameResourceTree::create()
-        .setFrame(WTF::move(frameObject))
+        .setFrame(WTFMove(frameObject))
         .setResources(subresources.copyRef())
         .release();
 
@@ -935,7 +935,7 @@ Ref<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjec
         String sourceMappingURL = InspectorPageAgent::sourceMapURLForResource(cachedResource);
         if (!sourceMappingURL.isEmpty())
             resourceObject->setSourceMapURL(sourceMappingURL);
-        subresources->addItem(WTF::move(resourceObject));
+        subresources->addItem(WTFMove(resourceObject));
     }
 
     RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResourceTree>> childrenArray;

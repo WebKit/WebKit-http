@@ -187,7 +187,7 @@ private:
 {
     ASSERT(_pageClient);
 
-    _page = processPool.createWebPage(*_pageClient, WTF::move(configuration));
+    _page = processPool.createWebPage(*_pageClient, WTFMove(configuration));
     _page->initializeWebPage();
     _page->setIntrinsicDeviceScaleFactor(screenScaleFactor([UIScreen mainScreen]));
     _page->setUseFixedLayout(true);
@@ -230,7 +230,7 @@ private:
     _pageClient = std::make_unique<PageClientImpl>(self, webView);
     _webView = webView;
 
-    return [self _commonInitializationWithProcessPool:processPool configuration:WTF::move(configuration)];
+    return [self _commonInitializationWithProcessPool:processPool configuration:WTFMove(configuration)];
 }
 
 - (void)dealloc
@@ -367,7 +367,7 @@ private:
 
     FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredRect, zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect);
     _page->updateVisibleContentRects(visibleRect, unobscuredRect, unobscuredRectInScrollViewCoordinates, fixedPositionRectForLayout,
-        zoomScale, isStableState, isChangingObscuredInsetsInteractively, timestamp, velocityData.horizontalVelocity, velocityData.verticalVelocity, velocityData.scaleChangeRate);
+        zoomScale, isStableState, isChangingObscuredInsetsInteractively, _webView._allowsViewportShrinkToFit, timestamp, velocityData.horizontalVelocity, velocityData.verticalVelocity, velocityData.scaleChangeRate);
 
     RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
     FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), zoomScale);

@@ -29,6 +29,7 @@
 #if ENABLE(ASSEMBLER) && (CPU(X86) || CPU(X86_64))
 
 #include "AssemblerBuffer.h"
+#include "AssemblerCommon.h"
 #include "JITCompilationEffort.h"
 #include <limits.h>
 #include <stdint.h>
@@ -1548,6 +1549,12 @@ public:
     void movb_rm(RegisterID src, int offset, RegisterID base, RegisterID index, int scale)
     {
         m_formatter.oneByteOp8(OP_MOV_EbGb, src, base, index, scale, offset);
+    }
+
+    void movw_rm(RegisterID src, int offset, RegisterID base)
+    {
+        m_formatter.prefix(PRE_OPERAND_SIZE);
+        m_formatter.oneByteOp8(OP_MOV_EvGv, src, base, offset);
     }
 
     void movw_rm(RegisterID src, int offset, RegisterID base, RegisterID index, int scale)

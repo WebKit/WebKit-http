@@ -57,8 +57,10 @@ public:
     void fireSuccessAfterVersionChangeCommit();
     void fireErrorAfterVersionChangeCompletion();
 
+    virtual bool dispatchEvent(Event&) override final;
+
 private:
-    IDBOpenDBRequest(IDBConnectionToServer&, ScriptExecutionContext*, const IDBDatabaseIdentifier&, uint64_t version);
+    IDBOpenDBRequest(IDBConnectionToServer&, ScriptExecutionContext*, const IDBDatabaseIdentifier&, uint64_t version, IndexedDB::RequestType);
 
     void onError(const IDBResultData&);
     void onSuccess(const IDBResultData&);

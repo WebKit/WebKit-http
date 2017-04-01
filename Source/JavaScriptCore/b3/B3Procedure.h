@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,6 +39,7 @@
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/PrintStream.h>
+#include <wtf/SharedTask.h>
 #include <wtf/TriState.h>
 #include <wtf/Vector.h>
 
@@ -59,6 +60,16 @@ public:
 
     JS_EXPORT_PRIVATE Procedure();
     JS_EXPORT_PRIVATE ~Procedure();
+
+    template<typename Callback>
+    void setOriginPrinter(Callback&& callback)
+    {
+        m_originPrinter = createSharedTask<void(PrintStream&, Origin)>(
+            std::forward<Callback>(callback));
+    }
+
+    // Usually you use this via OriginDump, though it's cool to use it directly.
+    void printOrigin(PrintStream& out, Origin origin) const;
 
     JS_EXPORT_PRIVATE BasicBlock* addBlock(double frequency = 1);
     
@@ -208,6 +219,12 @@ public:
 
     void deleteValue(Value*);
 
+    // A valid procedure cannot contain any orphan values. An orphan is a value that is not in
+    // any basic block. It is possible to create an orphan value during code generation or during
+    // transformation. If you know that you may have created some, you can call this method to
+    // delete them, making the procedure valid again.
+    void deleteOrphans();
+
     CFG& cfg() const { return *m_cfg; }
 
     Dominators& dominators();
@@ -234,7 +251,7 @@ public:
     // just keeps alive things like the double constant pool and switch lookup tables. If this sounds
     // confusing, you should probably be using the B3::Compilation API to compile code. If you use
     // that API, then you don't have to worry about this.
-    std::unique_ptr<OpaqueByproducts> releaseByproducts() { return WTF::move(m_byproducts); }
+    std::unique_ptr<OpaqueByproducts> releaseByproducts() { return WTFMove(m_byproducts); }
 
     // This gives you direct access to Code. However, the idea is that clients of B3 shouldn't have to
     // call this. So, Procedure has some methods (below) that expose some Air::Code functionality.
@@ -261,6 +278,7 @@ private:
     const char* m_lastPhaseName;
     std::unique_ptr<OpaqueByproducts> m_byproducts;
     std::unique_ptr<Air::Code> m_code;
+    RefPtr<SharedTask<void(PrintStream&, Origin)>> m_originPrinter;
 };
 
 } } // namespace JSC::B3

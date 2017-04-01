@@ -700,7 +700,7 @@ bool HTMLMediaElement::rendererIsNeeded(const RenderStyle& style)
 
 RenderPtr<RenderElement> HTMLMediaElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
-    return createRenderer<RenderMedia>(*this, WTF::move(style));
+    return createRenderer<RenderMedia>(*this, WTFMove(style));
 }
 
 bool HTMLMediaElement::childShouldCreateRenderer(const Node& child) const
@@ -1328,7 +1328,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
 #if ENABLE(MEDIA_STREAM)
     if (!loadAttempted) {
         if (!m_mediaStreamSrcObject && url.protocolIs(mediaStreamBlobProtocol))
-            m_mediaStreamSrcObject = MediaStream::lookUp(url);
+            m_mediaStreamSrcObject = MediaStreamRegistry::shared().lookUp(url);
 
         if (m_mediaStreamSrcObject) {
             loadAttempted = true;
@@ -4147,7 +4147,7 @@ URL HTMLMediaElement::selectNextSourceChild(ContentType* contentType, String* ke
         
         if (source->fastHasAttribute(mediaAttr)) {
             MediaQueryEvaluator screenEval("screen", document().frame(), renderer() ? &renderer()->style() : nullptr);
-            RefPtr<MediaQuerySet> media = MediaQuerySet::createAllowingDescriptionSyntax(source->media());
+            RefPtr<MediaQuerySet> media = source->mediaQuerySet();
 #if !LOG_DISABLED
             if (shouldLog)
                 LOG(Media, "HTMLMediaElement::selectNextSourceChild(%p) - 'media' is %s", this, source->media().utf8().data());
@@ -5162,10 +5162,10 @@ bool HTMLMediaElement::dispatchEvent(Event& event)
 bool HTMLMediaElement::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
 {
     if (eventType != eventNames().webkitplaybacktargetavailabilitychangedEvent)
-        return Node::addEventListener(eventType, WTF::move(listener), useCapture);
+        return Node::addEventListener(eventType, WTFMove(listener), useCapture);
 
     bool isFirstAvailabilityChangedListener = !hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent);
-    if (!Node::addEventListener(eventType, WTF::move(listener), useCapture))
+    if (!Node::addEventListener(eventType, WTFMove(listener), useCapture))
         return false;
 
     if (isFirstAvailabilityChangedListener) {
@@ -5212,7 +5212,7 @@ void HTMLMediaElement::setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&& devi
 {
     LOG(Media, "HTMLMediaElement::setWirelessPlaybackTarget(%p)", this);
     if (m_player)
-        m_player->setWirelessPlaybackTarget(WTF::move(device));
+        m_player->setWirelessPlaybackTarget(WTFMove(device));
 }
 
 bool HTMLMediaElement::canPlayToWirelessPlaybackTarget() const
@@ -6112,7 +6112,7 @@ CachedResourceLoader* HTMLMediaElement::mediaPlayerCachedResourceLoader()
 
 RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient> client)
 {
-    return adoptRef(*new MediaResourceLoader(document(), fastGetAttribute(HTMLNames::crossoriginAttr), WTF::move(client)));
+    return adoptRef(*new MediaResourceLoader(document(), fastGetAttribute(HTMLNames::crossoriginAttr), WTFMove(client)));
 }
 
 bool HTMLMediaElement::mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge& challenge)
@@ -6580,7 +6580,6 @@ void HTMLMediaElement::updateMediaState(UpdateMediaState updateState)
 
 MediaProducer::MediaStateFlags HTMLMediaElement::mediaState() const
 {
-
     MediaStateFlags state = IsNotPlaying;
 
     bool hasActiveVideo = isVideo() && hasVideo();
@@ -6589,12 +6588,18 @@ MediaProducer::MediaStateFlags HTMLMediaElement::mediaState() const
     if (m_player && m_player->isCurrentPlaybackTargetWireless())
         state |= IsPlayingToExternalDevice;
 
-    if (m_player && m_hasPlaybackTargetAvailabilityListeners && !m_mediaSession->wirelessVideoPlaybackDisabled(*this))
-        state |= RequiresPlaybackTargetMonitoring;
+    if (m_hasPlaybackTargetAvailabilityListeners) {
+        state |= HasPlaybackTargetAvailabilityListener;
+        if (!m_mediaSession->wirelessVideoPlaybackDisabled(*this))
+            state |= RequiresPlaybackTargetMonitoring;
+    }
 
     bool requireUserGesture = m_mediaSession->hasBehaviorRestriction(MediaElementSession::RequireUserGestureToAutoplayToExternalDevice);
     if (m_readyState >= HAVE_METADATA && !requireUserGesture && !m_failedToPlayToWirelessTarget)
         state |= ExternalDeviceAutoPlayCandidate;
+
+    if (hasActiveVideo || hasAudio)
+        state |= HasAudioOrVideo;
 
     if (hasActiveVideo && endedPlayback())
         state |= DidPlayToEnd;

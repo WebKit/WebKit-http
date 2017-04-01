@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -68,23 +68,17 @@ WebInspector.LoggingProtocolTracer = class LoggingProtocolTracer extends WebInsp
 
     logFrontendRequest(message)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         this._processEntry({type: "request", message});
     }
 
     logWillHandleResponse(message)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         let entry = {type: "response", message};
         this._processEntry(entry);
     }
 
     logDidHandleResponse(message, timings = null)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         let entry = {type: "response", message};
         if (timings)
             entry.timings = Object.shallowCopy(timings);
@@ -94,16 +88,12 @@ WebInspector.LoggingProtocolTracer = class LoggingProtocolTracer extends WebInsp
 
     logWillHandleEvent(message)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         let entry = {type: "event", message};
         this._processEntry(entry);
     }
 
     logDidHandleEvent(message, timings = null)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         let entry = {type: "event", message};
         if (timings)
             entry.timings = Object.shallowCopy(timings);
@@ -118,7 +108,7 @@ WebInspector.LoggingProtocolTracer = class LoggingProtocolTracer extends WebInsp
                 this._logToConsole(`time-stats: Handling: ${entry.timings.dispatch || NaN}ms; RTT: ${entry.timings.rtt}ms`);
             else if (entry.timings.dispatch)
                 this._logToConsole(`time-stats: Handling: ${entry.timings.dispatch || NaN}ms`);
-        } else if (this._dumpMessagesToConsole)
-            this._logToConsole(`${entry.type}: ${entry.message}`);
+        } else if (this._dumpMessagesToConsole && !entry.timings)
+            this._logToConsole(`${entry.type}: ${JSON.stringify(entry.message)}`);
     }
 };

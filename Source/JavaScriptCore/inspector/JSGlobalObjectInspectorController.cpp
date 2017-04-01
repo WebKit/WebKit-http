@@ -37,6 +37,7 @@
 #include "InspectorFrontendChannel.h"
 #include "InspectorFrontendRouter.h"
 #include "InspectorHeapAgent.h"
+#include "InspectorScriptProfilerAgent.h"
 #include "JSGlobalObject.h"
 #include "JSGlobalObjectConsoleAgent.h"
 #include "JSGlobalObjectConsoleClient.h"
@@ -92,11 +93,12 @@ JSGlobalObjectInspectorController::JSGlobalObjectInspectorController(JSGlobalObj
     m_consoleAgent = consoleAgent.get();
     m_consoleClient = std::make_unique<JSGlobalObjectConsoleClient>(m_consoleAgent);
 
-    m_agents.append(WTF::move(inspectorAgent));
-    m_agents.append(WTF::move(runtimeAgent));
-    m_agents.append(WTF::move(consoleAgent));
-    m_agents.append(WTF::move(debuggerAgent));
+    m_agents.append(WTFMove(inspectorAgent));
+    m_agents.append(WTFMove(runtimeAgent));
+    m_agents.append(WTFMove(consoleAgent));
+    m_agents.append(WTFMove(debuggerAgent));
     m_agents.append(std::make_unique<InspectorHeapAgent>(context));
+    m_agents.append(std::make_unique<InspectorScriptProfilerAgent>(context));
 
     m_executionStopwatch->start();
 }
@@ -300,7 +302,7 @@ void JSGlobalObjectInspectorController::appendExtraAgent(std::unique_ptr<Inspect
     // FIXME: change this to notify agents which frontend has connected (by id).
     agent->didCreateFrontendAndBackend(nullptr, nullptr);
 
-    m_agents.appendExtraAgent(WTF::move(agent));
+    m_agents.appendExtraAgent(WTFMove(agent));
 
     m_inspectorAgent->activateExtraDomain(domainName);
 }

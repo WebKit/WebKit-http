@@ -1464,6 +1464,15 @@ void FrameLoader::reportLocalLoadFailed(Frame* frame, const String& url)
     frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Not allowed to load local resource: " + url);
 }
 
+void FrameLoader::reportBlockedPortFailed(Frame* frame, const String& url)
+{
+    ASSERT(!url.isEmpty());
+    if (!frame)
+        return;
+    
+    frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Not allowed to use restricted network port: " + url);
+}
+
 const ResourceRequest& FrameLoader::initialRequest() const
 {
     return activeDocumentLoader()->originalRequest();
@@ -2686,7 +2695,7 @@ unsigned long FrameLoader::loadResourceSynchronously(const ResourceRequest& requ
             if (auto* controller = page->userContentController()) {
                 if (m_documentLoader && controller->processContentExtensionRulesForLoad(newRequest, ResourceType::Raw, *m_documentLoader) == ContentExtensions::BlockedStatus::Blocked) {
                     newRequest = { };
-                    error = ResourceError(errorDomainWebKitInternal, 0, initialRequest.url().string(), emptyString());
+                    error = ResourceError(errorDomainWebKitInternal, 0, initialRequest.url(), emptyString());
                     response = { };
                     data = nullptr;
                 }
@@ -3359,6 +3368,13 @@ ResourceError FrameLoader::blockedByContentBlockerError(const ResourceRequest& r
     return m_client.blockedByContentBlockerError(request);
 }
 
+ResourceError FrameLoader::blockedError(const ResourceRequest& request) const
+{
+    ResourceError error = m_client.blockedError(request);
+    error.setIsCancellation(true);
+    return error;
+}
+
 #if PLATFORM(IOS)
 RetainPtr<CFDictionaryRef> FrameLoader::connectionProperties(ResourceLoader* loader)
 {
@@ -3523,7 +3539,7 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
                 if (Page* page = frame->page())
                     page->chrome().focus();
             }
-            return WTF::move(frame);
+            return frame;
         }
     }
 
@@ -3615,7 +3631,7 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
     page->chrome().show();
 
     created = true;
-    return WTF::move(frame);
+    return frame;
 }
 
 } // namespace WebCore

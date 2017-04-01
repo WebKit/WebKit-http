@@ -128,8 +128,9 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_profile_type:
     case op_profile_control_flow:
     case op_mov:
-    case op_check_has_instance:
+    case op_overrides_has_instance:
     case op_instanceof:
+    case op_instanceof_custom:
     case op_is_undefined:
     case op_is_boolean:
     case op_is_number:
@@ -215,6 +216,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_to_index_string:
     case op_new_func:
     case op_new_func_exp:
+    case op_new_generator_func:
+    case op_new_generator_func_exp:
     case op_new_arrow_func_exp:
     case op_create_lexical_environment:
     case op_get_parent_scope:

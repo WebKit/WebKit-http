@@ -24,28 +24,17 @@ class DashboardPage extends PageWithCharts {
 
     updateFromSerializedState(state, isOpen)
     {
-        if (!isOpen || state.numberOfDays) {
+        if (!isOpen || state.numberOfDays)
             this.toolbar().setNumberOfDays(state.numberOfDays);
-            this._numberOfDaysDidChange(isOpen);
-        }
-        this._updateChartsDomainFromToolbar();
-    }
 
-    _numberOfDaysDidChange(isOpen)
-    {
-        if (isOpen)
-            return;
-
-        this.toolbar().render();
-        this.heading().render(); // Update links for other dashboards.
-    }
-
-    _updateChartsDomainFromToolbar()
-    {
         var startTime = this.toolbar().startTime();
         var endTime = this.toolbar().endTime();
         for (var chart of this._charts)
             chart.setDomain(startTime, endTime);
+
+        this._needsTableConstruction = true;
+        if (!isOpen)
+            this.render();
     }
 
     open(state)
@@ -90,9 +79,15 @@ class DashboardPage extends PageWithCharts {
 
         if (this._needsTableConstruction) {
             var tree = [];
+            var router = this.router();
+            var startTime = this.toolbar().startTime();
             for (var group of this._tableGroups) {
                 tree.push(element('thead', element('tr',
-                    group[0].map(function (cell) { return element('td', cell.content || cell); }))));
+                    group[0].map(function (cell, cellIndex) {
+                        if (!cellIndex)
+                            return element('th', {class: 'heading-column'});
+                        return element('td', cell.content || cell);
+                    }))));
 
                 tree.push(element('tbody', group.slice(1).map(function (row) {
                     return element('tr', row.map(function (cell, cellIndex) {
@@ -102,7 +97,9 @@ class DashboardPage extends PageWithCharts {
                         if (!cell.chart)
                             return element('td', cell);
 
-                        return element('td', [cell.statusView, link(cell.chart.element(), cell.label, cell.url)]);
+                        var url = router.url('charts', 
+                            ChartsPage.createStateForDashboardItem(cell.platform.id(), cell.metric.id(), startTime));
+                        return element('td', [cell.statusView, link(cell.chart.element(), cell.label, url)]);
                     }));
                 })));
             }
@@ -142,9 +139,10 @@ class DashboardPage extends PageWithCharts {
         return {
             chart: chart,
             statusView: statusView,
+            platform: result.platform,
             metric: result.metric,
-            label: result.metric.fullName() + ' on ' + result.platform.label(),
-            url: this.router().url('charts', ChartsPage.createStateForDashboardItem(platformId, metricId))};
+            label: result.metric.fullName() + ' on ' + result.platform.label()
+        };
     }
 
     _fetchedData()
@@ -164,6 +162,9 @@ class DashboardPage extends PageWithCharts {
     static cssTemplate()
     {
         return `
+            .dashboard-table {
+                table-layout: fixed;
+            }
             .dashboard-table td,
             .dashboard-table th {
                 border: none;
@@ -183,6 +184,10 @@ class DashboardPage extends PageWithCharts {
                 width: 2rem;
                 position: relative;
             }
+            .dashboard-table .heading-column {
+                width: 2rem;
+                height: 1rem;
+            }
             .dashboard-table th .vertical-label {
                 position: absolute;
                 left: 0;
@@ -201,9 +206,12 @@ class DashboardPage extends PageWithCharts {
                 height: 100%;
                 border: 0;
             }
-            .dashboard-table td > * {
-                display: inline-block;
-                width: 20rem;
+            .dashboard-table td time-series-chart {
+                height: 10rem;
+            }
+            .dashboard-table td > chart-status-view {
+                display: block;
+                width: 100%;
             }
 
             .dashboard-table td *:first-child {

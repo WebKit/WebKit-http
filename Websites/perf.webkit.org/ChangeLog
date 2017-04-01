@@ -1,3 +1,526 @@
+2016-01-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard JSON API should fail gracefully when postgres is down
+        https://bugs.webkit.org/show_bug.cgi?id=152812
+
+        Reviewed by Chris Dumez.
+
+        Even though all JSON APIs returned DatabaseConnectionFailure as the status when Database::connect
+        returned a falsy value, PHP was spitting out warnings and producing HTTP responses that cannot be
+        parsed as a JSON when pg_connect failed.
+
+        Fixed the bug by suppressing warning messages in pg_connect.
+
+        * public/include/db.php:
+        (Database::connect): Use '@' prefix to suppress warning messages.
+
+2016-01-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should auto-generate manifest file when one is missing
+        https://bugs.webkit.org/show_bug.cgi?id=152813
+
+        Reviewed by Chris Dumez.
+
+        When /data/manifest.json is missing, fall back to newly added /api/manifest instead of
+        silently failing to show the UI. This will make the initial setup easier.
+
+        * public/api/manifest.php: Added.
+        (main):
+        * public/include/manifest.php:
+        (Manifest::manifest): Added.
+        * public/v3/main.js:
+        (fetchManifest):
+        (didFetchManifest): Extracted from fetchManifest.
+
+2016-01-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Commit another forgotten change, this time, for r194653.
+
+        * public/v3/models/measurement-set.js:
+
+2016-01-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The sampling of time series on v3 UI is too aggressive
+        https://bugs.webkit.org/show_bug.cgi?id=152804
+
+        Reviewed by Chris Dumez.
+
+        Fixed a bug that we were always halving the number of data points in _sampleTimeSeries
+        and increased the number of data points allowed to make the sampling less aggressive.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype._ensureSampledTimeSeries): Increase the number of maximum points
+        to 2x the number of pixels divided by the radius of each point.
+        (TimeSeriesChart.prototype._sampleTimeSeries.findMedian): Changed the semantics of endIndex
+        to mean the index after the last point and renamed it to indexAfterEnd.
+        (TimeSeriesChart.prototype._sampleTimeSeries): Fixed a bug that this code always coerced two
+        data points into one sampled data point despite of the fact i and j are sufficiently apart
+        since data[j].time - data[i].time > timePerSample by definition.
+
+2016-01-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Commit the forgotten change for r194651.
+
+        * public/v3/pages/domain-control-toolbar.js:
+        (DomainControlToolbar.prototype.setStartTime):
+
+2016-01-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The right hand side of main chart appears to be cut off as you zoom out on v3 UI
+        https://bugs.webkit.org/show_bug.cgi?id=152778
+
+        Reviewed by Antti Koivisto.
+
+        Add a padding on x-axis after the end time to make the main chart more easily interactive.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype._computeHorizontalRenderingMetrics):
+
+        * public/v3/pages/page-with-charts.js:
+        (PageWithCharts.mainChartOptions): Add a padding of 5px at the end of x-axis.
+
+2016-01-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI should use four sig-figs to label y-axis of the main charts
+        https://bugs.webkit.org/show_bug.cgi?id=152779
+
+        Reviewed by Antti Koivisto.
+
+        Increase the number of significant figures used in the main charts to four as done in v2 UI.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.constructor): Create a formatter with four significant figures.
+        * public/v3/pages/page-with-charts.js:
+        (PageWithCharts.mainChartOptions): Increase the width of y-axis labels.
+
+2016-01-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI's time range slider is harder to use than that of v2 UI
+        https://bugs.webkit.org/show_bug.cgi?id=152780
+
+        Reviewed by Antti Koivisto.
+
+        Improved the time range slider by using a cubic mapping to time range and providing a text field
+        to directly edit the number of days to show.
+
+        Now an user can enter the text mode to directly edit the number of days to show by clicking on
+        the number of days (text field is always there with opacity=0).
+
+        * public/v3/pages/charts-toolbar.js:
+        (ChartsToolbar): Store the minimum and maximum number of days allowed. Also rename _inputElement
+        to _slider and added a new type=number text field as _editor. 
+        (ChartsToolbar.prototype.render):
+        (ChartsToolbar.prototype.setStartTime): Exit the text mode when the number of days is changed by
+        an URL state transition (i.e. back/forward navigation).
+        (ChartsToolbar.prototype._setInputElementValue): Added. Updates the values of _slider and _editor.
+        (ChartsToolbar.prototype._enterTextMode): Added. Hide the elements used by the slider mode and
+        show the text field.
+        (ChartsToolbar.prototype._exitTextMode): Added. Does the opposite.
+        (ChartsToolbar.prototype._sliderValueMayHaveChanged): Renamed from _inputValueMayHaveChanged.
+        (ChartsToolbar.prototype._editorValueMayHaveChanged): Added. Similar to _sliderValueMayHaveChanged
+        but also corrects the value of _editor if needed.
+        (ChartsToolbar.prototype._callNumberOfDaysCallback): Extracted from _inputValueMayHaveChanged.
+        Also fixed a bug that we didn't update the URL state when the change event was fired without
+        modifying the effective number of days.
+        (ChartsToolbar.cssTemplate): Tweaked the style to support the new mode. Also set a fixed width on
+        the span showing the number of days in the slider mode.
+
+2016-01-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Zooming button is broken on v3 UI
+        https://bugs.webkit.org/show_bug.cgi?id=152777
+
+        Reviewed by Chris Dumez.
+
+        Bring up the zoom button in z-index so that users can click it.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.cssTemplate):
+
+2016-01-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI doesn't preserve the time range when charts page is opened from a dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=152776
+
+        Reviewed by Chris Dumez.
+
+        Fixed the bug by moving the construction of charts URL from DashboardPage.prototype.open to
+        DashboardPage.prototype.render and re-rendering the entire page upon an URL state transition.
+
+        * public/v3/pages/charts-page.js:
+        (ChartsPage.createStateForDashboardItem): Takes the start time for the charts page.
+
+        * public/v3/pages/dashboard-page.js:
+        (DashboardPage.prototype.updateFromSerializedState): Merged _numberOfDaysDidChange and
+        _updateChartsDomainFromToolbar into this function since they're not used elsewhere. Also re-render
+        the entire page when transition between different number of days to show.
+        (DashboardPage.prototype._numberOfDaysDidChange): Deleted.
+        (DashboardPage.prototype._updateChartsDomainFromToolbar): Deleted.
+        (DashboardPage.prototype.render): Construct URL for each charts here.
+        (DashboardPage.prototype._createChartForCell): Don't construct URL here since this function is
+        called once when the dashboard page is opened, and not when the time range is changed.
+
+2016-01-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix for an old version of PHP after r194618.
+
+        * public/api/measurement-set.php:
+
+2016-01-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        A/B testing results should be visualized intuitively on v3 UI
+        https://bugs.webkit.org/show_bug.cgi?id=152496
+
+        Rubber-stamped by Chris Dumez.
+
+        Add the "stacking block" view of A/B testing results to the analysis task page on v3 UI.
+
+        The patch enhances JSON APIs at /api/analysis-task /api/measurement-set/ to reduce the number of
+        HTTP requests, and adds two UI components: TestGroupResultsTable and AnalysisResultsViewer both
+        of which inherits from an abstract superclass: ResultsTable.
+
+        ResultsTable provides a tabular presentation of measured values in regular measurement sets and
+        A/B testing results using groups of bar graphs created by BarGraphGroup. TestGroupResultsTable
+        inherits from this class to display A/B testing configurations and the averaged results for each
+        configuration, and AnalysisResultsViewer inherits from it to provide an intuitive visualization
+        of the outcomes of all A/B testing results associated with a given analysis task.
+
+        * public/api/analysis-tasks.php:
+        (main): Add the capability to find the analysis task based on its build request.
+        This allows /v3/#/analysis/task/?buildRequest=<id> to be hyperlinked on buildbot page.
+
+        * public/api/measurement-set.php:
+        (main): Removed the unused startTime and endTime, and added "analysisTask" to query parameters.
+        (AnalysisResultsFetcher): Added. Used to fetch measured data associated with every build request
+        on an analysis task.
+        (AnalysisResultsFetcher::__construct):
+        (AnalysisResultsFetcher::fetch): Unlike MeasurementSetFetcher, we fetch the list of commits and
+        list of measurements separately since there will be a lot less builds and commits than measured
+        data (since we're fetching measured values for all tests and their metrics).
+        (AnalysisResultsFetcher::fetch_commits): Fetches commits.
+        (AnalysisResultsFetcher::format_measurement): Like MeasurementSetFetcher::format_measurement but
+        with config_type and config_metric since we're returning measured data for all metrics and test
+        configurations.
+        (AnalysisResultsFetcher::format_map): Similar to MeasurementSetFetcher::format_map.
+
+        * public/v3/components/analysis-results-viewer.js: Added.
+        (AnalysisResultsViewer): Added. 
+        (AnalysisResultsViewer.prototype.didUpdateResults): This callback is called by AnalysisTaskPage
+        when A/B testing results become available.
+        (AnalysisResultsViewer.prototype.render): Overrides ResultsTable's render to highlight the block
+        representing the currently selected test group.
+
+        (AnalysisResultsViewer.prototype.buildRowGroups): Creates a list of rows with "stacking blocks"
+        that visualizes A/B testing results. The algorithm works as follows: 1. Create all table rows.
+        2. Find which row is associated with each set in each test group. 3. Layout "blocks".
+
+        (AnalysisResultsViewer.prototype._collectRootSetsInTestGroups): Collects root sets from all data
+        in the measurement set as well as A/B testing **requests** (results may contain more repositories
+        than requested but they aren't interesting for the purpose of visualizing results for the entire
+        analysis task).
+
+        (AnalysisResultsViewer.prototype._buildRowsForPointsAndTestGroups): Create table rows. First,
+        create table rows for measurement set points that have a matching test group (i.e. either set A
+        or set B of an A/B testing uses the same root set as a point). Second, insert a new row for each
+        root set in each test group which didn't find a matching measurement set point. There is a little
+        subtlety that some A/B testing may specify revisions for a subset of repositories and/or some A/B
+        testing results may appear as if it goes back in time with respect to other A/B testing results.
+        For example, consider creating two A/B test groups for WebKit changes and OS changes separately.
+        There could be no coherent linearization of those two A/B testing in which both WebKit and OS
+        versions move forward.
+
+        (AnalysisResultsViewer.RootSetInTestGroup): Added. Represents a pair (test group, root set) since
+        a root set could be shared by multiple test groups.
+        (AnalysisResultsViewer.TestGroupStackingBlock): Added. A stacked block representing a test group.
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.addRowIndex): Associates a row number with
+        either set A or set B.
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.createStackingCell): Creates a table cell
+        for this block.
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.isThin): Returns true if this test group
+        has failed and this block should look "thin" without any label.
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype._computeTestGroupStatus): Computes the
+        status for this test group.
+
+        (AnalysisResultsViewer.TestGroupStackingGrid): Added. AnalysisResultsViewer uses this class to
+        layout blocks representing test groups.
+        (AnalysisResultsViewer.TestGroupStackingGrid.prototype.insertBlockToColumn): Inserts a new block
+        to layout. We keep all test groups doing the same A/B test next to each other.
+        (AnalysisResultsViewer.TestGroupStackingGrid.prototype.layout): Layouts each block / test group
+        in the order they are created.
+        (AnalysisResultsViewer.TestGroupStackingGrid.prototype._layoutBlock): Places the block in the
+        left-most column that can accommodate it while avoiding columns of a different thin-ness. A column
+        is thin if its A/B testing has failed, and not thin otherwise.
+        (AnalysisResultsViewer.TestGroupStackingGrid.prototype.createCellsForRow): Creates table cells for
+        a given row. For each column, generate a table cell if we're in the first row and the first block
+        starts in a later row, a block starts in the current row, or the last block ended in the previous
+        row and the next block or the last row appears later.
+
+        * public/v3/components/bar-graph-group.js: Added. A component for showing a group of bar graphs.
+        (BarGraphGroup): Added. Creates a group of bar graphs with the same value range. It's used by
+        AnalysisResultsViewer and ResultsTable to show bar graphs to compare values.
+        (SingleBarGraph): A component created and collectively controlled by BarGraphGroup.
+
+        * public/v3/components/results-table.js: Added.
+        (ResultsTable): An abstract superclass for TestGroupResultsTable and AnalysisResultsViewer.
+
+        (ResultsTable.prototype.render): Renders the table. 1. Call "buildRowGroups()" implemented by
+        a subclass to obtain the list of rows. 2. Compute the list of repositories to show. 3. For each
+        cell in the table, compute the number of rows to show the same value (for rowspan). 4. Render the
+        table with an extra list of repositories if exists.
+
+        (ResultsTable.prototype._computeRepositoryList): Compute the list of repositories to list
+        revisions in the table. Omit repositories not present in any row or for which all rows have the
+        same revision. In the latter case, include it in the extra repositories listed below the table.
+        This minimizes the amount of redundant information presented to the user.
+
+        (ResultsTableRow): Added. Represents a single row in the table. ResultsTable constructs necessary
+        table cells to tabulate the associated root sets, and shows the associated result using a grouped
+        bar graph. Additional columns are used by AnalysisResultsViewer to show stacked blocks for A/B
+        testing groups.
+
+        * public/v3/components/test-group-results-table.js: Added.
+        (TestGroupResultsTable):
+        (TestGroupResultsTable.prototype.didUpdateResults):
+        (TestGroupResultsTable.prototype.setTestGroup):
+        (TestGroupResultsTable.prototype.heading):
+        (TestGroupResultsTable.prototype.render):
+        (TestGroupResultsTable.prototype.buildRowGroups):
+
+        * public/v3/index.html:
+        * public/v3/models/analysis-results.js: Added.
+        (AnalysisResults): Added. Like MeasurementSet, this class represents a set of measured values
+        associated with a given analysis task.
+        (AnalysisResults.prototype.find): Returns a measured valued for a given build and metric.
+        (AnalysisResults.prototype.add): Adds a new measured value. Used by AnalysisResults.fetch.
+        (AnalysisResults.fetch): Fetches data and creates AnalysisResults for a given analysis task.
+
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask.prototype.startMeasurementId): Added.
+        (AnalysisTask.prototype.endMeasurementId): Added.
+        (AnalysisTask.fetchByBuildRequestId): Added.
+        (AnalysisTask._fetchSubset): Uses DataModelObject.cachedFetch.
+
+        * public/v3/models/build-request.js: Added.
+        (BuildRequest): Added. Represents a single A/B testing request associated with a test group.
+
+        * public/v3/models/builder.js:
+        (Build): Added. Represents a build associated with a given A/B testing result.
+
+        * public/v3/models/commit-log.js:
+        (CommitLog): Made this class inherit from DataModelObject.
+        (CommitLog.ensureSingleton): Added. Finds the singleton object created for a given revision
+        in the specified repository. This helps RootSet and other classes compare commits fast.
+        (CommitLog.prototype.repository): Added.
+        (CommitLog.fetchBetweenRevisions): Uses CommitLog.ensureSingleton.
+
+        * public/v3/models/data-model.js:
+        (DataModelObject):
+        (DataModelObject.namedStaticMap): Added.
+        (DataModelObject.ensureNamedStaticMap): Renamed from namedStaticMap instead of implicitly
+        assuming that the non-static version always creates the map.
+        (DataModelObject.prototype.namedStaticMap): Added.
+        (DataModelObject.cachedFetch): Extracted from AnalysisTask._fetchSubset so that TestGroup's
+        fetchByTask could also use it.
+        (LabeledObject):
+
+        * public/v3/models/measurement-adaptor.js: Added.
+        (MeasurementAdaptor): Extracted from MeasurementCluster. This class is responsible for
+        re-formatting the data received via /api/measurement-set JSON API inside the v3 UI.
+        (MeasurementAdaptor.prototype.extractId): Added.
+        (MeasurementAdaptor.prototype.adoptToAnalysisResults): Added. Used by AnalysisResults.
+        (MeasurementAdaptor.aggregateAnalysisResults): Added. Used by TestGroupResultsTable to
+        aggregate results for each test configuration; e.g. computing the average for set A.
+        (MeasurementAdaptor.prototype.adoptToSeries): Extracted from MeasurementCluster.addToSeries.
+        Added rootSet() to each point. This allows AnalysisResultsViewer to compare them against root
+        sets associated with A/B testing results.
+        (MeasurementAdaptor.computeConfidenceInterval): Moved from MeasurementCluster.
+
+        * public/v3/models/measurement-cluster.js:
+        (MeasurementCluster):
+        (MeasurementCluster.prototype.addToSeries):
+
+        * public/v3/models/repository.js:
+        (Repository.prototype.hasUrlForRevision): Added.
+
+        * public/v3/models/root-set.js: Added.
+        (RootSet): Added. Represents a set of commits in measured results.
+        (MeasurementRootSet): Added. Ditto for results associated with A/B testing.
+
+        * public/v3/models/test-group.js: Added.
+        (TestGroup): Added. Represents a A/B testing on analysis task.
+        (TestGroup.prototype.createdAt): Added.
+        (TestGroup.prototype.buildRequests): Returns the list of build requests associated with this
+        A/B testing.
+        (TestGroup.prototype.addBuildRequest): Added. Used by BuildRequest's constructor to associate
+        itself with this group.
+        (TestGroup.prototype.didSetResult): Added. Called by BuildRequest.setResult when measured
+        values are fetched and associated with a build request in this group.
+
+        * public/v3/models/test.js:
+        (Test):
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage):
+        (AnalysisTaskPage.prototype.updateFromSerializedState): Fetch the analysis task, test groups
+        associated with it, and all A/B testing results based on the task id or the build request id
+        specified in the URL.
+        (AnalysisTaskPage.prototype._didFetchTask): Added. Start fetching the measured data. This is
+        the data on charts page for which this analysis task was created, not results of A/B testing.
+        (AnalysisTaskPage.prototype._didFetchMeasurement): Added. Display the fetched data in a table
+        inside AnalysisResultsViewer.
+        (AnalysisTaskPage.prototype._didFetchTestGroups): Added. Display the list of A/B test groups
+        as well as the results of the first A/B testing.
+        (AnalysisTaskPage.prototype._didFetchAnalysisResults): Added.
+        (AnalysisTaskPage.prototype._assignTestResultsIfPossible): Added. Once both the analysis task,
+        A/B test groups as well as their results are fetched, update build requests in each test group
+        with their results.
+        (AnalysisTaskPage.prototype.render): Show the list of test groups and highlight the currently
+        selected one.
+        (AnalysisTaskPage.prototype._showTestGroup): Added. A callback used by AnalysisResultsViewer
+        and TestGroupResultsTable to notify this class when the user selects a new test group.
+        (AnalysisTaskPage.htmlTemplate): Updated the template.
+        (AnalysisTaskPage.cssTemplate): Ditto.
+
+        * public/v3/pages/charts-page.js:
+        (ChartsPage.createStateForAnalysisTask): Added. Creates a URL state object for opening a chart
+        associated with an analysis task.
+
+2015-12-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Analysis task page is slow to load
+        https://bugs.webkit.org/show_bug.cgi?id=152517
+
+        Reviewed by Andreas Kling.
+
+        The slowness comes from r194130 which made the JSON API at /api/analysis-tasks to report the start
+        and the end of each analysis task. This query was adding ~2s to the total JSON generation time.
+
+        Cache these values on analysis_task table since they never change once an analysis task is created.
+
+        * init-database.sql: Added columns task_start_run_time and task_end_run_time to analysis_task table.
+        Also added the missing drop statements at the top.
+
+        * public/api/analysis-tasks.php:
+        (fetch_and_push_bugs_to_tasks): Don't fetch the latest commit time of the start and the end.
+        (format_task): Report task_start_run_time and task_end_run_time as startRunTime and endRunTime.
+
+        * public/privileged-api/create-analysis-task.php:
+        (main): Set start_run_time and end_run_time when creating an analysis task.
+        (time_for_run): Added.
+
+2015-12-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI shouldn't open/close pane selector by mouseenter/leave
+        https://bugs.webkit.org/show_bug.cgi?id=152399
+
+        Reviewed by Andreas Kling.
+
+        Removed the code to open and close the pane selector by mouseenter and mouseleave
+        since multiple people have complained about the behavior.
+
+        * public/v3/pages/charts-toolbar.js:
+        (ChartsToolbar): Removed the event listeners.
+        (ChartsToolbar.prototype._addPane): Don't close the pane selector when adding a new pane
+        to better support the use case of adding multiple panes.
+        (ChartsToolbar.cssTemplate): Tweaked CSS.
+
+2015-12-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Popover for analysis tasks shows up at the left edge of annotation bars in the v3 UI
+        https://bugs.webkit.org/show_bug.cgi?id=152389
+
+        Reviewed by Darin Adler.
+
+        Compute the x coordinate of the popover from the center of each annotation bar.
+
+        Also adjust the x coordinate to keep the popover within the charts.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype._renderChartContent):
+
+2015-12-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Dashboard charts should have uniform widths on v3 UI
+        https://bugs.webkit.org/show_bug.cgi?id=152395
+
+        Reviewed by Chris Dumez.
+
+        Fix the bug by applying table-layout: fixed on the dashboard table.
+
+        * public/v3/pages/dashboard-page.js:
+        (DashboardPage.prototype.render): Added header-column as a class name to explicitly set the header column with.
+        (DashboardPage.cssTemplate): Adjusted CSS accordingly.
+
+2015-12-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Closing a pane on v3 UI always closes the last pane
+        https://bugs.webkit.org/show_bug.cgi?id=152388
+
+        Reviewed by Chris Dumez.
+
+        The bug was caused by closePane being called without arguments. (The first argument to bind is "this" value.)
+        Fixed it by passing in "this" pane object to the first argument.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane):
+
+2015-12-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf Dashboard v3 UI doesn't show recent data points on v2 UI
+        https://bugs.webkit.org/show_bug.cgi?id=152368
+
+        Reviewed by Chris Dumez.
+
+        The bug was caused by the last modified date in measurement set JSON being a string instead of a POSIX timestamp,
+        which prevented the v3 UI from invalidating the cache. Specifically, the following boolean logic always evaluated
+        to false because +data['lastModified'] was NaN in MeasurementSet.prototype._fetch (/v3/models/measurement-set.js):
+
+        !clusterEndTime && useCache && +data['lastModified'] < self._lastModified
+
+        Fixed the bug by calling Database::to_js_time on the last modified date fetched from the database.
+
+        * public/api/measurement-set.php:
+        (MeasurementSetFetcher::fetch_config_list): Convert the string returned by the database to a POSIX timestamp.
+        * tests/api-measurement-set.js: Added a test to ensure the last modified date in JSON is numeric. Since the value
+        of the last modified date depends on when tests run, we can't assert it to be a certain value.
+
+2015-12-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI should show and link the build number on charts page
+        https://bugs.webkit.org/show_bug.cgi?id=152359
+
+        Reviewed by Chris Dumez.
+
+        Show the hyperlinked build number in the v3 UI.
+
+        * public/v3/models/builder.js:
+        (Builder): Renamed _buildURL to _buildUrlTemplate.
+        (Builder.prototype.urlForBuild): Added.
+        * public/v3/pages/chart-pane-status-view.js:
+        (ChartPaneStatusView):
+        (ChartPaneStatusView.prototype.render): Added the code to render hyperlinked build number when one is available.
+        (ChartPaneStatusView.prototype.computeChartStatusLabels): Store currentPoint's measurement object as _buildInfo
+        if the current point is set by an indicator (not by a selection).
+
+2015-12-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 dashboard doesn't stretch charts to fill the screen
+        https://bugs.webkit.org/show_bug.cgi?id=152354
+
+        Reviewed by Chris Dumez.
+
+        The bug was caused by a workaround to avoid canvas stretching table cell too much.
+
+        Fix the problem instead by making the canvas absolutely positioned inside the "time-series-chart" element
+        so that it does not contribute to the intrinsic/natural width of the cell.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype._ensureCanvas): Make the canvas absolutely positioned inside the shadow root.
+        (TimeSeriesChart.prototype._updateCanvasSizeIfClientSizeChanged): Use the container element's size now that
+        the canvas does not resize with it.
+        * public/v3/pages/dashboard-page.js:
+        (DashboardPage.cssTemplate): Updated the CSS so that the chart stretches all the way.
+
 2015-12-16  Ryosuke Niwa  <rniwa@webkit.org>
 
         The chart status on v3 UI sometimes show wrong revision ranges

@@ -44,7 +44,6 @@
 #include "WebConnectionToUIProcess.h"
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
-#include "WebDatabaseManager.h"
 #include "WebFrame.h"
 #include "WebFrameNetworkingContext.h"
 #include "WebGeolocationManager.h"
@@ -70,6 +69,8 @@
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/CrossOriginPreflightResultCache.h>
 #include <WebCore/DNS.h>
+#include <WebCore/DatabaseManager.h>
+#include <WebCore/DatabaseTracker.h>
 #include <WebCore/FontCache.h>
 #include <WebCore/FontCascade.h>
 #include <WebCore/Frame.h>
@@ -180,7 +181,6 @@ WebProcess::WebProcess()
     addSupplement<WebCookieManager>();
     addSupplement<WebMediaCacheManager>();
     addSupplement<AuthenticationManager>();
-    addSupplement<WebDatabaseManager>();
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     addSupplement<WebNotificationManager>();
@@ -250,7 +250,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     WebCore::MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
 #endif
 
-    platformInitializeWebProcess(WTF::move(parameters));
+    platformInitializeWebProcess(WTFMove(parameters));
 
     WTF::setCurrentThreadIsUserInitiated();
 
@@ -261,6 +261,9 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
     for (auto& supplement : m_supplements.values())
         supplement->initialize(parameters);
+
+    auto& databaseManager = DatabaseManager::singleton();
+    databaseManager.initialize(parameters.webSQLDatabaseDirectory);
 
 #if ENABLE(ICONDATABASE)
     m_iconDatabaseProxy.setEnabled(parameters.iconDatabaseEnabled);
@@ -1187,7 +1190,7 @@ void WebProcess::processWillSuspendImminently(bool& handled)
         return;
     }
 
-    supplement<WebDatabaseManager>()->closeAllDatabases();
+    DatabaseTracker::tracker().closeAllDatabases();
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
     handled = true;
 }
@@ -1352,7 +1355,7 @@ RefPtr<API::Object> WebProcess::transformObjectsToHandles(API::Object* object)
                 WebPageGroupData pageGroupData;
                 pageGroupData.pageGroupID = static_cast<const WebPageGroupProxy&>(object).pageGroupID();
 
-                return API::PageGroupHandle::create(WTF::move(pageGroupData));
+                return API::PageGroupHandle::create(WTFMove(pageGroupData));
             }
 
 #if PLATFORM(COCOA)

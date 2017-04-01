@@ -1,6 +1,13 @@
 list(APPEND WebKit2_SOURCES
     DatabaseProcess/efl/DatabaseProcessMainEfl.cpp
 
+    NetworkProcess/CustomProtocols/soup/CustomProtocolManagerImpl.cpp
+    NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
+
+    NetworkProcess/Downloads/efl/DownloadSoupErrorsEfl.cpp
+
+    NetworkProcess/Downloads/soup/DownloadSoup.cpp
+
     NetworkProcess/efl/NetworkProcessMainEfl.cpp
 
     NetworkProcess/soup/NetworkProcessSoup.cpp
@@ -26,13 +33,6 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp
     Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
     Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp
-
-    Shared/Downloads/efl/DownloadSoupErrorsEfl.cpp
-
-    Shared/Downloads/soup/DownloadSoup.cpp
-
-    Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.cpp
-    Shared/Network/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
 
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
 
@@ -83,6 +83,7 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/cpp/efl/WKEinaSharedString.cpp
 
+    UIProcess/API/efl/APIWebsiteDataStoreEfl.cpp
     UIProcess/API/efl/EwkView.cpp
     UIProcess/API/efl/GestureRecognizer.cpp
     UIProcess/API/efl/SnapshotImageGL.cpp
@@ -246,13 +247,13 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
     "${WEBKIT2_DIR}/DatabaseProcess/unix"
+    "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols/soup"
+    "${WEBKIT2_DIR}/NetworkProcess/Downloads/soup"
     "${WEBKIT2_DIR}/NetworkProcess/efl"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Platform/efl"
     "${WEBKIT2_DIR}/Shared/API/c/efl"
     "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
-    "${WEBKIT2_DIR}/Shared/Downloads/soup"
-    "${WEBKIT2_DIR}/Shared/Network/CustomProtocols/soup"
     "${WEBKIT2_DIR}/Shared/Plugins/unix"
     "${WEBKIT2_DIR}/Shared/glib"
     "${WEBKIT2_DIR}/Shared/efl"
@@ -507,10 +508,10 @@ add_definitions(-DTEST_RESOURCES_DIR=\"${TEST_RESOURCES_DIR}\"
     -DLIBEXECDIR=\"${EXEC_INSTALL_DIR}\"
     -DDATADIR=\"${CMAKE_INSTALL_PREFIX}/share\"
     -DEXTENSIONMANAGERDIR=\"${CMAKE_INSTALL_PREFIX}/${EWEBKIT_EXTENSION_MANAGER_INSTALL_DIR}\"
-    -DWEBPROCESSNAME=\"WebProcess\"
-    -DPLUGINPROCESSNAME=\"PluginProcess\"
-    -DNETWORKPROCESSNAME=\"NetworkProcess\"
-    -DDATABASEPROCESSNAME=\"DatabaseProcess\"
+    -DWEBPROCESSNAME=\"WebKitWebProcess\"
+    -DPLUGINPROCESSNAME=\"WebKitPluginProcess\"
+    -DNETWORKPROCESSNAME=\"WebKitNetworkProcess\"
+    -DDATABASEPROCESSNAME=\"WebKitDatabaseProcess\"
     -DEXTENSIONMANAGERNAME=\"libewebkit_extension_manager.so\"
     -DGTEST_HAS_RTTI=0
 )

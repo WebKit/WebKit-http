@@ -29,6 +29,7 @@
 #if ENABLE(ASSEMBLER) && CPU(ARM64)
 
 #include "AssemblerBuffer.h"
+#include "AssemblerCommon.h"
 #include <limits.h>
 #include <wtf/Assertions.h>
 #include <wtf/Vector.h>
@@ -38,6 +39,7 @@
 #define DATASIZE_OF(datasize) ((datasize == 64) ? Datasize_64 : Datasize_32)
 #define MEMOPSIZE_OF(datasize) ((datasize == 8 || datasize == 128) ? MemOpSize_8_or_128 : (datasize == 16) ? MemOpSize_16 : (datasize == 32) ? MemOpSize_32 : MemOpSize_64)
 #define CHECK_DATASIZE() CHECK_DATASIZE_OF(datasize)
+#define CHECK_VECTOR_DATASIZE() ASSERT(datasize == 64 || datasize == 128)
 #define DATASIZE DATASIZE_OF(datasize)
 #define MEMOPSIZE MEMOPSIZE_OF(datasize)
 #define CHECK_FP_MEMOP_DATASIZE() ASSERT(datasize == 8 || datasize == 16 || datasize == 32 || datasize == 64 || datasize == 128)
@@ -51,11 +53,6 @@ ALWAYS_INLINE bool isInt7(int32_t value)
     return value == ((value << 25) >> 25);
 }
 
-ALWAYS_INLINE bool isInt9(int32_t value)
-{
-    return value == ((value << 23) >> 23);
-}
-
 ALWAYS_INLINE bool isInt11(int32_t value)
 {
     return value == ((value << 21) >> 21);
@@ -64,16 +61,6 @@ ALWAYS_INLINE bool isInt11(int32_t value)
 ALWAYS_INLINE bool isUInt5(int32_t value)
 {
     return !(value & ~0x1f);
-}
-
-ALWAYS_INLINE bool isUInt12(int32_t value)
-{
-    return !(value & ~0xfff);
-}
-
-ALWAYS_INLINE bool isUInt12(intptr_t value)
-{
-    return !(value & ~0xfffL);
 }
 
 class UInt5 {
@@ -716,19 +703,12 @@ public:
     template<int datasize>
     static bool canEncodePImmOffset(int32_t offset)
     {
-        int32_t maxPImm = 4095 * (datasize / 8);
-        if (offset < 0)
-            return false;
-        if (offset > maxPImm)
-            return false;
-        if (offset & ((datasize / 8 ) - 1))
-            return false;
-        return true;
+        return isValidScaledUImm12<datasize>(offset);
     }
 
     static bool canEncodeSImmOffset(int32_t offset)
     {
-        return isInt9(offset);
+        return isValidSignedImm9(offset);
     }
 
 private:
@@ -859,6 +839,10 @@ private:
         FPDataOp_FMAXNM,
         FPDataOp_FMINNM,
         FPDataOp_FNMUL
+    };
+
+    enum SIMD3Same {
+        SIMD_LogicalOp_AND = 0x03
     };
 
     enum FPIntConvOp {
@@ -2418,6 +2402,13 @@ public:
     }
 
     template<int datasize>
+    ALWAYS_INLINE void vand(FPRegisterID vd, FPRegisterID vn, FPRegisterID vm)
+    {
+        CHECK_VECTOR_DATASIZE();
+        insn(vectorDataProcessing2Source(SIMD_LogicalOp_AND, vm, vn, vd));
+    }
+
+    template<int datasize>
     ALWAYS_INLINE void frinta(FPRegisterID vd, FPRegisterID vn)
     {
         CHECK_DATASIZE();
@@ -2887,7 +2878,7 @@ public:
 #if OS(LINUX) && COMPILER(GCC_OR_CLANG)
     static inline void linuxPageFlush(uintptr_t begin, uintptr_t end)
     {
-        __builtin___clear_cache(reinterpret_cast<void*>(begin), reinterpret_cast<void*>(end));
+        __builtin___clear_cache(reinterpret_cast<char*>(begin), reinterpret_cast<char*>(end));
     }
 #endif
 
@@ -3472,6 +3463,18 @@ private:
         const int S = 0;
         return (0x1e200800 | M << 31 | S << 29 | type << 22 | rm << 16 | opcode << 12 | rn << 5 | rd);
     }
+
+    ALWAYS_INLINE static int vectorDataProcessing2Source(SIMD3Same opcode, unsigned size, FPRegisterID vm, FPRegisterID vn, FPRegisterID vd)
+    {
+        const int Q = 0;
+        return (0xe201c00 | Q << 30 | size << 22 | vm << 16 | opcode << 11 | vn << 5 | vd);
+    }
+
+    ALWAYS_INLINE static int vectorDataProcessing2Source(SIMD3Same opcode, FPRegisterID vm, FPRegisterID vn, FPRegisterID vd)
+    {
+        return vectorDataProcessing2Source(opcode, 0, vm, vn, vd);
+    }
+
 
     // 'o1' means negate
     ALWAYS_INLINE static int floatingPointDataProcessing3Source(Datasize type, bool o1, FPRegisterID rm, AddOp o2, FPRegisterID ra, FPRegisterID rn, FPRegisterID rd)

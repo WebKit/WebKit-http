@@ -255,6 +255,7 @@ WEBCORE_EXPORT bool protocolIs(const String& url, const char* protocol);
 WEBCORE_EXPORT bool protocolIsJavaScript(const String& url);
 WEBCORE_EXPORT bool protocolIsInHTTPFamily(const String& url);
 
+unsigned short defaultPortForProtocol(const String& protocol);
 bool isDefaultPortForProtocol(unsigned short port, const String& protocol);
 bool portAllowed(const URL&); // Blacklist ports that should never be used for Web resources.
 
@@ -402,7 +403,7 @@ inline const URL& URLCapture::url() const
 
 inline URL URLCapture::releaseURL()
 {
-    return WTF::move(m_URL);
+    return WTFMove(m_URL);
 }
 
 } // namespace WebCore

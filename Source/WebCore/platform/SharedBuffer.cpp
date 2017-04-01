@@ -86,7 +86,7 @@ SharedBuffer::SharedBuffer(const unsigned char* data, unsigned size)
 
 SharedBuffer::SharedBuffer(MappedFileData&& fileData)
     : m_buffer(adoptRef(new DataBuffer))
-    , m_fileData(WTF::move(fileData))
+    , m_fileData(WTFMove(fileData))
 {
 }
 
@@ -103,7 +103,7 @@ RefPtr<SharedBuffer> SharedBuffer::createWithContentsOfFile(const String& filePa
     if (!mappingSuccess)
         return SharedBuffer::createFromReadingFile(filePath);
 
-    return adoptRef(new SharedBuffer(WTF::move(mappedFileData)));
+    return adoptRef(new SharedBuffer(WTFMove(mappedFileData)));
 }
 
 PassRefPtr<SharedBuffer> SharedBuffer::adoptVector(Vector<char>& vector)
@@ -302,6 +302,12 @@ void SharedBuffer::clearDataBuffer()
         m_buffer->data.clear();
 }
 
+#if !USE(CF)
+void SharedBuffer::hintMemoryNotNeededSoon()
+{
+}
+#endif
+
 #if !USE(NETWORK_CFDATA_ARRAY_CALLBACK)
 
 void SharedBuffer::copyBufferAndClear(char* destination, unsigned bytesToCopy) const
@@ -373,7 +379,7 @@ unsigned SharedBuffer::getSomeData(const char*& someData, unsigned position) con
 void SharedBuffer::maybeTransferMappedFileData()
 {
     if (m_fileData) {
-        auto fileData = WTF::move(m_fileData);
+        auto fileData = WTFMove(m_fileData);
         append(static_cast<const char*>(fileData.data()), fileData.size());
     }
 }

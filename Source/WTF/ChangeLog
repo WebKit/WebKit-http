@@ -1,3 +1,353 @@
+2016-01-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a smart block pointer
+        https://bugs.webkit.org/show_bug.cgi?id=152799
+
+        Reviewed by Tim Horton.
+
+        Introduce WTF::BlockPtr, a smart block pointer.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BlockPtr.h: Added.
+        (WTF::makeBlockPtr):
+
+2016-01-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Allow to save and restore session
+        https://bugs.webkit.org/show_bug.cgi?id=115600
+
+        Reviewed by Michael Catanzaro.
+
+        Add GVariantIter specialization of GUniquePtr.
+
+        * wtf/glib/GTypedefs.h:
+        * wtf/glib/GUniquePtr.h:
+
+2016-01-04  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on gesture events when building for Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=152704
+        rdar://problem/24042472
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/FeatureDefines.h:
+
+2016-01-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Build B3 by default on iOS ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=152525
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Platform.h:
+
+2016-01-03  Andreas Kling  <akling@apple.com>
+
+        Unreviewed, rolling out r194510.
+
+        Broke 2 API tests, no time to investigate right now
+
+        Reverted changeset:
+
+        "StringBuilder often creates two StringImpls."
+        https://bugs.webkit.org/show_bug.cgi?id=152662
+        http://trac.webkit.org/changeset/194510
+
+2016-01-03  Khem Raj  <raj.khem@gmail.com>
+
+        WebKit fails to build with musl libc library
+        https://bugs.webkit.org/show_bug.cgi?id=152625
+
+        Reviewed by Daniel Bates.
+
+        Disable ctype.h check for musl C library on Linux.
+        Enable backtrace on Linux when using glibc.
+        We don't have backtrace() implemented on non-glibc system
+        C libraries on Linux e.g. musl.
+
+        * wtf/DisallowCType.h: Check for __GLIBC__.
+        * wtf/Assertions.cpp:
+        (WTFGetBacktrace): Check if libc is glibc.
+
+2016-01-03  Andreas Kling  <akling@apple.com>
+
+        StringBuilder often creates two StringImpls.
+        <https://webkit.org/b/152662>
+
+        Reviewed by Anders Carlsson.
+
+        If StringBuilder didn't manage to guess the exact final length of the
+        string being built, it would still keep the buffer around, and the final
+        build process would then return a substring into that buffer.
+
+        This effectively yielded two StringImpls instead of one, with the substring
+        retaining the longer buffer StringImpl.
+
+        This patch improves the situation by having StringImpl crop the buffer's
+        m_length field to the final built string length. That way we never have to
+        return a substring.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::reifyString):
+        * wtf/text/StringImpl.h:
+
+2016-01-03  Andreas Kling  <akling@apple.com>
+
+        Remove redundant StringImpl substring creation function.
+        <https://webkit.org/b/152652>
+
+        Reviewed by Daniel Bates.
+
+        Remove StringImpl::createSubstringSharingImpl8() and make the only
+        caller use createSubstringSharingImpl() instead.
+        
+        They do the same thing anyway, the only difference is that the branch
+        on is8Bit() now happens in the callee instead of at the call site.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::createSubstringSharingImpl8): Deleted.
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Replace WTF::move with WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Brady Eidson.
+
+        This also removes the definition of WTF::move.
+
+        * wtf/Deque.h:
+        * wtf/HashMap.h:
+        * wtf/HashSet.h:
+        * wtf/HashTable.h:
+        (WTF::HashTable::add):
+        (WTF::KeyTraits>::HashTable):
+        * wtf/Insertion.h:
+        (WTF::executeInsertions):
+        * wtf/IteratorAdaptors.h:
+        (WTF::FilterIterator::FilterIterator):
+        (WTF::TransformIterator::TransformIterator):
+        (WTF::makeTransformIterator):
+        * wtf/IteratorRange.h:
+        (WTF::IteratorRange::IteratorRange):
+        * wtf/ListHashSet.h:
+        (WTF::U>::takeFirst):
+        (WTF::U>::takeLast):
+        * wtf/MainThread.cpp:
+        (WTF::callOnMainThread):
+        * wtf/MallocPtr.h:
+        (WTF::MallocPtr::operator=):
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue<DataType>::append):
+        (WTF::MessageQueue<DataType>::appendAndKill):
+        (WTF::MessageQueue<DataType>::appendAndCheckEmpty):
+        (WTF::MessageQueue<DataType>::prepend):
+        * wtf/NakedPtr.h:
+        (WTF::=):
+        * wtf/OSObjectPtr.h:
+        (WTF::OSObjectPtr::operator=):
+        * wtf/Optional.h:
+        (WTF::Optional::Optional):
+        (WTF::Optional::operator=):
+        * wtf/RefPtr.h:
+        (WTF::=):
+        * wtf/RetainPtr.h:
+        (WTF::=):
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::dispatch):
+        * wtf/SharedTask.h:
+        (WTF::createSharedTask):
+        * wtf/StdLibExtras.h:
+        (WTF::move): Deleted.
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::createThread):
+        * wtf/Vector.h:
+        (WTF::Vector::takeLast):
+        * wtf/efl/DispatchQueueEfl.cpp:
+        (DispatchQueue::dispatch):
+        (DispatchQueue::setSocketEventHandler):
+        (DispatchQueue::performTimerWork):
+        (DispatchQueue::insertTimerWorkItem):
+        * wtf/efl/DispatchQueueWorkItemEfl.h:
+        (WorkItem::WorkItem):
+        (TimerWorkItem::create):
+        (TimerWorkItem::TimerWorkItem):
+        * wtf/efl/WorkQueueEfl.cpp:
+        (WorkQueue::registerSocketEventHandler):
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/GRefPtr.h:
+        (WTF::=):
+        * wtf/glib/WorkQueueGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        (WTF::AtomicString::operator=):
+        * wtf/text/StringConcatenate.h:
+        (WTF::tryMakeString):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::isolatedCopy):
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+        (WTF::StringCapture::releaseString):
+        * wtf/win/GDIObject.h:
+        (WTF::=):
+
+2015-12-31  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using USE(CFNETWORK) path on iOS
+        <https://webkit.org/b/142540>
+
+        Step 1/2: Do everything but turn off USE(CFNETWORK) internally.
+
+        Original patch by Antti Koivisto <antti@apple.com> on 2015-03-10
+        Reviewed by Daniel Bates.
+
+        * wtf/SchedulePair.h: Update macros to match WebCore.
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Rename WTF_MOVE to WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Daniel Bates.
+
+        Our coding style guidelines say that macros that expand to function calls should be named like functions,
+        so WTFMove() is a more appropriate name.
+
+        * wtf/StdLibExtras.h:
+
+2015-12-30  Andy Estes  <aestes@apple.com>
+
+        Use of WTF::move prevents clang's move diagnostics from warning about several classes of mistakes
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Brady Eidson.
+
+        Clang has recently added warnings to catch certain classes of mistakes with the use of std::move():
+        -Wpessimizing-move (warns if moving prevents copy elision), -Wredundant-move (warns if a move is redundant),
+        and -Wself-move (warns if moving to self). Enabling these warnings manually (by renaming WTF::move to std::move)
+        have caught numerous mistakes in our codebase (see http://trac.webkit.org/changeset/194428).
+
+        It would be nice to be able to take advantage of these warnings, but doing so requires that we use std::move,
+        not WTF::move. But since WTF::move does provide useful checks for which clang does not yet have warnings,
+        we should write a best-of-both-worlds move function.
+
+        This patch adds a function that satisfies clang's criteria for a move function (in namespace std, named "move",
+        and takes a single argument) but also retains WTF::move's compile-time checks. It also adds a convenience macro
+        called WTF_MOVE for use by callers.
+
+        * wtf/StdLibExtras.h:
+        (std::move):
+
+2015-12-25  Andy Estes  <aestes@apple.com>
+
+        Stop moving local objects in return statements
+        https://bugs.webkit.org/show_bug.cgi?id=152557
+
+        Reviewed by Brady Eidson.
+
+        * wtf/StdLibExtras.h: Added a FIXME about how using WTF::move() prevents several Clang diagnostics from emitting useful warnings.
+
+2015-12-22  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL B3 should be able to run richards
+        https://bugs.webkit.org/show_bug.cgi?id=152514
+
+        Reviewed by Michael Saboff.
+
+        Change the list dumping helpers to work with a broader set of list kinds.
+
+        * wtf/ListDump.h:
+        (WTF::ListDump::dump):
+        (WTF::MapDump::dump):
+        (WTF::sortedMapDump):
+        (WTF::ListDumpInContext::dump):
+
+2015-12-22  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL B3 does not logicalNot correctly
+        https://bugs.webkit.org/show_bug.cgi?id=152512
+
+        Reviewed by Saam Barati.
+
+        This change introduces yet another use of SharedTask in JSC. While doing this, I noticed that
+        SharedTask::run() always demands that whatever arguments the callback takes, they must be
+        passed as rvalue references. This was a clear misuse of perfect forwarding. This change makes
+        SharedTask's approach to forwarding match what we were already doing in ScopedLambda.
+
+        * wtf/SharedTask.h:
+
+2015-12-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [SOUP] Performs DNS prefetch when a proxy is configured (information leak)
+        https://bugs.webkit.org/show_bug.cgi?id=145542
+
+        Reviewed by Darin Adler.
+
+        Specialize GUniquePtr<char*>, using g_strfreev.
+
+        * wtf/glib/GUniquePtr.h:
+
+2015-12-19  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] WebKit contains dead source code for OS X Mavericks and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=152462
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/DebugRelease.xcconfig: Removed definition of MACOSX_DEPLOYMENT_TARGET for
+          OS X 10.9.
+
+        - Simplified expressions involving __MAC_OS_X_VERSION_MIN_REQUIRED and removed code that was
+          never getting compiled:
+
+        * wtf/FeatureDefines.h:
+        * wtf/MainThread.h:
+        * wtf/OSObjectPtr.h:
+        * wtf/Platform.h:
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+        * wtf/spi/darwin/XPCSPI.h:
+
+2015-12-17  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        [INTL] Implement Collator Compare Functions
+        https://bugs.webkit.org/show_bug.cgi?id=147604
+
+        Reviewed by Darin Adler.
+
+        * wtf/unicode/Collator.h:
+
+2015-12-16  Andreas Kling  <akling@apple.com>
+
+        Give kernel VM some hints about non-live memory-cached resources.
+        <https://webkit.org/b/152362>
+
+        Reviewed by Geoffrey Garen.
+
+        Add an API to OSAllocator for hinting to the OS that a range of memory
+        is not expected to be used anytime soon.
+
+        * wtf/OSAllocator.h:
+        * wtf/OSAllocatorPosix.cpp:
+        (WTF::OSAllocator::hintMemoryNotNeededSoon):
+        * wtf/OSAllocatorWin.cpp:
+        (WTF::OSAllocator::hintMemoryNotNeededSoon):
+        * wtf/Platform.h:
+
+2015-12-16  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=152364
+        rdar://problem/23928759
+
+        Reviewed by Tim Horton.
+
+        * WTF.vcxproj/WTF.proj:
+
 2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         [Fetch API] Add fetch API compile time flag

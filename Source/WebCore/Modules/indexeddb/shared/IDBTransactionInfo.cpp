@@ -28,6 +28,8 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBTransactionImpl.h"
+
 namespace WebCore {
 
 IDBTransactionInfo::IDBTransactionInfo(const IDBResourceIdentifier& identifier)
@@ -51,7 +53,7 @@ IDBTransactionInfo IDBTransactionInfo::versionChange(const IDBServer::IDBConnect
     result.m_newVersion = newVersion;
     result.m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(originalDatabaseInfo);
 
-    return WTF::move(result);
+    return result;
 }
 
 IDBTransactionInfo::IDBTransactionInfo(const IDBTransactionInfo& info)
@@ -77,8 +79,30 @@ IDBTransactionInfo IDBTransactionInfo::isolatedCopy() const
     if (m_originalDatabaseInfo)
         result.m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(*m_originalDatabaseInfo);
 
-    return WTF::move(result);
+    return result;
 }
+
+#ifndef NDEBUG
+String IDBTransactionInfo::loggingString() const
+{
+    String modeString;
+    switch (m_mode) {
+    case IndexedDB::TransactionMode::ReadOnly:
+        modeString = IDBTransaction::modeReadOnly();
+        break;
+    case IndexedDB::TransactionMode::ReadWrite:
+        modeString = IDBTransaction::modeReadWrite();
+        break;
+    case IndexedDB::TransactionMode::VersionChange:
+        modeString = IDBTransaction::modeVersionChange();
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+    
+    return makeString("Transaction: ", m_identifier.loggingString(), " mode ", modeString, " newVersion ", String::number(m_newVersion));
+}
+#endif
 
 } // namespace WebCore
 

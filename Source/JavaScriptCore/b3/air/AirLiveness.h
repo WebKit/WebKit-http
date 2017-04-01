@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #include "B3IndexMap.h"
 #include "B3IndexSet.h"
 #include <wtf/IndexSparseSet.h>
+#include <wtf/ListDump.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -90,7 +91,7 @@ public:
             typename Adapter::IndexSet& liveAtTail = m_liveAtTail[block];
 
             block->last().forEach<typename Adapter::Thing>(
-                [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type) {
+                [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type, Arg::Width) {
                     if (Arg::isLateUse(role) && Adapter::acceptsType(type))
                         liveAtTail.add(Adapter::valueToIndex(thing));
                 });
@@ -117,6 +118,13 @@ public:
                 for (size_t instIndex = block->size(); instIndex--;)
                     localCalc.execute(instIndex);
 
+                // Handle the early def's of the first instruction.
+                block->at(0).forEach<typename Adapter::Thing>(
+                    [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type, Arg::Width) {
+                        if (Arg::isEarlyDef(role) && Adapter::acceptsType(type))
+                            m_workset.remove(Adapter::valueToIndex(thing));
+                    });
+
                 Vector<unsigned>& liveAtHead = m_liveAtHead[block];
 
                 // We only care about Tmps that were discovered in this iteration. It is impossible
@@ -141,15 +149,13 @@ public:
                     typename Adapter::IndexSet& liveAtTail = m_liveAtTail[predecessor];
                     for (unsigned newValue : m_workset) {
                         if (liveAtTail.add(newValue)) {
-                            if (dirtyBlocks.quickSet(predecessor->index()))
+                            if (!dirtyBlocks.quickSet(predecessor->index()))
                                 changed = true;
                         }
                     }
                 }
             }
         } while (changed);
-
-        m_liveAtHead.clear();
     }
 
     // This calculator has to be run in reverse.
@@ -214,16 +220,27 @@ public:
         {
             Inst& inst = m_block->at(instIndex);
             auto& workset = m_liveness.m_workset;
-            // First handle def's.
+
+            // First handle the early def's of the next instruction.
+            if (instIndex + 1 < m_block->size()) {
+                Inst& nextInst = m_block->at(instIndex + 1);
+                nextInst.forEach<typename Adapter::Thing>(
+                    [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type, Arg::Width) {
+                        if (Arg::isEarlyDef(role) && Adapter::acceptsType(type))
+                            workset.remove(Adapter::valueToIndex(thing));
+                    });
+            }
+            
+            // Then handle def's.
             inst.forEach<typename Adapter::Thing>(
-                [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type) {
-                    if (Arg::isDef(role) && Adapter::acceptsType(type))
+                [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type, Arg::Width) {
+                    if (Arg::isLateDef(role) && Adapter::acceptsType(type))
                         workset.remove(Adapter::valueToIndex(thing));
                 });
 
             // Then handle use's.
             inst.forEach<typename Adapter::Thing>(
-                [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type) {
+                [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type, Arg::Width) {
                     if (Arg::isEarlyUse(role) && Adapter::acceptsType(type))
                         workset.add(Adapter::valueToIndex(thing));
                 });
@@ -232,7 +249,7 @@ public:
             if (instIndex) {
                 Inst& prevInst = m_block->at(instIndex - 1);
                 prevInst.forEach<typename Adapter::Thing>(
-                    [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type) {
+                    [&] (typename Adapter::Thing& thing, Arg::Role role, Arg::Type type, Arg::Width) {
                         if (Arg::isLateUse(role) && Adapter::acceptsType(type))
                             workset.add(Adapter::valueToIndex(thing));
                     });
@@ -243,6 +260,74 @@ public:
         AbstractLiveness& m_liveness;
         BasicBlock* m_block;
     };
+
+    template<typename UnderlyingIterable>
+    class Iterable {
+    public:
+        Iterable(AbstractLiveness& liveness, const UnderlyingIterable& iterable)
+            : m_liveness(liveness)
+            , m_iterable(iterable)
+        {
+        }
+
+        class iterator {
+        public:
+            iterator()
+                : m_liveness(nullptr)
+                , m_iter()
+            {
+            }
+            
+            iterator(AbstractLiveness& liveness, typename UnderlyingIterable::const_iterator iter)
+                : m_liveness(&liveness)
+                , m_iter(iter)
+            {
+            }
+
+            typename Adapter::Thing operator*()
+            {
+                return m_liveness->indexToValue(*m_iter);
+            }
+
+            iterator& operator++()
+            {
+                ++m_iter;
+                return *this;
+            }
+
+            bool operator==(const iterator& other) const
+            {
+                ASSERT(m_liveness == other.m_liveness);
+                return m_iter == other.m_iter;
+            }
+
+            bool operator!=(const iterator& other) const
+            {
+                return !(*this == other);
+            }
+
+        private:
+            AbstractLiveness* m_liveness;
+            typename UnderlyingIterable::const_iterator m_iter;
+        };
+
+        iterator begin() const { return iterator(m_liveness, m_iterable.begin()); }
+        iterator end() const { return iterator(m_liveness, m_iterable.end()); }
+
+    private:
+        AbstractLiveness& m_liveness;
+        const UnderlyingIterable& m_iterable;
+    };
+
+    Iterable<Vector<unsigned>> liveAtHead(BasicBlock* block)
+    {
+        return Iterable<Vector<unsigned>>(*this, m_liveAtHead[block]);
+    }
+
+    Iterable<typename Adapter::IndexSet> liveAtTail(BasicBlock* block)
+    {
+        return Iterable<typename Adapter::IndexSet>(*this, m_liveAtTail[block]);
+    }
 
 private:
     friend class LocalCalc;

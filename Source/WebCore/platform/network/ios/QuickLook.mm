@@ -32,12 +32,12 @@
 #import "FileSystemIOS.h"
 #import "Logging.h"
 #import "NSFileManagerSPI.h"
-#import "QuickLookSoftLink.h"
 #import "ResourceError.h"
 #import "ResourceHandle.h"
 #import "ResourceLoader.h"
 #import "RuntimeApplicationChecksIOS.h"
 #import "SynchronousResourceHandleCFURLConnectionDelegate.h"
+#import "WebCoreResourceHandleAsDelegate.h"
 #import "WebCoreURLResponseIOS.h"
 #import <Foundation/Foundation.h>
 #import <wtf/NeverDestroyed.h>
@@ -46,14 +46,7 @@
 #import <wtf/Vector.h>
 #import <wtf/text/WTFString.h>
 
-#if USE(CFNETWORK)
-#import <CFNetwork/CFURLConnection.h>
-
-@interface NSURLResponse (QuickLookDetails)
-+(NSURLResponse *)_responseWithCFURLResponse:(CFURLResponseRef)response;
--(CFURLResponseRef)_CFURLResponse;
-@end
-#endif
+#import "QuickLookSoftLink.h"
 
 using namespace WebCore;
 
@@ -202,12 +195,11 @@ const char* WebCore::QLPreviewProtocol()
 // This works fine when using NS APIs, but when using CFNetwork, we don't have a NSURLConnectionDelegate.
 // So we create WebQuickLookHandleAsDelegate as an intermediate delegate object and pass it to
 // QLPreviewConverter. The proxy delegate then forwards the messages on to the CFNetwork code.
-@interface WebQuickLookHandleAsDelegate : NSObject <NSURLConnectionDelegate> {
+@interface WebQuickLookHandleAsDelegate : NSObject <NSURLConnectionDelegate, WebCoreResourceLoaderDelegate> {
     RefPtr<SynchronousResourceHandleCFURLConnectionDelegate> m_connectionDelegate;
 }
 
 - (id)initWithConnectionDelegate:(SynchronousResourceHandleCFURLConnectionDelegate*)connectionDelegate;
-- (void)clearHandle;
 @end
 
 @implementation WebQuickLookHandleAsDelegate
@@ -261,14 +253,14 @@ const char* WebCore::QLPreviewProtocol()
     m_connectionDelegate->didFail(reinterpret_cast<CFErrorRef>(error));
 }
 
-- (void)clearHandle
+- (void)detachHandle
 {
     m_connectionDelegate = nullptr;
 }
 @end
 #endif
 
-@interface WebResourceLoaderQuickLookDelegate : NSObject <NSURLConnectionDelegate> {
+@interface WebResourceLoaderQuickLookDelegate : NSObject <NSURLConnectionDelegate, WebCoreResourceLoaderDelegate> {
     RefPtr<ResourceLoader> _resourceLoader;
     BOOL _hasSentDidReceiveResponse;
     BOOL _hasFailed;
@@ -359,7 +351,7 @@ const char* WebCore::QLPreviewProtocol()
     _resourceLoader->didFail(ResourceError(error));
 }
 
-- (void)clearHandle
+- (void)detachHandle
 {
     _resourceLoader = nullptr;
     _quickLookHandle = nullptr;
@@ -412,7 +404,7 @@ std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceHandle* handle,
 
     std::unique_ptr<QuickLookHandle> quickLookHandle(new QuickLookHandle([handle->firstRequest().nsURLRequest(DoNotUpdateHTTPBody) URL], connection, nsResponse, delegate));
     handle->client()->didCreateQuickLookHandle(*quickLookHandle);
-    return WTF::move(quickLookHandle);
+    return quickLookHandle;
 }
 
 #if USE(CFNETWORK)
@@ -426,7 +418,7 @@ std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceHandle* handle,
     WebQuickLookHandleAsDelegate *delegate = [[[WebQuickLookHandleAsDelegate alloc] initWithConnectionDelegate:connectionDelegate] autorelease];
     std::unique_ptr<QuickLookHandle> quickLookHandle(new QuickLookHandle([handle->firstRequest().nsURLRequest(DoNotUpdateHTTPBody) URL], nil, nsResponse, delegate));
     handle->client()->didCreateQuickLookHandle(*quickLookHandle);
-    return WTF::move(quickLookHandle);
+    return quickLookHandle;
 }
 
 CFURLResponseRef QuickLookHandle::cfResponse()
@@ -448,7 +440,7 @@ std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceLoader& loader,
     std::unique_ptr<QuickLookHandle> quickLookHandle(new QuickLookHandle([loader.originalRequest().nsURLRequest(DoNotUpdateHTTPBody) URL], nil, response.nsURLResponse(), delegate.get()));
     [delegate setQuickLookHandle:quickLookHandle.get()];
     loader.didCreateQuickLookHandle(*quickLookHandle);
-    return WTF::move(quickLookHandle);
+    return quickLookHandle;
 }
 
 NSURLResponse *QuickLookHandle::nsResponse()
@@ -500,7 +492,7 @@ QuickLookHandle::~QuickLookHandle()
     LOG(Network, "QuickLookHandle::~QuickLookHandle()");
     m_converter = nullptr;
 
-    [m_delegate clearHandle];
+    [m_delegate detachHandle];
 }
 
 String QuickLookHandle::previewFileName() const

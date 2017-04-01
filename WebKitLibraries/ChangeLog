@@ -1,3 +1,30 @@
+2016-01-02  Andy Estes  <aestes@apple.com>
+
+        Try to fix the Windows build
+
+        After r194496, the Windows build appeared to use a stale copy of StdLibExtras.h. I deleted the build directory
+        on the bots, and am touching this file to force a new build.
+
+        * win/tools/vsprops/common.props:
+
+2016-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2016
+        https://bugs.webkit.org/show_bug.cgi?id=152531
+
+        Reviewed by Alexey Proskuryakov.
+
+        * win/tools/scripts/COPYRIGHT-END-YEAR:
+
+2015-12-19  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] WebKit contains dead source code for OS X Mavericks and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=152462
+
+        Reviewed by Alexey Proskuryakov.
+
+        * libWebKitSystemInterfaceMavericks.a: Removed.
+
 2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         [Fetch API] Add fetch API compile time flag

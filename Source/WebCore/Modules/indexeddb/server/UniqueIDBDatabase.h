@@ -33,7 +33,7 @@
 #include "IDBDatabaseIdentifier.h"
 #include "IDBDatabaseInfo.h"
 #include "IDBGetResult.h"
-#include "IDBServerOperation.h"
+#include "ServerOpenDBRequest.h"
 #include "ThreadSafeDataBuffer.h"
 #include "Timer.h"
 #include "UniqueIDBDatabaseConnection.h"
@@ -41,6 +41,7 @@
 #include <wtf/Deque.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
+#include <wtf/ListHashSet.h>
 #include <wtf/Ref.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -71,6 +72,8 @@ public:
         return adoptRef(*new UniqueIDBDatabase(server, identifier));
     }
 
+    ~UniqueIDBDatabase();
+
     void openDatabaseConnection(IDBConnectionToClient&, const IDBRequestData&);
 
     const IDBDatabaseInfo& info() const;
@@ -90,8 +93,10 @@ public:
     void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count, GetResultCallback);
     void commitTransaction(UniqueIDBDatabaseTransaction&, ErrorCallback);
     void abortTransaction(UniqueIDBDatabaseTransaction&, ErrorCallback);
+    void didFinishHandlingVersionChange(UniqueIDBDatabaseTransaction&);
     void transactionDestroyed(UniqueIDBDatabaseTransaction&);
     void connectionClosedFromClient(UniqueIDBDatabaseConnection&);
+    void didFireVersionChangeEvent(UniqueIDBDatabaseConnection&, const IDBResourceIdentifier& requestIdentifier);
 
     void enqueueTransaction(Ref<UniqueIDBDatabaseTransaction>&&);
 
@@ -104,19 +109,23 @@ public:
 private:
     UniqueIDBDatabase(IDBServer&, const IDBDatabaseIdentifier&);
     
-    void handleOpenDatabaseOperations();
+    void handleDatabaseOperations();
+    void handleCurrentOperation();
+    void performCurrentOpenOperation();
+    void performCurrentDeleteOperation();
     void addOpenDatabaseConnection(Ref<UniqueIDBDatabaseConnection>&&);
-    bool maybeDeleteDatabase(IDBServerOperation*);
     bool hasAnyOpenConnections() const;
 
     void startVersionChangeTransaction();
-    void notifyConnectionsOfVersionChangeForUpgrade();
-    void notifyConnectionsOfVersionChange(uint64_t requestedVersion);
+    void maybeNotifyConnectionsOfVersionChange();
+    void notifyCurrentRequestConnectionClosedOrFiredVersionChangeEvent(uint64_t connectionIdentifier);
+    bool isVersionChangeInProgress();
 
     void activateTransactionInBackingStore(UniqueIDBDatabaseTransaction&);
     void inProgressTransactionCompleted(const IDBResourceIdentifier&);
 
     // Database thread operations
+    void deleteBackingStore();
     void openBackingStore(const IDBDatabaseIdentifier&);
     void performCommitTransaction(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier);
     void performAbortTransaction(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier);
@@ -136,6 +145,7 @@ private:
     void performActivateTransactionInBackingStore(uint64_t callbackIdentifier, const IDBTransactionInfo&);
 
     // Main thread callbacks
+    void didDeleteBackingStore();
     void didOpenBackingStore(const IDBDatabaseInfo&);
     void didPerformCreateObjectStore(uint64_t callbackIdentifier, const IDBError&, const IDBObjectStoreInfo&);
     void didPerformDeleteObjectStore(uint64_t callbackIdentifier, const IDBError&, const String& objectStoreName);
@@ -171,15 +181,14 @@ private:
     IDBServer& m_server;
     IDBDatabaseIdentifier m_identifier;
     
-    Deque<Ref<IDBServerOperation>> m_pendingOpenDatabaseOperations;
-    Deque<Ref<IDBServerOperation>> m_pendingDeleteDatabaseOperations;
+    Deque<Ref<ServerOpenDBRequest>> m_pendingOpenDBRequests;
+    RefPtr<ServerOpenDBRequest> m_currentOpenDBRequest;
 
-    HashSet<RefPtr<UniqueIDBDatabaseConnection>> m_openDatabaseConnections;
+    ListHashSet<RefPtr<UniqueIDBDatabaseConnection>> m_openDatabaseConnections;
     HashSet<RefPtr<UniqueIDBDatabaseConnection>> m_closePendingDatabaseConnections;
 
-    RefPtr<IDBServerOperation> m_versionChangeOperation;
     RefPtr<UniqueIDBDatabaseConnection> m_versionChangeDatabaseConnection;
-    UniqueIDBDatabaseTransaction* m_versionChangeTransaction { nullptr };
+    RefPtr<UniqueIDBDatabaseTransaction> m_versionChangeTransaction;
 
     bool m_isOpeningBackingStore { false };
     std::unique_ptr<IDBBackingStore> m_backingStore;
@@ -195,14 +204,13 @@ private:
     Deque<RefPtr<UniqueIDBDatabaseTransaction>> m_pendingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<UniqueIDBDatabaseTransaction>> m_inProgressTransactions;
 
-    // The key into this set is the object store ID.
-    // The set counts how many transactions are open to the given object store.
-    // This helps make sure opening narrowly scoped transactions (one or two object stores)
-    // doesn't continuously block widely scoped write transactions.
+    // The keys into these sets are the object store ID.
+    // These sets help to decide which transactions can be started and which must be deferred.
     HashCountedSet<uint64_t> m_objectStoreTransactionCounts;
+    HashSet<uint64_t> m_objectStoreWriteTransactions;
 
     bool m_deletePending { false };
-    bool m_hasNotifiedConnectionsOfDelete { false };
+    bool m_deleteBackingStoreInProgress { false };
 };
 
 } // namespace IDBServer

@@ -98,6 +98,7 @@ JavaScriptCore_BUILTINS_SOURCES = \
     $(JavaScriptCore)/builtins/ReflectObject.js \
     $(JavaScriptCore)/builtins/StringConstructor.js \
     $(JavaScriptCore)/builtins/StringIteratorPrototype.js \
+    $(JavaScriptCore)/builtins/StringPrototype.js \
     $(JavaScriptCore)/builtins/TypedArrayConstructor.js \
     $(JavaScriptCore)/builtins/TypedArrayPrototype.js \
 #
@@ -194,6 +195,7 @@ INSPECTOR_DOMAINS = \
     $(JavaScriptCore)/inspector/protocol/OverlayTypes.json \
     $(JavaScriptCore)/inspector/protocol/Page.json \
     $(JavaScriptCore)/inspector/protocol/Runtime.json \
+    $(JavaScriptCore)/inspector/protocol/ScriptProfiler.json \
     $(JavaScriptCore)/inspector/protocol/Timeline.json \
 #
 

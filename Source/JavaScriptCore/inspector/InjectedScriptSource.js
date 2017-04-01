@@ -1069,11 +1069,6 @@ InjectedScript.RemoteObject.prototype = {
     _generatePreview: function(object, firstLevelKeys, secondLevelKeys)
     {
         var preview = this._initialPreview();
-
-        // Primitives just have a value.
-        if (this.type !== "object")
-            return;
-
         var isTableRowsRequest = secondLevelKeys === null || secondLevelKeys;
         var firstLevelKeysCount = firstLevelKeys ? firstLevelKeys.length : 0;
 
@@ -1344,7 +1339,7 @@ InjectedScript.RemoteObject.prototype = {
 InjectedScript.CallFrameProxy = function(ordinal, callFrame)
 {
     this.callFrameId = "{\"ordinal\":" + ordinal + ",\"injectedScriptId\":" + injectedScriptId + "}";
-    this.functionName = (callFrame.type === "function" ? callFrame.functionName : "");
+    this.functionName = callFrame.functionName;
     this.location = {scriptId: String(callFrame.sourceID), lineNumber: callFrame.line, columnNumber: callFrame.column};
     this.scopeChain = this._wrapScopeChain(callFrame);
     this.this = injectedScript._wrapObject(callFrame.thisObject, "backtrace");
@@ -1363,12 +1358,12 @@ InjectedScript.CallFrameProxy.prototype = {
 
 InjectedScript.CallFrameProxy._scopeTypeNames = {
     0: "global", // GLOBAL_SCOPE
-    1: "local", // LOCAL_SCOPE
-    2: "with", // WITH_SCOPE
-    3: "closure", // CLOSURE_SCOPE
-    4: "catch", // CATCH_SCOPE
-    5: "functionName", // FUNCTION_NAME_SCOPE
-    6: "globalLexicalEnvironment", // GLOBAL_LEXICAL_ENVIRONMENT_SCOPE
+    1: "with", // WITH_SCOPE
+    2: "closure", // CLOSURE_SCOPE
+    3: "catch", // CATCH_SCOPE
+    4: "functionName", // FUNCTION_NAME_SCOPE
+    5: "globalLexicalEnvironment", // GLOBAL_LEXICAL_ENVIRONMENT_SCOPE
+    6: "nestedLexical", // NESTED_LEXICAL_SCOPE
 }
 
 InjectedScript.CallFrameProxy._createScopeJson = function(scopeTypeCode, scopeObject, groupId)

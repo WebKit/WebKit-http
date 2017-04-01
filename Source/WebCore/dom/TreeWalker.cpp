@@ -33,13 +33,13 @@
 
 namespace WebCore {
 
-TreeWalker::TreeWalker(PassRefPtr<Node> rootNode, unsigned long whatToShow, RefPtr<NodeFilter>&& filter)
-    : NodeIteratorBase(rootNode, whatToShow, WTF::move(filter))
+TreeWalker::TreeWalker(Node& rootNode, unsigned long whatToShow, RefPtr<NodeFilter>&& filter)
+    : NodeIteratorBase(rootNode, whatToShow, WTFMove(filter))
     , m_current(root())
 {
 }
 
-void TreeWalker::setCurrentNode(PassRefPtr<Node> node, ExceptionCode& ec)
+void TreeWalker::setCurrentNode(Node* node, ExceptionCode& ec)
 {
     if (!node) {
         ec = NOT_SUPPORTED_ERR;
@@ -141,7 +141,7 @@ template<TreeWalker::SiblingTraversalType type> Node* TreeWalker::traverseSiblin
         for (RefPtr<Node> sibling = isNext ? node->nextSibling() : node->previousSibling(); sibling; ) {
             short acceptNodeResult = acceptNode(sibling.get());
             if (acceptNodeResult == NodeFilter::FILTER_ACCEPT) {
-                m_current = WTF::move(sibling);
+                m_current = WTFMove(sibling);
                 return m_current.get();
             }
             node = sibling;

@@ -41,6 +41,7 @@
 #import "WebSystemInterface.h"
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/AudioSession.h>
+#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PlatformCookieJar.h>
 #import <WebCore/ResourceHandle.h>
@@ -50,10 +51,6 @@
 #import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/RunLoop.h>
-
-enum {
-    NSHTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain = 3
-};
 
 using namespace WebCore;
 
@@ -493,6 +490,7 @@ public:
         [NSNumber numberWithBool:YES],  WebKitAcceleratedCompositingEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSRegionsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSCompositingEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitDisplayListDrawingEnabledPreferenceKey,
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
         [NSNumber numberWithBool:YES],  WebKitAcceleratedDrawingEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
@@ -1767,7 +1765,7 @@ static NSString *classIBCreatorID = nil;
 {
     RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage();
     ASSERT(cookieStorage); // Will fail when building without USE(CFNETWORK) and NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
-    WKSetHTTPCookieAcceptPolicy(cookieStorage.get(), policy);
+    CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
 }
 
 - (BOOL)isDOMPasteAllowed
@@ -1818,6 +1816,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setAcceleratedDrawingEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitAcceleratedDrawingEnabledPreferenceKey];
+}
+
+- (BOOL)displayListDrawingEnabled
+{
+    return [self _boolValueForKey:WebKitDisplayListDrawingEnabledPreferenceKey];
+}
+
+- (void)setDisplayListDrawingEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitDisplayListDrawingEnabledPreferenceKey];
 }
 
 - (BOOL)canvasUsesAcceleratedDrawing

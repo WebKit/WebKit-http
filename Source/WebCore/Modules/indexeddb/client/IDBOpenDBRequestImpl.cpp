@@ -41,20 +41,21 @@ namespace IDBClient {
 Ref<IDBOpenDBRequest> IDBOpenDBRequest::createDeleteRequest(IDBConnectionToServer& connection, ScriptExecutionContext* context, const IDBDatabaseIdentifier& databaseIdentifier)
 {
     ASSERT(databaseIdentifier.isValid());
-    return adoptRef(*new IDBOpenDBRequest(connection, context, databaseIdentifier, 0));
+    return adoptRef(*new IDBOpenDBRequest(connection, context, databaseIdentifier, 0, IndexedDB::RequestType::Delete));
 }
 
 Ref<IDBOpenDBRequest> IDBOpenDBRequest::createOpenRequest(IDBConnectionToServer& connection, ScriptExecutionContext* context, const IDBDatabaseIdentifier& databaseIdentifier, uint64_t version)
 {
     ASSERT(databaseIdentifier.isValid());
-    return adoptRef(*new IDBOpenDBRequest(connection, context, databaseIdentifier, version));
+    return adoptRef(*new IDBOpenDBRequest(connection, context, databaseIdentifier, version, IndexedDB::RequestType::Open));
 }
     
-IDBOpenDBRequest::IDBOpenDBRequest(IDBConnectionToServer& connection, ScriptExecutionContext* context, const IDBDatabaseIdentifier& databaseIdentifier, uint64_t version)
+IDBOpenDBRequest::IDBOpenDBRequest(IDBConnectionToServer& connection, ScriptExecutionContext* context, const IDBDatabaseIdentifier& databaseIdentifier, uint64_t version, IndexedDB::RequestType requestType)
     : IDBRequest(connection, context)
     , m_databaseIdentifier(databaseIdentifier)
     , m_version(version)
 {
+    m_requestType = requestType;
 }
 
 IDBOpenDBRequest::~IDBOpenDBRequest()
@@ -100,6 +101,16 @@ void IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()
     enqueueEvent(Event::create(eventNames().errorEvent, true, true));
 }
 
+bool IDBOpenDBRequest::dispatchEvent(Event& event)
+{
+    bool result = IDBRequest::dispatchEvent(event);
+
+    if (m_transaction && m_transaction->isVersionChange() && (event.type() == eventNames().errorEvent || event.type() == eventNames().successEvent))
+        m_transaction->database().serverConnection().didFinishHandlingVersionChangeTransaction(*m_transaction);
+
+    return result;
+}
+
 void IDBOpenDBRequest::onSuccess(const IDBResultData& resultData)
 {
     LOG(IndexedDB, "IDBOpenDBRequest::onSuccess()");
@@ -108,7 +119,7 @@ void IDBOpenDBRequest::onSuccess(const IDBResultData& resultData)
         return;
 
     Ref<IDBDatabase> database = IDBDatabase::create(*scriptExecutionContext(), connection(), resultData);
-    m_result = IDBAny::create(WTF::move(database));
+    m_result = IDBAny::create(WTFMove(database));
     m_readyState = IDBRequestReadyState::Done;
 
     enqueueEvent(Event::create(eventNames().successEvent, false, false));
@@ -127,7 +138,7 @@ void IDBOpenDBRequest::onUpgradeNeeded(const IDBResultData& resultData)
 
     LOG(IndexedDB, "IDBOpenDBRequest::onUpgradeNeeded() - current version is %" PRIu64 ", new is %" PRIu64, oldVersion, newVersion);
 
-    m_result = IDBAny::create(WTF::move(database));
+    m_result = IDBAny::create(WTFMove(database));
     m_readyState = IDBRequestReadyState::Done;
     m_transaction = adoptRef(&transaction.leakRef());
     m_transaction->addRequest(*this);
@@ -150,6 +161,9 @@ void IDBOpenDBRequest::onDeleteDatabaseSuccess(const IDBResultData& resultData)
 void IDBOpenDBRequest::requestCompleted(const IDBResultData& data)
 {
     LOG(IndexedDB, "IDBOpenDBRequest::requestCompleted");
+
+    if (m_contextStopped)
+        return;
 
     switch (data.type()) {
     case IDBResultType::Error:

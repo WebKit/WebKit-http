@@ -26,11 +26,14 @@
 #ifndef NetworkSession_h
 #define NetworkSession_h
 
+#if PLATFORM(COCOA)
 OBJC_CLASS NSURLSession;
 OBJC_CLASS NSURLSessionDataTask;
 OBJC_CLASS NSOperationQueue;
-OBJC_CLASS NetworkSessionDelegate;
+OBJC_CLASS WKNetworkSessionDelegate;
+#endif
 
+#include "DownloadID.h"
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/SessionID.h>
 #include <wtf/HashMap.h>
@@ -74,27 +77,40 @@ public:
     virtual ~NetworkSessionTaskClient() { }
 };
 
-class NetworkDataTask : public RefCounted<NetworkDataTask> {
+class NetworkDataTask {
     friend class NetworkSession;
 public:
+#if PLATFORM(COCOA)
+    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&, RetainPtr<NSURLSessionDataTask>&&);
+#else
+    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&);
+#endif
+
+    void suspend();
     void cancel();
     void resume();
 
-    uint64_t taskIdentifier();
+    typedef uint64_t TaskIdentifier;
+    TaskIdentifier taskIdentifier();
 
     ~NetworkDataTask();
 
-    NetworkSessionTaskClient* client() { return m_client; }
-    void clearClient() { m_client = nullptr; }
+    NetworkSessionTaskClient& client() { return m_client; }
 
+    DownloadID pendingDownloadID() { return m_pendingDownloadID; }
+    void setPendingDownloadID(DownloadID downloadID)
+    {
+        ASSERT(!m_pendingDownloadID.downloadID());
+        ASSERT(downloadID.downloadID());
+        m_pendingDownloadID = downloadID;
+    }
+    
 private:
     NetworkSession& m_session;
-    NetworkSessionTaskClient* m_client;
+    NetworkSessionTaskClient& m_client;
+    DownloadID m_pendingDownloadID;
 #if PLATFORM(COCOA)
-    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&, RetainPtr<NSURLSessionDataTask>&&);
     RetainPtr<NSURLSessionDataTask> m_task;
-#else
-    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&);
 #endif
 };
 
@@ -110,16 +126,20 @@ public:
 
     static NetworkSession& defaultSession();
     
-    Ref<NetworkDataTask> createDataTaskWithRequest(const WebCore::ResourceRequest&, NetworkSessionTaskClient&);
+    std::unique_ptr<NetworkDataTask> createDataTaskWithRequest(const WebCore::ResourceRequest&, NetworkSessionTaskClient&);
 
-    NetworkDataTask* dataTaskForIdentifier(uint64_t);
+    NetworkDataTask* dataTaskForIdentifier(NetworkDataTask::TaskIdentifier);
 
+    void addDownloadID(NetworkDataTask::TaskIdentifier, DownloadID);
+    DownloadID downloadID(NetworkDataTask::TaskIdentifier);
+    DownloadID takeDownloadID(NetworkDataTask::TaskIdentifier);
+    
 private:
-    WebCore::SessionID m_sessionID;
-    HashMap<uint64_t, NetworkDataTask*> m_dataTaskMap;
+    HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMap;
+    HashMap<NetworkDataTask::TaskIdentifier, DownloadID> m_downloadMap;
 #if PLATFORM(COCOA)
     RetainPtr<NSURLSession> m_session;
-    RetainPtr<NetworkSessionDelegate> m_sessionDelegate;
+    RetainPtr<WKNetworkSessionDelegate> m_sessionDelegate;
 #endif
 };
 

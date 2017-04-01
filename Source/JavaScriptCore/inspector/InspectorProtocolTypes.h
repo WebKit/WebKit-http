@@ -81,7 +81,7 @@ public:
 
     void addItem(RefPtr<T>&& value)
     {
-        openAccessors().pushValue(WTF::move(value));
+        openAccessors().pushValue(WTFMove(value));
     }
     
     void addItem(const String& value)
@@ -93,7 +93,12 @@ public:
     {
         openAccessors().pushInteger(value);
     }
-    
+
+    void addItem(double value)
+    {
+        openAccessors().pushDouble(value);
+    }
+
     static Ref<Array<T>> create()
     {
         return adoptRef(*new Array<T>());

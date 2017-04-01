@@ -52,7 +52,77 @@ editing/pasteboard/gtk [ Pass ]
 # Tests that require new results.
 #////////////////////////////////////////////////////////////////////////////////////////
 
-
+# These XHTML files are being processed as HTML files.
+# Need to fix this before we can add expectations.
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-015.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-016.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-023.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-024.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-035.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-036.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-037.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-038.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-045.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-046.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-047.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-048.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-049.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-050.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-055.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-056.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-091.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-092.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-099.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-100.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-103.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-104.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-105.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-106.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-107.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-108.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-109.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-110.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-111.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-112.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-113.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-114.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-115.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-116.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-117.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-118.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-119.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-120.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-121.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-122.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-123.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-124.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-139.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-140.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-149.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-150.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-155.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-156.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-159.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-160.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-165.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-166.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-177.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-178.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-179.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-180.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-181.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-189.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-190.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-191.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-192.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-193.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-194.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-195.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-196.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-205.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-206.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-207.xht [ Missing ]
+webkit.org/b/152455 css2.1/tables/table-anonymous-objects-208.xht [ Missing ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # Expected failures
@@ -62,7 +132,7 @@ editing/pasteboard/gtk [ Pass ]
 Bug(GTK) fast/backgrounds/background-opaque-images-over-color.html [ ImageOnlyFailure ]
 
 # This test assumes we cannot play RTSP, but we can.
-Bug(GTK) media/unsupported-rtsp.html [ WontFix Timeout ]
+Bug(GTK) media/unsupported-rtsp.html [ WontFix Skip ]
 
 # ENABLE(DRAGGABLE_REGION) is disabled
 Bug(GTK) fast/css/draggable-region-parser.html [ Failure ]
@@ -349,7 +419,6 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-localDescription.html [ Sk
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-onnegotiationneeded.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-remoteDescription.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stable.html [ Skip ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection-state.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-statsSelector.html [ Skip ]
 webkit.org/b/79203 fast/events/constructors/media-stream-event-constructor.html [ Skip ]
@@ -489,7 +558,6 @@ Bug(GTK) css3/filters/backdrop [ Skip ]
 webkit.org/b/141072 accessibility/frame-disconnect-textmarker-cache-crash.html [ Failure ]
 
 webkit.org/b/141423 css3/calc/line-height.html [ Failure ]
-webkit.org/b/141423 editing/pasteboard/simplfiying-markup-should-not-strip-content.html [ Failure ]
 webkit.org/b/141423 fast/css/font-shorthand-from-longhands.html [ Failure ]
 webkit.org/b/141423 fast/css/font-shorthand-line-height.html [ Failure ]
 webkit.org/b/141423 fast/css/getComputedStyle/computed-style-font.html [ Failure ]
@@ -554,9 +622,7 @@ webkit.org/b/142268 editing/pasteboard/copy-paste-attachment.html [ Failure ]
 webkit.org/b/142269 fast/attachment/attachment-dom.html [ Failure ]
 webkit.org/b/142270 fast/canvas/canvas-ellipse-zero-lineto.html [ Failure ]
 
-webkit.org/b/127109 media/video-object-fit.html [ ImageOnlyFailure ]
 webkit.org/b/142283 fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
-webkit.org/b/142287 svg/clip-path/clip-path-line-use-before-defined.svg [ ImageOnlyFailure ]
 webkit.org/b/142289 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
 
 webkit.org/b/142819 fast/text/baseline-inline-block.html [ ImageOnlyFailure ]
@@ -614,6 +680,25 @@ webkit.org/b/149016 accessibility/aria-current.html [ Skip ]
 # ARIA 1.1 table related attributes are not supported
 webkit.org/b/148967 accessibility/aria-table-attributes.html [ Skip ]
 
+# WebKitGTK+ needs WOFF2 support.
+webkit.org/b/152616 fast/text/woff2.html [ ImageOnlyFailure ]
+
+# WebKitGTK+ doesn't have killring support.
+webkit.org/b/152379 editing/pasteboard/emacs-killring-alternating-append-prepend.html [ Failure ]
+webkit.org/b/152379 editing/pasteboard/emacs-killring-backward-delete-prepend.html [ Failure ]
+
+# The GTK+ test harness doesn't have support for overriding preferred languages.
+webkit.org/b/152618 fast/text/international/system-language/declarative-language.html [ Failure ]
+
+# This port doesn't support small-caps synthesis.
+webkit.org/b/152620 css3/font-variant-all.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-font-face-all.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-font-face-override.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-petite-caps-synthesis.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -652,6 +737,8 @@ webkit.org/b/118422 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-
 webkit.org/b/118423 http/tests/misc/iframe-reparenting-id-collision.html [ Crash Pass ]
 
 webkit.org/b/118902 svg/animations/svgenum-animation-6.html [ Crash Pass ]
+
+webkit.org/b/152610 fast/text/text-combine-placement.html [ Crash ]
 
 # Crashing after the FTL merge
 webkit.org/b/119255 [ Debug ] fast/workers/stress-js-execution.html [ Crash Pass ]
@@ -706,6 +793,8 @@ webkit.org/b/152043 [ Debug ] http/tests/media/hls/hls-progress.html [ Crash ]
 webkit.org/b/152043 [ Debug ] http/tests/media/hls/video-controller-getStartDate.html [ Crash ]
 webkit.org/b/152043 [ Debug ] http/tests/media/hls/video-controls-live-stream.html [ Crash ]
 webkit.org/b/152043 [ Debug ] http/tests/media/hls/video-cookie.html [ Crash ]
+
+webkit.org/b/152642 http/tests/misc/detached-frame-console.html [ Crash Pass Timeout Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -1216,7 +1305,7 @@ webkit.org/b/119264 transitions/created-while-suspended.html [ Pass Slow ]
 
 Bug(GTK) [ Release ] http/tests/media/hls/video-cookie.html [ Pass Slow ]
 
-webkit.org/b/149916 inspector/codemirror/prettyprinting-css-rules.html [ Pass Slow ]
+webkit.org/b/149916 inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/149916 inspector/codemirror/prettyprinting-css.html [ Pass Slow ]
 webkit.org/b/149916 inspector/codemirror/prettyprinting-javascript.html [ Pass Slow ]
 webkit.org/b/149916 inspector/console/addInspectedNode.html [ Pass Slow ]
@@ -1337,11 +1426,11 @@ webkit.org/b/139362 inspector/css/pseudo-element-matches.html [ Timeout ]
 webkit.org/b/139362 inspector/css/selector-specificity.html [ Timeout Pass ]
 webkit.org/b/147229 inspector/css/modify-rule-selector.html [ Skip ] # Timeout
 
-webkit.org/b/142292 fast/images/animated-gif-window-resizing.html [ Timeout ]
-webkit.org/b/142292 fast/images/animated-gif-zooming.html [ Timeout ]
+webkit.org/b/142292 fast/images/animated-gif-window-resizing.html [ Timeout Pass ]
+webkit.org/b/142292 fast/images/animated-gif-zooming.html [ Timeout Pass ]
 
 webkit.org/b/142488 http/tests/appcache/404-resource-with-slow-main-resource.php [ Timeout ]
-webkit.org/b/141959 [ Release ] http/tests/media/clearkey/clear-key-hls-aes128.html [ Timeout ]
+webkit.org/b/141959 [ Release ] http/tests/media/clearkey/clear-key-hls-aes128.html [ Crash Timeout ]
 webkit.org/b/142489 http/tests/media/video-play-waiting.html [ Timeout ]
 webkit.org/b/142490 inspector/css/selector-dynamic-specificity.html [ Timeout ]
 webkit.org/b/142491 media/media-source/media-source-stalled-holds-sleep-assertion.html [ Timeout ]
@@ -1493,7 +1582,6 @@ webkit.org/b/63706 plugins/mouse-events.html [ Failure ]
 webkit.org/b/63706 editing/pasteboard/cleanup-on-move.html [ Failure ]
 webkit.org/b/63706 editing/pasteboard/drag-list-item.html [ Failure ]
 webkit.org/b/63706 fast/events/ondragenter.html [ Failure ]
-webkit.org/b/63706 fast/events/drag-and-drop-autoscroll-inner-frame.html [ Timeout ]
 webkit.org/b/63706 fast/events/drag-customData.html  [ Timeout ]
 
 # Need support for internals.settings.setDeviceSupportsMouse
@@ -1970,7 +2058,6 @@ webkit.org/b/125348 accessibility/document-attributes.html [ Failure ]
 webkit.org/b/125406 fast/regions/relative-in-absolute-borders-overflow.html [ ImageOnlyFailure ]
 
 # Subpixel rendering: borders are reporting float values.
-webkit.org/b/128061 fast/css/bidi-override-in-anonymous-block.html [ Failure ]
 webkit.org/b/128061 fast/repaint/repaint-during-scroll-with-zoom.html [ Failure ]
 webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-initial-value-001.htm [ Failure ]
 webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-style-001.htm [ Failure ]
@@ -2274,8 +2361,6 @@ webkit.org/b/135348 compositing/iframes/page-cache-layer-tree.html [ Skip ]
 
 webkit.org/b/136255 fast/block/float/overhanging-tall-block.html [ Failure ]
 
-webkit.org/b/136159 fast/borders/border-painting-dashed-at-all.html [ ImageOnlyFailure ]
-webkit.org/b/136159 fast/borders/border-painting-dotted-at-all.html [ ImageOnlyFailure ]
 webkit.org/b/136159 fast/borders/hidpi-border-painting-groove.html [ ImageOnlyFailure ]
 webkit.org/b/136159 fast/borders/hidpi-border-painting-ridge.html [ ImageOnlyFailure ]
 
@@ -2353,9 +2438,6 @@ webkit.org/b/142482 http/tests/security/mixedContent/insecure-audio-video-in-mai
 webkit.org/b/142667 fast/forms/search-vertical-alignment.html [ Failure ]
 webkit.org/b/142667 fast/forms/textfield-overflow-by-value-update.html [ Failure ]
 
-webkit.org/b/142668 fast/backgrounds/background-opaque-clipped-gradients.html [ ImageOnlyFailure ]
-webkit.org/b/142669 fast/regions/overflow/overflow-region-float.html [ ImageOnlyFailure ]
-
 webkit.org/b/143230 imported/mozilla/svg/filters/feImage-1.svg [ ImageOnlyFailure ]
 
 webkit.org/b/143468 accessibility/plugin.html [ Failure ]
@@ -2385,7 +2467,11 @@ webkit.org/b/144765 fast/events/touch/touch-slider-no-js-touch-listener.html [ F
 
 webkit.org/b/144763 fast/events/scroll-in-scaled-page-with-overflow-hidden.html
 
-webkit.org/b/141835 media/video-controls-no-scripting.html [ Failure ]
+webkit.org/b/141835 media/video-controls-no-scripting.html [ Failure Timeout ]
+webkit.org/b/152797 media/video-source-error.html [ Timeout ]
+webkit.org/b/152797 media/video-source-load.html [ Timeout ]
+webkit.org/b/152797 media/video-source-moved.html [ Timeout ]
+
 webkit.org/b/145048 http/tests/misc/bad-charset-alias.html [ Failure ]
 webkit.org/b/145049 fast/text/simple-line-layout-text-stroke-width.html [ Failure ]
 
@@ -2578,12 +2664,39 @@ webkit.org/b/151267 imported/blink/webexposed/webkit-focus-ring-exposed-to-quirk
 
 webkit.org/b/152057 accessibility/textarea-selected-text-range.html [ Failure Timeout ]
 
+webkit.org/b/152643 imported/w3c/indexeddb/idbcursor-advance.htm [ Failure ]
+webkit.org/b/152643 imported/w3c/indexeddb/idbcursor-continue.htm [ Failure ]
+webkit.org/b/152643 imported/w3c/indexeddb/idbcursor-direction-index.htm [ Failure ]
+webkit.org/b/152643 imported/w3c/indexeddb/idbindex_get2.htm [ Failure ]
+webkit.org/b/152643 imported/w3c/indexeddb/idbindex_getKey2.htm [ Failure ]
+
+webkit.org/b/152788 imported/mozilla/svg/filter-scaled-02.html [ ImageOnlyFailure ]
+webkit.org/b/152788 imported/mozilla/svg/image/image-filter-01.svg [ ImageOnlyFailure ]
+webkit.org/b/152788 svg/filters/color-space-conversion.svg [ ImageOnlyFailure ]
+webkit.org/b/152788 svg/filters/container-with-filters.svg [ ImageOnlyFailure ]
+webkit.org/b/152788 svg/filters/feComposite-background-rect-control-operators.svg [ ImageOnlyFailure ]
+webkit.org/b/152788 svg/filters/feDisplacementMap-filterUnits.svg [ ImageOnlyFailure ]
+
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-basic-001.html [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-basic-002.html [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-basic-003.html [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-basic-004.html [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-rule-002.xht [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-rule-px-001.xht [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-rule-stacking-001.xht [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-shorthand-001.xht [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-span-all-block-sibling-003.xht [ ImageOnlyFailure ]
+webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht [ ImageOnlyFailure ]
+
+webkit.org/b/152823 imported/w3c/css/css-multicol-1/multicol-rule-inset-000.xht [ ImageOnlyFailure ]
+webkit.org/b/152823 imported/w3c/css/css-multicol-1/multicol-rule-outset-000.xht [ ImageOnlyFailure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # This tests are passing on GTK+ but they do not in the Apple ports
-imported/mozilla/svg/image/image-filter-01.svg [ Pass ]
+css3/flexbox/multiline-reverse-wrap-baseline.html [ Pass ]
 imported/w3c/canvas/2d.line.cap.round.html [ Pass ]
 mathml/presentation/style-changed.html [ Pass ]
 transitions/svg-text-shadow-transition.html [ Pass ]
@@ -2613,7 +2726,9 @@ css3/line-break-language-sensitive [ Pass ImageOnlyFailure ]
 # Media controls tests are OS X only
 media/controls [ Skip ]
 
-# Mocking the system language is not implemented in GTK.
-fast/text/international/system-language [ Failure ]
+# WIRELESS_PLAYBACK_TARGET not enabled.
+media/airplay-target-availability.html
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
+
+webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Pass ]

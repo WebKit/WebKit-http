@@ -1,3 +1,99 @@
+2016-01-05  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Download should use header values from provided request object.
+        https://bugs.webkit.org/show_bug.cgi?id=152694
+
+        Reviewed by Alex Christensen.
+
+        Copy header values from request object parameter.
+
+        * WebDownloadCurl.cpp:
+        (WebDownload::initWithRequest):
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Replace WTF::move with WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Brady Eidson.
+
+        * Plugins/PluginStream.cpp:
+        (WebCore::PluginStream::willSendRequest):
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::requestTimerFired):
+        (WebCore::PluginView::scheduleRequest):
+        (WebCore::PluginView::handlePost):
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::createDocumentLoader):
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::WebInspectorFrontendClient):
+        * WebHistory.cpp:
+        (createUserInfoFromArray):
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::initFromDictionaryRepresentation):
+        * WebView.cpp:
+        (WebView::addToDirtyRegion):
+        (WebView::scrollBackingStore):
+        (WebView::loadBackForwardListFromOtherView):
+        (WebView::addUserScriptToGroup):
+        (WebView::addUserStyleSheetToGroup):
+
+2015-12-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix Windows build.
+
+        * WebView.cpp:
+        (WebView::scrollOffset):
+
+2015-12-25  David Kilzer  <ddkilzer@apple.com>
+
+        ResourceError should store failingURL as URL instead of String to avoid reparsing and to address FIXME comments in ResourceErrorCF.cpp and ResourceErrorMac.mm
+        <http://webkit.org/b/146391>
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::cancelledError):
+        (WebFrameLoaderClient::blockedError):
+        (WebFrameLoaderClient::cannotShowURLError):
+        (WebFrameLoaderClient::interruptedForPolicyChangeError):
+        (WebFrameLoaderClient::cannotShowMIMETypeError):
+        (WebFrameLoaderClient::fileDoesNotExistError):
+        (WebFrameLoaderClient::pluginWillHandleLoadError):
+        (WebFrameLoaderClient::dispatchDidFailToStartPlugin):
+        (WebFrameLoaderClient::createJavaAppletWidget):
+        * WebDownloadCFNet.cpp:
+        (WebDownload::cancelAuthenticationChallenge):
+        * WebError.cpp:
+        (WebError::init):
+        - Update for type change of 'failingURL' argument to
+          ResourceError().
+
+2015-12-23  Brent Fulgham  <bfulgham@apple.com>
+
+        Web Inspector: add support for running protocol-test.js tests on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=148037
+        <rdar://problem/22292237>
+
+        Reviewed by Simon Fraser.
+
+        Provide API for WebKit.dll clients to request its CFBundleRef.
+        
+        * WebKitCOMAPI.cpp:
+        (webKitBundle): Added.
+        * WebKitCOMAPI.h:
+
+2015-12-20  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused setToolbarHeight
+        https://bugs.webkit.org/show_bug.cgi?id=152466
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::setToolbarHeight): Deleted.
+        * WebCoreSupport/WebInspectorClient.h:
+
 2015-12-15  Zan Dobersek  <zdobersek@igalia.com>
 
         [TexMap] Operate with a reference to the TextureMapper wherever possible

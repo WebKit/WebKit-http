@@ -397,8 +397,10 @@ public:
 
     void or32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
-        if (!imm.m_value && !m_fixedWidth)
+        if (!imm.m_value && !m_fixedWidth) {
+            move(src, dest);
             return;
+        }
 
         if (imm.m_value > 0 && imm.m_value < 65535 && !m_fixedWidth) {
             m_assembler.ori(dest, src, imm.m_value);
@@ -1664,6 +1666,12 @@ public:
         return branchAdd32(cond, immTempRegister, dest);
     }
 
+    Jump branchAdd32(ResultCondition cond, Address address, RegisterID dest)
+    {
+        load32(address, immTempRegister);
+        return branchAdd32(cond, immTempRegister, dest);
+    }
+
     Jump branchAdd32(ResultCondition cond, RegisterID src, TrustedImm32 imm, RegisterID dest)
     {
         move(imm, immTempRegister);
@@ -2683,7 +2691,7 @@ public:
     {
         m_assembler.truncwd(fpTempRegister, src);
         m_assembler.mfc1(dest, fpTempRegister);
-        return branch32(branchType == BranchIfTruncateFailed ? Equal : NotEqual, dest, TrustedImm32(0));
+        return branch32(branchType == BranchIfTruncateFailed ? Equal : NotEqual, dest, TrustedImm32(0x7fffffff));
     }
 
     // Result is undefined if the value is outside of the integer range.
@@ -2767,6 +2775,18 @@ public:
         m_assembler.sync();
     }
 
+    void abortWithReason(AbortReason reason)
+    {
+        move(TrustedImm32(reason), dataTempRegister);
+        breakpoint();
+    }
+
+    void abortWithReason(AbortReason reason, intptr_t misc)
+    {
+        move(TrustedImm32(misc), immTempRegister);
+        abortWithReason(reason);
+    }
+
     static FunctionPtr readCallTarget(CodeLocationCall call)
     {
         return FunctionPtr(reinterpret_cast<void(*)()>(MIPSAssembler::readCallTarget(call.dataLocation())));
@@ -2784,6 +2804,13 @@ public:
     }
 
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
+    static bool canJumpReplacePatchableBranch32WithPatch() { return false; }
+
+    static CodeLocationLabel startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32)
+    {
+        UNREACHABLE_FOR_PLATFORM();
+        return CodeLocationLabel();
+    }
 
     static CodeLocationLabel startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr label)
     {
@@ -2801,11 +2828,25 @@ public:
         return CodeLocationLabel();
     }
 
+    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel, Address, int32_t)
+    {
+        UNREACHABLE_FOR_PLATFORM();
+    }
+
     static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel, Address, void*)
     {
         UNREACHABLE_FOR_PLATFORM();
     }
 
+    static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
+    {
+        MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
+    }
+
+    static void repatchCall(CodeLocationCall call, FunctionPtr destination)
+    {
+        MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
+    }
 
 private:
     // If m_fixedWidth is true, we will generate a fixed number of instructions.
@@ -2820,16 +2861,6 @@ private:
             MIPSAssembler::linkJump(code, call.m_label, function.value());
         else
             MIPSAssembler::linkCall(code, call.m_label, function.value());
-    }
-
-    static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
-    {
-        MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
-    }
-
-    static void repatchCall(CodeLocationCall call, FunctionPtr destination)
-    {
-        MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
 
 };

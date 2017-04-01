@@ -16,6 +16,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/bytecompiler"
     "${JAVASCRIPTCORE_DIR}/dfg"
     "${JAVASCRIPTCORE_DIR}/disassembler"
+    "${JAVASCRIPTCORE_DIR}/disassembler/udis86"
     "${JAVASCRIPTCORE_DIR}/ftl"
     "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/debugger"
@@ -90,6 +91,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirSpillEverything.cpp
     b3/air/AirStackSlot.cpp
     b3/air/AirTmp.cpp
+    b3/air/AirTmpWidth.cpp
     b3/air/AirValidate.cpp
 
     b3/B3ArgumentRegValue.cpp
@@ -203,6 +205,7 @@ set(JavaScriptCore_SOURCES
     bytecode/UnlinkedCodeBlock.cpp
     bytecode/UnlinkedFunctionExecutable.cpp
     bytecode/UnlinkedInstructionStream.cpp
+    bytecode/ValueProfile.cpp
     bytecode/ValueRecovery.cpp
     bytecode/VariableWriteFireDetail.cpp
     bytecode/VirtualRegister.cpp
@@ -357,11 +360,20 @@ set(JavaScriptCore_SOURCES
     disassembler/ARMv7Disassembler.cpp
     disassembler/Disassembler.cpp
     disassembler/LLVMDisassembler.cpp
+    disassembler/UDis86Disassembler.cpp
     disassembler/X86Disassembler.cpp
 
     disassembler/ARM64/A64DOpcode.cpp
 
     disassembler/ARMv7/ARMv7DOpcode.cpp
+
+    disassembler/udis86/udis86.c
+    disassembler/udis86/udis86_decode.c
+    disassembler/udis86/udis86_input.c
+    disassembler/udis86/udis86_itab_holder.c
+    disassembler/udis86/udis86_syn-att.c
+    disassembler/udis86/udis86_syn-intel.c
+    disassembler/udis86/udis86_syn.c
 
     heap/CodeBlockSet.cpp
     heap/ConservativeRoots.cpp
@@ -429,6 +441,7 @@ set(JavaScriptCore_SOURCES
     inspector/agents/InspectorDebuggerAgent.cpp
     inspector/agents/InspectorHeapAgent.cpp
     inspector/agents/InspectorRuntimeAgent.cpp
+    inspector/agents/InspectorScriptProfilerAgent.cpp
     inspector/agents/JSGlobalObjectConsoleAgent.cpp
     inspector/agents/JSGlobalObjectDebuggerAgent.cpp
     inspector/agents/JSGlobalObjectRuntimeAgent.cpp
@@ -470,6 +483,7 @@ set(JavaScriptCore_SOURCES
     jit/JITInlineCacheGenerator.cpp
     jit/JITLeftShiftGenerator.cpp
     jit/JITMulGenerator.cpp
+    jit/JITNegGenerator.cpp
     jit/JITOpcodes.cpp
     jit/JITOpcodes32_64.cpp
     jit/JITOperations.cpp
@@ -830,37 +844,21 @@ foreach (_file ${JavaScriptCore_SCRIPTS_SOURCES})
     list(APPEND JavaScriptCore_SCRIPTS ${JavaScriptCore_SCRIPTS_DIR}/${_script})
 endforeach ()
 
-if (USE_UDIS86)
-    set(UDIS_GEN_DEP
-        disassembler/udis86/ud_opcode.py
-        disassembler/udis86/ud_optable.py
-    )
+set(UDIS_GEN_DEP
+    disassembler/udis86/ud_opcode.py
+    disassembler/udis86/ud_optable.py
+)
 
-    add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/udis86_itab.c ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/udis86_itab.h
-        DEPENDS ${UDIS_GEN_DEP}
-        WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
-        COMMAND ${PYTHON_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/disassembler/udis86/itab.py ${JAVASCRIPTCORE_DIR}/disassembler/udis86/optable.xml
-        VERBATIM)
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/udis86_itab.c ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/udis86_itab.h
+    DEPENDS ${UDIS_GEN_DEP}
+    WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
+    COMMAND ${PYTHON_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/disassembler/udis86/itab.py ${JAVASCRIPTCORE_DIR}/disassembler/udis86/optable.xml
+    VERBATIM)
 
-    list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
-        ${JAVASCRIPTCORE_DIR}/disassembler/udis86
-    )
-    list(APPEND JavaScriptCore_HEADERS
-        ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/udis86_itab.h
-    )
-    list(APPEND JavaScriptCore_SOURCES
-        disassembler/UDis86Disassembler.cpp
-
-        disassembler/udis86/udis86.c
-        disassembler/udis86/udis86_decode.c
-        disassembler/udis86/udis86_input.c
-        disassembler/udis86/udis86_itab_holder.c
-        disassembler/udis86/udis86_syn-att.c
-        disassembler/udis86/udis86_syn-intel.c
-        disassembler/udis86/udis86_syn.c
-    )
-endif ()
+list(APPEND JavaScriptCore_HEADERS
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/udis86_itab.h
+)
 
 set(LLINT_ASM
     llint/LowLevelInterpreter.asm
@@ -1025,6 +1023,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLDWARFRegister.cpp
         ftl/FTLDataSection.cpp
         ftl/FTLExceptionHandlerManager.cpp
+        ftl/FTLExceptionTarget.cpp
         ftl/FTLExitArgument.cpp
         ftl/FTLExitArgumentForOperand.cpp
         ftl/FTLExitPropertyValue.cpp
@@ -1051,6 +1050,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLOSRExitHandle.cpp
         ftl/FTLOperations.cpp
         ftl/FTLOutput.cpp
+        ftl/FTLPatchpointExceptionHandle.cpp
         ftl/FTLRecoveryOpcode.cpp
         ftl/FTLSaveRestore.cpp
         ftl/FTLSlowPathCall.cpp
@@ -1174,6 +1174,7 @@ set(JavaScriptCore_INSPECTOR_DOMAINS
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/OverlayTypes.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Page.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Runtime.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/ScriptProfiler.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Timeline.json
 )
 
@@ -1246,6 +1247,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/ReflectObject.js
     ${JAVASCRIPTCORE_DIR}/builtins/StringConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/StringIteratorPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/StringPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayPrototype.js
 )

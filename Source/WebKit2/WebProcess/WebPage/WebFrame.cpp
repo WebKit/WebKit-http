@@ -128,7 +128,7 @@ PassRefPtr<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frame
     frame->m_coreFrame->tree().setName(frameName);
     if (ownerElement) {
         ASSERT(ownerElement->document().frame());
-        ownerElement->document().frame()->tree().appendChild(WTF::move(coreFrame));
+        ownerElement->document().frame()->tree().appendChild(WTFMove(coreFrame));
     }
     frame->m_coreFrame->init();
     return frame.release();
@@ -136,7 +136,7 @@ PassRefPtr<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frame
 
 PassRefPtr<WebFrame> WebFrame::create(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
 {
-    RefPtr<WebFrame> frame = adoptRef(new WebFrame(WTF::move(frameLoaderClient)));
+    RefPtr<WebFrame> frame = adoptRef(new WebFrame(WTFMove(frameLoaderClient)));
 
     // Add explict ref() that will be balanced in WebFrameLoaderClient::frameLoaderDestroyed().
     frame->ref();
@@ -149,7 +149,7 @@ WebFrame::WebFrame(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
     , m_policyListenerID(0)
     , m_policyFunction(0)
     , m_policyDownloadID(0)
-    , m_frameLoaderClient(WTF::move(frameLoaderClient))
+    , m_frameLoaderClient(WTFMove(frameLoaderClient))
     , m_loadListener(0)
     , m_frameID(generateFrameID())
 #if PLATFORM(IOS)
@@ -215,12 +215,12 @@ void WebFrame::invalidatePolicyListener()
     if (!m_policyListenerID)
         return;
 
-    m_policyDownloadID = 0;
+    m_policyDownloadID = { };
     m_policyListenerID = 0;
     m_policyFunction = 0;
 }
 
-void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, uint64_t downloadID)
+void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, DownloadID downloadID)
 {
     if (!m_coreFrame)
         return;
@@ -233,7 +233,7 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action
 
     ASSERT(m_policyFunction);
 
-    FramePolicyFunction function = WTF::move(m_policyFunction);
+    FramePolicyFunction function = WTFMove(m_policyFunction);
 
     invalidatePolicyListener();
 
@@ -248,10 +248,10 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action
 
 void WebFrame::startDownload(const WebCore::ResourceRequest& request)
 {
-    ASSERT(m_policyDownloadID);
+    ASSERT(m_policyDownloadID.downloadID());
 
-    uint64_t policyDownloadID = m_policyDownloadID;
-    m_policyDownloadID = 0;
+    auto policyDownloadID = m_policyDownloadID;
+    m_policyDownloadID = { };
 
     auto& webProcess = WebProcess::singleton();
     SessionID sessionID = page() ? page()->sessionID() : SessionID::defaultSessionID();
@@ -260,10 +260,10 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request)
 
 void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, SessionID sessionID, const ResourceRequest& request, const ResourceResponse& response)
 {
-    ASSERT(m_policyDownloadID);
+    ASSERT(m_policyDownloadID.downloadID());
 
-    uint64_t policyDownloadID = m_policyDownloadID;
-    m_policyDownloadID = 0;
+    auto policyDownloadID = m_policyDownloadID;
+    m_policyDownloadID = { };
 
     SubresourceLoader* mainResourceLoader = documentLoader->mainResourceLoader();
 
@@ -445,7 +445,7 @@ Ref<API::Array> WebFrame::childFrames()
         vector.uncheckedAppend(webFrame);
     }
 
-    return API::Array::create(WTF::move(vector));
+    return API::Array::create(WTFMove(vector));
 }
 
 String WebFrame::layerTreeAsText() const
@@ -568,7 +568,7 @@ IntSize WebFrame::scrollOffset() const
     if (!view)
         return IntSize();
 
-    return view->scrollOffset();
+    return toIntSize(view->scrollPosition());
 }
 
 bool WebFrame::hasHorizontalScrollbar() const
@@ -826,7 +826,7 @@ PassRefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
     auto graphicsContext = sharedSnapshot->createGraphicsContext();
     float deviceScaleFactor = coreFrame()->page()->deviceScaleFactor();
     graphicsContext->scale(FloatSize(deviceScaleFactor, deviceScaleFactor));
-    graphicsContext->drawConsumingImageBuffer(WTF::move(snapshot), FloatPoint());
+    graphicsContext->drawConsumingImageBuffer(WTFMove(snapshot), FloatPoint());
 
     return sharedSnapshot.release();
 }

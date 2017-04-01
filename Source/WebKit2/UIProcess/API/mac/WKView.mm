@@ -871,7 +871,7 @@ Some other editing-related methods still unimplemented:
     InitializeWebKit2();
 
     _data = [[WKViewData alloc] init];
-    _data->_impl = std::make_unique<WebViewImpl>(self, webView, processPool, WTF::move(configuration));
+    _data->_impl = std::make_unique<WebViewImpl>(self, webView, processPool, WTFMove(configuration));
 
     return self;
 }
@@ -1014,7 +1014,7 @@ Some other editing-related methods still unimplemented:
     configuration->setPageGroup(toImpl(pageGroupRef));
     configuration->setRelatedPage(toImpl(relatedPage));
 
-    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTF::move(configuration) webView:nil];
+    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTFMove(configuration) webView:nil];
 }
 
 - (id)initWithFrame:(NSRect)frame configurationRef:(WKPageConfigurationRef)configurationRef
@@ -1022,7 +1022,7 @@ Some other editing-related methods still unimplemented:
     Ref<API::PageConfiguration> configuration = toImpl(configurationRef)->copy();
     auto& processPool = *configuration->processPool();
 
-    return [self initWithFrame:frame processPool:processPool configuration:WTF::move(configuration) webView:nil];
+    return [self initWithFrame:frame processPool:processPool configuration:WTFMove(configuration) webView:nil];
 }
 
 - (BOOL)wantsUpdateLayer
@@ -1435,8 +1435,6 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(WTF::Optional<WebCore::Scrol
     _data->_impl->dismissContentRelativeChildWindowsWithAnimationFromViewOnly(withAnimation);
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-
 - (void)_setAutomaticallyAdjustsContentInsets:(BOOL)automaticallyAdjustsContentInsets
 {
     _data->_impl->setAutomaticallyAdjustsContentInsets(automaticallyAdjustsContentInsets);
@@ -1446,8 +1444,6 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(WTF::Optional<WebCore::Scrol
 {
     return _data->_impl->automaticallyAdjustsContentInsets();
 }
-
-#endif
 
 @end
 

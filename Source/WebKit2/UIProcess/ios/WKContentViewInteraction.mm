@@ -2848,7 +2848,10 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
             [[UIKeyboardImpl sharedInstance] didHandleWebKeyEvent];
     }
 
-    if (eventWasHandled)
+    // If we aren't interacting with editable content, we still need to call [super _handleKeyUIEvent:]
+    // so that keyboard repeat will work correctly. If we are interacting with editable content,
+    // we already did so in _handleKeyUIEvent.
+    if (eventWasHandled && _page->editorState().isContentEditable)
         return;
 
     if (![event isKindOfClass:[WKWebEvent class]])
@@ -3455,7 +3458,7 @@ static bool isAssistableInputType(InputType type)
 
 - (RetainPtr<NSArray>)actionSheetAssistant:(WKActionSheetAssistant *)assistant decideActionsForElement:(_WKActivatedElementInfo *)element defaultActions:(RetainPtr<NSArray>)defaultActions
 {
-    return _page->uiClient().actionsForElement(element, WTF::move(defaultActions));
+    return _page->uiClient().actionsForElement(element, WTFMove(defaultActions));
 }
 
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant willStartInteractionWithElement:(_WKActivatedElementInfo *)element

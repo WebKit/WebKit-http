@@ -23,7 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define _USE_MATH_DEFINES 1
 #include "config.h"
 
 #if ENABLE(MATHML)
@@ -40,7 +39,7 @@ namespace WebCore {
 using namespace MathMLNames;
 
 RenderMathMLMenclose::RenderMathMLMenclose(Element& element, Ref<RenderStyle>&& style)
-    : RenderMathMLRow(element, WTF::move(style))
+    : RenderMathMLRow(element, WTFMove(style))
 {
 }
 

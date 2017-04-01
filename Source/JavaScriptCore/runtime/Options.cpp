@@ -33,11 +33,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wtf/ASCIICType.h>
+#include <wtf/Compiler.h>
 #include <wtf/DataLog.h>
 #include <wtf/NumberOfCores.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
 #include <wtf/text/StringBuilder.h>
+
+#if PLATFORM(COCOA)
+#include <crt_externs.h>
+#endif
 
 #if OS(WINDOWS) || OS(HAIKU)
 #include "MacroAssemblerX86.h"
@@ -119,6 +124,21 @@ bool overrideOptionWithHeuristic(T& variable, const char* name)
     if (parse(stringValue, variable))
         return true;
     
+    fprintf(stderr, "WARNING: failed to parse %s=%s\n", name, stringValue);
+    return false;
+}
+
+bool Options::overrideAliasedOptionWithHeuristic(const char* name)
+{
+    const char* stringValue = getenv(name);
+    if (!stringValue)
+        return false;
+
+    String aliasedOption;
+    aliasedOption = String(&name[4]) + "=" + stringValue;
+    if (Options::setOption(aliasedOption.utf8().data()))
+        return true;
+
     fprintf(stderr, "WARNING: failed to parse %s=%s\n", name, stringValue);
     return false;
 }
@@ -316,6 +336,16 @@ static void recomputeDependentOptions()
         Options::useOSREntryToFTL() = false;
     }
 
+#if CPU(ARM64)
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=152510
+    // We're running into a bug where some ARM64 tests are failing in the FTL
+    // with what appears to be an llvm bug where llvm is miscalculating the
+    // live-out variables of a patchpoint. This causes us to not keep a 
+    // volatile register alive across a C call in a patchpoint, even though 
+    // that register is used immediately after the patchpoint.
+    Options::assumeAllRegsInFTLICAreLive() = true;
+#endif
+
     // Compute the maximum value of the reoptimization retry counter. This is simply
     // the largest value at which we don't overflow the execute counter, when using it
     // to left-shift the execution counter by this amount. Currently the value ends
@@ -351,9 +381,29 @@ void Options::initialize()
             // Allow environment vars to override options if applicable.
             // The evn var should be the name of the option prefixed with
             // "JSC_".
+#if PLATFORM(COCOA)
+            bool hasBadOptions = false;
+            for (char** envp = *_NSGetEnviron(); *envp; envp++) {
+                const char* env = *envp;
+                if (!strncmp("JSC_", env, 4)) {
+                    if (!Options::setOption(&env[4])) {
+                        dataLog("ERROR: invalid option: ", *envp, "\n");
+                        hasBadOptions = true;
+                    }
+                }
+            }
+            if (hasBadOptions && Options::validateOptions())
+                CRASH();
+#else // PLATFORM(COCOA)
 #define FOR_EACH_OPTION(type_, name_, defaultValue_, description_)      \
             overrideOptionWithHeuristic(name_(), "JSC_" #name_);
             JSC_OPTIONS(FOR_EACH_OPTION)
+#undef FOR_EACH_OPTION
+#endif // PLATFORM(COCOA)
+
+#define FOR_EACH_OPTION(aliasedName_, unaliasedName_, equivalence_) \
+            overrideAliasedOptionWithHeuristic("JSC_" #aliasedName_);
+            JSC_ALIASED_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
 
 #if 0
@@ -498,7 +548,7 @@ bool Options::setOptions(const char* optionsStr)
 
 // Parses a single command line option in the format "<optionName>=<value>"
 // (no spaces allowed) and set the specified option if appropriate.
-bool Options::setOption(const char* arg)
+bool Options::setOptionWithoutAlias(const char* arg)
 {
     // arg should look like this:
     //   <jscOptionName>=<appropriate value>
@@ -530,6 +580,70 @@ bool Options::setOption(const char* arg)
     return false; // No option matched.
 }
 
+static bool invertBoolOptionValue(const char* valueStr, const char*& invertedValueStr)
+{
+    bool boolValue;
+    if (!parse(valueStr, boolValue))
+        return false;
+    invertedValueStr = boolValue ? "false" : "true";
+    return true;
+}
+
+
+bool Options::setAliasedOption(const char* arg)
+{
+    // arg should look like this:
+    //   <jscOptionName>=<appropriate value>
+    const char* equalStr = strchr(arg, '=');
+    if (!equalStr)
+        return false;
+
+#if COMPILER(CLANG)
+#if __has_warning("-Wtautological-compare")
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare"
+#endif
+#endif
+
+    // For each option, check if the specify arg is a match. If so, set the arg
+    // if the value makes sense. Otherwise, move on to checking the next option.
+#define FOR_EACH_OPTION(aliasedName_, unaliasedName_, equivalence) \
+    if (strlen(#aliasedName_) == static_cast<size_t>(equalStr - arg)    \
+        && !strncmp(arg, #aliasedName_, equalStr - arg)) {              \
+        String unaliasedOption(#unaliasedName_);                        \
+        if (equivalence == SameOption)                                  \
+            unaliasedOption = unaliasedOption + equalStr;               \
+        else {                                                          \
+            ASSERT(equivalence == InvertedOption);                      \
+            const char* invertedValueStr = nullptr;                     \
+            if (!invertBoolOptionValue(equalStr + 1, invertedValueStr)) \
+                return false;                                           \
+            unaliasedOption = unaliasedOption + "=" + invertedValueStr; \
+        }                                                               \
+        return setOptionWithoutAlias(unaliasedOption.utf8().data());   \
+    }
+
+    JSC_ALIASED_OPTIONS(FOR_EACH_OPTION)
+#undef FOR_EACH_OPTION
+
+#if COMPILER(CLANG)
+#if __has_warning("-Wtautological-compare")
+#pragma clang diagnostic pop
+#endif
+#endif
+
+    return false; // No option matched.
+}
+
+bool Options::setOption(const char* arg)
+{
+    bool success = setOptionWithoutAlias(arg);
+    if (success)
+        return true;
+    return setAliasedOption(arg);
+}
+
+
 void Options::dumpAllOptions(StringBuilder& builder, DumpLevel level, const char* title,
     const char* separator, const char* optionHeader, const char* optionFooter, DumpDefaultsOption dumpDefaultsOption)
 {
@@ -554,7 +668,7 @@ void Options::dumpAllOptions(FILE* stream, DumpLevel level, const char* title)
 {
     StringBuilder builder;
     dumpAllOptions(builder, level, title, nullptr, "   ", "\n", DumpDefaults);
-    fprintf(stream, "%s", builder.toString().ascii().data());
+    fprintf(stream, "%s", builder.toString().utf8().data());
 }
 
 void Options::dumpOption(StringBuilder& builder, DumpLevel level, OptionID id,

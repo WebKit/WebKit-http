@@ -78,6 +78,7 @@
 #include "Settings.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
+#include "StyleTreeResolver.h"
 #include "TextIterator.h"
 #include "VoidCallback.h"
 #include "WheelEvent.h"
@@ -1513,7 +1514,7 @@ bool Element::rendererIsNeeded(const RenderStyle& style)
 
 RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
-    return RenderElement::createFor(*this, WTF::move(style));
+    return RenderElement::createFor(*this, WTFMove(style));
 }
 
 Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertionPoint)
@@ -1575,7 +1576,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
         document().page()->pointerLockController().elementRemoved(this);
 #endif
 
-    setSavedLayerScrollOffset(IntSize());
+    setSavedLayerScrollPosition(ScrollPosition());
 
     if (insertionPoint.isInTreeScope()) {
         TreeScope* oldScope = &insertionPoint.treeScope();
@@ -1637,7 +1638,7 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
     ASSERT(!shadowRoot());
 
     ShadowRoot& shadowRoot = newShadowRoot.get();
-    ensureElementRareData().setShadowRoot(WTF::move(newShadowRoot));
+    ensureElementRareData().setShadowRoot(WTFMove(newShadowRoot));
 
     shadowRoot.setHost(this);
     shadowRoot.setParentTreeScope(&treeScope());
@@ -1887,8 +1888,6 @@ void Element::removeAllEventListeners()
 void Element::beginParsingChildren()
 {
     clearIsParsingChildrenFinished();
-    if (auto styleResolver = document().styleResolverIfExists())
-        styleResolver->pushParentElement(this);
 }
 
 void Element::finishParsingChildren()
@@ -1896,8 +1895,6 @@ void Element::finishParsingChildren()
     ContainerNode::finishParsingChildren();
     setIsParsingChildrenFinished();
     checkForSiblingStyleChanges(*this, FinishedParsingChildren, ElementTraversal::lastChild(*this), nullptr);
-    if (auto styleResolver = document().styleResolverIfExists())
-        styleResolver->popParentElement(this);
 }
 
 #if ENABLE(TREE_DEBUGGING)
@@ -2288,14 +2285,14 @@ void Element::dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusinEvent || eventType == eventNames().DOMFocusInEvent);
-    dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(oldFocusedElement)));
+    dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTFMove(oldFocusedElement)));
 }
 
 void Element::dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusoutEvent || eventType == eventNames().DOMFocusOutEvent);
-    dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(newFocusedElement)));
+    dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
 }
 
 void Element::dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection)
@@ -2303,7 +2300,7 @@ void Element::dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirec
     if (document().page())
         document().page()->chrome().client().elementDidFocus(this);
 
-    EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().focusEvent, false, false, document().defaultView(), 0, WTF::move(oldFocusedElement)));
+    EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().focusEvent, false, false, document().defaultView(), 0, WTFMove(oldFocusedElement)));
 }
 
 void Element::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
@@ -2311,7 +2308,7 @@ void Element::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
     if (document().page())
         document().page()->chrome().client().elementDidBlur(this);
 
-    EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTF::move(newFocusedElement)));
+    EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
 }
 
 #if ENABLE(MOUSE_FORCE_EVENTS)
@@ -2497,7 +2494,7 @@ RenderStyle& Element::resolveComputedStyle()
         auto style = document().styleForElementIgnoringPendingStylesheets(*element, computedStyle);
         computedStyle = style.ptr();
         ElementRareData& rareData = element->ensureElementRareData();
-        rareData.setComputedStyle(WTF::move(style));
+        rareData.setComputedStyle(WTFMove(style));
     }
 
     return *computedStyle;
@@ -2681,12 +2678,12 @@ PseudoElement* Element::afterPseudoElement() const
 
 void Element::setBeforePseudoElement(Ref<PseudoElement>&& element)
 {
-    ensureElementRareData().setBeforePseudoElement(WTF::move(element));
+    ensureElementRareData().setBeforePseudoElement(WTFMove(element));
 }
 
 void Element::setAfterPseudoElement(Ref<PseudoElement>&& element)
 {
-    ensureElementRareData().setAfterPseudoElement(WTF::move(element));
+    ensureElementRareData().setAfterPseudoElement(WTFMove(element));
 }
 
 static void disconnectPseudoElement(PseudoElement* pseudoElement)
@@ -3152,16 +3149,16 @@ void Element::didRemoveAttribute(const QualifiedName& name, const AtomicString& 
     dispatchSubtreeModifiedEvent();
 }
 
-IntSize Element::savedLayerScrollOffset() const
+IntPoint Element::savedLayerScrollPosition() const
 {
-    return hasRareData() ? elementRareData()->savedLayerScrollOffset() : IntSize();
+    return hasRareData() ? elementRareData()->savedLayerScrollPosition() : IntPoint();
 }
 
-void Element::setSavedLayerScrollOffset(const IntSize& size)
+void Element::setSavedLayerScrollPosition(const IntPoint& position)
 {
-    if (size.isZero() && !hasRareData())
+    if (position.isZero() && !hasRareData())
         return;
-    ensureElementRareData().setSavedLayerScrollOffset(size);
+    ensureElementRareData().setSavedLayerScrollPosition(position);
 }
 
 RefPtr<Attr> Element::attrIfExists(const AtomicString& localName, bool shouldIgnoreAttributeCase)

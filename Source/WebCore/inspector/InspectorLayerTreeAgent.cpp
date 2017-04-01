@@ -196,7 +196,7 @@ Ref<Inspector::Protocol::LayerTree::Layer> InspectorLayerTreeAgent::buildObjectF
             layerObject->setPseudoElement("first-line");
     }
 
-    return WTF::move(layerObject);
+    return layerObject;
 }
 
 int InspectorLayerTreeAgent::idForNode(ErrorString& errorString, Node* node)
@@ -310,7 +310,7 @@ void InspectorLayerTreeAgent::reasonsForCompositingLayer(ErrorString& errorStrin
     if (reasonsBitmask & CompositingReasonRoot)
         compositingReasons->setRoot(true);
     
-    compositingReasonsResult = WTF::move(compositingReasons);
+    compositingReasonsResult = WTFMove(compositingReasons);
 }
 
 String InspectorLayerTreeAgent::bind(const RenderLayer* layer)

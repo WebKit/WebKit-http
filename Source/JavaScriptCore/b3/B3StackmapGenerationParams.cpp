@@ -41,6 +41,24 @@ const RegisterSet& StackmapGenerationParams::usedRegisters() const
     return m_value->m_usedRegisters;
 }
 
+RegisterSet StackmapGenerationParams::unavailableRegisters() const
+{
+    RegisterSet result = usedRegisters();
+    
+    RegisterSet unsavedCalleeSaves = RegisterSet::vmCalleeSaveRegisters();
+    for (const RegisterAtOffset& regAtOffset : m_context.code->calleeSaveRegisters())
+        unsavedCalleeSaves.clear(regAtOffset.reg());
+
+    result.merge(unsavedCalleeSaves);
+
+    for (GPRReg gpr : m_gpScratch)
+        result.clear(gpr);
+    for (FPRReg fpr : m_fpScratch)
+        result.clear(fpr);
+    
+    return result;
+}
+
 Procedure& StackmapGenerationParams::proc() const
 {
     return m_context.code->proc();

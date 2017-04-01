@@ -77,14 +77,14 @@ public:
                 frequency *= Options::rareBlockPenalty();
             for (Inst& inst : *block) {
                 inst.forEach<Thing>(
-                    [&] (Thing& arg, Arg::Role role, Arg::Type) {
+                    [&] (Thing& arg, Arg::Role role, Arg::Type, Arg::Width) {
                         Counts& counts = m_counts.add(arg, Counts()).iterator->value;
 
                         if (Arg::isWarmUse(role))
                             counts.numWarmUses += frequency;
                         if (Arg::isColdUse(role))
                             counts.numColdUses += frequency;
-                        if (Arg::isDef(role))
+                        if (Arg::isAnyDef(role))
                             counts.numDefs += frequency;
                     });
             }

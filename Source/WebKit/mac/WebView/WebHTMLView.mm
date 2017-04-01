@@ -1675,7 +1675,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
         if (Frame* coreFrame = core([self _frame])) {
             if (FrameView* coreView = coreFrame->view()) {
                 _private->inScrollPositionChanged = YES;
-                coreView->scrollPositionChangedViaPlatformWidget(IntPoint(_private->lastScrollPosition), IntPoint(origin));
+                coreView->scrollOffsetChangedViaPlatformWidget(IntPoint(_private->lastScrollPosition), IntPoint(origin));
                 _private->inScrollPositionChanged = NO;
             }
         }
@@ -4353,7 +4353,7 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
         frame->eventHandler().wheelEvent(event);
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+#if PLATFORM(MAC)
     [[[self _webView] _immediateActionController] webView:[self _webView] didHandleScrollWheel:event];
 #endif
 }
@@ -5439,7 +5439,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 - (void)_applyEditingStyleToSelection:(Ref<EditingStyle>&&)editingStyle withUndoAction:(EditAction)undoAction
 {
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor().applyStyleToSelection(WTF::move(editingStyle), undoAction);
+        coreFrame->editor().applyStyleToSelection(WTFMove(editingStyle), undoAction);
 }
 
 #if !PLATFORM(IOS)

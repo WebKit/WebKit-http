@@ -111,6 +111,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CreateActivation:
     case NewArrowFunction:
     case NewFunction:
+    case NewGeneratorFunction:
     case GetClosureVar:
     case PutClosureVar:
     case CreateDirectArguments:
@@ -175,8 +176,10 @@ inline CapabilityLevel canCompile(Node* node)
     case IsObject:
     case IsObjectOrNull:
     case IsFunction:
-    case CheckHasInstance:
+    case CheckTypeInfoFlags:
+    case OverridesHasInstance:
     case InstanceOf:
+    case InstanceOfCustom:
     case DoubleRep:
     case ValueRep:
     case Int52Rep:
@@ -194,6 +197,7 @@ inline CapabilityLevel canCompile(Node* node)
     case BottomValue:
     case PhantomNewObject:
     case PhantomNewFunction:
+    case PhantomNewGeneratorFunction:
     case PhantomCreateActivation:
     case PutHint:
     case CheckStructureImmediate:

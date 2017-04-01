@@ -68,6 +68,7 @@ public:
 
     virtual const char* activeDOMObjectName() const override final;
     virtual bool canSuspendForDocumentSuspension() const override final;
+    virtual void stop() override final;
 
     const IDBDatabaseInfo& info() const { return m_info; }
     uint64_t databaseConnectionIdentifier() const { return m_databaseConnectionIdentifier; }
@@ -80,7 +81,7 @@ public:
     void willAbortTransaction(IDBTransaction&);
     void didAbortTransaction(IDBTransaction&);
 
-    void fireVersionChangeEvent(uint64_t requestedVersion);
+    void fireVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion);
 
     IDBConnectionToServer& serverConnection() { return m_serverConnection.get(); }
 
@@ -88,6 +89,8 @@ public:
     void didDeleteIndexInfo(const IDBIndexInfo&);
 
     bool isClosingOrClosed() const { return m_closePending || m_closedInServer; }
+
+    bool dispatchEvent(Event&) override final;
 
 private:
     IDBDatabase(ScriptExecutionContext&, IDBConnectionToServer&, const IDBResultData&);

@@ -44,7 +44,7 @@ Ref<InProcessIDBServer> InProcessIDBServer::create()
 {
     Ref<InProcessIDBServer> server = adoptRef(*new InProcessIDBServer);
     server->m_server->registerConnection(server->connectionToClient());
-    return WTF::move(server);
+    return server;
 }
 
 InProcessIDBServer::InProcessIDBServer()
@@ -224,6 +224,14 @@ void InProcessIDBServer::commitTransaction(IDBResourceIdentifier& resourceIdenti
     });
 }
 
+void InProcessIDBServer::didFinishHandlingVersionChangeTransaction(IDBResourceIdentifier& transactionIdentifier)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, transactionIdentifier] {
+        m_server->didFinishHandlingVersionChangeTransaction(transactionIdentifier);
+    });
+}
+
 void InProcessIDBServer::createObjectStore(const IDBRequestData& resultData, const IDBObjectStoreInfo& info)
 {
     RefPtr<InProcessIDBServer> self(this);
@@ -328,12 +336,12 @@ void InProcessIDBServer::establishTransaction(uint64_t databaseConnectionIdentif
     });
 }
 
-void InProcessIDBServer::fireVersionChangeEvent(IDBServer::UniqueIDBDatabaseConnection& connection, uint64_t requestedVersion)
+void InProcessIDBServer::fireVersionChangeEvent(IDBServer::UniqueIDBDatabaseConnection& connection, const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion)
 {
     RefPtr<InProcessIDBServer> self(this);
     uint64_t databaseConnectionIdentifier = connection.identifier();
-    RunLoop::current().dispatch([this, self, databaseConnectionIdentifier, requestedVersion] {
-        m_connectionToServer->fireVersionChangeEvent(databaseConnectionIdentifier, requestedVersion);
+    RunLoop::current().dispatch([this, self, databaseConnectionIdentifier, requestIdentifier, requestedVersion] {
+        m_connectionToServer->fireVersionChangeEvent(databaseConnectionIdentifier, requestIdentifier, requestedVersion);
     });
 }
 
@@ -358,6 +366,14 @@ void InProcessIDBServer::databaseConnectionClosed(uint64_t databaseConnectionIde
     RefPtr<InProcessIDBServer> self(this);
     RunLoop::current().dispatch([this, self, databaseConnectionIdentifier] {
         m_server->databaseConnectionClosed(databaseConnectionIdentifier);
+    });
+}
+
+void InProcessIDBServer::didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, databaseConnectionIdentifier, requestIdentifier] {
+        m_server->didFireVersionChangeEvent(databaseConnectionIdentifier, requestIdentifier);
     });
 }
 

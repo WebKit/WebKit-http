@@ -47,13 +47,16 @@ NetworkLoad::NetworkLoad(NetworkLoadClient& client, const NetworkLoadParameters&
     : m_client(client)
     , m_parameters(parameters)
     , m_networkingContext(RemoteNetworkingContext::create(parameters.sessionID, parameters.shouldClearReferrerOnHTTPSToHTTPRedirect))
-#if USE(NETWORK_SESSION)
-    , m_task(SessionTracker::networkSession(parameters.sessionID)->createDataTaskWithRequest(parameters.request, *this))
-#endif
     , m_currentRequest(parameters.request)
 {
 #if USE(NETWORK_SESSION)
-    m_task->resume();
+    if (!parameters.defersLoading) {
+        if (auto* networkSession = SessionTracker::networkSession(parameters.sessionID)) {
+            m_task = networkSession->createDataTaskWithRequest(parameters.request, *this);
+            m_task->resume();
+        } else
+            ASSERT_NOT_REACHED();
+    }
 #else
     m_handle = ResourceHandle::create(m_networkingContext.get(), parameters.request, this, parameters.defersLoading, parameters.contentSniffingPolicy == SniffContent);
 #endif
@@ -65,7 +68,6 @@ NetworkLoad::~NetworkLoad()
 #if USE(NETWORK_SESSION)
     if (m_responseCompletionHandler)
         m_responseCompletionHandler(PolicyIgnore);
-    m_task->clearClient();
 #else
     if (m_handle)
         m_handle->clearClient();
@@ -75,8 +77,10 @@ NetworkLoad::~NetworkLoad()
 void NetworkLoad::setDefersLoading(bool defers)
 {
 #if USE(NETWORK_SESSION)
-    // FIXME: Do something here.
-    notImplemented();
+    if (defers)
+        m_task->suspend();
+    else
+        m_task->resume();
 #else
     if (m_handle)
         m_handle->setDefersLoading(defers);
@@ -86,7 +90,8 @@ void NetworkLoad::setDefersLoading(bool defers)
 void NetworkLoad::cancel()
 {
 #if USE(NETWORK_SESSION)
-    m_task->cancel();
+    if (m_task)
+        m_task->cancel();
 #else
     if (m_handle)
         m_handle->cancel();
@@ -149,17 +154,25 @@ void NetworkLoad::sharedWillSendRedirectedRequest(const ResourceRequest& request
     ASSERT(!redirectResponse.isNull());
     ASSERT(RunLoop::isMain());
 
+    auto oldRequest = m_currentRequest;
     m_currentRequest = request;
-    m_client.willSendRedirectedRequest(request, redirectResponse);
+    m_client.willSendRedirectedRequest(oldRequest, request, redirectResponse);
 }
 
 #if USE(NETWORK_SESSION)
 
-void NetworkLoad::convertTaskToDownload()
+void NetworkLoad::convertTaskToDownload(DownloadID downloadID)
 {
+    m_task->setPendingDownloadID(downloadID);
+    
     ASSERT(m_responseCompletionHandler);
     m_responseCompletionHandler(PolicyDownload);
     m_responseCompletionHandler = nullptr;
+}
+
+void NetworkLoad::setPendingDownloadID(DownloadID downloadID)
+{
+    m_task->setPendingDownloadID(downloadID);
 }
 
 void NetworkLoad::willPerformHTTPRedirection(const ResourceResponse& response, const ResourceRequest& request, RedirectCompletionHandler completionHandler)
@@ -197,7 +210,9 @@ void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, 
 void NetworkLoad::didReceiveResponse(const ResourceResponse& response, ResponseCompletionHandler completionHandler)
 {
     ASSERT(isMainThread());
-    if (sharedDidReceiveResponse(response) == NetworkLoadClient::ShouldContinueDidReceiveResponse::Yes)
+    if (m_task && m_task->pendingDownloadID().downloadID())
+        completionHandler(PolicyDownload);
+    else if (sharedDidReceiveResponse(response) == NetworkLoadClient::ShouldContinueDidReceiveResponse::Yes)
         completionHandler(PolicyUse);
     else
         m_responseCompletionHandler = completionHandler;
@@ -207,7 +222,7 @@ void NetworkLoad::didReceiveData(RefPtr<SharedBuffer>&& buffer)
 {
     ASSERT(buffer);
     auto size = buffer->size();
-    m_client.didReceiveBuffer(WTF::move(buffer), size);
+    m_client.didReceiveBuffer(WTFMove(buffer), size);
 }
 
 void NetworkLoad::didCompleteWithError(const ResourceError& error)
@@ -242,7 +257,7 @@ void NetworkLoad::didReceiveData(ResourceHandle*, const char* /* data */, unsign
 void NetworkLoad::didReceiveBuffer(ResourceHandle* handle, PassRefPtr<SharedBuffer> buffer, int reportedEncodedDataLength)
 {
     ASSERT_UNUSED(handle, handle == m_handle);
-    m_client.didReceiveBuffer(WTF::move(buffer), reportedEncodedDataLength);
+    m_client.didReceiveBuffer(WTFMove(buffer), reportedEncodedDataLength);
 }
 
 void NetworkLoad::didFinishLoading(ResourceHandle* handle, double finishTime)
@@ -297,7 +312,7 @@ void NetworkLoad::continueCanAuthenticateAgainstProtectionSpace(bool result)
 {
 #if USE(NETWORK_SESSION)
     ASSERT(m_challengeCompletionHandler);
-    auto completionHandler = WTF::move(m_challengeCompletionHandler);
+    auto completionHandler = WTFMove(m_challengeCompletionHandler);
     if (!result) {
         completionHandler(AuthenticationChallengeDisposition::PerformDefaultHandling, Credential());
         return;

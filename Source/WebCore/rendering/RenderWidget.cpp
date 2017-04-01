@@ -81,7 +81,7 @@ static void moveWidgetToParentSoon(Widget* child, FrameView* parent)
 }
 
 RenderWidget::RenderWidget(HTMLFrameOwnerElement& element, Ref<RenderStyle>&& style)
-    : RenderReplaced(element, WTF::move(style))
+    : RenderReplaced(element, WTFMove(style))
     , m_weakPtrFactory(this)
 {
     setInline(false);
@@ -350,7 +350,7 @@ bool RenderWidget::nodeAtPoint(const HitTestRequest& request, HitTestResult& res
         RenderView& childRoot = *childFrameView.renderView();
 
         LayoutPoint adjustedLocation = accumulatedOffset + location();
-        LayoutPoint contentOffset = LayoutPoint(borderLeft() + paddingLeft(), borderTop() + paddingTop()) - childFrameView.scrollOffset();
+        LayoutPoint contentOffset = LayoutPoint(borderLeft() + paddingLeft(), borderTop() + paddingTop()) - toIntSize(childFrameView.scrollPosition());
         HitTestLocation newHitTestLocation(locationInContainer, -adjustedLocation - contentOffset);
         HitTestRequest newHitTestRequest(request.type() | HitTestRequest::ChildFrameHitTest);
         HitTestResult childFrameResult(newHitTestLocation);

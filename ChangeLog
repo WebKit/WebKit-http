@@ -1,3 +1,107 @@
+2016-01-06  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Set WebKit2 process output name
+        https://bugs.webkit.org/show_bug.cgi?id=152773
+
+        Reviewed by Benjamin Poulain.
+
+        If we add *WebKit* prefix to each WK2 process, it is more clear when checking what process is running.
+        So this patch sets wk2 process output name.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2016-01-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Remove USE_UDIS86 variable
+        https://bugs.webkit.org/show_bug.cgi?id=152731
+
+        Reviewed by Gyuyoung Kim.
+
+        Remove the USE_UDIS86 variable in CMake files. The specific build guard
+        is now enabled by default in Source/WTF/wtf/Platform.h, so the handling
+        in CMake isn't required anymore. The Udis86-specific files have to be
+        built unconditionally now, though.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+
+2016-01-04  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build after r194454.
+
+        * Source/cmake/OptionsMac.cmake:
+        _macosx, _iphoneos, and _iphonesimulator are used in FeatureDefines.xcconfig but won't be used in CMake.
+        If we actually switch to CMake, we will need to verify that all the feature enabling is equivalent, and it isn't right now.
+
+2015-12-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK][CMake] Do not override default values of build options with the default value
+        https://bugs.webkit.org/show_bug.cgi?id=152615
+
+        Reviewed by Martin Robinson.
+
+        Override the default value of build options only when the default value for the GTK+ port
+        is actually different than the default value in WebKitFeatures.cmake. This way we don't
+        accidentally override changes to default values in WebKitFeatures.cmake. We should use the
+        values in WebKitFeatures.cmake except when we make an active choice to do otherwise.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-12-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Add error checking to WEBKIT_OPTION_DEFAULT_PORT_VALUE et. al.
+        https://bugs.webkit.org/show_bug.cgi?id=144069
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/OptionsWin.cmake:
+        Do not set options that no longer exist.
+        * Source/cmake/WebKitFeatures.cmake:
+        Add error checking to ensure that option names passed to WEBKIT_OPTION_DEFAULT_PORT_VALUE,
+        WEBKIT_OPTION_CONFLICT, and WEBKIT_OPTION_DEPEND are actually valid options that have been
+        previously-defined. Also, add ENABLE_SVG_OTF_CONVERTER build option, defaulted to off since
+        no CMake port was using it.
+
+2015-12-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Add error checking to catch option manipulation after WEBKIT_OPTION_END
+        https://bugs.webkit.org/show_bug.cgi?id=152611
+
+        Reviewed by Martin Robinson.
+
+        If WEBKIT_OPTION_DEFINE is called after WEBKIT_OPTION_END, the option never makes its way
+        into FEATURE_DEFINES and so will be inconsistently set (available to most of the build, but
+        not to the DOM bindings generator, for example).
+
+        If WEBKIT_OPTION_DEFAULT_PORT_VALUE, WEBKIT_OPTION_CONFLICT, or WEBKIT_OPTION_DEPEND are
+        called after WEBKIT_OPTION_END, they don't do anything.
+
+        Add error checking to catch these bugs.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-12-30  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][Mac] Disable gtk-doc
+        https://bugs.webkit.org/show_bug.cgi?id=150798
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/PlatformGTK.cmake: gtkdoc-scangobj fails due to a clang
+        link error on Mac, so for now disable gtk-doc support on that
+        platform.
+        * Source/cmake/OptionsGTK.cmake: Ditto.
+
+2015-12-23  Andy VanWagoner  <andy@instructure.com>
+
+        [INTL] Implement Intl.DateTimeFormat.prototype.resolvedOptions ()
+        https://bugs.webkit.org/show_bug.cgi?id=147603
+
+        Reviewed by Benjamin Poulain.
+
+        * Source/cmake/OptionsWin.cmake: Disable INTL on Windows for now
+
 2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         [Fetch API] Add fetch API compile time flag

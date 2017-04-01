@@ -131,6 +131,33 @@ struct GraphicsContextState {
     {
     }
 
+    enum Change : uint32_t {
+        NoChange                                = 0,
+        StrokeGradientChange                    = 1 << 1,
+        StrokePatternChange                     = 1 << 2,
+        FillGradientChange                      = 1 << 3,
+        FillPatternChange                       = 1 << 4,
+        StrokeThicknessChange                   = 1 << 5,
+        StrokeColorChange                       = 1 << 6,
+        StrokeStyleChange                       = 1 << 7,
+        FillColorChange                         = 1 << 8,
+        FillRuleChange                          = 1 << 9,
+        ShadowChange                            = 1 << 10,
+        ShadowColorChange                       = 1 << 11,
+        ShadowsIgnoreTransformsChange           = 1 << 12,
+        AlphaChange                             = 1 << 13,
+        CompositeOperationChange                = 1 << 14,
+        BlendModeChange                         = 1 << 15,
+        TextDrawingModeChange                   = 1 << 16,
+        ShouldAntialiasChange                   = 1 << 17,
+        ShouldSmoothFontsChange                 = 1 << 18,
+        AntialiasedFontDilationEnabledChange    = 1 << 19,
+        ShouldSubpixelQuantizeFontsChange       = 1 << 20,
+        DrawLuminanceMaskChange                 = 1 << 21,
+        ImageInterpolationQualityChange         = 1 << 22,
+    };
+    typedef uint32_t StateChangeFlags;
+
     RefPtr<Gradient> strokeGradient;
     RefPtr<Pattern> strokePattern;
     
@@ -199,6 +226,28 @@ struct ImagePaintingOptions {
     bool m_useLowQualityScale;
 };
 
+struct GraphicsContextStateChange {
+    GraphicsContextStateChange() = default;
+    GraphicsContextStateChange(const GraphicsContextState& state, GraphicsContextState::StateChangeFlags flags)
+        : m_state(state)
+        , m_changeFlags(flags)
+    {
+    }
+
+    GraphicsContextState::StateChangeFlags changesFromState(const GraphicsContextState&) const;
+
+    void accumulate(const GraphicsContextState&, GraphicsContextState::StateChangeFlags);
+    void apply(GraphicsContext&) const;
+    
+    void dump(TextStream&) const;
+
+    GraphicsContextState m_state;
+    GraphicsContextState::StateChangeFlags m_changeFlags { GraphicsContextState::NoChange };
+};
+
+TextStream& operator<<(TextStream&, const GraphicsContextStateChange&);
+
+
 class GraphicsContext {
     WTF_MAKE_NONCOPYABLE(GraphicsContext); WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -253,15 +302,15 @@ public:
 
     const GraphicsContextState& state() const { return m_state; }
 
+#if USE(CG) || USE(CAIRO)
+    WEBCORE_EXPORT void drawNativeImage(PassNativeImagePtr, const FloatSize& selfSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal, ImageOrientation = DefaultImageOrientation);
+#endif
+
 #if USE(CG)
     void applyStrokePattern();
     void applyFillPattern();
     void drawPath(const Path&);
 
-    WEBCORE_EXPORT void drawNativeImage(PassNativeImagePtr, const FloatSize& selfSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal, ImageOrientation = DefaultImageOrientation);
-
-    void clipToNativeImage(PassNativeImagePtr, const FloatRect& destRect, const FloatSize& bufferSize);
-    
     WEBCORE_EXPORT void setIsCALayerContext(bool);
     bool isCALayerContext() const;
 
@@ -279,10 +328,6 @@ public:
     // stroke color).
     void drawRect(const FloatRect&, float borderThickness = 1);
     void drawLine(const FloatPoint&, const FloatPoint&);
-
-#if PLATFORM(IOS)
-    void drawJoinedLines(CGPoint points[], unsigned count, bool antialias, CGLineCap = kCGLineCapButt);
-#endif
 
     void drawEllipse(const FloatRect&);
     void drawRaisedEllipse(const FloatRect&, const Color& ellipseColor, const Color& shadowColor);
@@ -393,10 +438,10 @@ public:
     bool mustUseShadowBlur() const;
 #endif
 
-    void drawFocusRing(const Vector<IntRect>&, int width, int offset, const Color&);
-    void drawFocusRing(const Path&, int width, int offset, const Color&);
+    void drawFocusRing(const Vector<IntRect>&, float width, float offset, const Color&);
+    void drawFocusRing(const Path&, float width, float offset, const Color&);
 #if PLATFORM(MAC)
-    void drawFocusRing(const Vector<IntRect>&, int width, int offset, double timeOffset, bool& needsRedraw);
+    void drawFocusRing(const Vector<IntRect>&, float width, float offset, double timeOffset, bool& needsRedraw);
 #endif
 
     void setLineCap(LineCap);

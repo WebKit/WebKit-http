@@ -46,11 +46,12 @@ namespace JSC { namespace DFG {
                                 
 #define NodeMustGenerate                 0x0008 // set on nodes that have side effects, and may not trivially be removed by DCE.
 #define NodeHasVarArgs                   0x0010
-// 0x0020 and 0x0040 are free.
-                                
-#define NodeBehaviorMask                 0x0780
-#define NodeMayOverflowInBaseline        0x0080
-#define NodeMayOverflowInDFG             0x0100
+    
+#define NodeBehaviorMask                 0x07e0
+#define NodeMayHaveNonIntResult          0x0020
+#define NodeMayOverflowInt52             0x0040
+#define NodeMayOverflowInt32InBaseline   0x0080
+#define NodeMayOverflowInt32InDFG        0x0100
 #define NodeMayNegZeroInBaseline         0x0200
 #define NodeMayNegZeroInDFG              0x0400
                                 
@@ -94,18 +95,23 @@ enum RareCaseProfilingSource {
     AllRareCases
 };
 
-static inline bool nodeMayOverflow(NodeFlags flags, RareCaseProfilingSource source)
+static inline bool nodeMayOverflowInt52(NodeFlags flags, RareCaseProfilingSource)
+{
+    return !!(flags & NodeMayOverflowInt52);
+}
+
+static inline bool nodeMayOverflowInt32(NodeFlags flags, RareCaseProfilingSource source)
 {
     NodeFlags mask = 0;
     switch (source) {
     case BaselineRareCase:
-        mask = NodeMayOverflowInBaseline;
+        mask = NodeMayOverflowInt32InBaseline;
         break;
     case DFGRareCase:
-        mask = NodeMayOverflowInDFG;
+        mask = NodeMayOverflowInt32InDFG;
         break;
     case AllRareCases:
-        mask = NodeMayOverflowInBaseline | NodeMayOverflowInDFG;
+        mask = NodeMayOverflowInt32InBaseline | NodeMayOverflowInt32InDFG;
         break;
     }
     return !!(flags & mask);
@@ -130,7 +136,7 @@ static inline bool nodeMayNegZero(NodeFlags flags, RareCaseProfilingSource sourc
 
 static inline bool nodeCanSpeculateInt32(NodeFlags flags, RareCaseProfilingSource source)
 {
-    if (nodeMayOverflow(flags, source))
+    if (nodeMayOverflowInt32(flags, source))
         return !bytecodeUsesAsNumber(flags);
     
     if (nodeMayNegZero(flags, source))
@@ -141,6 +147,9 @@ static inline bool nodeCanSpeculateInt32(NodeFlags flags, RareCaseProfilingSourc
 
 static inline bool nodeCanSpeculateInt52(NodeFlags flags, RareCaseProfilingSource source)
 {
+    if (nodeMayOverflowInt52(flags, source))
+        return false;
+
     if (nodeMayNegZero(flags, source))
         return bytecodeCanIgnoreNegativeZero(flags);
     

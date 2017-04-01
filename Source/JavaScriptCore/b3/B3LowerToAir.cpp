@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -64,6 +64,7 @@ class LowerToAir {
 public:
     LowerToAir(Procedure& procedure)
         : m_valueToTmp(procedure.values().size())
+        , m_phiToTmp(procedure.values().size())
         , m_blockToBlock(procedure.size())
         , m_useCounts(procedure)
         , m_phiChildren(procedure)
@@ -76,9 +77,21 @@ public:
     {
         for (B3::BasicBlock* block : m_procedure)
             m_blockToBlock[block] = m_code.addBlock(block->frequency());
+        
         for (Value* value : m_procedure.values()) {
-            if (StackSlotValue* stackSlotValue = value->as<StackSlotValue>())
+            switch (value->opcode()) {
+            case Phi: {
+                m_phiToTmp[value] = m_code.newTmp(Arg::typeForB3Type(value->type()));
+                break;
+            }
+            case B3::StackSlot: {
+                StackSlotValue* stackSlotValue = value->as<StackSlotValue>();
                 m_stackToStack.add(stackSlotValue, m_code.addStackSlot(stackSlotValue));
+                break;
+            }
+            default:
+                break;
+            }
         }
 
         m_procedure.resetValueOwners(); // Used by crossesInterference().
@@ -102,7 +115,7 @@ public:
                     continue;
                 m_insts.append(Vector<Inst>());
                 if (verbose)
-                    dataLog("Lowering ", deepDump(m_value), ":\n");
+                    dataLog("Lowering ", deepDump(m_procedure, m_value), ":\n");
                 lower();
                 if (verbose) {
                     for (Inst& inst : m_insts.last())
@@ -114,7 +127,7 @@ public:
             // it in reverse.
             for (unsigned i = m_insts.size(); i--;) {
                 for (Inst& inst : m_insts[i])
-                    m_blockToBlock[block]->appendInst(WTF::move(inst));
+                    m_blockToBlock[block]->appendInst(WTFMove(inst));
             }
 
             // Make sure that the successors are set up correctly.
@@ -127,47 +140,17 @@ public:
 
         Air::InsertionSet insertionSet(m_code);
         for (Inst& inst : m_prologue)
-            insertionSet.insertInst(0, WTF::move(inst));
+            insertionSet.insertInst(0, WTFMove(inst));
         insertionSet.execute(m_code[0]);
     }
 
 private:
-    bool highBitsAreZero(Value* value)
-    {
-        switch (value->opcode()) {
-        case Const32:
-            // We will use a Move immediate instruction, which may sign extend.
-            return value->asInt32() >= 0;
-        case Trunc:
-            // Trunc is copy-propagated, so the value may have garbage in the high bits.
-            return false;
-        case CCall:
-            // Calls are allowed to have garbage in their high bits.
-            return false;
-        case Patchpoint:
-            // For now, we assume that patchpoints may return garbage in the high bits. This simplifies
-            // the interface. We may revisit for performance reasons later.
-            return false;
-        case Phi:
-            // FIXME: We could do this right.
-            // https://bugs.webkit.org/show_bug.cgi?id=150845
-            return false;
-        default:
-            // All other operations that return Int32 should lower to something that zero extends.
-            return value->type() == Int32;
-        }
-    }
-
-    // NOTE: This entire mechanism could be done over Air, if we felt that this would be fast enough.
-    // For now we're assuming that it's faster to do this here, since analyzing B3 is so cheap.
     bool shouldCopyPropagate(Value* value)
     {
         switch (value->opcode()) {
         case Trunc:
         case Identity:
             return true;
-        case ZExt32:
-            return highBitsAreZero(value->child(0));
         default:
             return false;
         }
@@ -367,32 +350,42 @@ private:
     }
 
     // This turns the given operand into an address.
-    Arg effectiveAddr(Value* address)
+    Arg effectiveAddr(Value* address, int32_t offset, Arg::Width width)
     {
-        static const unsigned lotsOfUses = 10; // This is arbitrary and we should tune it eventually.
+        // B3 allows any memory operation to have a 32-bit offset. That's not how some architectures
+        // work. We solve this by requiring a just-before-lowering phase that legalizes offsets.
+        // FIXME: Implement such a legalization phase.
+        // https://bugs.webkit.org/show_bug.cgi?id=152530
+        ASSERT(Arg::isValidAddrForm(offset, width));
+
+        auto fallback = [&] () -> Arg {
+            return Arg::addr(tmp(address), offset);
+        };
         
+        static const unsigned lotsOfUses = 10; // This is arbitrary and we should tune it eventually.
+
         // Only match if the address value isn't used in some large number of places.
         if (m_useCounts.numUses(address) > lotsOfUses)
-            return Arg::addr(tmp(address));
+            return fallback();
         
         switch (address->opcode()) {
         case Add: {
             Value* left = address->child(0);
             Value* right = address->child(1);
 
-            auto tryIndex = [&] (Value* index, Value* offset) -> Arg {
+            auto tryIndex = [&] (Value* index, Value* base) -> Arg {
                 if (index->opcode() != Shl)
                     return Arg();
-                if (m_locked.contains(index->child(0)) || m_locked.contains(offset))
+                if (m_locked.contains(index->child(0)) || m_locked.contains(base))
                     return Arg();
                 if (!index->child(1)->hasInt32())
                     return Arg();
                 
                 unsigned scale = 1 << (index->child(1)->asInt32() & 31);
-                if (!Arg::isValidScale(scale))
+                if (!Arg::isValidIndexForm(scale, offset, width))
                     return Arg();
 
-                return Arg::index(tmp(offset), tmp(index->child(0)), scale);
+                return Arg::index(tmp(base), tmp(index->child(0)), scale, offset);
             };
 
             if (Arg result = tryIndex(left, right))
@@ -400,10 +393,11 @@ private:
             if (Arg result = tryIndex(right, left))
                 return result;
 
-            if (m_locked.contains(left) || m_locked.contains(right))
-                return Arg::addr(tmp(address));
+            if (m_locked.contains(left) || m_locked.contains(right)
+                || !Arg::isValidIndexForm(1, offset, width))
+                return fallback();
             
-            return Arg::index(tmp(left), tmp(right));
+            return Arg::index(tmp(left), tmp(right), 1, offset);
         }
 
         case Shl: {
@@ -412,20 +406,21 @@ private:
             // We'll never see child(1)->isInt32(0), since that would have been reduced. If the shift
             // amount is greater than 1, then there isn't really anything smart that we could do here.
             // We avoid using baseless indexes because their encoding isn't particularly efficient.
-            if (m_locked.contains(left) || !address->child(1)->isInt32(1))
-                return Arg::addr(tmp(address));
+            if (m_locked.contains(left) || !address->child(1)->isInt32(1)
+                || !Arg::isValidIndexForm(1, offset, width))
+                return fallback();
 
-            return Arg::index(tmp(left), tmp(left));
+            return Arg::index(tmp(left), tmp(left), 1, offset);
         }
 
         case FramePointer:
-            return Arg::addr(Tmp(GPRInfo::callFrameRegister));
+            return Arg::addr(Tmp(GPRInfo::callFrameRegister), offset);
 
         case B3::StackSlot:
-            return Arg::stack(m_stackToStack.get(address->as<StackSlotValue>()));
+            return Arg::stack(m_stackToStack.get(address->as<StackSlotValue>()), offset);
 
         default:
-            return Arg::addr(tmp(address));
+            return fallback();
         }
     }
 
@@ -437,14 +432,13 @@ private:
         if (!value)
             return Arg();
 
-        Arg result = effectiveAddr(value->lastChild());
-        ASSERT(result);
-        
-        int32_t offset = memoryValue->as<MemoryValue>()->offset();
-        Arg offsetResult = result.withOffset(offset);
-        if (!offsetResult)
-            return Arg::addr(tmp(value->lastChild()), offset);
-        return offsetResult;
+        int32_t offset = value->offset();
+        Arg::Width width = Arg::widthForBytes(value->accessByteSize());
+
+        Arg result = effectiveAddr(value->lastChild(), offset, width);
+        ASSERT(result.isValidForm(width));
+
+        return result;
     }
 
     ArgPromise loadPromise(Value* loadValue, B3::Opcode loadOpcode)
@@ -465,8 +459,11 @@ private:
 
     Arg imm(Value* value)
     {
-        if (value->hasInt() && value->representableAs<int32_t>())
-            return Arg::imm(value->asNumber<int32_t>());
+        if (value->hasInt()) {
+            int64_t intValue = value->asInt();
+            if (Arg::isValidImmForm(intValue))
+                return Arg::imm(intValue);
+        }
         return Arg();
     }
 
@@ -674,14 +671,27 @@ private:
         Air::Opcode opcode = opcodeForType(opcode32, opcode64, value->type());
         
         if (imm(amount)) {
-            append(Move, tmp(value), tmp(m_value));
-            append(opcode, imm(amount), tmp(m_value));
+            if (isValidForm(opcode, Arg::Tmp, Arg::Imm, Arg::Tmp)) {
+                append(opcode, tmp(value), imm(amount), tmp(m_value));
+                return;
+            }
+            if (isValidForm(opcode, Arg::Imm, Arg::Tmp)) {
+                append(Move, tmp(value), tmp(m_value));
+                append(opcode, imm(amount), tmp(m_value));
+                return;
+            }
+        }
+
+        if (isValidForm(opcode, Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
+            append(opcode, tmp(value), tmp(amount), tmp(m_value));
             return;
         }
 
+#if CPU(X86) || CPU(X86_64)
         append(Move, tmp(value), tmp(m_value));
         append(Move, tmp(amount), Tmp(X86Registers::ecx));
         append(opcode, Tmp(X86Registers::ecx), tmp(m_value));
+#endif
     }
 
     template<Air::Opcode opcode32, Air::Opcode opcode64>
@@ -1154,6 +1164,9 @@ private:
                 return createRelCond(MacroAssembler::LessThanOrEqual, MacroAssembler::DoubleLessThanOrEqual);
             case GreaterEqual:
                 return createRelCond(MacroAssembler::GreaterThanOrEqual, MacroAssembler::DoubleGreaterThanOrEqual);
+            case EqualOrUnordered:
+                // The integer condition is never used in this case.
+                return createRelCond(MacroAssembler::Equal, MacroAssembler::DoubleEqualOrUnordered);
             case Above:
                 // We use a bogus double condition because these integer comparisons won't got down that
                 // path anyway.
@@ -1254,37 +1267,39 @@ private:
             }
         }
 
-        if (canCommitInternal && value->as<MemoryValue>()) {
-            // Handle things like Branch(Load8Z(value))
+        if (Arg::isValidImmForm(-1)) {
+            if (canCommitInternal && value->as<MemoryValue>()) {
+                // Handle things like Branch(Load8Z(value))
 
-            if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8Z), Arg::imm(-1))) {
-                commitInternal(value);
-                return result;
+                if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8Z), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
+
+                if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8S), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
+
+                if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16Z), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
+
+                if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16S), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
+
+                if (Inst result = tryTest(width, loadPromise(value), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
             }
 
-            if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8S), Arg::imm(-1))) {
-                commitInternal(value);
+            if (Inst result = test(width, resCond, tmpPromise(value), Arg::imm(-1)))
                 return result;
-            }
-
-            if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16Z), Arg::imm(-1))) {
-                commitInternal(value);
-                return result;
-            }
-
-            if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16S), Arg::imm(-1))) {
-                commitInternal(value);
-                return result;
-            }
-
-            if (Inst result = tryTest(width, loadPromise(value), Arg::imm(-1))) {
-                commitInternal(value);
-                return result;
-            }
         }
-
-        if (Inst result = test(width, resCond, tmpPromise(value), Arg::imm(-1)))
-            return result;
         
         // Sometimes this is the only form of test available. We prefer not to use this because
         // it's less canonical.
@@ -1422,13 +1437,20 @@ private:
                     return Inst();
                 }
             },
-            [this] (const Arg&, const ArgPromise&, const ArgPromise&) -> Inst {
-                // FIXME: Implement this.
-                // https://bugs.webkit.org/show_bug.cgi?id=150903
+            [this] (const Arg& doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+                if (isValidForm(CompareDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp)) {
+                    return Inst(
+                        CompareDouble, m_value, doubleCond,
+                        left.consume(*this), right.consume(*this), tmp(m_value));
+                }
                 return Inst();
             },
-            [this] (const Arg&, const ArgPromise&, const ArgPromise&) -> Inst {
-                // FIXME: Implement this.
+            [this] (const Arg& doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+                if (isValidForm(CompareFloat, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp)) {
+                    return Inst(
+                        CompareFloat, m_value, doubleCond,
+                        left.consume(*this), right.consume(*this), tmp(m_value));
+                }
                 return Inst();
             },
             inverted);
@@ -1605,8 +1627,10 @@ private:
 
         case Div: {
             if (isInt(m_value->type())) {
+#if CPU(X86) || CPU(X86_64)
                 lowerX86Div();
                 append(Move, Tmp(X86Registers::eax), tmp(m_value));
+#endif
                 return;
             }
             ASSERT(isFloat(m_value->type()));
@@ -1616,8 +1640,10 @@ private:
         }
 
         case Mod: {
+#if CPU(X86) || CPU(X86_64)
             lowerX86Div();
             append(Move, Tmp(X86Registers::edx), tmp(m_value));
+#endif
             return;
         }
 
@@ -1649,6 +1675,9 @@ private:
         }
 
         case BitXor: {
+            // FIXME: If canBeInternal(child), we should generate this using the comparison path.
+            // https://bugs.webkit.org/show_bug.cgi?id=152367
+            
             if (m_value->child(1)->isInt(-1)) {
                 appendUnOp<Not32, Not64>(m_value->child(0));
                 return;
@@ -1683,6 +1712,12 @@ private:
             return;
         }
 
+        case Abs: {
+            RELEASE_ASSERT_WITH_MESSAGE(!isX86(), "Abs is not supported natively on x86. It must be replaced before generation.");
+            appendUnOp<Air::Oops, Air::Oops, AbsDouble, AbsFloat>(m_value->child(0));
+            return;
+        }
+
         case Ceil: {
             appendUnOp<Air::Oops, Air::Oops, CeilDouble, CeilFloat>(m_value->child(0));
             return;
@@ -1694,7 +1729,7 @@ private:
         }
 
         case BitwiseCast: {
-            appendUnOp<MoveInt32ToPacked, Move64ToDouble, MoveDoubleTo64, MovePackedToInt32>(m_value->child(0));
+            appendUnOp<Move32ToFloat, Move64ToDouble, MoveDoubleTo64, MoveFloatTo32>(m_value->child(0));
             return;
         }
 
@@ -1746,6 +1781,12 @@ private:
             return;
         }
 
+        case B3::Store16: {
+            Value* valueToStore = m_value->child(0);
+            m_insts.last().append(createStore(Air::Store16, valueToStore, addr(m_value)));
+            return;
+        }
+
         case Trunc: {
             ASSERT(tmp(m_value->child(0)) == tmp(m_value));
             return;
@@ -1762,11 +1803,6 @@ private:
         }
 
         case ZExt32: {
-            if (highBitsAreZero(m_value->child(0))) {
-                ASSERT(tmp(m_value->child(0)) == tmp(m_value));
-                return;
-            }
-
             appendUnOp<Move32, Air::Oops>(m_value->child(0));
             return;
         }
@@ -1797,15 +1833,12 @@ private:
             return;
         }
 
-        case Const32: {
-            append(Move, imm(m_value), tmp(m_value));
-            return;
-        }
+        case Const32:
         case Const64: {
             if (imm(m_value))
                 append(Move, imm(m_value), tmp(m_value));
             else
-                append(Move, Arg::imm64(m_value->asInt64()), tmp(m_value));
+                append(Move, Arg::imm64(m_value->asInt()), tmp(m_value));
             return;
         }
 
@@ -1841,7 +1874,8 @@ private:
         case Above:
         case Below:
         case AboveEqual:
-        case BelowEqual: {
+        case BelowEqual:
+        case EqualOrUnordered: {
             m_insts.last().append(createCompare(m_value));
             return;
         }
@@ -1928,7 +1962,7 @@ private:
                     inst.args.append(arg);
             }
             
-            m_insts.last().append(WTF::move(inst));
+            m_insts.last().append(WTFMove(inst));
 
             switch (cCall->type()) {
             case Void:
@@ -1981,8 +2015,13 @@ private:
             }
             
             fillStackmap(inst, patchpointValue, 0);
+
+            for (unsigned i = patchpointValue->numGPScratchRegisters; i--;)
+                inst.args.append(m_code.newTmp(Arg::GP));
+            for (unsigned i = patchpointValue->numFPScratchRegisters; i--;)
+                inst.args.append(m_code.newTmp(Arg::FP));
             
-            m_insts.last().append(WTF::move(inst));
+            m_insts.last().append(WTFMove(inst));
             m_insts.last().appendVector(after);
             return;
         }
@@ -2011,7 +2050,7 @@ private:
 
                 fillStackmap(inst, checkValue, 2);
 
-                m_insts.last().append(WTF::move(inst));
+                m_insts.last().append(WTFMove(inst));
                 return;
             }
 
@@ -2089,7 +2128,7 @@ private:
 
             fillStackmap(inst, checkValue, 2);
 
-            m_insts.last().append(WTF::move(inst));
+            m_insts.last().append(WTFMove(inst));
             return;
         }
 
@@ -2105,7 +2144,7 @@ private:
             
             fillStackmap(inst, checkValue, 1);
             
-            m_insts.last().append(WTF::move(inst));
+            m_insts.last().append(WTFMove(inst));
             return;
         }
 
@@ -2113,12 +2152,17 @@ private:
             Value* value = m_value->child(0);
             append(
                 relaxedMoveForType(value->type()), immOrTmp(value),
-                tmp(m_value->as<UpsilonValue>()->phi()));
+                m_phiToTmp[m_value->as<UpsilonValue>()->phi()]);
             return;
         }
 
         case Phi: {
-            // Our semantics are determined by Upsilons, so we have nothing to do here.
+            // Snapshot the value of the Phi. It may change under us because you could do:
+            // a = Phi()
+            // Upsilon(@x, ^a)
+            // @a => this should get the value of the Phi before the Upsilon, i.e. not @x.
+
+            append(relaxedMoveForType(m_value->type()), m_phiToTmp[m_value], tmp(m_value));
             return;
         }
 
@@ -2139,17 +2183,31 @@ private:
 
         case Return: {
             Value* value = m_value->child(0);
-            Air::Opcode move;
-            Tmp dest;
-            if (isInt(value->type())) {
-                move = Move;
-                dest = Tmp(GPRInfo::returnValueGPR);
-            } else {
-                move = MoveDouble;
-                dest = Tmp(FPRInfo::returnValueFPR);
+            Tmp returnValueGPR = Tmp(GPRInfo::returnValueGPR);
+            Tmp returnValueFPR = Tmp(FPRInfo::returnValueFPR);
+            switch (value->type()) {
+            case Void:
+                // It's impossible for a void value to be used as a child. If we did want to have a
+                // void return, we'd introduce a different opcode, like ReturnVoid.
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
+            case Int32:
+                append(Move, immOrTmp(value), returnValueGPR);
+                append(Ret32, returnValueGPR);
+                break;
+            case Int64:
+                append(Move, immOrTmp(value), returnValueGPR);
+                append(Ret64, returnValueGPR);
+                break;
+            case Float:
+                append(MoveFloat, tmp(value), returnValueFPR);
+                append(RetFloat, returnValueFPR);
+                break;
+            case Double:
+                append(MoveDouble, tmp(value), returnValueFPR);
+                append(RetDouble, returnValueFPR);
+                break;
             }
-            append(move, immOrTmp(value), dest);
-            append(Ret);
             return;
         }
 
@@ -2162,10 +2220,11 @@ private:
             break;
         }
 
-        dataLog("FATAL: could not lower ", deepDump(m_value), "\n");
+        dataLog("FATAL: could not lower ", deepDump(m_procedure, m_value), "\n");
         RELEASE_ASSERT_NOT_REACHED();
     }
 
+#if CPU(X86) || CPU(X86_64)
     void lowerX86Div()
     {
         Tmp eax = Tmp(X86Registers::eax);
@@ -2191,9 +2250,11 @@ private:
         append(convertToDoubleWord, eax, edx);
         append(div, eax, edx, tmp(m_value->child(1)));
     }
-    
+#endif
+
     IndexSet<Value> m_locked; // These are values that will have no Tmp in Air.
     IndexMap<Value, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".
+    IndexMap<Value, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
     IndexMap<B3::BasicBlock, Air::BasicBlock*> m_blockToBlock;
     HashMap<StackSlotValue*, Air::StackSlot*> m_stackToStack;
 

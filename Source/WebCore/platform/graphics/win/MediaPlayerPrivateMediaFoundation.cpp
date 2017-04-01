@@ -78,13 +78,6 @@ SOFT_LINK_OPTIONAL(D3d9, Direct3DCreate9Ex, HRESULT, STDAPICALLTYPE, (UINT, IDir
 static const GUID MFSamplePresenterSampleCounter =
 { 0x869f1f7c, 0x3496, 0x48a9, { 0x88, 0xe3, 0x69, 0x85, 0x79, 0xd0, 0x8c, 0xb6 } };
 
-// MFSamplePresenterSampleSwapChain
-// Data type: IUNKNOWN
-// 
-// Pointer to a Direct3D swap chain.
-static const GUID MFSamplePresenterSampleSwapChain =
-{ 0x24a2e076, 0x3673, 0x433d, { 0x87, 0x4, 0x55, 0x2b, 0x1f, 0x5c, 0x16, 0x8c } };
-
 static const double tenMegahertz = 10000000;
 
 namespace WebCore {
@@ -301,7 +294,6 @@ void MediaPlayerPrivateMediaFoundation::setSize(const IntSize& size)
     if (!m_videoDisplay)
         return;
 
-    LayoutSize scrollOffset;
     IntPoint positionInWindow(m_lastPaintRect.location());
 
     FrameView* view = nullptr;
@@ -311,12 +303,13 @@ void MediaPlayerPrivateMediaFoundation::setSize(const IntSize& size)
         deviceScaleFactor = m_player->cachedResourceLoader()->document()->deviceScaleFactor();
     }
 
+    LayoutPoint scrollPosition;
     if (view) {
-        scrollOffset = view->scrollOffsetForFixedPosition();
+        scrollPosition = view->scrollPositionForFixedPosition();
         positionInWindow = view->convertToContainingWindow(IntPoint(m_lastPaintRect.location()));
     }
 
-    positionInWindow.move(-scrollOffset.width().toInt(), -scrollOffset.height().toInt());
+    positionInWindow.move(-scrollPosition.x().toInt(), -scrollPosition.y().toInt());
 
     int x = positionInWindow.x() * deviceScaleFactor;
     int y = positionInWindow.y() * deviceScaleFactor;
@@ -756,8 +749,10 @@ MediaPlayerPrivateMediaFoundation::AsyncCallback::~AsyncCallback()
         m_mediaPlayer->removeListener(this);
 }
 
-HRESULT MediaPlayerPrivateMediaFoundation::AsyncCallback::QueryInterface(REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject)
+HRESULT MediaPlayerPrivateMediaFoundation::AsyncCallback::QueryInterface(_In_ REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject)
 {
+    if (!ppvObject)
+        return E_POINTER;
     if (!IsEqualGUID(riid, IID_IMFAsyncCallback)) {
         *ppvObject = nullptr;
         return E_NOINTERFACE;
@@ -1857,9 +1852,6 @@ static HRESULT clearDesiredSampleTime(IMFSample* sample)
 
     UINT32 counter = MFGetAttributeUINT32(sample, MFSamplePresenterSampleCounter, (UINT32)-1);
 
-    COMPtr<IUnknown> swapChain;
-    sample->GetUnknown(MFSamplePresenterSampleSwapChain, IID_IUnknown, (void**)&swapChain);
-
     COMPtr<IMFDesiredSample> desired;
     HRESULT hr = sample->QueryInterface(__uuidof(IMFDesiredSample), (void**)&desired);
     if (SUCCEEDED(hr)) {
@@ -1868,12 +1860,6 @@ static HRESULT clearDesiredSampleTime(IMFSample* sample)
         hr = sample->SetUINT32(MFSamplePresenterSampleCounter, counter);
         if (FAILED(hr))
             return hr;
-
-        if (swapChain) {
-            hr = sample->SetUnknown(MFSamplePresenterSampleSwapChain, swapChain.get());
-            if (FAILED(hr))
-                return hr;
-        }
     }
 
     return hr;
@@ -2607,13 +2593,6 @@ HRESULT MediaPlayerPrivateMediaFoundation::Direct3DPresenter::createVideoSamples
         }
 
         videoSampleQueue.append(videoSample);
-
-        // Keep the swap chain alive by setting it as a custom attribute on the sample.
-        hr = videoSample->SetUnknown(MFSamplePresenterSampleSwapChain, swapChain.get());
-        if (FAILED(hr)) {
-            releaseResources();
-            return hr;
-        }
     }
 
     return hr;

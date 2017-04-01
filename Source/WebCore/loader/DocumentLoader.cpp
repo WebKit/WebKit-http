@@ -97,7 +97,6 @@ static void setAllDefersLoading(const ResourceLoaderMap& loaders, bool defers)
         loader->setDefersLoading(defers);
 }
 
-#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 static bool areAllLoadersPageCacheAcceptable(const ResourceLoaderMap& loaders)
 {
     Vector<RefPtr<ResourceLoader>> loadersCopy;
@@ -117,7 +116,6 @@ static bool areAllLoadersPageCacheAcceptable(const ResourceLoaderMap& loaders)
     }
     return true;
 }
-#endif
 
 DocumentLoader::DocumentLoader(const ResourceRequest& req, const SubstituteData& substituteData)
     : m_deferMainResourceDataLoad(true)
@@ -287,11 +285,8 @@ void DocumentLoader::stopLoading()
     // loading but there are subresource loads during cancellation. This must be done before the
     // frame->stopLoading() call, which may evict the CachedResources, which we rely on to check
     // the type of the resource loads.
-#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    // Disabled on Mavericks because it seems to cause issues (rdar://problem/22521514).
     if (loading && m_committed && !mainResourceLoader() && !m_subresourceLoaders.isEmpty())
         m_subresourceLoadersArePageCacheAcceptable = areAllLoadersPageCacheAcceptable(m_subresourceLoaders);
-#endif
 
     if (m_committed) {
         // Attempt to stop the frame if the document loader is loading, or if it is done loading but
@@ -514,6 +509,11 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
         if (!redirectingOrigin.get().canDisplay(newRequest.url())) {
             FrameLoader::reportLocalLoadFailed(m_frame, newRequest.url().string());
             cancelMainResourceLoad(frameLoader()->cancelledError(newRequest));
+            return;
+        }
+        if (!portAllowed(newRequest.url())) {
+            FrameLoader::reportBlockedPortFailed(m_frame, newRequest.url().string());
+            cancelMainResourceLoad(frameLoader()->blockedError(newRequest));
             return;
         }
         timing().addRedirect(redirectResponse.url(), newRequest.url());
@@ -1129,7 +1129,7 @@ Vector<RefPtr<ArchiveResource>> DocumentLoader::subresources() const
 
     for (auto& cachedResourceHandle : m_cachedResourceLoader->allCachedResources().values()) {
         if (RefPtr<ArchiveResource> subresource = this->subresource(URL(ParsedURLString, cachedResourceHandle->url())))
-            subresources.append(WTF::move(subresource));
+            subresources.append(WTFMove(subresource));
     }
 
     return subresources;
@@ -1663,7 +1663,7 @@ void DocumentLoader::installContentFilterUnblockHandler(ContentFilter& contentFi
                 frame->script().executeScript(capturedScript.string());
         });
     }
-    frameLoader()->client().contentFilterDidBlockLoad(WTF::move(unblockHandler));
+    frameLoader()->client().contentFilterDidBlockLoad(WTFMove(unblockHandler));
 }
 
 void DocumentLoader::contentFilterDidDecide()

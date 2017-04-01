@@ -107,7 +107,7 @@ void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString&, RefPtr
                 .setManifestURL(manifestURL)
                 .setStatus(static_cast<int>(host->status()))
                 .release();
-            result->addItem(WTF::move(value));
+            result->addItem(WTFMove(value));
         }
     }
 }
@@ -164,7 +164,7 @@ Ref<Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::Applicatio
     for (const auto& resourceInfo : applicationCacheResources)
         resources->addItem(buildObjectForApplicationCacheResource(resourceInfo));
 
-    return WTF::move(resources);
+    return resources;
 }
 
 Ref<Inspector::Protocol::ApplicationCache::ApplicationCacheResource> InspectorApplicationCacheAgent::buildObjectForApplicationCacheResource(const ApplicationCacheHost::ResourceInfo& resourceInfo)

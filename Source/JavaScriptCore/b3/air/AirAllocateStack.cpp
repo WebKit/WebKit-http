@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -104,7 +104,7 @@ void allocateStack(Code& code)
     for (BasicBlock* block : code) {
         for (Inst& inst : *block) {
             inst.forEachArg(
-                [&] (Arg& arg, Arg::Role role, Arg::Type) {
+                [&] (Arg& arg, Arg::Role role, Arg::Type, Arg::Width) {
                     if (role == Arg::UseAddr && arg.isStack())
                         escapingStackSlots.add(arg.stackSlot());
                 });
@@ -143,14 +143,13 @@ void allocateStack(Code& code)
     for (BasicBlock* block : code) {
         StackSlotLiveness::LocalCalc localCalc(liveness, block);
 
-        auto interfere = [&] (Inst& inst) {
+        auto interfere = [&] (unsigned instIndex) {
             if (verbose)
                 dataLog("Interfering: ", WTF::pointerListDump(localCalc.live()), "\n");
 
-            inst.forEachArg(
-                [&] (Arg& arg, Arg::Role role, Arg::Type) {
-                    if (!Arg::isDef(role))
-                        return;
+            Inst::forEachDef<Arg>(
+                block->get(instIndex), block->get(instIndex + 1),
+                [&] (Arg& arg, Arg::Role, Arg::Type, Arg::Width) {
                     if (!arg.isStack())
                         return;
                     StackSlot* slot = arg.stackSlot();
@@ -167,12 +166,10 @@ void allocateStack(Code& code)
         for (unsigned instIndex = block->size(); instIndex--;) {
             if (verbose)
                 dataLog("Analyzing: ", block->at(instIndex), "\n");
-            Inst& inst = block->at(instIndex);
-            interfere(inst);
+            interfere(instIndex);
             localCalc.execute(instIndex);
         }
-        Inst nop;
-        interfere(nop);
+        interfere(-1);
     }
 
     if (verbose) {
@@ -231,24 +228,43 @@ void allocateStack(Code& code)
     // transformation since we can search the StackSlots array to figure out which StackSlot any
     // offset-from-FP refers to.
 
+    // FIXME: This may produce addresses that aren't valid if we end up with a ginormous stack frame.
+    // We would have to scavenge for temporaries if this happened. Fortunately, this case will be
+    // extremely rare so we can do crazy things when it arises.
+    // https://bugs.webkit.org/show_bug.cgi?id=152530
+    
     for (BasicBlock* block : code) {
         for (Inst& inst : *block) {
-            for (Arg& arg : inst.args) {
-                switch (arg.kind()) {
-                case Arg::Stack:
-                    arg = Arg::addr(
-                        Tmp(GPRInfo::callFrameRegister),
-                        arg.offset() + arg.stackSlot()->offsetFromFP());
-                    break;
-                case Arg::CallArg:
-                    arg = Arg::addr(
-                        Tmp(GPRInfo::callFrameRegister),
-                        arg.offset() - code.frameSize());
-                    break;
-                default:
-                    break;
+            inst.forEachArg(
+                [&] (Arg& arg, Arg::Role, Arg::Type, Arg::Width width)
+                {
+                    switch (arg.kind()) {
+                    case Arg::Stack: {
+                        arg = Arg::addr(
+                            Tmp(MacroAssembler::stackPointerRegister),
+                            arg.offset() + arg.stackSlot()->offsetFromFP());
+                        if (!arg.isValidForm(width)) {
+                            arg = Arg::addr(
+                                Tmp(MacroAssembler::stackPointerRegister),
+                                arg.offset() + code.frameSize());
+                        }
+                        break;
+                    }
+                    case Arg::CallArg:
+                        arg = Arg::addr(
+                            Tmp(GPRInfo::callFrameRegister),
+                            arg.offset() - code.frameSize());
+                        if (!arg.isValidForm(width)) {
+                            arg = Arg::addr(
+                                Tmp(MacroAssembler::stackPointerRegister),
+                                arg.offset() + code.frameSize());
+                        }
+                        break;
+                    default:
+                        break;
+                    }
                 }
-            }
+            );
         }
     }
 }

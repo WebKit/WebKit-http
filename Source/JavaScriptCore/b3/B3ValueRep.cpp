@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,38 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AssemblyHelpers.h"
+#include "JSCInlines.h"
+
 namespace JSC { namespace B3 {
+
+void ValueRep::addUsedRegistersTo(RegisterSet& set) const
+{
+    switch (m_kind) {
+    case WarmAny:
+    case ColdAny:
+    case LateColdAny:
+    case SomeRegister:
+    case Constant:
+        return;
+    case Register:
+        set.set(reg());
+        return;
+    case Stack:
+    case StackArgument:
+        set.set(MacroAssembler::stackPointerRegister);
+        set.set(GPRInfo::callFrameRegister);
+        return;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+RegisterSet ValueRep::usedRegisters() const
+{
+    RegisterSet result;
+    addUsedRegistersTo(result);
+    return result;
+}
 
 void ValueRep::dump(PrintStream& out) const
 {
@@ -53,6 +84,67 @@ void ValueRep::dump(PrintStream& out) const
         return;
     }
     RELEASE_ASSERT_NOT_REACHED();
+}
+
+void ValueRep::emitRestore(AssemblyHelpers& jit, Reg reg) const
+{
+    if (reg.isGPR()) {
+        switch (kind()) {
+        case Register:
+            if (isGPR())
+                jit.move(gpr(), reg.gpr());
+            else
+                jit.moveDoubleTo64(fpr(), reg.gpr());
+            break;
+        case Stack:
+            jit.load64(AssemblyHelpers::Address(GPRInfo::callFrameRegister, offsetFromFP()), reg.gpr());
+            break;
+        case Constant:
+            jit.move(AssemblyHelpers::TrustedImm64(value()), reg.gpr());
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+        }
+        return;
+    }
+    
+    switch (kind()) {
+    case Register:
+        if (isGPR())
+            jit.move64ToDouble(gpr(), reg.fpr());
+        else
+            jit.moveDouble(fpr(), reg.fpr());
+        break;
+    case Stack:
+        jit.loadDouble(AssemblyHelpers::Address(GPRInfo::callFrameRegister, offsetFromFP()), reg.fpr());
+        break;
+    case Constant:
+        jit.move(AssemblyHelpers::TrustedImm64(value()), jit.scratchRegister());
+        jit.move64ToDouble(jit.scratchRegister(), reg.fpr());
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+}
+
+ValueRecovery ValueRep::recoveryForJSValue() const
+{
+    switch (kind()) {
+    case Register:
+        return ValueRecovery::inGPR(gpr(), DataFormatJS);
+    case Stack:
+        RELEASE_ASSERT(!(offsetFromFP() % sizeof(EncodedJSValue)));
+        return ValueRecovery::displacedInJSStack(
+            VirtualRegister(offsetFromFP() / sizeof(EncodedJSValue)),
+            DataFormatJS);
+    case Constant:
+        return ValueRecovery::constant(JSValue::decode(value()));
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return { };
+    }
 }
 
 } } // namespace JSC::B3

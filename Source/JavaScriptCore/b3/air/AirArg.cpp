@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -178,6 +178,12 @@ void printInternal(PrintStream& out, Arg::Role role)
     case Arg::UseDef:
         out.print("UseDef");
         return;
+    case Arg::ZDef:
+        out.print("ZDef");
+        return;
+    case Arg::UseZDef:
+        out.print("UseZDef");
+        return;
     case Arg::UseAddr:
         out.print("UseAddr");
         return;
@@ -186,6 +192,15 @@ void printInternal(PrintStream& out, Arg::Role role)
         return;
     case Arg::LateUse:
         out.print("LateUse");
+        return;
+    case Arg::LateColdUse:
+        out.print("LateColdUse");
+        return;
+    case Arg::EarlyDef:
+        out.print("EarlyDef");
+        return;
+    case Arg::Scratch:
+        out.print("Scratch");
         return;
     }
 

@@ -257,7 +257,7 @@ void ResourceLoader::loadDataURL()
         if (loader->reachedTerminalState())
             return;
         if (!decodeResult) {
-            loader->didFail(ResourceError(errorDomainWebKitInternal, 0, url.string(), "Data URL decoding failed"));
+            loader->didFail(ResourceError(errorDomainWebKitInternal, 0, url, "Data URL decoding failed"));
             return;
         }
         if (loader->wasCancelled())
@@ -395,7 +395,7 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest& request, const Res
 void ResourceLoader::willSendRequest(ResourceRequest&& request, const ResourceResponse& redirectResponse, std::function<void(ResourceRequest&&)>&& callback)
 {
     willSendRequestInternal(request, redirectResponse);
-    callback(WTF::move(request));
+    callback(WTFMove(request));
 }
 
 void ResourceLoader::didSendData(unsigned long long, unsigned long long)
@@ -731,7 +731,7 @@ void ResourceLoader::receivedCancellation(const AuthenticationChallenge&)
     cancel();
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA) && !USE(CFNETWORK)
 
 void ResourceLoader::schedule(SchedulePair& pair)
 {

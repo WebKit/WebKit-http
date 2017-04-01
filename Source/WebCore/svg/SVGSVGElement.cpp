@@ -416,9 +416,9 @@ AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMSc
 
             // Respect scroll offset.
             if (FrameView* view = document().view()) {
-                LayoutSize scrollOffset = view->scrollOffset();
-                scrollOffset.scale(zoomFactor);
-                transform.translate(-scrollOffset.width(), -scrollOffset.height());
+                LayoutPoint scrollPosition = view->scrollPosition();
+                scrollPosition.scale(zoomFactor, zoomFactor);
+                transform.translate(-scrollPosition.x(), -scrollPosition.y());
             }
         }
     }
@@ -442,8 +442,8 @@ bool SVGSVGElement::rendererIsNeeded(const RenderStyle& style)
 RenderPtr<RenderElement> SVGSVGElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     if (isOutermostSVGSVGElement())
-        return createRenderer<RenderSVGRoot>(*this, WTF::move(style));
-    return createRenderer<RenderSVGViewportContainer>(*this, WTF::move(style));
+        return createRenderer<RenderSVGRoot>(*this, WTFMove(style));
+    return createRenderer<RenderSVGViewportContainer>(*this, WTFMove(style));
 }
 
 Node::InsertionNotificationRequest SVGSVGElement::insertedInto(ContainerNode& rootParent)

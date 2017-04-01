@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,9 +32,15 @@
 #include "GPRInfo.h"
 #include "JSCJSValue.h"
 #include "Reg.h"
+#include "RegisterSet.h"
+#include "ValueRecovery.h"
 #include <wtf/PrintStream.h>
 
-namespace JSC { namespace B3 {
+namespace JSC {
+
+class AssemblyHelpers;
+
+namespace B3 {
 
 // We use this class to describe value representations at stackmaps. It's used both to force a
 // representation and to get the representation. When the B3 client forces a representation, we say
@@ -202,7 +208,7 @@ public:
         return bitwise_cast<double>(value());
     }
 
-    ValueRep withOffset(intptr_t offset)
+    ValueRep withOffset(intptr_t offset) const
     {
         switch (kind()) {
         case Stack:
@@ -214,7 +220,31 @@ public:
         }
     }
 
+    void addUsedRegistersTo(RegisterSet&) const;
+    
+    RegisterSet usedRegisters() const;
+
+    // Get the used registers for a vector of ValueReps.
+    template<typename VectorType>
+    static RegisterSet usedRegisters(const VectorType& vector)
+    {
+        RegisterSet result;
+        for (const ValueRep& value : vector)
+            value.addUsedRegistersTo(result);
+        return result;
+    }
+
     JS_EXPORT_PRIVATE void dump(PrintStream&) const;
+
+    // This has a simple contract: it emits code to restore the value into the given register. This
+    // will work even if it requires moving between bits a GPR and a FPR.
+    void emitRestore(AssemblyHelpers&, Reg) const;
+
+    // Computes the ValueRecovery assuming that the Value* was for a JSValue (i.e. Int64).
+    // NOTE: We should avoid putting JSValue-related methods in B3, but this was hard to avoid
+    // because some parts of JSC use ValueRecovery like a general "where my bits at" object, almost
+    // exactly like ValueRep.
+    ValueRecovery recoveryForJSValue() const;
 
 private:
     Kind m_kind;

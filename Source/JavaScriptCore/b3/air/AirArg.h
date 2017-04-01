@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "AirTmp.h"
 #include "B3Common.h"
 #include "B3Type.h"
+#include <wtf/Optional.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -49,7 +50,10 @@ public:
         // eventually become registers.
         Tmp,
 
-        // This is an immediate that the instruction will materialize.
+        // This is an immediate that the instruction will materialize. Imm is the immediate that can be
+        // inlined into most instructions, while Imm64 indicates a constant materialization and is
+        // usually only usable with Move. Specials may also admit it, for example for stackmaps used for
+        // OSR exit and tail calls.
         Imm,
         Imm64,
 
@@ -88,9 +92,13 @@ public:
         ColdUse,
 
         // LateUse means that the Inst will read from this value after doing its Def's. Note that LateUse
-        // on an Addr or Index still means Use on the internal temporaries. LateUse also currently also
-        // implies ColdUse.
+        // on an Addr or Index still means Use on the internal temporaries. Note that specifying the
+        // same Tmp once as Def and once as LateUse has undefined behavior: the use may happen before
+        // the def, or it may happen after it.
         LateUse,
+
+        // Combination of LateUse and ColdUse.
+        LateColdUse,
 
         // Def means that the Inst will write to this value after doing everything else.
         //
@@ -101,8 +109,37 @@ public:
         // Like Use of address, Def of address does not mean escape.
         Def,
 
+        // This is a special variant of Def that implies that the upper bits of the target register are
+        // zero-filled. Specifically, if the Width of a ZDef is less than the largest possible width of
+        // the argument (for example, we're on a 64-bit machine and we have a Width32 ZDef of a GPR) then
+        // this has different implications for the upper bits (i.e. the top 32 bits in our example)
+        // depending on the kind of the argument:
+        //
+        // For register: the upper bits are zero-filled.
+        // For address: the upper bits are not touched (i.e. we do a 32-bit store in our example).
+        // For tmp: either the upper bits are not touched or they are zero-filled, and we won't know
+        // which until we lower the tmp to either a StackSlot or a Reg.
+        //
+        // The behavior of ZDef is consistent with what happens when you perform 32-bit operations on a
+        // 64-bit GPR. It's not consistent with what happens with 8-bit or 16-bit Defs on x86 GPRs, or
+        // what happens with float Defs in ARM NEON or X86 SSE. Hence why we have both Def and ZDef.
+        ZDef,
+
         // This is a combined Use and Def. It means that both things happen.
         UseDef,
+
+        // This is a combined Use and ZDef. It means that both things happen.
+        UseZDef,
+
+        // This is like Def, but implies that the assignment occurs before the start of the Inst's
+        // execution rather than after. Note that specifying the same Tmp once as EarlyDef and once
+        // as Use has undefined behavior: the use may happen before the def, or it may happen after
+        // it.
+        EarlyDef,
+
+        // Some instructions need a scratch register. We model this by saying that the temporary is
+        // defined early and used late. This role implies that.
+        Scratch,
 
         // This is a special kind of use that is only valid for addresses. It means that the
         // instruction will evaluate the address expression and consume the effective address, but it
@@ -126,6 +163,13 @@ public:
         Width64
     };
 
+    static Width pointerWidth()
+    {
+        if (sizeof(void*) == 8)
+            return Width64;
+        return Width32;
+    }
+
     enum Signedness : int8_t {
         Signed,
         Unsigned
@@ -139,10 +183,15 @@ public:
         case Use:
         case ColdUse:
         case UseDef:
+        case UseZDef:
         case LateUse:
+        case LateColdUse:
+        case Scratch:
             return true;
         case Def:
+        case ZDef:
         case UseAddr:
+        case EarlyDef:
             return false;
         }
     }
@@ -151,12 +200,17 @@ public:
     {
         switch (role) {
         case ColdUse:
-        case LateUse:
+        case LateColdUse:
             return true;
         case Use:
         case UseDef:
+        case UseZDef:
+        case LateUse:
         case Def:
+        case ZDef:
         case UseAddr:
+        case Scratch:
+        case EarlyDef:
             return false;
         }
     }
@@ -173,10 +227,15 @@ public:
         case Use:
         case ColdUse:
         case UseDef:
+        case UseZDef:
             return true;
         case Def:
+        case ZDef:
         case UseAddr:
         case LateUse:
+        case LateColdUse:
+        case Scratch:
+        case EarlyDef:
             return false;
         }
     }
@@ -184,20 +243,99 @@ public:
     // Returns true if the Role implies that the Inst will Use the Arg after doing everything else.
     static bool isLateUse(Role role)
     {
-        return role == LateUse;
+        switch (role) {
+        case LateUse:
+        case LateColdUse:
+        case Scratch:
+            return true;
+        case ColdUse:
+        case Use:
+        case UseDef:
+        case UseZDef:
+        case Def:
+        case ZDef:
+        case UseAddr:
+        case EarlyDef:
+            return false;
+        }
     }
 
     // Returns true if the Role implies that the Inst will Def the Arg.
-    static bool isDef(Role role)
+    static bool isAnyDef(Role role)
     {
         switch (role) {
         case Use:
         case ColdUse:
         case UseAddr:
         case LateUse:
+        case LateColdUse:
             return false;
         case Def:
         case UseDef:
+        case ZDef:
+        case UseZDef:
+        case EarlyDef:
+        case Scratch:
+            return true;
+        }
+    }
+
+    // Returns true if the Role implies that the Inst will Def the Arg before start of execution.
+    static bool isEarlyDef(Role role)
+    {
+        switch (role) {
+        case Use:
+        case ColdUse:
+        case UseAddr:
+        case LateUse:
+        case Def:
+        case UseDef:
+        case ZDef:
+        case UseZDef:
+        case LateColdUse:
+            return false;
+        case EarlyDef:
+        case Scratch:
+            return true;
+        }
+    }
+
+    // Returns true if the Role implies that the Inst will Def the Arg after the end of execution.
+    static bool isLateDef(Role role)
+    {
+        switch (role) {
+        case Use:
+        case ColdUse:
+        case UseAddr:
+        case LateUse:
+        case EarlyDef:
+        case Scratch:
+        case LateColdUse:
+            return false;
+        case Def:
+        case UseDef:
+        case ZDef:
+        case UseZDef:
+            return true;
+        }
+    }
+
+    // Returns true if the Role implies that the Inst will ZDef the Arg.
+    static bool isZDef(Role role)
+    {
+        switch (role) {
+        case Use:
+        case ColdUse:
+        case UseAddr:
+        case LateUse:
+        case Def:
+        case UseDef:
+        case EarlyDef:
+        case Scratch:
+        case LateColdUse:
+            return false;
+        case ZDef:
+        case UseZDef:
             return true;
         }
     }
@@ -234,6 +372,37 @@ public:
         }
     }
 
+    static Width conservativeWidth(Type type)
+    {
+        return type == GP ? pointerWidth() : Width64;
+    }
+
+    static Width minimumWidth(Type type)
+    {
+        return type == GP ? Width8 : Width32;
+    }
+
+    static unsigned bytes(Width width)
+    {
+        return 1 << width;
+    }
+
+    static Width widthForBytes(unsigned bytes)
+    {
+        switch (bytes) {
+        case 0:
+        case 1:
+            return Width8;
+        case 2:
+            return Width16;
+        case 3:
+        case 4:
+            return Width32;
+        default:
+            return Width64;
+        }
+    }
+
     Arg()
         : m_kind(Invalid)
     {
@@ -245,7 +414,12 @@ public:
     {
     }
 
-    static Arg imm(int32_t value)
+    Arg(Reg reg)
+        : Arg(Air::Tmp(reg))
+    {
+    }
+
+    static Arg imm(int64_t value)
     {
         Arg result;
         result.m_kind = Imm;
@@ -253,7 +427,7 @@ public:
         return result;
     }
 
-    static Arg imm64(intptr_t value)
+    static Arg imm64(int64_t value)
     {
         Arg result;
         result.m_kind = Imm64;
@@ -288,14 +462,25 @@ public:
         return result;
     }
 
-    static bool isValidScale(unsigned scale)
+    // If you don't pass a Width, this optimistically assumes that you're using the right width.
+    static bool isValidScale(unsigned scale, Optional<Width> width = Nullopt)
     {
         switch (scale) {
         case 1:
+            if (isX86() || isARM64())
+                return true;
+            return false;
         case 2:
         case 4:
         case 8:
-            return true;
+            if (isX86())
+                return true;
+            if (isARM64()) {
+                if (!width)
+                    return true;
+                return scale == 1 || scale == bytes(*width);
+            }
+            return false;
         default:
             return false;
         }
@@ -672,11 +857,17 @@ public:
         return tmp().tmpIndex();
     }
 
-    Arg withOffset(int32_t additionalOffset) const
+    // If 'this' is an address Arg, then it returns a new address Arg with the additional offset applied.
+    // Note that this does not consider whether doing so produces a valid Arg or not. Unless you really
+    // know what you're doing, you should call Arg::isValidForm() on the result. Some code won't do that,
+    // like if you're applying a very small offset to a Arg::stack() that you know has no offset to begin
+    // with. It's safe to assume that all targets allow small offsets (like, 0..7) for Addr, Stack, and
+    // CallArg.
+    Arg withOffset(int64_t additionalOffset) const
     {
         if (!hasOffset())
             return Arg();
-        if (sumOverflows<int32_t>(offset(), additionalOffset))
+        if (sumOverflows<int64_t>(offset(), additionalOffset))
             return Arg();
         switch (kind()) {
         case Addr:
@@ -690,6 +881,79 @@ public:
         default:
             RELEASE_ASSERT_NOT_REACHED();
             return Arg();
+        }
+    }
+
+    static bool isValidImmForm(int64_t value)
+    {
+        if (isX86())
+            return B3::isRepresentableAs<int32_t>(value);
+        if (isARM64())
+            return isUInt12(value);
+        return false;
+    }
+
+    static bool isValidAddrForm(int32_t offset, Optional<Width> width = Nullopt)
+    {
+        if (isX86())
+            return true;
+        if (isARM64()) {
+            if (!width)
+                return true;
+
+            if (isValidSignedImm9(offset))
+                return true;
+
+            switch (*width) {
+            case Width8:
+                return isValidScaledUImm12<8>(offset);
+            case Width16:
+                return isValidScaledUImm12<16>(offset);
+            case Width32:
+                return isValidScaledUImm12<32>(offset);
+            case Width64:
+                return isValidScaledUImm12<64>(offset);
+            }
+        }
+        return false;
+    }
+
+    static bool isValidIndexForm(unsigned scale, int32_t offset, Optional<Width> width = Nullopt)
+    {
+        if (!isValidScale(scale, width))
+            return false;
+        if (isX86())
+            return true;
+        if (isARM64())
+            return !offset;
+        return false;
+    }
+
+    // If you don't pass a width then this optimistically assumes that you're using the right width. But
+    // the width is relevant to validity, so passing a null width is only useful for assertions. Don't
+    // pass null widths when cascading through Args in the instruction selector!
+    bool isValidForm(Optional<Width> width = Nullopt) const
+    {
+        switch (kind()) {
+        case Invalid:
+            return false;
+        case Tmp:
+            return true;
+        case Imm:
+            return isValidImmForm(value());
+        case Imm64:
+            return true;
+        case Addr:
+        case Stack:
+        case CallArg:
+            return isValidAddrForm(offset(), width);
+        case Index:
+            return isValidIndexForm(scale(), offset(), width);
+        case RelCond:
+        case ResCond:
+        case DoubleCond:
+        case Special:
+            return true;
         }
     }
 
@@ -717,19 +981,19 @@ public:
     //
     // This defs (%rcx) but uses %rcx.
     template<typename Functor>
-    void forEachTmp(Role argRole, Type argType, const Functor& functor)
+    void forEachTmp(Role argRole, Type argType, Width argWidth, const Functor& functor)
     {
         switch (m_kind) {
         case Tmp:
-            ASSERT(isAnyUse(argRole) || isDef(argRole));
-            functor(m_base, argRole, argType);
+            ASSERT(isAnyUse(argRole) || isAnyDef(argRole));
+            functor(m_base, argRole, argType, argWidth);
             break;
         case Addr:
-            functor(m_base, Use, GP);
+            functor(m_base, Use, GP, argRole == UseAddr ? argWidth : pointerWidth());
             break;
         case Index:
-            functor(m_base, Use, GP);
-            functor(m_index, Use, GP);
+            functor(m_base, Use, GP, argRole == UseAddr ? argWidth : pointerWidth());
+            functor(m_index, Use, GP, argRole == UseAddr ? argWidth : pointerWidth());
             break;
         default:
             break;

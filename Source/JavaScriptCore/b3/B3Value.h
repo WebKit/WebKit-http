@@ -76,6 +76,7 @@ public:
 
     // This is useful when lowering. Note that this is only valid for non-void values.
     Air::Arg::Type airType() const { return Air::Arg::typeForB3Type(type()); }
+    Air::Arg::Width airWidth() const { return Air::Arg::widthForB3Type(type()); }
 
     AdjacencyList& children() { return m_children; } 
     const AdjacencyList& children() const { return m_children; }
@@ -84,7 +85,7 @@ public:
     void replaceWithNop();
 
     void dump(PrintStream&) const;
-    void deepDump(PrintStream&) const;
+    void deepDump(const Procedure&, PrintStream&) const;
 
     // This is how you cast Values. For example, if you want to do something provided that we have a
     // ArgumentRegValue, you can do:
@@ -145,6 +146,7 @@ public:
     virtual TriState belowConstant(const Value* other) const;
     virtual TriState aboveEqualConstant(const Value* other) const;
     virtual TriState belowEqualConstant(const Value* other) const;
+    virtual TriState equalOrUnorderedConstant(const Value* other) const;
 
     // If the value is a comparison then this returns the inverted form of that comparison, if
     // possible. It can be impossible for double comparisons, where for example LessThan and
@@ -280,7 +282,7 @@ protected:
         , m_opcode(opcode)
         , m_type(type)
         , m_origin(origin)
-        , m_children(WTF::move(children))
+        , m_children(WTFMove(children))
     {
     }
 
@@ -312,26 +314,28 @@ public:
 
 class DeepValueDump {
 public:
-    DeepValueDump(const Value* value)
-        : m_value(value)
+    DeepValueDump(const Procedure& proc, const Value* value)
+        : m_proc(proc)
+        , m_value(value)
     {
     }
 
     void dump(PrintStream& out) const
     {
         if (m_value)
-            m_value->deepDump(out);
+            m_value->deepDump(m_proc, out);
         else
             out.print("<null>");
     }
 
 private:
+    const Procedure& m_proc;
     const Value* m_value;
 };
 
-inline DeepValueDump deepDump(const Value* value)
+inline DeepValueDump deepDump(const Procedure& proc, const Value* value)
 {
-    return DeepValueDump(value);
+    return DeepValueDump(proc, value);
 }
 
 } } // namespace JSC::B3

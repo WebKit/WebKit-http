@@ -29,7 +29,9 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "HTMLDocument.h"
+#if ENABLE(VIDEO)
 #include "HTMLMediaElement.h"
+#endif
 #include "HTMLNames.h"
 #include "HTMLPictureElement.h"
 #include "Logging.h"
@@ -59,9 +61,12 @@ Node::InsertionNotificationRequest HTMLSourceElement::insertedInto(ContainerNode
     HTMLElement::insertedInto(insertionPoint);
     Element* parent = parentElement();
     if (parent) {
+#if ENABLE(VIDEO)
         if (is<HTMLMediaElement>(*parent))
             downcast<HTMLMediaElement>(*parent).sourceWasAdded(this);
-        else if (is<HTMLPictureElement>(*parent))
+        else
+#endif
+        if (is<HTMLPictureElement>(*parent))
             downcast<HTMLPictureElement>(*parent).sourcesChanged();
     }
     return InsertionDone;
@@ -73,9 +78,12 @@ void HTMLSourceElement::removedFrom(ContainerNode& removalRoot)
     if (!parent && is<Element>(removalRoot))
         parent = &downcast<Element>(removalRoot);
     if (parent) {
+#if ENABLE(VIDEO)
         if (is<HTMLMediaElement>(*parent))
             downcast<HTMLMediaElement>(*parent).sourceWasRemoved(this);
-        else if (is<HTMLPictureElement>(*parent))
+        else
+#endif
+        if (is<HTMLPictureElement>(*parent))
             downcast<HTMLPictureElement>(*parent).sourcesChanged();
     }
     HTMLElement::removedFrom(removalRoot);

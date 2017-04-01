@@ -352,6 +352,24 @@ public:
         store32(dataTempRegister, addressTempRegister);
     }
 
+    void or32(TrustedImm32 imm, AbsoluteAddress address)
+    {
+        ARMThumbImmediate armImm = ARMThumbImmediate::makeEncodedImm(imm.m_value);
+        if (armImm.isValid()) {
+            move(TrustedImmPtr(address.m_ptr), addressTempRegister);
+            load32(addressTempRegister, dataTempRegister);
+            m_assembler.orr(dataTempRegister, dataTempRegister, armImm);
+            store32(dataTempRegister, addressTempRegister);
+        } else {
+            move(TrustedImmPtr(address.m_ptr), addressTempRegister);
+            load32(addressTempRegister, dataTempRegister);
+            move(imm, addressTempRegister);
+            m_assembler.orr(dataTempRegister, dataTempRegister, addressTempRegister);
+            move(TrustedImmPtr(address.m_ptr), addressTempRegister);
+            store32(dataTempRegister, addressTempRegister);
+        }
+    }
+
     void or32(TrustedImm32 imm, Address address)
     {
         load32(address, dataTempRegister);
@@ -375,6 +393,7 @@ public:
         if (armImm.isValid())
             m_assembler.orr(dest, src, armImm);
         else {
+            ASSERT(src != dataTempRegister);
             move(imm, dataTempRegister);
             m_assembler.orr(dest, src, dataTempRegister);
         }

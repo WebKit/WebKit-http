@@ -144,6 +144,7 @@ public:
     LValue aShr(LValue left, LValue right) { return buildAShr(m_builder, left, right); } // arithmetic = signed
     LValue lShr(LValue left, LValue right) { return buildLShr(m_builder, left, right); } // logical = unsigned
     LValue bitNot(LValue value) { return buildNot(m_builder, value); }
+    LValue logicalNot(LValue value) { return bitNot(value); }
     
     LValue insertElement(LValue vector, LValue element, LValue index) { return buildInsertElement(m_builder, vector, element, index); }
 
@@ -215,6 +216,8 @@ public:
 
     static bool hasSensibleDoubleToInt() { return isX86(); }
     LValue sensibleDoubleToInt(LValue);
+    LValue doubleToInt(LValue value) { return fpToInt32(value); }
+    LValue doubleToUInt(LValue value) { return fpToUInt32(value); }
 
     LValue signExt32To64(LValue value) { return signExt(value, int64); }
     LValue zeroExt(LValue value, LType type) { return buildZExt(m_builder, value, type); }
@@ -376,7 +379,7 @@ public:
     LValue doubleLessThanOrEqual(LValue left, LValue right) { return fcmp(LLVMRealOLE, left, right); }
     LValue doubleGreaterThan(LValue left, LValue right) { return fcmp(LLVMRealOGT, left, right); }
     LValue doubleGreaterThanOrEqual(LValue left, LValue right) { return fcmp(LLVMRealOGE, left, right); }
-    LValue doubleNotEqual(LValue left, LValue right) { return fcmp(LLVMRealONE, left, right); }
+    LValue doubleNotEqualAndOrdered(LValue left, LValue right) { return fcmp(LLVMRealONE, left, right); }
     LValue doubleLessThanOrUnordered(LValue left, LValue right) { return fcmp(LLVMRealULT, left, right); }
     LValue doubleLessThanOrEqualOrUnordered(LValue left, LValue right) { return fcmp(LLVMRealULE, left, right); }
     LValue doubleGreaterThanOrUnordered(LValue left, LValue right) { return fcmp(LLVMRealUGT, left, right); }

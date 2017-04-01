@@ -13480,6 +13480,20 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\rendering\TextDecorationPainter.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\rendering\TextPainter.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -19028,20 +19042,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\WebCoreJSBuiltinInternals.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\WebCoreJSBuiltins.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -19199,9 +19199,10 @@
     <ClCompile Include="..\storage\StorageNamespaceProvider.cpp" />
     <ClCompile Include="..\style\InlineTextBoxStyle.cpp" />
     <ClCompile Include="..\style\RenderTreePosition.cpp" />
+    <ClCompile Include="..\style\StyleChange.cpp" />
     <ClCompile Include="..\style\StyleFontSizeFunctions.cpp" />
     <ClCompile Include="..\style\StyleResolveForDocument.cpp" />
-    <ClCompile Include="..\style\StyleResolveTree.cpp" />
+    <ClCompile Include="..\style\StyleTreeResolver.cpp" />
     <ClCompile Include="..\bridge\jsc\BridgeJSC.cpp" />
     <ClCompile Include="..\bridge\c\c_class.cpp" />
     <ClCompile Include="..\bridge\c\c_instance.cpp" />
@@ -21855,6 +21856,7 @@
     <ClInclude Include="..\rendering\svg\SVGResourcesCache.h" />
     <ClInclude Include="..\rendering\svg\SVGResourcesCycleSolver.h" />
     <ClInclude Include="..\rendering\TableLayout.h" />
+    <ClInclude Include="..\rendering\TextDecorationPainter.h" />
     <ClInclude Include="..\rendering\TextPaintStyle.h" />
     <ClInclude Include="..\rendering\TextPainter.h" />
     <ClInclude Include="..\rendering\TrailingFloatsRootInlineBox.h" />
@@ -22761,9 +22763,10 @@
     <ClInclude Include="..\storage\StorageNamespaceProvider.h" />
     <ClInclude Include="..\style\InlineTextBoxStyle.h" />
     <ClInclude Include="..\style\RenderTreePosition.h" />
+    <ClInclude Include="..\style\StyleChange.h" />
     <ClInclude Include="..\style\StyleFontSizeFunctions.h" />
     <ClInclude Include="..\style\StyleResolveForDocument.h" />
-    <ClInclude Include="..\style\StyleResolveTree.h" />
+    <ClInclude Include="..\style\StyleTreeResolver.h" />
     <ClInclude Include="..\bridge\Bridge.h" />
     <ClInclude Include="..\bridge\jsc\BridgeJSC.h" />
     <ClInclude Include="..\bridge\c\c_class.h" />

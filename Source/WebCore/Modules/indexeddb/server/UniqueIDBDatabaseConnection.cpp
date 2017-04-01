@@ -68,16 +68,23 @@ bool UniqueIDBDatabaseConnection::hasNonFinishedTransactions() const
 
 void UniqueIDBDatabaseConnection::connectionClosedFromClient()
 {
-    LOG(IndexedDB, "UniqueIDBDatabaseConnection::connectionClosedFromClient");
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::connectionClosedFromClient - %" PRIu64, m_identifier);
 
     m_closePending = true;
     m_database.connectionClosedFromClient(*this);
 }
 
-void UniqueIDBDatabaseConnection::fireVersionChangeEvent(uint64_t requestedVersion)
+void UniqueIDBDatabaseConnection::didFireVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::didFireVersionChangeEvent");
+
+    m_database.didFireVersionChangeEvent(*this, requestIdentifier);
+}
+
+void UniqueIDBDatabaseConnection::fireVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion)
 {
     ASSERT(!m_closePending);
-    m_connectionToClient.fireVersionChangeEvent(*this, requestedVersion);
+    m_connectionToClient.fireVersionChangeEvent(*this, requestIdentifier, requestedVersion);
 }
 
 UniqueIDBDatabaseTransaction& UniqueIDBDatabaseConnection::createVersionChangeTransaction(uint64_t newVersion)
@@ -105,7 +112,7 @@ void UniqueIDBDatabaseConnection::establishTransaction(const IDBTransactionInfo&
 
     Ref<UniqueIDBDatabaseTransaction> transaction = UniqueIDBDatabaseTransaction::create(*this, info);
     m_transactionMap.set(transaction->info().identifier(), &transaction.get());
-    m_database.enqueueTransaction(WTF::move(transaction));
+    m_database.enqueueTransaction(WTFMove(transaction));
 }
 
 void UniqueIDBDatabaseConnection::didAbortTransaction(UniqueIDBDatabaseTransaction& transaction, const IDBError& error)

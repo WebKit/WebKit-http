@@ -38,6 +38,7 @@
 #include "HTMLTextAreaElement.h"
 #include "RenderBox.h"
 #include "RenderTheme.h"
+#include "StyleTreeResolver.h"
 #include "ValidationMessage.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Ref.h>
@@ -533,7 +534,7 @@ bool HTMLFormControlElement::validationMessageShadowTreeContains(const Node& nod
 
 void HTMLFormControlElement::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
 {
-    HTMLElement::dispatchBlurEvent(WTF::move(newFocusedElement));
+    HTMLElement::dispatchBlurEvent(WTFMove(newFocusedElement));
     hideVisibleValidationMessage();
 }
 

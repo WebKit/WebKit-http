@@ -477,6 +477,13 @@ public:
         abortWithReason(B3Oops);
     }
 
+    // B3 has additional pseudo-opcodes for returning, when it wants to signal that the return
+    // consumes some register in some way.
+    void ret32(RegisterID) { ret(); }
+    void ret64(RegisterID) { ret(); }
+    void retFloat(FPRegisterID) { ret(); }
+    void retDouble(FPRegisterID) { ret(); }
+
     static const unsigned BlindingModulus = 64;
     bool shouldConsiderBlinding()
     {
@@ -1361,6 +1368,23 @@ public:
     {
         Jump falseCase = branchFloat(invert(cond), left, right);
         moveDouble(src, dest);
+        falseCase.link(this);
+    }
+
+    // We should implement this the right way eventually, but for now, it's fine because it arises so
+    // infrequently.
+    void compareDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest)
+    {
+        move(TrustedImm32(0), dest);
+        Jump falseCase = branchDouble(invert(cond), left, right);
+        move(TrustedImm32(1), dest);
+        falseCase.link(this);
+    }
+    void compareFloat(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest)
+    {
+        move(TrustedImm32(0), dest);
+        Jump falseCase = branchFloat(invert(cond), left, right);
+        move(TrustedImm32(1), dest);
         falseCase.link(this);
     }
 #endif

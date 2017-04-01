@@ -102,37 +102,26 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
 
     Vector<unsigned> actionLocations;
 
-    // Block and BlockCookies do not need to be distinguishable. The order in which they are executed it irrelevant
-    // since Block is a strict superset of BlockCookies.
-    // Similarily, Block is a superset of CSSDisplayNone, and BlockCookies is independent from CSSDisplayNone.
-    //
-    // The only distinguisher is "IgnorePreviousRules".
-    //
-    // The trigger's Flags do not need to be distinguishable either. The way we use them is filtering the actions
-    // based on the flag *after* matching.
-    //
-    // To reduce the number of unique actions, we keep track of the various action, indexed by their flag.
-    // We only need to create new ones when encountering a IgnorePreviousRules.
-    HashMap<uint32_t, uint32_t, DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> blockActionsMap;
-    HashMap<uint32_t, uint32_t, DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> blockCookiesActionsMap;
+    // Order only matters because of IgnorePreviousRules. All other identical actions can be combined between each IgnorePreviousRules
+    // and CSSDisplayNone strings can be combined if their triggers are identical.
+    typedef HashMap<uint32_t, uint32_t, DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> ActionMap;
+    ActionMap blockLoadActionsMap;
+    ActionMap blockCookiesActionsMap;
     PendingDisplayNoneActionsMap cssDisplayNoneActionsMap;
-    HashMap<uint32_t, uint32_t, DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> ignorePreviousRuleActionsMap;
+    ActionMap ignorePreviousRuleActionsMap;
+    ActionMap makeHTTPSActionsMap;
 
     for (unsigned ruleIndex = 0; ruleIndex < ruleList.size(); ++ruleIndex) {
         const ContentExtensionRule& rule = ruleList[ruleIndex];
         ActionType actionType = rule.action().type();
 
-        RELEASE_ASSERT(actionType == ActionType::CSSDisplayNoneSelector
-            || actionType == ActionType::BlockLoad
-            || actionType == ActionType::BlockCookies
-            || actionType == ActionType::IgnorePreviousRules);
-
         if (actionType == ActionType::IgnorePreviousRules) {
             resolvePendingDisplayNoneActions(actions, actionLocations, cssDisplayNoneActionsMap);
 
-            blockActionsMap.clear();
+            blockLoadActionsMap.clear();
             blockCookiesActionsMap.clear();
             cssDisplayNoneActionsMap.clear();
+            makeHTTPSActionsMap.clear();
         } else
             ignorePreviousRuleActionsMap.clear();
 
@@ -150,22 +139,23 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
 
         ResourceFlags flags = rule.trigger().flags;
         unsigned actionLocation = std::numeric_limits<unsigned>::max();
+        
+        auto findOrMakeActionLocation = [&] (ActionMap& map) 
+        {
+            const auto existingAction = map.find(flags);
+            if (existingAction == map.end()) {
+                actionLocation = actions.size();
+                actions.append(static_cast<SerializedActionByte>(actionType));
+                map.set(flags, actionLocation);
+            } else
+                actionLocation = existingAction->value;
+        };
 
         switch (actionType) {
         case ActionType::CSSDisplayNoneStyleSheet:
         case ActionType::InvalidAction:
             RELEASE_ASSERT_NOT_REACHED();
 
-        case ActionType::IgnorePreviousRules: {
-            const auto existingAction = ignorePreviousRuleActionsMap.find(flags);
-            if (existingAction == ignorePreviousRuleActionsMap.end()) {
-                actionLocation = actions.size();
-                actions.append(static_cast<SerializedActionByte>(rule.action().type()));
-                ignorePreviousRuleActionsMap.set(flags, actionLocation);
-            } else
-                actionLocation = existingAction->value;
-            break;
-        }
         case ActionType::CSSDisplayNoneSelector: {
             const auto addResult = cssDisplayNoneActionsMap.add(rule.trigger(), PendingDisplayNoneActions());
             PendingDisplayNoneActions& pendingDisplayNoneActions = addResult.iterator->value;
@@ -175,26 +165,18 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
             actionLocation = std::numeric_limits<unsigned>::max();
             break;
         }
-        case ActionType::BlockLoad: {
-            const auto existingAction = blockActionsMap.find(flags);
-            if (existingAction == blockActionsMap.end()) {
-                actionLocation = actions.size();
-                actions.append(static_cast<SerializedActionByte>(rule.action().type()));
-                blockActionsMap.set(flags, actionLocation);
-            } else
-                actionLocation = existingAction->value;
+        case ActionType::IgnorePreviousRules:
+            findOrMakeActionLocation(ignorePreviousRuleActionsMap);
             break;
-        }
-        case ActionType::BlockCookies: {
-            const auto existingAction = blockCookiesActionsMap.find(flags);
-            if (existingAction == blockCookiesActionsMap.end()) {
-                actionLocation = actions.size();
-                actions.append(static_cast<SerializedActionByte>(rule.action().type()));
-                blockCookiesActionsMap.set(flags, actionLocation);
-            } else
-                actionLocation = existingAction->value;
+        case ActionType::BlockLoad:
+            findOrMakeActionLocation(blockLoadActionsMap);
             break;
-        }
+        case ActionType::BlockCookies:
+            findOrMakeActionLocation(blockCookiesActionsMap);
+            break;
+        case ActionType::MakeHTTPS:
+            findOrMakeActionLocation(makeHTTPSActionsMap);
+            break;
         }
 
         actionLocations.append(actionLocation);
@@ -237,7 +219,7 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
 
     Vector<SerializedActionByte> actions;
     Vector<unsigned> actionLocations = serializeActions(parsedRuleList, actions);
-    client.writeActions(WTF::move(actions));
+    client.writeActions(WTFMove(actions));
     LOG_LARGE_STRUCTURES(actions, actions.capacity() * sizeof(SerializedActionByte));
     actions.clear();
 
@@ -343,7 +325,7 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
         ++machinesWithoutDomainsCount;
         totalBytecodeSizeForMachinesWithoutDomains += bytecode.size();
 #endif
-        client.writeFiltersWithoutDomainsBytecode(WTF::move(bytecode));
+        client.writeFiltersWithoutDomainsBytecode(WTFMove(bytecode));
 
         firstNFAWithoutDomainsSeen = true;
     };
@@ -361,17 +343,17 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
         LOG_LARGE_STRUCTURES(dfa, dfa.memoryUsed());
 
         if (dfa.graphSize() < smallDFASize)
-            smallFiltersWithoutDomainsDFACombiner.addDFA(WTF::move(dfa));
+            smallFiltersWithoutDomainsDFACombiner.addDFA(WTFMove(dfa));
         else {
             dfa.minimize();
-            lowerFiltersWithoutDomainsDFAToBytecode(WTF::move(dfa));
+            lowerFiltersWithoutDomainsDFAToBytecode(WTFMove(dfa));
         }
     });
 
 
     smallFiltersWithoutDomainsDFACombiner.combineDFAs(smallDFASize, [&](DFA&& dfa) {
         LOG_LARGE_STRUCTURES(dfa, dfa.memoryUsed());
-        lowerFiltersWithoutDomainsDFAToBytecode(WTF::move(dfa));
+        lowerFiltersWithoutDomainsDFAToBytecode(WTFMove(dfa));
     });
 
     ASSERT(filtersWithoutDomains.isEmpty());
@@ -387,7 +369,7 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
         DFABytecodeCompiler compiler(dummyDFA, bytecode);
         compiler.compile();
         LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
-        client.writeFiltersWithoutDomainsBytecode(WTF::move(bytecode));
+        client.writeFiltersWithoutDomainsBytecode(WTFMove(bytecode));
     }
     LOG_LARGE_STRUCTURES(universalActionsWithoutDomains, universalActionsWithoutDomains.capacity() * sizeof(unsigned));
     universalActionsWithoutDomains.clear();
@@ -408,7 +390,7 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
         ++machinesWithDomainsCount;
         totalBytecodeSizeForMachinesWithDomains += bytecode.size();
 #endif
-        client.writeFiltersWithDomainsBytecode(WTF::move(bytecode));
+        client.writeFiltersWithDomainsBytecode(WTFMove(bytecode));
 
         firstNFAWithDomainsSeen = true;
     };
@@ -430,15 +412,15 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
         ASSERT_WITH_MESSAGE(!dfa.nodes[dfa.root].hasActions(), "Filters with domains that match everything are not allowed right now.");
 
         if (dfa.graphSize() < smallDFASize)
-            smallFiltersWithDomainsDFACombiner.addDFA(WTF::move(dfa));
+            smallFiltersWithDomainsDFACombiner.addDFA(WTFMove(dfa));
         else {
             dfa.minimize();
-            lowerFiltersWithDomainsDFAToBytecode(WTF::move(dfa));
+            lowerFiltersWithDomainsDFAToBytecode(WTFMove(dfa));
         }
     });
     smallFiltersWithDomainsDFACombiner.combineDFAs(smallDFASize, [&](DFA&& dfa) {
         LOG_LARGE_STRUCTURES(dfa, dfa.memoryUsed());
-        lowerFiltersWithDomainsDFAToBytecode(WTF::move(dfa));
+        lowerFiltersWithDomainsDFAToBytecode(WTFMove(dfa));
     });
     ASSERT(filtersWithDomains.isEmpty());
     
@@ -453,7 +435,7 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
         DFABytecodeCompiler compiler(dummyDFA, bytecode);
         compiler.compile();
         LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
-        client.writeFiltersWithDomainsBytecode(WTF::move(bytecode));
+        client.writeFiltersWithDomainsBytecode(WTFMove(bytecode));
     }
     LOG_LARGE_STRUCTURES(universalActionsWithDomains, universalActionsWithDomains.capacity() * sizeof(unsigned));
     universalActionsWithDomains.clear();
@@ -478,7 +460,7 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
         DFABytecodeCompiler compiler(dfa, bytecode);
         compiler.compile();
         LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
-        client.writeDomainFiltersBytecode(WTF::move(bytecode));
+        client.writeDomainFiltersBytecode(WTFMove(bytecode));
     });
     ASSERT(domainFilters.isEmpty());    
     

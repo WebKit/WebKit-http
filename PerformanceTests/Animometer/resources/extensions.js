@@ -1,3 +1,53 @@
+Array.prototype.swap = function(i, j)
+{
+    var t = this[i];
+    this[i] = this[j];
+    this[j] = t;
+    return this;
+}
+
+if (!Array.prototype.fill) {
+    Array.prototype.fill = function(value) {
+        if (this == null)
+            throw new TypeError('Array.prototype.fill called on null or undefined');
+
+        var object = Object(this);
+        var len = parseInt(object.length, 10);
+        var start = arguments[1];
+        var relativeStart = parseInt(start, 10) || 0;
+        var k = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
+        var end = arguments[2];
+        var relativeEnd = end === undefined ? len : (parseInt(end) || 0) ;
+        var final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
+
+        for (; k < final; k++)
+            object[k] = value;
+
+        return object;
+    };
+}
+
+if (!Array.prototype.find) {
+    Array.prototype.find = function(predicate) {
+        if (this == null)
+            throw new TypeError('Array.prototype.find called on null or undefined');
+        if (typeof predicate !== 'function')
+            throw new TypeError('predicate must be a function');
+
+        var list = Object(this);
+        var length = list.length >>> 0;
+        var thisArg = arguments[1];
+        var value;
+
+        for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list))
+                return value;
+        }
+        return undefined;
+    };
+}
+
 function Point(x, y)
 {
     this.x = x;
@@ -26,34 +76,34 @@ Point.prototype =
     {
         return this.x;
     },
-    
+
     // Used when the point object is used as a size object.
     get height()
     {
         return this.y;
     },
-    
+
     // Used when the point object is used as a size object.
     get center()
     {
         return new Point(this.x / 2, this.y / 2);
     },
-    
+
     add: function(other)
     {
         return new Point(this.x + other.x, this.y + other.y);
     },
-    
+
     subtract: function(other)
     {
         return new Point(this.x - other.x, this.y - other.y);
     },
-    
+
     multiply: function(other)
     {
         return new Point(this.x * other.x, this.y * other.y);
     },
-    
+
     move: function(angle, velocity, timeDelta)
     {
         return this.add(Point.pointOnCircle(angle, velocity * (timeDelta / 1000)));
@@ -89,7 +139,7 @@ Insets.prototype =
     {
         return this.top + this.bottom;
     },
-    
+
     get size()
     {
         return new Point(this.width, this.height);
@@ -106,10 +156,10 @@ SimplePromise.prototype.then = function (callback)
 {
     if (this._callback)
         throw "SimplePromise doesn't support multiple calls to then";
-        
+
     this._callback = callback;
     this._chainedPromise = new SimplePromise;
-    
+
     if (this._resolved)
         this.resolve(this._resolvedValue);
 
@@ -134,7 +184,7 @@ SimplePromise.prototype.resolve = function (value)
 
 window.DocumentExtension =
 {
-    createElement : function(name, attrs, parentElement)
+    createElement: function(name, attrs, parentElement)
     {
         var element = document.createElement(name);
 
@@ -151,13 +201,13 @@ window.DocumentExtension =
         const xlinkNamespace = "http://www.w3.org/1999/xlink";
 
         var element = document.createElementNS(svgNamespace, name);
-        
+
         for (var key in attrs)
             element.setAttribute(key, attrs[key]);
-            
+
         for (var key in xlinkAttrs)
             element.setAttributeNS(xlinkNamespace, key, xlinkAttrs[key]);
-            
+
         parentElement.appendChild(element);
         return element;
     }
@@ -165,60 +215,57 @@ window.DocumentExtension =
 
 function ProgressBar(element, ranges)
 {
-    this.element = element;
-    this.ranges = ranges;
-    this.currentRange = 0;
+    this._element = element;
+    this._ranges = ranges;
+    this._currentRange = 0;
+    this._updateElement();
 }
 
 ProgressBar.prototype =
 {
-    _progressToPercent: function(progress)
+    _updateElement: function()
     {
-        return progress * (100 / this.ranges);
+        this._element.style.width = (this._currentRange * (100 / this._ranges)) + "%";
     },
-    
-    incRange: function()
+
+    incrementRange: function()
     {
-        ++this.currentRange;
-    },
-    
-    setPos: function(progress)
-    {
-        this.element.style.width = this._progressToPercent(this.currentRange + progress) + "%";
+        ++this._currentRange;
+        this._updateElement();
     }
 }
 
 function ResultsDashboard()
 {
     this._iterationsSamplers = [];
+    this._processedData = undefined;
 }
 
 ResultsDashboard.prototype =
 {
     push: function(suitesSamplers)
     {
-        this._iterationsSamplers.push(suitesSamplers);        
+        this._iterationsSamplers.push(suitesSamplers);
     },
-    
-    toJSON: function(statistics, graph)
+
+    _processData: function()
     {
         var iterationsResults = [];
         var iterationsScores = [];
-        
+
         this._iterationsSamplers.forEach(function(iterationSamplers, index) {
             var suitesResults = {};
             var suitesScores = [];
-        
+
             for (var suiteName in iterationSamplers) {
                 var suite = suiteFromName(suiteName);
-                var suiteSamplers = iterationSamplers[suiteName];
+                var suiteSamplerData = iterationSamplers[suiteName];
 
                 var testsResults = {};
                 var testsScores = [];
-                
-                for (var testName in suiteSamplers) {
-                    var sampler = suiteSamplers[testName];
-                    testsResults[testName] = sampler.toJSON(statistics, graph);
+
+                for (var testName in suiteSamplerData) {
+                    testsResults[testName] = suiteSamplerData[testName];
                     testsScores.push(testsResults[testName][Strings.json.score]);
                 }
 
@@ -227,17 +274,29 @@ ResultsDashboard.prototype =
                 suitesResults[suiteName][Strings.json.results.tests] = testsResults;
                 suitesScores.push(suitesResults[suiteName][Strings.json.score]);
             }
-            
+
             iterationsResults[index] = {};
             iterationsResults[index][Strings.json.score] = Statistics.geometricMean(suitesScores);
             iterationsResults[index][Strings.json.results.suites] = suitesResults;
             iterationsScores.push(iterationsResults[index][Strings.json.score]);
         });
 
-        var json = {};
-        json[Strings.json.score] = Statistics.sampleMean(iterationsScores.length, iterationsScores.reduce(function(a, b) { return a * b; }));
-        json[Strings.json.results.iterations] = iterationsResults;
-        return json;
+        this._processedData = {};
+        this._processedData[Strings.json.score] = Statistics.sampleMean(iterationsScores.length, iterationsScores.reduce(function(a, b) { return a * b; }));
+        this._processedData[Strings.json.results.iterations] = iterationsResults;
+    },
+
+    get data()
+    {
+        if (this._processedData)
+            return this._processedData;
+        this._processData();
+        return this._processedData;
+    },
+
+    get score()
+    {
+        return this.data[Strings.json.score];
     }
 }
 
@@ -245,6 +304,15 @@ function ResultsTable(element, headers)
 {
     this.element = element;
     this._headers = headers;
+
+    this._flattenedHeaders = [];
+    this._headers.forEach(function(header) {
+        if (header.children)
+            this._flattenedHeaders = this._flattenedHeaders.concat(header.children);
+        else
+            this._flattenedHeaders.push(header);
+    }, this);
+
     this.clear();
 }
 
@@ -255,219 +323,203 @@ ResultsTable.prototype =
         this.element.innerHTML = "";
     },
 
-    _showHeaderRow: function(row, queue, headers, message)
-    {
-        headers.forEach(function (header) {
-            var th = DocumentExtension.createElement("th", {}, row);
-            th.textContent = header.text;
-            if (typeof message != "undefined" && message.length) {
-                th.innerHTML += "<br>" + '[' + message +']';
-                message = "";
-            }
-            if ("width" in header)
-                th.width = header.width + "%";
-            queue.push({element: th, headers: header.children });
-        });
-    },
-
-    _showHeader: function(message)
+    _addHeader: function()
     {
         var thead = DocumentExtension.createElement("thead", {}, this.element);
         var row = DocumentExtension.createElement("tr", {}, thead);
 
-        var queue = [];
-        this._showHeaderRow(row, queue, this._headers, message);
-
-        while (queue.length) {
-            var row = null;
-            var entries = [];
-
-            for (var i = 0, len = queue.length; i < len; ++i) {
-                var entry = queue.shift();
-
-                if (!entry.headers.length) {
-                    entries.push(entry.element);
-                    continue;
-                }
-
-                if (!row)
-                    row = DocumentExtension.createElement("tr", {}, thead);
-
-                this._showHeaderRow(row, queue, entry.headers, "");
-                entry.element.colSpan = entry.headers.length;
-            }
-
-            if (row) {
-                entries.forEach(function(entry) {
-                    ++entry.rowSpan;
-                });
-            }
-        }
-    },
-    
-    _showEmptyCell: function(row, className)
-    {
-        return DocumentExtension.createElement("td", { class: className }, row);
+        this._headers.forEach(function (header) {
+            var th = DocumentExtension.createElement("th", {}, row);
+            if (header.title != Strings.text.results.graph)
+                th.textContent = header.title;
+            if (header.children)
+                th.colSpan = header.children.length;
+        });
     },
 
-    _showText: function(row, text, className)
-    {
-        var td = DocumentExtension.createElement("td", { class: className }, row);
-        td.textContent = text;
-    },
-
-    _showFixedNumber: function(row, value, digits, className)
-    {
-        var td = DocumentExtension.createElement("td", { class: className }, row);
-        td.textContent = value.toFixed(digits || 2);
-    },
-    
-    _showGraph: function(row, testName, testResults)
+    _addGraphButton: function(td, testName, testResults)
     {
         var data = testResults[Strings.json.samples];
-        if (!data) {
-            this._showEmptyCell(row, "");
+        if (!data)
             return;
-        }
-        
-        var td = DocumentExtension.createElement("td", {}, row);
+
         var button = DocumentExtension.createElement("button", { class: "small-button" }, td);
 
         button.addEventListener("click", function() {
-            var samples = data[Strings.json.graph.points];
-            var samplingTimeOffset = data[Strings.json.graph.samplingTimeOffset];
-            var axes = [Strings.text.experiments.complexity, Strings.text.experiments.frameRate];
-            benchmarkController.showTestGraph(testName, axes, samples, samplingTimeOffset);
+            var score = testResults[Strings.json.score].toFixed(2);
+            var complexity = testResults[Strings.json.experiments.complexity];
+            var mean = [
+                "mean: ",
+                complexity[Strings.json.measurements.average].toFixed(2),
+                " ± ",
+                complexity[Strings.json.measurements.stdev].toFixed(2),
+                " (",
+                complexity[Strings.json.measurements.percent].toFixed(2),
+                "%), worst 5%: ",
+                complexity[Strings.json.measurements.concern].toFixed(2)].join("");
+
+            var graphData = {
+                axes: [Strings.text.experiments.complexity, Strings.text.experiments.frameRate],
+                mean: [
+                    testResults[Strings.json.experiments.complexity][Strings.json.measurements.average],
+                    testResults[Strings.json.experiments.frameRate][Strings.json.measurements.average]
+                ],
+                samples: data,
+                samplingTimeOffset: testResults[Strings.json.samplingTimeOffset]
+            }
+            if (testResults[Strings.json.targetFPS])
+                graphData.targetFPS = testResults[Strings.json.targetFPS];
+            benchmarkController.showTestGraph(testName, score, mean, graphData);
         });
-            
+
         button.textContent = Strings.text.results.graph + "...";
     },
 
-    _showJSON: function(row, testName, testResults)
-    {
-        var data = testResults[Strings.json.samples];
-        if (!data) {
-            this._showEmptyCell(row, "");
-            return;
-        }
-
-        var td = DocumentExtension.createElement("td", {}, row);
-        var button = DocumentExtension.createElement("button", { class: "small-button" }, td);
-
-        button.addEventListener("click", function() {
-            benchmarkController.showTestJSON(testName, testResults);
-        });
-            
-        button.textContent = Strings.text.results.json + "...";
-    },
-    
     _isNoisyMeasurement: function(jsonExperiment, data, measurement, options)
     {
         const percentThreshold = 10;
         const averageThreshold = 2;
-         
+
         if (measurement == Strings.json.measurements.percent)
             return data[Strings.json.measurements.percent] >= percentThreshold;
-            
+
         if (jsonExperiment == Strings.json.experiments.frameRate && measurement == Strings.json.measurements.average)
             return Math.abs(data[Strings.json.measurements.average] - options["frame-rate"]) >= averageThreshold;
 
         return false;
     },
 
-    _isNoisyTest: function(testResults, options)
+    _addEmptyRow: function()
     {
-        for (var index = 0; index < 2; ++index) {
-            var jsonExperiment = !index ? Strings.json.experiments.complexity : Strings.json.experiments.frameRate;
-            var data = testResults[jsonExperiment];
+        var row = DocumentExtension.createElement("tr", {}, this.element);
+        this._flattenedHeaders.forEach(function (header) {
+            return DocumentExtension.createElement("td", { class: "suites-separator" }, row);
+        });
+    },
+
+    _addTest: function(testName, testResults, options)
+    {
+        var row = DocumentExtension.createElement("tr", {}, this.element);
+
+        var isNoisy = false;
+        [Strings.json.experiments.complexity, Strings.json.experiments.frameRate].forEach(function (experiment) {
+            var data = testResults[experiment];
             for (var measurement in data) {
-                if (this._isNoisyMeasurement(jsonExperiment, data, measurement, options))
-                    return true;
+                if (this._isNoisyMeasurement(experiment, data, measurement, options))
+                    isNoisy = true;
             }
-        }
-        return false;
-    },
+        }, this);
 
-    _showEmptyCells: function(row, headers)
-    {
-        for (var index = 0; index < headers.length; ++index) {
-            if (!headers[index].children.length)
-                this._showEmptyCell(row, "suites-separator");
-            else
-                this._showEmptyCells(row, headers[index].children);
-        }
-    },
-
-    _showEmptyRow: function()
-    {
-        var row = DocumentExtension.createElement("tr", {}, this.element);
-        this._showEmptyCells(row, this._headers);
-    },
-
-    _showTest: function(testName, testResults, options)
-    {
-        var row = DocumentExtension.createElement("tr", {}, this.element);
-        var className = this._isNoisyTest(testResults, options) ? "noisy-results" : "";
-        
-        for (var index = 0; index < this._headers.length; ++index) {
-
-            switch (index) {
-            case 0:
-                this._showText(row, testName, className);
-                break;
-
-            case 1:
-                var data = testResults[Strings.json.score];
-                this._showFixedNumber(row, data, 2);
-                break;
-
-            case 2:
-            case 3:
-                var jsonExperiment = index == 2 ? Strings.json.experiments.complexity : Strings.json.experiments.frameRate;
-                var data = testResults[jsonExperiment];
-                for (var measurement in data)
-                    this._showFixedNumber(row, data[measurement], 2, this._isNoisyMeasurement(jsonExperiment, data, measurement, options) ? className : "");
-                break;
-                
-            case 4:
-                this._showGraph(row, testName, testResults);
-                this._showJSON(row, testName, testResults);
-                break;
+        this._flattenedHeaders.forEach(function (header) {
+            var className = "";
+            if (header.className) {
+                if (typeof header.className == "function")
+                    className = header.className(testResults, options);
+                else
+                    className = header.className;
             }
-        }
+
+            if (header.title == Strings.text.testName) {
+                var titleClassName = className;
+                if (isNoisy)
+                    titleClassName += " noisy-results";
+                var td = DocumentExtension.createElement("td", { class: titleClassName }, row);
+                td.textContent = testName;
+                return;
+            }
+
+            var td = DocumentExtension.createElement("td", { class: className }, row);
+            if (header.title == Strings.text.results.graph) {
+                this._addGraphButton(td, testName, testResults);
+            } else if (!("text" in header)) {
+                td.textContent = testResults[header.title];
+            } else if (typeof header.text == "string") {
+                var data = testResults[header.text];
+                if (typeof data == "number")
+                    data = data.toFixed(2);
+                td.textContent = data;
+            } else {
+                td.textContent = header.text(testResults, testName);
+            }
+        }, this);
     },
 
-    _showSuite: function(suiteName, suiteResults, options)
+    _addSuite: function(suiteName, suiteResults, options)
     {
         for (var testName in suiteResults[Strings.json.results.tests]) {
-            this._showTest(testName, suiteResults[Strings.json.results.tests][testName], options);
+            var testResults = suiteResults[Strings.json.results.tests][testName];
+            this._addTest(testName, testResults, options);
         }
     },
-    
-    _showIteration : function(iterationResults, options)
+
+    _addIteration: function(iterationResult, options)
     {
-        for (var suiteName in iterationResults[Strings.json.results.suites]) {
-            if (suiteName != Object.keys(iterationResults[Strings.json.results.suites])[0])
-                this._showEmptyRow();
-            this._showSuite(suiteName, iterationResults[Strings.json.results.suites][suiteName], options);
+        for (var suiteName in iterationResult[Strings.json.results.suites]) {
+            this._addEmptyRow();
+            this._addSuite(suiteName, iterationResult[Strings.json.results.suites][suiteName], options);
         }
-    },
-    
-    showRecord: function(testName, message, testResults, options)
-    {
-        this.clear();
-        this._showHeader(message);
-        this._showTest(testName, testResults, options);
     },
 
     showIterations: function(iterationsResults, options)
     {
         this.clear();
-        this._showHeader("");
-        
-        iterationsResults.forEach(function(iterationResults) {
-            this._showIteration(iterationResults, options);
+        this._addHeader();
+
+        iterationsResults.forEach(function(iterationResult) {
+            this._addIteration(iterationResult, options);
         }, this);
     }
 }
 
+window.Utilities =
+{
+    _parse: function(str, sep)
+    {
+        var output = {};
+        str.split(sep).forEach(function(part) {
+            var item = part.split("=");
+            var value = decodeURIComponent(item[1]);
+            if (value[0] == "'" )
+                output[item[0]] = value.substr(1, value.length - 2);
+            else
+                output[item[0]] = value;
+          });
+        return output;
+    },
+
+    parseParameters: function()
+    {
+        return this._parse(window.location.search.substr(1), "&");
+    },
+
+    parseArguments: function(str)
+    {
+        return this._parse(str, " ");
+    },
+
+    extendObject: function(obj1, obj2)
+    {
+        for (var attrname in obj2)
+            obj1[attrname] = obj2[attrname];
+        return obj1;
+    },
+
+    copyObject: function(obj)
+    {
+        return this.extendObject({}, obj);
+    },
+
+    mergeObjects: function(obj1, obj2)
+    {
+        return this.extendObject(this.copyObject(obj1), obj2);
+    },
+
+    createSubclass: function(superclass, classConstructor, extend)
+    {
+        classConstructor.prototype = Object.create(superclass.prototype);
+        classConstructor.prototype.constructor = classConstructor;
+        if (extend)
+            Utilities.extendObject(classConstructor.prototype, extend);
+        return classConstructor;
+    }
+}

@@ -143,7 +143,7 @@ public:
 
     // Updates only the local style ptr of the object. Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
-    void setStyleInternal(Ref<RenderStyle>&& style) { m_style = WTF::move(style); }
+    void setStyleInternal(Ref<RenderStyle>&& style) { m_style = WTFMove(style); }
 
     // Repaint only if our old bounds and new bounds are different. The caller may pass in newBounds and newOutlineBox if they are known.
     bool repaintAfterLayoutIfNeeded(const RenderLayerModelObject* repaintContainer, const LayoutRect& oldBounds, const LayoutRect& oldOutlineBox, const LayoutRect* newBoundsPtr = nullptr, const LayoutRect* newOutlineBoxPtr = nullptr);
@@ -218,17 +218,19 @@ public:
     bool childRequiresTable(const RenderObject& child) const;
 
 protected:
-    enum BaseTypeFlags {
-        RenderLayerModelObjectFlag = 1 << 0,
-        RenderBoxModelObjectFlag = 1 << 1,
-        RenderInlineFlag = 1 << 2,
-        RenderReplacedFlag = 1 << 3,
-        RenderBlockFlag = 1 << 4,
-        RenderBlockFlowFlag = 1 << 5,
+    enum BaseTypeFlag {
+        RenderLayerModelObjectFlag  = 1 << 0,
+        RenderBoxModelObjectFlag    = 1 << 1,
+        RenderInlineFlag            = 1 << 2,
+        RenderReplacedFlag          = 1 << 3,
+        RenderBlockFlag             = 1 << 4,
+        RenderBlockFlowFlag         = 1 << 5,
     };
+    
+    typedef unsigned BaseTypeFlags;
 
-    RenderElement(Element&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
-    RenderElement(Document&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
+    RenderElement(Element&, Ref<RenderStyle>&&, BaseTypeFlags);
+    RenderElement(Document&, Ref<RenderStyle>&&, BaseTypeFlags);
 
     bool layerCreationAllowedForSubtree() const;
 
@@ -276,7 +278,7 @@ protected:
     void paintOutline(PaintInfo&, const LayoutRect&);
 
 private:
-    RenderElement(ContainerNode&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
+    RenderElement(ContainerNode&, Ref<RenderStyle>&&, BaseTypeFlags);
     void node() const = delete;
     void nonPseudoNode() const = delete;
     void generatingNode() const = delete;
@@ -347,11 +349,11 @@ private:
 
 inline void RenderElement::setAnimatableStyle(Ref<RenderStyle>&& style, StyleDifference minimalStyleDifference)
 {
-    Ref<RenderStyle> animatedStyle = WTF::move(style);
+    Ref<RenderStyle> animatedStyle = WTFMove(style);
     if (animation().updateAnimations(*this, animatedStyle, animatedStyle))
         minimalStyleDifference = std::max(minimalStyleDifference, StyleDifferenceRecompositeLayer);
     
-    setStyle(WTF::move(animatedStyle), minimalStyleDifference);
+    setStyle(WTFMove(animatedStyle), minimalStyleDifference);
 }
 
 inline void RenderElement::setAncestorLineBoxDirty(bool f)

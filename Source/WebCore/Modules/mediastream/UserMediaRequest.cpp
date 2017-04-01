@@ -88,7 +88,7 @@ void UserMediaRequest::start(Document* document, const Dictionary& options, Medi
         return;
     }
 
-    Ref<UserMediaRequest> request = adoptRef(*new UserMediaRequest(document, userMedia, audioConstraints.release(), videoConstraints.release(), WTF::move(promise)));
+    Ref<UserMediaRequest> request = adoptRef(*new UserMediaRequest(document, userMedia, audioConstraints.release(), videoConstraints.release(), WTFMove(promise)));
     request->start();
 }
 
@@ -97,7 +97,7 @@ UserMediaRequest::UserMediaRequest(ScriptExecutionContext* context, UserMediaCon
     , m_audioConstraints(audioConstraints)
     , m_videoConstraints(videoConstraints)
     , m_controller(controller)
-    , m_promise(WTF::move(promise))
+    , m_promise(WTFMove(promise))
 {
 }
 
@@ -167,13 +167,13 @@ void UserMediaRequest::didCreateStream(PassRefPtr<MediaStreamPrivate> privateStr
     if (m_audioConstraints) {
         for (auto& track : stream->getAudioTracks()) {
             track->applyConstraints(*m_audioConstraints);
-            track->source()->startProducingData();
+            track->source().startProducingData();
         }
     }
     if (m_videoConstraints) {
         for (auto& track : stream->getVideoTracks()) {
             track->applyConstraints(*m_videoConstraints);
-            track->source()->startProducingData();
+            track->source().startProducingData();
         }
     }
 

@@ -275,6 +275,7 @@ class Simulator(object):
 
     @staticmethod
     def wait_until_device_is_booted(udid, timeout_seconds=60 * 5):
+        Simulator.wait_until_device_is_in_state(udid, Simulator.DeviceState.BOOTED, timeout_seconds)
         with timeout(seconds=timeout_seconds):
             while True:
                 state = subprocess.check_output(['xcrun', 'simctl', 'spawn', udid, 'launchctl', 'print', 'system']).strip()
@@ -300,6 +301,7 @@ class Simulator(object):
         return os.path.realpath(os.path.expanduser(os.path.join('~/Library/Developer/CoreSimulator/Devices', udid)))
 
     def delete_device(self, udid):
+        Simulator.wait_until_device_is_in_state(udid, Simulator.DeviceState.SHUTDOWN)
         Device.delete(udid)
 
     def refresh(self):

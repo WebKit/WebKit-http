@@ -527,7 +527,7 @@ PDFPlugin::PDFPlugin(WebFrame* frame)
         Ref<Element> annotationStyleElement = document->createElement(styleTag, false);
         annotationStyleElement->setTextContent(annotationStyle, ASSERT_NO_EXCEPTION);
 
-        m_annotationContainer->appendChild(WTF::move(annotationStyleElement));
+        m_annotationContainer->appendChild(WTFMove(annotationStyleElement));
         document->bodyOrFrameset()->appendChild(*m_annotationContainer);
     }
 
@@ -587,14 +587,13 @@ void PDFPlugin::updateScrollbars()
     } else if (m_size.height() < m_pdfDocumentSize.height())
         m_verticalScrollbar = createScrollbar(VerticalScrollbar);
 
-    int horizontalScrollbarHeight = (m_horizontalScrollbar && !m_horizontalScrollbar->isOverlayScrollbar()) ? m_horizontalScrollbar->height() : 0;
-    int verticalScrollbarWidth = (m_verticalScrollbar && !m_verticalScrollbar->isOverlayScrollbar()) ? m_verticalScrollbar->width() : 0;
+    IntSize scrollbarSpace = scrollbarIntrusion();
 
     int pageStep = m_pageBoxes.isEmpty() ? 0 : m_pageBoxes[0].height();
 
     if (m_horizontalScrollbar) {
         m_horizontalScrollbar->setSteps(Scrollbar::pixelsPerLineStep(), pageStep);
-        m_horizontalScrollbar->setProportion(m_size.width() - verticalScrollbarWidth, m_pdfDocumentSize.width());
+        m_horizontalScrollbar->setProportion(m_size.width() - scrollbarSpace.width(), m_pdfDocumentSize.width());
         IntRect scrollbarRect(pluginView()->x(), pluginView()->y() + m_size.height() - m_horizontalScrollbar->height(), m_size.width(), m_horizontalScrollbar->height());
         if (m_verticalScrollbar)
             scrollbarRect.contract(m_verticalScrollbar->width(), 0);
@@ -602,7 +601,7 @@ void PDFPlugin::updateScrollbars()
     }
     if (m_verticalScrollbar) {
         m_verticalScrollbar->setSteps(Scrollbar::pixelsPerLineStep(), pageStep);
-        m_verticalScrollbar->setProportion(m_size.height() - horizontalScrollbarHeight, m_pdfDocumentSize.height());
+        m_verticalScrollbar->setProportion(m_size.height() - scrollbarSpace.height(), m_pdfDocumentSize.height());
         IntRect scrollbarRect(IntRect(pluginView()->x() + m_size.width() - m_verticalScrollbar->width(), pluginView()->y(), m_verticalScrollbar->width(), m_size.height()));
         if (m_horizontalScrollbar)
             scrollbarRect.contract(0, m_horizontalScrollbar->height());
@@ -774,32 +773,33 @@ bool PDFPlugin::forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const
     return false;
 }
 
-int PDFPlugin::scrollPosition(Scrollbar* scrollbar) const
+int PDFPlugin::scrollOffset(ScrollbarOrientation orientation) const
 {
-    if (scrollbar->orientation() == HorizontalScrollbar)
+    if (orientation == HorizontalScrollbar)
         return m_scrollOffset.width();
-    if (scrollbar->orientation() == VerticalScrollbar)
+
+    if (orientation == VerticalScrollbar)
         return m_scrollOffset.height();
+
     ASSERT_NOT_REACHED();
     return 0;
 }
 
-IntPoint PDFPlugin::scrollPosition() const
+ScrollPosition PDFPlugin::scrollPosition() const
 {
     return IntPoint(m_scrollOffset.width(), m_scrollOffset.height());
 }
 
-IntPoint PDFPlugin::minimumScrollPosition() const
+ScrollPosition PDFPlugin::minimumScrollPosition() const
 {
     return IntPoint();
 }
 
-IntPoint PDFPlugin::maximumScrollPosition() const
+ScrollPosition PDFPlugin::maximumScrollPosition() const
 {
-    int horizontalScrollbarHeight = (m_horizontalScrollbar && !m_horizontalScrollbar->isOverlayScrollbar()) ? m_horizontalScrollbar->height() : 0;
-    int verticalScrollbarWidth = (m_verticalScrollbar && !m_verticalScrollbar->isOverlayScrollbar()) ? m_verticalScrollbar->width() : 0;
+    IntSize scrollbarSpace = scrollbarIntrusion();
 
-    IntPoint maximumOffset(m_pdfDocumentSize.width() - m_size.width() + verticalScrollbarWidth, m_pdfDocumentSize.height() - m_size.height() + horizontalScrollbarHeight);
+    IntPoint maximumOffset(m_pdfDocumentSize.width() - m_size.width() + scrollbarSpace.width(), m_pdfDocumentSize.height() - m_size.height() + scrollbarSpace.height());
     maximumOffset.clampNegativeToZero();
     return maximumOffset;
 }
@@ -1540,7 +1540,7 @@ bool PDFPlugin::isEditingCommandEnabled(const String& commandName)
     return false;
 }
 
-void PDFPlugin::setScrollOffset(const IntPoint& offset)
+void PDFPlugin::setScrollOffset(const ScrollOffset& offset)
 {
     m_scrollOffset = IntSize(offset.x(), offset.y());
 

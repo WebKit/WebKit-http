@@ -32,12 +32,14 @@
 #include "BlockExceptions.h"
 #include "FloatPoint.h"
 #include "GraphicsLayer.h"
+#include "Logging.h"
 #include "NSScrollerImpDetails.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollView.h"
 #include "ScrollableArea.h"
 #include "ScrollbarTheme.h"
 #include "ScrollbarThemeMac.h"
+#include "TextStream.h"
 #include "WebCoreSystemInterface.h"
 
 using namespace WebCore;
@@ -130,7 +132,7 @@ static NSSize abs(NSSize size)
 {
     if (!_animator)
         return;
-    _animator->immediateScrollToPointForScrollAnimation(newPosition);
+    _animator->immediateScrollToPositionForScrollAnimation(newPosition);
 }
 
 - (NSPoint)_pixelAlignProposedScrollPosition:(NSPoint)newOrigin
@@ -700,26 +702,35 @@ bool ScrollAnimatorMac::scroll(ScrollbarOrientation orientation, ScrollGranulari
     if (granularity == ScrollByPixel)
         return ScrollAnimator::scroll(orientation, granularity, step, multiplier);
 
-    float currentPos = orientation == HorizontalScrollbar ? m_currentPosX : m_currentPosY;
-    float newPos = std::max<float>(std::min<float>(currentPos + (step * multiplier), static_cast<float>(m_scrollableArea.scrollSize(orientation))), 0);
-    if (currentPos == newPos)
+    FloatPoint currentPosition = this->currentPosition();
+    FloatSize delta;
+    if (orientation == HorizontalScrollbar)
+        delta.setWidth(step * multiplier);
+    else
+        delta.setHeight(step * multiplier);
+
+    FloatPoint newPosition = FloatPoint(currentPosition + delta).constrainedBetween(m_scrollableArea.minimumScrollPosition(), m_scrollableArea.maximumScrollPosition());
+    if (currentPosition == newPosition)
         return false;
 
-    NSPoint newPoint;
     if ([m_scrollAnimationHelper _isAnimating]) {
         NSPoint targetOrigin = [m_scrollAnimationHelper targetOrigin];
-        newPoint = orientation == HorizontalScrollbar ? NSMakePoint(newPos, targetOrigin.y) : NSMakePoint(targetOrigin.x, newPos);
-    } else
-        newPoint = orientation == HorizontalScrollbar ? NSMakePoint(newPos, m_currentPosY) : NSMakePoint(m_currentPosX, newPos);
+        if (orientation == HorizontalScrollbar)
+            newPosition.setY(targetOrigin.y);
+        else
+            newPosition.setX(targetOrigin.x);
+    }
 
-    [m_scrollAnimationHelper scrollToPoint:newPoint];
+    LOG_WITH_STREAM(Scrolling, stream << "ScrollAnimatorMac::scroll " << " from " << currentPosition << " to " << newPosition);
+    [m_scrollAnimationHelper scrollToPoint:newPosition];
     return true;
 }
 
+// FIXME: Maybe this should take a position.
 void ScrollAnimatorMac::scrollToOffsetWithoutAnimation(const FloatPoint& offset)
 {
     [m_scrollAnimationHelper _stopRun];
-    immediateScrollTo(offset);
+    immediateScrollToPosition(ScrollableArea::scrollPositionFromOffset(offset, toFloatSize(m_scrollableArea.scrollOrigin())));
 }
 
 FloatPoint ScrollAnimatorMac::adjustScrollPositionIfNecessary(const FloatPoint& position) const
@@ -727,10 +738,7 @@ FloatPoint ScrollAnimatorMac::adjustScrollPositionIfNecessary(const FloatPoint& 
     if (!m_scrollableArea.constrainsScrollingToContentEdge())
         return position;
 
-    float newX = std::max<float>(std::min<float>(position.x(), m_scrollableArea.totalContentsSize().width() - m_scrollableArea.visibleWidth()), 0);
-    float newY = std::max<float>(std::min<float>(position.y(), m_scrollableArea.totalContentsSize().height() - m_scrollableArea.visibleHeight()), 0);
-
-    return FloatPoint(newX, newY);
+    return m_scrollableArea.constrainScrollPosition(ScrollPosition(position));
 }
 
 void ScrollAnimatorMac::adjustScrollPositionToBoundsIfNecessary()
@@ -738,25 +746,24 @@ void ScrollAnimatorMac::adjustScrollPositionToBoundsIfNecessary()
     bool currentlyConstrainsToContentEdge = m_scrollableArea.constrainsScrollingToContentEdge();
     m_scrollableArea.setConstrainsScrollingToContentEdge(true);
 
-    IntPoint currentScrollPosition = absoluteScrollPosition();
-    FloatPoint nearestPointWithinBounds = adjustScrollPositionIfNecessary(absoluteScrollPosition());
-    immediateScrollBy(nearestPointWithinBounds - currentScrollPosition);
+    ScrollPosition currentScrollPosition = m_scrollableArea.scrollPosition();
+    ScrollPosition constainedPosition = m_scrollableArea.constrainScrollPosition(currentScrollPosition);
+    immediateScrollBy(constainedPosition - currentScrollPosition);
 
     m_scrollableArea.setConstrainsScrollingToContentEdge(currentlyConstrainsToContentEdge);
 }
 
-void ScrollAnimatorMac::immediateScrollTo(const FloatPoint& newPosition)
+void ScrollAnimatorMac::immediateScrollToPosition(const FloatPoint& newPosition)
 {
+    FloatPoint currentPosition = this->currentPosition();
     FloatPoint adjustedPosition = adjustScrollPositionIfNecessary(newPosition);
  
-    bool positionChanged = adjustedPosition.x() != m_currentPosX || adjustedPosition.y() != m_currentPosY;
+    bool positionChanged = adjustedPosition != currentPosition;
     if (!positionChanged && !scrollableArea().scrollOriginChanged())
         return;
 
-    FloatSize delta = FloatSize(adjustedPosition.x() - m_currentPosX, adjustedPosition.y() - m_currentPosY);
-
-    m_currentPosX = adjustedPosition.x();
-    m_currentPosY = adjustedPosition.y();
+    FloatSize delta = adjustedPosition - currentPosition;
+    setCurrentPositionInternal(adjustedPosition);
     notifyPositionChanged(delta);
     updateActiveScrollSnapIndexForOffset();
 }
@@ -779,10 +786,10 @@ bool ScrollAnimatorMac::isScrollSnapInProgress() const
 #endif
 }
 
-void ScrollAnimatorMac::immediateScrollToPointForScrollAnimation(const FloatPoint& newPosition)
+void ScrollAnimatorMac::immediateScrollToPositionForScrollAnimation(const FloatPoint& newPosition)
 {
     ASSERT(m_scrollAnimationHelper);
-    immediateScrollTo(newPosition);
+    immediateScrollToPosition(newPosition);
 }
 
 void ScrollAnimatorMac::notifyPositionChanged(const FloatSize& delta)
@@ -1025,17 +1032,11 @@ void ScrollAnimatorMac::willRemoveHorizontalScrollbar(Scrollbar* scrollbar)
     [m_scrollbarPainterController setHorizontalScrollerImp:nil];
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 void ScrollAnimatorMac::invalidateScrollbarPartLayers(Scrollbar* scrollbar)
 {
     ScrollbarPainter painter = scrollbarPainterForScrollbar(*scrollbar);
     [painter setNeedsDisplay:YES];
 }
-#else
-void ScrollAnimatorMac::invalidateScrollbarPartLayers(Scrollbar*)
-{
-}
-#endif
 
 void ScrollAnimatorMac::verticalScrollbarLayerDidChange()
 {
@@ -1160,18 +1161,18 @@ bool ScrollAnimatorMac::pinnedInDirection(const FloatSize& direction)
     FloatSize limitDelta;
     if (fabsf(direction.height()) >= fabsf(direction.width())) {
         if (direction.height() < 0) {
-            // We are trying to scroll up.  Make sure we are not pinned to the top
+            // We are trying to scroll up. Make sure we are not pinned to the top
             limitDelta.setHeight(m_scrollableArea.visibleContentRect().y() + m_scrollableArea.scrollOrigin().y());
         } else {
-            // We are trying to scroll down.  Make sure we are not pinned to the bottom
+            // We are trying to scroll down. Make sure we are not pinned to the bottom
             limitDelta.setHeight(m_scrollableArea.totalContentsSize().height() - (m_scrollableArea.visibleContentRect().maxY() + m_scrollableArea.scrollOrigin().y()));
         }
     } else if (direction.width()) {
         if (direction.width() < 0) {
-            // We are trying to scroll left.  Make sure we are not pinned to the left
+            // We are trying to scroll left. Make sure we are not pinned to the left
             limitDelta.setWidth(m_scrollableArea.visibleContentRect().x() + m_scrollableArea.scrollOrigin().x());
         } else {
-            // We are trying to scroll right.  Make sure we are not pinned to the right
+            // We are trying to scroll right. Make sure we are not pinned to the right
             limitDelta.setWidth(m_scrollableArea.totalContentsSize().width() - (m_scrollableArea.visibleContentRect().maxX() + m_scrollableArea.scrollOrigin().x()));
         }
     }
@@ -1288,11 +1289,6 @@ bool ScrollAnimatorMac::shouldRubberBandInDirection(ScrollDirection)
     return false;
 }
 
-IntPoint ScrollAnimatorMac::absoluteScrollPosition()
-{
-    return m_scrollableArea.visibleContentRect().location() + m_scrollableArea.scrollOrigin();
-}
-
 void ScrollAnimatorMac::immediateScrollByWithoutContentEdgeConstraints(const FloatSize& delta)
 {
     m_scrollableArea.setConstrainsScrollingToContentEdge(false);
@@ -1302,14 +1298,13 @@ void ScrollAnimatorMac::immediateScrollByWithoutContentEdgeConstraints(const Flo
 
 void ScrollAnimatorMac::immediateScrollBy(const FloatSize& delta)
 {
-    FloatPoint newPos = adjustScrollPositionIfNecessary(FloatPoint(m_currentPosX, m_currentPosY) + delta);
-    if (newPos.x() == m_currentPosX && newPos.y() == m_currentPosY)
+    FloatPoint currentPosition = this->currentPosition();
+    FloatPoint newPosition = adjustScrollPositionIfNecessary(currentPosition + delta);
+    if (newPosition == currentPosition)
         return;
 
-    FloatSize adjustedDelta = FloatSize(newPos.x() - m_currentPosX, newPos.y() - m_currentPosY);
-
-    m_currentPosX = newPos.x();
-    m_currentPosY = newPos.y();
+    FloatSize adjustedDelta = newPosition - currentPosition;
+    setCurrentPositionInternal(newPosition);
     notifyPositionChanged(adjustedDelta);
     updateActiveScrollSnapIndexForOffset();
 }

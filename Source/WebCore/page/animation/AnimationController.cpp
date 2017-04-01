@@ -201,7 +201,7 @@ void AnimationControllerPrivate::fireEventsAndUpdateStyle()
     bool updateStyle = !m_eventsToDispatch.isEmpty() || !m_elementChangesToDispatch.isEmpty();
 
     // fire all the events
-    Vector<EventToDispatch> eventsToDispatch = WTF::move(m_eventsToDispatch);
+    Vector<EventToDispatch> eventsToDispatch = WTFMove(m_eventsToDispatch);
     for (auto& event : eventsToDispatch) {
         Element& element = *event.element;
         if (event.eventType == eventNames().transitionendEvent)
@@ -239,7 +239,7 @@ void AnimationControllerPrivate::addEventToDispatch(PassRefPtr<Element> element,
 
 void AnimationControllerPrivate::addElementChangeToDispatch(Ref<Element>&& element)
 {
-    m_elementChangesToDispatch.append(WTF::move(element));
+    m_elementChangesToDispatch.append(WTFMove(element));
     ASSERT(!m_elementChangesToDispatch.last()->document().inPageCache());
     startUpdateStyleIfNeededDispatcher();
 }
@@ -559,7 +559,8 @@ void AnimationControllerPrivate::scrollWasUpdated()
     auto* view = m_frame.view();
     if (!view || !wantsScrollUpdates())
         return;
-    m_scrollPosition = view->scrollOffsetForFixedPosition().height().toFloat();
+
+    m_scrollPosition = view->scrollPositionForFixedPosition().y().toFloat();
 
     // FIXME: This is updating all the animations, rather than just the ones
     // that are dependent on scroll. We to go from our AnimationBase to its CompositeAnimation

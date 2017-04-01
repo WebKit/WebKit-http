@@ -44,11 +44,20 @@ class Opcode
 end
 
 class Arg
-    attr_reader :role, :type
+    attr_reader :role, :type, :width
 
-    def initialize(role, type)
+    def initialize(role, type, width)
         @role = role
         @type = type
+        @width = width
+    end
+
+    def widthCode
+        if width == "Ptr"
+            "Arg::pointerWidth()"
+        else
+            "Arg::Width#{width}"
+        end
     end
 end
 
@@ -173,7 +182,7 @@ def lex(str, fileName)
 end
 
 def isUD(token)
-    token =~ /\A((U)|(D)|(UD)|(UA))\Z/
+    token =~ /\A((U)|(D)|(UD)|(ZD)|(UZD)|(UA))\Z/
 end
 
 def isGF(token)
@@ -188,8 +197,12 @@ def isArch(token)
     token =~ /\A((x86)|(x86_32)|(x86_64)|(arm)|(armv7)|(arm64)|(32)|(64))\Z/
 end
 
+def isWidth(token)
+    token =~ /\A((8)|(16)|(32)|(64)|(Ptr))\Z/
+end
+
 def isKeyword(token)
-    isUD(token) or isGF(token) or isKind(token) or isArch(token) or
+    isUD(token) or isGF(token) or isKind(token) or isArch(token) or isWidth(token) or
         token == "special" or token == "as"
 end
 
@@ -252,6 +265,13 @@ class Parser
     def consumeKind
         result = token.string
         parseError("Expected kind (Imm, Imm64, Tmp, Addr, Index, RelCond, ResCond, or DoubleCond)") unless isKind(result)
+        advance
+        result
+    end
+
+    def consumeWidth
+        result = token.string
+        parseError("Expected width (8, 16, 32, or 64)") unless isWidth(result)
         advance
         result
     end
@@ -350,8 +370,10 @@ class Parser
                         role = consumeRole
                         consume(":")
                         type = consumeType
+                        consume(":")
+                        width = consumeWidth
                         
-                        signature << Arg.new(role, type)
+                        signature << Arg.new(role, type, width)
                         
                         break unless token == ","
                         consume(",")
@@ -363,10 +385,14 @@ class Parser
                     case token.string
                     when "branch"
                         opcode.attributes[:branch] = true
+                        opcode.attributes[:terminal] = true
                     when "terminal"
                         opcode.attributes[:terminal] = true
                     when "effects"
                         opcode.attributes[:effects] = true
+                    when "return"
+                        opcode.attributes[:return] = true
+                        opcode.attributes[:terminal] = true
                     else
                         parseError("Bad / directive")
                     end
@@ -433,8 +459,6 @@ $fileName = ARGV[0]
 
 parser = Parser.new(IO::read($fileName), $fileName)
 $opcodes = parser.parse
-
-$stderr.puts "Generating code for #{$fileName}."
 
 def writeH(filename)
     File.open("Air#{filename}.h", "w") {
@@ -606,26 +630,31 @@ writeH("OpcodeUtils") {
     matchInstOverload(outp, :fast, "this") {
         | opcode, overload |
         if opcode.special
-            outp.puts "functor(args[0], Arg::Use, Arg::GP); // This is basically bogus, but it works f analyses model Special as an immediate."
+            outp.puts "functor(args[0], Arg::Use, Arg::GP, Arg::pointerWidth()); // This is basically bogus, but it works for analyses that model Special as an immediate."
             outp.puts "args[0].special()->forEachArg(*this, scopedLambda<EachArgCallback>(functor));"
         else
             overload.signature.each_with_index {
                 | arg, index |
+                
                 role = nil
                 case arg.role
                 when "U"
                     role = "Use"
                 when "D"
                     role = "Def"
+                when "ZD"
+                    role = "ZDef"
                 when "UD"
                     role = "UseDef"
+                when "UZD"
+                    role = "UseZDef"
                 when "UA"
                     role = "UseAddr"
                 else
                     raise
                 end
-                
-                outp.puts "functor(args[#{index}], Arg::#{role}, Arg::#{arg.type}P);"
+
+                outp.puts "functor(args[#{index}], Arg::#{role}, Arg::#{arg.type}P, #{arg.widthCode});"
             }
         end
     }
@@ -649,9 +678,11 @@ writeH("OpcodeUtils") {
                 callback = proc {
                     | form |
                     notSpecial = (not form.kinds.detect { | kind | kind.special })
-                    beginArchs(outp, form.archs)
-                    outp.puts "OPGEN_RETURN(#{notSpecial});"
-                    endArchs(outp, form.archs)
+                    if notSpecial
+                        beginArchs(outp, form.archs)
+                        outp.puts "OPGEN_RETURN(true);"
+                        endArchs(outp, form.archs)
+                    end
                 }
                 matchForms(outp, :safe, overload.forms, 0, columnGetter, filter, callback)
                 outp.puts "break;"
@@ -671,13 +702,36 @@ writeH("OpcodeUtils") {
     outp.puts "inline bool isTerminal(Opcode opcode)"
     outp.puts "{"
     outp.puts "switch (opcode) {"
+    didFindTerminals = false
     $opcodes.values.each {
         | opcode |
-        if opcode.attributes[:terminal] or opcode.attributes[:branch]
+        if opcode.attributes[:terminal]
             outp.puts "case #{opcode.name}:"
+            didFindTerminals = true
         end
     }
-    outp.puts "return true;"
+    if didFindTerminals
+        outp.puts "return true;"
+    end
+    outp.puts "default:"
+    outp.puts "return false;"
+    outp.puts "}"
+    outp.puts "}"
+
+    outp.puts "inline bool isReturn(Opcode opcode)"
+    outp.puts "{"
+    outp.puts "switch (opcode) {"
+    didFindReturns = false
+    $opcodes.values.each {
+        | opcode |
+        if opcode.attributes[:return]
+            outp.puts "case #{opcode.name}:"
+            didFindReturns = true
+        end
+    }
+    if didFindReturns
+        outp.puts "return true;"
+    end
     outp.puts "default:"
     outp.puts "return false;"
     outp.puts "}"
@@ -721,17 +775,30 @@ writeH("OpcodeGenerated") {
             needsMoreValidation = false
             overload.signature.length.times {
                 | index |
-                role = overload.signature[index].role
-                type = overload.signature[index].type
+                arg = overload.signature[index]
                 kind = form.kinds[index]
                 needsMoreValidation |= kind.special
-                
-                # We already know that the form matches. We don't have to validate the role, since
-                # kind implies role. So, the only thing left to validate is the type. And we only have
-                # to validate the type if we have a Tmp.
-                if kind.name == "Tmp"
-                    outp.puts "if (!args[#{index}].tmp().is#{type}P())"
+
+                # Some kinds of Args reqire additional validation.
+                case kind.name
+                when "Tmp"
+                    outp.puts "if (!args[#{index}].tmp().is#{arg.type}P())"
                     outp.puts "OPGEN_RETURN(false);"
+                when "Imm"
+                    outp.puts "if (!Arg::isValidImmForm(args[#{index}].value()))"
+                    outp.puts "OPGEN_RETURN(false);"
+                when "Addr"
+                    outp.puts "if (!Arg::isValidAddrForm(args[#{index}].offset()))"
+                    outp.puts "OPGEN_RETURN(false);"
+                when "Index"
+                    outp.puts "if (!Arg::isValidIndexForm(args[#{index}].scale(), args[#{index}].offset(), #{arg.widthCode}))"
+                    outp.puts "OPGEN_RETURN(false);"
+                when "Imm64"
+                when "RelCond"
+                when "ResCond"
+                when "DoubleCond"
+                else
+                    raise "Unexpected kind: #{kind.name}"
                 end
             }
             if needsMoreValidation
@@ -920,7 +987,7 @@ writeH("OpcodeGenerated") {
     foundTrue = false
     $opcodes.values.each {
         | opcode |
-        if opcode.attributes[:branch] or opcode.attributes[:terminal] or opcode.attributes[:effects]
+        if opcode.attributes[:terminal] or opcode.attributes[:effects]
             outp.puts "case #{opcode.name}:"
             foundTrue = true
         end

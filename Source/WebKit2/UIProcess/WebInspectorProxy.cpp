@@ -527,7 +527,7 @@ void WebInspectorProxy::createInspectorPage(IPC::Attachment connectionIdentifier
     if (!m_inspectorPage)
         return;
 
-    m_connectionIdentifier = WTF::move(connectionIdentifier);
+    m_connectionIdentifier = WTFMove(connectionIdentifier);
 
     m_inspectorPage->process().send(Messages::WebInspectorUI::EstablishConnection(m_connectionIdentifier, m_inspectedPage->pageID(), m_underTest, inspectionLevel()), m_inspectorPage->pageID());
 
@@ -728,11 +728,6 @@ void WebInspectorProxy::platformDetach()
 }
 
 void WebInspectorProxy::platformSetAttachedWindowHeight(unsigned)
-{
-    notImplemented();
-}
-
-void WebInspectorProxy::platformSetToolbarHeight(unsigned)
 {
     notImplemented();
 }

@@ -5,6 +5,8 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/DatabaseProcess/IndexedDB"
     "${WEBKIT2_DIR}/DatabaseProcess/IndexedDB/sqlite"
     "${WEBKIT2_DIR}/NetworkProcess"
+    "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols"
+    "${WEBKIT2_DIR}/NetworkProcess/Downloads"
     "${WEBKIT2_DIR}/NetworkProcess/FileAPI"
     "${WEBKIT2_DIR}/NetworkProcess/cache"
     "${WEBKIT2_DIR}/Platform"
@@ -17,10 +19,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/CoreIPCSupport"
     "${WEBKIT2_DIR}/Shared/Databases"
     "${WEBKIT2_DIR}/Shared/Databases/IndexedDB"
-    "${WEBKIT2_DIR}/Shared/Downloads"
     "${WEBKIT2_DIR}/Shared/FileAPI"
-    "${WEBKIT2_DIR}/Shared/Network"
-    "${WEBKIT2_DIR}/Shared/Network/CustomProtocols"
     "${WEBKIT2_DIR}/Shared/Plugins"
     "${WEBKIT2_DIR}/Shared/Plugins/Netscape"
     "${WEBKIT2_DIR}/Shared/Plugins/Netscape/x11"
@@ -110,6 +109,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/mediastream"
     "${WEBCORE_DIR}/platform/network"
+    "${WEBCORE_DIR}/platform/spi/cf"
     "${WEBCORE_DIR}/platform/sql"
     "${WEBCORE_DIR}/platform/text"
     "${WEBCORE_DIR}/plugins"
@@ -202,6 +202,13 @@ set(WebKit2_SOURCES
     DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
     DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
     DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp
+
+    NetworkProcess/NetworkProcessCreationParameters.cpp
+    NetworkProcess/NetworkResourceLoadParameters.cpp
+
+    NetworkProcess/Downloads/Download.cpp
+    NetworkProcess/Downloads/DownloadAuthenticationClient.cpp
+    NetworkProcess/Downloads/DownloadManager.cpp
 
     Platform/Logging.cpp
     Platform/Module.cpp
@@ -321,13 +328,6 @@ set(WebKit2_SOURCES
 
     Shared/Databases/IndexedDB/IDBUtilities.cpp
 
-    Shared/Downloads/Download.cpp
-    Shared/Downloads/DownloadAuthenticationClient.cpp
-    Shared/Downloads/DownloadManager.cpp
-
-    Shared/Network/NetworkProcessCreationParameters.cpp
-    Shared/Network/NetworkResourceLoadParameters.cpp
-
     Shared/Plugins/NPIdentifierData.cpp
     Shared/Plugins/NPObjectMessageReceiver.cpp
     Shared/Plugins/NPObjectProxy.cpp
@@ -366,8 +366,6 @@ set(WebKit2_SOURCES
     UIProcess/WebContextMenuProxy.cpp
     UIProcess/WebCookieManagerProxy.cpp
     UIProcess/WebCookieManagerProxyClient.cpp
-    UIProcess/WebDatabaseManagerProxy.cpp
-    UIProcess/WebDatabaseManagerProxyClient.cpp
     UIProcess/WebEditCommandProxy.cpp
     UIProcess/WebFormClient.cpp
     UIProcess/WebFormSubmissionListenerProxy.cpp
@@ -424,7 +422,6 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKContextConfigurationRef.cpp
     UIProcess/API/C/WKCookieManager.cpp
     UIProcess/API/C/WKCredential.cpp
-    UIProcess/API/C/WKDatabaseManager.cpp
     UIProcess/API/C/WKDownload.cpp
     UIProcess/API/C/WKFormSubmissionListener.cpp
     UIProcess/API/C/WKFrame.cpp
@@ -603,7 +600,6 @@ set(WebKit2_SOURCES
     WebProcess/WebCoreSupport/WebChromeClient.cpp
     WebProcess/WebCoreSupport/WebColorChooser.cpp
     WebProcess/WebCoreSupport/WebContextMenuClient.cpp
-    WebProcess/WebCoreSupport/WebDatabaseManager.cpp
     WebProcess/WebCoreSupport/WebDeviceProximityClient.cpp
     WebProcess/WebCoreSupport/WebDiagnosticLoggingClient.cpp
     WebProcess/WebCoreSupport/WebDragClient.cpp
@@ -650,6 +646,8 @@ set(WebKit2_MESSAGES_IN_FILES
 
     DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.messages.in
 
+    NetworkProcess/CustomProtocols/CustomProtocolManager.messages.in
+
     NetworkProcess/NetworkConnectionToWebProcess.messages.in
     NetworkProcess/NetworkProcess.messages.in
     NetworkProcess/NetworkResourceLoader.messages.in
@@ -663,15 +661,12 @@ set(WebKit2_MESSAGES_IN_FILES
 
     Shared/Authentication/AuthenticationManager.messages.in
 
-    Shared/Network/CustomProtocols/CustomProtocolManager.messages.in
-
     Shared/Plugins/NPObjectMessageReceiver.messages.in
 
     UIProcess/DrawingAreaProxy.messages.in
     UIProcess/VisitedLinkStore.messages.in
     UIProcess/WebBatteryManagerProxy.messages.in
     UIProcess/WebCookieManagerProxy.messages.in
-    UIProcess/WebDatabaseManagerProxy.messages.in
     UIProcess/WebFullScreenManagerProxy.messages.in
     UIProcess/WebGeolocationManagerProxy.messages.in
     UIProcess/WebIconDatabase.messages.in
@@ -725,8 +720,6 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/Storage/StorageAreaMap.messages.in
 
     WebProcess/UserContent/WebUserContentController.messages.in
-
-    WebProcess/WebCoreSupport/WebDatabaseManager.messages.in
 
     WebProcess/WebPage/DrawingArea.messages.in
     WebProcess/WebPage/EventDispatcher.messages.in

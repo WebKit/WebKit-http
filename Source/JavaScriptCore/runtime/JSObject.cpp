@@ -372,40 +372,20 @@ bool JSObject::getOwnPropertySlotByIndex(JSObject* thisObject, ExecState* exec, 
 // ECMA 8.6.2.2
 void JSObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    JSObject* thisObject = jsCast<JSObject*>(cell);
-    ASSERT(value);
-    ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
-    VM& vm = exec->vm();
-    
-    // Try indexed put first. This is required for correctness, since loads on property names that appear like
-    // valid indices will never look in the named property storage.
-    if (Optional<uint32_t> index = parseIndex(propertyName)) {
-        putByIndex(thisObject, exec, index.value(), value, slot.isStrictMode());
-        return;
-    }
-    
-    // Check if there are any setters or getters in the prototype chain
-    JSValue prototype;
-    if (propertyName != exec->propertyNames().underscoreProto) {
-        for (JSObject* obj = thisObject; !obj->structure(vm)->hasReadOnlyOrGetterSetterPropertiesExcludingProto(); obj = asObject(prototype)) {
-            prototype = obj->prototype();
-            if (prototype.isNull()) {
-                ASSERT(!thisObject->structure(vm)->prototypeChainMayInterceptStoreTo(exec->vm(), propertyName));
-                if (!thisObject->putDirectInternal<PutModePut>(vm, propertyName, value, 0, slot)
-                    && slot.isStrictMode())
-                    throwTypeError(exec, ASCIILiteral(StrictModeReadonlyPropertyWriteError));
-                return;
-            }
-        }
-    }
+    putInline(cell, exec, propertyName, value, slot);
+}
 
-    JSObject* obj;
-    for (obj = thisObject; ; obj = asObject(prototype)) {
+void JSObject::putInlineSlow(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+{
+    VM& vm = exec->vm();
+
+    JSObject* obj = this;
+    for (;;) {
         unsigned attributes;
         PropertyOffset offset = obj->structure(vm)->get(vm, propertyName, attributes);
         if (isValidOffset(offset)) {
             if (attributes & ReadOnly) {
-                ASSERT(thisObject->structure(vm)->prototypeChainMayInterceptStoreTo(exec->vm(), propertyName) || obj == thisObject);
+                ASSERT(structure(vm)->prototypeChainMayInterceptStoreTo(exec->vm(), propertyName) || obj == this);
                 if (slot.isStrictMode())
                     exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral(StrictModeReadonlyPropertyWriteError)));
                 return;
@@ -413,8 +393,8 @@ void JSObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSV
 
             JSValue gs = obj->getDirect(offset);
             if (gs.isGetterSetter()) {
-                callSetter(exec, cell, gs, value, slot.isStrictMode() ? StrictMode : NotStrictMode);
-                if (!thisObject->structure()->isDictionary())
+                callSetter(exec, this, gs, value, slot.isStrictMode() ? StrictMode : NotStrictMode);
+                if (!structure()->isDictionary())
                     slot.setCacheableSetter(obj, offset);
                 return;
             }
@@ -438,15 +418,15 @@ void JSObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSV
                 }
             }
         }
-        prototype = obj->prototype();
+        JSValue prototype = obj->prototype();
         if (prototype.isNull())
             break;
+        obj = asObject(prototype);
     }
     
-    ASSERT(!thisObject->structure(vm)->prototypeChainMayInterceptStoreTo(exec->vm(), propertyName) || obj == thisObject);
-    if (!thisObject->putDirectInternal<PutModePut>(vm, propertyName, value, 0, slot) && slot.isStrictMode())
+    ASSERT(!structure(vm)->prototypeChainMayInterceptStoreTo(exec->vm(), propertyName) || obj == this);
+    if (!putDirectInternal<PutModePut>(vm, propertyName, value, 0, slot) && slot.isStrictMode())
         throwTypeError(exec, ASCIILiteral(StrictModeReadonlyPropertyWriteError));
-    return;
 }
 
 void JSObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
@@ -1457,16 +1437,38 @@ const HashTableValue* JSObject::findPropertyHashEntry(PropertyName propertyName)
     return 0;
 }
 
-bool JSObject::hasInstance(ExecState* exec, JSValue value)
+bool JSObject::hasInstance(ExecState* exec, JSValue value, JSValue hasInstanceValue)
 {
     VM& vm = exec->vm();
+
+    if (!hasInstanceValue.isUndefinedOrNull() && hasInstanceValue != exec->lexicalGlobalObject()->functionProtoHasInstanceSymbolFunction()) {
+        CallData callData;
+        CallType callType = JSC::getCallData(hasInstanceValue, callData);
+        if (callType == CallTypeNone) {
+            vm.throwException(exec, createInvalidInstanceofParameterErrorhasInstanceValueNotFunction(exec, this));
+            return false;
+        }
+
+        MarkedArgumentBuffer args;
+        args.append(value);
+        JSValue result = call(exec, hasInstanceValue, callType, callData, this, args);
+        return result.toBoolean(exec);
+    }
+
     TypeInfo info = structure(vm)->typeInfo();
     if (info.implementsDefaultHasInstance())
         return defaultHasInstance(exec, value, get(exec, exec->propertyNames().prototype));
     if (info.implementsHasInstance())
         return methodTable(vm)->customHasInstance(this, exec, value);
-    vm.throwException(exec, createInvalidInstanceofParameterError(exec, this));
+    vm.throwException(exec, createInvalidInstanceofParameterErrorNotFunction(exec, this));
     return false;
+}
+
+bool JSObject::hasInstance(ExecState* exec, JSValue value)
+{
+    JSValue hasInstanceValue = get(exec, exec->propertyNames().hasInstanceSymbol);
+
+    return hasInstance(exec, value, hasInstanceValue);
 }
 
 bool JSObject::defaultHasInstance(ExecState* exec, JSValue value, JSValue proto)
@@ -1485,6 +1487,14 @@ bool JSObject::defaultHasInstance(ExecState* exec, JSValue value, JSValue proto)
             return true;
     }
     return false;
+}
+
+EncodedJSValue JSC_HOST_CALL objectPrivateFuncInstanceOf(ExecState* exec)
+{
+    JSValue value = exec->uncheckedArgument(0);
+    JSValue proto = exec->uncheckedArgument(1);
+
+    return JSValue::encode(jsBoolean(JSObject::defaultHasInstance(exec, value, proto)));
 }
 
 void JSObject::getPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)

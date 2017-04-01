@@ -66,15 +66,15 @@ public:
 
     // ScrollableArea functions.
     virtual int scrollSize(ScrollbarOrientation) const override;
-    virtual int scrollPosition(Scrollbar*) const override;
-    WEBCORE_EXPORT virtual void setScrollOffset(const IntPoint&) override;
+    virtual int scrollOffset(ScrollbarOrientation) const override;
+    WEBCORE_EXPORT virtual void setScrollOffset(const ScrollOffset&) override;
     virtual bool isScrollCornerVisible() const override;
     virtual void scrollbarStyleChanged(ScrollbarStyle, bool forceUpdate) override;
 
     virtual void notifyPageThatContentAreaWillPaint() const;
 
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
-    virtual void scrollTo(const IntSize& newOffset);
+    virtual void scrollTo(const ScrollPosition&);
 
     // The window thats hosts the ScrollView. The ScrollView will communicate scrolls and repaints to the
     // host window in the window's coordinate space.
@@ -225,12 +225,12 @@ public:
     virtual void setContentsSize(const IntSize&);
 
     // Functions for querying the current scrolled position (both as a point, a size, or as individual X and Y values).
-    virtual IntPoint scrollPosition() const override { return visibleContentRect(LegacyIOSDocumentVisibleRect).location(); }
-    IntSize scrollOffset() const { return toIntSize(visibleContentRect(LegacyIOSDocumentVisibleRect).location()); } // Gets the scrolled position as an IntSize. Convenient for adding to other sizes.
-    virtual IntPoint maximumScrollPosition() const override; // The maximum position we can be scrolled to.
-    virtual IntPoint minimumScrollPosition() const override; // The minimum position we can be scrolled to.
+    virtual ScrollPosition scrollPosition() const override { return visibleContentRect(LegacyIOSDocumentVisibleRect).location(); }
+
+    virtual ScrollPosition maximumScrollPosition() const override; // The maximum position we can be scrolled to.
+
     // Adjust the passed in scroll position to keep it between the minimum and maximum positions.
-    IntPoint adjustScrollPositionWithinRange(const IntPoint&) const; 
+    ScrollPosition adjustScrollPositionWithinRange(const ScrollPosition&) const;
     int scrollX() const { return scrollPosition().x(); }
     int scrollY() const { return scrollPosition().y(); }
 
@@ -248,26 +248,25 @@ public:
     // scrollOffset() anchors its (0,0) point at the ScrollableArea's origin. When the Page has a
     // header, the header is positioned at (0,0), ABOVE the start of the Document. So when a page with
     // a header is pinned to the top, the scrollOffset() is (0,0), but the Document is actually at
-    // (0, -headerHeight()). documentScrollOffsetRelativeToScrollableAreaOrigin() will return this
+    // (0, -headerHeight()). documentScrollPositionRelativeToScrollableAreaOrigin() will return this
     // version of the offset, which tracks the top of Document relative to where scrolling was achored.
-    IntSize documentScrollOffsetRelativeToScrollableAreaOrigin() const;
+    ScrollPosition documentScrollPositionRelativeToScrollableAreaOrigin() const;
 
-    // scrollOffset() anchors its (0,0) point at the ScrollableArea's origin. The top of the scrolling
+    // scrollPostion() anchors its (0,0) point at the ScrollableArea's origin. The top of the scrolling
     // layer does not represent the top of the view when there is a topContentInset. Additionally, as
     // detailed above, the origin of the scrolling layer also does not necessarily correspond with the
-    // top of the document anyway, since there could also be header. documentScrollOffsetRelativeToViewOrigin()
+    // top of the document anyway, since there could also be header. documentScrollPositionRelativeToViewOrigin()
     // will return a version of the current scroll offset which tracks the top of the Document
     // relative to the very top of the view.
-    WEBCORE_EXPORT IntSize documentScrollOffsetRelativeToViewOrigin() const;
-    IntPoint documentScrollPositionRelativeToViewOrigin() const;
+    WEBCORE_EXPORT ScrollPosition documentScrollPositionRelativeToViewOrigin() const;
 
     virtual IntSize overhangAmount() const override;
 
     void cacheCurrentScrollPosition() { m_cachedScrollPosition = scrollPosition(); }
-    IntPoint cachedScrollPosition() const { return m_cachedScrollPosition; }
+    ScrollPosition cachedScrollPosition() const { return m_cachedScrollPosition; }
 
     // Functions for scrolling the view.
-    virtual void setScrollPosition(const IntPoint&);
+    virtual void setScrollPosition(const ScrollPosition&);
     void scrollBy(const IntSize& s) { return setScrollPosition(scrollPosition() + s); }
 
     // This function scrolls by lines, pages or pixels.
@@ -293,6 +292,9 @@ public:
 
     IntRect viewToContents(IntRect) const;
     IntRect contentsToView(IntRect) const;
+
+    IntPoint contentsToContainingViewContents(const IntPoint&) const;
+    IntRect contentsToContainingViewContents(IntRect) const;
 
     WEBCORE_EXPORT IntPoint rootViewToTotalContents(const IntPoint&) const;
 
@@ -328,7 +330,7 @@ public:
     {
         IntPoint newPoint = point;
         if (!isScrollViewScrollbar(child))
-            newPoint = point - scrollOffset();
+            newPoint = point - toIntSize(scrollPosition());
         newPoint.moveBy(child->location());
         return newPoint;
     }
@@ -337,7 +339,7 @@ public:
     {
         IntPoint newPoint = point;
         if (!isScrollViewScrollbar(child))
-            newPoint = point + scrollOffset();
+            newPoint = point + toIntSize(scrollPosition());
         newPoint.moveBy(-child->location());
         return newPoint;
     }
@@ -372,7 +374,7 @@ public:
 
     virtual bool isScrollView() const override { return true; }
 
-    WEBCORE_EXPORT void scrollPositionChangedViaPlatformWidget(const IntPoint& oldPosition, const IntPoint& newPosition);
+    WEBCORE_EXPORT void scrollOffsetChangedViaPlatformWidget(const ScrollOffset& oldOffset, const ScrollOffset& newOffset);
 
 protected:
     ScrollView();
@@ -406,7 +408,7 @@ protected:
     virtual bool isFlippedDocument() const { return false; }
 
     // Called to update the scrollbars to accurately reflect the state of the view.
-    void updateScrollbars(const IntSize& desiredOffset);
+    void updateScrollbars(const ScrollPosition& desiredPosition);
 
     float platformTopContentInset() const;
     void platformSetTopContentInset(float);
@@ -415,7 +417,7 @@ protected:
 
     virtual bool shouldDeferScrollUpdateAfterContentSizeChange() { return false; }
 
-    virtual void scrollPositionChangedViaPlatformWidgetImpl(const IntPoint&, const IntPoint&) { }
+    virtual void scrollOffsetChangedViaPlatformWidgetImpl(const ScrollOffset&, const ScrollOffset&) { }
 
 private:
     virtual IntRect visibleContentRectInternal(VisibleContentRectIncludesScrollbars, VisibleContentRectBehavior) const override;
@@ -447,13 +449,13 @@ private:
 #else
     IntRect m_fixedVisibleContentRect;
 #endif
-    IntSize m_scrollOffset; // FIXME: Would rather store this as a position, but we will wait to make this change until more code is shared.
+    ScrollPosition m_scrollPosition;
     IntPoint m_cachedScrollPosition;
     IntSize m_fixedLayoutSize;
     IntSize m_contentsSize;
 
     std::unique_ptr<IntSize> m_deferredScrollDelta; // Needed for WebKit scrolling
-    std::unique_ptr<std::pair<IntPoint, IntPoint>> m_deferredScrollPositions; // Needed for platform widget scrolling
+    std::unique_ptr<std::pair<ScrollOffset, ScrollOffset>> m_deferredScrollOffsets; // Needed for platform widget scrolling
 
     bool m_scrollbarsSuppressed;
 

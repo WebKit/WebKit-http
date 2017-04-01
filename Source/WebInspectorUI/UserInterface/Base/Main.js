@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -76,6 +76,8 @@ WebInspector.loaded = function()
         InspectorBackend.registerDOMStorageDispatcher(new WebInspector.DOMStorageObserver);
     if (InspectorBackend.registerApplicationCacheDispatcher)
         InspectorBackend.registerApplicationCacheDispatcher(new WebInspector.ApplicationCacheObserver);
+    if (InspectorBackend.registerScriptProfilerDispatcher)
+        InspectorBackend.registerScriptProfilerDispatcher(new WebInspector.ScriptProfilerObserver);
     if (InspectorBackend.registerTimelineDispatcher)
         InspectorBackend.registerTimelineDispatcher(new WebInspector.TimelineObserver);
     if (InspectorBackend.registerCSSDispatcher)
@@ -267,7 +269,7 @@ WebInspector.contentLoaded = function()
 
     this._reloadPageKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "R", this._reloadPage.bind(this));
     this._reloadPageIgnoringCacheKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "R", this._reloadPageIgnoringCache.bind(this));
-    this._reloadPageKeyboardShortcut.implicitlyPreventsDefault = this._reloadPageIgnoringCacheKeyboardShortcut = false;
+    this._reloadPageKeyboardShortcut.implicitlyPreventsDefault = this._reloadPageIgnoringCacheKeyboardShortcut.implicitlyPreventsDefault = false;
 
     this._consoleTabKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Option | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "C", this._showConsoleTab.bind(this));
     this._quickConsoleKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control, WebInspector.KeyboardShortcut.Key.Apostrophe, this._focusConsolePrompt.bind(this));
@@ -364,7 +366,6 @@ WebInspector.contentLoaded = function()
     this._dockingAvailable = false;
 
     this._updateDockNavigationItems();
-    this._updateToolbarHeight();
     this._setupViewHierarchy();
 
     // These tabs are always available for selecting, modulo isTabAllowed().
@@ -489,7 +490,11 @@ WebInspector._updateNewTabButtonState = function(event)
 {
     let allTabs = [...this._knownTabClassesByType.values()];
     let addableTabs = allTabs.filter((tabClass) => !tabClass.isEphemeral());
-    let canMakeNewTab = addableTabs.some((tabClass) => this.isNewTabWithTypeAllowed(tabClass.Type));
+
+    // FIXME: Use arrow functions once http://webkit.org/b/152497 is resolved.
+    let canMakeNewTab = addableTabs.some(function(tabClass) {
+        return this.isNewTabWithTypeAllowed(tabClass.Type);
+    }.bind(this));
     this.tabBar.newTabItem.disabled = !canMakeNewTab;
 };
 
@@ -1367,13 +1372,29 @@ WebInspector._contextMenuRequested = function(event)
     let proposedContextMenu;
 
     // This is setting is only defined in engineering builds.
-    let showDebugUI = WebInspector.showDebugUISetting && WebInspector.showDebugUISetting.value;
-    if (showDebugUI) {
+    if (WebInspector.isDebugUIEnabled()) {
         proposedContextMenu = WebInspector.ContextMenu.createFromEvent(event);
         proposedContextMenu.appendSeparator();
         proposedContextMenu.appendItem(WebInspector.unlocalizedString("Reload Web Inspector"), () => {
             window.location.reload();
         });
+
+        let protocolSubMenu = proposedContextMenu.appendSubMenuItem(WebInspector.unlocalizedString("Protocol Debugging"), null, false);
+        let isCapturingTraffic = InspectorBackend.activeTracer instanceof WebInspector.CapturingProtocolTracer;
+
+        protocolSubMenu.appendCheckboxItem(WebInspector.unlocalizedString("Capture Trace"), () => {
+            if (isCapturingTraffic)
+                InspectorBackend.activeTracer = null;
+            else
+                InspectorBackend.activeTracer = new WebInspector.CapturingProtocolTracer;
+        }, isCapturingTraffic);
+
+        protocolSubMenu.appendSeparator();
+
+        protocolSubMenu.appendItem(WebInspector.unlocalizedString("Export Trace\u2026"), () => {
+            const forceSaveAs = true;
+            WebInspector.saveDataToFile(InspectorBackend.activeTracer.trace.saveData, forceSaveAs);
+        }, !isCapturingTraffic);
     } else {
         const onlyExisting = true;
         proposedContextMenu = WebInspector.ContextMenu.createFromEvent(event, onlyExisting);
@@ -1382,6 +1403,11 @@ WebInspector._contextMenuRequested = function(event)
     if (proposedContextMenu)
         proposedContextMenu.show();
 };
+
+WebInspector.isDebugUIEnabled = function()
+{
+    return WebInspector.showDebugUISetting && WebInspector.showDebugUISetting.value;
+}
 
 WebInspector._undock = function(event)
 {
@@ -1428,12 +1454,6 @@ WebInspector._quickConsoleDidResize = function(event)
 WebInspector._sidebarWidthDidChange = function(event)
 {
     this._tabBrowserSizeDidChange();
-};
-
-WebInspector._updateToolbarHeight = function()
-{
-    if (WebInspector.Platform.name === "mac" && WebInspector.Platform.version.release < 10)
-        InspectorFrontendHost.setToolbarHeight(this.toolbar.element.offsetHeight);
 };
 
 WebInspector._setupViewHierarchy = function()
@@ -2139,6 +2159,24 @@ WebInspector.linkifyStringAsFragment = function(string)
 
     return WebInspector.linkifyStringAsFragmentWithCustomLinkifier(string, linkifier);
 };
+
+WebInspector.createResourceLink = function(resource, className)
+{
+    function handleClick(event)
+    {
+        event.stopPropagation();
+        event.preventDefault();
+
+        WebInspector.showRepresentedObject(resource);
+    }
+
+    let linkNode = document.createElement("a");
+    linkNode.classList.add("resource-link", className);
+    linkNode.title = resource.url;
+    linkNode.textContent = (resource.urlComponents.lastPathComponent || resource.url).insertWordBreakCharacters();
+    linkNode.addEventListener("click", handleClick.bind(this));
+    return linkNode;
+}
 
 WebInspector._undoKeyboardShortcut = function(event)
 {

@@ -100,7 +100,7 @@ WEBCORE_EXPORT JSC::EncodedJSValue throwThisTypeError(JSC::ExecState&, const cha
 class DOMConstructorObject : public JSDOMObject {
 public:
     typedef JSDOMObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | JSC::ImplementsHasInstance;
+    static const unsigned StructureFlags = Base::StructureFlags | JSC::ImplementsHasInstance | JSC::ImplementsDefaultHasInstance;
 
     static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
     {
@@ -405,6 +405,13 @@ inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, 
 }
 
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, JSC::ArrayBufferView* view)
+{
+    if (!view)
+        return JSC::jsNull();
+    return view->wrap(exec, globalObject);
+}
+
+inline JSC::JSValue toJS(JSC::ExecState* exec, JSC::JSGlobalObject* globalObject, JSC::ArrayBufferView* view)
 {
     if (!view)
         return JSC::jsNull();

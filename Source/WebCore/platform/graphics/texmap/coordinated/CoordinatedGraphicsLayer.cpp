@@ -894,7 +894,7 @@ void CoordinatedGraphicsLayer::adjustContentsScale()
     // we do not want to drop the previous one as that might result in
     // briefly seeing flickering as the old tiles may be dropped before
     // something replaces them.
-    m_previousBackingStore = WTF::move(m_mainBackingStore);
+    m_previousBackingStore = WTFMove(m_mainBackingStore);
 
     // No reason to save the previous backing store for non-visible areas.
     m_previousBackingStore->removeAllNonVisibleTiles(transformedVisibleRect(), IntRect(0, 0, size().width(), size().height()));
@@ -1192,7 +1192,7 @@ bool CoordinatedGraphicsLayer::addAnimation(const KeyframeValueList& valueList, 
         listsMatch = validateTransformOperations(valueList, ignoredHasBigRotation) >= 0;
 
     m_lastAnimationStartTime = monotonicallyIncreasingTime() - delayAsNegativeTimeOffset;
-    m_animations.add(TextureMapperAnimation(keyframesName, valueList, boxSize, anim, m_lastAnimationStartTime, listsMatch));
+    m_animations.add(TextureMapperAnimation(keyframesName, valueList, boxSize, *anim, listsMatch, m_lastAnimationStartTime, 0, TextureMapperAnimation::AnimationState::Playing));
     m_animationStartedTimer.startOneShot(0);
     didChangeAnimations();
     return true;

@@ -31,4 +31,32 @@ WebInspector.ScriptInstrument = class ScriptInstrument extends WebInspector.Inst
     {
         return WebInspector.TimelineRecord.Type.Script;
     }
+
+    startInstrumentation()
+    {
+        // COMPATIBILITY (iOS 9): Legacy backends did not have ScriptProfilerAgent. They use TimelineAgent.
+        // FIXME: ScriptProfilerAgent is only enabled for JavaScript debuggables until we transition TimelineAgent for Web debuggables.
+        if (!window.ScriptProfilerAgent || WebInspector.debuggableType !== WebInspector.DebuggableType.JavaScript) {
+            super.startInstrumentation();
+            return;
+        }
+
+        // FIXME: Make this some UI visible option.
+        const includeProfiles = true;
+
+        ScriptProfilerAgent.startTracking(includeProfiles);
+    }
+
+    stopInstrumentation()
+    {
+        // COMPATIBILITY (iOS 9): Legacy backends did not have ScriptProfilerAgent. They use TimelineAgent.
+        // FIXME: ScriptProfilerAgent is only enabled for JavaScript debuggables until we transition TimelineAgent for Web debuggables.
+        if (!window.ScriptProfilerAgent || WebInspector.debuggableType !== WebInspector.DebuggableType.JavaScript) {
+            super.stopInstrumentation();
+            return;
+        }
+
+        ScriptProfilerAgent.stopTracking();
+    }
+
 };

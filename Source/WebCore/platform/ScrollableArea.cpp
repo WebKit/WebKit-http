@@ -36,9 +36,11 @@
 #include "GraphicsLayer.h"
 #include "FloatPoint.h"
 #include "LayoutRect.h"
+#include "Logging.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollAnimator.h"
 #include "ScrollbarTheme.h"
+#include "TextStream.h"
 
 namespace WebCore {
 
@@ -134,6 +136,7 @@ bool ScrollableArea::scroll(ScrollDirection direction, ScrollGranularity granula
 
 void ScrollableArea::scrollToOffsetWithoutAnimation(const FloatPoint& offset)
 {
+    LOG_WITH_STREAM(Scrolling, stream << "ScrollableArea " << this << " scrollToOffsetWithoutAnimation " << offset);
     scrollAnimator().scrollToOffsetWithoutAnimation(offset);
 }
 
@@ -145,17 +148,17 @@ void ScrollableArea::scrollToOffsetWithoutAnimation(ScrollbarOrientation orienta
         scrollToOffsetWithoutAnimation(FloatPoint(scrollAnimator().currentPosition().x(), offset));
 }
 
-void ScrollableArea::notifyScrollPositionChanged(const IntPoint& position)
+void ScrollableArea::notifyScrollPositionChanged(const ScrollPosition& position)
 {
     scrollPositionChanged(position);
     scrollAnimator().setCurrentPosition(position);
 }
 
-void ScrollableArea::scrollPositionChanged(const IntPoint& position)
+void ScrollableArea::scrollPositionChanged(const ScrollPosition& position)
 {
     IntPoint oldPosition = scrollPosition();
     // Tell the derived class to scroll its contents.
-    setScrollOffset(position);
+    setScrollOffset(scrollOffsetFromPosition(position));
 
     Scrollbar* verticalScrollbar = this->verticalScrollbar();
 
@@ -207,17 +210,18 @@ bool ScrollableArea::handleTouchEvent(const PlatformTouchEvent& touchEvent)
 #endif
 
 // NOTE: Only called from Internals for testing.
-void ScrollableArea::setScrollOffsetFromInternals(const IntPoint& offset)
+void ScrollableArea::setScrollOffsetFromInternals(const ScrollOffset& offset)
 {
     setScrollOffsetFromAnimation(offset);
 }
 
-void ScrollableArea::setScrollOffsetFromAnimation(const IntPoint& offset)
+void ScrollableArea::setScrollOffsetFromAnimation(const ScrollOffset& offset)
 {
-    if (requestScrollPositionUpdate(offset))
+    ScrollPosition position = scrollPositionFromOffset(offset);
+    if (requestScrollPositionUpdate(position))
         return;
 
-    scrollPositionChanged(offset);
+    scrollPositionChanged(position);
 }
 
 void ScrollableArea::willStartLiveResize()
@@ -415,12 +419,12 @@ bool ScrollableArea::hasLayerForScrollCorner() const
 #if ENABLE(CSS_SCROLL_SNAP)
 void ScrollableArea::setHorizontalSnapOffsets(std::unique_ptr<Vector<LayoutUnit>> horizontalSnapOffsets)
 {
-    m_horizontalSnapOffsets = WTF::move(horizontalSnapOffsets);
+    m_horizontalSnapOffsets = WTFMove(horizontalSnapOffsets);
 }
 
 void ScrollableArea::setVerticalSnapOffsets(std::unique_ptr<Vector<LayoutUnit>> verticalSnapOffsets)
 {
-    m_verticalSnapOffsets = WTF::move(verticalSnapOffsets);
+    m_verticalSnapOffsets = WTFMove(verticalSnapOffsets);
 }
 
 void ScrollableArea::clearHorizontalSnapOffsets()
@@ -516,21 +520,45 @@ bool ScrollableArea::isPinnedVerticallyInDirection(int verticalScrollDelta) cons
 }
 #endif // PLATFORM(IOS)
 
-IntPoint ScrollableArea::scrollPosition() const
+IntSize ScrollableArea::scrollbarIntrusion() const
 {
+    return {
+        verticalScrollbar() ? verticalScrollbar()->occupiedWidth() : 0,
+        horizontalScrollbar() ? horizontalScrollbar()->occupiedHeight() : 0
+    };
+}
+
+ScrollPosition ScrollableArea::scrollPosition() const
+{
+    // FIXME: This relationship seems to be inverted. Scrollbars should be 'view', not 'model', and should get their values from us.
     int x = horizontalScrollbar() ? horizontalScrollbar()->value() : 0;
     int y = verticalScrollbar() ? verticalScrollbar()->value() : 0;
     return IntPoint(x, y);
 }
 
-IntPoint ScrollableArea::minimumScrollPosition() const
+ScrollPosition ScrollableArea::minimumScrollPosition() const
 {
-    return IntPoint();
+    return scrollPositionFromOffset(ScrollPosition());
 }
 
-IntPoint ScrollableArea::maximumScrollPosition() const
+ScrollPosition ScrollableArea::maximumScrollPosition() const
 {
-    return IntPoint(totalContentsSize().width() - visibleWidth(), totalContentsSize().height() - visibleHeight());
+    return scrollPositionFromOffset(ScrollPosition(totalContentsSize() - visibleSize()));
+}
+
+ScrollOffset ScrollableArea::maximumScrollOffset() const
+{
+    return ScrollOffset(totalContentsSize() - visibleSize());
+}
+
+ScrollPosition ScrollableArea::scrollPositionFromOffset(ScrollOffset offset) const
+{
+    return scrollPositionFromOffset(offset, toIntSize(m_scrollOrigin));
+}
+
+ScrollOffset ScrollableArea::scrollOffsetFromPosition(ScrollPosition position) const
+{
+    return scrollOffsetFromPosition(position, toIntSize(m_scrollOrigin));
 }
 
 bool ScrollableArea::scrolledToTop() const
@@ -582,9 +610,9 @@ IntRect ScrollableArea::visibleContentRectInternal(VisibleContentRectIncludesScr
 
     if (scrollbarInclusion == IncludeScrollbars) {
         if (Scrollbar* verticalBar = verticalScrollbar())
-            verticalScrollbarWidth = !verticalBar->isOverlayScrollbar() ? verticalBar->width() : 0;
+            verticalScrollbarWidth = verticalBar->occupiedWidth();
         if (Scrollbar* horizontalBar = horizontalScrollbar())
-            horizontalScrollbarHeight = !horizontalBar->isOverlayScrollbar() ? horizontalBar->height() : 0;
+            horizontalScrollbarHeight = horizontalBar->occupiedHeight();
     }
 
     return IntRect(scrollPosition().x(),

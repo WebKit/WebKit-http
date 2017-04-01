@@ -65,7 +65,7 @@ public:
     SharedTask() { }
     virtual ~SharedTask() { }
 
-    virtual ResultType run(ArgumentTypes&&...) = 0;
+    virtual ResultType run(ArgumentTypes...) = 0;
 };
 
 // This is a utility class that allows you to create a SharedTask subclass using a lambda. Usually,
@@ -80,14 +80,14 @@ public:
     }
 
     SharedTaskFunctor(Functor&& functor)
-        : m_functor(WTF::move(functor))
+        : m_functor(WTFMove(functor))
     {
     }
 
 private:
-    ResultType run(ArgumentTypes&&... arguments) override
+    ResultType run(ArgumentTypes... arguments) override
     {
-        return m_functor(std::forward<ArgumentTypes>(arguments)...);
+        return m_functor(arguments...);
     }
 
     Functor m_functor;
@@ -118,7 +118,7 @@ Ref<SharedTask<FunctionType>> createSharedTask(const Functor& functor)
 template<typename FunctionType, typename Functor>
 Ref<SharedTask<FunctionType>> createSharedTask(Functor&& functor)
 {
-    return adoptRef(*new SharedTaskFunctor<FunctionType, Functor>(WTF::move(functor)));
+    return adoptRef(*new SharedTaskFunctor<FunctionType, Functor>(WTFMove(functor)));
 }
 
 } // namespace WTF

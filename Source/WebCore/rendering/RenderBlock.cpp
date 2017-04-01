@@ -171,7 +171,7 @@ public:
 
         Ref<OverflowEvent> overflowEvent = OverflowEvent::create(horizontalLayoutOverflowChanged, hasHorizontalLayoutOverflow, verticalLayoutOverflowChanged, hasVerticalLayoutOverflow);
         overflowEvent->setTarget(m_block->element());
-        m_block->document().enqueueOverflowEvent(WTF::move(overflowEvent));
+        m_block->document().enqueueOverflowEvent(WTFMove(overflowEvent));
     }
 
 private:
@@ -181,13 +181,13 @@ private:
     bool m_hadVerticalLayoutOverflow;
 };
 
-RenderBlock::RenderBlock(Element& element, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
-    : RenderBox(element, WTF::move(style), baseTypeFlags | RenderBlockFlag)
+RenderBlock::RenderBlock(Element& element, Ref<RenderStyle>&& style, BaseTypeFlags baseTypeFlags)
+    : RenderBox(element, WTFMove(style), baseTypeFlags | RenderBlockFlag)
 {
 }
 
-RenderBlock::RenderBlock(Document& document, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
-    : RenderBox(document, WTF::move(style), baseTypeFlags | RenderBlockFlag)
+RenderBlock::RenderBlock(Document& document, Ref<RenderStyle>&& style, BaseTypeFlags baseTypeFlags)
+    : RenderBox(document, WTFMove(style), baseTypeFlags | RenderBlockFlag)
 {
 }
 
@@ -2751,26 +2751,15 @@ void RenderBlock::computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth
             childBox.computeLogicalHeight(childBox.borderAndPaddingLogicalHeight(), 0, computedValues);
             childMinPreferredLogicalWidth = childMaxPreferredLogicalWidth = computedValues.m_extent;
         } else {
-            if (is<RenderBlock>(*child) && !is<RenderTable>(*child)) {
+            childMinPreferredLogicalWidth = child->minPreferredLogicalWidth();
+            childMaxPreferredLogicalWidth = child->maxPreferredLogicalWidth();
+
+            if (is<RenderBlock>(*child)) {
                 const Length& computedInlineSize = child->style().logicalWidth();
-                if (computedInlineSize.isFitContent() || computedInlineSize.isFillAvailable() || computedInlineSize.isAuto()
-                    || computedInlineSize.isPercentOrCalculated()) {
-                    // FIXME: we could do a lot better for percents (we're considering them always indefinite)
-                    // but we need https://bugs.webkit.org/show_bug.cgi?id=152262 to be fixed first
-                    childMinPreferredLogicalWidth = child->minPreferredLogicalWidth();
-                    childMaxPreferredLogicalWidth = child->maxPreferredLogicalWidth();
-                } else {
-                    ASSERT(computedInlineSize.isMinContent() || computedInlineSize.isMaxContent() || computedInlineSize.isFixed());
-                    LogicalExtentComputedValues computedValues;
-                    downcast<RenderBlock>(*child).computeLogicalWidthInRegion(computedValues);
-                    childMinPreferredLogicalWidth = childMaxPreferredLogicalWidth = computedValues.m_extent;
-                    child->setPreferredLogicalWidthsDirty(false);
-                }
-            } else {
-                // FIXME: we leave the original implementation as default fallback. Still need to specialcase
-                // some other situations: https://drafts.csswg.org/css-sizing/#intrinsic
-                childMinPreferredLogicalWidth = child->minPreferredLogicalWidth();
-                childMaxPreferredLogicalWidth = child->maxPreferredLogicalWidth();
+                if (computedInlineSize.isMaxContent())
+                    childMinPreferredLogicalWidth = childMaxPreferredLogicalWidth;
+                else if (computedInlineSize.isMinContent())
+                    childMaxPreferredLogicalWidth = childMinPreferredLogicalWidth;
             }
         }
 
@@ -2874,8 +2863,8 @@ int RenderBlock::baselinePosition(FontBaseline baselineType, bool firstLine, Lin
         // (the content inside them moves).  This matches WinIE as well, which just bottom-aligns them.
         // We also give up on finding a baseline if we have a vertical scrollbar, or if we are scrolled
         // vertically (e.g., an overflow:hidden block that has had scrollTop moved).
-        bool ignoreBaseline = (layer() && (layer()->marquee() || (direction == HorizontalLine ? (layer()->verticalScrollbar() || layer()->scrollYOffset() != 0)
-            : (layer()->horizontalScrollbar() || layer()->scrollXOffset() != 0)))) || (isWritingModeRoot() && !isRubyRun());
+        bool ignoreBaseline = (layer() && (layer()->marquee() || (direction == HorizontalLine ? (layer()->verticalScrollbar() || layer()->scrollOffset().y() != 0)
+            : (layer()->horizontalScrollbar() || layer()->scrollOffset().x() != 0)))) || (isWritingModeRoot() && !isRubyRun());
         
         Optional<int> baselinePos = ignoreBaseline ? Optional<int>() : inlineBlockBaseline(direction);
         

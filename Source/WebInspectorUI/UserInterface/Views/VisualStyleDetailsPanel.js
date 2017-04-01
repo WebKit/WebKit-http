@@ -88,16 +88,18 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         this._generateSection("background-style", WebInspector.UIString("Style"));
         this._generateSection("border", WebInspector.UIString("Border"));
         this._generateSection("outline", WebInspector.UIString("Outline"));
-        this._generateSection("box-shadow", WebInspector.UIString("Shadow"));
+        this._generateSection("box-shadow", WebInspector.UIString("Box Shadow"));
+        this._generateSection("list-style", WebInspector.UIString("List Styles"));
 
-        this._sections.background = new WebInspector.DetailsSection("background", WebInspector.UIString("Background"), [this._groups.backgroundStyle.section, this._groups.border.section, this._groups.outline.section, this._groups.boxShadow.section]);
+        this._sections.background = new WebInspector.DetailsSection("background", WebInspector.UIString("Background"), [this._groups.backgroundStyle.section, this._groups.border.section, this._groups.outline.section, this._groups.boxShadow.section, this._groups.listStyle.section]);
         this.element.appendChild(this._sections.background.element);
 
-        // Animation Section
+        // Effects Section
         this._generateSection("transition", WebInspector.UIString("Transition"));
+        this._generateSection("animation", WebInspector.UIString("Animation"));
 
-        this._sections.animation = new WebInspector.DetailsSection("animation", WebInspector.UIString("Animation"), [this._groups.transition.section]);
-        this.element.appendChild(this._sections.animation.element);
+        this._sections.effects = new WebInspector.DetailsSection("effects", WebInspector.UIString("Effects"), [this._groups.transition.section, this._groups.animation.section]);
+        this.element.appendChild(this._sections.effects.element);
     }
 
     // Public
@@ -759,10 +761,19 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         let backgroundStyleRow = new WebInspector.DetailsSectionRow;
 
         properties.backgroundColor = new WebInspector.VisualStyleColorPicker("background-color", WebInspector.UIString("Color"));
-        properties.backgroundClip = new WebInspector.VisualStyleKeywordPicker("background-clip", WebInspector.UIString("Clip"), ["Inherit", "Border Box", "Padding Box", "Content Box"]);
+        properties.backgroundBlendMode = new WebInspector.VisualStyleKeywordPicker("background-blend-mode", WebInspector.UIString("Blend"), ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color", "Color Dodge", "Saturation", "Luminosity"]);
 
         backgroundStyleRow.element.appendChild(properties.backgroundColor.element);
-        backgroundStyleRow.element.appendChild(properties.backgroundClip.element);
+        backgroundStyleRow.element.appendChild(properties.backgroundBlendMode.element);
+
+        let backgroundClipRow = new WebInspector.DetailsSectionRow;
+
+        let backgroundClipKeywords = ["Initial", "Border Box", "Padding Box", "Content Box"];
+        properties.backgroundClip = new WebInspector.VisualStyleKeywordPicker("background-clip", WebInspector.UIString("Clip"), backgroundClipKeywords);
+        properties.backgroundOrigin = new WebInspector.VisualStyleKeywordPicker("background-origin", WebInspector.UIString("Origin"), backgroundClipKeywords);
+
+        backgroundClipRow.element.appendChild(properties.backgroundClip.element);
+        backgroundClipRow.element.appendChild(properties.backgroundOrigin.element);
 
         let backgroundSizeRow = new WebInspector.DetailsSectionRow;
 
@@ -828,7 +839,7 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         group.autocompleteCompatibleProperties = [properties.backgroundColor];
 
-        let backgroundStyleGroup = new WebInspector.DetailsSectionGroup([backgroundStyleRow, backgroundSizeRow, backgroundRow, backgroundImageRow, backgroundPositionRow, backgroundRepeatRow]);
+        let backgroundStyleGroup = new WebInspector.DetailsSectionGroup([backgroundStyleRow, backgroundClipRow, backgroundSizeRow, backgroundRow, backgroundImageRow, backgroundPositionRow, backgroundRepeatRow]);
         this._populateSection(group, [backgroundStyleGroup]);
     }
 
@@ -1044,6 +1055,33 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         this._populateSection(group, [boxShadow]);
     }
 
+    _populateListStyleSection()
+    {
+        let group = this._groups.listStyle;
+        let properties = group.properties;
+
+        let listStyleTypeRow = new WebInspector.DetailsSectionRow;
+
+        properties.listStyleType = new WebInspector.VisualStyleKeywordPicker("list-style-type", WebInspector.UIString("Type"), {
+            basic: this._keywords.defaults.concat(["None", "Circle", "Disc", "Square", "Decimal", "Lower Alpha", "Upper Alpha", "Lower Roman", "Upper Roman"]),
+            advanced: ["Decimal Leading Zero", "Asterisks", "Footnotes", "Binary", "Octal", "Lower Hexadecimal", "Upper Hexadecimal", "Lower Latin", "Upper Latin", "Lower Greek", "Upper Greek", "Arabic Indic", "Hebrew", "Hiragana", "Katakana", "Hiragana Iroha", "Katakana Iroha", "CJK Earthly Branch", "CJK Heavenly Stem", "CJK Ideographic", "Bengali", "Cambodian", "Khmer", "Devanagari", "Gujarati", "Gurmukhi", "Kannada", "Lao", "Malayalam", "Mongolian", "Myanmar", "Oriya", "Persian", "Urdu", "Telugu", "Armenian", "Lower Armenian", "Upper Armenian", "Georgian", "Tibetan", "Thai", "Afar", "Hangul Consonant", "Hangul", "Lower Norwegian", "Upper Norwegian", "Ethiopic", "Ethiopic Halehame Gez", "Ethiopic Halehame Aa Et", "Ethiopic Halehame Aa Er", "Oromo", "Ethiopic Halehame Om Et", "Sidama", "Ethiopic Halehame Sid Et", "Somali", "Ethiopic Halehame So Et", "Amharic", "Ethiopic Halehame Am Et", "Tigre", "Ethiopic Halehame Tig", "Tigrinya Er", "Ethiopic Halehame Ti Er", "Tigrinya Et", "Ethiopic Halehame Ti Et", "Ethiopic Abegede", "Ethiopic Abegede Gez", "Amharic Abegede", "Ethiopic Abegede Am Et", "Tigrinya Er Abegede", "Ethiopic Abegede Ti Er", "Tigrinya Et Abegede", "Ethiopic Abegede Ti Et"]
+        });
+
+        properties.listStylePosition = new WebInspector.VisualStyleKeywordIconList("list-style-position", WebInspector.UIString("Position"), ["Outside", "Inside", "Initial"]);
+
+        listStyleTypeRow.element.appendChild(properties.listStyleType.element);
+        listStyleTypeRow.element.appendChild(properties.listStylePosition.element);
+
+        let listStyleImageRow = new WebInspector.DetailsSectionRow;
+
+        properties.listStyleImage = new WebInspector.VisualStyleURLInput("list-style-image", WebInspector.UIString("Image"), this._keywords.defaults.concat(["None"]));
+
+        listStyleImageRow.element.appendChild(properties.listStyleImage.element);
+
+        let listStyle = new WebInspector.DetailsSectionGroup([listStyleTypeRow, listStyleImageRow]);
+        this._populateSection(group, [listStyle]);
+    }
+
     _populateTransitionSection()
     {
         let group = this._groups.transition;
@@ -1094,6 +1132,55 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         let transitionGroup = new WebInspector.DetailsSectionGroup([transitionRow, transitionPropertyRow, transitionDurationRow]);
         this._populateSection(group, [transitionGroup]);
+    }
+
+    _populateAnimationSection()
+    {
+        let group = this._groups.animation;
+        let properties = group.properties;
+
+        let animationNameRow = new WebInspector.DetailsSectionRow;
+
+        properties.animationName = new WebInspector.VisualStyleBasicInput("animation-name", WebInspector.UIString("Name"), WebInspector.UIString("Enter the name of a Keyframe"));
+
+        animationNameRow.element.appendChild(properties.animationName.element);
+
+        let animationTimingRow = new WebInspector.DetailsSectionRow;
+
+        properties.animationTiming = new WebInspector.VisualStyleTimingEditor("animation-timing-function", WebInspector.UIString("Timing"), ["Linear", "Ease", "Ease In", "Ease Out", "Ease In Out"]);
+        properties.animationIterationCount = new WebInspector.VisualStyleNumberInputBox("animation-iteration-count", WebInspector.UIString("Iterations"), this._keywords.defaults.concat(["Infinite"]), null);
+
+        animationTimingRow.element.appendChild(properties.animationTiming.element);
+        animationTimingRow.element.appendChild(properties.animationIterationCount.element);
+
+        let animationDurationRow = new WebInspector.DetailsSectionRow;
+
+        let animationTimeKeywords = ["s", "ms"];
+        properties.animationDuration = new WebInspector.VisualStyleNumberInputBox("animation-duration", WebInspector.UIString("Duration"), null, animationTimeKeywords);
+        properties.animationDelay = new WebInspector.VisualStyleNumberInputBox("animation-delay", WebInspector.UIString("Delay"), null, animationTimeKeywords);
+
+        animationDurationRow.element.appendChild(properties.animationDuration.element);
+        animationDurationRow.element.appendChild(properties.animationDelay.element);
+
+        let animationDirectionRow = new WebInspector.DetailsSectionRow;
+
+        properties.animationDirection = new WebInspector.VisualStyleKeywordPicker("animation-direction", WebInspector.UIString("Direction"), {
+            basic: this._keywords.defaults.concat(["Normal", "Reverse"]),
+            advanced: ["Alternate", "Alternate Reverse"]
+        });
+        properties.animationFillMode = new WebInspector.VisualStyleKeywordPicker("animation-fill-mode", WebInspector.UIString("Fill Mode"), this._keywords.defaults.concat(["None", "Forwards", "Backwards", "Both"]));
+
+        animationDirectionRow.element.appendChild(properties.animationDirection.element);
+        animationDirectionRow.element.appendChild(properties.animationFillMode.element);
+
+        let animationStateRow = new WebInspector.DetailsSectionRow;
+
+        properties.animationPlayState = new WebInspector.VisualStyleKeywordIconList("animation-play-state", WebInspector.UIString("State"), ["Running", "Paused", "Initial"]);
+
+        animationStateRow.element.appendChild(properties.animationPlayState.element);
+
+        let animationGroup = new WebInspector.DetailsSectionGroup([animationNameRow, animationTimingRow, animationDurationRow, animationDirectionRow, animationStateRow]);
+        this._populateSection(group, [animationGroup]);
     }
 
     _noRemainingCommaSeparatedEditorItems(propertyCombiner, propertyEditors)

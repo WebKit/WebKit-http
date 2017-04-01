@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,7 +55,7 @@ template<> struct ForEach<StackSlot*> {
     static void forEach(Inst& inst, const Functor& functor)
     {
         inst.forEachArg(
-            [&] (Arg& arg, Arg::Role role, Arg::Type type) {
+            [&] (Arg& arg, Arg::Role role, Arg::Type type, Arg::Width width) {
                 if (!arg.isStack())
                     return;
                 StackSlot* stackSlot = arg.stackSlot();
@@ -66,7 +66,7 @@ template<> struct ForEach<StackSlot*> {
                 // semantics of "Anonymous".
                 // https://bugs.webkit.org/show_bug.cgi?id=151128
                 
-                functor(stackSlot, role, type);
+                functor(stackSlot, role, type, width);
                 arg = Arg::stack(stackSlot, arg.offset());
             });
     }
@@ -95,23 +95,48 @@ inline const RegisterSet& Inst::extraEarlyClobberedRegs()
     return args[0].special()->extraEarlyClobberedRegs(*this);
 }
 
-template<typename Functor>
-inline void Inst::forEachTmpWithExtraClobberedRegs(Inst* nextInst, const Functor& functor)
+template<typename Thing, typename Functor>
+inline void Inst::forEachDef(Inst* prevInst, Inst* nextInst, const Functor& functor)
 {
-    forEachTmp(
-        [&] (Tmp& tmpArg, Arg::Role role, Arg::Type argType) {
-            functor(tmpArg, role, argType);
-        });
+    if (prevInst) {
+        prevInst->forEach<Thing>(
+            [&] (Thing& thing, Arg::Role role, Arg::Type argType, Arg::Width argWidth) {
+                if (Arg::isLateDef(role))
+                    functor(thing, role, argType, argWidth);
+            });
+    }
 
+    if (nextInst) {
+        nextInst->forEach<Thing>(
+            [&] (Thing& thing, Arg::Role role, Arg::Type argType, Arg::Width argWidth) {
+                if (Arg::isEarlyDef(role))
+                    functor(thing, role, argType, argWidth);
+            });
+    }
+}
+
+template<typename Thing, typename Functor>
+inline void Inst::forEachDefWithExtraClobberedRegs(
+    Inst* prevInst, Inst* nextInst, const Functor& functor)
+{
+    forEachDef<Thing>(prevInst, nextInst, functor);
+
+    Arg::Role regDefRole;
+    
     auto reportReg = [&] (Reg reg) {
-        functor(Tmp(reg), Arg::Def, reg.isGPR() ? Arg::GP : Arg::FP);
+        Arg::Type type = reg.isGPR() ? Arg::GP : Arg::FP;
+        functor(Thing(reg), regDefRole, type, Arg::conservativeWidth(type));
     };
 
-    if (hasSpecial())
-        extraClobberedRegs().forEach(reportReg);
+    if (prevInst && prevInst->hasSpecial()) {
+        regDefRole = Arg::Def;
+        prevInst->extraClobberedRegs().forEach(reportReg);
+    }
 
-    if (nextInst && nextInst->hasSpecial())
+    if (nextInst && nextInst->hasSpecial()) {
+        regDefRole = Arg::EarlyDef;
         nextInst->extraEarlyClobberedRegs().forEach(reportReg);
+    }
 }
 
 inline void Inst::reportUsedRegisters(const RegisterSet& usedRegisters)
@@ -166,6 +191,7 @@ inline bool isX86DivHelperValid(const Inst& inst)
     return inst.args[0] == Tmp(X86Registers::eax)
         && inst.args[1] == Tmp(X86Registers::edx);
 #else
+    UNUSED_PARAM(inst);
     return false;
 #endif
 }

@@ -242,7 +242,7 @@ Blob* XMLHttpRequest::responseBlob()
             Vector<char> data;
             data.append(m_binaryResponseBuilder->data(), m_binaryResponseBuilder->size());
             String normalizedContentType = Blob::normalizedContentType(responseMIMEType()); // responseMIMEType defaults to text/xml which may be incorrect.
-            m_responseBlob = Blob::create(WTF::move(data), normalizedContentType);
+            m_responseBlob = Blob::create(WTFMove(data), normalizedContentType);
             m_binaryResponseBuilder = nullptr;
         } else {
             // If we errored out or got no data, we still return a blob, just an empty one.
@@ -1077,8 +1077,10 @@ void XMLHttpRequest::didFail(const ResourceError& error)
     }
 
     // Network failures are already reported to Web Inspector by ResourceLoader.
-    if (error.domain() == errorDomainWebKitInternal)
-        logConsoleError(scriptExecutionContext(), "XMLHttpRequest cannot load " + error.failingURL() + ". " + error.localizedDescription());
+    if (error.domain() == errorDomainWebKitInternal) {
+        String message = makeString("XMLHttpRequest cannot load ", error.failingURL().string(), ". ", error.localizedDescription());
+        logConsoleError(scriptExecutionContext(), message);
+    }
 
     m_exceptionCode = XMLHttpRequestException::NETWORK_ERR;
     networkError();

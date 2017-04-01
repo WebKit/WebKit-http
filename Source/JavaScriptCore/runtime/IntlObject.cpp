@@ -45,7 +45,9 @@
 #include "Lookup.h"
 #include "ObjectPrototype.h"
 #include <unicode/uloc.h>
+#include <unicode/unumsys.h>
 #include <wtf/Assertions.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace JSC {
 
@@ -115,8 +117,14 @@ Structure* IntlObject::createStructure(VM& vm, JSGlobalObject* globalObject, JSV
 String defaultLocale()
 {
     // 6.2.4 DefaultLocale ()
-    // FIXME: Implement this method.
-    return ASCIILiteral("en");
+    String locale = uloc_getDefault();
+    convertICULocaleToBCP47LanguageTag(locale);
+    return locale;
+}
+
+void convertICULocaleToBCP47LanguageTag(String& locale)
+{
+    locale.replace('_', '-');
 }
 
 bool intlBooleanOption(ExecState& state, JSValue options, PropertyName property, bool& usesFallback)
@@ -158,7 +166,7 @@ bool intlBooleanOption(ExecState& state, JSValue options, PropertyName property,
     return false;
 }
 
-String intlStringOption(ExecState& state, JSValue options, PropertyName property, const HashSet<String>& values, const char* notFound, String fallback)
+String intlStringOption(ExecState& state, JSValue options, PropertyName property, std::initializer_list<const char*> values, const char* notFound, const char* fallback)
 {
     // 9.2.9 GetOption (options, property, type, values, fallback)
     // For type="string".
@@ -168,14 +176,14 @@ String intlStringOption(ExecState& state, JSValue options, PropertyName property
 
     // 2. ReturnIfAbrupt(opts).
     if (state.hadException())
-        return String();
+        return { };
 
     // 3. Let value be Get(opts, property).
     JSValue value = opts->get(&state, property);
 
     // 4. ReturnIfAbrupt(value).
     if (state.hadException())
-        return String();
+        return { };
 
     // 5. If value is not undefined, then
     if (!value.isUndefined()) {
@@ -184,21 +192,21 @@ String intlStringOption(ExecState& state, JSValue options, PropertyName property
 
         // c. If type is "string", then
         // i. Let value be ToString(value).
-        JSString* stringValue = value.toString(&state);
+        String stringValue = value.toWTFString(&state);
 
         // ii. ReturnIfAbrupt(value).
         if (state.hadException())
-            return String();
+            return { };
 
         // d. If values is not undefined, then
         // i. If values does not contain an element equal to value, throw a RangeError exception.
-        if (!values.isEmpty() && !values.contains(stringValue->value(&state))) {
-            state.vm().throwException(&state, createRangeError(&state, String(notFound)));
-            return String();
+        if (values.size() && std::find(values.begin(), values.end(), stringValue) == values.end()) {
+            state.vm().throwException(&state, createRangeError(&state, notFound));
+            return { };
         }
 
         // e. Return value.
-        return stringValue->value(&state);
+        return stringValue;
     }
 
     // 6. Else return fallback.
@@ -674,7 +682,7 @@ static MatcherResult bestFitMatcher(const HashSet<String>& availableLocales, con
     return lookupMatcher(availableLocales, requestedLocales);
 }
 
-HashMap<String, String> resolveLocale(const HashSet<String>& availableLocales, const Vector<String>& requestedLocales, const HashMap<String, String>& options, const Vector<String>& relevantExtensionKeys, Vector<String> (*localeData)(const String&, const String&))
+HashMap<String, String> resolveLocale(const HashSet<String>& availableLocales, const Vector<String>& requestedLocales, const HashMap<String, String>& options, const char* const relevantExtensionKeys[], size_t relevantExtensionKeyCount, Vector<String> (*localeData)(const String&, size_t))
 {
     // 9.2.5 ResolveLocale (availableLocales, requestedLocales, options, relevantExtensionKeys, localeData) (ECMA-402 2.0)
     // 1. Let matcher be the value of options.[[localeMatcher]].
@@ -710,7 +718,7 @@ HashMap<String, String> resolveLocale(const HashSet<String>& availableLocales, c
     HashMap<String, String> result;
 
     // 8. Set result.[[dataLocale]] to foundLocale.
-    result.set(ASCIILiteral("dataLocale"), foundLocale);
+    result.add(ASCIILiteral("dataLocale"), foundLocale);
 
     // 9. Let supportedExtension be "-u".
     String supportedExtension = ASCIILiteral("-u");
@@ -720,16 +728,16 @@ HashMap<String, String> resolveLocale(const HashSet<String>& availableLocales, c
     // 12. ReturnIfAbrupt(rExtensionKeys).
     // 13. Let len be ToLength(Get(rExtensionKeys, "length")).
     // 14. Repeat while k < len
-    for (size_t k = 0; k < relevantExtensionKeys.size(); ++k) {
+    for (size_t keyIndex = 0; keyIndex < relevantExtensionKeyCount; ++keyIndex) {
         // a. Let key be Get(rExtensionKeys, ToString(k)).
         // b. ReturnIfAbrupt(key).
-        const String& key = relevantExtensionKeys[k];
+        const char* key = relevantExtensionKeys[keyIndex];
 
         // c. Let foundLocaleData be Get(localeData, foundLocale).
         // d. ReturnIfAbrupt(foundLocaleData).
         // e. Let keyLocaleData be ToObject(Get(foundLocaleData, key)).
         // f. ReturnIfAbrupt(keyLocaleData).
-        Vector<String> keyLocaleData = localeData(foundLocale, key);
+        Vector<String> keyLocaleData = localeData(foundLocale, keyIndex);
 
         // g. Let value be ToString(Get(keyLocaleData, "0")).
         // h. ReturnIfAbrupt(value).
@@ -745,12 +753,13 @@ HashMap<String, String> resolveLocale(const HashSet<String>& availableLocales, c
             size_t keyPos = extensionSubtags.find(key);
             // ii. If keyPos != -1, then
             if (keyPos != notFound) {
+                // FIXME: https://github.com/tc39/ecma402/issues/59
                 // 1. If keyPos + 1 < extensionSubtagsLength and the length of the result of Get(extensionSubtags, ToString(keyPos +1)) is greater than 2, then
                 if (keyPos + 1 < extensionSubtags.size() && extensionSubtags[keyPos + 1].length() > 2) {
                     const String& requestedValue = extensionSubtags[keyPos + 1];
                     if (keyLocaleData.contains(requestedValue)) {
                         value = requestedValue;
-                        supportedExtensionAddition = "-" + key + '-' + value;
+                        supportedExtensionAddition = makeString('-', key, '-', value);
                     }
                 } else if (keyLocaleData.contains(static_cast<String>(ASCIILiteral("true")))) {
                     // 2. Else, if the result of Call(%StringProto_includes%, keyLocaleData, «"true"») is true, then
@@ -776,7 +785,7 @@ HashMap<String, String> resolveLocale(const HashSet<String>& availableLocales, c
         }
 
         // l. Set result.[[<key>]] to value.
-        result.set(key, value);
+        result.add(key, value);
 
         // m. Append supportedExtensionAddition to supportedExtension.
         supportedExtension.append(supportedExtensionAddition);
@@ -795,7 +804,7 @@ HashMap<String, String> resolveLocale(const HashSet<String>& availableLocales, c
     }
 
     // 16. Set result.[[locale]] to foundLocale.
-    result.set(ASCIILiteral("locale"), foundLocale);
+    result.add(ASCIILiteral("locale"), foundLocale);
 
     // 17. Return result.
     return result;
@@ -861,8 +870,7 @@ JSValue supportedLocales(ExecState& state, const HashSet<String>& availableLocal
     // 1. If options is not undefined, then
     if (!options.isUndefined()) {
         // a. Let matcher be GetOption(options, "localeMatcher", "string", « "lookup", "best fit" », "best fit").
-        const HashSet<String> matchers({ ASCIILiteral("lookup"), ASCIILiteral("best fit") });
-        matcher = intlStringOption(state, options, vm.propertyNames->localeMatcher, matchers, "localeMatcher must be either \"lookup\" or \"best fit\"", ASCIILiteral("best fit"));
+        matcher = intlStringOption(state, options, vm.propertyNames->localeMatcher, { "lookup", "best fit" }, "localeMatcher must be either \"lookup\" or \"best fit\"", "best fit");
         // b. ReturnIfAbrupt(matcher).
         if (state.hadException())
             return jsUndefined();
@@ -914,6 +922,37 @@ JSValue supportedLocales(ExecState& state, const HashSet<String>& availableLocal
 
     // 9. Return subset.
     return supportedLocales;
+}
+
+Vector<String> getNumberingSystemsForLocale(const String& locale)
+{
+    static NeverDestroyed<Vector<String>> cachedNumberingSystems;
+    Vector<String>& availableNumberingSystems = cachedNumberingSystems.get();
+    if (availableNumberingSystems.isEmpty()) {
+        UErrorCode status(U_ZERO_ERROR);
+        UEnumeration* numberingSystemNames = unumsys_openAvailableNames(&status);
+        ASSERT(U_SUCCESS(status));
+        status = U_ZERO_ERROR;
+
+        int32_t resultLength;
+        // Numbering system names are always ASCII, so use char[].
+        while (const char* result = uenum_next(numberingSystemNames, &resultLength, &status)) {
+            ASSERT(U_SUCCESS(status));
+            status = U_ZERO_ERROR;
+            availableNumberingSystems.append(String(result, resultLength));
+        }
+        uenum_close(numberingSystemNames);
+    }
+
+    UErrorCode status(U_ZERO_ERROR);
+    UNumberingSystem* defaultSystem = unumsys_open(locale.utf8().data(), &status);
+    ASSERT(U_SUCCESS(status));
+    String defaultSystemName(unumsys_getName(defaultSystem));
+    unumsys_close(defaultSystem);
+
+    Vector<String> numberingSystems({ defaultSystemName });
+    numberingSystems.appendVector(availableNumberingSystems);
+    return numberingSystems;
 }
 
 } // namespace JSC

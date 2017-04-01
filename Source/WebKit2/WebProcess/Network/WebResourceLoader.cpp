@@ -83,7 +83,7 @@ void WebResourceLoader::willSendRequest(const ResourceRequest& proposedRequest, 
     if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(m_coreLoader.get(), newRequest, redirectResponse))
         return;
     // FIXME: Do we need to update NetworkResourceLoader clientCredentialPolicy in case loader policy is DoNotAskClientForCrossOriginCredentials?
-    m_coreLoader->willSendRequest(WTF::move(newRequest), redirectResponse, [protect](ResourceRequest&& request) {
+    m_coreLoader->willSendRequest(WTFMove(newRequest), redirectResponse, [protect](ResourceRequest&& request) {
         if (!protect->m_coreLoader)
             return;
 
@@ -98,7 +98,7 @@ void WebResourceLoader::didSendData(uint64_t bytesSent, uint64_t totalBytesToBeS
 
 void WebResourceLoader::didReceiveResponse(const ResourceResponse& response, bool needsContinueDidReceiveResponseMessage)
 {
-    LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResponseWithCertificateInfo for '%s'. Status %d.", m_coreLoader->url().string().utf8().data(), response.httpStatusCode());
+    LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResponse for '%s'. Status %d.", m_coreLoader->url().string().utf8().data(), response.httpStatusCode());
 
     Ref<WebResourceLoader> protect(*this);
 

@@ -50,17 +50,19 @@ inline std::ostream& operator<<(std::ostream& os, const ActionType& action)
 {
     switch (action) {
     case ActionType::BlockLoad:
-        return os << "ContentFilterAction::BlockLoad";
+        return os << "ActionType::BlockLoad";
     case ActionType::BlockCookies:
-        return os << "ContentFilterAction::BlockCookies";
+        return os << "ActionType::BlockCookies";
     case ActionType::CSSDisplayNoneSelector:
-        return os << "ContentFilterAction::CSSDisplayNone";
+        return os << "ActionType::CSSDisplayNone";
     case ActionType::CSSDisplayNoneStyleSheet:
-        return os << "ContentFilterAction::CSSDisplayNoneStyleSheet";
+        return os << "ActionType::CSSDisplayNoneStyleSheet";
     case ActionType::IgnorePreviousRules:
-        return os << "ContentFilterAction::IgnorePreviousRules";
+        return os << "ActionType::IgnorePreviousRules";
+    case ActionType::MakeHTTPS:
+        return os << "ActionType::MakeHTTPS";
     case ActionType::InvalidAction:
-        return os << "ContentFilterAction::InvalidAction";
+        return os << "ActionType::InvalidAction";
     }
 }
 }
@@ -145,19 +147,19 @@ public:
     {
         CompiledContentExtensionData extensionData;
         InMemoryContentExtensionCompilationClient client(extensionData);
-        auto compilerError = ContentExtensions::compileRuleList(client, WTF::move(filter));
+        auto compilerError = ContentExtensions::compileRuleList(client, WTFMove(filter));
         if (compilerError) {
             // Compiling should always succeed here. We have other tests for compile failures.
             EXPECT_TRUE(false);
             return nullptr;
         }
 
-        return InMemoryCompiledContentExtension::create(WTF::move(extensionData));
+        return InMemoryCompiledContentExtension::create(WTFMove(extensionData));
     }
 
     static RefPtr<InMemoryCompiledContentExtension> create(CompiledContentExtensionData&& data)
     {
-        return adoptRef(new InMemoryCompiledContentExtension(WTF::move(data)));
+        return adoptRef(new InMemoryCompiledContentExtension(WTFMove(data)));
     }
 
     virtual ~InMemoryCompiledContentExtension()
@@ -175,7 +177,7 @@ public:
 
 private:
     InMemoryCompiledContentExtension(CompiledContentExtensionData&& data)
-        : m_data(WTF::move(data))
+        : m_data(WTFMove(data))
     {
     }
 
@@ -222,7 +224,7 @@ static Vector<ContentExtensions::NFA> createNFAs(ContentExtensions::CombinedURLF
     Vector<ContentExtensions::NFA> nfas;
 
     combinedURLFilters.processNFAs(std::numeric_limits<size_t>::max(), [&](ContentExtensions::NFA&& nfa) {
-        nfas.append(WTF::move(nfa));
+        nfas.append(WTFMove(nfa));
     });
 
     return nfas;
@@ -1083,7 +1085,7 @@ TEST_F(ContentExtensionTest, LargeJumps)
     
     Vector<ContentExtensions::NFA> nfas;
     combinedURLFilters.processNFAs(std::numeric_limits<size_t>::max(), [&](ContentExtensions::NFA&& nfa) {
-        nfas.append(WTF::move(nfa));
+        nfas.append(WTFMove(nfa));
     });
     EXPECT_EQ(nfas.size(), 1ull);
     
@@ -1438,18 +1440,18 @@ TEST_F(ContentExtensionTest, StrictPrefixSeparatedMachines3)
 {
     auto backend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"A*D\"}},"
         "{\"action\":{\"type\":\"ignore-previous-rules\"},\"trigger\":{\"url-filter\":\"A*BA+\"}},"
-        "{\"action\":{\"type\":\"block-cookies\"},\"trigger\":{\"url-filter\":\"A*BC\"}}]");
+        "{\"action\":{\"type\":\"make-https\"},\"trigger\":{\"url-filter\":\"A*BC\"}}]");
     
     testRequest(backend, mainDocumentRequest("http://webkit.org/D"), { ContentExtensions::ActionType::BlockLoad });
     testRequest(backend, mainDocumentRequest("http://webkit.org/AAD"), { ContentExtensions::ActionType::BlockLoad });
     testRequest(backend, mainDocumentRequest("http://webkit.org/AB"), { });
     testRequest(backend, mainDocumentRequest("http://webkit.org/ABA"), { }, true);
     testRequest(backend, mainDocumentRequest("http://webkit.org/ABAD"), { }, true);
-    testRequest(backend, mainDocumentRequest("http://webkit.org/BC"), { ContentExtensions::ActionType::BlockCookies });
-    testRequest(backend, mainDocumentRequest("http://webkit.org/ABC"), { ContentExtensions::ActionType::BlockCookies });
-    testRequest(backend, mainDocumentRequest("http://webkit.org/ABABC"), { ContentExtensions::ActionType::BlockCookies }, true);
-    testRequest(backend, mainDocumentRequest("http://webkit.org/ABABCAD"), { ContentExtensions::ActionType::BlockCookies }, true);
-    testRequest(backend, mainDocumentRequest("http://webkit.org/ABCAD"), { ContentExtensions::ActionType::BlockCookies, ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/BC"), { ContentExtensions::ActionType::MakeHTTPS });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABC"), { ContentExtensions::ActionType::MakeHTTPS });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABABC"), { ContentExtensions::ActionType::MakeHTTPS }, true);
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABABCAD"), { ContentExtensions::ActionType::MakeHTTPS }, true);
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABCAD"), { ContentExtensions::ActionType::MakeHTTPS, ContentExtensions::ActionType::BlockLoad });
 }
     
 TEST_F(ContentExtensionTest, StrictPrefixSeparatedMachines3Partitioning)
@@ -1479,7 +1481,7 @@ TEST_F(ContentExtensionTest, SplittingLargeNFAs)
         
         Vector<ContentExtensions::NFA> nfas;
         combinedURLFilters.processNFAs(i, [&](ContentExtensions::NFA&& nfa) {
-            nfas.append(WTF::move(nfa));
+            nfas.append(WTFMove(nfa));
         });
         EXPECT_EQ(nfas.size(), expectedNFACounts[i]);
         

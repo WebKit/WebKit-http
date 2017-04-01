@@ -290,6 +290,13 @@ void IDBConnectionToServer::didCommitTransaction(const IDBResourceIdentifier& tr
     transaction->didCommit(error);
 }
 
+void IDBConnectionToServer::didFinishHandlingVersionChangeTransaction(IDBTransaction& transaction)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didFinishHandlingVersionChangeTransaction");
+    auto identifier = transaction.info().identifier();
+    m_delegate->didFinishHandlingVersionChangeTransaction(identifier);
+}
+
 void IDBConnectionToServer::abortTransaction(IDBTransaction& transaction)
 {
     LOG(IndexedDB, "IDBConnectionToServer::abortTransaction");
@@ -310,7 +317,7 @@ void IDBConnectionToServer::didAbortTransaction(const IDBResourceIdentifier& tra
     transaction->didAbort(error);
 }
 
-void IDBConnectionToServer::fireVersionChangeEvent(uint64_t databaseConnectionIdentifier, uint64_t requestedVersion)
+void IDBConnectionToServer::fireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion)
 {
     LOG(IndexedDB, "IDBConnectionToServer::fireVersionChangeEvent");
 
@@ -318,7 +325,14 @@ void IDBConnectionToServer::fireVersionChangeEvent(uint64_t databaseConnectionId
     if (!connection)
         return;
 
-    connection->fireVersionChangeEvent(requestedVersion);
+    connection->fireVersionChangeEvent(requestIdentifier, requestedVersion);
+}
+
+void IDBConnectionToServer::didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didFireVersionChangeEvent");
+
+    m_delegate->didFireVersionChangeEvent(databaseConnectionIdentifier, requestIdentifier);
 }
 
 void IDBConnectionToServer::didStartTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError& error)

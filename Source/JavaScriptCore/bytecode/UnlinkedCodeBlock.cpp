@@ -65,10 +65,10 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_hasCapturedVariables(false)
     , m_isBuiltinFunction(info.isBuiltinFunction())
     , m_constructorKind(static_cast<unsigned>(info.constructorKind()))
-    , m_generatorThisMode(static_cast<unsigned>(info.generatorThisMode()))
     , m_superBinding(static_cast<unsigned>(info.superBinding()))
-    , m_isDerivedConstructorContext(info.isDerivedConstructorContext())
+    , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
     , m_isArrowFunctionContext(info.isArrowFunctionContext())
+    , m_isClassContext(info.isClassContext())
     , m_firstLine(0)
     , m_lineCount(0)
     , m_endColumn(UINT_MAX)
@@ -334,7 +334,7 @@ void UnlinkedFunctionExecutable::destroy(JSCell* cell)
 
 void UnlinkedCodeBlock::setInstructions(std::unique_ptr<UnlinkedInstructionStream> instructions)
 {
-    m_unlinkedInstructions = WTF::move(instructions);
+    m_unlinkedInstructions = WTFMove(instructions);
 }
 
 const UnlinkedInstructionStream& UnlinkedCodeBlock::instructions() const

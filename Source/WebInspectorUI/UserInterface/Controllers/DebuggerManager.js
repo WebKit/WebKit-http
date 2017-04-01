@@ -32,6 +32,8 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         if (window.DebuggerAgent)
             DebuggerAgent.enable();
 
+        WebInspector.notifications.addEventListener(WebInspector.Notification.DebugUIEnabledDidChange, this._debugUIEnabledDidChange, this);
+
         WebInspector.Breakpoint.addEventListener(WebInspector.Breakpoint.Event.DisplayLocationDidChange, this._breakpointDisplayLocationDidChange, this);
         WebInspector.Breakpoint.addEventListener(WebInspector.Breakpoint.Event.DisabledStateDidChange, this._breakpointDisabledStateDidChange, this);
         WebInspector.Breakpoint.addEventListener(WebInspector.Breakpoint.Event.ConditionDidChange, this._breakpointEditablePropertyDidChange, this);
@@ -62,6 +64,7 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         this._pauseReason = null;
         this._pauseData = null;
 
+        this._inspectorDebugScripts = [];
         this._scriptIdMap = new Map;
         this._scriptURLMap = new Map;
 
@@ -319,7 +322,7 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         for (let script of this._scriptIdMap.values()) {
             if (script.resource)
                 continue;
-            if (script.url && script.url.startsWith("__WebInspector"))
+            if (!WebInspector.isDebugUIEnabled() && isWebInspectorDebugScript(script.url))
                 continue;
             knownScripts.push(script);
         }
@@ -439,6 +442,7 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         this._pauseReason = null;
         this._pauseData = null;
 
+        this._inspectorDebugScripts = [];
         this._scriptIdMap.clear();
         this._scriptURLMap.clear();
 
@@ -486,12 +490,13 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
                 continue;
             if (!sourceCodeLocation.sourceCode)
                 continue;
+
             // Exclude the case where the call frame is in the inspector code.
-            if (sourceCodeLocation.sourceCode.url && sourceCodeLocation.sourceCode.url.startsWith("__WebInspector"))
+            if (!WebInspector.isDebugUIEnabled() && isWebInspectorDebugScript(sourceCodeLocation.sourceCode.url))
                 continue;
-            var thisObject = WebInspector.RemoteObject.fromPayload(callFramePayload.this);
-            var scopeChain = this._scopeChainFromPayload(callFramePayload.scopeChain);
-            var callFrame = new WebInspector.CallFrame(callFramePayload.callFrameId, sourceCodeLocation, callFramePayload.functionName, thisObject, scopeChain);
+
+            let scopeChain = this._scopeChainFromPayload(callFramePayload.scopeChain);
+            let callFrame = WebInspector.CallFrame.fromDebuggerPayload(callFramePayload, scopeChain, sourceCodeLocation);
             this._callFrames.push(callFrame);
         }
 
@@ -530,6 +535,9 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
             return;
         }
 
+        if (isWebInspectorInternalScript(url))
+            return;
+
         var script = new WebInspector.Script(scriptIdentifier, new WebInspector.TextRange(startLine, startColumn, endLine, endColumn), url, isContentScript, sourceMapURL);
 
         this._scriptIdMap.set(scriptIdentifier, script);
@@ -541,6 +549,12 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
                 this._scriptURLMap.set(script.url, scripts);
             }
             scripts.push(script);
+        }
+
+        if (isWebInspectorDebugScript(script.url)) {
+            this._inspectorDebugScripts.push(script);
+            if (!WebInspector.isDebugUIEnabled())
+                return;
         }
 
         this.dispatchEventToListeners(WebInspector.DebuggerManager.Event.ScriptAdded, {script});
@@ -585,33 +599,41 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
     {
         var type = null;
         switch (payload.type) {
-        case "local":
-            type = WebInspector.ScopeChainNode.Type.Local;
-            break;
-        case "global":
+        case DebuggerAgent.ScopeType.Global:
             type = WebInspector.ScopeChainNode.Type.Global;
             break;
-        case "with":
+        case DebuggerAgent.ScopeType.With:
             type = WebInspector.ScopeChainNode.Type.With;
             break;
-        case "closure":
+        case DebuggerAgent.ScopeType.Closure:
             type = WebInspector.ScopeChainNode.Type.Closure;
             break;
-        case "catch":
+        case DebuggerAgent.ScopeType.Catch:
             type = WebInspector.ScopeChainNode.Type.Catch;
             break;
-        case "functionName":
+        case DebuggerAgent.ScopeType.FunctionName:
             type = WebInspector.ScopeChainNode.Type.FunctionName;
             break;
-        case "globalLexicalEnvironment":
+        case DebuggerAgent.ScopeType.NestedLexical:
+            type = WebInspector.ScopeChainNode.Type.Block;
+            break;
+        case DebuggerAgent.ScopeType.GlobalLexicalEnvironment:
             type = WebInspector.ScopeChainNode.Type.GlobalLexicalEnvironment;
             break;
+
+        // COMPATIBILITY (iOS 9): Debugger.ScopeType.Local used to be provided by the backend.
+        // Newer backends no longer send this enum value, it should be computed by the frontend.
+        // Map this to "Closure" type. The frontend can recalculate this when needed.
+        case DebuggerAgent.ScopeType.Local:
+            type = WebInspector.ScopeChainNode.Type.Closure;
+            break;
+
         default:
             console.error("Unknown type: " + payload.type);
         }
 
         var object = WebInspector.RemoteObject.fromPayload(payload.object);
-        return new WebInspector.ScopeChainNode(type, object);
+        return new WebInspector.ScopeChainNode(type, [object]);
     }
 
     _pauseReasonFromPayload(payload)
@@ -894,6 +916,13 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
 
         this._ignoreBreakpointDisplayLocationDidChangeEvent = false;
     }
+
+    _debugUIEnabledDidChange()
+    {
+        let eventType = WebInspector.isDebugUIEnabled() ? WebInspector.DebuggerManager.Event.ScriptAdded : WebInspector.DebuggerManager.Event.ScriptRemoved;
+        for (let script of this._inspectorDebugScripts)
+            this.dispatchEventToListeners(eventType, {script});
+    }
 };
 
 WebInspector.DebuggerManager.Event = {
@@ -906,6 +935,7 @@ WebInspector.DebuggerManager.Event = {
     CallFramesDidChange: "debugger-manager-call-frames-did-change",
     ActiveCallFrameDidChange: "debugger-manager-active-call-frame-did-change",
     ScriptAdded: "debugger-manager-script-added",
+    ScriptRemoved: "debugger-manager-script-removed",
     ScriptsCleared: "debugger-manager-scripts-cleared",
     BreakpointsEnabledDidChange: "debugger-manager-breakpoints-enabled-did-change"
 };

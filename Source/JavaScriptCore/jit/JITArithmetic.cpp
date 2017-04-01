@@ -37,6 +37,7 @@
 #include "JITInlines.h"
 #include "JITLeftShiftGenerator.h"
 #include "JITMulGenerator.h"
+#include "JITNegGenerator.h"
 #include "JITOperations.h"
 #include "JITRightShiftGenerator.h"
 #include "JITSubGenerator.h"
@@ -196,39 +197,6 @@ void JIT::emitSlow_op_jngreatereq(Instruction* currentInstruction, Vector<SlowCa
 }
 
 #if USE(JSVALUE64)
-
-void JIT::emit_op_negate(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
-
-    emitGetVirtualRegister(src, regT0);
-
-    Jump srcNotInt = emitJumpIfNotInt(regT0);
-    addSlowCase(branchTest32(Zero, regT0, TrustedImm32(0x7fffffff)));
-    neg32(regT0);
-    emitTagInt(regT0, regT0);
-
-    Jump end = jump();
-
-    srcNotInt.link(this);
-    emitJumpSlowCaseIfNotNumber(regT0);
-
-    move(TrustedImm64((int64_t)0x8000000000000000ull), regT1);
-    xor64(regT1, regT0);
-
-    end.link(this);
-    emitPutVirtualRegister(dst);
-}
-
-void JIT::emitSlow_op_negate(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    linkSlowCase(iter); // 0x7fffffff check
-    linkSlowCase(iter); // double check
-
-    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_negate);
-    slowPathCall.call();
-}
 
 void JIT::emit_op_unsigned(Instruction* currentInstruction)
 {
@@ -498,6 +466,41 @@ void JIT::emitSlow_op_mod(Instruction*, Vector<SlowCaseEntry>::iterator&)
 
 #endif // USE(JSVALUE64)
 
+void JIT::emit_op_negate(Instruction* currentInstruction)
+{
+    int result = currentInstruction[1].u.operand;
+    int src = currentInstruction[2].u.operand;
+
+#if USE(JSVALUE64)
+    JSValueRegs srcRegs = JSValueRegs(regT0);
+    JSValueRegs resultRegs = srcRegs;
+    GPRReg scratchGPR = regT2;
+#else
+    JSValueRegs srcRegs = JSValueRegs(regT1, regT0);
+    JSValueRegs resultRegs = srcRegs;
+    GPRReg scratchGPR = regT4;
+#endif
+
+    emitGetVirtualRegister(src, srcRegs);
+
+    JITNegGenerator gen(resultRegs, srcRegs, scratchGPR);
+    gen.generateFastPath(*this);
+
+    ASSERT(gen.didEmitFastPath());
+    gen.endJumpList().link(this);
+    emitPutVirtualRegister(result, resultRegs);
+
+    addSlowCase(gen.slowPathJumpList());
+}
+
+void JIT::emitSlow_op_negate(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+{
+    linkAllSlowCasesForBytecodeOffset(m_slowCases, iter, m_bytecodeOffset);
+
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_negate);
+    slowPathCall.call();
+}
+
 template<typename SnippetGenerator>
 void JIT::emitBitBinaryOpFastPath(Instruction* currentInstruction)
 {
@@ -755,7 +758,9 @@ void JIT::emit_op_div(Instruction* currentInstruction)
 #endif
     FPRReg scratchFPR = fpRegT2;
 
-    uint32_t* profilingCounter = &m_codeBlock->addSpecialFastCaseProfile(m_bytecodeOffset)->m_counter;
+    ResultProfile* resultProfile = nullptr;
+    if (shouldEmitProfiling())
+        resultProfile = m_codeBlock->ensureResultProfile(m_bytecodeOffset);
 
     SnippetOperand leftOperand(types.first());
     SnippetOperand rightOperand(types.second());
@@ -782,7 +787,7 @@ void JIT::emit_op_div(Instruction* currentInstruction)
         emitGetVirtualRegister(op2, rightRegs);
 
     JITDivGenerator gen(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs,
-        fpRegT0, fpRegT1, scratchGPR, scratchFPR, profilingCounter);
+        fpRegT0, fpRegT1, scratchGPR, scratchFPR, resultProfile);
 
     gen.generateFastPath(*this);
 
@@ -828,9 +833,9 @@ void JIT::emit_op_mul(Instruction* currentInstruction)
     FPRReg scratchFPR = fpRegT2;
 #endif
 
-    uint32_t* profilingCounter = nullptr;
+    ResultProfile* resultProfile = nullptr;
     if (shouldEmitProfiling())
-        profilingCounter = &m_codeBlock->addSpecialFastCaseProfile(m_bytecodeOffset)->m_counter;
+        resultProfile = m_codeBlock->ensureResultProfile(m_bytecodeOffset);
 
     SnippetOperand leftOperand(types.first());
     SnippetOperand rightOperand(types.second());
@@ -848,7 +853,7 @@ void JIT::emit_op_mul(Instruction* currentInstruction)
         emitGetVirtualRegister(op2, rightRegs);
 
     JITMulGenerator gen(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs,
-        fpRegT0, fpRegT1, scratchGPR, scratchFPR, profilingCounter);
+        fpRegT0, fpRegT1, scratchGPR, scratchFPR, resultProfile);
 
     gen.generateFastPath(*this);
 
