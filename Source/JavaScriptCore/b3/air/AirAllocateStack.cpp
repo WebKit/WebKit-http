@@ -241,7 +241,7 @@ void allocateStack(Code& code)
                     switch (arg.kind()) {
                     case Arg::Stack: {
                         arg = Arg::addr(
-                            Tmp(MacroAssembler::stackPointerRegister),
+                            Tmp(GPRInfo::callFrameRegister),
                             arg.offset() + arg.stackSlot()->offsetFromFP());
                         if (!arg.isValidForm(width)) {
                             arg = Arg::addr(

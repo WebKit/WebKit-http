@@ -540,6 +540,7 @@
 #define HAVE_SEC_KEYCHAIN 1
 
 #if CPU(X86_64)
+#define HAVE_NETWORK_EXTENSION 1
 #define USE_PLUGIN_HOST_PROCESS 1
 #endif
 
@@ -553,6 +554,7 @@
 
 #if PLATFORM(IOS)
 
+#define HAVE_NETWORK_EXTENSION 1
 #define HAVE_READLINE 1
 #if USE(APPLE_INTERNAL_SDK)
 #define USE_CFNETWORK 1
@@ -831,7 +833,15 @@
 #undef ENABLE_B3_JIT
 #define ENABLE_DFG_JIT 0
 #define ENABLE_FTL_JIT 0
-#define Enable_B3_JIT 0
+#define ENABLE_B3_JIT 0
+#endif
+
+/* The SamplingProfiler is the probabilistic and low-overhead profiler used by
+ * JSC to measure where time is spent inside a JavaScript program. */
+#if (OS(DARWIN) || OS(WINDOWS)) && ENABLE(JIT)
+#define ENABLE_SAMPLING_PROFILER 1
+#else
+#define ENABLE_SAMPLING_PROFILER 0
 #endif
 
 /* Counts uses of write barriers using sampling counters. Be sure to also

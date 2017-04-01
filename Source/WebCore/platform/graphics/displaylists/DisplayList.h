@@ -26,6 +26,7 @@
 #ifndef DisplayList_h
 #define DisplayList_h
 
+#include "DisplayListItems.h"
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
@@ -58,14 +59,10 @@ public:
         return m_list[index].get();
     }
     
-    void clear() { m_list.clear(); }
-    size_t size() const { return m_list.size(); }
+    void clear();
+    void removeItemsFromIndex(size_t);
 
-    void removeItemsFromIndex(size_t index)
-    {
-        m_list.resize(index);
-    }
-
+    size_t itemCount() const { return m_list.size(); }
     size_t sizeInBytes() const;
 
 #if !defined(NDEBUG) || !LOG_DISABLED

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -213,17 +213,42 @@ private:
                 break;
             }
 
-            // Turn this: Sub(value, constant)
-            // Into this: Add(value, -constant)
             if (isInt(m_value->type())) {
+                // Turn this: Sub(value, constant)
+                // Into this: Add(value, -constant)
                 if (Value* negatedConstant = m_value->child(1)->negConstant(m_proc)) {
                     m_insertionSet.insertValue(m_index, negatedConstant);
                     replaceWithNew<Value>(
                         Add, m_value->origin(), m_value->child(0), negatedConstant);
                     break;
                 }
+                
+                // Turn this: Sub(0, value)
+                // Into this: Neg(value)
+                if (m_value->child(0)->isInt(0)) {
+                    replaceWithNew<Value>(Neg, m_value->origin(), m_value->child(1));
+                    break;
+                }
             }
 
+            break;
+
+        case Neg:
+            // Turn this: Neg(constant)
+            // Into this: -constant
+            if (Value* constant = m_value->child(0)->negConstant(m_proc)) {
+                replaceWithNewValue(constant);
+                break;
+            }
+            
+            // Turn this: Neg(Neg(value))
+            // Into this: value
+            if (m_value->child(0)->opcode() == Neg) {
+                m_value->replaceWithIdentity(m_value->child(0)->child(0));
+                m_changed = true;
+                break;
+            }
+            
             break;
 
         case Mul:
@@ -392,6 +417,27 @@ private:
                     m_index, ZExt32, m_value->origin(),
                     m_value->child(0)->child(0), m_value->child(0)->child(1));
                 m_changed = true;
+            }
+
+            // Turn this: BitAnd(Op(value, constant1), constant2)
+            //     where !(constant1 & constant2)
+            //       and Op is BitOr or BitXor
+            // into this: BitAnd(value, constant2)
+            if (m_value->child(1)->hasInt()) {
+                int64_t constant2 = m_value->child(1)->asInt();
+                switch (m_value->child(0)->opcode()) {
+                case BitOr:
+                case BitXor:
+                    if (m_value->child(0)->child(1)->hasInt()
+                        && !(m_value->child(0)->child(1)->asInt() & constant2)) {
+                        m_value->child(0) = m_value->child(0)->child(0);
+                        m_changed = true;
+                        break;
+                    }
+                    break;
+                default:
+                    break;
+                }
             }
             break;
 
@@ -754,6 +800,26 @@ private:
                 m_changed = true;
                 break;
             }
+
+            // Turn this: Trunc(Op(value, constant))
+            //     where !(constant & 0xffffffff)
+            //       and Op is Add, Sub, BitOr, or BitXor
+            // into this: Trunc(value)
+            switch (m_value->child(0)->opcode()) {
+            case Add:
+            case Sub:
+            case BitOr:
+            case BitXor:
+                if (m_value->child(0)->child(1)->hasInt64()
+                    && !(m_value->child(0)->child(1)->asInt64() & 0xffffffffll)) {
+                    m_value->child(0) = m_value->child(0)->child(0);
+                    m_changed = true;
+                    break;
+                }
+                break;
+            default:
+                break;
+            }
             break;
 
         case FloatToDouble:
@@ -938,7 +1004,8 @@ private:
                 // Into this: Equal(bool, 0)
                 if (m_value->child(1)->isInt32(1)) {
                     replaceWithNew<Value>(
-                        Equal, m_value->origin(), m_value->child(0), m_value->child(1));
+                        Equal, m_value->origin(), m_value->child(0),
+                        m_insertionSet.insertIntConstant(m_index, m_value->origin(), Int32, 0));
                     break;
                 }
             }
@@ -1085,19 +1152,48 @@ private:
             }
             break;
 
-        case Check:
-            if (m_value->child(0)->isLikeZero()) {
-                m_value->replaceWithNop();
+        case Check: {
+            CheckValue* checkValue = m_value->as<CheckValue>();
+            
+            if (checkValue->child(0)->isLikeZero()) {
+                checkValue->replaceWithNop();
                 m_changed = true;
                 break;
             }
 
-            if (m_value->child(0)->opcode() == NotEqual && m_value->child(0)->child(1)->isInt(0)) {
-                m_value->child(0) = m_value->child(0)->child(0);
+            if (checkValue->child(0)->isLikeNonZero()) {
+                PatchpointValue* patchpoint =
+                    m_insertionSet.insert<PatchpointValue>(m_index, Void, checkValue->origin());
+
+                patchpoint->effects = Effects();
+                patchpoint->effects.reads = HeapRange::top();
+                patchpoint->effects.exitsSideways = true;
+
+                for (unsigned i = 1; i < checkValue->numChildren(); ++i)
+                    patchpoint->append(checkValue->constrainedChild(i));
+
+                patchpoint->setGenerator(checkValue->generator());
+
+                // Replace the rest of the block with an Oops.
+                for (unsigned i = m_index + 1; i < m_block->size() - 1; ++i)
+                    m_block->at(i)->replaceWithNop();
+                m_block->last()->as<ControlValue>()->convertToOops();
+                m_block->last()->setOrigin(checkValue->origin());
+
+                // Replace ourselves last.
+                checkValue->replaceWithNop();
+                m_changedCFG = true;
+                break;
+            }
+
+            if (checkValue->child(0)->opcode() == NotEqual
+                && checkValue->child(0)->child(1)->isInt(0)) {
+                checkValue->child(0) = checkValue->child(0)->child(0);
                 m_changed = true;
                 break;
             }
             break;
+        }
 
         case Branch: {
             ControlValue* branch = m_value->as<ControlValue>();

@@ -44,6 +44,7 @@
 #include "ThreadIdentifierDataPthreads.h"
 #include "ThreadSpecific.h"
 #include <wtf/DataLog.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/RawPointer.h>
 #include <wtf/WTFThreadData.h>
 #include <errno.h>
@@ -103,7 +104,7 @@ void threadWasJoined(ThreadIdentifier);
 
 static Mutex& threadMapMutex()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(Mutex, mutex, ());
+    static NeverDestroyed<Mutex> mutex;
     return mutex;
 }
 
@@ -129,7 +130,7 @@ void initializeThreading()
 
 static ThreadMap& threadMap()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(ThreadMap, map, ());
+    static NeverDestroyed<ThreadMap> map;
     return map;
 }
 

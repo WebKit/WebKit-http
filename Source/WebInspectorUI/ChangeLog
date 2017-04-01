@@ -1,3 +1,658 @@
+2016-01-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Timeline recording controls should use NavigationBar
+        https://bugs.webkit.org/show_bug.cgi?id=152997
+
+        Reviewed by Brian Burg.
+
+        NavigtaionBar should always be preferred over manually editing the DOM.
+        Reusing existing button types for the record button and status element lets us
+        eliminate a bunch of CSS, and will make future changes to the Timelines UI
+        (such as adding addition recording controls), easier to implement.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New tooltip strings.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .navigation-bar > .item.record-start-stop):
+        (.sidebar > .panel.navigation.timeline > .navigation-bar > .item.record-start-stop:hover):
+        (.sidebar > .panel.navigation.timeline > .navigation-bar > .item.record-start-stop:active):
+        Replaced similar styles used for the record glyph.
+        (.sidebar > .panel.navigation.timeline > .navigation-bar > .item.record-start-stop *):
+        Prevent multiple mouseover/mouseout events while hovering the navigation item.
+        (.sidebar > .panel.navigation.timeline > .navigation-bar > .item.flexible-space):
+        Replaced similar styles used for the record status element.
+        (.sidebar > .panel.navigation.timeline > .status-bar): Deleted.
+        (body.window-inactive .sidebar > .panel.navigation.timeline > .status-bar): Deleted.
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph): Deleted.
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph:hover): Deleted.
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph:active): Deleted.
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.recording): Deleted.
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-status): Deleted.
+        (.panel.timeline .navigation-bar.timelines-view): Deleted.
+        No longer used.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        Removed unused CSS static variables.
+        (WebInspector.TimelineSidebarPanel):
+        Create navigation bar, remove status bar DOM elements. Create keyboard shortcut
+        before the record button, so the shortcut's display name can be used in tooltips.
+        (WebInspector.TimelineSidebarPanel.prototype._capturingStartedOrStopped):
+        Update record button state and flexible space (status) text.
+        (WebInspector.TimelineSidebarPanel.prototype._recordButtonClicked):
+        Toggle recording state, and update record button state and flexible space (status) text.
+        (WebInspector.TimelineSidebarPanel.prototype._recordButtonMousedOver):
+        (WebInspector.TimelineSidebarPanel.prototype._recordButtonMousedOut):
+        Update flexible space (status) text.
+        (WebInspector.TimelineSidebarPanel.prototype._updateRecordButton):
+        (WebInspector.TimelineSidebarPanel.prototype._updateReplayInterfaceVisibility):
+        (WebInspector.TimelineSidebarPanel.prototype._toggleRecording): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._capturingStarted): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._capturingStopped): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._recordGlyphMousedOver): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._recordGlyphMousedOut): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._recordGlyphClicked): Deleted.
+        No longer used.
+
+2016-01-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Move helper methods for getting icons/text to TimelineTabContentView
+        https://bugs.webkit.org/show_bug.cgi?id=152996
+
+        Reviewed by Brian Burg.
+
+        In preparation for the Timelines UI redesign, helper methods which existed
+        in the sidebar panel and timeline tree elements need to be relocated,
+        since the sidebar won't exist in the new UI.
+
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        Removed icon/title code, replaced with calls to new helper methods.
+        Code to create the alternate subtitle was broken out form the rest
+        of the icon/title code, and kept in the constructor.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._instrumentAdded):
+        Updated calls to helper methods.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype._instrumentAdded):
+        (WebInspector.TimelineSidebarPanel.displayNameForTimeline): Deleted.
+        (WebInspector.TimelineSidebarPanel.iconClassNameForTimeline): Deleted.
+        Moved to TimelineTabContentView.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.displayNameForTimeline):
+        (WebInspector.TimelineTabContentView.iconClassNameForTimeline):
+        Relocated from TimelineSidebarPanel.
+        (WebInspector.TimelineTabContentView.iconClassNameForRecord):
+        (WebInspector.TimelineTabContentView.displayNameForRecord):
+        New helper methods. Previously part of TimelineRecordTreeElement.
+
+2016-01-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: fix some common misspellings in localized strings
+        https://bugs.webkit.org/show_bug.cgi?id=153030
+        <rdar://problem/24153340>
+
+        Reviewed by Joseph Pecoraro.
+
+        Replace 'occured', 'transfered' with 'occurred' and 'transferred'.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/DatabaseTableContentView.js:
+        (WebInspector.DatabaseTableContentView.prototype._queryError):
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel):
+
+2016-01-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Fix DataGrid row disclosure appearance and behavior
+        https://bugs.webkit.org/show_bug.cgi?id=152991
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid tr.parent td.disclosure::before):
+        Ensure triangle is vertically aligned for any row height.
+        (.data-grid tr:not(.parent) td.disclosure):
+        Fix indent size.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGridNode.prototype.createCell):
+        Added `icon` column property, encapsulate icon element creation.
+        (WebInspector.DataGridNode.prototype.isEventWithinDisclosureTriangle):
+        Fix hit test logic by computing left padding.
+
+2016-01-12  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: REGRESSION (r194879) - Opening views without being previously opened causes an Uncaught Exception
+        https://bugs.webkit.org/show_bug.cgi?id=153006
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/MultipleScopeBarItem.js:
+        (WebInspector.MultipleScopeBarItem.prototype.displaySelectedItem):
+        If there is no selected item, default to the first item in the list.
+
+2016-01-12  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: creating a gradient in the Visual sidebar causes a crash
+        https://bugs.webkit.org/show_bug.cgi?id=153003
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/VisualStyleBackgroundPicker.js:
+        (WebInspector.VisualStyleBackgroundPicker.prototype._gradientSwatchClicked):
+        If a gradient does not already exist when the swatch is clicked, create a basic
+        gradient using the current type and two "transparent" color stops (a minimum of
+        two color stops are needed for a valid gradient).
+
+2016-01-11  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Storage tab navigation bar should fit on a single line
+        https://bugs.webkit.org/show_bug.cgi?id=152473
+
+        Reviewed by Timothy Hatcher.
+
+        The wrapping of the navigation bar on the Storage tab was caused by the
+        fact that Sidebar.js used a minimum width of 200px, regardless of the
+        content within the sidebar (unless it had a NavigationBar). Logic has
+        been added that causes the sidebar to use the selected panel's own
+        minimum width calculation if it is greater than 200px.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.get minimumWidth):
+
+        * UserInterface/Views/MultipleScopeBarItem.js:
+        (WebInspector.MultipleScopeBarItem.prototype.set selectedScopeBarItem):
+        (WebInspector.MultipleScopeBarItem.prototype.displaySelectedItem):
+        Sets the displayed text to the currently selected item.
+
+        (WebInspector.MultipleScopeBarItem.prototype.displayWidestItem):
+        Sets the displayed text to the widest (pixel wise) item in the select element.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar.prototype._calculateMinimumWidth):
+        Now uses NavigationItem.prototype.get minimumWidth.
+
+        * UserInterface/Views/NavitationItem.js:
+        (WebInspector.NavitationItem.prototype.get minimumWidth):
+        Returns the element's realOffsetWidth.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype.get minimumWidth):
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.get minimumWidth):
+
+        * UserInterface/Views/ScopeBar.js:
+        (WebInspector.ScopeBar):
+        (WebInspector.ScopeBar.prototype.get minimumWidth):
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.set selectedSidebarPanel):
+        (WebInspector.Sidebar.prototype.get minimumWidth):
+        (WebInspector.Sidebar.prototype.set width):
+        (WebInspector.Sidebar.prototype.set collapsed):
+        (WebInspector.Sidebar.prototype._recalculateWidth):
+        Whenever the sidebar changes (e.g. tab change, sidebar becomes
+        visible/hidden, etc.), a width recalculation is necessary to ensure
+        that the navigation bar never wraps.
+
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel.prototype.get minimumWidth):
+
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel.prototype.get minimumWidth):
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.get minimumWidth):
+
+2016-01-11  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Make Timelines view also remember sort order
+        https://bugs.webkit.org/show_bug.cgi?id=152811
+
+        Reviewed by Timothy Hatcher.
+
+        Changeset r194574 introduced the ability for WebInspector.Setting objects to
+        be passed to DataGrid instances to save the sort column for that grid. These
+        changes also add the ability for the sort order to be save as well.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WebInspector.ApplicationCacheFrameContentView.prototype._createDataGrid):
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._rebuildTable):
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView):
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype.set sortOrder):
+        If a WebInspector.Setting object has been given, save the new sort order.
+
+        (WebInspector.DataGrid.prototype.set sortOrderSetting):
+        Saves the given WebInspector.Setting object for modification whenever the user
+        changes the sort order.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._buildDataGridSection):
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView):
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView):
+
+2016-01-11  Johan K. Jensen  <jj@johanjensen.dk>
+
+        Web Inspector: Copying JS object output from console shouldn't include trailing '= $n'
+        https://bugs.webkit.org/show_bug.cgi?id=119347
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype.toClipboardString):
+
+2016-01-11  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add basic Content section to Visual Sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=152972
+
+        Reviewed by Timothy Hatcher.
+
+        Since the "content" property has so many different types of values, a
+        simple text input editor should be added to provide some support for
+        the CSS property until a better, more specialized editor is created.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css:
+        (.visual-style-property-container.comma-separated-keyword-editor):
+        Moved margin-left to new rule in VisualStylePropertyEditor.css.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateContentSection):
+        Adds the basic editor under the Text section in a new subsection
+        called Content.
+
+        * UserInterface/Views/VisualStylePropertyEditor.css:
+        (.visual-style-property-container > *:first-child:matches(.visual-style-property-value-container)):
+        Adds a left margin to property editors without a title.
+
+2016-01-11  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Visual sidebar minor bug fixes
+        https://bugs.webkit.org/show_bug.cgi?id=152967
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype.refresh):
+        Only update sections when it is not a significant change, as they are
+        updated when the selector changes.
+
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateProperties):
+        Only reset links if the refresh is a significant change (node or selected
+        style changes).
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get value):
+        Removed unreachable return.
+
+        (WebInspector.VisualStyleNumberInputBox.prototype.set value):
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputKeyDown.adjustValue):
+        _updatedValues.propertyMissing was changed to _propertyMissing in a
+        prior patch.
+
+2016-01-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Migrate Page Timeline recording to ScriptProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=152727
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Images/TimelineRecordAPI.svg: Added.
+        * UserInterface/Images/gtk/TimelineRecordAPI.svg: Added.
+        New [S] image for API initiated script evaluations.
+        Display matches the existing [S] Script Evaluated.
+        Colors match the gray [N] Native image colors.
+
+        * UserInterface/Models/ScriptInstrument.js:
+        (WebInspector.ScriptInstrument.prototype.startInstrumentation):
+        (WebInspector.ScriptInstrument.prototype.stopInstrumentation):
+        (WebInspector.ScriptInstrument):
+        Use ScriptProfiler, if available, in Web debuggables.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager):
+        (WebInspector.TimelineManager.prototype.capturingStarted):
+        (WebInspector.TimelineManager.prototype._processRecord):
+        (WebInspector.TimelineManager.prototype._scriptProfilerTypeToScriptTimelineRecordType):
+        (WebInspector.TimelineManager.prototype.scriptProfilerTrackingUpdated):
+        (WebInspector.TimelineManager.prototype.scriptProfilerTrackingCompleted):
+        (WebInspector.TimelineManager.prototype._mergeScriptProfileRecords.let.nextRecord):
+        (WebInspector.TimelineManager.prototype._mergeScriptProfileRecords.let.recordContainsRecord):
+        (WebInspector.TimelineManager.prototype._mergeScriptProfileRecords):
+        When running a timeline on a web debuggable the frontend receives both
+        Timeline event records and ScriptProfiler events. Timeline (Web) records
+        are high level web events like "Script Evaluated", "Event Dispatched",
+        "Timer Fired". The timestamps for these records should always be wrapping
+        a ScriptProfiler event and its associated profile data. So, at the end
+        of a recording we merge ScriptProfiler profile data into the original
+        Timeline (Web) record.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.prototype.get profilePayload):
+        (WebInspector.ScriptTimelineRecord.prototype.set profilePayload):
+        (WebInspector.ScriptTimelineRecord.prototype.setProfilePayload): Deleted.
+        Replace method with getter/setter.
+
+        (WebInspector.ScriptTimelineRecord.EventType.displayName):
+        Add a new event type for API records, but share display name with Script Evaluated.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        Fix typo.
+
+        * UserInterface/Views/ScriptTimelineView.css:
+        (.timeline-view.script > .data-grid .eventType-column): Deleted.
+        There is no "eventType" column in the ScriptTimelineView datagrid, so remove styles.
+
+        * UserInterface/Views/TimelineIcons.css:
+        (.api-record .icon):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        For API Script Evaluation records use the new icon.
+
+2016-01-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception selecting IndexedDB host folder in Storage tab
+        https://bugs.webkit.org/show_bug.cgi?id=152943
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._isTreeElementWithoutRepresentedObject):
+        Another type of specialized folder tree element.
+
+2016-01-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: TypeError: undefined is not an object (evaluating 'this._scopeChain[i].object.deprecatedGetAllProperties')
+        https://bugs.webkit.org/show_bug.cgi?id=152944
+        <rdar://problem/24119827>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/CallFrame.js:
+        (WebInspector.CallFrame.prototype.collectScopeChainVariableNames):
+        Missed one place where `object` needed to change to `objects`.
+        Here the list will always contain a single object, only UI
+        generated scopes for the sidebar may have multiple objects.
+
+2016-01-10  Johan K. Jensen  <jj@johanjensen.dk>
+
+        Web Inspector: Dashboard log message count doesn't include console.time messages
+        https://bugs.webkit.org/show_bug.cgi?id=151280
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard.prototype._incrementConsoleMessageType):
+        Make Info and Debug levels increment the log count.
+
+2016-01-09  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Allow overriding the frameworks directory independently of using a staging install path
+        https://bugs.webkit.org/show_bug.cgi?id=152926
+
+        Reviewed by Tim Horton.
+
+        Introduce a new build setting, WK_OVERRIDE_FRAMEWORKS_DIR. When not empty, it determines
+        where the frameworks are installed. Setting USE_STAGING_INSTALL_PATH to YES sets
+        WK_OVERRIDE_FRAMEWORKS_DIR to $(SYSTEM_LIBRARY_DIR)/StagedFrameworks/Safari.
+
+        Account for the possibility of WK_OVERRIDE_FRAMEWORKS_DIR containing spaces.
+
+        * Configurations/Base.xcconfig:
+        - Replace STAGED_FRAMEWORKS_SEARCH_PATH in FRAMEWORK_SEARCH_PATHS with
+          WK_OVERRIDE_FRAMEWORKS_DIR and add quotes to account for spaces.
+        * Configurations/WebInspectorUIFramework.xcconfig:
+        - Define INSTALL_PATH and PRODUCTION_FRAMEWORKS_DIR based on WK_OVERRIDE_FRAMEWORKS_DIR.
+
+2016-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Test Resources should not be included in Production builds unless FORCE_TOOL_INSTALL
+        https://bugs.webkit.org/show_bug.cgi?id=152941
+        <rdar://problem/24119013>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        Combine inspector resources in production, but not test resources.
+
+        * Configurations/DebugRelease.xcconfig:
+        Do not combine inspector resources in Release/Debug. Combine test resources.
+
+        * Configurations/WebInspectorUIFramework.xcconfig:
+        Simplify by moving to other config files.
+
+        * Scripts/copy-user-interface-resources.pl:
+        Have FORCE_TOOL_INSTALL combine test resources as well.
+
+        * WebInspectorUI.vcxproj/build-webinspectorui.pl:
+        Only combine test resources in non-Production.
+
+2016-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Initiated section of Resource Details Sidebar should not display as empty and should update as the list changes
+        https://bugs.webkit.org/show_bug.cgi?id=152907
+        <rdar://problem/24109927>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.addInitiatedResource):
+        Dispatch an event when the list of initiated resources changes.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype.set resource):
+        Add/remove event listeners for initiated resources changes to refresh
+        the related resources section.
+
+        (WebInspector.ResourceDetailsSidebarPanel.prototype.refresh):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshURL):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshRelatedResourcesSection):
+        Show/hide the related resources section depending on if we have something or not.
+
+2016-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception: TypeError: this._initiatorSourceCodeLocation.sourceCode.addInitiatedResource is not a function
+        https://bugs.webkit.org/show_bug.cgi?id=152905
+        <rdar://problem/24109809>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.prototype.addInitiatedResource):
+        Only Resource has addInitiatedResource, so only call it if the
+        SourceCode in the SourceCodeLocation is a Resource.
+
+2016-01-07  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add warnings to section that require specific values of other properties
+        https://bugs.webkit.org/show_bug.cgi?id=148254
+
+        Reviewed by Timothy Hatcher.
+
+        Added a function to VisualStylePropertyEditor to allow dependencies to be set which,
+        whenever the editor is updated or changed, will be checked against the computed styles
+        of the element to see if all the necessary property values are set.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel):
+        (WebInspector.VisualStyleDetailsPanel.prototype.refresh):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populatePositionSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateFlexboxSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateAlignmentSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBorderSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateOutlineSection):
+        Added dependencies to relevant property editors.
+
+        (WebInspector.VisualStyleDetailsPanel.prototype._prepareForChange): Deleted.
+        No longer needed as the sidebar panel will refresh whenever triggered.
+
+        * UserInterface/Views/VisualStylePropertyEditor.css:
+        (.visual-style-property-container.layout-reversed > .visual-style-property-title):
+        (.visual-style-property-container > .visual-style-property-title > .property-reference-info):
+        (.visual-style-property-container > .visual-style-property-editor-warning):
+        (.visual-style-property-container.layout-reversed > .visual-style-property-editor-warning):
+        (.visual-style-property-container > .visual-style-property-editor-warning.missing-dependency):
+        (.visual-style-property-container > .visual-style-property-value-container):
+        (.visual-style-property-container.layout-reversed > .visual-style-property-value-container):
+
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor):
+        (WebInspector.VisualStylePropertyEditor.prototype.updateEditorValues):
+        (WebInspector.VisualStylePropertyEditor.prototype.addDependency):
+        (WebInspector.VisualStylePropertyEditor.prototype._valueDidChange):
+        (WebInspector.VisualStylePropertyEditor.prototype._checkDependencies):
+        Looks at the computed style for the node to see if any dependent properties do not
+        have one of the required values.
+
+        * UserInterface/Views/VisualStyleSelectorSection.js:
+        (WebInspector.VisualStyleSelectorSection.prototype.update.createSelectorItem):
+        (WebInspector.VisualStyleSelectorSection.prototype._styleTextReset): Deleted.
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent):
+
+2016-01-07  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Allow error items on Exception page to be selected
+        https://bugs.webkit.org/show_bug.cgi?id=152861
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Debug/UncaughtExceptionReporter.css:
+        (.uncaught-exception-sheet li):
+        Allowed user-select on text.
+
+2016-01-07  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add border-image properties to Visual sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=152755
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        Switched the order of VisualStyleURLInput and VisualStyleUnitSlider
+        to be ordered alphabetically.
+
+        * UserInterface/Views/VisualStyleBackgroundPicker.js:
+        (WebInspector.VisualStyleBackgroundPicker.prototype._keywordSelectMouseDown):
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content > .group + .group > .row:first-child):
+        (.sidebar > .panel.details.css-style .visual > .details-section.background .details-section.border .visual-style-property-container.keyword-checkbox.border-image-slice):
+        Since the checkbox is so small, give it less room.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBorderSection.generateBorderImagePropertyEditors):
+        The three properties "border-image-width", "border-image-outset", and
+        "border-image-slice" all have the same syntax, so one function to generate
+        the layout for all three is much simpler.
+
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBorderSection):
+        Added the border image properties to a seperate group under Background > Border.
+
+        * UserInterface/Views/VisualStyleKeywordPicker.js:
+        (WebInspector.VisualStyleKeywordPicker.prototype._keywordSelectMouseDown):
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set units):
+        Reordered logic to allow a value of ""/null to set the units to the "Number"
+        value if it is allowed for that editor.
+
+        (WebInspector.VisualStyleNumberInputBox.prototype.get synthesizedValue):
+        Instead of relying upon whether the editor has any units, just check to see if
+        the selected units are "Number" and, if not, add them to the value.
+
+        (WebInspector.VisualStyleNumberInputBox.prototype._unitsElementTextContent):
+
+        * UserInterface/Views/VisualStylePropertyCombiner.js:
+        (WebInspector.VisualStylePropertyCombiner):
+        Now has another argument that, when true, assumes the combiner has at least 4
+        numerical values and is of the form (can have units):
+            property-name: value1 [value2 [value3 [value4 [...]]]];
+
+        (WebInspector.VisualStylePropertyCombiner.prototype.get synthesizedValue):
+        (WebInspector.VisualStylePropertyCombiner.prototype.updateValuesFromText.updateEditor):
+        (WebInspector.VisualStylePropertyCombiner.prototype.updateValuesFromText.updateCompatibleEditor):
+        (WebInspector.VisualStylePropertyCombiner.prototype.updateValuesFromText):
+        If the new argument is true, assigns the existing values in the following way:
+         - If there is 1 value, assign it to all of the editors.
+         - If there are 2 values, assign the 1st one to editors 1 and 3 and the 2nd one
+            to editors 2 and 4.
+         - If there are 3 values, assign the 1st one to editor 1, the 2nd one to editors
+            2 and 4, and the 3rd one to editor 3.
+         - If there are 4 or more values, assign them normally.
+
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor.prototype.valueIsSupportedKeyword):
+        (WebInspector.VisualStylePropertyEditor.prototype._valueIsSupportedAdvancedKeyword):
+        Removed call to this.value to prevent recursion from VisualStyleNumberInputBox.
+
+        (WebInspector.VisualStylePropertyEditor.prototype.valueIsSupportedUnit):
+        (WebInspector.VisualStylePropertyEditor.prototype._valueIsSupportedAdvancedUnit):
+        Removed call to this.units to prevent recursion from VisualStyleNumberInputBox.
+
+2016-01-07  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add indicator that element has pseudo-class in DOM tree
+        https://bugs.webkit.org/show_bug.cgi?id=152680
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement):
+        (WebInspector.DOMTreeElement.prototype._nodePseudoClassesDidChange):
+        Added an event listener to the node for when pseudo-classes change.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline li.pseudo-class-enabled > .selection::before):
+        (.dom-tree-outline:focus li.selected.pseudo-class-enabled > .selection::before):
+        Used the hover/selected background style element to ensure that the indicator
+        is always positioned evenly with the first line of the opening tag.
+
+        (.dom-tree-outline li.hovered:not(.selected) .selection):
+        (.dom-tree-outline li .selection):
+        (.dom-tree-outline li.selected .selection):
+        (.dom-tree-outline li.elements-drag-over .selection):
+        Removed "display: none;" (as well as the "block" declarations) to allow
+        the ::before pseudo-element to display.
+
 2016-01-07  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: Make creating new rules in the Styles sidebar simpler

@@ -36,7 +36,7 @@ class JSCell;
 
 class ConservativeRoots {
 public:
-    ConservativeRoots(const MarkedBlockSet*, CopiedSpace*);
+    ConservativeRoots(MarkedBlockSet*, CopiedSpace*);
     ~ConservativeRoots();
 
     void add(void* begin, void* end);
@@ -61,7 +61,7 @@ private:
     JSCell** m_roots;
     size_t m_size;
     size_t m_capacity;
-    const MarkedBlockSet* m_blocks;
+    MarkedBlockSet* m_blocks;
     CopiedSpace* m_copiedSpace;
     JSCell* m_inlineRoots[inlineCapacity];
 };

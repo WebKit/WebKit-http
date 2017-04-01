@@ -66,7 +66,8 @@ Point.pointOnEllipse = function(angle, radiuses)
 
 Point.elementClientSize = function(element)
 {
-    return new Point(element.clientWidth, element.clientHeight);
+    var rect = element.getBoundingClientRect();
+    return new Point(rect.width, rect.height);
 }
 
 Point.prototype =
@@ -91,24 +92,41 @@ Point.prototype =
 
     add: function(other)
     {
+        if(isNaN(other.x))
+            return new Point(this.x + other, this.y + other);
         return new Point(this.x + other.x, this.y + other.y);
     },
 
     subtract: function(other)
     {
+        if(isNaN(other.x))
+            return new Point(this.x - other, this.y - other);
         return new Point(this.x - other.x, this.y - other.y);
     },
 
     multiply: function(other)
     {
+        if(isNaN(other.x))
+            return new Point(this.x * other, this.y * other);
         return new Point(this.x * other.x, this.y * other.y);
     },
 
     move: function(angle, velocity, timeDelta)
     {
         return this.add(Point.pointOnCircle(angle, velocity * (timeDelta / 1000)));
+    },
+
+    length: function() {
+        return Math.sqrt( this.x * this.x + this.y * this.y );
+    },
+
+    normalize: function() {
+        var l = Math.sqrt( this.x * this.x + this.y * this.y );
+        this.x /= l;
+        this.y /= l;
+        return this;
     }
-}
+};
 
 function Insets(top, right, bottom, left)
 {
@@ -181,6 +199,33 @@ SimplePromise.prototype.resolve = function (value)
     } else
         this._chainedPromise.resolve(result);
 }
+
+var Statistics =
+{
+    sampleMean: function(numberOfSamples, sum)
+    {
+        if (numberOfSamples < 1)
+            return 0;
+        return sum / numberOfSamples;
+    },
+
+    // With sum and sum of squares, we can compute the sample standard deviation in O(1).
+    // See https://rniwa.com/2012-11-10/sample-standard-deviation-in-terms-of-sum-and-square-sum-of-samples/
+    unbiasedSampleStandardDeviation: function(numberOfSamples, sum, squareSum)
+    {
+        if (numberOfSamples < 2)
+            return 0;
+        return Math.sqrt((squareSum - sum * sum / numberOfSamples) / (numberOfSamples - 1));
+    },
+
+    geometricMean: function(values)
+    {
+        if (!values.length)
+            return 0;
+        var roots = values.map(function(value) { return  Math.pow(value, 1 / values.length); })
+        return roots.reduce(function(a, b) { return a * b; });
+    }
+};
 
 window.DocumentExtension =
 {

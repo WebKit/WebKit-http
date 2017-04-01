@@ -28,6 +28,7 @@
 
 #include "BidiResolver.h"
 #include "BitmapImage.h"
+#include "DisplayListRecorder.h"
 #include "FloatRoundedRect.h"
 #include "Gradient.h"
 #include "ImageBuffer.h"
@@ -359,10 +360,12 @@ TextStream& operator<<(TextStream& ts, const GraphicsContextStateChange& stateCh
     return ts;
 }
 
+GraphicsContext::GraphicsContext(NonPaintingReasons nonPaintingReasons)
+    : m_nonPaintingReasons(nonPaintingReasons)
+{
+}
 
 GraphicsContext::GraphicsContext(PlatformGraphicsContext* platformGraphicsContext)
-    : m_updatingControlTints(false)
-    , m_transparencyCount(0)
 {
     platformInit(platformGraphicsContext);
 }
@@ -380,6 +383,11 @@ void GraphicsContext::save()
         return;
 
     m_stack.append(m_state);
+
+    if (isRecording()) {
+        m_displayListRecorder->save();
+        return;
+    }
 
     savePlatformState();
 }
@@ -400,6 +408,11 @@ void GraphicsContext::restore()
     // Canvas elements will immediately save() again, but that goes into inline capacity.
     if (m_stack.isEmpty())
         m_stack.clear();
+
+    if (isRecording()) {
+        m_displayListRecorder->restore();
+        return;
+    }
 
     restorePlatformState();
 }
@@ -427,12 +440,21 @@ void GraphicsContext::drawRaisedEllipse(const FloatRect& rect, const Color& elli
 void GraphicsContext::setStrokeThickness(float thickness)
 {
     m_state.strokeThickness = thickness;
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::StrokeThicknessChange);
+        return;
+    }
+
     setPlatformStrokeThickness(thickness);
 }
 
 void GraphicsContext::setStrokeStyle(StrokeStyle style)
 {
     m_state.strokeStyle = style;
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::StrokeStyleChange);
+        return;
+    }
     setPlatformStrokeStyle(style);
 }
 
@@ -441,6 +463,10 @@ void GraphicsContext::setStrokeColor(const Color& color)
     m_state.strokeColor = color;
     m_state.strokeGradient = nullptr;
     m_state.strokePattern = nullptr;
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::StrokeColorChange);
+        return;
+    }
     setPlatformStrokeColor(color);
 }
 
@@ -449,6 +475,13 @@ void GraphicsContext::setShadow(const FloatSize& offset, float blur, const Color
     m_state.shadowOffset = offset;
     m_state.shadowBlur = blur;
     m_state.shadowColor = color;
+#if USE(CG)
+    m_state.shadowsUseLegacyRadius = false;
+#endif
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::ShadowChange);
+        return;
+    }
     setPlatformShadow(offset, blur, color);
 }
 
@@ -460,6 +493,10 @@ void GraphicsContext::setLegacyShadow(const FloatSize& offset, float blur, const
 #if USE(CG)
     m_state.shadowsUseLegacyRadius = true;
 #endif
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::ShadowChange);
+        return;
+    }
     setPlatformShadow(offset, blur, color);
 }
 
@@ -468,6 +505,14 @@ void GraphicsContext::clearShadow()
     m_state.shadowOffset = FloatSize();
     m_state.shadowBlur = 0;
     m_state.shadowColor = Color();
+#if USE(CG)
+    m_state.shadowsUseLegacyRadius = false;
+#endif
+
+    if (isRecording()) {
+        m_displayListRecorder->clearShadow();
+        return;
+    }
     clearPlatformShadow();
 }
 
@@ -503,19 +548,51 @@ void GraphicsContext::setFillColor(const Color& color)
     m_state.fillColor = color;
     m_state.fillGradient = nullptr;
     m_state.fillPattern = nullptr;
+
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::FillColorChange);
+        return;
+    }
+
     setPlatformFillColor(color);
+}
+
+void GraphicsContext::setShadowsIgnoreTransforms(bool shadowsIgnoreTransforms)
+{
+    m_state.shadowsIgnoreTransforms = shadowsIgnoreTransforms;
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::ShadowsIgnoreTransformsChange);
 }
 
 void GraphicsContext::setShouldAntialias(bool shouldAntialias)
 {
     m_state.shouldAntialias = shouldAntialias;
+
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::ShouldAntialiasChange);
+        return;
+    }
+
     setPlatformShouldAntialias(shouldAntialias);
 }
 
 void GraphicsContext::setShouldSmoothFonts(bool shouldSmoothFonts)
 {
     m_state.shouldSmoothFonts = shouldSmoothFonts;
+    
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::ShouldSmoothFontsChange);
+        return;
+    }
+    
     setPlatformShouldSmoothFonts(shouldSmoothFonts);
+}
+
+void GraphicsContext::setShouldSubpixelQuantizeFonts(bool shouldSubpixelQuantizeFonts)
+{
+    m_state.shouldSubpixelQuantizeFonts = shouldSubpixelQuantizeFonts;
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::ShouldSubpixelQuantizeFontsChange);
 }
 
 void GraphicsContext::setImageInterpolationQuality(InterpolationQuality imageInterpolationQuality)
@@ -525,61 +602,90 @@ void GraphicsContext::setImageInterpolationQuality(InterpolationQuality imageInt
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::ImageInterpolationQualityChange);
+        return;
+    }
+
     setPlatformImageInterpolationQuality(imageInterpolationQuality);
 }
 
 void GraphicsContext::setAntialiasedFontDilationEnabled(bool antialiasedFontDilationEnabled)
 {
     m_state.antialiasedFontDilationEnabled = antialiasedFontDilationEnabled;
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::AntialiasedFontDilationEnabledChange);
 }
 
 void GraphicsContext::setStrokePattern(Ref<Pattern>&& pattern)
 {
     m_state.strokeGradient = nullptr;
     m_state.strokePattern = WTFMove(pattern);
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::StrokePatternChange);
 }
 
 void GraphicsContext::setFillPattern(Ref<Pattern>&& pattern)
 {
     m_state.fillGradient = nullptr;
     m_state.fillPattern = WTFMove(pattern);
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::FillPatternChange);
 }
 
 void GraphicsContext::setStrokeGradient(Ref<Gradient>&& gradient)
 {
     m_state.strokeGradient = WTFMove(gradient);
     m_state.strokePattern = nullptr;
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::StrokeGradientChange);
+}
+
+void GraphicsContext::setFillRule(WindRule fillRule)
+{
+    m_state.fillRule = fillRule;
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::FillRuleChange);
 }
 
 void GraphicsContext::setFillGradient(Ref<Gradient>&& gradient)
 {
     m_state.fillGradient = WTFMove(gradient);
     m_state.fillPattern = nullptr;
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::FillGradientChange); // FIXME: also fill pattern?
 }
 
 void GraphicsContext::beginTransparencyLayer(float opacity)
 {
+    if (isRecording()) {
+        m_displayListRecorder->beginTransparencyLayer(opacity);
+        return;
+    }
     beginPlatformTransparencyLayer(opacity);
     ++m_transparencyCount;
 }
 
 void GraphicsContext::endTransparencyLayer()
 {
+    if (isRecording()) {
+        m_displayListRecorder->endTransparencyLayer();
+        return;
+    }
     endPlatformTransparencyLayer();
     ASSERT(m_transparencyCount > 0);
     --m_transparencyCount;
-}
-
-void GraphicsContext::setUpdatingControlTints(bool b)
-{
-    setPaintingDisabled(b);
-    m_updatingControlTints = b;
 }
 
 float GraphicsContext::drawText(const FontCascade& font, const TextRun& run, const FloatPoint& point, int from, int to)
 {
     if (paintingDisabled())
         return 0;
+
+    if (isRecording()) {
+        // FIXME: Text drawing with display lists TBD.
+        return 0;
+    }
 
     return font.drawText(*this, run, point, from, to);
 }
@@ -588,6 +694,11 @@ void GraphicsContext::drawGlyphs(const FontCascade& fontCascade, const Font& fon
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawGlyphs(font, buffer, from, numGlyphs, point, fontCascade.fontDescription().fontSmoothing());
+        return;
+    }
 
     fontCascade.drawGlyphs(*this, font, buffer, from, numGlyphs, point);
 }
@@ -655,6 +766,11 @@ void GraphicsContext::drawImage(Image& image, const FloatRect& destination, cons
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->drawImage(image, destination, source, imagePaintingOptions);
+        return;
+    }
+
     // FIXME (49002): Should be InterpolationLow
     InterpolationQualityMaintainer interpolationQualityForThisScope(*this, imagePaintingOptions.m_useLowQualityScale ? InterpolationNone : imageInterpolationQuality());
     image.draw(*this, destination, source, imagePaintingOptions.m_compositeOperator, imagePaintingOptions.m_blendMode, imagePaintingOptions.m_orientationDescription);
@@ -665,6 +781,11 @@ void GraphicsContext::drawTiledImage(Image& image, const FloatRect& destination,
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->drawTiledImage(image, destination, source, tileSize, spacing, imagePaintingOptions);
+        return;
+    }
+
     InterpolationQualityMaintainer interpolationQualityForThisScope(*this, imagePaintingOptions.m_useLowQualityScale ? InterpolationLow : imageInterpolationQuality());
     image.drawTiled(*this, destination, source, tileSize, spacing, imagePaintingOptions.m_compositeOperator, imagePaintingOptions.m_blendMode);
 }
@@ -674,6 +795,11 @@ void GraphicsContext::drawTiledImage(Image& image, const FloatRect& destination,
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawTiledImage(image, destination, source, tileScaleFactor, hRule, vRule, imagePaintingOptions);
+        return;
+    }
 
     if (hRule == Image::StretchTile && vRule == Image::StretchTile) {
         // Just do a scale.
@@ -732,11 +858,6 @@ void GraphicsContext::drawConsumingImageBuffer(std::unique_ptr<ImageBuffer> imag
     ImageBuffer::drawConsuming(WTFMove(image), *this, destination, source, imagePaintingOptions.m_compositeOperator, imagePaintingOptions.m_blendMode, imagePaintingOptions.m_useLowQualityScale);
 }
 
-void GraphicsContext::clip(const IntRect& rect)
-{
-    clip(FloatRect(rect));
-}
-
 void GraphicsContext::clipRoundedRect(const FloatRoundedRect& rect)
 {
     if (paintingDisabled())
@@ -775,6 +896,11 @@ void GraphicsContext::setTextDrawingMode(TextDrawingModeFlags mode)
     m_state.textDrawingMode = mode;
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::TextDrawingModeChange);
+        return;
+    }
     setPlatformTextDrawingMode(mode);
 }
 
@@ -782,6 +908,12 @@ void GraphicsContext::fillRect(const FloatRect& rect, Gradient& gradient)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->fillRect(rect, gradient);
+        return;
+    }
+
     gradient.fill(this, rect);
 }
 
@@ -789,6 +921,11 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, Compos
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->fillRect(rect, color, op, blendMode);
+        return;
+    }
 
     CompositeOperator previousOperator = compositeOperation();
     setCompositeOperation(op, blendMode);
@@ -798,6 +935,14 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, Compos
 
 void GraphicsContext::fillRoundedRect(const FloatRoundedRect& rect, const Color& color, BlendMode blendMode)
 {
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->fillRoundedRect(rect, color, blendMode);
+        return;
+    }
+
     if (rect.isRounded()) {
         setCompositeOperation(compositeOperation(), blendMode);
         platformFillRoundedRect(rect, color);
@@ -836,6 +981,10 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
 void GraphicsContext::setAlpha(float alpha)
 {
     m_state.alpha = alpha;
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::AlphaChange);
+        return;
+    }
     setPlatformAlpha(alpha);
 }
 
@@ -843,7 +992,18 @@ void GraphicsContext::setCompositeOperation(CompositeOperator compositeOperation
 {
     m_state.compositeOperator = compositeOperation;
     m_state.blendMode = blendMode;
+    if (isRecording()) {
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::CompositeOperationChange);
+        return;
+    }
     setPlatformCompositeOperation(compositeOperation, blendMode);
+}
+
+void GraphicsContext::setDrawLuminanceMask(bool drawLuminanceMask)
+{
+    m_state.drawLuminanceMask = drawLuminanceMask;
+    if (isRecording())
+        m_displayListRecorder->updateState(m_state, GraphicsContextState::DrawLuminanceMaskChange);
 }
 
 #if !USE(CG)
@@ -940,6 +1100,12 @@ void GraphicsContext::platformApplyDeviceScaleFactor(float)
 void GraphicsContext::applyDeviceScaleFactor(float deviceScaleFactor)
 {
     scale(FloatSize(deviceScaleFactor, deviceScaleFactor));
+
+    if (isRecording()) {
+        m_displayListRecorder->applyDeviceScaleFactor(deviceScaleFactor);
+        return;
+    }
+
     platformApplyDeviceScaleFactor(deviceScaleFactor);
 }
 
@@ -985,36 +1151,52 @@ void GraphicsContext::platformStrokeEllipse(const FloatRect& ellipse)
 }
 #endif
 
-FloatRect GraphicsContext::computeLineBoundsAndAntialiasingModeForText(const FloatPoint& point, float width, bool printing, bool& shouldAntialias, Color& color)
+FloatRect GraphicsContext::computeUnderlineBoundsForText(const FloatPoint& point, float width, bool printing)
+{
+    Color dummyColor;
+    return computeLineBoundsAndAntialiasingModeForText(point, width, printing, dummyColor);
+}
+
+FloatRect GraphicsContext::computeLineBoundsAndAntialiasingModeForText(const FloatPoint& point, float width, bool printing, Color& color)
 {
     FloatPoint origin = point;
     float thickness = std::max(strokeThickness(), 0.5f);
+    if (printing)
+        return FloatRect(origin, FloatSize(width, thickness));
 
-    shouldAntialias = true;
-    if (!printing) {
-        AffineTransform transform = getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
-        if (transform.preservesAxisAlignment())
-            shouldAntialias = false;
-
+    AffineTransform transform = getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
+    // Just compute scale in x dimension, assuming x and y scales are equal.
+    float scale = transform.b() ? sqrtf(transform.a() * transform.a() + transform.b() * transform.b()) : transform.a();
+    if (scale < 1.0) {
         // This code always draws a line that is at least one-pixel line high,
         // which tends to visually overwhelm text at small scales. To counter this
         // effect, an alpha is applied to the underline color when text is at small scales.
-
-        // Just compute scale in x dimension, assuming x and y scales are equal.
-        float scale = transform.b() ? sqrtf(transform.a() * transform.a() + transform.b() * transform.b()) : transform.a();
-        if (scale < 1.0) {
-            static const float minimumUnderlineAlpha = 0.4f;
-            float shade = scale > minimumUnderlineAlpha ? scale : minimumUnderlineAlpha;
-            int alpha = color.alpha() * shade;
-            color = Color(color.red(), color.green(), color.blue(), alpha);
-        }
-
-        FloatPoint devicePoint = transform.mapPoint(point);
-        FloatPoint deviceOrigin = FloatPoint(roundf(devicePoint.x()), ceilf(devicePoint.y()));
-        if (auto inverse = transform.inverse())
-            origin = inverse.value().mapPoint(deviceOrigin);
+        static const float minimumUnderlineAlpha = 0.4f;
+        float shade = scale > minimumUnderlineAlpha ? scale : minimumUnderlineAlpha;
+        int alpha = color.alpha() * shade;
+        color = Color(color.red(), color.green(), color.blue(), alpha);
     }
-    return FloatRect(origin.x(), origin.y(), width, thickness);
+
+    FloatPoint devicePoint = transform.mapPoint(point);
+    // Visual overflow might occur here due to integral roundf/ceilf. visualOverflowForDecorations adjusts the overflow value for underline decoration.
+    FloatPoint deviceOrigin = FloatPoint(roundf(devicePoint.x()), ceilf(devicePoint.y()));
+    if (auto inverse = transform.inverse())
+        origin = inverse.value().mapPoint(deviceOrigin);
+    return FloatRect(origin, FloatSize(width, thickness));
+}
+
+void GraphicsContext::applyState(const GraphicsContextState& state)
+{
+    setPlatformShadow(state.shadowOffset, state.shadowBlur, state.shadowColor);
+    setPlatformStrokeThickness(state.strokeThickness);
+    setPlatformTextDrawingMode(state.textDrawingMode);
+    setPlatformStrokeColor(state.strokeColor);
+    setPlatformFillColor(state.fillColor);
+    setPlatformStrokeStyle(state.strokeStyle);
+    setPlatformAlpha(state.alpha);
+    setPlatformCompositeOperation(state.compositeOperator, state.blendMode);
+    setPlatformShouldAntialias(state.shouldAntialias);
+    setPlatformShouldSmoothFonts(state.shouldSmoothFonts);
 }
 
 }

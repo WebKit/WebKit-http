@@ -338,7 +338,7 @@ sub determineArchitecture
                 $architecture = 'armv7';
             }
         }
-    } elsif (isEfl() || isGtk() || isHaiku()) {
+    } elsif (isCMakeBuild()) {
         my $host_processor = "";
         $host_processor = `cmake --system-information | grep CMAKE_SYSTEM_PROCESSOR`;
         if ($host_processor =~ m/^CMAKE_SYSTEM_PROCESSOR \"([^"]+)\"/) {
@@ -348,16 +348,18 @@ sub determineArchitecture
         }
     }
 
-    if (!$architecture && (isGtk() || isAppleMacWebKit() || isEfl() || isHaiku())) {
-        # Fall back to output of `arch', if it is present.
-        $architecture = `arch`;
-        chomp $architecture;
-    }
+    if (!isAnyWindows()) {
+        if (!$architecture) {
+            # Fall back to output of `arch', if it is present.
+            $architecture = `arch`;
+            chomp $architecture;
+        }
 
-    if (!$architecture && (isGtk() || isAppleMacWebKit() || isEfl() || isHaiku())) {
-        # Fall back to output of `uname -m', if it is present.
-        $architecture = `uname -m`;
-        chomp $architecture;
+        if (!$architecture) {
+            # Fall back to output of `uname -m', if it is present.
+            $architecture = `uname -m`;
+            chomp $architecture;
+        }
     }
 
     $architecture = 'x86_64' if ($architecture =~ /amd64/ && isBSD());

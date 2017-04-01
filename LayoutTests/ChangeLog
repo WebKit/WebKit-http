@@ -1,3 +1,848 @@
+2016-01-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Changing expectation from flaky to skip for two crashing tests.
+        https://bugs.webkit.org/show_bug.cgi?id=152279
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194926 and r194928.
+        https://bugs.webkit.org/show_bug.cgi?id=153048
+
+        This change is causing LayoutTest crashes (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Avoid downloading the wrong image for <picture> elements."
+        https://bugs.webkit.org/show_bug.cgi?id=153027
+        http://trac.webkit.org/changeset/194926
+
+        "Avoid downloading the wrong image for <picture> elements."
+        https://bugs.webkit.org/show_bug.cgi?id=153027
+        http://trac.webkit.org/changeset/194928
+
+2016-01-12  Dean Jackson  <dino@apple.com>
+
+        [iOS] Antialiasing doesn't work in WebGL
+        https://bugs.webkit.org/show_bug.cgi?id=153000
+        <rdar://problem/9165531>
+
+        Reviewed by Alex Christensen.
+
+        New test to check if WebGL antialiasing happened on a rendered canvas.
+
+        * fast/canvas/webgl/antialiasing-enabled-expected.txt: Added.
+        * fast/canvas/webgl/antialiasing-enabled.html: Added.
+
+2016-01-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipped more tests related to picture element on ios-simulator and grouped them together in TestExpectations file.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping crashing test fast/picture/image-picture-loads-1x.html on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=153043
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-12  Dave Hyatt  <hyatt@apple.com>
+
+        Avoid downloading the wrong image for <picture> elements.
+        https://bugs.webkit.org/show_bug.cgi?id=153027
+
+        Reviewed by Dean Jackson.
+
+        * fast/picture/image-picture-loads-1x-expected.txt: Added.
+        * fast/picture/image-picture-loads-1x.html: Added.
+
+2016-01-12  Daniel Bates  <dabates@apple.com>
+
+        XSS Auditor should navigate to empty substitute data on full page block
+        https://bugs.webkit.org/show_bug.cgi?id=152868
+        <rdar://problem/18658448>
+
+        Reviewed by David Kilzer and Andy Estes.
+
+        Derived from Blink patch (by Tom Sepez <tsepez@chromium.org>):
+        <https://src.chromium.org/viewvc/blink?view=rev&revision=179240>
+
+        Added additional test block-does-not-leak-that-page-was-blocked-using-empty-data-url.html to explicitly
+        tests that we do redirect to an empty data URL when a full page block is triggered.
+
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-allow-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-block-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-block-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-block-filter-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-block-invalid-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-block-unset-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-filter-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-invalid-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-and-xss-protection-unset-block-expected.txt:
+        * http/tests/security/xssAuditor/block-does-not-leak-location-expected.txt:
+        * http/tests/security/xssAuditor/block-does-not-leak-referrer-expected.txt:
+        * http/tests/security/xssAuditor/block-does-not-leak-that-page-was-blocked-using-empty-data-url-expected.txt: Added.
+        * http/tests/security/xssAuditor/block-does-not-leak-that-page-was-blocked-using-empty-data-url.html: Added.
+        * http/tests/security/xssAuditor/full-block-base-href-expected.txt:
+        * http/tests/security/xssAuditor/full-block-iframe-javascript-url-expected.txt:
+        * http/tests/security/xssAuditor/full-block-javascript-link-expected.txt:
+        * http/tests/security/xssAuditor/full-block-link-onclick-expected.txt:
+        * http/tests/security/xssAuditor/full-block-object-tag-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag-cross-domain-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag-with-source-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag.html:
+        * http/tests/security/xssAuditor/xss-protection-parsing-03-expected.txt:
+        * http/tests/security/xssAuditor/xss-protection-parsing-04-expected.txt:
+
+2016-01-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Null dereference loading Blink layout test fast/frames/navigation-in-pagehide.html
+        https://bugs.webkit.org/show_bug.cgi?id=149303
+        <rdar://problem/22747634>
+
+        Reviewed by Brent Fulgham.
+
+        * imported/blink/fast/frames/navigation-in-pagehide-expected.txt: Added.
+        * imported/blink/fast/frames/navigation-in-pagehide.html: Added.
+
+2016-01-12  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Update RTCPeerConnection.add/removeTrack() and add test
+        https://bugs.webkit.org/show_bug.cgi?id=153010
+
+        Reviewed by Eric Carlson.
+
+        Add test for RTCPeerConnection.add/removeTrack() (currently not covered by other tests).
+        This test also covers some of the functionality of RTCRtpSender.
+
+        * fast/mediastream/RTCPeerConnection-add-removeTrack-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-add-removeTrack.html: Added.
+
+2016-01-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Null dereference loading Blink layout test editing/selection/selectstart-event-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=150210
+        <rdar://problem/23137259>
+
+        Reviewed by Brent Fulgham.
+
+        * imported/blink/editing/selection/selectstart-event-crash-expected.txt: Added.
+        * imported/blink/editing/selection/selectstart-event-crash.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-01-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Null dereference loading Blink layout test editing/apply-inline-style-to-element-with-no-renderer-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=149287
+        <rdar://problem/22746217>
+
+        Reviewed by Brent Fulgham.
+
+        * imported/blink/editing/apply-inline-style-to-element-with-no-renderer-crash-expected.txt: Added.
+        * imported/blink/editing/apply-inline-style-to-element-with-no-renderer-crash.html: Added.
+
+2016-01-12  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/dont-wedge.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=152892
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-12  Antti Koivisto  <antti@apple.com>
+
+        Don't reuse memory cache entries with different charset
+        https://bugs.webkit.org/show_bug.cgi?id=110031
+
+        Reviewed by Andreas Kling.
+
+        * fast/loader/cache-encoding-expected.txt: Added.
+        * fast/loader/cache-encoding.html: Added.
+        * fast/loader/resources/success.js: Added.
+
+2016-01-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/model/scope-chain-node.html as flaky on Mac debug
+        https://bugs.webkit.org/show_bug.cgi?id=153018
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-01-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/script-profiler/event-type-Other.html as flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=153016
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-01-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline test results after r194847.
+
+        Before r194847 we were always taking the separator of combo boxes
+        into account when calculating the size of menu list buttons, even
+        when we didn't render the separator. In r194847 we removed all the
+        code to deal with separators in combo boxes. Also, since r194847
+        we are correctly adding the padding between the icon and the text
+        in search fileds.
+
+        * platform/gtk/css3/selectors3/html/css3-modsel-161-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-161-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-161-expected.txt:
+        * platform/gtk/editing/pasteboard/4641033-expected.txt:
+        * platform/gtk/editing/pasteboard/4944770-1-expected.txt:
+        * platform/gtk/editing/pasteboard/4944770-2-expected.txt:
+        * platform/gtk/editing/selection/caret-before-select-expected.txt:
+        * platform/gtk/editing/selection/replaced-boundaries-3-expected.txt:
+        * platform/gtk/editing/selection/select-box-expected.txt:
+        * platform/gtk/editing/selection/select-element-paragraph-boundary-expected.txt:
+        * platform/gtk/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/gtk/fast/css/input-search-padding-expected.txt:
+        * platform/gtk/fast/css/text-input-with-webkit-border-radius-expected.txt:
+        * platform/gtk/fast/css/text-overflow-input-expected.txt:
+        * platform/gtk/fast/css/text-transform-select-expected.txt:
+        * platform/gtk/fast/forms/001-expected.txt:
+        * platform/gtk/fast/forms/003-expected.txt:
+        * platform/gtk/fast/forms/004-expected.txt:
+        * platform/gtk/fast/forms/basic-inputs-expected.txt:
+        * platform/gtk/fast/forms/basic-selects-expected.txt:
+        * platform/gtk/fast/forms/box-shadow-override-expected.txt:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/disabled-select-change-index-expected.txt:
+        * platform/gtk/fast/forms/form-element-geometry-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-height-expected.txt:
+        * platform/gtk/fast/forms/input-value-expected.txt:
+        * platform/gtk/fast/forms/menulist-deselect-update-expected.txt:
+        * platform/gtk/fast/forms/menulist-narrow-width-expected.txt:
+        * platform/gtk/fast/forms/menulist-no-overflow-expected.txt:
+        * platform/gtk/fast/forms/menulist-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/menulist-separator-painting-expected.txt:
+        * platform/gtk/fast/forms/menulist-style-color-expected.txt:
+        * platform/gtk/fast/forms/menulist-width-change-expected.txt:
+        * platform/gtk/fast/forms/option-script-expected.txt:
+        * platform/gtk/fast/forms/option-strip-whitespace-expected.txt:
+        * platform/gtk/fast/forms/placeholder-position-expected.txt:
+        * platform/gtk/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/gtk/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/gtk/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/gtk/fast/forms/search-rtl-expected.txt:
+        * platform/gtk/fast/forms/search-styled-expected.txt:
+        * platform/gtk/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/gtk/fast/forms/searchfield-heights-expected.txt:
+        * platform/gtk/fast/forms/select-background-none-expected.txt:
+        * platform/gtk/fast/forms/select-baseline-expected.txt:
+        * platform/gtk/fast/forms/select-change-listbox-to-popup-expected.txt:
+        * platform/gtk/fast/forms/select-dirty-parent-pref-widths-expected.txt:
+        * platform/gtk/fast/forms/select-disabled-appearance-expected.txt:
+        * platform/gtk/fast/forms/select-element-focus-ring-expected.txt:
+        * platform/gtk/fast/forms/select-initial-position-expected.txt:
+        * platform/gtk/fast/forms/select-selected-expected.txt:
+        * platform/gtk/fast/forms/select-size-expected.txt:
+        * platform/gtk/fast/forms/select-style-expected.txt:
+        * platform/gtk/fast/forms/select-visual-hebrew-expected.txt:
+        * platform/gtk/fast/forms/select/optgroup-rendering-expected.txt:
+        * platform/gtk/fast/forms/selectlist-minsize-expected.txt:
+        * platform/gtk/fast/forms/stuff-on-my-optgroup-expected.txt:
+        * platform/gtk/fast/forms/validation-message-appearance-expected.txt:
+        * platform/gtk/fast/html/keygen-expected.txt:
+        * platform/gtk/fast/invalid/014-expected.txt:
+        * platform/gtk/fast/parser/document-write-option-expected.txt:
+        * platform/gtk/fast/repaint/search-field-cancel-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/gtk/fast/replaced/three-selects-break-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-menulist-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-searchfield-expected.txt:
+        * platform/gtk/http/tests/navigation/javascriptlink-frames-expected.txt:
+
+2016-01-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Inconsistencies in main resource load delegates when loading from history
+        https://bugs.webkit.org/show_bug.cgi?id=150927
+
+        Reviewed by Michael Catanzaro.
+
+        Add test to check that main resource load delegates are emitted in
+        the same order before the load is committed when loading a page
+        from history with the page cache enabled and disabled.
+
+        * http/tests/loading/main-resource-delegates-on-back-navigation-expected.txt: Added.
+        * http/tests/loading/main-resource-delegates-on-back-navigation.html: Added.
+        * http/tests/loading/resources/page-go-back-onload.html: Added.
+        * loader/go-back-cached-main-resource-expected.txt:
+
+2016-01-11  Johan K. Jensen  <jj@johanjensen.dk>
+
+        Web Inspector: console.count() shouldn't show a colon in front of a number
+        https://bugs.webkit.org/show_bug.cgi?id=152038
+
+        Reviewed by Brian Burg.
+
+        * inspector/console/console-api-expected.txt:
+        * inspector/console/console-api.html:
+        Add testcases for console.count
+
+2016-01-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        keywords ("super", "delete", etc) should be valid method names
+        https://bugs.webkit.org/show_bug.cgi?id=144281
+
+        Reviewed by Ryosuke Niwa.
+
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-super.js:
+        Update the test for the correct expected result.
+
+        * js/keyword-method-names-expected.txt: Added.
+        * js/keyword-method-names.html: Added.
+        * js/script-tests/keyword-method-names.js: Added.
+        Add tests to cover parsing allows keywords in method name syntax.
+
+2016-01-11  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/intversion-long-queue.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=152995
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/intversion-long-queue-expected.txt:
+        * storage/indexeddb/resources/intversion-long-queue.js:
+
+2016-01-11  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/index-multientry.html fails under GuardMalloc/ASAN.
+        https://bugs.webkit.org/show_bug.cgi?id=152990
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Migrate Page Timeline recording to ScriptProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=152727
+
+        Reviewed by Brian Burg.
+
+        * inspector/script-profiler/event-type-Other-expected.txt: Added.
+        * inspector/script-profiler/event-type-Other.html: Added.
+        Add a test that Web script evaluations create "Other" ScriptProfiler events.
+
+2016-01-11  Zalan Bujtas  <zalan@apple.com>
+
+        Padding added to table-cell element after font-size change.
+        https://bugs.webkit.org/show_bug.cgi?id=152796
+
+        Reviewed by David Hyatt.
+
+        Do not include intrinsicPaddingBefore value while figuring out the height of a row.
+        In RenderTableSection::calcRowLogicalHeight() we are interested in the height of the content
+        without the additional padding (normal padding is included).
+
+        * TestExpectations: This test fails even without the patch when Ahem font is not used.
+        * fast/table/table-baseline-grows-expected.html: Added.
+        * fast/table/table-baseline-grows.html: Added.
+
+2016-01-11  Dave Hyatt  <hyatt@apple.com>
+
+        Picture element needs to work with the preload scanner and select the correct
+        source element instead of loading the image.
+        https://bugs.webkit.org/show_bug.cgi?id=152983
+
+        Reviewed by Dean Jackson.
+
+        These tests are imported from Blink, although they have been modified slightly to
+        reflect the fact that we pass the nested <picture> cases that Blink fails.
+
+        * http/tests/loading/hidpi-preload-picture-sizes-expected.txt: Added.
+        * http/tests/loading/hidpi-preload-picture-sizes.html: Added.
+        * http/tests/loading/preload-picture-invalid-expected.txt: Added.
+        * http/tests/loading/preload-picture-invalid.html: Added.
+        * http/tests/loading/preload-picture-nested-expected.txt: Added.
+        * http/tests/loading/preload-picture-nested.html: Added.
+        * http/tests/loading/preload-picture-sizes-expected.txt: Added.
+        * http/tests/loading/preload-picture-sizes.html: Added.
+        * http/tests/loading/resources/base-image1.png: Added.
+        * http/tests/loading/resources/base-image2.png: Added.
+        * http/tests/loading/resources/base-image3.png: Added.
+        * http/tests/loading/resources/dup-image1.png: Added.
+        * http/tests/loading/resources/dup-image2.png: Added.
+        * http/tests/loading/resources/dup-image3.png: Added.
+        * http/tests/loading/resources/image1.png: Added.
+        * http/tests/loading/resources/image2.png: Added.
+        * http/tests/loading/resources/picture-preload-helper.js: Added.
+
+2016-01-11  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/key-generator.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=152981
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/wk2/imported/w3c/indexeddb/keygenerator-overflow-expected.txt: Copied from LayoutTests/imported/w3c/indexeddb/keygenerator-overflow-expected.txt.
+
+2016-01-11  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/lazy-index-population.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=152976
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Update test expectations after r194845
+
+        Unreviewed gardening. Mark XHTML tests as passing now that we have patched shared-mime-info
+        to better detect XHTML. Add expectations for additional XHTML tests that were unskipped in
+        r194845.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/css2.1/tables/table-anonymous-objects-015-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-016-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-023-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-024-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-035-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-036-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-037-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-038-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-045-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-046-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-047-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-048-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-049-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-050-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-055-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-056-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-091-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-092-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-099-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-100-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-103-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-104-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-105-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-106-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-107-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-108-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-109-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-110-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-111-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-112-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-113-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-114-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-115-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-116-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-117-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-118-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-119-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-120-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-121-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-122-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-123-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-124-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-139-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-140-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-149-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-150-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-155-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-156-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-159-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-160-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-165-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-166-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-177-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-178-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-179-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-180-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-181-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-189-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-190-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-191-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-192-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-193-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-194-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-195-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-196-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-205-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-206-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-207-expected.txt: Added.
+        * platform/gtk/css2.1/tables/table-anonymous-objects-208-expected.txt: Added.
+
+2016-01-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping unsupported test pageoverlay/overlay-small-frame-mouse-events.html on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152130
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] W3C CSS2.1 anonymous table tests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=152455
+
+        Reviewed by Mario Sanchez Prada.
+
+        Unskip the anonymous table tests, so the bots can generate expected results. The expected
+        results will be committed separately.
+
+        * platform/gtk/TestExpectations:
+
+2016-01-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [SVG -> OTF Converter] Parsing failures cause use of incomplete fonts
+        https://bugs.webkit.org/show_bug.cgi?id=152772
+        <rdar://problem/24043104>
+
+        Reviewed by Simon Fraser.
+
+        Make sure the font renders as if its invalid.
+
+        * fast/text/resources/bustedfont.svg: Added.
+        * fast/text/svg-font-invalid-glyph-path-failure-expected.html: Added.
+        * fast/text/svg-font-invalid-glyph-path-failure.html: Added.
+
+2016-01-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Iterating over a Set/Map is too slow
+        https://bugs.webkit.org/show_bug.cgi?id=152691
+
+        Reviewed by Saam Barati.
+
+        Add regress tests.
+
+        * js/regress/map-for-each-expected.txt: Added.
+        * js/regress/map-for-each.html: Added.
+        * js/regress/map-for-of-expected.txt: Added.
+        * js/regress/map-for-of.html: Added.
+        * js/regress/script-tests/map-for-each.js: Added.
+        (createMap):
+        (i.map.forEach):
+        * js/regress/script-tests/map-for-of.js: Added.
+        (createMap):
+        * js/regress/script-tests/set-for-each.js: Added.
+        (set forEach):
+        (set createSet):
+        * js/regress/script-tests/set-for-of.js: Added.
+        * js/regress/set-for-each-expected.txt: Added.
+        * js/regress/set-for-each.html: Added.
+        * js/regress/set-for-of-expected.txt: Added.
+        * js/regress/set-for-of.html: Added.
+
+2016-01-09  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r194426): First email field is not autofilled on amazon.com
+        https://bugs.webkit.org/show_bug.cgi?id=152945
+        <rdar://problem/24082914>
+
+        Reviewed by Simon Fraser.
+
+        r194426 missed marking the m_layoutRoot for layout while converting to full layout (it only marked the new layout root).
+
+        * fast/forms/multiple-subtree-layout-failure-expected.html: Added.
+        * fast/forms/multiple-subtree-layout-failure.html: Added.
+
+2016-01-08  Zalan Bujtas  <zalan@apple.com>
+
+        Absolute positioning -webkit-search-cancel-button crashes Safari.
+        https://bugs.webkit.org/show_bug.cgi?id=152847
+        <rdar://problem/24112087>
+
+        Reviewed by Simon Fraser.
+
+        Do not call offsetFromContainer while resolving the painting position for the search/cancel button renderer.
+        It skips the static positioned parent input renderer, when the search/cancel renderer is absolute positioned.
+        This patch also fixes a rendering glitch when the margin-right is > 0.
+
+        * fast/forms/absolute-positioned-custom-search-cancel-crash-expected.txt: Added.
+        * fast/forms/absolute-positioned-custom-search-cancel-crash.html: Added.
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/setversion-blocked-by-versionchange-close.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=152936
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/resources/setversion-blocked-by-versionchange-close.js:
+        * storage/indexeddb/setversion-blocked-by-versionchange-close-expected.txt:
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/scrolling/scroll-position-on-reload-rtl.html as failing on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152935
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping two unsupported mouse event tests on ios-simulator
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/intl-collator.html as failing on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152448
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: imported/w3c/indexeddb/keyorder.htm times out.
+        https://bugs.webkit.org/show_bug.cgi?id=152929
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking two css3/filters/composited-during-* tests as failing on ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=152282
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark compositing/overflow/dynamic-composited-scrolling-status.html as failing on ios-simulator, remove duplicate
+        expectation added by previous commit.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Removing WK2 specific results for this test.
+        
+        Legacy IDB passes just the same as Modern IDB.
+
+        * platform/wk2/imported/w3c/indexeddb/keypath-expected.txt: Removed.
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking two ios/scolling tests as failing on ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=152276
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaselining two compositing tests for ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152138
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/compositing/contents-opaque/body-background-painted-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/table-parts-expected.txt: Added.
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing ios-simulator-wk1/ and ios-simulator-wk2/ expected.* files that are identical to the ones in ios-simulator/
+        https://bugs.webkit.org/show_bug.cgi?id=152130
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk1/editing/deleting/delete-block-merge-contents-011-expected.txt: Removed.
+        * platform/ios-simulator-wk1/editing/deleting/delete-first-list-item-expected.txt: Removed.
+        * platform/ios-simulator-wk1/editing/deleting/merge-different-styles-expected.txt: Removed.
+        * +1714 more
+
+2016-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing deleted test fast/mediastream/RTCPeerConnection-state.html from mac TestExpectations file
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: IDBBindingUtilities chokes on unicode strings for get/set.
+        https://bugs.webkit.org/show_bug.cgi?id=152921
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        
+        * storage/indexeddb/objectstore-autoincrement-expected.txt:
+        * storage/indexeddb/objectstore-autoincrement.html:
+        * storage/indexeddb/resources/objectstore-autoincrement.js:
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Blocked event can fire on a delete request even after the last open connection has closed.
+        https://bugs.webkit.org/show_bug.cgi?id=152896
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        
+        * platform/wk2/imported/w3c/indexeddb/idbfactory_open12-expected.txt: Copied from LayoutTests/imported/w3c/indexeddb/idbfactory_open12-expected.txt.
+        * platform/wk2/imported/w3c/indexeddb/idbversionchangeevent-expected.txt: Copied from LayoutTests/imported/w3c/indexeddb/idbversionchangeevent-expected.txt.
+        
+        * storage/indexeddb/database-wrapper-expected.txt:
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-versionchange-expected.txt:
+        * storage/indexeddb/deletedatabase-not-blocked-expected.txt:
+        * storage/indexeddb/intversion-upgrades-expected.txt:
+        * storage/indexeddb/resources/delete-in-upgradeneeded-close-in-versionchange.js:
+        * storage/indexeddb/resources/deletedatabase-not-blocked.js:
+        * storage/indexeddb/resources/setversion-not-blocked.js:
+        * storage/indexeddb/setversion-not-blocked-expected.txt:
+
+2016-01-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Several animation tests fail with accelerated compositing enabled
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2016-01-08  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] pageoverlay tests are failing
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2016-01-08  Zalan Bujtas  <zalan@apple.com>
+
+        Hovering link on http://help.apple.com/appletv/#/ does not show text underline.
+        https://bugs.webkit.org/show_bug.cgi?id=152906
+        <rdar://problem/23339617>
+
+        Reviewed by Simon Fraser.
+
+        GraphicsContext::computeLineBoundsAndAntialiasingModeForText() always integral ceils the origin y position to offset underline text.
+        This additional visual overflow offset is not taken into account by visualOverflowForDecorations().
+        Unfortunately we can't compute the exact same offset value while collecting repaint rects, because
+        computeLineBoundsAndAntialiasingModeForText() uses CTM scaling before adjusting the offset position.
+        Use 1px (css) bottom offset to cover this underling overflow.
+
+        * fast/css3-text/css3-text-decoration/text-underline-position/underline-visual-overflow-with-subpixel-position-expected.txt: Added.
+        * fast/css3-text/css3-text-decoration/text-underline-position/underline-visual-overflow-with-subpixel-position.html: Added.
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: imported/w3c/indexeddb/idbobjectstore_createIndex6-event_order.htm fails.
+        https://bugs.webkit.org/show_bug.cgi?id=152891
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/wk2/imported/w3c/indexeddb/idbobjectstore_createIndex6-event_order-expected.txt: Copied from LayoutTests/imported/w3c/indexeddb/idbobjectstore_createIndex6-event_order-expected.txt.
+        * platform/wk2/imported/w3c/indexeddb/idbobjectstore_createIndex7-event_order-expected.txt: Copied from LayoutTests/imported/w3c/indexeddb/idbobjectstore_createIndex7-event_order-expected.txt.
+
+2016-01-08  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/dont-wedge.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=152892
+
+        Unreviewed.
+
+        * platform/mac-wk1/TestExpectations: Skip it for now.
+
+2016-01-07  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed IndexedDB test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-07  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Success-after-open event should only have the IDBOpenDBRequest as its target.
+        https://bugs.webkit.org/show_bug.cgi?id=152875
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Better test gardening. Only skip those tests that use touch events, not the whole
+        directory.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-01-07  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Various imported/w3c/indexeddb tests fail due to expecting the wrong exception.
+        https://bugs.webkit.org/show_bug.cgi?id=152866
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-01-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-01-07  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: imported/w3c/indexeddb/idbcursor-continue.htm fails.
+        https://bugs.webkit.org/show_bug.cgi?id=152849
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
 2016-01-07  Alexey Proskuryakov  <ap@apple.com>
 
         testRunner.runUIScript crashes while running multiple tests in a row that invokes the same UIScript

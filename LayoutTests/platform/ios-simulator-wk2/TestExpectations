@@ -2016,7 +2016,6 @@ fast/parser/external-entities-in-xslt.xml [ Failure ]
 fast/replaced/border-radius-clip.html [ Failure ]
 fast/writing-mode/japanese-lr-selection.html [ Failure ]
 fast/writing-mode/japanese-rl-selection.html [ Failure ]
-http/tests/contentdispositionattachmentsandbox/form-submission-disabled.html [ Failure ]
 mathml/opentype/large-operators.html [ Failure ]
 mathml/opentype/vertical.html [ Failure ]
 platform/ios-simulator/ios/accessibility/press-fires-touch-events.html [ Failure ]
@@ -2039,4 +2038,14 @@ webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-she
 
 # eventSender.mouseDown is not implemented
 fast/loader/location-hash-user-gesture.html [ Skip ]
+imported/blink/editing/selection/selectstart-event-crash.html [ Skip ]
 
+# No touch events
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-when-downgrade.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Skip ]

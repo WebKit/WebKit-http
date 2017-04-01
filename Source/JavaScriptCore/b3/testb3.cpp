@@ -6240,6 +6240,7 @@ void testPatchpointLotsOfLateAnys()
     }
 
     PatchpointValue* patchpoint = root->appendNew<PatchpointValue>(proc, Int32, Origin());
+    patchpoint->clobber(RegisterSet::macroScratchRegisters());
     for (Value* value : values)
         patchpoint->append(ConstrainedValue(value, ValueRep::LateColdAny));
     patchpoint->setGenerator(
@@ -6423,6 +6424,50 @@ void testSimpleCheck()
     
     CHECK(invoke<int>(*code, 0) == 0);
     CHECK(invoke<int>(*code, 1) == 42);
+}
+
+void testCheckFalse()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    CheckValue* check = root->appendNew<CheckValue>(
+        proc, Check, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
+    check->setGenerator(
+        [&] (CCallHelpers&, const StackmapGenerationParams&) {
+            CHECK(!"This should not have executed");
+        });
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
+
+    auto code = compile(proc);
+    
+    CHECK(invoke<int>(*code) == 0);
+}
+
+void testCheckTrue()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    CheckValue* check = root->appendNew<CheckValue>(
+        proc, Check, Origin(), root->appendNew<Const32Value>(proc, Origin(), 1));
+    check->setGenerator(
+        [&] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
+            CHECK(params.value()->opcode() == Patchpoint);
+            CHECK(!params.size());
+
+            // This should always work because a function this simple should never have callee
+            // saves.
+            jit.move(CCallHelpers::TrustedImm32(42), GPRInfo::returnValueGPR);
+            jit.emitFunctionEpilogue();
+            jit.ret();
+        });
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
+
+    auto code = compile(proc);
+    
+    CHECK(invoke<int>(*code) == 42);
 }
 
 void testCheckLessThan()
@@ -7391,10 +7436,10 @@ void testCheckMulFoldFail(int a, int b)
     CHECK(invoke<int>(*code) == 42);
 }
 
-template<typename LeftFunctor, typename RightFunctor>
+template<typename LeftFunctor, typename RightFunctor, typename InputType>
 void genericTestCompare(
     B3::Opcode opcode, const LeftFunctor& leftFunctor, const RightFunctor& rightFunctor,
-    int left, int right, int result)
+    InputType left, InputType right, int result)
 {
     // Using a compare.
     {
@@ -7403,13 +7448,14 @@ void genericTestCompare(
 
         Value* leftValue = leftFunctor(root, proc);
         Value* rightValue = rightFunctor(root, proc);
+        Value* comparisonResult = root->appendNew<Value>(proc, opcode, Origin(), leftValue, rightValue);
         
         root->appendNew<ControlValue>(
             proc, Return, Origin(),
             root->appendNew<Value>(
                 proc, NotEqual, Origin(),
-                root->appendNew<Value>(proc, opcode, Origin(), leftValue, rightValue),
-                root->appendNew<Const32Value>(proc, Origin(), 0)));
+                comparisonResult,
+                root->appendIntConstant(proc, Origin(), comparisonResult->type(), 0)));
 
         CHECK(compileAndRun<int>(proc, left, right) == result);
     }
@@ -7563,11 +7609,20 @@ void testCompareLoad(B3::Opcode opcode, B3::Opcode loadOpcode, int left, int rig
         left, left, modelCompare(opcode, modelLoad<T>(left), modelLoad<T>(left)));
 }
 
-void testCompareImpl(B3::Opcode opcode, int left, int right)
+void testCompareImpl(B3::Opcode opcode, int64_t left, int64_t right)
 {
     int result = modelCompare(opcode, left, right);
     
     // Test tmp-to-tmp.
+    genericTestCompare(
+        opcode,
+        [&] (BasicBlock* block, Procedure& proc) {
+            return block->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        },
+        [&] (BasicBlock* block, Procedure& proc) {
+            return block->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        },
+        left, right, result);
     genericTestCompare(
         opcode,
         [&] (BasicBlock* block, Procedure& proc) {
@@ -7586,6 +7641,15 @@ void testCompareImpl(B3::Opcode opcode, int left, int right)
     genericTestCompare(
         opcode,
         [&] (BasicBlock* block, Procedure& proc) {
+            return block->appendNew<Const64Value>(proc, Origin(), left);
+        },
+        [&] (BasicBlock* block, Procedure& proc) {
+            return block->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        },
+        left, right, result);
+    genericTestCompare(
+        opcode,
+        [&] (BasicBlock* block, Procedure& proc) {
             return block->appendNew<Const32Value>(proc, Origin(), left);
         },
         [&] (BasicBlock* block, Procedure& proc) {
@@ -7599,6 +7663,15 @@ void testCompareImpl(B3::Opcode opcode, int left, int right)
     genericTestCompare(
         opcode,
         [&] (BasicBlock* block, Procedure& proc) {
+            return block->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        },
+        [&] (BasicBlock* block, Procedure& proc) {
+            return block->appendNew<Const64Value>(proc, Origin(), right);
+        },
+        left, right, result);
+    genericTestCompare(
+        opcode,
+        [&] (BasicBlock* block, Procedure& proc) {
             return block->appendNew<Value>(
                 proc, Trunc, Origin(),
                 block->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
@@ -7609,6 +7682,15 @@ void testCompareImpl(B3::Opcode opcode, int left, int right)
         left, right, result);
 
     // Test imm-to-imm.
+    genericTestCompare(
+        opcode,
+        [&] (BasicBlock* block, Procedure& proc) {
+            return block->appendNew<Const64Value>(proc, Origin(), left);
+        },
+        [&] (BasicBlock* block, Procedure& proc) {
+            return block->appendNew<Const64Value>(proc, Origin(), right);
+        },
+        left, right, result);
     genericTestCompare(
         opcode,
         [&] (BasicBlock* block, Procedure& proc) {
@@ -8868,6 +8950,208 @@ void testPowDoubleByIntegerLoop(double xOperand, int32_t yOperand)
     CHECK(isIdentical(compileAndRun<double>(proc, xOperand, yOperand), pow(xOperand, yOperand)));
 }
 
+void testTruncOrHigh()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, Trunc, Origin(),
+            root->appendNew<Value>(
+                proc, BitOr, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                root->appendNew<Const64Value>(proc, Origin(), 0x100000000))));
+
+    int64_t value = 0x123456781234;
+    CHECK(compileAndRun<int>(proc, value) == 0x56781234);
+}
+
+void testTruncOrLow()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, Trunc, Origin(),
+            root->appendNew<Value>(
+                proc, BitOr, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                root->appendNew<Const64Value>(proc, Origin(), 0x1000000))));
+
+    int64_t value = 0x123456781234;
+    CHECK(compileAndRun<int>(proc, value) == 0x57781234);
+}
+
+void testBitAndOrHigh()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, BitAnd, Origin(),
+            root->appendNew<Value>(
+                proc, BitOr, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                root->appendNew<Const64Value>(proc, Origin(), 0x8)),
+            root->appendNew<Const64Value>(proc, Origin(), 0x777777777777)));
+
+    int64_t value = 0x123456781234;
+    CHECK(compileAndRun<int64_t>(proc, value) == 0x123456701234ll);
+}
+
+void testBitAndOrLow()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, BitAnd, Origin(),
+            root->appendNew<Value>(
+                proc, BitOr, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                root->appendNew<Const64Value>(proc, Origin(), 0x1)),
+            root->appendNew<Const64Value>(proc, Origin(), 0x777777777777)));
+
+    int64_t value = 0x123456781234;
+    CHECK(compileAndRun<int64_t>(proc, value) == 0x123456701235ll);
+}
+
+void testBranch64Equal(int64_t left, int64_t right)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(proc, Equal, Origin(), arg1, arg2),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    bool trueResult = true;
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<MemoryValue>(
+            proc, Load8Z, Origin(),
+            thenCase->appendNew<ConstPtrValue>(proc, Origin(), &trueResult)));
+
+    bool elseResult = false;
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<MemoryValue>(
+            proc, Load8Z, Origin(),
+            elseCase->appendNew<ConstPtrValue>(proc, Origin(), &elseResult)));
+
+    CHECK(compileAndRun<bool>(proc, left, right) == (left == right));
+}
+
+void testBranch64EqualImm(int64_t left, int64_t right)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* arg2 = root->appendNew<ConstPtrValue>(proc, Origin(), right);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(proc, Equal, Origin(), arg1, arg2),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    bool trueResult = true;
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<MemoryValue>(
+            proc, Load8Z, Origin(),
+            thenCase->appendNew<ConstPtrValue>(proc, Origin(), &trueResult)));
+
+    bool elseResult = false;
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<MemoryValue>(
+            proc, Load8Z, Origin(),
+            elseCase->appendNew<ConstPtrValue>(proc, Origin(), &elseResult)));
+
+    CHECK(compileAndRun<bool>(proc, left) == (left == right));
+}
+
+void testBranch64EqualMem(int64_t left, int64_t right)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* arg1 = root->appendNew<MemoryValue>(
+        proc, Load, pointerType(), Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(proc, Equal, Origin(), arg1, arg2),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    bool trueResult = true;
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<MemoryValue>(
+            proc, Load8Z, Origin(),
+            thenCase->appendNew<ConstPtrValue>(proc, Origin(), &trueResult)));
+
+    bool elseResult = false;
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<MemoryValue>(
+            proc, Load8Z, Origin(),
+            elseCase->appendNew<ConstPtrValue>(proc, Origin(), &elseResult)));
+
+    CHECK(compileAndRun<bool>(proc, &left, right) == (left == right));
+}
+
+void testBranch64EqualMemImm(int64_t left, int64_t right)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* arg1 = root->appendNew<MemoryValue>(
+        proc, Load, pointerType(), Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* arg2 = root->appendNew<ConstPtrValue>(proc, Origin(), right);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(proc, Equal, Origin(), arg1, arg2),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    bool trueResult = true;
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<MemoryValue>(
+            proc, Load8Z, Origin(),
+            thenCase->appendNew<ConstPtrValue>(proc, Origin(), &trueResult)));
+
+    bool elseResult = false;
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<MemoryValue>(
+            proc, Load8Z, Origin(),
+            elseCase->appendNew<ConstPtrValue>(proc, Origin(), &elseResult)));
+
+    CHECK(compileAndRun<bool>(proc, &left) == (left == right));
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -9680,6 +9964,8 @@ void run(const char* filter)
     RUN(testPatchpointWithStackArgumentResult());
     RUN(testPatchpointWithAnyResult());
     RUN(testSimpleCheck());
+    RUN(testCheckFalse());
+    RUN(testCheckTrue());
     RUN(testCheckLessThan());
     RUN(testCheckMegaCombo());
     RUN(testCheckTrickyMegaCombo());
@@ -10100,6 +10386,32 @@ void run(const char* filter)
     RUN(testSelectFold(43));
     RUN(testSelectInvert());
     RUN_BINARY(testPowDoubleByIntegerLoop, floatingPointOperands<double>(), int64Operands());
+
+    RUN(testTruncOrHigh());
+    RUN(testTruncOrLow());
+    RUN(testBitAndOrHigh());
+    RUN(testBitAndOrLow());
+
+    RUN(testBranch64Equal(0, 0));
+    RUN(testBranch64Equal(1, 1));
+    RUN(testBranch64Equal(-1, -1));
+    RUN(testBranch64Equal(1, -1));
+    RUN(testBranch64Equal(-1, 1));
+    RUN(testBranch64EqualImm(0, 0));
+    RUN(testBranch64EqualImm(1, 1));
+    RUN(testBranch64EqualImm(-1, -1));
+    RUN(testBranch64EqualImm(1, -1));
+    RUN(testBranch64EqualImm(-1, 1));
+    RUN(testBranch64EqualMem(0, 0));
+    RUN(testBranch64EqualMem(1, 1));
+    RUN(testBranch64EqualMem(-1, -1));
+    RUN(testBranch64EqualMem(1, -1));
+    RUN(testBranch64EqualMem(-1, 1));
+    RUN(testBranch64EqualMemImm(0, 0));
+    RUN(testBranch64EqualMemImm(1, 1));
+    RUN(testBranch64EqualMemImm(-1, -1));
+    RUN(testBranch64EqualMemImm(1, -1));
+    RUN(testBranch64EqualMemImm(-1, 1));
 
     if (tasks.isEmpty())
         usage();

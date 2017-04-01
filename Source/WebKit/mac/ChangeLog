@@ -1,3 +1,113 @@
+2016-01-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a build flag for custom element
+        https://bugs.webkit.org/show_bug.cgi?id=153005
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-01-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194826.
+        https://bugs.webkit.org/show_bug.cgi?id=153020
+
+        Appears to have regressed PLT (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        "Use NeverDestroyed instead of DEPRECATED_DEFINE_STATIC_LOCAL
+        cont'd"
+        https://bugs.webkit.org/show_bug.cgi?id=152902
+        http://trac.webkit.org/changeset/194826
+
+2016-01-11  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of CFMakeCollectable, it is a no-op
+        https://bugs.webkit.org/show_bug.cgi?id=152988
+
+        Reviewed by Sam Weinig.
+
+        * Misc/WebNSDataExtras.m:
+        (-[NSString _web_capitalizeRFC822HeaderFieldName]):
+        (-[NSData _webkit_parseRFC822HeaderFields]):
+        * Plugins/WebPluginController.mm:
+        (-[WebPluginController initWithDocumentView:]):
+
+2016-01-10  Andreas Kling  <akling@apple.com>
+
+        Use NeverDestroyed instead of DEPRECATED_DEFINE_STATIC_LOCAL cont'd
+        <https://webkit.org/b/152902>
+
+        Reviewed by Andy Estes.
+
+        Convert some more of the remaining clients to use NeverDestroyed.
+
+        * History/WebBackForwardList.mm:
+        (backForwardLists):
+        * History/WebHistoryItem.mm:
+        (historyItemWrappers):
+        * Misc/WebNSPasteboardExtras.mm:
+        (+[NSPasteboard _web_writableTypesForURL]):
+        (_writableTypesForImageWithoutArchive):
+        (_writableTypesForImageWithArchive):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::singleton):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::pluginProxyMap):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::globalExceptionString):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::proxyClass):
+        * Plugins/WebNetscapePluginStream.mm:
+        (streams):
+        * Storage/WebDatabaseManager.mm:
+        (transactionBackgroundTaskIdentifierLock):
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (userMediaCheckMap):
+        * WebView/WebHTMLRepresentation.mm:
+        (regExpForLabels):
+        * WebView/WebView.mm:
+        (aeDescFromJSValue):
+
+2016-01-09  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Allow overriding the frameworks directory independently of using a staging install path
+        https://bugs.webkit.org/show_bug.cgi?id=152926
+
+        Reviewed by Tim Horton.
+
+        Introduce a new build setting, WK_OVERRIDE_FRAMEWORKS_DIR. When not empty, it determines
+        where the frameworks are installed. Setting USE_STAGING_INSTALL_PATH to YES sets
+        WK_OVERRIDE_FRAMEWORKS_DIR to $(SYSTEM_LIBRARY_DIR)/StagedFrameworks/Safari.
+
+        Account for the possibility of WK_OVERRIDE_FRAMEWORKS_DIR containing spaces.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        - Replace STAGED_FRAMEWORKS_SEARCH_PATH in FRAMEWORK_SEARCH_PATHS with
+          WK_OVERRIDE_FRAMEWORKS_DIR and add quotes to account for spaces.
+        - Define WEBKIT_LEGACY_FRAMEWORKS_DIR, PRODUCTION_FRAMEWORKS_DIR, and
+          WEBCORE_PRIVATE_HEADERS_DIR based on WK_OVERRIDE_FRAMEWORKS_DIR.
+
+        * MigrateHeaders.make:
+          Use a symlink under BUILT_PRODUCTS_DIR to the WebCore Private Headers. Use a
+          BUILT_PRODUCTS_DIR-based path to the framework instead of a TARGET_BUILD_DIR-based one in
+          order to avoid spaces.
+        * migrate-headers.sh:
+          Make the symlink to WEBCORE_PRIVATE_HEADERS_DIR that the makefile now uses.
+
+2016-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Can't play inline video in a stock WK1 WebView on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=152860
+
+        Rubber-stamped by Jer Noble.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        The default for this preference is supposed to be NO on Mac. It is in
+        Settings.in, and in WebKit2, but this one place got it wrong.
+
 2016-01-06  Simon Fraser  <simon.fraser@apple.com>
 
         Add a setting and preferences to enable display-list drawing. Does nothing yet.

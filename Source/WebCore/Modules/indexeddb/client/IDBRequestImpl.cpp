@@ -263,7 +263,7 @@ void IDBRequest::enqueueEvent(Ref<Event>&& event)
 
 bool IDBRequest::dispatchEvent(Event& event)
 {
-    LOG(IndexedDB, "IDBRequest::dispatchEvent - %s (%p)", event.type().characters8(), this);
+    LOG(IndexedDB, "IDBRequest::dispatchEvent - %s (%p)", event.type().string().utf8().data(), this);
 
     ASSERT(m_hasPendingActivity);
     ASSERT(!m_contextStopped);
@@ -274,10 +274,10 @@ bool IDBRequest::dispatchEvent(Event& event)
     Vector<RefPtr<EventTarget>> targets;
     targets.append(this);
 
-    if (m_transaction) {
-        if (!m_transaction->isFinished())
+    if (&event == m_openDatabaseSuccessEvent)
+        m_openDatabaseSuccessEvent = nullptr;
+    else if (m_transaction && !m_transaction->isFinished()) {
             targets.append(m_transaction);
-        if (!m_transaction->database().isClosingOrClosed())
             targets.append(m_transaction->db());
     }
 

@@ -187,6 +187,9 @@ WebInspector.VisualStyleBackgroundPicker = class VisualStyleBackgroundPicker ext
         popover.content = gradientEditor.element;
         popover.present(bounds.pad(2), [WebInspector.RectEdge.MIN_X]);
 
+        if (!this._gradient)
+            this._gradient = WebInspector.Gradient.fromString(`${this._currentType}(transparent, transparent)`);
+
         gradientEditor.gradient = this._gradient;
     }
 
@@ -206,7 +209,7 @@ WebInspector.VisualStyleBackgroundPicker = class VisualStyleBackgroundPicker ext
     {
         if (event.altKey)
             this._addAdvancedValues();
-        else if (!this._valueIsSupportedAdvancedKeyword())
+        else if (!this._valueIsSupportedAdvancedKeyword(this.value))
             this._removeAdvancedValues();
     }
 

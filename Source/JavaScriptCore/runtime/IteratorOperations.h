@@ -39,6 +39,8 @@ JSValue iteratorStep(ExecState*, JSValue iterator);
 void iteratorClose(ExecState*, JSValue iterator);
 JS_EXPORT_PRIVATE JSObject* createIteratorResultObject(ExecState*, JSValue, bool done);
 
+Structure* createIteratorResultObjectStructure(VM&, JSGlobalObject&);
+
 }
 
 #endif // !defined(IteratorOperations_h)

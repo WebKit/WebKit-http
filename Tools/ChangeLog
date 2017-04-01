@@ -1,3 +1,287 @@
+2016-01-08  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Lazily load platform frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=152881
+        rdar://problem/23270886
+
+        Reviewed by Brady Eidson.
+
+        Added an API test that verifies that the Parental Controls and Network Extension frameworks are loaded at the
+        expected times. The test verifies that they are not loaded after creating a WKWebView, loading an HTML string,
+        loading NSData, loading a file, or loading from a custom protocol. It verifies that Network Extension on Mac/iOS
+        and Parental Controls on iOS are loaded after an HTTP request. It finally verifies that Parental Controls on Mac
+        is loaded after an HTTPS request.
+
+        To accomplish this, TestProtocol was generalized to allow tests to specify the scheme they wish to use.
+        Other tests that used TestProtocol were updated to account for this change. TestProtocol was removed from
+        WebKit2.PreventImageLoadWithAutoResizingTest, which didn't actually need to use it. ContentFiltering tests were
+        also re-enabled on iOS after mistakenly being disabled by r188892.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/CustomProtocolsSyncXHRTest.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.h: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm:
+        (TEST):
+        (downloadTest):
+        (-[LazilyLoadPlatformFrameworksController init]):
+        (-[LazilyLoadPlatformFrameworksController webView]):
+        (-[LazilyLoadPlatformFrameworksController expectParentalControlsLoaded:networkExtensionLoaded:]):
+        (-[LazilyLoadPlatformFrameworksController webView:didFinishNavigation:]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFilteringPlugIn.mm:
+        (-[ContentFilteringPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[ContentFilteringPlugIn observeValueForKeyPath:ofObject:change:context:]):
+        (-[ContentFilteringPlugIn checkIfPlatformFrameworksAreLoaded:]):
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsTest.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2ObjC/PreventImageLoadWithAutoResizing.mm:
+        (TestWebKitAPI::TEST): Deleted.
+        * TestWebKitAPI/cocoa/TestProtocol.h:
+        * TestWebKitAPI/cocoa/TestProtocol.mm:
+        (+[TestProtocol registerWithScheme:]):
+        (+[TestProtocol unregister]):
+
+2016-01-12  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix the Sunpider converage in slow device.
+        https://bugs.webkit.org/show_bug.cgi?id=152938
+        <rdar://problem/22511411>
+
+        Reviewed by Ryosuke Niwa.
+
+        Updated the patch for RunBenchmark to resume sunspider coverage by removing unused subresources in sub-tests.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/SunSpider.patch:
+
+2016-01-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a build flag for custom element
+        https://bugs.webkit.org/show_bug.cgi?id=153005
+
+        Reviewed by Alex Christensen.
+
+        Added --custom-elements option to enable custom elements support.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-01-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add a help message when run-jsc-stress-tests fails
+        https://bugs.webkit.org/show_bug.cgi?id=153014
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-01-11  Saam barati  <sbarati@apple.com>
+
+        run-jsc-stress-tests should try to figure out a JSC path
+        https://bugs.webkit.org/show_bug.cgi?id=152971
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch now allows run-jsc-stress-tests to be run
+        without a "--jsc <jsc-path>" argument. It tries
+        to take its best guess at a <jsc-path> automagically.
+        
+        This makes it much easier to just run run-jsc-stress-tests
+        with a directory or a yaml file as an argument.
+        You now just do this:
+        `run-jsc-stress-tests <path-to-yaml>`
+        or
+        `run-jsc-stress-tests <path-to-directory-of-js-files>`
+        
+        I wrote this patch because I'd often find myself hacking the 
+        run-javascriptcore-tests file just to run a particular subset of tests.
+        Because I always forget the arguments to run-jsc-stress-tests (which means
+        I always forgot to provide a --jsc argument), I always found it easier to 
+        just hack on that file instead of calling run-jsc-stress-tests directly.
+        No longer is this true!
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-01-09  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add SPI to opt out a URL scheme from the memory cache
+        https://bugs.webkit.org/show_bug.cgi?id=152950
+        rdar://problem/24066652
+
+        Reviewed by Tim Horton.
+
+        Added an API test.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AlwaysRevalidatedURLSchemes.mm: Added.
+        (+[AlwaysRevalidatedURLSchemeProtocol canInitWithRequest:]):
+        (+[AlwaysRevalidatedURLSchemeProtocol canonicalRequestForRequest:]):
+        (+[AlwaysRevalidatedURLSchemeProtocol requestIsCacheEquivalent:toRequest:]):
+        (-[AlwaysRevalidatedURLSchemeProtocol startLoading]):
+        (-[AlwaysRevalidatedURLSchemeProtocol stopLoading]):
+        (-[AlwaysRevalidatedURLSchemesDelegate webView:didFinishNavigation:]):
+        (TEST):
+
+2016-01-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194866.
+        https://bugs.webkit.org/show_bug.cgi?id=152986
+
+        This change broke the mac build (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Cocoa] Add SPI to opt out a URL scheme from the memory
+        cache"
+        https://bugs.webkit.org/show_bug.cgi?id=152950
+        http://trac.webkit.org/changeset/194866
+
+2016-01-11  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add SPI to opt out a URL scheme from the memory cache
+        https://bugs.webkit.org/show_bug.cgi?id=152950
+        rdar://problem/24066652
+
+        Reviewed by Tim Horton.
+
+        Added an API test.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AlwaysRevalidatedURLSchemes.mm: Added.
+        (+[AlwaysRevalidatedURLSchemeProtocol canInitWithRequest:]):
+        (+[AlwaysRevalidatedURLSchemeProtocol canonicalRequestForRequest:]):
+        (+[AlwaysRevalidatedURLSchemeProtocol requestIsCacheEquivalent:toRequest:]):
+        (-[AlwaysRevalidatedURLSchemeProtocol startLoading]):
+        (-[AlwaysRevalidatedURLSchemeProtocol stopLoading]):
+        (-[AlwaysRevalidatedURLSchemesDelegate webView:didFinishNavigation:]):
+        (TEST):
+
+2016-01-11  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [webkitdirs] Use CMake to determine architecture on isCMakeBuild()
+        https://bugs.webkit.org/show_bug.cgi?id=152959
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitdirs.pm:
+        (determineArchitecture):
+
+2016-01-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] W3C CSS2.1 anonymous table tests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=152455
+
+        Reviewed by Mario Sanchez Prada.
+
+        Add shared-mime-info to the jhbuild environment, since it affects the results of layout
+        tests. Add upstream patches to fix detection of XHTML files.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/shared-mime-info-xht-glob.patch: Added.
+        * gtk/patches/shared-mime-info-xhtml-magic.patch: Added.
+
+2016-01-10  Saam barati  <sbarati@apple.com>
+
+        Implement a sampling profiler
+        https://bugs.webkit.org/show_bug.cgi?id=151713
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-01-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [webkitdirs] Try arch and uname commands on non-windows OS
+        https://bugs.webkit.org/show_bug.cgi?id=152958
+
+        Reviewed by Michael Catanzaro.
+
+        Right now, determineArchitecture()  uses `arch` and `uname -m`
+        commands to determine architecture in case of condition (isGtk() ||
+        isAppleMacWebKit() || isEfl()) is true. This should be !anyWindows()
+        instead, because this code is applicable to any non-windows OS WebKit
+        supports (even Haiku which once was supported is moderately
+        POSIX-compliant and has uname command).
+
+        * Scripts/webkitdirs.pm:
+        (determineArchitecture):
+
+2016-01-08  Aakash Jain  <aakash_jain@apple.com>
+
+        run-webkit-tests mis-counts totals when there are other crashes
+        https://bugs.webkit.org/show_bug.cgi?id=152894
+        <rdar://problem/24098697>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/layout_tests/models/test_run_results.py:
+        (TestRunResults.add): Do not update result counters for other crashes.
+
+2016-01-08  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        webkit-patch build-and-test should have an option to iterate over new tests
+        https://bugs.webkit.org/show_bug.cgi?id=143093
+
+        Reviewed by Michael Catanzaro.
+
+        This patch introduces the --iterate-on-new-tests option to webkit-patch build-and-test.
+        It allows running run-webkit-tests on modified or new paths in LayoutTests.
+        Computation of new or modified tests is done by LayoutTestFinder.find_touched_tests
+        It implements the translation of -expected.* paths to their related tests.
+        It also implements the removal of skipped tests.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_finder.py:
+        (LayoutTestFinder.find_touched_tests):
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_finder_unittest.py: Added.
+        (MockPort):
+        (MockPort.__init__):
+        (MockPort.tests):
+        (LayoutTestFinderTests):
+        (LayoutTestFinderTests.touched_files):
+        (LayoutTestFinderTests.test_touched_test):
+        (LayoutTestFinderTests.test_expected_touched_test):
+        (LayoutTestFinderTests.test_platform_expected_touched_test):
+        (LayoutTestFinderTests.test_platform_duplicate_touched_test):
+        (LayoutTestFinderTests.test_touched_but_skipped_test):
+        * Scripts/webkitpy/port/base.py:
+        (Port.potential_test_names_from_expected_file):
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        (DownloadCommandsTest._default_options):
+        * Scripts/webkitpy/tool/steps/options.py:
+        (Options):
+        * Scripts/webkitpy/tool/steps/runtests.py:
+        (RunTests.options):
+        (RunTests.run):
+        (RunTests):
+        (RunTests._new_or_modified_tests):
+        (RunTests._run_webkit_tests):
+        * Scripts/webkitpy/tool/steps/runtests_unittest.py:
+        (RunTestsTest.test_webkit_run_unit_tests):
+        * Scripts/webkitpy/tool/steps/steps_unittest.py:
+        (StepsTest._step_options):
+
+2016-01-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        prepare-ChangeLog should include radar number
+        https://bugs.webkit.org/show_bug.cgi?id=152839
+        <rdar://problem/24093563>
+
+        Reviewed by Daniel Bates.
+
+        When running `prepare-ChangeLog -b ###`, check for a bugzilla comment that
+        starts with a "<rdar://problem/####>" URL. If found, include that radar URL
+        in the ChangeLog description after the bug URL.
+
+        * Scripts/prepare-ChangeLog:
+        (main): Update signatures.
+        (fetchBugXMLData): XML Data is now used for multiple reasons. Extract this to just get the data.
+        (fetchBugDescriptionFromBugXMLData): Search data for <short_desc>.
+        (fetchRadarURLFromBugXMLData): Search comment text for radar URL.
+        (generateNewChangeLogs): Include radar URL if we found one.
+
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/fetchRadarURLFromBugXMLData.pl: Added.
+        Tests for the radar URL extraction.
+
 2016-01-07  Alexey Proskuryakov  <ap@apple.com>
 
         testRunner.runUIScript crashes while running multiple tests in a row that invokes the same UIScript

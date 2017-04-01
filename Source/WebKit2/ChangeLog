@@ -1,3 +1,381 @@
+2016-01-12  Geoffrey Garen  <ggaren@apple.com>
+
+        WebPageProxy should reattach to the web process before navigating
+        https://bugs.webkit.org/show_bug.cgi?id=153026
+
+        Reviewed by Anders Carlsson.
+
+        This fixes a crash (and lots of other corruption) when force-quitting
+        the web process during navigation.
+
+        Some objects (like ViewGestureController) use one-time initialization
+        to point to a ChildProcessProxy -- and, by design, we destroy them when
+        the ChildProcessProxy becomes invalid (i.e., crashes or quits).
+
+        If we navigate *before* creating a new, valid ChildProcessProxy, then
+        we accidentally re-create these objects pointing to the old, invalid
+        ChildProcessProxy.
+
+        We need to wait until we have a valid ChildProcessProxy before we
+        initialize these objects.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reattachToWebProcessWithItem): Navigate after
+        reattaching to the web process so that lazily allocated helper objects
+        point to the right ChildProcessProxy.
+
+2016-01-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a build flag for custom element
+        https://bugs.webkit.org/show_bug.cgi?id=153005
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-01-12  Alex Christensen  <achristensen@webkit.org>
+
+        Ask for UI Process approval of ProtectionSpace when authenticating downloads with NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=152999
+
+        Reviewed by Brady Eidson.
+
+        * DerivedSources.make:
+        I mistakenly added PendingDownload.messages.in in r194810, but this will not be needed because
+        the PendingDownload is not a MessageReceiver.  Rather, the NetworkProcess receives the messages
+        and forwards their contents to the PendingDownload through its DownloadManager.
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::dataTaskBecameDownloadTask):
+        (WebKit::DownloadManager::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::DownloadManager::convertHandleToDownload):
+        * NetworkProcess/Downloads/DownloadManager.h:
+        * NetworkProcess/Downloads/PendingDownload.cpp:
+        (WebKit::PendingDownload::continueWillSendRequest):
+        (WebKit::PendingDownload::canAuthenticateAgainstProtectionSpaceAsync):
+        Instead of taking a shortcut I added in r194810, send a message to the UI process and wait for its
+        asynchronous reply to determine if we can authenticate against this protection space.
+        (WebKit::PendingDownload::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::PendingDownload::didConvertToDownload):
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/Downloads/PendingDownload.messages.in: Removed.
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::cancelDownload):
+        (WebKit::NetworkProcess::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::NetworkProcess::setCacheModel):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * Shared/Authentication/AuthenticationManager.h:
+        * UIProcess/API/APIDownloadClient.h:
+        (API::DownloadClient::didFail):
+        (API::DownloadClient::didCancel):
+        (API::DownloadClient::processDidCrash):
+        (API::DownloadClient::canAuthenticateAgainstProtectionSpace):
+        * UIProcess/Downloads/DownloadProxy.cpp:
+        (WebKit::DownloadProxy::didReceiveAuthenticationChallenge):
+        (WebKit::DownloadProxy::canAuthenticateAgainstProtectionSpace):
+        (WebKit::DownloadProxy::didReceiveResponse):
+        * UIProcess/Downloads/DownloadProxy.h:
+        * UIProcess/Downloads/DownloadProxy.messages.in:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-01-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move ChildProcessProxy from Shared to UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=125570
+
+        Reviewed by Darin Adler.
+
+        ChildProcessProxy is only used by the UI process.
+
+        * CMakeLists.txt:
+        * PlatformGTK.cmake:
+        * UIProcess/ChildProcessProxy.cpp: Renamed from Source/WebKit2/Shared/ChildProcessProxy.cpp.
+        (WebKit::ChildProcessProxy::ChildProcessProxy):
+        (WebKit::ChildProcessProxy::~ChildProcessProxy):
+        (WebKit::ChildProcessProxy::fromConnection):
+        (WebKit::ChildProcessProxy::getLaunchOptions):
+        (WebKit::ChildProcessProxy::connect):
+        (WebKit::ChildProcessProxy::terminate):
+        (WebKit::ChildProcessProxy::state):
+        (WebKit::ChildProcessProxy::sendMessage):
+        (WebKit::ChildProcessProxy::addMessageReceiver):
+        (WebKit::ChildProcessProxy::removeMessageReceiver):
+        (WebKit::ChildProcessProxy::dispatchMessage):
+        (WebKit::ChildProcessProxy::dispatchSyncMessage):
+        (WebKit::ChildProcessProxy::didFinishLaunching):
+        (WebKit::ChildProcessProxy::shutDownProcess):
+        (WebKit::ChildProcessProxy::connectionWillOpen):
+        * UIProcess/ChildProcessProxy.h: Renamed from Source/WebKit2/Shared/ChildProcessProxy.h.
+        (WebKit::ChildProcessProxy::connection):
+        (WebKit::ChildProcessProxy::processIdentifier):
+        (WebKit::ChildProcessProxy::canSendMessage):
+        (WebKit::ChildProcessProxy::send):
+        (WebKit::ChildProcessProxy::sendSync):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-01-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] UI process crashes if webkit_web_view_get_tls_info is called before internal load-committed event
+        https://bugs.webkit.org/show_bug.cgi?id=142375
+
+        Reviewed by Michael Catanzaro.
+
+        Remove all the hacks to emit delayed load events now that the
+        page cache resource load delegates are consistent with all other
+        resource loads.
+
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewLoadChanged):
+        (webkitWebViewResourceLoadStarted):
+        (webkit_web_view_get_tls_info): Add a g_return_val_if_fail to
+        prevent this function from being misused.
+        (webkitWebViewDisconnectMainResourceResponseChangedSignalHandler): Deleted.
+        (webkitWebViewDispose): Deleted.
+        (webkitWebViewEmitLoadChanged): Deleted.
+        (webkitWebViewEmitDelayedLoadEvents): Deleted.
+        (mainResourceResponseChangedCallback): Deleted.
+        (waitForMainResourceResponseIfWaitingForResource): Deleted.
+
+2016-01-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r190717): [GTK] Popup menus stop working after being dismissed without selecting an item
+        https://bugs.webkit.org/show_bug.cgi?id=152977
+
+        Reviewed by Michael Catanzaro.
+
+        This happens since r190717 when you open a popup menu and without
+        selecting any option it's dismissed (press ESC or click somewhere
+        else). This is because I removed the code to track when the menu
+        is unmapped, thinking that it was no longer necessary. But we need
+        to send the DidChangeSelectedIndexForActivePopupMenu to the
+        WebProcess with -1 as index to keep the web process in sync.
+
+        * UIProcess/gtk/WebPopupMenuProxyGtk.cpp:
+        (WebKit::WebPopupMenuProxyGtk::WebPopupMenuProxyGtk):
+        (WebKit::WebPopupMenuProxyGtk::showPopupMenu):
+        (WebKit::WebPopupMenuProxyGtk::cancelTracking):
+        (WebKit::WebPopupMenuProxyGtk::menuItemActivated):
+        (WebKit::WebPopupMenuProxyGtk::dismissMenuTimerFired):
+        (WebKit::WebPopupMenuProxyGtk::menuUnmappedCallback):
+        * UIProcess/gtk/WebPopupMenuProxyGtk.h:
+
+2016-01-09  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add SPI to opt out a URL scheme from the memory cache
+        https://bugs.webkit.org/show_bug.cgi?id=152950
+        rdar://problem/24066652
+
+        Reviewed by Tim Horton.
+
+        Added a alwaysRevalidatedURLSchemes property to _WKProcessPoolConfiguration. Taught WebProcess to add these
+        schemes to SchemeRegistry when initializing a new web process.
+
+        * Shared/API/Cocoa/WKFoundation.h: Added a newline to force re-postprocessing.
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm:
+        (-[_WKProcessPoolConfiguration alwaysRevalidatedURLSchemes]):
+        (-[_WKProcessPoolConfiguration setAlwaysRevalidatedURLSchemes:]):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+        * UIProcess/WebProcessPool.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+        (WebKit::WebProcess::registerURLSchemeAsAlwaysRevalidated):
+        * WebProcess/WebProcess.h:
+
+2016-01-11  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of CFMakeCollectable, it is a no-op
+        https://bugs.webkit.org/show_bug.cgi?id=152988
+
+        Reviewed by Sam Weinig.
+
+        * Shared/Cocoa/WKNSString.mm:
+        * Shared/Cocoa/WKNSURL.mm:
+        (-[WKNSURL _web_createTarget]):
+
+2016-01-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194866.
+        https://bugs.webkit.org/show_bug.cgi?id=152986
+
+        This change broke the mac build (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Cocoa] Add SPI to opt out a URL scheme from the memory
+        cache"
+        https://bugs.webkit.org/show_bug.cgi?id=152950
+        http://trac.webkit.org/changeset/194866
+
+2016-01-11  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add SPI to opt out a URL scheme from the memory cache
+        https://bugs.webkit.org/show_bug.cgi?id=152950
+        rdar://problem/24066652
+
+        Reviewed by Tim Horton.
+
+        Added a alwaysRevalidatedURLSchemes property to _WKProcessPoolConfiguration. Taught WebProcess to add these
+        schemes to SchemeRegistry when initializing a new web process.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm:
+        (-[_WKProcessPoolConfiguration alwaysRevalidatedURLSchemes]):
+        (-[_WKProcessPoolConfiguration setAlwaysRevalidatedURLSchemes:]):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+        * UIProcess/WebProcessPool.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+        (WebKit::WebProcess::registerURLSchemeAsAlwaysRevalidated):
+        * WebProcess/WebProcess.h:
+
+2016-01-11  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build after r194810.
+
+        * PlatformMac.cmake:
+        PendingDownload isn't needed until NETWORK_SESSION is used by default.
+        I'll figure this out when I make the switch.
+
+2016-01-11  Mario Sanchez Prada  <mario@endlessm.com>
+
+        [WK2][GTK] Propagate motion-notify-event signals from the WebView
+        https://bugs.webkit.org/show_bug.cgi?id=152974
+
+        Reviewed by Carlos Garcia Campos.
+
+        Always propagate motion-notify-event signals, regardless of what the
+        web process does, so that we can listen for those events (which does
+        not act on specific targets inside the webview) from the container
+        widget too, and not just from the WebView itself.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseMotionNotifyEvent): Ensure the signal gets propagated.
+
+2016-01-10  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Disable header postprocessing when building for El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=152962
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/WebKit.xcconfig:
+
+2016-01-09  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Allow overriding the frameworks directory independently of using a staging install path
+        https://bugs.webkit.org/show_bug.cgi?id=152926
+
+        Reviewed by Tim Horton.
+
+        Introduce a new build setting, WK_OVERRIDE_FRAMEWORKS_DIR. When not empty, it determines
+        where the frameworks are installed. Setting USE_STAGING_INSTALL_PATH to YES sets
+        WK_OVERRIDE_FRAMEWORKS_DIR to $(SYSTEM_LIBRARY_DIR)/StagedFrameworks/Safari.
+
+        Account for the possibility of WK_OVERRIDE_FRAMEWORKS_DIR containing spaces.
+
+        * Configurations/BaseTarget.xcconfig:
+        - Add quotes to account for spaces.
+        - Define WEBKIT_FRAMEWORKS_DIR and UMBRELLA_FRAMEWORKS_DIR based on
+          WK_OVERRIDE_FRAMEWORKS_DIR.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        - In the Migrate WebKitLegacy Headers build phase, work around make’s inability to handle
+          spaces in paths by creating a symlink to WEBKIT_LEGACY_PRIVATE_HEADERS_DIR under
+          BUILT_PRODUCTS_DIR and using the symlink as the value of
+          WEBKIT_LEGACY_PRIVATE_HEADERS_DIR.
+        - In the Postprocess WKBase.h and Postprocess WKFoundation.h build phases, add quotes to
+          account for spaces.
+
+        * mac/MigrateHeadersFromWebKitLegacy.make:
+          Use a BUILT_PRODUCTS_DIR-based path to the framework instead of a TARGET_BUILD_DIR-based
+          one in order to avoid spaces.
+
+        * mac/postprocess-framework-headers.sh:
+          Add quotes to account for spaces.
+
+2016-01-08  Alex Christensen  <achristensen@webkit.org>
+
+        Implement download authentication with NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=152878
+
+        Reviewed by Brady Eidson.
+
+        * DerivedSources.make:
+        * NetworkProcess/Downloads/Download.h:
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload):
+        * NetworkProcess/Downloads/PendingDownload.cpp: Added.
+        (WebKit::PendingDownload::PendingDownload):
+        (WebKit::PendingDownload::willSendRedirectedRequest):
+        (WebKit::PendingDownload::continueWillSendRequest):
+        (WebKit::PendingDownload::canAuthenticateAgainstProtectionSpaceAsync):
+        (WebKit::PendingDownload::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::PendingDownload::didConvertToDownload):
+        (WebKit::PendingDownload::messageSenderConnection):
+        (WebKit::PendingDownload::messageSenderDestinationID):
+        * NetworkProcess/Downloads/PendingDownload.h:
+        (WebKit::PendingDownload::PendingDownload): Deleted.
+        * NetworkProcess/Downloads/PendingDownload.messages.in: Added.
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::continueWillSendRequest):
+        The completion handler should always be called.  If m_currentRequest is null, then the request will not proceed, which is the same as canceling it.
+        (WebKit::NetworkLoad::setPendingDownloadID):
+        (WebKit::NetworkLoad::setPendingDownload):
+        (WebKit::NetworkLoad::willPerformHTTPRedirection):
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        If this load is going to become a download, then call the PendingDownload version of didReceiveAuthenticationChallenge to communicate with the 
+        UI process directly because there wasn't necessarily a web process associated with this request that will become a download.
+        * NetworkProcess/NetworkLoad.h:
+        (WebKit::NetworkLoad::pendingDownloadID):
+        * NetworkProcess/NetworkSession.h:
+        (WebKit::NetworkDataTask::client):
+        (WebKit::NetworkDataTask::pendingDownloadID):
+        (WebKit::NetworkDataTask::pendingDownload):
+        (WebKit::NetworkDataTask::setPendingDownloadID):
+        (WebKit::NetworkDataTask::setPendingDownload):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        * PlatformMac.cmake:
+        * Shared/Authentication/AuthenticationManager.cpp:
+        (WebKit::AuthenticationManager::didReceiveAuthenticationChallenge):
+        * Shared/Authentication/AuthenticationManager.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::canAuthenticateAgainstProtectionSpace):
+        Removed unnecessary protection and move null check to before using the pointer it checks.
+
+2016-01-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Use an appropriate buffer format for swipe snapshots
+        https://bugs.webkit.org/show_bug.cgi?id=152880
+        rdar://problem/23728299
+
+        Reviewed by Tim Horton.
+        
+        Choose an appropriate buffer format for swipe snapshots, and avoid converting
+        them to YUV422.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (WebKit::bufferFormat):
+        (-[WKWebView _takeViewSnapshot]):
+
 2016-01-07  Alex Christensen  <achristensen@webkit.org>
 
         Progress towards implementing downloads with NetworkSession
