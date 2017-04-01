@@ -29,12 +29,16 @@
 
 #if OS(DARWIN)
 #include <mach/thread_act.h>
+#elif OS(HAIKU)
+#include <OS.h>
 #endif
 
 #if OS(DARWIN)
 typedef mach_port_t PlatformThread;
 #elif OS(WINDOWS)
 typedef DWORD PlatformThread;
+#elif OS(HAIKU)
+typedef thread_id PlatformThread;
 #elif USE(PTHREADS)
 typedef pthread_t PlatformThread;
 #endif // OS(DARWIN)
@@ -93,6 +97,8 @@ public:
             
 #elif OS(WINDOWS)
             typedef CONTEXT PlatformRegisters;
+#elif OS(HAIKU)
+            typedef thread_info PlatformRegisters;
 #elif USE(PTHREADS)
             typedef pthread_attr_t PlatformRegisters;
 #else

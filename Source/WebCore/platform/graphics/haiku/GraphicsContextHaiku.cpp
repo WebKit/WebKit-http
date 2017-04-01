@@ -32,6 +32,7 @@
 
 #include "AffineTransform.h"
 #include "Color.h"
+#include "DisplayListRecorder.h"
 #include "ImageBuffer.h"
 #include "NotImplemented.h"
 #include "Path.h"
@@ -135,7 +136,6 @@ GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
 void GraphicsContext::platformInit(PlatformGraphicsContext* context)
 {
     m_data = new GraphicsContextPlatformPrivate(context);
-    setPaintingDisabled(!context);
 }
 
 void GraphicsContext::platformDestroy()
@@ -461,6 +461,65 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
     delete surface;
 }
 
+
+void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect,
+    const AffineTransform& patternTransform, const FloatPoint& phase,
+    const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect,
+    BlendMode blendMode)
+{
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawPattern(image, tileRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        return;
+    }
+
+    BBitmap* pixels = image.nativeImageForCurrentFrame();
+    if (!pixels || !pixels->IsValid()) // If the image hasn't fully loaded.
+        return;
+
+    // Figure out if the image has any alpha transparency, we can use faster drawing if not
+    bool hasAlpha = false;
+
+    uint8* bits = reinterpret_cast<uint8*>(pixels->Bits());
+    uint32 width = pixels->Bounds().IntegerWidth() + 1;
+    uint32 height = pixels->Bounds().IntegerHeight() + 1;
+
+    uint32 bytesPerRow = pixels->BytesPerRow();
+    for (uint32 y = 0; y < height && !hasAlpha; y++) {
+        uint8* p = bits;
+        for (uint32 x = 0; x < width && !hasAlpha; x++) {
+            hasAlpha = p[3] < 255;
+            p += 4;
+        }
+        bits += bytesPerRow;
+    }
+
+    save();
+    if (hasAlpha)
+        platformContext()->SetDrawingMode(B_OP_ALPHA);
+    else
+        platformContext()->SetDrawingMode(B_OP_COPY);
+
+    clip(enclosingIntRect(destRect));
+    float currentW = phase.x();
+    BRect bTileRect(tileRect);
+    // FIXME app_server doesn't support B_TILE_BITMAP in DrawBitmap calls. This
+    // would be much faster (#11196)
+    while (currentW < destRect.x() + destRect.width()) {
+        float currentH = phase.y();
+        while (currentH < destRect.y() + destRect.height()) {
+            BRect bDstRect(currentW, currentH, currentW + width - 1, currentH + height - 1);
+            platformContext()->DrawBitmapAsync(pixels, bTileRect, bDstRect);
+            currentH += height;
+        }
+        currentW += width;
+    }
+    restore();
+}
+
+
 void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
 {
     clipPath(path, windRule);
@@ -532,6 +591,29 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
     FloatPoint endPoint = origin + FloatSize(width, 0);
     drawLine(IntPoint(origin), IntPoint(endPoint));
 }
+
+void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleUnderlines)
+{
+    if (paintingDisabled())
+        return;
+
+    if (widths.size() <= 0)
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawLinesForText(point, widths, printing, doubleUnderlines, strokeThickness());
+        return;
+    }
+
+    // TODO would be faster to use BeginLineArray/EndLineArray here
+    // TODO in Cairo, these are not lines, but filled rectangle? Whats the thickness?
+    for (size_t i = 0; i < widths.size(); i += 2)
+    {
+        drawLineForText(FloatPoint(point.x() + widths[i], point.y()),
+            widths[i+1] - widths[i], printing, doubleUnderlines);
+    }
+}
+
 
 void GraphicsContext::updateDocumentMarkerResources()
 {
@@ -706,6 +788,14 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
 
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 {
+    if (paintingDisabled())
+        return AffineTransform();
+
+    if (isRecording()) {
+        WTFLogAlways("GraphicsContext::getCTM() is not yet compatible with recording contexts.");
+        return AffineTransform();
+    }
+
     BAffineTransform t = m_data->view()->Transform();
     	// TODO: we actually need to ues the combined transform here
     AffineTransform matrix(t.sx, t.shy, t.shx, t.sy, t.tx, t.ty);

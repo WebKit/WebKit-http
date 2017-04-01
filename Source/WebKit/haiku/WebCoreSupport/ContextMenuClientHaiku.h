@@ -42,10 +42,6 @@ public:
 
     void contextMenuDestroyed() override;
 
-#if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
-    PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) override;
-#endif
-
     void downloadURL(const URL& url) override;
     void lookUpInDictionary(Frame*) override;
     void speak(const String&) override;
