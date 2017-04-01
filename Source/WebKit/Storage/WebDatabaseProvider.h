@@ -49,6 +49,8 @@ public:
 private:
     explicit WebDatabaseProvider();
 
+    static String indexedDatabaseDirectoryPath();
+
 #if ENABLE(INDEXED_DATABASE)
     virtual RefPtr<WebCore::IDBFactoryBackendInterface> createIDBFactoryBackend() override;
     HashMap<uint64_t, RefPtr<WebCore::InProcessIDBServer>> m_idbServerMap;

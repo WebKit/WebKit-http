@@ -35,6 +35,7 @@
 #include "Gradient.h"
 #include "GraphicsContext.h"
 #include "GtkVersioning.h"
+#include "HTMLInputElement.h"
 #include "HTMLMediaElement.h"
 #include "LocalizedStrings.h"
 #include "MediaControlElements.h"
@@ -157,7 +158,6 @@ enum RenderThemePart {
     ProgressBarTrough,
     ProgressBarProgress,
     ListBox,
-    ListBoxSelection,
     SpinButton,
     SpinButtonUpButton,
     SpinButtonDownButton,
@@ -333,14 +333,6 @@ static GRefPtr<GtkStyleContext> createStyleContext(RenderThemePart themePart, Gt
 #endif
         gtk_widget_path_iter_add_class(path.get(), -1, GTK_STYLE_CLASS_VIEW);
         break;
-    case ListBoxSelection:
-        gtk_widget_path_append_type(path.get(), GTK_TYPE_TREE_VIEW);
-#if GTK_CHECK_VERSION(3, 19, 2)
-        gtk_widget_path_iter_set_object_name(path.get(), -1, "selection");
-#else
-        gtk_widget_path_iter_add_class(path.get(), -1, GTK_STYLE_CLASS_VIEW);
-#endif
-        break;
     case SpinButton:
         gtk_widget_path_append_type(path.get(), GTK_TYPE_SPIN_BUTTON);
 #if GTK_CHECK_VERSION(3, 19, 2)
@@ -384,10 +376,12 @@ static GRefPtr<GdkPixbuf> loadThemedIcon(GtkStyleContext* context, const char* i
     GRefPtr<GIcon> icon = adoptGRef(g_themed_icon_new(iconName));
     unsigned lookupFlags = GTK_ICON_LOOKUP_USE_BUILTIN | GTK_ICON_LOOKUP_FORCE_SIZE | GTK_ICON_LOOKUP_FORCE_SVG;
     GtkTextDirection direction = gtk_style_context_get_direction(context);
+#if GTK_CHECK_VERSION(3, 14, 0)
     if (direction & GTK_TEXT_DIR_LTR)
         lookupFlags |= GTK_ICON_LOOKUP_DIR_LTR;
     else if (direction & GTK_TEXT_DIR_RTL)
         lookupFlags |= GTK_ICON_LOOKUP_DIR_RTL;
+#endif
     int width, height;
     gtk_icon_size_lookup(iconSize, &width, &height);
     GRefPtr<GtkIconInfo> iconInfo = adoptGRef(gtk_icon_theme_lookup_by_gicon(gtk_icon_theme_get_default(), icon.get(), std::min(width, height), static_cast<GtkIconLookupFlags>(lookupFlags)));
@@ -1007,9 +1001,9 @@ bool RenderThemeGtk::paintSearchFieldResultsDecorationPart(const RenderBox& rend
 {
     IntRect iconRect = centerRectVerticallyInParentInputElement(renderObject, rect);
     if (iconRect.isEmpty())
-        return false;
+        return true;
 
-    return paintEntryIcon(EntryIconLeft, "edit-find-symbolic", paintInfo.context(), iconRect, gtkTextDirection(renderObject.style().direction()),
+    return !paintEntryIcon(EntryIconLeft, "edit-find-symbolic", paintInfo.context(), iconRect, gtkTextDirection(renderObject.style().direction()),
         gtkIconStateFlags(this, renderObject));
 }
 
@@ -1022,9 +1016,9 @@ bool RenderThemeGtk::paintSearchFieldCancelButton(const RenderBox& renderObject,
 {
     IntRect iconRect = centerRectVerticallyInParentInputElement(renderObject, rect);
     if (iconRect.isEmpty())
-        return false;
+        return true;
 
-    return paintEntryIcon(EntryIconRight, "edit-clear-symbolic", paintInfo.context(), iconRect, gtkTextDirection(renderObject.style().direction()),
+    return !paintEntryIcon(EntryIconRight, "edit-clear-symbolic", paintInfo.context(), iconRect, gtkTextDirection(renderObject.style().direction()),
         gtkIconStateFlags(this, renderObject));
 }
 
@@ -1288,10 +1282,9 @@ static Color styleColor(RenderThemePart themePart, GtkStateFlags state, StyleCol
 {
     GRefPtr<GtkStyleContext> parentContext;
     RenderThemePart part = themePart;
-    if (state & GTK_STATE_FLAG_SELECTED) {
-        parentContext = createStyleContext(themePart);
-        ASSERT(themePart == Entry || themePart == ListBox);
-        part = themePart == Entry ? EntrySelection : ListBoxSelection;
+    if (themePart == Entry && (state & GTK_STATE_FLAG_SELECTED)) {
+        parentContext = createStyleContext(Entry);
+        part = EntrySelection;
     }
 
     GRefPtr<GtkStyleContext> context = createStyleContext(part, parentContext.get());
@@ -1382,7 +1375,7 @@ bool RenderThemeGtk::paintMediaButton(const RenderObject& renderObject, Graphics
     gtk_style_context_set_state(context.get(), gtkIconStateFlags(this, renderObject));
     static const unsigned mediaIconSize = 16;
     IntRect iconRect(rect.x() + (rect.width() - mediaIconSize) / 2, rect.y() + (rect.height() - mediaIconSize) / 2, mediaIconSize, mediaIconSize);
-    return paintIcon(context.get(), graphicsContext, iconRect, iconName);
+    return !paintIcon(context.get(), graphicsContext, iconRect, iconName);
 }
 
 bool RenderThemeGtk::hasOwnDisabledStateHandlingFor(ControlPart part) const
@@ -1399,10 +1392,10 @@ bool RenderThemeGtk::paintMediaMuteButton(const RenderObject& renderObject, cons
 {
     Node* node = renderObject.node();
     if (!node)
-        return false;
+        return true;
     Node* mediaNode = node->shadowHost();
     if (!is<HTMLMediaElement>(mediaNode))
-        return false;
+        return true;
 
     HTMLMediaElement* mediaElement = downcast<HTMLMediaElement>(mediaNode);
     return paintMediaButton(renderObject, paintInfo.context(), rect, mediaElement->muted() ? "audio-volume-muted-symbolic" : "audio-volume-high-symbolic");
@@ -1412,10 +1405,9 @@ bool RenderThemeGtk::paintMediaPlayButton(const RenderObject& renderObject, cons
 {
     Node* node = renderObject.node();
     if (!node)
-        return false;
-
+        return true;
     if (!nodeHasPseudo(node, "-webkit-media-controls-play-button"))
-        return false;
+        return true;
 
     return paintMediaButton(renderObject, paintInfo.context(), rect, nodeHasClass(node, "paused") ? "media-playback-start-symbolic" : "media-playback-pause-symbolic");
 }
@@ -1450,7 +1442,7 @@ bool RenderThemeGtk::paintMediaSliderTrack(const RenderObject& o, const PaintInf
 {
     HTMLMediaElement* mediaElement = parentMediaElement(o);
     if (!mediaElement)
-        return false;
+        return true;
 
     GraphicsContext& context = paintInfo.context();
     context.save();
@@ -1484,11 +1476,6 @@ bool RenderThemeGtk::paintMediaSliderThumb(const RenderObject& o, const PaintInf
     RenderStyle& style = o.style();
     paintInfo.context().fillRoundedRect(FloatRoundedRect(r, borderRadiiFromStyle(style)), style.visitedDependentColor(CSSPropertyColor));
     return false;
-}
-
-bool RenderThemeGtk::paintMediaVolumeSliderContainer(const RenderObject&, const PaintInfo&, const IntRect&)
-{
-    return true;
 }
 
 bool RenderThemeGtk::paintMediaVolumeSliderTrack(const RenderObject& renderObject, const PaintInfo& paintInfo, const IntRect& rect)
@@ -1589,7 +1576,7 @@ String RenderThemeGtk::fileListNameForWidth(const FileList* fileList, const Font
         return String();
 
     if (fileList->length() > 1)
-        return StringTruncator::rightTruncate(multipleFileUploadText(fileList->length()), width, font, StringTruncator::EnableRoundingHacks);
+        return StringTruncator::rightTruncate(multipleFileUploadText(fileList->length()), width, font);
 
     String string;
     if (fileList->length())
@@ -1599,7 +1586,7 @@ String RenderThemeGtk::fileListNameForWidth(const FileList* fileList, const Font
     else
         string = fileButtonNoFileSelectedLabel();
 
-    return StringTruncator::centerTruncate(string, width, font, StringTruncator::EnableRoundingHacks);
+    return StringTruncator::centerTruncate(string, width, font);
 }
 
 #if ENABLE(VIDEO)

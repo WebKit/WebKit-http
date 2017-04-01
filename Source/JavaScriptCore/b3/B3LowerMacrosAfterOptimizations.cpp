@@ -78,7 +78,7 @@ private:
 
                 Value* mask = nullptr;
                 if (m_value->type() == Double)
-                    mask = m_insertionSet.insert<ConstDoubleValue>(m_index, m_origin, bitwise_cast<double>(~(1l << 63)));
+                    mask = m_insertionSet.insert<ConstDoubleValue>(m_index, m_origin, bitwise_cast<double>(~(1ll << 63)));
                 else if (m_value->type() == Float)
                     mask = m_insertionSet.insert<ConstFloatValue>(m_index, m_origin, bitwise_cast<float>(~(1 << 31)));
                 else
@@ -92,8 +92,9 @@ private:
                     break;
 
                 Value* functionAddress = nullptr;
+                double (*ceilDouble)(double) = ceil;
                 if (m_value->type() == Double)
-                    functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, ceil);
+                    functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, ceilDouble);
                 else if (m_value->type() == Float)
                     functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, ceilf);
                 else

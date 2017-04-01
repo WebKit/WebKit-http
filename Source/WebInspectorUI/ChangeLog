@@ -1,3 +1,722 @@
+2016-01-19  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add protocol version for iOS 9.3
+        https://bugs.webkit.org/show_bug.cgi?id=153256
+        rdar://problem/24247951
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/Legacy/9.3/InspectorBackendCommands.js: Added.
+        * Versions/Inspector-iOS-9.3.json: Added.
+
+2016-01-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: Web Inspector: Hovering linkified node references should show node highlight
+        https://bugs.webkit.org/show_bug.cgi?id=153248
+        <rdar://problem/24245518>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/DOMUtilities.js:
+        Show the complete node highlight details (colors and node info).
+
+2016-01-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebInspector.Object.addEventListener is O(n), make it O(1)
+        https://bugs.webkit.org/show_bug.cgi?id=152422
+        <rdar://problem/24038047>
+
+        Reviewed by Timothy Hatcher.
+
+        Slow addEventListener was the main cause of Console sluggishness[1].
+
+        This patch changes:
+        addEventListener from O(n) to O(1)
+        removeEventListener from O(n) to O(1)
+
+        Now, addEventListener and removeEventListener take <1ms regardless of the
+        number of listeners attached.
+
+        removeEventListener(null, null, thisObject), a special case when all events
+        for thisObject are removed, was improved from O(n^2) to O(n).
+
+        * UserInterface/Base/LinkedList.js: Added.
+        (LinkedList):
+        (LinkedList.prototype.clear):
+        (LinkedList.prototype.get last):
+        (LinkedList.prototype.push):
+        (LinkedList.prototype.remove):
+        (LinkedList.prototype.forEach):
+        (LinkedList.prototype.toArray):
+        (LinkedList.prototype.toJSON):
+        (LinkedListNode):
+        LinkedList ensures O(1) time complexity for push and remove operations.
+
+        * UserInterface/Base/ListMultimap.js: Added.
+        (ListMultimap):
+        (ListMultimap.prototype.get size):
+        (ListMultimap.prototype.add):
+        (ListMultimap.prototype.delete):
+        (ListMultimap.prototype.deleteAll):
+        (ListMultimap.prototype.has):
+        (ListMultimap.prototype.clear):
+        (ListMultimap.prototype.forEach):
+        (ListMultimap.prototype.toArray):
+        (ListMultimap.prototype.toJSON):
+        ListMultimap unsures O(1) time complexity for add, has and delete operations.
+        ListMultimap preserves insertion order by using a LinkedList.
+
+        * UserInterface/Base/Object.js:
+        (WebInspector.Object):
+        (WebInspector.Object.addEventListener):
+        (WebInspector.Object.removeEventListener):
+        (WebInspector.Object.hasEventListeners):
+        (WebInspector.Object.retainedObjectsWithPrototype):
+        (WebInspector.Object.prototype.dispatchEventToListeners):
+        Replace this._listeners[eventType] from array of objects to ListMultimap.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/TestStub.html:
+
+2016-01-19  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: cleanup TreeOutline class and separate styles from NavigationSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=153146
+        <rdar://problem/24213071>
+
+        Reviewed by Timothy Hatcher.
+
+        This patch consolidates and simplifies the tree outline styles that were previously
+        defined across various classes. A new stylesheet, TreeOutline.css, includes all
+        the styles needed to create a basic TreeOutline.
+
+        In addition, certain tree features which were previously controlled by manually
+        toggling class names have been promoted to properties of TreeOutline:
+         - compact: tree elements have reduced vertical spacing. Used by object trees.
+           The compact and large settings are mutually exclusive.
+         - large: tree elements (and their icons) are large. Used by TimelinesSidebarPanel.
+           Previously there existed a `small` class name which was enabled in every
+           case except TimelineSidebarPanel's Timelines tree. Since it was the rule rather
+           than the exception the class has been removed and is now the default style.
+         - disclosureButtons: control the appearance of disclosure buttons.
+         - customIndent: control use of generated style rules.
+
+        * UserInterface/Main.html:
+        New CSS file.
+
+        * UserInterface/Views/ApplicationCacheFrameTreeElement.js:
+        (WebInspector.ApplicationCacheFrameTreeElement): Deleted.
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement): Deleted.
+        * UserInterface/Views/CallFrameTreeElement.js:
+        (WebInspector.CallFrameTreeElement): Deleted.
+        * UserInterface/Views/ContentFlowTreeElement.js:
+        (WebInspector.ContentFlowTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom):
+        (.tree-outline.dom li.hovered:not(.selected) .selection):
+        (.tree-outline.dom li .selection):
+        (.tree-outline.dom li.selected .selection):
+        (.tree-outline.dom li.elements-drag-over .selection):
+        (.tree-outline.dom:focus li.selected .selection):
+        (.tree-outline.dom li.selected > span::after):
+        (.tree-outline.dom:focus li.selected > span::after):
+        (.tree-outline.dom ol):
+        (.tree-outline.dom ol.children):
+        (.tree-outline.dom ol.children.expanded):
+        (.tree-outline.dom li):
+        (.tree-outline.dom li.pseudo-class-enabled > .selection::before):
+        (.tree-outline.dom.single-node li):
+        (.tree-outline.dom:focus li.selected):
+        (.tree-outline.dom:focus li.selected.pseudo-class-enabled > .selection::before):
+        (.tree-outline.dom:focus li.selected *):
+        (.tree-outline.dom li.parent):
+        (.tree-outline.dom li .html-tag.close):
+        (.tree-outline.dom li.parent::before):
+        (.tree-outline.dom:focus li.parent.selected::before):
+        (.tree-outline.dom li.parent.expanded::before):
+        (.tree-outline.dom:focus li.parent.expanded.selected::before):
+        (.tree-outline.dom .html-text-node.large):
+        (.tree-outline.dom .html-pseudo-element):
+        (.tree-outline.dom .html-fragment.shadow):
+        (.showing-find-banner .tree-outline.dom .search-highlight):
+        (.dom-tree-outline): Deleted.
+        (.dom-tree-outline li.hovered:not(.selected) .selection): Deleted.
+        (.dom-tree-outline li .selection): Deleted.
+        (.dom-tree-outline li.selected .selection): Deleted.
+        (.dom-tree-outline li.elements-drag-over .selection): Deleted.
+        (.dom-tree-outline:focus li.selected .selection): Deleted.
+        (.dom-tree-outline li.selected > span::after): Deleted.
+        (.dom-tree-outline:focus li.selected > span::after): Deleted.
+        (.dom-tree-outline ol): Deleted.
+        (.dom-tree-outline ol.children): Deleted.
+        (.dom-tree-outline ol.children.expanded): Deleted.
+        (.dom-tree-outline li): Deleted.
+        (.dom-tree-outline li.pseudo-class-enabled > .selection::before): Deleted.
+        (.dom-tree-outline.single-node li): Deleted.
+        (.dom-tree-outline:focus li.selected): Deleted.
+        (.dom-tree-outline:focus li.selected.pseudo-class-enabled > .selection::before): Deleted.
+        (.dom-tree-outline:focus li.selected *): Deleted.
+        (.dom-tree-outline li.parent): Deleted.
+        (.dom-tree-outline li .html-tag.close): Deleted.
+        (.dom-tree-outline li.parent::before): Deleted.
+        (.dom-tree-outline:focus li.parent.selected::before): Deleted.
+        (.dom-tree-outline li.parent.expanded::before): Deleted.
+        (.dom-tree-outline:focus li.parent.expanded.selected::before): Deleted.
+        (.dom-tree-outline .html-text-node.large): Deleted.
+        (.dom-tree-outline .html-pseudo-element): Deleted.
+        (.dom-tree-outline .html-fragment.shadow): Deleted.
+        (.showing-find-banner .dom-tree-outline .search-highlight): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        Use default TreeOutline DOM element, and simplify element class name.
+
+        * UserInterface/Views/DatabaseTableTreeElement.js:
+        (WebInspector.DatabaseTableTreeElement): Deleted.
+        * UserInterface/Views/DatabaseTreeElement.js:
+        (WebInspector.DatabaseTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/ErrorObjectView.css:
+        (.error-object:not(.expanded) .tree-outline):
+        (.error-object .tree-outline):
+        (.error-object:not(.expanded) .error-object-outline): Deleted.
+        (.error-object-outline): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/ErrorObjectView.js:
+        (WebInspector.ErrorObjectView): Deleted.
+        Removed unused tree outline class name.
+
+        * UserInterface/Views/FolderTreeElement.js:
+        (WebInspector.FolderTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > .tree-outline.dom):
+        (.formatted-node > .tree-outline.dom ol):
+        (.formatted-node > .tree-outline.dom li):
+        (.formatted-node > .tree-outline.dom li.hovered:not(.selected) .selection):
+        (.formatted-node > .dom-tree-outline): Deleted.
+        (.formatted-node > .dom-tree-outline ol): Deleted.
+        (.formatted-node > .dom-tree-outline li): Deleted.
+        (.formatted-node > .dom-tree-outline li.hovered:not(.selected) .selection): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype._updateTitleTooltip):
+        (WebInspector.GeneralTreeElement.prototype.get small): Deleted.
+        (WebInspector.GeneralTreeElement.prototype.set small): Deleted.
+        (WebInspector.GeneralTreeElement.prototype.get twoLine): Deleted.
+        (WebInspector.GeneralTreeElement.prototype.set twoLine): Deleted.
+        Removed properties `small` and `twoLine`. The first is no longer needed as
+        it is now the default tree element style. The second was not being used.
+
+        * UserInterface/Views/IndexedDatabaseObjectStoreIndexTreeElement.js:
+        (WebInspector.IndexedDatabaseObjectStoreIndexTreeElement): Deleted.
+        * UserInterface/Views/IndexedDatabaseObjectStoreTreeElement.js:
+        (WebInspector.IndexedDatabaseObjectStoreTreeElement): Deleted.
+        * UserInterface/Views/IndexedDatabaseTreeElement.js:
+        (WebInspector.IndexedDatabaseTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/IssueTreeElement.css:
+        (.navigation-sidebar-panel-content-tree-outline .item.small.issue .icon): Deleted.
+        No longer needed.
+
+        * UserInterface/Views/IssueTreeElement.js:
+        (WebInspector.IssueTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/LayoutTimelineView.css:
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .tree-outline.layout .item .subtitle):
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .navigation-sidebar-panel-content-tree-outline.layout .item .subtitle): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/LogTreeElement.js:
+        (WebInspector.LogTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.navigation-sidebar-panel-content-tree-outline .children): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .children.expanded): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline.hide-disclosure-buttons > .children): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline > .children.hide-disclosure-buttons > .children): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline:not(.hide-disclosure-buttons) .item:not(.parent) .icon): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline.hide-disclosure-buttons .item.small): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .disclosure-button): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline.hide-disclosure-buttons .item .disclosure-button): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.parent .disclosure-button): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected .disclosure-button): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.expanded .disclosure-button): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected.expanded .disclosure-button): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .icon): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .status): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .status:empty): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.selected): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected): Deleted.
+        (body.window-inactive .navigation-sidebar-panel-content-tree-outline .item.selected): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .titles): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .highlighted): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .titles.no-subtitle): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .title::after): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .subtitle): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected .subtitle): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .subtitle:empty): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small.two-line): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small .icon): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small .status): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small .status .indeterminate-progress-spinner): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small .titles): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small.two-line .status): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small.two-line .titles): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small.two-line .titles.no-subtitle): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small .subtitle): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small.two-line .icon): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small:not(.two-line) .title::after): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small:not(.two-line) .subtitle::before): Deleted.
+        Generic tree outline styles removed, cleaned up, and relocated to TreeOutline.css.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        Removed static property HideDisclosureButtonsStyleClassName, which is now
+        encapsulated by TreeOutline.
+        (WebInspector.NavigationSidebarPanel.prototype.createContentTreeOutline):
+        Use default TreeOutline DOM element instead of creating it.
+        (WebInspector.NavigationSidebarPanel): Deleted.
+        Remove call to generate style rules.
+        (WebInspector.NavigationSidebarPanel.prototype._generateStyleRulesIfNeeded): Deleted.
+        Moved to TreeOutline.js.
+
+        * UserInterface/Views/NetworkSidebarPanel.css:
+        (.sidebar > .panel.navigation.network.network-grid-content-view-showing .tree-outline.network-grid .item .subtitle):
+        (.sidebar > .panel.navigation.network > .content > .tree-outline):
+        (.sidebar > .panel.navigation.network.network-grid-content-view-showing > .content > .tree-outline):
+        (.sidebar > .panel.navigation.network.network-grid-content-view-showing .navigation-sidebar-panel-content-tree-outline.network-grid .item .subtitle): Deleted.
+        (.sidebar > .panel.navigation.network > .content > .navigation-sidebar-panel-content-tree-outline): Deleted.
+        (.sidebar > .panel.navigation.network.network-grid-content-view-showing > .content > .navigation-sidebar-panel-content-tree-outline): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel):
+        Disable tree outline disclosure buttons.
+
+        * UserInterface/Views/NetworkTimelineView.css:
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .tree-outline.network .item .subtitle):
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .navigation-sidebar-panel-content-tree-outline.network .item .subtitle): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        Disable tree outline disclosure buttons.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.object-tree-array-index .index-value .object-tree .tree-outline.object):
+        (.object-tree-array-index .index-value .formatted-node .tree-outline.dom):
+        (.object-tree-array-index .index-value .object-tree .object-tree-outline): Deleted.
+        (.object-tree-array-index .index-value .formatted-node .dom-tree-outline): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.tree-outline .item.object-tree-property):
+        (.item.object-tree-property.prototype-property):
+        (.item.object-tree-property.prototype-property + ol):
+        (.object-tree-property): Deleted.
+        (.object-tree-property > .titles): Deleted.
+        (.object-tree-property > .disclosure-button): Deleted.
+        (.object-tree-property.parent > .disclosure-button): Deleted.
+        (.object-tree-property.parent.expanded > .disclosure-button): Deleted.
+        (.object-tree-property > .icon): Deleted.
+        (.object-tree-property.prototype-property): Deleted.
+        (.object-tree-property.prototype-property + ol): Deleted.
+        Updated selectors with new tree outline class names, removed styles which
+        are now provided by TreeOutline.css.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree .tree-outline.object):
+        (.object-tree.expanded > .tree-outline.object):
+        (.tree-outline.object):
+        (.object-tree.properties-only .tree-outline.object):
+        (.tree-outline.object li):
+        (.tree-outline.object ol):
+        (.tree-outline.object ol.expanded):
+        (.tree-outline.object li .empty-message):
+        (.object-tree .object-tree-outline): Deleted.
+        (.object-tree.expanded > .object-tree-outline): Deleted.
+        (.object-tree-outline): Deleted.
+        (.object-tree.properties-only .object-tree-outline): Deleted.
+        (.object-tree-outline li): Deleted.
+        (.object-tree-outline ol): Deleted.
+        (.object-tree-outline ol.expanded): Deleted.
+        (.object-tree-outline li .empty-message): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView):
+        Use default TreeOutline DOM element, and simplify element class name.
+        Enable custom indent (disables generated style rules).
+
+        * UserInterface/Views/ProfileNodeTreeElement.js:
+        (WebInspector.ProfileNodeTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/RenderingFrameTimelineView.css:
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .tree-outline.rendering-frame .item:not(.paint-record):not(.layout-record) .subtitle):
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .navigation-sidebar-panel-content-tree-outline.rendering-frame .item:not(.paint-record):not(.layout-record) .subtitle): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        Disable tree outline disclosure buttons.
+        (WebInspector.ResourceSidebarPanel.prototype._extraDomainsActivated):
+        Enable tree outline disclosure buttons.
+
+        * UserInterface/Views/ScriptTimelineView.css:
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .tree-outline.script .item .subtitle):
+        (.sidebar > .panel.navigation.timeline:not(.timeline-recording-content-view-showing) .tree-outline.script .item .alternate-subtitle):
+        (.tree-outline .item .alternate-subtitle):
+        (.tree-outline:matches(:focus, .force-focus) .item.selected .alternate-subtitle):
+        (.tree-outline .item.small:not(.two-line) .alternate-subtitle::before):
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .navigation-sidebar-panel-content-tree-outline.script .item .subtitle): Deleted.
+        (.sidebar > .panel.navigation.timeline:not(.timeline-recording-content-view-showing) .navigation-sidebar-panel-content-tree-outline.script .item .alternate-subtitle): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item .alternate-subtitle): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected .alternate-subtitle): Deleted.
+        (.navigation-sidebar-panel-content-tree-outline .item.small:not(.two-line) .alternate-subtitle::before): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement): Deleted.
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        (WebInspector.SourceCodeTreeElement): Deleted.
+        * UserInterface/Views/StorageTreeElement.js:
+        (WebInspector.StorageTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/TimelineDataGrid.css:
+        (.tree-outline.timeline-data-grid .item:hover):
+        (.tree-outline.timeline-data-grid .item:hover .subtitle):
+        (.timeline-data-grid-tree-outline): Deleted.
+        (.timeline-data-grid-tree-outline .item): Deleted.
+        (.timeline-data-grid-tree-outline .item .status): Deleted.
+        (.timeline-data-grid-tree-outline .item .icon): Deleted.
+        (.timeline-data-grid-tree-outline .item:hover): Deleted.
+        (.timeline-data-grid-tree-outline .item .titles): Deleted.
+        (.timeline-data-grid-tree-outline .item .title::after): Deleted.
+        (.timeline-data-grid-tree-outline .item .subtitle): Deleted.
+        (.timeline-data-grid-tree-outline .item:hover .subtitle): Deleted.
+        (.timeline-data-grid-tree-outline .item .subtitle:empty): Deleted.
+        (.timeline-data-grid-tree-outline .item.small): Deleted.
+        (.timeline-data-grid-tree-outline .item.small .icon): Deleted.
+        (.timeline-data-grid-tree-outline .item.small .status): Deleted.
+        (.timeline-data-grid-tree-outline .item.small .titles): Deleted.
+        (.timeline-data-grid-tree-outline .item.small .subtitle): Deleted.
+        (.timeline-data-grid-tree-outline .item.small:not(.two-line) .title::after): Deleted.
+        (.timeline-data-grid-tree-outline .item.small:not(.two-line) .subtitle::before): Deleted.
+        Updated selectors with new tree outline class names, removed styles which
+        are now provided by TreeOutline.css.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._createPopoverContent):
+        Use default TreeOutline DOM element, and simplify element class name.
+
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .timelines-content .close-button): Deleted.
+        Removed styles which are now provided by TreeOutline.css.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        Disable tree outline disclosure buttons, enable large tree style.
+
+        * UserInterface/Views/TimelineView.css:
+        (.panel.navigation.timeline > .content > .tree-outline):
+        (.panel.navigation.timeline.timeline-recording-content-view-showing > .content > .tree-outline):
+        (.panel.navigation.timeline > .content > .navigation-sidebar-panel-content-tree-outline): Deleted.
+        (.panel.navigation.timeline.timeline-recording-content-view-showing > .content > .navigation-sidebar-panel-content-tree-outline): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/TreeOutline.css: Added.
+        (.tree-outline .children):
+        (.tree-outline .children.expanded):
+        (.tree-outline .item):
+        (.tree-outline.compact .item):
+        (.tree-outline.large .item):
+        (.tree-outline.hide-disclosure-buttons > .children):
+        (.tree-outline > .children.hide-disclosure-buttons > .children):
+        (.tree-outline:not(.hide-disclosure-buttons) .item:not(.parent) .icon):
+        (.tree-outline .item .disclosure-button):
+        (.tree-outline.hide-disclosure-buttons .item .disclosure-button):
+        (.tree-outline .item.parent .disclosure-button):
+        (.tree-outline:matches(:focus, .force-focus) .item.selected .disclosure-button):
+        (.tree-outline .item.expanded .disclosure-button):
+        (.tree-outline:matches(:focus, .force-focus) .item.selected.expanded .disclosure-button):
+        (.tree-outline .item .icon):
+        (.tree-outline.compact .item .icon):
+        (.tree-outline.large .item .icon):
+        (.tree-outline .item .status):
+        (.tree-outline.large .item .status):
+        (.tree-outline .item .status:empty):
+        (.tree-outline .item.selected):
+        (.tree-outline:matches(:focus, .force-focus) .item.selected):
+        (body.window-inactive .tree-outline .item.selected):
+        (.tree-outline .item .titles):
+        (.tree-outline.compact .item .titles):
+        (.tree-outline.large .item .titles):
+        (.tree-outline .item .highlighted):
+        (.tree-outline.large .item .titles.no-subtitle):
+        (.tree-outline .item .title::after):
+        (.tree-outline .item .subtitle):
+        (.tree-outline.large .item .subtitle):
+        (.tree-outline:matches(:focus, .force-focus) .item.selected .subtitle):
+        (.tree-outline .item .subtitle:empty):
+        (.tree-outline:not(.large) .item .status .indeterminate-progress-spinner):
+        (.tree-outline .item .subtitle::before):
+        Relocated tree outlines styles from NavigationSidebarPanel.css.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline):
+        (WebInspector.TreeOutline.prototype.get compact):
+        (WebInspector.TreeOutline.prototype.set compact):
+        (WebInspector.TreeOutline.prototype.get large):
+        (WebInspector.TreeOutline.prototype.set large):
+        (WebInspector.TreeOutline.prototype.get disclosureButtons):
+        (WebInspector.TreeOutline.prototype.set disclosureButtons):
+        (WebInspector.TreeOutline.prototype.get customIndent):
+        (WebInspector.TreeOutline.prototype.set customIndent):
+        Added properties for tree element appearance and indentation
+        behavior, so clients don't need to manually toggle style classes.
+        (WebInspector.TreeOutline._generateStyleRulesIfNeeded):
+        Relocated from NavigationSidebarPanel.js.
+
+        * UserInterface/Views/TypeTreeElement.js:
+        (WebInspector.TypeTreeElement): Deleted.
+        Removed call to obsolete TreeOutline.prototype.small setter.
+
+        * UserInterface/Views/TypeTreeView.css:
+        (.tree-outline.type):
+        (.tree-outline.type li):
+        (.tree-outline.type ol):
+        (.tree-outline.type ol.expanded):
+        (.tree-outline.type li .empty-message):
+        (.type-tree-outline): Deleted.
+        (.type-tree-outline li): Deleted.
+        (.type-tree-outline ol): Deleted.
+        (.type-tree-outline ol.expanded): Deleted.
+        (.type-tree-outline li .empty-message): Deleted.
+        Updated selectors with new tree outline class names.
+
+        * UserInterface/Views/TypeTreeView.js:
+        (WebInspector.TypeTreeView):
+        Use default TreeOutline DOM element, and simplify element class name.
+
+2016-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inspector should use the last sourceURL / sourceMappingURL directive
+        https://bugs.webkit.org/show_bug.cgi?id=153072
+        <rdar://problem/24168312>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        Prepend instead of append the sourceURL so the provided string
+        can include a sourceURL and override it. Such as manually
+        evaluating a script through the quick console with a sourceURL.
+
+        * UserInterface/Models/SourceMapResource.js:
+        Fix an incorrectly named property.
+
+2016-01-13  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add support for the existing GradientEditor in the CSS Rules sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=153004
+
+        Reviewed by Timothy Hatcher.
+
+        Both the Visual sidebar and Resource view have editors for CSS gradient
+        values, but the Rules sidebar instead only adds editors for basic color
+        values. Instead of duplicating the code for gradient swatches, existing
+        code will be used to give this same functionality to the Rules sidebar.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/Gradient.js:
+        (WebInspector.Gradient):
+        (WebInspector.Gradient.fromString):
+        (WebInspector.Gradient.stopsWithComponents):
+        (WebInspector.Gradient.prototype.copy):
+        (WebInspector.Gradient.prototype.toString):
+        Refactored WebInspector.Gradient into its own class.
+
+        (WebInspector.LinearGradient):
+        (WebInspector.LinearGradient.prototype.toString):
+        Now uses WebInspector.Gradient inheritance and methods.
+
+        (WebInspector.RadialGradient):
+        (WebInspector.RadialGradient.prototype.toString):
+        Now uses WebInspector.Gradient inheritance and methods.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        Use InlineSwatch.css values instead.
+
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker): Deleted.
+        (@media (-webkit-max-device-pixel-ratio: 1)): Deleted.
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:hover): Deleted.
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:active): Deleted.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.didDismissPopover): Deleted.
+        Removed unused popover member variable.
+
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._contentChanged):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._updateTextMarkers.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createInlineSwatches.createSwatch):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createInlineSwatches.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createInlineSwatches):
+        Renamed variables for more consistent naming and reimplemented the logic
+        to use the new WebInspector.InlineSwatch methods.  As a result, it was
+        possible to consolidate the 3 different type of swatch functions into a
+        single function.
+
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._commentProperty.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._uncommentRange.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._inlineSwatchValueChanged.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._inlineSwatchValueChanged):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches.createSwatch): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches.update): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createBezierEditors.update): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createBezierEditors): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._colorSwatchColorChanged.update): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._colorSwatchColorChanged): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._cubicBezierMarkerClicked.updateCodeMirror.update): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._cubicBezierMarkerClicked.updateCodeMirror): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._cubicBezierMarkerClicked): Deleted.
+
+        * UserInterface/Views/CodeMirrorTextMarkers.js:
+        (createCodeMirrorColorTextMarkers.matchFunction):
+        Added logic so that if the matched color string is found inside a gradient,
+        it will not have a marker created for it.
+
+        * UserInterface/Views/InlineSwatch.css: Renamed from Source/WebInspectorUI/UserInterface/Views/ColorSwatch.css.
+        Consolidated the various swatch CSS classes into one file.
+
+        (.inline-swatch):
+        (.inline-swatch.bezier):
+        (.inline-swatch.bezier:hover):
+        (.inline-swatch.bezier:active):
+        (@media (-webkit-max-device-pixel-ratio: 1)):
+        (.inline-swatch > span):
+        Ensured that the inner swatch element can not be selected so that the "click"
+        listener on its parent always fires.
+
+        (.inline-swatch:hover > span):
+        (.inline-swatch:active > span):
+        (.inline-swatch.bezier > span):
+
+        * UserInterface/Views/InlineSwatch.js: Renamed from Source/WebInspectorUI/UserInterface/Views/ColorSwatch.js.
+        (WebInspector.InlineSwatch):
+        Now accepts a new first argument to indicate what type of color swatch
+        to create and what functionality it will have.  Currently has options
+        for WebInspector.Color, WebInspector.Gradient, and WebInspector.CubicBezier.
+
+        (WebInspector.InlineSwatch.prototype.get element):
+        (WebInspector.InlineSwatch.prototype.get value):
+        (WebInspector.InlineSwatch.prototype.set value):
+        (WebInspector.InlineSwatch.prototype._fallbackValue):
+        (WebInspector.InlineSwatch.prototype._updateSwatch):
+        (WebInspector.InlineSwatch.prototype._swatchElementClicked):
+        (WebInspector.InlineSwatch.prototype._valueEditorValueDidChange):
+        (WebInspector.InlineSwatch.prototype._handleContextMenuEvent):
+        (WebInspector.InlineSwatch.prototype._getNextValidHEXFormat.hexMatchesCurrentColor):
+        (WebInspector.InlineSwatch.prototype._getNextValidHEXFormat):
+
+        * UserInterface/Views/VisualStyleBackgroundPicker.css:
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container > .inline-swatch.gradient):
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container:not(.gradient-value) > .inline-swatch.gradient):
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container > .inline-swatch.gradient:hover):
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container > .inline-swatch.gradient:active):
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container > .inline-swatch.gradient > span):
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container.gradient-value > .inline-swatch.gradient + .value-input):
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container > .color-swatch): Deleted.
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container:not(.gradient-value) > .color-swatch): Deleted.
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container > .color-swatch:hover): Deleted.
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container > .color-swatch:active): Deleted.
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container > .color-swatch > span): Deleted.
+        (.visual-style-property-container.background-picker > .visual-style-property-value-container.gradient-value > .color-swatch + .value-input): Deleted.
+
+        * UserInterface/Views/VisualStyleBackgroundPicker.js:
+        Removed the specific code for the gradient swatch and moved to using a
+        gradient-type InlineSwatch for gradient values instead.
+
+        (WebInspector.VisualStyleBackgroundPicker):
+        (WebInspector.VisualStyleBackgroundPicker.prototype.set value):
+        (WebInspector.VisualStyleBackgroundPicker.prototype._updateGradient):
+        (WebInspector.VisualStyleBackgroundPicker.prototype._gradientSwatchColorChanged):
+        (WebInspector.VisualStyleBackgroundPicker.prototype._valueInputValueChanged):
+        (WebInspector.VisualStyleBackgroundPicker.prototype._handleKeywordChanged):
+        (WebInspector.VisualStyleBackgroundPicker.prototype._updateGradientSwatch): Deleted.
+        (WebInspector.VisualStyleBackgroundPicker.prototype._gradientSwatchClicked.handleColorPickerToggled): Deleted.
+        (WebInspector.VisualStyleBackgroundPicker.prototype._gradientSwatchClicked): Deleted.
+        (WebInspector.VisualStyleBackgroundPicker.prototype._gradientEditorGradientChanged): Deleted.
+
+        * UserInterface/Views/VisualStyleColorPicker.css:
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .inline-swatch.color):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .inline-swatch.color:hover):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .inline-swatch.color:active):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .inline-swatch.color > span):
+        Add override CSS to ensure that the color-type InlineSwatch displays nicely
+        next to the flexbox style Visual sidebar.
+
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch): Deleted.
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch:hover): Deleted.
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch:active): Deleted.
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch > span): Deleted.
+        Refactored to only use overriding properties of the basic .inline-swatch values.
+
+        * UserInterface/Views/VisualStyleColorPicker.js:
+        (WebInspector.VisualStyleColorPicker):
+        (WebInspector.VisualStyleColorPicker.prototype._colorSwatchColorChanged):
+        (WebInspector.VisualStyleColorPicker.prototype._updateColorSwatch):
+
+        * UserInterface/Views/VisualStyleTimingEditor.css:
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .inline-swatch.bezier):
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container:not(.bezier-value) > .inline-swatch.bezier):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        Add override CSS to ensure that the color-type InlineSwatch displays nicely
+        next to the flexbox style Visual sidebar.
+
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .bezier-editor): Deleted.
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .bezier-editor:hover): Deleted.
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .bezier-editor:active): Deleted.
+        Refactored to only use overriding properties of the basic .inline-swatch values.
+
+        * UserInterface/Views/VisualStyleTimingEditor.js:
+        Removed the specific code for the cubic-bezier swatch and moved to using a
+        cubic-bezier-type InlineSwatch for gradient values instead.
+
+        (WebInspector.VisualStyleTimingEditor):
+        (WebInspector.VisualStyleTimingEditor.prototype.get bezierValue):
+        (WebInspector.VisualStyleTimingEditor.prototype.set bezierValue):
+        (WebInspector.VisualStyleTimingEditor.prototype._setValue):
+        (WebInspector.VisualStyleTimingEditor.prototype._handleKeywordChanged):
+        (WebInspector.VisualStyleTimingEditor.prototype._bezierSwatchValueChanged):
+        (WebInspector.VisualStyleTimingEditor.prototype._bezierMarkerClicked): Deleted.
+
 2016-01-12  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Timeline recording controls should use NavigationBar

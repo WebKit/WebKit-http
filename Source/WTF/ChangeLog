@@ -1,3 +1,334 @@
+2016-01-19  Saam barati  <sbarati@apple.com>
+
+        WTF::Bag should be non-copyable
+        https://bugs.webkit.org/show_bug.cgi?id=153253
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Bag.h:
+        * wtf/SegmentedVector.h:
+        (WTF::SegmentedVector::append):
+        (WTF::SegmentedVector::alloc):
+
+2016-01-19  Enrica Casucci  <enrica@apple.com>
+
+        Add support for DataDetectors in WK (iOS).
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        rdar://problem/22855960
+
+        Reviewed by Tim Horton.
+
+        Adding feature definition for data detection.
+
+        * wtf/FeatureDefines.h:
+
+2016-01-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195300.
+        https://bugs.webkit.org/show_bug.cgi?id=153244
+
+        enrica wants more time to fix Windows (Requested by thorton on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add support for DataDetectors in WK (iOS)."
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        http://trac.webkit.org/changeset/195300
+
+2016-01-19  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r195141.
+
+        Seems to cause crashes on iOS9 64bit
+
+        Reverted changeset:
+
+        "Fragmentation-free allocator for timeless and/or coupled
+        allocations."
+        https://bugs.webkit.org/show_bug.cgi?id=152696
+        http://trac.webkit.org/changeset/195141
+
+2016-01-19  Enrica Casucci  <enrica@apple.com>
+
+        Add support for DataDetectors in WK (iOS).
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        rdar://problem/22855960
+
+        Reviewed by Tim Horton.
+
+        Adding feature definition for data detection.
+
+        * wtf/FeatureDefines.h:
+
+2016-01-17  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL B3 should be just as fast as FTL LLVM on Octane/crypto
+        https://bugs.webkit.org/show_bug.cgi?id=153113
+
+        Reviewed by Saam Barati.
+
+        * wtf/IndexSparseSet.h:
+        (WTF::IndexSparseSet<OverflowHandler>::IndexSparseSet):
+        (WTF::IndexSparseSet<OverflowHandler>::add):
+        (WTF::IndexSparseSet<OverflowHandler>::remove):
+        * wtf/StringPrintStream.h:
+        (WTF::StringPrintStream::length):
+
+2016-01-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Do not build bmalloc when USE_SYSTEM_MALLOC is ON
+        https://bugs.webkit.org/show_bug.cgi?id=153190
+
+        Reviewed by Csaba Osztrogonác.
+
+        Build bmalloc when NOT USE_SYSTEM_MALLOC rather than when NOT WIN32.
+
+        * wtf/CMakeLists.txt:
+
+2016-01-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Add kdebug_trace signposts for a few WebCore operations
+        https://bugs.webkit.org/show_bug.cgi?id=153136
+        rdar://problem/24208487
+
+        Reviewed by Sam Weinig.
+        
+        New header with the reserved WebKit component code, trace point codes, and
+        a stack-based helper that traces scope entry and exit.
+        
+        The available range of trace point codes is arbitrarily segmented into WTF, JSC,
+        WebCore, WebKit and WebKit2.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/SystemTracing.h: Added.
+        (WTF::TraceScope::TraceScope):
+        (WTF::TraceScope::~TraceScope):
+
+2016-01-15  Andreas Kling  <akling@apple.com>
+
+        Fragmentation-free allocator for timeless and/or coupled allocations.
+        <https://webkit.org/b/152696>
+
+        Reviewed by Antti Koivisto.
+
+        Introduce BumpArena, a space-efficient memory allocator for situations where
+        you feel pretty confident betting on allocation lifetimes.
+
+        Basic design:
+
+            - Reserves 128MB range of memory at startup.
+            - Allocates 4kB-aligned blocks of 4kB from VM at a time.
+            - Bump-pointer allocates out of a block until it reaches end.
+            - Each allocation increments the ref-count of its block.
+            - Each deallocation decrements the ref-count of its block.
+            - Transparently falls back to fastMalloc()/fastFree() when needed.
+
+        Interface:
+
+            - BumpArena::create()
+
+                Create your very own BumpArena!
+
+            - BumpArena::allocate(BumpArena* arena, size_t size)
+
+                Allocates 'size' bytes of memory from 'arena'.
+                If 'arena' is null, falls back to fastMalloc().
+
+            - BumpArena::deallocate(void* ptr)
+
+                If 'ptr' is BumpArena allocation, decrements block ref-count.
+                If 'ptr' is FastMalloc allocation, calls fastFree() on it.
+
+            - WTF_MAKE_BUMPARENA_ALLOCATED;
+
+                Macro that gives a class or struct custom operators new and delete
+                for allocation out of BumpArena. Just like WTF_MAKE_FAST_ALLOCATED;
+
+        Note that while the name of this patch says "fragmentation-free allocator"
+        it will only be fragmentation-free when used for appropriate things.
+        This is not meant to be a general-purpose allocator. Only use it for sets of
+        allocations that are known to die roughly at the same time.
+
+        BumpArena will never resume allocating from a block that has been filled,
+        so it's even more important than usual that everything gets deallocated.
+
+        BumpArena redirects allocations to FastMalloc in three cases:
+
+            - When invoked with a null BumpArena*
+            - When allocation request is larger than BumpArena's block size (4kB)
+            - When BumpArena has exhausted all of its pre-reserved VM. (128MB)
+
+        The VM allocator will eagerly return blocks of VM to the kernel by calling
+        madvise(). Average time spent in madvise is around 0.007ms on my box.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BumpArena.cpp: Added.
+        (WTF::BumpArena::Block::capacity):
+        (WTF::BumpArena::Block::arena):
+        (WTF::BumpArena::Block::payloadStart):
+        (WTF::arenas):
+        (WTF::BumpArena::Block::Block):
+        (WTF::BumpArena::Block::~Block):
+        (WTF::BumpArena::Block::ref):
+        (WTF::BlockAllocator::BlockAllocator):
+        (WTF::BlockAllocator::isAllocation):
+        (WTF::blockAllocator):
+        (WTF::BlockAllocator::allocateBlock):
+        (WTF::BlockAllocator::deallocateBlock):
+        (WTF::BumpArena::Block::deref):
+        (WTF::BumpArena::Block::create):
+        (WTF::BumpArena::Block::dump):
+        (WTF::BumpArena::dump):
+        (WTF::BumpArena::create):
+        (WTF::BumpArena::BumpArena):
+        (WTF::BumpArena::~BumpArena):
+        (WTF::BumpArena::allocateSlow):
+        (WTF::BumpArena::allocate):
+        (WTF::BumpArena::deallocate):
+        (WTF::BumpArena::Block::blockFor):
+        (WTF::BumpArena::arenaFor):
+        * wtf/BumpArena.h: Added.
+        * wtf/CMakeLists.txt:
+
+2016-01-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [EFL] WorkQueue methods should be defined inside WTF namespace.
+        https://bugs.webkit.org/show_bug.cgi?id=153097
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/efl/WorkQueueEfl.cpp:
+
+2016-01-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r195035.
+
+        Caused 1-3% PLT regression on iOS
+
+        Reverted changeset:
+
+        "Part 2/2: Stop using USE(CFNETWORK) path on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=142540
+        http://trac.webkit.org/changeset/195035
+
+2016-01-14  David Kilzer  <ddkilzer@apple.com>
+
+        Part 2/2: Stop using USE(CFNETWORK) path on iOS
+        <https://webkit.org/b/142540>
+
+        Original patch by Antti Koivisto <antti@apple.com> on 2015-03-10
+        Reviewed by Chris Dumez.
+
+        * wtf/Platform.h: Turn off USE(CFNETWORK) for PLATFORM(IOS).
+
+2016-01-14  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Remove workarounds for fixed bugs in fmod and pow.
+        https://bugs.webkit.org/show_bug.cgi?id=153071
+
+        Reviewed by Brent Fulgham.
+
+        The bugs have been fixed in the MSVC CRT, and we can remove the workarounds.
+
+        * wtf/MathExtras.h:
+        (wtf_fmod): Deleted.
+        (wtf_pow): Deleted.
+
+2016-01-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194963.
+        https://bugs.webkit.org/show_bug.cgi?id=153079
+
+        This change causes ASan tests to crash and exit early
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Fragmentation-free allocator for timeless and/or coupled
+        allocations."
+        https://bugs.webkit.org/show_bug.cgi?id=152696
+        http://trac.webkit.org/changeset/194963
+
+2016-01-13  Andreas Kling  <akling@apple.com>
+
+        Fragmentation-free allocator for timeless and/or coupled allocations.
+        <https://webkit.org/b/152696>
+
+        Reviewed by Antti Koivisto.
+
+        Introduce BumpArena, a space-efficient memory allocator for situations where
+        you feel pretty confident betting on allocation lifetimes.
+
+        Basic design:
+
+            - Allocates 4kB-aligned blocks of 4kB from bmalloc at a time.
+            - Bump-pointer allocates out of a block until it reaches end.
+            - Each allocation increments the ref-count of its block.
+            - Each deallocation decrements the ref-count of its block.
+
+        Interface:
+
+            - BumpArena::create()
+
+                Create your very own BumpArena!
+
+            - BumpArena::allocate(BumpArena* arena, size_t size)
+
+                Allocates 'size' bytes of memory from 'arena'.
+                If 'arena' is null, allocation comes out of the shared global BumpArena.
+
+            - BumpArena::deallocate(void* ptr)
+
+                Deallocates 'ptr', decrementing the ref-count of its block.
+
+            - WTF_MAKE_BUMPARENA_ALLOCATED;
+
+                Macro that gives a class or struct custom operators new and delete
+                for allocation out of BumpArena. Just like WTF_MAKE_FAST_ALLOCATED;
+
+        Note that while the name of this patch says "fragmentation-free allocator"
+        it will only be fragmentation-free when used for appropriate things.
+        This is not meant to be a general-purpose allocator. Only use it for sets of
+        allocations that are known to die roughly at the same time.
+
+        BumpArena will never resume allocating from a block that has been filled,
+        so it's even more important than usual that everything gets deallocated.
+
+        As noted above, calling allocate() with a null BumpArena will allocate out
+        of a global shared arena. Ideally you're always allocating out of a specific,
+        controlled arena, but there are situations where you may not have one.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BumpArena.cpp: Added.
+        (WTF::BumpArena::Block::defaultCapacity):
+        (WTF::BumpArena::Block::arena):
+        (WTF::BumpArena::Block::payloadStart):
+        (WTF::globalArena):
+        (WTF::arenas):
+        (WTF::BumpArena::Block::Block):
+        (WTF::BumpArena::Block::~Block):
+        (WTF::BumpArena::Block::ref):
+        (WTF::BumpArena::Block::deref):
+        (WTF::BumpArena::Block::create):
+        (WTF::BumpArena::Block::dump):
+        (WTF::BumpArena::dump):
+        (WTF::BumpArena::create):
+        (WTF::BumpArena::BumpArena):
+        (WTF::BumpArena::~BumpArena):
+        (WTF::BumpArena::allocateSlow):
+        (WTF::BumpArena::allocate):
+        (WTF::BumpArena::deallocate):
+        (WTF::BumpArena::Block::blockFor):
+        (WTF::BumpArena::arenaFor):
+        * wtf/BumpArena.h: Added.
+        * wtf/CMakeLists.txt:
+
 2016-01-08  Andy Estes  <aestes@apple.com>
 
         [Content Filtering] Lazily load platform frameworks

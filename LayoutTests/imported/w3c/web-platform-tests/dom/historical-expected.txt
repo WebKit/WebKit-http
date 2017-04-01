@@ -28,15 +28,15 @@ PASS Historical DOM features must be removed: domConfig
 PASS Historical DOM features must be removed: normalizeDocument 
 PASS Historical DOM features must be removed: renameNode 
 FAIL Historical DOM features must be removed: defaultCharset assert_equals: expected (undefined) undefined but got (string) "ISO-8859-1"
-FAIL Historical DOM features must be removed: height assert_equals: expected (undefined) undefined but got (number) 600
-FAIL Historical DOM features must be removed: width assert_equals: expected (undefined) undefined but got (number) 800
+PASS Historical DOM features must be removed: height 
+PASS Historical DOM features must be removed: width 
 PASS DOMImplementation.getFeature() must be nuked. 
 PASS Historical DOM features must be removed: schemaTypeInfo 
 PASS Historical DOM features must be removed: setIdAttribute 
 PASS Historical DOM features must be removed: setIdAttributeNS 
 PASS Historical DOM features must be removed: setIdAttributeNode 
-FAIL DocumentType member must be nuked: entities assert_equals: expected (undefined) undefined but got (object) null
-FAIL DocumentType member must be nuked: notations assert_equals: expected (undefined) undefined but got (object) null
+PASS DocumentType member must be nuked: entities 
+PASS DocumentType member must be nuked: notations 
 FAIL DocumentType member must be nuked: internalSubset assert_equals: expected (undefined) undefined but got (object) null
 PASS Text member must be nuked: isElementContentWhitespace 
 FAIL Text member must be nuked: replaceWholeText assert_equals: expected (undefined) undefined but got (function) function "function replaceWholeText() {

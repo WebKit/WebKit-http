@@ -35,6 +35,7 @@
 #include "AirStackSlot.h"
 #include "B3ArgumentRegValue.h"
 #include "B3BasicBlockInlines.h"
+#include "B3BlockWorklist.h"
 #include "B3CCallValue.h"
 #include "B3CheckSpecial.h"
 #include "B3Commutativity.h"
@@ -99,6 +100,15 @@ public:
             }
         }
 
+        // Figure out which blocks are not rare.
+        m_fastWorklist.push(m_procedure[0]);
+        while (B3::BasicBlock* block = m_fastWorklist.pop()) {
+            for (B3::FrequentedBlock& successor : block->successors()) {
+                if (!successor.isRare())
+                    m_fastWorklist.push(successor.block());
+            }
+        }
+
         m_procedure.resetValueOwners(); // Used by crossesInterference().
 
         // Lower defs before uses on a global level. This is a good heuristic to lock down a
@@ -107,6 +117,8 @@ public:
             m_block = block;
             // Reset some state.
             m_insts.resize(0);
+
+            m_isRare = !m_fastWorklist.saw(block);
 
             if (verbose)
                 dataLog("Lowering Block ", *block, ":\n");
@@ -357,10 +369,6 @@ private:
     // This turns the given operand into an address.
     Arg effectiveAddr(Value* address, int32_t offset, Arg::Width width)
     {
-        // B3 allows any memory operation to have a 32-bit offset. That's not how some architectures
-        // work. We solve this by requiring a just-before-lowering phase that legalizes offsets.
-        // FIXME: Implement such a legalization phase.
-        // https://bugs.webkit.org/show_bug.cgi?id=152530
         ASSERT(Arg::isValidAddrForm(offset, width));
 
         auto fallback = [&] () -> Arg {
@@ -863,6 +871,7 @@ private:
                 arg = tmp(value.value());
                 break;
             case ValueRep::Register:
+                stackmap->earlyClobbered().clear(value.rep().reg());
                 arg = Tmp(value.rep().reg());
                 append(Move, immOrTmp(value.value()), arg);
                 break;
@@ -1552,37 +1561,6 @@ private:
             inverted);
     }
 
-    template<typename BankInfo>
-    Arg marshallCCallArgument(unsigned& argumentCount, unsigned& stackOffset, Value* child)
-    {
-        unsigned argumentIndex = argumentCount++;
-        if (argumentIndex < BankInfo::numberOfArgumentRegisters) {
-            Tmp result = Tmp(BankInfo::toArgumentRegister(argumentIndex));
-            append(relaxedMoveForType(child->type()), immOrTmp(child), result);
-            return result;
-        }
-
-#if CPU(ARM64) && PLATFORM(IOS)
-        // iOS does not follow the ARM64 ABI regarding function calls.
-        // Arguments must be packed.
-        unsigned slotSize = sizeofType(child->type());
-        stackOffset = WTF::roundUpToMultipleOf(slotSize, stackOffset);
-#else
-        unsigned slotSize = sizeof(void*);
-#endif
-        Arg result = Arg::callArg(stackOffset);
-        stackOffset += slotSize;
-        
-        // Put the code for storing the argument before anything else. This significantly eases the
-        // burden on the register allocator. If we could, we'd hoist these stores as far as
-        // possible.
-        // FIXME: Add a phase to hoist stores as high as possible to relieve register pressure.
-        // https://bugs.webkit.org/show_bug.cgi?id=151063
-        m_insts.last().insert(0, createStore(child, result));
-        
-        return result;
-    }
-
     void lower()
     {
         switch (m_value->opcode()) {
@@ -1934,14 +1912,10 @@ private:
             return;
         }
 
-        case CCall: {
+        case B3::CCall: {
             CCallValue* cCall = m_value->as<CCallValue>();
-            Inst inst(Patch, cCall, Arg::special(m_code.cCallSpecial()));
 
-            // This is a bit weird - we have a super intense contract with Arg::CCallSpecial. It might
-            // be better if we factored Air::CCallSpecial out of the Air namespace and made it a B3
-            // thing.
-            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=151045
+            Inst inst(m_isRare ? Air::ColdCCall : Air::CCall, cCall);
 
             // We have a ton of flexibility regarding the callee argument, but currently, we don't
             // use it yet. It gets weird for reasons:
@@ -1954,48 +1928,13 @@ private:
             // FIXME: https://bugs.webkit.org/show_bug.cgi?id=151052
             inst.args.append(tmp(cCall->child(0)));
 
-            // We need to tell Air what registers this defines.
-            inst.args.append(Tmp(GPRInfo::returnValueGPR));
-            inst.args.append(Tmp(GPRInfo::returnValueGPR2));
-            inst.args.append(Tmp(FPRInfo::returnValueFPR));
+            if (cCall->type() != Void)
+                inst.args.append(tmp(cCall));
 
-            // Now marshall the arguments. This is where we implement the C calling convention. After
-            // this, Air does not know what the convention is; it just takes our word for it.
-            unsigned gpArgumentCount = 0;
-            unsigned fpArgumentCount = 0;
-            unsigned stackOffset = 0;
-            for (unsigned i = 1; i < cCall->numChildren(); ++i) {
-                Value* argChild = cCall->child(i);
-                Arg arg;
-                
-                switch (Arg::typeForB3Type(argChild->type())) {
-                case Arg::GP:
-                    arg = marshallCCallArgument<GPRInfo>(gpArgumentCount, stackOffset, argChild);
-                    break;
+            for (unsigned i = 1; i < cCall->numChildren(); ++i)
+                inst.args.append(immOrTmp(cCall->child(i)));
 
-                case Arg::FP:
-                    arg = marshallCCallArgument<FPRInfo>(fpArgumentCount, stackOffset, argChild);
-                    break;
-                }
-
-                if (arg.isTmp())
-                    inst.args.append(arg);
-            }
-            
             m_insts.last().append(WTFMove(inst));
-
-            switch (cCall->type()) {
-            case Void:
-                break;
-            case Int32:
-            case Int64:
-                append(Move, Tmp(GPRInfo::returnValueGPR), tmp(cCall));
-                break;
-            case Float:
-            case Double:
-                append(MoveDouble, Tmp(FPRInfo::returnValueFPR), tmp(cCall));
-                break;
-            }
             return;
         }
 
@@ -2035,6 +1974,9 @@ private:
             }
             
             fillStackmap(inst, patchpointValue, 0);
+            
+            if (patchpointValue->resultConstraint.isReg())
+                patchpointValue->lateClobbered().clear(patchpointValue->resultConstraint.reg());
 
             for (unsigned i = patchpointValue->numGPScratchRegisters; i--;)
                 inst.args.append(m_code.newTmp(Arg::GP));
@@ -2287,11 +2229,13 @@ private:
 
     UseCounts m_useCounts;
     PhiChildren m_phiChildren;
+    BlockWorklist m_fastWorklist;
 
     Vector<Vector<Inst, 4>> m_insts;
     Vector<Inst> m_prologue;
 
     B3::BasicBlock* m_block;
+    bool m_isRare;
     unsigned m_index;
     Value* m_value;
 

@@ -44,6 +44,7 @@
 #include "CompositionEvent.h"
 #include "ContentSecurityPolicy.h"
 #include "CookieJar.h"
+#include "CustomElementDefinitions.h"
 #include "CustomEvent.h"
 #include "DOMImplementation.h"
 #include "DOMNamedFlowCollection.h"
@@ -179,6 +180,7 @@
 #include <inspector/ScriptCallStack.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/SystemTracing.h>
 #include <wtf/TemporaryChange.h>
 #include <wtf/text/StringBuffer.h>
 #include <yarr/RegularExpression.h>
@@ -886,6 +888,9 @@ RefPtr<Element> Document::createElement(const AtomicString& name, ExceptionCode&
         ec = INVALID_CHARACTER_ERR;
         return nullptr;
     }
+
+    if (isHTMLDocument())
+        return HTMLElementFactory::createElement(QualifiedName(nullAtom, name.convertToASCIILowercase(), xhtmlNamespaceURI), *this);
 
     if (isXHTMLDocument())
         return HTMLElementFactory::createElement(QualifiedName(nullAtom, name, xhtmlNamespaceURI), *this);
@@ -1818,6 +1823,8 @@ void Document::recalcStyle(Style::Change change)
     
     if (m_inStyleRecalc)
         return; // Guard against re-entrancy. -dwh
+
+    TraceScope tracingScope(StyleRecalcStart, StyleRecalcEnd);
 
     RenderView::RepaintRegionAccumulator repaintRegionAccumulator(renderView());
     AnimationUpdateBlock animationUpdateBlock(&m_frame->animation());
@@ -4912,7 +4919,7 @@ Document& Document::topDocument() const
 
 RefPtr<Attr> Document::createAttribute(const String& name, ExceptionCode& ec)
 {
-    return createAttributeNS(String(), name, ec, true);
+    return createAttributeNS(String(), isHTMLDocument() ? name.convertToASCIILowercase() : name, ec, true);
 }
 
 RefPtr<Attr> Document::createAttributeNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode& ec, bool shouldIgnoreNamespaceChecks)
@@ -6351,6 +6358,15 @@ unsigned Document::touchEventHandlerCount() const
     return 0;
 #endif
 }
+
+#if ENABLE(CUSTOM_ELEMENTS)
+CustomElementDefinitions& Document::ensureCustomElementDefinitions()
+{
+    if (!m_customElementDefinitions)
+        m_customElementDefinitions = std::make_unique<CustomElementDefinitions>();
+    return *m_customElementDefinitions;
+}
+#endif
 
 LayoutRect Document::absoluteEventHandlerBounds(bool& includesFixedPositionElements)
 {

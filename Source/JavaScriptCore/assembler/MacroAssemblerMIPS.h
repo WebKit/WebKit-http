@@ -55,9 +55,9 @@ public:
     // For storing data loaded from the memory
     static const RegisterID dataTempRegister = MIPSRegisters::t1;
     // For storing address base
-    static const RegisterID addrTempRegister = MIPSRegisters::t2;
+    static const RegisterID addrTempRegister = MIPSRegisters::t7;
     // For storing compare result
-    static const RegisterID cmpTempRegister = MIPSRegisters::t3;
+    static const RegisterID cmpTempRegister = MIPSRegisters::t8;
 
     // FP temp register
     static const FPRegisterID fpTempRegister = MIPSRegisters::f16;
@@ -311,6 +311,15 @@ public:
             move(imm, immTempRegister);
             m_assembler.andInsn(dest, src, immTempRegister);
         }
+    }
+
+    void countLeadingZeros32(RegisterID src, RegisterID dest)
+    {
+#if WTF_MIPS_ISA_AT_LEAST(32)
+        m_assembler.clz(dest, src);
+#else
+        static_assert(false, "CLZ opcode is not available for this ISA");
+#endif
     }
 
     void lshift32(RegisterID shiftAmount, RegisterID dest)
@@ -1244,6 +1253,13 @@ public:
         m_assembler.addiu(MIPSRegisters::sp, MIPSRegisters::sp, 4);
     }
 
+    void popPair(RegisterID dest1, RegisterID dest2)
+    {
+        m_assembler.lw(dest1, MIPSRegisters::sp, 0);
+        m_assembler.lw(dest2, MIPSRegisters::sp, 4);
+        m_assembler.addiu(MIPSRegisters::sp, MIPSRegisters::sp, 8);
+    }
+
     void push(RegisterID src)
     {
         m_assembler.addiu(MIPSRegisters::sp, MIPSRegisters::sp, -4);
@@ -1260,6 +1276,13 @@ public:
     {
         move(imm, immTempRegister);
         push(immTempRegister);
+    }
+
+    void pushPair(RegisterID src1, RegisterID src2)
+    {
+        m_assembler.addiu(MIPSRegisters::sp, MIPSRegisters::sp, -8);
+        m_assembler.sw(src2, MIPSRegisters::sp, 4);
+        m_assembler.sw(src1, MIPSRegisters::sp, 0);
     }
 
     // Register move operations:

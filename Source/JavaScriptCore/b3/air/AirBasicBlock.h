@@ -36,6 +36,7 @@
 
 namespace JSC { namespace B3 { namespace Air {
 
+class BlockInsertionSet;
 class Code;
 class InsertionSet;
 
@@ -78,15 +79,17 @@ public:
     InstList& insts() { return m_insts; }
 
     template<typename Inst>
-    void appendInst(Inst&& inst)
+    Inst& appendInst(Inst&& inst)
     {
         m_insts.append(std::forward<Inst>(inst));
+        return m_insts.last();
     }
 
     template<typename... Arguments>
-    void append(Arguments&&... arguments)
+    Inst& append(Arguments&&... arguments)
     {
         m_insts.append(Inst(std::forward<Arguments>(arguments)...));
+        return m_insts.last();
     }
 
     // The "0" case is the case to which the branch jumps, so the "then" case. The "1" case is the
@@ -124,7 +127,11 @@ public:
     void dump(PrintStream&) const;
     void deepDump(PrintStream&) const;
 
+    void dumpHeader(PrintStream&) const;
+    void dumpFooter(PrintStream&) const;
+
 private:
+    friend class BlockInsertionSet;
     friend class Code;
     friend class InsertionSet;
     

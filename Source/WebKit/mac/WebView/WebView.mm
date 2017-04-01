@@ -1494,16 +1494,6 @@ static NSMutableSet *knownPluginMIMETypes()
     FontCascade::setCodePath(f ? FontCascade::Complex : FontCascade::Auto);
 }
 
-+ (void)_setAllowsRoundingHacks:(BOOL)allowsRoundingHacks
-{
-    TextRun::setAllowsRoundingHacks(allowsRoundingHacks);
-}
-
-+ (BOOL)_allowsRoundingHacks
-{
-    return TextRun::allowsRoundingHacks();
-}
-
 + (BOOL)canCloseAllWebViews
 {
     return DOMWindow::dispatchAllPendingBeforeUnloadEvents();
@@ -6615,6 +6605,10 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 {
 }
 
+- (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock
+{
+}
+
 @end
 #endif // PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
 
@@ -6806,9 +6800,9 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
             }
         }
         else if (object->inherits(JSArray::info())) {
-            DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<JSObject*>, visitedElems, ());
-            if (!visitedElems.contains(object)) {
-                visitedElems.add(object);
+            static NeverDestroyed<HashSet<JSObject*>> visitedElems;
+            if (!visitedElems.get().contains(object)) {
+                visitedElems.get().add(object);
                 
                 JSArray* array = static_cast<JSArray*>(object);
                 aeDesc = [NSAppleEventDescriptor listDescriptor];
@@ -6816,7 +6810,7 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
                 for (unsigned i = 0; i < numItems; ++i)
                     [aeDesc insertDescriptor:aeDescFromJSValue(exec, array->get(exec, i)) atIndex:0];
                 
-                visitedElems.remove(object);
+                visitedElems.get().remove(object);
                 return aeDesc;
             }
         }
@@ -8568,11 +8562,10 @@ bool LayerFlushController::flushLayers()
 
     [self _prepareForDictionaryLookup];
 
-    DictionaryPopupInfo adjustedPopupInfo = dictionaryPopupInfo;
-    adjustedPopupInfo.textIndicator.textBoundingRectInRootViewCoordinates = [self _convertRectFromRootView:adjustedPopupInfo.textIndicator.textBoundingRectInRootViewCoordinates];
-
-    return DictionaryLookup::animationControllerForPopup(adjustedPopupInfo, self, [self](TextIndicator& textIndicator) {
+    return DictionaryLookup::animationControllerForPopup(dictionaryPopupInfo, self, [self](TextIndicator& textIndicator) {
         [self _setTextIndicator:textIndicator withLifetime:TextIndicatorWindowLifetime::Permanent];
+    }, [self](FloatRect rectInRootViewCoordinates) {
+        return [self _convertRectFromRootView:rectInRootViewCoordinates];
     });
 }
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
@@ -8597,7 +8590,7 @@ bool LayerFlushController::flushLayers()
     if (!_private->textIndicatorWindow)
         _private->textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    NSRect textBoundingRectInWindowCoordinates = [self convertRect:textIndicator.textBoundingRectInRootViewCoordinates() toView:nil];
+    NSRect textBoundingRectInWindowCoordinates = [self convertRect:[self _convertRectFromRootView:textIndicator.textBoundingRectInRootViewCoordinates()] toView:nil];
     NSRect textBoundingRectInScreenCoordinates = [self.window convertRectToScreen:textBoundingRectInWindowCoordinates];
     _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(textBoundingRectInScreenCoordinates), lifetime);
 }
@@ -8633,11 +8626,10 @@ bool LayerFlushController::flushLayers()
 
     [self _prepareForDictionaryLookup];
 
-    DictionaryPopupInfo adjustedPopupInfo = dictionaryPopupInfo;
-    adjustedPopupInfo.textIndicator.textBoundingRectInRootViewCoordinates = [self _convertRectFromRootView:adjustedPopupInfo.textIndicator.textBoundingRectInRootViewCoordinates];
-
-    DictionaryLookup::showPopup(adjustedPopupInfo, self, [self](TextIndicator& textIndicator) {
+    DictionaryLookup::showPopup(dictionaryPopupInfo, self, [self](TextIndicator& textIndicator) {
         [self _setTextIndicator:textIndicator withLifetime:TextIndicatorWindowLifetime::Permanent];
+    }, [self](FloatRect rectInRootViewCoordinates) {
+        return [self _convertRectFromRootView:rectInRootViewCoordinates];
     });
 }
 

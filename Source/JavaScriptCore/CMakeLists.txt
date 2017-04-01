@@ -73,8 +73,12 @@ set(JavaScriptCore_SOURCES
     b3/air/AirArg.cpp
     b3/air/AirBasicBlock.cpp
     b3/air/AirCCallSpecial.cpp
+    b3/air/AirCCallingConvention.cpp
     b3/air/AirCode.cpp
+    b3/air/AirCustom.cpp
     b3/air/AirEliminateDeadCode.cpp
+    b3/air/AirEmitShuffle.cpp
+    b3/air/AirFixObviousSpills.cpp
     b3/air/AirFixPartialRegisterStalls.cpp
     b3/air/AirGenerate.cpp
     b3/air/AirGenerated.cpp
@@ -82,6 +86,9 @@ set(JavaScriptCore_SOURCES
     b3/air/AirInsertionSet.cpp
     b3/air/AirInst.cpp
     b3/air/AirIteratedRegisterCoalescing.cpp
+    b3/air/AirLogRegisterPressure.cpp
+    b3/air/AirLowerAfterRegAlloc.cpp
+    b3/air/AirLowerMacros.cpp
     b3/air/AirOptimizeBlockOrder.cpp
     b3/air/AirPhaseScope.cpp
     b3/air/AirRegisterPriority.cpp
@@ -115,6 +122,7 @@ set(JavaScriptCore_SOURCES
     b3/B3Generate.cpp
     b3/B3HeapRange.cpp
     b3/B3InsertionSet.cpp
+    b3/B3LegalizeMemoryOffsets.cpp
     b3/B3LowerMacros.cpp
     b3/B3LowerMacrosAfterOptimizations.cpp
     b3/B3LowerToAir.cpp
@@ -972,10 +980,6 @@ list(APPEND JavaScriptCore_SOURCES
 
 
 if (ENABLE_FTL_JIT)
-    if (NOT LLVM_STATIC_LIBRARIES)
-        message(FATAL_ERROR "No LLVM libs found, but FTL is enabled. Stopping build.")
-    endif ()
-
     # Configure llvmForJSC.so
     set(llvmForJSC_SOURCES
         llvm/library/LLVMAnchor.cpp
@@ -989,16 +993,8 @@ if (ENABLE_FTL_JIT)
 
     add_custom_command(
         OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h
-        DEPENDS ${LLVM_STATIC_LIBRARIES}
         COMMAND ${CMAKE_COMMAND} -E touch ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h
         VERBATIM)
-
-    WEBKIT_WRAP_SOURCELIST(${llvmForJSC_SOURCES})
-    add_library(llvmForJSC SHARED ${llvmForJSC_SOURCES} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h)
-    target_link_libraries(llvmForJSC ${LLVM_STATIC_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES})
-    if (NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
-        ADD_TARGET_PROPERTIES(llvmForJSC LINK_FLAGS "-Wl,--version-script=${JAVASCRIPTCORE_DIR}/llvm/library/libllvmForJSC.version")
-    endif ()
 
     # Added extra items for JavaScriptCore
     list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -1234,6 +1230,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayIteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/DatePrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/FunctionPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/GeneratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/GlobalObject.js
@@ -1345,6 +1342,25 @@ endif ()
 
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
+
+if (ENABLE_FTL_JIT)
+    if (NOT llvmForJSC_LIBRARIES)
+        set(llvmForJSC_LIBRARIES ${LLVM_STATIC_LIBRARIES})
+    endif ()
+    if (NOT llvmForJSC_LIBRARIES)
+        message(FATAL_ERROR "No LLVM libs found, but FTL is enabled. Stopping build.")
+    endif ()
+
+    WEBKIT_WRAP_SOURCELIST(${llvmForJSC_SOURCES})
+    add_library(llvmForJSC SHARED ${llvmForJSC_SOURCES} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h)
+    target_link_libraries(llvmForJSC ${llvmForJSC_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES})
+    if (NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
+        ADD_TARGET_PROPERTIES(llvmForJSC LINK_FLAGS "-Wl,--version-script=${JAVASCRIPTCORE_DIR}/llvm/library/libllvmForJSC.version")
+    endif ()
+    if (llvmForJSC_INSTALL_DIR)
+        install(TARGETS llvmForJSC DESTINATION "${llvmForJSC_INSTALL_DIR}")
+    endif ()
+endif ()
 
 WEBKIT_CREATE_FORWARDING_HEADERS(JavaScriptCore DIRECTORIES ${JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES} FILES ${JavaScriptCore_FORWARDING_HEADERS_FILES})
 

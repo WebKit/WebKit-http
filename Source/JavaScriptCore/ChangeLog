@@ -1,3 +1,1328 @@
+2016-01-19  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Date.prototype.toLocaleDateString in ECMA-402
+        https://bugs.webkit.org/show_bug.cgi?id=147612
+
+        Reviewed by Benjamin Poulain.
+
+        Implement toLocaleDateString in builtin JavaScript. Remove comments with
+        spec steps, and instead link to the new HTML version of the spec.
+
+        Avoids creating an extra empty object in the prototype chain of the options
+        object in ToDateTimeOptions. The version used in toLocaleString was updated
+        to match as well.
+
+        * builtins/DatePrototype.js:
+        (toLocaleString.toDateTimeOptionsAnyAll):
+        (toLocaleString):
+        (toLocaleDateString.toDateTimeOptionsDateDate):
+        (toLocaleDateString):
+        * runtime/DatePrototype.cpp:
+        (JSC::DatePrototype::finishCreation):
+
+2016-01-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] fixSpillSlotZDef() crashes on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=153246
+
+        Reviewed by Geoffrey Garen.
+
+        Moving an immediate to memory is not a valid instruction on ARM64.
+        This patch adds a small workaround for this specific case: an instruction
+        to zero a chunk of memory.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::storeZero32):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::storeZero32):
+        * b3/air/AirFixSpillSlotZDef.h:
+        (JSC::B3::Air::fixSpillSlotZDef):
+        * b3/air/AirOpcode.opcodes:
+
+2016-01-19  Enrica Casucci  <enrica@apple.com>
+
+        Add support for DataDetectors in WK (iOS).
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        rdar://problem/22855960
+
+        Reviewed by Tim Horton.
+
+        Adding feature definition for data detection.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-01-19  Per Arne Vollan  <peavo@outlook.com>
+
+        [B3][Win64] Compile and warning fixes.
+        https://bugs.webkit.org/show_bug.cgi?id=153234
+
+        Reviewed by Alex Christensen.
+
+        The size of 'long' is 4 bytes on Win64. We can use 'long long' instead,
+        when we want the size to be 8 bytes.
+
+        * b3/B3LowerMacrosAfterOptimizations.cpp:
+        * b3/B3ReduceStrength.cpp:
+
+2016-01-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Fix the B3 build after r195159
+        https://bugs.webkit.org/show_bug.cgi?id=153232
+
+        Reviewed by Yusuke Suzuki.
+
+        * CMakeLists.txt:
+
+2016-01-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195300.
+        https://bugs.webkit.org/show_bug.cgi?id=153244
+
+        enrica wants more time to fix Windows (Requested by thorton on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add support for DataDetectors in WK (iOS)."
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        http://trac.webkit.org/changeset/195300
+
+2016-01-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Reconsider B3's constant motion policy
+        https://bugs.webkit.org/show_bug.cgi?id=152202
+
+        Reviewed by Geoffrey Garen.
+
+        This changes moveConstants() to hoist constants. This is a speed-up on things like mandreel.
+        It has a generally positive impact on the Octane score, but it's within margin of error.
+
+        This also changes IRC to make it a bit more likely to spill constants. We don't want it to
+        spill them too much, because we can't rely on fixObviousSpills() to always replace a load of
+        a constant from the stack with the constant itself, especially in case of instructions that
+        need an extra register to materialize the immediate.
+
+        Also fixed DFG graph dumping to print a bit less things. It was trying to print the results of
+        constant property inference, and this sometimes caused crashes when you dumped the graph at an
+        inopportune time.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3MoveConstants.cpp:
+        * b3/air/AirArg.h:
+        * b3/air/AirArgInlines.h: Added.
+        (JSC::B3::Air::ArgThingHelper<Tmp>::is):
+        (JSC::B3::Air::ArgThingHelper<Tmp>::as):
+        (JSC::B3::Air::ArgThingHelper<Tmp>::forEachFast):
+        (JSC::B3::Air::ArgThingHelper<Tmp>::forEach):
+        (JSC::B3::Air::ArgThingHelper<Arg>::is):
+        (JSC::B3::Air::ArgThingHelper<Arg>::as):
+        (JSC::B3::Air::ArgThingHelper<Arg>::forEachFast):
+        (JSC::B3::Air::ArgThingHelper<Arg>::forEach):
+        (JSC::B3::Air::Arg::is):
+        (JSC::B3::Air::Arg::as):
+        (JSC::B3::Air::Arg::forEachFast):
+        (JSC::B3::Air::Arg::forEach):
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        * b3/air/AirUseCounts.h:
+        (JSC::B3::Air::UseCounts::UseCounts):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+
+2016-01-19  Enrica Casucci  <enrica@apple.com>
+
+        Add support for DataDetectors in WK (iOS).
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        rdar://problem/22855960
+
+        Reviewed by Tim Horton.
+
+        Adding feature definition.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-01-17  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL B3 should be just as fast as FTL LLVM on Octane/crypto
+        https://bugs.webkit.org/show_bug.cgi?id=153113
+
+        Reviewed by Saam Barati.
+
+        This is the result of a hacking rampage to close the gap between FTL B3 and FTL LLVM on
+        Octane/crypto. It was a very successful rampage.
+
+        The biggest change in this patch is the introduction of a phase called fixObviousSpills()
+        that fixes patterns like:
+
+        Store register to stack slot and then use stack slot:
+            Move %rcx, (stack42)
+            Foo use:(stack42) // replace (stack42) with %rcx here.
+
+        Load stack slot into register and then use stack slot:
+            Move (stack42), %rcx
+            Foo use:(stack42) // replace (stack42) with %rcx here.
+
+        Store constant into stack slot and then use stack slot:
+            Move $42, %rcx
+            Move %rcx, (stack42)
+            Bar def:%rcx // %rcx isn't available anymore, but we still know that (stack42) is $42
+            Foo use:(stack42) // replace (stack42) with $42 here.
+
+        This phases does these fixups by doing a global forward flow that propagates sets of
+        must-aliases.
+
+        Also added a phase to report register pressure. It pretty-prints code alongside the set of
+        in-use registers above each instruction. Using this phase, I found that our register
+        allocator is actually doing a pretty awesome job. I had previously feared that we'd have to
+        make substantial changes to register allocation. I don't have such a fear anymore, at least
+        for Octane/crypto. In the future, we can check how the regalloc is performing just by
+        enabling logAirRegisterPressure.
+
+        Also fixed some FTL codegen pathologies. We were using bitOr where we meant to use a
+        conditional or. LLVM likes to canonicalize boolean expressions this way. B3, on the other
+        hand, doesn't do this canonicalization and doesn't have logic to decompose it into sequences
+        of branches.
+
+        Also added strength reductions for checked arithmetic. It turns out that LLVM learned how to
+        reduce checked multiply to unchecked multiply in some obvious cases that our existing DFG
+        optimizations lacked. Ideally, our DFG integer range optimization phase would cover this. But
+        the cases of interest were dead simple - the incoming values to the CheckMul were obviously
+        too small to cause overflow. I added such reasoning to B3's strength reduction.
+
+        Finally, this fixes some bugs with how we were handling subwidth spill slots. The register
+        allocator was making two mistakes. First, it might cause a Width64 def or use of a 4-byte
+        spill slot. In that case, it would extend the size of the spill slot to ensure that the use
+        or def is safe. Second, it emulates ZDef on Tmp behavior by emitting a Move32 to initialize
+        the high bits of a spill slot. But this is unsound because of the liveness semantics of spill
+        slots. They cannot have more than one def to initialize their value. I fixed that by making
+        allocateStack() be the thing that fixes ZDefs. That's a change to ZDef semantics: now, ZDef
+        on an anonymous stack slot means that the high bits are zero-filled. I wasn't able to
+        construct a test for this. It might be a hypothetical bug, but still, I like how this
+        simplifies the register allocator.
+
+        This is a ~0.7% speed-up on Octane.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::hiddenBranch):
+        (JSC::B3::CheckSpecial::forEachArg):
+        (JSC::B3::CheckSpecial::commitHiddenBranch): Deleted.
+        * b3/B3CheckSpecial.h:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::fillStackmap):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3StackmapValue.h:
+        * b3/air/AirAllocateStack.cpp:
+        (JSC::B3::Air::allocateStack):
+        * b3/air/AirAllocateStack.h:
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::callArg):
+        (JSC::B3::Air::Arg::stackAddr):
+        (JSC::B3::Air::Arg::isValidScale):
+        * b3/air/AirBasicBlock.cpp:
+        (JSC::B3::Air::BasicBlock::deepDump):
+        (JSC::B3::Air::BasicBlock::dumpHeader):
+        (JSC::B3::Air::BasicBlock::dumpFooter):
+        * b3/air/AirBasicBlock.h:
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::CCallSpecial):
+        (JSC::B3::Air::CCallSpecial::~CCallSpecial):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::lastPhaseName):
+        (JSC::B3::Air::Code::setEnableRCRS):
+        (JSC::B3::Air::Code::enableRCRS):
+        * b3/air/AirCustom.cpp:
+        (JSC::B3::Air::PatchCustom::isValidForm):
+        (JSC::B3::Air::CCallCustom::isValidForm):
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::isValidFormStatic):
+        (JSC::B3::Air::PatchCustom::admitsStack):
+        (JSC::B3::Air::PatchCustom::isValidForm): Deleted.
+        * b3/air/AirEmitShuffle.cpp:
+        (JSC::B3::Air::ShufflePair::dump):
+        (JSC::B3::Air::createShuffle):
+        (JSC::B3::Air::emitShuffle):
+        * b3/air/AirEmitShuffle.h:
+        * b3/air/AirFixObviousSpills.cpp: Added.
+        (JSC::B3::Air::fixObviousSpills):
+        * b3/air/AirFixObviousSpills.h: Added.
+        * b3/air/AirFixSpillSlotZDef.h: Removed.
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::prepareForGeneration):
+        (JSC::B3::Air::generate):
+        * b3/air/AirHandleCalleeSaves.cpp:
+        (JSC::B3::Air::handleCalleeSaves):
+        * b3/air/AirInst.h:
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::reportUsedRegisters):
+        (JSC::B3::Air::Inst::admitsStack):
+        (JSC::B3::Air::isShiftValid):
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        * b3/air/AirLiveness.h:
+        (JSC::B3::Air::AbstractLiveness::AbstractLiveness):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::Iterable::begin):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::Iterable::end):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::Iterable::contains):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::live):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::isLive):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::execute):
+        (JSC::B3::Air::AbstractLiveness::rawLiveAtHead):
+        (JSC::B3::Air::AbstractLiveness::Iterable::begin):
+        (JSC::B3::Air::AbstractLiveness::Iterable::end):
+        (JSC::B3::Air::AbstractLiveness::Iterable::contains):
+        (JSC::B3::Air::AbstractLiveness::liveAtTail):
+        (JSC::B3::Air::AbstractLiveness::workset):
+        * b3/air/AirLogRegisterPressure.cpp: Added.
+        (JSC::B3::Air::logRegisterPressure):
+        * b3/air/AirLogRegisterPressure.h: Added.
+        * b3/air/AirOptimizeBlockOrder.cpp:
+        (JSC::B3::Air::blocksInOptimizedOrder):
+        (JSC::B3::Air::optimizeBlockOrder):
+        * b3/air/AirOptimizeBlockOrder.h:
+        * b3/air/AirReportUsedRegisters.cpp:
+        (JSC::B3::Air::reportUsedRegisters):
+        * b3/air/AirReportUsedRegisters.h:
+        * b3/air/AirSpillEverything.cpp:
+        (JSC::B3::Air::spillEverything):
+        * b3/air/AirStackSlot.h:
+        (JSC::B3::Air::StackSlot::isLocked):
+        (JSC::B3::Air::StackSlot::index):
+        (JSC::B3::Air::StackSlot::ensureSize):
+        (JSC::B3::Air::StackSlot::alignment):
+        * b3/air/AirValidate.cpp:
+        * ftl/FTLB3Compile.cpp:
+        (JSC::FTL::compile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileArithMul):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileArithDiv):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileArithMod):
+        * jit/RegisterSet.h:
+        (JSC::RegisterSet::get):
+        (JSC::RegisterSet::setAll):
+        (JSC::RegisterSet::merge):
+        (JSC::RegisterSet::filter):
+        * runtime/Options.h:
+
+2016-01-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, undo unintended commit.
+
+        * dfg/DFGCommon.h:
+
+2016-01-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix Air shuffling assertions
+        https://bugs.webkit.org/show_bug.cgi?id=153213
+
+        Reviewed by Saam Barati.
+
+        Fixes some assertions that I was seeing running JSC tests. Adds a new Air test.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::store8):
+        (JSC::MacroAssemblerX86Common::getUnusedRegister):
+        * b3/air/AirEmitShuffle.cpp:
+        (JSC::B3::Air::emitShuffle):
+        * b3/air/AirLowerAfterRegAlloc.cpp:
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/testair.cpp:
+        (JSC::B3::Air::testShuffleRotateWithFringe):
+        (JSC::B3::Air::testShuffleRotateWithFringeInWeirdOrder):
+        (JSC::B3::Air::testShuffleRotateWithLongFringe):
+        (JSC::B3::Air::run):
+
+2016-01-19  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [mips] Logical instructions allow immediates in range 0..0xffff, not 0x7fff
+        https://bugs.webkit.org/show_bug.cgi?id=152693
+
+        Reviewed by Michael Saboff.
+
+        * offlineasm/mips.rb:
+
+2016-01-18  Saam barati  <sbarati@apple.com>
+
+        assertions in BytecodeUseDef.h about opcode length are off by one
+        https://bugs.webkit.org/show_bug.cgi?id=153215
+
+        Reviewed by Dan Bernstein.
+
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+
+2016-01-18  Saam barati  <sbarati@apple.com>
+
+        FTL doesn't do proper spilling for exception handling when GetById/Snippets go to slow path
+        https://bugs.webkit.org/show_bug.cgi?id=153186
+
+        Reviewed by Michael Saboff.
+
+        Michael was investigating a bug he found while doing the new JSC calling 
+        convention work and it turns out to be a latent bug in FTL try/catch machinery.
+        After I looked at the code again, I realized that what I had previously
+        written is wrong in a subtle way. The FTL callOperation machinery will remove
+        its result register from the set of registers it needs to spill. This is not
+        correct when we have try/catch. We may want to do value recovery on
+        the value that the result register is prior to the call after the call
+        throws an exception. The case that we were solving before was when the 
+        resultRegister == baseRegister in a GetById, or left/rightRegister == resultRegister in a Snippet.
+        This code is correct in wanting to spill in that case, even though it might spill
+        when we don't need it to (i.e the result is not needed for value recovery). Once I
+        investigated this bug further, I realized that the previous rule is just a
+        partial subset of the rule that says we should spill anytime the result is
+        a register we might do value recovery on. This patch implements the rule that
+        says we always want to spill the result when we will do value recovery on it 
+        if an exception is thrown.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * tests/stress/ftl-try-catch-getter-throw-interesting-value-recovery.js: Added.
+        (assert):
+        (random):
+        (identity):
+        (let.o2.get f):
+        (let.o3.get f):
+        (foo):
+        (i.else):
+
+2016-01-18  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [MIPS] LLInt: fix calculation of Global Offset Table
+        https://bugs.webkit.org/show_bug.cgi?id=150381
+
+        Offlineasm adds a .cpload $t9 when we create a label in MIPS, which
+        computes address of GOT. However, this instruction requires $t9 to
+        contain address of current function. So we need to set $t9 to pcBase,
+        otherwise GOT-related calculations will be invalid.
+
+        Since offlineasm does not allow direct move to $t9 on MIPS, added new
+        instruction setcallreg which does exactly that.
+
+        Reviewed by Michael Saboff.
+
+        * llint/LowLevelInterpreter.asm:
+        * offlineasm/instructions.rb:
+        * offlineasm/mips.rb:
+
+2016-01-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r194601): Fix the jsc timeout option of jsc.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=153204
+
+        Reviewed by Michael Catanzaro.
+
+        * jsc.cpp:
+        (main):
+
+2016-01-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Add testair to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=153126
+
+        Reviewed by Michael Catanzaro.
+
+        * shell/CMakeLists.txt:
+
+2016-01-17  Jeremy Huddleston Sequoia  <jeremyhu@apple.com>
+
+        Ensure that CF_AVAILABLE is undefined when building webkit-gtk
+
+        https://bugs.webkit.org/show_bug.cgi?id=152720
+
+        This change ensures that CF_AVAILABLE is correctly a no-op to
+        address build failure that was observed when building on older
+        versions of OSX.  Previously, CF_AVAILABLE may have been unexpectedly
+        re-defined to the system header value based on include-order.
+
+        Reviewed by Michael Catanzaro.
+
+        * API/WebKitAvailability.h:
+
+2016-01-17  Julien Brianceau  <jbriance@cisco.com>
+
+        [mips] Fix regT2 and regT3 trampling in MacroAssembler
+        https://bugs.webkit.org/show_bug.cgi?id=153131
+
+        Mips $t2 and $t3 registers were used as temporary registers
+        in MacroAssemblerMIPS.h, whereas they are mapped to regT2
+        and regT3 in LLInt and GPRInfo.
+
+        This patch rearranges register mapping for the mips architecture:
+        - use $t0 and $t1 as temp registers in LLInt (as in MacroAssembler)
+        - use $t7 and $t8 as temp registers in MacroAssembler (as in LLInt)
+        - remove $t6 from temp registers list in LLInt
+        - update GPRInfo.h accordingly
+        - add mips macroScratchRegisters() list in RegisterSet.cpp
+
+        Reviewed by Michael Saboff.
+
+        * assembler/MacroAssemblerMIPS.h:
+        * jit/GPRInfo.h:
+        (JSC::GPRInfo::toRegister):
+        (JSC::GPRInfo::toIndex):
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::macroScratchRegisters):
+        (JSC::RegisterSet::calleeSaveRegisters):
+        * offlineasm/mips.rb:
+
+2016-01-16  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Arrow function should support the destructuring parameters.
+        https://bugs.webkit.org/show_bug.cgi?id=146934
+
+        Reviewed by Saam Barati.
+        
+        Added support of destructuring parameters, before arrow function expect only simple parameters,
+        e.g. (), (x), (x, y) or x in assigment expressio. To support destructuring parameters added
+        additional check that check for destructuring paramters if check does not pass for simple parameters.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::isArrowFunctionParameters):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        * parser/Parser.h:
+
+2016-01-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Legalize Memory Offsets for ARM64 before lowering to Air
+        https://bugs.webkit.org/show_bug.cgi?id=153065
+
+        Reviewed by Mark Lam.
+        Reviewed by Filip Pizlo.
+
+        On ARM64, we cannot use signed 32bits offset for memory addressing.
+        There are two available addressing: signed 9bits and unsigned scaled 12bits.
+        Air already knows about it.
+
+        In this patch, the offsets are changed to something valid for ARM64
+        prior to lowering. When an offset is invalid, it is just computed
+        before the instruction and used as the base for addressing.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3Generate.cpp:
+        (JSC::B3::generateToAir):
+        * b3/B3LegalizeMemoryOffsets.cpp: Added.
+        (JSC::B3::legalizeMemoryOffsets):
+        * b3/B3LegalizeMemoryOffsets.h: Added.
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::effectiveAddr): Deleted.
+        * b3/testb3.cpp:
+        (JSC::B3::testLoadWithOffsetImpl):
+        (JSC::B3::testLoadOffsetImm9Max):
+        (JSC::B3::testLoadOffsetImm9MaxPlusOne):
+        (JSC::B3::testLoadOffsetImm9MaxPlusTwo):
+        (JSC::B3::testLoadOffsetImm9Min):
+        (JSC::B3::testLoadOffsetImm9MinMinusOne):
+        (JSC::B3::testLoadOffsetScaledUnsignedImm12Max):
+        (JSC::B3::testLoadOffsetScaledUnsignedOverImm12Max):
+        (JSC::B3::run):
+
+2016-01-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=153142
+
+        Reviewed by Brent Fulgham.
+
+        The internal Windows build builds JavaScriptCore from a directory that is not called JavaScriptCore.
+        Searching for JavaScriptCore/API/APICast.h fails because it is in SomethingElse/API/APICast.h.
+        Since we are including the JavaScriptCore directory, it is not necessary to have JavaScriptCore in
+        the forwarding headers, but removing it allows builds form directories that are not named JavaScriptCore.
+
+        * ForwardingHeaders/JavaScriptCore/APICast.h:
+        * ForwardingHeaders/JavaScriptCore/JSBase.h:
+        * ForwardingHeaders/JavaScriptCore/JSCTestRunnerUtils.h:
+        * ForwardingHeaders/JavaScriptCore/JSContextRef.h:
+        * ForwardingHeaders/JavaScriptCore/JSObjectRef.h:
+        * ForwardingHeaders/JavaScriptCore/JSRetainPtr.h:
+        * ForwardingHeaders/JavaScriptCore/JSStringRef.h:
+        * ForwardingHeaders/JavaScriptCore/JSStringRefCF.h:
+        * ForwardingHeaders/JavaScriptCore/JSValueRef.h:
+        * ForwardingHeaders/JavaScriptCore/JavaScript.h:
+        * ForwardingHeaders/JavaScriptCore/JavaScriptCore.h:
+        * ForwardingHeaders/JavaScriptCore/OpaqueJSString.h:
+        * ForwardingHeaders/JavaScriptCore/WebKitAvailability.h:
+
+2016-01-15  Per Arne Vollan  <peavo@outlook.com>
+
+        [B3][Win64] Compile fixes.
+        https://bugs.webkit.org/show_bug.cgi?id=153127
+
+        Reviewed by Alex Christensen.
+
+        MSVC have several overloads of fmod, pow, and ceil. We need to suggest to MSVC
+        which one we want to use.
+
+        * b3/B3LowerMacros.cpp:
+        * b3/B3LowerMacrosAfterOptimizations.cpp:
+        * b3/B3MathExtras.cpp:
+        (JSC::B3::powDoubleInt32):
+        * b3/B3ReduceStrength.cpp:
+
+2016-01-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Air needs a Shuffle instruction
+        https://bugs.webkit.org/show_bug.cgi?id=152952
+
+        Reviewed by Saam Barati.
+
+        This adds an instruction called Shuffle. Shuffle allows you to simultaneously perform
+        multiple moves to perform arbitrary permutations over registers and memory. We call these
+        rotations. It also allows you to perform "shifts", like (a => b, b => c): after the shift,
+        c will have b's old value, b will have a's old value, and a will be unchanged. Shifts can
+        use immediates as their source.
+
+        Shuffle is added as a custom instruction, since it has a variable number of arguments. It
+        takes any number of triplets of arguments, where each triplet describes one mapping of the
+        shuffle. For example, to represent (a => b, b => c), we might say:
+
+            Shuffle %a, %b, 64, %b, %c, 64
+
+        Note the "64"s, those are width arguments that describe how many bits of the register are
+        being moved. Each triplet is referred to as a "shuffle pair". We call it a pair because the
+        most relevant part of it is the pair of registers or memroy locations (i.e. %a, %b form one
+        of the pairs in the example). For GP arguments, the width follows ZDef semantics.
+
+        In the future, we will be able to use Shuffle for a lot of things. This patch is modest about
+        how to use it:
+
+        - C calling convention argument marshalling. Previously we used move instructions. But that's
+          problematic since it introduces artificial interference between the argument registers and
+          the inputs. Using Shuffle removes that interference. This helps a bit.
+
+        - Cold C calls. This is what really motivated me to write this patch. If we have a C call on
+          a cold path, then we want it to appear to the register allocator like it doesn't clobber
+          any registers. Only after register allocation should we handle the clobbering by simply
+          saving all of the live volatile registers to the stack. If you imagine the saving and the
+          argument marshalling, you can see how before the call, we want to have a Shuffle that does
+          both of those things. This is important. If argument marshalling was separate from the
+          saving, then we'd still appear to clobber argument registers. Doing them together as one
+          Shuffle means that the cold call doesn't appear to even clobber the argument registers.
+
+        Unfortunately, I was wrong about cold C calls being the dominant problem with our register
+        allocator right now. Fixing this revealed other problems in my current tuning benchmark,
+        Octane/encrypt. Nonetheless, this is a small speed-up across the board, and gives us some
+        functionality we will need to implement other optimizations.
+
+        Relanding after fixing production build.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::isX86_64):
+        (JSC::isIOS):
+        (JSC::optimizeForARMv7IDIVSupported):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::zeroExtend32ToPtr):
+        (JSC::MacroAssemblerX86Common::swap32):
+        (JSC::MacroAssemblerX86Common::moveConditionally32):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::store64WithAddressOffsetPatch):
+        (JSC::MacroAssemblerX86_64::swap64):
+        (JSC::MacroAssemblerX86_64::move64ToDouble):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::xchgl_rr):
+        (JSC::X86Assembler::xchgl_rm):
+        (JSC::X86Assembler::xchgq_rr):
+        (JSC::X86Assembler::xchgq_rm):
+        (JSC::X86Assembler::movl_rr):
+        * b3/B3CCallValue.h:
+        * b3/B3Compilation.cpp:
+        (JSC::B3::Compilation::Compilation):
+        (JSC::B3::Compilation::~Compilation):
+        * b3/B3Compilation.h:
+        (JSC::B3::Compilation::code):
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::run):
+        (JSC::B3::Air::LowerToAir::createSelect):
+        (JSC::B3::Air::LowerToAir::lower):
+        (JSC::B3::Air::LowerToAir::marshallCCallArgument): Deleted.
+        * b3/B3OpaqueByproducts.h:
+        (JSC::B3::OpaqueByproducts::count):
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::isArgValidForValue):
+        (JSC::B3::StackmapSpecial::isArgValidForRep):
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::isStackMemory):
+        (JSC::B3::Air::Arg::isRepresentableAs):
+        (JSC::B3::Air::Arg::usesTmp):
+        (JSC::B3::Air::Arg::canRepresent):
+        (JSC::B3::Air::Arg::isCompatibleType):
+        (JSC::B3::Air::Arg::dump):
+        (WTF::printInternal):
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::forEachType):
+        (JSC::B3::Air::Arg::isWarmUse):
+        (JSC::B3::Air::Arg::cooled):
+        (JSC::B3::Air::Arg::isEarlyUse):
+        (JSC::B3::Air::Arg::imm64):
+        (JSC::B3::Air::Arg::immPtr):
+        (JSC::B3::Air::Arg::addr):
+        (JSC::B3::Air::Arg::special):
+        (JSC::B3::Air::Arg::widthArg):
+        (JSC::B3::Air::Arg::operator==):
+        (JSC::B3::Air::Arg::isImm64):
+        (JSC::B3::Air::Arg::isSomeImm):
+        (JSC::B3::Air::Arg::isAddr):
+        (JSC::B3::Air::Arg::isIndex):
+        (JSC::B3::Air::Arg::isMemory):
+        (JSC::B3::Air::Arg::isRelCond):
+        (JSC::B3::Air::Arg::isSpecial):
+        (JSC::B3::Air::Arg::isWidthArg):
+        (JSC::B3::Air::Arg::isAlive):
+        (JSC::B3::Air::Arg::base):
+        (JSC::B3::Air::Arg::hasOffset):
+        (JSC::B3::Air::Arg::offset):
+        (JSC::B3::Air::Arg::width):
+        (JSC::B3::Air::Arg::isGPTmp):
+        (JSC::B3::Air::Arg::isGP):
+        (JSC::B3::Air::Arg::isFP):
+        (JSC::B3::Air::Arg::isType):
+        (JSC::B3::Air::Arg::isGPR):
+        (JSC::B3::Air::Arg::isValidForm):
+        (JSC::B3::Air::Arg::forEachTmpFast):
+        * b3/air/AirBasicBlock.h:
+        (JSC::B3::Air::BasicBlock::insts):
+        (JSC::B3::Air::BasicBlock::appendInst):
+        (JSC::B3::Air::BasicBlock::append):
+        * b3/air/AirCCallingConvention.cpp: Added.
+        (JSC::B3::Air::computeCCallingConvention):
+        (JSC::B3::Air::cCallResult):
+        (JSC::B3::Air::buildCCall):
+        * b3/air/AirCCallingConvention.h: Added.
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::proc):
+        * b3/air/AirCustom.cpp: Added.
+        (JSC::B3::Air::CCallCustom::isValidForm):
+        (JSC::B3::Air::CCallCustom::generate):
+        (JSC::B3::Air::ShuffleCustom::isValidForm):
+        (JSC::B3::Air::ShuffleCustom::generate):
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::forEachArg):
+        (JSC::B3::Air::PatchCustom::generate):
+        (JSC::B3::Air::CCallCustom::forEachArg):
+        (JSC::B3::Air::CCallCustom::isValidFormStatic):
+        (JSC::B3::Air::CCallCustom::admitsStack):
+        (JSC::B3::Air::CCallCustom::hasNonArgNonControlEffects):
+        (JSC::B3::Air::ColdCCallCustom::forEachArg):
+        (JSC::B3::Air::ShuffleCustom::forEachArg):
+        (JSC::B3::Air::ShuffleCustom::isValidFormStatic):
+        (JSC::B3::Air::ShuffleCustom::admitsStack):
+        (JSC::B3::Air::ShuffleCustom::hasNonArgNonControlEffects):
+        * b3/air/AirEmitShuffle.cpp: Added.
+        (JSC::B3::Air::ShufflePair::dump):
+        (JSC::B3::Air::emitShuffle):
+        * b3/air/AirEmitShuffle.h: Added.
+        (JSC::B3::Air::ShufflePair::ShufflePair):
+        (JSC::B3::Air::ShufflePair::src):
+        (JSC::B3::Air::ShufflePair::dst):
+        (JSC::B3::Air::ShufflePair::width):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::prepareForGeneration):
+        * b3/air/AirGenerate.h:
+        * b3/air/AirInsertionSet.cpp:
+        (JSC::B3::Air::InsertionSet::insertInsts):
+        (JSC::B3::Air::InsertionSet::execute):
+        * b3/air/AirInsertionSet.h:
+        (JSC::B3::Air::InsertionSet::insertInst):
+        (JSC::B3::Air::InsertionSet::insert):
+        * b3/air/AirInst.h:
+        (JSC::B3::Air::Inst::operator bool):
+        (JSC::B3::Air::Inst::append):
+        * b3/air/AirLowerAfterRegAlloc.cpp: Added.
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/AirLowerAfterRegAlloc.h: Added.
+        * b3/air/AirLowerMacros.cpp: Added.
+        (JSC::B3::Air::lowerMacros):
+        * b3/air/AirLowerMacros.h: Added.
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/AirRegisterPriority.h:
+        (JSC::B3::Air::regsInPriorityOrder):
+        * b3/air/testair.cpp: Added.
+        (hiddenTruthBecauseNoReturnIsStupid):
+        (usage):
+        (JSC::B3::Air::compile):
+        (JSC::B3::Air::invoke):
+        (JSC::B3::Air::compileAndRun):
+        (JSC::B3::Air::testSimple):
+        (JSC::B3::Air::loadConstantImpl):
+        (JSC::B3::Air::loadConstant):
+        (JSC::B3::Air::loadDoubleConstant):
+        (JSC::B3::Air::testShuffleSimpleSwap):
+        (JSC::B3::Air::testShuffleSimpleShift):
+        (JSC::B3::Air::testShuffleLongShift):
+        (JSC::B3::Air::testShuffleLongShiftBackwards):
+        (JSC::B3::Air::testShuffleSimpleRotate):
+        (JSC::B3::Air::testShuffleSimpleBroadcast):
+        (JSC::B3::Air::testShuffleBroadcastAllRegs):
+        (JSC::B3::Air::testShuffleTreeShift):
+        (JSC::B3::Air::testShuffleTreeShiftBackward):
+        (JSC::B3::Air::testShuffleTreeShiftOtherBackward):
+        (JSC::B3::Air::testShuffleMultipleShifts):
+        (JSC::B3::Air::testShuffleRotateWithFringe):
+        (JSC::B3::Air::testShuffleRotateWithLongFringe):
+        (JSC::B3::Air::testShuffleMultipleRotates):
+        (JSC::B3::Air::testShuffleShiftAndRotate):
+        (JSC::B3::Air::testShuffleShiftAllRegs):
+        (JSC::B3::Air::testShuffleRotateAllRegs):
+        (JSC::B3::Air::testShuffleSimpleSwap64):
+        (JSC::B3::Air::testShuffleSimpleShift64):
+        (JSC::B3::Air::testShuffleSwapMixedWidth):
+        (JSC::B3::Air::testShuffleShiftMixedWidth):
+        (JSC::B3::Air::testShuffleShiftMemory):
+        (JSC::B3::Air::testShuffleShiftMemoryLong):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs64):
+        (JSC::B3::Air::combineHiLo):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegsMixedWidth):
+        (JSC::B3::Air::testShuffleRotateMemory):
+        (JSC::B3::Air::testShuffleRotateMemory64):
+        (JSC::B3::Air::testShuffleRotateMemoryMixedWidth):
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegs64):
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegsMixedWidth):
+        (JSC::B3::Air::testShuffleSwapDouble):
+        (JSC::B3::Air::testShuffleShiftDouble):
+        (JSC::B3::Air::run):
+        (run):
+        (main):
+        * b3/testb3.cpp:
+        (JSC::B3::testCallSimple):
+        (JSC::B3::testCallRare):
+        (JSC::B3::testCallRareLive):
+        (JSC::B3::testCallSimplePure):
+        (JSC::B3::run):
+
+2016-01-15  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Date.prototype.toLocaleString in ECMA-402
+        https://bugs.webkit.org/show_bug.cgi?id=147611
+
+        Reviewed by Benjamin Poulain.
+
+        Expose dateProtoFuncGetTime as thisTimeValue for builtins.
+        Remove unused code in DateTimeFormat toDateTimeOptions, and make the
+        function specific to the call in initializeDateTimeFormat. Properly
+        throw when the options parameter is null.
+        Add toLocaleString in builtin JavaScript, with it's own specific branch
+        of toDateTimeOptions.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/DatePrototype.js: Added.
+        (toLocaleString.toDateTimeOptionsAnyAll):
+        (toLocaleString):
+        * runtime/CommonIdentifiers.h:
+        * runtime/DatePrototype.cpp:
+        (JSC::DatePrototype::finishCreation):
+        * runtime/DatePrototype.h:
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::toDateTimeOptionsAnyDate):
+        (JSC::IntlDateTimeFormat::initializeDateTimeFormat):
+        (JSC::toDateTimeOptions): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+
+2016-01-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [mips] Implemented emitFunctionPrologue/Epilogue
+        https://bugs.webkit.org/show_bug.cgi?id=152947
+
+        Reviewed by Michael Saboff.
+
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::popPair):
+        (JSC::MacroAssemblerMIPS::pushPair):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitFunctionPrologue):
+        (JSC::AssemblyHelpers::emitFunctionEpilogueWithEmptyFrame):
+        (JSC::AssemblyHelpers::emitFunctionEpilogue):
+
+2016-01-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195084.
+        https://bugs.webkit.org/show_bug.cgi?id=153132
+
+        Broke Production build (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Air needs a Shuffle instruction"
+        https://bugs.webkit.org/show_bug.cgi?id=152952
+        http://trac.webkit.org/changeset/195084
+
+2016-01-15  Julien Brianceau  <jbriance@cisco.com>
+
+        [mips] Add countLeadingZeros32 implementation in macro assembler
+        https://bugs.webkit.org/show_bug.cgi?id=152886
+
+        Reviewed by Michael Saboff.
+
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::lui):
+        (JSC::MIPSAssembler::clz):
+        (JSC::MIPSAssembler::addiu):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::and32):
+        (JSC::MacroAssemblerMIPS::countLeadingZeros32):
+        (JSC::MacroAssemblerMIPS::lshift32):
+
+2016-01-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Air needs a Shuffle instruction
+        https://bugs.webkit.org/show_bug.cgi?id=152952
+
+        Reviewed by Saam Barati.
+
+        This adds an instruction called Shuffle. Shuffle allows you to simultaneously perform
+        multiple moves to perform arbitrary permutations over registers and memory. We call these
+        rotations. It also allows you to perform "shifts", like (a => b, b => c): after the shift,
+        c will have b's old value, b will have a's old value, and a will be unchanged. Shifts can
+        use immediates as their source.
+
+        Shuffle is added as a custom instruction, since it has a variable number of arguments. It
+        takes any number of triplets of arguments, where each triplet describes one mapping of the
+        shuffle. For example, to represent (a => b, b => c), we might say:
+
+            Shuffle %a, %b, 64, %b, %c, 64
+
+        Note the "64"s, those are width arguments that describe how many bits of the register are
+        being moved. Each triplet is referred to as a "shuffle pair". We call it a pair because the
+        most relevant part of it is the pair of registers or memroy locations (i.e. %a, %b form one
+        of the pairs in the example). For GP arguments, the width follows ZDef semantics.
+
+        In the future, we will be able to use Shuffle for a lot of things. This patch is modest about
+        how to use it:
+
+        - C calling convention argument marshalling. Previously we used move instructions. But that's
+          problematic since it introduces artificial interference between the argument registers and
+          the inputs. Using Shuffle removes that interference. This helps a bit.
+
+        - Cold C calls. This is what really motivated me to write this patch. If we have a C call on
+          a cold path, then we want it to appear to the register allocator like it doesn't clobber
+          any registers. Only after register allocation should we handle the clobbering by simply
+          saving all of the live volatile registers to the stack. If you imagine the saving and the
+          argument marshalling, you can see how before the call, we want to have a Shuffle that does
+          both of those things. This is important. If argument marshalling was separate from the
+          saving, then we'd still appear to clobber argument registers. Doing them together as one
+          Shuffle means that the cold call doesn't appear to even clobber the argument registers.
+
+        Unfortunately, I was wrong about cold C calls being the dominant problem with our register
+        allocator right now. Fixing this revealed other problems in my current tuning benchmark,
+        Octane/encrypt. Nonetheless, this is a small speed-up across the board, and gives us some
+        functionality we will need to implement other optimizations.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::isX86_64):
+        (JSC::isIOS):
+        (JSC::optimizeForARMv7IDIVSupported):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::zeroExtend32ToPtr):
+        (JSC::MacroAssemblerX86Common::swap32):
+        (JSC::MacroAssemblerX86Common::moveConditionally32):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::store64WithAddressOffsetPatch):
+        (JSC::MacroAssemblerX86_64::swap64):
+        (JSC::MacroAssemblerX86_64::move64ToDouble):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::xchgl_rr):
+        (JSC::X86Assembler::xchgl_rm):
+        (JSC::X86Assembler::xchgq_rr):
+        (JSC::X86Assembler::xchgq_rm):
+        (JSC::X86Assembler::movl_rr):
+        * b3/B3CCallValue.h:
+        * b3/B3Compilation.cpp:
+        (JSC::B3::Compilation::Compilation):
+        (JSC::B3::Compilation::~Compilation):
+        * b3/B3Compilation.h:
+        (JSC::B3::Compilation::code):
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::run):
+        (JSC::B3::Air::LowerToAir::createSelect):
+        (JSC::B3::Air::LowerToAir::lower):
+        (JSC::B3::Air::LowerToAir::marshallCCallArgument): Deleted.
+        * b3/B3OpaqueByproducts.h:
+        (JSC::B3::OpaqueByproducts::count):
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::isArgValidForValue):
+        (JSC::B3::StackmapSpecial::isArgValidForRep):
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::isStackMemory):
+        (JSC::B3::Air::Arg::isRepresentableAs):
+        (JSC::B3::Air::Arg::usesTmp):
+        (JSC::B3::Air::Arg::canRepresent):
+        (JSC::B3::Air::Arg::isCompatibleType):
+        (JSC::B3::Air::Arg::dump):
+        (WTF::printInternal):
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::forEachType):
+        (JSC::B3::Air::Arg::isWarmUse):
+        (JSC::B3::Air::Arg::cooled):
+        (JSC::B3::Air::Arg::isEarlyUse):
+        (JSC::B3::Air::Arg::imm64):
+        (JSC::B3::Air::Arg::immPtr):
+        (JSC::B3::Air::Arg::addr):
+        (JSC::B3::Air::Arg::special):
+        (JSC::B3::Air::Arg::widthArg):
+        (JSC::B3::Air::Arg::operator==):
+        (JSC::B3::Air::Arg::isImm64):
+        (JSC::B3::Air::Arg::isSomeImm):
+        (JSC::B3::Air::Arg::isAddr):
+        (JSC::B3::Air::Arg::isIndex):
+        (JSC::B3::Air::Arg::isMemory):
+        (JSC::B3::Air::Arg::isRelCond):
+        (JSC::B3::Air::Arg::isSpecial):
+        (JSC::B3::Air::Arg::isWidthArg):
+        (JSC::B3::Air::Arg::isAlive):
+        (JSC::B3::Air::Arg::base):
+        (JSC::B3::Air::Arg::hasOffset):
+        (JSC::B3::Air::Arg::offset):
+        (JSC::B3::Air::Arg::width):
+        (JSC::B3::Air::Arg::isGPTmp):
+        (JSC::B3::Air::Arg::isGP):
+        (JSC::B3::Air::Arg::isFP):
+        (JSC::B3::Air::Arg::isType):
+        (JSC::B3::Air::Arg::isGPR):
+        (JSC::B3::Air::Arg::isValidForm):
+        (JSC::B3::Air::Arg::forEachTmpFast):
+        * b3/air/AirBasicBlock.h:
+        (JSC::B3::Air::BasicBlock::insts):
+        (JSC::B3::Air::BasicBlock::appendInst):
+        (JSC::B3::Air::BasicBlock::append):
+        * b3/air/AirCCallingConvention.cpp: Added.
+        (JSC::B3::Air::computeCCallingConvention):
+        (JSC::B3::Air::cCallResult):
+        (JSC::B3::Air::buildCCall):
+        * b3/air/AirCCallingConvention.h: Added.
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::proc):
+        * b3/air/AirCustom.cpp: Added.
+        (JSC::B3::Air::CCallCustom::isValidForm):
+        (JSC::B3::Air::CCallCustom::generate):
+        (JSC::B3::Air::ShuffleCustom::isValidForm):
+        (JSC::B3::Air::ShuffleCustom::generate):
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::forEachArg):
+        (JSC::B3::Air::PatchCustom::generate):
+        (JSC::B3::Air::CCallCustom::forEachArg):
+        (JSC::B3::Air::CCallCustom::isValidFormStatic):
+        (JSC::B3::Air::CCallCustom::admitsStack):
+        (JSC::B3::Air::CCallCustom::hasNonArgNonControlEffects):
+        (JSC::B3::Air::ColdCCallCustom::forEachArg):
+        (JSC::B3::Air::ShuffleCustom::forEachArg):
+        (JSC::B3::Air::ShuffleCustom::isValidFormStatic):
+        (JSC::B3::Air::ShuffleCustom::admitsStack):
+        (JSC::B3::Air::ShuffleCustom::hasNonArgNonControlEffects):
+        * b3/air/AirEmitShuffle.cpp: Added.
+        (JSC::B3::Air::ShufflePair::dump):
+        (JSC::B3::Air::emitShuffle):
+        * b3/air/AirEmitShuffle.h: Added.
+        (JSC::B3::Air::ShufflePair::ShufflePair):
+        (JSC::B3::Air::ShufflePair::src):
+        (JSC::B3::Air::ShufflePair::dst):
+        (JSC::B3::Air::ShufflePair::width):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::prepareForGeneration):
+        * b3/air/AirGenerate.h:
+        * b3/air/AirInsertionSet.cpp:
+        (JSC::B3::Air::InsertionSet::insertInsts):
+        (JSC::B3::Air::InsertionSet::execute):
+        * b3/air/AirInsertionSet.h:
+        (JSC::B3::Air::InsertionSet::insertInst):
+        (JSC::B3::Air::InsertionSet::insert):
+        * b3/air/AirInst.h:
+        (JSC::B3::Air::Inst::operator bool):
+        (JSC::B3::Air::Inst::append):
+        * b3/air/AirLowerAfterRegAlloc.cpp: Added.
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/AirLowerAfterRegAlloc.h: Added.
+        * b3/air/AirLowerMacros.cpp: Added.
+        (JSC::B3::Air::lowerMacros):
+        * b3/air/AirLowerMacros.h: Added.
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/AirRegisterPriority.h:
+        (JSC::B3::Air::regsInPriorityOrder):
+        * b3/air/testair.cpp: Added.
+        (hiddenTruthBecauseNoReturnIsStupid):
+        (usage):
+        (JSC::B3::Air::compile):
+        (JSC::B3::Air::invoke):
+        (JSC::B3::Air::compileAndRun):
+        (JSC::B3::Air::testSimple):
+        (JSC::B3::Air::loadConstantImpl):
+        (JSC::B3::Air::loadConstant):
+        (JSC::B3::Air::loadDoubleConstant):
+        (JSC::B3::Air::testShuffleSimpleSwap):
+        (JSC::B3::Air::testShuffleSimpleShift):
+        (JSC::B3::Air::testShuffleLongShift):
+        (JSC::B3::Air::testShuffleLongShiftBackwards):
+        (JSC::B3::Air::testShuffleSimpleRotate):
+        (JSC::B3::Air::testShuffleSimpleBroadcast):
+        (JSC::B3::Air::testShuffleBroadcastAllRegs):
+        (JSC::B3::Air::testShuffleTreeShift):
+        (JSC::B3::Air::testShuffleTreeShiftBackward):
+        (JSC::B3::Air::testShuffleTreeShiftOtherBackward):
+        (JSC::B3::Air::testShuffleMultipleShifts):
+        (JSC::B3::Air::testShuffleRotateWithFringe):
+        (JSC::B3::Air::testShuffleRotateWithLongFringe):
+        (JSC::B3::Air::testShuffleMultipleRotates):
+        (JSC::B3::Air::testShuffleShiftAndRotate):
+        (JSC::B3::Air::testShuffleShiftAllRegs):
+        (JSC::B3::Air::testShuffleRotateAllRegs):
+        (JSC::B3::Air::testShuffleSimpleSwap64):
+        (JSC::B3::Air::testShuffleSimpleShift64):
+        (JSC::B3::Air::testShuffleSwapMixedWidth):
+        (JSC::B3::Air::testShuffleShiftMixedWidth):
+        (JSC::B3::Air::testShuffleShiftMemory):
+        (JSC::B3::Air::testShuffleShiftMemoryLong):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs64):
+        (JSC::B3::Air::combineHiLo):
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegsMixedWidth):
+        (JSC::B3::Air::testShuffleRotateMemory):
+        (JSC::B3::Air::testShuffleRotateMemory64):
+        (JSC::B3::Air::testShuffleRotateMemoryMixedWidth):
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegs64):
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegsMixedWidth):
+        (JSC::B3::Air::testShuffleSwapDouble):
+        (JSC::B3::Air::testShuffleShiftDouble):
+        (JSC::B3::Air::run):
+        (run):
+        (main):
+        * b3/testb3.cpp:
+        (JSC::B3::testCallSimple):
+        (JSC::B3::testCallRare):
+        (JSC::B3::testCallRareLive):
+        (JSC::B3::testCallSimplePure):
+        (JSC::B3::run):
+
+2016-01-14  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed mark passing es6 tests as no longer failing.
+
+        * tests/es6.yaml:
+
+2016-01-14  Keith Miller  <keith_miller@apple.com>
+
+        [ES6] Support subclassing Function.
+        https://bugs.webkit.org/show_bug.cgi?id=153081
+
+        Reviewed by Geoffrey Garen.
+
+        This patch enables subclassing the Function object. It also fixes an existing
+        bug that prevented users from subclassing functions that have a function in
+        the superclass's prototype property.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ClassExprNode::emitBytecode):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructWithFunctionConstructor):
+        (JSC::constructFunction):
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/FunctionConstructor.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::create):
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::createImpl):
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::createWithInvalidatedReallocationWatchpoint):
+        (JSC::JSFunction::JSFunction): Deleted.
+        * tests/stress/class-subclassing-function.js: Added.
+
+2016-01-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [CMake] Do not use LLVM static libraries for FTL JIT
+        https://bugs.webkit.org/show_bug.cgi?id=151559
+
+        Reviewed by Michael Catanzaro.
+
+        Allow ports decide whether to prefer linking to llvm static or
+        dynamic libraries. This patch only changes the behavior of the GTK
+        port, other ports can change the default behavior by setting
+        llvmForJSC_LIBRARIES in their platform specific cmake files.
+
+        * CMakeLists.txt: Move llvmForJSC library definition after the
+        WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS, to allow platform specific
+        files to set their own llvmForJSC_LIBRARIES. When not set, it
+        defaults to LLVM_STATIC_LIBRARIES. The command to create
+        WebKitLLVMLibraryToken.h no longer depends on the static
+        libraries, since we are going to make the build fail anyway when
+        not found in case of linking to the static libraries. If platform
+        specific file defined llvmForJSC_INSTALL_DIR llvmForJSC is also
+        installed to the given destination.
+        * PlatformGTK.cmake: Set llvmForJSC_LIBRARIES and
+        llvmForJSC_INSTALL_DIR.
+
+2016-01-13  Saam barati  <sbarati@apple.com>
+
+        NativeExecutable should have a name field
+        https://bugs.webkit.org/show_bug.cgi?id=153083
+
+        Reviewed by Geoffrey Garen.
+
+        This is going to help the SamplingProfiler come up
+        with names for NativeExecutable objects it encounters.
+
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::finalize):
+        (JSC::JITThunks::hostFunctionStub):
+        * jit/JITThunks.h:
+        * runtime/Executable.h:
+        * runtime/JSBoundFunction.cpp:
+        (JSC::JSBoundFunction::create):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::create):
+        (JSC::JSFunction::lookUpOrCreateNativeExecutable):
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::createImpl):
+        * runtime/JSNativeStdFunction.cpp:
+        (JSC::JSNativeStdFunction::create):
+        * runtime/VM.cpp:
+        (JSC::thunkGeneratorForIntrinsic):
+        (JSC::VM::getHostFunction):
+        * runtime/VM.h:
+        (JSC::VM::getCTIStub):
+        (JSC::VM::exceptionOffset):
+
+2016-01-13  Keith Miller  <keith_miller@apple.com>
+
+        [ES6] Support subclassing the String builtin object
+        https://bugs.webkit.org/show_bug.cgi?id=153068
+
+        Reviewed by Michael Saboff.
+
+        This patch adds subclassing of strings. Also, this patch fixes a bug where we could have
+        the wrong indexing type for builtins constructed without storage.
+
+        * runtime/PrototypeMap.cpp:
+        (JSC::PrototypeMap::emptyStructureForPrototypeFromBaseStructure):
+        * runtime/StringConstructor.cpp:
+        (JSC::constructWithStringConstructor):
+        * tests/stress/class-subclassing-string.js: Added.
+        (test):
+
+2016-01-13  Mark Lam  <mark.lam@apple.com>
+
+        The StringFromCharCode DFG intrinsic should support untyped operands.
+        https://bugs.webkit.org/show_bug.cgi?id=153046
+
+        Reviewed by Geoffrey Garen.
+
+        The current StringFromCharCode DFG intrinsic assumes that its operand charCode
+        must be an Int32.  This results in 26000+ BadType OSR exits in the LongSpider
+        crypto-aes benchmark.  With support for Untyped operands, the number of OSR
+        exits drops to 202.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileFromCharCode):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validate):
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::toUInt32):
+
+2016-01-13  Mark Lam  <mark.lam@apple.com>
+
+        Use DFG Graph::binary/unaryArithShouldSpeculateInt32/MachineInt() functions consistently.
+        https://bugs.webkit.org/show_bug.cgi?id=153080
+
+        Reviewed by Geoffrey Garen.
+
+        We currently have Graph::mulShouldSpeculateInt32/machineInt() and
+        Graph::negateShouldSpeculateInt32/MachineInt() functions which are only used by
+        the ArithMul and ArithNegate nodes.  However, the same tests need to be done for
+        many other arith nodes in the DFG.  This patch renames these functions as
+        Graph::binaryArithShouldSpeculateInt32/machineInt() and
+        Graph::unaryArithShouldSpeculateInt32/MachineInt(), and uses them consistently
+        in the DFG.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::addShouldSpeculateMachineInt):
+        (JSC::DFG::Graph::binaryArithShouldSpeculateInt32):
+        (JSC::DFG::Graph::binaryArithShouldSpeculateMachineInt):
+        (JSC::DFG::Graph::unaryArithShouldSpeculateInt32):
+        (JSC::DFG::Graph::unaryArithShouldSpeculateMachineInt):
+        (JSC::DFG::Graph::mulShouldSpeculateInt32): Deleted.
+        (JSC::DFG::Graph::mulShouldSpeculateMachineInt): Deleted.
+        (JSC::DFG::Graph::negateShouldSpeculateInt32): Deleted.
+        (JSC::DFG::Graph::negateShouldSpeculateMachineInt): Deleted.
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        (JSC::DFG::PredictionPropagationPhase::doDoubleVoting):
+
+2016-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inspector should use the last sourceURL / sourceMappingURL directive
+        https://bugs.webkit.org/show_bug.cgi?id=153072
+        <rdar://problem/24168312>
+
+        Reviewed by Timothy Hatcher.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::parseCommentDirective):
+        Just keep overwriting the member variable so we end up with
+        the last directive value.
+
+2016-01-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194969.
+        https://bugs.webkit.org/show_bug.cgi?id=153075
+
+        This change broke the iOS build (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Legalize Memory Offsets for ARM64 before lowering to
+        Air"
+        https://bugs.webkit.org/show_bug.cgi?id=153065
+        http://trac.webkit.org/changeset/194969
+
+2016-01-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Legalize Memory Offsets for ARM64 before lowering to Air
+        https://bugs.webkit.org/show_bug.cgi?id=153065
+
+        Reviewed by Mark Lam.
+        Reviewed by Filip Pizlo.
+
+        On ARM64, we cannot use signed 32bits offset for memory addressing.
+        There are two available addressing: signed 9bits and unsigned scaled 12bits.
+        Air already knows about it.
+
+        In this patch, the offsets are changed to something valid for ARM64
+        prior to lowering. When an offset is invalid, it is just computed
+        before the instruction and used as the base for addressing.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3Generate.cpp:
+        (JSC::B3::generateToAir):
+        * b3/B3LegalizeMemoryOffsets.cpp: Added.
+        (JSC::B3::legalizeMemoryOffsets):
+        * b3/B3LegalizeMemoryOffsets.h: Added.
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::effectiveAddr): Deleted.
+        * b3/testb3.cpp:
+        (JSC::B3::testLoadWithOffsetImpl):
+        (JSC::B3::testLoadOffsetImm9Max):
+        (JSC::B3::testLoadOffsetImm9MaxPlusOne):
+        (JSC::B3::testLoadOffsetImm9MaxPlusTwo):
+        (JSC::B3::testLoadOffsetImm9Min):
+        (JSC::B3::testLoadOffsetImm9MinMinusOne):
+        (JSC::B3::testLoadOffsetScaledUnsignedImm12Max):
+        (JSC::B3::testLoadOffsetScaledUnsignedOverImm12Max):
+        (JSC::B3::run):
+
 2016-01-12  Per Arne Vollan  <peavo@outlook.com>
 
         [FTL][Win64] Compile error.

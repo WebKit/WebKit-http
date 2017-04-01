@@ -43,6 +43,7 @@
 #include "DOMPath.h"
 #include "DOMStringList.h"
 #include "DOMWindow.h"
+#include "DisplayList.h"
 #include "Document.h"
 #include "DocumentMarker.h"
 #include "DocumentMarkerController.h"
@@ -94,6 +95,7 @@
 #include "PseudoElement.h"
 #include "Range.h"
 #include "RenderEmbeddedObject.h"
+#include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderMenuList.h"
 #include "RenderTreeAsText.h"
@@ -367,7 +369,6 @@ void Internals::resetToConsistentState(Page* page)
         mainFrameView->setFixedLayoutSize(IntSize());
     }
 
-    TextRun::setAllowsRoundingHacks(false);
     WebCore::overrideUserPreferredLanguages(Vector<String>());
     WebCore::Settings::setUsesOverlayScrollbars(false);
     page->inspectorController().setProfilerEnabled(false);
@@ -1973,6 +1974,59 @@ RefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) cons
     return page->nonFastScrollableRects();
 }
 
+void Internals::setElementUsesDisplayListDrawing(Element* element, bool usesDisplayListDrawing, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    if (!element || !element->renderer() || !element->renderer()->hasLayer()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    RenderLayer* layer = downcast<RenderLayerModelObject>(element->renderer())->layer();
+    if (!layer->isComposited()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    
+    layer->backing()->setUsesDisplayListDrawing(usesDisplayListDrawing);
+}
+
+String Internals::displayListForElement(Element* element, ExceptionCode& ec)
+{
+    return displayListForElement(element, 0, ec);
+}
+
+String Internals::displayListForElement(Element* element, unsigned flags, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    if (!element || !element->renderer() || !element->renderer()->hasLayer()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+    
+    RenderLayer* layer = downcast<RenderLayerModelObject>(element->renderer())->layer();
+    if (!layer->isComposited()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    DisplayList::AsTextFlags displayListFlags = 0;
+    if (flags & DISPLAY_LIST_INCLUDES_PLATFORM_OPERATIONS)
+        displayListFlags |= DisplayList::AsTextFlag::IncludesPlatformOperations;
+    
+    return layer->backing()->displayListAsText(displayListFlags);
+}
+
 void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
 {
     Document* document = contextDocument();
@@ -1981,11 +2035,6 @@ void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
         return;
     }
     document->cachedResourceLoader().garbageCollectDocumentResources();
-}
-
-void Internals::allowRoundingHacks() const
-{
-    TextRun::setAllowsRoundingHacks(true);
 }
 
 void Internals::insertAuthorCSS(const String& css, ExceptionCode& ec) const
@@ -2453,7 +2502,7 @@ RefPtr<SerializedScriptValue> Internals::deserializeBuffer(PassRefPtr<ArrayBuffe
 {
     Vector<uint8_t> bytes;
     bytes.append(static_cast<const uint8_t*>(buffer->data()), buffer->byteLength());
-    return SerializedScriptValue::adopt(bytes);
+    return SerializedScriptValue::adopt(WTFMove(bytes));
 }
 
 bool Internals::isFromCurrentWorld(Deprecated::ScriptValue value) const
@@ -2949,7 +2998,7 @@ void Internals::setAudioContextRestrictions(AudioContext* context, const String 
     AudioContext::BehaviorRestrictions restrictions = context->behaviorRestrictions();
     context->removeBehaviorRestriction(restrictions);
 
-    restrictions = MediaElementSession::NoRestrictions;
+    restrictions = AudioContext::NoRestrictions;
 
     Vector<String> restrictionsArray;
     restrictionsString.split(',', false, restrictionsArray);

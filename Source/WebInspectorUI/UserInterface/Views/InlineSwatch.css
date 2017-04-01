@@ -1,0 +1,89 @@
+/*
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Devin Rousso <dcrousso+webkit@gmail.com>. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+.inline-swatch {
+    display: inline-block;
+    position: relative;
+    width: 1em;
+    height: 1em;
+    margin-right: 3px;
+    vertical-align: -2px;
+    /* Make a checkered background for transparent colors to show against. */
+    background-image: linear-gradient(to bottom, hsl(0, 0%, 80%), hsl(0, 0%, 80%)),
+                      linear-gradient(to bottom, hsl(0, 0%, 80%), hsl(0, 0%, 80%));
+    background-color: white;
+    background-size: 50%;
+    background-position: top left, bottom right;
+    background-repeat: no-repeat;
+    cursor: default;
+    overflow: hidden;
+}
+
+.inline-swatch.bezier {
+    margin-right: 2px;
+    content: url(../Images/CubicBezier.svg);
+    background: none;
+}
+
+.inline-swatch.bezier:hover {
+    filter: brightness(0.9);
+}
+
+.inline-swatch.bezier:active {
+    filter: brightness(0.8);
+}
+
+@media (-webkit-max-device-pixel-ratio: 1) {
+    /* Ensure the color swatch is even by even so that it looks okay checkered. */
+    .inline-swatch {
+        vertical-align: -1px;
+        width: 10px;
+        height: 10px;
+    }
+}
+
+.inline-swatch > span {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border: 1px solid hsla(0, 0%, 25%, 0.4);
+    pointer-events: none;
+}
+
+.inline-swatch:hover > span {
+    border-color: hsla(0, 0%, 25%, 0.8);
+}
+
+.inline-swatch:active > span {
+    border-color: hsl(0, 0%, 25%);
+}
+
+.inline-swatch.bezier > span {
+    display: none;
+}
+

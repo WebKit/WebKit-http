@@ -895,7 +895,7 @@ endif ()
 
 # Add required -L flags from ${CMAKE_SHARED_LINKER_FLAGS} for g-ir-scanner
 string(REGEX MATCHALL "-L[^ ]*"
-    INTROSPECTION_ADDITIONAL_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
+    INTROSPECTION_ADDITIONAL_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 
 add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/WebKit2-${WEBKITGTK_API_VERSION}.gir
@@ -929,6 +929,7 @@ add_custom_command(
         -DWEBKIT2_COMPILATION
         -I${CMAKE_SOURCE_DIR}/Source
         -I${WEBKIT2_DIR}
+        -I${JAVASCRIPTCORE_DIR}
         -I${JAVASCRIPTCORE_DIR}/ForwardingHeaders
         -I${DERIVED_SOURCES_DIR}
         -I${DERIVED_SOURCES_WEBKIT2GTK_DIR}
@@ -936,12 +937,6 @@ add_custom_command(
         ${WebKit2GTK_INSTALLED_HEADERS}
         ${WEBKIT2_DIR}/UIProcess/API/gtk/*.cpp
 )
-
-# Manually add some libraries on OSX because we don't have the --whole-archive flag
-if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    set(INTROSPECTION_ADDITIONAL_LIBRARIES --library=c++)
-    set(INTROSPECTION_ADDITIONAL_LDFLAGS -lGObjectDOMBindings)
-endif ()
 
 add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/WebKit2WebExtension-${WEBKITGTK_API_VERSION}.gir
@@ -977,6 +972,7 @@ add_custom_command(
         -DWEBKIT2_COMPILATION
         -I${CMAKE_SOURCE_DIR}/Source
         -I${WEBKIT2_DIR}
+        -I${JAVASCRIPTCORE_DIR}
         -I${JAVASCRIPTCORE_DIR}/ForwardingHeaders
         -I${DERIVED_SOURCES_DIR}
         -I${DERIVED_SOURCES_WEBKIT2GTK_DIR}

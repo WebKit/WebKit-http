@@ -51,7 +51,27 @@ struct TextMarkerData {
     AXID axID;
     Node* node;
     int offset;
+    int characterStartIndex;
+    int characterOffset;
+    bool ignored;
     EAffinity affinity;
+};
+
+struct CharacterOffset {
+    Node* node;
+    int startIndex;
+    int offset;
+    int remainingOffset;
+    
+    CharacterOffset(Node* n = nullptr, int startIndex = 0, int offset = 0, int remaining = 0)
+        : node(n)
+        , startIndex(startIndex)
+        , offset(offset)
+        , remainingOffset(remaining)
+    { }
+    
+    int remaining() const { return remainingOffset; }
+    bool isNull() const { return !node; }
 };
 
 class AXComputedObjectAttributeCache {
@@ -164,6 +184,12 @@ public:
     // Text marker utilities.
     void textMarkerDataForVisiblePosition(TextMarkerData&, const VisiblePosition&);
     VisiblePosition visiblePositionForTextMarkerData(TextMarkerData&);
+    void textMarkerDataForCharacterOffset(TextMarkerData&, Node&, int, bool toNodeEnd = false);
+    void startOrEndTextMarkerDataForRange(TextMarkerData&, RefPtr<Range>, bool);
+    AccessibilityObject* accessibilityObjectForTextMarkerData(TextMarkerData&);
+    RefPtr<Range> rangeForUnorderedCharacterOffsets(const CharacterOffset&, const CharacterOffset&);
+    static RefPtr<Range> rangeForNodeContents(Node*);
+    static int lengthForRange(Range*);
 
     enum AXNotification {
         AXActiveDescendantChanged,
@@ -254,6 +280,13 @@ protected:
     void setNodeInUse(Node* n) { m_textMarkerNodes.add(n); }
     void removeNodeForUse(Node* n) { m_textMarkerNodes.remove(n); }
     bool isNodeInUse(Node* n) { return m_textMarkerNodes.contains(n); }
+    
+    Node* nextNode(Node*) const;
+    Node* previousNode(Node*) const;
+    CharacterOffset traverseToOffsetInRange(RefPtr<Range>, int, bool, bool stayWithinRange = false);
+    VisiblePosition visiblePositionFromCharacterOffset(AccessibilityObject*, const CharacterOffset&);
+    CharacterOffset characterOffsetFromVisiblePosition(AccessibilityObject*, const VisiblePosition&);
+    void setTextMarkerDataWithCharacterOffset(TextMarkerData&, const CharacterOffset&);
 
 private:
     AccessibilityObject* rootWebArea();
@@ -326,7 +359,7 @@ bool isNodeAriaVisible(Node*);
 #if !HAVE(ACCESSIBILITY)
 inline AccessibilityObjectInclusion AXComputedObjectAttributeCache::getIgnored(AXID) const { return DefaultBehavior; }
 inline void AXComputedObjectAttributeCache::setIgnored(AXID, AccessibilityObjectInclusion) { }
-//inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(this, (Timer::TimerFiredFunction) nullptr) { }
+inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(nullptr), m_passwordNotificationPostTimer(nullptr), m_liveRegionChangedPostTimer(nullptr) { }
 inline AXObjectCache::~AXObjectCache() { }
 inline AccessibilityObject* AXObjectCache::focusedUIElementForPage(const Page*) { return nullptr; }
 inline AccessibilityObject* AXObjectCache::get(RenderObject*) { return nullptr; }

@@ -35,6 +35,7 @@
 
 namespace JSC { namespace FTL {
 
+class State;
 struct OSRExit;
 
 // This is an object that stores some interesting data about an OSR exit. It's expected that you will
@@ -55,7 +56,7 @@ struct OSRExitHandle : public ThreadSafeRefCounted<OSRExitHandle> {
     CCallHelpers::Label label;
 
     // This emits the exit thunk and populates 'label'.
-    void emitExitThunk(CCallHelpers&);
+    void emitExitThunk(State&, CCallHelpers&);
 };
 
 } } // namespace JSC::FTL

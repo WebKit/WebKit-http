@@ -1,3 +1,230 @@
+2016-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Runtime critical warnings when loading a URL after a session restore
+        https://bugs.webkit.org/show_bug.cgi?id=153233
+
+        Reviewed by Michael Catanzaro.
+
+        Add new test case.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestBackForwardList.cpp:
+        (viewLoadChanged):
+        (testWebKitWebViewNavigationAfterSessionRestore):
+        (beforeAll):
+
+2016-01-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Remove jhbuild-optional.modules
+        https://bugs.webkit.org/show_bug.cgi?id=152964
+
+        Reviewed by Alex Christensen.
+
+        * gtk/jhbuild-optional.modules: Removed.
+        * gtk/jhbuild.modules:
+
+2016-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add support to load/save session in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=153201
+
+        Reviewed by Michael Catanzaro.
+
+        It makes it easier to test the new WebView session API.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowFinalize): Free the session file path.
+        (browserWindowSaveSession): Save the current WebView session if
+        there's a session file path.
+        (browserWindowDeleteEvent): Call browserWindowSaveSession().
+        (browser_window_load_session): Try to load the session from the
+        given file path, otherwise fall back to homepage and keep the
+        session file to save the session on window close.
+        * MiniBrowser/gtk/BrowserWindow.h:
+        * MiniBrowser/gtk/main.c:
+        (createBrowserWindow): Pass the given session file path when
+        shouldLoadSession is TRUE.
+        (main): Only allow to restore/save session when MiniBrowser is
+        launched without URL arguments.
+
+2016-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ test /webkit2/WebKitWebView/geolocation-permission-requests after r195075.
+
+        Geolocation is no longer allowed for unique origins after r195075.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        (testWebViewGeolocationPermissionRequests):
+
+2016-01-18  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][EFL] Layout tests abort with PulseAudioSanitizer instance has no attribute '_pa_module_index' when the build is not ready.
+        https://bugs.webkit.org/show_bug.cgi?id=153216
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/port/pulseaudio_sanitizer.py:
+        (PulseAudioSanitizer.__init__): initialize _pa_module_index in the constructor.
+
+2016-01-18  Nan Wang  <n_wang@apple.com>
+
+        AX: [Mac] Implement next/previous text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=152728
+
+        Reviewed by Chris Fleizach.
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::accessibilityElementForTextMarker):
+
+2016-01-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Add testair to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=153126
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/build-jsc:
+
+2016-01-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove TextRun::allowsRoundingHacks()
+        https://bugs.webkit.org/show_bug.cgi?id=153185
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting): Deleted.
+
+2016-01-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [webkitdirs] Avoid list form of open because it broke WinCairo
+        https://bugs.webkit.org/show_bug.cgi?id=153106
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitdirs.pm:
+        (determineArchitecture):
+
+2016-01-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Add kdebug_trace signposts for a few WebCore operations
+        https://bugs.webkit.org/show_bug.cgi?id=153136
+        rdar://problem/24208487
+
+        Reviewed by Sam Weinig.
+        
+        Plist used by kdebug_trace() viewing tools.
+
+        * Tracing/SystemTracePoints.plist: Added.
+
+2016-01-14  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [webkitdirs] Replaced grep invocation with perl code
+        https://bugs.webkit.org/show_bug.cgi?id=153106
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitdirs.pm:
+        (determineArchitecture):
+
+2016-01-14  Brian Burg  <bburg@apple.com>
+
+        prepare-changelog does not read paths containing spaces properly
+        https://bugs.webkit.org/show_bug.cgi?id=137982
+
+        Reviewed by Joseph Pecoraro.
+
+        Escape whitespace in filenames before passing the file path to other functions.
+
+        * Scripts/prepare-ChangeLog:
+        (generateFunctionLists): Use the more explicit 3-argument form of 'open'.
+
+2016-01-14  Jason Marcell  <jmarcell@apple.com>
+
+        Standardize the usage of "branch" vs. "branchName".
+        https://bugs.webkit.org/show_bug.cgi?id=152982
+
+        Reviewed by Daniel Bates.
+
+        In an earlier patch we started using the name "branch" to indicate a branch object, whereas
+        "branchName" implies that the variable or property in question is simply a string.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._popoverLinesForCommitRange): Change branch to branchName.
+        (BuildbotQueueView.prototype._presentPopoverForRevisionRange): Change branch to branch.name.
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Change branch to branchName.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype.commitsOnBranch): Change branch to branchName.
+        (Trac.prototype._convertCommitInfoElementToObject): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockTrac.js:
+        (MockTrac): Ditto.
+
+2016-01-14  Jason Marcell  <jmarcell@apple.com>
+
+        Add a unit test to test BuildbotQueueView._appendPendingRevisionCount.
+        https://bugs.webkit.org/show_bug.cgi?id=152910
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockBuildbotQueue.js: Added.
+        (MockBuildbotQueue): Added. Mock BuildbotQueue object that doesn't need to talk to an actual Buildbot server.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockBuildbotQueueView.js: Added.
+        (MockBuildbotQueueView): Added. Mock BuildbotQueueView object that returns a pre-specified _latestProductiveIteration without
+        the need to talk to a real Buildbot server.
+        (MockBuildbotQueueView.prototype._latestProductiveIteration): Added. Returns a pre-specified _latestProductiveIteration
+        without the need to talk to a real Buildbot server.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockTrac.js: Added.
+        (MockTrac): Added. Mock Trac constructor that has pre-populated "recordedCommits" and does not need to talk to a real Trac
+        server.
+        (MockTrac.prototype.get oldestRecordedRevisionNumber): Added. Returns a pre-specified revision.
+        (MockTrac.prototype.get latestRecordedRevisionNumber): Ditto.
+        (MockTrac.prototype.loadMoreHistoricalData): Added. Overrides the real loadMoreHistoricalData so that we don't waste time
+        trying to talk to Trac.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/index.html: Added. Web page container for
+        QUnit unit tests.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added. QUnit unit tests.
+
+2016-01-14  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [CMake][GTK] CMake Error: Could not create named generator Eclipse CDT4 - Ninja
+        https://bugs.webkit.org/show_bug.cgi?id=132599
+
+        Reviewed by Michael Catanzaro.
+
+        Check if cmake Ninja generators are installed.
+
+        * Scripts/webkitdirs.pm:
+        (canUseNinjaGenerator):
+        (canUseEclipseNinjaGenerator):
+        (generateBuildSystemFromCMakeProject):
+        (canUseEclipse): Deleted.
+
+2016-01-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Testing with font family name "System Font" is unused
+        https://bugs.webkit.org/show_bug.cgi?id=153073
+        <rdar://problem/24091683>
+
+        Reviewed by Brent Fulgham.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet): Deleted.
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        (WTR::allowedFontFamilySet): Deleted.
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet): Deleted.
+
+2016-01-13  Daniel Bates  <dabates@apple.com>
+
+        [XSS Auditor] Add test when XSS payload is in the path portion of the URL
+        https://bugs.webkit.org/show_bug.cgi?id=152871
+
+        Reviewed by Brent Fulgham.
+
+        Merged from Blink (patch by Tom Sepez <tsepez@chromium.org>):
+        <https://src.chromium.org/viewvc/blink?revision=164746&view=revision>
+
+        * Scripts/webkitpy/layout_tests/servers/lighttpd.conf:
+
 2016-01-08  Andy Estes  <aestes@apple.com>
 
         [Content Filtering] Lazily load platform frameworks

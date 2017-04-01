@@ -7,6 +7,7 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 accessibility/mac [ Pass ]
+displaylists [ Pass ]
 editing/mac [ Pass ]
 fast/scrolling/latching [ Pass ]
 
@@ -1241,8 +1242,6 @@ webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Fa
 
 webkit.org/b/152029 inspector/debugger/command-line-api-exception.html [ Pass Timeout ]
 
-webkit.org/b/153016 inspector/script-profiler/event-type-Other.html [ Pass Failure ]
-
 webkit.org/b/153108 [ Debug ] inspector/model/scope-chain-node.html [ Pass Timeout ]
 
 # Colorspaces on CA OpenGL layers not available in Yosemite
@@ -1257,6 +1256,8 @@ webkit.org/b/148695 fast/shadow-dom [ Pass ]
 webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
 webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
 webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
+
+webkit.org/b/150225 fast/custom-elements [ Pass ]
 
 # Times out in debug.
 [ Debug ] js/regress/getter-richards-try-catch.html [ Skip ]
@@ -1302,3 +1303,5 @@ webkit.org/b/152009 [ Debug ElCapitan ] fast/canvas/canvas-too-large-to-draw.htm
 
 # WIRELESS_PLAYBACK_TARGET not enabled on Yosemite.
 [ Yosemite ] media/airplay-target-availability.html
+
+webkit.org/b/153086 sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.3_encodeURI/S15.1.3.3_A2.4_T2.html [ Pass Crash ]

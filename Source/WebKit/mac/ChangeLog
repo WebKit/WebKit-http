@@ -1,3 +1,148 @@
+2016-01-19  Beth Dakin  <bdakin@apple.com>
+
+        32-bit build fix.
+
+        * WebView/WebView.mm:
+        (-[WebView updateWebViewAdditions]):
+        (-[WebView showCandidates:forString:inRect:view:completionHandler:]):
+        * WebView/WebViewInternal.h:
+
+2016-01-19  Beth Dakin  <bdakin@apple.com>
+
+        Move away from NSSpellChecker's showCandidates method
+        https://bugs.webkit.org/show_bug.cgi?id=153254
+        -and corresponding-
+        rdar://problem/24216292
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::handleRequestedCandidates):
+        * WebView/WebView.mm:
+        (-[WebView updateWebViewAdditions]):
+        (-[WebView showCandidates:forString:inRect:view:completionHandler:]):
+        * WebView/WebViewInternal.h:
+
+2016-01-19  Enrica Casucci  <enrica@apple.com>
+
+        Add support for DataDetectors in WK (iOS).
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        rdar://problem/22855960
+
+        Reviewed by Tim Horton.
+
+        Adding feature definition for data detection.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-01-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195300.
+        https://bugs.webkit.org/show_bug.cgi?id=153244
+
+        enrica wants more time to fix Windows (Requested by thorton on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add support for DataDetectors in WK (iOS)."
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        http://trac.webkit.org/changeset/195300
+
+2016-01-19  Enrica Casucci  <enrica@apple.com>
+
+        Add support for DataDetectors in WK (iOS).
+        https://bugs.webkit.org/show_bug.cgi?id=152989
+        rdar://problem/22855960
+
+        Reviewed by Tim Horton.
+
+        Adding feature definition for data detection.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-01-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove TextRun::allowsRoundingHacks()
+        https://bugs.webkit.org/show_bug.cgi?id=153185
+
+        Reviewed by Simon Fraser.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:allowingFontSmoothing:]): Deleted.
+        (-[NSString _web_widthWithFont:]): Deleted.
+        * WebView/WebView.mm:
+        (+[WebView _setAllowsRoundingHacks:]): Deleted.
+        (+[WebView _allowsRoundingHacks]): Deleted.
+        * WebView/WebViewPrivate.h:
+
+2016-01-15  Tim Horton  <timothy_horton@apple.com>
+
+        Data detector yellow highlight location is vertically mirrored in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=152216
+        <rdar://problem/23848003>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedLink]):
+        These assignments have no effect because they're operating on a copy, because
+        TextIndicator::data() does not return a reference... so remove them.
+
+        * WebView/WebView.mm:
+        (-[WebView _setTextIndicator:withLifetime:]):
+        Convert textBoundingRectInRootViewCoordinates to WebView coordinates before
+        converting to Window coordinates from WebView coordinates so we get flipping right.
+
+        (-[WebView _animationControllerForDictionaryLookupPopupInfo:]):
+        (-[WebView _showDictionaryLookupPopup:]):
+        Ditto for these, except in the aforementioned conversion callback.
+
+2016-01-14  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Support opening and deleting SQLite databases on disk.
+        https://bugs.webkit.org/show_bug.cgi?id=153084
+
+        Reviewed by Alex Christensen, Sam Weinig and Andy Estes (oh my!).
+
+        * Storage/WebDatabaseProvider.mm: Copied from Source/WebKit/Storage/WebDatabaseProvider.cpp.
+        (WebDatabaseProvider::indexedDatabaseDirectoryPath):
+
+2016-01-14  Beth Dakin  <bdakin@apple.com>
+
+        WK1 and WK2 should share more candidate request code
+        https://bugs.webkit.org/show_bug.cgi?id=153108
+
+        Reviewed by Simon Fraser.
+
+        requestCandidatesForSelection() does not need to be exposed as an 
+        EditorClient function. WK1 can just call invoke this code from the existing 
+        respondToChangedSelection EditorClient function, which is what WK2 does.
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::respondToChangedSelection):
+
+        Cleanup — use some code that was moved to WebCore::Editor.
+        (WebEditorClient::requestCandidatesForSelection):
+        (WebEditorClient::handleRequestedCandidates):
+        (textCheckingResultFromNSTextCheckingResult):
+        (WebEditorClient::handleAcceptedCandidate):
+        (candidateRangeForSelection): Deleted.
+        (candidateWouldReplaceText): Deleted.
+
+2016-01-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r194900.
+
+        Roll back in as this did not actually regress PLT
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r194826."
+        https://bugs.webkit.org/show_bug.cgi?id=153020
+        http://trac.webkit.org/changeset/194900
+
 2016-01-12  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add a build flag for custom element
