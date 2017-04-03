@@ -81,6 +81,42 @@ Item {
                 '{"level":"1","child":{"level":2}}')
         }
 
+        function test_undefinedValue() {
+            resultSpy.clear()
+            webView.url = "about:blank"
+            verify(webView.waitForLoadSucceeded())
+
+            webView.experimental.evaluateJavaScript(
+                "(function() { })()",
+
+                function(result) {
+                    webView.lastResult = result
+                })
+
+            resultSpy.wait()
+            verify(typeof webView.lastResult === "undefined")
+            compare(webView.lastResult, undefined)
+        }
+
+        function test_nullValue() {
+            resultSpy.clear()
+
+            webView.url = "about:blank"
+            verify(webView.waitForLoadSucceeded())
+
+            webView.experimental.evaluateJavaScript(
+                "(function() { return { value: null } })()",
+
+                function(result) {
+                    webView.lastResult = result
+                })
+
+            resultSpy.wait()
+            verify(typeof webView.lastResult === "object")
+            verify(typeof webView.lastResult.value === "object")
+            compare(webView.lastResult.value, null)
+        }
+
         function test_booleanValue() {
             resultSpy.clear()
             webView.url = "about:blank"

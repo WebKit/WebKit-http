@@ -135,6 +135,11 @@ static QJSValue buildQJSValue(QJSEngine* engine, JSGlobalContextRef context, JSV
         return var;
 
     switch (JSValueGetType(context, value)) {
+    case kJSTypeUndefined:
+        break;
+    case kJSTypeNull:
+        var = QJSValue(QJSValue::NullValue);
+        break;
     case kJSTypeBoolean:
         var = QJSValue(JSValueToBoolean(context, value));
         break;
