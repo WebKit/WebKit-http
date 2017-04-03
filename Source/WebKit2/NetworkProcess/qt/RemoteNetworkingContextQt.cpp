@@ -59,7 +59,7 @@ NetworkStorageSession& RemoteNetworkingContext::storageSession() const
 
 QNetworkAccessManager* RemoteNetworkingContext::networkAccessManager() const
 {
-     return NetworkProcess::singleton().networkAccessManager();
+    return &NetworkProcess::singleton().networkAccessManager();
 }
 
 }

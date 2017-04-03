@@ -104,7 +104,7 @@ public:
 #endif
 
 #if PLATFORM(QT)
-    QNetworkAccessManager* networkAccessManager() { return &m_networkAccessManager; }
+    QNetworkAccessManager& networkAccessManager() { return m_networkAccessManager; }
 #endif
 
     void prefetchDNS(const String&);

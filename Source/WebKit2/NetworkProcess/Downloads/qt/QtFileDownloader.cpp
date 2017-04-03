@@ -40,7 +40,7 @@ namespace WebKit {
 
 QtFileDownloader::QtFileDownloader(Download& download, const QNetworkRequest& request)
     : m_download(download)
-    , m_reply(NetworkProcess::singleton().networkAccessManager()->get(request))
+    , m_reply(NetworkProcess::singleton().networkAccessManager().get(request))
     , m_error(QNetworkReply::NoError)
 {
     makeConnections();
