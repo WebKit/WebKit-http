@@ -53,9 +53,6 @@ Download::Download(DownloadManager& downloadManager, DownloadID downloadID, cons
 #if !USE(NETWORK_SESSION)
     , m_request(request)
 #endif
-#if PLATFORM(QT)
-    , m_qtDownloader(0)
-#endif
 {
     ASSERT(m_downloadID.downloadID());
 

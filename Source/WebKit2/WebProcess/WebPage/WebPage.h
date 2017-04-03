@@ -1318,7 +1318,7 @@ private:
 
     FindController m_findController;
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(QT)
-    TapHighlightController m_tapHighlightController;
+    TapHighlightController m_tapHighlightController { this };
 #endif
 
     RefPtr<WebInspector> m_inspector;

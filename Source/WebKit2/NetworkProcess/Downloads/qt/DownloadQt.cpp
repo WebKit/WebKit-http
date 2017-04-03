@@ -65,7 +65,7 @@ void Download::platformInvalidate()
 {
     ASSERT(m_qtDownloader);
     m_qtDownloader->deleteLater();
-    m_qtDownloader = 0;
+    m_qtDownloader = nullptr;
 }
 
 void Download::startTransfer(const String& destination)

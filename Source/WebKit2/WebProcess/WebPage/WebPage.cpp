@@ -314,11 +314,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_formClient(std::make_unique<API::InjectedBundle::FormClient>())
     , m_uiClient(std::make_unique<API::InjectedBundle::PageUIClient>())
     , m_findController(this)
-#if ENABLE(TOUCH_EVENTS)
-#if PLATFORM(QT)
-    , m_tapHighlightController(this)
-#endif
-#endif
 #if ENABLE(INPUT_TYPE_COLOR)
     , m_activeColorChooser(0)
 #endif

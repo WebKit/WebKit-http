@@ -149,7 +149,7 @@ private:
     RefPtr<DownloadAuthenticationClient> m_authenticationClient;
 #endif
 #if PLATFORM(QT)
-    QtFileDownloader* m_qtDownloader;
+    QtFileDownloader* m_qtDownloader { nullptr };
 #endif
 #if PLATFORM(GTK) || PLATFORM(EFL)
     std::unique_ptr<WebCore::ResourceHandleClient> m_downloadClient;
