@@ -29,6 +29,7 @@
 
 #include "QtBuiltinBundlePage.h"
 #include "WKBundlePage.h"
+#include "WKData.h"
 #include "WKNumber.h"
 #include "WKString.h"
 #include "WKStringQt.h"
@@ -126,8 +127,8 @@ void QtBuiltinBundle::handleSetNavigatorQtObjectEnabled(WKBundlePageRef page, WK
 void QtBuiltinBundle::handleMessageToNavigatorQtWebChannelTransport(WKBundlePageRef page, WKTypeRef messageBody)
 {
     ASSERT(messageBody);
-    ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
-    WKStringRef contents = static_cast<WKStringRef>(messageBody);
+    ASSERT(WKGetTypeID(messageBody) == WKDataGetTypeID());
+    WKDataRef contents = static_cast<WKDataRef>(messageBody);
 
     QtBuiltinBundlePage* bundlePage = m_pages.get(page);
     if (!bundlePage)

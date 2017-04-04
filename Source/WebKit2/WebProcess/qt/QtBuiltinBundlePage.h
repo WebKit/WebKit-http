@@ -54,8 +54,8 @@ public:
     void setNavigatorQtObjectEnabled(bool);
 
 #if ENABLE(QT_WEBCHANNEL)
-    void postMessageFromNavigatorQtWebChannelTransport(WKStringRef message);
-    void didReceiveMessageToNavigatorQtWebChannelTransport(WKStringRef message);
+    void postMessageFromNavigatorQtWebChannelTransport(WKDataRef message);
+    void didReceiveMessageToNavigatorQtWebChannelTransport(WKDataRef message);
 #endif
 
 private:
@@ -64,7 +64,7 @@ private:
     void registerNavigatorQtWebChannelTransportObject(JSGlobalContextRef);
 #endif
 
-    void postNavigatorMessage(WKStringRef messageName, WKStringRef message);
+    void postNavigatorMessage(WKStringRef messageName, WKTypeRef message);
 
     QtBuiltinBundle* m_bundle;
     WKBundlePageRef m_page;

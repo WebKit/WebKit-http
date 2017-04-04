@@ -70,6 +70,7 @@
 #include <QtCore/QFile>
 #include <QtQml/QJSValue>
 #include <QtQuick/QQuickView>
+#include <WKData.h>
 #include <WKNumber.h>
 #include <WKOpenPanelResultListener.h>
 #include <WKPageConfigurationRef.h>
@@ -999,10 +1000,12 @@ void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtObject(WKStringRef me
 }
 
 #if ENABLE(QT_WEBCHANNEL)
-void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKStringRef message)
+void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKDataRef data)
 {
-    // TODO: can I convert a WKStringRef to a UTF8 QByteArray directly?
-    q_ptr->experimental()->m_webChannelTransport->receiveMessage(WKStringCopyQString(message).toUtf8());
+    const char* bytes = reinterpret_cast<const char*>(WKDataGetBytes(data));
+    int size = WKDataGetSize(data);
+    QByteArray message = QByteArray::fromRawData(bytes, size);
+    q_ptr->experimental()->m_webChannelTransport->receiveMessage(message);
 }
 #endif
 
@@ -1269,7 +1272,8 @@ void QQuickWebViewExperimental::postQtWebChannelTransportMessage(const QByteArra
 {
     Q_D(QQuickWebView);
     static WKStringRef messageName = WKStringCreateWithUTF8CString("MessageToNavigatorQtWebChannelTransportObject");
-    WKRetainPtr<WKStringRef> contents = adoptWK(WKStringCreateWithUTF8CString(message.constData()));
+    // TODO: API::Data::createWithoutCopying may help to avoid copy
+    WKRetainPtr<WKDataRef> contents = adoptWK(WKDataCreate(reinterpret_cast<const unsigned char*>(message.data()), message.size()));
     WKPagePostMessageToInjectedBundle(d->webPage.get(), messageName, contents.get());
 }
 #endif

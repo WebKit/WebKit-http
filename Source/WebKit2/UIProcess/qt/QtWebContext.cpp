@@ -31,6 +31,7 @@
 #include <WKAPICast.h>
 #include <WKArray.h>
 #include <WKContextPrivate.h>
+#include <WKData.h>
 #include <WKPage.h>
 #include <WKString.h>
 #include <WKStringQt.h>
@@ -104,16 +105,20 @@ static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messag
     WKArrayRef body = static_cast<WKArrayRef>(messageBody);
     ASSERT(WKArrayGetSize(body) == 2);
     ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 0)) == WKPageGetTypeID());
-    ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKStringGetTypeID());
 
     WKPageRef page = static_cast<WKPageRef>(WKArrayGetItemAtIndex(body, 0));
-    WKStringRef str = static_cast<WKStringRef>(WKArrayGetItemAtIndex(body, 1));
 
-    if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject"))
-        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtObject(str);
+    if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject")) {
+        ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKStringGetTypeID());
+        WKStringRef data = static_cast<WKStringRef>(WKArrayGetItemAtIndex(body, 1));
+        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtObject(data);
+    }
 #if ENABLE(QT_WEBCHANNEL)
-    else if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject"))
-        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtWebChannelTransportObject(str);
+    else if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject")) {
+        ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKDataGetTypeID());
+        WKDataRef data = static_cast<WKDataRef>(WKArrayGetItemAtIndex(body, 1));
+        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtWebChannelTransportObject(data);
+    }
 #endif
 }
 

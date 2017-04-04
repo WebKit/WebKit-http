@@ -136,7 +136,7 @@ public:
 
     void didReceiveMessageFromNavigatorQtObject(WKStringRef message);
 #if ENABLE(QT_WEBCHANNEL)
-    void didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKStringRef message);
+    void didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKDataRef);
 #endif
 
     WebKit::CoordinatedGraphicsScene* coordinatedGraphicsScene();

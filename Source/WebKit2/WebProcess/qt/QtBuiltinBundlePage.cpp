@@ -27,14 +27,17 @@
 #include "config.h"
 #include "QtBuiltinBundlePage.h"
 
+#include "APIData.h"
 #include "QtBuiltinBundle.h"
 #include "WKArray.h"
 #include "WKBundleFrame.h"
+#include "WKData.h"
 #include "WKRetainPtr.h"
 #include "WKString.h"
 #include "WKStringPrivate.h"
 #include "WKStringQt.h"
 #include <JavaScript.h>
+#include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSRetainPtr.h>
 
 namespace WebKit {
@@ -145,9 +148,15 @@ static JSValueRef qt_postWebChannelMessageCallback(JSContextRef context, JSObjec
     ASSERT(bundlePage);
 
     // TODO: can we transmit the data as JS object, instead of as a string?
-    JSRetainPtr<JSStringRef> jsContents = JSValueToStringCopy(context, arguments[0], 0);
-    WKRetainPtr<WKStringRef> contents(AdoptWK, WKStringCreateWithJSString(jsContents.get()));
-    bundlePage->postMessageFromNavigatorQtWebChannelTransport(contents.get());
+
+    JSC::ExecState* exec = toJS(context);
+    JSC::JSLockHolder locker(exec);
+
+    JSC::JSValue jsValue = toJS(exec, arguments[0]);
+    CString message = jsValue.toString(exec)->value(exec).utf8();
+
+    bundlePage->postMessageFromNavigatorQtWebChannelTransport(WKDataCreate(reinterpret_cast<const unsigned char*>(message.data()), message.length()));
+
     return JSValueMakeUndefined(context);
 }
 #endif
@@ -246,19 +255,20 @@ void QtBuiltinBundlePage::registerNavigatorQtWebChannelTransportObject(JSGlobalC
                             postMessageName, &qt_postWebChannelMessageCallback);
 }
 
-void QtBuiltinBundlePage::didReceiveMessageToNavigatorQtWebChannelTransport(WKStringRef contents)
+void QtBuiltinBundlePage::didReceiveMessageToNavigatorQtWebChannelTransport(WKDataRef contents)
 {
-    callOnMessage(m_navigatorQtWebChannelTransportObject, contents, m_page);
+    WKStringRef message = WKStringCreateWithUTF8CString(reinterpret_cast<const char*>(WKDataGetBytes(contents)));
+    callOnMessage(m_navigatorQtWebChannelTransportObject, message, m_page);
 }
 
-void QtBuiltinBundlePage::postMessageFromNavigatorQtWebChannelTransport(WKStringRef message)
+void QtBuiltinBundlePage::postMessageFromNavigatorQtWebChannelTransport(WKDataRef message)
 {
     static WKStringRef messageName = WKStringCreateWithUTF8CString("MessageFromNavigatorQtWebChannelTransportObject");
     postNavigatorMessage(messageName, message);
 }
 #endif
 
-void QtBuiltinBundlePage::postNavigatorMessage(WKStringRef messageName, WKStringRef message)
+void QtBuiltinBundlePage::postNavigatorMessage(WKStringRef messageName, WKTypeRef message)
 {
     WKTypeRef body[] = { page(), message };
     WKRetainPtr<WKArrayRef> messageBody(AdoptWK, WKArrayCreate(body, sizeof(body) / sizeof(WKTypeRef)));
