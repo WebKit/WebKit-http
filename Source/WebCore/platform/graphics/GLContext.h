@@ -24,15 +24,13 @@
 #include "PlatformDisplay.h"
 #include <wtf/Noncopyable.h>
 
-#if USE(EGL)
-#if !PLATFORM(GTK) && !PLATFORM(WPE)
-#include "eglplatform.h"
-#else
+#if USE(EGL) && !PLATFORM(GTK)
 #if PLATFORM(WPE)
 // FIXME: Find some way to deduce this.
 #define __GBM__ 1
-#endif
 #include <EGL/eglplatform.h>
+#else
+#include "eglplatform.h"
 #endif
 typedef EGLNativeWindowType GLNativeWindowType;
 #else
