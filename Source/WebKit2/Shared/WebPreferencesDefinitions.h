@@ -239,6 +239,7 @@
     macro(NeedsStorageAccessFromFileURLsQuirk, needsStorageAccessFromFileURLsQuirk, Bool, bool, true, "", "") \
     macro(AsyncImageDecodingEnabled, asyncImageDecodingEnabled, Bool, bool, true, "", "") \
     macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, true, "", "") \
+    macro(AllowScriptsToCloseWindows, allowScriptsToCloseWindows, Bool, bool, false, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \

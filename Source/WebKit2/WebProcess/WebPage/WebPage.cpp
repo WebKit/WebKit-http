@@ -3245,6 +3245,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled(store.getBoolValueForKey(WebPreferencesKey::modernMediaControlsEnabledKey()));
 
+    settings.setAllowScriptsToCloseWindows(store.getBoolValueForKey(WebPreferencesKey::allowScriptsToCloseWindowsKey()));
+
     platformPreferencesDidChange(store);
 
     if (m_drawingArea)

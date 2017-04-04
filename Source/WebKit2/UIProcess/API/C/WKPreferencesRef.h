@@ -300,6 +300,10 @@ WK_EXPORT bool WKPreferencesGetLogsPageMessagesToSystemConsoleEnabled(WKPreferen
 WK_EXPORT void WKPreferencesSetGamepadsEnabled(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetGamepadsEnabled(WKPreferencesRef preferencesRef);
 
+// Default to false.
+WK_EXPORT void WKPreferencesSetAllowScriptsToCloseWindow(WKPreferencesRef preferencesRef, bool allow);
+WK_EXPORT bool WKPreferencesGetAllowScriptsToCloseWindow(WKPreferencesRef preferencesRef);
+
 #ifdef __cplusplus
 }
 #endif
