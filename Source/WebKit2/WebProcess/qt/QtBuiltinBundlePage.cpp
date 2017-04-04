@@ -39,6 +39,8 @@
 #include <JavaScript.h>
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSRetainPtr.h>
+#include <QDebug>
+#include <QJsonDocument>
 
 namespace WebKit {
 
@@ -137,6 +139,24 @@ static JSClassRef navigatorQtWebChannelTransportObjectClass()
     return classRef;
 }
 
+static QByteArray convertJsonTextToBinary(const CString& textJson)
+{
+    QByteArray jsonData = QByteArray::fromRawData(textJson.data(), textJson.length());
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse the client WebKit QWebChannel message as JSON: " << jsonData
+            << "Error message is:" << error.errorString();
+        return QByteArray();
+    }
+    if (!doc.isObject()) {
+        qWarning() << "Received WebKit QWebChannel message is not a JSON object: " << jsonData;
+        return QByteArray();
+    }
+    return doc.toBinaryData();
+}
+
 static JSValueRef qt_postWebChannelMessageCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef*)
 {
     // FIXME: should it work regardless of the thisObject?
@@ -147,15 +167,15 @@ static JSValueRef qt_postWebChannelMessageCallback(JSContextRef context, JSObjec
     QtBuiltinBundlePage* bundlePage = reinterpret_cast<QtBuiltinBundlePage*>(JSObjectGetPrivate(thisObject));
     ASSERT(bundlePage);
 
-    // TODO: can we transmit the data as JS object, instead of as a string?
-
     JSC::ExecState* exec = toJS(context);
     JSC::JSLockHolder locker(exec);
 
     JSC::JSValue jsValue = toJS(exec, arguments[0]);
-    CString message = jsValue.toString(exec)->value(exec).utf8();
+    CString textJson = jsValue.toString(exec)->value(exec).utf8();
 
-    bundlePage->postMessageFromNavigatorQtWebChannelTransport(WKDataCreate(reinterpret_cast<const unsigned char*>(message.data()), message.length()));
+    QByteArray message = convertJsonTextToBinary(textJson);
+    if (!message.isEmpty())
+        bundlePage->postMessageFromNavigatorQtWebChannelTransport(WKDataCreate(reinterpret_cast<const unsigned char*>(message.data()), message.length()));
 
     return JSValueMakeUndefined(context);
 }
@@ -257,7 +277,13 @@ void QtBuiltinBundlePage::registerNavigatorQtWebChannelTransportObject(JSGlobalC
 
 void QtBuiltinBundlePage::didReceiveMessageToNavigatorQtWebChannelTransport(WKDataRef contents)
 {
-    WKStringRef message = WKStringCreateWithUTF8CString(reinterpret_cast<const char*>(WKDataGetBytes(contents)));
+    const char* bytes = reinterpret_cast<const char*>(WKDataGetBytes(contents));
+    int size = WKDataGetSize(contents);
+    QJsonDocument doc = QJsonDocument::fromRawData(bytes, size, QJsonDocument::BypassValidation);
+    ASSERT(doc.isObject());
+
+    QByteArray textJson = doc.toJson(QJsonDocument::Compact);
+    WKStringRef message = WKStringCreateWithUTF8CString(textJson.constData());
     callOnMessage(m_navigatorQtWebChannelTransportObject, message, m_page);
 }
 

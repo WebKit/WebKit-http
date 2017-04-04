@@ -1004,8 +1004,7 @@ void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtWebChannelTransportOb
 {
     const char* bytes = reinterpret_cast<const char*>(WKDataGetBytes(data));
     int size = WKDataGetSize(data);
-    QByteArray message = QByteArray::fromRawData(bytes, size);
-    q_ptr->experimental()->m_webChannelTransport->receiveMessage(message);
+    q_ptr->experimental()->m_webChannelTransport->receiveMessage(bytes, size);
 }
 #endif
 

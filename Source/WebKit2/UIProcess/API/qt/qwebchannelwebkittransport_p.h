@@ -52,7 +52,7 @@ public:
 
     void sendMessage(const QJsonObject& message) override;
 
-    void receiveMessage(const QByteArray& message);
+    void receiveMessage(const char* message, int size);
 
 private:
     QQuickWebViewExperimental* m_experimental;

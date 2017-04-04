@@ -57,23 +57,13 @@ QWebChannelWebKitTransport::QWebChannelWebKitTransport(QQuickWebViewExperimental
 
 void QWebChannelWebKitTransport::sendMessage(const QJsonObject& message)
 {
-    const QByteArray data = QJsonDocument(message).toJson(QJsonDocument::Compact);
+    QByteArray data = QJsonDocument(message).toBinaryData();
     m_experimental->postQtWebChannelTransportMessage(data);
 }
 
-void QWebChannelWebKitTransport::receiveMessage(const QByteArray& message)
+void QWebChannelWebKitTransport::receiveMessage(const char* message, int size)
 {
-    QJsonParseError error;
-    const QJsonDocument doc = QJsonDocument::fromJson(message, &error);
-    if (error.error != QJsonParseError::NoError) {
-        qWarning() << "Failed to parse the client WebKit QWebChannel message as JSON: " << message
-                   << "Error message is:" << error.errorString();
-        return;
-    }
-    if (!doc.isObject()) {
-        qWarning() << "Received WebKit QWebChannel message is not a JSON object: " << message;
-        return;
-    }
+    QJsonDocument doc = QJsonDocument::fromRawData(message, size, QJsonDocument::BypassValidation);
     emit messageReceived(doc.object(), this);
 }
 
