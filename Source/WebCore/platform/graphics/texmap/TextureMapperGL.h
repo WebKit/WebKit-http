@@ -50,8 +50,7 @@ public:
         ShouldAntialias = 0x08,
         ShouldRotateTexture90 = 0x10,
         ShouldRotateTexture180 = 0x20,
-        ShouldRotateTexture270 = 0x40,
-        ShouldOverwriteRect = 0x80
+        ShouldRotateTexture270 = 0x40
     };
 
     typedef int Flags;
@@ -61,7 +60,7 @@ public:
     void drawNumber(int number, const Color&, const FloatPoint&, const TransformationMatrix&) override;
     void drawTexture(const BitmapTexture&, const FloatRect&, const TransformationMatrix&, float opacity, unsigned exposedEdges) override;
     virtual void drawTexture(Platform3DObject texture, Flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, unsigned exposedEdges = AllEdges);
-    void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&, bool) override;
+    void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) override;
 
     void bindSurface(BitmapTexture* surface) override;
     BitmapTexture* currentSurface();
@@ -72,7 +71,6 @@ public:
     IntRect clipBounds() override;
     IntSize maxTextureSize() const override { return IntSize(2000, 2000); }
     PassRefPtr<BitmapTexture> createTexture() override;
-    PassRefPtr<BitmapTexture> createTexture(GC3Dint internalFormat);
     inline GraphicsContext3D* graphicsContext3D() const { return m_context3D.get(); }
 
     void drawFiltered(const BitmapTexture& sourceTexture, const BitmapTexture* contentTexture, const FilterOperation&, int pass);

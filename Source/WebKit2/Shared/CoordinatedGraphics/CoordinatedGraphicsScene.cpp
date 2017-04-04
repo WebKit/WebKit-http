@@ -36,7 +36,7 @@ namespace WebKit {
 
 void CoordinatedGraphicsScene::dispatchOnMainThread(Function<void()>&& function)
 {
-    if (RunLoop::isMain()) {
+    if (isMainThread()) {
         function();
         return;
     }
@@ -67,7 +67,7 @@ CoordinatedGraphicsScene::CoordinatedGraphicsScene(CoordinatedGraphicsSceneClien
     : m_client(client)
     , m_isActive(false)
     , m_rootLayerID(InvalidCoordinatedLayerID)
-    , m_viewBackgroundColor(Color::black)
+    , m_viewBackgroundColor(Color::white)
     , m_clientRunLoop(RunLoop::current())
 {
 }
@@ -171,14 +171,6 @@ void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
     if (m_client)
         m_client->updateViewport();
-}
-
-TextureMapperGL* CoordinatedGraphicsScene::texmapGL()
-{
-    if (!m_textureMapper)
-        return nullptr;
-
-    return static_cast<TextureMapperGL*>(m_textureMapper.get());
 }
 #endif
 

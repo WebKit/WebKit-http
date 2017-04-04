@@ -474,13 +474,13 @@ void TextureMapperGL::drawTexture(Platform3DObject texture, Flags flags, const I
     drawTexturedQuadWithProgram(program.get(), texture, flags, textureSize, targetRect, modelViewMatrix, opacity);
 }
 
-void TextureMapperGL::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color, bool allowBlend)
+void TextureMapperGL::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color)
 {
     Flags flags = 0;
     TextureMapperShaderProgram::Options options = TextureMapperShaderProgram::SolidColor;
     if (!matrix.mapQuad(rect).isRectilinear()) {
         options |= TextureMapperShaderProgram::Antialiasing;
-        flags |= ShouldAntialias | (allowBlend ? ShouldBlend : 0);
+        flags |= ShouldBlend | ShouldAntialias;
     }
 
     Ref<TextureMapperShaderProgram> program = data().getShaderProgram(options);
@@ -489,7 +489,7 @@ void TextureMapperGL::drawSolidColor(const FloatRect& rect, const Transformation
     float r, g, b, a;
     Color(premultipliedARGBFromColor(color)).getRGBA(r, g, b, a);
     m_context3D->uniform4f(program->colorLocation(), r, g, b, a);
-    if (allowBlend && a < 1)
+    if (a < 1)
         flags |= ShouldBlend;
 
     draw(rect, matrix, program.get(), GraphicsContext3D::TRIANGLE_FAN, flags);
@@ -749,11 +749,6 @@ IntRect TextureMapperGL::clipBounds()
 PassRefPtr<BitmapTexture> TextureMapperGL::createTexture()
 {
     return BitmapTextureGL::create(*m_context3D);
-}
-
-PassRefPtr<BitmapTexture> TextureMapperGL::createTexture(GC3Dint internalFormat)
-{
-    return BitmapTextureGL::create(*m_context3D, internalFormat);
 }
 
 std::unique_ptr<TextureMapper> TextureMapper::platformCreateAccelerated()

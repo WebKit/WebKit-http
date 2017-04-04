@@ -178,35 +178,6 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
         m_usedBuffers.append(WTFMove(prevBuffer));
 }
 
-void TextureMapperPlatformLayerProxy::dropCurrentBufferWhilePreservingTexture()
-{
-    ASSERT(m_lock.isHeld());
-
-    if (!m_compositorThreadUpdateTimer)
-        return;
-
-    m_compositorThreadUpdateFunction =
-        [this] {
-            ASSERT(m_lock.isHeld());
-
-            if (!m_compositor || !m_targetLayer)
-                return;
-
-            TextureMapperGL* texmapGL = m_compositor->texmapGL();
-            if (!texmapGL || !m_currentBuffer)
-                return;
-
-            m_pendingBuffer = m_currentBuffer->clone(*texmapGL);
-            auto prevBuffer = WTFMove(m_currentBuffer);
-            m_currentBuffer = WTFMove(m_pendingBuffer);
-            m_targetLayer->setContentsLayer(m_currentBuffer.get());
-
-            if (prevBuffer->hasManagedTexture())
-                m_usedBuffers.append(WTFMove(prevBuffer));
-        };
-    m_compositorThreadUpdateTimer->startOneShot(0);
-}
-
 bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(Function<void()>&& updateFunction)
 {
     LockHolder locker(m_lock);
