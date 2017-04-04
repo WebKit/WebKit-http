@@ -51,6 +51,8 @@ Extensions3DCache::Extensions3DCache()
 
     RefPtr<GraphicsContext3D> context3D = GraphicsContext3D::createForCurrentGLContext();
     m_GL_EXT_unpack_subimage = context3D->getExtensions()->supports("GL_EXT_unpack_subimage");
+    m_GL_OES_packed_depth_stencil = context3D->getExtensions()->supports("GL_OES_packed_depth_stencil");
+    m_GL_EXT_multisampled_render_to_texture = context3D->getExtensions()->supports("GL_EXT_multisampled_render_to_texture");
     context3D.release();
 
     if (previousActiveContext)
