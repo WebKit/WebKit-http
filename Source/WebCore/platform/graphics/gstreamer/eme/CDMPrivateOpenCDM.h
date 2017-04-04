@@ -30,7 +30,7 @@
 #if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-#include "CDMPrivate.h"
+#include "LegacyCDMPrivate.h"
 #else
 #include "LegacyCDMSession.h"
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
