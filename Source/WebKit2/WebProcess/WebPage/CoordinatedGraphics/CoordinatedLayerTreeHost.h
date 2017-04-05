@@ -79,7 +79,7 @@ private:
     static RefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
 
     CompositingCoordinator m_coordinator;
-    bool m_isWaitingForRenderer { true };
+    bool m_isWaitingForRenderer { false };
     bool m_scheduledWhileWaitingForRenderer { false };
     uint64_t m_forceRepaintAsyncCallbackID { 0 };
     RunLoop::Timer<CoordinatedLayerTreeHost> m_layerFlushTimer;
