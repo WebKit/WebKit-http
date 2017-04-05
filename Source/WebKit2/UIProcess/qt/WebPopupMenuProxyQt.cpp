@@ -342,7 +342,7 @@ void WebPopupMenuProxyQt::createContext(QQmlComponent* component, QObject* conte
     m_context.reset(new QQmlContext(baseContext));
 
     contextObject->setParent(m_context.get());
-    m_context->setContextProperty(QLatin1String("model"), contextObject);
+    m_context->setContextProperty(QStringLiteral("model"), contextObject);
     m_context->setContextObject(contextObject);
 }
 

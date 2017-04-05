@@ -169,7 +169,7 @@ static MetaDataResult::Tag tryReadPluginMetaDataFromCacheFile(const QString& can
                 return MetaDataResult::NotAvailable;
             }
 
-            if (object.contains(QLatin1String("unloadable")))
+            if (object.contains(QStringLiteral("unloadable")))
                 return MetaDataResult::Unloadable;
 
             // Match.

@@ -51,7 +51,7 @@ static void initInspectorServer()
 #if ENABLE(INSPECTOR_SERVER)
     QString inspectorEnv = QString::fromUtf8(qgetenv("QTWEBKIT_INSPECTOR_SERVER"));
     if (!inspectorEnv.isEmpty()) {
-        QString bindAddress = QLatin1String("127.0.0.1");
+        QString bindAddress = QStringLiteral("127.0.0.1");
         QString portStr = inspectorEnv;
         int port = 0;
 
@@ -70,7 +70,7 @@ static void initInspectorServer()
 
         bool success = WebInspectorServer::singleton().listen(bindAddress, port);
         if (success) {
-            QString inspectorServerUrl = QString::fromLatin1("http://%1:%2").arg(bindAddress).arg(port);
+            QString inspectorServerUrl = QStringLiteral("http://%1:%2").arg(bindAddress).arg(port);
             qWarning("Inspector server started successfully. Try pointing a WebKit browser to %s", qPrintable(inspectorServerUrl));
         } else
             qWarning("Couldn't start the inspector server on bind address \"%s\" and port \"%d\". In case of invalid input, try something like: \"12345\" or \"192.168.2.14:12345\" (with the address of one of this host's interface).", qPrintable(bindAddress), port);

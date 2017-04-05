@@ -110,7 +110,7 @@ void WebColorPickerQt::createContext(QQmlComponent* component, QObject* contextO
     m_context.reset(new QQmlContext(baseContext));
 
     contextObject->setParent(m_context.get());
-    m_context->setContextProperty(QLatin1String("model"), contextObject);
+    m_context->setContextProperty(QStringLiteral("model"), contextObject);
     m_context->setContextObject(contextObject);
 }
 

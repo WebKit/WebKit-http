@@ -617,7 +617,7 @@ void QQuickWebViewPrivate::processDidCrash()
 
     // Check if loading was ongoing, when process crashed.
     if (m_loadProgress > 0 && m_loadProgress < 100) {
-        QWebLoadRequest loadRequest(url, QQuickWebView::LoadFailedStatus, QLatin1String("The web process crashed."), QQuickWebView::InternalErrorDomain, 0);
+        QWebLoadRequest loadRequest(url, QQuickWebView::LoadFailedStatus, QStringLiteral("The web process crashed."), QQuickWebView::InternalErrorDomain, 0);
 
         loadProgressDidChange(100);
         emit q->loadingChanged(&loadRequest);
