@@ -467,7 +467,7 @@ void DumpRenderTreeSupportQt::dumpSetAcceptsEditing(bool b)
 
 void DumpRenderTreeSupportQt::dumpNotification(bool b)
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationPresenterClientQt::dumpNotification = b;
 #endif
 }
@@ -633,7 +633,7 @@ void DumpRenderTreeSupportQt::removeUserStyleSheets(QWebPageAdapter* adapter)
 
 void DumpRenderTreeSupportQt::simulateDesktopNotificationClick(const QString& title)
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationPresenterClientQt::notificationPresenter()->notificationClicked(title);
 #endif
 }
@@ -870,7 +870,7 @@ QString DumpRenderTreeSupportQt::frameRenderTreeDump(QWebFrameAdapter* adapter)
 
 void DumpRenderTreeSupportQt::clearNotificationPermissions()
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     WebCore::NotificationPresenterClientQt::notificationPresenter()->clearCachedPermissions();
 #endif
 }

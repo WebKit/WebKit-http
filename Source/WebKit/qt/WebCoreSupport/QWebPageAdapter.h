@@ -352,14 +352,14 @@ public:
 #if ENABLE(GEOLOCATION) && HAVE(QTPOSITIONING)
     void setGeolocationEnabledForFrame(QWebFrameAdapter*, bool);
 #endif
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     void setNotificationsAllowedForFrame(QWebFrameAdapter*, bool allowed);
     void addNotificationPresenterClient();
 #ifndef QT_NO_SYSTEMTRAYICON
     bool hasSystemTrayIcon() const;
     void setSystemTrayIcon(QObject*);
 #endif // QT_NO_SYSTEMTRAYICON
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
 
     // Called from QWebPage as private slots.
     void _q_cleanupLeakMessages();

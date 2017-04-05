@@ -287,7 +287,7 @@ void QWebPageAdapter::initializeWebCorePage()
 
     settings = new QWebSettings(&page->settings());
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     WebCore::provideNotification(page, NotificationPresenterClientQt::notificationPresenter());
 #endif
 
@@ -299,7 +299,7 @@ QWebPageAdapter::~QWebPageAdapter()
     delete page;
     delete settings;
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationPresenterClientQt::notificationPresenter()->removeClient();
 #endif
 #if ENABLE(DEVICE_ORIENTATION)
@@ -1290,7 +1290,7 @@ QString QWebPageAdapter::contextMenuItemTagForAction(QWebPageAdapter::MenuAction
     }
 }
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 void QWebPageAdapter::setNotificationsAllowedForFrame(QWebFrameAdapter* frame, bool allowed)
 {
     NotificationPresenterClientQt::notificationPresenter()->setNotificationsAllowedForFrame(frame->frame, allowed);
@@ -1312,7 +1312,7 @@ void QWebPageAdapter::setSystemTrayIcon(QObject *icon)
     NotificationPresenterClientQt::notificationPresenter()->setSystemTrayIcon(icon);
 }
 #endif // QT_NO_SYSTEMTRAYICON
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
 
 #if ENABLE(GEOLOCATION) && HAVE(QTPOSITIONING)
 void QWebPageAdapter::setGeolocationEnabledForFrame(QWebFrameAdapter* frame, bool on)

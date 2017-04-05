@@ -207,13 +207,13 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
     initializeWebCorePage();
     memset(actions, 0, sizeof(actions));
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     addNotificationPresenterClient();
 #ifndef QT_NO_SYSTEMTRAYICON
     if (!hasSystemTrayIcon())
         setSystemTrayIcon(new QSystemTrayIcon);
 #endif // QT_NO_SYSTEMTRAYICON
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
 
     qRegisterMetaType<QWebFullScreenRequest>();
     int fullScreenRequestedIndex = q->metaObject()->indexOfMethod("fullScreenRequested(QWebFullScreenRequest)");
@@ -1674,13 +1674,13 @@ bool QWebPage::shouldInterruptJavaScript()
 */
 void QWebPage::setFeaturePermission(QWebFrame* frame, Feature feature, PermissionPolicy policy)
 {
-#if !ENABLE(NOTIFICATIONS) && !ENABLE(LEGACY_NOTIFICATIONS) && !ENABLE(GEOLOCATION)
+#if !ENABLE(NOTIFICATIONS) && !ENABLE(GEOLOCATION)
     Q_UNUSED(frame);
     Q_UNUSED(policy);
 #endif
     switch (feature) {
     case Notifications:
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
         if (policy != PermissionUnknown)
             d->setNotificationsAllowedForFrame(frame->d, (policy == PermissionGrantedByUser));
 #endif

@@ -49,7 +49,7 @@
 
 namespace WebCore {
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 
 const double notificationTimeout = 10.0;
 
@@ -72,28 +72,28 @@ NotificationWrapper::NotificationWrapper()
     : m_closeTimer(*this, &NotificationWrapper::close)
     , m_displayEventTimer(*this, &NotificationWrapper::sendDisplayEvent)
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     m_presenter = nullptr;
 #endif
 }
 
 void NotificationWrapper::close()
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationPresenterClientQt::notificationPresenter()->cancel(this);
 #endif
 }
 
 void NotificationWrapper::sendDisplayEvent()
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationPresenterClientQt::notificationPresenter()->sendDisplayEvent(this);
 #endif
 }
 
 const QString NotificationWrapper::title() const
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     Notification* notification = NotificationPresenterClientQt::notificationPresenter()->notificationForWrapper(this);
     if (notification)
         return notification->title();
@@ -103,7 +103,7 @@ const QString NotificationWrapper::title() const
 
 const QString NotificationWrapper::message() const
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     Notification* notification = NotificationPresenterClientQt::notificationPresenter()->notificationForWrapper(this);
     if (notification)
         return notification->body();
@@ -113,7 +113,7 @@ const QString NotificationWrapper::message() const
 
 const QUrl NotificationWrapper::iconUrl() const
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     Notification* notification = NotificationPresenterClientQt::notificationPresenter()->notificationForWrapper(this);
     if (notification)
         return notification->iconURL();
@@ -124,7 +124,7 @@ const QUrl NotificationWrapper::iconUrl() const
 const QUrl NotificationWrapper::openerPageUrl() const
 {
     QUrl url;
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     Notification* notification = NotificationPresenterClientQt::notificationPresenter()->notificationForWrapper(this);
     if (notification) {
         if (notification->scriptExecutionContext()) 
@@ -136,19 +136,19 @@ const QUrl NotificationWrapper::openerPageUrl() const
 
 void NotificationWrapper::notificationClicked()
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationPresenterClientQt::notificationPresenter()->notificationClicked(this);
 #endif
 }
 
 void NotificationWrapper::notificationClosed()
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationPresenterClientQt::notificationPresenter()->cancel(this);
 #endif
 }
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 
 NotificationPresenterClientQt::NotificationPresenterClientQt() : m_clientCount(0)
 {
@@ -292,37 +292,6 @@ void NotificationPresenterClientQt::notificationControllerDestroyed()
 {
 }
 
-#if ENABLE(LEGACY_NOTIFICATIONS)
-void NotificationPresenterClientQt::requestPermission(ScriptExecutionContext* context, PassRefPtr<VoidCallback> callback)
-{  
-    if (dumpNotification)
-        printf("DESKTOP NOTIFICATION PERMISSION REQUESTED: %s\n", QString(context->securityOrigin()->toString()).toUtf8().constData());
-
-    NotificationClient::Permission permission = checkPermission(context);
-    if (permission != NotificationClient::PermissionNotAllowed) {
-        if (callback)
-            callback->handleEvent();
-        return;
-    }
-
-    QHash<ScriptExecutionContext*, CallbacksInfo >::iterator iter = m_pendingPermissionRequests.find(context);
-    if (iter != m_pendingPermissionRequests.end())
-        iter.value().m_voidCallbacks.append(callback);
-    else {
-        RefPtr<VoidCallback> cb = callback;
-        CallbacksInfo info;
-        info.m_frame = toFrame(context);
-        info.m_voidCallbacks.append(cb);
-
-        if (toPage(context) && toFrame(context)) {
-            m_pendingPermissionRequests.insert(context, info);
-            toPage(context)->notificationsPermissionRequested(toFrame(context));
-        }
-    }
-}
-#endif
-
-#if ENABLE(NOTIFICATIONS)
 void NotificationPresenterClientQt::requestPermission(ScriptExecutionContext* context, PassRefPtr<NotificationPermissionCallback> callback)
 {
     if (dumpNotification)
@@ -350,7 +319,6 @@ void NotificationPresenterClientQt::requestPermission(ScriptExecutionContext* co
         }
     }
 }
-#endif
 
 bool NotificationPresenterClientQt::hasPendingPermissionRequests(ScriptExecutionContext* context) const
 {
@@ -403,20 +371,11 @@ void NotificationPresenterClientQt::setNotificationsAllowedForFrame(Frame* frame
     if (iter == m_pendingPermissionRequests.end())
         return;
 
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    QList<RefPtr<VoidCallback> >& voidCallbacks = iter.value().m_voidCallbacks;
-    Q_FOREACH(const RefPtr<VoidCallback>& callback, voidCallbacks) {
-        if (callback)
-            callback->handleEvent();
-    }
-#endif
-#if ENABLE(NOTIFICATIONS)
     QList<RefPtr<NotificationPermissionCallback> >& callbacks = iter.value().m_callbacks;
     Q_FOREACH(const RefPtr<NotificationPermissionCallback>& callback, callbacks) {
         if (callback)
             callback->handleEvent(Notification::permissionString(permission));
     }
-#endif
     m_pendingPermissionRequests.remove(iter.key());
 }
 
@@ -508,7 +467,7 @@ QWebFrameAdapter* NotificationPresenterClientQt::toFrame(ScriptExecutionContext*
     return QWebFrameAdapter::kit(document->frame());
 }
 
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
 }
 
 #include "moc_NotificationPresenterClientQt.cpp"
