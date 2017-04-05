@@ -123,6 +123,12 @@ void WebColorPickerQt::setSelectedColor(const Color&)
     // And yes, the name sounds misleading but comes from WebCore.
 }
 
+void WebColorPickerQt::showColorPicker(const Color&)
+{
+    // We use ENABLE(INPUT_TYPE_COLOR_POPOVER), so new color picker is created
+    // each time
+}
+
 void WebColorPickerQt::notifyColorSelected(const QColor& color)
 {
     if (!m_client)

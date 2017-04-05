@@ -50,6 +50,7 @@ public:
     ~WebColorPickerQt();
 
     void setSelectedColor(const WebCore::Color&) final;
+    void showColorPicker(const WebCore::Color&) final;
 
 public Q_SLOTS:
     void endPicker() final;
