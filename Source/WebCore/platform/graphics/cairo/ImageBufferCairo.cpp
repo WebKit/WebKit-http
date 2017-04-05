@@ -130,14 +130,12 @@ void ImageBufferData::createCompositorBuffer()
 
 void ImageBufferData::swapBuffersIfNeeded()
 {
-    ASSERT(m_renderingMode == RenderingMode::Accelerated);
     GLContext* previousActiveContext = GLContext::current();
-    cairo_surface_flush(m_surface.get());
 
     if (!m_compositorTexture) {
         createCompositorBuffer();
         LockHolder holder(m_platformLayerProxy->lock());
-        m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, TextureMapperGL::ShouldBlend, GraphicsContext3D::DONT_CARE));
+        m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, TextureMapperGL::ShouldBlend));
     }
 
     // It would be great if we could just swap the buffers here as we do with webgl, but that breaks the cases
@@ -215,12 +213,6 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
         m_data.createCairoGLSurface();
         if (!m_data.m_surface || cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
             m_data.m_renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
-#if USE(COORDINATED_GRAPHICS_THREADED)
-        else {
-            LockHolder locker(m_data.m_platformLayerProxy->lock());
-            m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend, GraphicsContext3D::DONT_CARE));
-        }
-#endif
     }
     if (m_data.m_renderingMode == Unaccelerated)
 #else

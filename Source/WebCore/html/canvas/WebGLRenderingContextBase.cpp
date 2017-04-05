@@ -701,7 +701,7 @@ void WebGLRenderingContextBase::markContextChanged()
     if (isAccelerated() && renderBox && renderBox->hasAcceleratedCompositing()) {
         m_markedCanvasDirty = true;
         canvas().clearCopiedImage();
-        renderBox->contentChanged(CanvasPixelsChanged);
+        renderBox->contentChanged(CanvasChanged);
     } else {
         if (!m_markedCanvasDirty) {
             m_markedCanvasDirty = true;

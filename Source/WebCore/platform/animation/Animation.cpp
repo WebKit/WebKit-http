@@ -65,7 +65,7 @@ Animation::Animation(const Animation& o)
     , m_iterationCount(o.m_iterationCount)
     , m_delay(o.m_delay)
     , m_duration(o.m_duration)
-    , m_timingFunction(o.m_timingFunction->clone())
+    , m_timingFunction(o.m_timingFunction)
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     , m_trigger(o.m_trigger)
 #endif
@@ -97,7 +97,7 @@ Animation& Animation::operator=(const Animation& o)
     m_iterationCount = o.m_iterationCount;
     m_delay = o.m_delay;
     m_duration = o.m_duration;
-    m_timingFunction = o.m_timingFunction->clone();
+    m_timingFunction = o.m_timingFunction;
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     m_trigger = o.m_trigger;
 #endif

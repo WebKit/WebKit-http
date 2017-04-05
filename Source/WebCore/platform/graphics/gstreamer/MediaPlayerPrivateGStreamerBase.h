@@ -138,7 +138,6 @@ public:
 #if USE(GSTREAMER_GL)
     bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Denum, GC3Dint, GC3Denum, GC3Denum, GC3Denum, bool, bool) override;
     NativeImagePtr nativeImageForCurrentTime() override;
-    void clearCurrentBuffer();
 #endif
 
     void setVideoSourceOrientation(const ImageOrientation&);

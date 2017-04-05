@@ -710,7 +710,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     if (UNLIKELY(!frameHolder->isValid()))
         return;
 
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(frameHolder->textureID(), frameHolder->size(), frameHolder->flags(), GraphicsContext3D::RGBA);
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(frameHolder->textureID(), frameHolder->size(), frameHolder->flags());
     layerBuffer->setUnmanagedBufferDataHolder(WTFMove(frameHolder));
     m_platformLayerProxy->pushNextBuffer(WTFMove(layerBuffer));
 #else
@@ -825,22 +825,6 @@ GstFlowReturn MediaPlayerPrivateGStreamerBase::newPrerollCallback(GstElement* si
     GRefPtr<GstSample> sample = adoptGRef(gst_app_sink_pull_preroll(GST_APP_SINK(sink)));
     player->triggerRepaint(sample.get());
     return GST_FLOW_OK;
-}
-
-void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
-{
-    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    m_sample.clear();
-
-    LockHolder holder(m_platformLayerProxy->lock());
-
-    if (!m_platformLayerProxy->isActive())
-        return;
-
-    // FIXME: Remove this black frame while drain or flush event
-    // we can make a copy current frame to the temporal texture,
-    // or make the decoder's buffer pool more flexible.
-    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, 0, GraphicsContext3D::DONT_CARE));
 }
 #endif
 
