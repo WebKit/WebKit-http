@@ -839,6 +839,11 @@ public:
         cacheFlush(insn, flushSize);
     }
 
+    static void relinkJumpToNop(void* from)
+    {
+        relinkJump(from, from);
+    }
+
     static void relinkCall(void* from, void* to)
     {
         void* start;
@@ -910,6 +915,11 @@ public:
     static ptrdiff_t maxJumpReplacementSize()
     {
         return sizeof(MIPSWord) * 4;
+    }
+
+    static constexpr ptrdiff_t patchableJumpSize()
+    {
+        return sizeof(MIPSWord) * 8;
     }
 
     static void revertJumpToMove(void* instructionStart, RegisterID rt, int imm)

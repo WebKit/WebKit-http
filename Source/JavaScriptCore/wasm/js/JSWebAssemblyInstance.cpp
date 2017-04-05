@@ -51,6 +51,7 @@ Structure* JSWebAssemblyInstance::createStructure(VM& vm, JSGlobalObject* global
 
 JSWebAssemblyInstance::JSWebAssemblyInstance(VM& vm, Structure* structure, unsigned numImportFunctions)
     : Base(vm, structure)
+    , m_vm(&vm)
     , m_numImportFunctions(numImportFunctions)
 {
     memset(importFunctions(), 0, m_numImportFunctions * sizeof(WriteBarrier<JSObject>));
@@ -95,7 +96,8 @@ void JSWebAssemblyInstance::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 void JSWebAssemblyInstance::addUnitializedCodeBlock(VM& vm, Ref<Wasm::Plan> plan)
 {
-    auto* codeBlock = JSWebAssemblyCodeBlock::create(vm, module(), memoryMode(), WTFMove(plan), module()->moduleInformation().internalFunctionCount());
+    auto* codeBlock = JSWebAssemblyCodeBlock::create(
+        vm, module(), memoryMode(), WTFMove(plan), module()->moduleInformation().internalFunctionCount(), module()->moduleInformation().importFunctionCount());
     m_codeBlock.set(vm, this, codeBlock);
     ASSERT(!codeBlock->initialized());
 }

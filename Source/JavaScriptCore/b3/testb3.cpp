@@ -117,9 +117,10 @@ StaticLock crashLock;
         CRASH(); \
     } while (false)
 
-std::unique_ptr<Compilation> compileProc(Procedure& procedure, unsigned optLevel = 1)
+std::unique_ptr<Compilation> compileProc(Procedure& procedure, unsigned optLevel = defaultOptLevel())
 {
-    return std::make_unique<Compilation>(B3::compile(procedure, optLevel));
+    procedure.setOptLevel(optLevel);
+    return std::make_unique<Compilation>(B3::compile(procedure));
 }
 
 template<typename T, typename... Arguments>
@@ -987,6 +988,7 @@ void testMulLoadTwice()
 
     test(0);
     test(1);
+    test(2);
 }
 
 void testMulAddArgsLeft()
@@ -14863,6 +14865,42 @@ void testAtomicStrongCAS()
         CHECK_EQ(value[1], 13);
         value[0] = static_cast<T>(-1);
         CHECK_EQ(invoke<typename NativeTraits<T>::CanonicalType>(*code, value), static_cast<typename NativeTraits<T>::CanonicalType>(static_cast<T>(-1)));
+        CHECK_EQ(value[0], static_cast<T>(-1));
+        CHECK_EQ(value[1], 13);
+        checkMyDisassembly(*code, true);
+    }
+    
+    {
+        // Test for https://bugs.webkit.org/show_bug.cgi?id=169867.
+        
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        root->appendNew<Value>(
+            proc, Return, Origin(),
+            root->appendNew<Value>(
+                proc, BitXor, Origin(),
+                root->appendNew<AtomicValue>(
+                    proc, AtomicStrongCAS, Origin(), width,
+                    root->appendIntConstant(proc, Origin(), type, 42),
+                    root->appendIntConstant(proc, Origin(), type, 0xbeef),
+                    root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)),
+                root->appendIntConstant(proc, Origin(), type, 1)));
+        
+        typename NativeTraits<T>::CanonicalType one = 1;
+        
+        auto code = compileProc(proc);
+        T value[2];
+        value[0] = 42;
+        value[1] = 13;
+        CHECK_EQ(invoke<typename NativeTraits<T>::CanonicalType>(*code, value), 42 ^ one);
+        CHECK_EQ(value[0], static_cast<T>(0xbeef));
+        CHECK_EQ(value[1], 13);
+        value[0] = static_cast<T>(300);
+        CHECK_EQ(invoke<typename NativeTraits<T>::CanonicalType>(*code, value), static_cast<typename NativeTraits<T>::CanonicalType>(static_cast<T>(300)) ^ one);
+        CHECK_EQ(value[0], static_cast<T>(300));
+        CHECK_EQ(value[1], 13);
+        value[0] = static_cast<T>(-1);
+        CHECK_EQ(invoke<typename NativeTraits<T>::CanonicalType>(*code, value), static_cast<typename NativeTraits<T>::CanonicalType>(static_cast<T>(-1)) ^ one);
         CHECK_EQ(value[0], static_cast<T>(-1));
         CHECK_EQ(value[1], 13);
         checkMyDisassembly(*code, true);

@@ -72,14 +72,16 @@
       href="http://anongit.freedesktop.org/git"/>
  <repository type="tarball" name="dri.freedesktop.org"
       href="http://dri.freedesktop.org"/>
-  <repository type="tarball" name="people.freedesktop.org"
-      href="http://people.freedesktop.org"/>
+  <repository type="tarball" name="mesa.freedesktop.org"
+      href="https://mesa.freedesktop.org"/>
   <repository type="tarball" name="wayland.freedesktop.org"
       href="http://wayland.freedesktop.org"/>
   <repository type="tarball" name="llvm.org"
       href="http://llvm.org"/>
   <repository type="tarball" name="webkitgtk-jhbuild-mirror"
       href="http://webkitgtk.org/jhbuild_mirror/"/>
+  <repository type="tarball" name="downloads.webmproject.org"
+      href="http://downloads.webmproject.org/releases/webm/"/>
 
   <autotools id="cairo">
     <if condition-set="linux">
@@ -501,9 +503,10 @@
     autogenargs="--disable-dri3 --enable-dri --enable-glx --enable-egl --with-egl-platforms=x11,wayland --with-dri-drivers=swrast --with-gallium-drivers=swrast">
     <!--- WARNING: At jhbuildrc, when we define the path to the Gallium llvmpipe software rasterizer (needed by XvfbDriver),
           we assume that the directory is named "Mesa". So, don't change the checkoutdir name even if you update the version.  -->
-    <branch module="/~brianp/mesa/older-versions/11.x/11.0.6/mesa-11.0.6.tar.xz" version="11.0.6"
-            checkoutdir="Mesa"
-            repo="people.freedesktop.org"
+    <branch checkoutdir="Mesa"
+            version="11.0.6"
+            module="/archive/older-versions/11.x/${version}/mesa-${version}.tar.xz"
+            repo="mesa.freedesktop.org"
             hash="sha256:8340e64cdc91999840404c211496f3de38e7b4cb38db34e2f72f1642c5134760">
     </branch>
     <dependencies>
@@ -526,8 +529,10 @@
 
   <autotools id="libvpx"
     autogen-template="%(srcdir)s/configure --prefix=%(prefix)s --enable-pic --as=yasm --disable-unit-tests --size-limit=16384x16384 --enable-postproc --enable-multi-res-encoding --enable-temporal-denoising --enable-vp9-temporal-denoising --enable-vp9-postproc --enable-shared">
-    <branch repo="github.com" module="webmproject/libvpx.git" version="1.6.0" checkoutdir="libvpx-1.6.0">
-    </branch>
+    <branch version="1.6.0"
+            module="libvpx-${version}.tar.bz2"
+            repo="downloads.webmproject.org"
+            hash="sha256:d0afbb5eb1ecae68f8d578abace160a97e2e8a230e3028cf4db115d59a695aad"/>
   </autotools>
 
    <autotools id="gst-plugins-openwebrtc" supports-parallel-builds="no" supports-non-srcdir-builds="no" autogen-sh="./autogen.sh; ./configure">

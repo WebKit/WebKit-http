@@ -27,134 +27,11 @@
 
 #if ENABLE(B3_JIT)
 
-#include "AirBasicBlock.h"
-#include "AirCFG.h"
-#include "AirCode.h"
-#include "AirInstInlines.h"
-#include "AirStackSlot.h"
-#include "AirTmpInlines.h"
+#include "AirLivenessAdapter.h"
+#include "B3TimingScope.h"
 #include <wtf/Liveness.h>
 
 namespace JSC { namespace B3 { namespace Air {
-
-template<typename Adapter>
-struct LivenessAdapter {
-    typedef Air::CFG CFG;
-    
-    LivenessAdapter(Code& code)
-        : code(code)
-    {
-    }
-    
-    unsigned blockSize(BasicBlock* block)
-    {
-        return block->size();
-    }
-
-    template<typename Func>
-    void forEachEarlyUse(BasicBlock* block, unsigned instIndex, const Func& func)
-    {
-        Inst* inst = block->get(instIndex);
-        if (!inst)
-            return;
-        inst->forEach<typename Adapter::Thing>(
-            [&] (typename Adapter::Thing& thing, Arg::Role role, Bank bank, Width) {
-                if (Arg::isEarlyUse(role)
-                    && Adapter::acceptsBank(bank)
-                    && Adapter::acceptsRole(role))
-                    func(Adapter::valueToIndex(thing));
-            });
-    }
-    
-    template<typename Func>
-    void forEachLateUse(BasicBlock* block, unsigned instIndex, const Func& func)
-    {
-        Inst* inst = block->get(instIndex);
-        if (!inst)
-            return;
-        inst->forEach<typename Adapter::Thing>(
-            [&] (typename Adapter::Thing& thing, Arg::Role role, Bank bank, Width) {
-                if (Arg::isLateUse(role)
-                    && Adapter::acceptsBank(bank)
-                    && Adapter::acceptsRole(role))
-                    func(Adapter::valueToIndex(thing));
-            });
-    }
-    
-    template<typename Func>
-    void forEachEarlyDef(BasicBlock* block, unsigned instIndex, const Func& func)
-    {
-        Inst* inst = block->get(instIndex);
-        if (!inst)
-            return;
-        inst->forEach<typename Adapter::Thing>(
-            [&] (typename Adapter::Thing& thing, Arg::Role role, Bank bank, Width) {
-                if (Arg::isEarlyDef(role)
-                    && Adapter::acceptsBank(bank)
-                    && Adapter::acceptsRole(role))
-                    func(Adapter::valueToIndex(thing));
-            });
-    }
-    
-    template<typename Func>
-    void forEachLateDef(BasicBlock* block, unsigned instIndex, const Func& func)
-    {
-        Inst* inst = block->get(instIndex);
-        if (!inst)
-            return;
-        inst->forEach<typename Adapter::Thing>(
-            [&] (typename Adapter::Thing& thing, Arg::Role role, Bank bank, Width) {
-                if (Arg::isLateDef(role)
-                    && Adapter::acceptsBank(bank)
-                    && Adapter::acceptsRole(role))
-                    func(Adapter::valueToIndex(thing));
-            });
-    }
-    
-    Code& code;
-};
-
-template<Bank adapterBank, Arg::Temperature minimumTemperature = Arg::Cold>
-struct TmpLivenessAdapter : LivenessAdapter<TmpLivenessAdapter<adapterBank, minimumTemperature>> {
-    typedef LivenessAdapter<TmpLivenessAdapter<adapterBank, minimumTemperature>> Base;
-    
-    static constexpr const char* name = "TmpLiveness";
-    typedef Tmp Thing;
-
-    TmpLivenessAdapter(Code& code)
-        : Base(code)
-    {
-    }
-
-    unsigned numIndices()
-    {
-        unsigned numTmps = Base::code.numTmps(adapterBank);
-        return AbsoluteTmpMapper<adapterBank>::absoluteIndex(numTmps);
-    }
-    static bool acceptsBank(Bank bank) { return bank == adapterBank; }
-    static bool acceptsRole(Arg::Role role) { return Arg::temperature(role) >= minimumTemperature; }
-    static unsigned valueToIndex(Tmp tmp) { return AbsoluteTmpMapper<adapterBank>::absoluteIndex(tmp); }
-    static Tmp indexToValue(unsigned index) { return AbsoluteTmpMapper<adapterBank>::tmpFromAbsoluteIndex(index); }
-};
-
-struct StackSlotLivenessAdapter : LivenessAdapter<StackSlotLivenessAdapter> {
-    static constexpr const char* name = "StackSlotLiveness";
-    typedef StackSlot* Thing;
-
-    StackSlotLivenessAdapter(Code& code)
-        : LivenessAdapter(code)
-    {
-    }
-
-    unsigned numIndices()
-    {
-        return code.stackSlots().size();
-    }
-    static bool acceptsBank(Bank) { return true; }
-    static bool acceptsRole(Arg::Role) { return true; }
-    static unsigned valueToIndex(StackSlot* stackSlot) { return stackSlot->index(); }
-    StackSlot* indexToValue(unsigned index) { return code.stackSlots()[index]; }
-};
 
 template<typename Adapter>
 class Liveness : public WTF::Liveness<Adapter> {
@@ -162,6 +39,9 @@ public:
     Liveness(Code& code)
         : WTF::Liveness<Adapter>(code.cfg(), code)
     {
+        SuperSamplerScope samplingScope(false);
+        TimingScope timingScope("Air::Liveness");
+        WTF::Liveness<Adapter>::compute();
     }
 };
 

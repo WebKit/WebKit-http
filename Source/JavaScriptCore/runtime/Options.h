@@ -225,6 +225,7 @@ typedef const char* optionString;
     v(bool, useFTLJIT, true, Normal, "allows the FTL JIT to be used if true") \
     v(bool, useFTLTBAA, true, Normal, nullptr) \
     v(bool, validateFTLOSRExitLiveness, false, Normal, nullptr) \
+    v(unsigned, defaultB3OptLevel, 2, Normal, nullptr) \
     v(bool, b3AlwaysFailsBeforeCompile, false, Normal, nullptr) \
     v(bool, b3AlwaysFailsBeforeLink, false, Normal, nullptr) \
     v(bool, ftlCrashes, false, Normal, nullptr) /* fool-proof way of checking that you ended up in the FTL. ;-) */\
@@ -398,6 +399,8 @@ typedef const char* optionString;
     v(bool, logB3PhaseTimes, false, Normal, nullptr) \
     v(double, rareBlockPenalty, 0.001, Normal, nullptr) \
     v(bool, airSpillsEverything, false, Normal, nullptr) \
+    v(bool, airLinearScanVerbose, false, Normal, nullptr) \
+    v(bool, airLinearScanSpillsEverything, false, Normal, nullptr) \
     v(bool, airForceBriggsAllocator, false, Normal, nullptr) \
     v(bool, airForceIRCAllocator, false, Normal, nullptr) \
     v(bool, coalesceSpillSlots, true, Normal, nullptr) \
@@ -432,6 +435,7 @@ typedef const char* optionString;
     \
     v(bool, failToCompileWebAssemblyCode, false, Normal, "If true, no Wasm::Plan will sucessfully compile a function.") \
     v(size, webAssemblyPartialCompileLimit, 5000, Normal, "Limit on the number of bytes a Wasm::Plan::compile should attempt before checking for other work.") \
+    v(unsigned, webAssemblyB3OptimizationLevel, Options::defaultB3OptLevel(), Normal, "B3 Optimization level for Web Assembly modules.") \
     \
     v(bool, simulateWebAssemblyLowMemory, false, Normal, "If true, the Memory object won't mmap the full 'maximum' range and instead will allocate the minimum required amount.") \
     v(bool, useWebAssemblyFastMemory, true, Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.") \

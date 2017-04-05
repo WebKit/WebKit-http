@@ -204,7 +204,7 @@ void Procedure::invalidateCFG()
 
 void Procedure::dump(PrintStream& out) const
 {
-    IndexSet<Value> valuesInBlocks;
+    IndexSet<Value*> valuesInBlocks;
     for (BasicBlock* block : *this) {
         out.print(deepDump(*this, block));
         valuesInBlocks.addAll(*block);
@@ -263,7 +263,7 @@ void Procedure::deleteValue(Value* value)
 
 void Procedure::deleteOrphans()
 {
-    IndexSet<Value> valuesInBlocks;
+    IndexSet<Value*> valuesInBlocks;
     for (BasicBlock* block : *this)
         valuesInBlocks.addAll(*block);
 
@@ -334,6 +334,12 @@ void Procedure::pinRegister(Reg reg)
     code().pinRegister(reg);
 }
 
+void Procedure::setOptLevel(unsigned optLevel)
+{
+    m_optLevel = optLevel;
+    code().setOptLevel(optLevel);
+}
+
 unsigned Procedure::frameSize() const
 {
     return code().frameSize();
@@ -351,7 +357,7 @@ Value* Procedure::addValueImpl(Value* value)
 
 void Procedure::setBlockOrderImpl(Vector<BasicBlock*>& blocks)
 {
-    IndexSet<BasicBlock> blocksSet;
+    IndexSet<BasicBlock*> blocksSet;
     blocksSet.addAll(blocks);
 
     for (BasicBlock* block : *this) {

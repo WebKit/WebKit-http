@@ -33,6 +33,7 @@
 #import "WebImage.h"
 #import "WebPageProxy.h"
 #import <WebCore/NSTextFinderSPI.h>
+#import <algorithm>
 #import <wtf/Deque.h>
 
 // FIXME: Implement support for replace.
@@ -42,9 +43,11 @@
 using namespace WebCore;
 using namespace WebKit;
 
+static const NSUInteger maximumFindMatches = 1000;
+
 @interface WKTextFinderClient ()
 
-- (void)didFindStringMatchesWithRects:(const Vector<Vector<IntRect>>&)rects;
+- (void)didFindStringMatchesWithRects:(const Vector<Vector<IntRect>>&)rects didWrapAround:(BOOL)didWrapAround;
 
 - (void)getImageForMatchResult:(id <NSTextFinderAsynchronousDocumentFindMatch>)findMatch completionHandler:(void (^)(NSImage *generatedImage))completionHandler;
 - (void)didGetImageForMatchResult:(WebImage *)string;
@@ -63,7 +66,7 @@ public:
 private:
     void didFindStringMatches(WebPageProxy* page, const String&, const Vector<Vector<IntRect>>& matchRects, int32_t) override
     {
-        [m_textFinderClient didFindStringMatchesWithRects:matchRects];
+        [m_textFinderClient didFindStringMatchesWithRects:matchRects didWrapAround:NO];
     }
 
     void didGetImageForMatchResult(WebPageProxy* page, WebImage* image, int32_t index) override
@@ -71,14 +74,14 @@ private:
         [m_textFinderClient didGetImageForMatchResult:image];
     }
 
-    void didFindString(WebPageProxy*, const String&, const Vector<IntRect>& matchRects, uint32_t, int32_t) override
+    void didFindString(WebPageProxy*, const String&, const Vector<IntRect>& matchRects, uint32_t, int32_t, bool didWrapAround) override
     {
-        [m_textFinderClient didFindStringMatchesWithRects:{ matchRects }];
+        [m_textFinderClient didFindStringMatchesWithRects:{ matchRects } didWrapAround:didWrapAround];
     }
 
     void didFailToFindString(WebPageProxy*, const String& string) override
     {
-        [m_textFinderClient didFindStringMatchesWithRects:{ }];
+        [m_textFinderClient didFindStringMatchesWithRects:{ } didWrapAround:NO];
     }
 
     RetainPtr<WKTextFinderClient> m_textFinderClient;
@@ -172,6 +175,11 @@ private:
 
 - (void)findMatchesForString:(NSString *)targetString relativeToMatch:(id <NSTextFinderAsynchronousDocumentFindMatch>)relativeMatch findOptions:(NSTextFinderAsynchronousDocumentFindOptions)findOptions maxResults:(NSUInteger)maxResults resultCollector:(void (^)(NSArray *matches, BOOL didWrap))resultCollector
 {
+    // Limit the number of results, for performance reasons; NSTextFinder always
+    // passes either 1 or NSUIntegerMax, which results in search time being
+    // proportional to document length.
+    maxResults = std::min(maxResults, maximumFindMatches);
+
     unsigned kitFindOptions = 0;
 
     if (findOptions & NSTextFinderAsynchronousDocumentFindOptionsBackwards)
@@ -226,7 +234,7 @@ static RetainPtr<NSArray> arrayFromRects(const Vector<IntRect>& matchRects)
     return nsMatchRects;
 }
 
-- (void)didFindStringMatchesWithRects:(const Vector<Vector<IntRect>>&)rectsForMatches
+- (void)didFindStringMatchesWithRects:(const Vector<Vector<IntRect>>&)rectsForMatches didWrapAround:(BOOL)didWrapAround
 {
     if (_findReplyCallbacks.isEmpty())
         return;
@@ -240,7 +248,7 @@ static RetainPtr<NSArray> arrayFromRects(const Vector<IntRect>& matchRects)
         [matchObjects addObject:match.get()];
     }
 
-    replyCallback(matchObjects.get(), NO);
+    replyCallback(matchObjects.get(), didWrapAround);
 }
 
 - (void)didGetImageForMatchResult:(WebImage *)image
@@ -269,6 +277,9 @@ static RetainPtr<NSArray> arrayFromRects(const Vector<IntRect>& matchRects)
         Block_release(copiedImageCallback);
     });
 
+    // FIXME: There is no guarantee that this will ever result in didGetImageForMatchResult
+    // being called (and thus us calling our completion handler); we should harden this
+    // against all of the early returns in FindController::getImageForFindMatch.
     _page->getImageForFindMatch(textFinderMatch.index);
 }
 

@@ -74,6 +74,7 @@ set(JavaScriptCore_SOURCES
     assembler/MacroAssemblerX86Common.cpp
 
     b3/air/AirAllocateRegistersByGraphColoring.cpp
+    b3/air/AirAllocateRegistersByLinearScan.cpp
     b3/air/AirAllocateStack.cpp
     b3/air/AirArg.cpp
     b3/air/AirBasicBlock.cpp
@@ -88,6 +89,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirEmitShuffle.cpp
     b3/air/AirFixObviousSpills.cpp
     b3/air/AirFixPartialRegisterStalls.cpp
+    b3/air/AirFixSpillsAfterTerminals.cpp
     b3/air/AirGenerate.cpp
     b3/air/AirGenerated.cpp
     b3/air/AirHandleCalleeSaves.cpp
@@ -100,6 +102,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirLowerMacros.cpp
     b3/air/AirOptimizeBlockOrder.cpp
     b3/air/AirPadInterference.cpp
+    b3/air/AirPhaseInsertionSet.cpp
     b3/air/AirPhaseScope.cpp
     b3/air/AirRegLiveness.cpp
     b3/air/AirReportUsedRegisters.cpp
@@ -140,7 +143,6 @@ set(JavaScriptCore_SOURCES
     b3/B3FoldPathConstants.cpp
     b3/B3FrequencyClass.cpp
     b3/B3Generate.cpp
-    b3/B3HeapRange.cpp
     b3/B3InferSwitches.cpp
     b3/B3InsertionSet.cpp
     b3/B3Kind.cpp
@@ -934,21 +936,23 @@ set(JavaScriptCore_SOURCES
     wasm/JSWebAssembly.cpp
     wasm/WasmB3IRGenerator.cpp
     wasm/WasmBinding.cpp
+    wasm/WasmCallee.cpp
     wasm/WasmCallingConvention.cpp
     wasm/WasmContext.cpp
     wasm/WasmFaultSignalHandler.cpp
     wasm/WasmFormat.cpp
     wasm/WasmMemory.cpp
     wasm/WasmMemoryInformation.cpp
+    wasm/WasmModuleInformation.cpp
     wasm/WasmModuleParser.cpp
     wasm/WasmPageCount.cpp
     wasm/WasmPlan.cpp
     wasm/WasmOpcodeOrigin.cpp
     wasm/WasmSignature.cpp
+    wasm/WasmThunks.cpp
     wasm/WasmValidate.cpp
     wasm/WasmWorklist.cpp
 
-    wasm/js/JSWebAssemblyCallee.cpp
     wasm/js/JSWebAssemblyCodeBlock.cpp
     wasm/js/JSWebAssemblyCompileError.cpp
     wasm/js/JSWebAssemblyInstance.cpp

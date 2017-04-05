@@ -32,13 +32,13 @@
 #include "JSCInlines.h"
 #include "JSFunctionInlines.h"
 #include "JSObject.h"
-#include "JSWebAssemblyCallee.h"
 #include "JSWebAssemblyInstance.h"
 #include "JSWebAssemblyMemory.h"
 #include "JSWebAssemblyRuntimeError.h"
 #include "LLIntThunks.h"
 #include "ProtoCallFrame.h"
 #include "VM.h"
+#include "WasmCallee.h"
 #include "WasmContext.h"
 #include "WasmFormat.h"
 #include "WasmMemory.h"
@@ -57,22 +57,22 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
     if (!wasmFunction)
         return JSValue::encode(throwException(exec, scope, createTypeError(exec, "expected a WebAssembly function", defaultSourceAppender, runtimeTypeForValue(exec->jsCallee()))));
     Wasm::SignatureIndex signatureIndex = wasmFunction->signatureIndex();
-    const Wasm::Signature* signature = Wasm::SignatureInformation::get(&vm, signatureIndex);
+    const Wasm::Signature& signature = Wasm::SignatureInformation::get(signatureIndex);
 
     // Make sure that the memory we think we are going to run with matches the one we expect.
     ASSERT(wasmFunction->instance()->codeBlock()->isSafeToRun(wasmFunction->instance()->memory()));
     {
         // Check if we have a disallowed I64 use.
 
-        for (unsigned argIndex = 0; argIndex < signature->argumentCount(); ++argIndex) {
-            if (signature->argument(argIndex) == Wasm::I64) {
+        for (unsigned argIndex = 0; argIndex < signature.argumentCount(); ++argIndex) {
+            if (signature.argument(argIndex) == Wasm::I64) {
                 JSWebAssemblyRuntimeError* error = JSWebAssemblyRuntimeError::create(exec, vm, exec->lexicalGlobalObject()->WebAssemblyRuntimeErrorStructure(),
                     "WebAssembly function with an i64 argument can't be called from JavaScript");
                 return JSValue::encode(throwException(exec, scope, error));
             }
         }
 
-        if (signature->returnType() == Wasm::I64) {
+        if (signature.returnType() == Wasm::I64) {
             JSWebAssemblyRuntimeError* error = JSWebAssemblyRuntimeError::create(exec, vm, exec->lexicalGlobalObject()->WebAssemblyRuntimeErrorStructure(),
                 "WebAssembly function that returns i64 can't be called from JavaScript");
             return JSValue::encode(throwException(exec, scope, error));
@@ -88,9 +88,9 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
     if (!Wasm::useFastTLSForContext())
         boxedArgs.append(wasmContext);
 
-    for (unsigned argIndex = 0; argIndex < signature->argumentCount(); ++argIndex) {
+    for (unsigned argIndex = 0; argIndex < signature.argumentCount(); ++argIndex) {
         JSValue arg = exec->argument(argIndex);
-        switch (signature->argument(argIndex)) {
+        switch (signature.argument(argIndex)) {
         case Wasm::I32:
             arg = JSValue::decode(arg.toInt32(exec));
             break;
@@ -122,8 +122,7 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
 
     // Note: we specifically use the WebAssemblyFunction as the callee to begin with in the ProtoCallFrame.
     // The reason for this is that calling into the llint may stack overflow, and the stack overflow
-    // handler might read the global object from the callee. The JSWebAssemblyCallee doesn't have a
-    // global object, but the WebAssemblyFunction does.
+    // handler might read the global object from the callee.
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(nullptr, wasmFunction, firstArgument, argCount, remainingArgs);
 
@@ -140,7 +139,7 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
     Wasm::storeContext(vm, prevWasmContext);
     RETURN_IF_EXCEPTION(scope, { });
 
-    switch (signature->returnType()) {
+    switch (signature.returnType()) {
     case Wasm::Void:
         return JSValue::encode(jsUndefined());
     case Wasm::I32:
@@ -158,12 +157,12 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
     return EncodedJSValue();
 }
 
-WebAssemblyFunction* WebAssemblyFunction::create(VM& vm, JSGlobalObject* globalObject, unsigned length, const String& name, JSWebAssemblyInstance* instance, JSWebAssemblyCallee* jsEntrypoint, JSWebAssemblyCallee* wasmEntrypoint, Wasm::SignatureIndex signatureIndex)
+WebAssemblyFunction* WebAssemblyFunction::create(VM& vm, JSGlobalObject* globalObject, unsigned length, const String& name, JSWebAssemblyInstance* instance, Wasm::Callee& jsEntrypoint, Wasm::Callee& wasmEntrypoint, Wasm::SignatureIndex signatureIndex)
 {
     NativeExecutable* executable = vm.getHostFunction(callWebAssemblyFunction, NoIntrinsic, callHostFunctionAsConstructor, nullptr, name);
     Structure* structure = globalObject->webAssemblyFunctionStructure();
-    WebAssemblyFunction* function = new (NotNull, allocateCell<WebAssemblyFunction>(vm.heap)) WebAssemblyFunction(vm, globalObject, structure, wasmEntrypoint, signatureIndex);
-    function->finishCreation(vm, executable, length, name, instance, jsEntrypoint, wasmEntrypoint);
+    WebAssemblyFunction* function = new (NotNull, allocateCell<WebAssemblyFunction>(vm.heap)) WebAssemblyFunction(vm, globalObject, structure, jsEntrypoint, wasmEntrypoint, signatureIndex);
+    function->finishCreation(vm, executable, length, name, instance);
     ASSERT_WITH_MESSAGE(!function->isLargeAllocation(), "WebAssemblyFunction should be allocated not in large allocation since it is JSCallee.");
     return function;
 }
@@ -174,9 +173,10 @@ Structure* WebAssemblyFunction::createStructure(VM& vm, JSGlobalObject* globalOb
     return Structure::create(vm, globalObject, prototype, TypeInfo(WebAssemblyFunctionType, StructureFlags), info());
 }
 
-WebAssemblyFunction::WebAssemblyFunction(VM& vm, JSGlobalObject* globalObject, Structure* structure, JSWebAssemblyCallee* wasmEntrypoint, Wasm::SignatureIndex signatureIndex)
+WebAssemblyFunction::WebAssemblyFunction(VM& vm, JSGlobalObject* globalObject, Structure* structure, Wasm::Callee& jsEntrypoint, Wasm::Callee& wasmEntrypoint, Wasm::SignatureIndex signatureIndex)
     : Base(vm, globalObject, structure)
-    , m_wasmEntryPointCode(wasmEntrypoint->entrypoint())
+    , m_jsEntrypoint(jsEntrypoint.entrypoint())
+    , m_wasmEntrypoint(wasmEntrypoint.entrypoint())
     , m_signatureIndex(signatureIndex)
 { }
 
@@ -186,19 +186,13 @@ void WebAssemblyFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
     visitor.append(thisObject->m_instance);
-    visitor.append(thisObject->m_jsEntrypoint);
-    visitor.append(thisObject->m_wasmEntrypoint);
 }
 
-void WebAssemblyFunction::finishCreation(VM& vm, NativeExecutable* executable, unsigned length, const String& name, JSWebAssemblyInstance* instance, JSWebAssemblyCallee* jsEntrypoint, JSWebAssemblyCallee* wasmEntrypoint)
+void WebAssemblyFunction::finishCreation(VM& vm, NativeExecutable* executable, unsigned length, const String& name, JSWebAssemblyInstance* instance)
 {
     Base::finishCreation(vm, executable, length, name);
     ASSERT(inherits(vm, info()));
     m_instance.set(vm, this, instance);
-    ASSERT(jsEntrypoint != wasmEntrypoint);
-    m_jsEntrypoint.set(vm, this, jsEntrypoint);
-    m_wasmEntrypoint.set(vm, this, wasmEntrypoint);
-    ASSERT(m_wasmEntrypoint->entrypoint() == m_wasmEntryPointCode);
 }
 
 } // namespace JSC

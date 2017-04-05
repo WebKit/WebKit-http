@@ -1530,21 +1530,21 @@ void Document::titleElementTextChanged(Element& titleElement)
     updateTitleFromTitleElement();
 }
 
-void Document::registerForVisibilityStateChangedCallbacks(Element* element)
+void Document::registerForVisibilityStateChangedCallbacks(VisibilityChangeClient* client)
 {
-    m_visibilityStateCallbackElements.add(element);
+    m_visibilityStateCallbackClients.add(client);
 }
 
-void Document::unregisterForVisibilityStateChangedCallbacks(Element* element)
+void Document::unregisterForVisibilityStateChangedCallbacks(VisibilityChangeClient* client)
 {
-    m_visibilityStateCallbackElements.remove(element);
+    m_visibilityStateCallbackClients.remove(client);
 }
 
 void Document::visibilityStateChanged()
 {
     dispatchEvent(Event::create(eventNames().visibilitychangeEvent, false, false));
-    for (auto* element : m_visibilityStateCallbackElements)
-        element->visibilityStateChanged();
+    for (auto* client : m_visibilityStateCallbackClients)
+        client->visibilityStateChanged();
 }
 
 auto Document::visibilityState() const -> VisibilityState
@@ -2283,6 +2283,7 @@ void Document::removeAllEventListeners()
 
     if (m_domWindow)
         m_domWindow->removeAllEventListeners();
+
 #if ENABLE(IOS_TOUCH_EVENTS)
     clearTouchEventHandlersAndListeners();
 #endif
@@ -6005,6 +6006,13 @@ int Document::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callbac
         // controller on a background tab, for example.
         if (!page() || page()->scriptedAnimationsSuspended())
             m_scriptedAnimationController->suspend();
+
+        if (settings().shouldDispatchRequestAnimationFrameEvents()) {
+            if (!page())
+                dispatchEvent(Event::create("raf-no-page", false, false));
+            else if (page()->scriptedAnimationsSuspended())
+                dispatchEvent(Event::create("raf-scripted-animations-suspended-on-page", false, false));
+        }
     }
 
     return m_scriptedAnimationController->registerCallback(WTFMove(callback));
@@ -6302,7 +6310,7 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
 
 void Document::updateLastHandledUserGestureTimestamp()
 {
-    m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
+    m_lastHandledUserGestureTimestamp = MonotonicTime::now();
     ResourceLoadObserver::sharedObserver().logUserInteractionWithReducedTimeResolution(*this);
 }
 

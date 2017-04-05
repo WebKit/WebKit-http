@@ -51,6 +51,13 @@ inline Width pointerWidth()
     return Width32;
 }
 
+// Don't use this unless the compiler forces you to.
+#if CPU(X86_64) || CPU(ARM64)
+#define POINTER_WIDTH Width64
+#else
+#define POINTER_WIDTH Width32
+#endif
+
 inline Width widthForType(Type type)
 {
     switch (type) {
@@ -123,6 +130,7 @@ inline uint64_t mask(Width width)
     case Width64:
         return 0xffffffffffffffffllu;
     }
+    ASSERT_NOT_REACHED();
 }
 
 } } // namespace JSC::B3

@@ -1,3 +1,449 @@
+2017-04-05  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][iOS] Add entitlements to enable audio/video capture in WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=170507
+        <rdar://problem/31121248>
+
+        Reviewed by Youenn Fablet.
+
+        Add two entitlements that are required to access audio/video capture on iOS.
+
+        * Configurations/WebContent-iOS.entitlements:
+
+2017-04-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Show a log message when an invalid message is received in non cocoa ports
+        https://bugs.webkit.org/show_bug.cgi?id=170506
+
+        Reviewed by Michael Catanzaro.
+
+        We just crash, but without knowing the details about the message it's impossible to debug.
+
+        * Shared/ChildProcess.cpp:
+        (WebKit::ChildProcess::didReceiveInvalidMessage):
+
+2017-04-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move WebErrors from WebProcess to Shared and get rid of ErrorsGtk in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=156974
+
+        Reviewed by Sam Weinig.
+
+        WebErrors are not only used by the frame loader client in the web process, but also by the network process. So,
+        move them to Shared make most of the implementation cross-platform.
+
+        * CMakeLists.txt: Add new files to compilation.
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::download): Use WebErrors directly instead of platform methods that are no longer needed.
+        (WebKit::NetworkDataTaskSoup::writeDownloadCallback): Ditto.
+        (WebKit::NetworkDataTaskSoup::didFinishDownload): Ditto.
+        (WebKit::NetworkDataTaskSoup::didFail): Ditto.
+        * PlatformGTK.cmake: Add new files to compilation and remove DownloadSoupErrorsGtk.cpp
+        * PlatformMac.cmake:
+        * Shared/API/APIError.cpp: Add error domains used by glib based ports.
+        (API::Error::webKitNetworkErrorDomain):
+        (API::Error::webKitPolicyErrorDomain):
+        (API::Error::webKitPluginErrorDomain):
+        (API::Error::webKitDownloadErrorDomain):
+        (API::Error::webKitPrintErrorDomain):
+        * Shared/API/APIError.h:
+        * Shared/Cocoa/WebErrorsCocoa.mm: Copied from Source/WebKit2/WebProcess/WebCoreSupport/WebErrors.h.
+        (WebKit::createNSError):
+        (WebKit::cancelledError):
+        (WebKit::fileDoesNotExistError):
+        * Shared/WebErrors.cpp: Copied from Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebErrorsGtk.cpp.
+        (WebKit::blockedError):
+        (WebKit::blockedByContentBlockerError):
+        (WebKit::cannotShowURLError):
+        (WebKit::interruptedForPolicyChangeError):
+        (WebKit::blockedByContentFilterError):
+        (WebKit::cannotShowMIMETypeError):
+        (WebKit::pluginWillHandleLoadError):
+        (WebKit::internalError):
+        * Shared/WebErrors.h: Renamed from Source/WebKit2/WebProcess/WebCoreSupport/WebErrors.h.
+        * Shared/glib/WebErrorsGlib.cpp: Renamed from Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebErrorsGtk.cpp.
+        (WebKit::cancelledError):
+        (WebKit::fileDoesNotExistError):
+        * Shared/gtk/WebErrorsGtk.cpp: Copied from Source/WebKit2/NetworkProcess/Downloads/gtk/DownloadSoupErrorsGtk.cpp.
+        (WebKit::printError):
+        (WebKit::printerNotFoundError):
+        (WebKit::invalidPageRangeToPrint):
+        * Shared/soup/WebErrorsSoup.cpp: Renamed from Source/WebKit2/NetworkProcess/Downloads/gtk/DownloadSoupErrorsGtk.cpp.
+        (WebKit::downloadNetworkError):
+        (WebKit::downloadCancelledByUserError):
+        (WebKit::downloadDestinationError):
+        * UIProcess/API/gtk/WebKitDownload.cpp:
+        * UIProcess/API/gtk/WebKitError.cpp:
+        (webkit_network_error_quark):
+        (webkit_policy_error_quark):
+        (webkit_plugin_error_quark):
+        (webkit_download_error_quark):
+        (webkit_print_error_quark):
+        * UIProcess/API/gtk/WebKitPrivate.cpp:
+        (toWebKitError):
+        (toWebCoreError):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/mac/WebErrorsMac.mm: Removed.
+        * WebProcess/WebPage/gtk/WebPrintOperationGtk.cpp:
+
+2017-04-04  Youenn Fablet  <youenn@apple.com>
+
+        [Mac] Add back web audio support for getUserMedia MediaStreamTrack
+        https://bugs.webkit.org/show_bug.cgi?id=170482
+
+        Reviewed by Eric Carlson.
+
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::Source::setStorage):
+
+2017-04-04  Tim Horton  <timothy_horton@apple.com>
+
+        [Mac] -[WKWebView findMatchesForString:relativeToMatch:findOptions:maxResults:resultCollector:] invokes the resultCollector with didWrap = NO even when it wraps
+        https://bugs.webkit.org/show_bug.cgi?id=165801
+        <rdar://problem/29649535>
+
+        Reviewed by Wenson Hsieh.
+
+        Previously, when doing an incremental find that wrapped, we would 
+        say that it did not, leading NSTextFinder to not provide its usual
+        wrapping UI, and other clients of the NSTextFinderClient protocol to
+        get confused by the lack of wrapping.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didFindString):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/API/APIFindClient.h:
+        (API::FindClient::didFindString):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageFindClient):
+        * UIProcess/Cocoa/FindClient.h:
+        * UIProcess/Cocoa/FindClient.mm:
+        (WebKit::FindClient::didFindString):
+        * WebProcess/WebPage/FindController.cpp:
+        (WebKit::FindController::updateFindUIAfterPageScroll):
+        (WebKit::FindController::findString):
+        * WebProcess/WebPage/FindController.h:
+        Plumb DidWrap from FindController's call to findString back through
+        the DidFindString message.
+
+        * UIProcess/mac/WKTextFinderClient.mm:
+        (-[WKTextFinderClient didFindStringMatchesWithRects:didWrapAround:]):
+        (-[WKTextFinderClient didFindStringMatchesWithRects:]): Deleted.
+        Make use of the new DidWrap information to stop lying to NSTextFinder
+        about whether a wrap actually occurred.
+
+2017-04-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Data interaction should register type identifiers in order of priority
+        https://bugs.webkit.org/show_bug.cgi?id=170428
+        <rdar://problem/30633296>
+
+        Reviewed by Tim Horton.
+
+        Serialize PasteboardWebContent.dataInAttributedStringFormat when sending over IPC. Refer to WebCore ChangeLog
+        for more details.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<PasteboardWebContent>::encode):
+        (IPC::ArgumentCoder<PasteboardWebContent>::decode):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+
+2017-04-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove no longer needed forward declarations
+        https://bugs.webkit.org/show_bug.cgi?id=170415
+
+        Reviewed by Dan Bernstein.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+
+2017-04-03  Anders Carlsson  <andersca@apple.com>
+
+        Tweak ApplePaySession API
+        https://bugs.webkit.org/show_bug.cgi?id=170409
+        rdar://problem/31405459
+
+        Reviewed by Tim Horton.
+
+        Update for WebCore changes.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::toNSError):
+
+2017-04-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] URI Fragment is lost after redirect
+        https://bugs.webkit.org/show_bug.cgi?id=170058
+
+        Reviewed by Michael Catanzaro.
+
+        In case of redirection check if the current request has a fragment identifier and apply it to the redirection
+        only when it doesn't have a fragment identifier yet.
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::NetworkDataTaskSoup):
+        (WebKit::NetworkDataTaskSoup::createRequest):
+        (WebKit::NetworkDataTaskSoup::continueHTTPRedirection):
+        * NetworkProcess/soup/NetworkDataTaskSoup.h:
+
+2017-04-03  Antti Koivisto  <antti@apple.com>
+
+        Mutex may be freed too late in NetworkCache::Storage::traverse
+        https://bugs.webkit.org/show_bug.cgi?id=170400
+        <rdar://problem/30515865>
+
+        Reviewed by Carlos Garcia Campos and Andreas Kling.
+
+        Fix a race.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::traverse):
+
+            Ensure the mutex is not accessed after we dispatch to the main thread.
+            The main thread call deletes the owning TraverseOperation.
+
+2017-04-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] <input type=file> label should be specified using plural rules
+        https://bugs.webkit.org/show_bug.cgi?id=170388
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+        (-[WKFileUploadPanel _processMediaInfoDictionaries:atIndex:processedResults:processedImageCount:processedVideoCount:successBlock:failureBlock:]):
+          Instead of calling -_displayStringForPhotos:videos:, use
+          +[NSString localizedStringWithFormat:] with the new format string "%lu photo(s) and
+          %lu video(s)" for which there are plural rules.
+        (-[WKFileUploadPanel _displayStringForPhotos:videos:]): Deleted.
+
+2017-04-01  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] In engineering builds, linker warns about libwebrtc.dylib’s install name being invalid
+        https://bugs.webkit.org/show_bug.cgi?id=170385
+
+        Reviewed by Tim Horton.
+
+        * Configurations/WebKit.xcconfig: When WebKit is relocatable, tell the linker that it’s
+          not going to be in the shared cache, even if its install name implies that it might be.
+
+2017-03-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove a logging statement left in by mistake.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::restoreViewState):
+
+2017-03-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Address post-review feedback after r214692
+        https://bugs.webkit.org/show_bug.cgi?id=170328
+
+        Reviewed by Dan Bernstein.
+
+        Clearing the selection when UIKit calls into WKContentView to set its selected text range to nil is a rule
+        that should be applied when using a text interaction assistant, not just when using character granularity
+        for selecting text.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setSelectedTextRange:]):
+
+2017-03-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Tapping away to dismiss the selection does not update the selected DOM range using character granularity
+        https://bugs.webkit.org/show_bug.cgi?id=170328
+        <rdar://problem/30904558>
+
+        Reviewed by Tim Horton.
+
+        When UIKit clears the selection while in text interaction mode, it notifies its document view (i.e., the
+        WKContentView) by setting its selected text range to nil. When character granularity selection is enabled, use
+        this as a cue to notify the web process that the selection is being cleared out.
+
+        -setSelectedTextRange: is a noop in the general case because the web process acts as the source of truth for what
+        the selection currently consists of, and notifies the UI process and UIKit via WKTextPosition and WKTextRange.
+        However, in the case of character granularity selections, tapping away to clear the selection is handled by
+        UIKit's text gesture recognizer cluster, which then informs the document (via -setSelectedTextRange:) that the
+        selection should be cleared out.
+
+        Adds a new Layout test: editing/selection/character-granularity-selected-range-after-dismissing-selection.html.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setSelectedTextRange:]):
+
+2017-03-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Tapping editable text inside of a range selection no longer changes the selection to a caret
+        https://bugs.webkit.org/show_bug.cgi?id=170327
+        <rdar://problem/31363816>
+
+        Reviewed by Tim Horton.
+
+        Currently, we're forcing all text interaction gestures to duck in lieu of data interaction gestures
+        when we should only be doing so for gestures that begin a loupe. This prevents other gestures, such as
+        single taps, from changing the selection when they should be allowed to.
+
+        Hooks into new UIKit SPI to make this tweak.
+        Introduces a new LayoutTest: editing/selection/caret-after-tap-in-editable-selection.html.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView pointIsInAssistedNode:]):
+        (-[WKContentView textInteractionGesture:shouldBeginAtPoint:]):
+
+2017-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        Mail can get stuck underneath FindController::findStringMatches after searching in a long message
+        https://bugs.webkit.org/show_bug.cgi?id=170326
+        <rdar://problem/30330395>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/mac/WKTextFinderClient.mm:
+        (-[WKTextFinderClient findMatchesForString:relativeToMatch:findOptions:maxResults:resultCollector:]):
+        Cap the number of find matches at 1000, the same maximum that Safari uses.
+
+2017-03-31  Brady Eidson  <beidson@apple.com>
+
+        Clean up the "StorageType" enum.
+        https://bugs.webkit.org/show_bug.cgi?id=170349
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/Storage/StorageAreaMap.cpp:
+        (WebKit::StorageAreaMap::StorageAreaMap):
+        (WebKit::StorageAreaMap::dispatchStorageEvent):
+        (WebKit::StorageAreaMap::dispatchSessionStorageEvent):
+        (WebKit::StorageAreaMap::dispatchLocalStorageEvent):
+        
+        * WebProcess/Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::createSessionStorageNamespace):
+        (WebKit::StorageNamespaceImpl::createLocalStorageNamespace):
+        (WebKit::StorageNamespaceImpl::createTransientLocalStorageNamespace):
+
+2017-03-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove bundle checks for attachmentElementEnabled
+        https://bugs.webkit.org/show_bug.cgi?id=170329
+        <rdar://problem/25135244>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]):
+        Remove bundle checks.
+
+2017-03-29  Anders Carlsson  <andersca@apple.com>
+
+        Adopt PKCanMakePaymentsWithMerchantIdentifierAndDomainAndSourceApplication
+        https://bugs.webkit.org/show_bug.cgi?id=170257
+        rdar://problem/31289764
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::WebPaymentCoordinatorProxy::platformCanMakePaymentsWithActiveCard):
+
+2017-03-31  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Mac cmake buildfix after r214403
+        https://bugs.webkit.org/show_bug.cgi?id=170346
+
+        Unreviewed speculative buildfix.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+
+2017-03-31  Brady Eidson  <beidson@apple.com>
+
+        Remove erroneously committed changes from r214078
+
+        Unreviewed.
+
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeNetworkProcess): Whoops!
+
+2017-03-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Modern media controls should never be enabled in non cocoa ports
+        https://bugs.webkit.org/show_bug.cgi?id=170338
+
+        Reviewed by Michael Catanzaro.
+
+        It's currently enabled, because it uses the default value for all other runtime features, but modern media
+        controls are not a cross-platform feature. I think this is why media/video-click-dblckick-standalone.html
+        started to fail in GTK+ port after r214426. I can't reprouduce the failure locally, so I can't confirm it,
+        though.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2017-03-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ build fix. List WebCore before JavaScriptCore as the
+        two WebKit2 dependency libraries to avoid WTF directiories being
+        listed for inclusion before WebCore directories at compile-time.
+
+        * CMakeLists.txt:
+
+2017-03-30  Megan Gardner  <megan_gardner@apple.com>
+
+        Allow for extended color in snapshots
+        https://bugs.webkit.org/show_bug.cgi?id=170314
+        <rdar://problem/28676092> WKImageCreateCGImage should support WideGamut in WebKit2 on macOS
+
+        Reviewed by Simon Fraser.
+
+        Piping options through snapshots to allow for wide gamut support.
+
+        * Shared/API/c/WKImage.h:
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::snapshotOptionsFromImageOptions):
+        * Shared/ImageOptions.h:
+        (WebKit::snapshotOptionsToImageOptions):
+        * Shared/WebImage.cpp:
+        (WebKit::WebImage::create):
+
+2017-03-30  Sam Weinig  <sam@webkit.org>
+
+        Expose the WKView SPI, _prepareForMoveToWindow:withCompletionHandler as WKWebView SPI
+        <rdar://problem/31350588>
+        https://bugs.webkit.org/show_bug.cgi?id=170315
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _prepareForMoveToWindow:completionHandler:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        Copy SPI to WKWebView. Remove 'with' prefix to match conventions.
+
+2017-03-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Touches should not cancel when showing a custom action sheet while data interaction is active
+        https://bugs.webkit.org/show_bug.cgi?id=170291
+        <rdar://problem/31301388>
+
+        Reviewed by Tim Horton.
+
+        Currently, when presenting a custom popover, we will cancel all touches in the application. This makes data
+        interaction when a custom popover is shown impossible -- to address this, we should only cancel touches when
+        the view is not an active data interaction source.
+
+        New API test: DataInteractionTests.CustomActionSheetPopover.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView actionSheetAssistant:showCustomSheetForElement:]):
+
+2017-03-30  Youenn Fablet  <youenn@apple.com>
+
+        NetworkConnectionToWebProcess should stop web sockets when being destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=170286
+
+        Reviewed by Brady Eidson.
+
+        * NetworkProcess/NetworkSocketStream.cpp:
+        (WebKit::NetworkSocketStream::~NetworkSocketStream): Stopping the socket handle if not done already.
+        * NetworkProcess/NetworkSocketStream.h:
+
 2017-03-29  Tim Horton  <timothy_horton@apple.com>
 
         Remove unused PageClient::removeNavigationGestureSnapshot

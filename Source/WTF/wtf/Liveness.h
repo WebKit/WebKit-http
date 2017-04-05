@@ -40,6 +40,7 @@ public:
     typedef typename Adapter::CFG CFG;
     typedef typename Adapter::Thing Thing;
     typedef Vector<unsigned, 4, UnsafeVectorOverflow> IndexVector;
+    typedef IndexSparseSet<unsigned, DefaultIndexSparseSetTraits<unsigned>, UnsafeVectorOverflow> Workset;
     
     template<typename... Arguments>
     Liveness(CFG& cfg, Arguments&&... arguments)
@@ -49,103 +50,8 @@ public:
         , m_liveAtHead(cfg.template newMap<IndexVector>())
         , m_liveAtTail(cfg.template newMap<IndexVector>())
     {
-        // The liveAtTail of each block automatically contains the LateUse's of the terminal.
-        for (unsigned blockIndex = m_cfg.numNodes(); blockIndex--;) {
-            typename CFG::Node block = m_cfg.node(blockIndex);
-            if (!block)
-                continue;
-            
-            IndexVector& liveAtTail = m_liveAtTail[block];
-
-            Adapter::forEachLateUse(
-                block, Adapter::blockSize(block) - 1,
-                [&] (unsigned index) {
-                    liveAtTail.append(index);
-                });
-            
-            std::sort(liveAtTail.begin(), liveAtTail.end());
-            removeRepeatedElements(liveAtTail);
-        }
-
-        // Blocks with new live values at tail.
-        BitVector dirtyBlocks;
-        for (size_t blockIndex = m_cfg.numNodes(); blockIndex--;)
-            dirtyBlocks.set(blockIndex);
-        
-        IndexVector mergeBuffer;
-        
-        bool changed;
-        do {
-            changed = false;
-
-            for (size_t blockIndex = m_cfg.numNodes(); blockIndex--;) {
-                typename CFG::Node block = m_cfg.node(blockIndex);
-                if (!block)
-                    continue;
-
-                if (!dirtyBlocks.quickClear(blockIndex))
-                    continue;
-
-                LocalCalc localCalc(*this, block);
-                for (size_t instIndex = Adapter::blockSize(block); instIndex--;)
-                    localCalc.execute(instIndex);
-
-                // Handle the early def's of the first instruction.
-                Adapter::forEachEarlyDef(
-                    block, 0,
-                    [&] (unsigned index) {
-                        m_workset.remove(index);
-                    });
-
-                IndexVector& liveAtHead = m_liveAtHead[block];
-
-                // We only care about Tmps that were discovered in this iteration. It is impossible
-                // to remove a live value from the head.
-                // We remove all the values we already knew about so that we only have to deal with
-                // what is new in LiveAtHead.
-                if (m_workset.size() == liveAtHead.size())
-                    m_workset.clear();
-                else {
-                    for (unsigned liveIndexAtHead : liveAtHead)
-                        m_workset.remove(liveIndexAtHead);
-                }
-
-                if (m_workset.isEmpty())
-                    continue;
-
-                liveAtHead.reserveCapacity(liveAtHead.size() + m_workset.size());
-                for (unsigned newValue : m_workset)
-                    liveAtHead.uncheckedAppend(newValue);
-                
-                m_workset.sort();
-                
-                for (typename CFG::Node predecessor : m_cfg.predecessors(block)) {
-                    IndexVector& liveAtTail = m_liveAtTail[predecessor];
-                    
-                    if (liveAtTail.isEmpty())
-                        liveAtTail = m_workset.values();
-                    else {
-                        mergeBuffer.resize(liveAtTail.size() + m_workset.size());
-                        auto iter = mergeDeduplicatedSorted(
-                            liveAtTail.begin(), liveAtTail.end(),
-                            m_workset.begin(), m_workset.end(),
-                            mergeBuffer.begin());
-                        mergeBuffer.resize(iter - mergeBuffer.begin());
-                        
-                        if (mergeBuffer.size() == liveAtTail.size())
-                            continue;
-                    
-                        RELEASE_ASSERT(mergeBuffer.size() > liveAtTail.size());
-                        liveAtTail = mergeBuffer;
-                    }
-                    
-                    dirtyBlocks.quickSet(predecessor->index());
-                    changed = true;
-                }
-            }
-        } while (changed);
     }
-
+    
     // This calculator has to be run in reverse.
     class LocalCalc {
     public:
@@ -169,7 +75,7 @@ public:
 
             class iterator {
             public:
-                iterator(Adapter& adapter, IndexSparseSet<UnsafeVectorOverflow>::const_iterator sparceSetIterator)
+                iterator(Adapter& adapter, Workset::const_iterator sparceSetIterator)
                     : m_adapter(adapter)
                     , m_sparceSetIterator(sparceSetIterator)
                 {
@@ -191,7 +97,7 @@ public:
 
             private:
                 Adapter& m_adapter;
-                IndexSparseSet<UnsafeVectorOverflow>::const_iterator m_sparceSetIterator;
+                Workset::const_iterator m_sparceSetIterator;
             };
 
             iterator begin() const { return iterator(m_liveness, m_liveness.m_workset.begin()); }
@@ -220,30 +126,20 @@ public:
         {
             auto& workset = m_liveness.m_workset;
 
-            // First handle the early def's of the next instruction.
-            m_liveness.forEachEarlyDef(
+            // Want an easy example to help you visualize how this works?
+            // Check out B3VariableLiveness.h.
+            //
+            // Want a hard example to help you understand the hard cases?
+            // Check out AirLiveness.h.
+            
+            m_liveness.forEachDef(
                 m_block, instIndex + 1,
                 [&] (unsigned index) {
                     workset.remove(index);
                 });
             
-            // Then handle def's.
-            m_liveness.forEachLateDef(
+            m_liveness.forEachUse(
                 m_block, instIndex,
-                [&] (unsigned index) {
-                    workset.remove(index);
-                });
-
-            // Then handle use's.
-            m_liveness.forEachEarlyUse(
-                m_block, instIndex,
-                [&] (unsigned index) {
-                    workset.add(index);
-                });
-
-            // And finally, handle the late use's of the previous instruction.
-            m_liveness.forEachLateUse(
-                m_block, instIndex - 1,
                 [&] (unsigned index) {
                     workset.add(index);
                 });
@@ -332,7 +228,7 @@ public:
         return Iterable<IndexVector>(*this, m_liveAtTail[block]);
     }
 
-    IndexSparseSet<UnsafeVectorOverflow>& workset() { return m_workset; }
+    Workset& workset() { return m_workset; }
     
     class LiveAtHead {
     public:
@@ -359,12 +255,112 @@ public:
     
     LiveAtHead liveAtHead() { return LiveAtHead(*this); }
 
+protected:
+    void compute()
+    {
+        // The liveAtTail of each block automatically contains the LateUse's of the terminal.
+        for (unsigned blockIndex = m_cfg.numNodes(); blockIndex--;) {
+            typename CFG::Node block = m_cfg.node(blockIndex);
+            if (!block)
+                continue;
+            
+            IndexVector& liveAtTail = m_liveAtTail[block];
+
+            Adapter::forEachUse(
+                block, Adapter::blockSize(block),
+                [&] (unsigned index) {
+                    liveAtTail.append(index);
+                });
+            
+            std::sort(liveAtTail.begin(), liveAtTail.end());
+            removeRepeatedElements(liveAtTail);
+        }
+
+        // Blocks with new live values at tail.
+        BitVector dirtyBlocks;
+        for (size_t blockIndex = m_cfg.numNodes(); blockIndex--;)
+            dirtyBlocks.set(blockIndex);
+        
+        IndexVector mergeBuffer;
+        
+        bool changed;
+        do {
+            changed = false;
+
+            for (size_t blockIndex = m_cfg.numNodes(); blockIndex--;) {
+                typename CFG::Node block = m_cfg.node(blockIndex);
+                if (!block)
+                    continue;
+
+                if (!dirtyBlocks.quickClear(blockIndex))
+                    continue;
+
+                LocalCalc localCalc(*this, block);
+                for (size_t instIndex = Adapter::blockSize(block); instIndex--;)
+                    localCalc.execute(instIndex);
+
+                // Handle the early def's of the first instruction.
+                Adapter::forEachDef(
+                    block, 0,
+                    [&] (unsigned index) {
+                        m_workset.remove(index);
+                    });
+
+                IndexVector& liveAtHead = m_liveAtHead[block];
+
+                // We only care about Tmps that were discovered in this iteration. It is impossible
+                // to remove a live value from the head.
+                // We remove all the values we already knew about so that we only have to deal with
+                // what is new in LiveAtHead.
+                if (m_workset.size() == liveAtHead.size())
+                    m_workset.clear();
+                else {
+                    for (unsigned liveIndexAtHead : liveAtHead)
+                        m_workset.remove(liveIndexAtHead);
+                }
+
+                if (m_workset.isEmpty())
+                    continue;
+
+                liveAtHead.reserveCapacity(liveAtHead.size() + m_workset.size());
+                for (unsigned newValue : m_workset)
+                    liveAtHead.uncheckedAppend(newValue);
+                
+                m_workset.sort();
+                
+                for (typename CFG::Node predecessor : m_cfg.predecessors(block)) {
+                    IndexVector& liveAtTail = m_liveAtTail[predecessor];
+                    
+                    if (liveAtTail.isEmpty())
+                        liveAtTail = m_workset.values();
+                    else {
+                        mergeBuffer.resize(liveAtTail.size() + m_workset.size());
+                        auto iter = mergeDeduplicatedSorted(
+                            liveAtTail.begin(), liveAtTail.end(),
+                            m_workset.begin(), m_workset.end(),
+                            mergeBuffer.begin());
+                        mergeBuffer.resize(iter - mergeBuffer.begin());
+                        
+                        if (mergeBuffer.size() == liveAtTail.size())
+                            continue;
+                    
+                        RELEASE_ASSERT(mergeBuffer.size() > liveAtTail.size());
+                        liveAtTail = mergeBuffer;
+                    }
+                    
+                    dirtyBlocks.quickSet(predecessor->index());
+                    changed = true;
+                }
+            }
+        } while (changed);
+    }
+
 private:
     friend class LocalCalc;
     friend class LocalCalc::Iterable;
 
     CFG& m_cfg;
-    IndexSparseSet<UnsafeVectorOverflow> m_workset;
+    Workset m_workset;
     typename CFG::template Map<IndexVector> m_liveAtHead;
     typename CFG::template Map<IndexVector> m_liveAtTail;
 };

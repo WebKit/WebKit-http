@@ -1,3 +1,27 @@
+2017-04-04  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix leaks in WebUITextIndicatorData
+        https://bugs.webkit.org/show_bug.cgi?id=170480
+
+        Reviewed by Wenson Hsieh.
+
+        Removes extraneous retains.
+
+        * WebView/WebView.mm:
+        (-[WebUITextIndicatorData initWithImage:textIndicatorData:scale:]):
+
+2017-04-04  Tim Horton  <timothy_horton@apple.com>
+
+        [Mac] -[WKWebView findMatchesForString:relativeToMatch:findOptions:maxResults:resultCollector:] invokes the resultCollector with didWrap = NO even when it wraps
+        https://bugs.webkit.org/show_bug.cgi?id=165801
+        <rdar://problem/29649535>
+
+        Reviewed by Wenson Hsieh.
+
+        * WebView/WebView.mm:
+        (incrementFrame):
+        Adjust to the new CanWrap enum.
+
 2017-03-27  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Saving files should not suggest the top level directory

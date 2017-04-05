@@ -1,3 +1,532 @@
+2017-04-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Probe values not showing in sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=170143
+
+        Reviewed by Joseph Pecoraro.
+
+        Force the DataGrid to refresh its layout after adding a probe sample.
+
+        * UserInterface/Views/ProbeSetDataGrid.css:
+        (.details-section.probe-set .data-grid tr.data-updated):
+        (.details-section.probe-set .data-grid > tr.data-updated): Deleted.
+        Drive-by fix: selector didn't match any rows.
+
+        * UserInterface/Views/ProbeSetDataGrid.js:
+        (WebInspector.ProbeSetDataGrid.prototype._updateNodeForFrame):
+
+2017-04-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: XHR breakpoints should be global
+        https://bugs.webkit.org/show_bug.cgi?id=170033
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Shorten XHR breakpoint tree element "URL contains:" title to "URL".
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        Change storage of XHR breakpoints from a map to a simple array.
+        (WebInspector.DOMDebuggerManager):
+        (WebInspector.DOMDebuggerManager.prototype.get xhrBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype.addXHRBreakpoint):
+        Dispatch the "breakpoint added" event immediately after adding the
+        breakpoint, rather than waiting for it to resolve.
+
+        (WebInspector.DOMDebuggerManager.prototype.removeXHRBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._speculativelyResolveBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype._resolveXHRBreakpoint):
+        (WebInspector.DOMDebuggerManager.prototype._saveXHRBreakpoints):
+        (WebInspector.DOMDebuggerManager.prototype._mainResourceDidChange):
+
+        * UserInterface/Models/XHRBreakpoint.js:
+        An XHR breakpoint should not be associated with a particular document.
+        (WebInspector.XHRBreakpoint):
+        (WebInspector.XHRBreakpoint.prototype.get serializableInfo):
+        (WebInspector.XHRBreakpoint.prototype.saveIdentityToCookie):
+        (WebInspector.XHRBreakpoint.prototype.get documentURL): Deleted.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        Use default emdash-separated title/subtitle style instead of the
+        custom "URL contains:" labeling.
+
+        (.sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle):
+        (.sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle:before): Deleted.
+        (body[dir=ltr] .sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle): Deleted.
+        (body[dir=rtl] .sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle): Deleted.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.willDismissPopover):
+        (WebInspector.DebuggerSidebarPanel):
+
+        * UserInterface/Views/XHRBreakpointTreeElement.js:
+        (WebInspector.XHRBreakpointTreeElement):
+
+2017-04-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: layout issues in Type Profiler popovers
+        https://bugs.webkit.org/show_bug.cgi?id=170467
+
+        Reviewed by Timothy Hatcher.
+
+        Flip some margins and padding. Remove the -1px leading margin for
+        the prototype disclosure button, as it is unnecessary and looks
+        (more) wrong when in RTL.
+
+        * UserInterface/Views/TypeTreeElement.css:
+        (.item.type-tree-element > .disclosure-button):
+        (.item.type-tree-element.prototype):
+        (body[dir=ltr] .item.type-tree-element.prototype):
+        (body[dir=rtl] .item.type-tree-element.prototype):
+        * UserInterface/Views/TypeTreeView.css:
+        (.tree-outline.type):
+        (body[dir=ltr] .tree-outline.type):
+        (body[dir=rtl] .tree-outline.type):
+        (.tree-outline.type li .empty-message):
+        (body[dir=ltr] .tree-outline.type li .empty-message):
+        (body[dir=rtl] .tree-outline.type li .empty-message):
+
+2017-04-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include more Network information in Resource Details Sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=170470
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Updated localized strings.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.displayNameForProtocol):
+        (WebInspector.Resource.displayNameForPriority):
+        Aggregate all display name helpers here.
+
+        * UserInterface/Views/DetailsSectionSimpleRow.js:
+        (WebInspector.DetailsSectionSimpleRow.prototype.get tooltip):
+        (WebInspector.DetailsSectionSimpleRow.prototype.set tooltip):
+        Allow setting a tooltip on the value.
+
+        * UserInterface/Views/NetworkGridContentView.css:
+        (.cache-type):
+        Cache type shows up in multiple places. Simplify the CSS to apply anywhere.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        Updated column names.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshRequestAndResponse):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._cachedRowValue):
+        Include more detail information in the sidebar.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.ResourceTimelineDataGridNode.prototype._displayNameForPriority): Deleted.
+        Use shared code for display names.
+
+2017-04-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: fix alignment of close button shown while docked
+        https://bugs.webkit.org/show_bug.cgi?id=170472
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar .control-section):
+        (body[dir=ltr] .toolbar .control-section):
+        (body[dir=rtl] .toolbar .control-section):
+
+2017-04-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: layout issues in debugger dashboard, arrows are on wrong side
+        https://bugs.webkit.org/show_bug.cgi?id=170425
+
+        Reviewed by Devin Rousso.
+
+        We need to move the up/down dashboard arrows to the trailing side for RTL.
+        Clean up some messy spacing rules so that the source location does not
+        overlap the arrows or get too close to the function icon.
+
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar .dashboard):
+        (body[dir=ltr] .toolbar .dashboard):
+        (body[dir=rtl] .toolbar .dashboard):
+        (.dashboard-container .advance-arrow):
+        (body[dir=ltr] .dashboard-container .advance-arrow):
+        (body[dir=rtl] .dashboard-container .advance-arrow):
+        (.toolbar.label-only .dashboard-container .advance-arrow):
+        (body[dir=ltr] .toolbar.label-only .dashboard-container .advance-arrow):
+        (body[dir=rtl] .toolbar.label-only .dashboard-container .advance-arrow):
+        * UserInterface/Views/DebuggerDashboardView.css:
+        (.toolbar .dashboard.debugger):
+        (body[dir=ltr] .toolbar .dashboard.debugger):
+        (body[dir=rtl] .toolbar .dashboard.debugger):
+        (.dashboard.debugger .navigation-bar):
+        (body[dir=ltr] .dashboard.debugger .navigation-bar):
+        (body[dir=rtl] .dashboard.debugger .navigation-bar):
+        (.dashboard.debugger > .location):
+        (.dashboard.debugger > .location > :first-child):
+        (body[dir=ltr] .dashboard.debugger > .location > :last-child):
+        (body[dir=rtl] .dashboard.debugger > .location > :last-child):
+        (.dashboard.debugger > .location .function-icon):
+        (body[dir=ltr] .dashboard.debugger > .location .function-icon):
+        (body[dir=rtl] .dashboard.debugger > .location .function-icon):
+        (.dashboard.debugger > .location .go-to-link):
+
+2017-04-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: results in Search navigation sidebar have misplaced highlights
+        https://bugs.webkit.org/show_bug.cgi?id=170292
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/SourceCodeSearchMatchObject.js:
+        (WebInspector.SourceCodeSearchMatchObject.prototype.get className):
+        * UserInterface/Views/SearchIcons.css:
+        (.source-code-match .icon):
+        (.source-code-match-icon .icon): Deleted.
+        Remove -icon suffix from the class name since the class is attached to a result
+        and is not specific to the icon displayed within the result <li>.
+
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement.truncateAndHighlightTitle):
+        Flip the leading and trailing context in RTL so that the highlight is not overflowed
+        to the left when too much context is included on the right side. Less context must be
+        used in RTL because we must not overflow to the right, as it may hide the result. And,
+        we don't know the exact starting character either as it may be overflowed to the right
+        as the user resizes the expanded sidebar larger or smaller. So show less context to
+        be conservative about never overflowing the highlighted result string.
+
+        * UserInterface/Views/SearchSidebarPanel.css:
+        (.sidebar > .panel.navigation.search .item.source-code-match .title):
+        When in RTL, show source code matches as LTR with text-align to right.
+
+2017-04-03  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: clicking on the body of a CSS rule after editing the selector causes the section to disappear
+        https://bugs.webkit.org/show_bug.cgi?id=169803
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleKeyDown):
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleBlur):
+        Keep the section marked as `_editorActive` if the action taken would still place focus
+        within the section (selector or properties).  Doing so will prevent it from being removed.
+
+2017-04-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: hierarchical path component labels should guess directionality based on content
+        https://bugs.webkit.org/show_bug.cgi?id=170298
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        (WebInspector.HierarchicalPathComponent):
+        Use dir="auto" since this will properly set 'unicode-bidi:isolate' for form elements too.
+        This is applied to the title label and to the <select> for the path component.
+
+2017-04-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Show additional pause reason details for DOM "subtree modified" breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=169479
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New Pause Reason UI strings.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        Include a link for the target node when breaking for subtree modifications.
+        This is either the parent of a node being inserted, or a node that is
+        being removed.
+
+2017-04-03  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: showing the Find banner doesn't immediately focus it
+        https://bugs.webkit.org/show_bug.cgi?id=169804
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._focusChanged):
+        Slightly change the logic from <https://webkit.org/b/168119> (r213689) to not prevent a new
+        selection if the focus change target is an element from WebInspector.startEditing.
+
+2017-04-03  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: Don't store binary frames in memory since they are never shown
+        https://bugs.webkit.org/show_bug.cgi?id=169649
+        <rdar://problem/31053069>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/WebSocketResource.js:
+        (WebInspector.WebSocketResource.prototype.addFrame):
+
+2017-04-03  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Preference for Auto Showing Scope Chain sidebar on pause
+        https://bugs.webkit.org/show_bug.cgi?id=149487
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.layout):
+        Add WebInspector.Setting for showing Scope Chain on pause.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.showDebuggerTab):
+        (WebInspector._debuggerDidPause):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu):
+        Modify parameters to use a dictionary of options instead of just a single value.  In doing
+        so, add support for a value that will show the Scope Chain sidebar.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings):
+        (.content-view.settings > .header):
+        Drive-by: add padding to bottom of Settings tab so that additional scroll space is mirrored.
+
+2017-04-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: layout issues in call frame tree elements and async call stacks
+        https://bugs.webkit.org/show_bug.cgi?id=170419
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline .item.call-frame .status):
+        (body[dir=ltr] .tree-outline .item.call-frame .status):
+        (body[dir=rtl] .tree-outline .item.call-frame .status):
+        Flip the current call frame indicator and make sure it sticks to the leading edge.
+
+        (.tree-outline .item.call-frame.async-boundary):
+        (body[dir=ltr] .tree-outline:not(.single-thread) > .children > .item.call-frame.async-boundary):
+        (body[dir=rtl] .tree-outline:not(.single-thread) > .children > .item.call-frame.async-boundary):
+        (.tree-outline .item.call-frame.async-boundary .icon):
+        (body[dir=ltr] .tree-outline .item.call-frame.async-boundary .icon):
+        (body[dir=rtl] .tree-outline .item.call-frame.async-boundary .icon):
+        Flip the icon's padding.
+
+        (.tree-outline .item.call-frame.async-boundary::after):
+        (body[dir=ltr] .tree-outline .item.call-frame.async-boundary::after):
+        (body[dir=rtl] .tree-outline .item.call-frame.async-boundary::after):
+        (.tree-outline .item.call-frame.async-boundary::before):
+        (body[dir=ltr] .tree-outline .item.call-frame.async-boundary::before):
+        (body[dir=rtl] .tree-outline .item.call-frame.async-boundary::before):
+        (.tree-outline:not(.single-thread) > .children > .item.call-frame.async-boundary): Deleted.
+        Fix the leading and trailing horizontal rules so they have correct spacing.
+
+        * UserInterface/Views/CallFrameView.css:
+        (.call-frame .icon): Remove redundant property.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .tree-outline.single-thread):
+        (body[dir=ltr] .sidebar > .panel.navigation.debugger .tree-outline.single-thread):
+        (body[dir=rtl] .sidebar > .panel.navigation.debugger .tree-outline.single-thread):
+        Fix the leading unindent for call tree frame elements.
+
+2017-04-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements tab: show indicators for hidden DOM breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=168761
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New DOM breakpoint content menu item.
+
+        * UserInterface/Views/DOMTreeContentView.css:
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.subtree):
+        (.content-view.dom-tree .tree-outline.dom li.expanded .status-image.breakpoint.subtree):
+        New styles for collapsed breakpoint marker.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement):
+        (WebInspector.DOMTreeElement.prototype.set breakpointStatus):
+        If the status change indicates the only breakpoint was added or removed,
+        update subtree breakpoint counts on the element's parent chain.
+
+        (WebInspector.DOMTreeElement.prototype.revealAndHighlight):
+        Reveal the tree element, and add a highlighted line animation
+        identical to the one used used by TextEditor.
+
+        (WebInspector.DOMTreeElement.prototype.subtreeBreakpointCountDidChange):
+        (WebInspector.DOMTreeElement.prototype.updateSelectionArea):
+        Selection area should be updated when animating the element highlight.
+        (WebInspector.DOMTreeElement.prototype.onreveal):
+        Animate highlight if needed.
+        (WebInspector.DOMTreeElement.prototype._updateBreakpointStatus):
+        (WebInspector.DOMTreeElement.prototype._statusImageClicked):
+        Do nothing when clicking the collapsed breakpoint marker.
+        (WebInspector.DOMTreeElement.prototype._statusImageContextmenu):
+        Add "Reveal Breakpoint" menu item. Reveals the first descendant
+        with at least one breakpoint.
+
+        (WebInspector.DOMTreeElement.prototype._highlightAnimationEnd):
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (@keyframes dom-tree-outline-highlight-fadeout):
+        (.highlight .selection-area):
+        Styles for highlight fade animation.
+
+        * UserInterface/Views/TreeElement.js:
+        (WebInspector.TreeElement.prototype.selfOrDescendant):
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline.prototype.selfOrDescendant):
+        Find a node matching a predicate.
+
+2017-04-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: DetailsSection should hide header "options" when collapsed
+        https://bugs.webkit.org/show_bug.cgi?id=170029
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.css:
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter):
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners.collapsed > .header > .filter): Deleted.
+        DetailsSection is responsible for hiding options when collapsed.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .details-section.paused-reason.collapsed > .header > .options):
+
+        * UserInterface/Views/DetailsSection.css:
+        (body[dir=ltr] .details-section > .header > .options,):
+        (body[dir=ltr] .details-section > .header::before,):
+        (.details-section.collapsed  > .header > .options):
+        (body[dir=ltr] .details-section > .header > :matches(label, .node-link, .go-to-arrow),): Deleted.
+        (.details-section.collapsed  > .header > label): Deleted.
+        Removed unnecessary rules. The "options" class covers these cases.
+
+        * UserInterface/Views/DetailsSection.js:
+        (WebInspector.DetailsSection.prototype.get titleElement):
+        (WebInspector.DetailsSection.prototype.set titleElement):
+        Added title element customization so that the hack used by ProbeSetDetailsSection
+        to get a link into the title can be removed. Yuck!
+
+        * UserInterface/Views/ProbeSetDetailsSection.js:
+        (WebInspector.ProbeSetDetailsSection):
+        (WebInspector.ProbeSetDetailsSection.prototype._updateLinkElement):
+        Use the new DetailsSection title element setter.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .header > .options):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .header > .visual-style-section-clear): Deleted.
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section.collapsed > .header > .visual-style-section-clear,): Deleted.
+        Remove the "visual-style-section-clear" class, as it's no longer needed.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateSection.createOptionsElement):
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateSection):
+
+2017-04-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Space" is not localizable in Timelines record button tooltips
+        https://bugs.webkit.org/show_bug.cgi?id=170420
+        <rdar://problem/30871371>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/LoadLocalizedStrings.js:
+        (WebInspector.unlocalizedString):
+        (WebInspector.UIString):
+        * UserInterface/Base/Main.js:
+        Move UIString / unlocalizedString to LoadLocalizedString.js.
+        They may be needed before Main.js has introduced it.
+
+        * UserInterface/Test/Test.js:
+        Provide a default implementaiton of unlocalizedString.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/KeyboardShortcut.js:
+        Most keys use a symbol to represent the key. "Space" was the one
+        exception, so use a localized string.
+
+2017-04-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tooltip for close tab button should match Safari
+        https://bugs.webkit.org/show_bug.cgi?id=170417
+        <rdar://problem/31378423>
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/GeneralTabBarItem.js:
+        (WebInspector.GeneralTabBarItem):
+        Updated tooltip to match Safari's most descriptive tooltip.
+
+2017-04-03  Devin Rousso  <webkit@devinrousso.com>
+
+        REGRESSION (r214354): Web Inspector: WebSocket connection icon obscures close content view icon
+        https://bugs.webkit.org/show_bug.cgi?id=170104
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceTreeElement.css:
+        (.item.resource.resource-type-websocket .status > .ready-state):
+        (.item.resource.resource-type-websocket:not(.selected) .status .ready-state.open):
+        (.tree-outline:not(:focus, .force-focus) .item.resource.resource-type-websocket.selected .status .ready-state.open):
+        (body:matches(.window-inactive, .window-docked-inactive) .item.resource.resource-type-websocket.selected .status .ready-state.open):
+        (.item.resource.resource-type-websocket:not(.selected) .status .ready-state.connecting):
+        (.tree-outline:not(:focus, .force-focus) .item.resource.resource-type-websocket.selected .status .ready-state.connecting):
+        (body:matches(.window-inactive, .window-docked-inactive) .item.resource.resource-type-websocket.selected .status .ready-state.connecting):
+        (.item.resource.resource-type-websocket .status > div): Deleted.
+        (.item.resource.resource-type-websocket:not(.selected) .status .open): Deleted.
+        (.tree-outline:not(:focus, .force-focus) .item.resource.resource-type-websocket.selected .status .open): Deleted.
+        (body:matches(.window-inactive, .window-docked-inactive) .item.resource.resource-type-websocket.selected .status .open): Deleted.
+        (.item.resource.resource-type-websocket:not(.selected) .status .connecting): Deleted.
+        (.tree-outline:not(:focus, .force-focus) .item.resource.resource-type-websocket.selected .status .connecting): Deleted.
+        (body:matches(.window-inactive, .window-docked-inactive) .item.resource.resource-type-websocket.selected .status .connecting): Deleted.
+
+        * UserInterface/Views/WebSocketResourceTreeElement.js:
+        (WebInspector.WebSocketResourceTreeElement.prototype._updateConnectionStatus):
+        Apply an additional CSS class to the connection indicator element so that the styles can be
+        applied more specifically to just that element.
+
+2017-04-01  Jon Lee  <jonlee@apple.com>
+
+        Add missing text styles
+        https://bugs.webkit.org/show_bug.cgi?id=170295
+        rdar://problem/30219503
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Models/CSSKeywordCompletions.js: Update keyword completions
+
+2017-04-01  Dan Bernstein  <mitz@apple.com>
+
+        Localizable strings files are out of date
+        https://bugs.webkit.org/show_bug.cgi?id=170383
+
+        Reviewed by Tim Horton.
+
+        Ran update-webkit-localizable-strings.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2017-03-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Styles sidebar warning icon appears inside property value text
+        https://bugs.webkit.org/show_bug.cgi?id=170281
+
+        Reviewed by Timothy Hatcher.
+
+        Style rule warning icon should always come before the property name,
+        regardless of which property part (name/value) the error is for. This
+        information is conveyed by the red strikethrough, which is applied to
+        the property name, value, or both.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+
 2017-03-29  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: WebSockets: Messages log should remain being scrolled to the bottom when a new message is added

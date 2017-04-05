@@ -2597,10 +2597,8 @@ private:
             // This pattern is super useful on both x86 and ARM64, since the inversion of the CAS result
             // can be done with zero cost on x86 (just flip the set from E to NE) and it's a progression
             // on ARM64 (since STX returns 0 on success, so ordinarily we have to flip it).
-            // FIXME: This looks wrong for AtomicStrongCAS
-            // https://bugs.webkit.org/show_bug.cgi?id=169867
             if (m_value->child(1)->isInt(1)
-                && isAtomicCAS(m_value->child(0)->opcode())
+                && m_value->child(0)->opcode() == AtomicWeakCAS
                 && canBeInternal(m_value->child(0))) {
                 commitInternal(m_value->child(0));
                 appendCAS(m_value->child(0), true);
@@ -3379,10 +3377,10 @@ private:
         RELEASE_ASSERT_NOT_REACHED();
     }
     
-    IndexSet<Value> m_locked; // These are values that will have no Tmp in Air.
-    IndexMap<Value, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".
-    IndexMap<Value, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
-    IndexMap<B3::BasicBlock, Air::BasicBlock*> m_blockToBlock;
+    IndexSet<Value*> m_locked; // These are values that will have no Tmp in Air.
+    IndexMap<Value*, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".
+    IndexMap<Value*, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
+    IndexMap<B3::BasicBlock*, Air::BasicBlock*> m_blockToBlock;
     HashMap<B3::StackSlot*, Air::StackSlot*> m_stackToStack;
     HashMap<Variable*, Tmp> m_variableToTmp;
 

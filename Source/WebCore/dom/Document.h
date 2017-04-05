@@ -163,6 +163,7 @@ class StyleSheetList;
 class Text;
 class TextResourceDecoder;
 class TreeWalker;
+class VisibilityChangeClient;
 class VisitedLinkState;
 class XPathEvaluator;
 class XPathExpression;
@@ -1006,8 +1007,8 @@ public:
     void userInterfaceLayoutDirectionChanged();
 #endif
 
-    void registerForVisibilityStateChangedCallbacks(Element*);
-    void unregisterForVisibilityStateChangedCallbacks(Element*);
+    void registerForVisibilityStateChangedCallbacks(VisibilityChangeClient*);
+    void unregisterForVisibilityStateChangedCallbacks(VisibilityChangeClient*);
 
 #if ENABLE(VIDEO)
     void registerForAllowsMediaDocumentInlinePlaybackChangedCallbacks(HTMLMediaElement&);
@@ -1142,14 +1143,8 @@ public:
     void didAddWheelEventHandler(Node&);
     void didRemoveWheelEventHandler(Node&, EventHandlerRemoval = EventHandlerRemoval::One);
 
-    double lastHandledUserGestureTimestamp() const { return m_lastHandledUserGestureTimestamp; }
+    MonotonicTime lastHandledUserGestureTimestamp() const { return m_lastHandledUserGestureTimestamp; }
     void updateLastHandledUserGestureTimestamp();
-
-#if ENABLE(TOUCH_EVENTS)
-    bool hasTouchEventHandlers() const { return (m_touchEventTargets.get()) ? m_touchEventTargets->size() : false; }
-#else
-    bool hasTouchEventHandlers() const { return false; }
-#endif
 
     // Used for testing. Count handlers in the main document, and one per frame which contains handlers.
     WEBCORE_EXPORT unsigned wheelEventHandlerCount() const;
@@ -1157,6 +1152,14 @@ public:
 
     WEBCORE_EXPORT void startTrackingStyleRecalcs();
     WEBCORE_EXPORT unsigned styleRecalcCount() const;
+
+#if ENABLE(TOUCH_EVENTS)
+    bool hasTouchEventHandlers() const { return (m_touchEventTargets.get()) ? m_touchEventTargets->size() : false; }
+    bool touchEventTargetsContain(Node& node) const { return m_touchEventTargets ? m_touchEventTargets->contains(&node) : false; }
+#else
+    bool hasTouchEventHandlers() const { return false; }
+    bool touchEventTargetsContain(Node&) const { return false; }
+#endif
 
     void didAddTouchEventHandler(Node&);
     void didRemoveTouchEventHandler(Node&, EventHandlerRemoval = EventHandlerRemoval::One);
@@ -1518,7 +1521,7 @@ private:
     HashSet<HTMLMediaElement*> m_userInterfaceLayoutDirectionChangedElements;
 #endif
 
-    HashSet<Element*> m_visibilityStateCallbackElements;
+    HashSet<VisibilityChangeClient*> m_visibilityStateCallbackClients;
 #if ENABLE(VIDEO)
     HashSet<HTMLMediaElement*> m_allowsMediaDocumentInlinePlaybackElements;
 #endif
@@ -1569,7 +1572,7 @@ private:
 #endif
     std::unique_ptr<EventTargetSet> m_wheelEventTargets;
 
-    double m_lastHandledUserGestureTimestamp { 0 };
+    MonotonicTime m_lastHandledUserGestureTimestamp;
 
     void clearScriptedAnimationController();
     RefPtr<ScriptedAnimationController> m_scriptedAnimationController;

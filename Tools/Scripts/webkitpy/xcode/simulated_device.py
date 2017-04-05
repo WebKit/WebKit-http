@@ -150,7 +150,7 @@ class SimulatedDevice(object):
                     'Print CFBundleIdentifier',
                     self._host.filesystem.join(app_path, 'Info.plist'),
                 ]).rstrip()
-                self._host.executive.kill_process(self.launch_app(bundle_id, [], env=env, timeout=1))
+                self._host.executive.kill_process(self.launch_app(bundle_id, [], env=env, timeout=10))
                 return True
             except RuntimeError:
                 pass
@@ -187,11 +187,16 @@ class SimulatedDevice(object):
             # FIXME: We shouldn't need to check the PID <rdar://problem/31154075>.
             if match and self.executive.check_running_pid(int(match.group('pid'))):
                 break
+            if match:
+                _log.debug('simctl launch reported pid {}, but this process is not running'.format(match.group('pid')))
+            else:
+                _log.debug('simctl launch did not report a pid')
 
         signal.alarm(0)  # Cancel alarm
 
         if match.group('bundle') != bundle_id:
             raise RuntimeError('Failed to find process id for {}: {}'.format(bundle_id, output))
+        _log.debug('Returning pid {} of launched process'.format(match.group('pid')))
         return int(match.group('pid'))
 
     def __eq__(self, other):

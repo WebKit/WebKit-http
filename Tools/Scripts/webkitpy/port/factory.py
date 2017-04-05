@@ -58,7 +58,10 @@ def platform_options(use_globs=False):
             help=('Alias for --platform=gtk*' if use_globs else 'Alias for --platform=gtk')),
         optparse.make_option('--wpe', action='store_const', dest='platform',
             const=('wpe*' if use_globs else 'wpe'),
-            help=('Alias for --platform=wpe*' if use_globs else 'Alias for --platform=wpe')),
+            help=('Alias for --platform=wpe')),
+        optparse.make_option('--no-install', action='store_const',
+            const=False, default=True, dest='install',
+            help='Skip install step for device and simulator testing'),
         ]
 
 

@@ -2619,25 +2619,85 @@ static RefPtr<CSSValue> consumeShapeOutside(CSSParserTokenRange& range, const CS
     return list;
 }
 
+static bool isAutoOrNormalOrStretch(CSSValueID id)
+{
+    return identMatches<CSSValueAuto, CSSValueNormal, CSSValueStretch>(id);
+}
+
+static bool isContentDistributionKeyword(CSSValueID id)
+{
+    return identMatches<CSSValueSpaceBetween, CSSValueSpaceAround, CSSValueSpaceEvenly, CSSValueStretch>(id);
+}
+
+static bool isContentPositionKeyword(CSSValueID id)
+{
+    return identMatches<CSSValueStart, CSSValueEnd, CSSValueCenter, CSSValueFlexStart, CSSValueFlexEnd, CSSValueLeft, CSSValueRight>(id);
+}
+
+static bool isOverflowKeyword(CSSValueID id)
+{
+    return CSSPropertyParserHelpers::identMatches<CSSValueUnsafe, CSSValueSafe>(id);
+}
+
+static bool isBaselineKeyword(CSSValueID id)
+{
+    return identMatches<CSSValueFirst, CSSValueLast, CSSValueBaseline>(id);
+}
+
+static CSSValueID getBaselineKeyword(RefPtr<CSSValue> value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(*value);
+    if (auto* pairValue = primitiveValue.pairValue()) {
+        ASSERT(pairValue->second()->valueID() == CSSValueBaseline);
+        if (pairValue->first()->valueID() == CSSValueLast)
+            return CSSValueLastBaseline;
+        return CSSValueFirstBaseline;
+    }
+    ASSERT(primitiveValue.valueID() == CSSValueBaseline);
+    return CSSValueBaseline;
+}
+
+static RefPtr<CSSValue> consumeBaselineKeyword(CSSParserTokenRange& range)
+{
+    CSSValueID id = range.peek().id();
+    if (identMatches<CSSValueBaseline>(id))
+        return consumeIdent(range);
+
+    if (RefPtr<CSSPrimitiveValue> preference = consumeIdent<CSSValueFirst, CSSValueLast>(range)) {
+        if (range.peek().id() == CSSValueBaseline)
+            return createPrimitiveValuePair(preference.releaseNonNull(), consumeIdent(range), Pair::IdenticalValueEncoding::Coalesce);
+    }
+    return nullptr;
+}
+
+
 static RefPtr<CSSValue> consumeContentDistributionOverflowPosition(CSSParserTokenRange& range)
 {
-    if (identMatches<CSSValueNormal, CSSValueBaseline, CSSValueLastBaseline>(range.peek().id()))
+    CSSValueID id = range.peek().id();
+    if (identMatches<CSSValueNormal>(id))
         return CSSContentDistributionValue::create(CSSValueInvalid, range.consumeIncludingWhitespace().id(), CSSValueInvalid);
+
+    if (isBaselineKeyword(id)) {
+        RefPtr<CSSValue> baseline = consumeBaselineKeyword(range);
+        if (!baseline)
+            return nullptr;
+        return CSSContentDistributionValue::create(CSSValueInvalid, getBaselineKeyword(baseline), CSSValueInvalid);
+    }
 
     CSSValueID distribution = CSSValueInvalid;
     CSSValueID position = CSSValueInvalid;
     CSSValueID overflow = CSSValueInvalid;
     do {
         CSSValueID id = range.peek().id();
-        if (identMatches<CSSValueSpaceBetween, CSSValueSpaceAround, CSSValueSpaceEvenly, CSSValueStretch>(id)) {
+        if (isContentDistributionKeyword(id)) {
             if (distribution != CSSValueInvalid)
                 return nullptr;
             distribution = id;
-        } else if (identMatches<CSSValueStart, CSSValueEnd, CSSValueCenter, CSSValueFlexStart, CSSValueFlexEnd, CSSValueLeft, CSSValueRight>(id)) {
+        } else if (isContentPositionKeyword(id)) {
             if (position != CSSValueInvalid)
                 return nullptr;
             position = id;
-        } else if (identMatches<CSSValueUnsafe, CSSValueSafe>(id)) {
+        } else if (isOverflowKeyword(id)) {
             if (overflow != CSSValueInvalid)
                 return nullptr;
             overflow = id;
@@ -3017,25 +3077,13 @@ static RefPtr<CSSPrimitiveValue> consumeSelfPositionKeyword(CSSParserTokenRange&
     return nullptr;
 }
 
-static RefPtr<CSSValue> consumeBaselineKeyword(CSSParserTokenRange& range)
-{
-    CSSValueID id = range.peek().id();
-    if (identMatches<CSSValueBaseline>(id))
-        return consumeIdent(range);
-
-    if (RefPtr<CSSPrimitiveValue> preference = consumeIdent<CSSValueFirst, CSSValueLast>(range)) {
-        if (range.peek().id() == CSSValueBaseline)
-            return createPrimitiveValuePair(preference.releaseNonNull(), consumeIdent(range), Pair::IdenticalValueEncoding::Coalesce);
-    }
-    return nullptr;
-}
-
 static RefPtr<CSSValue> consumeSelfPositionOverflowPosition(CSSParserTokenRange& range)
 {
-    if (identMatches<CSSValueAuto, CSSValueNormal, CSSValueStretch>(range.peek().id()))
+    CSSValueID id = range.peek().id();
+    if (isAutoOrNormalOrStretch(id))
         return consumeIdent(range);
 
-    if (identMatches<CSSValueFirst, CSSValueLast, CSSValueBaseline>(range.peek().id()))
+    if (isBaselineKeyword(id))
         return consumeBaselineKeyword(range);
 
     RefPtr<CSSPrimitiveValue> overflowPosition = consumeIdent<CSSValueUnsafe, CSSValueSafe>(range);
@@ -5428,12 +5476,16 @@ bool CSSPropertyParser::consumeGridShorthand(bool important)
 static RefPtr<CSSValue> consumeSimplifiedContentPosition(CSSParserTokenRange& range)
 {
     CSSValueID id = range.peek().id();
-    if (identMatches<CSSValueNormal, CSSValueBaseline, CSSValueLastBaseline>(id))
+    if (identMatches<CSSValueNormal>(id) || isContentPositionKeyword(id))
         return CSSContentDistributionValue::create(CSSValueInvalid, range.consumeIncludingWhitespace().id(), CSSValueInvalid);
-    if (identMatches<CSSValueSpaceBetween, CSSValueSpaceAround, CSSValueSpaceEvenly, CSSValueStretch>(id))
+    if (isBaselineKeyword(id)) {
+        RefPtr<CSSValue> baseline = consumeBaselineKeyword(range);
+        if (!baseline)
+            return nullptr;
+        return CSSContentDistributionValue::create(CSSValueInvalid, getBaselineKeyword(baseline.releaseNonNull()), CSSValueInvalid);
+    }
+    if (isContentDistributionKeyword(id))
         return CSSContentDistributionValue::create(range.consumeIncludingWhitespace().id(), CSSValueInvalid, CSSValueInvalid);
-    if (identMatches<CSSValueStart, CSSValueEnd, CSSValueCenter, CSSValueFlexStart, CSSValueFlexEnd, CSSValueLeft, CSSValueRight>(id))
-        return CSSContentDistributionValue::create(CSSValueInvalid, range.consumeIncludingWhitespace().id(), CSSValueInvalid);
     return nullptr;
 }
 
@@ -5455,6 +5507,41 @@ bool CSSPropertyParser::consumePlaceContentShorthand(bool important)
 
     addProperty(CSSPropertyAlignContent, CSSPropertyPlaceContent, alignContentValue.releaseNonNull(), important);
     addProperty(CSSPropertyJustifyContent, CSSPropertyPlaceContent, justifyContentValue.releaseNonNull(), important);
+    return true;
+}
+
+static RefPtr<CSSValue> consumeSimplifiedItemPosition(CSSParserTokenRange& range)
+{
+    CSSValueID id = range.peek().id();
+    if (isAutoOrNormalOrStretch(id))
+        return consumeIdent(range);
+
+    if (isBaselineKeyword(id))
+        return consumeBaselineKeyword(range);
+
+    return consumeSelfPositionKeyword(range);
+}
+
+bool CSSPropertyParser::consumePlaceItemsShorthand(bool important)
+{
+    ASSERT(shorthandForProperty(CSSPropertyPlaceItems).length() == 2);
+
+    // align-items property does not allow the 'auto' value.
+    if (identMatches<CSSValueAuto>(m_range.peek().id()))
+        return false;
+
+    RefPtr<CSSValue> alignItemsValue = consumeSimplifiedItemPosition(m_range);
+    if (!alignItemsValue)
+        return false;
+    RefPtr<CSSValue> justifyItemsValue = m_range.atEnd() ? alignItemsValue : consumeSimplifiedItemPosition(m_range);
+    if (!justifyItemsValue)
+        return false;
+
+    if (!m_range.atEnd())
+        return false;
+
+    addProperty(CSSPropertyAlignItems, CSSPropertyPlaceItems, alignItemsValue.releaseNonNull(), important);
+    addProperty(CSSPropertyJustifyItems, CSSPropertyPlaceItems, justifyItemsValue.releaseNonNull(), important);
     return true;
 }
 
@@ -5641,6 +5728,8 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
         return consumeGridShorthand(important);
     case CSSPropertyPlaceContent:
         return consumePlaceContentShorthand(important);
+    case CSSPropertyPlaceItems:
+        return consumePlaceItemsShorthand(important);
     case CSSPropertyWebkitMarquee:
         return consumeShorthandGreedily(webkitMarqueeShorthand(), important);
     default:

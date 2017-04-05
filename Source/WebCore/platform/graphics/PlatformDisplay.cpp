@@ -215,6 +215,7 @@ void PlatformDisplay::initializeEGLDisplay()
 
     eglDisplays().add(this);
 
+#if !PLATFORM(WIN)
     static bool eglAtexitHandlerInitialized = false;
     if (!eglAtexitHandlerInitialized) {
         // EGL registers atexit handlers to cleanup its global display list.
@@ -226,13 +227,9 @@ void PlatformDisplay::initializeEGLDisplay()
         // EGL atexit handlers and the PlatformDisplay destructor.
         // See https://bugs.webkit.org/show_bug.cgi?id=157973.
         eglAtexitHandlerInitialized = true;
-        std::atexit([] {
-            while (!eglDisplays().isEmpty()) {
-                auto* display = eglDisplays().takeAny();
-                display->terminateEGLDisplay();
-            }
-        });
+        std::atexit(shutDownEglDisplays);
     }
+#endif
 }
 
 void PlatformDisplay::terminateEGLDisplay()
@@ -244,6 +241,15 @@ void PlatformDisplay::terminateEGLDisplay()
     eglTerminate(m_eglDisplay);
     m_eglDisplay = EGL_NO_DISPLAY;
 }
+
+void PlatformDisplay::shutDownEglDisplays()
+{
+    while (!eglDisplays().isEmpty()) {
+        auto* display = eglDisplays().takeAny();
+        display->terminateEGLDisplay();
+    }
+}
+
 #endif // USE(EGL)
 
 } // namespace WebCore

@@ -76,9 +76,12 @@ list(APPEND WebKit2_SOURCES
 
     Shared/cairo/ShareableBitmapCairo.cpp
 
+    Shared/glib/WebErrorsGlib.cpp
+
     Shared/linux/WebMemorySamplerLinux.cpp
 
     Shared/soup/WebCoreArgumentCodersSoup.cpp
+    Shared/soup/WebErrorsSoup.cpp
 
     Shared/unix/ChildProcessMain.cpp
 
@@ -150,7 +153,6 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/WebCoreSupport/wpe/WebContextMenuClientWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp
-    WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
 
     WebProcess/WebPage/AcceleratedSurface.cpp

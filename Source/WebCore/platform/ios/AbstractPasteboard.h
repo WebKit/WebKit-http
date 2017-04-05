@@ -25,15 +25,31 @@
 
 #import <Foundation/Foundation.h>
 
+#if TARGET_OS_IPHONE
+
+WEBCORE_EXPORT @interface WebPasteboardItemData : NSObject
+
++ (instancetype)itemWithRepresentingObjects:(NSArray *)representingObjects additionalData:(NSDictionary *)additionalData;
+
+@property (nonatomic, readonly, strong) NSArray *representingObjects;
+@property (nonatomic, readonly, strong) NSDictionary *additionalData;
+
+@end
+
 @protocol AbstractPasteboard <NSObject>
 @required
 
 @property (readonly, nonatomic) NSInteger numberOfItems;
 
 - (NSArray<NSString *> *)pasteboardTypes;
-- (void)setItems:(NSArray *)items;
 - (NSArray *)dataForPasteboardType:(NSString *)pasteboardType inItemSet:(NSIndexSet *)itemSet;
 - (NSArray *)valuesForPasteboardType:(NSString *)pasteboardType inItemSet:(NSIndexSet *)itemSet;
 - (NSInteger)changeCount;
 
+@optional
+- (void)setItemsFromObjectRepresentations:(NSArray<WebPasteboardItemData *> *)itemData;
+- (void)setItems:(NSArray<NSDictionary *> *)items;
+
 @end
+
+#endif // TARGET_OS_IPHONE

@@ -1,3 +1,201 @@
+2017-04-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Suppress warnings in GCC
+        https://bugs.webkit.org/show_bug.cgi?id=170501
+
+        Reviewed by Keith Miller.
+
+        Add a new macro UNUSED_FUNCTION to annotate unused static functions.
+        #pragma GCC diagnostic ignored "-Wunused-function" does not work.
+
+        * wtf/Compiler.h:
+
+2017-04-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Air::eliminateDeadCode() should not use a HashSet
+        https://bugs.webkit.org/show_bug.cgi?id=170487
+
+        Reviewed by Saam Barati.
+        
+        BitVector::iterator knows when it's at the end. Expose this functionality.
+
+        * wtf/BitVector.h:
+        (WTF::BitVector::iterator::isAtEnd):
+
+2017-04-04  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: ModuleInformation should be a ref counted thing that can be shared across threads.
+        https://bugs.webkit.org/show_bug.cgi?id=170478
+
+        Reviewed by Saam Barati.
+
+        This adds a new String::fromUTF8 that converts a vector of characters to
+        a string.
+
+        Also, it cleans up some style.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::fromUTF8):
+        * wtf/unicode/UTF8.cpp:
+        (WTF::Unicode::convertLatin1ToUTF8):
+
+2017-04-04  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::fixSSA() needs a tune-up
+        https://bugs.webkit.org/show_bug.cgi?id=170485
+
+        Reviewed by Saam Barati.
+        
+        This makes IndexSparseSet capable of being used as a map if you instantiate it with
+        KeyValuePair<unsigned, ValueType>.
+
+        * wtf/HashTraits.h:
+        * wtf/IndexSparseSet.h:
+        (WTF::DefaultIndexSparseSetTraits::create):
+        (WTF::DefaultIndexSparseSetTraits::key):
+        (WTF::OverflowHandler>::IndexSparseSet):
+        (WTF::OverflowHandler>::add):
+        (WTF::OverflowHandler>::set):
+        (WTF::OverflowHandler>::remove):
+        (WTF::OverflowHandler>::clear):
+        (WTF::OverflowHandler>::size):
+        (WTF::OverflowHandler>::isEmpty):
+        (WTF::OverflowHandler>::contains):
+        (WTF::OverflowHandler>::sort):
+        (WTF::IndexSparseSet<OverflowHandler>::IndexSparseSet): Deleted.
+        (WTF::IndexSparseSet<OverflowHandler>::add): Deleted.
+        (WTF::IndexSparseSet<OverflowHandler>::remove): Deleted.
+        (WTF::IndexSparseSet<OverflowHandler>::clear): Deleted.
+        (WTF::IndexSparseSet<OverflowHandler>::size): Deleted.
+        (WTF::IndexSparseSet<OverflowHandler>::isEmpty): Deleted.
+        (WTF::IndexSparseSet<OverflowHandler>::contains): Deleted.
+        (WTF::IndexSparseSet<OverflowHandler>::sort): Deleted.
+        * wtf/Liveness.h:
+        (WTF::Liveness::LocalCalc::Iterable::iterator::iterator):
+        (WTF::Liveness::workset):
+
+2017-04-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Don't need to Air::reportUsedRegisters for wasm at -O1
+        https://bugs.webkit.org/show_bug.cgi?id=170459
+
+        Reviewed by Saam Barati.
+        
+        Just moved the liveness computation into a method, which enabled me to do the profiling
+        that I used to write this patch.
+
+        * wtf/Liveness.h:
+        (WTF::Liveness::Liveness):
+        (WTF::Liveness::compute):
+
+2017-04-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Air liveness should build constraints and solve them rather than repeatedly parsing IR
+        https://bugs.webkit.org/show_bug.cgi?id=170421
+
+        Reviewed by Saam Barati.
+
+        * wtf/Vector.h:
+        (WTF::minCapacity>::appendIfNotContains): Because sometimes Vector<> is the best kind of set.
+
+2017-04-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce WTF::RandomDevice which keeps /dev/urandom opened
+        https://bugs.webkit.org/show_bug.cgi?id=170095
+
+        Reviewed by Michael Catanzaro.
+
+        In this patch, we introduce RandomDevice, which keeps /dev/urandom opened
+        to avoid repeatedly open and close urandom file descriptor in Linux.
+
+        The purpose is similar to std::random_device, but WTF::RandomDevice explicitly
+        avoids using ARC4, which is recently attempted to be removed from the WebKit
+        tree[1].
+
+        [1]: https://trac.webkit.org/r214329
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/OSRandomSource.cpp:
+        (WTF::cryptographicallyRandomValuesFromOS):
+        (WTF::crashUnableToOpenURandom): Deleted.
+        (WTF::crashUnableToReadFromURandom): Deleted.
+        * wtf/RandomDevice.cpp: Copied from Source/WTF/wtf/OSRandomSource.cpp.
+        (WTF::crashUnableToOpenURandom):
+        (WTF::crashUnableToReadFromURandom):
+        (WTF::RandomDevice::RandomDevice):
+        (WTF::RandomDevice::~RandomDevice):
+        (WTF::RandomDevice::cryptographicallyRandomValues):
+        * wtf/RandomDevice.h: Added.
+
+2017-04-03  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF::Liveness should have an API that focuses on actions at instruction boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=170407
+
+        Reviewed by Keith Miller.
+        
+        Change the Liveness<> API to handle early and late things in one lump inside forEachUse
+        and forEachDef functions. This reduces the amount of different functions that Liveness<>
+        expects from its adaptor. This makes it easier to implement optimizations that cache the
+        use/def behavior of each instruction boundary.
+
+        * wtf/Liveness.h:
+        (WTF::Liveness::Liveness):
+        (WTF::Liveness::LocalCalc::execute):
+
+2017-04-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Mac cmake buildfix after 214586.
+        https://bugs.webkit.org/show_bug.cgi?id=170381
+
+        Unreviewed.
+
+        * wtf/BlockPtr.h:
+
+2017-03-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Air should support linear scan for optLevel<2
+        https://bugs.webkit.org/show_bug.cgi?id=170161
+
+        Reviewed by Saam Barati.
+        
+        This change introduces a new low-latency register allocator. It can allocate registers very
+        quickly by doing a relatively poor job. Implementing this algorithm required beefing up some of
+        our core algorithms.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Deque.h: Make it possible to do some basic priority queueing with this data structure.
+        (WTF::inlineCapacity>::removeAllMatching):
+        (WTF::inlineCapacity>::appendAndBubble):
+        (WTF::inlineCapacity>::takeLast):
+        * wtf/IndexKeyType.h: Added. This makes it possible to use IndexMap and IndexSet with value or pointer types. Previously they just worked with pointer types.
+        (WTF::IndexKeyType::index):
+        * wtf/IndexMap.h: Adopt IndexKeyType.
+        (WTF::IndexMap::operator[]):
+        (WTF::IndexMap::append):
+        * wtf/IndexSet.h: Adopt IndexKeyType.
+        (WTF::IndexSet::add):
+        (WTF::IndexSet::addAll):
+        (WTF::IndexSet::remove):
+        (WTF::IndexSet::contains):
+        (WTF::IndexSet::Iterable::iterator::operator*):
+        * wtf/Range.h: Added. This used to be B3::HeapRange. This generalizes that data structure to any kind of range stuff.
+        (WTF::Range::Range):
+        (WTF::Range::top):
+        (WTF::Range::operator==):
+        (WTF::Range::operator!=):
+        (WTF::Range::operator bool):
+        (WTF::Range::operator|):
+        (WTF::Range::operator|=):
+        (WTF::Range::begin):
+        (WTF::Range::end):
+        (WTF::Range::overlaps):
+        (WTF::Range::dump):
+        * wtf/RangeSet.h:
+        (WTF::RangeSet::add):
+
 2017-03-25  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC] Move platformThreadSignal to WTF

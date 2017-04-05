@@ -154,11 +154,6 @@ class Database;
 namespace DOMJIT {
 class Signature;
 }
-#if ENABLE(WEBASSEMBLY)
-namespace Wasm {
-class SignatureInformation;
-}
-#endif
 
 struct HashTable;
 struct Instruction;
@@ -326,7 +321,6 @@ public:
     Strong<Structure> programExecutableStructure;
     Strong<Structure> functionExecutableStructure;
 #if ENABLE(WEBASSEMBLY)
-    Strong<Structure> webAssemblyCalleeStructure;
     Strong<Structure> webAssemblyToJSCalleeStructure;
     Strong<Structure> webAssemblyCodeBlockStructure;
 #endif
@@ -368,10 +362,6 @@ public:
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
 
-#if ENABLE(WEBASSEMBLY)
-    std::once_flag m_wasmSignatureInformationOnceFlag;
-    std::unique_ptr<Wasm::SignatureInformation> m_wasmSignatureInformation;
-#endif
     std::unique_ptr<PromiseDeferredTimer> promiseDeferredTimer;
     
     JSCell* currentlyDestructingCallbackObject;
@@ -456,9 +446,7 @@ public:
         return jitStubs->ctiStub(this, generator);
     }
     
-    std::unique_ptr<RegisterAtOffsetList> allCalleeSaveRegisterOffsets;
-    
-    RegisterAtOffsetList* getAllCalleeSaveRegisterOffsets() { return allCalleeSaveRegisterOffsets.get(); }
+    static RegisterAtOffsetList* getAllCalleeSaveRegisterOffsets();
 
 #endif // ENABLE(JIT)
     std::unique_ptr<CommonSlowPaths::ArityCheckData> arityCheckData;
@@ -481,6 +469,11 @@ public:
     static ptrdiff_t targetMachinePCForThrowOffset()
     {
         return OBJECT_OFFSETOF(VM, targetMachinePCForThrow);
+    }
+
+    static ptrdiff_t topVMEntryFrameOffset()
+    {
+        return OBJECT_OFFSETOF(VM, topVMEntryFrame);
     }
 
     void restorePreviousException(Exception* exception) { setException(exception); }

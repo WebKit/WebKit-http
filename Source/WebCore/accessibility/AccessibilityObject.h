@@ -97,6 +97,7 @@ enum AccessibilityRole {
     ApplicationAlertRole,
     ApplicationAlertDialogRole,
     ApplicationDialogRole,
+    ApplicationGroupRole,
     ApplicationLogRole,
     ApplicationMarqueeRole,
     ApplicationStatusRole,

@@ -3023,8 +3023,7 @@
             "inherited": true,
             "codegen-properties": {
                 "name-for-methods": "StrokeMiterLimit",
-                "converter": "Number<float>",
-                "svg": true
+                "converter": "Number<float>"
             },
             "specification": {
                 "category": "svg",
@@ -4676,6 +4675,18 @@
             "specification": {
                 "category": "css-align",
                 "url": "https://www.w3.org/TR/css-align-3/#propdef-place-content"
+            }
+        },
+        "place-items": {
+            "codegen-properties": {
+                "longhands": [
+                    "align-items",
+                    "justify-items"
+                ]
+            },
+            "specification": {
+                "category": "css-align",
+                "url": "https://drafts.csswg.org/css-align-3/#propdef-place-items"
             }
         },
         "grid": {

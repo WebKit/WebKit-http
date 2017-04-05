@@ -109,7 +109,7 @@ void FrameTree::removeChild(Frame& child)
 AtomicString FrameTree::uniqueChildName(const AtomicString& requestedName) const
 {
     // If the requested name (the frame's "name" attribute) is unique, just use that.
-    if (!requestedName.isEmpty() && !child(requestedName) && requestedName != "_blank")
+    if (!requestedName.isEmpty() && !child(requestedName) && !equalIgnoringASCIICase(requestedName, "_blank"))
         return requestedName;
 
     // The "name" attribute was not unique or absent. Generate a name based on the
@@ -251,17 +251,18 @@ Frame* FrameTree::child(const AtomicString& name) const
 
 Frame* FrameTree::find(const AtomicString& name) const
 {
-    if (name == "_self" || name == "_current" || name.isEmpty())
+    // FIXME: _current is not part of the HTML specification.
+    if (equalIgnoringASCIICase(name, "_self") || name == "_current" || name.isEmpty())
         return &m_thisFrame;
     
-    if (name == "_top")
+    if (equalIgnoringASCIICase(name, "_top"))
         return &top();
     
-    if (name == "_parent")
+    if (equalIgnoringASCIICase(name, "_parent"))
         return parent() ? parent() : &m_thisFrame;
 
     // Since "_blank" should never be any frame's name, the following is only an optimization.
-    if (name == "_blank")
+    if (equalIgnoringASCIICase(name, "_blank"))
         return nullptr;
 
     // Search subtree starting with this frame first.
@@ -403,18 +404,21 @@ Frame* FrameTree::traverseNextRendered(const Frame* stayWithin) const
     return nullptr;
 }
 
-Frame* FrameTree::traverseNextWithWrap(bool wrap) const
+Frame* FrameTree::traverseNext(CanWrap canWrap, DidWrap* didWrap) const
 {
     if (Frame* result = traverseNext())
         return result;
 
-    if (wrap)
+    if (canWrap == CanWrap::Yes) {
+        if (didWrap)
+            *didWrap = DidWrap::Yes;
         return &m_thisFrame.mainFrame();
+    }
 
     return nullptr;
 }
 
-Frame* FrameTree::traversePreviousWithWrap(bool wrap) const
+Frame* FrameTree::traversePrevious(CanWrap canWrap, DidWrap* didWrap) const
 {
     // FIXME: besides the wrap feature, this is just the traversePreviousNode algorithm
 
@@ -424,20 +428,23 @@ Frame* FrameTree::traversePreviousWithWrap(bool wrap) const
         return parentFrame;
     
     // no siblings, no parent, self==top
-    if (wrap)
+    if (canWrap == CanWrap::Yes) {
+        if (didWrap)
+            *didWrap = DidWrap::Yes;
         return deepLastChild();
+    }
 
     // top view is always the last one in this ordering, so prev is nil without wrap
     return nullptr;
 }
 
-Frame* FrameTree::traverseNextInPostOrderWithWrap(bool wrap) const
+Frame* FrameTree::traverseNextInPostOrder(CanWrap canWrap) const
 {
     if (m_nextSibling)
         return m_nextSibling->tree().deepFirstChild();
     if (m_parent)
         return m_parent;
-    if (wrap)
+    if (canWrap == CanWrap::Yes)
         return deepFirstChild();
     return nullptr;
 }

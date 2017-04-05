@@ -79,6 +79,8 @@ fast/attachment/attachment-subtitle-resize.html
 
 # This test only makes sense on iOS
 fast/attachment/attachment-wrapping-action.html
+editing/selection/character-granularity-selected-range-after-dismissing-selection.html [ Skip ]
+editing/selection/caret-after-tap-in-editable-selection.html [ Skip ]
 
 # Only iOS has selection UI drawn by UIKit
 editing/selection/character-granularity-rect.html [ Skip ]
@@ -273,8 +275,8 @@ webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap.html [ ImageOnlyFa
 # grid layout tests
 webkit.org/b/165062 fast/css-grid-layout/grid-baseline.html [ ImageOnlyFailure ]
 webkit.org/b/165062 fast/css-grid-layout/grid-baseline-margins.html [ ImageOnlyFailure ]
-webkit.org/b/149891 imported/w3c/csswg-test/css-grid-1/grid-layout-properties.html [ Failure ]
-webkit.org/b/169271 imported/w3c/csswg-test/css-grid-1/grid-items/grid-items-sizing-alignment-001.html [ ImageOnlyFailure ]
+webkit.org/b/149891 imported/w3c/web-platform-tests/css/css-grid-1/grid-layout-properties.html [ Failure ]
+webkit.org/b/169271 imported/w3c/web-platform-tests/css/css-grid-1/grid-items/grid-items-sizing-alignment-001.html [ ImageOnlyFailure ]
 
 # nth-child tests takes long time and Debug build sometimes timeouts because there are many test cases.
 webkit.org/b/137149 fast/selectors/nth-child-of-basics.html [ Slow ]
@@ -341,8 +343,11 @@ webkit.org/b/161312 imported/w3c/web-platform-tests/html/semantics/document-meta
 imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-redirect.html [ DumpJSConsoleLogInStdErr ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-status.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-preflight.html [ DumpJSConsoleLogInStdErr ]
+
+# rdar://problem/30975761
+[ Debug ] http/tests/fetch/fetch-in-worker-crash.html [ Pass Crash ]
+webkit.org/b/170395 [ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-status.html [ DumpJSConsoleLogInStdErr Pass Crash ]
 
 webkit.org/b/159724 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Failure Pass ]
 webkit.org/b/167380 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ Failure Pass ]
@@ -706,12 +711,12 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
+webrtc/video-replace-track.html [ Pass Failure ]
+webrtc/video-stats.html [ Pass Failure ]
 webrtc/video-getParameters.html [ Failure ]
 webrtc/peer-connection-audio-mute2.html [ Pass Failure ]
 webrtc/peer-connection-remote-audio-mute2.html [ Pass Failure ]
-webrtc/peer-connection-remote-audio-mute.html [ Pass Failure ]
 webkit.org/b/170178 webrtc/video-replace-track-to-null.html [ Pass Failure ]
-fast/mediastream/getUserMedia-webaudio.html [ Skip ]
 fast/mediastream/RTCPeerConnection-closed-state.html [ Skip ]
 fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html [ Skip ]
 fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
@@ -719,6 +724,8 @@ fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
 fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
 fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Pass Failure ]
 fast/mediastream/RTCPeerConnection-dtmf.html [ Failure ]
+# libwebrtc backend doesn't generate a=bundle-only lines
+fast/mediastream/RTCPeerConnection-inspect-offer-bundlePolicy-bundle-only.html [ Failure ]
 
 # Need updating wptserve
 imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm [ Skip ]
@@ -1241,3 +1248,6 @@ webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.ht
 webkit.org/b/169625 imported/w3c/web-platform-tests/cors/status.htm [ Pass Failure ]
 
 webkit.org/b/170130 fast/events/before-unload-adopt-subframe-to-outside.html [ Pass Timeout ]
+
+webkit.org/b/170355 [ Release ] fast/mediastream/MediaStream-page-muted.html [ Pass Timeout ]
+webkit.org/b/170355 [ Debug ] fast/mediastream/MediaStream-page-muted.html [ Pass Crash ]
