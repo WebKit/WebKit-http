@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebPreferences.h"
 
+#include "WebPreferencesKeys.h"
 #include <QFont>
 #include <WebCore/NotImplemented.h>
 
