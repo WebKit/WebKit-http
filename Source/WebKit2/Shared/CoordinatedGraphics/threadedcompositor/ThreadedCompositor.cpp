@@ -270,6 +270,23 @@ void ThreadedCompositor::renderLayerTree()
 #if PLATFORM(WPE)
     m_target->frameRendered();
 #endif
+
+#if PLATFORM(GTK)
+    // For the GTK+ port, {egl,glx}SwapBuffers() does the frame sync.
+    sceneUpdateFinished();
+#endif
+}
+
+void ThreadedCompositor::sceneUpdateFinished()
+{
+    bool shouldDispatchDisplayRefreshCallback = m_clientRendersNextFrame.load()
+        || m_displayRefreshMonitor->requiresDisplayRefreshCallback();
+    bool shouldCoordinateUpdateCompletionWithClient = m_coordinateUpdateCompletionWithClient.load();
+
+    if (shouldDispatchDisplayRefreshCallback)
+        m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
+    if (!shouldCoordinateUpdateCompletionWithClient)
+        m_compositingRunLoop->updateCompleted();
 }
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
@@ -314,14 +331,7 @@ void ThreadedCompositor::frameComplete()
     if (reportFPS)
         debugThreadedCompositorFPS();
 
-    bool shouldDispatchDisplayRefreshCallback = m_clientRendersNextFrame.load()
-        || m_displayRefreshMonitor->requiresDisplayRefreshCallback();
-    bool shouldCoordinateUpdateCompletionWithClient = m_coordinateUpdateCompletionWithClient.load();
-
-    if (shouldDispatchDisplayRefreshCallback)
-        m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
-    if (!shouldCoordinateUpdateCompletionWithClient)
-        m_compositingRunLoop->updateCompleted();
+    sceneUpdateFinished();
 }
 #endif
 

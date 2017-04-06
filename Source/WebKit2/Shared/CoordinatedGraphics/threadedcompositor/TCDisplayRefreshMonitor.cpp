@@ -39,7 +39,9 @@ DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedCompositor& compositor)
     , m_displayRefreshTimer(RunLoop::main(), this, &DisplayRefreshMonitor::displayRefreshCallback)
     , m_compositor(&compositor)
 {
+#if PLATFORM(WPE)
     m_displayRefreshTimer.setPriority(G_PRIORITY_HIGH + 30);
+#endif
 }
 
 bool DisplayRefreshMonitor::requestRefreshCallback()

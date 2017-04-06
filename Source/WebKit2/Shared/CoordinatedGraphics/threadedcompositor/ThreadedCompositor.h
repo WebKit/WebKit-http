@@ -112,6 +112,7 @@ private:
 #endif
 
     void renderLayerTree();
+    void sceneUpdateFinished();
     void scheduleDisplayImmediately();
 
     void createGLContext();
