@@ -548,6 +548,9 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
 
     commitPendingBackingStoreOperations();
     removeReleasedImageBackingsIfNeeded();
+
+    // The pending tiles state is on its way for the screen, tell the web process to render the next one.
+    renderNextFrame();
 }
 
 void CoordinatedGraphicsScene::renderNextFrame()
@@ -645,6 +648,9 @@ void CoordinatedGraphicsScene::detach()
 
 void CoordinatedGraphicsScene::appendUpdate(std::function<void()>&& function)
 {
+    if (!m_isActive)
+        return;
+
     ASSERT(isMainThread());
     LockHolder locker(m_renderQueueMutex);
     m_renderQueue.append(WTFMove(function));
@@ -658,6 +664,10 @@ void CoordinatedGraphicsScene::setActive(bool active)
     if (m_isActive == active)
         return;
 
+    // Have to clear render queue in both cases.
+    // If there are some updates in queue during activation then those updates are from previous instance of paint node
+    // and cannot be applied to the newly created instance.
+    m_renderQueue.clear();
     m_isActive = active;
     if (m_isActive)
         renderNextFrame();

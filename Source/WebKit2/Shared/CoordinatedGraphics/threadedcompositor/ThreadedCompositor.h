@@ -108,7 +108,7 @@ private:
 
 #if PLATFORM(WPE)
     // WebCore::PlatformDisplayWPE::Surface::Client
-    virtual void frameComplete() override;
+    void frameComplete() override;
 #endif
 
     void renderLayerTree();
@@ -132,9 +132,7 @@ private:
     float m_scaleFactor { 1 };
     bool m_drawsBackground { true };
     uint64_t m_nativeSurfaceHandle;
-#if PLATFORM(GTK)
     ShouldDoFrameSync m_doFrameSync;
-#endif
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_needsResize { false };
 

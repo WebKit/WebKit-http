@@ -55,9 +55,7 @@ ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const I
     , m_viewportSize(viewportSize)
     , m_scaleFactor(scaleFactor)
     , m_nativeSurfaceHandle(nativeSurfaceHandle)
-#if PLATFORM(GTK)
     , m_doFrameSync(doFrameSync)
-#endif
     , m_paintFlags(paintFlags)
     , m_needsResize(!viewportSize.isEmpty())
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
@@ -80,6 +78,8 @@ ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const I
             m_scene->setActive(true);
         } else
             m_scene->setActive(false);
+#elif PLATFORM(WPE)
+        m_scene->setActive(true);
 #endif
     });
 }
@@ -98,6 +98,11 @@ void ThreadedCompositor::createGLContext()
     m_context = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(m_nativeSurfaceHandle), &PlatformDisplay::sharedDisplayForCompositing());
     if (!m_context)
         return;
+
+    if (m_doFrameSync == ShouldDoFrameSync::No) {
+        if (m_context->makeContextCurrent())
+            m_context->swapInterval(0);
+    }
 #endif
 
 #if PLATFORM(WPE)
@@ -113,11 +118,6 @@ void ThreadedCompositor::createGLContext()
 
     if (!m_context->makeContextCurrent())
         return;
-#endif
-
-#if PLATFORM(GTK)
-    if (m_doFrameSync == ShouldDoFrameSync::No)
-        m_context->swapInterval(0);
 #endif
 }
 
@@ -154,7 +154,6 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
             m_scene->setActive(false);
             m_context = nullptr;
         }
-        m_nativeSurfaceHandle = 0;
     });
 #endif
 }
@@ -229,12 +228,8 @@ void ThreadedCompositor::forceRepaint()
 
 void ThreadedCompositor::renderLayerTree()
 {
-    if (!m_scene)
+    if (!m_scene || !m_scene->isActive())
         return;
-#if PLATFORM(GTK)
-    if (!m_scene->isActive())
-        return;
-#endif
 
 #if PLATFORM(WPE)
     if (!m_context)
