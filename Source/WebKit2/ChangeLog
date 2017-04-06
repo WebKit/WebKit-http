@@ -1,5 +1,53 @@
 2017-04-05  Brent Fulgham  <bfulgham@apple.com>
 
+        [WK2][iOS] Remove access to features not present on iOS 
+        https://bugs.webkit.org/show_bug.cgi?id=170531
+        <rdar://problem/31352258>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2017-04-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Host application should be able to mute and unmute media streams
+        https://bugs.webkit.org/show_bug.cgi?id=170519
+        <rdar://problem/31174326>
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageGetMediaState): Support new media stream state flags.
+        * UIProcess/API/C/WKPagePrivate.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h: Ditto.
+        * UIProcess/Cocoa/UIDelegate.mm: Ditto.
+
+2017-04-05  Brady Eidson  <beidson@apple.com>
+
+        Refactor so WebsiteDataStores always have a StorageManager.
+        https://bugs.webkit.org/show_bug.cgi?id=170521
+
+        Reviewed by Geoff Garen.
+
+        This basically involves teaching StorageManager how to work without a LocalStorageDatabaseTracker,
+        since there will never be ephemeral bits on disk to track.
+        
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::StorageArea::openDatabaseAndImportItemsIfNeeded):
+        (WebKit::StorageManager::createEphemeral):
+        (WebKit::StorageManager::StorageManager):
+        (WebKit::StorageManager::getLocalStorageOrigins):
+        (WebKit::StorageManager::getLocalStorageOriginDetails):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigin):
+        (WebKit::StorageManager::deleteLocalStorageOriginsModifiedSince):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigins):
+        * UIProcess/Storage/StorageManager.h:
+        
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::WebsiteDataStore):
+
+2017-04-05  Brent Fulgham  <bfulgham@apple.com>
+
         [WK2][iOS] Add entitlements to enable audio/video capture in WebProcess
         https://bugs.webkit.org/show_bug.cgi?id=170507
         <rdar://problem/31121248>

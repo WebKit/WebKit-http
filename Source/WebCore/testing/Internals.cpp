@@ -3523,6 +3523,10 @@ String Internals::pageMediaState()
         string.append("HasActiveAudioCaptureDevice,");
     if (state & MediaProducer::HasActiveVideoCaptureDevice)
         string.append("HasActiveVideoCaptureDevice,");
+    if (state & MediaProducer::HasMutedAudioCaptureDevice)
+        string.append("HasMutedAudioCaptureDevice,");
+    if (state & MediaProducer::HasMutedVideoCaptureDevice)
+        string.append("HasMutedVideoCaptureDevice,");
 
     if (string.isEmpty())
         string.append("IsNotPlaying");
@@ -3767,6 +3771,15 @@ String Internals::composedTreeAsText(Node& node)
 bool Internals::isProcessingUserGesture()
 {
     return UserGestureIndicator::processingUserGesture();
+}
+
+double Internals::lastHandledUserGestureTimestamp()
+{
+    Document* document = contextDocument();
+    if (!document)
+        return 0;
+
+    return document->lastHandledUserGestureTimestamp().secondsSinceEpoch().value();
 }
 
 RefPtr<GCObservation> Internals::observeGC(JSC::JSValue value)
