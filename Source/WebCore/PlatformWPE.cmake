@@ -166,7 +166,6 @@ list(APPEND WebCore_SOURCES
     platform/unix/LoggingUnix.cpp
 
     platform/wpe/CursorWPE.cpp
-    platform/wpe/ErrorsWPE.cpp
     platform/wpe/LocalizedStringsWPE.cpp
     platform/wpe/PasteboardWPE.cpp
     platform/wpe/PlatformKeyboardEventWPE.cpp

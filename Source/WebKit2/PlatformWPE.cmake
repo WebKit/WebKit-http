@@ -31,8 +31,6 @@ list(APPEND DatabaseProcess_SOURCES
 list(APPEND WebKit2_SOURCES
     NetworkProcess/CustomProtocols/soup/LegacyCustomProtocolManagerSoup.cpp
 
-    NetworkProcess/Downloads/wpe/DownloadSoupErrorsWPE.cpp
-
     NetworkProcess/cache/NetworkCacheCodersSoup.cpp
     NetworkProcess/cache/NetworkCacheDataSoup.cpp
     NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp
