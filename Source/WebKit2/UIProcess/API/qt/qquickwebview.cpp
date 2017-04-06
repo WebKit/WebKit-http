@@ -881,11 +881,11 @@ void QQuickWebViewPrivate::setNavigatorQtObjectEnabled(bool enabled)
     WKPagePostMessageToInjectedBundle(webPage.get(), messageName, wkEnabled.get());
 }
 
-static WKRetainPtr<WKStringRef> readUserFile(const QUrl& url, const char* userFileType)
+static WTF::Optional<String> readUserFile(const QUrl& url, const char* userFileType)
 {
     if (!url.isValid()) {
         qWarning("QQuickWebView: Couldn't open '%s' as %s because URL is invalid.", qPrintable(url.toString()), userFileType);
-        return 0;
+        return WTF::Nullopt;
     }
 
     QString path;
@@ -895,33 +895,36 @@ static WKRetainPtr<WKStringRef> readUserFile(const QUrl& url, const char* userFi
         path = QStringLiteral(":") + url.path();
     else {
         qWarning("QQuickWebView: Couldn't open '%s' as %s because only file:/// and qrc:/// URLs are supported.", qPrintable(url.toString()), userFileType);
-        return 0;
+        return WTF::Nullopt;
     }
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qWarning("QQuickWebView: Couldn't open '%s' as %s due to error '%s'.", qPrintable(url.toString()), userFileType, qPrintable(file.errorString()));
-        return 0;
+        return WTF::Nullopt;
     }
 
     QByteArray contents = file.readAll();
-    if (contents.isEmpty())
+    if (contents.isEmpty()) {
         qWarning("QQuickWebView: Ignoring '%s' as %s because file is empty.", qPrintable(url.toString()), userFileType);
+        return WTF::Nullopt;
+    }
 
-    return adoptWK(WKStringCreateWithUTF8CString(contents.constData()));
+    return String::fromUTF8(contents);
 }
 
 void QQuickWebViewPrivate::updateUserScripts()
 {
     // This feature works per-WebView because we keep an unique page group for
     // each Page/WebView pair we create.
-    WKPageGroupRemoveAllUserScripts(pageGroup.get());
+    webPageProxy->pageGroup().removeAllUserScripts();
 
-    foreach (const QUrl& url, userScripts) {
-        WKRetainPtr<WKStringRef> contents = readUserFile(url, "user script");
-        if (!contents || WKStringIsEmpty(contents.get()))
+    for (const QUrl& url : userScripts) {
+        auto contents = readUserFile(url, "user script");
+        if (!contents)
             continue;
-        WKPageGroupAddUserScript(pageGroup.get(), contents.get(), /*baseURL*/ 0, /*whitelistedURLPatterns*/ 0, /*blacklistedURLPatterns*/ 0, kWKInjectInTopFrameOnly, kWKInjectAtDocumentEnd);
+        webPageProxy->pageGroup().addUserScript(contents.value(), /*baseURL*/ String(),
+            /*whitelistedURLPatterns*/ 0, /*blacklistedURLPatterns*/ 0, WebCore::InjectInTopFrameOnly, WebCore::InjectAtDocumentEnd);
     }
 }
 
@@ -929,13 +932,14 @@ void QQuickWebViewPrivate::updateUserStyleSheets()
 {
     // This feature works per-WebView because we keep an unique page group for
     // each Page/WebView pair we create.
-    WKPageGroupRemoveAllUserStyleSheets(pageGroup.get());
+    webPageProxy->pageGroup().removeAllUserStyleSheets();
 
-    foreach (const QUrl& url, userStyleSheets) {
-        WKRetainPtr<WKStringRef> contents = readUserFile(url, "user style sheet");
-        if (!contents || WKStringIsEmpty(contents.get()))
+    for (const QUrl& url : userStyleSheets) {
+        auto contents = readUserFile(url, "user style sheet");
+        if (!contents)
             continue;
-        WKPageGroupAddUserStyleSheet(pageGroup.get(), contents.get(), /*baseURL*/ 0, /*whitelistedURLPatterns*/ 0, /*blacklistedURLPatterns*/ 0, kWKInjectInTopFrameOnly);
+        webPageProxy->pageGroup().addUserStyleSheet(contents.value(), /*baseURL*/ String(),
+            /*whitelistedURLPatterns*/ 0, /*blacklistedURLPatterns*/ 0, WebCore::InjectInTopFrameOnly, WebCore::UserStyleUserLevel);
     }
 }
 
