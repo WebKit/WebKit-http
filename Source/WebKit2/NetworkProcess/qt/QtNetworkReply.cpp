@@ -26,6 +26,7 @@
 #include "config.h"
 #include "QtNetworkReply.h"
 
+#include "QtNetworkAccessManager.h"
 #include "SharedMemory.h"
 #include "WebFrameNetworkingContext.h"
 #include "WebPage.h"

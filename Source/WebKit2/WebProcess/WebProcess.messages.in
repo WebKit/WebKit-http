@@ -63,10 +63,6 @@ messages -> WebProcess LegacyReceiver {
 
     SetTextCheckerState(struct WebKit::TextCheckerState textCheckerState)
 
-#if PLATFORM(QT)
-    StartTransfer(uint64_t downloadID, String destination)
-#endif
-
     SetEnhancedAccessibility(bool flag)
 
     GetWebCoreStatistics(uint64_t callbackID)

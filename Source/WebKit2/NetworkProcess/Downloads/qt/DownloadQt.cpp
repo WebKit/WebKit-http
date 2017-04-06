@@ -27,8 +27,8 @@
 #include "config.h"
 #include "Download.h"
 
+#include "NetworkProcess.h"
 #include "QtFileDownloader.h"
-#include "WebProcess.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/QNetworkReplyHandler.h>
 #include <WebCore/ResourceHandle.h>
@@ -41,7 +41,7 @@ namespace WebKit {
 
 void Download::start()
 {
-    QNetworkAccessManager* manager = WebProcess::singleton().networkAccessManager();
+    QNetworkAccessManager* manager = NetworkProcess::singleton().networkAccessManager();
     ASSERT(manager);
     ASSERT(!m_qtDownloader);
 

@@ -40,7 +40,7 @@ class WebProcess;
 class QtNetworkAccessManager : public QNetworkAccessManager {
     Q_OBJECT
 public:
-    QtNetworkAccessManager(WebProcess*);
+    QtNetworkAccessManager();
     void registerApplicationScheme(const WebPage*, const QString& scheme);
 
 protected:
@@ -55,8 +55,7 @@ private:
     WebPage* obtainOriginatingWebPage(const QNetworkRequest&);
 
     QMultiHash<const WebPage*, QString> m_applicationSchemes;
-    WebProcess* m_webProcess;
-
+    WebProcess* m_webProcess { nullptr };
 };
 
 } // namespace WebKit
