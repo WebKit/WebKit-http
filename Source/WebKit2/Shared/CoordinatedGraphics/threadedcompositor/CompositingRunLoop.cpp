@@ -34,7 +34,10 @@
 #include <wtf/WorkQueue.h>
 
 #if USE(GLIB_EVENT_LOOP)
+#if PLATFORM(WPE)
 #include <glib.h>
+#endif
+#include <wtf/glib/RunLoopSourcePriority.h>
 #endif
 
 namespace WebKit {
@@ -117,10 +120,12 @@ CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
 {
     m_updateState.store(UpdateState::Completed);
 
-#if PLATFORM(GTK)
-    m_updateTimer.setPriority(G_PRIORITY_HIGH_IDLE);
-#elif PLATFORM(WPE)
+#if USE(GLIB_EVENT_LOOP)
+#if PLATFORM(WPE)
     m_updateTimer.setPriority(G_PRIORITY_HIGH + 30);
+#else
+    m_updateTimer.setPriority(RunLoopSourcePriority::CompositingThreadUpdateTimer);
+#endif
 #endif
 }
 

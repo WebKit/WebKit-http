@@ -1,3 +1,233 @@
+2017-04-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Make FontWithFeatures test font pass OTS
+        https://bugs.webkit.org/show_bug.cgi?id=169788
+
+        Reviewed by Tim Horton.
+
+        Updated font to the one which passes the tests.
+
+        * css3/resources/FontWithFeatures.otf:
+
+2017-04-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        LayoutTest crypto/subtle/aes-ctr-encrypt-malformed-parameters.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=170571
+
+        Unreviewed.
+
+        * crypto/subtle/aes-ctr-encrypt-malformed-parameters-expected.txt:
+        * crypto/subtle/aes-ctr-encrypt-malformed-parameters.html:
+
+2017-04-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Scroll offset jumps after a programmatic scroll in an overflow container with scroll snapping
+        https://bugs.webkit.org/show_bug.cgi?id=170560
+        <rdar://problem/31484693>
+
+        Reviewed by Tim Horton.
+
+        Add a test verifying that programmatically changing the scroll offset of an overflow container does not cause the
+        scroll offset to jump back to the last active snap position. See WebCore ChangeLog for more details.
+
+        * css3/scroll-snap/scroll-snap-programmatic-overflow-scroll-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-programmatic-overflow-scroll.html: Added.
+
+2017-04-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Throttle requestAnimationFrame in cross-origin iframes to 30fps
+        https://bugs.webkit.org/show_bug.cgi?id=170534
+
+        Reviewed by Dan Bates.
+
+        * http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe-expected.txt: Added.
+        * http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe.html: Added.
+        * http/tests/frame-throttling/resources/requestAnimationFrame-frame.html: Added.
+
+2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215041.
+
+        The LayoutTest for this change is failing on ios-simulator.
+
+        Reverted changeset:
+
+        "Rendering flexbox children across columns"
+        https://bugs.webkit.org/show_bug.cgi?id=164166
+        http://trac.webkit.org/changeset/215041
+
+2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215046.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "WebRTC tests gardening"
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+        http://trac.webkit.org/changeset/215046
+
+2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip a test that was accidentally enabled with r214982.
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show all headers in the Request Headers section of the Resource details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=16531
+        <rdar://problem/5712895>
+
+        Reviewed by Timothy Hatcher.
+
+        * http/tests/inspector/network/resource-request-headers-expected.txt: Added.
+        * http/tests/inspector/network/resource-request-headers.html: Added.
+        * http/tests/inspector/network/resources/basic-auth.php: Added.
+        Test coverage for Cookie and Basic Authentication headers.
+
+        * platform/mac/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+        Mark the test as expected to fail on WebKit1 CFNetwork based platforms,
+        and ElCapitan which uses the legacy non-NSURLSession loading path.
+
+2017-04-06  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest fast/mediastream/getUserMedia-webaudio.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=167513
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/getUserMedia-webaudio.html: Removing unecessary flaky check.
+
+2017-04-06  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Hittest always returns the first renderer in the block.
+        https://bugs.webkit.org/show_bug.cgi?id=170520
+        <rdar://problem/30979175>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/dom/Document/CaretRangeFromPoint/simple-line-layout-hittest-with-caret-range-from-point-expected.html: Added.
+        * fast/dom/Document/CaretRangeFromPoint/simple-line-layout-hittest-with-caret-range-from-point.html: Added.
+
+2017-03-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Add support for AES-CTR
+        https://bugs.webkit.org/show_bug.cgi?id=169761
+        <rdar://problem/31331321>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/subtle/aes-ctr-encrypt-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/aes-ctr-encrypt-malformed-parameters.html: Added.
+        * crypto/subtle/aes-ctr-generate-export-key-jwk-length-128-expected.txt: Added.
+        * crypto/subtle/aes-ctr-generate-export-key-jwk-length-128.html: Added.
+        * crypto/subtle/aes-ctr-generate-export-key-jwk-length-192-expected.txt: Added.
+        * crypto/subtle/aes-ctr-generate-export-key-jwk-length-192.html: Added.
+        * crypto/subtle/aes-ctr-generate-export-key-jwk-length-256-expected.txt: Added.
+        * crypto/subtle/aes-ctr-generate-export-key-jwk-length-256.html: Added.
+        * crypto/subtle/aes-ctr-generate-export-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-ctr-generate-export-raw-key.html: Added.
+        * crypto/subtle/aes-ctr-generate-key-encrypt-decrypt-expected.txt: Added.
+        * crypto/subtle/aes-ctr-generate-key-encrypt-decrypt.html: Added.
+        * crypto/subtle/aes-ctr-generate-key-expected.txt: Added.
+        * crypto/subtle/aes-ctr-generate-key.html: Added.
+        * crypto/subtle/aes-ctr-import-jwk-key-length-128-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-jwk-key-length-128.html: Added.
+        * crypto/subtle/aes-ctr-import-jwk-key-length-192-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-jwk-key-length-192.html: Added.
+        * crypto/subtle/aes-ctr-import-jwk-key-length-256-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-jwk-key-length-256.html: Added.
+        * crypto/subtle/aes-ctr-import-key-decrypt-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-key-decrypt.html: Added.
+        * crypto/subtle/aes-ctr-import-key-encrypt-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-key-encrypt.html: Added.
+        * crypto/subtle/aes-ctr-import-key-unwrap-jwk-key-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-key-unwrap-jwk-key.html: Added.
+        * crypto/subtle/aes-ctr-import-key-unwrap-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-key-unwrap-raw-key.html: Added.
+        * crypto/subtle/aes-ctr-import-key-wrap-jwk-key-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-key-wrap-jwk-key.html: Added.
+        * crypto/subtle/aes-ctr-import-key-wrap-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-key-wrap-raw-key.html: Added.
+        * crypto/subtle/aes-ctr-import-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-ctr-import-raw-key.html: Added.
+        * crypto/subtle/aes-generate-key-malformed-parameters-expected.txt:
+        * crypto/subtle/aes-generate-key-malformed-parameters.html:
+        * crypto/subtle/aes-import-key-malformed-parameters-expected.txt:
+        * crypto/subtle/aes-import-key-malformed-parameters.html:
+        * crypto/workers/subtle/aes-ctr-import-key-decrypt-expected.txt: Added.
+        * crypto/workers/subtle/aes-ctr-import-key-decrypt.html: Added.
+        * crypto/workers/subtle/aes-ctr-import-key-encrypt-expected.txt: Added.
+        * crypto/workers/subtle/aes-ctr-import-key-encrypt.html: Added.
+        * crypto/workers/subtle/aes-ctr-import-key-unwrap-key-expected.txt: Added.
+        * crypto/workers/subtle/aes-ctr-import-key-unwrap-key.html: Added.
+        * crypto/workers/subtle/aes-ctr-import-key-wrap-key-expected.txt: Added.
+        * crypto/workers/subtle/aes-ctr-import-key-wrap-key.html: Added.
+        * crypto/workers/subtle/resources/aes-ctr-import-key-decrypt.js: Added.
+        * crypto/workers/subtle/resources/aes-ctr-import-key-encrypt.js: Added.
+        * crypto/workers/subtle/resources/aes-ctr-import-key-unwrap-key.js: Added.
+        * crypto/workers/subtle/resources/aes-ctr-import-key-wrap-key.js: Added.
+
+2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/codemirror/prettyprinting-css-rules.html as flaky on release.
+        https://bugs.webkit.org/show_bug.cgi?id=153460
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-06  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC tests gardening
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios/TestExpectations:
+
+2017-04-06  Antti Koivisto  <antti@apple.com>
+
+        Implement testing mode for disk cache
+        https://bugs.webkit.org/show_bug.cgi?id=170547
+
+        Reviewed by Andreas Kling.
+
+        Enable a few disabled tests to see how it goes.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-04-06  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBRequest respondWithNewView()
+        https://bugs.webkit.org/show_bug.cgi?id=170339
+
+        Reviewed by Youenn Fablet.
+
+        Added new tests addressing respondWithNewView() behaviour.
+
+        * streams/readable-stream-byob-request-expected.txt: Updated.
+        * streams/readable-stream-byob-request.js: Added new tests.
+
+2017-04-06  Dave Hyatt  <hyatt@apple.com>
+
+        Rendering flexbox children across columns
+        https://bugs.webkit.org/show_bug.cgi?id=164166
+        <rdar://problem/29055587>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/multicol/flexbox-rows-expected.html: Added.
+        * fast/multicol/flexbox-rows.html: Added.
+
 2017-04-05  Simon Fraser  <simon.fraser@apple.com>
 
         Set lastHandledUserGestureTimestamp on all ancestor documents, not just the top document

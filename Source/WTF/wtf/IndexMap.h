@@ -81,10 +81,11 @@ public:
         return m_vector[IndexKeyType<Key>::index(key)];
     }
     
-    void append(const Key& key, Value value)
+    template<typename PassedValue>
+    void append(const Key& key, PassedValue&& value)
     {
         RELEASE_ASSERT(IndexKeyType<Key>::index(key) == m_vector.size());
-        m_vector.append(value);
+        m_vector.append(std::forward<PassedValue>(value));
     }
 
 private:

@@ -1154,7 +1154,7 @@ webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.h
 # This test tests a particular system font, which is only on iOS and El Capitan.
 webkit.org/b/148119 [ Yosemite ] fast/text/trak-optimizeLegibility.html [ Failure ]
 
-webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
+webkit.org/b/153460 inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.html [ Pass Timeout ]
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
 webkit.org/b/168926 inspector/controller/runtime-controller-import.html [ Pass Timeout ]
@@ -1535,9 +1535,12 @@ webkit.org/b/167975 imported/w3c/web-platform-tests/media-source/SourceBuffer-ab
 webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.html [ Skip ]
 webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.worker.html [ Skip ]
 
-# Resource Timing networking data not yet available without Network Session.
+# Resource Timing networking data not available without Network Session.
 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+
+# Request Header networking data not available without Network Session.
+[ ElCapitan ] http/tests/inspector/network/resource-request-headers.html [ Failure ]
 
 # <rdar://problem/30610988>
 [ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-worker.html [ Failure ]

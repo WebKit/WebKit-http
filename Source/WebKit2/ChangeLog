@@ -1,3 +1,201 @@
+2017-04-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Update the priorities used in glib main loop sources
+        https://bugs.webkit.org/show_bug.cgi?id=170457
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        (WebKit::CompositingRunLoop::CompositingRunLoop):
+        * UIProcess/DrawingAreaProxyImpl.cpp:
+        (WebKit::DrawingAreaProxyImpl::DrawingAreaProxyImpl):
+        (WebKit::DrawingAreaProxyImpl::DrawingMonitor::DrawingMonitor):
+        * UIProcess/gtk/WaylandCompositor.cpp:
+        (WebKit::createWaylandLoopSource):
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::AcceleratedDrawingArea):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::CompositingCoordinator):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::CoordinatedLayerTreeHost):
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::DrawingAreaImpl):
+
+2017-04-06  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKContentExtensionStore.h and WKContentExtension.h to public WebKit.h
+        https://bugs.webkit.org/show_bug.cgi?id=170533
+
+        Reviewed by Daniel Bates.
+
+        * Shared/API/Cocoa/WebKit.h:
+        In r213696 I added two public headers.  All public headers in WebKit are included with
+        #import <WebKit/WebKit.h>
+
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Hangs when loading under SpeculativeLoad::shouldCaptureExtraNetworkLoadMetrics
+        https://bugs.webkit.org/show_bug.cgi?id=170575
+
+        Rubber-stamped by Brian Burg.
+
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::shouldCaptureExtraNetworkLoadMetrics): Deleted.
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        m_networkLoad is a wrapper around `this` as the client, so we would infinite loop here.
+
+2017-04-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r214973.
+        https://bugs.webkit.org/show_bug.cgi?id=170578
+
+        Causes issues in Safari (Requested by bradee-oh on #webkit).
+
+        Reverted changeset:
+
+        "Refactor so WebsiteDataStores always have a StorageManager."
+        https://bugs.webkit.org/show_bug.cgi?id=170521
+        http://trac.webkit.org/changeset/214973
+
+2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215046.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "WebRTC tests gardening"
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+        http://trac.webkit.org/changeset/215046
+
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Only Capture Extra Network Load Metrics when there is a Web Inspector Frontend
+        https://bugs.webkit.org/show_bug.cgi?id=170525
+
+        Reviewed by Youenn Fablet.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didFinishCollectingMetrics:]):
+        Only collect extra metrics if the WebProcess this load is for has enabled
+        collecting extra metrics.
+
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::setCaptureExtraNetworkLoadMetricsEnabled):
+        * WebProcess/Network/WebLoaderStrategy.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::setCaptureExtraNetworkLoadMetricsEnabled):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        (WebKit::NetworkConnectionToWebProcess::captureExtraNetworkLoadMetricsEnabled):
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        New bool state toggled through the loader policy.
+
+        * NetworkProcess/NetworkDataTask.cpp:
+        (WebKit::NetworkDataTask::shouldCaptureExtraNetworkLoadMetrics):
+        * NetworkProcess/NetworkDataTask.h:
+        (WebKit::NetworkDataTaskClient::shouldCaptureExtraNetworkLoadMetrics):
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::shouldCaptureExtraNetworkLoadMetrics):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkLoadClient.h:
+        (WebKit::NetworkLoadClient::shouldCaptureExtraNetworkLoadMetrics):
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::shouldCaptureExtraNetworkLoadMetrics):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::shouldCaptureExtraNetworkLoadMetrics):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        Default handling for network loads is to not include extra data. Thread
+        client messages back from the NetworkLoads / SpeculativeLoads to check
+        the NetworkConnectionToWebProcess state on whether or not we should collect
+        extra metrics.
+
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show all headers in the Request Headers section of the Resource details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=16531
+        <rdar://problem/5712895>
+
+        Reviewed by Timothy Hatcher.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didFinishCollectingMetrics:]):
+        Include a complete list of the request headers sent for this load.
+        There may be headers that WebCore did not know about and developer
+        tools should be informed of.
+
+2017-04-06  Anders Carlsson  <andersca@apple.com>
+
+        OptionSet options need to be powers of two
+        https://bugs.webkit.org/show_bug.cgi?id=170565
+
+        Reviewed by Chris Dumez.
+
+        Change Cache::Option to be powers of two.
+
+        * NetworkProcess/cache/NetworkCache.h:
+
+2017-04-06  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC tests gardening
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-06  Antti Koivisto  <antti@apple.com>
+
+        Implement testing mode for disk cache
+        https://bugs.webkit.org/show_bug.cgi?id=170547
+
+        Reviewed by Andreas Kling.
+
+        Disable read timeouts and cache shrinking in TestRunner to eliminate potential sources of randomness.
+
+        Cache directories are deleted by TestRunner so lack of shrinking does not consume the disk.
+
+        This is enabled by the existing WKContextUseTestingNetworkSession SPI.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::initialize):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::open):
+        (WebKit::NetworkCache::Storage::Storage):
+        (WebKit::NetworkCache::Storage::dispatchReadOperation):
+        (WebKit::NetworkCache::Storage::shrinkIfNeeded):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::platformInitializeNetworkProcessCocoa):
+
+2017-04-06  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add C private API to toggle invisibleAutoplayNotPermitted setting
+        https://bugs.webkit.org/show_bug.cgi?id=170524
+        <rdar://problem/31461472>
+
+        Reviewed by Eric Carlson.
+
+        Add C private API to toggle invisibleAutoplayNotPermitted setting.
+
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetInvisibleMediaAutoplayPermitted):
+        (WKPreferencesGetInvisibleMediaAutoplayPermitted):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+
+2017-04-06  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Fix build with MEDIA_CAPTURE enabled
+        https://bugs.webkit.org/show_bug.cgi?id=170539
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDeprecated.cpp:
+        (webkit_dom_html_input_element_get_capture): Add missing namespace in usage of WebCore::MediaCaptureTypeNone.
+
 2017-04-05  Brent Fulgham  <bfulgham@apple.com>
 
         [WK2][iOS] Remove access to features not present on iOS 

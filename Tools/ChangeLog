@@ -1,3 +1,76 @@
+2017-04-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Make FontWithFeatures test font pass OTS
+        https://bugs.webkit.org/show_bug.cgi?id=169788
+
+        Reviewed by Tim Horton.
+
+        OTS, or the OpenType Sanitizer, is a check which tells if fonts are properly formed.
+        Previously, our FontWithFeatures test font did not pass this check. This patch updates
+        the font to pass the checks. Now, we can use this font on other platforms, and
+        contribute the font to the W3C for testing the CSS Fonts level 3 spec.
+
+        * FontWithFeatures/FontWithFeatures/FontCreator.cpp:
+        (Generator::appendCFFTable):
+        (Generator::Feature::operator<):
+        (Generator::appendGSUBTable):
+        (Generator::appendOS2Table):
+        (Generator::appendFormat4CMAPTable):
+        (Generator::appendHEADTable):
+        (Generator::appendHHEATable):
+        (Generator::NameRecord::operator<):
+        (Generator::appendNameSubtable):
+        (Generator::appendNAMETable):
+
+2017-04-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Disable flaky WebKit2.ResizeWithHiddenContentDoesNotHang
+        for https://bugs.webkit.org/show_bug.cgi?id=170195
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AnimatedResize.mm:
+
+2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215046.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "WebRTC tests gardening"
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+        http://trac.webkit.org/changeset/215046
+
+2017-04-06  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC tests gardening
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-04-06  Jonathan Bedard  <jbedard@apple.com>
+
+        REGRESSION: Simulators failing to install after launch_app times out
+        <rdar://problem/31478107>
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDevice.launch_app._install_timeout): Raise RuntimeError, not Exception.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: module test progressions need updated expectations (@@iterator changes)
+        https://bugs.webkit.org/show_bug.cgi?id=170535
+
+        Reviewed by Saam Barati.
+
+        * Scripts/run-jsc-stress-tests:
+        Add :failDueToOutdatedOrBadTest to distinguish between a test failure
+        in JavaScriptCore or an outdated or incorrect test262 test.
+
 2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
 
         Remove run-jsc-stress-tests benign warning about otool '-S' switch

@@ -33,8 +33,11 @@
 #include "TextureMapperLayer.h"
 #include "TextureMapperPlatformLayerBuffer.h"
 
+#if USE(GLIB_EVENT_LOOP)
 #if PLATFORM(WPE)
 #include <glib.h>
+#endif
+#include <wtf/glib/RunLoopSourcePriority.h>
 #endif
 
 const double s_releaseUnusedSecondsTolerance = 1;
@@ -47,8 +50,12 @@ TextureMapperPlatformLayerProxy::TextureMapperPlatformLayerProxy()
     , m_targetLayer(nullptr)
     , m_releaseUnusedBuffersTimer(RunLoop::current(), this, &TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired)
 {
+#if USE(GLIB_EVENT_LOOP)
 #if PLATFORM(WPE)
     m_releaseUnusedBuffersTimer.setPriority(G_PRIORITY_HIGH + 30);
+#else
+    m_releaseUnusedBuffersTimer.setPriority(RunLoopSourcePriority::ReleaseUnusedResourcesTimer);
+#endif
 #endif
 }
 
@@ -74,8 +81,12 @@ void TextureMapperPlatformLayerProxy::activateOnCompositingThread(Compositor* co
         m_targetLayer->setContentsLayer(m_currentBuffer.get());
 
     m_compositorThreadUpdateTimer = std::make_unique<RunLoop::Timer<TextureMapperPlatformLayerProxy>>(RunLoop::current(), this, &TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired);
+#if USE(GLIB_EVENT_LOOP)
 #if PLATFORM(WPE)
     m_compositorThreadUpdateTimer->setPriority(G_PRIORITY_HIGH + 30);
+#else
+    m_compositorThreadUpdateTimer->setPriority(RunLoopSourcePriority::CompositingThreadUpdateTimer);
+#endif
 #endif
 }
 

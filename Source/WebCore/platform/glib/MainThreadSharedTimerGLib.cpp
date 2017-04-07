@@ -28,7 +28,11 @@
 #include "config.h"
 #include "MainThreadSharedTimer.h"
 
+#include <wtf/glib/RunLoopSourcePriority.h>
+
+#if PLATFORM(WPE)
 #include <glib.h>
+#endif
 
 namespace WebCore {
 
@@ -37,7 +41,7 @@ MainThreadSharedTimer::MainThreadSharedTimer()
 {
 #if PLATFORM(GTK)
     // This is GDK_PRIORITY_REDRAW, but we don't want to depend on GDK here just to use a constant.
-    m_timer.setPriority(G_PRIORITY_HIGH_IDLE + 20);
+    m_timer.setPriority(RunLoopSourcePriority::MainThreadDispatcherTimer);
 #elif PLATFORM(WPE)
     m_timer.setPriority(G_PRIORITY_HIGH + 40);
 #endif

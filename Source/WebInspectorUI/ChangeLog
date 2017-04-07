@@ -1,3 +1,53 @@
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Source Map Resources should show up in the Debugger Sources list
+        https://bugs.webkit.org/show_bug.cgi?id=170581
+        <rdar://problem/31269140>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        Include SourceMapResources in the DebuggerSidebar's Sources tree outline.
+
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show all headers in the Request Headers section of the Resource details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=16531
+        <rdar://problem/5712895>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.updateWithMetrics):
+        Update request headers if provided in metrics.
+
+2017-04-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Reorder Debugger tab sidebar panels: Scope Chain, Resource, Probes
+        https://bugs.webkit.org/show_bug.cgi?id=170418
+        <rdar://problem/31410771>
+
+        Reviewed by Timothy Hatcher.
+
+        Maintain the sidebar panel order defined by TabContentView when adding
+        and removing panels.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WebInspector.ContentBrowserTabContentView.prototype.showDetailsSidebarPanels):
+        Insert sidebar panel based on the panel order defined by TabContentView.
+
+        * UserInterface/Views/DebuggerTabContentView.js:
+        (WebInspector.DebuggerTabContentView):
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.addSidebarPanel):
+        Implemented as an insert at the end.
+        (WebInspector.Sidebar.prototype.insertSidebarPanel):
+        Allow inserting into the sidebar panel collection.
+        (WebInspector.Sidebar.prototype.removeSidebarPanel):
+        Remove unused return value.
+
 2017-04-05  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Probe values not showing in sidebar

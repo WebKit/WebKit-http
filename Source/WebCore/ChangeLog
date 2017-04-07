@@ -1,3 +1,569 @@
+2017-04-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Update the priorities used in glib main loop sources
+        https://bugs.webkit.org/show_bug.cgi?id=170457
+
+        Reviewed by Žan Doberšek.
+
+        * platform/glib/MainThreadSharedTimerGLib.cpp:
+        (WebCore::MainThreadSharedTimer::MainThreadSharedTimer):
+        * platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp:
+        (WebCore::TextureMapperPlatformLayerProxy::TextureMapperPlatformLayerProxy):
+        (WebCore::TextureMapperPlatformLayerProxy::activateOnCompositingThread):
+
+2017-04-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement AES_CBC support
+        https://bugs.webkit.org/show_bug.cgi?id=170550
+
+        Reviewed by Michael Catanzaro.
+
+        Implement the CryptoAlgorithmAES_CBC::platform{Encrypt,Decrypt}
+        functionality for configurations that use libgcrypt. This is done
+        by leveraging the gcry_cipher_* APIs for the AES algorithm that's
+        deduced appropriately from the key size and the CBC cipher mode.
+        Additionally, the PKCS#7 padding is implemented for each operation,
+        as demanded by the Web Crypto specification.
+
+        No new tests -- current ones cover this sufficiently, but are not yet
+        enabled due to missing platform-specific SUBTLE_CRYPTO implementations.
+
+        * crypto/gcrypt/CryptoAlgorithmAES_CBCGCrypt.cpp:
+        (WebCore::gcryptEncrypt):
+        (WebCore::gcryptDecrypt):
+        (WebCore::CryptoAlgorithmAES_CBC::platformEncrypt):
+        (WebCore::CryptoAlgorithmAES_CBC::platformDecrypt):
+
+2017-04-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement raw and JWK imports and exports for EC keys
+        https://bugs.webkit.org/show_bug.cgi?id=170546
+
+        Reviewed by Michael Catanzaro.
+
+        Implement import and export operations for EC keys, covering the raw
+        and JWK import/export types.
+
+        CryptoKeyEC::platformImportRaw() builds a public-key s-expression,
+        providing the curve name and the key data, and yields the gcry_sexp_t
+        object to the new CryptoKeyEC.
+
+        CryptoKeyEC::platformImportJWKPublic() first constructs a Vector<uint8_t>
+        object that contains the EC point in the uncompressed format. It then
+        puts that data into a newly-constructed public-key s-expression that is
+        then used to construct the new CryptoKeyEC object.
+
+        CryptoKeyEC::platformImportJWKPrivate() constructs the EC point data just
+        the same, but it also lays out the private key field element data into
+        the private-key s-expression that's then handed off to the CryptoKeyEC
+        object.
+
+        CryptoKeyEC::platformExportRaw() constructs a new EC operations context
+        and then uses it to retrieve the q parameter as an MPI. A Vector<uint8_t>
+        is retrieved from the MPI data through the extractMPIData() helper
+        function.
+
+        CryptoKeyEC::platformAddFieldElements() similarly uses the EC operations
+        context to retrieve the q parameter data, which it then splits into the
+        x and y field elements and Base64 URL-encodes them into a form that can
+        be placed in a JsonWebKey. If the key is private, the d parameter is
+        retrieved in the same fashion and again Base64 URL-encoded and stored
+        in the JsonWebKey object.
+
+        No new tests -- current ones cover this sufficiently, but are not yet
+        enabled due to other missing platform-specific SUBTLE_CRYPTO
+        implementations.
+
+        * crypto/gcrypt/CryptoKeyECGCrypt.cpp:
+        (WebCore::uncompressedPointSizeForCurve):
+        (WebCore::uncompressedFieldElementSizeForCurve):
+        (WebCore::extractMPIData):
+        (WebCore::CryptoKeyEC::platformImportRaw):
+        (WebCore::CryptoKeyEC::platformImportJWKPublic):
+        (WebCore::CryptoKeyEC::platformImportJWKPrivate):
+        (WebCore::CryptoKeyEC::platformExportRaw):
+        (WebCore::CryptoKeyEC::platformAddFieldElements):
+
+2017-04-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyRSA::generatePair()
+        https://bugs.webkit.org/show_bug.cgi?id=170350
+
+        Reviewed by Michael Catanzaro.
+
+        Start implementing the libgcrypt-based platform bits of CryptoKeyRSA.
+
+        Implement generatePair() by constructing a genkey s-expression
+        that requests a generation of an RSA key that should use a modulus
+        of the specified bit-length and the specified exponent. The exponent
+        is extracted from an uint8_t array through a helper function. The
+        modulus length value is checked to be at least 16, since libgcrypt
+        does not support generating primes of less than that length in bits.
+
+        The returned s-expression upon request will contain the data for
+        both the public and the private key. gcry_sexp_t handles representing
+        those s-expressions are then passed to CryptoKeyRSA::create() before
+        invoking the success callback with a new CryptoKeyPair object in a
+        separate ScriptExecutionContext task.
+
+        The CryptoKeyRSA constructor simply has the notImplemented() call
+        removed. The destructor now invokes the HandleDeleter<gcry_sexp_t>
+        object instance to destroy the object represented by the
+        m_platformKey handle.
+
+        The methods in CryptoKeyRSA.cpp are also reordered to follow the
+        declaration order used in the header.
+
+        No new tests -- current ones cover this sufficiently, but are not yet
+        enabled due to other missing platform-specific SUBTLE_CRYPTO
+        implementations.
+
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp:
+        (WebCore::CryptoKeyRSA::CryptoKeyRSA):
+        (WebCore::CryptoKeyRSA::~CryptoKeyRSA):
+        (WebCore::exponentVectorToUInt32):
+        (WebCore::CryptoKeyRSA::generatePair):
+        (WebCore::CryptoKeyRSA::importSpki):
+        (WebCore::CryptoKeyRSA::importPkcs8):
+        (WebCore::CryptoKeyRSA::exportPkcs8):
+        (WebCore::CryptoKeyRSA::buildAlgorithm):
+        (WebCore::CryptoKeyRSA::exportData):
+        * crypto/keys/CryptoKeyRSA.h:
+
+2017-04-06  Youenn Fablet  <youenn@apple.com>
+
+        [Debug] ASSERT(!throwScope.exception()) on imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-status-worker.html
+        https://bugs.webkit.org/show_bug.cgi?id=170395
+        <rdar://problem/31394017>
+
+        Reviewed by Mark Lam.
+
+        * bindings/js/JSDOMPromise.cpp:
+        (WebCore::DeferredPromise::reject): Exiting early in case of scope having an exception.
+        Adding an assertion to ensure this is a worker termination exception.
+
+2017-04-06  Andreas Kling  <akling@apple.com>
+
+        Inaudible background tabs should become eligible for memory kill after 8 minutes
+        https://bugs.webkit.org/show_bug.cgi?id=170574
+        <rdar://problem/31488686>
+
+        Reviewed by Gavin Barraclough.
+
+        Lower the delay for potentially marking background tabs as inactive from 60 minutes to 8 minutes.
+        Letting a tab misbehave in the background for an entire hour was overly charitable.
+
+        * page/PerformanceMonitor.cpp:
+
+2017-04-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Scroll offset jumps after a programmatic scroll in an overflow container with scroll snapping
+        https://bugs.webkit.org/show_bug.cgi?id=170560
+        <rdar://problem/31484693>
+
+        Reviewed by Tim Horton.
+
+        Test: css3/scroll-snap/scroll-snap-programmatic-overflow-scroll.html
+
+        Logic for maintaining the scroll snap state in ScrollController was previously removed from iOS when refactoring
+        ScrollController. This was done because scroll snapping on iOS is driven not by the ScrollController (as it is
+        on Mac) but rather by sending scroll snap offsets to the UI process and hooking into UIScrollView delegates to
+        handle retargeted scrolling.
+
+        However, on iOS, this ScrollController state is still important for the purposes of keeping the last active
+        snap point index in sync with the UI process when the scroll offset changes outside of a user gesture (i.e.
+        programmatic scrolling). Since the UI process does not get a chance to update the active snap offset during a
+        programmatic scroll, our last active snap offset state was only being updated to the last snap position that the
+        user manually scrolled to, making programmatic scrolling jump to this offset.
+
+        To fix this, we need to update scroll snap state on iOS within ScrollController. Also adds a new Layout test
+        that exercises programmatic scrolling in an overflow scrolling container on all platforms.
+
+        * platform/cocoa/ScrollController.mm:
+        (WebCore::otherScrollEventAxis):
+        (WebCore::ScrollController::updateScrollSnapState):
+        (WebCore::ScrollController::updateScrollSnapPoints):
+
+2017-04-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Throttle requestAnimationFrame in cross-origin iframes to 30fps
+        https://bugs.webkit.org/show_bug.cgi?id=170534
+
+        Reviewed by Dan Bates.
+
+        Add a throttling reason to ScriptedAnimationController which is NonInteractedCrossOriginFrame,
+        set on cross-origin iframes whose documents have never seen a user interaction. It's cleared
+        as soon as an interaction on this frame or a child frame is detected.
+
+        Move the initialization of the LowPowerMode throttling reason to Document::requestAnimationFrame(),
+        since it's more appropriate to compute NonInteractedCrossOriginFrame here than down in ScriptedAnimationController,
+        and best to do both in the same place.
+
+        Tests: http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::requestAnimationFrame):
+        (WebCore::Document::updateLastHandledUserGestureTimestamp):
+        * dom/Document.h:
+        (WebCore::Document::hasHadUserInteraction):
+        * dom/ScriptedAnimationController.cpp:
+        (WebCore::ScriptedAnimationController::ScriptedAnimationController):
+        (WebCore::throttlingReasonToString):
+        (WebCore::ScriptedAnimationController::interval):
+        * dom/ScriptedAnimationController.h:
+        * loader/FrameLoader.cpp:
+        (WebCore::shouldAskForNavigationConfirmation):
+
+2017-04-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Use the Accelerate framework to optimize FEColorMatrix operations
+        https://bugs.webkit.org/show_bug.cgi?id=170518
+
+        Reviewed by Tim Horton.
+
+        On macOS and iOS, we can use the Accelerate framework (vImage) to do color matrix
+        math to optimize color matrix, hue rotate, saturation and luminosity to alpha filters.
+        
+        Change ImageBuffer::getUnmultipliedImageData() and getPremultipliedImageData() to
+        return the size of the returned Uint8ClampedArray in physical pixels, because we
+        need to pass that to vImage.
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::getImageData):
+        * platform/graphics/ImageBuffer.h:
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        (WebCore::ImageBuffer::getUnmultipliedImageData):
+        (WebCore::ImageBuffer::getPremultipliedImageData):
+        * platform/graphics/cg/ImageBufferCG.cpp:
+        (WebCore::ImageBuffer::getUnmultipliedImageData):
+        (WebCore::ImageBuffer::getPremultipliedImageData):
+        * platform/graphics/filters/FEColorMatrix.cpp:
+        (WebCore::effectApplyAccelerated):
+        (WebCore::effectType):
+        (WebCore::FEColorMatrix::platformApplySoftware):
+        * platform/graphics/filters/FEDropShadow.cpp:
+        (WebCore::FEDropShadow::platformApplySoftware):
+        * platform/graphics/win/ImageBufferDirect2D.cpp:
+        (WebCore::ImageBuffer::getUnmultipliedImageData):
+        (WebCore::ImageBuffer::getPremultipliedImageData):
+
+2017-04-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Do some minor FEColorMatrix code cleanup and optimization
+        https://bugs.webkit.org/show_bug.cgi?id=170474
+
+        Reviewed by Dean Jackson.
+
+        Don't switch inside of a pixel processing loop; repeat the loop inside switch (filterType).
+        
+        Change matrix() and saturateAndHueRotate() to dereference the source pixels once, instead
+        of multiple times, which is faster.
+        
+        This kind of code benefits from aligning things with spaces for readability, so do so,
+        violating webkit style.
+        
+        Add some off-by-default performance logging code.
+
+        Increases pixel processing performance from about 86ms per megapixel to 65ms per megapixel.
+
+        * platform/graphics/filters/FEColorMatrix.cpp:
+        (WebCore::matrix):
+        (WebCore::saturateAndHueRotate):
+        (WebCore::effectType):
+        (WebCore::FEColorMatrix::platformApplySoftware):
+
+2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215041.
+
+        The LayoutTest for this change is failing on ios-simulator.
+
+        Reverted changeset:
+
+        "Rendering flexbox children across columns"
+        https://bugs.webkit.org/show_bug.cgi?id=164166
+        http://trac.webkit.org/changeset/215041
+
+2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215046.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "WebRTC tests gardening"
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+        http://trac.webkit.org/changeset/215046
+
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Only Capture Extra Network Load Metrics when there is a Web Inspector Frontend
+        https://bugs.webkit.org/show_bug.cgi?id=170525
+
+        Reviewed by Youenn Fablet.
+
+        Covered by existing tests that when Web Inspector is open we enable collecting the extra data.
+
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::firstFrontendCreated):
+        (WebCore::InspectorInstrumentation::lastFrontendDeleted):
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::frontendCreated):
+        (WebCore::InspectorInstrumentation::frontendDeleted):
+        When the first frontend is created enable a new loader strategy to
+        collect extra network load metrics. When the last frontend is closed
+        disable the extra metrics.
+
+        * loader/LoaderStrategy.h:
+        * platform/PlatformStrategies.h:
+        New load strategy to enable/disable new metrics.
+
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show all headers in the Request Headers section of the Resource details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=16531
+        <rdar://problem/5712895>
+
+        Reviewed by Timothy Hatcher.
+
+        Test: http/tests/inspector/network/resource-request-headers.html
+
+        * loader/ResourceTiming.cpp:
+        (WebCore::ResourceTiming::ResourceTiming):
+        Eliminate unnecessary data from the NetworkLoadTiming object
+        when it is used for ResourceTiming. This clears up some memory
+        that will otherwise never be used.
+
+        * platform/network/NetworkLoadMetrics.h:
+        (WebCore::NetworkLoadMetrics::isolatedCopy):
+        (WebCore::NetworkLoadMetrics::reset):
+        (WebCore::NetworkLoadMetrics::clearNonTimingData):
+        (WebCore::NetworkLoadMetrics::operator==):
+        (WebCore::NetworkLoadMetrics::encode):
+        (WebCore::NetworkLoadMetrics::decode):
+        Include an optional HTTPHeaderMap for a refined list of
+        request headers for this network load.
+
+        * inspector/InspectorNetworkAgent.cpp:
+        (WebCore::InspectorNetworkAgent::buildObjectForMetrics):
+        Include request headers with other optional metrics data
+        when the load is completed.
+
+2017-04-06  Tim Horton  <timothy_horton@apple.com>
+
+        Follow up to r209304, remove line numbers from one more StyleRule construction
+        https://bugs.webkit.org/show_bug.cgi?id=170564
+
+        Reviewed by Simon Fraser.
+
+        * css/StyleRule.cpp:
+        (WebCore::StyleRuleViewport::StyleRuleViewport):
+        This one was missed in r209304.
+
+2017-04-06  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove an unused member and constructor parameter from CSSPropertyParser
+        https://bugs.webkit.org/show_bug.cgi?id=170562
+
+        Reviewed by Simon Fraser.
+
+        * css/parser/CSSParser.cpp:
+        (WebCore::CSSParser::parseSingleValue):
+        (WebCore::CSSParser::parseValueWithVariableReferences):
+        * css/parser/CSSParserImpl.cpp:
+        (WebCore::CSSParserImpl::consumeDeclarationValue):
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::CSSPropertyParser::CSSPropertyParser):
+        (WebCore::CSSPropertyParser::parseValue):
+        (WebCore::CSSPropertyParser::parseSingleValue):
+        * css/parser/CSSPropertyParser.h:
+        It is possible to get Clang to complain about the unused member, though
+        I'm not sure why it doesn't in the build today.
+
+2017-04-06  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Hittest always returns the first renderer in the block.
+        https://bugs.webkit.org/show_bug.cgi?id=170520
+        <rdar://problem/30979175>
+
+        Reviewed by Antti Koivisto.
+
+        This is incorrect now with <br> support (multiple renderers within the same block flow).
+
+        Test: fast/dom/Document/CaretRangeFromPoint/simple-line-layout-hittest-with-caret-range-from-point.html
+
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::positionForPoint): Related fix. We don't yet support positionForPoint with multiple renderes. 
+        * rendering/SimpleLineLayoutFlowContents.h:
+        (WebCore::SimpleLineLayout::FlowContents::segmentForRun): Empty runs are all valid.
+        * rendering/SimpleLineLayoutFunctions.cpp:
+        (WebCore::SimpleLineLayout::hitTestFlow):
+        (WebCore::SimpleLineLayout::collectFlowOverflow):
+        * rendering/SimpleLineLayoutResolver.cpp:
+        (WebCore::SimpleLineLayout::LineResolver::Iterator::operator*): This should eventually return a list of renderes.
+        * rendering/SimpleLineLayoutResolver.h:
+        (WebCore::SimpleLineLayout::RunResolver::flowContents):
+
+2017-04-06  Jon Davis  <jond@apple.com>
+
+        Updates feature status for recently shipped features
+        https://bugs.webkit.org/show_bug.cgi?id=170359
+
+        Reviewed by Brian Burg.
+
+        Added missing Gamepad entry.
+        Changed "Done" status to "Supported".
+        Also changed status from "In Development" to "Supported" for:
+        
+        - CSS Grid Layout Level 1
+        - CSS Inline Layout Module Level 3
+        - CSS Scroll Snap Points Module Level 1
+        - CSS Color Level 4
+        - Fetch API
+        - Indexed Database 2.0
+        - Media Capture and Streams
+        - Pointer Lock
+        - Preload
+        - Input Events
+
+        * features.json:
+
+2017-03-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Add support for AES-CTR
+        https://bugs.webkit.org/show_bug.cgi?id=169761
+        <rdar://problem/31331321>
+
+        Reviewed by Brent Fulgham.
+
+        This patch adds support for AES-CTR. Operations of AES-CTR include: encrypt, decrypt, generateKey,
+        importKey, exportKey, wrapKey, and unwrapKey. This implementation follows the latest WebCryptoAPI
+        spec: https://www.w3.org/TR/WebCryptoAPI/#aes-ctr.
+
+        Tests: crypto/subtle/aes-ctr-encrypt-malformed-parameters.html
+               crypto/subtle/aes-ctr-encrypt-overflow.html
+               crypto/subtle/aes-ctr-generate-export-key-jwk-length-128.html
+               crypto/subtle/aes-ctr-generate-export-key-jwk-length-192.html
+               crypto/subtle/aes-ctr-generate-export-key-jwk-length-256.html
+               crypto/subtle/aes-ctr-generate-export-raw-key.html
+               crypto/subtle/aes-ctr-generate-key-encrypt-decrypt.html
+               crypto/subtle/aes-ctr-generate-key.html
+               crypto/subtle/aes-ctr-import-jwk-key-length-128.html
+               crypto/subtle/aes-ctr-import-jwk-key-length-192.html
+               crypto/subtle/aes-ctr-import-jwk-key-length-256.html
+               crypto/subtle/aes-ctr-import-key-decrypt.html
+               crypto/subtle/aes-ctr-import-key-encrypt.html
+               crypto/subtle/aes-ctr-import-key-unwrap-jwk-key.html
+               crypto/subtle/aes-ctr-import-key-unwrap-raw-key.html
+               crypto/subtle/aes-ctr-import-key-wrap-jwk-key.html
+               crypto/subtle/aes-ctr-import-key-wrap-raw-key.html
+               crypto/subtle/aes-ctr-import-raw-key.html
+               crypto/workers/subtle/aes-ctr-import-key-decrypt.html
+               crypto/workers/subtle/aes-ctr-import-key-encrypt.html
+               crypto/workers/subtle/aes-ctr-import-key-unwrap-key.html
+               crypto/workers/subtle/aes-ctr-import-key-wrap-key.html
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/JSSubtleCryptoCustom.cpp:
+        (WebCore::normalizeCryptoAlgorithmParameters):
+        * crypto/CryptoAlgorithmParameters.h:
+        * crypto/algorithms/CryptoAlgorithmAES_CTR.cpp: Added.
+        (WebCore::usagesAreInvalidForCryptoAlgorithmAES_CTR):
+        (WebCore::parametersAreValid):
+        (WebCore::CryptoAlgorithmAES_CTR::create):
+        (WebCore::CryptoAlgorithmAES_CTR::identifier):
+        (WebCore::CryptoAlgorithmAES_CTR::encrypt):
+        (WebCore::CryptoAlgorithmAES_CTR::decrypt):
+        (WebCore::CryptoAlgorithmAES_CTR::generateKey):
+        (WebCore::CryptoAlgorithmAES_CTR::importKey):
+        (WebCore::CryptoAlgorithmAES_CTR::exportKey):
+        (WebCore::CryptoAlgorithmAES_CTR::getKeyLength):
+        * crypto/algorithms/CryptoAlgorithmAES_CTR.h: Added.
+        * crypto/gcrypt/CryptoAlgorithmAES_CTRGCrypt.cpp: Added.
+        (WebCore::CryptoAlgorithmAES_CTR::platformEncrypt):
+        (WebCore::CryptoAlgorithmAES_CTR::platformDecrypt):
+        * crypto/mac/CryptoAlgorithmAES_CTRMac.cpp: Added.
+        (WebCore::bigIntegerToSize):
+        (WebCore::transformAES_CTR):
+        (WebCore::CryptoAlgorithmAES_CTR::platformEncrypt):
+        (WebCore::CryptoAlgorithmAES_CTR::platformDecrypt):
+        * crypto/mac/CryptoAlgorithmRegistryMac.cpp:
+        (WebCore::CryptoAlgorithmRegistry::platformRegisterAlgorithms):
+        * crypto/parameters/AesCtrParams.idl: Added.
+        * crypto/parameters/CryptoAlgorithmAesCtrParams.h: Added.
+
+2017-04-06  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC tests gardening
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig: Changing webrtc enabling for ios.
+
+2017-04-06  Andreas Kling  <akling@apple.com>
+
+        Stop forcing CA commit when memory pressure changes.
+        https://bugs.webkit.org/show_bug.cgi?id=170522
+        <rdar://problem/31460236>
+
+        Reviewed by Antti Koivisto.
+
+        Don't force a CA commit when reaching critical memory pressure. We're already doing a ton
+        of work in response to the pressure, and this was really a hack to try to react quickly on
+        512 MB devices which we don't support anymore.
+
+        * page/MemoryRelease.cpp:
+        (WebCore::releaseCriticalMemory):
+
+2017-04-06  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBRequest respondWithNewView()
+        https://bugs.webkit.org/show_bug.cgi?id=170339
+
+        Reviewed by Youenn Fablet.
+
+        Implemented ReadableStreamBYOBRequest respondWithNewView().
+
+        Added new tests to check respondWithNewView() behaviour.
+
+        * Modules/streams/ReadableByteStreamInternals.js:
+        (readableByteStreamControllerRespondWithNewView): Added.
+        * Modules/streams/ReadableStreamBYOBRequest.js:
+        (respondWithNewView): Updated.
+
+2017-04-06  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Host application should be able to mute and unmute media streams
+        https://bugs.webkit.org/show_bug.cgi?id=170519
+        <rdar://problem/31174326>
+
+        Unreviewed, fix crash introduced in r214980.
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::MediaStream): NULL-check page.
+
+2017-04-06  Dave Hyatt  <hyatt@apple.com>
+
+        Rendering flexbox children across columns
+        https://bugs.webkit.org/show_bug.cgi?id=164166
+        <rdar://problem/29055587>
+
+        Reviewed by Zalan Bujtas.
+
+        Added fast/multicol/flexbox-rows.html.
+
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::adjustForUnsplittableChild):
+        Treat block-level flexboxes that occur inside block flows the same as replaced
+        and unsplittable elements and push them to the next page if they don't fit. We don't
+        update the minimum page height though, since the flexbox is not really unsplittable.
+
 2017-04-05  Simon Fraser  <simon.fraser@apple.com>
 
         Set lastHandledUserGestureTimestamp on all ancestor documents, not just the top document

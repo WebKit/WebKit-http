@@ -1,3 +1,59 @@
+2017-04-06  Michael Saboff  <msaboff@apple.com>
+
+        Cannot Object.seal() or Object.freeze() global "this"
+        https://bugs.webkit.org/show_bug.cgi?id=170549
+
+        Reviewed by Mark Lam.
+
+        Enabled failing tests fixed by the corresponding code change:
+            ChakraCore/test/LetConst/delete.js
+            ChakraCore/test/LetConst/dop.js
+            ChakraCore/test/LetConst/dop1.js
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/LetConst/dop.baseline-jsc: Added JSC specific expected output.
+        * ChakraCore/test/LetConst/dop1.baseline-jsc: Added JSC specific expected output.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: ES2017 test progressions need updated expectations (arguments.caller removed)
+        https://bugs.webkit.org/show_bug.cgi?id=170536
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+        After r208867 the tests are out of date and are now expected to fail.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Final rebaseline of existing tests, a few tests have started failing
+        https://bugs.webkit.org/show_bug.cgi?id=170538
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+        These tests started failing a while ago. Mark them as legitmate failures.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Rebaseline expectations for now passing tests
+        https://bugs.webkit.org/show_bug.cgi?id=170532
+
+        Reviewed by Ryosuke Niwa.
+
+        * test262.yaml:
+        Update expectations for tests we are now passing.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: module test progressions need updated expectations (@@iterator changes)
+        https://bugs.webkit.org/show_bug.cgi?id=170535
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+        After r212430 the tests are out of date and are now expected to fail.
+
 2017-04-05  Michael Saboff  <msaboff@apple.com>
 
         Unreviewed rollout of r214642 as the test still intermittently fails.
