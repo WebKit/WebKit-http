@@ -67,6 +67,12 @@ if (WIN32)
     set(CMAKE_SHARED_MODULE_PREFIX "")
 endif ()
 
+if (APPLE)
+    if (${CMAKE_BUILD_TYPE} MATCHES "Debug")
+        set(CMAKE_DEBUG_POSTFIX _debug)
+    endif ()
+endif ()
+
 WEBKIT_OPTION_BEGIN()
 
 if (APPLE)
