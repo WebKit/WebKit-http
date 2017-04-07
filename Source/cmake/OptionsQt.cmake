@@ -708,3 +708,8 @@ include(KDEInstallDirs)
 if (NOT qt_install_prefix_dir STREQUAL "${CMAKE_INSTALL_PREFIX}")
     set(KDE_INSTALL_USE_QT_SYS_PATHS OFF)
 endif ()
+
+# We split all installed files into 2 components: Code and Data. This is different from
+# traditional approach with Runtime and Devel, but we need it to fix concurrent installation of
+# debug and release builds in qmake-based build
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "Code")

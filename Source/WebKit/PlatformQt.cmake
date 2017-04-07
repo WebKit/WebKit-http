@@ -378,6 +378,7 @@ install(
         ${WebKit_PUBLIC_HEADERS}
     DESTINATION
         ${KDE_INSTALL_INCLUDEDIR}/QtWebKit
+    COMPONENT Data
 )
 
 file(GLOB WebKit_PRIVATE_HEADERS qt/Api/*_p.h)
@@ -386,6 +387,7 @@ install(
         ${WebKit_PRIVATE_HEADERS}
     DESTINATION
         ${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
+    COMPONENT Data
 )
 
 set(WEBKIT_PKGCONGIG_DEPS "Qt5Core Qt5Gui Qt5Network")
@@ -435,8 +437,9 @@ ecm_generate_pkgconfig_file(
     BASE_NAME Qt5WebKit
     DEPS "${WEBKIT_PKGCONGIG_DEPS}"
     FILENAME_VAR WebKit_PKGCONFIG_FILENAME
-    INSTALL
 )
+set(ECM_PKGCONFIG_INSTALL_DIR "${LIB_INSTALL_DIR}/pkgconfig" CACHE PATH "The directory where pkgconfig will be installed to.")
+install(FILES ${WebKit_PKGCONFIG_FILENAME} DESTINATION ${ECM_PKGCONFIG_INSTALL_DIR} COMPONENT Data)
 
 if (KDE_INSTALL_USE_QT_SYS_PATHS)
     set(WebKit_PRI_ARGUMENTS
@@ -463,7 +466,7 @@ ecm_generate_pri_file(
     FILENAME_VAR WebKit_PRI_FILENAME
     ${WebKit_PRI_ARGUMENTS}
 )
-install(FILES ${WebKit_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR})
+install(FILES ${WebKit_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR} COMPONENT Data)
 
 if (QT_STATIC_BUILD)
     set(WebKit_LIBRARY_TYPE STATIC)
@@ -586,6 +589,7 @@ install(
         ${WebKitWidgets_PUBLIC_HEADERS}
     DESTINATION
         ${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets
+    COMPONENT Data
 )
 
 file(GLOB WebKitWidgets_PRIVATE_HEADERS qt/WidgetApi/*_p.h)
@@ -594,14 +598,15 @@ install(
         ${WebKitWidgets_PRIVATE_HEADERS}
     DESTINATION
         ${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets/private
+    COMPONENT Data
 )
 
 ecm_generate_pkgconfig_file(
     BASE_NAME Qt5WebKitWidgets
     DEPS "${WEBKITWIDGETS_PKGCONFIG_DEPS}"
     FILENAME_VAR WebKitWidgets_PKGCONFIG_FILENAME
-    INSTALL
 )
+install(FILES ${WebKitWidgets_PKGCONFIG_FILENAME} DESTINATION ${ECM_PKGCONFIG_INSTALL_DIR} COMPONENT Data)
 
 if (KDE_INSTALL_USE_QT_SYS_PATHS)
     set(WebKitWidgets_PRI_ARGUMENTS
@@ -627,7 +632,7 @@ ecm_generate_pri_file(
     FILENAME_VAR WebKitWidgets_PRI_FILENAME
     ${WebKitWidgets_PRI_ARGUMENTS}
 )
-install(FILES ${WebKitWidgets_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR})
+install(FILES ${WebKitWidgets_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR} COMPONENT Data)
 
 if (MSVC)
     if (CMAKE_SIZEOF_VOID_P EQUAL 8)
