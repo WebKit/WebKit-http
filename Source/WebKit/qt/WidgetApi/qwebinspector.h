@@ -42,6 +42,7 @@ public:
 protected:
     void resizeEvent(QResizeEvent* event) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent* event) Q_DECL_OVERRIDE;
+    void hideEvent(QHideEvent* event) Q_DECL_OVERRIDE;
     void closeEvent(QCloseEvent* event) Q_DECL_OVERRIDE;
 
 private:
