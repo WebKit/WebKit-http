@@ -676,7 +676,7 @@ if (APPLE AND NOT QT_STATIC_BUILD)
 else ()
     set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
 endif ()
-set(WebKitWidgets_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKitWidgets/Private)
+set(WebKitWidgets_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKitWidgets/private)
 
 WEBKIT_FRAMEWORK(WebKitWidgets)
 add_dependencies(WebKitWidgets WebKit)

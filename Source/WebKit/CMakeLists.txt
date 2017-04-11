@@ -50,7 +50,7 @@ if (MSVC)
     endif ()
 endif ()
 
-set(WebKit_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKit/Private)
+set(WebKit_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKit/private)
 
 WEBKIT_FRAMEWORK(WebKit)
 
