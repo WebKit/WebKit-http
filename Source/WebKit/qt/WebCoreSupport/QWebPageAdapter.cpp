@@ -365,8 +365,12 @@ void QWebPageAdapter::setNetworkAccessManager(QNetworkAccessManager *manager)
 
 QNetworkAccessManager* QWebPageAdapter::networkAccessManager()
 {
-    if (!networkManager)
+    if (!networkManager) {
         networkManager = new QNetworkAccessManager(handle());
+#if QT_VERSION >= QT_VERSION_CHECK(5, 9, 0)
+        networkManager->setStrictTransportSecurityEnabled(true);
+#endif
+    }
     return networkManager;
 }
 
