@@ -112,13 +112,17 @@ build_pass|!debug_and_release {
     QMAKE_EXTRA_TARGETS += default_target
 
     # When debug and release are built at the same time, don't install data files twice
-    debug_and_release:build_all:CONFIG(debug, debug|release): cmake_install_args = "-DCOMPONENT=Code"
+    debug_and_release:build_all:CONFIG(debug, debug|release) {
+        cmake_install_args = "-DCOMPONENT=Code"
+        # TODO: Fix macOS frameworks installation in debug_and_release
+        macos: destdir_suffix = "/debug"
+    }
 
     install_impl_target.target = install_impl
     install_impl_target.commands = cd $$cmake_build_dir && cmake $$cmake_install_args -P cmake_install.cmake
     QMAKE_EXTRA_TARGETS += install_impl_target
 
     install_target.target = install
-    install_target.commands = $(MAKE) -f $(MAKEFILE) install_impl $$make_args DESTDIR=$(INSTALL_ROOT)
+    install_target.commands = $(MAKE) -f $(MAKEFILE) install_impl $$make_args DESTDIR=$(INSTALL_ROOT)$$destdir_suffix
     QMAKE_EXTRA_TARGETS += install_target
 }
