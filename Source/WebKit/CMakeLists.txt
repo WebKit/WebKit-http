@@ -67,6 +67,13 @@ if (${PORT} STREQUAL "Qt")
     if (NOT MSVC)
         ADD_PREFIX_HEADER(WebKit "${WEBKIT_DIR}/qt/WebKitPrefix.h")
     endif ()
+
+    if (MACOS_BUILD_FRAMEWORKS)
+        set_target_properties(WebKit PROPERTIES
+            FRAMEWORK_VERSION 5
+            MACOSX_FRAMEWORK_IDENTIFIER org.qt-project.QtWebKit
+        )
+    endif ()
 endif ()
 
 add_dependencies(WebKit WebCore)

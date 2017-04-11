@@ -693,6 +693,13 @@ if (NOT MSVC AND WIN32)
     ADD_PREFIX_HEADER(WebKitWidgets "qt/WebKitWidgetsPrefix.h")
 endif ()
 
+if (MACOS_BUILD_FRAMEWORKS)
+    set_target_properties(WebKitWidgets PROPERTIES
+        FRAMEWORK_VERSION 5
+        MACOSX_FRAMEWORK_IDENTIFIER org.qt-project.QtWebKitWidgets
+    )
+endif ()
+
 if (USE_LINKER_VERSION_SCRIPT)
     set(VERSION_SCRIPT "${CMAKE_BINARY_DIR}/QtWebKitWidgets.version")
     add_custom_command(TARGET WebKitWidgets PRE_LINK
