@@ -71,6 +71,7 @@ WEBKIT_OPTION_BEGIN()
 
 if (APPLE)
     option(MACOS_FORCE_SYSTEM_XML_LIBRARIES "Use system installation of libxml2 and libxslt on macOS" ON)
+    set(MACOS_BUILD_FRAMEWORKS ON) # TODO: Make it an option
 endif ()
 
 if (WIN32 OR APPLE)
@@ -235,6 +236,7 @@ get_target_property(QT_CORE_TYPE Qt5::Core TYPE)
 if (QT_CORE_TYPE MATCHES STATIC)
     set(QT_STATIC_BUILD ON)
     set(SHARED_CORE OFF)
+    set(MACOS_BUILD_FRAMEWORKS OFF)
 endif ()
 
 if (SHARED_CORE)
