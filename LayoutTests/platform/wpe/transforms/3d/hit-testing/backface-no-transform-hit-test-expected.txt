@@ -3,26 +3,26 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderBlock {P} at (0,0) size 784x19
-        RenderText {#text} at (0,-1) size 755x20
-          text run at (0,-1) width 755: "There are two boxes inside a container that is rotated 180\x{B0} in Y. box2 has backface-visibility: hidden, so you can't see it."
-      RenderBlock {DIV} at (0,237) size 784x38
-        RenderText {#text} at (0,-1) size 194x20
-          text run at (0,-1) width 194: "Found container on left: PASS"
-        RenderBR {BR} at (194,14) size 0x1
-        RenderText {#text} at (0,18) size 177x20
-          text run at (0,18) width 177: "Found box1 on right: PASS"
-        RenderBR {BR} at (177,33) size 0x1
-layer at (8,43) size 402x202
-  RenderBlock {DIV} at (0,35) size 402x202 [bgcolor=#EEEEEE] [border: (1px solid #000000)]
-    RenderText {#text} at (197,34) size 4x20
-      text run at (197,34) width 4: " "
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 737x16
+          text run at (0,0) width 737: "There are two boxes inside a container that is rotated 180\x{B0} in Y. box2 has backface-visibility: hidden, so you can't see it."
+      RenderBlock {DIV} at (0,234) size 784x32
+        RenderText {#text} at (0,0) size 189x16
+          text run at (0,0) width 189: "Found container on left: PASS"
+        RenderBR {BR} at (188,12) size 1x0
+        RenderText {#text} at (0,16) size 170x16
+          text run at (0,16) width 170: "Found box1 on right: PASS"
+        RenderBR {BR} at (169,28) size 1x0
+layer at (8,40) size 402x202
+  RenderBlock {DIV} at (0,32) size 402x202 [bgcolor=#EEEEEE] [border: (1px solid #000000)]
+    RenderText {#text} at (197,32) size 4x16
+      text run at (197,32) width 4: " "
     RenderText {#text} at (0,0) size 0x0
-layer at (27,62) size 160x160
+layer at (27,59) size 160x160
   RenderBlock (relative positioned) {DIV} at (19,19) size 160x160 [bgcolor=#808080]
-    RenderText {#text} at (48,0) size 64x39
-      text run at (48,0) width 64: "box1"
-layer at (227,62) size 160x160
-  RenderBlock (relative positioned) {DIV} at (219,19) size 160x160 [bgcolor=#808080]
-    RenderText {#text} at (48,0) size 64x39
-      text run at (48,0) width 64: "box2"
+    RenderText {#text} at (49,0) size 62x32
+      text run at (49,0) width 62: "box1"
+layer at (227,59) size 160x160
+  RenderBlock (relative positioned) {DIV} at (218,19) size 161x160 [bgcolor=#808080]
+    RenderText {#text} at (49,0) size 62x32
+      text run at (49,0) width 62: "box2"

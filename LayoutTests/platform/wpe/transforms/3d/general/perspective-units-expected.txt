@@ -1,33 +1,33 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x580
-  RenderBlock {HTML} at (0,0) size 800x580
-    RenderBody {BODY} at (8,16) size 784x556
-      RenderBlock {P} at (0,0) size 784x19
-        RenderText {#text} at (0,-1) size 501x20
-          text run at (0,-1) width 501: "-webkit-perspective should take units. All four should look qualitatively similar."
-      RenderBlock (anonymous) at (0,35) size 784x521
-        RenderText {#text} at (242,157) size 4x20
-          text run at (242,157) width 4: " "
-        RenderText {#text} at (488,157) size 4x20
-          text run at (488,157) width 4: " "
-        RenderText {#text} at (734,157) size 4x20
-          text run at (734,157) width 4: " "
+layer at (0,0) size 800x576
+  RenderBlock {HTML} at (0,0) size 800x576
+    RenderBody {BODY} at (8,16) size 784x552
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 497x16
+          text run at (0,0) width 497: "-webkit-perspective should take units. All four should look qualitatively similar."
+      RenderBlock (anonymous) at (0,32) size 784x520
+        RenderText {#text} at (242,160) size 4x16
+          text run at (242,160) width 4: " "
+        RenderText {#text} at (487,160) size 5x16
+          text run at (487,160) width 5: " "
+        RenderText {#text} at (733,160) size 5x16
+          text run at (733,160) width 5: " "
         RenderBR {BR} at (0,0) size 0x0
         RenderText {#text} at (0,0) size 0x0
-layer at (28,61) size 202x152
+layer at (28,58) size 202x152
   RenderBlock {DIV} at (20,10) size 202x152 [border: (1px solid #000000)]
-layer at (29,62) size 200x150
+layer at (29,59) size 200x150
   RenderBlock {DIV} at (1,1) size 200x150 [bgcolor=#0000FF]
-layer at (274,61) size 202x152
-  RenderBlock {DIV} at (266,10) size 202x152 [border: (1px solid #000000)]
-layer at (275,62) size 200x150
+layer at (274,58) size 202x152
+  RenderBlock {DIV} at (265,10) size 203x152 [border: (1px solid #000000)]
+layer at (275,59) size 200x150
   RenderBlock {DIV} at (1,1) size 200x150 [bgcolor=#0000FF]
-layer at (520,61) size 202x152
-  RenderBlock {DIV} at (512,10) size 202x152 [border: (1px solid #000000)]
-layer at (521,62) size 200x150
+layer at (520,58) size 202x152
+  RenderBlock {DIV} at (511,10) size 203x152 [border: (1px solid #000000)]
+layer at (521,59) size 200x150
   RenderBlock {DIV} at (1,1) size 200x150 [bgcolor=#0000FF]
-layer at (48,248) size 404x304
-  RenderBlock {DIV} at (40,197) size 404x304 [border: (2px solid #000000)]
-layer at (50,250) size 400x300
+layer at (48,244) size 404x304
+  RenderBlock {DIV} at (40,196) size 404x304 [border: (2px solid #000000)]
+layer at (50,246) size 400x300
   RenderBlock {DIV} at (2,2) size 400x300 [bgcolor=#0000FF]
