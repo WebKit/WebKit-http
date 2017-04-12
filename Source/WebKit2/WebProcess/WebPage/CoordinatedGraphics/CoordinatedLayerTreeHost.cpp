@@ -88,7 +88,7 @@ void CoordinatedLayerTreeHost::scheduleLayerFlush()
     }
 
     if (!m_layerFlushTimer.isActive())
-        m_layerFlushTimer.startOneShot(0);
+        m_layerFlushTimer.startOneShot(0_s);
 }
 
 void CoordinatedLayerTreeHost::cancelPendingLayerFlush()
@@ -238,7 +238,7 @@ void CoordinatedLayerTreeHost::scheduleAnimation()
         return;
 
     scheduleLayerFlush();
-    m_layerFlushTimer.startOneShot(m_coordinator.nextAnimationServiceTime());
+    m_layerFlushTimer.startOneShot(1_s * m_coordinator.nextAnimationServiceTime());
 }
 
 void CoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset)

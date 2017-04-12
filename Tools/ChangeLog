@@ -1,3 +1,549 @@
+2017-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize vector adoption
+        https://bugs.webkit.org/show_bug.cgi?id=170758
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebCore/SharedBuffer.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-04-11  Dean Jackson  <dino@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Tim Horton.
+
+        The API we implement is no longer accurate. Disable it until we
+        are compatible with the new specification
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-04-11  David Quesada  <david_quesada@apple.com>
+
+        Add SPI for handling geolocation authorization requests
+        https://bugs.webkit.org/show_bug.cgi?id=170362
+        rdar://problem/17508627
+
+        Reviewed by Alex Christensen.
+
+        Add API tests for the new WKUIDelegate SPI for allowing or denying websites permission
+        to use geolocation. Adopt the new WKProcessPool._coreLocationProvider property to
+        provide a stub object to simulate the various configurations of geolocation permissions:
+        1. The app doesn't have permission to use geolocation.
+        2. The app is allowed to use geolocation, but the UI delegate denies the web view permission.
+        3. The app is allowed to use geolocation, and the UI delegate allows the web view permission.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Geolocation.mm: Added.
+        (-[TestCoreLocationProvider setListener:]):
+        (-[TestCoreLocationProvider requestGeolocationAuthorization]):
+        (-[TestCoreLocationProvider start]):
+        (-[TestCoreLocationProvider stop]):
+        (-[TestCoreLocationProvider setEnableHighAccuracy:]):
+        (expectException):
+        (-[GeolocationTestUIDelegate _webView:requestGeolocationAuthorizationForURL:frame:decisionHandler:]):
+        (-[GeolocationTestUIDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/GeolocationGetCurrentPositionResult.html: Added.
+
+2017-04-10  Matt Rajca  <mrajca@apple.com>
+
+        Change autoplay state to "prevented" when media is paused due to restrictions.
+        https://bugs.webkit.org/show_bug.cgi?id=170686
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/autoplay-muted-with-controls.html: Added test.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST):
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebCore][JSC] ResourceUsageData.{timeOfNextEdenCollection,timeOfNextFullCollection} should be MonotonicTime
+        https://bugs.webkit.org/show_bug.cgi?id=170725
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/Time.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r215217
+        https://bugs.webkit.org/show_bug.cgi?id=170703
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=170703
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-04-10  Kocsen Chung  <kocsen_chung@apple.com>
+
+        Have parseRevisionProperty use default repo name as the Buildbot key.
+        https://bugs.webkit.org/show_bug.cgi?id=170696
+
+        Reviewed by Daniel Bates.
+
+        Previously, we needed to set a key and a fallbackKey when addressing
+        Buildbot data for Internal. That is no longer necessary as we can make a safe assumption
+        that the repo name maps exactly to that key for every repository other
+        than WebKit.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        Set `key = repositoryName` and only use fallback keys when dealing with WebKit.
+
+2017-04-10  Aakash Jain  <aakash_jain@apple.com>
+
+        Add test262 JavaScriptCore tests to dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=170711
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot): Added test262 JSC tests to dashboard.
+
+2017-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r195479) First main resource load in new WebProcess bypasses content extensions
+        https://bugs.webkit.org/show_bug.cgi?id=170707
+        <rdar://problem/27788755>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKUserContentExtensionStore.mm:
+        (-[ContentExtensionDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST_F):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (-[ContentBlockingWebsitePoliciesDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[ContentBlockingWebsitePoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TEST):
+
+2017-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Add API to get available content extension identifiers in a WKContentExtensionStore
+        https://bugs.webkit.org/show_bug.cgi?id=170093
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKUserContentExtensionStore.mm:
+        (TEST_F):
+
+2017-04-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Refactor DataInteractionTests.UnresponsivePageDoesNotHangUI to not check against a fixed time interval
+        https://bugs.webkit.org/show_bug.cgi?id=170658
+
+        Reviewed by Tim Horton.
+
+        Uses ignoreSynchronousMessagingTimeoutsForTesting to ensure that this test times out if data interaction
+        preparation is synchronous, or passes if it is asynchronous.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView initWithFrame:]):
+        (-[TestWKWebView initWithFrame:configuration:processPoolConfiguration:]):
+        (-[TestWKWebView _setUpTestWindow:]):
+
+2017-04-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][macOS] Block access to Apple Events before launch.
+        https://bugs.webkit.org/show_bug.cgi?id=170626
+        <rdar://problem/16079334>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a new TestWebKitAPI test that fails if Apple Events are sent.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add new files.
+        * TestWebKitAPI/Tests/WebKit2/mac/InjectedBundleAppleEvent.cpp: Added.
+        (TestWebKitAPI::didReceiveMessageFromInjectedBundle):
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/mac/InjectedBundleAppleEvent_Bundle.cpp: Added.
+        (TestWebKitAPI::InjectedBundleAppleEventTest::InjectedBundleAppleEventTest):
+        (TestWebKitAPI::InjectedBundleAppleEventTest::didCreatePage):
+
+2017-04-10  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC] Do not run FTL stress tests on MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=170684
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        run-jsc-stress-tests does not correctly detect MIPS platforms, and its
+        logic to detect if the platform supports FTL ignores that MIPS does
+        not support FTL. This adds detection of MIPS (with the magic number
+        determined empirically) and fixes the determination of whether we
+        support FTL.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-04-10  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Increase estimate for processes run by iOS Simulators
+        https://bugs.webkit.org/show_bug.cgi?id=170678
+        <rdar://problem/31534061>
+
+        Reviewed by Aakash Jain.
+
+        Previously, it was estimated that each simulated iOS device would run about 100
+        processes.  With newer versions of iOS, this is closer to 125.
+
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort): Increase process estimate from 100 to 125.
+
+2017-04-10  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Misplaced right click menu on web page due to deprecated gtk_menu_popup()
+        https://bugs.webkit.org/show_bug.cgi?id=170553
+
+        Reviewed by Michael Catanzaro.
+
+        Use gtk_menu_popup_at_pointer() and gtk_menu_popup_at_rect() when
+        building with GTK+ 3.22 or newer. This allows the Wayland GTK+ backend
+        to properly position popup menus, and also avoids using functions
+        which were deprecated starting at that GTK+ release.
+
+        * MiniBrowser/gtk/BrowserSearchBar.c:
+        (searchEntryMenuIconPressedCallback):
+        Update MiniBrowser to use gtk_menu_popup_at_pointer().
+
+2017-04-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r214403): fast/events/drag-to-navigate.html and fast/events/only-valid-drop-targets-receive-file-drop.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=170677
+        <rdar://problem/31512633>
+
+        Reviewed by Tim Horton.
+
+        Fixes two drag and drop LayoutTests by introducing and enabling a TestOptions switch (enableDragDestinationActionLoad)
+        to allow dropping URLs to trigger page navigation.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting):
+        * DumpRenderTree/mac/UIDelegate.h:
+        * DumpRenderTree/mac/UIDelegate.mm:
+        (-[UIDelegate resetToConsistentStateBeforeTesting:]):
+        (-[UIDelegate webView:dragDestinationActionMaskForDraggingInfo:]):
+
+2017-04-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        update-webkit-dependency should report $response->message for diagnose
+        https://bugs.webkit.org/show_bug.cgi?id=170666
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/update-webkit-dependency: Print $response->message to STDERR if an error happens.
+
+2017-04-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Data interaction on an image enclosed by an anchor should vend the anchor's URL
+        https://bugs.webkit.org/show_bug.cgi?id=170660
+        <rdar://problem/31043220>
+
+        Reviewed by Tim Horton.
+
+        Adds two new unit tests covering cases where data interaction is triggered from an image nested underneath an
+        anchor. In one of the tests, the link has an href, and in the other, its href is missing, in which case we
+        should fall back to the image URL instead. Also fixes a related unit test that was trying to check selection
+        rects, but should not be.
+
+        See WebCore ChangeLog for more details.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/image-in-link-and-input.html: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-04-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove the GDK dependency from ImageDiff
+        https://bugs.webkit.org/show_bug.cgi?id=85299
+
+        Reviewed by Žan Doberšek.
+
+        Add a cairo only implementation of ImageDiff. We currently have 3 different implementations of ImageDiff: the
+        Gdk based one used by GTK+ port, the cairo based one used by WinCairo and the CG based one. Most of the code is
+        actually common in all of them, but it's duplicated. So, I've taken advantage of this patch to refactor the
+        ImageDiff code to share the common implementation. This patch adds the cross-platform code, and the cairo
+        implementation and enables it in the GTK+ port. In follow up patches we can move WinCairo to this implementation
+        and also add CG implementation.
+
+        * ImageDiff/CMakeLists.txt:
+        * ImageDiff/Cairo.cmake: Added.
+        * ImageDiff/ImageDiff.cpp: Added.
+        (main):
+        * ImageDiff/PlatformGTK.cmake:
+        * ImageDiff/PlatformImage.cpp: Added.
+        (ImageDiff::PlatformImage::isCompatible):
+        (ImageDiff::PlatformImage::difference):
+        * ImageDiff/PlatformImage.h: Added.
+        * ImageDiff/cairo/PlatformImageCairo.cpp: Added.
+        (ImageDiff::PlatformImage::createFromStdin):
+        (ImageDiff::PlatformImage::createFromDiffData):
+        (ImageDiff::PlatformImage::PlatformImage):
+        (ImageDiff::PlatformImage::~PlatformImage):
+        (ImageDiff::PlatformImage::width):
+        (ImageDiff::PlatformImage::height):
+        (ImageDiff::PlatformImage::rowBytes):
+        (ImageDiff::PlatformImage::hasAlpha):
+        (ImageDiff::PlatformImage::pixels):
+        (ImageDiff::PlatformImage::writeAsPNGToStdout):
+        * ImageDiff/gtk/ImageDiff.cpp: Removed.
+
+2017-04-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r214426): [GTK] Test media/video-click-dblckick-standalone.html started to fail in the bots after r214426
+        https://bugs.webkit.org/show_bug.cgi?id=170667
+
+        Reviewed by Žan Doberšek.
+
+        In r214666 we disabled modern media controls runtime feature for the GTK+ port, but layout tests still override
+        that value.
+
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::updatePlatformSpecificTestOptionsForTest): Disable modern media controls.
+
+2017-04-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WTR: Avoid conversion from platform image to WKImage and then to platform image again when dumping pixel results
+        https://bugs.webkit.org/show_bug.cgi?id=170653
+
+        Reviewed by Tim Horton.
+
+        When dumping pixels from a web view snapshot, we create a platform image that is then converted to a WKImage,
+        which is a ShareableBitmap, so the image is rendered into a graphics context. Then we immediately extract the
+        platform image back from the WKImage to dump the pixels. We could avoid that conversion by taking the web
+        snapshot from TestInvocation::dumpPixelsAndCompareWithExpected().
+
+        * WebKitTestRunner/PlatformWebView.h: Add PlatformImage typedef and use it as return value of windowSnapshotImage().
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::dumpResults): Pass the WKImage to dumpPixelsAndCompareWithExpected() only when pixel
+        results were created in the web process.
+        * WebKitTestRunner/TestInvocation.h: Make WKImage a default paramater of dumpPixelsAndCompareWithExpected().
+        * WebKitTestRunner/cairo/TestInvocationCairo.cpp:
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected): Create the cairo surface from the given WKimage in case
+        of web contents snapshot, and use PlatformWebView::windowSnapshotImage() in case of web view snapshot.
+        * WebKitTestRunner/cg/TestInvocationCG.cpp:
+        (WTR::createCGContextFromCGImage): Changed to receive a CGImageRef and renamed.
+        (WTR::createCGContextFromImage): Get the CGImageRef from the WKImage and call createCGContextFromCGImage().
+        (WTR::paintRepaintRectOverlay): It receives now the image size instead of the WKImage.
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected): Create the CGContextRef from the WKImage in case of web
+        contents snpashot, and use PlatformWebView::windowSnapshotImage() in case of web view snapshot.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::windowSnapshotImage): Return the cairo surface instead of creating a WKImage. Also use
+        RGB24 format to match what mac does (kCGWindowImageShouldBeOpaque).
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::windowSnapshotImage): Return the CGImageRef instead of creating a WKImage.
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::windowSnapshotImage): Ditto.
+
+2017-04-10  Chris Dumez  <cdumez@apple.com>
+
+        Drop Timer::startOneShot() overload taking a double
+        https://bugs.webkit.org/show_bug.cgi?id=170659
+
+        Reviewed by Yusuke Suzuki.
+
+        Drop Timer::startOneShot() overload taking a double as people should use Seconds type now.
+
+        * TestWebKitAPI/Tests/WTF/RunLoop.cpp:
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+
+2017-04-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add infrastructure to perform actions after an asynchronous position information request finishes
+        https://bugs.webkit.org/show_bug.cgi?id=170658
+        <rdar://problem/31431450>
+
+        Reviewed by Tim Horton.
+
+        Adds a new test verifying that when a web page is unresponsive, the process of preparing for data interaction
+        does not also cause the UI process to spin. We assume here that the call to prepare must be asynchronous, so it
+        should complete before the unresponsiveness timeout is triggered.
+
+        See WebKit2 ChangeLog for more details.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-04-09  Chris Dumez  <cdumez@apple.com>
+
+        Drop Timer::startRepeating() overload taking a double
+        https://bugs.webkit.org/show_bug.cgi?id=170656
+
+        Reviewed by Yusuke Suzuki.
+
+        Drop Timer::startRepeating() overload taking a double as people should use Seconds type now.
+
+        * TestWebKitAPI/Tests/WTF/RunLoop.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-04-09  Youenn Fablet  <youenn@apple.com>
+
+        Resync WPT tests up to 23cd07d4685d81024b7440e042f8bbdb33e7ddec
+        https://bugs.webkit.org/show_bug.cgi?id=170647
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.fetch): Fetching origin remote in case there is more than one.
+
+2017-04-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Update CSSProperties.json with correct fill-and-stroke status, and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=170643
+
+        Reviewed by Chris Dumez.
+        
+        Update the CSSProperties.json style checker to allow:
+            - comments in codegen_properties
+            - obsolete-category and obsolete-url in specification blocks
+            - renamed "done" to "supported"
+            
+        Fix some references to codegen_properties to be codegen-properties.
+
+        * Scripts/webkitpy/style/checkers/jsonchecker.py:
+        (JSONCSSPropertiesChecker.validate_status_type):
+        (JSONCSSPropertiesChecker.validate_property_specification):
+        (JSONCSSPropertiesChecker.check_codegen_properties):
+
+2017-04-08  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC tests gardening
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-04-07  Keith Miller  <keith_miller@apple.com>
+
+        Add a PriorityQueue class
+        https://bugs.webkit.org/show_bug.cgi?id=170579
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/PriorityQueue.cpp: Added.
+        (operator  _z ):
+        (enqueue):
+        (dequeue):
+        (TEST):
+        (compareMove):
+
+2017-04-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace ES6SampleBench by ARES-6 in run-benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=170585
+
+        Reviewed by Saam Barati.
+
+        Updated the plan file for ES6SampleBench to run ARES-6 instead. Also increased the number of iterations
+        from 4 to 8 to match teh default, and reduced the number of browser instances to use from 5 to 3.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/ARES-6.patch: Renamed from ES6SampleBench.patch.
+        * Scripts/webkitpy/benchmark_runner/data/plans/ares6.plan: Renamed from es6bench.plan.
+
+2017-04-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r211382): Complex text with justification erroneously overflows containers
+        https://bugs.webkit.org/show_bug.cgi?id=170399
+        <rdar://problem/31442008>
+
+        Reviewed by Simon Fraser.
+
+        Check for the invariant that the sum of the advances is equal to m_totalWidth.
+
+        * TestWebKitAPI/Tests/WebCore/ComplexTextController.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-04-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ios-simulator] API test WebKit2.WKWebProcessPlugInRangeHandle timing out
+        https://bugs.webkit.org/show_bug.cgi?id=167594
+
+        Unreviewed test gardening.
+
+        Disable this test because it is still timing out on the bots.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleRangeHandle.mm:
+        (TEST):
+
+2017-04-07  Jonathan Bedard  <jbedard@apple.com>
+
+        REGRESSION (r214553): Allow layout-tests to be run from Xcode without re-directing stdout, stdin and stderr
+        https://bugs.webkit.org/show_bug.cgi?id=170601
+        <rdar://problem/31492696>
+
+        Reviewed by Simon Fraser.
+
+        * TestRunnerShared/IOSLayoutTestCommunication.cpp:
+        (setUpIOSLayoutTestCommunication): Skip TCP setup if no port is in the environment.
+        (tearDownIOSLayoutTestCommunication): Only teardown if TCP was used.
+
+2017-04-07  Aakash Jain  <aakash_jain@apple.com>
+
+        Add support for test262 JavaScriptCore tests
+        https://bugs.webkit.org/show_bug.cgi?id=170523
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Added bot433 and bot434.
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunTest262Tests): Added class to run Test262 tests.
+        (RunTest262Tests.start): Added.
+        (RunTest262Tests.countFailures): Method to count the failures.
+        (Test262Factory): Added Test262 factory class.
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        (RunTest262TestsTest): Added unit tests.
+        (RunTest262TestsTest.assertResults): Helper method.
+        (RunTest262TestsTest.test_no_regressions_output): Added test case.
+        (test_failure_output): Same. 
+        (test_failures_output): Same.
+
+2017-04-07  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] Change --debug option to --debugger
+        https://bugs.webkit.org/show_bug.cgi?id=170587
+
+        Reviewed by Keith Miller.
+
+        * Scripts/run-jsc:
+
+        This patch is changing the new debugger flag for Tools/Scripts/run-jsc
+        to --debugger to avoid shadowing --debug flag used to run JSC with
+        Debug build.
+
+2017-04-07  Brent Fulgham  <bfulgham@apple.com>
+
+        WebKit should percent encode single quotes in query strings
+        https://bugs.webkit.org/show_bug.cgi?id=170561
+        <rdar://problem/7415154>
+
+        Reviewed by Alex Christensen.
+
+        Add a test case for single-quote in the URL query string.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+
 2017-04-06  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Make FontWithFeatures test font pass OTS

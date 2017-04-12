@@ -428,12 +428,11 @@ bool MediaPlayer::load(const URL& url, const ContentType& contentType, MediaSour
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-bool MediaPlayer::load(MediaStreamPrivate* mediaStream)
+bool MediaPlayer::load(MediaStreamPrivate& mediaStream)
 {
     ASSERT(!m_reloadTimer.isActive());
-    ASSERT(mediaStream);
 
-    m_mediaStream = mediaStream;
+    m_mediaStream = &mediaStream;
     m_keySystem = emptyString();
     m_contentMIMEType = emptyString();
     m_contentMIMETypeWasInferredFromExtension = false;
@@ -1121,7 +1120,7 @@ void MediaPlayer::networkStateChanged()
     if (m_private->networkState() >= FormatError && m_private->readyState() < HaveMetadata) {
         client().mediaPlayerEngineFailedToLoad();
         if (installedMediaEngines().size() > 1 && (m_contentMIMEType.isEmpty() || nextBestMediaEngine(m_currentMediaEngine))) {
-            m_reloadTimer.startOneShot(0);
+            m_reloadTimer.startOneShot(0_s);
             return;
         }
     }

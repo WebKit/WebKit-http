@@ -320,10 +320,10 @@ void WebProcessProxy::addVisitedLinkStore(VisitedLinkStore& store)
     store.addProcess(*this);
 }
 
-void WebProcessProxy::addWebUserContentControllerProxy(WebUserContentControllerProxy& proxy)
+void WebProcessProxy::addWebUserContentControllerProxy(WebUserContentControllerProxy& proxy, WebPageCreationParameters& parameters)
 {
     m_webUserContentControllerProxies.add(&proxy);
-    proxy.addProcess(*this);
+    proxy.addProcess(*this, parameters);
 }
 
 void WebProcessProxy::didDestroyVisitedLinkStore(VisitedLinkStore& store)
@@ -1137,6 +1137,8 @@ static String diagnosticLoggingKeyForSimulatedCrashReason(SimulatedCrashReason r
         return DiagnosticLoggingKeys::exceededInactiveMemoryLimitKey();
     case SimulatedCrashReason::ExceededBackgroundCPULimit:
         return DiagnosticLoggingKeys::exceededBackgroundCPULimitKey();
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
     }
 }
 

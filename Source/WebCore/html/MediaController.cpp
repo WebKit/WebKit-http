@@ -58,7 +58,6 @@ MediaController::MediaController(ScriptExecutionContext& context)
     , m_clock(Clock::create())
     , m_scriptExecutionContext(context)
     , m_timeupdateTimer(*this, &MediaController::scheduleTimeupdateEvent)
-    , m_previousTimeupdateTime(0)
 {
 }
 
@@ -149,7 +148,7 @@ double MediaController::currentTime() const
     if (m_position == MediaPlayer::invalidTime()) {
         // Some clocks may return times outside the range of [0..duration].
         m_position = std::max<double>(0, std::min(duration(), m_clock->currentTime()));
-        m_clearPositionTimer.startOneShot(0);
+        m_clearPositionTimer.startOneShot(0_s);
     }
 
     return m_position;
@@ -538,7 +537,7 @@ void MediaController::scheduleEvent(const AtomicString& eventName)
 {
     m_pendingEvents.append(Event::create(eventName, false, true));
     if (!m_asyncEventTimer.isActive())
-        m_asyncEventTimer.startOneShot(0);
+        m_asyncEventTimer.startOneShot(0_s);
 }
 
 void MediaController::asyncEventTimerFired()
@@ -664,7 +663,7 @@ void MediaController::returnToRealtime()
 
 // The spec says to fire periodic timeupdate events (those sent while playing) every
 // "15 to 250ms", we choose the slowest frequency
-static const double maxTimeupdateEventFrequency = 0.25;
+static const Seconds maxTimeupdateEventFrequency { 250_ms };
 
 void MediaController::startTimeupdateTimer()
 {
@@ -676,8 +675,8 @@ void MediaController::startTimeupdateTimer()
 
 void MediaController::scheduleTimeupdateEvent()
 {
-    double now = monotonicallyIncreasingTime();
-    double timedelta = now - m_previousTimeupdateTime;
+    MonotonicTime now = MonotonicTime::now();
+    Seconds timedelta = now - m_previousTimeupdateTime;
 
     if (timedelta < maxTimeupdateEventFrequency)
         return;

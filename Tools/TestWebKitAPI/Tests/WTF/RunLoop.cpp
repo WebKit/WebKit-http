@@ -95,7 +95,7 @@ TEST(WTF_RunLoop, OneShotTimer)
 
     {
         DerivedTimer timer(testFinished);
-        timer.startOneShot(0.1);
+        timer.startOneShot(100_ms);
         Util::run(&testFinished);
     }
 }
@@ -129,7 +129,7 @@ TEST(WTF_RunLoop, RepeatingTimer)
 
     {
         DerivedTimer timer(testFinished);
-        timer.startRepeating(0.01);
+        timer.startRepeating(10_ms);
         Util::run(&testFinished);
     }
 }

@@ -38,10 +38,6 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
-#if PLATFORM(WPE)
-#include "CompositingManager.h"
-#endif
-
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
 #endif
@@ -53,14 +49,13 @@
 
 namespace WebCore {
 struct CoordinatedGraphicsState;
-class GLContext;
 }
 
 namespace WebKit {
 
 class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
-class DisplayRefreshMonitor;
+class ThreadedDisplayRefreshMonitor;
 class WebPage;
 
 class ThreadedCompositor : public CoordinatedGraphicsSceneClient, public ThreadSafeRefCounted<ThreadedCompositor>
@@ -95,7 +90,10 @@ public:
     void forceRepaint();
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID);
+    RefPtr<WebCore::DisplayRefreshMonitor> displayRefreshMonitor(WebCore::PlatformDisplayID);
+    void renderNextFrameIfNeeded();
+    void completeCoordinatedUpdateIfNeeded();
+    void coordinateUpdateCompletionWithClient();
 #endif
 
 private:
@@ -113,7 +111,6 @@ private:
 
     void renderLayerTree();
     void sceneUpdateFinished();
-    void scheduleDisplayImmediately();
 
     void createGLContext();
 
@@ -136,12 +133,11 @@ private:
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_needsResize { false };
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    friend class DisplayRefreshMonitor;
-    RefPtr<DisplayRefreshMonitor> m_displayRefreshMonitor;
-#endif
-
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    Ref<ThreadedDisplayRefreshMonitor> m_displayRefreshMonitor;
+#endif
 
     Atomic<bool> m_clientRendersNextFrame;
     Atomic<bool> m_coordinateUpdateCompletionWithClient;

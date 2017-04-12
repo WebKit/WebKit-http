@@ -82,7 +82,7 @@ static const char* boolString(bool val)
 }
 #endif
 
-static const double DefaultWatchdogTimerInterval = 1;
+static const Seconds defaultWatchdogTimerInterval { 1_s };
 
 @class WebAVMediaSelectionOption;
 
@@ -351,7 +351,7 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
 @interface WebAVPictureInPicturePlayerLayerView : UIView
 @end
 
-static CALayer* WebAVPictureInPicturePlayerLayerView_layerClass(id, SEL)
+static Class WebAVPictureInPicturePlayerLayerView_layerClass(id, SEL)
 {
     return [WebAVPlayerLayer class];
 }
@@ -374,7 +374,7 @@ static Class getWebAVPictureInPicturePlayerLayerViewClass()
 @property (retain) UIView* videoView;
 @end
 
-static CALayer *WebAVPlayerLayerView_layerClass(id, SEL)
+static Class WebAVPlayerLayerView_layerClass(id, SEL)
 {
     return [WebAVPlayerLayer class];
 }
@@ -536,6 +536,7 @@ void WebVideoFullscreenInterfaceAVKit::setWebVideoFullscreenChangeObserver(WebVi
 void WebVideoFullscreenInterfaceAVKit::hasVideoChanged(bool hasVideo)
 {
     [playerController() setHasEnabledVideo:hasVideo];
+    [playerController() setHasVideo:hasVideo];
 }
 
 void WebVideoFullscreenInterfaceAVKit::videoDimensionsChanged(const FloatSize& videoDimensions)
@@ -549,7 +550,7 @@ void WebVideoFullscreenInterfaceAVKit::videoDimensionsChanged(const FloatSize& v
     WebAVPictureInPicturePlayerLayerView *pipView = (WebAVPictureInPicturePlayerLayerView *)[m_playerLayerView pictureInPicturePlayerLayerView];
     WebAVPlayerLayer *pipPlayerLayer = (WebAVPlayerLayer *)[pipView layer];
     [pipPlayerLayer setVideoDimensions:playerLayer.videoDimensions];
-    [pipView setNeedsLayout];    
+    [pipView setNeedsLayout];
 }
 
 void WebVideoFullscreenInterfaceAVKit::externalPlaybackChanged(bool enabled, WebPlaybackSessionModel::ExternalPlaybackTargetType, const String&)
@@ -985,7 +986,7 @@ bool WebVideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason(WebVideoFu
     m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone, reason == ExitFullScreenReason::DoneButtonTapped);
 
     if (!m_watchdogTimer.isActive())
-        m_watchdogTimer.startOneShot(DefaultWatchdogTimerInterval);
+        m_watchdogTimer.startOneShot(defaultWatchdogTimerInterval);
 
     return false;
 }

@@ -1,3 +1,135 @@
+2017-04-11  Dean Jackson  <dino@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Tim Horton.
+
+        The API we implement is no longer accurate. Disable it until we
+        are compatible with the new specification
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-11  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Simple HTML documents should allow non-markup JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=170734
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]): Enabled scripting
+          but disabled scripting markup.
+
+2017-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r215217
+        https://bugs.webkit.org/show_bug.cgi?id=170703
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=170703
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-10  Anders Carlsson  <andersca@apple.com>
+
+        Remove call to WKShowKeyAndMain
+        https://bugs.webkit.org/show_bug.cgi?id=170691
+        rdar://problem/31050032
+
+        Reviewed by Beth Dakin.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (-[CarbonWindowAdapter makeKeyWindow]):
+
+2017-04-10  Jeremy Jones  <jeremyj@apple.com>
+
+        Add CoreAudioCaptureSource.
+        https://bugs.webkit.org/show_bug.cgi?id=170112
+        rdar://problem/30293338
+
+        Reviewed by Eric Carlson.
+
+        Add UseAVFoundationAudioCapture preference to switch back from the new default of CoreAudio.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences useAVFoundationAudioCapture]):
+        (-[WebPreferences setUseAVFoundationAudioCapture:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-04-10  Chris Dumez  <cdumez@apple.com>
+
+        Drop Timer::startOneShot() overload taking a double
+        https://bugs.webkit.org/show_bug.cgi?id=170659
+
+        Reviewed by Yusuke Suzuki.
+
+        Drop Timer::startOneShot() overload taking a double as people should use Seconds type now.
+
+        * Plugins/WebNetscapePluginView.mm:
+        (PluginTimer::start):
+        * Storage/WebStorageManager.mm:
+        (+[WebStorageManager setStorageDatabaseIdleInterval:]):
+
+2017-04-09  Chris Dumez  <cdumez@apple.com>
+
+        Drop Timer::startRepeating() overload taking a double
+        https://bugs.webkit.org/show_bug.cgi?id=170656
+
+        Reviewed by Yusuke Suzuki.
+
+        Drop Timer::startRepeating() overload taking a double as people should use Seconds type now.
+
+        * Plugins/WebNetscapePluginView.mm:
+        (PluginTimer::start):
+
+2017-04-09  Chris Dumez  <cdumez@apple.com>
+
+        Start dropping Timer API dealing with double
+        https://bugs.webkit.org/show_bug.cgi?id=170649
+
+        Reviewed by Yusuke Suzuki.
+
+        Start dropping Timer API dealing with double as people should use Seconds now.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::requestTimerFired):
+        (WebKit::NetscapePluginInstanceProxy::loadRequest):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::deliverData):
+
+2017-04-08  Chris Dumez  <cdumez@apple.com>
+
+        Drop std::chrono support from Timer class
+        https://bugs.webkit.org/show_bug.cgi?id=170645
+
+        Reviewed by Sam Weinig.
+
+        Drop std::chrono support from Timer class now that we prefer using Seconds type.
+
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+
+2017-04-08  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC tests gardening
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2017-04-06  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r215046.

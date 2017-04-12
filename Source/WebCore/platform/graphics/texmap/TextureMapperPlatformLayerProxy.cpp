@@ -40,8 +40,8 @@
 #include <wtf/glib/RunLoopSourcePriority.h>
 #endif
 
-const double s_releaseUnusedSecondsTolerance = 1;
-const double s_releaseUnusedBuffersTimerInterval = 0.5;
+static const double releaseUnusedSecondsTolerance = 1;
+static const Seconds releaseUnusedBuffersTimerInterval = { 500_ms };
 
 namespace WebCore {
 
@@ -155,7 +155,7 @@ std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProx
 void TextureMapperPlatformLayerProxy::scheduleReleaseUnusedBuffers()
 {
     if (!m_releaseUnusedBuffersTimer.isActive())
-        m_releaseUnusedBuffersTimer.startOneShot(s_releaseUnusedBuffersTimerInterval);
+        m_releaseUnusedBuffersTimer.startOneShot(releaseUnusedBuffersTimerInterval);
 }
 
 void TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired()
@@ -165,7 +165,7 @@ void TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired()
         return;
 
     auto buffers = WTFMove(m_usedBuffers);
-    double minUsedTime = monotonicallyIncreasingTime() - s_releaseUnusedSecondsTolerance;
+    double minUsedTime = monotonicallyIncreasingTime() - releaseUnusedSecondsTolerance;
 
     for (auto& buffer : buffers) {
         if (buffer && buffer->lastUsedTime() >= minUsedTime)
@@ -196,7 +196,7 @@ bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(Function<
         return false;
 
     m_compositorThreadUpdateFunction = WTFMove(updateFunction);
-    m_compositorThreadUpdateTimer->startOneShot(0);
+    m_compositorThreadUpdateTimer->startOneShot(0_s);
     return true;
 }
 

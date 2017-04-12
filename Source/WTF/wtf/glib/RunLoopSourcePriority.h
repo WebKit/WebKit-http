@@ -23,6 +23,8 @@
 
 namespace WTF {
 
+#if PLATFORM(GTK)
+
 // This is a global enum to define priorities used by GLib run loop sources.
 // In GLib, priorities are represented by an integer where lower values mean
 // higher priority. The following macros are defined in GLib:
@@ -64,9 +66,33 @@ enum RunLoopSourcePriority {
     // Layer flush.
     LayerFlushTimer = -100,
 
+    // DisplayRefreshMonitor timer, should have the same value as the LayerFlushTimer.
+    DisplayRefreshMonitorTimer = -100,
+
     // Rendering timer in the main thread when accelerated compositing is not used.
     NonAcceleratedDrawingTimer = 100
 };
+
+#elif PLATFORM(WPE)
+
+enum RunLoopSourcePriority {
+    RunLoopDispatcher = -70,
+    RunLoopTimer = -70,
+
+    MainThreadDispatcherTimer = -70,
+
+    MemoryPressureHandlerTimer = -80,
+
+    JavascriptTimer = -60,
+    MainThreadSharedTimer = -60,
+
+    LayerFlushTimer = -70,
+    DisplayRefreshMonitorTimer = -70,
+
+    ReleaseUnusedResourcesTimer = -60,
+};
+
+#endif
 
 } // namespace WTF
 

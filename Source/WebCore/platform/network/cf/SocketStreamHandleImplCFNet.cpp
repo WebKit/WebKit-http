@@ -54,6 +54,7 @@
 #endif
 
 #if PLATFORM(IOS) || PLATFORM(MAC)
+extern "C" const CFStringRef kCFStreamPropertySourceApplication;
 extern "C" const CFStringRef _kCFStreamSocketSetNoDelay;
 #endif
 
@@ -63,13 +64,14 @@ extern "C" const CFStringRef _kCFStreamSocketSetNoDelay;
 
 namespace WebCore {
 
-SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client, SessionID sessionID, const String& credentialPartition)
+SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client, SessionID sessionID, const String& credentialPartition, SourceApplicationAuditToken&& auditData)
     : SocketStreamHandle(url, client)
     , m_connectingSubstate(New)
     , m_connectionType(Unknown)
     , m_sentStoredCredentials(false)
     , m_sessionID(sessionID)
     , m_credentialPartition(credentialPartition)
+    , m_auditData(WTFMove(auditData))
 {
     LOG(Network, "SocketStreamHandle %p new client %p", this, &m_client);
 
@@ -313,9 +315,14 @@ void SocketStreamHandleImpl::createStreams()
     CFReadStreamRef readStream = 0;
     CFWriteStreamRef writeStream = 0;
     CFStreamCreatePairWithSocketToHost(0, host.get(), port(), &readStream, &writeStream);
-#if PLATFORM(IOS) || PLATFORM(MAC)
+#if PLATFORM(COCOA)
     // <rdar://problem/12855587> _kCFStreamSocketSetNoDelay is not exported on Windows
     CFWriteStreamSetProperty(writeStream, _kCFStreamSocketSetNoDelay, kCFBooleanTrue);
+    if (m_auditData.sourceApplicationAuditData && m_auditData.sourceApplicationAuditData.get()) {
+        CFReadStreamSetProperty(readStream, kCFStreamPropertySourceApplication, m_auditData.sourceApplicationAuditData.get());
+        CFWriteStreamSetProperty(writeStream, kCFStreamPropertySourceApplication, m_auditData.sourceApplicationAuditData.get());
+    }
+    
 #endif
 
     m_readStream = adoptCF(readStream);
@@ -656,10 +663,10 @@ SocketStreamHandleImpl::~SocketStreamHandleImpl()
 std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const char* data, size_t length)
 {
     if (!m_writeStream)
-        return std::nullopt;
+        return 0;
 
     if (!CFWriteStreamCanAcceptBytes(m_writeStream.get()))
-        return std::nullopt;
+        return 0;
 
     CFIndex result = CFWriteStreamWrite(m_writeStream.get(), reinterpret_cast<const UInt8*>(data), length);
     if (result == -1)

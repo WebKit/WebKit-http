@@ -291,7 +291,7 @@ void NetworkDataTaskSoup::timeoutFired()
 void NetworkDataTaskSoup::startTimeout()
 {
     if (m_firstRequest.timeoutInterval() > 0)
-        m_timeoutSource.startOneShot(m_firstRequest.timeoutInterval());
+        m_timeoutSource.startOneShot(1_s * m_firstRequest.timeoutInterval());
 }
 
 void NetworkDataTaskSoup::stopTimeout()
@@ -744,7 +744,7 @@ void NetworkDataTaskSoup::didRead(gssize bytesRead)
         writeDownload();
     } else {
         ASSERT(m_client);
-        m_client->didReceiveData(SharedBuffer::adoptVector(m_readBuffer));
+        m_client->didReceiveData(SharedBuffer::create(WTFMove(m_readBuffer)));
         read();
     }
 }

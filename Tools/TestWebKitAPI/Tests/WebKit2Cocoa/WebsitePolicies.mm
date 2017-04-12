@@ -71,22 +71,14 @@ static size_t alertCount;
 {
     switch (alertCount++) {
     case 0:
-        // FIXME: The first content blocker should be enabled here.
-        // ContentExtensionsBackend::addContentExtension isn't being called in the WebProcess
-        // until after the first main resource starts loading, so we need to send a message to the
-        // WebProcess before loading if we have installed content blockers.
-        // See rdar://problem/27788755
-        EXPECT_STREQ("content blockers disabled", message.UTF8String);
-        break;
-    case 1:
         // Default behavior.
         EXPECT_STREQ("content blockers enabled", message.UTF8String);
         break;
-    case 2:
+    case 1:
         // After having set websitePolicies.contentBlockersEnabled to false.
         EXPECT_STREQ("content blockers disabled", message.UTF8String);
         break;
-    case 3:
+    case 2:
         // After having reloaded without content blockers.
         EXPECT_STREQ("content blockers disabled", message.UTF8String);
         break;
@@ -102,12 +94,9 @@ static size_t alertCount;
     _WKWebsitePolicies *websitePolicies = [[[_WKWebsitePolicies alloc] init] autorelease];
     switch (alertCount) {
     case 0:
-        // Verify an existing bug the first time a page is loaded in a new WebProcess.
-        break;
-    case 1:
         // Verify the content blockers behave correctly with the default behavior.
         break;
-    case 2:
+    case 1:
         {
             // Verify disabling content blockers works correctly.
             websitePolicies.contentBlockersEnabled = false;
@@ -120,7 +109,7 @@ static size_t alertCount;
             });
         }
         return;
-    case 3:
+    case 2:
         // Verify enabling content blockers has no effect when reloading without content blockers.
         websitePolicies.contentBlockersEnabled = true;
         break;
@@ -164,10 +153,6 @@ TEST(WebKit2, WebsitePoliciesContentBlockersEnabled)
     TestWebKitAPI::Util::run(&receivedAlert);
 
     receivedAlert = false;
-    [webView reload];
-    TestWebKitAPI::Util::run(&receivedAlert);
-
-    receivedAlert = false;
     [webView _reloadWithoutContentBlockers];
     TestWebKitAPI::Util::run(&receivedAlert);
 
@@ -176,7 +161,7 @@ TEST(WebKit2, WebsitePoliciesContentBlockersEnabled)
 
 @interface AutoplayPoliciesDelegate : NSObject <WKNavigationDelegate, WKUIDelegate>
 @property (nonatomic, copy) _WKWebsiteAutoplayPolicy(^autoplayPolicyForURL)(NSURL *);
-@property (nonatomic) BOOL allowsAutoplayQuirks;
+@property (nonatomic, copy) BOOL(^allowsAutoplayQuirksForURL)(NSURL *);
 @end
 
 @implementation AutoplayPoliciesDelegate
@@ -191,7 +176,8 @@ TEST(WebKit2, WebsitePoliciesContentBlockersEnabled)
 - (void)_webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy, _WKWebsitePolicies *))decisionHandler
 {
     _WKWebsitePolicies *websitePolicies = [[[_WKWebsitePolicies alloc] init] autorelease];
-    websitePolicies.allowsAutoplayQuirks = _allowsAutoplayQuirks;
+    if (_allowsAutoplayQuirksForURL)
+        websitePolicies.allowsAutoplayQuirks = _allowsAutoplayQuirksForURL(navigationAction.request.URL);
     if (_autoplayPolicyForURL)
         websitePolicies.autoplayPolicy = _autoplayPolicyForURL(navigationAction.request.URL);
     decisionHandler(WKNavigationActionPolicyAllow, websitePolicies);
@@ -357,6 +343,22 @@ TEST(WebKit2, WebsitePoliciesPlayAfterPreventedAutoplay)
     [webView mouseUpAtPoint:playButtonClickPoint];
     [webView waitForMessage:@"played"];
     ASSERT_TRUE(receivedAutoplayEvent == std::nullopt);
+
+    receivedAutoplayEvent = std::nullopt;
+    [webView loadHTMLString:@"" baseURL:nil];
+
+    [delegate setAutoplayPolicyForURL:^(NSURL *) {
+        return _WKWebsiteAutoplayPolicyAllowWithoutSound;
+    }];
+
+    NSURLRequest *autoplayMutedRequest = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"autoplay-muted-with-controls" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:autoplayMutedRequest];
+    [webView waitForMessage:@"loaded"];
+    runUntilReceivesAutoplayEvent(kWKAutoplayEventDidPreventFromAutoplaying);
+
+    [webView mouseDownAtPoint:playButtonClickPoint simulatePressure:NO];
+    [webView mouseUpAtPoint:playButtonClickPoint];
+    runUntilReceivesAutoplayEvent(kWKAutoplayEventDidPlayMediaPreventedFromAutoplaying);
 }
 
 TEST(WebKit2, WebsitePoliciesPlayingWithoutInterference)
@@ -486,11 +488,28 @@ TEST(WebKit2, WebsitePoliciesAutoplayQuirks)
 
     NSURLRequest *requestWithAudio = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"autoplay-check" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
 
-    [delegate setAllowsAutoplayQuirks:YES];
+    [delegate setAllowsAutoplayQuirksForURL:^(NSURL *url) {
+        return YES;
+    }];
     [delegate setAutoplayPolicyForURL:^(NSURL *) {
         return _WKWebsiteAutoplayPolicyDeny;
     }];
     [webView loadRequest:requestWithAudio];
+    [webView waitForMessage:@"did-not-play"];
+    [webView waitForMessage:@"on-pause"];
+
+    receivedAutoplayEvent = std::nullopt;
+    [webView loadHTMLString:@"" baseURL:nil];
+
+    NSURLRequest *requestWithAudioInFrame = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"autoplay-check-in-iframe" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+
+    [delegate setAllowsAutoplayQuirksForURL:^(NSURL *url) {
+        return [url.lastPathComponent isEqualToString:@"autoplay-check-frame.html"];
+    }];
+    [delegate setAutoplayPolicyForURL:^(NSURL *) {
+        return _WKWebsiteAutoplayPolicyDeny;
+    }];
+    [webView loadRequest:requestWithAudioInFrame];
     [webView waitForMessage:@"did-not-play"];
     [webView waitForMessage:@"on-pause"];
 }

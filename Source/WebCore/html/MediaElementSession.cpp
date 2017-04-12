@@ -57,7 +57,7 @@
 
 namespace WebCore {
 
-static const double elementMainContentCheckInterval = .250;
+static const Seconds elementMainContentCheckInterval { 250_ms };
 
 static bool isElementRectMostlyInMainFrame(const HTMLMediaElement&);
 static bool isElementLargeEnoughForMainContent(const HTMLMediaElement&, MediaSessionMainContentPurpose);
@@ -191,6 +191,10 @@ bool MediaElementSession::autoplayPermitted() const
         return false;
 
     if (!hasBehaviorRestriction(MediaElementSession::InvisibleAutoplayNotPermitted))
+        return true;
+
+    // If the media element is audible, allow autoplay even when not visible as pausing it would be observable by the user.
+    if ((!m_element.isVideo() || m_element.hasAudio()) && !m_element.muted() && m_element.volume())
         return true;
 
     auto* renderer = m_element.renderer();
@@ -483,7 +487,7 @@ void MediaElementSession::externalOutputDeviceAvailableDidChange(bool hasTargets
     LOG(Media, "MediaElementSession::externalOutputDeviceAvailableDidChange(%p) - hasTargets %s", this, hasTargets ? "TRUE" : "FALSE");
 
     m_hasPlaybackTargets = hasTargets;
-    m_targetAvailabilityChangedTimer.startOneShot(0);
+    m_targetAvailabilityChangedTimer.startOneShot(0_s);
 }
 
 bool MediaElementSession::canPlayToWirelessPlaybackTarget() const

@@ -102,10 +102,10 @@ ResourceLoadPriority CachedResource::defaultPriorityForResourceType(Type type)
     return ResourceLoadPriority::Low;
 }
 
-static std::chrono::milliseconds deadDecodedDataDeletionIntervalForResourceType(CachedResource::Type type)
+static Seconds deadDecodedDataDeletionIntervalForResourceType(CachedResource::Type type)
 {
     if (type == CachedResource::Script)
-        return std::chrono::milliseconds { 0 };
+        return 0_s;
 
     return MemoryCache::singleton().deadDecodedDataDeletionInterval();
 }
@@ -123,7 +123,6 @@ CachedResource::CachedResource(CachedResourceRequest&& request, Type type, Sessi
     , m_origin(request.releaseOrigin())
     , m_initiatorName(request.initiatorName())
     , m_isLinkPreload(request.isLinkPreload())
-    , m_hasUnknownEncoding(request.isLinkPreload())
     , m_type(type)
 {
     ASSERT(sessionID.isValid());
@@ -537,7 +536,7 @@ void CachedResource::destroyDecodedDataIfNeeded()
 {
     if (!m_decodedSize)
         return;
-    if (!MemoryCache::singleton().deadDecodedDataDeletionInterval().count())
+    if (!MemoryCache::singleton().deadDecodedDataDeletionInterval())
         return;
     m_decodedDataDeletionTimer.restart();
 }
@@ -821,7 +820,7 @@ inline CachedResource::Callback::Callback(CachedResource& resource, CachedResour
     , m_client(client)
     , m_timer(*this, &Callback::timerFired)
 {
-    m_timer.startOneShot(0);
+    m_timer.startOneShot(0_s);
 }
 
 inline void CachedResource::Callback::cancel()

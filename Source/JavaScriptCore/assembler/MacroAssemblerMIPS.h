@@ -443,6 +443,47 @@ public:
         store32(dataTempRegister, dest.m_ptr);
     }
 
+    void or32(TrustedImm32 imm, Address address)
+    {
+        if (address.offset >= -32768 && address.offset <= 32767
+            && !m_fixedWidth) {
+            /*
+              lw        dataTemp, offset(base)
+              li        immTemp, imm
+              or        dataTemp, dataTemp, immTemp
+              sw        dataTemp, offset(base)
+            */
+            m_assembler.lw(dataTempRegister, address.base, address.offset);
+            if (imm.m_value >= 0 && imm.m_value <= 65535 && !m_fixedWidth)
+                m_assembler.ori(dataTempRegister, dataTempRegister, imm.m_value);
+            else {
+                move(imm, immTempRegister);
+                m_assembler.orInsn(dataTempRegister, dataTempRegister, immTempRegister);
+            }
+            m_assembler.sw(dataTempRegister, address.base, address.offset);
+        } else {
+            /*
+              lui       addrTemp, (offset + 0x8000) >> 16
+              addu      addrTemp, addrTemp, base
+              lw        dataTemp, (offset & 0xffff)(addrTemp)
+              li        immtemp, imm
+              or        dataTemp, dataTemp, immTemp
+              sw        dataTemp, (offset & 0xffff)(addrTemp)
+            */
+            m_assembler.lui(addrTempRegister, (address.offset + 0x8000) >> 16);
+            m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
+            m_assembler.lw(dataTempRegister, addrTempRegister, address.offset);
+
+            if (imm.m_value >= 0 && imm.m_value <= 65535 && !m_fixedWidth)
+                m_assembler.ori(dataTempRegister, dataTempRegister, imm.m_value);
+            else {
+                move(imm, immTempRegister);
+                m_assembler.orInsn(dataTempRegister, dataTempRegister, immTempRegister);
+            }
+            m_assembler.sw(dataTempRegister, addrTempRegister, address.offset);
+        }
+    }
+
     void rshift32(RegisterID shiftAmount, RegisterID dest)
     {
         m_assembler.srav(dest, dest, shiftAmount);
@@ -2403,6 +2444,23 @@ public:
         }
     }
 
+    void loadFloat(ImplicitAddress address, FPRegisterID dest)
+    {
+        if (address.offset >= -32768 && address.offset <= 32767
+            && !m_fixedWidth) {
+            m_assembler.lwc1(dest, address.base, address.offset);
+        } else {
+            /*
+               lui     addrTemp, (offset + 0x8000) >> 16
+               addu    addrTemp, addrTemp, base
+               lwc1    dest, (offset & 0xffff)(addrTemp)
+               */
+            m_assembler.lui(addrTempRegister, (address.offset + 0x8000) >> 16);
+            m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
+            m_assembler.lwc1(dest, addrTempRegister, address.offset);
+        }
+    }
+
     void loadDouble(ImplicitAddress address, FPRegisterID dest)
     {
 #if WTF_MIPS_ISA(1)
@@ -2537,6 +2595,23 @@ public:
             m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
             m_assembler.lui(immTempRegister, (address.offset + 0x8000) >> 16);
             m_assembler.addu(addrTempRegister, addrTempRegister, immTempRegister);
+            m_assembler.swc1(src, addrTempRegister, address.offset);
+        }
+    }
+
+    void storeFloat(FPRegisterID src, ImplicitAddress address)
+    {
+        if (address.offset >= -32768 && address.offset <= 32767
+            && !m_fixedWidth)
+            m_assembler.swc1(src, address.base, address.offset);
+        else {
+            /*
+                lui     addrTemp, (offset + 0x8000) >> 16
+                addu    addrTemp, addrTemp, base
+                swc1    src, (offset & 0xffff)(addrTemp)
+              */
+            m_assembler.lui(addrTempRegister, (address.offset + 0x8000) >> 16);
+            m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
             m_assembler.swc1(src, addrTempRegister, address.offset);
         }
     }

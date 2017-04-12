@@ -37,13 +37,17 @@
 #define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED false
 #endif
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
 #define DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED true
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED true
-#define DEFAULT_PDFPLUGIN_ENABLED true
 #else
 #define DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED false
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED false
+#endif
+
+#if PLATFORM(COCOA)
+#define DEFAULT_PDFPLUGIN_ENABLED true
+#else
 #define DEFAULT_PDFPLUGIN_ENABLED false
 #endif
 
@@ -237,6 +241,7 @@
     macro(HTTPEquivEnabled, httpEquivEnabled, Bool, bool, true, "", "") \
     macro(MockCaptureDevicesEnabled, mockCaptureDevicesEnabled, Bool, bool, false, "", "") \
     macro(MediaCaptureRequiresSecureConnection, mediaCaptureRequiresSecureConnection, Bool, bool, true, "", "") \
+    macro(UseAVFoundationAudioCapture, useAVFoundationAudioCapture, Bool, bool, false, "", "") \
     macro(EnumeratingAllNetworkInterfacesEnabled, enumeratingAllNetworkInterfacesEnabled, Bool, bool, false, "", "") \
     macro(WebRTCLegacyAPIEnabled, webRTCLegacyAPIEnabled, Bool, bool, true, "", "") \
     macro(ICECandidateFilteringEnabled, iceCandidateFilteringEnabled, Bool, bool, true, "", "") \

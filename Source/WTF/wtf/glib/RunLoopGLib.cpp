@@ -68,9 +68,6 @@ RunLoop::RunLoop()
         static_cast<RunLoop*>(userData)->performWork();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
-#if PLATFORM(WPE)
-    g_source_set_priority(m_source.get(), G_PRIORITY_HIGH + 30);
-#endif
     g_source_attach(m_source.get(), m_mainContext.get());
 }
 
@@ -171,15 +168,17 @@ RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
             timer->updateReadyTime();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
-#if PLATFORM(WPE)
-    g_source_set_priority(m_source.get(), G_PRIORITY_HIGH + 30);
-#endif
-    g_source_attach(m_source.get(), m_runLoop.m_mainContext.get());
+    g_source_attach(m_source.get(), m_runLoop->m_mainContext.get());
 }
 
 RunLoop::TimerBase::~TimerBase()
 {
     g_source_destroy(m_source.get());
+}
+
+void RunLoop::TimerBase::setName(const char* name)
+{
+    g_source_set_name(m_source.get(), name);
 }
 
 void RunLoop::TimerBase::setPriority(int priority)
@@ -215,6 +214,11 @@ void RunLoop::TimerBase::stop()
 bool RunLoop::TimerBase::isActive() const
 {
     return g_source_get_ready_time(m_source.get()) != -1;
+}
+
+Seconds RunLoop::TimerBase::secondsUntilFire() const
+{
+    return std::max<Seconds>(Seconds::fromMicroseconds(g_source_get_ready_time(m_source.get()) - g_get_monotonic_time()), 0_s);
 }
 
 } // namespace WTF

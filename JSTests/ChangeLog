@@ -1,3 +1,79 @@
+2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/comments/multi-line-html-close.js
+        https://bugs.webkit.org/show_bug.cgi?id=170648
+
+        Reviewed by Keith Miller.
+
+        * test262.yaml:
+
+2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Array/S15.4.3_A2.2.js
+        https://bugs.webkit.org/show_bug.cgi?id=170652
+
+        Reviewed by Michael Saboff.
+
+        * stress/native-constructors-length.js: Added.
+        (assertLengthDescriptorAttributes):
+        Add a quick test for the length properties of all native constructors.
+
+        * ChakraCore/test/es5/enumerable.baseline-jsc:
+        Rebaseline expectations for this test.
+
+        * test262.yaml:
+
+2017-04-10  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Update spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=170683
+
+        Rubber-stamped by JF Bastien.
+
+        * wasm.yaml:
+        * wasm/spec-tests/br_table.wast.js:
+        * wasm/spec-tests/conversions.wast.js: Removed.
+        * wasm/spec-tests/f32_bitwise.wast.js: Added.
+        * wasm/spec-tests/f32_cmp.wast.js:
+        * wasm/spec-tests/f64_bitwise.wast.js: Added.
+        * wasm/spec-tests/f64_cmp.wast.js:
+        * wasm/spec-tests/i32.wast.js:
+        * wasm/spec-tests/i64.wast.js:
+        * wasm/spec-tests/int_exprs.wast.js:
+        * wasm/spec-tests/memory.wast.js:
+
+2017-04-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/expressions/object/__proto__-fn-name.js
+        https://bugs.webkit.org/show_bug.cgi?id=170650
+
+        Reviewed by Saam Barati.
+
+        * stress/inferred-names.js:
+        * test262.yaml:
+
+2017-04-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/literals/regexp/identity-escape.js
+        https://bugs.webkit.org/show_bug.cgi?id=170651
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2017-04-07  Michael Saboff  <msaboff@apple.com>
+
+        Fix and enable ChakraCore/test/es6/ES6Function_bugs.js after r215072
+        https://bugs.webkit.org/show_bug.cgi?id=170580
+
+        Reviewed by JF Bastien.
+
+        Commented out subtest that expects defineProperty("length") to a getter on a
+        sealed function shouldn't throw.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/es6/ES6Function_bugs.js:
+
 2017-04-06  Michael Saboff  <msaboff@apple.com>
 
         Cannot Object.seal() or Object.freeze() global "this"

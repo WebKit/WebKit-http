@@ -1154,6 +1154,7 @@ webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.h
 # This test tests a particular system font, which is only on iOS and El Capitan.
 webkit.org/b/148119 [ Yosemite ] fast/text/trak-optimizeLegibility.html [ Failure ]
 
+webkit.org/b/170615 inspector/codemirror/prettyprinting-css.html [ Pass Timeout ]
 webkit.org/b/153460 inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.html [ Pass Timeout ]
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
@@ -1488,6 +1489,7 @@ webkit.org/b/169677 [ Release ] http/tests/media/modern-media-controls/time-labe
 webkit.org/b/169118 [ Debug ] media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Pass Timeout ]
 
 webkit.org/b/167266 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Pass Failure ]
+webkit.org/b/168540 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Pass Failure ]
 
 webkit.org/b/165386 media/modern-media-controls/seek-backward-support/seek-backward-support.html [ Pass Timeout ]
 
@@ -1543,7 +1545,6 @@ webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timin
 [ ElCapitan ] http/tests/inspector/network/resource-request-headers.html [ Failure ]
 
 # <rdar://problem/30610988>
-[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-worker.html [ Failure ]
 [ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin.html [ Failure ]
 [ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Failure ]
 [ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Failure ]

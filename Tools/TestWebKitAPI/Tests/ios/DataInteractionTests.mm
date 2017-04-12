@@ -35,6 +35,7 @@
 #import <UIKit/UIItemProvider_Private.h>
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
+#import <WebKit/_WKProcessPoolConfiguration.h>
 
 @implementation TestWKWebView (DataInteractionTests)
 
@@ -106,9 +107,32 @@ TEST(DataInteractionTests, ImageToTextarea)
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionOverEventName]);
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionPerformOperationEventName]);
 
-    NSArray *expectedSelectionRects = [NSArray arrayWithObjects:makeCGRectValue(6, 203, 188, 14), makeCGRectValue(6, 217, 188, 14), makeCGRectValue(6, 231, 66, 14), nil];
-    checkSelectionRectsWithLogging(expectedSelectionRects, [dataInteractionSimulator finalSelectionRects]);
     checkTypeIdentifierPrecedesOtherTypeIdentifier(dataInteractionSimulator.get(), (NSString *)kUTTypePNG, (NSString *)kUTTypeFileURL);
+}
+
+TEST(DataInteractionTests, ImageInLinkToInput)
+{
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"image-in-link-and-input"];
+
+    RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
+
+    EXPECT_WK_STREQ("https://www.apple.com/", [webView editorValue].UTF8String);
+    checkSelectionRectsWithLogging(@[ makeCGRectValue(101, 241, 2057, 232) ], [dataInteractionSimulator finalSelectionRects]);
+}
+
+TEST(DataInteractionTests, ImageInLinkWithoutHREFToInput)
+{
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"image-in-link-and-input"];
+    [webView stringByEvaluatingJavaScript:@"link.href = ''"];
+
+    RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
+
+    NSURL *imageURL = [NSURL fileURLWithPath:[webView editorValue]];
+    EXPECT_WK_STREQ("icon.png", imageURL.lastPathComponent);
 }
 
 TEST(DataInteractionTests, ContentEditableToContentEditable)
@@ -360,6 +384,19 @@ TEST(DataInteractionTests, CustomActionSheetPopover)
     [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
     EXPECT_TRUE(didInvokeCustomActionSheet);
     EXPECT_WK_STREQ("PASS", [webView stringByEvaluatingJavaScript:@"target.textContent"].UTF8String);
+}
+
+TEST(DataInteractionTests, UnresponsivePageDoesNotHangUI)
+{
+    _WKProcessPoolConfiguration *processPoolConfiguration = [[[_WKProcessPoolConfiguration alloc] init] autorelease];
+    processPoolConfiguration.ignoreSynchronousMessagingTimeoutsForTesting = YES;
+
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500) configuration:[[[WKWebViewConfiguration alloc] init] autorelease] processPoolConfiguration:processPoolConfiguration]);
+    [webView synchronouslyLoadTestPageNamed:@"simple"];
+    [webView evaluateJavaScript:@"while(1);" completionHandler:nil];
+
+    // The test passes if we can prepare for data interaction without timing out.
+    [webView _simulatePrepareForDataInteractionSession:nil completion:^() { }];
 }
 
 } // namespace TestWebKitAPI

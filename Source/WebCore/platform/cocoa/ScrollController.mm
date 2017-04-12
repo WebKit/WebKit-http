@@ -386,7 +386,7 @@ bool ScrollController::isScrollSnapInProgress() const
 void ScrollController::startSnapRubberbandTimer()
 {
     m_client.startSnapRubberbandTimer();
-    m_snapRubberbandTimer.startRepeating(1.0 / 60.0);
+    m_snapRubberbandTimer.startRepeating(1_s / 60.);
 
     m_client.deferTestsForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(this), WheelEventTestTrigger::RubberbandInProgress);
 }
@@ -490,7 +490,7 @@ void ScrollController::scheduleStatelessScrollSnap()
         return;
 
     static const Seconds statelessScrollSnapDelay = 750_ms;
-    m_statelessSnapTransitionTimer.startOneShot(statelessScrollSnapDelay.value());
+    m_statelessSnapTransitionTimer.startOneShot(statelessScrollSnapDelay);
     startDeferringTestsDueToScrollSnapping();
 }
 
@@ -562,7 +562,7 @@ void ScrollController::startScrollSnapTimer()
 
     startDeferringTestsDueToScrollSnapping();
     m_client.startScrollSnapTimer();
-    m_scrollSnapTimer.startRepeating(1.0 / 60.0);
+    m_scrollSnapTimer.startRepeating(1_s / 60.);
 }
 
 void ScrollController::stopScrollSnapTimer()

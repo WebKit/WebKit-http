@@ -101,16 +101,16 @@ private:
     void didFlushRootLayer(const WebCore::FloatRect&) override { }
     void commitSceneState(const WebCore::CoordinatedGraphicsState&) override;
 
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID) override;
+#endif
+
     enum class DiscardableSyncActions {
         UpdateSize = 1 << 1,
         UpdateViewport = 1 << 2,
         UpdateScale = 1 << 3,
         UpdateBackground = 1 << 4
     };
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID) override;
-#endif
 
     CompositorClient m_compositorClient;
     std::unique_ptr<AcceleratedSurface> m_surface;

@@ -1199,7 +1199,7 @@ void Document::setVisualUpdatesAllowed(bool visualUpdatesAllowed)
     if (visualUpdatesAllowed)
         m_visualUpdatesSuppressionTimer.stop();
     else
-        m_visualUpdatesSuppressionTimer.startOneShot(settings().incrementalRenderingSuppressionTimeoutInSeconds());
+        m_visualUpdatesSuppressionTimer.startOneShot(1_s * settings().incrementalRenderingSuppressionTimeoutInSeconds());
 
     if (!visualUpdatesAllowed)
         return;
@@ -1656,7 +1656,7 @@ void Document::scheduleStyleRecalc()
     // FIXME: Why on earth is this here? This is clearly misplaced.
     invalidateAccessKeyMap();
     
-    m_styleRecalcTimer.startOneShot(0);
+    m_styleRecalcTimer.startOneShot(0_s);
 
     InspectorInstrumentation::didScheduleStyleRecalculation(*this);
 }
@@ -2811,6 +2811,9 @@ Seconds Document::domTimerAlignmentInterval(bool hasReachedMaxNestingLevel) cons
 
     if (Page* page = this->page())
         alignmentInterval = std::max(alignmentInterval, page->domTimerAlignmentInterval());
+
+    if (!topOrigin().canAccess(securityOrigin()) && !hasHadUserInteraction())
+        alignmentInterval = std::max(alignmentInterval, DOMTimer::nonInteractedCrossOriginFrameAlignmentInterval());
 
     return alignmentInterval;
 }
@@ -5001,8 +5004,8 @@ void Document::finishedParsing()
     // so that dynamically inserted content can also benefit from sharing optimizations.
     // Note that we don't refresh the timer on pool access since that could lead to huge caches being kept
     // alive indefinitely by something innocuous like JS setting .innerHTML repeatedly on a timer.
-    static const int timeToKeepSharedObjectPoolAliveAfterParsingFinishedInSeconds = 10;
-    m_sharedObjectPoolClearTimer.startOneShot(timeToKeepSharedObjectPoolAliveAfterParsingFinishedInSeconds);
+    static const Seconds timeToKeepSharedObjectPoolAliveAfterParsingFinished { 10_s };
+    m_sharedObjectPoolClearTimer.startOneShot(timeToKeepSharedObjectPoolAliveAfterParsingFinished);
 
     // Parser should have picked up all speculative preloads by now
     m_cachedResourceLoader->clearPreloads(CachedResourceLoader::ClearPreloadsMode::ClearSpeculativePreloads);
@@ -5232,7 +5235,7 @@ void Document::updateFocusAppearanceSoon(SelectionRestorationMode mode)
 {
     m_updateFocusAppearanceRestoresSelection = mode;
     if (!m_updateFocusAppearanceTimer.isActive())
-        m_updateFocusAppearanceTimer.startOneShot(0);
+        m_updateFocusAppearanceTimer.startOneShot(0_s);
 }
 
 void Document::cancelFocusAppearanceUpdate()
@@ -5410,7 +5413,7 @@ void Document::resumeScheduledTasks(ActiveDOMObject::ReasonForSuspension reason)
     if (reason == ActiveDOMObject::WillDeferLoading && m_parser)
         m_parser->resumeScheduledTasks();
     if (!m_pendingTasks.isEmpty())
-        m_pendingTasksTimer.startOneShot(0);
+        m_pendingTasksTimer.startOneShot(0_s);
     scriptRunner()->resume();
     resumeActiveDOMObjects(reason);
     resumeScriptedAnimationControllerCallbacks();
@@ -5615,7 +5618,7 @@ void Document::requestFullScreenForElement(Element* element, FullScreenCheckType
     } while (0);
 
     m_fullScreenErrorEventTargetQueue.append(element ? element : documentElement());
-    m_fullScreenChangeDelayTimer.startOneShot(0);
+    m_fullScreenChangeDelayTimer.startOneShot(0_s);
 }
 
 void Document::webkitCancelFullScreen()
@@ -5782,7 +5785,7 @@ void Document::webkitDidEnterFullScreenForElement(Element*)
 
     m_fullScreenElement->didBecomeFullscreenElement();
 
-    m_fullScreenChangeDelayTimer.startOneShot(0);
+    m_fullScreenChangeDelayTimer.startOneShot(0_s);
 }
 
 void Document::webkitWillExitFullScreenForElement(Element*)
@@ -5819,7 +5822,7 @@ void Document::webkitDidExitFullScreenForElement(Element*)
     bool eventTargetQueuesEmpty = m_fullScreenChangeEventTargetQueue.isEmpty() && m_fullScreenErrorEventTargetQueue.isEmpty();
     Document& exitingDocument = eventTargetQueuesEmpty ? topDocument() : *this;
 
-    exitingDocument.m_fullScreenChangeDelayTimer.startOneShot(0);
+    exitingDocument.m_fullScreenChangeDelayTimer.startOneShot(0_s);
 }
 
 void Document::setFullScreenRenderer(RenderFullScreen* renderer)
@@ -5974,7 +5977,7 @@ void Document::decrementLoadEventDelayCount()
     --m_loadEventDelayCount;
 
     if (frame() && !m_loadEventDelayCount && !m_loadEventDelayTimer.isActive())
-        m_loadEventDelayTimer.startOneShot(0);
+        m_loadEventDelayTimer.startOneShot(0_s);
 }
 
 void Document::loadEventDelayTimerFired()
@@ -6326,6 +6329,9 @@ void Document::updateLastHandledUserGestureTimestamp(MonotonicTime time)
         // It's OK to always remove NonInteractedCrossOriginFrame even if this frame isn't cross-origin.
         m_scriptedAnimationController->removeThrottlingReason(ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame);
     }
+
+    // DOM Timer alignment may depend on the user having interacted with the document.
+    didChangeTimerAlignmentInterval();
     
     if (HTMLFrameOwnerElement* element = ownerElement())
         element->document().updateLastHandledUserGestureTimestamp(time);
@@ -6620,7 +6626,7 @@ void Document::didAssociateFormControl(Element* element)
         return;
     m_associatedFormControls.add(element);
     if (!m_didAssociateFormControlsTimer.isActive())
-        m_didAssociateFormControlsTimer.startOneShot(0);
+        m_didAssociateFormControlsTimer.startOneShot(0_s);
 }
 
 void Document::didAssociateFormControlsTimerFired()
@@ -6640,7 +6646,7 @@ void Document::setCachedDOMCookies(const String& cookies)
     ASSERT(!isDOMCookieCacheValid());
     m_cachedDOMCookies = cookies;
     // The cookie cache is valid at most until we go back to the event loop.
-    m_cookieCacheExpiryTimer.startOneShot(0);
+    m_cookieCacheExpiryTimer.startOneShot(0_s);
 }
 
 void Document::invalidateDOMCookieCache()

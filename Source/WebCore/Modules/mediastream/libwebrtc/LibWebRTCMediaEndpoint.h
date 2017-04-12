@@ -109,7 +109,7 @@ private:
     void removeRemoteStream(webrtc::MediaStreamInterface&);
     void addDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface>&&);
 
-    MediaStream& mediaStreamFromRTCStream(webrtc::MediaStreamInterface*);
+    MediaStream& mediaStreamFromRTCStream(webrtc::MediaStreamInterface&);
 
     int AddRef() const { ref(); return static_cast<int>(refCount()); }
     int Release() const { deref(); return static_cast<int>(refCount()); }
@@ -171,6 +171,7 @@ private:
     };
 
     LibWebRTCPeerConnectionBackend& m_peerConnectionBackend;
+    webrtc::PeerConnectionFactoryInterface& m_peerConnectionFactory;
     rtc::scoped_refptr<webrtc::PeerConnectionInterface> m_backend;
 
     CreateSessionDescriptionObserver m_createSessionDescriptionObserver;

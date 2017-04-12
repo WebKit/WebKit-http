@@ -27,15 +27,16 @@
 #define PlatformWebView_h
 
 #include "TestOptions.h"
-#include <WebKit/WKRetainPtr.h>
 
 #if PLATFORM(COCOA) && !defined(BUILDING_GTK__)
 #include <WebKit/WKFoundation.h>
+#include <wtf/RetainPtr.h>
 OBJC_CLASS NSView;
 OBJC_CLASS UIView;
 OBJC_CLASS TestRunnerWKWebView;
 OBJC_CLASS WKWebViewConfiguration;
 OBJC_CLASS WebKitTestRunnerWindow;
+typedef struct CGImage *CGImageRef;
 
 #if WK_API_ENABLED
 typedef TestRunnerWKWebView *PlatformWKView;
@@ -43,10 +44,12 @@ typedef TestRunnerWKWebView *PlatformWKView;
 typedef NSView *PlatformWKView;
 #endif
 typedef WebKitTestRunnerWindow *PlatformWindow;
+typedef RetainPtr<CGImageRef> PlatformImage;
 #elif defined(BUILDING_GTK__)
 typedef struct _GtkWidget GtkWidget;
 typedef WKViewRef PlatformWKView;
 typedef GtkWidget* PlatformWindow;
+typedef cairo_surface_t *PlatformImage;
 #elif PLATFORM(EFL)
 typedef Evas_Object* PlatformWKView;
 typedef Ecore_Evas* PlatformWindow;
@@ -54,6 +57,7 @@ typedef Ecore_Evas* PlatformWindow;
 class HeadlessViewBackend;
 typedef WKViewRef PlatformWKView;
 typedef HeadlessViewBackend* PlatformWindow;
+typedef cairo_surface_t* PlatformImage;
 #endif
 
 namespace WTR {
@@ -96,7 +100,7 @@ public:
 
     bool viewSupportsOptions(const TestOptions&) const;
 
-    WKRetainPtr<WKImageRef> windowSnapshotImage();
+    PlatformImage windowSnapshotImage();
     const TestOptions& options() const { return m_options; }
 
     void changeWindowScaleIfNeeded(float newScale);

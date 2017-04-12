@@ -59,9 +59,6 @@ fast/history/page-cache-closed-audiocontext.html
 fast/history/page-cache-running-audiocontext.html
 fast/history/page-cache-suspended-audiocontext.html
 
-# WebRTC tests are skipped on iOS for now.
-fast/events/constructors/media-stream-event-constructor.html
-
 # No wheel events on iOS
 fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
 fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
@@ -140,11 +137,14 @@ fast/shadow-dom/pointerlockelement-in-slot.html
 # FIXME: Media tests not supported on iOS
 http/tests/media
 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
+http/tests/cache/disk-cache/disk-cache-media-small.html
 
 # No touch events
 fast/events/touch [ Skip ]
 fast/shadow-dom/touch-event-ios.html [ Skip ]
 fast/shadow-dom/touch-event-on-text-assigned-to-slot.html [ Skip ]
+http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe.html [ Skip ]
+http/tests/frame-throttling/timer-throttle-in-cross-origin-subframe.html [ Skip ]
 http/tests/quicklook/at-import-stylesheet-blocked.html [ Skip ]
 http/tests/quicklook/base-url-blocked.html [ Skip ]
 http/tests/quicklook/cross-origin-iframe-blocked.html [ Skip ]

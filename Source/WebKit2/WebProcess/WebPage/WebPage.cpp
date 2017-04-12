@@ -254,8 +254,8 @@ using namespace WebCore;
 namespace WebKit {
 
 static const double pageScrollHysteresisSeconds = 0.3;
-static const std::chrono::milliseconds initialLayerVolatilityTimerInterval { 20 };
-static const std::chrono::seconds maximumLayerVolatilityTimerInterval { 2 };
+static const Seconds initialLayerVolatilityTimerInterval { 20_ms };
+static const Seconds maximumLayerVolatilityTimerInterval { 2_s };
 
 #define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Layers, __VA_ARGS__)
 #define RELEASE_LOG_ERROR_IF_ALLOWED(...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), Layers, __VA_ARGS__)
@@ -566,6 +566,14 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 
     for (auto iterator : parameters.urlSchemeHandlers)
         registerURLSchemeHandler(iterator.value, iterator.key);
+
+    m_userContentController->addUserContentWorlds(parameters.userContentWorlds);
+    m_userContentController->addUserScripts(parameters.userScripts);
+    m_userContentController->addUserStyleSheets(parameters.userStyleSheets);
+    m_userContentController->addUserScriptMessageHandlers(parameters.messageHandlers);
+#if ENABLE(CONTENT_EXTENSIONS)
+    m_userContentController->addContentExtensions(parameters.contentExtensions);
+#endif
 }
 
 #if ENABLE(WEB_RTC)
@@ -1208,7 +1216,7 @@ void WebPage::loadRequest(const LoadParameters& loadParameters)
     ASSERT(!m_pendingNavigationID);
 }
 
-void WebPage::loadDataImpl(uint64_t navigationID, PassRefPtr<SharedBuffer> sharedBuffer, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& unreachableURL, const UserData& userData)
+void WebPage::loadDataImpl(uint64_t navigationID, Ref<SharedBuffer>&& sharedBuffer, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& unreachableURL, const UserData& userData)
 {
     SendStopResponsivenessTimer stopper(this);
 
@@ -1216,7 +1224,7 @@ void WebPage::loadDataImpl(uint64_t navigationID, PassRefPtr<SharedBuffer> share
 
     ResourceRequest request(baseURL);
     ResourceResponse response(URL(), MIMEType, sharedBuffer->size(), encodingName);
-    SubstituteData substituteData(sharedBuffer, unreachableURL, response, SubstituteData::SessionHistoryVisibility::Hidden);
+    SubstituteData substituteData(WTFMove(sharedBuffer), unreachableURL, response, SubstituteData::SessionHistoryVisibility::Hidden);
 
     // Let the InjectedBundle know we are about to start the load, passing the user data from the UIProcess
     // to all the client to set up any needed state.
@@ -1229,11 +1237,11 @@ void WebPage::loadDataImpl(uint64_t navigationID, PassRefPtr<SharedBuffer> share
 void WebPage::loadStringImpl(uint64_t navigationID, const String& htmlString, const String& MIMEType, const URL& baseURL, const URL& unreachableURL, const UserData& userData)
 {
     if (!htmlString.isNull() && htmlString.is8Bit()) {
-        RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters8()), htmlString.length() * sizeof(LChar));
-        loadDataImpl(navigationID, sharedBuffer, MIMEType, ASCIILiteral("latin1"), baseURL, unreachableURL, userData);
+        auto sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters8()), htmlString.length() * sizeof(LChar));
+        loadDataImpl(navigationID, WTFMove(sharedBuffer), MIMEType, ASCIILiteral("latin1"), baseURL, unreachableURL, userData);
     } else {
-        RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters16()), htmlString.length() * sizeof(UChar));
-        loadDataImpl(navigationID, sharedBuffer, MIMEType, ASCIILiteral("utf-16"), baseURL, unreachableURL, userData);
+        auto sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters16()), htmlString.length() * sizeof(UChar));
+        loadDataImpl(navigationID, WTFMove(sharedBuffer), MIMEType, ASCIILiteral("utf-16"), baseURL, unreachableURL, userData);
     }
 }
 
@@ -1241,9 +1249,9 @@ void WebPage::loadData(const LoadParameters& loadParameters)
 {
     platformDidReceiveLoadParameters(loadParameters);
 
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(loadParameters.data.data()), loadParameters.data.size());
+    auto sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(loadParameters.data.data()), loadParameters.data.size());
     URL baseURL = loadParameters.baseURLString.isEmpty() ? blankURL() : URL(URL(), loadParameters.baseURLString);
-    loadDataImpl(loadParameters.navigationID, sharedBuffer, loadParameters.MIMEType, loadParameters.encodingName, baseURL, URL(), loadParameters.userData);
+    loadDataImpl(loadParameters.navigationID, WTFMove(sharedBuffer), loadParameters.MIMEType, loadParameters.encodingName, baseURL, URL(), loadParameters.userData);
 }
 
 void WebPage::loadString(const LoadParameters& loadParameters)
@@ -1919,7 +1927,7 @@ void WebPage::takeSnapshot(IntRect snapshotRect, IntSize bitmapSize, uint32_t op
     send(Messages::WebPageProxy::ImageCallback(handle, callbackID));
 }
 
-PassRefPtr<WebImage> WebPage::scaledSnapshotWithOptions(const IntRect& rect, double additionalScaleFactor, SnapshotOptions options)
+RefPtr<WebImage> WebPage::scaledSnapshotWithOptions(const IntRect& rect, double additionalScaleFactor, SnapshotOptions options)
 {
     IntRect snapshotRect = rect;
     IntSize bitmapSize = snapshotRect.size();
@@ -2164,7 +2172,7 @@ void WebPage::callVolatilityCompletionHandlers()
 
 void WebPage::layerVolatilityTimerFired()
 {
-    auto newInterval = 2 * m_layerVolatilityTimer.repeatIntervalMS();
+    Seconds newInterval = m_layerVolatilityTimer.repeatInterval() * 2.;
     bool didSucceed = markLayersVolatileImmediatelyIfPossible();
     if (didSucceed || newInterval > maximumLayerVolatilityTimerInterval) {
         m_layerVolatilityTimer.stop();
@@ -2173,7 +2181,7 @@ void WebPage::layerVolatilityTimerFired()
         return;
     }
 
-    RELEASE_LOG_ERROR_IF_ALLOWED("%p - WebPage - Failed to mark all layers as volatile, will retry in %lld ms", this, static_cast<long long>(newInterval.count()));
+    RELEASE_LOG_ERROR_IF_ALLOWED("%p - WebPage - Failed to mark all layers as volatile, will retry in %g ms", this, newInterval.value() * 1000);
     m_layerVolatilityTimer.startRepeating(newInterval);
 }
 
@@ -2204,7 +2212,7 @@ void WebPage::markLayersVolatile(std::function<void ()> completionHandler)
         return;
     }
 
-    RELEASE_LOG_IF_ALLOWED("%p - Failed to mark all layers as volatile, will retry in %lld ms", this, initialLayerVolatilityTimerInterval.count());
+    RELEASE_LOG_IF_ALLOWED("%p - Failed to mark all layers as volatile, will retry in %g ms", this, initialLayerVolatilityTimerInterval.value() * 1000);
     m_layerVolatilityTimer.startRepeating(initialLayerVolatilityTimerInterval);
 }
 
@@ -2652,7 +2660,7 @@ void WebPage::updateIsInWindow(bool isInitialState)
         // in order to get plug-in connections, and the UI process will be waiting for the Web process to update the backing
         // store after moving the view into a window, until it times out and paints white. See <rdar://problem/9242771>.
         if (m_mayStartMediaWhenInWindow)
-            m_setCanStartMediaTimer.startOneShot(0);
+            m_setCanStartMediaTimer.startOneShot(0_s);
 
         WebProcess::singleton().pageDidEnterWindow(m_pageID);
     }
@@ -3240,6 +3248,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(MEDIA_STREAM)
     settings.setMockCaptureDevicesEnabled(store.getBoolValueForKey(WebPreferencesKey::mockCaptureDevicesEnabledKey()));
     settings.setMediaCaptureRequiresSecureConnection(store.getBoolValueForKey(WebPreferencesKey::mediaCaptureRequiresSecureConnectionKey()));
+    settings.setUseAVFoundationAudioCapture(store.getBoolValueForKey(WebPreferencesKey::useAVFoundationAudioCaptureKey()));
 #endif
 
     settings.setShouldConvertPositionStyleOnCopy(store.getBoolValueForKey(WebPreferencesKey::shouldConvertPositionStyleOnCopyKey()));
@@ -4017,7 +4026,7 @@ void WebPage::addPluginView(PluginView* pluginView)
     m_hasSeenPlugin = true;
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     LOG(Plugins, "Primary Plug-In Detection: triggering detection from addPluginView(%p)", pluginView);
-    m_determinePrimarySnapshottedPlugInTimer.startOneShot(0);
+    m_determinePrimarySnapshottedPlugInTimer.startOneShot(0_s);
 #endif
 }
 
@@ -4148,9 +4157,9 @@ void WebPage::SandboxExtensionTracker::invalidate()
     }
 }
 
-void WebPage::SandboxExtensionTracker::willPerformLoadDragDestinationAction(PassRefPtr<SandboxExtension> pendingDropSandboxExtension)
+void WebPage::SandboxExtensionTracker::willPerformLoadDragDestinationAction(RefPtr<SandboxExtension>&& pendingDropSandboxExtension)
 {
-    setPendingProvisionalSandboxExtension(pendingDropSandboxExtension);
+    setPendingProvisionalSandboxExtension(WTFMove(pendingDropSandboxExtension));
 }
 
 void WebPage::SandboxExtensionTracker::beginLoad(WebFrame* frame, const SandboxExtension::Handle& handle)
@@ -4160,9 +4169,9 @@ void WebPage::SandboxExtensionTracker::beginLoad(WebFrame* frame, const SandboxE
     setPendingProvisionalSandboxExtension(SandboxExtension::create(handle));
 }
 
-void WebPage::SandboxExtensionTracker::setPendingProvisionalSandboxExtension(PassRefPtr<SandboxExtension> pendingProvisionalSandboxExtension)
+void WebPage::SandboxExtensionTracker::setPendingProvisionalSandboxExtension(RefPtr<SandboxExtension>&& pendingProvisionalSandboxExtension)
 {
-    m_pendingProvisionalSandboxExtension = pendingProvisionalSandboxExtension;    
+    m_pendingProvisionalSandboxExtension = WTFMove(pendingProvisionalSandboxExtension);
 }
 
 static bool shouldReuseCommittedSandboxExtension(WebFrame* frame)
@@ -4550,7 +4559,7 @@ void WebPage::setMayStartMediaWhenInWindow(bool mayStartMedia)
 
     m_mayStartMediaWhenInWindow = mayStartMedia;
     if (m_mayStartMediaWhenInWindow && m_page->isInWindow())
-        m_setCanStartMediaTimer.startOneShot(0);
+        m_setCanStartMediaTimer.startOneShot(0_s);
 }
 
 void WebPage::runModal()
@@ -5197,9 +5206,9 @@ bool WebPage::canShowMIMEType(const String& MIMEType) const
     return false;
 }
 
-void WebPage::addTextCheckingRequest(uint64_t requestID, PassRefPtr<TextCheckingRequest> request)
+void WebPage::addTextCheckingRequest(uint64_t requestID, Ref<TextCheckingRequest>&& request)
 {
-    m_pendingTextCheckingRequestMap.add(requestID, request);
+    m_pendingTextCheckingRequestMap.add(requestID, WTFMove(request));
 }
 
 void WebPage::didFinishCheckingText(uint64_t requestID, const Vector<TextCheckingResult>& result)
@@ -5321,7 +5330,7 @@ void WebPage::didFinishLoad(WebFrame* frame)
 
     m_readyToFindPrimarySnapshottedPlugin = true;
     LOG(Plugins, "Primary Plug-In Detection: triggering detection from didFinishLoad (marking as ready to detect).");
-    m_determinePrimarySnapshottedPlugInTimer.startOneShot(0);
+    m_determinePrimarySnapshottedPlugInTimer.startOneShot(0_s);
 #else
     UNUSED_PARAM(frame);
 #endif
@@ -5333,7 +5342,7 @@ static const float primarySnapshottedPlugInSearchBucketSize = 1.1;
 static const int primarySnapshottedPlugInMinimumWidth = 400;
 static const int primarySnapshottedPlugInMinimumHeight = 300;
 static const unsigned maxPrimarySnapshottedPlugInDetectionAttempts = 2;
-static const int deferredPrimarySnapshottedPlugInDetectionDelay = 3;
+static const Seconds deferredPrimarySnapshottedPlugInDetectionDelay = 3_s;
 static const float overlappingImageBoundsScale = 1.1;
 static const float minimumOverlappingImageToPluginDimensionScale = .9;
 
@@ -5441,7 +5450,7 @@ void WebPage::determinePrimarySnapshottedPlugIn()
     if (!candidatePlugIn) {
         LOG(Plugins, "Primary Plug-In Detection: fail - did not find a candidate plug-in.");
         if (m_numberOfPrimarySnapshotDetectionAttempts < maxPrimarySnapshottedPlugInDetectionAttempts) {
-            LOG(Plugins, "Primary Plug-In Detection: will attempt again in %ds.", deferredPrimarySnapshottedPlugInDetectionDelay);
+            LOG(Plugins, "Primary Plug-In Detection: will attempt again in %.1f s.", deferredPrimarySnapshottedPlugInDetectionDelay.value());
             m_determinePrimarySnapshottedPlugInTimer.startOneShot(deferredPrimarySnapshottedPlugInDetectionDelay);
         }
         return;

@@ -1,3 +1,568 @@
+2017-04-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Replaced elements don't properly resolve percentage heights
+        https://bugs.webkit.org/show_bug.cgi?id=159670
+
+        Reviewed by Darin Adler.
+
+        The issue was fixed in r213149 (bug #168657), but the Blink test was not imported.
+        This patch only adds the test to avoid regressions in the future.
+
+        * fast/css-grid-layout/grid-item-with-percent-height-replaced-element-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-with-percent-height-replaced-element.html: Added.
+
+2017-04-10  Antti Koivisto  <antti@apple.com>
+
+        Cache small media resources in disk cache
+        https://bugs.webkit.org/show_bug.cgi?id=170676
+        <rdar://problem/31532649>
+
+        Reviewed by Andreas Kling.
+
+        * http/tests/cache/disk-cache/disk-cache-media-small-expected.txt: Added.
+        * http/tests/cache/disk-cache/disk-cache-media-small.html: Added.
+
+2017-04-12  Per Arne Vollan  <pvollan@apple.com>
+
+        Implement stroke-color CSS property.
+        https://bugs.webkit.org/show_bug.cgi?id=169352
+
+        Reviewed by Jon Lee.
+
+        * fast/css/stroke-color-expected.html: Added.
+        * fast/css/stroke-color-fallback-expected.html: Added.
+        * fast/css/stroke-color-fallback.html: Added.
+        * fast/css/stroke-color.html: Added.
+        * fast/css/visited-link-stroke-color-expected.html: Added.
+        * fast/css/visited-link-stroke-color.html: Added.
+
+2017-04-11  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest webrtc/video-mute.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=170704
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-mute.html: Trying to make it less flaky.
+
+2017-04-11  Youenn Fablet  <youenn@apple.com>
+
+        [WK1] Add captureStream test with webrtc
+        https://bugs.webkit.org/show_bug.cgi?id=170746
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac-wk1/TestExpectations: Activating this new test in WK1.
+        * webrtc/captureCanvas-webrtc-expected.txt: Added.
+        * webrtc/captureCanvas-webrtc.html: Added.
+
+2017-04-11  Youenn Fablet  <youenn@apple.com>
+
+        Migrating webrtc tests to latest API
+        https://bugs.webkit.org/show_bug.cgi?id=170709
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/audio-peer-connection-webaudio.html:
+        * webrtc/libwebrtc/descriptionGetters.html:
+        * webrtc/negotiatedneeded-event-addStream.html:
+        * webrtc/peer-connection-audio-mute.html:
+        * webrtc/peer-connection-audio-mute2.html:
+        * webrtc/peer-connection-remote-audio-mute.html:
+        * webrtc/peer-connection-remote-audio-mute2.html:
+        * webrtc/release-after-getting-track.html:
+        * webrtc/video-disabled-black.html:
+        * webrtc/video-mute.html:
+        * webrtc/video-remote-mute.html:
+        * webrtc/video-with-receiver.html:
+        * webrtc/video.html:
+
+2017-04-11  Youenn Fablet  <youenn@apple.com>
+
+        Activate WebRTC data channel tests for WK1
+        https://bugs.webkit.org/show_bug.cgi?id=170710
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-11  Youenn Fablet  <youenn@apple.com>
+
+        MediaStream id should be equal to msid
+        https://bugs.webkit.org/show_bug.cgi?id=170712
+
+        Reviewed by Eric Carlson.
+
+        Removing no longer needed/Adding needed calls to useMockRTCPeerConnectionFactory.
+
+        * fast/mediastream/RTCPeerConnection-inspect-answer.html:
+        * fast/mediastream/RTCPeerConnection-inspect-offer.html:
+        * fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html:
+        * fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html:
+        * fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid.html:
+        * fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html:
+        * fast/mediastream/RTCPeerConnection-setRemoteDescription-offer.html:
+        * webrtc/audio-peer-connection-webaudio.html:
+        * webrtc/audio-replace-track.html:
+        * webrtc/connection-state.html:
+        * webrtc/datachannel/basic.html:
+        * webrtc/datachannel/bufferedAmountLowThreshold.html:
+        * webrtc/datachannel/datachannel-gc.html:
+        * webrtc/datachannel/datachannel-stats.html:
+        * webrtc/datachannel/filter-ice-candidate.html:
+        * webrtc/ephemeral-certificates-and-cnames.html:
+        * webrtc/libwebrtc/descriptionGetters.html:
+        * webrtc/negotiatedneeded-event-addStream.html:
+        * webrtc/no-port-zero-in-upd-candidates.html:
+        * webrtc/peer-connection-audio-mute.html:
+        * webrtc/peer-connection-audio-mute2.html:
+        * webrtc/peer-connection-remote-audio-mute.html:
+        * webrtc/peer-connection-remote-audio-mute2.html:
+        * webrtc/release-after-getting-track.html:
+        * webrtc/video-disabled-black.html:
+        * webrtc/video-getParameters.html:
+        * webrtc/video-mediastreamtrack-stats.html:
+        * webrtc/video-mute.html:
+        * webrtc/video-remote-mute.html:
+        * webrtc/video-replace-track-to-null.html:
+        * webrtc/video-replace-track.html:
+        * webrtc/video-stats.html:
+        * webrtc/video-with-receiver.html:
+        * webrtc/video.html:
+
+2017-04-11  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Web article navigation does not work (article rotor for Facebook, Twitter, Messages etc.)
+        https://bugs.webkit.org/show_bug.cgi?id=170330
+        <rdar://problem/31366105>
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/mac/search-predicate-article-expected.txt:
+        * accessibility/mac/search-predicate-article.html:
+
+2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/comments/multi-line-html-close.js
+        https://bugs.webkit.org/show_bug.cgi?id=170648
+
+        Reviewed by Keith Miller.
+
+        * js/parser-xml-close-comment-expected.txt:
+        * js/script-tests/parser-xml-close-comment.js:
+        Update test coverage for JavaScript HTML comments.
+
+2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Array/S15.4.3_A2.2.js
+        https://bugs.webkit.org/show_bug.cgi?id=170652
+
+        Reviewed by Michael Saboff.
+
+        * ietestcenter/Javascript/15.2.3.3-4-186-expected.txt:
+        * ietestcenter/Javascript/15.2.3.3-4-191-expected.txt:
+        * ietestcenter/Javascript/15.2.3.3-4-194-expected.txt:
+        * ietestcenter/Javascript/15.2.3.3-4-201-expected.txt:
+        * ietestcenter/Javascript/15.3.3.2-1-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.3/S15.4.3_A2.2-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.1_Date.prototype.constructor/S15.9.5.1_A3_T2-expected.txt:
+        These tests expected the opposite, they are now out of date.
+
+2017-04-11  Yoav Weiss  <yoav@yoav.ws>
+
+        [link preload] Double downloads of preloaded content when it's in MemoryCache
+        https://bugs.webkit.org/show_bug.cgi?id=170122
+
+        Reviewed by Antti Koivisto.
+
+        * TestExpectations: Removed flakiness label from the header preload charset test.
+        * fast/loader/cache-encoding-expected.txt: Changed expectation.
+        * fast/loader/cache-encoding.html: Modified behavior to stick with the first decoded string.
+        * http/tests/preload/preload-encoding-expected.txt: Changed expectation.
+        * http/tests/preload/preload-encoding.html: Modified behavior to stick with the first decoded string.
+        * imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/script-charset-01-expected.txt: This test refers to the same file
+        twice and expects different decoding for it each time. This is the behavior that we modified, and therefore the test expectation is changed as well.
+
+2017-04-11  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Fix fast/css-grid-layout/grid-simplified-layout-positioned.html
+        https://bugs.webkit.org/show_bug.cgi?id=167538
+
+        Reviewed by Darin Adler.
+
+        fast/css-grid-layout/grid-simplified-layout-positioned.html was flacky
+        as the caret was not always painted in the test runner.
+        The test was checking for a crash in simplified layout (see bug #163450)
+        and has nothing to do with the caret or "autofocus" behavior.
+        "autofocus" was needed to get the crash, so this change modifies
+        the test to blur the element, so the caret is not painted anymore.
+
+        * fast/css-grid-layout/grid-simplified-layout-positioned-expected.html:
+        Don't focus the input element.
+        * fast/css-grid-layout/grid-simplified-layout-positioned.html: Blur
+        the input element to avoid showing the caret.
+        * platform/mac-wk2/TestExpectations: Remove file from expectations.
+
+2017-04-10  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, test expectations update
+
+        * platform/wk2/TestExpectations:
+
+2017-04-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark two newly imported web-platform-tests as failing.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-04-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/volume-slider/volume-slider-value.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167475
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r214403): fast/events/drag-to-navigate.html and fast/events/only-valid-drop-targets-receive-file-drop.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=170677
+        <rdar://problem/31512633>
+
+        Reviewed by Tim Horton.
+
+        Turn enableDragDestinationActionLoad on in these two LayoutTests via WKTR options.
+
+        * fast/events/drag-to-navigate.html:
+        * fast/events/only-valid-drop-targets-receive-file-drop.html:
+
+2017-04-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/volume-up-support/volume-up-support.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170682
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline js/dom/global-constructors-attributes.html after r215131.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-04-10  Andreas Kling  <akling@apple.com>
+
+        Don't generate extra scrolling tiles for non-visible pages.
+        https://bugs.webkit.org/show_bug.cgi?id=167213
+        <rdar://problem/30105774>
+
+        Reviewed by Antti Koivisto.
+
+        * TestExpectations:
+        * compositing/tiling/non-visible-window-tile-coverage-expected.txt: Added.
+        * compositing/tiling/non-visible-window-tile-coverage.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2017-04-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r214426): [GTK] Test media/video-click-dblckick-standalone.html started to fail in the bots after r214426
+        https://bugs.webkit.org/show_bug.cgi?id=170667
+
+        Reviewed by Žan Doberšek.
+
+        Unskip then test that is passing now.
+
+        * platform/gtk/TestExpectations:
+
+2017-04-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Mark several tests as failing/timing out.
+
+        * platform/gtk/TestExpectations:
+
+2017-04-10  Miguel Gomez  <magomez@igalia.com>
+
+        REGRESSION(r205841): [GTK] Test fast/images/animated-png.html is failing since r205841
+        https://bugs.webkit.org/show_bug.cgi?id=168425
+
+        Reviewed by Said Abou-Hallawa.
+
+        Adjusted expectation for fast/images/animated-png.html. It must pass now.
+
+        * platform/gtk/TestExpectations:
+
+2017-04-09  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: tabbing in Styles sidebar is broken when additional ":" and ";" are in the property value
+        https://bugs.webkit.org/show_bug.cgi?id=170184
+
+        Reviewed by Matt Baker.
+
+        * inspector/unit-tests/text-utilities-expected.txt: Added.
+        * inspector/unit-tests/text-utilities.html: Added.
+
+2017-04-09  Youenn Fablet  <youenn@apple.com>
+
+        Resync WPT tests up to 23cd07d4685d81024b7440e042f8bbdb33e7ddec
+        https://bugs.webkit.org/show_bug.cgi?id=170647
+
+        Reviewed by Sam Weinig.
+
+        * TestExpectations:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/304-update-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/cc-request-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/heuristic-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/invalidate-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/status-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/browsers/windows/browsing-context-expected.txt: Added.
+        * platform/mac/TestExpectations:
+        * tests-options.json:
+
+2017-04-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/literals/regexp/identity-escape.js
+        https://bugs.webkit.org/show_bug.cgi?id=170651
+
+        Reviewed by Saam Barati.
+
+        * js/regexp-no-extensions-expected.txt:
+        * js/script-tests/regexp-no-extensions.js:
+        Update existing test for these edge cases.
+
+2017-04-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Variation Fonts] Width values of GX fonts are not mapped correctly
+        https://bugs.webkit.org/show_bug.cgi?id=170367
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/variations/font-selection-properties-expected.html:
+        * fast/text/variations/gx-width-expected.html: Added.
+        * fast/text/variations/gx-width.html: Added.
+
+2017-04-08  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        A synchronous DecodingOptions should be compatible with any asynchronous sizeForDrawing DecodingOptions
+        https://bugs.webkit.org/show_bug.cgi?id=170577
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/async-image-background-image-repeated-expected.html: Added.
+        * fast/images/async-image-background-image-repeated.html: Added.
+
+2017-04-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Unprefix CSS cursor values grab and grabbing
+        https://bugs.webkit.org/show_bug.cgi?id=170543
+
+        Reviewed by Jon Lee.
+
+        Enhanced the cursor test to check round-tripping of all values.
+
+        * fast/css/cursor-parsing-expected.txt:
+        * fast/css/cursor-parsing.html:
+
+2017-04-08  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC tests gardening
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios/TestExpectations:
+
+2017-04-08  Youenn Fablet  <youenn@apple.com>
+
+        MediaStreamTrack id should be preserved by PeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=170624
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video.html:
+
+2017-04-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, update 2 media tests after r215120 so they work on iOS.
+
+        Setting the volume is a no-op on iOS so mute the video instead.
+
+        * media/video-restricted-invisible-autoplay-allowed-when-visible.html:
+        * media/video-restricted-invisible-autoplay-not-allowed.html:
+
+2017-04-07  Yuichiro Kikura  <y.kikura@gmail.com>
+
+        WebGPU: implement ComputeCommandEncoder and related components    
+        https://bugs.webkit.org/show_bug.cgi?id=170444
+
+        Reviewed by Alex Christensen.
+
+        Added a test case to ensure ComputeCommandEncoder is dispatched successfully
+
+        * fast/canvas/webgpu/webgpu-dispatch-expected.txt: Added.
+        * fast/canvas/webgpu/webgpu-dispatch.html: Added.
+
+2017-04-07  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: FlowContents::segmentIndexForRunSlow skips empty runs.
+        https://bugs.webkit.org/show_bug.cgi?id=170552
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-hover-over-subsequent-linebreaks-expected.txt: Added.
+        * fast/text/simple-line-layout-hover-over-subsequent-linebreaks.html: Added.
+
+2017-04-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168540
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/codemirror/prettyprinting-css.html as a flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=170615
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-07  Chris Dumez  <cdumez@apple.com>
+
+        Audible autoplay videos should not get paused when outside the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=170610
+        <rdar://problem/31505984>
+
+        Reviewed by Eric Carlson.
+
+        Add layout test coverage.
+
+        * media/video-restricted-invisible-autoplay-allowed-if-audible-expected.txt: Added.
+        * media/video-restricted-invisible-autoplay-allowed-if-audible.html: Copied from LayoutTests/media/video-restricted-invisible-autoplay-not-allowed.html.
+        * media/video-restricted-invisible-autoplay-allowed-when-visible.html:
+        * media/video-restricted-invisible-autoplay-not-allowed.html:
+
+2017-04-07  Chris Dumez  <cdumez@apple.com>
+
+        Throttle / Align DOM Timers in cross-origin iframes to 30fps
+        https://bugs.webkit.org/show_bug.cgi?id=170613
+        <rdar://problem/31506444>
+
+        Reviewed by Simon Fraser.
+
+        Add layout test coverage.
+
+        * http/tests/frame-throttling/resources/timer-throttling-frame.html: Added.
+        * http/tests/frame-throttling/timer-throttle-in-cross-origin-subframe-expected.txt: Added.
+        * http/tests/frame-throttling/timer-throttle-in-cross-origin-subframe.html: Added.
+
+2017-04-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Rebaseline additional tests after r215096.
+        https://bugs.webkit.org/show_bug.cgi?id=170561
+        <rdar://problem/7415154>
+
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-self-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-self-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-self-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-self-block-expected.txt:
+        * http/tests/security/no-popup-from-sandbox-top-expected.txt:
+        * http/tests/xmlhttprequest/origin-exact-matching-expected.txt:
+
+2017-04-07  Brent Fulgham  <bfulgham@apple.com>
+
+        WebKit should percent encode single quotes in query strings
+        https://bugs.webkit.org/show_bug.cgi?id=170561
+        <rdar://problem/7415154>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline tests after change.
+
+        * fast/events/popup-blocked-from-unique-frame-via-window-open-named-sibling-frame-expected.txt:
+        * fast/frames/xss-auditor-handles-file-urls-expected.txt:
+        * http/tests/security/xssAuditor/base-href-control-char-expected.txt:
+        * http/tests/security/xssAuditor/base-href-expected.txt:
+        * http/tests/security/xssAuditor/base-href-null-char-expected.txt:
+        * http/tests/security/xssAuditor/base-href-scheme-relative-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-control-char-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-javascript-url-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-null-char-expected.txt:
+        * http/tests/security/xssAuditor/form-action-expected.txt:
+        * http/tests/security/xssAuditor/formaction-on-button-expected.txt:
+        * http/tests/security/xssAuditor/formaction-on-input-expected.txt:
+        * http/tests/security/xssAuditor/frameset-injection-expected.txt:
+        * http/tests/security/xssAuditor/full-block-base-href-expected.txt:
+        * http/tests/security/xssAuditor/full-block-link-onclick-expected.txt:
+        * http/tests/security/xssAuditor/full-block-object-tag-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag-with-source-expected.txt:
+        * http/tests/security/xssAuditor/iframe-injection-expected.txt:
+        * http/tests/security/xssAuditor/iframe-javascript-url-more-encoding-expected.txt:
+        * http/tests/security/xssAuditor/img-onerror-non-ASCII-char-default-encoding-expected.txt:
+        * http/tests/security/xssAuditor/img-onerror-non-ASCII-char-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-ampersand-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-control-char-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-entities-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-null-char-expected.txt:
+        * http/tests/security/xssAuditor/object-embed-tag-control-char-expected.txt:
+        * http/tests/security/xssAuditor/object-embed-tag-expected.txt:
+        * http/tests/security/xssAuditor/object-embed-tag-null-char-expected.txt:
+        * http/tests/security/xssAuditor/object-tag-expected.txt:
+        * http/tests/security/xssAuditor/object-tag-javascript-url-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-expression-follows-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-16bit-unicode4-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-16bit-unicode5-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-comma-01-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-control-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-entities-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-null-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-same-host-with-query-expected.txt:
+        * http/tests/security/xssAuditor/svg-animate-expected.txt:
+        * http/tests/security/xssAuditor/svg-script-tag-expected.txt:
+        * http/tests/security/xssAuditor/xss-filter-bypass-big5-expected.txt:
+        * http/tests/security/xssAuditor/xss-filter-bypass-sjis-expected.txt:
+
+2017-04-07  Youenn Fablet  <youenn@apple.com>
+
+        Improve some WebRTC flaky tests
+        https://bugs.webkit.org/show_bug.cgi?id=170584
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/libwebrtc/descriptionGetters.html:
+        * webrtc/video-replace-track-to-null.html:
+
+2017-04-07  Zalan Bujtas  <zalan@apple.com>
+
+        Text insertion cursor disappears after pressing enter
+        https://bugs.webkit.org/show_bug.cgi?id=169291
+        <rdar://problem/30899611>
+
+        Reviewed by Tim Horton.
+
+        * editing/simple-line-layout-caret-is-gone-expected.txt: Added.
+        * editing/simple-line-layout-caret-is-gone.html: Added.
+
 2017-04-06  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Make FontWithFeatures test font pass OTS

@@ -1,3 +1,275 @@
+2017-04-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Use the DisplayRefreshMonitor facilities
+        https://bugs.webkit.org/show_bug.cgi?id=170599
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/Platform.h: Enable USE_REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR for the GTK+ port.
+        * wtf/glib/RunLoopSourcePriority.h: Add the DisplayRefreshMonitorTimer entry that
+        matches the value of LayerFlushTimer.
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebCore][JSC] ResourceUsageData.{timeOfNextEdenCollection,timeOfNextFullCollection} should be MonotonicTime
+        https://bugs.webkit.org/show_bug.cgi?id=170725
+
+        Reviewed by Sam Weinig.
+
+        Make MonotonicTime more constexpr friendly mainly to annotate MonotonicTime::nan() as constexpr.
+
+        * wtf/MonotonicTime.h:
+        (WTF::MonotonicTime::MonotonicTime):
+        (WTF::MonotonicTime::fromRawSeconds):
+        (WTF::MonotonicTime::infinity):
+        (WTF::MonotonicTime::nan):
+        (WTF::MonotonicTime::secondsSinceEpoch):
+        (WTF::MonotonicTime::operator bool):
+        (WTF::MonotonicTime::operator+):
+        (WTF::MonotonicTime::operator-):
+        (WTF::MonotonicTime::operator==):
+        (WTF::MonotonicTime::operator!=):
+        (WTF::MonotonicTime::operator<):
+        (WTF::MonotonicTime::operator>):
+        (WTF::MonotonicTime::operator<=):
+        (WTF::MonotonicTime::operator>=):
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for Windows port after r215228
+        https://bugs.webkit.org/show_bug.cgi?id=170723
+
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::timerFired):
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK] Use RunLoop::Timer in GTK port
+        https://bugs.webkit.org/show_bug.cgi?id=170723
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add secondsUntilFire method. And add setName and setPriority
+        for GTK RunLoop::Timer.
+
+        * wtf/RunLoop.h:
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::setName):
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::timerFired):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::isActive):
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Enable JSRunLoopTimer for JSCOnly and Windows
+        https://bugs.webkit.org/show_bug.cgi?id=170655
+
+        Reviewed by Carlos Garcia Campos.
+
+        This patch makes RunLoop::Timer in Generic and Windows thread-safe to use it
+        in JSC's JSRunLoopTimer. Eventually, we would like to replace JSRunLoopTimer's
+        platform-dependent implementation to WTF::RunLoop::Timer.
+
+        * wtf/RunLoop.h:
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::EarliestSchedule::operator()):
+        (WTF::RunLoop::populateTasks):
+        (WTF::RunLoop::runImpl):
+        (WTF::RunLoop::schedule):
+        (WTF::RunLoop::scheduleAndWakeUp):
+        (WTF::RunLoop::TimerBase::~TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::TimerBase):
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::timerFired):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+
+2017-04-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r213645): It made JSC tests super slow and timeout on AArch64 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=169510
+
+        Reviewed by Saam Barati.
+
+        Add the `volatile` qualifiers for ASM statements that set up ldxr and stxr
+        instruction calls when HAVE(LL_SC) is enabled for aarch64 platforms.
+
+        This avoids indefinite execution when running GCC-compiled JSC on Linux.
+        Specific bug or expected behavior that differs from Clang wasn't determined.
+
+        HAVE(LL_SC) is re-enabled on non-Darwin aarch64 platforms.
+
+        * wtf/Atomics.h:
+        * wtf/Platform.h:
+
+2017-04-10  Thorsten Glaser  <tg@mirbsd.de>
+
+        [GTK] Fix x32 build
+        https://bugs.webkit.org/show_bug.cgi?id=170673
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * wtf/Platform.h:
+
+2017-04-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Annotate Seconds' member functions and operators with constexpr
+        https://bugs.webkit.org/show_bug.cgi?id=170662
+
+        Reviewed by Daniel Bates.
+
+        Annotate Seconds' member functions and operators with constexpr.
+        It allows us to use Seconds calculation in compile time and use these
+        calculation for static const global variables.
+
+        operator% is an exception: it uses fmod and it is not offered as constexpr.
+
+        * wtf/MathExtras.h:
+        (defaultMinimumForClamp):
+        (defaultMaximumForClamp):
+        (clampToAccepting64):
+        Super unfortunate ugly code. This is because GCC 4.9 does not support C++14 relaxed constexpr.
+
+        * wtf/Seconds.h:
+        (WTF::Seconds::Seconds):
+        (WTF::Seconds::value):
+        (WTF::Seconds::minutes):
+        (WTF::Seconds::seconds):
+        (WTF::Seconds::milliseconds):
+        (WTF::Seconds::microseconds):
+        (WTF::Seconds::nanoseconds):
+        (WTF::Seconds::operator bool):
+        (WTF::Seconds::operator+):
+        (WTF::Seconds::operator-):
+        (WTF::Seconds::operator*):
+        (WTF::Seconds::operator/):
+        (WTF::Seconds::operator==):
+        (WTF::Seconds::operator!=):
+        (WTF::Seconds::operator<):
+        (WTF::Seconds::operator>):
+        (WTF::Seconds::operator<=):
+        (WTF::Seconds::operator>=):
+
+2017-04-09  Chris Dumez  <cdumez@apple.com>
+
+        Start dropping Timer API dealing with double
+        https://bugs.webkit.org/show_bug.cgi?id=170649
+
+        Reviewed by Yusuke Suzuki.
+
+        Start dropping Timer API dealing with double as people should use Seconds now.
+
+        * wtf/RunLoopTimer.h:
+        * wtf/glib/MainThreadGLib.cpp:
+        (WTF::MainThreadDispatcher::schedule):
+
+2017-04-07  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, remove constexpr function since GTK didn't like it.
+
+        * wtf/PriorityQueue.h:
+        (WTF::PriorityQueue::parentOf):
+
+2017-04-07  Chris Dumez  <cdumez@apple.com>
+
+        Start using MonotonicTime / Seconds in Timer class
+        https://bugs.webkit.org/show_bug.cgi?id=170625
+
+        Reviewed by Simon Fraser.
+
+        Add modulo operator to MonotonicTime.
+
+        * wtf/MonotonicTime.h:
+        (WTF::MonotonicTime::operator%):
+
+2017-04-07  Keith Miller  <keith_miller@apple.com>
+
+        Add a PriorityQueue class
+        https://bugs.webkit.org/show_bug.cgi?id=170579
+
+        Reviewed by Saam Barati.
+
+        This patch adds a new PriorityQueue class that is backed by
+        WTF::Vector.  It also has a number of other niceties such as being
+        able to iterate the queue and increase or decrease keys.
+
+        One note is that increaseKey and decreaseKey are O(n) rather than
+        O(log(n)).  Traditionally, the lookup of the key is done with a
+        hash map but that's not feasible here.  This is because unless the
+        queue's element type is a pointer there is no good way maintain a
+        persistent reference to every entry in the queue while we sift.
+        The only way to update the location of an entry is to do a hash
+        table lookup with the entry's hash but this is probably more
+        expensive than just doing a linear search.
+
+        Also, add comparison operator functions, which can be passed to PriorityQueue.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/MathExtras.h:
+        (isLessThan):
+        (isLessThanEqual):
+        (isGreaterThan):
+        (isGreaterThanEqual):
+        * wtf/PriorityQueue.h: Added.
+        (WTF::PriorityQueue::size):
+        (WTF::PriorityQueue::isEmpty):
+        (WTF::PriorityQueue::enqueue):
+        (WTF::PriorityQueue::peek):
+        (WTF::PriorityQueue::dequeue):
+        (WTF::PriorityQueue::decreaseKey):
+        (WTF::PriorityQueue::increaseKey):
+        (WTF::PriorityQueue::begin):
+        (WTF::PriorityQueue::end):
+        (WTF::PriorityQueue::isValidHeap):
+        (WTF::PriorityQueue::parentOf):
+        (WTF::PriorityQueue::leftChildOf):
+        (WTF::PriorityQueue::rightChildOf):
+        (WTF::PriorityQueue::siftUp):
+        (WTF::PriorityQueue::siftDown):
+
+2017-04-07  Alex Christensen  <achristensen@webkit.org>
+
+        Use audit_token_t instead of pid_t for checking sandbox of other processes
+        https://bugs.webkit.org/show_bug.cgi?id=170616
+        <rdar://problem/31158189>
+
+        Reviewed by Daniel Bates.
+
+        * wtf/spi/darwin/SandboxSPI.h:
+        Declare more SPI.
+
+2017-04-07  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Include cstdio before using sscanf and stderr
+        https://bugs.webkit.org/show_bug.cgi?id=170098
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/NumberOfCores.cpp:
+
+2017-04-07  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Make to a compilation API that allows for multi-VM concurrent compilations of Wasm Modules
+        https://bugs.webkit.org/show_bug.cgi?id=170488
+
+        Reviewed by JF Bastien.
+
+        * wtf/SharedTask.h: Make SharedTaskFunctor forward its arguments.
+
 2017-04-07  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Update the priorities used in glib main loop sources

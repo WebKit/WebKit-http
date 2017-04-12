@@ -66,8 +66,8 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/SimpleViewportController.cpp
 
     Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp
-    Shared/CoordinatedGraphics/threadedcompositor/TCDisplayRefreshMonitor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
+    Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
 
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp

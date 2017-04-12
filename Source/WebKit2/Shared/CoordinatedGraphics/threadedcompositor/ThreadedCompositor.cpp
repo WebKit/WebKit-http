@@ -29,11 +29,9 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
 #include "CompositingRunLoop.h"
-#include "TCDisplayRefreshMonitor.h"
+#include "ThreadedDisplayRefreshMonitor.h"
 #include <WebCore/PlatformDisplay.h>
 #include <WebCore/TransformationMatrix.h>
-#include <cstdio>
-#include <cstdlib>
 
 #if USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
@@ -58,10 +56,10 @@ ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const I
     , m_doFrameSync(doFrameSync)
     , m_paintFlags(paintFlags)
     , m_needsResize(!viewportSize.isEmpty())
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    , m_displayRefreshMonitor(adoptRef(new WebKit::DisplayRefreshMonitor(*this)))
-#endif
     , m_compositingRunLoop(std::make_unique<CompositingRunLoop>([this] { renderLayerTree(); }))
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    , m_displayRefreshMonitor(ThreadedDisplayRefreshMonitor::create(*this))
+#endif
 {
     m_clientRendersNextFrame.store(false);
     m_coordinateUpdateCompletionWithClient.store(false);
@@ -133,6 +131,9 @@ void ThreadedCompositor::invalidate()
 #endif
         m_scene = nullptr;
     });
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    m_displayRefreshMonitor->invalidate();
+#endif
     m_compositingRunLoop = nullptr;
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     m_displayRefreshMonitor->invalidate();
@@ -162,7 +163,7 @@ void ThreadedCompositor::setScaleFactor(float scale)
 {
     m_compositingRunLoop->performTask([this, protectedThis = makeRef(*this), scale] {
         m_scaleFactor = scale;
-        scheduleDisplayImmediately();
+        m_compositingRunLoop->scheduleUpdate();
     });
 }
 
@@ -171,7 +172,7 @@ void ThreadedCompositor::setScrollPosition(const IntPoint& scrollPosition, float
     m_compositingRunLoop->performTask([this, protectedThis = makeRef(*this), scrollPosition, scale] {
         m_scrollPosition = scrollPosition;
         m_scaleFactor = scale;
-        scheduleDisplayImmediately();
+        m_compositingRunLoop->scheduleUpdate();
     });
 }
 
@@ -185,7 +186,7 @@ void ThreadedCompositor::setViewportSize(const IntSize& viewportSize, float scal
 #endif
         m_scaleFactor = scale;
         m_needsResize = true;
-        scheduleDisplayImmediately();
+        m_compositingRunLoop->scheduleUpdate();
     });
 }
 
@@ -193,7 +194,7 @@ void ThreadedCompositor::setDrawsBackground(bool drawsBackground)
 {
     m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), drawsBackground] {
         m_drawsBackground = drawsBackground;
-        scheduleDisplayImmediately();
+        m_compositingRunLoop->scheduleUpdate();
     });
 }
 
@@ -210,11 +211,6 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
 }
 
 void ThreadedCompositor::updateViewport()
-{
-    m_compositingRunLoop->scheduleUpdate();
-}
-
-void ThreadedCompositor::scheduleDisplayImmediately()
 {
     m_compositingRunLoop->scheduleUpdate();
 }
@@ -267,7 +263,6 @@ void ThreadedCompositor::renderLayerTree()
 #endif
 
 #if PLATFORM(GTK)
-    // For the GTK+ port, {egl,glx}SwapBuffers() does the frame sync.
     sceneUpdateFinished();
 #endif
 }
@@ -287,21 +282,46 @@ void ThreadedCompositor::sceneUpdateFinished()
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
 {
     ASSERT(isMainThread());
-    RefPtr<ThreadedCompositor> protector(this);
     RefPtr<CoordinatedGraphicsScene> scene = m_scene;
-    m_scene->appendUpdate([protector, scene, state] {
+    m_scene->appendUpdate([this, scene, state] {
         scene->commitSceneState(state);
 
-        protector->m_clientRendersNextFrame.store(true);
+        m_clientRendersNextFrame.store(true);
         bool coordinateUpdate = std::any_of(state.layersToUpdate.begin(), state.layersToUpdate.end(),
             [](const std::pair<CoordinatedLayerID, CoordinatedGraphicsLayerState>& it) {
                 return it.second.platformLayerChanged || it.second.platformLayerUpdated;
             });
-        protector->m_coordinateUpdateCompletionWithClient.store(coordinateUpdate);
+        m_coordinateUpdateCompletionWithClient.store(coordinateUpdate);
     });
 
-    scheduleDisplayImmediately();
+    m_compositingRunLoop->scheduleUpdate();
 }
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::displayRefreshMonitor(PlatformDisplayID)
+{
+    return m_displayRefreshMonitor.copyRef();
+}
+
+void ThreadedCompositor::renderNextFrameIfNeeded()
+{
+    if (m_clientRendersNextFrame.compareExchangeStrong(true, false))
+        m_scene->renderNextFrame();
+}
+
+void ThreadedCompositor::completeCoordinatedUpdateIfNeeded()
+{
+    if (m_coordinateUpdateCompletionWithClient.compareExchangeStrong(true, false))
+        m_compositingRunLoop->updateCompleted();
+}
+
+void ThreadedCompositor::coordinateUpdateCompletionWithClient()
+{
+    m_coordinateUpdateCompletionWithClient.store(true);
+    if (!m_compositingRunLoop->isActive())
+        m_compositingRunLoop->scheduleUpdate();
+}
+#endif
 
 #if PLATFORM(WPE)
 static void debugThreadedCompositorFPS()
@@ -327,13 +347,6 @@ void ThreadedCompositor::frameComplete()
         debugThreadedCompositorFPS();
 
     sceneUpdateFinished();
-}
-#endif
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshMonitor(PlatformDisplayID)
-{
-    return m_displayRefreshMonitor;
 }
 #endif
 
