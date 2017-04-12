@@ -1,0 +1,12 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x128
+  RenderBlock {HTML} at (0,0) size 800x128
+    RenderBody {BODY} at (8,16) size 784x87
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 677x16
+          text run at (0,0) width 677: "Test passes if there are three black and three blue instances of 'Filler Text' such that all text has a line above it."
+      RenderBlock {DIV} at (25,41) size 734x46
+        RenderText {#text} at (0,1) size 529x44
+          text run at (0,1) width 529: "Filler Text Filler Text Filler Text"
+      RenderBlock {DIV} at (0,112) size 784x0

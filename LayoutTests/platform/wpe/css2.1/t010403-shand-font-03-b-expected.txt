@@ -1,0 +1,14 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x114
+  RenderBlock {HTML} at (0,0) size 800x114
+    RenderBody {BODY} at (8,16) size 784x82
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 283x16
+          text run at (0,0) width 283: "The following paragraphs should be identical:"
+      RenderBlock {P} at (0,32) size 784x17
+        RenderText {#text} at (0,0) size 197x17
+          text run at (0,0) width 197: "This should be in a bold font."
+      RenderBlock {P} at (0,65) size 784x17
+        RenderText {#text} at (0,0) size 197x17
+          text run at (0,0) width 197: "This should be in a bold font."

@@ -1,0 +1,72 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584 [bgcolor=#CCCCCC]
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 348x16
+          text run at (0,0) width 348: "The style declarations which apply to the text below are:"
+      RenderBlock {PRE} at (0,32) size 784x48
+        RenderText {#text} at (0,0) size 728x47
+          text run at (0,0) width 392: ".one {border-color: purple; border-style: solid;}"
+          text run at (0,16) width 568: ".two {border-color: purple; border-width: medium; border-style: solid;}"
+          text run at (0,32) width 728: ".three {border-color: purple green blue yellow; border-width: medium; border-style: solid;}"
+      RenderBlock {HR} at (0,93) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,111) size 784x64 [bgcolor=#C0C0C0]
+        RenderText {#text} at (0,0) size 662x16
+          text run at (0,0) width 662: "This is an unstyled element, save for the background color, and containing inline elements with a classes of "
+        RenderInline {SPAN} at (0,0) size 62x22 [border: (3px solid #800080)]
+          RenderText {#text} at (664,0) size 56x16
+            text run at (664,0) width 56: "class one"
+        RenderText {#text} at (722,0) size 8x16
+          text run at (722,0) width 8: ", "
+        RenderInline {SPAN} at (0,0) size 762x38 [border: (3px solid #800080)]
+          RenderText {#text} at (732,0) size 762x32
+            text run at (732,0) width 30: "class"
+            text run at (0,16) width 24: "two"
+        RenderText {#text} at (26,16) size 34x16
+          text run at (26,16) width 34: ", and "
+        RenderInline {SPAN} at (0,0) size 71x22 [border: (3px solid #800080) (3px solid #008000) (3px solid #0000FF) (3px solid #FFFF00)]
+          RenderText {#text} at (62,16) size 65x16
+            text run at (62,16) width 65: "class three"
+        RenderText {#text} at (129,16) size 778x48
+          text run at (129,16) width 8: ". "
+          text run at (137,16) width 641: "The effect for each inline element should be to have a purple medium-width solid border in the first and"
+          text run at (0,32) width 529: "second cases, and a purple-green-blue-yellow medium-width solid border in the third. "
+          text run at (528,32) width 230: "The line-height of the parent element"
+          text run at (0,48) width 224: "should not change at all, on any line."
+      RenderTable {TABLE} at (0,191) size 784x99 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 782x97
+          RenderTableRow {TR} at (0,0) size 782x25
+            RenderTableCell {TD} at (0,0) size 782x25 [bgcolor=#C0C0C0] [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+              RenderInline {STRONG} at (0,0) size 158x17
+                RenderText {#text} at (4,4) size 158x17
+                  text run at (4,4) width 158: "TABLE Testing Section"
+          RenderTableRow {TR} at (0,25) size 782x72
+            RenderTableCell {TD} at (0,49) size 12x24 [bgcolor=#C0C0C0] [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (4,4) size 4x16
+                text run at (4,4) width 4: " "
+            RenderTableCell {TD} at (11,25) size 771x72 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderBlock {P} at (4,4) size 763x64 [bgcolor=#C0C0C0]
+                RenderText {#text} at (0,0) size 662x16
+                  text run at (0,0) width 662: "This is an unstyled element, save for the background color, and containing inline elements with a classes of "
+                RenderInline {SPAN} at (0,0) size 62x22 [border: (3px solid #800080)]
+                  RenderText {#text} at (664,0) size 56x16
+                    text run at (664,0) width 56: "class one"
+                RenderText {#text} at (722,0) size 8x16
+                  text run at (722,0) width 8: ", "
+                RenderInline {SPAN} at (0,0) size 762x38 [border: (3px solid #800080)]
+                  RenderText {#text} at (732,0) size 762x32
+                    text run at (732,0) width 30: "class"
+                    text run at (0,16) width 24: "two"
+                RenderText {#text} at (26,16) size 34x16
+                  text run at (26,16) width 34: ", and "
+                RenderInline {SPAN} at (0,0) size 71x22 [border: (3px solid #800080) (3px solid #008000) (3px solid #0000FF) (3px solid #FFFF00)]
+                  RenderText {#text} at (62,16) size 65x16
+                    text run at (62,16) width 65: "class three"
+                RenderText {#text} at (129,16) size 752x48
+                  text run at (129,16) width 8: ". "
+                  text run at (137,16) width 615: "The effect for each inline element should be to have a purple medium-width solid border in the first"
+                  text run at (0,32) width 555: "and second cases, and a purple-green-blue-yellow medium-width solid border in the third. "
+                  text run at (554,32) width 177: "The line-height of the parent"
+                  text run at (0,48) width 277: "element should not change at all, on any line."

@@ -1,0 +1,20 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x200
+  RenderBlock {HTML} at (0,0) size 800x200
+    RenderBody {BODY} at (8,16) size 784x176
+      RenderBlock {P} at (0,0) size 784x16 [color=#000080]
+        RenderText {#text} at (0,0) size 312x16
+          text run at (0,0) width 312: "There should be two unbroken vertical bars below."
+      RenderBlock {P} at (0,32) size 784x32 [color=#000080]
+        RenderText {#text} at (0,0) size 768x32
+          text run at (0,0) width 392: "Hold up a credit card to your display. The distance between the "
+          text run at (391,0) width 377: "two vertical bars should be exactly the length of a credit card"
+          text run at (0,16) width 72: "(85.60mm)."
+      RenderBlock {DIV} at (0,80) size 784x96 [border: none (3px solid #000000)]
+        RenderBlock {DIV} at (326,0) size 458x16 [border: none (3px solid #000000)]
+        RenderBlock {DIV} at (326,16) size 458x16 [border: none (3px solid #000000)]
+        RenderBlock {DIV} at (326,32) size 458x16 [border: none (3px solid #000000)]
+        RenderBlock {DIV} at (326,48) size 458x16 [border: none (3px solid #000000)]
+        RenderBlock {DIV} at (326,64) size 458x16 [border: none (3px solid #000000)]
+        RenderBlock {DIV} at (326,80) size 458x16 [border: none (3px solid #000000)]

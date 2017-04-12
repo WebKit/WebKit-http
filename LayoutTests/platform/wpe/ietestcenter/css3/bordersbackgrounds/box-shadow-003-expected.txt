@@ -1,0 +1,12 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x288
+  RenderBlock {HTML} at (0,0) size 800x288
+    RenderBody {BODY} at (8,16) size 784x264
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 302x16
+          text run at (0,0) width 302: "Test passes if two drawings are exactly the same."
+      RenderBlock {DIV} at (0,32) size 96x96
+      RenderBlock {DIV} at (0,32) size 96x96
+      RenderBlock {DIV} at (0,32) size 96x96
+      RenderBlock {DIV} at (0,168) size 96x96

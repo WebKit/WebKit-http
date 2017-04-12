@@ -1,0 +1,143 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x88
+  RenderBlock {HTML} at (0,0) size 800x88
+    RenderBody {BODY} at (8,16) size 784x64
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 286x16
+          text run at (0,0) width 286: "The following two lines should look the same:"
+      RenderBlock {DIV} at (0,32) size 784x16
+        RenderInline {SPAN} at (0,0) size 5x16
+          RenderInline (generated) at (0,0) size 5x16
+            RenderCounter at (0,0) size 5x16
+              text run at (0,0) width 5: "I"
+        RenderText {#text} at (4,0) size 5x16
+          text run at (4,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 10x16
+          RenderInline (generated) at (0,0) size 10x16
+            RenderCounter at (8,0) size 10x16
+              text run at (8,0) width 10: "II"
+        RenderText {#text} at (17,0) size 5x16
+          text run at (17,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 15x16
+          RenderInline (generated) at (0,0) size 15x16
+            RenderCounter at (21,0) size 15x16
+              text run at (21,0) width 15: "III"
+        RenderText {#text} at (35,0) size 5x16
+          text run at (35,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 17x16
+          RenderInline (generated) at (0,0) size 17x16
+            RenderCounter at (39,0) size 17x16
+              text run at (39,0) width 17: "IV"
+        RenderText {#text} at (55,0) size 5x16
+          text run at (55,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 12x16
+          RenderInline (generated) at (0,0) size 12x16
+            RenderCounter at (59,0) size 12x16
+              text run at (59,0) width 12: "V"
+        RenderText {#text} at (70,0) size 5x16
+          text run at (70,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 17x16
+          RenderInline (generated) at (0,0) size 17x16
+            RenderCounter at (74,0) size 17x16
+              text run at (74,0) width 17: "VI"
+        RenderText {#text} at (90,0) size 5x16
+          text run at (90,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 21x16
+          RenderInline (generated) at (0,0) size 21x16
+            RenderCounter at (94,0) size 21x16
+              text run at (94,0) width 21: "VII"
+        RenderText {#text} at (114,0) size 5x16
+          text run at (114,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 27x16
+          RenderInline (generated) at (0,0) size 27x16
+            RenderCounter at (118,0) size 27x16
+              text run at (118,0) width 27: "VIII"
+        RenderText {#text} at (144,0) size 4x16
+          text run at (144,0) width 4: " "
+        RenderInline {SPAN} at (0,0) size 17x16
+          RenderInline (generated) at (0,0) size 17x16
+            RenderCounter at (147,0) size 17x16
+              text run at (147,0) width 17: "IX"
+        RenderText {#text} at (163,0) size 5x16
+          text run at (163,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 12x16
+          RenderInline (generated) at (0,0) size 12x16
+            RenderCounter at (167,0) size 12x16
+              text run at (167,0) width 12: "X"
+        RenderText {#text} at (178,0) size 5x16
+          text run at (178,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 17x16
+          RenderInline (generated) at (0,0) size 17x16
+            RenderCounter at (182,0) size 17x16
+              text run at (182,0) width 17: "XI"
+        RenderText {#text} at (198,0) size 5x16
+          text run at (198,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 22x16
+          RenderInline (generated) at (0,0) size 22x16
+            RenderCounter at (202,0) size 22x16
+              text run at (202,0) width 22: "XII"
+        RenderText {#text} at (223,0) size 4x16
+          text run at (223,0) width 4: " "
+        RenderInline {SPAN} at (0,0) size 38x16
+          RenderInline (generated) at (0,0) size 38x16
+            RenderCounter at (226,0) size 38x16
+              text run at (226,0) width 38: "XLIX"
+        RenderText {#text} at (263,0) size 5x16
+          text run at (263,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 10x16
+          RenderInline (generated) at (0,0) size 10x16
+            RenderCounter at (267,0) size 10x16
+              text run at (267,0) width 10: "L"
+        RenderText {#text} at (276,0) size 5x16
+          text run at (276,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 91x16
+          RenderInline (generated) at (0,0) size 91x16
+            RenderCounter at (280,0) size 91x16
+              text run at (280,0) width 91: "CCCLXXXIX"
+        RenderText {#text} at (370,0) size 5x16
+          text run at (370,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 54x16
+          RenderInline (generated) at (0,0) size 54x16
+            RenderCounter at (374,0) size 54x16
+              text run at (374,0) width 54: "CCCXC"
+        RenderText {#text} at (427,0) size 5x16
+          text run at (427,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 124x16
+          RenderInline (generated) at (0,0) size 124x16
+            RenderCounter at (431,0) size 124x16
+              text run at (431,0) width 124: "MMMCDLXXXIX"
+        RenderText {#text} at (554,0) size 5x16
+          text run at (554,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 86x16
+          RenderInline (generated) at (0,0) size 86x16
+            RenderCounter at (558,0) size 86x16
+              text run at (558,0) width 86: "MMMCDXC"
+        RenderText {#text} at (643,0) size 5x16
+          text run at (643,0) width 5: " "
+        RenderInline {SPAN} at (0,0) size 91x16
+          RenderInline (generated) at (0,0) size 91x16
+            RenderCounter at (647,0) size 91x16
+              text run at (647,0) width 91: "MMMCDXCI"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {DIV} at (0,48) size 784x16
+        RenderText {#text} at (0,0) size 738x16
+          text run at (0,0) width 9: "I "
+          text run at (8,0) width 14: "II "
+          text run at (21,0) width 19: "III "
+          text run at (39,0) width 21: "IV "
+          text run at (59,0) width 16: "V "
+          text run at (74,0) width 21: "VI "
+          text run at (94,0) width 25: "VII "
+          text run at (118,0) width 30: "VIII "
+          text run at (147,0) width 21: "IX "
+          text run at (167,0) width 16: "X "
+          text run at (182,0) width 21: "XI "
+          text run at (202,0) width 25: "XII "
+          text run at (226,0) width 42: "XLIX "
+          text run at (267,0) width 14: "L "
+          text run at (280,0) width 95: "CCCLXXXIX "
+          text run at (374,0) width 58: "CCCXC "
+          text run at (431,0) width 128: "MMMCDLXXXIX "
+          text run at (558,0) width 90: "MMMCDXC "
+          text run at (647,0) width 91: "MMMCDXCI"

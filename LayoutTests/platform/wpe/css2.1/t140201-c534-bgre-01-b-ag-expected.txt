@@ -1,0 +1,30 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x152
+  RenderBlock {HTML} at (0,0) size 800x152
+    RenderBody {BODY} at (8,16) size 784x128
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 229x16
+          text run at (0,0) width 229: "There should be a green block below."
+      RenderBlock {DIV} at (0,32) size 156x96 [color=#008000] [bgcolor=#008000] [border: (3px solid #000000)]
+        RenderBlock {DIV} at (3,3) size 150x30
+          RenderText {#text} at (0,-1) size 113x31
+            text run at (0,-1) width 39: "z          "
+            text run at (38,-1) width 40: "z          "
+            text run at (77,-1) width 36: "z         "
+            text run at (0,14) width 39: "z          "
+            text run at (38,14) width 36: "z         "
+        RenderBlock {DIV} at (3,33) size 150x30
+          RenderText {#text} at (0,-1) size 135x31
+            text run at (0,-1) width 68: "zzzzzzzzzz "
+            text run at (67,-1) width 36: "           "
+            text run at (102,-1) width 33: "          "
+            text run at (0,14) width 36: "           "
+            text run at (35,14) width 33: "          "
+        RenderBlock {DIV} at (3,63) size 150x30
+          RenderText {#text} at (0,-1) size 142x31
+            text run at (0,-1) width 39: "z          "
+            text run at (38,-1) width 36: "           "
+            text run at (73,-1) width 37: "           "
+            text run at (109,-1) width 33: "          "
+            text run at (0,14) width 33: "          "

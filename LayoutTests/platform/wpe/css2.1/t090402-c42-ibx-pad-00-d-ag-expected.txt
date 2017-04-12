@@ -1,0 +1,28 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x184
+  RenderBlock {HTML} at (0,0) size 800x184
+    RenderBody {BODY} at (8,16) size 784x160
+      RenderBlock {P} at (0,0) size 784x16 [color=#000080]
+        RenderText {#text} at (0,0) size 472x16
+          text run at (0,0) width 472: "The two diagrams below should be identical to the pixel with no red present."
+      RenderTable {TABLE} at (0,32) size 434x128
+        RenderTableSection {TBODY} at (0,0) size 434x128
+          RenderTableRow {TR} at (0,2) size 434x124
+            RenderTableCell {TD} at (2,26) size 214x76 [border: (2px solid #000000)] [r=0 c=0 rs=1 cs=1]
+              RenderBlock {DIV} at (12,2) size 200x72
+                RenderText {#text} at (0,6) size 91x12
+                  text run at (0,6) width 70: "1 2 3 4 5 6 7 8 9 0 "
+                  text run at (70,6) width 21: "1 2 3 "
+                RenderInline {SPAN} at (0,0) size 198x60 [border: (10px solid #0000FF)]
+                  RenderText {#text} at (151,6) size 198x36
+                    text run at (151,6) width 28: "7 8 9 0 "
+                    text run at (179,6) width 19: "1 2 3"
+                    text run at (0,30) width 49: "4 5 6 7 8 9 0 "
+                    text run at (49,30) width 28: "1 2 3 4 "
+                RenderText {#text} at (137,30) size 198x36
+                  text run at (137,30) width 21: "8 9 0 "
+                  text run at (158,30) width 40: "1 2 3 4 5 6"
+                  text run at (0,54) width 26: "7 8 9 0"
+            RenderTableCell {TD} at (218,2) size 214x124 [color=#FFFF00] [bgcolor=#FF0000] [border: (2px solid #000000)] [r=0 c=1 rs=1 cs=1]
+              RenderImage {IMG} at (2,2) size 210x120

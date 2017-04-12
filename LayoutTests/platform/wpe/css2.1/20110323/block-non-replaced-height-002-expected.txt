@@ -1,0 +1,13 @@
+layer at (0,0) size 785x585
+  RenderView at (0,0) size 785x585
+layer at (0,0) size 785x101
+  RenderBlock {HTML} at (0,0) size 785x101
+layer at (8,8) size 769x85 clip at (8,8) size 754x70
+  RenderBody {BODY} at (8,8) size 769x85
+    RenderBlock {P} at (0,16) size 754x16
+      RenderText {#text} at (0,0) size 530x16
+        text run at (0,0) width 530: "Test passes if there is no white space between the blue box below and the orange lines."
+    RenderBlock {DIV} at (0,48) size 96x22 [border: (3px solid #FFA500) none (3px solid #FFA500) none]
+      RenderBlock {DIV} at (0,3) size 96x16 [bgcolor=#0000FF]
+        RenderText {#text} at (0,0) size 67x16
+          text run at (0,0) width 67: "Filler Text"

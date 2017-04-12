@@ -1,0 +1,61 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x268
+  RenderBlock {HTML} at (0,0) size 800x268
+    RenderBody {BODY} at (8,16) size 784x236 [color=#0000FF]
+      RenderBlock {P} at (0,0) size 784x32
+        RenderText {#text} at (0,0) size 471x16
+          text run at (0,0) width 471: "There should be a solid blue line directly over every occurance of the word \""
+        RenderInline {SPAN} at (0,0) size 58x18 [border: (2px solid #0000FF) none]
+          RenderText {#text} at (470,0) size 58x16
+            text run at (470,0) width 58: "HERE \x{21E7}"
+        RenderText {#text} at (527,0) size 780x32
+          text run at (527,0) width 253: "\". (So there should be 8 blue lines on this"
+          text run at (0,16) width 37: "page.)"
+      RenderTable {TABLE} at (0,48) size 131x70
+        RenderTableSection {TBODY} at (0,0) size 131x70
+          RenderTableRow {TR} at (0,2) size 131x20
+            RenderTableCell {TD} at (2,2) size 127x20 [border: (2px solid #0000FF) none] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (34,3) size 58x16
+                text run at (34,3) width 58: "HERE \x{21E7}"
+          RenderTableRow {TR} at (0,24) size 131x44
+            RenderTableCell {TD} at (2,36) size 60x20 [border: (2px solid #0000FF) none] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (1,3) size 58x16
+                text run at (1,3) width 58: "HERE \x{21E7}"
+            RenderTableCell {TD} at (63,24) size 66x44 [border: (2px solid #0000FF) none] [r=1 c=1 rs=1 cs=1]
+              RenderBlock (anonymous) at (1,3) size 64x16
+                RenderText {#text} at (3,0) size 58x16
+                  text run at (3,0) width 58: "HERE \x{21E7}"
+              RenderTable {TABLE} at (1,19) size 64x24
+                RenderTableSection {TBODY} at (0,0) size 64x24
+                  RenderTableRow {TR} at (0,2) size 64x20
+                    RenderTableCell {TD} at (2,2) size 60x20 [border: (2px solid #0000FF) none] [r=0 c=0 rs=1 cs=1]
+                      RenderText {#text} at (1,3) size 58x16
+                        text run at (1,3) width 58: "HERE \x{21E7}"
+      RenderBlock {UL} at (0,134) size 784x102
+        RenderListItem {LI} at (40,0) size 744x66 [border: (2px solid #0000FF) none]
+          RenderBlock (anonymous) at (0,2) size 744x16
+            RenderListMarker at (-16,0) size 6x16: bullet
+            RenderText {#text} at (0,0) size 58x16
+              text run at (0,0) width 58: "HERE \x{21E7}"
+          RenderBlock {UL} at (0,18) size 744x48
+            RenderListItem {LI} at (40,0) size 704x16
+              RenderListMarker at (-16,0) size 6x16: white bullet
+              RenderText {#text} at (0,0) size 75x16
+                text run at (0,0) width 75: "dummy text"
+            RenderListItem {LI} at (40,16) size 704x16
+              RenderListMarker at (-16,0) size 6x16: white bullet
+              RenderText {#text} at (0,0) size 75x16
+                text run at (0,0) width 75: "dummy text"
+            RenderListItem {LI} at (40,32) size 704x16
+              RenderListMarker at (-16,0) size 6x16: white bullet
+              RenderText {#text} at (0,0) size 75x16
+                text run at (0,0) width 75: "dummy text"
+        RenderListItem {LI} at (40,66) size 744x18 [border: (2px solid #0000FF) none]
+          RenderListMarker at (-16,2) size 6x16: bullet
+          RenderText {#text} at (0,2) size 58x16
+            text run at (0,2) width 58: "HERE \x{21E7}"
+        RenderListItem {LI} at (40,84) size 744x18 [border: (2px solid #0000FF) none]
+          RenderListMarker at (-16,2) size 6x16: bullet
+          RenderText {#text} at (0,2) size 58x16
+            text run at (0,2) width 58: "HERE \x{21E7}"

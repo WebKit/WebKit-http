@@ -1,0 +1,27 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x182
+  RenderBlock {HTML} at (0,0) size 800x182
+    RenderBody {BODY} at (8,8) size 784x166
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 266x16
+          text run at (0,0) width 266: "There should be a green box to the right. \x{2798}"
+      RenderBlock {DIV} at (0,16) size 784x150 [bgcolor=#FFFFFF]
+        RenderBlock (floating) {P} at (458,10) size 316x61 [color=#008000] [border: (3px solid #008000)]
+          RenderText {#text} at (8,7) size 289x46
+            text run at (8,7) width 128: "x x xxxx xx xxxx x x "
+            text run at (135,7) width 128: "x xx xx xxxx xx xx x "
+            text run at (262,7) width 35: "x xxx"
+            text run at (8,22) width 92: "xx xx xx xxx x "
+            text run at (99,22) width 128: "x xx xx xxxx xx xx x "
+            text run at (226,22) width 71: "x x xxxx xx"
+            text run at (8,37) width 52: "xxxx x x"
+        RenderBlock {P} at (0,0) size 784x45 [color=#FFFFFF]
+          RenderText {#text} at (440,-1) size 8x16
+            text run at (440,-1) width 8: "x"
+          RenderBR {BR} at (448,-1) size 0x16
+          RenderText {#text} at (440,14) size 8x16
+            text run at (440,14) width 8: "x"
+          RenderBR {BR} at (448,14) size 0x16
+          RenderText {#text} at (440,29) size 8x16
+            text run at (440,29) width 8: "x"

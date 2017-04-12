@@ -1,0 +1,62 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x528
+  RenderBlock {HTML} at (0,0) size 800x528
+    RenderBody {BODY} at (8,16) size 784x496 [color=#008000]
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,32) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,64) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,96) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."
+      RenderBlock {OL} at (0,128) size 784x16
+        RenderListItem {LI} at (40,0) size 744x16
+          RenderListMarker at (-20,0) size 16x16: "1"
+          RenderText {#text} at (0,0) size 159x16
+            text run at (0,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,160) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."
+      RenderBlock {UL} at (0,192) size 784x16
+        RenderListItem {LI} at (40,0) size 744x16
+          RenderListMarker at (-16,0) size 6x16: bullet
+          RenderText {#text} at (0,0) size 159x16
+            text run at (0,0) width 159: "This line should be green."
+      RenderBlock {BLOCKQUOTE} at (40,224) size 704x16
+        RenderBlock {P} at (0,0) size 704x16
+          RenderText {#text} at (0,0) size 159x16
+            text run at (0,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,256) size 784x16
+        RenderInline {ACRONYM} at (0,0) size 159x16
+          RenderText {#text} at (0,0) size 159x16
+            text run at (0,0) width 159: "This line should be green."
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {ADDRESS} at (0,288) size 784x16
+        RenderText {#text} at (0,0) size 158x16
+          text run at (0,0) width 158: "This line should be green."
+      RenderBlock {P} at (0,320) size 784x16
+        RenderInline {SPAN} at (0,0) size 159x16
+          RenderText {#text} at (0,0) size 159x16
+            text run at (0,0) width 159: "This line should be green."
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,352) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,384) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,416) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,448) size 784x16
+        RenderText {#text} at (48,0) size 159x16
+          text run at (48,0) width 159: "This line should be green."
+      RenderBlock {P} at (0,480) size 784x16
+        RenderText {#text} at (0,0) size 159x16
+          text run at (0,0) width 159: "This line should be green."

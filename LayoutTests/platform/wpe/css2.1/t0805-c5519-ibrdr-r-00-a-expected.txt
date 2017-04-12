@@ -1,0 +1,55 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x272
+  RenderBlock {HTML} at (0,0) size 800x272
+    RenderBody {BODY} at (8,8) size 784x256
+      RenderBlock {DIV} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 332x16
+          text run at (0,0) width 332: "The blue bits of text should be decorated as described."
+      RenderBlock {P} at (0,32) size 784x192 [color=#C0C0C0]
+        RenderText {#text} at (0,0) size 778x48
+          text run at (0,0) width 469: "dummy text dummy text dummy text dummy text dummy text dummy text "
+          text run at (468,0) width 310: "dummy text dummy text dummy text dummy text"
+          text run at (0,16) width 157: "dummy text dummy text "
+          text run at (156,16) width 469: "dummy text dummy text dummy text dummy text dummy text dummy text "
+          text run at (624,16) width 154: "dummy text dummy text"
+          text run at (0,32) width 313: "dummy text dummy text dummy text dummy text "
+        RenderInline {SPAN} at (0,0) size 778x32 [color=#0000FF] [border: none (10px double #0000FF) none]
+          RenderInline {SPAN} at (0,0) size 778x32 [color=#C0C0C0]
+            RenderText {#text} at (312,32) size 778x32
+              text run at (312,32) width 313: "dummy text dummy text dummy text dummy text "
+              text run at (624,32) width 154: "dummy text dummy text"
+              text run at (0,48) width 313: "dummy text dummy text dummy text dummy text "
+              text run at (312,48) width 153: "dummy text dummy text"
+          RenderText {#text} at (464,48) size 129x16
+            text run at (464,48) width 129: " two blue lines here: "
+        RenderText {#text} at (602,48) size 778x80
+          text run at (602,48) width 52: "dummy "
+          text run at (653,48) width 103: "text dummy text"
+          text run at (0,64) width 364: "dummy text dummy text dummy text dummy text dummy "
+          text run at (363,64) width 415: "text dummy text dummy text dummy text dummy text dummy text"
+          text run at (0,80) width 51: "dummy "
+          text run at (50,80) width 470: "text dummy text dummy text dummy text dummy text dummy text dummy "
+          text run at (519,80) width 259: "text dummy text dummy text dummy text"
+          text run at (0,96) width 208: "dummy text dummy text dummy "
+          text run at (207,96) width 469: "text dummy text dummy text dummy text dummy text dummy text dummy "
+          text run at (675,96) width 103: "text dummy text"
+          text run at (0,112) width 364: "dummy text dummy text dummy text dummy text dummy "
+          text run at (363,112) width 262: "text dummy text dummy text dummy text "
+        RenderInline {SPAN} at (0,0) size 144x16 [color=#0000FF] [border: none (1px solid #0000FF) none]
+          RenderText {#text} at (624,112) size 143x16
+            text run at (624,112) width 55: "one thin "
+            text run at (678,112) width 89: "blue line here:"
+        RenderText {#text} at (0,128) size 778x64
+          text run at (0,128) width 313: "dummy text dummy text dummy text dummy text "
+          text run at (312,128) width 466: "dummy text dummy text dummy text dummy text dummy text dummy text"
+          text run at (0,144) width 469: "dummy text dummy text dummy text dummy text dummy text dummy text "
+          text run at (468,144) width 310: "dummy text dummy text dummy text dummy text"
+          text run at (0,160) width 157: "dummy text dummy text "
+          text run at (156,160) width 469: "dummy text dummy text dummy text dummy text dummy text dummy text "
+          text run at (624,160) width 154: "dummy text dummy text"
+          text run at (0,176) width 313: "dummy text dummy text dummy text dummy text "
+          text run at (312,176) width 388: "dummy text dummy text dummy text dummy text dummy text"
+      RenderBlock {DIV} at (0,240) size 784x16
+        RenderText {#text} at (0,0) size 405x16
+          text run at (0,0) width 405: "(All the lines of text in the block above should be equally spaced.)"

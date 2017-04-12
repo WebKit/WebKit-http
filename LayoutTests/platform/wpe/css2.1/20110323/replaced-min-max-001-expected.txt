@@ -1,0 +1,107 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x190
+  RenderBlock {HTML} at (0,0) size 800x190
+    RenderBody {BODY} at (8,8) size 784x174
+      RenderBlock {DIV} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 293x16
+          text run at (0,0) width 293: "All twenty images should be identically square."
+      RenderBlock (anonymous) at (0,16) size 784x158
+        RenderInline {P} at (0,0) size 75x16
+          RenderImage {IMG} at (0,0) size 75x75
+        RenderText {#text} at (75,63) size 4x16
+          text run at (75,63) width 4: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (78,0) size 76x75
+        RenderText {#text} at (153,63) size 5x16
+          text run at (153,63) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (157,0) size 76x75
+        RenderText {#text} at (232,63) size 5x16
+          text run at (232,63) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (236,0) size 76x75
+        RenderText {#text} at (311,63) size 5x16
+          text run at (311,63) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (315,0) size 76x75
+        RenderText {#text} at (390,63) size 4x16
+          text run at (390,63) width 4: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (393,0) size 76x75
+        RenderText {#text} at (468,63) size 5x16
+          text run at (468,63) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (472,0) size 76x75
+        RenderText {#text} at (547,63) size 5x16
+          text run at (547,63) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (551,0) size 76x75
+        RenderText {#text} at (626,63) size 5x16
+          text run at (626,63) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (630,0) size 76x75
+        RenderText {#text} at (705,63) size 4x16
+          text run at (705,63) width 4: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (708,0) size 76x75
+        RenderText {#text} at (0,0) size 0x0
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 75x16
+          RenderImage {IMG} at (0,79) size 75x75
+        RenderText {#text} at (75,142) size 4x16
+          text run at (75,142) width 4: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (78,79) size 76x75
+        RenderText {#text} at (153,142) size 5x16
+          text run at (153,142) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (157,79) size 76x75
+        RenderText {#text} at (232,142) size 5x16
+          text run at (232,142) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (236,79) size 76x75
+        RenderText {#text} at (311,142) size 5x16
+          text run at (311,142) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (315,79) size 76x75
+        RenderText {#text} at (390,142) size 4x16
+          text run at (390,142) width 4: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (393,79) size 76x75
+        RenderText {#text} at (468,142) size 5x16
+          text run at (468,142) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (472,79) size 76x75
+        RenderText {#text} at (547,142) size 5x16
+          text run at (547,142) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (551,79) size 76x75
+        RenderText {#text} at (626,142) size 5x16
+          text run at (626,142) width 5: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (630,79) size 76x75
+        RenderText {#text} at (705,142) size 4x16
+          text run at (705,142) width 4: " "
+        RenderText {#text} at (0,0) size 0x0
+        RenderInline {P} at (0,0) size 76x16
+          RenderImage {IMG} at (708,79) size 76x75
+        RenderText {#text} at (0,0) size 0x0
+        RenderText {#text} at (0,0) size 0x0

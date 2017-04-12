@@ -1,0 +1,36 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x224
+  RenderBlock {HTML} at (0,0) size 800x224
+    RenderBody {BODY} at (8,16) size 784x192 [color=#0000FF]
+      RenderBlock {P} at (0,0) size 784x32
+        RenderText {#text} at (0,13) size 469x16
+          text run at (0,13) width 469: "There should be a solid blue line to the left of every occurance of the word \""
+        RenderInline {SPAN} at (0,0) size 130x32 [border: none (2px solid #0000FF)]
+          RenderText {#text} at (470,0) size 128x32
+            text run at (470,0) width 128: "\x{21E6}THERE"
+        RenderText {#text} at (597,13) size 11x16
+          text run at (597,13) width 11: "\"."
+      RenderTable {TABLE} at (0,48) size 276x112
+        RenderTableSection {TBODY} at (0,0) size 276x112
+          RenderTableRow {TR} at (0,2) size 276x34
+            RenderTableCell {TD} at (2,2) size 272x34 [border: none (2px solid #0000FF)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (3,1) size 127x32
+                text run at (3,1) width 127: "\x{21E6}THERE"
+          RenderTableRow {TR} at (0,38) size 276x72
+            RenderTableCell {TD} at (2,57) size 131x34 [border: none (2px solid #0000FF)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (3,1) size 127x32
+                text run at (3,1) width 127: "\x{21E6}THERE"
+            RenderTableCell {TD} at (134,38) size 140x72 [border: none (2px solid #0000FF)] [r=1 c=1 rs=1 cs=1]
+              RenderBlock (anonymous) at (3,1) size 135x32
+                RenderText {#text} at (0,0) size 127x32
+                  text run at (0,0) width 127: "\x{21E6}THERE"
+              RenderTable {TABLE} at (3,33) size 135x38
+                RenderTableSection {TBODY} at (0,0) size 135x38
+                  RenderTableRow {TR} at (0,2) size 135x34
+                    RenderTableCell {TD} at (2,2) size 131x34 [border: none (2px solid #0000FF)] [r=0 c=0 rs=1 cs=1]
+                      RenderText {#text} at (3,1) size 127x32
+                        text run at (3,1) width 127: "\x{21E6}THERE"
+      RenderBlock {P} at (0,176) size 784x16
+        RenderText {#text} at (0,0) size 330x16
+          text run at (0,0) width 330: "There should be 3 short lines and 2 long lines in total."

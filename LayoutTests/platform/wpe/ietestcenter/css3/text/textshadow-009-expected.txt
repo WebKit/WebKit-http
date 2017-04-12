@@ -1,0 +1,18 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x236
+  RenderBlock {HTML} at (0,0) size 800x236
+    RenderBody {BODY} at (8,16) size 784x212
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 296x16
+          text run at (0,0) width 296: "Test passes if there is no red visible on the page."
+      RenderBlock {DIV} at (0,32) size 784x180
+        RenderBlock (anonymous) at (0,0) size 784x60
+          RenderText {#text} at (0,0) size 233x60
+            text run at (0,0) width 233: "FillerText"
+        RenderBlock {DIV} at (0,60) size 784x60
+          RenderText {#text} at (0,0) size 233x60
+            text run at (0,0) width 233: "FillerText"
+        RenderBlock (anonymous) at (0,120) size 784x60
+          RenderText {#text} at (0,0) size 233x60
+            text run at (0,0) width 233: "FillerText"

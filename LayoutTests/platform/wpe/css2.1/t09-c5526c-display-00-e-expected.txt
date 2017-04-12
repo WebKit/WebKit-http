@@ -1,0 +1,68 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x420
+  RenderBlock {HTML} at (0,0) size 800x420 [color=#FFFFFF] [bgcolor=#0000FF]
+    RenderBody {BODY} at (15,15) size 490x390 [bgcolor=#FFFFFF] [border: (5px solid #000000)]
+      RenderBlock {DL} at (5,5) size 480x10
+        RenderBlock (floating) {DT} at (5,5) size 80x310 [bgcolor=#CC0000] [border: (5px solid #000000)]
+          RenderText {#text} at (15,14) size 29x12
+            text run at (15,14) width 29: "toggle"
+        RenderBlock (floating) {DD} at (95,5) size 380x310 [border: (10px solid #000000)]
+          RenderBlock {UL} at (20,20) size 340x0
+            RenderBlock (floating) {LI} at (0,0) size 80x120 [color=#000000] [bgcolor=#FFCC00] [border: (5px solid #000000)]
+              RenderText {#text} at (15,14) size 36x12
+                text run at (15,14) width 36: "the way"
+            RenderBlock (floating) {LI} at (90,0) size 160x110 [bgcolor=#000000]
+              RenderBlock {P} at (10,10) size 140x10
+                RenderText {#text} at (0,-1) size 69x12
+                  text run at (0,-1) width 69: "the world ends"
+              RenderBlock (anonymous) at (10,20) size 140x0
+                RenderInline {FORM} at (0,0) size 0x0
+                  RenderText {#text} at (0,0) size 0x0
+              RenderBlock (anonymous) at (10,20) size 140x42
+                RenderBlock {P} at (0,0) size 140x21
+                  RenderText {#text} at (0,5) size 26x12
+                    text run at (0,5) width 26: "bang "
+                  RenderBlock {INPUT} at (28,3) size 12x12 [color=#000000]
+                  RenderText {#text} at (0,0) size 0x0
+                RenderBlock {P} at (0,21) size 140x21
+                  RenderText {#text} at (0,5) size 42x12
+                    text run at (0,5) width 42: "whimper "
+                  RenderBlock {INPUT} at (44,3) size 12x12 [color=#000000]
+                  RenderText {#text} at (0,0) size 0x0
+              RenderBlock (anonymous) at (10,62) size 140x0
+                RenderInline {FORM} at (0,0) size 0x0
+                RenderText {#text} at (0,0) size 0x0
+            RenderBlock (floating) {LI} at (259,0) size 81x120 [color=#000000] [bgcolor=#FFCC00] [border: (5px solid #000000)]
+              RenderText {#text} at (15,14) size 46x12
+                text run at (15,14) width 46: "i grow old"
+            RenderBlock (floating) {LI} at (0,130) size 120x120 [bgcolor=#000000]
+              RenderText {#text} at (10,9) size 29x12
+                text run at (10,9) width 29: "pluot?"
+          RenderBlock (floating) {BLOCKQUOTE} at (160,150) size 70x140 [color=#000000] [bgcolor=#FFCC00] [border: (10px solid #000000) (15px solid #000000) (20px solid #000000) (5px solid #000000)]
+            RenderBlock {ADDRESS} at (5,20) size 50x10
+              RenderText {#text} at (0,-1) size 47x12
+                text run at (0,-1) width 47: "bar maids,"
+          RenderBlock (floating) {H1} at (240,150) size 120x120 [bgcolor=#000000]
+            RenderText {#text} at (10,9) size 91x22
+              text run at (10,9) width 91: "sing to me, erbarme"
+              text run at (10,19) width 19: "dich"
+      RenderBlock {P} at (5,320) size 480x65 [color=#000000]
+        RenderText {#text} at (0,0) size 462x38
+          text run at (0,0) width 462: "This is a nonsensical document, but syntactically valid HTML 4.0. All 100%-conformant CSS1 agents"
+          text run at (0,13) width 462: "should be able to render the document elements above this paragraph indistinguishably (to the pixel)"
+          text run at (0,26) width 45: "from this "
+        RenderInline {A} at (0,0) size 93x12 [color=#999999]
+          RenderText {#text} at (45,26) size 93x12
+            text run at (45,26) width 93: "reference rendering,"
+        RenderText {#text} at (138,26) size 475x25
+          text run at (138,26) width 3: " "
+          text run at (141,26) width 334: "(except font rasterization and form widgets). All discrepancies should be"
+          text run at (0,39) width 229: "traceable to CSS1 implementation shortcomings. "
+          text run at (229,39) width 32: "Please "
+        RenderInline {A} at (0,0) size 79x12 [color=#CC0000]
+          RenderText {#text} at (261,39) size 79x12
+            text run at (261,39) width 79: "report any errors"
+        RenderText {#text} at (340,39) size 465x25
+          text run at (340,39) width 125: " you find between the CSS"
+          text run at (0,52) width 131: "and the reference rendering."
