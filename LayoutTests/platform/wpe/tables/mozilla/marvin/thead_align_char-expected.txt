@@ -1,0 +1,55 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {P} at (0,0) size 784x48
+        RenderText {#text} at (0,0) size 774x48
+          text run at (0,0) width 758: "In this test, the THEAD section of the table contains numbers with decimals. The test uses the attribute/value ALIGN=char"
+          text run at (0,16) width 774: "without the additional CHAR attribute to specify a particular character. Therefore, ALIGN=char should cause the numbers to"
+          text run at (0,32) width 256: "align to the default value (decimal point)."
+      RenderTable {TABLE} at (0,64) size 517x92 [border: (1px outset #808080)]
+        RenderTableSection {THEAD} at (1,1) size 515x46
+          RenderTableRow {TR} at (0,2) size 515x20
+            RenderTableCell {TD} at (2,2) size 169x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 34x16
+                text run at (2,2) width 34: "55.00"
+            RenderTableCell {TD} at (172,2) size 170x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 57x16
+                text run at (2,2) width 57: "55555.00"
+            RenderTableCell {TD} at (343,2) size 170x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 42x16
+                text run at (2,2) width 42: "555.00"
+          RenderTableRow {TR} at (0,24) size 515x20
+            RenderTableCell {TD} at (2,24) size 169x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 49x16
+                text run at (2,2) width 49: "1234.56"
+            RenderTableCell {TD} at (172,24) size 170x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 42x16
+                text run at (2,2) width 42: "123.45"
+            RenderTableCell {TD} at (343,24) size 170x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 57x16
+                text run at (2,2) width 57: "12345.67"
+        RenderTableSection {TFOOT} at (1,69) size 515x22
+          RenderTableRow {TR} at (0,0) size 515x20
+            RenderTableCell {TD} at (2,0) size 169x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 161x16
+                text run at (2,2) width 161: "This text is in the TFOOT"
+            RenderTableCell {TD} at (172,0) size 170x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 161x16
+                text run at (2,2) width 161: "This text is in the TFOOT"
+            RenderTableCell {TD} at (343,0) size 170x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 161x16
+                text run at (2,2) width 161: "This text is in the TFOOT"
+        RenderTableSection {TBODY} at (1,47) size 515x22
+          RenderTableRow {TR} at (0,0) size 515x20
+            RenderTableCell {TD} at (2,0) size 169x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 165x16
+                text run at (2,2) width 165: "This text is in the TBODY"
+            RenderTableCell {TD} at (172,0) size 170x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 165x16
+                text run at (2,2) width 165: "This text is in the TBODY"
+            RenderTableCell {TD} at (343,0) size 170x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 165x16
+                text run at (2,2) width 165: "This text is in the TBODY"
+        RenderTableSection {TBODY} at (1,69) size 515x0

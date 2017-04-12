@@ -1,0 +1,23 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock (anonymous) at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 69x16
+          text run at (0,0) width 69: "dom access"
+      RenderTable {TABLE} at (0,16) size 62x32 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 60x30
+          RenderTableRow {TR} at (0,1) size 60x28
+            RenderTableCell {TD} at (1,1) size 58x28 [border: (5px solid #008000)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 46x16
+                text run at (6,6) width 46: "100000"
+      RenderBlock (anonymous) at (0,48) size 784x16
+        RenderText {#text} at (0,0) size 58x16
+          text run at (0,0) width 58: "reference"
+      RenderTable {TABLE} at (0,64) size 62x32 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 60x30
+          RenderTableRow {TR} at (0,1) size 60x28
+            RenderTableCell {TD} at (1,1) size 58x28 [border: (5px solid #008000)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 46x16
+                text run at (6,6) width 46: "100000"

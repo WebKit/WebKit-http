@@ -1,0 +1,40 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x576
+      RenderBlock (anonymous) at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 745x16
+          text run at (0,0) width 745: "This page shows a difference between IE and Netscape 6 rendering of tables / cells with heights expressed in percentages."
+      RenderBlock {P} at (0,32) size 784x32
+        RenderText {#text} at (0,0) size 779x32
+          text run at (0,0) width 205: "The table A below has two cells. "
+          text run at (204,0) width 393: "Cell A1 contains an invisible image to make the cell fairly tall. "
+          text run at (596,0) width 183: "Cell A2 has a height attribute"
+          text run at (0,16) width 276: "of 100%, and contains another table, table B."
+      RenderBlock {P} at (0,80) size 784x32
+        RenderText {#text} at (0,0) size 759x32
+          text run at (0,0) width 212: "Table B has two cells, B1 and B2. "
+          text run at (211,0) width 250: "B1 has a fixed pixel height of 30 pixels. "
+          text run at (460,0) width 159: "B2 has a height of 100%. "
+          text run at (618,0) width 141: "In IE, this causes B2 to"
+          text run at (0,16) width 756: "stretch to fill the entire height of cell A2, while in Netscape 6 / Gecko, it seems to have no impact on the height of cell A2."
+      RenderBlock {P} at (0,128) size 784x208
+        RenderTable {TABLE} at (0,0) size 125x208 [border: (1px outset #808080)]
+          RenderTableSection {TBODY} at (1,1) size 123x206
+            RenderTableRow {TR} at (0,0) size 123x206
+              RenderTableCell {TD} at (0,0) size 61x206 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+                RenderImage {IMG} at (1,1) size 10x200
+                RenderText {#text} at (11,189) size 49x16
+                  text run at (11,189) width 49: "Cell A1"
+              RenderTableCell {TD} at (60,72) size 63x62 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+                RenderTable {TABLE} at (1,1) size 60x60 [border: (2px outset #808080)]
+                  RenderTableSection {TBODY} at (2,2) size 56x56
+                    RenderTableRow {TR} at (0,2) size 56x30
+                      RenderTableCell {TD} at (2,7) size 52x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+                        RenderText {#text} at (2,2) size 48x16
+                          text run at (2,2) width 48: "Cell B1"
+                    RenderTableRow {TR} at (0,34) size 56x20
+                      RenderTableCell {TD} at (2,34) size 52x20 [bgcolor=#99CC99] [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+                        RenderText {#text} at (2,2) size 48x16
+                          text run at (2,2) width 48: "Cell B2"

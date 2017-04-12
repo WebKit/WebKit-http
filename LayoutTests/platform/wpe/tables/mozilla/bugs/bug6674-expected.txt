@@ -1,0 +1,19 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x118
+  RenderBlock {HTML} at (0,0) size 800x118
+    RenderBody {BODY} at (8,8) size 784x102
+      RenderTable {TABLE} at (0,0) size 96x32 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 94x30
+          RenderTableRow {TR} at (0,2) size 94x26
+            RenderTableCell {TD} at (2,2) size 90x26 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderBlock {DIV} at (2,2) size 86x22 [border: (3px dotted #00FF00)]
+                RenderText {#text} at (3,3) size 173x16
+                  text run at (3,3) width 173: "Truncated? It should not be!"
+      RenderBlock {P} at (0,48) size 784x16
+        RenderText {#text} at (0,0) size 723x16
+          text run at (0,0) width 455: "According to the rules of CSS, the text above should spill right out of the "
+          text run at (454,0) width 269: "table, as it does in the table-less case below:"
+      RenderBlock {DIV} at (0,80) size 86x22 [border: (3px dotted #00FF00)]
+        RenderText {#text} at (3,3) size 173x16
+          text run at (3,3) width 173: "Truncated? It should not be!"

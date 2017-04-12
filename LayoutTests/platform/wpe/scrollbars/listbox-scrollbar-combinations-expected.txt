@@ -1,0 +1,24 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderListBox {SELECT} at (20,20) size 125x100 [color=#DCDCDC] [bgcolor=#718D93] [border: (1px solid #D3D3D3)]
+      RenderText {#text} at (165,0) size 4x16
+        text run at (165,0) width 4: " "
+      RenderListBox {SELECT} at (188,20) size 126x100 [color=#DCDCDC] [bgcolor=#718D93] [border: (1px solid #D3D3D3)]
+      RenderText {#text} at (333,0) size 5x16
+        text run at (333,0) width 5: " "
+      RenderListBox {SELECT} at (357,20) size 126x100 [color=#DCDCDC] [bgcolor=#718D93] [border: (1px solid #D3D3D3)]
+      RenderText {#text} at (502,0) size 5x16
+        text run at (502,0) width 5: " "
+      RenderListBox {SELECT} at (526,20) size 126x100 [color=#DCDCDC] [bgcolor=#718D93] [border: (1px solid #D3D3D3)]
+      RenderText {#text} at (0,0) size 0x0
+      RenderListBox {SELECT} at (20,160) size 125x100 [color=#DCDCDC] [bgcolor=#718D93] [border: (1px solid #D3D3D3)]
+      RenderText {#text} at (165,140) size 4x16
+        text run at (165,140) width 4: " "
+      RenderListBox {SELECT} at (188,160) size 126x100 [color=#DCDCDC] [bgcolor=#718D93] [border: (1px solid #D3D3D3)]
+      RenderText {#text} at (333,140) size 5x16
+        text run at (333,140) width 5: " "
+      RenderListBox {SELECT} at (357,160) size 126x100 [color=#DCDCDC] [bgcolor=#718D93] [border: (1px solid #D3D3D3)]
+      RenderText {#text} at (0,0) size 0x0

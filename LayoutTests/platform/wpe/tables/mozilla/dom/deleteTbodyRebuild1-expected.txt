@@ -1,0 +1,49 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock (anonymous) at (0,0) size 784x64
+        RenderText {#text} at (0,0) size 722x32
+          text run at (0,0) width 722: "It should never be the case that deleting a tbody causes a rebuild of the cell map since cells cannot span out of tbodies."
+          text run at (0,16) width 145: "However, this is a bug. "
+        RenderBR {BR} at (144,28) size 1x0
+        RenderBR {BR} at (0,32) size 0x16
+        RenderText {#text} at (0,48) size 208x16
+          text run at (0,48) width 208: "The 2 tables should look the same"
+      RenderTable {TABLE} at (0,64) size 60x48 [bgcolor=#FFA500] [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 58x46
+          RenderTableRow {TR} at (0,2) size 58x20
+            RenderTableCell {TD} at (2,2) size 26x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 22x16
+                text run at (2,2) width 22: "c31"
+            RenderTableCell {TD} at (29,2) size 27x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 22x16
+                text run at (2,2) width 22: "c32"
+          RenderTableRow {TR} at (0,24) size 58x20
+            RenderTableCell {TD} at (2,24) size 26x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 22x16
+                text run at (2,2) width 22: "c41"
+            RenderTableCell {TD} at (29,24) size 27x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 22x16
+                text run at (2,2) width 22: "c42"
+      RenderBlock (anonymous) at (0,112) size 784x16
+        RenderBR {BR} at (0,0) size 0x16
+      RenderTable {TABLE} at (0,128) size 60x48 [bgcolor=#FFA500] [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 58x46
+          RenderTableRow {TR} at (0,2) size 58x20
+            RenderTableCell {TD} at (2,2) size 26x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 22x16
+                text run at (2,2) width 22: "c31"
+            RenderTableCell {TD} at (29,2) size 27x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 22x16
+                text run at (2,2) width 22: "c32"
+          RenderTableRow {TR} at (0,24) size 58x20
+            RenderTableCell {TD} at (2,24) size 26x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 22x16
+                text run at (2,2) width 22: "c41"
+            RenderTableCell {TD} at (29,24) size 27x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 22x16
+                text run at (2,2) width 22: "c42"
+      RenderBlock (anonymous) at (0,176) size 784x16
+        RenderBR {BR} at (0,0) size 0x16

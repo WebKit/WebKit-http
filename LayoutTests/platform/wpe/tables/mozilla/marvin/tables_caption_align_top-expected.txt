@@ -1,0 +1,33 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {P} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 270x16
+          text run at (0,0) width 270: "The caption should be at the top of the table"
+      RenderTable {TABLE} at (0,32) size 163x64 [border: (1px outset #808080)]
+        RenderBlock {CAPTION} at (0,0) size 163x16
+          RenderText {#text} at (49,0) size 64x16
+            text run at (49,0) width 64: "Wild Cats"
+        RenderTableSection {TBODY} at (1,17) size 161x46
+          RenderTableRow {TR} at (0,2) size 161x20
+            RenderTableCell {TD} at (2,2) size 44x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 30x16
+                text run at (2,2) width 30: "Lion"
+            RenderTableCell {TD} at (47,2) size 56x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 51x16
+                text run at (2,2) width 51: "Leopard"
+            RenderTableCell {TD} at (104,2) size 55x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 50x16
+                text run at (2,2) width 50: "Cheetah"
+          RenderTableRow {TR} at (0,24) size 161x20
+            RenderTableCell {TD} at (2,24) size 44x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 40x16
+                text run at (2,2) width 40: "Jaguar"
+            RenderTableCell {TD} at (47,24) size 56x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 44x16
+                text run at (2,2) width 44: "Bobcat"
+            RenderTableCell {TD} at (104,24) size 55x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 42x16
+                text run at (2,2) width 42: "Ocelot"

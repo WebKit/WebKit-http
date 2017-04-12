@@ -1,0 +1,33 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584 [bgcolor=#FFFFFF]
+      RenderTable {TABLE} at (0,0) size 784x300 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 782x298
+          RenderTableRow {TR} at (0,2) size 782x294
+            RenderTableCell {TD} at (2,2) size 778x294 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderTable {TABLE} at (2,2) size 774x290 [border: (3px solid #008000)]
+                RenderBlock {CAPTION} at (0,0) size 406x22 [border: (3px solid #FFA500)]
+                  RenderText {#text} at (90,3) size 226x16
+                    text run at (90,3) width 226: "caption text caption text caption text"
+                RenderTableSection {TBODY} at (3,25) size 768x262
+                  RenderTableRow {TR} at (0,2) size 768x258
+                    RenderTableCell {TD} at (2,2) size 764x258 [r=0 c=0 rs=1 cs=1]
+                      RenderText {#text} at (1,1) size 761x256
+                        text run at (1,1) width 757: "table text which should wrap table text which should wrap table text which should wrap table text which should wrap table"
+                        text run at (1,17) width 751: "text which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,33) width 723: "which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,49) width 723: "which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,65) width 723: "which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,81) width 723: "which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,97) width 723: "which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,113) width 723: "which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,129) width 723: "which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,145) width 723: "which should wrap table text which should wrap table text which should wrap table text which should wrap table text"
+                        text run at (1,161) width 761: "which should wrap table text which should wraptable text which should wrap table text which should wrap table text which"
+                        text run at (1,177) width 723: "should wrap table text which should wrap table text which should wrap table text which should wrap table text which"
+                        text run at (1,193) width 723: "should wrap table text which should wrap table text which should wrap table text which should wrap table text which"
+                        text run at (1,209) width 723: "should wrap table text which should wrap table text which should wrap table text which should wrap table text which"
+                        text run at (1,225) width 723: "should wrap table text which should wrap table text which should wrap table text which should wrap table text which"
+                        text run at (1,241) width 439: "should wrap table text which should wrap table text which should wrap"

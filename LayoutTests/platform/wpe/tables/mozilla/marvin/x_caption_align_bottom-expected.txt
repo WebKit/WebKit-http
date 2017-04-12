@@ -1,0 +1,33 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x120
+  RenderBlock {html} at (0,0) size 800x120
+    RenderBody {body} at (8,16) size 784x96
+      RenderBlock {p} at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 304x16
+          text run at (0,0) width 304: "The table caption should be aligned at the bottom"
+      RenderTable {table} at (0,32) size 124x64 [border: (1px outset #808080)]
+        RenderBlock {caption} at (0,48) size 124x16
+          RenderText {#text} at (28,0) size 68x16
+            text run at (28,0) width 68: "CAPTION"
+        RenderTableSection (anonymous) at (1,1) size 122x46
+          RenderTableRow {tr} at (0,2) size 122x20
+            RenderTableCell {td} at (2,2) size 38x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 34x16
+                text run at (2,2) width 34: "cell 1"
+            RenderTableCell {td} at (41,2) size 39x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 34x16
+                text run at (2,2) width 34: "cell 2"
+            RenderTableCell {td} at (81,2) size 39x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 34x16
+                text run at (2,2) width 34: "cell 3"
+          RenderTableRow {tr} at (0,24) size 122x20
+            RenderTableCell {td} at (2,24) size 38x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 34x16
+                text run at (2,2) width 34: "cell 4"
+            RenderTableCell {td} at (41,24) size 39x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 34x16
+                text run at (2,2) width 34: "cell 5"
+            RenderTableCell {td} at (81,24) size 39x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 34x16
+                text run at (2,2) width 34: "cell 6"

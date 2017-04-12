@@ -1,0 +1,30 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x112
+  RenderBlock {HTML} at (0,0) size 800x112
+    RenderBody {BODY} at (8,8) size 784x96
+      RenderBlock {FORM} at (0,0) size 784x44
+        RenderButton {INPUT} at (2,0) size 290x21 [bgcolor=#C0C0C0]
+          RenderBlock (anonymous) at (6,2) size 278x16
+            RenderText at (0,0) size 278x16
+              text run at (0,0) width 278: "[Step 1] Set cell width to 60px (nothing seen)"
+        RenderButton {INPUT} at (2,23) size 291x21 [bgcolor=#C0C0C0]
+          RenderBlock (anonymous) at (6,2) size 279x16
+            RenderText at (0,0) size 279x16
+              text run at (0,0) width 279: "[Step 2] Set cell width to 20px (garbage seen)"
+      RenderTable {TABLE} at (0,46) size 34x50
+        RenderTableSection {TBODY} at (0,0) size 34x50
+          RenderTableRow {TR} at (0,2) size 34x22
+            RenderTableCell {TD} at (2,2) size 14x22 [border: (2px solid #000000)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (3,3) size 8x16
+                text run at (3,3) width 8: "1"
+            RenderTableCell {TD} at (17,2) size 15x22 [border: (2px solid #000000)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (3,3) size 8x16
+                text run at (3,3) width 8: "2"
+          RenderTableRow {TR} at (0,26) size 34x22
+            RenderTableCell {TD} at (2,26) size 14x22 [border: (2px solid #000000)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (3,3) size 8x16
+                text run at (3,3) width 8: "2"
+            RenderTableCell {TD} at (17,26) size 15x22 [border: (2px solid #000000)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (3,3) size 8x16
+                text run at (3,3) width 8: "2"

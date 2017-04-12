@@ -1,0 +1,30 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x86
+  RenderBlock {html} at (0,0) size 800x86
+    RenderBody {body} at (8,8) size 784x70
+      RenderTable {table} at (0,0) size 608x70 [border: (1px outset #808080)]
+        RenderTableSection {thead} at (1,1) size 606x24 [bgcolor=#00FF00]
+          RenderTableRow {tr} at (0,2) size 606x20
+            RenderTableCell {td} at (2,2) size 300x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 258x16
+                text run at (2,2) width 258: "This thead should have a lime background"
+            RenderTableCell {td} at (303,2) size 301x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 258x16
+                text run at (2,2) width 258: "This thead should have a lime background"
+        RenderTableSection {tfoot} at (1,47) size 606x22
+          RenderTableRow {tr} at (0,0) size 606x20
+            RenderTableCell {td} at (2,0) size 300x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 291x16
+                text run at (2,2) width 291: "This tfoot should NOT have a lime background"
+            RenderTableCell {td} at (303,0) size 301x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 291x16
+                text run at (2,2) width 291: "This tfoot should NOT have a lime background"
+        RenderTableSection {tbody} at (1,25) size 606x22
+          RenderTableRow {tr} at (0,0) size 606x20
+            RenderTableCell {td} at (2,0) size 300x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 296x16
+                text run at (2,2) width 296: "This tbody should NOT have a lime background"
+            RenderTableCell {td} at (303,0) size 301x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 296x16
+                text run at (2,2) width 296: "This tbody should NOT have a lime background"

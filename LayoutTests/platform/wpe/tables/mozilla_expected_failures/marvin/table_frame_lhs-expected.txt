@@ -1,0 +1,60 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderTable {TABLE} at (0,0) size 414x107 [border: none (1px solid #808080)]
+        RenderBlock {CAPTION} at (0,0) size 414x16
+          RenderText {#text} at (15,0) size 384x16
+            text run at (15,0) width 384: "Communicator 4.5 Installers for Mac and Windows Platforms"
+        RenderTableSection {TBODY} at (1,16) size 413x91
+          RenderTableRow {TR} at (0,2) size 413x21
+            RenderTableCell {TH} at (2,10) size 118x5 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+            RenderTableCell {TH} at (121,2) size 108x21 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 103x17
+                text run at (2,2) width 103: "Macintosh PPC"
+            RenderTableCell {TH} at (230,2) size 87x21 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 82x17
+                text run at (2,2) width 82: "Windows 95"
+            RenderTableCell {TH} at (318,2) size 93x21 [border: (1px inset #808080)] [r=0 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 89x17
+                text run at (2,2) width 89: "Windows NT"
+          RenderTableRow {TR} at (0,25) size 413x20
+            RenderTableCell {TD} at (2,25) size 118x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 72x16
+                text run at (2,2) width 72: "Base Install"
+            RenderTableCell {TD} at (121,25) size 108x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"
+            RenderTableCell {TD} at (230,25) size 87x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"
+            RenderTableCell {TD} at (318,25) size 93x20 [border: (1px inset #808080)] [r=1 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"
+          RenderTableRow {TR} at (0,47) size 413x20
+            RenderTableCell {TD} at (2,47) size 118x20 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 103x16
+                text run at (2,2) width 103: "Complete Install"
+            RenderTableCell {TD} at (121,47) size 108x20 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"
+            RenderTableCell {TD} at (230,47) size 87x20 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"
+            RenderTableCell {TD} at (318,47) size 93x20 [border: (1px inset #808080)] [r=2 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"
+          RenderTableRow {TR} at (0,69) size 413x20
+            RenderTableCell {TD} at (2,69) size 118x20 [border: (1px inset #808080)] [r=3 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 114x16
+                text run at (2,2) width 114: "Pro Edition Install"
+            RenderTableCell {TD} at (121,69) size 108x20 [border: (1px inset #808080)] [r=3 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"
+            RenderTableCell {TD} at (230,69) size 87x20 [border: (1px inset #808080)] [r=3 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"
+            RenderTableCell {TD} at (318,69) size 93x20 [border: (1px inset #808080)] [r=3 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 20x16
+                text run at (2,2) width 20: "yes"

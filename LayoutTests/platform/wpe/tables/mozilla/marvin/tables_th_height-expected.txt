@@ -1,0 +1,19 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock (anonymous) at (0,0) size 784x16
+        RenderText {#text} at (0,0) size 451x16
+          text run at (0,0) width 451: "The TH tag uses the HEIGTH attribute. The TH has been set to 80 pixels."
+        RenderBR {BR} at (450,12) size 1x0
+      RenderTable {TABLE} at (0,16) size 282x108 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 280x106
+          RenderTableRow {TR} at (0,2) size 280x80
+            RenderTableCell {TH} at (2,31) size 276x22 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (57,2) size 162x18
+                text run at (57,3) width 162: "Netscape Communicator"
+          RenderTableRow {TR} at (0,84) size 280x20
+            RenderTableCell {TD} at (2,84) size 276x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 272x16
+                text run at (2,2) width 272: "Available on the Mac/PC/UNIX platforms !"

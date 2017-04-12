@@ -1,0 +1,36 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584 [bgcolor=#FFFFFF]
+      RenderTable {TABLE} at (0,0) size 600x80
+        RenderTableSection {TBODY} at (0,0) size 600x80
+          RenderTableRow {TR} at (0,0) size 600x80
+            RenderTableCell {TD} at (0,5) size 114x70 [r=0 c=0 rs=1 cs=1]
+              RenderTable {TABLE} at (0,0) size 114x70 [border: (1px outset #808080)]
+                RenderTableSection {TBODY} at (1,1) size 112x68
+                  RenderTableRow {TR} at (0,0) size 112x50
+                    RenderTableCell {TD} at (0,0) size 112x50 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+                      RenderText {#text} at (1,1) size 110x48
+                        text run at (1,1) width 40: "R1C1,"
+                        text run at (1,17) width 87: "COLSPAN=2"
+                        text run at (1,33) width 110: "WIDTH=\"100%\""
+                  RenderTableRow {TR} at (0,50) size 112x18
+                    RenderTableCell {TD} at (0,50) size 56x18 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+                      RenderText {#text} at (1,1) size 36x16
+                        text run at (1,1) width 36: "R2C1"
+                    RenderTableCell {TD} at (55,50) size 57x18 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+                      RenderText {#text} at (1,1) size 36x16
+                        text run at (1,1) width 36: "R2C2"
+            RenderTableCell {TD} at (113,0) size 487x80 [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (0,0) size 189x16
+                text run at (0,0) width 189: "Quotes delayed by 20 minutes."
+              RenderBR {BR} at (188,12) size 1x0
+              RenderText {#text} at (0,16) size 477x64
+                text run at (0,16) width 124: "To ensure that your "
+                text run at (123,16) width 351: "portfolios and other personalized content can't be viewed"
+                text run at (0,32) width 360: "by others using this computer, sign out of Netcenter when "
+                text run at (359,32) width 104: "you are finished."
+                text run at (0,48) width 264: "When you want to view your personalized "
+                text run at (263,48) width 214: "content again, all you have to do is"
+                text run at (0,64) width 126: "sign in to Netcenter."

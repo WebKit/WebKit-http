@@ -1,0 +1,21 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderTable {TABLE} at (0,0) size 787x28 [bgcolor=#FFFFFF]
+        RenderTableSection {TBODY} at (0,0) size 787x28
+          RenderTableRow {TR} at (0,0) size 787x28
+            RenderTableCell {TD} at (0,0) size 392x28 [r=0 c=0 rs=1 cs=1]
+              RenderBlock {PRE} at (0,0) size 392x28
+                RenderInline {FONT} at (0,0) size 392x28
+                  RenderText {#text} at (0,0) size 392x28
+                    text run at (0,0) width 392: "/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-  "
+                    text run at (391,0) width 1: " "
+                    text run at (0,14) width 6: "  "
+            RenderTableCell {TD} at (391,7) size 396x14 [r=0 c=1 rs=1 cs=1]
+              RenderBlock {PRE} at (0,0) size 395x14
+                RenderInline {FONT} at (0,0) size 395x14
+                  RenderText {#text} at (0,0) size 395x14
+                    text run at (0,0) width 395: "/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-   "
+                    text run at (394,0) width 1: " "
