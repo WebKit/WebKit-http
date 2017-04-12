@@ -37,19 +37,19 @@
 
 QT_BEGIN_NAMESPACE
 
-class WebKitQmlPlugin : public QQmlExtensionPlugin {
+class WebKitQmlPlugin final : public QQmlExtensionPlugin {
     Q_PLUGIN_METADATA(IID QQmlExtensionInterface_iid FILE "plugin.json")
     Q_OBJECT
 public:
 #if defined(HAVE_WEBKIT2)
-    void initializeEngine(QQmlEngine* engine, const char* uri) override
+    void initializeEngine(QQmlEngine* engine, const char* uri) final
     {
         Q_UNUSED(uri);
         engine->addImageProvider(QLatin1String("webicon"), new QWebIconImageProvider);
     }
 #endif
 
-    void registerTypes(const char* uri) override
+    void registerTypes(const char* uri) final
     {
         Q_ASSERT(QLatin1String(uri) == QLatin1String("QtWebKit"));
 
