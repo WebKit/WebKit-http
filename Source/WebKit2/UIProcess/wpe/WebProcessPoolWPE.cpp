@@ -96,6 +96,8 @@ WTF::String WebProcessPool::legacyPlatformDefaultMediaCacheDirectory()
 
 void WebProcessPool::platformInitialize()
 {
+    if (m_websiteDataStore)
+        m_websiteDataStore->registerSharedResourceLoadObserver();
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
