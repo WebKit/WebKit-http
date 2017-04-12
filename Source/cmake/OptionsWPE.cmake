@@ -100,6 +100,14 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     # FIXME: What about MPEGTS support? USE_GSTREAMER_MPEGTS?
 endif ()
 
+if (ENABLE_MEDIA_STREAM OR ENABLE_WEB_RTC)
+    find_package(OpenWebRTC)
+    if (NOT OPENWEBRTC_FOUND)
+        message(FATAL_ERROR "OpenWebRTC is needed for ENABLE_MEDIA_STREAM and ENABLE_WEB_RTC.")
+    endif ()
+    SET_AND_EXPOSE_TO_BUILD(USE_OPENWEBRTC TRUE)
+endif ()
+
 if (ENABLE_ACCELERATED_2D_CANVAS)
     find_package(CairoGL 1.10.2 REQUIRED COMPONENTS cairo-egl)
 endif ()
