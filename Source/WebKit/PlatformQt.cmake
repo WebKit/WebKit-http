@@ -445,12 +445,13 @@ endif ()
 
 if (KDE_INSTALL_USE_QT_SYS_PATHS)
     set(WebKit_PRI_ARGUMENTS
+        BIN_INSTALL_DIR "$$QT_MODULE_BIN_BASE"
         LIB_INSTALL_DIR "$$QT_MODULE_LIB_BASE"
     )
     if (MACOS_BUILD_FRAMEWORKS)
         list(APPEND WebKit_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers"
-            MODULE_CONFIG "v2 lib_bundle"
+            MODULE_CONFIG "lib_bundle"
         )
     else ()
         list(APPEND WebKit_PRI_ARGUMENTS
@@ -465,7 +466,7 @@ else ()
     if (MACOS_BUILD_FRAMEWORKS)
         list(APPEND WebKit_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers"
-            MODULE_CONFIG "v2 lib_bundle"
+            MODULE_CONFIG "lib_bundle"
         )
     else ()
         list(APPEND WebKit_PRI_ARGUMENTS
@@ -483,6 +484,7 @@ endif ()
 
 ecm_generate_pri_file(
     BASE_NAME webkit
+    NAME QtWebKit
     LIB_NAME ${WebKit_OUTPUT_NAME}
     INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
     DEPS "${WEBKIT_PRI_DEPS}"
@@ -633,12 +635,13 @@ endif ()
 
 if (KDE_INSTALL_USE_QT_SYS_PATHS)
     set(WebKitWidgets_PRI_ARGUMENTS
+        BIN_INSTALL_DIR "$$QT_MODULE_BIN_BASE"
         LIB_INSTALL_DIR "$$QT_MODULE_LIB_BASE"
     )
     if (MACOS_BUILD_FRAMEWORKS)
         list(APPEND WebKitWidgets_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKitWidgets.framework/Headers"
-            MODULE_CONFIG "v2 lib_bundle"
+            MODULE_CONFIG "lib_bundle"
         )
     else ()
         list(APPEND WebKitWidgets_PRI_ARGUMENTS
@@ -653,7 +656,7 @@ else ()
     if (MACOS_BUILD_FRAMEWORKS)
         list(APPEND WebKitWidgets_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKitWidgets.framework/Headers"
-            MODULE_CONFIG "v2 lib_bundle"
+            MODULE_CONFIG "lib_bundle"
         )
     else ()
         list(APPEND WebKitWidgets_PRI_ARGUMENTS
@@ -671,6 +674,7 @@ endif ()
 
 ecm_generate_pri_file(
     BASE_NAME webkitwidgets
+    NAME QtWebKitWidgets
     LIB_NAME ${WebKitWidgets_OUTPUT_NAME}
     INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets"
     DEPS "${WEBKITWIDGETS_PRI_DEPS}"
