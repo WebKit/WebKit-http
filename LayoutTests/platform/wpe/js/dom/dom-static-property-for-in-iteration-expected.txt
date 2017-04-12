@@ -109,9 +109,9 @@ PASS a["namespaceURI"] is http://www.w3.org/1999/xhtml
 PASS a["prefix"] is null
 PASS a["localName"] is a
 PASS a["offsetLeft"] is 8
-PASS a["offsetTop"] is 1889
+PASS a["offsetTop"] is 1883
 PASS a["offsetWidth"] is 39
-PASS a["offsetHeight"] is 20
+PASS a["offsetHeight"] is 16
 PASS a["clientLeft"] is 0
 PASS a["clientTop"] is 0
 PASS a["clientWidth"] is 0
