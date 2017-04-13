@@ -1,101 +1,102 @@
-layer at (0,0) size 785x674
+layer at (0,0) size 785x763
   RenderView at (0,0) size 785x600
-layer at (0,0) size 785x674
-  RenderBlock {HTML} at (0,0) size 785x674
-    RenderBody {BODY} at (8,8) size 769x658 [bgcolor=#CCCCCC]
-      RenderBlock {P} at (0,0) size 769x16
-        RenderText {#text} at (0,0) size 348x16
-          text run at (0,0) width 348: "The style declarations which apply to the text below are:"
-      RenderBlock {PRE} at (0,32) size 769x80
+layer at (0,0) size 785x763
+  RenderBlock {HTML} at (0,0) size 785x763
+    RenderBody {BODY} at (8,8) size 769x747 [bgcolor=#CCCCCC]
+      RenderBlock {P} at (0,0) size 769x19
+        RenderText {#text} at (0,-1) size 355x20
+          text run at (0,-1) width 355: "The style declarations which apply to the text below are:"
+      RenderBlock {PRE} at (0,35) size 769x80
         RenderText {#text} at (0,0) size 272x79
           text run at (0,0) width 224: ".ttn {text-transform: none;}"
           text run at (0,16) width 272: ".cap {text-transform: capitalize;}"
           text run at (0,32) width 264: ".upp {text-transform: uppercase;}"
           text run at (0,48) width 264: ".low {text-transform: lowercase;}"
           text run at (0,64) width 0: " "
-      RenderBlock {HR} at (0,125) size 769x2 [border: (1px inset #000000)]
-      RenderBlock {P} at (0,143) size 769x16
-        RenderText {#text} at (0,0) size 755x16
-          text run at (0,0) width 755: "This page tests the 'text-transform' property of CSS1. This paragraph has no text transformation and should appear normal."
-      RenderBlock {P} at (0,175) size 769x48
-        RenderText {#text} at (0,0) size 761x48
-          text run at (0,0) width 756: "This Paragraph Is Capitalized And The First Letter In Each Word Should Therefore Appear In Uppercase. Words That Are"
-          text run at (0,16) width 761: "In Uppercase In The Source (E.g. USA) Should Remain So. There Should Be A Capital Letter After A Non-Breaking Space"
-          text run at (0,32) width 417: "(&Nbsp;). Both Those Characters Appear In The Previous Sentence."
-      RenderBlock {P} at (0,239) size 769x32
-        RenderText {#text} at (0,0) size 749x32
-          text run at (0,0) width 749: "Words with inline elements inside them should only capitalize the first letter of the word. Therefore, the last word in this"
-          text run at (0,16) width 292: "sentence should have one, and only one, capital "
-        RenderInline {SPAN} at (0,0) size 39x16
-          RenderText {#text} at (291,16) size 17x16
-            text run at (291,16) width 17: "Le"
-          RenderInline {SPAN} at (0,0) size 11x16
-            RenderText {#text} at (307,16) size 11x16
-              text run at (307,16) width 11: "tt"
-          RenderText {#text} at (317,16) size 13x16
-            text run at (317,16) width 13: "er"
-        RenderText {#text} at (329,16) size 5x16
-          text run at (329,16) width 5: "."
-      RenderBlock {P} at (0,287) size 769x48
-        RenderText {#text} at (0,0) size 747x32
-          text run at (0,0) width 747: "THIS PARAGRAPH IS UPPERCASED AND SMALL CHARACTERS IN THE SOURCE (E.G. A AND \x{C5}) SHOULD"
-          text run at (0,16) width 272: "THEREFORE APPEAR IN UPPERCASE. "
-          text run at (271,16) width 269: "IN THE LAST SENTENCE, HOWEVER, "
-        RenderInline {SPAN} at (0,0) size 746x32
-          RenderText {#text} at (539,16) size 746x32
-            text run at (539,16) width 207: "the last eight words should not be"
-            text run at (0,32) width 61: "uppercase"
-        RenderText {#text} at (60,32) size 4x16
-          text run at (60,32) width 4: "."
-      RenderBlock {P} at (0,351) size 769x16
-        RenderText {#text} at (0,0) size 707x16
-          text run at (0,0) width 707: "this paragraph is lowercased and capital characters in the source (e.g. a and \x{E5}) should therefore appear in lowercase."
-      RenderTable {TABLE} at (0,383) size 769x275 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 767x273
-          RenderTableRow {TR} at (0,0) size 767x25
-            RenderTableCell {TD} at (0,0) size 767x25 [bgcolor=#C0C0C0] [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
-              RenderInline {STRONG} at (0,0) size 158x17
-                RenderText {#text} at (4,4) size 158x17
-                  text run at (4,4) width 158: "TABLE Testing Section"
-          RenderTableRow {TR} at (0,25) size 767x248
-            RenderTableCell {TD} at (0,137) size 12x24 [bgcolor=#C0C0C0] [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (4,4) size 4x16
-                text run at (4,4) width 4: " "
-            RenderTableCell {TD} at (11,25) size 756x248 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
-              RenderBlock {P} at (4,4) size 748x32
-                RenderText {#text} at (0,0) size 704x32
-                  text run at (0,0) width 704: "This page tests the 'text-transform' property of CSS1. This paragraph has no text transformation and should appear"
-                  text run at (0,16) width 48: "normal."
-              RenderBlock {P} at (4,52) size 748x48
-                RenderText {#text} at (0,0) size 729x48
-                  text run at (0,0) width 729: "This Paragraph Is Capitalized And The First Letter In Each Word Should Therefore Appear In Uppercase. Words That"
-                  text run at (0,16) width 692: "Are In Uppercase In The Source (E.g. USA) Should Remain So. There Should Be A Capital Letter After A Non-"
-                  text run at (0,32) width 517: "Breaking Space (&Nbsp;). Both Those Characters Appear In The Previous Sentence."
-              RenderBlock {P} at (4,116) size 748x32
-                RenderText {#text} at (0,0) size 722x32
-                  text run at (0,0) width 722: "Words with inline elements inside them should only capitalize the first letter of the word. Therefore, the last word in"
-                  text run at (0,16) width 319: "this sentence should have one, and only one, capital "
-                RenderInline {SPAN} at (0,0) size 38x16
-                  RenderText {#text} at (318,16) size 17x16
-                    text run at (318,16) width 17: "Le"
-                  RenderInline {SPAN} at (0,0) size 10x16
-                    RenderText {#text} at (334,16) size 10x16
-                      text run at (334,16) width 10: "tt"
-                  RenderText {#text} at (343,16) size 13x16
-                    text run at (343,16) width 13: "er"
-                RenderText {#text} at (355,16) size 5x16
-                  text run at (355,16) width 5: "."
-              RenderBlock {P} at (4,164) size 748x48
-                RenderText {#text} at (0,0) size 747x32
-                  text run at (0,0) width 747: "THIS PARAGRAPH IS UPPERCASED AND SMALL CHARACTERS IN THE SOURCE (E.G. A AND \x{C5}) SHOULD"
-                  text run at (0,16) width 272: "THEREFORE APPEAR IN UPPERCASE. "
-                  text run at (271,16) width 269: "IN THE LAST SENTENCE, HOWEVER, "
-                RenderInline {SPAN} at (0,0) size 746x32
-                  RenderText {#text} at (539,16) size 746x32
-                    text run at (539,16) width 207: "the last eight words should not be"
-                    text run at (0,32) width 61: "uppercase"
-                RenderText {#text} at (60,32) size 4x16
-                  text run at (60,32) width 4: "."
-              RenderBlock {P} at (4,228) size 748x16
-                RenderText {#text} at (0,0) size 707x16
-                  text run at (0,0) width 707: "this paragraph is lowercased and capital characters in the source (e.g. a and \x{E5}) should therefore appear in lowercase."
+      RenderBlock {HR} at (0,128) size 769x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,146) size 769x38
+        RenderText {#text} at (0,-1) size 718x39
+          text run at (0,-1) width 718: "This page tests the 'text-transform' property of CSS1. This paragraph has no text transformation and should appear"
+          text run at (0,18) width 48: "normal."
+      RenderBlock {P} at (0,200) size 769x57
+        RenderText {#text} at (0,-1) size 750x58
+          text run at (0,-1) width 750: "This Paragraph Is Capitalized And The First Letter In Each Word Should Therefore Appear In Uppercase. Words That"
+          text run at (0,18) width 718: "Are In Uppercase In The Source (E.g. USA) Should Remain So. There Should Be A Capital Letter After A Non-"
+          text run at (0,37) width 538: "Breaking Space (&Nbsp;). Both Those Characters Appear In The Previous Sentence."
+      RenderBlock {P} at (0,273) size 769x38
+        RenderText {#text} at (0,-1) size 753x39
+          text run at (0,-1) width 753: "Words with inline elements inside them should only capitalize the first letter of the word. Therefore, the last word in this"
+          text run at (0,18) width 304: "sentence should have one, and only one, capital "
+        RenderInline {SPAN} at (0,0) size 37x20
+          RenderText {#text} at (304,18) size 17x20
+            text run at (304,18) width 17: "Le"
+          RenderInline {SPAN} at (0,0) size 8x20
+            RenderText {#text} at (321,18) size 8x20
+              text run at (321,18) width 8: "tt"
+          RenderText {#text} at (329,18) size 12x20
+            text run at (329,18) width 12: "er"
+        RenderText {#text} at (341,18) size 4x20
+          text run at (341,18) width 4: "."
+      RenderBlock {P} at (0,327) size 769x57
+        RenderText {#text} at (0,-1) size 721x39
+          text run at (0,-1) width 721: "THIS PARAGRAPH IS UPPERCASED AND SMALL CHARACTERS IN THE SOURCE (E.G. A AND \x{C5})"
+          text run at (0,18) width 359: "SHOULD THEREFORE APPEAR IN UPPERCASE. "
+          text run at (359,18) width 284: "IN THE LAST SENTENCE, HOWEVER, "
+        RenderInline {SPAN} at (0,0) size 765x39
+          RenderText {#text} at (643,18) size 765x39
+            text run at (643,18) width 122: "the last eight words"
+            text run at (0,37) width 152: "should not be uppercase"
+        RenderText {#text} at (152,37) size 4x20
+          text run at (152,37) width 4: "."
+      RenderBlock {P} at (0,400) size 769x19
+        RenderText {#text} at (0,-1) size 726x20
+          text run at (0,-1) width 726: "this paragraph is lowercased and capital characters in the source (e.g. a and \x{E5}) should therefore appear in lowercase."
+      RenderTable {TABLE} at (0,435) size 769x312 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 767x310
+          RenderTableRow {TR} at (0,0) size 767x29
+            RenderTableCell {TD} at (0,0) size 767x29 [bgcolor=#C0C0C0] [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+              RenderInline {STRONG} at (0,0) size 163x22
+                RenderText {#text} at (4,3) size 163x22
+                  text run at (4,3) width 163: "TABLE Testing Section"
+          RenderTableRow {TR} at (0,29) size 767x281
+            RenderTableCell {TD} at (0,156) size 12x27 [bgcolor=#C0C0C0] [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (4,3) size 4x20
+                text run at (4,3) width 4: " "
+            RenderTableCell {TD} at (12,29) size 755x281 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderBlock {P} at (4,4) size 747x38
+                RenderText {#text} at (0,-1) size 718x39
+                  text run at (0,-1) width 718: "This page tests the 'text-transform' property of CSS1. This paragraph has no text transformation and should appear"
+                  text run at (0,18) width 48: "normal."
+              RenderBlock {P} at (4,58) size 747x57
+                RenderText {#text} at (0,-1) size 717x58
+                  text run at (0,-1) width 717: "This Paragraph Is Capitalized And The First Letter In Each Word Should Therefore Appear In Uppercase. Words"
+                  text run at (0,18) width 714: "That Are In Uppercase In The Source (E.g. USA) Should Remain So. There Should Be A Capital Letter After A"
+                  text run at (0,37) width 571: "Non-Breaking Space (&Nbsp;). Both Those Characters Appear In The Previous Sentence."
+              RenderBlock {P} at (4,131) size 747x38
+                RenderText {#text} at (0,-1) size 727x39
+                  text run at (0,-1) width 727: "Words with inline elements inside them should only capitalize the first letter of the word. Therefore, the last word in"
+                  text run at (0,18) width 330: "this sentence should have one, and only one, capital "
+                RenderInline {SPAN} at (0,0) size 37x20
+                  RenderText {#text} at (330,18) size 17x20
+                    text run at (330,18) width 17: "Le"
+                  RenderInline {SPAN} at (0,0) size 8x20
+                    RenderText {#text} at (347,18) size 8x20
+                      text run at (347,18) width 8: "tt"
+                  RenderText {#text} at (355,18) size 12x20
+                    text run at (355,18) width 12: "er"
+                RenderText {#text} at (367,18) size 4x20
+                  text run at (367,18) width 4: "."
+              RenderBlock {P} at (4,185) size 747x57
+                RenderText {#text} at (0,-1) size 721x39
+                  text run at (0,-1) width 721: "THIS PARAGRAPH IS UPPERCASED AND SMALL CHARACTERS IN THE SOURCE (E.G. A AND \x{C5})"
+                  text run at (0,18) width 359: "SHOULD THEREFORE APPEAR IN UPPERCASE. "
+                  text run at (359,18) width 284: "IN THE LAST SENTENCE, HOWEVER, "
+                RenderInline {SPAN} at (0,0) size 722x39
+                  RenderText {#text} at (643,18) size 722x39
+                    text run at (643,18) width 79: "the last eight"
+                    text run at (0,37) width 195: "words should not be uppercase"
+                RenderText {#text} at (195,37) size 4x20
+                  text run at (195,37) width 4: "."
+              RenderBlock {P} at (4,258) size 747x19
+                RenderText {#text} at (0,-1) size 726x20
+                  text run at (0,-1) width 726: "this paragraph is lowercased and capital characters in the source (e.g. a and \x{E5}) should therefore appear in lowercase."
