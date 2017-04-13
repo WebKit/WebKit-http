@@ -3,33 +3,33 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x576
-      RenderBlock (anonymous) at (0,0) size 784x19
-        RenderText {#text} at (0,-1) size 264x20
-          text run at (0,-1) width 264: "The select should not contain blank items "
-        RenderBR {BR} at (264,14) size 0x1
-      RenderBlock {FORM} at (0,19) size 784x29
-        RenderInline {B} at (0,0) size 47x22
-          RenderText {#text} at (0,3) size 47x22
-            text run at (0,3) width 47: "Search"
-        RenderText {#text} at (47,4) size 4x20
-          text run at (47,4) width 4: " "
-        RenderTextControl {INPUT} at (53,2) size 157x25 [bgcolor=#FFFFFF] [border: (2px inset #000000)]
-        RenderText {#text} at (212,4) size 4x20
-          text run at (212,4) width 4: " "
-        RenderMenuList {SELECT} at (218,4) size 56x21 [bgcolor=#FFFFFF] [border: (1px solid #000000)]
-          RenderBlock (anonymous) at (1,1) size 54x19
-            RenderText at (0,-1) size 40x20
-              text run at (0,-1) width 40: "Excite"
+      RenderBlock (anonymous) at (0,0) size 784x17
+        RenderText {#text} at (0,0) size 264x17
+          text run at (0,0) width 264: "The select should not contain blank items "
+        RenderBR {BR} at (264,14) size 0x0
+      RenderBlock {FORM} at (0,17) size 784x27
+        RenderInline {B} at (0,0) size 47x17
+          RenderText {#text} at (0,5) size 47x17
+            text run at (0,5) width 47: "Search"
+        RenderText {#text} at (47,5) size 4x17
+          text run at (47,5) width 4: " "
+        RenderTextControl {INPUT} at (53,2) size 156x23 [bgcolor=#FFFFFF] [border: (2px inset #000000)]
+        RenderText {#text} at (211,5) size 4x17
+          text run at (211,5) width 4: " "
+        RenderMenuList {SELECT} at (217,4) size 56x19 [bgcolor=#FFFFFF] [border: (1px solid #000000)]
+          RenderBlock (anonymous) at (1,1) size 54x17
+            RenderText at (0,0) size 40x17
+              text run at (0,0) width 40: "Excite"
         RenderText {#text} at (0,0) size 0x0
-      RenderBlock (anonymous) at (0,64) size 784x38
-        RenderBR {BR} at (0,-1) size 0x20
-        RenderText {#text} at (0,18) size 264x20
-          text run at (0,18) width 264: "The select should not contain blank items "
-        RenderBR {BR} at (264,33) size 0x1
-      RenderBlock {FORM} at (0,102) size 784x25
-        RenderMenuList {SELECT} at (2,2) size 230x21 [bgcolor=#FFFFFF] [border: (1px solid #000000)]
-          RenderBlock (anonymous) at (1,1) size 228x19
-            RenderText at (0,-1) size 73x20
-              text run at (0,-1) width 73: "Quick Link"
-layer at (64,32) size 151x19
-  RenderBlock {DIV} at (3,3) size 151x19
+      RenderBlock (anonymous) at (0,60) size 784x34
+        RenderBR {BR} at (0,0) size 0x17
+        RenderText {#text} at (0,17) size 264x17
+          text run at (0,17) width 264: "The select should not contain blank items "
+        RenderBR {BR} at (264,31) size 0x0
+      RenderBlock {FORM} at (0,94) size 784x23
+        RenderMenuList {SELECT} at (2,2) size 230x19 [bgcolor=#FFFFFF] [border: (1px solid #000000)]
+          RenderBlock (anonymous) at (1,1) size 228x17
+            RenderText at (0,0) size 73x17
+              text run at (0,0) width 73: "Quick Link"
+layer at (64,30) size 150x17
+  RenderBlock {DIV} at (3,3) size 150x17
