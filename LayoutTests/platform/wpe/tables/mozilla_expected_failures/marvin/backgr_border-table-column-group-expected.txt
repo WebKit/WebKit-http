@@ -1,8 +1,8 @@
-layer at (0,0) size 785x1316
+layer at (0,0) size 785x1324
   RenderView at (0,0) size 785x600
-layer at (0,0) size 785x1316
-  RenderBlock {HTML} at (0,0) size 785x1317
-    RenderBody {BODY} at (8,17) size 769x1292 [color=#00FF00] [bgcolor=#333333]
+layer at (0,0) size 785x1324
+  RenderBlock {HTML} at (0,0) size 785x1325
+    RenderBody {BODY} at (8,17) size 769x1300 [color=#00FF00] [bgcolor=#333333]
       RenderBlock {H1} at (0,0) size 769x31
         RenderText {#text} at (0,0) size 528x31
           text run at (0,0) width 528: "CSS2 Table Backgrounds Test Suite"
@@ -46,125 +46,125 @@ layer at (0,0) size 785x1316
             RenderText {#text} at (0,0) size 136x15
               text run at (0,0) width 136: "Table of Contents"
           RenderText {#text} at (0,0) size 0x0
-      RenderTable {TABLE} at (0,336) size 622x469 [color=#FFFFFF] [border: (3px dotted #FFFFFF)]
-        RenderBlock {CAPTION} at (0,0) size 622x20
-          RenderText {#text} at (174,0) size 274x20
-            text run at (174,0) width 274: "With 'border-collapse: separate'"
+      RenderTable {TABLE} at (0,336) size 622x473 [color=#FFFFFF] [border: (3px dotted #FFFFFF)]
+        RenderBlock {CAPTION} at (0,0) size 622x24
+          RenderText {#text} at (165,-1) size 292x25
+            text run at (165,-1) width 292: "With 'border-collapse: separate'"
         RenderTableCol {COLGROUP} at (0,0) size 0x0 [bgcolor=#000000] [border: (5px dashed #FFFFFF)]
           RenderTableCol {COL} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0 [border: (9px dashed #FFFFFF)]
         RenderTableCol {COLGROUP} at (0,0) size 0x0 [bgcolor=#000000]
           RenderTableCol {COL} at (0,0) size 0x0
-        RenderTableSection {THEAD} at (3,23) size 616x114
+        RenderTableSection {THEAD} at (3,27) size 616x114
           RenderTableRow {TR} at (0,7) size 616x100
-            RenderTableCell {TH} at (7,45) size 130x24 [border: (1px dotted #FFFFFF)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (44,2) size 42x20
-                text run at (44,2) width 42: "TH A"
-            RenderTableCell {TH} at (144,33) size 220x48 [border: (13px dotted #FFFFFF)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (89,14) size 42x20
-                text run at (89,14) width 42: "TH B"
-            RenderTableCell {TH} at (371,45) size 118x24 [border: (1px dotted #FFFFFF)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (38,2) size 42x20
-                text run at (38,2) width 42: "TH C"
-            RenderTableCell {TH} at (496,45) size 113x24 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
-              RenderText {#text} at (35,2) size 43x20
-                text run at (35,2) width 43: "TH D"
-        RenderTableSection {TFOOT} at (3,343) size 616x122
+            RenderTableCell {TH} at (7,43) size 130x28 [border: (1px dotted #FFFFFF)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (42,1) size 46x25
+                text run at (42,1) width 46: "TH A"
+            RenderTableCell {TH} at (144,31) size 220x52 [border: (13px dotted #FFFFFF)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (87,13) size 46x25
+                text run at (87,13) width 46: "TH B"
+            RenderTableCell {TH} at (371,43) size 118x28 [border: (1px dotted #FFFFFF)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (36,1) size 46x25
+                text run at (36,1) width 46: "TH C"
+            RenderTableCell {TH} at (496,43) size 113x28 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
+              RenderText {#text} at (34,1) size 45x25
+                text run at (34,1) width 45: "TH D"
+        RenderTableSection {TFOOT} at (3,347) size 616x122
           RenderTableRow {TR} at (0,0) size 616x115
-            RenderTableCell {TD} at (7,41) size 357x33 [border: (5px dashed #FFFFFF)] [r=0 c=0 rs=1 cs=2]
-              RenderText {#text} at (6,6) size 44x21
-                text run at (6,7) width 44: "TD M"
-            RenderTableCell {TD} at (371,45) size 118x25 [border: (1px dotted #FFFFFF)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 43x21
-                text run at (2,3) width 43: "TD O"
-            RenderTableCell {TD} at (496,45) size 113x25 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 41x21
-                text run at (2,3) width 41: "TD P"
-        RenderTableSection {TBODY} at (3,137) size 616x206
+            RenderTableCell {TD} at (7,39) size 357x37 [border: (5px dashed #FFFFFF)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (6,5) size 47x26
+                text run at (6,6) width 47: "TD M"
+            RenderTableCell {TD} at (371,43) size 118x29 [border: (1px dotted #FFFFFF)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 46x26
+                text run at (2,2) width 46: "TD O"
+            RenderTableCell {TD} at (496,43) size 113x29 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 44x26
+                text run at (2,2) width 44: "TD P"
+        RenderTableSection {TBODY} at (3,141) size 616x206
           RenderTableRow {TR} at (0,0) size 616x108
-            RenderTableCell {TD} at (7,75) size 130x49 [border: (13px dotted #FFFFFF)] [r=0 c=0 rs=2 cs=1]
-              RenderText {#text} at (14,14) size 41x21
-                text run at (14,15) width 41: "TD E"
-            RenderTableCell {TD} at (144,42) size 220x24 [border: (1px dotted #FFFFFF)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 40x20
-                text run at (2,2) width 40: "TD F"
-            RenderTableCell {TD} at (371,38) size 118x32 [border: (5px dashed #FFFFFF)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (6,6) size 43x20
-                text run at (6,6) width 43: "TD G"
-            RenderTableCell {TD} at (496,42) size 113x24 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 42x20
-                text run at (2,2) width 42: "TD H"
+            RenderTableCell {TD} at (7,73) size 130x53 [border: (13px dotted #FFFFFF)] [r=0 c=0 rs=2 cs=1]
+              RenderText {#text} at (14,13) size 44x26
+                text run at (14,14) width 44: "TD E"
+            RenderTableCell {TD} at (144,40) size 220x28 [border: (1px dotted #FFFFFF)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 43x25
+                text run at (2,1) width 43: "TD F"
+            RenderTableCell {TD} at (371,36) size 118x36 [border: (5px dashed #FFFFFF)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,5) size 46x25
+                text run at (6,5) width 46: "TD G"
+            RenderTableCell {TD} at (496,40) size 113x28 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 45x25
+                text run at (2,1) width 45: "TD H"
           RenderTableRow {TR} at (0,115) size 616x84
-            RenderTableCell {TD} at (144,145) size 220x24 [border: (1px dotted #FFFFFF)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 38x20
-                text run at (2,2) width 38: "TD J"
-            RenderTableCell {TD} at (371,145) size 118x24 [border: (1px dotted #FFFFFF)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 42x20
-                text run at (2,2) width 42: "TD K"
-            RenderTableCell {TD} at (496,145) size 113x24 [border: (1px dotted #FFFFFF)] [r=1 c=3 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 39x20
-                text run at (2,2) width 39: "TD L"
-      RenderTable {TABLE} at (0,804) size 591x435 [color=#FFFFFF] [border: (6px dotted #FFFFFF)]
-        RenderBlock {CAPTION} at (0,0) size 591x20
-          RenderText {#text} at (159,0) size 273x20
-            text run at (159,0) width 273: "With 'border-collapse: collapse'"
+            RenderTableCell {TD} at (144,143) size 220x28 [border: (1px dotted #FFFFFF)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 42x25
+                text run at (2,1) width 42: "TD J"
+            RenderTableCell {TD} at (371,143) size 118x28 [border: (1px dotted #FFFFFF)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 45x25
+                text run at (2,1) width 45: "TD K"
+            RenderTableCell {TD} at (496,143) size 113x28 [border: (1px dotted #FFFFFF)] [r=1 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 43x25
+                text run at (2,1) width 43: "TD L"
+      RenderTable {TABLE} at (0,808) size 591x439 [color=#FFFFFF] [border: (6px dotted #FFFFFF)]
+        RenderBlock {CAPTION} at (0,0) size 591x24
+          RenderText {#text} at (150,-1) size 291x25
+            text run at (150,-1) width 291: "With 'border-collapse: collapse'"
         RenderTableCol {COLGROUP} at (0,0) size 0x0 [bgcolor=#000000] [border: (5px dashed #FFFFFF)]
           RenderTableCol {COL} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0 [border: (9px dashed #FFFFFF)]
         RenderTableCol {COLGROUP} at (0,0) size 0x0 [bgcolor=#000000]
           RenderTableCol {COL} at (0,0) size 0x0
-        RenderTableSection {THEAD} at (1,26) size 588x100
+        RenderTableSection {THEAD} at (1,30) size 588x100
           RenderTableRow {TR} at (0,0) size 588x100
-            RenderTableCell {TH} at (0,34) size 137x32 [border: (3px dotted #FFFFFF)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (46,4) size 42x21
-                text run at (46,5) width 42: "TH A"
-            RenderTableCell {TH} at (137,32) size 207x36 [border: (7px dotted #FFFFFF)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (83,8) size 42x21
-                text run at (83,9) width 42: "TH B"
-            RenderTableCell {TH} at (344,35) size 127x30 [border: (5px dotted #FFFFFF)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (44,6) size 42x21
-                text run at (44,7) width 42: "TH C"
-            RenderTableCell {TH} at (471,38) size 117x24 [border: (2px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
-              RenderText {#text} at (39,3) size 43x20
-                text run at (39,3) width 43: "TH D"
-        RenderTableSection {TFOOT} at (1,316) size 588x115
+            RenderTableCell {TH} at (0,32) size 137x36 [border: (3px dotted #FFFFFF)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (44,3) size 46x26
+                text run at (44,4) width 46: "TH A"
+            RenderTableCell {TH} at (137,30) size 207x40 [border: (7px dotted #FFFFFF)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (81,7) size 46x26
+                text run at (81,8) width 46: "TH B"
+            RenderTableCell {TH} at (344,33) size 127x34 [border: (5px dotted #FFFFFF)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (42,5) size 46x26
+                text run at (42,6) width 46: "TH C"
+            RenderTableCell {TH} at (471,36) size 117x28 [border: (2px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
+              RenderText {#text} at (38,2) size 45x25
+                text run at (38,2) width 45: "TH D"
+        RenderTableSection {TFOOT} at (1,320) size 588x115
           RenderTableRow {TR} at (0,0) size 588x115
-            RenderTableCell {TD} at (0,42) size 471x31 [border: (7px dashed #FFFFFF)] [r=0 c=0 rs=1 cs=3]
-              RenderText {#text} at (4,8) size 44x20
-                text run at (4,8) width 44: "TD M"
-            RenderTableCell {TD} at (471,45) size 117x25 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
-              RenderText {#text} at (6,2) size 41x21
-                text run at (6,3) width 41: "TD P"
-        RenderTableSection {TBODY} at (1,126) size 588x190
+            RenderTableCell {TD} at (0,40) size 471x35 [border: (7px dashed #FFFFFF)] [r=0 c=0 rs=1 cs=3]
+              RenderText {#text} at (4,7) size 47x25
+                text run at (4,7) width 47: "TD M"
+            RenderTableCell {TD} at (471,43) size 117x29 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
+              RenderText {#text} at (6,1) size 44x26
+                text run at (6,2) width 44: "TD P"
+        RenderTableSection {TBODY} at (1,130) size 588x190
           RenderTableRow {TR} at (0,0) size 588x107
-            RenderTableCell {TD} at (0,77) size 137x36 [border: (7px dotted #FFFFFF)] [r=0 c=0 rs=2 cs=1]
-              RenderText {#text} at (8,8) size 41x21
-                text run at (8,9) width 41: "TD E"
-            RenderTableCell {TD} at (137,39) size 207x29 [border: (7px dotted #FFFFFF)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (8,8) size 40x20
-                text run at (8,8) width 40: "TD F"
-            RenderTableCell {TD} at (344,40) size 127x27 [border: (3px dashed #FFFFFF)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (6,4) size 43x20
-                text run at (6,4) width 43: "TD G"
-            RenderTableCell {TD} at (471,42) size 117x23 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
-              RenderText {#text} at (6,2) size 42x20
-                text run at (6,2) width 42: "TD H"
+            RenderTableCell {TD} at (0,75) size 137x40 [border: (7px dotted #FFFFFF)] [r=0 c=0 rs=2 cs=1]
+              RenderText {#text} at (8,7) size 44x26
+                text run at (8,8) width 44: "TD E"
+            RenderTableCell {TD} at (137,37) size 207x33 [border: (7px dotted #FFFFFF)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (8,7) size 43x25
+                text run at (8,7) width 43: "TD F"
+            RenderTableCell {TD} at (344,38) size 127x31 [border: (3px dashed #FFFFFF)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,3) size 46x25
+                text run at (6,3) width 46: "TD G"
+            RenderTableCell {TD} at (471,40) size 117x27 [border: (1px dotted #FFFFFF)] [r=0 c=3 rs=1 cs=1]
+              RenderText {#text} at (6,1) size 45x25
+                text run at (6,1) width 45: "TD H"
           RenderTableRow {TR} at (0,107) size 588x83
-            RenderTableCell {TD} at (137,136) size 207x25 [border: (1px dotted #FFFFFF)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (8,2) size 38x20
-                text run at (8,2) width 38: "TD J"
-            RenderTableCell {TD} at (344,135) size 127x27 [border: (3px dotted #FFFFFF)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (6,4) size 42x20
-                text run at (6,4) width 42: "TD K"
-            RenderTableCell {TD} at (471,137) size 117x23 [border: (1px dotted #FFFFFF)] [r=1 c=3 rs=1 cs=1]
-              RenderText {#text} at (6,2) size 39x20
-                text run at (6,2) width 39: "TD L"
-      RenderBlock {DIV} at (0,1238) size 769x37
+            RenderTableCell {TD} at (137,134) size 207x29 [border: (1px dotted #FFFFFF)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (8,1) size 42x25
+                text run at (8,1) width 42: "TD J"
+            RenderTableCell {TD} at (344,133) size 127x31 [border: (3px dotted #FFFFFF)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,3) size 45x25
+                text run at (6,3) width 45: "TD K"
+            RenderTableCell {TD} at (471,135) size 117x27 [border: (1px dotted #FFFFFF)] [r=1 c=3 rs=1 cs=1]
+              RenderText {#text} at (6,1) size 43x25
+                text run at (6,1) width 43: "TD L"
+      RenderBlock {DIV} at (0,1246) size 769x37
         RenderInline {A} at (0,0) size 88x15 [color=#FFFF00]
           RenderImage {IMG} at (0,0) size 88x31
         RenderText {#text} at (0,0) size 0x0
-      RenderBlock {ADDRESS} at (0,1274) size 769x17
+      RenderBlock {ADDRESS} at (0,1282) size 769x17
         RenderText {#text} at (0,0) size 704x15
           text run at (0,0) width 704: "CSS2 Table Backgrounds Test Suite designed and written by fantasai <fantasai@escape.com>"

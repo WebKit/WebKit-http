@@ -3,20 +3,20 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderTable {TABLE} at (0,0) size 64x108
-        RenderBlock {CAPTION} at (0,0) size 64x86
-          RenderTable {TABLE} at (0,0) size 64x86
-            RenderTableSection {TBODY} at (0,0) size 64x86
-              RenderTableRow {TR} at (0,2) size 64x82
-                RenderTableCell {TD} at (2,2) size 60x82 [r=0 c=0 rs=1 cs=1]
-                  RenderText {#text} at (1,1) size 51x80
-                    text run at (1,1) width 51: "Another"
-                    text run at (1,17) width 31: "table"
-                    text run at (1,33) width 37: "inside"
-                    text run at (1,49) width 19: "the"
-                    text run at (1,65) width 46: "caption"
-        RenderTableSection {TBODY} at (0,86) size 64x22
-          RenderTableRow {TR} at (0,2) size 64x18
-            RenderTableCell {TD} at (2,2) size 60x18 [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (1,1) size 58x16
-                text run at (1,1) width 58: "First row"
+      RenderTable {TABLE} at (0,0) size 63x126
+        RenderBlock {CAPTION} at (0,0) size 63x101
+          RenderTable {TABLE} at (0,0) size 63x101
+            RenderTableSection {TBODY} at (0,0) size 63x101
+              RenderTableRow {TR} at (0,2) size 63x97
+                RenderTableCell {TD} at (2,2) size 59x97 [r=0 c=0 rs=1 cs=1]
+                  RenderText {#text} at (1,0) size 52x96
+                    text run at (1,0) width 52: "Another"
+                    text run at (1,19) width 30: "table"
+                    text run at (1,38) width 37: "inside"
+                    text run at (1,57) width 19: "the"
+                    text run at (1,76) width 46: "caption"
+        RenderTableSection {TBODY} at (0,101) size 63x25
+          RenderTableRow {TR} at (0,2) size 63x21
+            RenderTableCell {TD} at (2,2) size 59x21 [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (1,0) size 57x20
+                text run at (1,0) width 57: "First row"

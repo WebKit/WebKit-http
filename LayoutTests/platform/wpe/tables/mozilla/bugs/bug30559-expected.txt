@@ -3,21 +3,21 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584 [bgcolor=#FFFFFF]
-      RenderBlock (anonymous) at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 701x16
-          text run at (0,0) width 701: "The bug causes the nested table containing the textarea to be positioned away from the left edge of the outer table "
-        RenderBR {BR} at (700,12) size 1x0
-      RenderTable {TABLE} at (242,16) size 300x62 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 298x60
-          RenderTableRow {TR} at (0,2) size 298x56
-            RenderTableCell {TD} at (2,2) size 294x56 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderTable {TABLE} at (2,2) size 75x52 [border: (1px outset #808080)]
-                RenderTableSection {TBODY} at (1,1) size 73x50
-                  RenderTableRow {TR} at (0,2) size 73x46
-                    RenderTableCell {TD} at (2,2) size 69x46 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+      RenderBlock (anonymous) at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 716x20
+          text run at (0,-1) width 716: "The bug causes the nested table containing the textarea to be positioned away from the left edge of the outer table "
+        RenderBR {BR} at (716,14) size 0x1
+      RenderTable {TABLE} at (242,19) size 300x68 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 298x66
+          RenderTableRow {TR} at (0,2) size 298x62
+            RenderTableCell {TD} at (2,2) size 294x62 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderTable {TABLE} at (2,2) size 75x58 [border: (1px outset #808080)]
+                RenderTableSection {TBODY} at (1,1) size 73x56
+                  RenderTableRow {TR} at (0,2) size 73x52
+                    RenderTableCell {TD} at (2,2) size 69x52 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
                       RenderText {#text} at (0,0) size 0x0
-layer at (262,36) size 61x38 clip at (263,37) size 59x36
-  RenderTextControl {TEXTAREA} at (4,4) size 61x38 [bgcolor=#FFFFFF] [border: (1px solid #000000)]
-    RenderBlock {DIV} at (3,3) size 55x16
-      RenderText {#text} at (0,0) size 20x16
-        text run at (0,0) width 20: "bar"
+layer at (262,39) size 61x44 clip at (263,40) size 59x42
+  RenderTextControl {TEXTAREA} at (4,4) size 61x44 [bgcolor=#FFFFFF] [border: (1px solid #000000)]
+    RenderBlock {DIV} at (3,3) size 55x19
+      RenderText {#text} at (0,-1) size 20x20
+        text run at (0,-1) width 20: "bar"

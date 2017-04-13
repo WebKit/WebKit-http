@@ -1,38 +1,38 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x196
-  RenderBlock {HTML} at (0,0) size 800x196
-    RenderBody {BODY} at (8,8) size 784x180
-      RenderTable {TABLE} at (0,0) size 400x180 [border: (1px outset #808080)]
-        RenderBlock {CAPTION} at (0,0) size 400x16
-          RenderText {#text} at (50,0) size 300x16
-            text run at (50,0) width 300: "Table is 400 px width, set with table width=400."
+layer at (0,0) size 800x229
+  RenderBlock {HTML} at (0,0) size 800x229
+    RenderBody {BODY} at (8,8) size 784x213
+      RenderTable {TABLE} at (0,0) size 400x213 [border: (1px outset #808080)]
+        RenderBlock {CAPTION} at (0,0) size 400x19
+          RenderText {#text} at (47,-1) size 306x20
+            text run at (47,-1) width 306: "Table is 400 px width, set with table width=400."
         RenderTableCol {COLGROUP} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
-        RenderTableSection {TBODY} at (1,17) size 398x162
-          RenderTableRow {TR} at (0,0) size 398x162
-            RenderTableCell {TD} at (0,0) size 398x162 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=3]
-              RenderText {#text} at (1,1) size 394x160
-                text run at (1,1) width 298: "table Cols 1 - 3. There must be a lot of text here "
-                text run at (298,1) width 88: "in order to see"
-                text run at (1,17) width 193: "the bug. table Cols 1 - 3. There "
-                text run at (193,17) width 171: "must be a lot of text here in"
-                text run at (1,33) width 129: "order to see the bug. "
-                text run at (129,33) width 264: "table Cols 1 - 3. There must be a lot of text"
-                text run at (1,49) width 31: "here "
-                text run at (31,49) width 285: "in order to see the bug. table Cols 1 - 3. There "
-                text run at (315,49) width 80: "must be a lot"
-                text run at (1,65) width 219: "of text here in order to see the bug. "
-                text run at (219,65) width 171: "table Cols 1 - 3. There must"
-                text run at (1,81) width 124: "be a lot of text here "
-                text run at (124,81) width 242: "in order to see the bug. table Cols 1 - 3."
-                text run at (1,97) width 40: "There "
-                text run at (40,97) width 302: "must be a lot of text here in order to see the bug. "
-                text run at (341,97) width 31: "table"
-                text run at (1,113) width 264: "Cols 1 - 3. There must be a lot of text here "
-                text run at (264,113) width 111: "in order to see the"
-                text run at (1,129) width 171: "bug. table Cols 1 - 3. There "
-                text run at (171,129) width 223: "must be a lot of text here in order to"
-                text run at (1,145) width 72: "see the bug."
+        RenderTableSection {TBODY} at (1,20) size 398x192
+          RenderTableRow {TR} at (0,0) size 398x192
+            RenderTableCell {TD} at (0,0) size 398x192 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=3]
+              RenderText {#text} at (1,0) size 395x191
+                text run at (1,0) width 304: "table Cols 1 - 3. There must be a lot of text here "
+                text run at (305,0) width 89: "in order to see"
+                text run at (1,19) width 200: "the bug. table Cols 1 - 3. There "
+                text run at (201,19) width 171: "must be a lot of text here in"
+                text run at (1,38) width 132: "order to see the bug. "
+                text run at (133,38) width 242: "table Cols 1 - 3. There must be a lot of"
+                text run at (1,57) width 58: "text here "
+                text run at (59,57) width 293: "in order to see the bug. table Cols 1 - 3. There "
+                text run at (352,57) width 30: "must"
+                text run at (1,76) width 273: "be a lot of text here in order to see the bug. "
+                text run at (274,76) width 100: "table Cols 1 - 3."
+                text run at (1,95) width 200: "There must be a lot of text here "
+                text run at (201,95) width 178: "in order to see the bug. table"
+                text run at (1,114) width 111: "Cols 1 - 3. There "
+                text run at (112,114) width 271: "must be a lot of text here in order to see the"
+                text run at (1,133) width 32: "bug. "
+                text run at (33,133) width 304: "table Cols 1 - 3. There must be a lot of text here "
+                text run at (337,133) width 49: "in order"
+                text run at (1,152) width 240: "to see the bug. table Cols 1 - 3. There "
+                text run at (241,152) width 155: "must be a lot of text here"
+                text run at (1,171) width 144: "in order to see the bug."

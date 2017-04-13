@@ -3,32 +3,32 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderTable {TABLE} at (0,0) size 450x96 [border: (1px solid #000000)]
-        RenderTableSection {TBODY} at (1,1) size 448x94
-          RenderTableRow {TR} at (0,2) size 448x90
-            RenderTableCell {TD} at (2,2) size 444x90 [r=0 c=0 rs=1 cs=1]
-              RenderTable {TABLE} at (1,1) size 442x24 [border: (1px solid #FF0000)]
-                RenderTableSection {TBODY} at (1,1) size 440x22
-                  RenderTableRow {TR} at (0,2) size 440x18
-                    RenderTableCell {TD} at (2,2) size 436x18 [r=0 c=0 rs=1 cs=1]
-                      RenderText {#text} at (1,1) size 22x16
-                        text run at (1,1) width 22: "test"
-              RenderTable {TABLE} at (1,25) size 438x64 [border: (1px solid #000000)]
-                RenderTableSection {TBODY} at (1,1) size 436x62
-                  RenderTableRow {TR} at (0,2) size 436x58
-                    RenderTableCell {TD} at (2,2) size 432x58 [r=0 c=0 rs=1 cs=1]
-                      RenderTable {TABLE} at (1,1) size 310x56 [border: (1px solid #000000)]
-                        RenderTableSection {TBODY} at (1,1) size 308x54
-                          RenderTableRow {TR} at (0,2) size 308x50
-                            RenderTableCell {TD} at (2,2) size 304x50 [r=0 c=0 rs=1 cs=1]
-                              RenderImage {IMG} at (1,4) size 9x9
-                              RenderText {#text} at (10,1) size 128x16
-                                text run at (10,1) width 128: " Shop Till You Drop"
-                              RenderBR {BR} at (138,13) size 0x0
-                              RenderText {#text} at (1,17) size 271x16
-                                text run at (1,17) width 271: "From Regina Lewis, AOL's Online Advisor"
-                              RenderBR {BR} at (271,29) size 1x0
-                              RenderImage {IMG} at (1,36) size 9x9
-                              RenderText {#text} at (10,33) size 293x16
-                                text run at (10,33) width 293: " Forget Dates? Don't Worry We'll Remind You"
-                              RenderBR {BR} at (302,45) size 1x0
+      RenderTable {TABLE} at (0,0) size 450x108 [border: (1px solid #000000)]
+        RenderTableSection {TBODY} at (1,1) size 448x106
+          RenderTableRow {TR} at (0,2) size 448x102
+            RenderTableCell {TD} at (2,2) size 444x102 [r=0 c=0 rs=1 cs=1]
+              RenderTable {TABLE} at (1,1) size 442x27 [border: (1px solid #FF0000)]
+                RenderTableSection {TBODY} at (1,1) size 440x25
+                  RenderTableRow {TR} at (0,2) size 440x21
+                    RenderTableCell {TD} at (2,2) size 436x21 [r=0 c=0 rs=1 cs=1]
+                      RenderText {#text} at (1,0) size 21x20
+                        text run at (1,0) width 21: "test"
+              RenderTable {TABLE} at (1,28) size 438x73 [border: (1px solid #000000)]
+                RenderTableSection {TBODY} at (1,1) size 436x71
+                  RenderTableRow {TR} at (0,2) size 436x67
+                    RenderTableCell {TD} at (2,2) size 432x67 [r=0 c=0 rs=1 cs=1]
+                      RenderTable {TABLE} at (1,1) size 316x65 [border: (1px solid #000000)]
+                        RenderTableSection {TBODY} at (1,1) size 314x63
+                          RenderTableRow {TR} at (0,2) size 314x59
+                            RenderTableCell {TD} at (2,2) size 310x59 [r=0 c=0 rs=1 cs=1]
+                              RenderImage {IMG} at (1,6) size 9x9
+                              RenderText {#text} at (10,0) size 132x20
+                                text run at (10,0) width 132: " Shop Till You Drop"
+                              RenderBR {BR} at (142,15) size 0x0
+                              RenderText {#text} at (1,19) size 279x20
+                                text run at (1,19) width 279: "From Regina Lewis, AOL's Online Advisor"
+                              RenderBR {BR} at (280,34) size 0x0
+                              RenderImage {IMG} at (1,44) size 9x9
+                              RenderText {#text} at (10,38) size 299x20
+                                text run at (10,38) width 299: " Forget Dates? Don't Worry We'll Remind You"
+                              RenderBR {BR} at (309,53) size 0x0

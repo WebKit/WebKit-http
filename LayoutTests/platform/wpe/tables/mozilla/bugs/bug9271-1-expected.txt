@@ -1,34 +1,34 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x219
-  RenderBlock {HTML} at (0,0) size 800x219
-    RenderBody {BODY} at (8,21) size 784x190
-      RenderBlock {H1} at (0,0) size 784x32
-        RenderText {#text} at (0,0) size 340x32
-          text run at (0,0) width 340: "insertRow() bugs, 0 based"
-      RenderTable {TABLE} at (0,53) size 146x137 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 144x134
-          RenderTableRow {TR} at (0,2) size 144x20
-            RenderTableCell {TD} at (2,2) size 140x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 136x16
-                text run at (2,2) width 136: "This is row number 0."
-          RenderTableRow {TR} at (0,24) size 144x20
-            RenderTableCell {TD} at (2,24) size 140x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 136x16
-                text run at (2,2) width 136: "This is row number 1."
-          RenderTableRow {TR} at (0,46) size 144x20
-            RenderTableCell {TD} at (2,46) size 140x20 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 136x16
-                text run at (2,2) width 136: "This is row number 2."
-          RenderTableRow {TR} at (0,68) size 144x20
-            RenderTableCell {TD} at (2,68) size 140x20 [border: (1px inset #808080)] [r=3 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 136x16
-                text run at (2,2) width 136: "This is row number 3."
-          RenderTableRow {TR} at (0,90) size 144x20
-            RenderTableCell {TD} at (2,90) size 140x20 [border: (1px inset #808080)] [r=4 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 136x16
-                text run at (2,2) width 136: "This is row number 4."
-          RenderTableRow {TR} at (0,112) size 144x20
-            RenderTableCell {TD} at (2,112) size 140x20 [border: (1px inset #808080)] [r=5 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 136x16
-                text run at (2,2) width 136: "This is row number 5."
+layer at (0,0) size 800x247
+  RenderBlock {HTML} at (0,0) size 800x247
+    RenderBody {BODY} at (8,21) size 784x218
+      RenderBlock {H1} at (0,0) size 784x42
+        RenderText {#text} at (0,0) size 352x42
+          text run at (0,0) width 352: "insertRow() bugs, 0 based"
+      RenderTable {TABLE} at (0,63) size 149x155 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 147x152
+          RenderTableRow {TR} at (0,2) size 147x23
+            RenderTableCell {TD} at (2,2) size 143x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 139x20
+                text run at (2,1) width 139: "This is row number 0."
+          RenderTableRow {TR} at (0,27) size 147x23
+            RenderTableCell {TD} at (2,27) size 143x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 139x20
+                text run at (2,1) width 139: "This is row number 1."
+          RenderTableRow {TR} at (0,52) size 147x23
+            RenderTableCell {TD} at (2,52) size 143x23 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 139x20
+                text run at (2,1) width 139: "This is row number 2."
+          RenderTableRow {TR} at (0,77) size 147x23
+            RenderTableCell {TD} at (2,77) size 143x23 [border: (1px inset #808080)] [r=3 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 139x20
+                text run at (2,1) width 139: "This is row number 3."
+          RenderTableRow {TR} at (0,102) size 147x23
+            RenderTableCell {TD} at (2,102) size 143x23 [border: (1px inset #808080)] [r=4 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 139x20
+                text run at (2,1) width 139: "This is row number 4."
+          RenderTableRow {TR} at (0,127) size 147x23
+            RenderTableCell {TD} at (2,127) size 143x23 [border: (1px inset #808080)] [r=5 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 139x20
+                text run at (2,1) width 139: "This is row number 5."

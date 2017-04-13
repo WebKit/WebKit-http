@@ -6,15 +6,15 @@ layer at (0,0) size 800x600
       RenderBlock (anonymous) at (0,0) size 784x0
         RenderInline {BASEFONT} at (0,0) size 0x0
         RenderText {#text} at (0,0) size 0x0
-      RenderTable {TABLE} at (0,0) size 613x96
-        RenderTableSection {TBODY} at (0,0) size 613x96
+      RenderTable {TABLE} at (0,0) size 613x99
+        RenderTableSection {TBODY} at (0,0) size 613x99
           RenderTableRow {TR} at (0,0) size 613x70
-            RenderTableCell {TD} at (0,5) size 126x86 [r=0 c=0 rs=2 cs=1]
-              RenderInline {A} at (0,0) size 126x16 [color=#0000EE]
+            RenderTableCell {TD} at (0,7) size 126x85 [r=0 c=0 rs=2 cs=1]
+              RenderInline {A} at (0,0) size 126x20 [color=#0000EE]
                 RenderImage {IMG} at (0,0) size 126x85
               RenderText {#text} at (0,0) size 0x0
             RenderTableCell {TD} at (126,0) size 488x70 [r=0 c=1 rs=1 cs=3]
-              RenderInline {NOBR} at (0,0) size 19x16
+              RenderInline {NOBR} at (0,0) size 19x20
                 RenderIFrame {IFRAME} at (0,0) size 468x60
                   layer at (0,0) size 468x60
                     RenderView at (0,0) size 468x60
@@ -23,27 +23,27 @@ layer at (0,0) size 800x600
                       RenderBody {BODY} at (0,0) size 468x60
                         RenderInline {BASE} at (0,0) size 0x0
                         RenderText {#text} at (0,0) size 0x0
-                        RenderInline {A} at (0,0) size 468x16 [color=#0000EE]
+                        RenderInline {A} at (0,0) size 468x20 [color=#0000EE]
                           RenderText {#text} at (0,0) size 0x0
                           RenderImage {IMG} at (0,0) size 468x60
                         RenderText {#text} at (0,0) size 0x0
-                RenderInline {A} at (0,0) size 19x16 [color=#0000EE]
+                RenderInline {A} at (0,0) size 19x20 [color=#0000EE]
                   RenderImage {IMG} at (468,0) size 19x60
               RenderBR {BR} at (487,60) size 0x0
               RenderImage {IMG} at (0,60) size 470x10
               RenderBR {BR} at (470,70) size 0x0
-          RenderTableRow {TR} at (0,70) size 613x26
-            RenderTableCell {TD} at (126,70) size 239x26 [bgcolor=#CCCCCC] [r=1 c=1 rs=1 cs=1]
+          RenderTableRow {TR} at (0,70) size 613x29
+            RenderTableCell {TD} at (126,72) size 238x25 [bgcolor=#CCCCCC] [r=1 c=1 rs=1 cs=1]
               RenderImage {IMG} at (0,0) size 232x25
-            RenderTableCell {TD} at (365,70) size 123x26 [bgcolor=#CCCCCC] [r=1 c=2 rs=1 cs=1]
-              RenderTextControl {INPUT} at (3,2) size 91x22 [bgcolor=#FFFFFF] [border: (2px inset #000000)]
-              RenderImage {INPUT} at (95,4) size 26x18
-            RenderTableCell {TD} at (487,70) size 127x26 [bgcolor=#CCCCCC] [r=1 c=3 rs=1 cs=1]
+            RenderTableCell {TD} at (363,70) size 126x29 [bgcolor=#CCCCCC] [r=1 c=2 rs=1 cs=1]
+              RenderTextControl {INPUT} at (3,2) size 94x25 [bgcolor=#FFFFFF] [border: (2px inset #000000)]
+              RenderImage {INPUT} at (98,7) size 26x18
+            RenderTableCell {TD} at (488,72) size 126x25 [bgcolor=#CCCCCC] [r=1 c=3 rs=1 cs=1]
               RenderBlock {INPUT} at (2,4) size 12x12
               RenderImage {IMG} at (16,0) size 40x25
               RenderBlock {INPUT} at (58,4) size 12x12
-              RenderText {#text} at (72,3) size 4x18
-                text run at (72,4) width 4: " "
-              RenderImage {IMG} at (75,0) size 47x25
-layer at (380,83) size 84x16
-  RenderBlock {DIV} at (3,3) size 84x16
+              RenderText {#text} at (72,1) size 4x20
+                text run at (72,1) width 4: " "
+              RenderImage {IMG} at (76,0) size 46x25
+layer at (378,83) size 87x19
+  RenderBlock {DIV} at (3,3) size 87x19

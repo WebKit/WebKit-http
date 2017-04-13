@@ -7,9 +7,9 @@ layer at (0,0) size 800x600
         RenderTableSection {TBODY} at (2,2) size 780x223
           RenderTableRow {TR} at (0,2) size 780x219
             RenderTableCell {TD} at (2,2) size 776x219 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderBlock (anonymous) at (2,2) size 772x16
-                RenderText {#text} at (0,0) size 12x16
-                  text run at (0,0) width 12: "Y"
+              RenderBlock (anonymous) at (2,2) size 772x19
+                RenderText {#text} at (0,-1) size 12x20
+                  text run at (0,-1) width 12: "Y"
                 RenderTable {TABLE} at (548,0) size 224x215
                   RenderTableSection {TBODY} at (0,0) size 224x215
                     RenderTableRow {TR} at (0,0) size 224x163
@@ -22,16 +22,16 @@ layer at (0,0) size 800x600
                         RenderImage {IMG} at (0,0) size 1x8
                     RenderTableRow {TR} at (0,171) size 224x36
                       RenderTableCell {TD} at (10,171) size 214x36 [r=2 c=1 rs=1 cs=1]
-                        RenderInline {FONT} at (0,0) size 198x36 [color=#666600]
-                          RenderText {#text} at (0,0) size 198x36
-                            text run at (0,0) width 198: "CleanSweep Deluxe tracks the files you use"
-                            text run at (0,12) width 191: "most often, then recommends rarely used"
-                            text run at (0,24) width 104: "ones for you to delete."
-                          RenderBR {BR} at (104,34) size 0x0
+                        RenderInline {FONT} at (0,0) size 203x37 [color=#666600]
+                          RenderText {#text} at (0,-1) size 203x37
+                            text run at (0,-1) width 203: "CleanSweep Deluxe tracks the files you use"
+                            text run at (0,11) width 192: "most often, then recommends rarely used"
+                            text run at (0,23) width 105: "ones for you to delete."
+                          RenderBR {BR} at (105,33) size 0x0
                     RenderTableRow {TR} at (0,207) size 224x8
                       RenderTableCell {TD} at (10,207) size 214x8 [r=3 c=1 rs=1 cs=1]
                         RenderImage {IMG} at (0,0) size 1x8
                 RenderText {#text} at (0,0) size 0x0
-              RenderBlock {P} at (2,34) size 772x16
-                RenderText {#text} at (0,0) size 12x16
-                  text run at (0,0) width 12: "X"
+              RenderBlock {P} at (2,37) size 772x19
+                RenderText {#text} at (0,-1) size 12x20
+                  text run at (0,-1) width 12: "X"

@@ -3,43 +3,43 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584 [bgcolor=#FFFFFF]
-      RenderBlock {H4} at (0,0) size 784x17
-        RenderText {#text} at (0,0) size 155x17
-          text run at (0,0) width 155: "Testcase distilled from "
-        RenderInline {A} at (0,0) size 164x17 [color=#0000EE]
-          RenderText {#text} at (154,0) size 164x17
-            text run at (154,0) width 164: "http://www.weather.com"
-      RenderTable {TABLE} at (0,38) size 450x179
-        RenderTableSection {TBODY} at (0,0) size 450x178
+      RenderBlock {H4} at (0,0) size 784x21
+        RenderText {#text} at (0,-1) size 154x22
+          text run at (0,-1) width 154: "Testcase distilled from "
+        RenderInline {A} at (0,0) size 168x22 [color=#0000EE]
+          RenderText {#text} at (154,-1) size 168x22
+            text run at (154,-1) width 168: "http://www.weather.com"
+      RenderTable {TABLE} at (0,42) size 450x206
+        RenderTableSection {TBODY} at (0,0) size 450x205
           RenderTableRow {TR} at (0,0) size 450x17
             RenderTableCell {TD} at (0,0) size 325x17 [r=0 c=0 rs=1 cs=3]
               RenderImage {IMG} at (0,0) size 318x17
-            RenderTableCell {TD} at (325,0) size 125x178 [r=0 c=3 rs=2 cs=1]
-              RenderTable {TABLE} at (0,0) size 125x178 [bgcolor=#E0EBF5]
-                RenderTableSection {TBODY} at (0,0) size 125x178
-                  RenderTableRow {TR} at (0,0) size 125x178
-                    RenderTableCell {TD} at (0,0) size 125x178 [r=0 c=0 rs=1 cs=1]
+            RenderTableCell {TD} at (325,0) size 125x205 [r=0 c=3 rs=2 cs=1]
+              RenderTable {TABLE} at (0,0) size 125x205 [bgcolor=#E0EBF5]
+                RenderTableSection {TBODY} at (0,0) size 125x205
+                  RenderTableRow {TR} at (0,0) size 125x205
+                    RenderTableCell {TD} at (0,0) size 125x205 [r=0 c=0 rs=1 cs=1]
                       RenderImage {IMG} at (0,0) size 125x34
                       RenderBR {BR} at (125,34) size 0x0
-                      RenderText {#text} at (0,34) size 116x32
-                        text run at (0,34) width 116: "Jose moving out to"
-                        text run at (0,50) width 19: "sea"
-                      RenderBR {BR} at (18,62) size 1x0
-                      RenderBR {BR} at (0,66) size 0x16
-                      RenderBR {BR} at (0,82) size 0x16
-                      RenderBR {BR} at (0,98) size 0x16
-                      RenderBR {BR} at (0,114) size 0x16
-                      RenderBR {BR} at (0,130) size 0x16
-                      RenderBR {BR} at (0,146) size 0x16
-                      RenderBR {BR} at (0,162) size 0x16
-          RenderTableRow {TR} at (0,17) size 450x161
+                      RenderText {#text} at (0,33) size 119x39
+                        text run at (0,33) width 119: "Jose moving out to"
+                        text run at (0,52) width 20: "sea"
+                      RenderBR {BR} at (20,67) size 0x0
+                      RenderBR {BR} at (0,71) size 0x20
+                      RenderBR {BR} at (0,90) size 0x20
+                      RenderBR {BR} at (0,109) size 0x20
+                      RenderBR {BR} at (0,128) size 0x20
+                      RenderBR {BR} at (0,147) size 0x20
+                      RenderBR {BR} at (0,166) size 0x20
+                      RenderBR {BR} at (0,185) size 0x20
+          RenderTableRow {TR} at (0,17) size 450x188
             RenderTableCell {TD} at (0,17) size 167x105 [r=1 c=0 rs=1 cs=1]
               RenderImage {IMG} at (0,0) size 167x105
               RenderText {#text} at (0,0) size 0x0
-            RenderTableCell {TD} at (167,89) size 4x17 [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (0,0) size 4x17
-                text run at (0,1) width 4: " "
-            RenderTableCell {TD} at (170,17) size 155x75 [r=1 c=2 rs=1 cs=1]
+            RenderTableCell {TD} at (167,101) size 4x20 [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (0,-1) size 4x21
+                text run at (0,0) width 4: " "
+            RenderTableCell {TD} at (171,17) size 154x75 [r=1 c=2 rs=1 cs=1]
               RenderInline {FONT} at (0,0) size 145x75
                 RenderInline {B} at (0,0) size 68x15
                   RenderText {#text} at (0,0) size 68x15

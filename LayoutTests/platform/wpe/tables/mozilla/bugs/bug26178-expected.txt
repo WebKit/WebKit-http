@@ -3,20 +3,20 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x576
-      RenderTable {TABLE} at (0,0) size 64x42
-        RenderTableSection {THEAD} at (0,0) size 64x22
-          RenderTableRow {TR} at (0,2) size 64x18
-            RenderTableCell {TD} at (2,2) size 60x18 [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (1,1) size 56x16
-                text run at (1,1) width 56: "The head"
-        RenderTableSection {TBODY} at (0,22) size 64x20
-          RenderTableRow {TR} at (0,0) size 64x18
-            RenderTableCell {TD} at (2,0) size 60x18 [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (1,1) size 58x16
-                text run at (1,1) width 58: "First row"
-      RenderBlock {FORM} at (0,42) size 784x25
-        RenderButton {INPUT} at (2,2) size 47x21 [bgcolor=#C0C0C0]
-          RenderBlock (anonymous) at (6,2) size 35x16
-            RenderText at (0,0) size 35x16
-              text run at (0,0) width 35: "insert"
+      RenderTable {TABLE} at (0,0) size 65x48
+        RenderTableSection {THEAD} at (0,0) size 65x25
+          RenderTableRow {TR} at (0,2) size 65x21
+            RenderTableCell {TD} at (2,2) size 61x21 [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (1,0) size 59x20
+                text run at (1,0) width 59: "The head"
+        RenderTableSection {TBODY} at (0,25) size 65x23
+          RenderTableRow {TR} at (0,0) size 65x21
+            RenderTableCell {TD} at (2,0) size 61x21 [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (1,0) size 57x20
+                text run at (1,0) width 57: "First row"
+      RenderBlock {FORM} at (0,48) size 784x28
+        RenderButton {INPUT} at (2,2) size 46x24 [bgcolor=#C0C0C0]
+          RenderBlock (anonymous) at (6,2) size 34x19
+            RenderText at (0,-1) size 34x20
+              text run at (0,-1) width 34: "insert"
         RenderText {#text} at (0,0) size 0x0

@@ -1,311 +1,311 @@
-layer at (0,0) size 785x1194
+layer at (0,0) size 785x1362
   RenderView at (0,0) size 785x600
-layer at (0,0) size 785x1194
-  RenderBlock {HTML} at (0,0) size 785x1194
-    RenderBody {BODY} at (8,8) size 769x1178
-      RenderBlock (anonymous) at (0,0) size 769x16
-        RenderText {#text} at (0,0) size 212x16
-          text run at (0,0) width 212: "fixed table - width on td overriden"
-      RenderTable {TABLE} at (0,16) size 400x54 [border: (10px outset #808080)]
-        RenderTableSection {TBODY} at (10,10) size 380x34
-          RenderTableRow {TR} at (0,3) size 380x28
-            RenderTableCell {TD} at (3,3) size 339x28 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (6,6) size 21x16
-                text run at (6,6) width 21: "foo"
-            RenderTableCell {TD} at (344,3) size 33x28 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (6,6) size 21x16
-                text run at (6,6) width 21: "foo"
-      RenderBlock {HR} at (0,78) size 402x2 [border: (1px inset #000000)]
-      RenderBlock (anonymous) at (0,88) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 338x16
-          text run at (0,16) width 338: "fixed table - percent cell wins over fix cell (and in IE5)"
-      RenderTable {TABLE} at (0,120) size 500x48 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 498x46
-          RenderTableRow {TR} at (0,2) size 498x20
-            RenderTableCell {TD} at (2,2) size 246x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 31x16
-                text run at (2,2) width 31: "20px"
-            RenderTableCell {TD} at (250,2) size 246x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 498x20
-            RenderTableCell {TD} at (2,24) size 246x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 29x16
-                text run at (2,2) width 29: "50%"
-            RenderTableCell {TD} at (250,24) size 246x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,168) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 338x16
-          text run at (0,16) width 338: "fixed table - percent cell wins over fix cell (and in IE5)"
-      RenderTable {TABLE} at (0,200) size 300x48 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 298x46
-          RenderTableRow {TR} at (0,2) size 298x20
-            RenderTableCell {TD} at (2,2) size 33x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 23x16
-                text run at (2,2) width 23: "100"
-            RenderTableCell {TD} at (36,2) size 260x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 298x20
-            RenderTableCell {TD} at (2,24) size 33x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 29x16
-                text run at (2,2) width 29: "10%"
-            RenderTableCell {TD} at (36,24) size 260x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,248) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 338x16
-          text run at (0,16) width 338: "fixed table - percent cell wins over fix cell (and in IE5)"
-      RenderTable {TABLE} at (0,280) size 500x48 [border: (1px outset #808080)]
+layer at (0,0) size 785x1362
+  RenderBlock {HTML} at (0,0) size 785x1362
+    RenderBody {BODY} at (8,8) size 769x1346
+      RenderBlock (anonymous) at (0,0) size 769x19
+        RenderText {#text} at (0,-1) size 215x20
+          text run at (0,-1) width 215: "fixed table - width on td overriden"
+      RenderTable {TABLE} at (0,19) size 400x57 [border: (10px outset #808080)]
+        RenderTableSection {TBODY} at (10,10) size 380x37
+          RenderTableRow {TR} at (0,3) size 380x31
+            RenderTableCell {TD} at (3,3) size 338x31 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,5) size 21x20
+                text run at (6,5) width 21: "foo"
+            RenderTableCell {TD} at (344,3) size 33x31 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,5) size 21x20
+                text run at (6,5) width 21: "foo"
+      RenderBlock {HR} at (0,84) size 402x2 [border: (1px inset #000000)]
+      RenderBlock (anonymous) at (0,94) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 344x20
+          text run at (0,18) width 344: "fixed table - percent cell wins over fix cell (and in IE5)"
+      RenderTable {TABLE} at (0,132) size 500x54 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 498x52
+          RenderTableRow {TR} at (0,2) size 498x23
+            RenderTableCell {TD} at (2,2) size 246x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 32x20
+                text run at (2,1) width 32: "20px"
+            RenderTableCell {TD} at (250,2) size 246x23 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 498x23
+            RenderTableCell {TD} at (2,27) size 246x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 29x20
+                text run at (2,1) width 29: "50%"
+            RenderTableCell {TD} at (250,27) size 246x23 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,186) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 344x20
+          text run at (0,18) width 344: "fixed table - percent cell wins over fix cell (and in IE5)"
+      RenderTable {TABLE} at (0,224) size 300x54 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 298x52
+          RenderTableRow {TR} at (0,2) size 298x23
+            RenderTableCell {TD} at (2,2) size 33x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 24x20
+                text run at (2,1) width 24: "100"
+            RenderTableCell {TD} at (37,2) size 259x23 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 298x23
+            RenderTableCell {TD} at (2,27) size 33x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 29x20
+                text run at (2,1) width 29: "10%"
+            RenderTableCell {TD} at (37,27) size 259x23 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,278) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 344x20
+          text run at (0,18) width 344: "fixed table - percent cell wins over fix cell (and in IE5)"
+      RenderTable {TABLE} at (0,316) size 500x54 [border: (1px outset #808080)]
         RenderTableCol {COLGROUP} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
-        RenderTableSection {TBODY} at (1,1) size 498x46
-          RenderTableRow {TR} at (0,2) size 498x20
-            RenderTableCell {TD} at (2,2) size 246x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 110x16
-                text run at (2,2) width 110: "50%Col,20%Cell"
-            RenderTableCell {TD} at (250,2) size 246x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 498x20
-            RenderTableCell {TD} at (2,24) size 246x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (250,24) size 246x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,328) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 338x16
-          text run at (0,16) width 338: "fixed table - percent cell wins over fix cell (and in IE5)"
-      RenderTable {TABLE} at (0,360) size 500x48 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 498x52
+          RenderTableRow {TR} at (0,2) size 498x23
+            RenderTableCell {TD} at (2,2) size 246x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 111x20
+                text run at (2,1) width 111: "50%Col,20%Cell"
+            RenderTableCell {TD} at (250,2) size 246x23 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 498x23
+            RenderTableCell {TD} at (2,27) size 246x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (250,27) size 246x23 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,370) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 344x20
+          text run at (0,18) width 344: "fixed table - percent cell wins over fix cell (and in IE5)"
+      RenderTable {TABLE} at (0,408) size 500x54 [border: (1px outset #808080)]
         RenderTableCol {COLGROUP} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
-        RenderTableSection {TBODY} at (1,1) size 498x46
-          RenderTableRow {TR} at (0,2) size 498x20
-            RenderTableCell {TD} at (2,2) size 246x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 110x16
-                text run at (2,2) width 110: "20%Col,50%Cell"
-            RenderTableCell {TD} at (250,2) size 246x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 498x20
-            RenderTableCell {TD} at (2,24) size 246x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (250,24) size 246x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,408) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 338x16
-          text run at (0,16) width 338: "fixed table - percent cell wins over fix cell (and in IE5)"
-      RenderTable {TABLE} at (0,440) size 500x48 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 498x52
+          RenderTableRow {TR} at (0,2) size 498x23
+            RenderTableCell {TD} at (2,2) size 246x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 111x20
+                text run at (2,1) width 111: "20%Col,50%Cell"
+            RenderTableCell {TD} at (250,2) size 246x23 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 498x23
+            RenderTableCell {TD} at (2,27) size 246x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (250,27) size 246x23 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,462) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 344x20
+          text run at (0,18) width 344: "fixed table - percent cell wins over fix cell (and in IE5)"
+      RenderTable {TABLE} at (0,500) size 500x54 [border: (1px outset #808080)]
         RenderTableCol {COLGROUP} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
-        RenderTableSection {TBODY} at (1,1) size 498x46
-          RenderTableRow {TR} at (0,2) size 498x20
-            RenderTableCell {TD} at (2,2) size 246x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 112x16
-                text run at (2,2) width 112: "50PerCol,100Cell"
-            RenderTableCell {TD} at (250,2) size 246x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 498x20
-            RenderTableCell {TD} at (2,24) size 246x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (250,24) size 246x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,488) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 338x16
-          text run at (0,16) width 338: "fixed table - percent cell wins over fix cell (and in IE5)"
-      RenderTable {TABLE} at (0,520) size 500x48 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 498x52
+          RenderTableRow {TR} at (0,2) size 498x23
+            RenderTableCell {TD} at (2,2) size 246x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 114x20
+                text run at (2,1) width 114: "50PerCol,100Cell"
+            RenderTableCell {TD} at (250,2) size 246x23 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 498x23
+            RenderTableCell {TD} at (2,27) size 246x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (250,27) size 246x23 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,554) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 344x20
+          text run at (0,18) width 344: "fixed table - percent cell wins over fix cell (and in IE5)"
+      RenderTable {TABLE} at (0,592) size 500x54 [border: (1px outset #808080)]
         RenderTableCol {COLGROUP} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
-        RenderTableSection {TBODY} at (1,1) size 498x46
-          RenderTableRow {TR} at (0,2) size 498x20
-            RenderTableCell {TD} at (2,2) size 116x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 112x16
-                text run at (2,2) width 112: "20PerCol,300Cell"
-            RenderTableCell {TD} at (119,2) size 377x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 498x20
-            RenderTableCell {TD} at (2,24) size 116x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (119,24) size 377x20 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,568) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 292x16
-          text run at (0,16) width 292: "fixed table - % wins over fixed even on colspan"
-      RenderTable {TABLE} at (0,600) size 300x48 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 298x46
-          RenderTableRow {TR} at (0,2) size 298x20
-            RenderTableCell {TD} at (2,2) size 146x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 42x16
-                text run at (2,2) width 42: "50CS2"
-            RenderTableCell {TD} at (150,2) size 146x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 298x20
-            RenderTableCell {TD} at (2,24) size 146x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 55x16
-                text run at (2,2) width 55: "50%CS2"
-            RenderTableCell {TD} at (150,24) size 146x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,648) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 292x16
-          text run at (0,16) width 292: "fixed table - % wins over fixed even on colspan"
-      RenderTable {TABLE} at (0,680) size 300x48 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 298x46
-          RenderTableRow {TR} at (0,2) size 298x20
-            RenderTableCell {TD} at (2,2) size 88x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 49x16
-                text run at (2,2) width 49: "100CS2"
-            RenderTableCell {TD} at (91,2) size 205x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 20x16
-                text run at (2,2) width 20: "bar"
-          RenderTableRow {TR} at (0,24) size 298x20
-            RenderTableCell {TD} at (2,24) size 88x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 55x16
-                text run at (2,2) width 55: "30%CS2"
-            RenderTableCell {TD} at (91,24) size 205x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 20x16
-                text run at (2,2) width 20: "bar"
-      RenderBlock (anonymous) at (0,728) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 355x16
-          text run at (0,16) width 355: "auto table - percent colspan wins over fixed colspan XXX"
-      RenderTable {TABLE} at (0,760) size 769x48 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 767x46
-          RenderTableRow {TR} at (0,2) size 767x20
-            RenderTableCell {TD} at (2,2) size 77x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 49x16
-                text run at (2,2) width 49: "500CS2"
-            RenderTableCell {TD} at (80,2) size 685x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "atuo"
-          RenderTableRow {TR} at (0,24) size 767x20
-            RenderTableCell {TD} at (2,24) size 77x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 55x16
-                text run at (2,2) width 55: "10%CS2"
-            RenderTableCell {TD} at (80,24) size 685x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,808) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 318x16
-          text run at (0,16) width 318: "auto table - percent colspan wins over fixed colspan"
-      RenderTable {TABLE} at (0,840) size 769x70 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 767x68
-          RenderTableRow {TR} at (0,2) size 767x20
-            RenderTableCell {TD} at (2,2) size 154x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 49x16
-                text run at (2,2) width 49: "500CS2"
-            RenderTableCell {TD} at (157,2) size 608x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 767x20
-            RenderTableCell {TD} at (2,24) size 154x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 55x16
-                text run at (2,2) width 55: "20%CS2"
-            RenderTableCell {TD} at (157,24) size 608x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,46) size 767x20
-            RenderTableCell {TD} at (2,46) size 76x20 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (79,46) size 77x20 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (157,46) size 608x20 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,910) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 318x16
-          text run at (0,16) width 318: "auto table - percent colspan wins over fixed colspan"
-      RenderTable {TABLE} at (0,942) size 769x70 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 767x68
-          RenderTableRow {TR} at (0,2) size 767x20
-            RenderTableCell {TD} at (2,2) size 154x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 49x16
-                text run at (2,2) width 49: "200CS2"
-            RenderTableCell {TD} at (157,2) size 608x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 767x20
-            RenderTableCell {TD} at (2,24) size 154x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 55x16
-                text run at (2,2) width 55: "20%CS2"
-            RenderTableCell {TD} at (157,24) size 608x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,46) size 767x20
-            RenderTableCell {TD} at (2,46) size 76x20 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (79,46) size 77x20 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (157,46) size 608x20 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,1012) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 318x16
-          text run at (0,16) width 318: "auto table - percent colspan wins over fixed colspan"
-      RenderTable {TABLE} at (0,1044) size 769x70 [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 767x68
-          RenderTableRow {TR} at (0,2) size 767x20
-            RenderTableCell {TD} at (2,2) size 154x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 57x16
-                text run at (2,2) width 57: "1000CS2"
-            RenderTableCell {TD} at (157,2) size 608x20 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,24) size 767x20
-            RenderTableCell {TD} at (2,24) size 154x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
-              RenderText {#text} at (2,2) size 55x16
-                text run at (2,2) width 55: "20%CS2"
-            RenderTableCell {TD} at (157,24) size 608x20 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-          RenderTableRow {TR} at (0,46) size 767x20
-            RenderTableCell {TD} at (2,46) size 76x20 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (79,46) size 77x20 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-            RenderTableCell {TD} at (157,46) size 608x20 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
-      RenderBlock (anonymous) at (0,1114) size 769x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 367x16
-          text run at (0,16) width 367: "percent cell/col percentage conflict goes to cell (and in IE5)"
-      RenderTable {TABLE} at (0,1146) size 500x32 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 498x52
+          RenderTableRow {TR} at (0,2) size 498x23
+            RenderTableCell {TD} at (2,2) size 118x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 114x20
+                text run at (2,1) width 114: "20PerCol,300Cell"
+            RenderTableCell {TD} at (122,2) size 374x23 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 498x23
+            RenderTableCell {TD} at (2,27) size 118x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (122,27) size 374x23 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,646) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 300x20
+          text run at (0,18) width 300: "fixed table - % wins over fixed even on colspan"
+      RenderTable {TABLE} at (0,684) size 300x54 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 298x52
+          RenderTableRow {TR} at (0,2) size 298x23
+            RenderTableCell {TD} at (2,2) size 146x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 44x20
+                text run at (2,1) width 44: "50CS2"
+            RenderTableCell {TD} at (150,2) size 146x23 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 298x23
+            RenderTableCell {TD} at (2,27) size 146x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 57x20
+                text run at (2,1) width 57: "50%CS2"
+            RenderTableCell {TD} at (150,27) size 146x23 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,738) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 300x20
+          text run at (0,18) width 300: "fixed table - % wins over fixed even on colspan"
+      RenderTable {TABLE} at (0,776) size 300x54 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 298x52
+          RenderTableRow {TR} at (0,2) size 298x23
+            RenderTableCell {TD} at (2,2) size 88x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 52x20
+                text run at (2,1) width 52: "100CS2"
+            RenderTableCell {TD} at (91,2) size 205x23 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 20x20
+                text run at (2,1) width 20: "bar"
+          RenderTableRow {TR} at (0,27) size 298x23
+            RenderTableCell {TD} at (2,27) size 88x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 57x20
+                text run at (2,1) width 57: "30%CS2"
+            RenderTableCell {TD} at (91,27) size 205x23 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 20x20
+                text run at (2,1) width 20: "bar"
+      RenderBlock (anonymous) at (0,830) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 366x20
+          text run at (0,18) width 366: "auto table - percent colspan wins over fixed colspan XXX"
+      RenderTable {TABLE} at (0,868) size 769x54 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 767x52
+          RenderTableRow {TR} at (0,2) size 767x23
+            RenderTableCell {TD} at (2,2) size 77x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 52x20
+                text run at (2,1) width 52: "500CS2"
+            RenderTableCell {TD} at (80,2) size 685x23 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "atuo"
+          RenderTableRow {TR} at (0,27) size 767x23
+            RenderTableCell {TD} at (2,27) size 77x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 57x20
+                text run at (2,1) width 57: "10%CS2"
+            RenderTableCell {TD} at (80,27) size 685x23 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,922) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 326x20
+          text run at (0,18) width 326: "auto table - percent colspan wins over fixed colspan"
+      RenderTable {TABLE} at (0,960) size 769x79 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 767x77
+          RenderTableRow {TR} at (0,2) size 767x23
+            RenderTableCell {TD} at (2,2) size 154x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 52x20
+                text run at (2,1) width 52: "500CS2"
+            RenderTableCell {TD} at (157,2) size 608x23 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 767x23
+            RenderTableCell {TD} at (2,27) size 154x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 57x20
+                text run at (2,1) width 57: "20%CS2"
+            RenderTableCell {TD} at (157,27) size 608x23 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,52) size 767x23
+            RenderTableCell {TD} at (2,52) size 76x23 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (79,52) size 77x23 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (157,52) size 608x23 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,1039) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 326x20
+          text run at (0,18) width 326: "auto table - percent colspan wins over fixed colspan"
+      RenderTable {TABLE} at (0,1077) size 769x79 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 767x77
+          RenderTableRow {TR} at (0,2) size 767x23
+            RenderTableCell {TD} at (2,2) size 154x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 52x20
+                text run at (2,1) width 52: "200CS2"
+            RenderTableCell {TD} at (157,2) size 608x23 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 767x23
+            RenderTableCell {TD} at (2,27) size 154x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 57x20
+                text run at (2,1) width 57: "20%CS2"
+            RenderTableCell {TD} at (157,27) size 608x23 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,52) size 767x23
+            RenderTableCell {TD} at (2,52) size 76x23 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (79,52) size 77x23 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (157,52) size 608x23 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,1156) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 326x20
+          text run at (0,18) width 326: "auto table - percent colspan wins over fixed colspan"
+      RenderTable {TABLE} at (0,1194) size 769x79 [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 767x77
+          RenderTableRow {TR} at (0,2) size 767x23
+            RenderTableCell {TD} at (2,2) size 154x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 60x20
+                text run at (2,1) width 60: "1000CS2"
+            RenderTableCell {TD} at (157,2) size 608x23 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,27) size 767x23
+            RenderTableCell {TD} at (2,27) size 154x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=2]
+              RenderText {#text} at (2,1) size 57x20
+                text run at (2,1) width 57: "20%CS2"
+            RenderTableCell {TD} at (157,27) size 608x23 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+          RenderTableRow {TR} at (0,52) size 767x23
+            RenderTableCell {TD} at (2,52) size 76x23 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (79,52) size 77x23 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+            RenderTableCell {TD} at (157,52) size 608x23 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"
+      RenderBlock (anonymous) at (0,1273) size 769x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 373x20
+          text run at (0,18) width 373: "percent cell/col percentage conflict goes to cell (and in IE5)"
+      RenderTable {TABLE} at (0,1311) size 500x35 [border: (1px outset #808080)]
         RenderTableCol {COLGROUP} at (0,0) size 0x0
           RenderTableCol {COL} at (0,0) size 0x0
-        RenderTableSection {TBODY} at (1,1) size 498x30
-          RenderTableRow {TR} at (0,5) size 498x20
-            RenderTableCell {TD} at (5,5) size 387x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 80x16
-                text run at (2,2) width 80: "30%-80%col"
-            RenderTableCell {TD} at (396,5) size 97x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 27x16
-                text run at (2,2) width 27: "auto"
+        RenderTableSection {TBODY} at (1,1) size 498x33
+          RenderTableRow {TR} at (0,5) size 498x23
+            RenderTableCell {TD} at (5,5) size 387x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 82x20
+                text run at (2,1) width 82: "30%-80%col"
+            RenderTableCell {TD} at (396,5) size 97x23 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 27x20
+                text run at (2,1) width 27: "auto"

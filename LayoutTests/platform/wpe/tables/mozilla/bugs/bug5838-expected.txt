@@ -3,53 +3,53 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderTable {TABLE} at (0,0) size 195x112 [border: (1px outset #808080)]
-        RenderBlock {CAPTION} at (0,0) size 195x16
-          RenderInline {EM} at (0,0) size 183x16
-            RenderText {#text} at (6,0) size 183x16
-              text run at (6,0) width 183: "A test table with merged cells"
-        RenderTableSection {TBODY} at (1,17) size 193x94
-          RenderTableRow {TR} at (0,2) size 193x21
-            RenderTableCell {TH} at (133,22) size 58x4 [border: (1px inset #808080)] [r=0 c=0 rs=2 cs=1]
-            RenderTableCell {TH} at (36,2) size 96x21 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=2]
-              RenderText {#text} at (21,2) size 54x17
-                text run at (21,2) width 54: "Average"
-            RenderTableCell {TH} at (2,5) size 33x38 [border: (1px inset #808080)] [r=0 c=3 rs=2 cs=1]
-              RenderText {#text} at (2,2) size 28x17
-                text run at (2,2) width 28: "Red"
-              RenderBR {BR} at (2,15) size 1x0
-              RenderText {#text} at (2,19) size 28x17
-                text run at (2,19) width 28: "eyes"
-          RenderTableRow {TR} at (0,25) size 193x21
-            RenderTableCell {TH} at (86,25) size 46x21 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 42x17
-                text run at (2,2) width 42: "height"
-            RenderTableCell {TH} at (36,25) size 49x21 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 45x17
-                text run at (2,2) width 45: "weight"
-          RenderTableRow {TR} at (0,48) size 193x21
-            RenderTableCell {TH} at (133,48) size 58x21 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
-              RenderText {#text} at (9,2) size 39x17
-                text run at (9,2) width 39: "Males"
-            RenderTableCell {TD} at (86,48) size 46x21 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
-              RenderText {#text} at (24,2) size 20x17
-                text run at (24,3) width 20: "1.9"
-            RenderTableCell {TD} at (36,48) size 49x21 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
-              RenderText {#text} at (12,2) size 35x17
-                text run at (12,3) width 35: "0.003"
-            RenderTableCell {TD} at (2,48) size 33x21 [border: (1px inset #808080)] [r=2 c=3 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 29x17
-                text run at (2,3) width 29: "40%"
-          RenderTableRow {TR} at (0,71) size 193x21
-            RenderTableCell {TH} at (133,71) size 58x21 [border: (1px inset #808080)] [r=3 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 53x17
-                text run at (2,2) width 53: "Females"
-            RenderTableCell {TD} at (86,71) size 46x21 [border: (1px inset #808080)] [r=3 c=1 rs=1 cs=1]
-              RenderText {#text} at (24,2) size 20x17
-                text run at (24,3) width 20: "1.7"
-            RenderTableCell {TD} at (36,71) size 49x21 [border: (1px inset #808080)] [r=3 c=2 rs=1 cs=1]
-              RenderText {#text} at (12,2) size 35x17
-                text run at (12,3) width 35: "0.002"
-            RenderTableCell {TD} at (2,71) size 33x21 [border: (1px inset #808080)] [r=3 c=3 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 29x17
-                text run at (2,3) width 29: "43%"
+      RenderTable {TABLE} at (0,0) size 199x131 [border: (1px outset #808080)]
+        RenderBlock {CAPTION} at (0,0) size 199x19
+          RenderInline {EM} at (0,0) size 185x20
+            RenderText {#text} at (7,-1) size 185x20
+              text run at (7,-1) width 185: "A test table with merged cells"
+        RenderTableSection {TBODY} at (1,20) size 197x110
+          RenderTableRow {TR} at (0,2) size 197x25
+            RenderTableCell {TH} at (136,26) size 59x4 [border: (1px inset #808080)] [r=0 c=0 rs=2 cs=1]
+            RenderTableCell {TH} at (37,2) size 97x25 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=2]
+              RenderText {#text} at (20,1) size 57x22
+                text run at (20,1) width 57: "Average"
+            RenderTableCell {TH} at (2,5) size 33x46 [border: (1px inset #808080)] [r=0 c=3 rs=2 cs=1]
+              RenderText {#text} at (2,1) size 29x22
+                text run at (2,1) width 29: "Red"
+              RenderBR {BR} at (2,17) size 1x0
+              RenderText {#text} at (2,22) size 29x22
+                text run at (2,22) width 29: "eyes"
+          RenderTableRow {TR} at (0,29) size 197x25
+            RenderTableCell {TH} at (88,29) size 46x25 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 42x22
+                text run at (2,1) width 42: "height"
+            RenderTableCell {TH} at (37,29) size 49x25 [border: (1px inset #808080)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 45x22
+                text run at (2,1) width 45: "weight"
+          RenderTableRow {TR} at (0,56) size 197x25
+            RenderTableCell {TH} at (136,56) size 59x25 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (9,1) size 41x22
+                text run at (9,1) width 41: "Males"
+            RenderTableCell {TD} at (88,57) size 46x23 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (24,1) size 20x20
+                text run at (24,1) width 20: "1.9"
+            RenderTableCell {TD} at (37,57) size 49x23 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (11,1) size 36x20
+                text run at (11,1) width 36: "0.003"
+            RenderTableCell {TD} at (2,57) size 33x23 [border: (1px inset #808080)] [r=2 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 29x20
+                text run at (2,1) width 29: "40%"
+          RenderTableRow {TR} at (0,83) size 197x25
+            RenderTableCell {TH} at (136,83) size 59x25 [border: (1px inset #808080)] [r=3 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 55x22
+                text run at (2,1) width 55: "Females"
+            RenderTableCell {TD} at (88,84) size 46x23 [border: (1px inset #808080)] [r=3 c=1 rs=1 cs=1]
+              RenderText {#text} at (24,1) size 20x20
+                text run at (24,1) width 20: "1.7"
+            RenderTableCell {TD} at (37,84) size 49x23 [border: (1px inset #808080)] [r=3 c=2 rs=1 cs=1]
+              RenderText {#text} at (11,1) size 36x20
+                text run at (11,1) width 36: "0.002"
+            RenderTableCell {TD} at (2,84) size 33x23 [border: (1px inset #808080)] [r=3 c=3 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 29x20
+                text run at (2,1) width 29: "43%"

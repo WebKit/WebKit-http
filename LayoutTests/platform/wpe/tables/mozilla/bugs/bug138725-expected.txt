@@ -3,32 +3,32 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderTable {TABLE} at (0,0) size 173x59
-        RenderTableSection {TBODY} at (0,0) size 173x59
-          RenderTableRow {TR} at (0,2) size 173x55
-            RenderTableCell {TD} at (2,2) size 169x55 [r=0 c=0 rs=1 cs=1]
-              RenderBlock (anonymous) at (1,1) size 167x0
+      RenderTable {TABLE} at (0,0) size 175x62
+        RenderTableSection {TBODY} at (0,0) size 175x62
+          RenderTableRow {TR} at (0,2) size 175x58
+            RenderTableCell {TD} at (2,2) size 171x58 [r=0 c=0 rs=1 cs=1]
+              RenderBlock (anonymous) at (1,1) size 169x0
                 RenderInline {SPAN} at (0,0) size 0x0
                   RenderText {#text} at (0,0) size 0x0
                   RenderInline {SPAN} at (0,0) size 0x0
                     RenderText {#text} at (0,0) size 0x0
                     RenderText {#text} at (0,0) size 0x0
-              RenderBlock (anonymous) at (1,1) size 167x53
-                RenderTable {TABLE} at (0,0) size 167x53
-                  RenderTableSection {TBODY} at (0,0) size 167x53
-                    RenderTableRow {TR} at (0,2) size 167x49
-                      RenderTableCell {TD} at (2,2) size 163x49 [r=0 c=0 rs=1 cs=1]
-                        RenderTable {TABLE} at (1,1) size 161x47
-                          RenderTableSection {TBODY} at (0,0) size 161x47
-                            RenderTableRow {TR} at (0,2) size 161x43
-                              RenderTableCell {TD} at (2,2) size 157x43 [r=0 c=0 rs=1 cs=1]
-                                RenderBlock {FORM} at (1,1) size 155x25
-                                  RenderButton {INPUT} at (2,2) size 151x21 [bgcolor=#C0C0C0]
-                                    RenderBlock (anonymous) at (6,2) size 139x16
-                                      RenderText at (0,0) size 139x16
-                                        text run at (0,0) width 139: "ApplyForThisPosition"
+              RenderBlock (anonymous) at (1,1) size 169x56
+                RenderTable {TABLE} at (0,0) size 169x56
+                  RenderTableSection {TBODY} at (0,0) size 169x56
+                    RenderTableRow {TR} at (0,2) size 169x52
+                      RenderTableCell {TD} at (2,2) size 165x52 [r=0 c=0 rs=1 cs=1]
+                        RenderTable {TABLE} at (1,1) size 163x50
+                          RenderTableSection {TBODY} at (0,0) size 163x50
+                            RenderTableRow {TR} at (0,2) size 163x46
+                              RenderTableCell {TD} at (2,2) size 159x46 [r=0 c=0 rs=1 cs=1]
+                                RenderBlock {FORM} at (1,1) size 157x28
+                                  RenderButton {INPUT} at (2,2) size 153x24 [bgcolor=#C0C0C0]
+                                    RenderBlock (anonymous) at (6,2) size 141x19
+                                      RenderText at (0,-1) size 141x20
+                                        text run at (0,-1) width 141: "ApplyForThisPosition"
                                   RenderText {#text} at (0,0) size 0x0
-              RenderBlock (anonymous) at (1,54) size 167x0
+              RenderBlock (anonymous) at (1,57) size 169x0
                 RenderInline {SPAN} at (0,0) size 0x0
                   RenderInline {SPAN} at (0,0) size 0x0
                   RenderText {#text} at (0,0) size 0x0

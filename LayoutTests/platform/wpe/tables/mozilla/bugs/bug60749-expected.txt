@@ -3,24 +3,24 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x576
-      RenderTable {TABLE} at (0,0) size 378x26 [border: (3px outset #808080)]
-        RenderTableSection {TBODY} at (3,3) size 372x20
-          RenderTableRow {TR} at (0,0) size 372x20
-            RenderTableCell {TD} at (0,0) size 68x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 64x16
-                text run at (2,2) width 64: "fieldLabel"
-            RenderTableCell {TD} at (68,0) size 304x20 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 103x16
-                text run at (2,2) width 103: "   InspectionText"
-      RenderBlock {FORM} at (0,26) size 784x25
-        RenderButton {INPUT} at (2,2) size 94x21 [bgcolor=#C0C0C0]
-          RenderBlock (anonymous) at (6,2) size 82x16
-            RenderText at (0,0) size 82x16
-              text run at (0,0) width 82: "change width"
-        RenderText {#text} at (97,4) size 5x16
-          text run at (97,4) width 5: " "
-        RenderButton {INPUT} at (103,2) size 206x21 [bgcolor=#C0C0C0]
-          RenderBlock (anonymous) at (6,2) size 193x16
-            RenderText at (0,0) size 193x16
-              text run at (0,0) width 193: "change width with table reflow"
+      RenderTable {TABLE} at (0,0) size 378x29 [border: (3px outset #808080)]
+        RenderTableSection {TBODY} at (3,3) size 372x23
+          RenderTableRow {TR} at (0,0) size 372x23
+            RenderTableCell {TD} at (0,0) size 68x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 64x20
+                text run at (2,1) width 64: "fieldLabel"
+            RenderTableCell {TD} at (68,0) size 304x23 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 106x20
+                text run at (2,1) width 106: "   InspectionText"
+      RenderBlock {FORM} at (0,29) size 784x28
+        RenderButton {INPUT} at (2,2) size 97x24 [bgcolor=#C0C0C0]
+          RenderBlock (anonymous) at (6,2) size 85x19
+            RenderText at (0,-1) size 85x20
+              text run at (0,-1) width 85: "change width"
+        RenderText {#text} at (101,3) size 4x20
+          text run at (101,3) width 4: " "
+        RenderButton {INPUT} at (107,2) size 208x24 [bgcolor=#C0C0C0]
+          RenderBlock (anonymous) at (6,2) size 196x19
+            RenderText at (0,-1) size 196x20
+              text run at (0,-1) width 196: "change width with table reflow"
         RenderText {#text} at (0,0) size 0x0

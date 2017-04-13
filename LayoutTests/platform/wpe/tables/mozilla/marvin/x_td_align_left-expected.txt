@@ -1,40 +1,40 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x244
-  RenderBlock {html} at (0,0) size 800x244
-    RenderBody {body} at (8,16) size 784x220
-      RenderBlock {p} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 135x16
-          text run at (0,0) width 135: "TEST: td align=\"left\""
-      RenderBlock {p} at (0,32) size 784x33
-        RenderInline {b} at (0,0) size 73x17
-          RenderText {#text} at (0,0) size 73x17
-            text run at (0,0) width 73: "Example 1."
-        RenderBR {br} at (72,1) size 1x16
-        RenderText {#text} at (0,17) size 119x16
-          text run at (0,17) width 119: "Table width=100%"
-      RenderTable {table} at (0,81) size 784x26 [border: (1px outset #808080)]
-        RenderTableSection (anonymous) at (1,1) size 782x24
-          RenderTableRow {tr} at (0,2) size 782x20
-            RenderTableCell {td} at (2,2) size 778x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 191x16
-                text run at (2,2) width 191: "Cell text should be left aligned"
-      RenderBlock {p} at (0,123) size 784x33
-        RenderInline {b} at (0,0) size 73x17
-          RenderText {#text} at (0,0) size 73x17
-            text run at (0,0) width 73: "Example 2."
-        RenderBR {br} at (72,1) size 1x16
-        RenderText {#text} at (0,17) size 417x16
-          text run at (0,17) width 393: "No specific table width; text in second row exceeds text in first "
-          text run at (392,17) width 25: "row"
-      RenderTable {table} at (0,172) size 534x48 [border: (1px outset #808080)]
-        RenderTableSection (anonymous) at (1,1) size 532x46
-          RenderTableRow {tr} at (0,2) size 532x20
-            RenderTableCell {td} at (2,2) size 528x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 191x16
-                text run at (2,2) width 191: "Cell text should be left aligned"
-          RenderTableRow {tr} at (0,24) size 532x20
-            RenderTableCell {td} at (2,24) size 528x20 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 524x16
-                text run at (2,2) width 422: "xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx "
-                text run at (423,2) width 103: "xxx xxx xxx xxx"
+layer at (0,0) size 800x270
+  RenderBlock {html} at (0,0) size 800x270
+    RenderBody {body} at (8,16) size 784x246
+      RenderBlock {p} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 137x20
+          text run at (0,-1) width 137: "TEST: td align=\"left\""
+      RenderBlock {p} at (0,35) size 784x40
+        RenderInline {b} at (0,0) size 76x22
+          RenderText {#text} at (0,-1) size 76x22
+            text run at (0,-1) width 76: "Example 1."
+        RenderBR {br} at (76,0) size 0x20
+        RenderText {#text} at (0,20) size 122x20
+          text run at (0,20) width 122: "Table width=100%"
+      RenderTable {table} at (0,91) size 784x29 [border: (1px outset #808080)]
+        RenderTableSection (anonymous) at (1,1) size 782x27
+          RenderTableRow {tr} at (0,2) size 782x23
+            RenderTableCell {td} at (2,2) size 778x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 192x20
+                text run at (2,1) width 192: "Cell text should be left aligned"
+      RenderBlock {p} at (0,136) size 784x40
+        RenderInline {b} at (0,0) size 76x22
+          RenderText {#text} at (0,-1) size 76x22
+            text run at (0,-1) width 76: "Example 2."
+        RenderBR {br} at (76,0) size 0x20
+        RenderText {#text} at (0,20) size 424x20
+          text run at (0,20) width 399: "No specific table width; text in second row exceeds text in first "
+          text run at (399,20) width 25: "row"
+      RenderTable {table} at (0,192) size 566x54 [border: (1px outset #808080)]
+        RenderTableSection (anonymous) at (1,1) size 564x52
+          RenderTableRow {tr} at (0,2) size 564x23
+            RenderTableCell {td} at (2,2) size 560x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 192x20
+                text run at (2,1) width 192: "Cell text should be left aligned"
+          RenderTableRow {tr} at (0,27) size 564x23
+            RenderTableCell {td} at (2,27) size 560x23 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 556x20
+                text run at (2,1) width 448: "xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx "
+                text run at (450,1) width 108: "xxx xxx xxx xxx"

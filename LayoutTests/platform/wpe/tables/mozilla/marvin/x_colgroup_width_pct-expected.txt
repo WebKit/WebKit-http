@@ -1,26 +1,26 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x146
-  RenderBlock {html} at (0,0) size 800x146
-    RenderBody {body} at (8,16) size 784x122
-      RenderBlock {p} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 167x16
-          text run at (0,0) width 167: "COLGROUP WIDTH=pct"
-      RenderTable {table} at (0,32) size 400x90 [border: (1px outset #808080)]
+layer at (0,0) size 800x164
+  RenderBlock {html} at (0,0) size 800x164
+    RenderBody {body} at (8,16) size 784x140
+      RenderBlock {p} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 175x20
+          text run at (0,-1) width 175: "COLGROUP WIDTH=pct"
+      RenderTable {table} at (0,35) size 400x105 [border: (1px outset #808080)]
         RenderTableCol {colgroup} at (0,0) size 0x0
         RenderTableCol {colgroup} at (0,0) size 0x0
-        RenderTableSection (anonymous) at (1,1) size 398x88
-          RenderTableRow {tr} at (0,2) size 398x84
-            RenderTableCell {td} at (2,2) size 98x84 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 85x80
-                text run at (2,2) width 78: "This column"
-                text run at (2,18) width 83: "should have a"
-                text run at (2,34) width 85: "width of 25%"
-                text run at (2,50) width 80: "of 400 pixels"
-                text run at (2,66) width 17: "or "
-                text run at (18,66) width 39: "100px"
-            RenderTableCell {td} at (102,26) size 294x36 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 270x32
-                text run at (2,2) width 270: "This column should have a width of 75% of"
-                text run at (2,18) width 84: "400 pixels or "
-                text run at (85,18) width 39: "300px"
+        RenderTableSection (anonymous) at (1,1) size 398x103
+          RenderTableRow {tr} at (0,2) size 398x99
+            RenderTableCell {td} at (2,2) size 98x99 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 87x96
+                text run at (2,1) width 79: "This column"
+                text run at (2,20) width 87: "should have a"
+                text run at (2,39) width 86: "width of 25%"
+                text run at (2,58) width 82: "of 400 pixels"
+                text run at (2,77) width 17: "or "
+                text run at (19,77) width 40: "100px"
+            RenderTableCell {td} at (102,30) size 294x43 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 277x40
+                text run at (2,2) width 277: "This column should have a width of 75% of"
+                text run at (2,21) width 86: "400 pixels or "
+                text run at (88,21) width 40: "300px"

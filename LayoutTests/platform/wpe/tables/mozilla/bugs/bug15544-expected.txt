@@ -19,10 +19,10 @@ layer at (0,0) size 800x600
             RenderTableCell {TD} at (30,106) size 51x80 [r=2 c=1 rs=1 cs=1]
               RenderImage {IMG} at (0,0) size 25x40
               RenderImage {IMG} at (0,40) size 25x40
-      RenderBlock (anonymous) at (0,186) size 784x16
-        RenderText {#text} at (0,0) size 312x16
-          text run at (0,0) width 312: "Here's the same table without the off-by-one error."
-      RenderTable {TABLE} at (0,202) size 80x93
+      RenderBlock (anonymous) at (0,186) size 784x19
+        RenderText {#text} at (0,-1) size 317x20
+          text run at (0,-1) width 317: "Here's the same table without the off-by-one error."
+      RenderTable {TABLE} at (0,205) size 80x93
         RenderTableSection {TBODY} at (0,0) size 80x93
           RenderTableRow {TR} at (0,0) size 80x28
             RenderTableCell {TD} at (0,0) size 30x93 [r=0 c=0 rs=3 cs=1]

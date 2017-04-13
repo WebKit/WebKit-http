@@ -3,11 +3,11 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderBlock (anonymous) at (0,0) size 784x32
-        RenderText {#text} at (0,0) size 752x32
-          text run at (0,0) width 752: "the following is not the bug but is related. Nav put's the images in the 2nd cell on the same line. Border widths of cells are"
-          text run at (0,16) width 79: "suspect here."
-      RenderTable {TABLE} at (0,32) size 28x6 [border: (1px outset #808080)]
+      RenderBlock (anonymous) at (0,0) size 784x38
+        RenderText {#text} at (0,-1) size 765x39
+          text run at (0,-1) width 765: "the following is not the bug but is related. Nav put's the images in the 2nd cell on the same line. Border widths of cells are"
+          text run at (0,18) width 81: "suspect here."
+      RenderTable {TABLE} at (0,38) size 28x6 [border: (1px outset #808080)]
         RenderTableSection {TBODY} at (1,1) size 26x4
           RenderTableRow {TR} at (0,0) size 26x4
             RenderTableCell {TD} at (0,0) size 4x4 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
@@ -15,11 +15,11 @@ layer at (0,0) size 800x600
             RenderTableCell {TD} at (4,0) size 22x4 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
               RenderImage {IMG} at (1,1) size 10x2
               RenderImage {IMG} at (11,1) size 10x2
-      RenderBlock (anonymous) at (0,38) size 784x32
-        RenderBR {BR} at (0,0) size 0x16
-        RenderText {#text} at (0,16) size 641x16
-          text run at (0,16) width 641: "the following is related to the bug. Nav put's the images in the last cell of the last table on the same line."
-      RenderTable {TABLE} at (0,70) size 700x32
+      RenderBlock (anonymous) at (0,44) size 784x38
+        RenderBR {BR} at (0,-1) size 0x20
+        RenderText {#text} at (0,18) size 649x20
+          text run at (0,18) width 649: "the following is related to the bug. Nav put's the images in the last cell of the last table on the same line."
+      RenderTable {TABLE} at (0,82) size 700x32
         RenderTableSection {TBODY} at (0,0) size 700x32
           RenderTableRow {TR} at (0,0) size 700x32
             RenderTableCell {TD} at (0,0) size 175x32 [r=0 c=0 rs=1 cs=1]
@@ -30,7 +30,7 @@ layer at (0,0) size 800x600
                       RenderImage {IMG} at (0,0) size 7x2
                   RenderTableRow {TR} at (0,2) size 175x29
                     RenderTableCell {TD} at (0,2) size 175x29 [r=1 c=0 rs=1 cs=8]
-                      RenderInline {A} at (0,0) size 156x16 [color=#0000EE]
+                      RenderInline {A} at (0,0) size 156x20 [color=#0000EE]
                         RenderImage {IMG} at (0,0) size 156x29
                       RenderImage {IMG} at (156,0) size 19x29
                   RenderTableRow {TR} at (0,31) size 175x1
@@ -72,65 +72,65 @@ layer at (0,0) size 800x600
                       RenderImage {IMG} at (0,18) size 525x1
                       RenderBR {BR} at (525,19) size 0x0
                       RenderImage {IMG} at (0,19) size 525x2
-      RenderBlock (anonymous) at (0,102) size 784x16
-        RenderBR {BR} at (0,0) size 0x16
-      RenderTable {TABLE} at (0,118) size 427x179 [bgcolor=#CCCCCC] [border: (1px outset #808080)]
-        RenderTableSection {TBODY} at (1,1) size 425x177
-          RenderTableRow {TR} at (0,1) size 425x68
-            RenderTableCell {TD} at (1,1) size 20x20 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 16x16
-                text run at (2,2) width 16: "1. "
-            RenderTableCell {TD} at (21,1) size 230x68 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 64x16
-                text run at (2,2) width 64: "Some One"
-              RenderBR {BR} at (66,14) size 0x0
-              RenderText {#text} at (2,18) size 68x16
-                text run at (2,18) width 68: "Joe Banker"
-              RenderBR {BR} at (69,30) size 1x0
-              RenderText {#text} at (2,34) size 124x16
-                text run at (2,34) width 124: "4633 Ocean Avenue"
-              RenderBR {BR} at (125,46) size 1x0
-              RenderText {#text} at (2,50) size 168x16
-                text run at (2,50) width 97: "San Francisco,  "
-                text run at (98,50) width 31: "CA  "
-                text run at (128,50) width 42: "94132 "
-              RenderBR {BR} at (169,62) size 1x0
-            RenderTableCell {TD} at (251,1) size 25x5 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
+      RenderBlock (anonymous) at (0,114) size 784x19
+        RenderBR {BR} at (0,-1) size 0x20
+      RenderTable {TABLE} at (0,133) size 427x209 [bgcolor=#CCCCCC] [border: (1px outset #808080)]
+        RenderTableSection {TBODY} at (1,1) size 425x207
+          RenderTableRow {TR} at (0,1) size 425x80
+            RenderTableCell {TD} at (1,1) size 20x23 [border: (1px inset #808080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 16x20
+                text run at (2,1) width 16: "1. "
+            RenderTableCell {TD} at (22,1) size 230x80 [border: (1px inset #808080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 67x20
+                text run at (2,1) width 67: "Some One"
+              RenderBR {BR} at (69,16) size 0x1
+              RenderText {#text} at (2,20) size 71x20
+                text run at (2,20) width 71: "Joe Banker"
+              RenderBR {BR} at (73,35) size 0x1
+              RenderText {#text} at (2,39) size 131x20
+                text run at (2,39) width 131: "4633 Ocean Avenue"
+              RenderBR {BR} at (133,54) size 0x1
+              RenderText {#text} at (2,58) size 176x20
+                text run at (2,58) width 101: "San Francisco,  "
+                text run at (103,58) width 31: "CA  "
+                text run at (134,58) width 44: "94132 "
+              RenderBR {BR} at (178,73) size 0x1
+            RenderTableCell {TD} at (252,1) size 25x5 [border: (1px inset #808080)] [r=0 c=2 rs=1 cs=1]
               RenderImage {IMG} at (2,2) size 20x1
-            RenderTableCell {TD} at (276,1) size 148x38 [border: (1px inset #808080)] [r=0 c=3 rs=1 cs=1]
+            RenderTableCell {TD} at (277,1) size 148x38 [border: (1px inset #808080)] [r=0 c=3 rs=1 cs=1]
               RenderImage {IMG} at (6,2) size 39x34
               RenderImage {IMG} at (44,35) size 13x1
               RenderImage {IMG} at (56,2) size 39x34
               RenderImage {IMG} at (94,35) size 13x1
               RenderImage {IMG} at (106,2) size 39x34
-          RenderTableRow {TR} at (0,70) size 425x21
-            RenderTableCell {TD} at (1,78) size 20x5 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
-            RenderTableCell {TD} at (21,70) size 403x21 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=3]
+          RenderTableRow {TR} at (0,82) size 425x24
+            RenderTableCell {TD} at (1,92) size 20x4 [border: (1px inset #808080)] [r=1 c=0 rs=1 cs=1]
+            RenderTableCell {TD} at (22,82) size 403x24 [border: (1px inset #808080)] [r=1 c=1 rs=1 cs=3]
               RenderImage {IMG} at (2,2) size 398x1
               RenderBR {BR} at (400,3) size 0x0
-              RenderText {#text} at (2,3) size 4x16
-                text run at (2,3) width 4: " "
-          RenderTableRow {TR} at (0,92) size 425x84
-            RenderTableCell {TD} at (1,92) size 20x20 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 16x16
-                text run at (2,2) width 16: "2. "
-            RenderTableCell {TD} at (21,92) size 230x84 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
-              RenderText {#text} at (2,2) size 215x32
-                text run at (2,2) width 215: "FORECLOSURES AAA HOMES"
-                text run at (2,18) width 109: "UP TO 50% OFF"
-              RenderBR {BR} at (110,30) size 1x0
-              RenderText {#text} at (2,34) size 126x16
-                text run at (2,34) width 126: "Real Estate Services"
-              RenderBR {BR} at (127,46) size 1x0
-              RenderText {#text} at (2,50) size 71x16
-                text run at (2,50) width 30: "CA  "
-                text run at (31,50) width 42: "00000 "
-              RenderBR {BR} at (72,62) size 1x0
-              RenderText {#text} at (2,66) size 94x16
-                text run at (2,66) width 94: "(000) 000-0000"
-            RenderTableCell {TD} at (251,92) size 25x5 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (2,2) size 4x20
+                text run at (2,2) width 4: " "
+          RenderTableRow {TR} at (0,107) size 425x99
+            RenderTableCell {TD} at (1,107) size 20x23 [border: (1px inset #808080)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 16x20
+                text run at (2,1) width 16: "2. "
+            RenderTableCell {TD} at (22,107) size 230x99 [border: (1px inset #808080)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (2,1) size 175x39
+                text run at (2,1) width 166: "FORECLOSURES AAA"
+                text run at (2,20) width 175: "HOMES UP TO 50% OFF"
+              RenderBR {BR} at (177,35) size 0x1
+              RenderText {#text} at (2,39) size 128x20
+                text run at (2,39) width 128: "Real Estate Services"
+              RenderBR {BR} at (130,54) size 0x1
+              RenderText {#text} at (2,58) size 75x20
+                text run at (2,58) width 31: "CA  "
+                text run at (33,58) width 44: "00000 "
+              RenderBR {BR} at (77,73) size 0x1
+              RenderText {#text} at (2,77) size 99x20
+                text run at (2,77) width 99: "(000) 000-0000"
+            RenderTableCell {TD} at (252,107) size 25x5 [border: (1px inset #808080)] [r=2 c=2 rs=1 cs=1]
               RenderImage {IMG} at (2,2) size 20x1
-            RenderTableCell {TD} at (276,92) size 148x38 [border: (1px inset #808080)] [r=2 c=3 rs=1 cs=1]
+            RenderTableCell {TD} at (277,107) size 148x38 [border: (1px inset #808080)] [r=2 c=3 rs=1 cs=1]
               RenderImage {IMG} at (6,2) size 39x34
               RenderImage {IMG} at (44,35) size 13x1
               RenderImage {IMG} at (56,2) size 39x34
