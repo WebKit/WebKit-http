@@ -1,20 +1,20 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x97
-  RenderBlock {HTML} at (0,0) size 800x97
-    RenderBody {BODY} at (8,16) size 784x73
-      RenderBlock {P} at (0,0) size 784x19
-        RenderText {#text} at (0,-1) size 216x20
-          text run at (0,-1) width 216: "The following should be identical:"
-      RenderBlock {DIV} at (0,35) size 784x19
-        RenderInline {SPAN} at (0,0) size 8x20
-          RenderInline (generated) at (0,0) size 8x20
-            RenderCounter at (0,-1) size 8x20
-              text run at (0,-1) width 8: "0"
-        RenderInline {SPAN} at (0,0) size 8x20
-          RenderInline (generated) at (0,0) size 8x20
-            RenderCounter at (8,-1) size 8x20
-              text run at (8,-1) width 8: "0"
-      RenderBlock {DIV} at (0,54) size 784x19
-        RenderText {#text} at (0,-1) size 16x20
-          text run at (0,-1) width 16: "00"
+layer at (0,0) size 800x91
+  RenderBlock {HTML} at (0,0) size 800x91
+    RenderBody {BODY} at (8,16) size 784x67
+      RenderBlock {P} at (0,0) size 784x17
+        RenderText {#text} at (0,0) size 216x17
+          text run at (0,0) width 216: "The following should be identical:"
+      RenderBlock {DIV} at (0,33) size 784x17
+        RenderInline {SPAN} at (0,0) size 8x17
+          RenderInline (generated) at (0,0) size 8x17
+            RenderCounter at (0,0) size 8x17
+              text run at (0,0) width 8: "0"
+        RenderInline {SPAN} at (0,0) size 8x17
+          RenderInline (generated) at (0,0) size 8x17
+            RenderCounter at (8,0) size 8x17
+              text run at (8,0) width 8: "0"
+      RenderBlock {DIV} at (0,50) size 784x17
+        RenderText {#text} at (0,0) size 16x17
+          text run at (0,0) width 16: "00"

@@ -1,36 +1,36 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x255
-  RenderBlock {HTML} at (0,0) size 800x255
-    RenderBody {BODY} at (8,16) size 784x223 [color=#0000FF]
-      RenderBlock {P} at (0,0) size 784x39
-        RenderText {#text} at (0,15) size 480x20
+layer at (0,0) size 800x241
+  RenderBlock {HTML} at (0,0) size 800x241
+    RenderBody {BODY} at (8,16) size 784x209 [color=#0000FF]
+      RenderBlock {P} at (0,0) size 784x36
+        RenderText {#text} at (0,15) size 480x17
           text run at (0,15) width 480: "There should be a solid blue line to the left of every occurance of the word \""
-        RenderInline {SPAN} at (0,0) size 133x39 [border: none (2px solid #0000FF)]
-          RenderText {#text} at (482,0) size 131x39
+        RenderInline {SPAN} at (0,0) size 133x36 [border: none (2px solid #0000FF)]
+          RenderText {#text} at (482,0) size 131x36
             text run at (482,0) width 131: "\x{21E6}THERE"
-        RenderText {#text} at (613,15) size 11x20
+        RenderText {#text} at (613,15) size 11x17
           text run at (613,15) width 11: "\"."
-      RenderTable {TABLE} at (0,55) size 284x133
-        RenderTableSection {TBODY} at (0,0) size 284x133
-          RenderTableRow {TR} at (0,2) size 284x41
-            RenderTableCell {TD} at (2,2) size 280x41 [border: none (2px solid #0000FF)] [r=0 c=0 rs=1 cs=2]
-              RenderText {#text} at (3,1) size 131x39
+      RenderTable {TABLE} at (0,52) size 284x124
+        RenderTableSection {TBODY} at (0,0) size 284x124
+          RenderTableRow {TR} at (0,2) size 284x38
+            RenderTableCell {TD} at (2,2) size 280x38 [border: none (2px solid #0000FF)] [r=0 c=0 rs=1 cs=2]
+              RenderText {#text} at (3,1) size 131x36
                 text run at (3,1) width 131: "\x{21E6}THERE"
-          RenderTableRow {TR} at (0,45) size 284x86
-            RenderTableCell {TD} at (2,67) size 135x42 [border: none (2px solid #0000FF)] [r=1 c=0 rs=1 cs=1]
-              RenderText {#text} at (3,1) size 131x40
-                text run at (3,2) width 131: "\x{21E6}THERE"
-            RenderTableCell {TD} at (139,45) size 143x86 [border: none (2px solid #0000FF)] [r=1 c=1 rs=1 cs=1]
-              RenderBlock (anonymous) at (3,1) size 139x39
-                RenderText {#text} at (0,0) size 131x39
+          RenderTableRow {TR} at (0,42) size 284x80
+            RenderTableCell {TD} at (2,63) size 135x38 [border: none (2px solid #0000FF)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (3,1) size 131x36
+                text run at (3,1) width 131: "\x{21E6}THERE"
+            RenderTableCell {TD} at (139,42) size 143x80 [border: none (2px solid #0000FF)] [r=1 c=1 rs=1 cs=1]
+              RenderBlock (anonymous) at (3,1) size 139x36
+                RenderText {#text} at (0,0) size 131x36
                   text run at (0,0) width 131: "\x{21E6}THERE"
-              RenderTable {TABLE} at (3,40) size 139x45
-                RenderTableSection {TBODY} at (0,0) size 139x45
-                  RenderTableRow {TR} at (0,2) size 139x41
-                    RenderTableCell {TD} at (2,2) size 135x41 [border: none (2px solid #0000FF)] [r=0 c=0 rs=1 cs=1]
-                      RenderText {#text} at (3,1) size 131x39
+              RenderTable {TABLE} at (3,37) size 139x42
+                RenderTableSection {TBODY} at (0,0) size 139x42
+                  RenderTableRow {TR} at (0,2) size 139x38
+                    RenderTableCell {TD} at (2,2) size 135x38 [border: none (2px solid #0000FF)] [r=0 c=0 rs=1 cs=1]
+                      RenderText {#text} at (3,1) size 131x36
                         text run at (3,1) width 131: "\x{21E6}THERE"
-      RenderBlock {P} at (0,204) size 784x19
-        RenderText {#text} at (0,-1) size 337x20
-          text run at (0,-1) width 337: "There should be 3 short lines and 2 long lines in total."
+      RenderBlock {P} at (0,192) size 784x17
+        RenderText {#text} at (0,0) size 337x17
+          text run at (0,0) width 337: "There should be 3 short lines and 2 long lines in total."

@@ -1,20 +1,20 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x121
-  RenderBlock {HTML} at (0,0) size 800x121
-    RenderBody {BODY} at (8,16) size 784x89
-      RenderBlock {P} at (0,0) size 784x19 [color=#000080]
-        RenderText {#text} at (0,-1) size 215x20
-          text run at (0,-1) width 215: "This sentence should be in italics. "
-        RenderInline {SPAN} at (0,0) size 203x20
-          RenderText {#text} at (215,-1) size 203x20
-            text run at (215,-1) width 203: "This sentence should be normal."
+layer at (0,0) size 800x115
+  RenderBlock {HTML} at (0,0) size 800x115
+    RenderBody {BODY} at (8,16) size 784x83
+      RenderBlock {P} at (0,0) size 784x17 [color=#000080]
+        RenderText {#text} at (0,0) size 215x17
+          text run at (0,0) width 215: "This sentence should be in italics. "
+        RenderInline {SPAN} at (0,0) size 203x17
+          RenderText {#text} at (215,0) size 203x17
+            text run at (215,0) width 203: "This sentence should be normal."
         RenderText {#text} at (0,0) size 0x0
-      RenderBlock {P} at (0,35) size 784x19 [color=#000080]
-        RenderText {#text} at (0,-1) size 205x20
-          text run at (0,-1) width 205: "This sentence should be oblique."
-      RenderBlock {P} at (0,70) size 784x19 [color=#000080]
-        RenderInline {I} at (0,0) size 203x20
-          RenderText {#text} at (0,-1) size 203x20
-            text run at (0,-1) width 203: "This sentence should be normal."
+      RenderBlock {P} at (0,33) size 784x17 [color=#000080]
+        RenderText {#text} at (0,0) size 205x17
+          text run at (0,0) width 205: "This sentence should be oblique."
+      RenderBlock {P} at (0,66) size 784x17 [color=#000080]
+        RenderInline {I} at (0,0) size 203x17
+          RenderText {#text} at (0,0) size 203x17
+            text run at (0,0) width 203: "This sentence should be normal."
         RenderText {#text} at (0,0) size 0x0
