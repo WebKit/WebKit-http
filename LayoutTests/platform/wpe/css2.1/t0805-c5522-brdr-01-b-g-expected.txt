@@ -1,12 +1,12 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x199
-  RenderBlock {HTML} at (0,0) size 800x199
-    RenderBody {BODY} at (8,16) size 784x151
-      RenderBlock {P} at (0,0) size 784x16 [color=#0000FF]
-        RenderText {#text} at (0,0) size 256x16
-          text run at (0,0) width 256: "There should be no border around the cat:"
-      RenderBlock {DIV} at (32,48) size 720x103 [color=#FF0000]
-        RenderInline {A} at (0,0) size 98x16 [color=#0000EE]
+layer at (0,0) size 800x203
+  RenderBlock {HTML} at (0,0) size 800x203
+    RenderBody {BODY} at (8,16) size 784x155
+      RenderBlock {P} at (0,0) size 784x19 [color=#0000FF]
+        RenderText {#text} at (0,-1) size 264x20
+          text run at (0,-1) width 264: "There should be no border around the cat:"
+      RenderBlock {DIV} at (32,51) size 720x104 [color=#FF0000]
+        RenderInline {A} at (0,0) size 98x20 [color=#0000EE]
           RenderImage {IMG} at (0,0) size 98x99
         RenderText {#text} at (0,0) size 0x0

@@ -1,19 +1,19 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x248
-  RenderBlock {HTML} at (0,0) size 800x248
-    RenderBody {BODY} at (8,16) size 784x224
-      RenderBlock {P} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 647x16
-          text run at (0,0) width 647: "Test passes if the blue and orange boxes below are the same height and there is no red visible on the page."
-layer at (8,48) size 784x192
-  RenderBlock (relative positioned) {DIV} at (0,32) size 784x192
-layer at (8,48) size 192x192
+layer at (0,0) size 800x251
+  RenderBlock {HTML} at (0,0) size 800x251
+    RenderBody {BODY} at (8,16) size 784x227
+      RenderBlock {P} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 667x20
+          text run at (0,-1) width 667: "Test passes if the blue and orange boxes below are the same height and there is no red visible on the page."
+layer at (8,51) size 784x192
+  RenderBlock (relative positioned) {DIV} at (0,35) size 784x192
+layer at (8,51) size 192x192
   RenderBlock (relative positioned) {DIV} at (0,0) size 192x192 [bgcolor=#FF0000]
-    RenderInline {SPAN} at (0,0) size 136x192 [color=#0000FF]
-      RenderText {#text} at (0,0) size 136x192
-        text run at (0,0) width 136: "XX"
-        text run at (0,96) width 136: "XX"
+    RenderInline {SPAN} at (0,0) size 138x212 [color=#0000FF]
+      RenderText {#text} at (0,-10) size 138x212
+        text run at (0,-10) width 138: "XX"
+        text run at (0,86) width 138: "XX"
     RenderText {#text} at (0,0) size 0x0
-layer at (200,48) size 192x192
+layer at (200,51) size 192x192
   RenderBlock (positioned) {DIV} at (192,0) size 192x192 [bgcolor=#FFA500]

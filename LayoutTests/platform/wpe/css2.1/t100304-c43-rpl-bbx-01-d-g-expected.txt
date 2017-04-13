@@ -1,12 +1,12 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x456
-  RenderBlock {HTML} at (0,0) size 800x456
-    RenderBody {BODY} at (8,16) size 784x424
-      RenderBlock {P} at (0,0) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 783x16
-          text run at (0,0) width 387: "Below this paragraph there should be a big teal square half the "
-          text run at (386,0) width 371: "width of the window, aligned flush with the right hand side "
-          text run at (756,0) width 27: "(\x{21E8})."
-      RenderBlock {P} at (0,32) size 784x392 [color=#000080]
+layer at (0,0) size 800x478
+  RenderBlock {HTML} at (0,0) size 800x478
+    RenderBody {BODY} at (8,16) size 784x446
+      RenderBlock {P} at (0,0) size 784x38 [color=#000080]
+        RenderText {#text} at (0,-1) size 769x39
+          text run at (0,-1) width 396: "Below this paragraph there should be a big teal square half the "
+          text run at (396,-1) width 373: "width of the window, aligned flush with the right hand side"
+          text run at (0,18) width 27: "(\x{21E8})."
+      RenderBlock {P} at (0,54) size 784x392 [color=#000080]
         RenderImage {IMG} at (392,0) size 392x392

@@ -1,21 +1,21 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x251
-  RenderBlock {HTML} at (0,0) size 800x251
-    RenderBody {BODY} at (8,16) size 784x185
-      RenderBlock {P} at (0,0) size 784x32
-        RenderText {#text} at (0,0) size 769x32
-          text run at (0,0) width 769: "There should be four identical white boxes in the teal block below, all the same size, each one a little lower down on the line,"
-          text run at (0,16) width 102: "in a step pattern."
-      RenderBlock {DIV} at (50,82) size 684x103 [color=#FFFFFF] [bgcolor=#008080]
-        RenderInline {SPAN} at (0,0) size 36x51
-          RenderText {#text} at (12,12) size 36x51
-            text run at (12,12) width 36: "X"
-        RenderText {#text} at (47,29) size 13x51
-          text run at (47,29) width 13: " "
-        RenderImage {IMG} at (59,19) size 51x51
-        RenderText {#text} at (109,29) size 60x51
-          text run at (109,29) width 60: " X "
-        RenderInline {SPAN} at (0,0) size 36x51
-          RenderText {#text} at (168,40) size 36x51
-            text run at (168,40) width 36: "X"
+layer at (0,0) size 800x257
+  RenderBlock {HTML} at (0,0) size 800x257
+    RenderBody {BODY} at (8,16) size 784x191
+      RenderBlock {P} at (0,0) size 784x38
+        RenderText {#text} at (0,-1) size 755x39
+          text run at (0,-1) width 755: "There should be four identical white boxes in the teal block below, all the same size, each one a little lower down on the"
+          text run at (0,18) width 134: "line, in a step pattern."
+      RenderBlock {DIV} at (50,88) size 684x103 [color=#FFFFFF] [bgcolor=#008080]
+        RenderInline {SPAN} at (0,0) size 37x63
+          RenderText {#text} at (12,6) size 37x63
+            text run at (12,6) width 37: "X"
+        RenderText {#text} at (48,23) size 14x63
+          text run at (48,23) width 14: " "
+        RenderImage {IMG} at (61,20) size 51x51
+        RenderText {#text} at (111,23) size 63x63
+          text run at (111,23) width 63: " X "
+        RenderInline {SPAN} at (0,0) size 37x63
+          RenderText {#text} at (173,34) size 37x63
+            text run at (173,34) width 37: "X"

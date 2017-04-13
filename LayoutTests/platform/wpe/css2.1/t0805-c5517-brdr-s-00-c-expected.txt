@@ -1,41 +1,41 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x500
-  RenderBlock {HTML} at (0,0) size 800x500
-    RenderBody {BODY} at (8,16) size 784x468
-      RenderBlock {P} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 259x16
-          text run at (0,0) width 259: "The borders below should be as described:"
-      RenderBlock {P} at (0,32) size 784x26 [border: (5px dotted #000080)]
-        RenderText {#text} at (5,5) size 101x16
-          text run at (5,5) width 101: "Blue and dotted."
-      RenderBlock {P} at (0,74) size 784x26 [border: (5px dashed #000080)]
-        RenderText {#text} at (5,5) size 104x16
-          text run at (5,5) width 104: "Blue and dashed."
-      RenderBlock {P} at (0,116) size 784x26 [border: (5px solid #000080)]
-        RenderText {#text} at (5,5) size 93x16
-          text run at (5,5) width 93: "Blue and solid."
-      RenderBlock {P} at (0,158) size 784x26 [border: (5px double #000080)]
-        RenderText {#text} at (5,5) size 104x16
-          text run at (5,5) width 104: "Blue and double."
-      RenderBlock {P} at (0,200) size 784x26 [border: (5px groove #FFA500)]
-        RenderText {#text} at (5,5) size 121x16
-          text run at (5,5) width 121: "Orange and groove."
-      RenderBlock {P} at (0,242) size 784x26 [border: (5px ridge #FFA500)]
-        RenderText {#text} at (5,5) size 111x16
-          text run at (5,5) width 111: "Orange and ridge."
-      RenderBlock {P} at (0,284) size 784x26 [border: (5px inset #FFA500)]
-        RenderText {#text} at (5,5) size 108x16
-          text run at (5,5) width 108: "Orange and inset."
-      RenderBlock {P} at (0,326) size 784x26 [border: (5px outset #FFA500)]
-        RenderText {#text} at (5,5) size 115x16
-          text run at (5,5) width 115: "Orange and outset."
-      RenderBlock {P} at (0,368) size 784x26 [border: (5px double #0000FF) (5px groove #0000FF) (5px double #0000FF) (5px groove #0000FF)]
-        RenderText {#text} at (5,5) size 462x16
-          text run at (5,5) width 462: "Blue and double on top and bottom; Blue and grooved on the left and right."
-      RenderBlock {P} at (0,410) size 784x26 [border: (5px dotted #0000FF) (5px double #0000FF) (5px dashed #0000FF) (5px solid #0000FF)]
-        RenderText {#text} at (5,5) size 509x16
-          text run at (5,5) width 509: "Blue borders which are, in clockwise order from top: dotted, double, dashed, solid."
-      RenderBlock {P} at (0,452) size 784x16
-        RenderText {#text} at (0,0) size 271x16
-          text run at (0,0) width 271: "This paragraph should have no border at all."
+layer at (0,0) size 800x536
+  RenderBlock {HTML} at (0,0) size 800x536
+    RenderBody {BODY} at (8,16) size 784x504
+      RenderBlock {P} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 269x20
+          text run at (0,-1) width 269: "The borders below should be as described:"
+      RenderBlock {P} at (0,35) size 784x29 [border: (5px dotted #000080)]
+        RenderText {#text} at (5,4) size 104x20
+          text run at (5,4) width 104: "Blue and dotted."
+      RenderBlock {P} at (0,80) size 784x29 [border: (5px dashed #000080)]
+        RenderText {#text} at (5,4) size 109x20
+          text run at (5,4) width 109: "Blue and dashed."
+      RenderBlock {P} at (0,125) size 784x29 [border: (5px solid #000080)]
+        RenderText {#text} at (5,4) size 95x20
+          text run at (5,4) width 95: "Blue and solid."
+      RenderBlock {P} at (0,170) size 784x29 [border: (5px double #000080)]
+        RenderText {#text} at (5,4) size 108x20
+          text run at (5,4) width 108: "Blue and double."
+      RenderBlock {P} at (0,215) size 784x29 [border: (5px groove #FFA500)]
+        RenderText {#text} at (5,4) size 126x20
+          text run at (5,4) width 126: "Orange and groove."
+      RenderBlock {P} at (0,260) size 784x29 [border: (5px ridge #FFA500)]
+        RenderText {#text} at (5,4) size 114x20
+          text run at (5,4) width 114: "Orange and ridge."
+      RenderBlock {P} at (0,305) size 784x29 [border: (5px inset #FFA500)]
+        RenderText {#text} at (5,4) size 111x20
+          text run at (5,4) width 111: "Orange and inset."
+      RenderBlock {P} at (0,350) size 784x29 [border: (5px outset #FFA500)]
+        RenderText {#text} at (5,4) size 119x20
+          text run at (5,4) width 119: "Orange and outset."
+      RenderBlock {P} at (0,395) size 784x29 [border: (5px double #0000FF) (5px groove #0000FF) (5px double #0000FF) (5px groove #0000FF)]
+        RenderText {#text} at (5,4) size 475x20
+          text run at (5,4) width 475: "Blue and double on top and bottom; Blue and grooved on the left and right."
+      RenderBlock {P} at (0,440) size 784x29 [border: (5px dotted #0000FF) (5px double #0000FF) (5px dashed #0000FF) (5px solid #0000FF)]
+        RenderText {#text} at (5,4) size 521x20
+          text run at (5,4) width 521: "Blue borders which are, in clockwise order from top: dotted, double, dashed, solid."
+      RenderBlock {P} at (0,485) size 784x19
+        RenderText {#text} at (0,-1) size 278x20
+          text run at (0,-1) width 278: "This paragraph should have no border at all."

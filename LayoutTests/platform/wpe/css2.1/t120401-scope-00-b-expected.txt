@@ -1,62 +1,62 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x88
-  RenderBlock {HTML} at (0,0) size 800x88
-    RenderBody {BODY} at (8,16) size 784x64
-      RenderBlock {P} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 222x16
-          text run at (0,0) width 222: "The next 2 lines should be identical:"
-      RenderBlock {DIV} at (0,32) size 784x16
-        RenderInline {SPAN} at (0,0) size 38x16
-          RenderInline (generated) at (0,0) size 8x16
-            RenderCounter at (0,0) size 8x16
-              text run at (0,0) width 8: "1"
-          RenderInline {SPAN} at (0,0) size 16x16
-            RenderInline (generated) at (0,0) size 9x16
-              RenderCounter at (7,0) size 9x16
-                text run at (7,0) width 9: "2"
-            RenderInline {SPAN} at (0,0) size 8x16
-              RenderInline (generated) at (0,0) size 8x16
-                RenderCounter at (15,0) size 8x16
-                  text run at (15,0) width 8: "2"
-          RenderInline {SPAN} at (0,0) size 9x16
-            RenderInline (generated) at (0,0) size 9x16
-              RenderCounter at (22,0) size 9x16
-                text run at (22,0) width 9: "1"
-          RenderInline (generated) at (0,0) size 8x16
-            RenderCounter at (30,0) size 8x16
-              text run at (30,0) width 8: "1"
-        RenderInline {SPAN} at (0,0) size 9x16
-          RenderInline (generated) at (0,0) size 9x16
-            RenderCounter at (37,0) size 9x16
-              text run at (37,0) width 9: "1"
-        RenderText {#text} at (45,0) size 4x16
-          text run at (45,0) width 4: " "
-        RenderInline {SPAN} at (0,0) size 39x16
-          RenderInline (generated) at (0,0) size 9x16
-            RenderCounter at (48,0) size 9x16
-              text run at (48,0) width 9: "1"
-          RenderInline {SPAN} at (0,0) size 16x16
-            RenderInline (generated) at (0,0) size 8x16
-              RenderCounter at (56,0) size 8x16
-                text run at (56,0) width 8: "3"
-            RenderInline {SPAN} at (0,0) size 8x16
-              RenderInline (generated) at (0,0) size 8x16
-                RenderCounter at (64,0) size 8x16
-                  text run at (64,0) width 8: "3"
-          RenderInline {SPAN} at (0,0) size 9x16
-            RenderInline (generated) at (0,0) size 9x16
-              RenderCounter at (71,0) size 9x16
-                text run at (71,0) width 9: "3"
-          RenderInline (generated) at (0,0) size 8x16
-            RenderCounter at (79,0) size 8x16
-              text run at (79,0) width 8: "3"
-        RenderInline {SPAN} at (0,0) size 9x16
-          RenderInline (generated) at (0,0) size 9x16
-            RenderCounter at (86,0) size 9x16
-              text run at (86,0) width 9: "1"
+layer at (0,0) size 800x97
+  RenderBlock {HTML} at (0,0) size 800x97
+    RenderBody {BODY} at (8,16) size 784x73
+      RenderBlock {P} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 227x20
+          text run at (0,-1) width 227: "The next 2 lines should be identical:"
+      RenderBlock {DIV} at (0,35) size 784x19
+        RenderInline {SPAN} at (0,0) size 40x20
+          RenderInline (generated) at (0,0) size 8x20
+            RenderCounter at (0,-1) size 8x20
+              text run at (0,-1) width 8: "1"
+          RenderInline {SPAN} at (0,0) size 16x20
+            RenderInline (generated) at (0,0) size 8x20
+              RenderCounter at (8,-1) size 8x20
+                text run at (8,-1) width 8: "2"
+            RenderInline {SPAN} at (0,0) size 8x20
+              RenderInline (generated) at (0,0) size 8x20
+                RenderCounter at (16,-1) size 8x20
+                  text run at (16,-1) width 8: "2"
+          RenderInline {SPAN} at (0,0) size 8x20
+            RenderInline (generated) at (0,0) size 8x20
+              RenderCounter at (24,-1) size 8x20
+                text run at (24,-1) width 8: "1"
+          RenderInline (generated) at (0,0) size 8x20
+            RenderCounter at (32,-1) size 8x20
+              text run at (32,-1) width 8: "1"
+        RenderInline {SPAN} at (0,0) size 8x20
+          RenderInline (generated) at (0,0) size 8x20
+            RenderCounter at (40,-1) size 8x20
+              text run at (40,-1) width 8: "1"
+        RenderText {#text} at (48,-1) size 4x20
+          text run at (48,-1) width 4: " "
+        RenderInline {SPAN} at (0,0) size 40x20
+          RenderInline (generated) at (0,0) size 8x20
+            RenderCounter at (52,-1) size 8x20
+              text run at (52,-1) width 8: "1"
+          RenderInline {SPAN} at (0,0) size 16x20
+            RenderInline (generated) at (0,0) size 8x20
+              RenderCounter at (60,-1) size 8x20
+                text run at (60,-1) width 8: "3"
+            RenderInline {SPAN} at (0,0) size 8x20
+              RenderInline (generated) at (0,0) size 8x20
+                RenderCounter at (68,-1) size 8x20
+                  text run at (68,-1) width 8: "3"
+          RenderInline {SPAN} at (0,0) size 8x20
+            RenderInline (generated) at (0,0) size 8x20
+              RenderCounter at (76,-1) size 8x20
+                text run at (76,-1) width 8: "3"
+          RenderInline (generated) at (0,0) size 8x20
+            RenderCounter at (84,-1) size 8x20
+              text run at (84,-1) width 8: "3"
+        RenderInline {SPAN} at (0,0) size 8x20
+          RenderInline (generated) at (0,0) size 8x20
+            RenderCounter at (92,-1) size 8x20
+              text run at (92,-1) width 8: "1"
         RenderText {#text} at (0,0) size 0x0
-      RenderBlock {DIV} at (0,48) size 784x16
-        RenderText {#text} at (0,0) size 95x16
-          text run at (0,0) width 49: "122111 "
-          text run at (48,0) width 47: "133331"
+      RenderBlock {DIV} at (0,54) size 784x19
+        RenderText {#text} at (0,-1) size 100x20
+          text run at (0,-1) width 52: "122111 "
+          text run at (52,-1) width 48: "133331"

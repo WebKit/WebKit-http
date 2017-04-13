@@ -1,9 +1,9 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x54
-  RenderBlock {HTML} at (0,0) size 800x54
-    RenderBody {BODY} at (8,16) size 784x22 [bgcolor=#FFFFFF]
-      RenderBlock {P} at (0,0) size 784x22 [color=#008000] [border: (3px solid #008000)]
-        RenderInline {SPAN} at (0,0) size 227x16 [color=#000000]
-          RenderText {#text} at (3,3) size 227x16
-            text run at (3,3) width 227: "This text should have a green border."
+layer at (0,0) size 800x57
+  RenderBlock {HTML} at (0,0) size 800x57
+    RenderBody {BODY} at (8,16) size 784x25 [bgcolor=#FFFFFF]
+      RenderBlock {P} at (0,0) size 784x25 [color=#008000] [border: (3px solid #008000)]
+        RenderInline {SPAN} at (0,0) size 234x20 [color=#000000]
+          RenderText {#text} at (3,2) size 234x20
+            text run at (3,2) width 234: "This text should have a green border."

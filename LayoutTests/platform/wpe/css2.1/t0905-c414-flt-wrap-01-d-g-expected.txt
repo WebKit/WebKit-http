@@ -1,12 +1,12 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x161
-  RenderBlock {HTML} at (0,0) size 800x161
-    RenderBody {BODY} at (8,16) size 784x126
-      RenderBlock {P} at (0,0) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 370x16
-          text run at (0,0) width 370: "The word \"fail\" should not appear below, just a green block."
-      RenderBlock {DIV} at (16,32) size 240x94 [color=#FFFFFF] [bgcolor=#FFFFFF]
+layer at (0,0) size 800x164
+  RenderBlock {HTML} at (0,0) size 800x164
+    RenderBody {BODY} at (8,16) size 784x129
+      RenderBlock {P} at (0,0) size 784x19 [color=#000080]
+        RenderText {#text} at (0,-1) size 382x20
+          text run at (0,-1) width 382: "The word \"fail\" should not appear below, just a green block."
+      RenderBlock {DIV} at (16,35) size 240x94 [color=#FFFFFF] [bgcolor=#FFFFFF]
         RenderImage {IMG} at (0,0) size 1x1
         RenderImage {IMG} at (0,1) size 240x112
         RenderInline {SPAN} at (0,0) size 188x89

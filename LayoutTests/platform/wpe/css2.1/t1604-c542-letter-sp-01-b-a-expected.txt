@@ -1,30 +1,30 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x200
-  RenderBlock {HTML} at (0,0) size 800x200
-    RenderBody {BODY} at (8,16) size 784x176
-      RenderBlock {P} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 690x16
-          text run at (0,0) width 690: "There should be a stripy pattern of yellow and aqua below (each vertical stripe should be straight and unbroken)."
-      RenderBlock {DIV} at (48,32) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
-        RenderText {#text} at (0,-1) size 120x26
-          text run at (0,-1) width 120: "x  x    xx xx"
-      RenderBlock {DIV} at (48,56) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
-        RenderText {#text} at (0,-1) size 120x26
-          text run at (0,-1) width 120: "x  x    xx xx"
-      RenderBlock {DIV} at (48,80) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
-        RenderText {#text} at (0,-1) size 120x26
-          text run at (0,-1) width 120: "x  x    xx xx"
-      RenderBlock {DIV} at (48,104) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
-        RenderText {#text} at (0,-1) size 176x26
-          text run at (0,-1) width 176: "xx "
-        RenderInline {SPAN} at (0,0) size 58x26
-          RenderText {#text} at (176,-1) size 58x26
-            text run at (176,-1) width 58: "xx xx"
+layer at (0,0) size 800x203
+  RenderBlock {HTML} at (0,0) size 800x203
+    RenderBody {BODY} at (8,16) size 784x179
+      RenderBlock {P} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 708x20
+          text run at (0,-1) width 708: "There should be a stripy pattern of yellow and aqua below (each vertical stripe should be straight and unbroken)."
+      RenderBlock {DIV} at (48,35) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
+        RenderText {#text} at (0,-3) size 114x30
+          text run at (0,-3) width 114: "x  x    xx xx"
+      RenderBlock {DIV} at (48,59) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
+        RenderText {#text} at (0,-3) size 114x30
+          text run at (0,-3) width 114: "x  x    xx xx"
+      RenderBlock {DIV} at (48,83) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
+        RenderText {#text} at (0,-3) size 114x30
+          text run at (0,-3) width 114: "x  x    xx xx"
+      RenderBlock {DIV} at (48,107) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
+        RenderText {#text} at (0,-3) size 174x30
+          text run at (0,-3) width 174: "xx "
+        RenderInline {SPAN} at (0,0) size 54x30
+          RenderText {#text} at (174,-3) size 54x30
+            text run at (174,-3) width 54: "xx xx"
         RenderText {#text} at (0,0) size 0x0
-      RenderBlock {DIV} at (48,128) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
-        RenderText {#text} at (0,-1) size 120x26
-          text run at (0,-1) width 120: "x  x    xx xx"
-      RenderBlock {DIV} at (48,152) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
-        RenderText {#text} at (0,-1) size 0x26
-          text run at (0,-1) width 0: "x     x         x x   x x"
+      RenderBlock {DIV} at (48,131) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
+        RenderText {#text} at (0,-3) size 114x30
+          text run at (0,-3) width 114: "x  x    xx xx"
+      RenderBlock {DIV} at (48,155) size 360x24 [color=#00FFFF] [bgcolor=#FFFF00]
+        RenderText {#text} at (0,-3) size 0x30
+          text run at (0,-3) width 0: "x     x         x x   x x"

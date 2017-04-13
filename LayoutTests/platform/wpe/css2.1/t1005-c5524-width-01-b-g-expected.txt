@@ -1,10 +1,10 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x260
-  RenderBlock {HTML} at (0,0) size 800x260
-    RenderBody {BODY} at (8,16) size 784x236
-      RenderBlock {P} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 396x16
-          text run at (0,0) width 396: "The square below should be exactly 100 pixels high on the ruler."
-      RenderBlock {DIV} at (0,32) size 784x204
+layer at (0,0) size 800x265
+  RenderBlock {HTML} at (0,0) size 800x265
+    RenderBody {BODY} at (8,16) size 784x241
+      RenderBlock {P} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 408x20
+          text run at (0,-1) width 408: "The square below should be exactly 100 pixels high on the ruler."
+      RenderBlock {DIV} at (0,35) size 784x206
         RenderImage {IMG} at (45,0) size 100x100

@@ -1,26 +1,27 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x80
-  RenderBlock {HTML} at (0,0) size 800x80
-    RenderBody {BODY} at (8,16) size 784x56
-      RenderBlock {P} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 346x16
-          text run at (0,0) width 346: "There should be no red below, only green lines and dots."
-      RenderBlock {DIV} at (0,32) size 200x24 [color=#008000]
-        RenderText {#text} at (0,0) size 14x12
-          text run at (0,0) width 14: "z z "
-        RenderInline {EM} at (0,0) size 80x12 [color=#FF0000]
-          RenderText {#text} at (14,0) size 80x12
-            text run at (14,0) width 80: "x x x x x x x x x x "
+layer at (0,0) size 800x95
+  RenderBlock {HTML} at (0,0) size 800x95
+    RenderBody {BODY} at (8,16) size 784x71
+      RenderBlock {P} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 358x20
+          text run at (0,-1) width 358: "There should be no red below, only green lines and dots."
+      RenderBlock {DIV} at (0,35) size 200x36 [color=#008000]
+        RenderText {#text} at (0,-1) size 14x13
+          text run at (0,-1) width 14: "z z "
+        RenderInline {EM} at (0,0) size 80x13 [color=#FF0000]
+          RenderText {#text} at (14,-1) size 80x13
+            text run at (14,-1) width 80: "x x x x x x x x x x "
         RenderText {#text} at (0,0) size 0x0
-        RenderInline {SPAN} at (0,0) size 200x48 [border: (10px solid #00FF00)]
+        RenderInline {SPAN} at (0,0) size 199x49 [border: (10px solid #00FF00)]
           RenderText {#text} at (0,0) size 0x0
-          RenderInline {EM} at (0,0) size 200x24 [color=#FF0000]
-            RenderText {#text} at (114,0) size 200x24
-              text run at (114,0) width 80: "x x x x x x x x x x "
-              text run at (194,0) width 6: "x"
-              text run at (0,12) width 16: "x x "
-          RenderText {#text} at (16,12) size 63x12
-            text run at (16,12) width 63: "y y y y y y y y y "
-        RenderText {#text} at (99,12) size 96x12
-          text run at (99,12) width 96: "y y y y y y y y y y z z z z"
+          RenderInline {EM} at (0,0) size 199x25 [color=#FF0000]
+            RenderText {#text} at (114,-1) size 199x25
+              text run at (114,-1) width 80: "x x x x x x x x x x "
+              text run at (194,-1) width 5: "x"
+              text run at (0,11) width 16: "x x "
+          RenderText {#text} at (16,11) size 72x13
+            text run at (16,11) width 72: "y y y y y y y y y "
+        RenderText {#text} at (108,11) size 199x25
+          text run at (108,11) width 91: "y y y y y y y y y y z z"
+          text run at (0,23) width 11: "z z"

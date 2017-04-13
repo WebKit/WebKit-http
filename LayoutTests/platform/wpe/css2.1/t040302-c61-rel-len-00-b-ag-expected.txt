@@ -1,21 +1,21 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x116
-  RenderBlock {HTML} at (0,0) size 800x116
-    RenderBody {BODY} at (8,16) size 784x92
-      RenderBlock {P} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 317x16
-          text run at (0,0) width 317: "There should be a solid vertical bar of green below."
-      RenderBlock {DIV} at (0,32) size 784x60 [color=#008000]
+layer at (0,0) size 800x119
+  RenderBlock {HTML} at (0,0) size 800x119
+    RenderBody {BODY} at (8,16) size 784x95
+      RenderBlock {P} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 324x20
+          text run at (0,-1) width 324: "There should be a solid vertical bar of green below."
+      RenderBlock {DIV} at (0,35) size 784x60 [color=#008000]
         RenderBlock {DIV} at (0,0) size 784x15
-          RenderText {#text} at (0,-1) size 21x16
-            text run at (0,-1) width 21: "   X"
+          RenderText {#text} at (0,-2) size 23x19
+            text run at (0,-2) width 23: "   X"
         RenderBlock {DIV} at (45,15) size 739x15
-          RenderText {#text} at (0,-1) size 11x16
-            text run at (0,-1) width 11: "X"
-        RenderBlock {DIV} at (28,30) size 756x15
-          RenderText {#text} at (0,-1) size 11x16
-            text run at (0,-1) width 11: "X"
+          RenderText {#text} at (0,-2) size 11x19
+            text run at (0,-2) width 11: "X"
+        RenderBlock {DIV} at (26,30) size 758x15
+          RenderText {#text} at (0,-2) size 11x19
+            text run at (0,-2) width 11: "X"
         RenderBlock {DIV} at (45,45) size 739x15
-          RenderText {#text} at (0,-1) size 11x16
-            text run at (0,-1) width 11: "X"
+          RenderText {#text} at (0,-2) size 11x19
+            text run at (0,-2) width 11: "X"

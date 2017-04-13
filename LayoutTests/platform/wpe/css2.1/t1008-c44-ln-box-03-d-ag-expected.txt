@@ -1,20 +1,20 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x236
-  RenderBlock {HTML} at (0,0) size 800x236
-    RenderBody {BODY} at (8,16) size 784x212
-      RenderBlock {P} at (0,0) size 784x16
-        RenderText {#text} at (0,0) size 426x16
-          text run at (0,0) width 426: "There should be no red below, just the outline of an empty green box."
-      RenderBlock {DIV} at (0,32) size 360x180 [color=#FFFFFF] [bgcolor=#FF0000] [border: (20px solid #008000)]
-        RenderText {#text} at (40,40) size 241x60
-          text run at (40,40) width 123: "xxxx xxxx xxxx "
-          text run at (163,40) width 118: "xxxx xxxx xxxx"
-          text run at (40,80) width 41: "xxxx "
-        RenderImage {IMG} at (71,40) size 100x100 [border: (20px solid #FFFFFF)]
-        RenderText {#text} at (161,80) size 244x60
-          text run at (161,80) width 5: " "
-          text run at (166,80) width 41: "xxxx "
-          text run at (207,80) width 77: "xxxx xxxx"
-          text run at (40,120) width 41: "xxxx "
-          text run at (81,120) width 118: "xxxx xxxx xxxx"
+layer at (0,0) size 800x239
+  RenderBlock {HTML} at (0,0) size 800x239
+    RenderBody {BODY} at (8,16) size 784x215
+      RenderBlock {P} at (0,0) size 784x19
+        RenderText {#text} at (0,-1) size 439x20
+          text run at (0,-1) width 439: "There should be no red below, just the outline of an empty green box."
+      RenderBlock {DIV} at (0,35) size 360x180 [color=#FFFFFF] [bgcolor=#FF0000] [border: (20px solid #008000)]
+        RenderText {#text} at (40,37) size 265x65
+          text run at (40,37) width 135: "xxxx xxxx xxxx "
+          text run at (175,37) width 130: "xxxx xxxx xxxx"
+          text run at (40,77) width 45: "xxxx "
+        RenderImage {IMG} at (75,40) size 100x100 [border: (20px solid #FFFFFF)]
+        RenderText {#text} at (165,77) size 260x65
+          text run at (165,77) width 5: " "
+          text run at (170,77) width 45: "xxxx "
+          text run at (215,77) width 85: "xxxx xxxx"
+          text run at (40,117) width 45: "xxxx "
+          text run at (85,117) width 130: "xxxx xxxx xxxx"

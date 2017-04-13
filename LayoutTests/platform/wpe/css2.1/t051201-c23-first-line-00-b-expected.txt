@@ -1,95 +1,95 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x371
-  RenderBlock {HTML} at (0,0) size 800x371
-    RenderBody {BODY} at (8,16) size 784x339 [color=#0000FF]
-      RenderBlock {P} at (0,0) size 784x97
-        RenderText {#text} at (0,1) size 28x16
-          text run at (0,1) width 28: "The "
-        RenderInline {STRONG} at (0,0) size 58x17
-          RenderText {#text} at (27,0) size 58x17
-            text run at (27,0) width 58: "first line"
-        RenderText {#text} at (84,1) size 292x16
-          text run at (84,1) width 201: " of this paragraph, and only that "
-          text run at (284,1) width 92: "one, should be "
-        RenderInline {STRONG} at (0,0) size 37x17
-          RenderText {#text} at (375,0) size 37x17
-            text run at (375,0) width 37: "green"
-        RenderText {#text} at (411,1) size 774x96
-          text run at (411,1) width 177: ". If this precise combination "
-          text run at (587,1) width 175: "does not occur, then the user"
-          text run at (0,17) width 227: "agent has failed this test. Remember "
-          text run at (226,17) width 380: "that in order to ensure a complete test, the paragraph must be "
-          text run at (605,17) width 169: "displayed on more than one"
-          text run at (0,33) width 257: "line. Dummy text. Dummy text. Dummy "
-          text run at (256,33) width 461: "text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. "
-          text run at (716,33) width 52: "Dummy"
-          text run at (0,49) width 429: "text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
-          text run at (428,49) width 340: "text. Dummy text. Dummy text. Dummy text. Dummy"
-          text run at (0,65) width 117: "text. Dummy text. "
-          text run at (116,65) width 484: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
-          text run at (599,65) width 169: "text. Dummy text. Dummy"
-          text run at (0,81) width 113: "text. Dummy text."
-      RenderBlock {P} at (0,113) size 784x113
-        RenderText {#text} at (0,0) size 56x32
-          text run at (0,0) width 56: "The "
-        RenderInline {STRONG} at (0,0) size 112x32
-          RenderText {#text} at (55,0) size 112x32
-            text run at (55,0) width 112: "first line"
-        RenderText {#text} at (166,0) size 601x32
-          text run at (166,0) width 401: " of this paragraph, and only that "
-          text run at (566,0) width 201: "one, should be a"
-        RenderInline {STRONG} at (0,0) size 40x17
-          RenderText {#text} at (0,32) size 40x17
-            text run at (0,32) width 40: "larger"
-        RenderText {#text} at (39,33) size 124x16
-          text run at (39,33) width 124: " font size as well as "
-        RenderInline {STRONG} at (0,0) size 37x17
-          RenderText {#text} at (162,32) size 37x17
-            text run at (162,32) width 37: "green"
-        RenderText {#text} at (198,33) size 776x80
-          text run at (198,33) width 273: ". If this precise combination does not occur, "
-          text run at (470,33) width 306: "then the user agent has failed this test. Remember"
-          text run at (0,49) width 96: "that in order to "
-          text run at (96,49) width 400: "ensure a complete test, the paragraph must be displayed on more "
-          text run at (495,49) width 255: "than one line. Dummy text. Dummy text."
-          text run at (0,65) width 172: "Dummy text. Dummy text. "
-          text run at (171,65) width 484: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
-          text run at (654,65) width 114: "text. Dummy text."
-          text run at (0,81) width 343: "Dummy text. Dummy text. Dummy text. Dummy text. "
-          text run at (342,81) width 426: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text."
-          text run at (0,97) width 55: "Dummy "
-          text run at (54,97) width 460: "text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. "
-          text run at (513,97) width 169: "Dummy text. Dummy text."
-      RenderBlock {P} at (0,242) size 784x97
-        RenderText {#text} at (0,1) size 28x16
-          text run at (0,1) width 28: "The "
-        RenderInline {STRONG} at (0,0) size 62x17
-          RenderText {#text} at (27,0) size 62x17
-            text run at (27,0) width 62: "first line"
-        RenderText {#text} at (88,1) size 386x16
-          text run at (88,1) width 214: " of this paragraph, and only that "
-          text run at (301,1) width 173: "one, should be displayed in "
-        RenderInline {STRONG} at (0,0) size 70x17
-          RenderText {#text} at (473,0) size 70x17
-            text run at (473,0) width 70: "small-caps"
-        RenderText {#text} at (542,1) size 110x16
-          text run at (542,1) width 59: " style as "
-          text run at (600,1) width 52: "well as "
-        RenderInline {STRONG} at (0,0) size 37x17
-          RenderText {#text} at (651,0) size 37x17
-            text run at (651,0) width 37: "green"
-        RenderText {#text} at (687,1) size 768x96
-          text run at (687,1) width 80: ". Thus, if the"
-          text run at (0,17) width 112: "first line is not in "
-          text run at (111,17) width 338: "small-caps style, or if the entire paragraph turns out in "
-          text run at (448,17) width 307: "small-caps, then the user agent has failed this test."
-          text run at (0,33) width 86: "Dummy text. "
-          text run at (85,33) width 484: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
-          text run at (568,33) width 200: "text. Dummy text. Dummy text."
-          text run at (0,49) width 257: "Dummy text. Dummy text. Dummy text. "
-          text run at (256,49) width 484: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
-          text run at (739,49) width 29: "text."
-          text run at (0,65) width 429: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. "
-          text run at (428,65) width 340: "Dummy text. Dummy text. Dummy text. Dummy text."
-          text run at (0,81) width 82: "Dummy text."
+layer at (0,0) size 800x435
+  RenderBlock {HTML} at (0,0) size 800x435
+    RenderBody {BODY} at (8,16) size 784x403 [color=#0000FF]
+      RenderBlock {P} at (0,0) size 784x116
+        RenderText {#text} at (0,0) size 29x20
+          text run at (0,0) width 29: "The "
+        RenderInline {STRONG} at (0,0) size 55x22
+          RenderText {#text} at (29,-1) size 55x22
+            text run at (29,-1) width 55: "first line"
+        RenderText {#text} at (84,0) size 300x20
+          text run at (84,0) width 204: " of this paragraph, and only that "
+          text run at (288,0) width 96: "one, should be "
+        RenderInline {STRONG} at (0,0) size 38x22
+          RenderText {#text} at (384,-1) size 38x22
+            text run at (384,-1) width 38: "green"
+        RenderText {#text} at (422,0) size 780x116
+          text run at (422,0) width 178: ". If this precise combination "
+          text run at (600,0) width 180: "does not occur, then the user"
+          text run at (0,20) width 230: "agent has failed this test. Remember "
+          text run at (230,20) width 385: "that in order to ensure a complete test, the paragraph must be "
+          text run at (615,20) width 147: "displayed on more than"
+          text run at (0,39) width 288: "one line. Dummy text. Dummy text. Dummy "
+          text run at (288,39) width 462: "text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy text."
+          text run at (0,58) width 491: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
+          text run at (491,58) width 288: "text. Dummy text. Dummy text. Dummy text."
+          text run at (0,77) width 174: "Dummy text. Dummy text. "
+          text run at (174,77) width 491: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
+          text run at (665,77) width 114: "text. Dummy text."
+          text run at (0,96) width 170: "Dummy text. Dummy text."
+      RenderBlock {P} at (0,132) size 784x139
+        RenderText {#text} at (0,1) size 58x39
+          text run at (0,1) width 58: "The "
+        RenderInline {STRONG} at (0,0) size 115x42
+          RenderText {#text} at (58,0) size 115x42
+            text run at (58,0) width 115: "first line"
+        RenderText {#text} at (173,1) size 774x61
+          text run at (173,1) width 416: " of this paragraph, and only that "
+          text run at (589,1) width 185: "one, should be"
+          text run at (0,42) width 11: "a "
+        RenderInline {STRONG} at (0,0) size 41x22
+          RenderText {#text} at (11,41) size 41x22
+            text run at (11,41) width 41: "larger"
+        RenderText {#text} at (52,42) size 126x20
+          text run at (52,42) width 126: " font size as well as "
+        RenderInline {STRONG} at (0,0) size 38x22
+          RenderText {#text} at (178,41) size 38x22
+            text run at (178,41) width 38: "green"
+        RenderText {#text} at (216,42) size 779x97
+          text run at (216,42) width 278: ". If this precise combination does not occur, "
+          text run at (494,42) width 237: "then the user agent has failed this test."
+          text run at (0,62) width 169: "Remember that in order to "
+          text run at (169,62) width 409: "ensure a complete test, the paragraph must be displayed on more "
+          text run at (578,62) width 172: "than one line. Dummy text."
+          text run at (0,81) width 261: "Dummy text. Dummy text. Dummy text. "
+          text run at (261,81) width 491: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
+          text run at (752,81) width 27: "text."
+          text run at (0,100) width 435: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. "
+          text run at (435,100) width 344: "Dummy text. Dummy text. Dummy text. Dummy text."
+          text run at (0,119) width 143: "Dummy text. Dummy "
+          text run at (143,119) width 466: "text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. "
+          text run at (609,119) width 170: "Dummy text. Dummy text."
+      RenderBlock {P} at (0,287) size 784x116
+        RenderText {#text} at (0,0) size 29x20
+          text run at (0,0) width 29: "The "
+        RenderInline {STRONG} at (0,0) size 62x22
+          RenderText {#text} at (29,-1) size 62x22
+            text run at (29,-1) width 62: "first line"
+        RenderText {#text} at (91,0) size 402x20
+          text run at (91,0) width 222: " of this paragraph, and only that "
+          text run at (313,0) width 180: "one, should be displayed in "
+        RenderInline {STRONG} at (0,0) size 72x22
+          RenderText {#text} at (493,-1) size 72x22
+            text run at (493,-1) width 72: "small-caps"
+        RenderText {#text} at (565,0) size 114x20
+          text run at (565,0) width 61: " style as "
+          text run at (626,0) width 53: "well as "
+        RenderInline {STRONG} at (0,0) size 39x22
+          RenderText {#text} at (679,-1) size 39x22
+            text run at (679,-1) width 39: "green"
+        RenderText {#text} at (718,0) size 784x116
+          text run at (718,0) width 58: ". Thus, if"
+          text run at (0,20) width 132: "the first line is not in "
+          text run at (132,20) width 341: "small-caps style, or if the entire paragraph turns out in "
+          text run at (473,20) width 311: "small-caps, then the user agent has failed this test."
+          text run at (0,39) width 87: "Dummy text. "
+          text run at (87,39) width 491: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
+          text run at (578,39) width 201: "text. Dummy text. Dummy text."
+          text run at (0,58) width 261: "Dummy text. Dummy text. Dummy text. "
+          text run at (261,58) width 491: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. Dummy "
+          text run at (752,58) width 27: "text."
+          text run at (0,77) width 435: "Dummy text. Dummy text. Dummy text. Dummy text. Dummy text. "
+          text run at (435,77) width 344: "Dummy text. Dummy text. Dummy text. Dummy text."
+          text run at (0,96) width 83: "Dummy text."

@@ -1,81 +1,82 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x393
-  RenderBlock {HTML} at (0,0) size 800x393
-    RenderBody {BODY} at (8,16) size 784x361
-      RenderBlock {P} at (0,0) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 219x16
-          text run at (0,0) width 219: "This sentence should be underlined."
-      RenderBlock {P} at (0,32) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 211x16
-          text run at (0,0) width 211: "This sentence should be overlined."
-      RenderBlock {P} at (0,64) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 225x16
-          text run at (0,0) width 225: "This sentence should be stricken out."
-      RenderBlock {P} at (0,96) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 360x16
-          text run at (0,0) width 360: "This sentence should be blinking (if the UA supports that)."
-      RenderBlock {P} at (0,128) size 784x17 [color=#000080]
-        RenderText {#text} at (0,1) size 219x16
-          text run at (0,1) width 219: "The sentence should be underlined. "
-        RenderInline {B} at (0,0) size 233x17
-          RenderText {#text} at (218,0) size 233x17
-            text run at (218,0) width 233: "This sentence should be underlined"
-        RenderText {#text} at (450,1) size 5x16
-          text run at (450,1) width 5: "."
-      RenderBlock {P} at (0,161) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 306x16
-          text run at (0,0) width 306: "This sentence should be underlined and overlined."
-      RenderBlock {P} at (0,193) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 367x16
-          text run at (0,0) width 367: "This sentence should be underlined, overlined, and stricken."
-      RenderBlock {DIV} at (0,225) size 784x0 [color=#FF0000]
-      RenderBlock {P} at (0,225) size 784x19 [color=#000080]
-        RenderText {#text} at (0,3) size 278x16
-          text run at (0,3) width 278: "There should be no red at the end of this line."
-        RenderImage {IMG} at (277,0) size 16x15 [color=#FF0000]
-        RenderText {#text} at (292,3) size 5x16
-          text run at (292,3) width 5: " "
-      RenderBlock {P} at (0,260) size 784x37 [color=#000080]
-        RenderText {#text} at (0,5) size 195x16
-          text run at (0,5) width 195: "The text of this sentence and all"
-        RenderInline {SPAN} at (0,0) size 5x16
-          RenderText {#text} at (194,5) size 5x16
-            text run at (194,5) width 5: " "
-        RenderText {#text} at (198,5) size 16x16
-          text run at (198,5) width 16: "its"
-        RenderInline {SPAN} at (0,0) size 5x16
-          RenderText {#text} at (213,5) size 5x16
-            text run at (213,5) width 5: " "
-        RenderText {#text} at (217,5) size 298x16
-          text run at (217,5) width 298: "spaces (including the space between the images) "
-        RenderImage {IMG} at (514,0) size 18x17 [color=#FF0000]
-        RenderText {#text} at (531,5) size 5x16
-          text run at (531,5) width 5: " "
-        RenderImage {IMG} at (535,0) size 18x17 [color=#FF0000]
-        RenderText {#text} at (552,5) size 782x32
-          text run at (552,5) width 5: " "
-          text run at (556,5) width 226: "should be underlined, but the images"
-          text run at (0,21) width 116: "themselves should "
-        RenderInline {EM} at (0,0) size 21x16
-          RenderText {#text} at (115,21) size 21x16
-            text run at (115,21) width 21: "not"
-        RenderText {#text} at (135,21) size 92x16
-          text run at (135,21) width 92: " be underlined."
-      RenderBlock {P} at (0,313) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 549x16
-          text run at (0,0) width 464: "This sentence should have a long blue underline including between the two "
-          text run at (463,0) width 86: "arrows here\x{2192}"
-        RenderInline {SPAN} at (0,0) size 155x16 [color=#FFFFFF]
-          RenderText {#text} at (548,0) size 155x16
-            text run at (548,0) width 155: " FAIL FAIL FAIL FAIL "
-        RenderText {#text} at (702,0) size 70x16
-          text run at (702,0) width 70: "\x{2190}and here."
-      RenderBlock {P} at (0,345) size 784x16 [color=#000080]
-        RenderText {#text} at (0,0) size 330x16
-          text run at (0,0) width 330: "There should be a long blue underline between here\x{2192}"
-        RenderInline {SPAN} at (0,0) size 84x16
-          RenderText {#text} at (329,0) size 84x16
-            text run at (329,0) width 84: "                      "
-        RenderText {#text} at (412,0) size 69x16
-          text run at (412,0) width 69: "\x{2190}and here."
+layer at (0,0) size 800x445
+  RenderBlock {HTML} at (0,0) size 800x445
+    RenderBody {BODY} at (8,16) size 784x413
+      RenderBlock {P} at (0,0) size 784x19 [color=#000080]
+        RenderText {#text} at (0,-1) size 226x20
+          text run at (0,-1) width 226: "This sentence should be underlined."
+      RenderBlock {P} at (0,35) size 784x19 [color=#000080]
+        RenderText {#text} at (0,-1) size 218x20
+          text run at (0,-1) width 218: "This sentence should be overlined."
+      RenderBlock {P} at (0,70) size 784x19 [color=#000080]
+        RenderText {#text} at (0,-1) size 232x20
+          text run at (0,-1) width 232: "This sentence should be stricken out."
+      RenderBlock {P} at (0,105) size 784x19 [color=#000080]
+        RenderText {#text} at (0,-1) size 369x20
+          text run at (0,-1) width 369: "This sentence should be blinking (if the UA supports that)."
+      RenderBlock {P} at (0,140) size 784x21 [color=#000080]
+        RenderText {#text} at (0,0) size 227x20
+          text run at (0,0) width 227: "The sentence should be underlined. "
+        RenderInline {B} at (0,0) size 238x22
+          RenderText {#text} at (227,-1) size 238x22
+            text run at (227,-1) width 238: "This sentence should be underlined"
+        RenderText {#text} at (465,0) size 4x20
+          text run at (465,0) width 4: "."
+      RenderBlock {P} at (0,177) size 784x19 [color=#000080]
+        RenderText {#text} at (0,-1) size 316x20
+          text run at (0,-1) width 316: "This sentence should be underlined and overlined."
+      RenderBlock {P} at (0,212) size 784x19 [color=#000080]
+        RenderText {#text} at (0,-1) size 377x20
+          text run at (0,-1) width 377: "This sentence should be underlined, overlined, and stricken."
+      RenderBlock {DIV} at (0,247) size 784x0 [color=#FF0000]
+      RenderBlock {P} at (0,247) size 784x20 [color=#000080]
+        RenderText {#text} at (0,0) size 285x20
+          text run at (0,0) width 285: "There should be no red at the end of this line."
+        RenderImage {IMG} at (285,0) size 15x15 [color=#FF0000]
+        RenderText {#text} at (300,0) size 4x20
+          text run at (300,0) width 4: " "
+      RenderBlock {P} at (0,283) size 784x41 [color=#000080]
+        RenderText {#text} at (0,2) size 199x20
+          text run at (0,2) width 199: "The text of this sentence and all"
+        RenderInline {SPAN} at (0,0) size 4x20
+          RenderText {#text} at (199,2) size 4x20
+            text run at (199,2) width 4: " "
+        RenderText {#text} at (203,2) size 14x20
+          text run at (203,2) width 14: "its"
+        RenderInline {SPAN} at (0,0) size 4x20
+          RenderText {#text} at (217,2) size 4x20
+            text run at (217,2) width 4: " "
+        RenderText {#text} at (221,2) size 308x20
+          text run at (221,2) width 308: "spaces (including the space between the images) "
+        RenderImage {IMG} at (529,0) size 17x17 [color=#FF0000]
+        RenderText {#text} at (546,2) size 4x20
+          text run at (546,2) width 4: " "
+        RenderImage {IMG} at (550,0) size 17x17 [color=#FF0000]
+        RenderText {#text} at (567,2) size 754x39
+          text run at (567,2) width 4: " "
+          text run at (571,2) width 183: "should be underlined, but the"
+          text run at (0,21) width 167: "images themselves should "
+        RenderInline {EM} at (0,0) size 20x20
+          RenderText {#text} at (167,21) size 20x20
+            text run at (167,21) width 20: "not"
+        RenderText {#text} at (187,21) size 94x20
+          text run at (187,21) width 94: " be underlined."
+      RenderBlock {P} at (0,340) size 784x38 [color=#000080]
+        RenderText {#text} at (0,-1) size 565x20
+          text run at (0,-1) width 478: "This sentence should have a long blue underline including between the two "
+          text run at (478,-1) width 87: "arrows here\x{2192}"
+        RenderInline {SPAN} at (0,0) size 164x20 [color=#FFFFFF]
+          RenderText {#text} at (565,-1) size 164x20
+            text run at (565,-1) width 164: " FAIL FAIL FAIL FAIL "
+        RenderText {#text} at (729,-1) size 765x39
+          text run at (729,-1) width 36: "\x{2190}and"
+          text run at (0,18) width 31: "here."
+      RenderBlock {P} at (0,394) size 784x19 [color=#000080]
+        RenderText {#text} at (0,-1) size 340x20
+          text run at (0,-1) width 340: "There should be a long blue underline between here\x{2192}"
+        RenderInline {SPAN} at (0,0) size 88x20
+          RenderText {#text} at (340,-1) size 88x20
+            text run at (340,-1) width 88: "                      "
+        RenderText {#text} at (428,-1) size 71x20
+          text run at (428,-1) width 71: "\x{2190}and here."

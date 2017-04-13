@@ -1,36 +1,36 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x168
-  RenderBlock {HTML} at (0,0) size 800x168
-    RenderBody {BODY} at (0,16) size 800x152
-      RenderBlock {P} at (0,0) size 800x16
-        RenderText {#text} at (0,0) size 222x16
-          text run at (0,0) width 222: "There should be no red on this page."
-      RenderBlock {DIV} at (0,32) size 165x30 [color=#FFFFFF]
-        RenderText {#text} at (0,-1) size 152x31
-          text run at (0,-1) width 39: "            "
-          text run at (38,-1) width 40: "            "
-          text run at (77,-1) width 39: "            "
-          text run at (115,-1) width 37: "           "
-          text run at (0,14) width 43: "          X"
-      RenderBlock {DIV} at (0,62) size 165x30 [color=#FFFFFF]
-        RenderText {#text} at (0,-1) size 159x31
-          text run at (0,-1) width 39: "            "
-          text run at (38,-1) width 40: "            "
-          text run at (77,-1) width 47: "X           "
-          text run at (123,-1) width 36: "           "
-          text run at (0,14) width 36: "           "
-      RenderBlock {DIV} at (0,92) size 165x30 [color=#FFFFFF]
-        RenderText {#text} at (0,-1) size 159x31
-          text run at (0,-1) width 39: "            "
-          text run at (38,-1) width 47: "        X   "
-          text run at (84,-1) width 40: "            "
-          text run at (123,-1) width 36: "           "
-          text run at (0,14) width 36: "           "
-      RenderBlock {DIV} at (0,122) size 165x30 [color=#FFFFFF]
-        RenderText {#text} at (0,-1) size 159x31
-          text run at (0,-1) width 39: "            "
-          text run at (38,-1) width 40: "            "
-          text run at (77,-1) width 47: "  X         "
-          text run at (123,-1) width 36: "           "
-          text run at (0,14) width 36: "           "
+layer at (0,0) size 800x171
+  RenderBlock {HTML} at (0,0) size 800x171
+    RenderBody {BODY} at (0,16) size 800x155
+      RenderBlock {P} at (0,0) size 800x19
+        RenderText {#text} at (0,-1) size 230x20
+          text run at (0,-1) width 230: "There should be no red on this page."
+      RenderBlock {DIV} at (0,35) size 165x30 [color=#FFFFFF]
+        RenderText {#text} at (0,-2) size 140x34
+          text run at (0,-2) width 48: "            "
+          text run at (48,-2) width 48: "            "
+          text run at (96,-2) width 44: "           "
+          text run at (0,13) width 48: "            "
+          text run at (48,13) width 51: "          X"
+      RenderBlock {DIV} at (0,65) size 165x30 [color=#FFFFFF]
+        RenderText {#text} at (0,-2) size 147x34
+          text run at (0,-2) width 48: "            "
+          text run at (48,-2) width 48: "            "
+          text run at (96,-2) width 51: "X          "
+          text run at (0,13) width 48: "            "
+          text run at (48,13) width 44: "           "
+      RenderBlock {DIV} at (0,95) size 165x30 [color=#FFFFFF]
+        RenderText {#text} at (0,-2) size 147x34
+          text run at (0,-2) width 48: "            "
+          text run at (48,-2) width 55: "        X   "
+          text run at (103,-2) width 44: "           "
+          text run at (0,13) width 48: "            "
+          text run at (48,13) width 44: "           "
+      RenderBlock {DIV} at (0,125) size 165x30 [color=#FFFFFF]
+        RenderText {#text} at (0,-2) size 147x34
+          text run at (0,-2) width 48: "            "
+          text run at (48,-2) width 48: "            "
+          text run at (96,-2) width 51: "  X        "
+          text run at (0,13) width 48: "            "
+          text run at (48,13) width 44: "           "

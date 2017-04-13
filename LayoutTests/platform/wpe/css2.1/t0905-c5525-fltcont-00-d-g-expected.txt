@@ -1,47 +1,47 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x232
-  RenderBlock {HTML} at (0,0) size 800x232
+layer at (0,0) size 800x274
+  RenderBlock {HTML} at (0,0) size 800x274
     RenderBody {BODY} at (8,8) size 784x0
-      RenderBlock (floating) {DIV} at (0,0) size 588x224 [color=#FFFFFF] [bgcolor=#000080]
-        RenderBlock (floating) {DIV} at (277,0) size 294x64 [color=#00FFFF] [bgcolor=#008080]
-          RenderBlock {P} at (0,0) size 294x64
-            RenderText {#text} at (0,0) size 294x64
-              text run at (0,0) width 294: "To the right of this teal box there should be a"
-              text run at (0,16) width 94: "purple square, "
-              text run at (93,16) width 201: "tightly squeezed in between the"
-              text run at (0,32) width 177: "edge of the teal box and the "
-              text run at (176,32) width 118: "outside edge of the"
-              text run at (0,48) width 85: "blue block. \x{21E8}"
-        RenderBlock {P} at (0,0) size 588x224
-          RenderText {#text} at (0,0) size 277x32
-            text run at (0,0) width 277: "Inside this blue block on the right there"
-            text run at (0,16) width 163: "should be a teal box. \x{21E8} "
-          RenderInline {SPAN} at (0,0) size 588x208 [color=#000080]
-            RenderText {#text} at (162,16) size 588x208
-              text run at (162,16) width 115: "FAIL FAIL FAIL"
-              text run at (0,32) width 277: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,48) width 82: "FAIL FAIL "
-              text run at (81,48) width 196: "FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,64) width 278: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
-              text run at (277,64) width 311: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,80) width 159: "FAIL FAIL FAIL FAIL "
-              text run at (158,80) width 430: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,96) width 40: "FAIL "
-              text run at (39,96) width 476: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
-              text run at (514,96) width 74: "FAIL FAIL"
-              text run at (0,112) width 396: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
-              text run at (395,112) width 193: "FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,128) width 278: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
-              text run at (277,128) width 311: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,144) width 159: "FAIL FAIL FAIL FAIL "
-              text run at (158,144) width 430: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,160) width 40: "FAIL "
-              text run at (39,160) width 476: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
-              text run at (514,160) width 74: "FAIL FAIL"
-              text run at (0,176) width 396: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
-              text run at (395,176) width 193: "FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,192) width 278: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
-              text run at (277,192) width 311: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
-              text run at (0,208) width 147: "FAIL FAIL FAIL FAIL"
+      RenderBlock (floating) {DIV} at (0,0) size 588x266 [color=#FFFFFF] [bgcolor=#000080]
+        RenderBlock (floating) {DIV} at (277,0) size 294x76 [color=#00FFFF] [bgcolor=#008080]
+          RenderBlock {P} at (0,0) size 294x76
+            RenderText {#text} at (0,-1) size 294x77
+              text run at (0,-1) width 294: "To the right of this teal box there should be a"
+              text run at (0,18) width 94: "purple square, "
+              text run at (94,18) width 200: "tightly squeezed in between the"
+              text run at (0,37) width 194: "edge of the teal box and the "
+              text run at (193,37) width 101: "outside edge of"
+              text run at (0,56) width 110: "the blue block. \x{21E8}"
+        RenderBlock {P} at (0,0) size 588x266
+          RenderText {#text} at (0,-1) size 277x39
+            text run at (0,-1) width 277: "Inside this blue block on the right there"
+            text run at (0,18) width 159: "should be a teal box. \x{21E8} "
+          RenderInline {SPAN} at (0,0) size 588x248 [color=#000080]
+            RenderText {#text} at (158,18) size 588x248
+              text run at (158,18) width 119: "FAIL FAIL FAIL"
+              text run at (0,37) width 277: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,56) width 81: "FAIL FAIL "
+              text run at (80,56) width 197: "FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,75) width 298: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
+              text run at (297,75) width 291: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,94) width 213: "FAIL FAIL FAIL FAIL FAIL "
+              text run at (212,94) width 376: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,113) width 128: "FAIL FAIL FAIL "
+              text run at (127,113) width 461: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,132) width 43: "FAIL "
+              text run at (42,132) width 510: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
+              text run at (552,132) width 36: "FAIL"
+              text run at (0,151) width 468: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
+              text run at (467,151) width 121: "FAIL FAIL FAIL"
+              text run at (0,170) width 383: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
+              text run at (382,170) width 206: "FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,189) width 298: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL "
+              text run at (297,189) width 291: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,208) width 213: "FAIL FAIL FAIL FAIL FAIL "
+              text run at (212,208) width 376: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,227) width 128: "FAIL FAIL FAIL "
+              text run at (127,227) width 461: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
+              text run at (0,246) width 40: "FAIL "
+              text run at (40,246) width 476: "FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL"
           RenderText {#text} at (0,0) size 0x0
