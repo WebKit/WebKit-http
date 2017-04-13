@@ -41,3 +41,7 @@ list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/TestRunnerWPE.cpp
 )
 
+add_definitions(
+    -DFONTS_CONF_DIR="${TOOLS_DIR}/WebKitTestRunner/gtk/fonts"
+    -DTOP_LEVEL_DIR="${CMAKE_SOURCE_DIR}"
+)
