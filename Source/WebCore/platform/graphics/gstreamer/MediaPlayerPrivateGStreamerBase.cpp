@@ -592,7 +592,7 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
 // Returns the size of the video
 FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
 {
-#if USE(HOLE_PUNCH_GSTREAMER)
+#if USE(HOLE_PUNCH_GSTREAMER) && !USE(FUSION_SINK)
     // We don't care about the natural size of the video, the external sink will deal with it.
     // This means that the video will always have the size of the <video> component or the default 300x150
     return m_size;
