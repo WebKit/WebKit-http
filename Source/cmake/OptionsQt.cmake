@@ -1,6 +1,5 @@
 include(FeatureSummary)
 include(ECMPackageConfigHelpers)
-include(ECMQueryQmake)
 
 set(ECM_MODULE_DIR ${CMAKE_MODULE_PATH})
 
@@ -699,6 +698,9 @@ endif ()
 set_package_properties(Ruby PROPERTIES TYPE REQUIRED)
 set_package_properties(Qt5PrintSupport PROPERTIES PURPOSE "Required for ENABLE_PRINT_SUPPORT=ON")
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
+
+
+include(ECMQueryQmake)
 
 query_qmake(qt_install_prefix_dir QT_INSTALL_PREFIX)
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
