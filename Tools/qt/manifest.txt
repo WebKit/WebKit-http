@@ -73,13 +73,9 @@ file Source/WTF/wtf/threads/win/BinarySemaphoreWin.cpp
 file Source/WTF/wtf/win
 file Source/WebCore/platform/graphics/win/LocalWindowsContext.h
 file Source/WebCore/platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp
+file Source/WebCore/platform/graphics/win/MediaPlayerPrivateMediaFoundation.h
 file Source/WebCore/platform/graphics/win/TransformationMatrixWin.cpp
-file Source/WebCore/platform/win/BitmapInfo.cpp
-file Source/WebCore/platform/win/BitmapInfo.h
-file Source/WebCore/platform/win/SystemInfo.cpp
-file Source/WebCore/platform/win/SystemInfo.h
-file Source/WebCore/platform/win/WebCoreInstanceHandle.cpp
-file Source/WebCore/platform/win/WebCoreInstanceHandle.h
+file Source/WebCore/platform/win
 
 # macOS-specific code
 file Source/WTF/wtf/cf
