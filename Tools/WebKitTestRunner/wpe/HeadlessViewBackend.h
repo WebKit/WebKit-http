@@ -51,11 +51,6 @@ private:
     static struct wpe_mesa_view_backend_exportable_dma_buf_client s_exportableClient;
 
     struct {
-        int fd { -1 };
-        struct gbm_device* device;
-    } m_gbm;
-
-    struct {
         EGLDisplay display;
         EGLConfig config;
         EGLContext context;

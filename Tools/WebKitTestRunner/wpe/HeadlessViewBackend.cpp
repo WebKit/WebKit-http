@@ -30,25 +30,38 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+// FIXME: Deploy good practices and clean up GBM resources at process exit.
+static EGLDisplay getEGLDisplay()
+{
+    static EGLDisplay s_display = EGL_NO_DISPLAY;
+    if (s_display == EGL_NO_DISPLAY) {
+        int fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
+        if (fd < 0)
+            return EGL_NO_DISPLAY;
+
+        struct gbm_device* device = gbm_create_device(fd);
+        if (!device)
+            return EGL_NO_DISPLAY;
+
+        EGLDisplay display = eglGetDisplay(device);
+        if (display == EGL_NO_DISPLAY)
+            return EGL_NO_DISPLAY;
+
+        if (!eglInitialize(display, nullptr, nullptr))
+            return EGL_NO_DISPLAY;
+
+        if (!eglBindAPI(EGL_OPENGL_ES_API))
+            return EGL_NO_DISPLAY;
+
+        s_display = display;
+    }
+
+    return s_display;
+}
+
 HeadlessViewBackend::HeadlessViewBackend()
 {
-    m_gbm.fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
-    if (m_gbm.fd < 0)
-        return;
-
-    m_gbm.device = gbm_create_device(m_gbm.fd);
-    if (!m_gbm.device)
-        return;
-
-    m_egl.display = eglGetDisplay(m_gbm.device);
-    if (m_egl.display == EGL_NO_DISPLAY)
-        return;
-
-    if (!eglInitialize(m_egl.display, nullptr, nullptr))
-        return;
-
-    if (!eglBindAPI(EGL_OPENGL_ES_API))
-        return;
+    m_egl.display = getEGLDisplay();
 
     static const EGLint configAttributes[13] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -111,12 +124,6 @@ HeadlessViewBackend::~HeadlessViewBackend()
 
     if (m_egl.context)
         eglDestroyContext(m_egl.display, m_egl.context);
-
-    if (m_gbm.device)
-        gbm_device_destroy(m_gbm.device);
-
-    if (m_gbm.fd >= 0)
-        close(m_gbm.fd);
 }
 
 struct wpe_view_backend* HeadlessViewBackend::backend() const
