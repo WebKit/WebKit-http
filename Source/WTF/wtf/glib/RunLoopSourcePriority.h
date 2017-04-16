@@ -79,7 +79,7 @@ enum RunLoopSourcePriority {
     RunLoopDispatcher = -70,
     RunLoopTimer = -70,
 
-    MainThreadDispatcherTimer = -70,
+    MainThreadDispatcherTimer = -60,
 
     MemoryPressureHandlerTimer = -80,
 
@@ -89,7 +89,9 @@ enum RunLoopSourcePriority {
     LayerFlushTimer = -70,
     DisplayRefreshMonitorTimer = -70,
 
-    ReleaseUnusedResourcesTimer = -60,
+    CompositingThreadUpdateTimer = -70,
+
+    ReleaseUnusedResourcesTimer = -70,
 };
 
 #endif

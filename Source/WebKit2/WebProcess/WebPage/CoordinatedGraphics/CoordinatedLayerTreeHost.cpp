@@ -65,11 +65,7 @@ CoordinatedLayerTreeHost::CoordinatedLayerTreeHost(WebPage& webPage)
     , m_layerFlushTimer(RunLoop::main(), this, &CoordinatedLayerTreeHost::layerFlushTimerFired)
 {
 #if USE(GLIB_EVENT_LOOP)
-#if PLATFORM(WPE)
-    m_layerFlushTimer.setPriority(G_PRIORITY_HIGH + 30);
-#else
     m_layerFlushTimer.setPriority(RunLoopSourcePriority::LayerFlushTimer);
-#endif
 #endif
     m_coordinator.createRootLayer(m_webPage.size());
 
