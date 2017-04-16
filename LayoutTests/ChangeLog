@@ -1,3 +1,910 @@
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Object/getOwnPropertyNames/15.2.3.4-4-44.js
+        https://bugs.webkit.org/show_bug.cgi?id=170879
+
+        Reviewed by Saam Barati.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2017-04-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: messages with non-latin letters are displayed incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=170760
+
+        Reviewed by Joseph Pecoraro.
+
+        Test sending and receiving text and binary (blob and array buffer) data.
+
+        * http/tests/websocket/tests/hybi/inspector/binary-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/inspector/binary.html: Added.
+        * http/tests/websocket/tests/hybi/inspector/binary_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+        (all_distinct_bytes):
+        * http/tests/websocket/tests/hybi/inspector/send-and-receive-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/inspector/send-and-receive.html: Added.
+        * http/tests/websocket/tests/hybi/inspector/send-and-receive_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+
+2017-04-14  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Support HKDF
+        https://bugs.webkit.org/show_bug.cgi?id=170636
+        <rdar://problem/23539827>
+
+        Reviewed by Brent Fulgham.
+
+        * TestExpectations:
+        * crypto/subtle/ecdh-import-key-derive-hkdf-key-expected.txt: Added.
+        * crypto/subtle/ecdh-import-key-derive-hkdf-key.html: Added.
+        * crypto/subtle/hkdf-derive-bits-malformed-parametrs-expected.txt: Added.
+        * crypto/subtle/hkdf-derive-bits-malformed-parametrs.html: Added.
+        * crypto/subtle/hkdf-import-key-derive-bits-expected.txt: Added.
+        * crypto/subtle/hkdf-import-key-derive-bits.html: Added.
+        * crypto/subtle/hkdf-import-key-derive-hmac-key-expected.txt: Added.
+        * crypto/subtle/hkdf-import-key-derive-hmac-key.html: Added.
+        * crypto/subtle/hkdf-import-key-expected.txt: Added.
+        * crypto/subtle/hkdf-import-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/hkdf-import-key-malformed-parameters.html: Added.
+        * crypto/subtle/hkdf-import-key.html: Added.
+        * crypto/workers/subtle/hkdf-import-key-derive-bits-expected.txt: Added.
+        * crypto/workers/subtle/hkdf-import-key-derive-bits.html: Added.
+        * crypto/workers/subtle/hkdf-import-key-derive-hmac-key-expected.txt: Added.
+        * crypto/workers/subtle/hkdf-import-key-derive-hmac-key.html: Added.
+        * crypto/workers/subtle/hkdf-import-key-expected.txt: Added.
+        * crypto/workers/subtle/hkdf-import-key.html: Added.
+        * crypto/workers/subtle/resources/hkdf-import-key-derive-bits.js: Added.
+        * crypto/workers/subtle/resources/hkdf-import-key-derive-hmac-key.js: Added.
+        * crypto/workers/subtle/resources/hkdf-import-key.js: Added.
+
+2017-04-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip workers/wasm-* LayoutTests on ios-simulator.
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-04-14  Zalan Bujtas  <zalan@apple.com>
+
+        text-align start / end failure in table cells
+        https://bugs.webkit.org/show_bug.cgi?id=141417
+        <rdar://problem/31051672>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/table/center-th-when-parent-has-initial-text-align-expected.html: Added.
+        * fast/table/center-th-when-parent-has-initial-text-align.html: Added.
+
+2017-04-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: We should be able to postMessage a JSWebAssemblyModule
+        https://bugs.webkit.org/show_bug.cgi?id=170573
+
+        Reviewed by Filip Pizlo.
+
+        * storage/indexeddb/resources/wasm-exceptions.js: Added.
+        (const._fail):
+        (const.isNotA.assert.isNotA):
+        (const):
+        (switch.typeof):
+        (Builder):
+        (Builder.prototype.setChecked):
+        (Builder.prototype.setPreamble):
+        (Builder.prototype._functionIndexSpaceKeyHash):
+        (Builder.prototype._registerFunctionToIndexSpace):
+        (Builder.prototype._getFunctionFromIndexSpace):
+        (Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.case.string_appeared_here.this.section):
+        (Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.const.codeBuilder.End.switch.case.string_appeared_here.e):
+        (Builder.prototype._registerSectionBuilders.this.Unknown):
+        (prepareDatabase):
+        (testDatabase):
+        * storage/indexeddb/wasm-exceptions-expected.txt: Added.
+        * storage/indexeddb/wasm-exceptions.html: Added.
+        * workers/wasm-hashset: Added.
+        * workers/wasm-hashset-expected.txt: Added.
+        * workers/wasm-hashset-many-expected.txt: Added.
+        * workers/wasm-hashset-many.html: Added.
+        * workers/wasm-hashset.html: Added.
+        * workers/wasm-hashset/many-test.js: Added.
+        (reallyDone):
+        (console.log):
+        (console.error):
+        (console.assert):
+        (i.worker.onmessage):
+        (Module.print):
+        (Module.printErr):
+        (Module.canvas):
+        (Module.setStatus):
+        (Module):
+        (setValue):
+        (getValue):
+        (allocate):
+        (getMemory):
+        (Pointer_stringify):
+        (AsciiToString):
+        (stringToAscii):
+        (UTF8ArrayToString):
+        (UTF8ToString):
+        (stringToUTF8Array):
+        (stringToUTF8):
+        (lengthBytesUTF8):
+        (demangle):
+        (demangleAll):
+        (stackTrace):
+        (alignUp):
+        (updateGlobalBuffer):
+        (updateGlobalBufferViews):
+        (abortOnCannotGrowMemory):
+        (enlargeMemory):
+        (getTotalMemory):
+        (callRuntimeCallbacks):
+        (preRun):
+        (ensureInitRuntime):
+        (preMain):
+        (exitRuntime):
+        (postRun):
+        (addOnPreRun):
+        (addOnInit):
+        (addOnPreMain):
+        (addOnExit):
+        (addOnPostRun):
+        (intArrayFromString):
+        (intArrayToString):
+        (writeStringToMemory):
+        (writeArrayToMemory):
+        (writeAsciiToMemory):
+        (Math.string_appeared_here):
+        (addRunDependency):
+        (removeRunDependency):
+        (integrateWasmJS.asm2wasmImports.string_appeared_here):
+        (integrateWasmJS.lookupImport):
+        (integrateWasmJS.mergeMemory):
+        (integrateWasmJS.fixImports):
+        (integrateWasmJS.getBinary):
+        (integrateWasmJS.doJustAsm):
+        (integrateWasmJS.receiveInstance):
+        (integrateWasmJS.):
+        (integrateWasmJS.doNativeWasm):
+        (integrateWasmJS.doWasmPolyfill):
+        (integrateWasmJS.Module.string_appeared_here):
+        (integrateWasmJS):
+        (___setErrNo):
+        (__ZSt18uncaught_exceptionv):
+        (EXCEPTIONS.deAdjust):
+        (EXCEPTIONS.addRef):
+        (EXCEPTIONS.decRef):
+        (EXCEPTIONS.clearRef):
+        (___cxa_find_matching_catch):
+        (___gxx_personality_v0):
+        (___lock):
+        (_emscripten_memcpy_big):
+        (_gettimeofday):
+        (_abort):
+        (SYSCALLS):
+        (SYSCALLS.get getStr):
+        (SYSCALLS.get64):
+        (SYSCALLS.getZero):
+        (try.___syscall146.printChar):
+        (___syscall146):
+        (___syscall54):
+        (___unlock):
+        (___syscall6):
+        (invoke_ii):
+        (invoke_iiii):
+        (invoke_v):
+        (_malloc.Module.string_appeared_here):
+        (getTempRet0.Module.string_appeared_here):
+        (_free.Module.string_appeared_here):
+        (_main.Module.string_appeared_here):
+        (setTempRet0.Module.string_appeared_here):
+        (establishStackSpace.Module.string_appeared_here):
+        (stackSave.Module.string_appeared_here):
+        (_memset.Module.string_appeared_here):
+        (_sbrk.Module.string_appeared_here):
+        (_emscripten_get_global_libc.Module.string_appeared_here):
+        (_memcpy.Module.string_appeared_here):
+        (___errno_location.Module.string_appeared_here):
+        (setThrew.Module.string_appeared_here):
+        (_fflush.Module.string_appeared_here):
+        (stackAlloc.Module.string_appeared_here):
+        (stackRestore.Module.string_appeared_here):
+        (_llvm_bswap_i32.Module.string_appeared_here):
+        (runPostSets.Module.string_appeared_here):
+        (dynCall_ii.Module.string_appeared_here):
+        (dynCall_iiii.Module.string_appeared_here):
+        (dynCall_v.Module.string_appeared_here):
+        (else.applyMemoryInitializer):
+        (else):
+        (else.useRequest):
+        (ExitStatus):
+        (dependenciesFulfilled):
+        (Module.string_appeared_here.Module.callMain.callMain.pad):
+        (Module.string_appeared_here.Module.callMain):
+        (run.doRun):
+        (run):
+        (exit):
+        * workers/wasm-hashset/many-worker.js: Added.
+        (console.log):
+        (console.error):
+        (console.assert):
+        (Module.print):
+        (Module.printErr):
+        (Module.canvas):
+        (Module.setStatus):
+        (Module):
+        (setValue):
+        (getValue):
+        (allocate):
+        (getMemory):
+        (Pointer_stringify):
+        (AsciiToString):
+        (stringToAscii):
+        (UTF8ArrayToString):
+        (UTF8ToString):
+        (stringToUTF8Array):
+        (stringToUTF8):
+        (lengthBytesUTF8):
+        (demangle):
+        (demangleAll):
+        (stackTrace):
+        (alignUp):
+        (updateGlobalBuffer):
+        (updateGlobalBufferViews):
+        (abortOnCannotGrowMemory):
+        (enlargeMemory):
+        (getTotalMemory):
+        (callRuntimeCallbacks):
+        (preRun):
+        (ensureInitRuntime):
+        (preMain):
+        (exitRuntime):
+        (postRun):
+        (addOnPreRun):
+        (addOnInit):
+        (addOnPreMain):
+        (addOnExit):
+        (addOnPostRun):
+        (intArrayFromString):
+        (intArrayToString):
+        (writeStringToMemory):
+        (writeArrayToMemory):
+        (writeAsciiToMemory):
+        (Math.string_appeared_here):
+        (addRunDependency):
+        (removeRunDependency):
+        (integrateWasmJS.asm2wasmImports.string_appeared_here):
+        (integrateWasmJS.lookupImport):
+        (integrateWasmJS.mergeMemory):
+        (integrateWasmJS.fixImports):
+        (integrateWasmJS.getBinary):
+        (integrateWasmJS.doJustAsm):
+        (integrateWasmJS.receiveInstance):
+        (integrateWasmJS.doNativeWasm):
+        (integrateWasmJS.doWasmPolyfill):
+        (integrateWasmJS.Module.string_appeared_here):
+        (integrateWasmJS):
+        (___setErrNo):
+        (__ZSt18uncaught_exceptionv):
+        (EXCEPTIONS.deAdjust):
+        (EXCEPTIONS.addRef):
+        (EXCEPTIONS.decRef):
+        (EXCEPTIONS.clearRef):
+        (___cxa_find_matching_catch):
+        (___gxx_personality_v0):
+        (___lock):
+        (_emscripten_memcpy_big):
+        (_gettimeofday):
+        (_abort):
+        (SYSCALLS):
+        (SYSCALLS.get getStr):
+        (SYSCALLS.get64):
+        (SYSCALLS.getZero):
+        (try.___syscall146.printChar):
+        (___syscall146):
+        (___syscall54):
+        (___unlock):
+        (___syscall6):
+        (invoke_ii):
+        (invoke_iiii):
+        (invoke_v):
+        (_malloc.Module.string_appeared_here):
+        (getTempRet0.Module.string_appeared_here):
+        (_free.Module.string_appeared_here):
+        (_main.Module.string_appeared_here):
+        (setTempRet0.Module.string_appeared_here):
+        (establishStackSpace.Module.string_appeared_here):
+        (stackSave.Module.string_appeared_here):
+        (_memset.Module.string_appeared_here):
+        (_sbrk.Module.string_appeared_here):
+        (_emscripten_get_global_libc.Module.string_appeared_here):
+        (_memcpy.Module.string_appeared_here):
+        (___errno_location.Module.string_appeared_here):
+        (setThrew.Module.string_appeared_here):
+        (_fflush.Module.string_appeared_here):
+        (stackAlloc.Module.string_appeared_here):
+        (stackRestore.Module.string_appeared_here):
+        (_llvm_bswap_i32.Module.string_appeared_here):
+        (runPostSets.Module.string_appeared_here):
+        (dynCall_ii.Module.string_appeared_here):
+        (dynCall_iiii.Module.string_appeared_here):
+        (dynCall_v.Module.string_appeared_here):
+        (else.applyMemoryInitializer):
+        (else):
+        (else.useRequest):
+        (ExitStatus):
+        (dependenciesFulfilled):
+        (Module.string_appeared_here.Module.callMain.callMain.pad):
+        (Module.string_appeared_here.Module.callMain):
+        (run.doRun):
+        (run):
+        (exit):
+        * workers/wasm-hashset/test.js: Added.
+        (reallyDone):
+        (console.log):
+        (console.error):
+        (console.assert):
+        (Module.print):
+        (Module.printErr):
+        (Module.canvas):
+        (Module.setStatus):
+        (Module):
+        (setValue):
+        (getValue):
+        (allocate):
+        (getMemory):
+        (Pointer_stringify):
+        (AsciiToString):
+        (stringToAscii):
+        (UTF8ArrayToString):
+        (UTF8ToString):
+        (stringToUTF8Array):
+        (stringToUTF8):
+        (lengthBytesUTF8):
+        (demangle):
+        (demangleAll):
+        (stackTrace):
+        (alignUp):
+        (updateGlobalBuffer):
+        (updateGlobalBufferViews):
+        (abortOnCannotGrowMemory):
+        (enlargeMemory):
+        (getTotalMemory):
+        (callRuntimeCallbacks):
+        (preRun):
+        (ensureInitRuntime):
+        (preMain):
+        (exitRuntime):
+        (postRun):
+        (addOnPreRun):
+        (addOnInit):
+        (addOnPreMain):
+        (addOnExit):
+        (addOnPostRun):
+        (intArrayFromString):
+        (intArrayToString):
+        (writeStringToMemory):
+        (writeArrayToMemory):
+        (writeAsciiToMemory):
+        (Math.string_appeared_here):
+        (addRunDependency):
+        (removeRunDependency):
+        (integrateWasmJS.asm2wasmImports.string_appeared_here):
+        (integrateWasmJS.lookupImport):
+        (integrateWasmJS.mergeMemory):
+        (integrateWasmJS.fixImports):
+        (integrateWasmJS.getBinary):
+        (integrateWasmJS.doJustAsm):
+        (integrateWasmJS.receiveInstance):
+        (integrateWasmJS.doNativeWasm):
+        (integrateWasmJS.doWasmPolyfill):
+        (integrateWasmJS.Module.string_appeared_here):
+        (integrateWasmJS):
+        (___setErrNo):
+        (__ZSt18uncaught_exceptionv):
+        (EXCEPTIONS.deAdjust):
+        (EXCEPTIONS.addRef):
+        (EXCEPTIONS.decRef):
+        (EXCEPTIONS.clearRef):
+        (___cxa_find_matching_catch):
+        (___gxx_personality_v0):
+        (___lock):
+        (_emscripten_memcpy_big):
+        (_gettimeofday):
+        (_abort):
+        (SYSCALLS):
+        (SYSCALLS.get getStr):
+        (SYSCALLS.get64):
+        (SYSCALLS.getZero):
+        (try.___syscall146.printChar):
+        (___syscall146):
+        (___syscall54):
+        (___unlock):
+        (___syscall6):
+        (invoke_ii):
+        (invoke_iiii):
+        (invoke_v):
+        (_malloc.Module.string_appeared_here):
+        (getTempRet0.Module.string_appeared_here):
+        (_free.Module.string_appeared_here):
+        (_main.Module.string_appeared_here):
+        (setTempRet0.Module.string_appeared_here):
+        (establishStackSpace.Module.string_appeared_here):
+        (stackSave.Module.string_appeared_here):
+        (_memset.Module.string_appeared_here):
+        (_sbrk.Module.string_appeared_here):
+        (_emscripten_get_global_libc.Module.string_appeared_here):
+        (_memcpy.Module.string_appeared_here):
+        (___errno_location.Module.string_appeared_here):
+        (setThrew.Module.string_appeared_here):
+        (_fflush.Module.string_appeared_here):
+        (stackAlloc.Module.string_appeared_here):
+        (stackRestore.Module.string_appeared_here):
+        (_llvm_bswap_i32.Module.string_appeared_here):
+        (runPostSets.Module.string_appeared_here):
+        (dynCall_ii.Module.string_appeared_here):
+        (dynCall_iiii.Module.string_appeared_here):
+        (dynCall_v.Module.string_appeared_here):
+        (else.applyMemoryInitializer):
+        (else):
+        (else.useRequest):
+        (ExitStatus):
+        (dependenciesFulfilled):
+        (Module.string_appeared_here.Module.callMain.callMain.pad):
+        (Module.string_appeared_here.Module.callMain):
+        (run.doRun):
+        (run):
+        (exit):
+        * workers/wasm-hashset/worker.js: Added.
+        (console.log):
+        (console.error):
+        (console.assert):
+        (Module.print):
+        (Module.printErr):
+        (Module.canvas):
+        (Module.setStatus):
+        (Module):
+        (setValue):
+        (getValue):
+        (allocate):
+        (getMemory):
+        (Pointer_stringify):
+        (AsciiToString):
+        (stringToAscii):
+        (UTF8ArrayToString):
+        (UTF8ToString):
+        (stringToUTF8Array):
+        (stringToUTF8):
+        (lengthBytesUTF8):
+        (demangle):
+        (demangleAll):
+        (stackTrace):
+        (alignUp):
+        (updateGlobalBuffer):
+        (updateGlobalBufferViews):
+        (abortOnCannotGrowMemory):
+        (enlargeMemory):
+        (getTotalMemory):
+        (callRuntimeCallbacks):
+        (preRun):
+        (ensureInitRuntime):
+        (preMain):
+        (exitRuntime):
+        (postRun):
+        (addOnPreRun):
+        (addOnInit):
+        (addOnPreMain):
+        (addOnExit):
+        (addOnPostRun):
+        (intArrayFromString):
+        (intArrayToString):
+        (writeStringToMemory):
+        (writeArrayToMemory):
+        (writeAsciiToMemory):
+        (Math.string_appeared_here):
+        (addRunDependency):
+        (removeRunDependency):
+        (integrateWasmJS.asm2wasmImports.string_appeared_here):
+        (integrateWasmJS.lookupImport):
+        (integrateWasmJS.mergeMemory):
+        (integrateWasmJS.fixImports):
+        (integrateWasmJS.getBinary):
+        (integrateWasmJS.doJustAsm):
+        (integrateWasmJS.receiveInstance):
+        (integrateWasmJS.):
+        (integrateWasmJS.doNativeWasm):
+        (integrateWasmJS.doWasmPolyfill):
+        (integrateWasmJS.Module.string_appeared_here):
+        (integrateWasmJS):
+        (___setErrNo):
+        (__ZSt18uncaught_exceptionv):
+        (EXCEPTIONS.deAdjust):
+        (EXCEPTIONS.addRef):
+        (EXCEPTIONS.decRef):
+        (EXCEPTIONS.clearRef):
+        (___cxa_find_matching_catch):
+        (___gxx_personality_v0):
+        (___lock):
+        (_emscripten_memcpy_big):
+        (_gettimeofday):
+        (_abort):
+        (SYSCALLS):
+        (SYSCALLS.get getStr):
+        (SYSCALLS.get64):
+        (SYSCALLS.getZero):
+        (try.___syscall146.printChar):
+        (___syscall146):
+        (___syscall54):
+        (___unlock):
+        (___syscall6):
+        (invoke_ii):
+        (invoke_iiii):
+        (invoke_v):
+        (_malloc.Module.string_appeared_here):
+        (getTempRet0.Module.string_appeared_here):
+        (_free.Module.string_appeared_here):
+        (_main.Module.string_appeared_here):
+        (setTempRet0.Module.string_appeared_here):
+        (establishStackSpace.Module.string_appeared_here):
+        (stackSave.Module.string_appeared_here):
+        (_memset.Module.string_appeared_here):
+        (_sbrk.Module.string_appeared_here):
+        (_emscripten_get_global_libc.Module.string_appeared_here):
+        (_memcpy.Module.string_appeared_here):
+        (___errno_location.Module.string_appeared_here):
+        (setThrew.Module.string_appeared_here):
+        (_fflush.Module.string_appeared_here):
+        (stackAlloc.Module.string_appeared_here):
+        (stackRestore.Module.string_appeared_here):
+        (_llvm_bswap_i32.Module.string_appeared_here):
+        (runPostSets.Module.string_appeared_here):
+        (dynCall_ii.Module.string_appeared_here):
+        (dynCall_iiii.Module.string_appeared_here):
+        (dynCall_v.Module.string_appeared_here):
+        (else.applyMemoryInitializer):
+        (else):
+        (else.useRequest):
+        (ExitStatus):
+        (dependenciesFulfilled):
+        (Module.string_appeared_here.Module.callMain.callMain.pad):
+        (Module.string_appeared_here.Module.callMain):
+        (run.doRun):
+        (run):
+        (exit):
+        * workers/wasm-long-compile-expected.txt: Added.
+        * workers/wasm-long-compile-many-expected.txt: Added.
+        * workers/wasm-long-compile-many.html: Added.
+        * workers/wasm-long-compile.html: Added.
+        * workers/wasm-resources: Added.
+        * workers/wasm-resources/long-compile-many.js: Added.
+        (done):
+        (i.async.run):
+        (i.worker.onmessage):
+        * workers/wasm-resources/long-compile-worker.js: Added.
+        (const._fail):
+        (const.isNotA.assert.isNotA):
+        (const):
+        (switch.typeof):
+        (Builder):
+        (Builder.prototype.setChecked):
+        (Builder.prototype.setPreamble):
+        (Builder.prototype._functionIndexSpaceKeyHash):
+        (Builder.prototype._registerFunctionToIndexSpace):
+        (Builder.prototype._getFunctionFromIndexSpace):
+        (Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.case.string_appeared_here.this.section):
+        (Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.const.codeBuilder.End.switch.case.string_appeared_here.e):
+        (Builder.prototype._registerSectionBuilders.this.Unknown):
+        * workers/wasm-resources/long-compile.js: Added.
+        (done):
+        (async.run):
+        (worker.onmessage):
+
+2017-04-13  Dean Jackson  <dino@apple.com>
+
+        Large negative animation-delays may not work depending on machine uptime
+        https://bugs.webkit.org/show_bug.cgi?id=166962
+        <rdar://problem/30091526>
+
+        Reviewed by Tim Horton.
+
+        * animations/large-negative-delay-expected.txt: Added.
+        * animations/large-negative-delay.html: Added.
+
+2017-04-13  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Change Intl prototypes to plain objects
+        https://bugs.webkit.org/show_bug.cgi?id=168178
+
+        Reviewed by JF Bastien.
+
+        * js/intl-collator-expected.txt:
+        * js/intl-datetimeformat-expected.txt:
+        * js/intl-numberformat-expected.txt:
+        * js/script-tests/intl-collator.js:
+        * js/script-tests/intl-datetimeformat.js:
+        * js/script-tests/intl-numberformat.js:
+
+2017-04-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html as flaky on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=169719
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-04-13  Antti Koivisto  <antti@apple.com>
+
+        Don't invalidate composition for style changes in non-composited layers
+        https://bugs.webkit.org/show_bug.cgi?id=170805
+        <rdar://problem/31606185>
+
+        Reviewed by Simon Fraser.
+
+        * compositing/updates/animation-non-composited-expected.txt: Added.
+        * compositing/updates/animation-non-composited.html: Added.
+
+2017-04-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark webrtc/video-mute.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170704
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-04-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/media-controls-timeline-updates-when-hovered.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=165553
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/track/track-cue-rendering-rtl.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170831
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/sampling-profiler/named-function-expression.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170830
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add ios-simulator baseline for imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached-expected.txt: Added.
+
+2017-04-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/inspector/network/resource-request-headers.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170702
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-04-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/volume-support/volume-support-click.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=164229
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-13  Chris Dumez  <cdumez@apple.com>
+
+        LayoutTest svg/animations/animated-svg-image-outside-viewport-paused.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=170745
+
+        Reviewed by Tim Horton.
+
+        Test was relying on a setTimeout(30) and was flaky. Now use shouldBecomeEqual() to make the
+        test more robust.
+
+        * svg/animations/animated-svg-image-outside-viewport-paused-expected.txt:
+        * svg/animations/animated-svg-image-outside-viewport-paused.html:
+
+2017-04-13  Youenn Fablet  <youenn@apple.com>
+
+        Remove RTCSignalingState::Closed
+        https://bugs.webkit.org/show_bug.cgi?id=170811
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/connection-state.html:
+
+2017-04-13  Jonathan Bedard  <jbedard@apple.com>
+
+        Remove compositing/masks/solid-color-masked.html expectation
+        https://bugs.webkit.org/show_bug.cgi?id=168054
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Remove compositing/masks/solid-color-masked.html.
+
+2017-04-13  Youenn Fablet  <youenn@apple.com>
+
+        Add some more WebRTC tests
+        https://bugs.webkit.org/show_bug.cgi?id=170796
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/multi-video-expected.txt: Added.
+        * webrtc/multi-video.html: Added.
+        * webrtc/video-with-data-channel-expected.txt: Added.
+        * webrtc/video-with-data-channel.html: Added.
+
+2017-04-13  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement cloneArrayBuffer in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=170008
+
+        Reviewed by Youenn Fablet.
+
+        Added test to check cloneArrayBuffer behaviour. 
+
+        * streams/clone-array-buffer-expected.txt: Added.
+        * streams/clone-array-buffer.html: Added.
+
+2017-04-13  Youenn Fablet  <youenn@apple.com>
+
+        onnegotiationneeded should only be called once
+        https://bugs.webkit.org/show_bug.cgi?id=170785
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/negotiatedneeded-event-addStream.html:
+
+2017-04-13  Dave Hyatt  <hyatt@apple.com>
+
+        Rendering flexbox children across columns
+        https://bugs.webkit.org/show_bug.cgi?id=164166
+        <rdar://problem/29055587>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/multicol/flexbox-rows-expected.html: Added.
+        * fast/multicol/flexbox-rows.html: Added.
+
+2017-04-13  Antti Koivisto  <antti@apple.com>
+
+        Try to unflake a test.
+
+        * http/tests/cache/disk-cache/disk-cache-media-small.html:
+
+2017-04-12  Brady Eidson  <beidson@apple.com>
+
+        QuotaExceededError when saving to localStorage in private mode.
+        https://bugs.webkit.org/show_bug.cgi?id=157010
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk2/TestExpectations:
+        * storage/domstorage/localstorage/private-browsing-affects-storage-expected.txt:
+        * storage/domstorage/localstorage/private-browsing-affects-storage.html:
+        * storage/domstorage/localstorage/resources/private-browsing-1.html: Added.
+        * storage/domstorage/localstorage/resources/private-browsing-2.html: Added.
+        * storage/domstorage/localstorage/resources/private-browsing-3.html: Added.
+        * storage/domstorage/localstorage/resources/private-browsing-storage-2.html: Added.
+        * storage/domstorage/sessionstorage/private-browsing-affects-storage-expected.txt: Removed.
+        * storage/domstorage/sessionstorage/private-browsing-affects-storage.html: Removed.
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/NativeErrors/EvalError/proto.js
+        https://bugs.webkit.org/show_bug.cgi?id=170668
+
+        Reviewed by Keith Miller.
+
+        * ietestcenter/Javascript/15.2.3.2-2-12-expected.txt:
+        * ietestcenter/Javascript/15.2.3.2-2-13-expected.txt:
+        * ietestcenter/Javascript/15.2.3.2-2-14-expected.txt:
+        * ietestcenter/Javascript/15.2.3.2-2-15-expected.txt:
+        * ietestcenter/Javascript/15.2.3.2-2-16-expected.txt:
+        * ietestcenter/Javascript/15.2.3.2-2-17-expected.txt:
+        These tests are now out of date.
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/literals/regexp/u-dec-esc.js
+        https://bugs.webkit.org/show_bug.cgi?id=170687
+
+        Reviewed by Michael Saboff.
+
+        * js/regexp-unicode-expected.txt:
+        * js/script-tests/regexp-unicode.js:
+        Extend test to test invalid backreferences.
+
+2017-04-12  Jonathan Bedard  <jbedard@apple.com>
+
+        Move expectation for compositing/iframes/iframe-size-from-zero.htm to top level
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Marked compositing/iframes/iframe-size-from-zero.html as flaky.
+        * platform/ios-wk1/TestExpectations: Move test expectation to top level.
+        * platform/mac-wk1/TestExpectations: Ditto.
+        * platform/win/TestExpectations: Ditto.
+        * platform/wk2/TestExpectations: Ditto.
+
+2017-04-11  Dean Jackson  <dino@apple.com>
+
+        canvas/2d.gradient.* LayoutTests failing
+        https://bugs.webkit.org/show_bug.cgi?id=170757
+        <rdar://problem/31177990>
+
+        Reviewed by Antoine Quint.
+
+        Add a fudge factor to the gradient tests, since we can
+        now produce noisy (nicer looking) gradients. There might
+        be 1 or 2 bits of difference per pixel.
+
+        * canvas/philip/tests.js:
+        (_assertPixelWithGradientNoise):
+        * canvas/philip/tests/2d.gradient.linear.transform.1.html:
+        * canvas/philip/tests/2d.gradient.linear.transform.2.html:
+        * canvas/philip/tests/2d.gradient.linear.transform.3.html:
+        * canvas/philip/tests/2d.gradient.radial.cone.bottom.html:
+        * canvas/philip/tests/2d.gradient.radial.cone.cylinder.html:
+        * canvas/philip/tests/2d.gradient.radial.cone.front.html:
+        * canvas/philip/tests/2d.gradient.radial.cone.shape1.html:
+        * canvas/philip/tests/2d.gradient.radial.cone.top.html:
+        * canvas/philip/tests/2d.gradient.radial.inside1.html:
+        * canvas/philip/tests/2d.gradient.radial.inside2.html:
+        * canvas/philip/tests/2d.gradient.radial.inside3.html:
+        * canvas/philip/tests/2d.gradient.radial.outside1.html:
+        * canvas/philip/tests/2d.gradient.radial.outside2.html:
+        * canvas/philip/tests/2d.gradient.radial.outside3.html:
+        * canvas/philip/tests/2d.gradient.radial.touch2.html:
+        * fast/canvas/script-tests/canvas-gradient-on-compositing.js:
+        * fast/canvas/canvas-gradient-on-compositing-expected.html:
+
+2017-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Well-known variations should clamp to the values listed in the @font-face block
+        https://bugs.webkit.org/show_bug.cgi?id=169260
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/variations/font-face-clamp-expected.html: Added.
+        * fast/text/variations/font-face-clamp.html: Added.
+
+2017-04-12  Jonathan Bedard  <jbedard@apple.com>
+
+        Remove two passing canvas tests from ios expectations
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-04-12  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION: LayoutTest webrtc/negotiatedneeded-event-addStream.html is frequently crashing
+        https://bugs.webkit.org/show_bug.cgi?id=170754
+        <rdar://problem/31573169>
+
+        Unreviewed.
+
+        * TestExpectations: Marking test as crashing.
+
 2017-04-12  Manuel Rego Casasnovas  <rego@igalia.com>
 
         [css-grid] Replaced elements don't properly resolve percentage heights

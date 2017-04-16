@@ -65,7 +65,7 @@ Ref<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context
     peerConnection->suspendIfNeeded();
     // RTCPeerConnection may send events at about any time during its lifetime.
     // Let's make it uncollectable until the pc is closed by JS or the page stops it.
-    if (peerConnection->m_signalingState != RTCSignalingState::Closed) {
+    if (!peerConnection->isClosed()) {
         peerConnection->setPendingActivity(peerConnection.ptr());
         peerConnection->registerToController();
     }
@@ -76,10 +76,8 @@ RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context)
     : ActiveDOMObject(&context)
     , m_backend(PeerConnectionBackend::create(*this))
 {
-    if (!m_backend) {
-        m_signalingState = RTCSignalingState::Closed;
-        m_iceConnectionState = RTCIceConnectionState::Closed;
-    }
+    if (!m_backend)
+        m_connectionState = RTCPeerConnectionState::Closed;
 }
 
 RTCPeerConnection::~RTCPeerConnection()
@@ -100,7 +98,7 @@ ExceptionOr<void> RTCPeerConnection::initializeWith(Document& document, RTCConfi
 
 ExceptionOr<Ref<RTCRtpSender>> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, const Vector<std::reference_wrapper<MediaStream>>& streams)
 {
-    if (m_signalingState == RTCSignalingState::Closed)
+    if (isClosed())
         return Exception { INVALID_STATE_ERR };
 
     // Require at least one stream until https://github.com/w3c/webrtc-pc/issues/288 is resolved
@@ -148,7 +146,9 @@ ExceptionOr<Ref<RTCRtpSender>> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>
         m_transceiverSet->append(WTFMove(transceiver));
     }
 
+#if !USE(LIBWEBRTC)
     m_backend->markAsNeedingNegotiation();
+#endif
 
     m_backend->notifyAddedTrack(*sender);
     return Ref<RTCRtpSender> { *sender };
@@ -156,7 +156,7 @@ ExceptionOr<Ref<RTCRtpSender>> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>
 
 ExceptionOr<void> RTCPeerConnection::removeTrack(RTCRtpSender& sender)
 {
-    if (m_signalingState == RTCSignalingState::Closed)
+    if (isClosed())
         return Exception { INVALID_STATE_ERR };
 
     bool shouldAbort = true;
@@ -171,7 +171,10 @@ ExceptionOr<void> RTCPeerConnection::removeTrack(RTCRtpSender& sender)
 
     sender.stop();
 
+    m_backend->notifyRemovedTrack(sender);
+#if !USE(LIBWEBRTC)
     m_backend->markAsNeedingNegotiation();
+#endif
     return { };
 }
 
@@ -203,14 +206,15 @@ Ref<RTCRtpTransceiver> RTCPeerConnection::completeAddTransceiver(Ref<RTCRtpSende
     transceiver->setDirection(init.direction);
 
     m_transceiverSet->append(transceiver.copyRef());
+#if !USE(LIBWEBRTC)
     m_backend->markAsNeedingNegotiation();
-
+#endif
     return transceiver;
 }
 
 void RTCPeerConnection::queuedCreateOffer(RTCOfferOptions&& options, SessionDescriptionPromise&& promise)
 {
-    if (m_signalingState == RTCSignalingState::Closed) {
+    if (isClosed()) {
         promise.reject(INVALID_STATE_ERR);
         return;
     }
@@ -220,7 +224,7 @@ void RTCPeerConnection::queuedCreateOffer(RTCOfferOptions&& options, SessionDesc
 
 void RTCPeerConnection::queuedCreateAnswer(RTCAnswerOptions&& options, SessionDescriptionPromise&& promise)
 {
-    if (m_signalingState == RTCSignalingState::Closed) {
+    if (isClosed()) {
         promise.reject(INVALID_STATE_ERR);
         return;
     }
@@ -230,7 +234,7 @@ void RTCPeerConnection::queuedCreateAnswer(RTCAnswerOptions&& options, SessionDe
 
 void RTCPeerConnection::queuedSetLocalDescription(RTCSessionDescription& description, DOMPromise<void>&& promise)
 {
-    if (m_signalingState == RTCSignalingState::Closed) {
+    if (isClosed()) {
         promise.reject(INVALID_STATE_ERR);
         return;
     }
@@ -255,7 +259,7 @@ RefPtr<RTCSessionDescription> RTCPeerConnection::pendingLocalDescription() const
 
 void RTCPeerConnection::queuedSetRemoteDescription(RTCSessionDescription& description, DOMPromise<void>&& promise)
 {
-    if (m_signalingState == RTCSignalingState::Closed) {
+    if (isClosed()) {
         promise.reject(INVALID_STATE_ERR);
         return;
     }
@@ -280,7 +284,7 @@ RefPtr<RTCSessionDescription> RTCPeerConnection::pendingRemoteDescription() cons
 
 void RTCPeerConnection::queuedAddIceCandidate(RTCIceCandidate* rtcCandidate, DOMPromise<void>&& promise)
 {
-    if (m_signalingState == RTCSignalingState::Closed) {
+    if (isClosed()) {
         promise.reject(INVALID_STATE_ERR);
         return;
     }
@@ -290,7 +294,7 @@ void RTCPeerConnection::queuedAddIceCandidate(RTCIceCandidate* rtcCandidate, DOM
 
 ExceptionOr<void> RTCPeerConnection::setConfiguration(RTCConfiguration&& configuration)
 {
-    if (m_signalingState == RTCSignalingState::Closed)
+    if (isClosed())
         return Exception { INVALID_STATE_ERR };
 
     Vector<MediaEndpointConfiguration::IceServerInfo> servers;
@@ -329,7 +333,7 @@ void RTCPeerConnection::getStats(MediaStreamTrack* selector, Ref<DeferredPromise
 
 ExceptionOr<Ref<RTCDataChannel>> RTCPeerConnection::createDataChannel(ScriptExecutionContext& context, String&& label, RTCDataChannelInit&& options)
 {
-    if (m_signalingState == RTCSignalingState::Closed)
+    if (isClosed())
         return Exception { INVALID_STATE_ERR };
 
     if (options.negotiated && !options.negotiated.value() && (label.length() > 65535 || options.protocol.length() > 65535))
@@ -350,11 +354,11 @@ ExceptionOr<Ref<RTCDataChannel>> RTCPeerConnection::createDataChannel(ScriptExec
 
 bool RTCPeerConnection::doClose()
 {
-    if (m_signalingState == RTCSignalingState::Closed)
+    if (isClosed())
         return false;
 
+    m_connectionState = RTCPeerConnectionState::Closed;
     m_iceConnectionState = RTCIceConnectionState::Closed;
-    m_signalingState = RTCSignalingState::Closed;
 
     for (RTCRtpReceiver& receiver : m_transceiverSet->receivers())
         receiver.stop();
@@ -443,7 +447,7 @@ void RTCPeerConnection::setSignalingState(RTCSignalingState newState)
 void RTCPeerConnection::updateIceGatheringState(RTCIceGatheringState newState)
 {
     scriptExecutionContext()->postTask([protectedThis = makeRef(*this), newState](ScriptExecutionContext&) {
-        if (protectedThis->m_signalingState == RTCSignalingState::Closed || protectedThis->m_iceGatheringState == newState)
+        if (protectedThis->isClosed() || protectedThis->m_iceGatheringState == newState)
             return;
 
         protectedThis->m_iceGatheringState = newState;
@@ -455,7 +459,7 @@ void RTCPeerConnection::updateIceGatheringState(RTCIceGatheringState newState)
 void RTCPeerConnection::updateIceConnectionState(RTCIceConnectionState newState)
 {
     scriptExecutionContext()->postTask([protectedThis = makeRef(*this), newState](ScriptExecutionContext&) {
-        if (protectedThis->m_signalingState == RTCSignalingState::Closed || protectedThis->m_iceConnectionState == newState)
+        if (protectedThis->isClosed() || protectedThis->m_iceConnectionState == newState)
             return;
 
         protectedThis->m_iceConnectionState = newState;
@@ -493,7 +497,7 @@ void RTCPeerConnection::updateConnectionState()
 void RTCPeerConnection::scheduleNegotiationNeededEvent()
 {
     scriptExecutionContext()->postTask([protectedThis = makeRef(*this)](ScriptExecutionContext&) {
-        if (protectedThis->m_signalingState == RTCSignalingState::Closed)
+        if (protectedThis->isClosed())
             return;
         if (!protectedThis->m_backend->isNegotiationNeeded())
             return;

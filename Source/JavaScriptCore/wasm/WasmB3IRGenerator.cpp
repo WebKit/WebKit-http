@@ -39,6 +39,7 @@
 #include "B3SlotBaseValue.h"
 #include "B3StackmapGenerationParams.h"
 #include "B3SwitchValue.h"
+#include "B3UpsilonValue.h"
 #include "B3Validate.h"
 #include "B3ValueInlines.h"
 #include "B3ValueKey.h"
@@ -77,13 +78,13 @@ const bool verbose = false;
 class B3IRGenerator {
 public:
     struct ControlData {
-        ControlData(Procedure& proc, Type signature, BlockType type, BasicBlock* continuation, BasicBlock* special = nullptr)
+        ControlData(Procedure& proc, Origin origin, Type signature, BlockType type, BasicBlock* continuation, BasicBlock* special = nullptr)
             : blockType(type)
             , continuation(continuation)
             , special(special)
         {
             if (signature != Void)
-                result.append(proc.addVariable(toB3Type(signature)));
+                result.append(proc.add<Value>(Phi, toB3Type(signature), origin));
         }
 
         ControlData()
@@ -131,7 +132,7 @@ public:
             special = nullptr;
         }
 
-        using ResultList = Vector<Variable*, 1>;
+        using ResultList = Vector<Value*, 1>; // Value must be a Phi
 
         ResultList resultForBranch() const
         {
@@ -231,10 +232,12 @@ private:
     ExpressionType emitLoadOp(LoadOpType, ExpressionType pointer, uint32_t offset);
     void emitStoreOp(StoreOpType, ExpressionType pointer, ExpressionType value, uint32_t offset);
 
-    void unify(Variable* target, const ExpressionType source);
+    void unify(const ExpressionType phi, const ExpressionType source);
     void unifyValuesWithBlock(const ExpressionList& resultStack, const ResultList& stack);
 
     void emitChecksForModOrDiv(B3::Opcode, ExpressionType left, ExpressionType right);
+
+    void fixupPointerPlusOffset(ExpressionType&, uint32_t&);
 
     Value* materializeWasmContext(Procedure&, BasicBlock*);
     void restoreWasmContext(Procedure&, BasicBlock*, Value*);
@@ -256,6 +259,15 @@ private:
     GPRReg m_wasmContextGPR;
     Value* m_instanceValue; // FIXME: make this lazy https://bugs.webkit.org/show_bug.cgi?id=169792
 };
+
+// Memory accesses in WebAssembly have unsigned 32-bit offsets, whereas they have signed 32-bit offsets in B3.
+void B3IRGenerator::fixupPointerPlusOffset(ExpressionType& ptr, uint32_t& offset)
+{
+    if (static_cast<uint64_t>(offset) > static_cast<uint64_t>(std::numeric_limits<int32_t>::max())) {
+        ptr = m_currentBlock->appendNew<Value>(m_proc, Add, origin(), ptr, m_currentBlock->appendNew<Const64Value>(m_proc, origin(), offset));
+        offset = 0;
+    }
+}
 
 Value* B3IRGenerator::materializeWasmContext(Procedure& proc, BasicBlock* block)
 {
@@ -340,7 +352,16 @@ B3IRGenerator::B3IRGenerator(const ModuleInformation& info, Procedure& procedure
     if (info.memory) {
         m_proc.setWasmBoundsCheckGenerator([=] (CCallHelpers& jit, GPRReg pinnedGPR, unsigned) {
             AllowMacroScratchRegisterUsage allowScratch(jit);
-            ASSERT_UNUSED(pinnedGPR, m_memorySizeGPR == pinnedGPR);
+            switch (m_mode) {
+            case MemoryMode::BoundsChecking:
+                ASSERT_UNUSED(pinnedGPR, m_memorySizeGPR == pinnedGPR);
+                break;
+            case MemoryMode::Signaling:
+                ASSERT_UNUSED(pinnedGPR, InvalidGPRReg == pinnedGPR);
+                break;
+            case MemoryMode::NumberOfMemoryModes:
+                ASSERT_NOT_REACHED();
+            }
             this->emitExceptionCheck(jit, ExceptionType::OutOfBoundsMemoryAccess);
         });
     }
@@ -526,10 +547,20 @@ auto B3IRGenerator::setGlobal(uint32_t index, ExpressionType value) -> PartialRe
 inline Value* B3IRGenerator::emitCheckAndPreparePointer(ExpressionType pointer, uint32_t offset, uint32_t sizeOfOperation)
 {
     ASSERT(m_memoryBaseGPR);
-    if (m_mode == MemoryMode::BoundsChecking) {
+    switch (m_mode) {
+    case MemoryMode::BoundsChecking:
+        // We're not using signal handling at all, we must therefore check that no memory access exceeds the current memory size.
         ASSERT(m_memorySizeGPR);
         ASSERT(sizeOfOperation + offset > offset);
-        m_currentBlock->appendNew<WasmBoundsCheckValue>(m_proc, origin(), pointer, m_memorySizeGPR, sizeOfOperation + offset - 1);
+        m_currentBlock->appendNew<WasmBoundsCheckValue>(m_proc, origin(), pointer, m_memorySizeGPR, sizeOfOperation + offset - 1, m_info.memory.maximum());
+        break;
+    case MemoryMode::Signaling:
+        // We've virtually mapped 4GiB+redzone fo this memory. Only the user-allocated pages are addressable, contiguously in range [0, current], and everything above is mapped PROT_NONE. We don't need to perform any explicit bounds check in the 4GiB range because WebAssembly register memory accesses are 32-bit. However WebAssembly register+immediate accesses perform the addition in 64-bit which can push an access above the 32-bit limit. The redzone will catch most small immediates, and we'll explicitly bounds check any register + large immediate access.
+        if (offset >= Memory::fastMappedRedzoneBytes())
+            m_currentBlock->appendNew<WasmBoundsCheckValue>(m_proc, origin(), pointer, InvalidGPRReg, sizeOfOperation + offset - 1, m_info.memory.maximum());
+        break;
+    case MemoryMode::NumberOfMemoryModes:
+        RELEASE_ASSERT_NOT_REACHED();
     }
     pointer = m_currentBlock->appendNew<Value>(m_proc, ZExt32, origin(), pointer);
     return m_currentBlock->appendNew<WasmAddressValue>(m_proc, origin(), pointer, m_memoryBaseGPR);
@@ -569,6 +600,8 @@ inline B3::Kind B3IRGenerator::memoryKind(B3::Opcode memoryOp)
 
 inline Value* B3IRGenerator::emitLoadOp(LoadOpType op, ExpressionType pointer, uint32_t offset)
 {
+    fixupPointerPlusOffset(pointer, offset);
+
     switch (op) {
     case LoadOpType::I32Load8S: {
         return m_currentBlock->appendNew<MemoryValue>(m_proc, memoryKind(Load8S), origin(), pointer, offset);
@@ -706,6 +739,8 @@ inline uint32_t sizeOfStoreOp(StoreOpType op)
 
 inline void B3IRGenerator::emitStoreOp(StoreOpType op, ExpressionType pointer, ExpressionType value, uint32_t offset)
 {
+    fixupPointerPlusOffset(pointer, offset);
+
     switch (op) {
     case StoreOpType::I64Store8:
         value = m_currentBlock->appendNew<Value>(m_proc, Trunc, origin(), value);
@@ -767,12 +802,12 @@ B3IRGenerator::ExpressionType B3IRGenerator::addConstant(Type type, uint64_t val
 
 B3IRGenerator::ControlData B3IRGenerator::addTopLevel(Type signature)
 {
-    return ControlData(m_proc, signature, BlockType::TopLevel, m_proc.addBlock());
+    return ControlData(m_proc, Origin(), signature, BlockType::TopLevel, m_proc.addBlock());
 }
 
 B3IRGenerator::ControlData B3IRGenerator::addBlock(Type signature)
 {
-    return ControlData(m_proc, signature, BlockType::Block, m_proc.addBlock());
+    return ControlData(m_proc, origin(), signature, BlockType::Block, m_proc.addBlock());
 }
 
 B3IRGenerator::ControlData B3IRGenerator::addLoop(Type signature)
@@ -782,7 +817,7 @@ B3IRGenerator::ControlData B3IRGenerator::addLoop(Type signature)
     m_currentBlock->appendNewControlValue(m_proc, Jump, origin(), body);
     body->addPredecessor(m_currentBlock);
     m_currentBlock = body;
-    return ControlData(m_proc, signature, BlockType::Loop, continuation, body);
+    return ControlData(m_proc, origin(), signature, BlockType::Loop, continuation, body);
 }
 
 auto B3IRGenerator::addIf(ExpressionType condition, Type signature, ControlType& result) -> PartialResult
@@ -799,7 +834,7 @@ auto B3IRGenerator::addIf(ExpressionType condition, Type signature, ControlType&
     notTaken->addPredecessor(m_currentBlock);
 
     m_currentBlock = taken;
-    result = ControlData(m_proc, signature, BlockType::If, continuation, notTaken);
+    result = ControlData(m_proc, origin(), signature, BlockType::If, continuation, notTaken);
     return { };
 }
 
@@ -884,8 +919,10 @@ auto B3IRGenerator::addEndToUnreachable(ControlEntry& entry) -> PartialResult
         m_currentBlock->addPredecessor(data.special);
     }
 
-    for (Variable* result : data.result)
-        entry.enclosedExpressionStack.append(m_currentBlock->appendNew<VariableValue>(m_proc, B3::Get, origin(), result));
+    for (Value* result : data.result) {
+        m_currentBlock->append(result);
+        entry.enclosedExpressionStack.append(result);
+    }
 
     // TopLevel does not have any code after this so we need to make sure we emit a return here.
     if (data.type() == BlockType::TopLevel)
@@ -1063,9 +1100,9 @@ auto B3IRGenerator::addCallIndirect(const Signature& signature, Vector<Expressio
     return { };
 }
 
-void B3IRGenerator::unify(Variable* variable, ExpressionType source)
+void B3IRGenerator::unify(const ExpressionType phi, const ExpressionType source)
 {
-    m_currentBlock->appendNew<VariableValue>(m_proc, Set, origin(), variable, source);
+    m_currentBlock->appendNew<UpsilonValue>(m_proc, origin(), source, phi);
 }
 
 void B3IRGenerator::unifyValuesWithBlock(const ExpressionList& resultStack, const ResultList& result)
@@ -1261,6 +1298,12 @@ static void createJSToWasmWrapper(CompilationContext& compilationContext, WasmIn
 
     compilationContext.jsEntrypointToWasmEntrypointCall = jit.call();
 
+    if (!!info.memory) {
+        // Resetting the register prevents the GC from mistakenly thinking that the context is still live.
+        GPRReg baseMemory = pinnedRegs.baseMemoryPointer;
+        jit.move(CCallHelpers::TrustedImm32(0), baseMemory);
+    }
+
     for (const RegisterAtOffset& regAtOffset : registersToSpill) {
         GPRReg reg = regAtOffset.reg().gpr();
         ASSERT(reg != GPRInfo::returnValueGPR);
@@ -1328,7 +1371,7 @@ Expected<std::unique_ptr<WasmInternalFunction>, String> parseAndCompile(Compilat
         B3::prepareForGeneration(procedure);
         B3::generate(procedure, *compilationContext.wasmEntrypointJIT);
         compilationContext.wasmEntrypointByproducts = procedure.releaseByproducts();
-        result->wasmEntrypoint.calleeSaveRegisters = procedure.calleeSaveRegisters();
+        result->wasmEntrypoint.calleeSaveRegisters = procedure.calleeSaveRegisterAtOffsetList();
     }
 
     createJSToWasmWrapper(compilationContext, *result, signature, info, mode);

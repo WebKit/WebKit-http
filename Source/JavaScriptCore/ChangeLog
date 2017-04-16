@@ -1,3 +1,855 @@
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Object/getOwnPropertyNames/15.2.3.4-4-44.js
+        https://bugs.webkit.org/show_bug.cgi?id=170879
+
+        Reviewed by Saam Barati.
+
+        * runtime/StringObject.h:
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::getOwnPropertyNames):
+        (JSC::StringObject::getOwnNonIndexPropertyNames):
+        Ensure 'length' comes after all indexed properties by moving
+        it out to the getOwnNonIndexPropertyNames method which is called
+        inside of getOwnPropertyNames after JSObject handles indices.
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Date/prototype/Symbol.toPrimitive/name.js
+        https://bugs.webkit.org/show_bug.cgi?id=170884
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/DatePrototype.cpp:
+        (JSC::DatePrototype::finishCreation):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::addFunctionProperties):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        * runtime/SymbolPrototype.cpp:
+        (JSC::SymbolPrototype::finishCreation):
+        Give symbol property functions proper function names.
+        This addresses function.name but not function.toString().
+
+2017-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/global-code/new.target-arrow.js
+        https://bugs.webkit.org/show_bug.cgi?id=170872
+
+        Reviewed by Saam Barati.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        Mark the global code scope.
+
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        If new.target is detected in an arrow function defined in global scope
+        throw a SyntaxError.
+
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        (JSC::Scope::setIsGlobalCodeScope):
+        (JSC::Scope::isGlobalCodeScope):
+        Marker for a global code scope.
+
+        * parser/ParserModes.h:
+        (JSC::isModuleParseMode):
+        (JSC::isProgramParseMode):
+        (JSC::isProgramOrModuleParseMode):
+        Helper for detecting global code based on parse mode.
+
+2017-04-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: messages with non-latin letters are displayed incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=170760
+
+        Reviewed by Joseph Pecoraro.
+
+        Add payloadLength property, which is used to display size. When payloadLength is unavailable,
+        it is calculated from payloadData by Web Inspector frontend.
+
+        This fixes <webkit.org/b/170609> Web Inspector: WebSockets: Transferred size is incorrect.
+
+        * inspector/protocol/Network.json:
+
+2017-04-14  Saam Barati  <sbarati@apple.com>
+
+        ParseInt intrinsic in DFG backend doesn't properly flush its operands
+        https://bugs.webkit.org/show_bug.cgi?id=170865
+
+        Reviewed by Mark Lam and Geoffrey Garen.
+
+        The DFG backend code needed to first call .gpr()/.jsValueRegs()
+        before calling flushRegisters(), or the input JSValueOperand would
+        not be flushed.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileParseInt):
+
+2017-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Update architectures in xcconfig files.
+        https://bugs.webkit.org/show_bug.cgi?id=170867
+        <rdar://problem/31628104>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/JavaScriptCore.xcconfig:
+        * Configurations/ToolExecutable.xcconfig:
+
+2017-04-14  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: B3IRGenerator should use phis for result types
+        https://bugs.webkit.org/show_bug.cgi?id=170863
+
+        Reviewed by Filip Pizlo.
+
+        Currently, we use variables for the result types of control flow in
+        Wasm. We did this originally since we weren't sure that the phis we
+        generated would be optimal. Since then, we have verified that the edges
+        in wasm control flow ensure that each upsilon will dominate its phi
+        so we don't need to use variables.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::ControlData::ControlData):
+        (JSC::Wasm::B3IRGenerator::addTopLevel):
+        (JSC::Wasm::B3IRGenerator::addBlock):
+        (JSC::Wasm::B3IRGenerator::addLoop):
+        (JSC::Wasm::B3IRGenerator::unify):
+
+2017-04-14  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r215368.
+        https://bugs.webkit.org/show_bug.cgi?id=170641
+
+        * CMakeLists.txt:
+        Add new directory containing files needed in WebCore.
+
+2017-04-14  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] use ExpressionErrorClassifier for AwaitExpression operand
+        https://bugs.webkit.org/show_bug.cgi?id=170844
+
+        Reviewed by Saam Barati.
+
+        In parseAssignmentExpression(), several cover grammars are handled, and
+        use ExpressionErrorClassifier to record hints about which grammars to
+        try.
+
+        In parseAwaitExpression(), the hints recorded during parsing of the
+        operand need to be discarded, because if they propagate to the outer
+        parseAssignmentExpression(), the hints will lead the parser down invalid
+        branches that should be skipped.
+
+        This change adds an additional ExpressionErrorClassifier to
+        parseAwaitExpression(), in order to discard hints recorded trying to
+        parse the operand.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseAwaitExpression):
+
+2017-04-14  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: There is a short window of time where a CodeBlock could be destroyed before all of its async compilation callbacks are called
+        https://bugs.webkit.org/show_bug.cgi?id=170641
+
+        Reviewed by Keith Miller.
+
+        There is an unlikely race when a CodeBlock compilation fails,
+        the module compiles a new CodeBlock for that memory mode, all while
+        the CodeBlock is notifying its callbacks that it has finished.
+        There is a chance that the Module could deref its failed CodeBlock 
+        at that point, destroying it, before the callbacks were able to
+        grab a Ref to the CodeBlock. This patch fixes the race by having the
+        callbacks ref the CodeBlock.
+
+        This patch also has the Plan clear out all of its callbacks
+        once it gets completed. This adds an extra defense to anybody
+        that grabs refs to the Plan in the callback.
+
+        * wasm/WasmCodeBlock.cpp:
+        (JSC::Wasm::CodeBlock::CodeBlock):
+        (JSC::Wasm::CodeBlock::compileAsync):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::complete):
+
+2017-04-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Air::RegLiveness should be constraint-based
+        https://bugs.webkit.org/show_bug.cgi?id=170817
+
+        Reviewed by Saam Barati.
+        
+        Previously, I changed the Air liveness analyses based on Air::Liveness<> to be
+        constraint-based and this was a significant speed-up. Now I'm adding the same
+        functionality to RegLiveness.
+        
+        This is a 1% speed-up on wasm B3 -O1 compile times.
+        
+        * b3/air/AirAllocateRegistersAndStackByLinearScan.cpp:
+        * b3/air/AirLivenessAdapter.h:
+        (JSC::B3::Air::LivenessAdapter::LivenessAdapter):
+        (JSC::B3::Air::LivenessAdapter::prepareToCompute):
+        (JSC::B3::Air::LivenessAdapter::actionsAt):
+        * b3/air/AirRegLiveness.cpp:
+        (JSC::B3::Air::RegLiveness::RegLiveness):
+        (JSC::B3::Air::RegLiveness::LocalCalcForUnifiedTmpLiveness::LocalCalcForUnifiedTmpLiveness):
+        (JSC::B3::Air::RegLiveness::LocalCalcForUnifiedTmpLiveness::execute):
+        (JSC::B3::Air::RegLiveness::LocalCalc::execute): Deleted.
+        * b3/air/AirRegLiveness.h:
+        (JSC::B3::Air::RegLiveness::Actions::Actions):
+        (JSC::B3::Air::RegLiveness::LocalCalcBase::LocalCalcBase):
+        (JSC::B3::Air::RegLiveness::LocalCalcBase::live):
+        (JSC::B3::Air::RegLiveness::LocalCalcBase::isLive):
+        (JSC::B3::Air::RegLiveness::LocalCalc::LocalCalc):
+        (JSC::B3::Air::RegLiveness::LocalCalc::execute):
+        (JSC::B3::Air::RegLiveness::LocalCalc::live): Deleted.
+        (JSC::B3::Air::RegLiveness::LocalCalc::isLive): Deleted.
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: fix windows build
+        https://bugs.webkit.org/show_bug.cgi?id=170832
+
+        Reviewed by Mark Lam.
+
+        My previous patch re-declared isIOS which AssemblerCommon.h
+        already provided, and which was already included by Options.cpp.
+
+        * runtime/Options.cpp:
+
+2017-04-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: We should be able to postMessage a JSWebAssemblyModule
+        https://bugs.webkit.org/show_bug.cgi?id=170573
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds a callback to JSRunLoopTimer to notify
+        clients that a timer has been set. This is used inside
+        WorkerRunLoop in WebCore so that its RunLoop can perform
+        an iteration when it sees that a timer got set.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::JSRunLoopTimer::scheduleTimer):
+        (JSC::JSRunLoopTimer::addTimerSetNotification):
+        (JSC::JSRunLoopTimer::removeTimerSetNotification):
+        * runtime/JSRunLoopTimer.h:
+        * wasm/WasmCodeBlock.cpp:
+        (JSC::Wasm::CodeBlock::~CodeBlock):
+        * wasm/WasmCodeBlock.h:
+        * wasm/WasmModule.cpp:
+        (JSC::Wasm::Module::~Module):
+        (JSC::Wasm::Module::signatureIndexFromFunctionIndexSpace):
+        (JSC::Wasm::makeValidationCallback):
+        (JSC::Wasm::Module::validateSync):
+        (JSC::Wasm::Module::validateAsync):
+        (JSC::Wasm::Module::validateSyncImpl): Deleted.
+        (JSC::Wasm::Module::makeValidationCallback): Deleted.
+        * wasm/WasmModule.h:
+        (JSC::Wasm::Module::validateSync): Deleted.
+        (JSC::Wasm::Module::validateAsync): Deleted.
+        (JSC::Wasm::Module::signatureIndexFromFunctionIndexSpace): Deleted.
+        (JSC::Wasm::Module::nonNullCodeBlock): Deleted.
+        * wasm/js/JSWebAssemblyCodeBlock.cpp:
+        (JSC::JSWebAssemblyCodeBlock::create):
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+        (JSC::JSWebAssemblyCodeBlock::create): Deleted.
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::source):
+        * wasm/js/JSWebAssemblyModule.h:
+        (JSC::JSWebAssemblyModule::source): Deleted.
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        * wasm/js/WebAssemblyModulePrototype.cpp:
+
+2017-04-13  Mark Lam  <mark.lam@apple.com>
+
+        Should use flushDirect() when flushing the scopeRegister due to needsScopeRegister().
+        https://bugs.webkit.org/show_bug.cgi?id=170661
+        <rdar://problem/31579046>
+
+        Reviewed by Filip Pizlo.
+
+        Previously, we were using flush() to flush the outermost frame's scopeRegister.
+        This is incorrect because flush() expects the VirtualRegister value passed to
+        it to be that of the top most inlined frame.  In the event that we reach a
+        terminal condition while inside an inlined frame, flush() will end up flushing
+        the wrong register.  The fix is simply to use flushDirect() instead.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::flush):
+
+2017-04-13  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Change Intl prototypes to plain objects
+        https://bugs.webkit.org/show_bug.cgi?id=168178
+
+        Reviewed by JF Bastien.
+
+        * builtins/StringPrototype.js:
+        (localeCompare): Create default Collator once instead of using prototype.
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorPrototype::IntlCollatorPrototype):
+        * runtime/IntlCollatorPrototype.h:
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototype::IntlDateTimeFormatPrototype):
+        * runtime/IntlDateTimeFormatPrototype.h:
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototype::IntlNumberFormatPrototype):
+        * runtime/IntlNumberFormatPrototype.h:
+        * runtime/IntlObject.cpp:
+        (JSC::IntlObject::finishCreation): Don't set constructor on each prototype.
+
+2017-04-13  Oliver Hunt  <oliver@apple.com>
+
+        allocationSize should use safe arithmetic by default
+        https://bugs.webkit.org/show_bug.cgi?id=170804
+
+        Reviewed by JF Bastien.
+
+        Make all allocationSize() functions work in terms
+        of Checked<size_t>
+
+        * runtime/DirectArguments.h:
+        (JSC::DirectArguments::offsetOfSlot):
+        (JSC::DirectArguments::allocationSize):
+        * runtime/HashMapImpl.h:
+        (JSC::HashMapBuffer::allocationSize):
+        * runtime/JSArray.h:
+        (JSC::JSArray::allocationSize):
+        * runtime/JSArrayBufferView.h:
+        (JSC::JSArrayBufferView::allocationSize):
+        * runtime/JSAsyncFunction.h:
+        (JSC::JSAsyncFunction::allocationSize):
+        * runtime/JSFixedArray.h:
+        (JSC::JSFixedArray::allocationSize):
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::allocationSize):
+        * runtime/JSGeneratorFunction.h:
+        (JSC::JSGeneratorFunction::allocationSize):
+        * runtime/JSModuleNamespaceObject.h:
+        * runtime/JSObject.h:
+        (JSC::JSFinalObject::allocationSize):
+        * runtime/JSWrapperObject.h:
+        (JSC::JSWrapperObject::allocationSize):
+        * runtime/ScopedArguments.h:
+        (JSC::ScopedArguments::allocationSize):
+        * runtime/VM.h:
+        (JSC::ScratchBuffer::allocationSize):
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+        (JSC::JSWebAssemblyCodeBlock::offsetOfImportStubs):
+        (JSC::JSWebAssemblyCodeBlock::allocationSize):
+        * wasm/js/JSWebAssemblyInstance.h:
+        (JSC::JSWebAssemblyInstance::allocationSize):
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: manage memory better
+        https://bugs.webkit.org/show_bug.cgi?id=170628
+
+        Reviewed by Keith Miller, Michael Saboff.
+
+        WebAssembly fast memories weren't managed very well. This patch
+        refactors it and puts us in a good position to further improve our
+        fast memory handling in the future.
+
+        We now cache fast memories at a process granularity, but make sure
+        that they don't consume dirty pages. We add a cap to the total
+        number of allocated fast memories to avoid ASLR degradation.
+
+        We teach the GC about memories as a kind of resource it should
+        care about because it didn't have visibility into the amount of
+        memory each represented. This allows benchmarks which allocate
+        memories back-to-back to reliably get fast memories 100% of the
+        time, even on a system under load, which wasn't the case
+        before. This reliability yields roughly 8% perf bump on x86-64
+        WasmBench.
+
+        The GC heuristic is as follows: each time we allocate a fast
+        memory we notify the GC, which then keeps track of the total
+        number of fast memories allocated since it last GC'd. We
+        separately keep track of the total number of fast memories which
+        have ever existed at any point in time (cached + allocated). This
+        is a monotonically-increasing high watermark. The GC will force a
+        full collection if, since it last ran, half or more of the high
+        watermark of fast memories was allocated.
+
+        At the same time, if we fail obtaining a fast memory from the
+        cache we do a GC to try to find one. If that fails we'll allocate
+        a new one (this can also fail, then we go to slow memory). This
+        can also be improved, but it's a good start.
+
+        This currently disables fast memories on iOS because getting fast
+        memories isn't a guaranteed thing. Rather, we get quite a few of
+        them and achieve significant speedups, but benchmarks which
+        allocate memories back-to-back end up falling behind because the
+        GC can conservatively hold onto memories, which then yields a perf
+        cliff. That cliff isn't reliable, WasmBench gets roughly 10 of 18
+        fast memories when in theory it should get all of them fast (as
+        MacOS does). The patch significantly improves the state of iOS
+        though, and in a follow-up we could re-enable fast memories.
+
+        Part of this good positioning is a facility to pre-allocate fast
+        memories very early at startup, before any fragmentation
+        occurs. This is currently disabled but worked extremely reliably
+        on iOS. Once we fix the above issues we'll want to re-visit and
+        turn on pre-allocation.
+
+        We also avoid locking for fast memory identification when
+        performing signal handling. I'm very nervous about acquiring locks
+        in a signal handler because in general signals can happen when
+        we've messed up. This isn't the case with fast memories: we're
+        raising a signal on purpose and handling it. However this doesn't
+        mean we won't mess up elsewhere! This will get more complicated
+        once we add support for multiple threads sharing memories and
+        being able to grow their memories. One example: the code calls
+        CRASH(), which executes the following code in release:
+
+            *(int *)(uintptr_t)0xbbadbeef = 0;
+
+        This is a segfault, which our fast memory signal handler tries to
+        handle. It does so by first figuring out whether 0xbbadbeef is in
+        a fast memory region, reqiring a lock. If we CRASH() while holding
+        the lock then our thread self-deadlocks, giving us no crash report
+        and a bad user experience.
+
+        Avoiding a lock therefore it's not about speed or reduced
+        contention. In fact, I'd use something else than a FIFO if these
+        were a concern. We're also doing syscalls, which dwarf any locking
+        cost.
+
+        We now only allocate 4GiB + redzone of 64k * 128 for fast memories
+        instead of 8GiB. This patch reuses the logic from
+        B3::WasmBoundsCheck to perform bounds checks when accesses could
+        exceed the redzone. We'll therefore benefit from CSE goodness when
+        it reaches WasmBoundsCheck. See bug #163469.
+
+        * b3/B3LowerToAir.cpp: fix a baaaaddd bug where unsigned->signed
+        conversion allowed out-of-bounds reads by -2GiB. I'll follow-up in
+        bug #170692 to prevent this type of bug once and for all.
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3Validate.cpp: update WasmBoundsCheck validation.
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::effects): update WasmBoundsCheck effects.
+        * b3/B3WasmBoundsCheckValue.cpp:
+        (JSC::B3::WasmBoundsCheckValue::WasmBoundsCheckValue):
+        (JSC::B3::WasmBoundsCheckValue::redzoneLimit):
+        (JSC::B3::WasmBoundsCheckValue::dumpMeta):
+        * b3/B3WasmBoundsCheckValue.h:
+        (JSC::B3::WasmBoundsCheckValue::maximum):
+        * b3/air/AirCustom.cpp:
+        (JSC::B3::Air::WasmBoundsCheckCustom::isValidForm):
+        * b3/testb3.cpp:
+        (JSC::B3::testWasmBoundsCheck):
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::reportWebAssemblyFastMemoriesAllocated):
+        (JSC::Heap::webAssemblyFastMemoriesThisCycleAtThreshold):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::didAllocateWebAssemblyFastMemories):
+        (JSC::Heap::shouldDoFullCollection):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        * heap/Heap.h:
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/Options.cpp:
+        * runtime/Options.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::fixupPointerPlusOffset):
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::emitCheckAndPreparePointer):
+        (JSC::Wasm::B3IRGenerator::emitLoadOp):
+        (JSC::Wasm::B3IRGenerator::emitStoreOp):
+        (JSC::Wasm::createJSToWasmWrapper):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        * wasm/WasmMemory.cpp: Rewrite.
+        (JSC::Wasm::makeString):
+        (JSC::Wasm::Memory::initializePreallocations):
+        (JSC::Wasm::Memory::createImpl):
+        (JSC::Wasm::Memory::create):
+        (JSC::Wasm::Memory::~Memory):
+        (JSC::Wasm::Memory::fastMappedRedzoneBytes):
+        (JSC::Wasm::Memory::fastMappedBytes):
+        (JSC::Wasm::Memory::maxFastMemoryCount):
+        (JSC::Wasm::Memory::addressIsInActiveFastMemory):
+        (JSC::Wasm::Memory::grow):
+        * wasm/WasmMemory.h:
+        (Memory::maxFastMemoryCount):
+        (Memory::addressIsInActiveFastMemory):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::finishCreation):
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        (JSC::JSWebAssemblyInstance::globalMemoryByteSize):
+        * wasm/js/JSWebAssemblyInstance.h:
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::grow):
+        (JSC::JSWebAssemblyMemory::finishCreation):
+        (JSC::JSWebAssemblyMemory::visitChildren):
+
+2017-04-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use proper ifdef guard for code using MachineContext
+        https://bugs.webkit.org/show_bug.cgi?id=170800
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        This patch drops MachineContext use if it is not available.
+        This situation can be considered like, building WebKit with musl.
+        In that case, we simply disable features that rely on MachineContext.
+        Examples are wasm fast memory, sampling profiler, and code profiling.
+
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+        * tools/CodeProfiling.cpp:
+        (JSC::CodeProfiling::begin):
+        (JSC::CodeProfiling::end):
+        Previously, PLATFORM(GTK) is excluded. But it is not obvious why it is excluded.
+        This patch just includes such platforms.
+
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::enableFastMemory):
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/NativeErrors/EvalError/proto.js
+        https://bugs.webkit.org/show_bug.cgi?id=170668
+
+        Reviewed by Keith Miller.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        The [[Prototype]] of NativeError Constructor's should be the %Error%.
+        https://tc39.github.io/ecma262/#sec-properties-of-the-nativeerror-constructors
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/literals/regexp/u-dec-esc.js
+        https://bugs.webkit.org/show_bug.cgi?id=170687
+
+        Reviewed by Michael Saboff.
+
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::parseEscape):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPattern::errorMessage):
+        (JSC::Yarr::YarrPattern::compile):
+        * yarr/YarrPattern.h:
+        In unicoe patterns, invalid backreferences are an error.
+
+2017-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Move common stack allocation utilities out of AirAllocateStackByGraphColoring.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=170799
+
+        Reviewed by Michael Saboff and Keith Miller.
+        
+        When I added stack allocation to allocateRegistersByLinearScan, I reused a handful of
+        utility functions from AirAllocateStackByGraphColoring.cpp. I accomplished this by
+        putting their declarations in AirAllocateStackByGraphColoring.h.
+        
+        That was pretty weird.
+        
+        This patch moves a family of stack allocation helper functions out of
+        AirAllocateStackByGraphColoring.cpp and into the new AirStackAllocation.h|cpp. The
+        linear scan stack allocator no longer has to include the other stack allocator's
+        header, which addresses my OCD.
+        
+        I moved the functions transitively reachable from the two functions that the linear
+        scan allocator needed. This forced me to give them better names (i.e. no "fooBarImpl")
+        and short descriptive comments. I think that such comments are useful in code that is
+        doing a convoluted version of some theoretical concept.
+        
+        No behavior change.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirAllocateRegistersAndStackByLinearScan.cpp:
+        * b3/air/AirAllocateStackByGraphColoring.cpp:
+        (JSC::B3::Air::allocateStackByGraphColoring):
+        (JSC::B3::Air::allocateEscapedStackSlots): Deleted.
+        (JSC::B3::Air::updateFrameSizeBasedOnStackSlots): Deleted.
+        * b3/air/AirAllocateStackByGraphColoring.h:
+        * b3/air/AirStackAllocation.cpp: Added.
+        (JSC::B3::Air::attemptAssignment):
+        (JSC::B3::Air::assign):
+        (JSC::B3::Air::allocateAndGetEscapedStackSlotsWithoutChangingFrameSize):
+        (JSC::B3::Air::allocateEscapedStackSlots):
+        (JSC::B3::Air::updateFrameSizeBasedOnStackSlots):
+        * b3/air/AirStackAllocation.h: Added.
+
+2017-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 -O1 should not allocateStackByGraphColoring
+        https://bugs.webkit.org/show_bug.cgi?id=170742
+
+        Reviewed by Keith Miller.
+        
+        One of B3 -O1's longest running phases is allocateStackByGraphColoring. One approach to
+        this would be to make that phase cheaper. But it's weird that this phase reruns
+        liveness after register allocation already ran liveness. If only it could reuse the
+        liveness computed by register allocation then it would run a lot faster. At -O2, we do
+        not want this, since we run phases between register allocation and stack allocation,
+        and those phases are free to change the liveness of spill slots (in fact,
+        fixObviousSpills will both shorten and lengthen live ranges because of load and store
+        elimination, respectively). But at -O1, we don't really need to run any phases between
+        register and stack allocation.
+        
+        This changes Air's backend in the following ways:
+        
+        - Linear scan does stack allocation. This means that we don't need to run
+          allocateStackByGraphColoring at all. In reality, we reuse some of its innards, but
+          we don't run the expensive part of it (liveness->interference->coalescing->coloring).
+          This is a speed-up because we only run liveness once and reuse it for both register
+          and stack allocation.
+        
+        - Phases that previously ran between register and stack allocation are taken care of,
+          each in its own special way:
+          
+          -> handleCalleSaves: this is now a utility function called by both
+             allocateStackByGraphColoring and allocateRegistersAndStackByLinearScan.
+          
+          -> fixObviousSpills: we didn't run this at -O1, so nothing needs to be done.
+          
+          -> lowerAfterRegAlloc: this needed to be able to run before stack allocation because
+             it could change register usage (vis a vis callee saves) and it could introduce
+             spill slots. I changed this phase to have a secondary mode for when it runs after
+             stack allocation.
+        
+        - The part of allocateStackByGraphColoring that lowered stack addresses and took care
+          of the call arg area is now a separate phase called lowerStackArgs. We run this phase
+          regardless of optimization level. It's a cheap and general lowering.
+        
+        This also removes spillEverything, because we never use that phase, we never test it,
+        and it got in the way in this refactoring.
+        
+        This is a 21% speed-up on wasm -O1 compile times. This does not significantly change
+        -O1 throughput. We had already disabled allocateStack's most important optimization
+        (spill coalescing). This probably regresses average stack frame size, but I didn't
+        measure by how much. Stack frame size is really not that important. The algorithm in
+        allocateStackByGraphColoring is about much more than optimal frame size; it also
+        tries to avoid having to zero-extend 32-bit spills, it kills dead code, and of course
+        it coalesces.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::calleeSaveRegisterAtOffsetList):
+        (JSC::B3::Procedure::calleeSaveRegisters): Deleted.
+        * b3/B3Procedure.h:
+        * b3/B3StackmapGenerationParams.cpp:
+        (JSC::B3::StackmapGenerationParams::unavailableRegisters):
+        * b3/air/AirAllocateRegistersAndStackByLinearScan.cpp: Copied from Source/JavaScriptCore/b3/air/AirAllocateRegistersByLinearScan.cpp.
+        (JSC::B3::Air::allocateRegistersAndStackByLinearScan):
+        (JSC::B3::Air::allocateRegistersByLinearScan): Deleted.
+        * b3/air/AirAllocateRegistersAndStackByLinearScan.h: Copied from Source/JavaScriptCore/b3/air/AirAllocateRegistersByLinearScan.h.
+        * b3/air/AirAllocateRegistersByLinearScan.cpp: Removed.
+        * b3/air/AirAllocateRegistersByLinearScan.h: Removed.
+        * b3/air/AirAllocateStackByGraphColoring.cpp:
+        (JSC::B3::Air::allocateEscapedStackSlots):
+        (JSC::B3::Air::updateFrameSizeBasedOnStackSlots):
+        (JSC::B3::Air::allocateStackByGraphColoring):
+        * b3/air/AirAllocateStackByGraphColoring.h:
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::stackAddr):
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::stackAddr): Deleted.
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::addStackSlot):
+        (JSC::B3::Air::Code::setCalleeSaveRegisterAtOffsetList):
+        (JSC::B3::Air::Code::calleeSaveRegisterAtOffsetList):
+        (JSC::B3::Air::Code::dump):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::setStackIsAllocated):
+        (JSC::B3::Air::Code::stackIsAllocated):
+        (JSC::B3::Air::Code::calleeSaveRegisters):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::prepareForGeneration):
+        (JSC::B3::Air::generate):
+        * b3/air/AirHandleCalleeSaves.cpp:
+        (JSC::B3::Air::handleCalleeSaves):
+        * b3/air/AirHandleCalleeSaves.h:
+        * b3/air/AirLowerAfterRegAlloc.cpp:
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/AirLowerStackArgs.cpp: Added.
+        (JSC::B3::Air::lowerStackArgs):
+        * b3/air/AirLowerStackArgs.h: Added.
+        * b3/testb3.cpp:
+        (JSC::B3::testPinRegisters):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+        * jit/RegisterAtOffsetList.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::parseAndCompile):
+
+2017-04-12  Michael Saboff  <msaboff@apple.com>
+
+        Implement Object.isFrozen() and Object.isSealed() per ECMA spec
+        https://bugs.webkit.org/show_bug.cgi?id=170753
+
+        Reviewed by Mark Lam.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::testIntegrityLevel): Added local helper as described in the ECMA standard.
+
+        (JSC::objectConstructorSeal):
+        (JSC::objectConstructorFreeze):
+        Eliminated incomplete special handling of JSFinalObjects.
+
+        (JSC::objectConstructorIsSealed):
+        (JSC::objectConstructorIsFrozen):
+        Refactored to use the new testIntegrityLevel() helper.
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use HAVE(MACHINE_CONTEXT) instead of USE(MACHINE_CONTEXT)
+        https://bugs.webkit.org/show_bug.cgi?id=170770
+
+        Rubber stamped by Mark Lam.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThread::Registers::framePointer):
+        (JSC::MachineThreads::MachineThread::Registers::instructionPointer):
+        (JSC::MachineThreads::MachineThread::Registers::llintPC):
+        * runtime/MachineContext.h:
+        (JSC::MachineContext::stackPointer):
+        (JSC::MachineContext::framePointer):
+        (JSC::MachineContext::instructionPointer):
+        (JSC::MachineContext::argumentPointer<1>):
+        (JSC::MachineContext::llintInstructionPointer):
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Clean up heap/MachineStackMarker by introducing USE(MACHINE_CONTEXT)
+        https://bugs.webkit.org/show_bug.cgi?id=170770
+
+        Reviewed by Mark Lam.
+
+        We use USE(MACHINE_CONTEXT) to clean up runtime/MachineContext.h. And
+        we clean up heap/MachineStackMarker.cpp by using MachineContext functions.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThread::Registers::stackPointer):
+        (JSC::MachineThreads::MachineThread::Registers::framePointer):
+        (JSC::MachineThreads::MachineThread::Registers::instructionPointer):
+        (JSC::MachineThreads::MachineThread::Registers::llintPC):
+        * heap/MachineStackMarker.h:
+        * runtime/MachineContext.h:
+        (JSC::MachineContext::stackPointer):
+        (JSC::MachineContext::framePointer):
+        (JSC::MachineContext::instructionPointer):
+        (JSC::MachineContext::argumentPointer<1>):
+        (JSC::MachineContext::llintInstructionPointer):
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Thread class and use RefPtr<Thread> and align Windows Threading implementation semantics to Pthread one
+        https://bugs.webkit.org/show_bug.cgi?id=170502
+
+        Reviewed by Mark Lam.
+
+        * API/tests/CompareAndSwapTest.cpp:
+        (testCompareAndSwap):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/testair.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::run):
+        * bytecode/SuperSampler.cpp:
+        (JSC::initializeSuperSampler):
+        * dfg/DFGWorklist.cpp:
+        * disassembler/Disassembler.cpp:
+        * heap/Heap.cpp:
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::notifyIsSafeToCollect):
+        * heap/Heap.h:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::~MachineThreads):
+        (JSC::MachineThreads::addCurrentThread):
+        (JSC::MachineThreads::removeThread):
+        (JSC::MachineThreads::removeThreadIfFound):
+        (JSC::MachineThreads::MachineThread::MachineThread):
+        (JSC::MachineThreads::MachineThread::getRegisters):
+        (JSC::MachineThreads::MachineThread::Registers::stackPointer):
+        (JSC::MachineThreads::MachineThread::Registers::framePointer):
+        (JSC::MachineThreads::MachineThread::Registers::instructionPointer):
+        (JSC::MachineThreads::MachineThread::Registers::llintPC):
+        (JSC::MachineThreads::MachineThread::captureStack):
+        (JSC::MachineThreads::tryCopyOtherThreadStack):
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        (pthreadSignalHandlerSuspendResume): Deleted.
+        (JSC::threadData): Deleted.
+        (JSC::MachineThreads::Thread::Thread): Deleted.
+        (JSC::MachineThreads::Thread::createForCurrentThread): Deleted.
+        (JSC::MachineThreads::Thread::operator==): Deleted.
+        (JSC::MachineThreads::machineThreadForCurrentThread): Deleted.
+        (JSC::MachineThreads::ThreadData::ThreadData): Deleted.
+        (JSC::MachineThreads::ThreadData::~ThreadData): Deleted.
+        (JSC::MachineThreads::ThreadData::suspend): Deleted.
+        (JSC::MachineThreads::ThreadData::resume): Deleted.
+        (JSC::MachineThreads::ThreadData::getRegisters): Deleted.
+        (JSC::MachineThreads::ThreadData::Registers::stackPointer): Deleted.
+        (JSC::MachineThreads::ThreadData::Registers::framePointer): Deleted.
+        (JSC::MachineThreads::ThreadData::Registers::instructionPointer): Deleted.
+        (JSC::MachineThreads::ThreadData::Registers::llintPC): Deleted.
+        (JSC::MachineThreads::ThreadData::freeRegisters): Deleted.
+        (JSC::MachineThreads::ThreadData::captureStack): Deleted.
+        * heap/MachineStackMarker.h:
+        (JSC::MachineThreads::MachineThread::suspend):
+        (JSC::MachineThreads::MachineThread::resume):
+        (JSC::MachineThreads::MachineThread::threadID):
+        (JSC::MachineThreads::MachineThread::stackBase):
+        (JSC::MachineThreads::MachineThread::stackEnd):
+        (JSC::MachineThreads::threadsListHead):
+        (JSC::MachineThreads::Thread::operator!=): Deleted.
+        (JSC::MachineThreads::Thread::suspend): Deleted.
+        (JSC::MachineThreads::Thread::resume): Deleted.
+        (JSC::MachineThreads::Thread::getRegisters): Deleted.
+        (JSC::MachineThreads::Thread::freeRegisters): Deleted.
+        (JSC::MachineThreads::Thread::captureStack): Deleted.
+        (JSC::MachineThreads::Thread::platformThread): Deleted.
+        (JSC::MachineThreads::Thread::stackBase): Deleted.
+        (JSC::MachineThreads::Thread::stackEnd): Deleted.
+        * jit/ICStats.cpp:
+        (JSC::ICStats::ICStats):
+        (JSC::ICStats::~ICStats):
+        * jit/ICStats.h:
+        * jsc.cpp:
+        (functionDollarAgentStart):
+        (startTimeoutThreadIfNeeded):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::lock):
+        * runtime/JSLock.h:
+        (JSC::JSLock::ownerThread):
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::FrameWalker::isValidFramePointer):
+        (JSC::SamplingProfiler::SamplingProfiler):
+        (JSC::SamplingProfiler::createThreadIfNecessary):
+        (JSC::SamplingProfiler::takeSample):
+        * runtime/SamplingProfiler.h:
+        * runtime/VM.h:
+        (JSC::VM::ownerThread):
+        * runtime/VMTraps.cpp:
+        (JSC::findActiveVMAndStackBounds):
+        (JSC::VMTraps::SignalSender::send):
+        (JSC::VMTraps::fireTrap):
+
 2017-04-11  Dean Jackson  <dino@apple.com>
 
         Disable outdated WritableStream API

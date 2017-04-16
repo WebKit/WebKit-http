@@ -614,6 +614,10 @@ void WebProcessPool::resolvePathsForSandboxExtensions()
     m_resolvedPaths.mediaCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration->mediaCacheDirectory());
     m_resolvedPaths.mediaKeyStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration->mediaKeysStorageDirectory());
 
+    m_resolvedPaths.additionalWebProcessSandboxExtensionPaths.reserveCapacity(m_configuration->additionalReadAccessAllowedPaths().size());
+    for (const auto& path : m_configuration->additionalReadAccessAllowedPaths())
+        m_resolvedPaths.additionalWebProcessSandboxExtensionPaths.uncheckedAppend(resolvePathForSandboxExtension(path));
+
     platformResolvePathsForSandboxExtensions();
 }
 
@@ -631,6 +635,10 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore* websiteDa
     parameters.injectedBundlePath = m_resolvedPaths.injectedBundlePath;
     if (!parameters.injectedBundlePath.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(parameters.injectedBundlePath, SandboxExtension::ReadOnly, parameters.injectedBundlePathExtensionHandle);
+
+    parameters.additionalSandboxExtensionHandles.allocate(m_resolvedPaths.additionalWebProcessSandboxExtensionPaths.size());
+    for (size_t i = 0, size = m_resolvedPaths.additionalWebProcessSandboxExtensionPaths.size(); i < size; ++i)
+        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.additionalWebProcessSandboxExtensionPaths[i], SandboxExtension::ReadOnly, parameters.additionalSandboxExtensionHandles[i]);
 
     parameters.applicationCacheDirectory = websiteDataStore ? websiteDataStore->resolvedApplicationCacheDirectory() : m_resolvedPaths.applicationCacheDirectory;
     if (parameters.applicationCacheDirectory.isEmpty())
@@ -731,6 +739,9 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore* websiteDa
 #endif
 
     parameters.resourceLoadStatisticsEnabled = resourceLoadStatisticsEnabled();
+#if ENABLE(MEDIA_STREAM)
+    parameters.shouldCaptureAudioInUIProcess = m_configuration->shouldCaptureAudioInUIProcess();
+#endif
 
     // Add any platform specific parameters
     platformInitializeWebProcess(parameters);

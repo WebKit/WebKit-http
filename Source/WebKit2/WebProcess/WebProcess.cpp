@@ -258,7 +258,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     platformInitializeWebProcess(WTFMove(parameters));
 
     // Match the QoS of the UIProcess and the scrolling thread but use a slightly lower priority.
-    WTF::setCurrentThreadIsUserInteractive(-1);
+    WTF::Thread::setCurrentThreadIsUserInteractive(-1);
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
     if (!m_suppressMemoryPressureHandler) {
@@ -285,6 +285,9 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
     if (!parameters.injectedBundlePath.isEmpty())
         m_injectedBundle = InjectedBundle::create(parameters, transformHandlesToObjects(parameters.initializationUserData.object()).get());
+
+    for (size_t i = 0, size = parameters.additionalSandboxExtensionHandles.size(); i < size; ++i)
+        SandboxExtension::consumePermanently(parameters.additionalSandboxExtensionHandles[i]);
 
     for (auto& supplement : m_supplements.values())
         supplement->initialize(parameters);

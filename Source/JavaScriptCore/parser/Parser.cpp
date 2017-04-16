@@ -147,8 +147,11 @@ Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode 
     if (strictMode == JSParserStrictMode::Strict)
         scope->setStrictMode();
 
-    if (parseMode == SourceParseMode::ModuleAnalyzeMode || parseMode == SourceParseMode::ModuleEvaluateMode)
+    if (isModuleParseMode(parseMode))
         m_moduleScopeData = ModuleScopeData::create();
+
+    if (isProgramOrModuleParseMode(parseMode))
+        scope->setIsGlobalCodeScope();
 
     next();
 }
@@ -3555,6 +3558,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseAwaitExpress
     JSTextPosition divotStart = tokenStartPosition();
     next();
     JSTextPosition argumentStart = tokenStartPosition();
+    ExpressionErrorClassifier classifier(this);
     TreeExpression argument = parseUnaryExpression(context);
     failIfFalse(argument, "Failed to parse await expression");
     return context.createAwait(location, argument, divotStart, argumentStart, lastTokenEndPosition());
@@ -4403,10 +4407,13 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
         if (match(IDENT)) {
             const Identifier* ident = m_token.m_data.ident;
             if (m_vm->propertyNames->target == *ident) {
-                semanticFailIfFalse(currentScope()->isFunction() || closestParentOrdinaryFunctionNonLexicalScope()->evalContextType() == EvalContextType::FunctionEvalContext, "new.target is only valid inside functions");
+                ScopeRef closestOrdinaryFunctionScope = closestParentOrdinaryFunctionNonLexicalScope();
+                semanticFailIfFalse(currentScope()->isFunction() || closestOrdinaryFunctionScope->evalContextType() == EvalContextType::FunctionEvalContext, "new.target is only valid inside functions");
                 baseIsNewTarget = true;
-                if (currentScope()->isArrowFunction())
+                if (currentScope()->isArrowFunction()) {
+                    semanticFailIfFalse(!closestOrdinaryFunctionScope->isGlobalCodeScope() || closestOrdinaryFunctionScope->evalContextType() == EvalContextType::FunctionEvalContext, "new.target is not valid inside arrow functions in global code");
                     currentScope()->setInnerArrowFunctionUsesNewTarget();
+                }
                 base = context.createNewTargetExpr(location);
                 newCount--;
                 next();

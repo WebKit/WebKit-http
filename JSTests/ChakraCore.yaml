@@ -876,7 +876,7 @@
 - path: ChakraCore/test/Lib/uri.js
   cmd: runChakra :baseline, "NoException", "uri.baseline-jsc", []
 - path: ChakraCore/test/Lib/error.js
-  cmd: runChakra :baseline, "NoException", "error.baseline", []
+  cmd: runChakra :baseline, "NoException", "error.baseline-jsc", []
 - path: ChakraCore/test/Lib/workingset.js
   # WScript.GetWorkingSet is not implemented in jsc-lib.js polyfill.
   cmd: runChakra :skip, "NoException", "", []
@@ -1442,8 +1442,7 @@
 - path: ChakraCore/test/es5/defineProperty.js
   cmd: runChakra :baseline, "NoException", "defineProperty.baseline", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es5/defineIndexProperty.js
-  # Differences in Obj.seal, Obj.frozen and sort.
-  cmd: runChakra :skip, "NoException", "defineIndexProperty.baseline", []
+  cmd: runChakra :baseline, "NoException", "defineIndexProperty.baseline-jsc", []
 - path: ChakraCore/test/es5/enumerable.js
   cmd: runChakra :baseline, "NoException", "enumerable.baseline-jsc", []
 - path: ChakraCore/test/es5/hasItem.js
@@ -1857,7 +1856,7 @@
   # On line 254, JSC throws error during parsing while Chakra throws at runtime.
   cmd: runChakra :skip, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es6/globalLambdaNewTargetSyntaxError.js
-  cmd: runChakra :baseline, "ReferenceError", "globalLambdaNewTargetSyntaxError.baseline-jsc", []
+  cmd: runChakra :baseline, "SyntaxError", "globalLambdaNewTargetSyntaxError.baseline-jsc", []
 - path: ChakraCore/test/es6/globalNewTargetSyntaxError.js
   cmd: runChakra :baseline, "SyntaxError", "globalNewTargetSyntaxError.baseline-jsc", []
 - path: ChakraCore/test/es6/globalCatchNewTargetSyntaxError.js

@@ -1,3 +1,163 @@
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Object/getOwnPropertyNames/15.2.3.4-4-44.js
+        https://bugs.webkit.org/show_bug.cgi?id=170879
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore/test/es5/enumerable.baseline-jsc:
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Date/prototype/Symbol.toPrimitive/name.js
+        https://bugs.webkit.org/show_bug.cgi?id=170884
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2017-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/global-code/new.target-arrow.js
+        https://bugs.webkit.org/show_bug.cgi?id=170872
+
+        Reviewed by Saam Barati.
+
+        * stress/async-arrow-functions-lexical-new.target-binding.js:
+        (shouldThrowAsync): Deleted.
+        (shouldThrowAsync.async): Deleted.
+        This code should have thrown a SyntaxError. Instead it was throwing
+        a ReferenceError for the internal @newTargetLocal variable.
+
+        * stress/new-target-syntax-errors.js:
+        Cover the arrow function in global code cases.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/es6/globalLambdaNewTargetSyntaxError.baseline-jsc:
+        We now pass with an expected SyntaxError. Our error message is different.
+
+        * test262.yaml:
+
+2017-04-14  Saam Barati  <sbarati@apple.com>
+
+        ParseInt intrinsic in DFG backend doesn't properly flush its operands
+        https://bugs.webkit.org/show_bug.cgi?id=170865
+
+        Reviewed by Mark Lam and Geoffrey Garen.
+
+        * stress/parse-int-intrinsic-dfg-backend-flush.js: Added.
+        (assert):
+        (foo):
+
+2017-04-14  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] use ExpressionErrorClassifier for AwaitExpression operand
+        https://bugs.webkit.org/show_bug.cgi?id=170844
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-170732.js: Added.
+
+2017-04-14  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Safari 10.1 JSON.parse returns incorrect object for numeric keys with decimal values
+        https://bugs.webkit.org/show_bug.cgi?id=170442
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/object-number-properties.js:
+
+2017-04-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Date.parse should accept wider range of representation
+        https://bugs.webkit.org/show_bug.cgi?id=170720
+
+        Reviewed by Darin Adler.
+
+        * stress/date-relaxed.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+
+2017-04-13  Mark Lam  <mark.lam@apple.com>
+
+        Should use flushDirect() when flushing the scopeRegister due to needsScopeRegister().
+        https://bugs.webkit.org/show_bug.cgi?id=170661
+        <rdar://problem/31579046>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-170661.js: Added.
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: manage memory better
+        https://bugs.webkit.org/show_bug.cgi?id=170628
+
+        Reviewed by Keith Miller, Michael Saboff.
+
+        * wasm/Builder.js: move a helper out so tests can use it
+        (export.default.Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.case.string_appeared_here.this.section):
+        * wasm/WASM.js: add utilities to classify opcodes
+        (export.opcodes):
+        (export.const.memoryAccessInfo.op.const.sign):
+        * wasm/function-tests/memory-access-past-4gib.js: Added. This test
+        fails before this patch.
+        (const.op.of.WASM.opcodes):
+        * wasm/function-tests/memory-many.js: Added. This simple tests
+        just shouldn't crash. In verbose mode it's useful at determining
+        if the GC falls behind or not.
+        * wasm/function-tests/memory-multiagent.js: Added. Emulate postMessage.
+        (const.startAgents.numAgentsToStart.a.agent.receiveBroadcast):
+        (const.startAgents.numAgentsToStart.a.write.const.idx.Math.random):
+        (const.broadcastToAgents):
+        * wasm/js-api/extension-MemoryMode.js: verbose logging.
+        (testMemoryNoMax):
+        (testMemory):
+        (testInstanceNoMemory):
+        (testInstanceNoMax):
+        (testInstance):
+        * wasm/utilities.js: move a utility here.
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/NativeErrors/EvalError/proto.js
+        https://bugs.webkit.org/show_bug.cgi?id=170668
+
+        Reviewed by Keith Miller.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/Lib/error.baseline-jsc: Added.
+        This test does not match the spec.
+
+        * test262.yaml:
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/literals/regexp/u-dec-esc.js
+        https://bugs.webkit.org/show_bug.cgi?id=170687
+
+        Reviewed by Michael Saboff.
+
+        * test262.yaml:
+
+2017-04-11  Michael Saboff  <msaboff@apple.com>
+
+        Implement Object.isFrozen() and Object.isSealed() per ECMA spec
+        https://bugs.webkit.org/show_bug.cgi?id=170753
+
+        Reviewed by Mark Lam.
+
+        Added JSC baseline and enabled defineIndexProperty test.
+
+        Note that JSC differs from Chakra in that a JSC doesn't use indexed
+        properties placed on the Array prototype when sorting the indexed 
+        properties of an Object.  This is behavior is considered undefined
+        in the standard.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/es5/defineIndexProperty.baseline-jsc: Added.
+
 2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
 
         test262: test262/test/annexB/language/comments/multi-line-html-close.js

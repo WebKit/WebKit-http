@@ -1,3 +1,116 @@
+2017-04-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: messages with non-latin letters are displayed incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=170760
+
+        Reviewed by Joseph Pecoraro.
+
+        Add payloadLength property, which is used to display size. When payloadLength is unavailable,
+        it is calculated from payloadData by Web Inspector frontend.
+
+        This fixes <webkit.org/b/170609> Web Inspector: WebSockets: Transferred size is incorrect.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype._webSocketFrameReceivedOrSent):
+        * UserInterface/Models/WebSocketResource.js:
+        (WebInspector.WebSocketResource.prototype.addFrame):
+
+2017-04-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Implement autocompletion for CSS variables
+        https://bugs.webkit.org/show_bug.cgi?id=154441
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.completionControllerCompletionsNeeded):
+        Add CSS variables to the list of matching completions based on those defined in the current
+        node's computed style.
+
+2017-04-13  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: No context menu available via ENABLE_INSPECTOR_SERVER
+        https://bugs.webkit.org/show_bug.cgi?id=170705
+
+        Reviewed by Joseph Pecoraro.
+
+        Reintroduce old SoftContextMenu class (removed in r157278) and apply various fixes:
+        - Remove legacy globals and prototype extensions.
+        - Align JS/CSS style with current front-end code.
+        - Update UI and fix UX to replicate the macOS native context menu.
+
+        * Scripts/copy-user-interface-resources.pl:
+        Add copyright line for Sony Interactive Entertainment.
+        
+        * UserInterface/Base/InspectorFrontendHostStub.js:
+        (WebInspector.InspectorFrontendHostStub.prototype.showContextMenu):
+        Use SoftContextMenu.
+        
+        * UserInterface/Main.html:
+        Include SoftContextMenu.
+
+        * UserInterface/Views/SoftContextMenu.css: Added.
+        (.soft-context-menu-glass-pane):
+        (.soft-context-menu):
+        (.soft-context-menu > .item):
+        (.soft-context-menu > .item.disabled):
+        (.soft-context-menu > .item.highlighted):
+        (.soft-context-menu > .item > .checkmark):
+        (.soft-context-menu > .item > .label):
+        (.soft-context-menu > .item > .submenu-arrow):
+        (.soft-context-menu > .separator):
+        (.soft-context-menu > .separator > .line):
+
+        * UserInterface/Views/SoftContextMenu.js: Added.
+        (WebInspector.SoftContextMenu):
+        (WebInspector.SoftContextMenu.prototype.show):
+        (WebInspector.SoftContextMenu.prototype._consumeEvent):
+        (WebInspector.SoftContextMenu.prototype._parentGlassPaneElement):
+        (WebInspector.SoftContextMenu.prototype._createMenuItem):
+        (WebInspector.SoftContextMenu.prototype._createSeparator):
+        (WebInspector.SoftContextMenu.prototype._repositionMenuOnScreen):
+        (WebInspector.SoftContextMenu.prototype._showSubMenu):
+        (WebInspector.SoftContextMenu.prototype._hideSubMenu):
+        (WebInspector.SoftContextMenu.prototype._menuItemContextMenu):
+        (WebInspector.SoftContextMenu.prototype._menuItemMouseDown):
+        (WebInspector.SoftContextMenu.prototype._menuItemMouseUp):
+        (WebInspector.SoftContextMenu.prototype._menuItemMouseOver):
+        (WebInspector.SoftContextMenu.prototype._menuItemMouseOut):
+        (WebInspector.SoftContextMenu.prototype._menuKeyDown):
+        (WebInspector.SoftContextMenu.prototype._glassPaneMouseDown):
+        (WebInspector.SoftContextMenu.prototype._focus):
+        (WebInspector.SoftContextMenu.prototype._triggerAction):
+        (WebInspector.SoftContextMenu.prototype._highlightMenuItem):
+        (WebInspector.SoftContextMenu.prototype._highlightPrevious):
+        (WebInspector.SoftContextMenu.prototype._highlightNext):
+        (WebInspector.SoftContextMenu.prototype._discardMenu):
+        (WebInspector.SoftContextMenu.prototype._discardSubMenus):
+
+2017-04-13  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: goto arrow is floated to the wrong side
+        https://bugs.webkit.org/show_bug.cgi?id=170816
+
+        Reviewed by Matt Baker.
+
+        Float it to the other side if necessary.
+
+        * UserInterface/Views/Main.css:
+        (.go-to-link):
+        (body[dir=ltr] .go-to-link:not(.dont-float)):
+        (body[dir=rtl] .go-to-link:not(.dont-float)):
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+
 2017-04-11  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: checkboxes in Settings screen use inappropriate layout

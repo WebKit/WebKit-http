@@ -102,6 +102,33 @@
     _processPoolConfiguration->setIgnoreSynchronousMessagingTimeoutsForTesting(ignoreSynchronousMessagingTimeoutsForTesting);
 }
 
+- (NSArray<NSURL *> *)additionalReadAccessAllowedURLs
+{
+    auto paths = _processPoolConfiguration->additionalReadAccessAllowedPaths();
+    if (paths.isEmpty())
+        return @[ ];
+
+    NSMutableArray *urls = [NSMutableArray arrayWithCapacity:paths.size()];
+    for (const auto& path : paths)
+        [urls addObject:[NSURL fileURLWithPath:path]];
+
+    return urls;
+}
+
+- (void)setAdditionalReadAccessAllowedURLs:(NSArray<NSURL *> *)additionalReadAccessAllowedURLs
+{
+    Vector<String> paths;
+    paths.reserveInitialCapacity(additionalReadAccessAllowedURLs.count);
+    for (NSURL *url in additionalReadAccessAllowedURLs) {
+        if (!url.isFileURL)
+            [NSException raise:NSInvalidArgumentException format:@"%@ is not a file URL", url];
+
+        paths.uncheckedAppend(url.fileSystemRepresentation);
+    }
+
+    _processPoolConfiguration->setAdditionalReadAccessAllowedPaths(WTFMove(paths));
+}
+
 - (NSArray *)cachePartitionedURLSchemes
 {
     auto schemes = _processPoolConfiguration->cachePartitionedURLSchemes();
@@ -179,6 +206,16 @@
 - (void)setAllowsCellularAccess:(BOOL)allowsCellularAccess
 {
     _processPoolConfiguration->setAllowsCellularAccess(allowsCellularAccess);
+}
+
+- (BOOL)shouldCaptureAudioInUIProcess
+{
+    return _processPoolConfiguration->shouldCaptureAudioInUIProcess();
+}
+
+- (void)setShouldCaptureAudioInUIProcess:(BOOL)shouldCaptureAudioInUIProcess
+{
+    _processPoolConfiguration->setShouldCaptureAudioInUIProcess(shouldCaptureAudioInUIProcess);
 }
 
 #if PLATFORM(IOS)

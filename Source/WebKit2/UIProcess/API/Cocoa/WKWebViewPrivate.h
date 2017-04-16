@@ -60,7 +60,6 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 #endif
 
-@class AVFunctionBarScrubber;
 @class WKBrowsingContextHandle;
 @class _WKFrameHandle;
 @class _WKHitTestResult;
@@ -223,8 +222,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 // FIXME: This SPI should become a part of the WKUIDelegate. rdar://problem/26561537
 @property (nonatomic, readwrite, setter=_setWantsMediaPlaybackControlsView:) BOOL _wantsMediaPlaybackControlsView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-@property (nonatomic, readonly) AVFunctionBarScrubber *_mediaPlaybackControlsView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-- (void)_addMediaPlaybackControlsView:(AVFunctionBarScrubber *)mediaPlaybackControlsView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+@property (nonatomic, readonly) id _mediaPlaybackControlsView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_addMediaPlaybackControlsView:(id)mediaPlaybackControlsView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (void)_removeMediaPlaybackControlsView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
 - (void)_prepareForMoveToWindow:(NSWindow *)targetWindow completionHandler:(void(^)(void))completionHandler;
@@ -277,7 +276,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, setter=_setFullscreenDelegate:) id<_WKFullscreenDelegate> _fullscreenDelegate WK_API_AVAILABLE(macosx(10.13));
 @property (nonatomic, readonly) BOOL _isInFullscreen WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
-- (void)_stopMediaCapture;
+- (void)_muteMediaCapture;
 
 @end
 

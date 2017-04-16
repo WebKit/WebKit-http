@@ -1,3 +1,524 @@
+2017-04-15  Keith Rollin  <krollin@apple.com>
+
+        Include resource size in some existing logging
+        https://bugs.webkit.org/show_bug.cgi?id=170866
+
+        Reviewed by Alex Christensen.
+
+        In order to correlate resource load times with resource size, we log
+        when the resource is starting to be loaded and when the resource is
+        finished loading. In NetworkResourceLoader::didReceiveResponse, we
+        also log the expected resource length. However, we can only log the
+        length if it is provided in Content-Length, which is not always the
+        case. If it's not provided, we end up logging "length = -1". To make
+        up for this, change NetworkResourceLoader::didFinishLoading and
+        WebResourceLoader:: didFinishLoading to log the length once we know
+        it.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didReceiveBuffer):
+        (WebKit::NetworkResourceLoader::didFinishLoading):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveData):
+        (WebKit::WebResourceLoader::didFinishResourceLoad):
+        * WebProcess/Network/WebResourceLoader.h:
+
+2017-04-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support data interaction of files into file inputs
+        https://bugs.webkit.org/show_bug.cgi?id=170803
+        <rdar://problem/31286130>
+
+        Reviewed by Tim Horton.
+
+        Implements remaining support for performing data interaction onto file inputs. There are two main changes at
+        this layer: plumbing the number of files in the pasteboard to the web process, and pulling the implementation of
+        createSandboxExtensionsIfNeeded out of Mac-specific WebViewImpl::createSandboxExtensionsIfNeeded and into
+        WebPageProxy::createSandboxExtensionsIfNeeded.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<DragData>::encode):
+        (IPC::ArgumentCoder<DragData>::decode):
+
+        Relax special-casing of encoding and decoding filenames to be PLATFORM(COCOA) rather than PLATFORM(MAC).
+
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        (WebKit::WebPageProxy::createSandboxExtensionsIfNeeded):
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::getNumberOfFiles):
+
+        More boilerplate plumbing to deliver the number of files in the pasteboard to the web process.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::performDragOperation):
+        (WebKit::WebViewImpl::createSandboxExtensionsIfNeeded): Deleted.
+
+        Move the logic in WebViewImpl::createSandboxExtensionsIfNeeded over to WebPageProxy::createSandboxExtensionsIfNeeded.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPasteboardProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::getNumberOfFiles):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2017-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Update architectures in xcconfig files.
+        https://bugs.webkit.org/show_bug.cgi?id=170867
+        <rdar://problem/31628104>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support Icon creation from file URLs on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=170809
+        <rdar://problem/31286130>
+
+        Reviewed by Tim Horton.
+
+        Refactors file icon generation logic to support showing an Icon representing the content at a list of file paths
+        on iOS. Pulls out logic in WKFileUploadPanel responsible for generating the thumbnail image for a file input into
+        separate helpers in WebIconUtilities, and then uses these utilities in both WKFileUploadPanel and
+        WebChromeClientIOS.
+
+        * Shared/ios/WebIconUtilities.h: Added.
+        * Shared/ios/WebIconUtilities.mm: Added.
+        (WebKit::squareCropRectForSize):
+        (WebKit::squareImage):
+        (WebKit::thumbnailSizedImageForImage):
+        (WebKit::fallbackIconForFile):
+        (WebKit::iconForImageFile):
+        (WebKit::iconForVideoFile):
+        (WebKit::iconForFile):
+
+        Add logic for generating thumbnail icons, moved from WKFileUploadPanel.mm.
+
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+        (squareCropRectForSize): Deleted.
+        (squareImage): Deleted.
+        (thumbnailSizedImageForImage): Deleted.
+        (fallbackIconForFile): Deleted.
+        (iconForImageFile): Deleted.
+        (iconForVideoFile): Deleted.
+        (iconForFile): Deleted.
+
+        Remove logic for generating thumbnail icons.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::loadIconForFiles):
+        (WebKit::WebChromeClient::createIconForFiles):
+
+        Rather than call Icon::createIconForFiles directly, loadIconForFiles now consults ChromeClient::createIconForFiles
+        instead. On other platforms, this just turns around and calls Icon::createIconForFiles, but on iOS, we use the
+        utilities introduced in WebIconUtilities to generate a file icon.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebCoreSupport/ios/WebChromeClientIOS.mm:
+        (WebKit::WebChromeClient::createIconForFiles):
+
+2017-04-14  Brady Eidson  <beidson@apple.com>
+
+        Fix basic WKURLSchemeHandler bugs.
+        <rdar://problem/30647559> and https://bugs.webkit.org/show_bug.cgi?id=170862
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::decidePolicyForNavigationAction):
+
+        * UIProcess/WebURLSchemeHandlerTask.cpp:
+        (WebKit::WebURLSchemeHandlerTask::didReceiveResponse):
+
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::addURLSchemeHandlerTaskProxy):
+        (WebKit::WebLoaderStrategy::removeURLSchemeHandlerTaskProxy):
+        (WebKit::WebLoaderStrategy::remove):
+        * WebProcess/Network/WebLoaderStrategy.h:
+
+        * WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp:
+        (WebKit::WebURLSchemeHandlerProxy::startNewTask):
+        (WebKit::WebURLSchemeHandlerProxy::taskDidComplete):
+        (WebKit::WebURLSchemeHandlerProxy::taskDidStopLoading):
+        * WebProcess/WebPage/WebURLSchemeHandlerProxy.h:
+
+        * WebProcess/WebPage/WebURLSchemeHandlerTaskProxy.cpp:
+        (WebKit::WebURLSchemeHandlerTaskProxy::WebURLSchemeHandlerTaskProxy):
+        (WebKit::WebURLSchemeHandlerTaskProxy::stopLoading):
+        (WebKit::WebURLSchemeHandlerTaskProxy::didReceiveResponse):
+        (WebKit::WebURLSchemeHandlerTaskProxy::didReceiveData):
+        (WebKit::WebURLSchemeHandlerTaskProxy::didComplete):
+        (WebKit::WebURLSchemeHandlerTaskProxy::hasLoader):
+        * WebProcess/WebPage/WebURLSchemeHandlerTaskProxy.h:
+        (WebKit::WebURLSchemeHandlerTaskProxy::identifier):
+
+2017-04-14  Jer Noble  <jer.noble@apple.com>
+
+        [MediaSource] Push capabilities across process boundary during UIProcess capture.
+        https://bugs.webkit.org/show_bug.cgi?id=170814
+
+        Reviewed by Eric Carlson.
+
+        Make a new synchronous getter for capabilities(), moderated by only requesting the capabilities() cross-process
+        the first time called.
+
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.cpp:
+        (WebKit::UserMediaCaptureManagerProxy::capabilities):
+        (WebKit::UserMediaCaptureManagerProxy::supportedConstraints):
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.h:
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.messages.in:
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::Source::setCapabilities):
+        (WebKit::UserMediaCaptureManager::capabilities):
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+
+2017-04-13  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Allow clients to specify in _WKProcessPoolConfiguration additional directory sandbox extensions
+        https://bugs.webkit.org/show_bug.cgi?id=170387
+
+        Reviewed by Sam Weinig.
+
+        Test: TestWebKitAPI/Tests/WebKit2Cocoa/AdditionalReadAccessAllowedURLs.mm
+
+        Added an additionalReadAccessAllowedURLs property to _WKProcessPoolConfiguration.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode): Encode the new
+          additionalSandboxExtensionHandles member.
+        (WebKit::WebProcessCreationParameters::decode): Decode it.
+        * Shared/WebProcessCreationParameters.h: Added additionalSandboxExtensionHandles member.
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy): Copy new m_additionalReadAccessAllowedPaths member.
+        * UIProcess/API/APIProcessPoolConfiguration.h: Added m_additionalReadAccessAllowedPaths
+          member and accessor functions.
+
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h: Declared new
+          additionalReadAccessAllowedURLs property whose value is an array of URLs to which the Web
+          Content process will be given read access.
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm:
+        (-[_WKProcessPoolConfiguration additionalReadAccessAllowedURLs]): New getter that returns
+          an array of file URLs from the ProcessPoolConfiguration’s additionalReadAccessAllowedPaths().
+        (-[_WKProcessPoolConfiguration setAdditionalReadAccessAllowedURLs:]): New setter that checks
+          that the given URLs are file URLs and populates the ProcessPoolConfiguration’s
+          additionalReadAccessAllowedPaths with their paths.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::resolvePathsForSandboxExtensions): Populate the new
+          m_resolvedPaths.additionalWebProcessSandboxExtensionPaths with resolved paths from the
+          ProcessPoolConfiguration’s additionalReadAccessAllowedPaths.
+        (WebKit::WebProcessPool::createNewWebProcess): Populate the WebProcessCreationParameters’s
+          additionalSandboxExtensionHandles member with read-only sandbox extensions created from
+          the resolved paths.
+        * UIProcess/WebProcessPool.h: Added additionalWebProcessSandboxExtensionPaths member to
+          the Paths struct.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess): Consume the additional sandbox extensions.
+
+2017-04-13  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=170815
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration _setShouldCaptureAudioInUIProcess:]):
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2017-04-12  Brady Eidson  <beidson@apple.com>
+
+        QuotaExceededError when saving to localStorage in private mode.
+        https://bugs.webkit.org/show_bug.cgi?id=157010
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Storage/StorageAreaMap.cpp:
+        (WebKit::StorageAreaMap::StorageAreaMap):
+        (WebKit::StorageAreaMap::~StorageAreaMap):
+
+        * WebProcess/Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::createEphemeralLocalStorageNamespace):
+        (WebKit::StorageNamespaceImpl::storageArea):
+        (WebKit::StorageNamespaceImpl::ephemeralLocalStorageArea):
+        (WebKit::StorageNamespaceImpl::copy):
+        * WebProcess/Storage/StorageNamespaceImpl.h:
+
+        * WebProcess/Storage/WebStorageNamespaceProvider.cpp:
+        (WebKit::WebStorageNamespaceProvider::createEphemeralLocalStorageNamespace):
+        * WebProcess/Storage/WebStorageNamespaceProvider.h:
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix build failure on Ubuntu LTS GTK bot
+        https://bugs.webkit.org/show_bug.cgi?id=170781
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+
+2017-04-12  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] rename -[WKWebView _stopMediaCapture]
+        https://bugs.webkit.org/show_bug.cgi?id=170791
+        <rdar://problem/31589204>
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _muteMediaCapture]):
+        (-[WKWebView _stopMediaCapture]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2017-04-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed build fix.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (-[WKPaymentAuthorizationViewControllerDelegate paymentAuthorizationViewController:didSelectPaymentMethod:handler:]):
+        (-[WKPaymentAuthorizationViewControllerDelegate paymentAuthorizationViewController:didSelectShippingMethod:handler:]):
+        (-[WKPaymentAuthorizationViewControllerDelegate paymentAuthorizationViewController:didSelectShippingContact:handler:]):
+        (WebKit::WebPaymentCoordinatorProxy::platformCompleteShippingMethodSelection):
+        (WebKit::WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection):
+        (WebKit::WebPaymentCoordinatorProxy::platformCompletePaymentMethodSelection):
+
+2017-04-12  Jer Noble  <jer.noble@apple.com>
+
+        [WK2] Add a C-API for creating a WKContextConfigurationRef with legacy options.
+        https://bugs.webkit.org/show_bug.cgi?id=170790
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/API/C/WKContextConfigurationRef.cpp:
+        (WKContextConfigurationCreate):
+        (WKContextConfigurationCreateWithLegacyOptions):
+        * UIProcess/API/C/WKContextConfigurationRef.h:
+
+2017-04-12  Jer Noble  <jer.noble@apple.com>
+
+        [WK2] Do not pass microphone sandbox extension to WebProcess if capturing is happening in UIProcess.
+        https://bugs.webkit.org/show_bug.cgi?id=170781
+
+        Reviewed by Alex Christensen.
+
+        Simultaneously, allow clients to configure whether capturing will occur in the UIProcess through
+        _WKProcessPoolConfiguration.
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/API/C/WKContextConfigurationRef.cpp:
+        (WKContextConfigurationShouldCaptureAudioInUIProcess):
+        (WKContextConfigurationSetShouldCaptureAudioInUIProcess):
+        * UIProcess/API/C/WKContextConfigurationRef.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _shouldCaptureAudioInUIProcess]):
+        (-[WKWebViewConfiguration _setShouldCaptureAudioInUIProcess:]):
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm:
+        (-[_WKProcessPoolConfiguration shouldCaptureAudioInUIProcess]):
+        (-[_WKProcessPoolConfiguration setShouldCaptureAudioInUIProcess:]):
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeWebProcess):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+
+2017-04-12  Keith Rollin  <krollin@apple.com>
+
+        Add some missing NetworkResourceLoader logging
+        https://bugs.webkit.org/show_bug.cgi?id=170139
+
+        Reviewed by Alex Christensen.
+
+        Once execution enters the lambda in
+        NetworkResourceLoader::retrieveCacheEntry, there is little indication
+        of which exit point was taken. If flow enters into startNetworkLoad,
+        we'll get some logging from that function, but not from the others.
+        Add some logging so that we know what the result was from looking up
+        the resource in the cache.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::retrieveCacheEntry):
+
+2017-04-12  Anders Carlsson  <andersca@apple.com>
+
+        Tweak WebCore::setMetadataURL function
+        https://bugs.webkit.org/show_bug.cgi?id=170786
+
+        Reviewed by Beth Dakin.
+
+        Update for WebCore changes.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::namesOfPromisedFilesDroppedAtDestination):
+
+2017-04-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][Mac] Stop allowing access to disk arbitration process
+        https://bugs.webkit.org/show_bug.cgi?id=170517
+        <rdar://problem/31071151>
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        32-bit build fix.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _mediaPlaybackControlsView]):
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        More 32-bit build fix.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _mediaPlaybackControlsView]):
+        (-[WKWebView _addMediaPlaybackControlsView:]):
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _mediaPlaybackControlsView]):
+        (-[WKView _addMediaPlaybackControlsView:]):
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        Another 32 bit build fix.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::mediaPlaybackControlsView):
+
+2017-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using didReceiveDataArray callback on El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=170780
+
+        Reviewed by Brady Eidson.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::supportsDataArray): Deleted.
+        (WebKit::NetworkLoad::didReceiveDataArray): Deleted.
+        * NetworkProcess/NetworkLoad.h:
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        Speculative build fix.
+
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        Attempted build fix.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        Adopt AVKit name change from AVFunctionBar* to AVTouchBar*
+        https://bugs.webkit.org/show_bug.cgi?id=170693
+        -and corresponding-
+        rdar://problem/31230018
+
+        Reviewed by Sam Weinig.
+
+        Since the new names only apply to some versions of macOS, this patch uses typedefs 
+        for the older OS’s. SO:
+
+        AVFunctionBarScrubber is now AVTouchBarScrubber
+
+        AVFunctionBarPlaybackControlsProvider is now AVTouchBarPlaybackControlsProvider
+
+        AVFunctionBarMediaSelectionOption is now AVTouchBarMediaSelectionOption
+
+        And the protocol AVFunctionBarPlaybackControlsControlling is now 
+        AVTouchBarPlaybackControlsControlling
+
+        Use the new name.
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _mediaPlaybackControlsView]):
+        (-[WKWebView _addMediaPlaybackControlsView:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _mediaPlaybackControlsView]):
+        (-[WKView _addMediaPlaybackControlsView:]):
+        * UIProcess/Cocoa/WebViewImpl.h:
+
+        Soft links and allocations cannot use the typedefs.
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::mediaPlaybackControlsView):
+        (WebKit::WebViewImpl::updateMediaTouchBar):
+
+2017-04-12  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Audio source in UI process not identified as capture source
+        https://bugs.webkit.org/show_bug.cgi?id=170776
+
+        Reviewed by Youenn Fablet.
+
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp: Override isCaptureSource.
+
+2017-04-12  Andrew Gold  <agold@apple.com>
+
+        Allow iOS to toggle webRTCAPI legacy flag.
+        https://bugs.webkit.org/show_bug.cgi?id=170735
+
+        Reviewed by Eric Carlson.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _webRTCLegacyAPIEnabled]):
+        (-[WKPreferences _setWebRTCLegacyAPIEnabled:]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for GTK port after r215262
+        https://bugs.webkit.org/show_bug.cgi?id=170758
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::didRead):
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Thread class and use RefPtr<Thread> and align Windows Threading implementation semantics to Pthread one
+        https://bugs.webkit.org/show_bug.cgi?id=170502
+
+        Reviewed by Mark Lam.
+
+        Mechanical change. Use Thread:: APIs.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::initializeNetworkProcess):
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::IOChannel::readSyncInThread):
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::processIncomingMessage):
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.h:
+        (WebKit::XPCServiceInitializer):
+        * UIProcess/linux/MemoryPressureMonitor.cpp:
+        (WebKit::MemoryPressureMonitor::MemoryPressureMonitor):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
 2017-04-10  Antti Koivisto  <antti@apple.com>
 
         Cache small media resources in disk cache

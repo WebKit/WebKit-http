@@ -42,6 +42,7 @@
 #import "WebProcessPool.h"
 #import "WebViewImpl.h"
 #import "_WKLinkIconParametersInternal.h"
+#import <WebCore/AVKitSPI.h>
 #import <wtf/BlockPtr.h>
 
 using namespace WebKit;
@@ -1572,9 +1573,9 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::Scrol
 #endif
 }
 
-- (AVFunctionBarScrubber *)_mediaPlaybackControlsView
+- (id)_mediaPlaybackControlsView
 {
-#if HAVE(TOUCH_BAR)
+#if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     return _data->_impl->clientWantsMediaPlaybackControlsView() ? _data->_impl->mediaPlaybackControlsView() : nil;
 #else
     return nil;
@@ -1582,7 +1583,7 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::Scrol
 }
 
 // This method is for subclasses to override.
-- (void)_addMediaPlaybackControlsView:(AVFunctionBarScrubber *)mediaPlaybackControlsView
+- (void)_addMediaPlaybackControlsView:(id)mediaPlaybackControlsView
 {
 }
 

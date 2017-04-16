@@ -429,8 +429,6 @@ webkit.org/b/137530 canvas/philip/tests/2d.composite.operation.darker.html [ Fai
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.broken.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.outsidesource.html [ Failure ]
-webkit.org/b/137530 canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html [ Failure ]
-webkit.org/b/137530 canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.missingargs.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.path.rect.winding.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.text.draw.baseline.bottom.html [ Failure ]
@@ -2893,8 +2891,6 @@ webkit.org/b/167211 imported/w3c/web-platform-tests/html/browsers/history/the-lo
 
 webkit.org/b/167619 css3/filters/backdrop/dynamic-with-clip-path.html [ ImageOnlyFailure ]
 
-webkit.org/b/168054 compositing/masks/solid-color-masked.html [ ImageOnlyFailure ]
-
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
 
@@ -2935,3 +2931,10 @@ fast/css-generated-content/initial-letter-pagination-raised-rl.html [ Skip ]
 fast/css-generated-content/initial-letter-pagination-sunken-rl.html [ Skip ]
 
 webkit.org/b/158420 http/tests/navigation/redirect-to-fragment2.html [ Failure ]
+
+# These tests are not supported on ios-simulator
+workers/wasm-hashset-many-2.html [ Skip ]
+workers/wasm-hashset-many.html [ Skip ]
+workers/wasm-hashset.html [ Skip ]
+workers/wasm-long-compile-many.html [ Skip ]
+workers/wasm-long-compile.html [ Skip ]

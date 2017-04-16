@@ -1,3 +1,1252 @@
+2017-04-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r215396.
+        https://bugs.webkit.org/show_bug.cgi?id=170828
+
+        * platform/graphics/win/FontPlatformDataWin.cpp:
+        (WebCore::FontPlatformData::openTypeTable):
+
+2017-04-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused SharedBuffer constructor
+        https://bugs.webkit.org/show_bug.cgi?id=170828
+
+        Reviewed by Brady Eidson.
+
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::append):
+        * platform/SharedBuffer.h:
+        (WebCore::SharedBuffer::create):
+        * platform/graphics/freetype/FontPlatformDataFreeType.cpp:
+        (WebCore::FontPlatformData::openTypeTable):
+        * platform/graphics/win/FontPlatformDataWin.cpp:
+        (WebCore::FontPlatformData::openTypeTable):
+
+2017-04-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215393.
+        https://bugs.webkit.org/show_bug.cgi?id=170876
+
+        breaks scrollable iframes on ios (Requested by anttik on
+        #webkit).
+
+        Reverted changeset:
+
+        "GraphicsLayerCA::recursiveCommitChanges should not descend
+        into subtrees without changes"
+        https://bugs.webkit.org/show_bug.cgi?id=170851
+        http://trac.webkit.org/changeset/215393
+
+2017-04-14  Antti Koivisto  <antti@apple.com>
+
+        GraphicsLayerCA::recursiveCommitChanges should not descend into subtrees without changes
+        https://bugs.webkit.org/show_bug.cgi?id=170851
+
+        Reviewed by Simon Fraser.
+
+        With lots of layers this can be very slow as it always traverses the entire layer tree.
+        For example GIF animations on tumblr.com trigger expensive commits where almost nothing changes.
+
+        This patch adds m_hasDescendantsWithUncommittedChanges bit to GraphicsLayerCA. With this
+        we can avoid descending to branches without changes when committing.
+
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::setVisibleAndCoverageRects):
+
+            Do all setting of m_uncommittedChanges bits via addUncommittedChanges function.
+
+        (WebCore::GraphicsLayerCA::recursiveCommitChanges):
+
+            Bail out if neither the current layer nor any of its descendants have any uncommited changes
+            and none of the ancestors had changes.
+
+        (WebCore::GraphicsLayerCA::commitLayerChangesBeforeSublayers):
+        (WebCore::GraphicsLayerCA::ensureStructuralLayer):
+        (WebCore::GraphicsLayerCA::changeLayerTypeTo):
+        (WebCore::GraphicsLayerCA::addUncommittedChanges):
+
+            Set m_hasDescendantsWithUncommittedChanges bit in ancestors when mutating m_uncommittedChanges.
+
+        (WebCore::GraphicsLayerCA::noteLayerPropertyChanged):
+        * platform/graphics/ca/GraphicsLayerCA.h:
+        (WebCore::RenderLayerCompositor::frameViewDidScroll):
+
+            Tell the scrolling layer that it needs to recompute coverage.
+            This also schedules a layer flush so no need to do that separately.
+
+2017-04-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support data interaction of files into file inputs
+        https://bugs.webkit.org/show_bug.cgi?id=170803
+        <rdar://problem/31286130>
+
+        Reviewed by Tim Horton.
+
+        Adds remaining support to allow data interaction of files onto inputs of type file. See per-change annotations
+        for more details. Unit tests to be added in the next patch.
+
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+        * platform/ios/AbstractPasteboard.h:
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::numberOfFiles):
+        * platform/ios/WebItemProviderPasteboard.mm:
+
+        Implements numberOfFiles by counting the number of item providers that may be represented as a file, which
+        includes all item providers that contain at least one content UTI type.
+
+        (-[WebItemProviderPasteboard numberOfFiles]):
+
+        Adds boilerplate plumbing to fetch the number of files available on the pasteboard. On Mac, logic that
+        previously existed in DragData::numberOfFiles to query the number of files available in the pasteboard is now
+        on PlatformPasteboard instead, which both makes the implementation of DragData::numberOfFiles platform-invariant,
+        and also saves us one synchronous IPC call to the UI process in the WebKit2 implementation.
+
+        * platform/mac/DragDataMac.mm:
+        (WebCore::DragData::containsFiles):
+        (WebCore::DragData::numberOfFiles):
+        (WebCore::DragData::asFilenames):
+
+        Add support for recognizing objects in the pasteboard that may be represented by files, and therefore may be
+        uploaded via file input. Following suit with behavior elsewhere on the platform, we consider item providers able
+        to be represented by a file if they contain at least one content UTI type.
+
+        * platform/mac/PlatformPasteboardMac.mm:
+
+        Logic previously in DragData::numberOfFiles to get and then count all file path names in the pasteboard has been
+        moved here instead, and no longer needs to go through the pasteboard proxy.
+
+        (WebCore::PlatformPasteboard::numberOfFiles):
+
+2017-04-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the build after r215389
+
+        Use WebCore::createTemporaryDirectory instead of -_webkit_createTemporaryDirectoryWithTemplatePrefix:.
+
+        * platform/ios/WebItemProviderPasteboard.mm:
+        (temporaryFileURLForDataInteractionContent):
+
+2017-04-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement a way in WebItemProviderPasteboard to perform actions after file loading completes
+        https://bugs.webkit.org/show_bug.cgi?id=170839
+        <rdar://problem/31286130>
+
+        Reviewed by Tim Horton, Andy Estes, and Dan Bernstein.
+
+        Introduces -[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:], which performs an action
+        after all item providers which are able to provide content are done loading their content into temporary file
+        URLs. If no item providers have available data, we will immediately invoke the action with an empty URL array.
+
+        For each item provider with data, we save the local URL returned in the load completion block to a randomly
+        generated path in the container's temporary directory. When all files are finished loading, we then invoke the
+        action with all file URLs that successfully loaded.
+
+        No new tests, since there is no change in behavior.
+
+        * platform/ios/WebItemProviderPasteboard.h:
+        * platform/ios/WebItemProviderPasteboard.mm:
+        (temporaryFileURLForDataInteractionContent):
+        (-[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:]):
+
+2017-04-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: messages with non-latin letters are displayed incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=170760
+
+        Reviewed by Joseph Pecoraro.
+
+        Add payloadLength property, which is used to display size. When payloadLength is unavailable,
+        it is calculated from payloadData by Web Inspector frontend.
+
+        This fixes <webkit.org/b/170609> Web Inspector: WebSockets: Transferred size is incorrect.
+
+        Tests: http/tests/websocket/tests/hybi/inspector/binary.html
+               http/tests/websocket/tests/hybi/inspector/send-and-receive.html
+
+        * inspector/InspectorNetworkAgent.cpp:
+        (WebCore::InspectorNetworkAgent::didReceiveWebSocketFrame):
+        (WebCore::InspectorNetworkAgent::didSendWebSocketFrame):
+
+2017-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Update architectures in xcconfig files.
+        https://bugs.webkit.org/show_bug.cgi?id=170867
+        <rdar://problem/31628104>
+
+        Reviewed by Joseph Pecoraro.
+
+        No new tests needed.  Only updating xcconfig files.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support Icon creation from file URLs on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=170809
+        <rdar://problem/31286130>
+
+        Reviewed by Tim Horton.
+
+        Minor tweaks and refactoring to support displaying a WebCore::Icon from a list of filepaths on iOS. Please see
+        below annotations for more details. No new tests yet, as behavior on Mac should not have changed, and behavior
+        on iOS will not change until later patches land. Tests will be added in a later patch.
+
+        Most of the changes here remove platform special-casing in FileInputType for iOS and Mac, refactoring the code
+        such that it works for both platforms while preserving behavior.
+
+        * html/FileInputType.cpp:
+        (WebCore::FileInputType::~FileInputType):
+        (WebCore::FileInputType::setFiles):
+        (WebCore::FileInputType::filesChosen):
+        * html/FileInputType.h:
+
+        Un-guard m_fileIconLoader on iOS, and un-guard m_displayString for Mac. Consolidate logic in both version of
+        filesChosen and remove the iOS-specific version. Behavior when passing in an empty display string and null Icon
+        will be the same as that of the existing filesChosen method on Mac. Also, introduce a version of setFiles that
+        takes an additional RequestIcon enum that indicates whether or not to additionally use the new filepaths to
+        request an Icon update. filesChosen invokes this with RequestIcon::No if a non-null Icon was specified, as is
+        the case when uploading a file via the image picker on iOS.
+
+        * html/HTMLInputElement.cpp:
+        (WebCore::HTMLInputElement::displayString):
+        * html/HTMLInputElement.h:
+        * html/InputType.cpp:
+        * html/InputType.h:
+        * loader/EmptyClients.h:
+        * page/ChromeClient.h:
+
+        Introduce ChromeClient::createIconForFiles, which generates an icon representing the content at a list of file
+        paths. See WebKit and WebKit2 ChangeLogs for more details.
+
+        * platform/FileChooser.h:
+        (WebCore::FileChooserClient::filesChosen):
+        * rendering/RenderFileUploadControl.cpp:
+        (WebCore::RenderFileUploadControl::fileTextValue):
+
+        Remove platform special-casing when generating the text to display when uploading a file. If a displayString
+        is specified, then we use the contents of the displayString; otherwise, fall back to using the input element's
+        FileList to compute the display string.
+
+2017-04-14  Brady Eidson  <beidson@apple.com>
+
+        Fix basic WKURLSchemeHandler bugs.
+        <rdar://problem/30647559> and https://bugs.webkit.org/show_bug.cgi?id=170862
+
+        Reviewed by Andy Estes.
+
+        Covered by new API tests.
+
+        * loader/SubresourceLoader.cpp:
+        (WebCore::SubresourceLoader::didReceiveDataOrBuffer):
+
+2017-04-14  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Support HKDF
+        https://bugs.webkit.org/show_bug.cgi?id=170636
+        <rdar://problem/23539827>
+
+        Reviewed by Brent Fulgham.
+
+        This patch implements HKDF according to the spec: https://www.w3.org/TR/WebCryptoAPI/#hkdf.
+        Supported operations include deriveKey, deriveBits, importKey and getKeyLength.
+
+        Tests: crypto/subtle/ecdh-import-key-derive-hkdf-key.html
+               crypto/subtle/hkdf-derive-bits-malformed-parametrs.html
+               crypto/subtle/hkdf-import-key-derive-bits.html
+               crypto/subtle/hkdf-import-key-derive-hmac-key.html
+               crypto/subtle/hkdf-import-key-malformed-parameters.html
+               crypto/subtle/hkdf-import-key.html
+               crypto/workers/subtle/hkdf-import-key-derive-bits.html
+               crypto/workers/subtle/hkdf-import-key-derive-hmac-key.html
+               crypto/workers/subtle/hkdf-import-key.html
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/JSCryptoAlgorithmDictionary.cpp:
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForEncrypt):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForDecrypt):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForSign):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForVerify):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForDigest):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForGenerateKey):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForDeriveKey):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForDeriveBits):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForImportKey):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForExportKey):
+        Rename HKDF_CTR to HKDF.
+        * bindings/js/JSSubtleCryptoCustom.cpp:
+        (WebCore::normalizeCryptoAlgorithmParameters):
+        * bindings/js/SerializedScriptValue.cpp:
+        (WebCore::CloneSerializer::write):
+        (WebCore::CloneDeserializer::read):
+        Rename HKDF_CTR to HKDF.
+        * crypto/CommonCryptoUtilities.h:
+        * crypto/CryptoAlgorithmIdentifier.h:
+        * crypto/CryptoAlgorithmParameters.h:
+        * crypto/algorithms/CryptoAlgorithmHKDF.cpp: Added.
+        (WebCore::CryptoAlgorithmHKDF::create):
+        (WebCore::CryptoAlgorithmHKDF::identifier):
+        (WebCore::CryptoAlgorithmHKDF::deriveBits):
+        (WebCore::CryptoAlgorithmHKDF::importKey):
+        (WebCore::CryptoAlgorithmHKDF::getKeyLength):
+        * crypto/algorithms/CryptoAlgorithmHKDF.h: Added.
+        * crypto/gcrypt/CryptoAlgorithmHKDFGCrypt.cpp: Added.
+        (WebCore::CryptoAlgorithmHKDF::platformDeriveBits):
+        * crypto/mac/CryptoAlgorithmHKDFMac.cpp: Added.
+        (WebCore::CryptoAlgorithmHKDF::platformDeriveBits):
+        * crypto/mac/CryptoAlgorithmRegistryMac.cpp:
+        (WebCore::CryptoAlgorithmRegistry::platformRegisterAlgorithms):
+        * crypto/parameters/CryptoAlgorithmHkdfParams.h: Added.
+        * crypto/parameters/HkdfParams.idl: Added.
+
+2017-04-14  Zalan Bujtas  <zalan@apple.com>
+
+        text-align start / end failure in table cells
+        https://bugs.webkit.org/show_bug.cgi?id=141417
+        <rdar://problem/31051672>
+
+        Reviewed by Antti Koivisto.
+
+        Apply "text-align: center" on th elements when parent's computed value for the 'text-align' property
+        is its initial value, unless it is explicitly set.
+
+        Test: fast/table/center-th-when-parent-has-initial-text-align.html
+
+        * css/CSSProperties.json:
+        * css/StyleBuilderCustom.h:
+        (WebCore::StyleBuilderCustom::applyInitialTextAlign):
+        (WebCore::StyleBuilderCustom::applyValueTextAlign):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyle):
+        (WebCore::StyleResolver::applyProperty):
+        * rendering/style/RenderStyle.h:
+        (WebCore::RenderStyle::hasExplicitlySetTextAlign):
+        (WebCore::RenderStyle::setHasExplicitlySetTextAlign):
+        (WebCore::RenderStyle::NonInheritedFlags::hasExplicitlySetTextAlign):
+        (WebCore::RenderStyle::NonInheritedFlags::setHasExplicitlySetTextAlign):
+
+2017-04-14  Andy Estes  <aestes@apple.com>
+
+        [ios-simulator] API test WebKit2.DataDetectionReferenceDate timing out
+        https://bugs.webkit.org/show_bug.cgi?id=161967
+
+        Reviewed by Alexey Proskuryakov.
+
+        DataDetectorsCoreSPI.h defined DDQueryOffset as a struct of two CFIndexes, which is 16 bytes
+        on LP64, but the struct is actually defined as two CFIndex-typed 32-bit bitfields, which is
+        8 bytes on LP64. This breaks the ABI on Public SDK builds when calling functions that take
+        or return DDQueryOffsets.
+
+        * platform/spi/cocoa/DataDetectorsCoreSPI.h: Updated the DDQueryOffset definition for
+        Public SDK builds, and added a static_assert to detect future size changes at compile time.
+
+2017-04-14  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Removed unused and unimplemented methods from MediaPlayer
+        https://bugs.webkit.org/show_bug.cgi?id=170848
+
+        Reviewed by Jer Noble.
+
+        No new tests needed.
+
+        * platform/graphics/MediaPlayer.h:
+
+2017-04-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add performance test for asking the platform for a font for U+2060 WORD JOINER
+        https://bugs.webkit.org/show_bug.cgi?id=170842
+
+        Reviewed by Tim Horton.
+
+        No new tests because there is no behavior change.
+
+        * platform/graphics/WidthCache.h:
+        (WebCore::WidthCache::add):
+        (WebCore::WidthCache::addSlowCase):
+
+2017-04-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215350.
+
+        This change broke the Windows build.
+
+        Reverted changeset:
+
+        "Remove unused SharedBuffer constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=170828
+        http://trac.webkit.org/changeset/215350
+
+2017-04-14  Jer Noble  <jer.noble@apple.com>
+
+        [MediaSource] Push capabilities across process boundary during UIProcess capture.
+        https://bugs.webkit.org/show_bug.cgi?id=170814
+
+        Reviewed by Eric Carlson.
+
+        There's no real reason for RealtimeMediaSourceCapabilities to be RefCounted nor to keep them from
+        being created on the stack. So in addition to making that class coder-compliant, change all the
+        classes that vend capabilities to use a unique_ptr<> instead of a RefPtr<>.
+
+        * Modules/mediastream/CanvasCaptureMediaStreamTrack.h:
+        * Modules/webaudio/MediaStreamAudioSource.cpp:
+        (WebCore::MediaStreamAudioSource::capabilities):
+        * Modules/webaudio/MediaStreamAudioSource.h:
+        * platform/mediastream/MediaEndpoint.cpp:
+        * platform/mediastream/MediaStreamTrackPrivate.cpp:
+        (WebCore::MediaStreamTrackPrivate::capabilities):
+        * platform/mediastream/MediaStreamTrackPrivate.h:
+        * platform/mediastream/RealtimeMediaSource.h:
+        * platform/mediastream/RealtimeMediaSourceCapabilities.h:
+        (WebCore::CapabilityValueOrRange::encode):
+        (WebCore::CapabilityValueOrRange::decode):
+        (WebCore::RealtimeMediaSourceCapabilities::RealtimeMediaSourceCapabilities):
+        (WebCore::RealtimeMediaSourceCapabilities::supportedConstraints):
+        (WebCore::RealtimeMediaSourceCapabilities::setSupportedConstraints):
+        (WebCore::RealtimeMediaSourceCapabilities::encode):
+        (WebCore::RealtimeMediaSourceCapabilities::decode):
+        (WebCore::RealtimeMediaSourceCapabilities::create): Deleted.
+        * platform/mediastream/RealtimeMediaSourceSettings.h:
+        * platform/mediastream/mac/AVMediaCaptureSource.h:
+        * platform/mediastream/mac/AVMediaCaptureSource.mm:
+        (WebCore::AVMediaCaptureSource::initializeCapabilities):
+        (WebCore::AVMediaCaptureSource::capabilities):
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSource::capabilities):
+        * platform/mediastream/mac/CoreAudioCaptureSource.h:
+        * platform/mediastream/mac/RealtimeIncomingAudioSource.cpp:
+        (WebCore::RealtimeIncomingAudioSource::capabilities):
+        * platform/mediastream/mac/RealtimeIncomingAudioSource.h:
+        * platform/mediastream/mac/RealtimeIncomingVideoSource.cpp:
+        (WebCore::RealtimeIncomingVideoSource::capabilities):
+        * platform/mediastream/mac/RealtimeIncomingVideoSource.h:
+        * platform/mock/MockRealtimeMediaSource.cpp:
+        (WebCore::MockRealtimeMediaSource::initializeCapabilities):
+        (WebCore::MockRealtimeMediaSource::capabilities):
+        * platform/mock/MockRealtimeMediaSource.h:
+        * platform/mediastream/openwebrtc/RealtimeMediaSourceOwr.h:
+
+2017-04-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: We should be able to postMessage a JSWebAssemblyModule
+        https://bugs.webkit.org/show_bug.cgi?id=170573
+
+        Reviewed by Filip Pizlo.
+
+        This patch's main purpose is to implement postMessage of JSWebAssemblyModule.
+        The spec text describing the behavior is: https://github.com/WebAssembly/design/blob/master/JS.md#structured-clone-of-a-webassemblymodule
+        We only allow for JSWebAssemblyModule to be serialized in the postMessage
+        context. More work needs to be done to make it valid to store a module in
+        IndexDB.
+        
+        All that is needed to serialize a JSWebAssemblyModule is grab a Ref
+        to its underlying Wasm::Module. So, when doing a postMessage, all we
+        do is grab this Ref, and then re-create the JSWebAssemblyModule from
+        the Wasm::Module in the new VM/global object. Because the code for
+        Wasm::Module is VM-independent, this is all that's needed. This turned
+        out nicely, because it requires little knowledge from WebCore about
+        what it means to clone a JSWebAssemblyModule.
+        
+        
+        The second significant part of this patch is teaching WorkerRunLoop about
+        the various timers inside JSC. Before, the WorkerRunLoop wouldn't always
+        wake up to address JSC timers. I noticed this bug when I was writing
+        tests to make sure that Wasm was running concurrently in different
+        workers. The bug is that the WorkerRunLoop's message queue has no insight
+        into a timer being scheduled. This effected the PromiseDeferredTimer that
+        Wasm uses, as well as the various GC timers that Heap uses. Now, WorkerRunLoop
+        will set itself up to be notified when timers are set. When a timer is
+        set, the WorkerRunLoop will perform an iteration to to reset its top
+        level MessageQueue timeout to be no longer than the next timer fire date.
+
+        Tests: storage/indexeddb/wasm-exceptions.html
+               workers/wasm-hashset-many.html
+               workers/wasm-hashset.html
+               workers/wasm-long-compile-many.html
+               workers/wasm-long-compile.html
+
+        * ForwardingHeaders/heap/GCActivityCallback.h: Added.
+        * ForwardingHeaders/runtime/JSRunLoopTimer.h: Added.
+        * ForwardingHeaders/runtime/PromiseDeferredTimer.h: Added.
+        * ForwardingHeaders/wasm: Added.
+        * ForwardingHeaders/wasm/js: Added.
+        * ForwardingHeaders/wasm/js/JSWebAssemblyModule.h: Added.
+        * bindings/js/SerializedScriptValue.cpp:
+        (WebCore::CloneSerializer::serialize):
+        (WebCore::CloneSerializer::CloneSerializer):
+        (WebCore::CloneSerializer::dumpIfTerminal):
+        (WebCore::CloneDeserializer::deserialize):
+        (WebCore::CloneDeserializer::CloneDeserializer):
+        (WebCore::CloneDeserializer::readTerminal):
+        (WebCore::SerializedScriptValue::SerializedScriptValue):
+        (WebCore::SerializedScriptValue::create):
+        (WebCore::SerializedScriptValue::deserialize):
+        * bindings/js/SerializedScriptValue.h:
+        * bindings/js/WorkerScriptController.cpp:
+        (WebCore::WorkerScriptController::addTimerSetNotification):
+        (WebCore::WorkerScriptController::removeTimerSetNotification):
+        * bindings/js/WorkerScriptController.h:
+        * workers/WorkerRunLoop.cpp:
+        (WebCore::WorkerRunLoop::runInMode):
+
+2017-04-13  Dean Jackson  <dino@apple.com>
+
+        Large negative animation-delays may not work depending on machine uptime
+        https://bugs.webkit.org/show_bug.cgi?id=166962
+        <rdar://problem/30091526>
+
+        Reviewed by Tim Horton.
+
+        If you set a really negative animation delay, it would cause
+        AnimationBase::m_startTime to become negative, because the delay
+        value was "bigger" than monotonicallyIncreasingTime.
+
+        However, the state machine was using -1 to mean that the start time
+        hadn't yet been set. Classic cmarrin!
+
+        Replace all the special values with std::optional, and use nullopt
+        to mean the value doesn't exist yet.
+
+        Test: animations/large-negative-delay.html
+
+        * page/animation/AnimationBase.cpp:
+        (WebCore::AnimationBase::updateStateMachine):
+        (WebCore::AnimationBase::fireAnimationEventsIfNeeded):
+        (WebCore::AnimationBase::getTimeToNextEvent):
+        (WebCore::AnimationBase::freezeAtTime):
+        (WebCore::AnimationBase::getElapsedTime):
+        * page/animation/AnimationBase.h: Use std::optional.
+        (WebCore::AnimationBase::paused):
+
+2017-04-13  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused SharedBuffer constructor
+        https://bugs.webkit.org/show_bug.cgi?id=170828
+
+        Reviewed by Brady Eidson.
+
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::append):
+        * platform/SharedBuffer.h:
+        (WebCore::SharedBuffer::create):
+
+2017-04-13  Antti Koivisto  <antti@apple.com>
+
+        Don't invalidate composition for style changes in non-composited layers
+        https://bugs.webkit.org/show_bug.cgi?id=170805
+        <rdar://problem/31606185>
+
+        Reviewed by Simon Fraser.
+
+        Test: compositing/updates/animation-non-composited.html
+
+        In most cases they can't affect composition. Composition updates are expensive, this can
+        save a lot of work (tumblr.com animations hit this at the moment).
+
+        * rendering/RenderElement.h:
+        (WebCore::RenderElement::createsGroup):
+        (WebCore::RenderElement::createsGroupForStyle):
+
+            Factor to a static function so we can test style directly.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::layerStyleChanged):
+        (WebCore::RenderLayerCompositor::styleChangeMayAffectIndirectCompositingReasons):
+
+            Test if style change might cause compositing change that can't be determined without compositing update.
+
+        * rendering/RenderLayerCompositor.h:
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: manage memory better
+        https://bugs.webkit.org/show_bug.cgi?id=170628
+
+        Reviewed by Keith Miller, Michael Saboff.
+
+        Re-use a VM tag which was intended for JavaScript core, was then
+        used by our GC, and is now unused. If I don't do this then
+        WebAssembly fast memories will make vmmap look super weird because
+        it'll look like multi-gigabyte of virtual memory are allocated as
+        part of our process' regular memory!
+
+        Separately I need to update vmmap and other tools to print the
+        right name. Right now this tag gets identified as "JS garbage
+        collector".
+
+        * page/ResourceUsageData.cpp:
+        (WebCore::ResourceUsageData::ResourceUsageData):
+        * page/ResourceUsageData.h:
+        * page/cocoa/ResourceUsageOverlayCocoa.mm:
+        (WebCore::HistoricResourceUsageData::HistoricResourceUsageData):
+        * page/cocoa/ResourceUsageThreadCocoa.mm:
+        (WebCore::displayNameForVMTag):
+        (WebCore::categoryForVMTag):
+
+2017-04-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update the comments for the number of bits in RenderStyle::InheritedFlags.
+
+        Rubber-stamped by Zalan Bujtas
+
+        * rendering/style/RenderStyle.h:
+
+2017-04-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comment after r215314.
+        https://bugs.webkit.org/show_bug.cgi?id=169015
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::FontDatabase::fontForPostScriptName):
+
+2017-04-13  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Add support for extended attributes on types in WebIDL
+        https://bugs.webkit.org/show_bug.cgi?id=170759
+
+        Reviewed by Alex Christensen.
+
+        - Update parsing for WebIDL grammar changes.
+        - Adds an extended attributes hash to IDLType that is filled according
+          to the WebIDL annotated type rules.
+        - Updates code generation to take advantage of IDLType's extended attribute
+          simplifying some existing code.
+        - Update IDLs in the project to adhere to the new grammar.
+          
+        * Modules/indexeddb/IDBFactory.idl:
+        * Modules/indexeddb/IDBIndex.idl:
+        * Modules/indexeddb/IDBKeyRange.idl:
+        * Modules/indexeddb/IDBObjectStore.idl:
+        * Modules/websockets/WebSocket.idl:
+        * crypto/parameters/AesCtrParams.idl:
+        * crypto/parameters/AesKeyParams.idl:
+        * crypto/parameters/Pbkdf2Params.idl:
+        * crypto/parameters/RsaKeyGenParams.idl:
+        * testing/TypeConversions.idl:
+        Update for grammar change.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateDefaultValue):
+        (GetBaseIDLType):
+        (GetIDLType):
+        (GetIntegerConversionConfiguration):
+        (GetStringConversionConfiguration):
+        (JSValueToNative):
+        (UnsafeToNative):
+        (NativeToJSValueDOMConvertNeedsState):
+        (NativeToJSValueDOMConvertNeedsGlobalObject):
+        (NativeToJSValue):
+        Remove the need for the type's context in many places since type
+        associated extended attributes are now on the type itself.
+
+        * bindings/scripts/IDLParser.pm:
+        (copyExtendedAttributes):
+        Move up so it can be reused.
+
+        (isExtendedAttributeApplicableToTypes):
+        Add temporary predicated to indicate which attributes should be moved to types. This
+        logic should be moved to IDLAttributes.txt.
+
+        (moveExtendedAttributesApplicableToTypes):
+        Add helper to move attributes to the type's extended attributes hash if applicable.
+
+        (makeSimpleType):
+        Use initializer syntax to simplify.
+
+        (cloneType):
+        Support cloning types with extended attributes.
+
+        (typeByApplyingTypedefs):
+        When constructing the clone for a typedef application, move any applicable attributes
+        to the clone from the original type.
+
+        (parseDictionaryMember):
+        (parseTypedef):
+        (parseAttributeOrOperationRest):
+        (parseAttributeRest):
+        (parseOperationOrIterator):
+        (parseSpecialOperation):
+        (parseOptionalIterableInterface):
+        (parseMapLikeProperties):
+        (parseOptionalOrRequiredArgument):
+        (parseType):
+        (parseTypeWithExtendedAttributes):
+        (parseUnionMemberType):
+        (parseNonAnyType):
+        Update for new grammar, moving applicable attributes eagerly.
+
+        (assertNoExtendedAttributesInTypedef): Deleted.
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        (WebCore::jsTestObjPrototypeFunctionClassMethodWithClampOnOptional):
+        (WebCore::jsTestObjPrototypeFunctionClassMethodWithClampOnOptionalCaller):
+        (WebCore::jsTestObjPrototypeFunctionClassMethodWithEnforceRangeOnOptional):
+        (WebCore::jsTestObjPrototypeFunctionClassMethodWithEnforceRangeOnOptionalCaller):
+        * bindings/scripts/test/JS/JSTestTypedefs.cpp:
+        (WebCore::jsTestTypedefsAttributeWithClamp):
+        (WebCore::jsTestTypedefsAttributeWithClampGetter):
+        (WebCore::jsTestTypedefsAttributeWithClampInTypedef):
+        (WebCore::jsTestTypedefsAttributeWithClampInTypedefGetter):
+        (WebCore::setJSTestTypedefsAttributeWithClamp):
+        (WebCore::setJSTestTypedefsAttributeWithClampFunction):
+        (WebCore::setJSTestTypedefsAttributeWithClampInTypedef):
+        (WebCore::setJSTestTypedefsAttributeWithClampInTypedefFunction):
+        (WebCore::jsTestTypedefsPrototypeFunctionFuncWithClampInTypedef):
+        (WebCore::jsTestTypedefsPrototypeFunctionFuncWithClampInTypedefCaller):
+        * bindings/scripts/test/TestObj.idl:
+        * bindings/scripts/test/TestTypedefs.idl:
+        Update for new grammar. Add some new tests for uncovered cases.
+
+2017-04-13  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=170815
+
+        Reviewed by Beth Dakin.
+
+        * platform/spi/cocoa/AVKitSPI.h:
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        cmake build fix
+
+        Unreviewed build fix. A file was removed but left in the cmake
+        build.
+
+        * PlatformMac.cmake:
+
+2017-04-13  Youenn Fablet  <youenn@apple.com>
+
+        Remove RTCSignalingState::Closed
+        https://bugs.webkit.org/show_bug.cgi?id=170811
+
+        Reviewed by Eric Carlson.
+
+        Covered by existing and rebased tests.
+
+        Adding RTCPeerConnection::isClosed to better match the isClosed internal slot in webrtc specification.
+        Using isClosed instead of checking signalingState value.
+        Implementing isClosed in terms of m_connectionState which has a Closed value.
+
+        * Modules/mediastream/MediaEndpointPeerConnection.cpp:
+        (WebCore::MediaEndpointPeerConnection::setLocalDescriptionTask):
+        (WebCore::MediaEndpointPeerConnection::replaceTrackTask):
+        * Modules/mediastream/PeerConnectionBackend.cpp:
+        (WebCore::PeerConnectionBackend::createOffer):
+        (WebCore::PeerConnectionBackend::createOfferSucceeded):
+        (WebCore::PeerConnectionBackend::createOfferFailed):
+        (WebCore::PeerConnectionBackend::createAnswer):
+        (WebCore::PeerConnectionBackend::createAnswerSucceeded):
+        (WebCore::PeerConnectionBackend::createAnswerFailed):
+        (WebCore::PeerConnectionBackend::setLocalDescription):
+        (WebCore::PeerConnectionBackend::setLocalDescriptionSucceeded):
+        (WebCore::PeerConnectionBackend::setLocalDescriptionFailed):
+        (WebCore::PeerConnectionBackend::setRemoteDescription):
+        (WebCore::PeerConnectionBackend::setRemoteDescriptionSucceeded):
+        (WebCore::PeerConnectionBackend::setRemoteDescriptionFailed):
+        (WebCore::PeerConnectionBackend::addIceCandidate):
+        (WebCore::PeerConnectionBackend::addIceCandidateSucceeded):
+        (WebCore::PeerConnectionBackend::addIceCandidateFailed):
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        (WebCore::RTCPeerConnection::create):
+        (WebCore::RTCPeerConnection::RTCPeerConnection):
+        (WebCore::RTCPeerConnection::addTrack):
+        (WebCore::RTCPeerConnection::removeTrack):
+        (WebCore::RTCPeerConnection::queuedCreateOffer):
+        (WebCore::RTCPeerConnection::queuedCreateAnswer):
+        (WebCore::RTCPeerConnection::queuedSetLocalDescription):
+        (WebCore::RTCPeerConnection::queuedSetRemoteDescription):
+        (WebCore::RTCPeerConnection::queuedAddIceCandidate):
+        (WebCore::RTCPeerConnection::setConfiguration):
+        (WebCore::RTCPeerConnection::createDataChannel):
+        (WebCore::RTCPeerConnection::doClose):
+        (WebCore::RTCPeerConnection::updateIceGatheringState):
+        (WebCore::RTCPeerConnection::updateIceConnectionState):
+        (WebCore::RTCPeerConnection::scheduleNegotiationNeededEvent):
+        * Modules/mediastream/RTCPeerConnection.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::signalingState):
+        * platform/mediastream/RTCSignalingState.h:
+
+2017-04-13  Zalan Bujtas  <zalan@apple.com>
+
+        BreakingContext::WordTrailingSpace cleanup.
+        https://bugs.webkit.org/show_bug.cgi?id=170750
+
+        Reviewed by Myles C. Maxfield.
+
+        No change in functionality.
+
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::computePreferredLogicalWidths):
+        * rendering/line/BreakingContext.h:
+        (WebCore::WordTrailingSpace::WordTrailingSpace):
+        (WebCore::WordTrailingSpace::width):
+        (WebCore::BreakingContext::handleText):
+
+2017-04-13  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement cloneArrayBuffer in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=170008
+
+        Reviewed by Youenn Fablet.
+
+        Implemented cloneArrayBuffer based on existing structuredCloneArrayBuffer
+        implementation. The code has been factorized so that both cloneArrayBuffer
+        and structuredCloneArrayBuffer rely on the same code (which is basically
+        the previous implementation of structuredCloneArrayBuffer + the ability
+        to clone only a part of considered buffer).
+
+        Test: streams/clone-array-buffer.html
+
+        * Modules/streams/ReadableByteStreamInternals.js: Deleted cloneArrayBuffer JS implementation.
+        * bindings/js/JSDOMGlobalObject.cpp:
+        (WebCore::JSDOMGlobalObject::addBuiltinGlobals): Add cloneArrayBuffer private declaration.
+        * bindings/js/StructuredClone.cpp:
+        (WebCore::cloneArrayBufferImpl): Added (mostly based on previous structuredCloneArrayBuffer).
+        (WebCore::cloneArrayBuffer): Added.
+        (WebCore::structuredCloneArrayBuffer): Updated.
+        * bindings/js/StructuredClone.h: Added cloneArrayBuffer declaration.
+        * bindings/js/WebCoreBuiltinNames.h: Added cloneArrayBuffer declaration.
+        * testing/Internals.cpp: Added support for testing cloneArrayBuffer.
+        * testing/Internals.h: Added support for testing cloneArrayBuffer.
+        * testing/Internals.idl: Added support for testing cloneArrayBuffer.
+
+2017-04-13  Youenn Fablet  <youenn@apple.com>
+
+        onnegotiationneeded should only be called once
+        https://bugs.webkit.org/show_bug.cgi?id=170785
+
+        Reviewed by Alex Christensen.
+
+        Covered by updated test.
+
+        Disabling explicit call to markAsNeedingNegotiation in case libwebrtc is used as libwebrtc is calling it.
+        Making sure removeTrack gets notified up to libwebrtc.
+
+        * Modules/mediastream/PeerConnectionBackend.h:
+        (WebCore::PeerConnectionBackend::notifyRemovedTrack):
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        (WebCore::RTCPeerConnection::addTrack):
+        (WebCore::RTCPeerConnection::removeTrack):
+        (WebCore::RTCPeerConnection::completeAddTransceiver):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::removeTrack):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::notifyRemovedTrack):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.h:
+
+2017-04-13  Dave Hyatt  <hyatt@apple.com>
+
+        Rendering flexbox children across columns
+        https://bugs.webkit.org/show_bug.cgi?id=164166
+        <rdar://problem/29055587>
+
+        Reviewed by Zalan Bujtas.
+
+        Added fast/multicol/flexbox-rows.html
+
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::adjustForUnsplittableChild):
+
+2017-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up SharedBuffer public functions
+        https://bugs.webkit.org/show_bug.cgi?id=170795
+
+        Reviewed by Andreas Kling.
+
+        Make some member functions that are now only used internally private.
+
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::append):
+        (WebCore::SharedBuffer::platformDataSize): Deleted.
+        * platform/SharedBuffer.h:
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2017-04-12  Brady Eidson  <beidson@apple.com>
+
+        QuotaExceededError when saving to localStorage in private mode.
+        https://bugs.webkit.org/show_bug.cgi?id=157010
+
+        Reviewed by Alex Christensen.
+
+        No new tests (Covered by changes to existing test).
+        
+        LocalStorage in private browsing is now effectively SessionStorage.
+        It's ephemeral, per-tab, and copied over to tabs window.open()'ed from the current.
+
+        * loader/EmptyClients.cpp:
+        (WebCore::EmptyStorageNamespaceProvider::createEphemeralLocalStorageNamespace):
+
+        * page/Chrome.cpp:
+        (WebCore::Chrome::createWindow):
+
+        * page/Page.cpp:
+        (WebCore::Page::ephemeralLocalStorage):
+        (WebCore::Page::setEphemeralLocalStorage):
+        * page/Page.h:
+
+        * page/SecurityOriginData.h:
+
+        * storage/Storage.cpp:
+        (WebCore::Storage::length):
+        (WebCore::Storage::key):
+        (WebCore::Storage::getItem):
+        (WebCore::Storage::setItem):
+        (WebCore::Storage::removeItem):
+        (WebCore::Storage::clear):
+        (WebCore::Storage::contains):
+        (WebCore::Storage::isDisabledByPrivateBrowsing): Deleted.
+
+        * storage/StorageMap.h:
+
+        * storage/StorageNamespaceProvider.cpp:
+        (WebCore::StorageNamespaceProvider::localStorageArea):
+        * storage/StorageNamespaceProvider.h:
+
+        * storage/StorageType.h:
+        (WebCore::isLocalStorage):
+        (WebCore::isPersistentLocalStorage):
+
+2017-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Suppress font download dialog in new matching algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=169015
+
+        Reviewed by Alexey Proskuryakov.
+
+        Not testable.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::FontDatabase::lookupPostScriptName):
+
+2017-04-12  Eric Carlson  <eric.carlson@apple.com>
+
+        REGRESSION (r215242-215243): [ios-simulator] API test WebKit1.AudioSessionCategoryIOS is failing
+        https://bugs.webkit.org/show_bug.cgi?id=170777
+        <rdar://problem/31592877>
+
+        Reviewed by Jer Noble.
+
+        No new tests, fixes an existing test.
+
+        * platform/audio/cocoa/MediaSessionManagerCocoa.cpp:
+        (PlatformMediaSessionManager::updateSessionState): Pass parameters to lambda by reference.
+
+2017-04-12  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Set correct audio session category when capturing audio
+        https://bugs.webkit.org/show_bug.cgi?id=170736
+        <rdar://problem/31559405>
+
+        Unreviewed, update an assertion I missed in r215242.
+
+        * platform/audio/PlatformMediaSession.cpp:
+        (WebCore::PlatformMediaSession::PlatformMediaSession):
+
+2017-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused SharedBuffer::wrapCFDataArray
+        https://bugs.webkit.org/show_bug.cgi?id=170794
+
+        Reviewed by Brady Eidson.
+
+        It's unused since r215280.
+
+        * platform/SharedBuffer.h:
+        * platform/cf/SharedBufferCF.cpp:
+        (WebCore::SharedBuffer::wrapCFDataArray): Deleted.
+
+2017-04-12  Anders Carlsson  <andersca@apple.com>
+
+        Tweak WebCore::setMetadataURL function
+        https://bugs.webkit.org/show_bug.cgi?id=170786
+
+        Reviewed by Beth Dakin.
+
+        Get rid of the "referrer" parameter, it isn't used. Make the remaining parameters const. Swap the
+        urlString and path parameters since that makes more sense. Use String instead of NSString in the call to WKSetMetadataURL.
+
+        * platform/FileSystem.cpp:
+        (WebCore::setMetadataURL): Deleted.
+        * platform/FileSystem.h:
+        * platform/mac/FileSystemMac.mm:
+        (WebCore::setMetadataURL):
+
+2017-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Well-known variations should clamp to the values listed in the @font-face block
+        https://bugs.webkit.org/show_bug.cgi?id=169260
+
+        Reviewed by Dean Jackson.
+
+        Most of this patch is plumbing the variation ranges from the CSSFontFace object
+        to preparePlatformFont() where variation values get applied.
+
+        Beyond that, there is one other piece of this patch - a nonspecified value in an
+        @font-face block shouldn't perform any clamping, but a specified value should be
+        clamped. This means that we need to retain whether or not a value is specified.
+        This patch does this by migrating CSSFontFace from using FontSelectionCapabilities
+        to using FontSelectionSpecifiedCapabilities, which has its internals behind
+        std::optionals which represent whether or not the value was specified. For the
+        purposes of font selection, these unspecified values are replaced with default
+        values.
+
+        Test: fast/text/variations/font-face-clamp.html
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::font):
+        * css/CSSFontFace.h:
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::font):
+        * css/CSSFontFaceSource.h:
+        * css/CSSFontSelector.cpp:
+        (WebCore::CSSFontSelector::addFontFaceRule):
+        * loader/cache/CachedFont.cpp:
+        (WebCore::CachedFont::createFont):
+        (WebCore::CachedFont::platformDataFromCustomData):
+        * loader/cache/CachedFont.h:
+        * loader/cache/CachedSVGFont.cpp:
+        (WebCore::CachedSVGFont::createFont):
+        (WebCore::CachedSVGFont::platformDataFromCustomData):
+        * loader/cache/CachedSVGFont.h:
+        * platform/graphics/FontCache.cpp:
+        (WebCore::FontPlatformDataCacheKey::FontPlatformDataCacheKey):
+        (WebCore::FontPlatformDataCacheKey::operator==):
+        (WebCore::FontPlatformDataCacheKeyHash::hash):
+        (WebCore::FontCache::getCachedFontPlatformData):
+        (WebCore::FontCache::fontForFamily):
+        * platform/graphics/FontCache.h:
+        (WebCore::FontCache::fontForFamily):
+        (WebCore::FontCache::getCachedFontPlatformData):
+        (WebCore::FontCache::createFontPlatformDataForTesting):
+        * platform/graphics/FontSelectionAlgorithm.h:
+        (WebCore::FontSelectionRange::uniqueValue):
+        (WebCore::FontSelectionCapabilities::operator==):
+        (WebCore::FontSelectionCapabilities::operator!=):
+        (WebCore::FontSelectionSpecifiedCapabilities::computeFontSelectionCapabilities):
+        (WebCore::FontSelectionSpecifiedCapabilities::operator==):
+        (WebCore::FontSelectionSpecifiedCapabilities::operator!=):
+        (WebCore::FontSelectionSpecifiedCapabilities::operator=):
+        (WebCore::FontSelectionSpecifiedCapabilities::computeWeight):
+        (WebCore::FontSelectionSpecifiedCapabilities::computeWidth):
+        (WebCore::FontSelectionSpecifiedCapabilities::computeSlope):
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::preparePlatformFont):
+        (WebCore::fontWithFamily):
+        (WebCore::FontCache::createFontPlatformData):
+        (WebCore::FontCache::systemFallbackForCharacters):
+        * platform/graphics/mac/FontCacheMac.mm:
+        (WebCore::FontCache::lastResortFallbackFont):
+        * platform/graphics/mac/FontCustomPlatformData.cpp:
+        (WebCore::FontCustomPlatformData::fontPlatformData):
+        * platform/graphics/mac/FontCustomPlatformData.h:
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        Speculative open source build fix.
+
+        * platform/spi/cocoa/AVKitSPI.h:
+
+2017-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using didReceiveDataArray callback on El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=170780
+
+        Reviewed by Brady Eidson.
+
+        didReceiveDataArray was an optimization that improved performance on iOS but is not needed any more.
+        The only platform where this is used is El Capitan, and didReceiveData works fine on that platform.
+        I've left some cleanup still to be done in SharedBuffer, and doing that is the motivation for this change.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * loader/ResourceLoader.h:
+        * loader/SubresourceLoader.h:
+        * loader/cf/SubresourceLoaderCF.cpp: Removed.
+        * loader/mac/ResourceLoaderMac.mm:
+        (WebCore::ResourceLoader::didReceiveDataArray): Deleted.
+        * platform/network/ResourceHandleClient.h:
+        (WebCore::ResourceHandleClient::supportsDataArray): Deleted.
+        (WebCore::ResourceHandleClient::didReceiveDataArray): Deleted.
+        * platform/network/cf/ResourceHandleCFURLConnectionDelegate.cpp:
+        (WebCore::ResourceHandleCFURLConnectionDelegate::makeConnectionClient):
+        (WebCore::ResourceHandleCFURLConnectionDelegate::didReceiveDataArrayCallback): Deleted.
+        * platform/network/cf/ResourceHandleCFURLConnectionDelegate.h:
+        * platform/network/cf/ResourceHandleCFURLConnectionDelegateWithOperationQueue.cpp:
+        (WebCore::ResourceHandleCFURLConnectionDelegateWithOperationQueue::didReceiveDataArray): Deleted.
+        * platform/network/cf/ResourceHandleCFURLConnectionDelegateWithOperationQueue.h:
+        * platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp:
+        (WebCore::SynchronousResourceHandleCFURLConnectionDelegate::didReceiveDataArray): Deleted.
+        * platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.h:
+        * platform/network/mac/WebCoreResourceHandleAsDelegate.mm:
+        (-[WebCoreResourceHandleAsDelegate connection:didReceiveDataArray:]): Deleted.
+        * platform/network/mac/WebCoreResourceHandleAsOperationQueueDelegate.mm:
+        (-[WebCoreResourceHandleAsOperationQueueDelegate connection:didReceiveDataArray:]): Deleted.
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        Attempted build fix.
+
+        * platform/spi/cocoa/AVKitSPI.h:
+
+2017-04-12  Beth Dakin  <bdakin@apple.com>
+
+        Adopt AVKit name change from AVFunctionBar* to AVTouchBar*
+        https://bugs.webkit.org/show_bug.cgi?id=170693
+        -and corresponding-
+        rdar://problem/31230018
+
+        Reviewed by San Weinig.
+
+        Since the new names only apply to some versions of macOS, this patch uses typedefs 
+        for the older OS’s. SO:
+
+        AVFunctionBarScrubber is now AVTouchBarScrubber
+
+        AVFunctionBarPlaybackControlsProvider is now AVTouchBarPlaybackControlsProvider
+
+        AVFunctionBarMediaSelectionOption is now AVTouchBarMediaSelectionOption
+
+        And the protocol AVFunctionBarPlaybackControlsControlling is now 
+        AVTouchBarPlaybackControlsControlling
+
+        * platform/mac/WebPlaybackControlsManager.h:
+        * platform/mac/WebPlaybackControlsManager.mm:
+        (-[WebPlaybackControlsManager audioFunctionBarMediaSelectionOptions]):
+        (-[WebPlaybackControlsManager setAudioFunctionBarMediaSelectionOptions:]):
+        (-[WebPlaybackControlsManager currentAudioFunctionBarMediaSelectionOption]):
+        (-[WebPlaybackControlsManager setCurrentAudioFunctionBarMediaSelectionOption:]):
+        (-[WebPlaybackControlsManager legibleFunctionBarMediaSelectionOptions]):
+        (-[WebPlaybackControlsManager setLegibleFunctionBarMediaSelectionOptions:]):
+        (-[WebPlaybackControlsManager currentLegibleFunctionBarMediaSelectionOption]):
+        (-[WebPlaybackControlsManager setCurrentLegibleFunctionBarMediaSelectionOption:]):
+        (mediaSelectionOptions):
+
+        Here is where the typedefs and #define are declared.
+        * platform/spi/cocoa/AVKitSPI.h:
+
+2017-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Fix WinCairo build after r215265
+        https://bugs.webkit.org/show_bug.cgi?id=170502
+
+        m_threadId was removed in the header but not in the constructor implementation.
+        Initializer lists are our friends.
+
+        * platform/network/curl/CurlDownload.cpp:
+        (WebCore::CurlDownloadManager::CurlDownloadManager):
+        (WebCore::CurlDownload::CurlDownload): Deleted.
+        * platform/network/curl/CurlDownload.h:
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for Win and GTK
+        https://bugs.webkit.org/show_bug.cgi?id=170758
+
+        * platform/posix/SharedBufferPOSIX.cpp:
+        (WebCore::SharedBuffer::createFromReadingFile):
+        * platform/win/SharedBufferWin.cpp:
+        (WebCore::SharedBuffer::createFromReadingFile):
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Thread class and use RefPtr<Thread> and align Windows Threading implementation semantics to Pthread one
+        https://bugs.webkit.org/show_bug.cgi?id=170502
+
+        Reviewed by Mark Lam.
+
+        Mechanical change. Use Thread:: APIs.
+
+        * Modules/indexeddb/server/IDBServer.cpp:
+        (WebCore::IDBServer::IDBServer::IDBServer):
+        * Modules/indexeddb/server/IDBServer.h:
+        * Modules/webaudio/AsyncAudioDecoder.cpp:
+        (WebCore::AsyncAudioDecoder::AsyncAudioDecoder):
+        (WebCore::AsyncAudioDecoder::~AsyncAudioDecoder):
+        (WebCore::AsyncAudioDecoder::runLoop):
+        * Modules/webaudio/AsyncAudioDecoder.h:
+        * Modules/webaudio/OfflineAudioDestinationNode.cpp:
+        (WebCore::OfflineAudioDestinationNode::OfflineAudioDestinationNode):
+        (WebCore::OfflineAudioDestinationNode::uninitialize):
+        (WebCore::OfflineAudioDestinationNode::startRendering):
+        * Modules/webaudio/OfflineAudioDestinationNode.h:
+        * Modules/webdatabase/Database.cpp:
+        (WebCore::Database::securityOrigin):
+        * Modules/webdatabase/DatabaseThread.cpp:
+        (WebCore::DatabaseThread::start):
+        (WebCore::DatabaseThread::databaseThread):
+        (WebCore::DatabaseThread::recordDatabaseOpen):
+        (WebCore::DatabaseThread::recordDatabaseClosed):
+        * Modules/webdatabase/DatabaseThread.h:
+        (WebCore::DatabaseThread::getThreadID):
+        * bindings/js/GCController.cpp:
+        (WebCore::GCController::garbageCollectOnAlternateThreadForDebugging):
+        * fileapi/AsyncFileStream.cpp:
+        (WebCore::callOnFileThread):
+        * loader/icon/IconDatabase.cpp:
+        (WebCore::IconDatabase::open):
+        (WebCore::IconDatabase::close):
+        * loader/icon/IconDatabase.h:
+        * page/ResourceUsageThread.cpp:
+        (WebCore::ResourceUsageThread::createThreadIfNeeded):
+        * page/ResourceUsageThread.h:
+        * page/scrolling/ScrollingThread.cpp:
+        (WebCore::ScrollingThread::ScrollingThread):
+        (WebCore::ScrollingThread::isCurrentThread):
+        (WebCore::ScrollingThread::createThreadIfNeeded):
+        (WebCore::ScrollingThread::threadCallback):
+        * page/scrolling/ScrollingThread.h:
+        * platform/audio/HRTFDatabaseLoader.cpp:
+        (WebCore::HRTFDatabaseLoader::HRTFDatabaseLoader):
+        (WebCore::HRTFDatabaseLoader::loadAsynchronously):
+        (WebCore::HRTFDatabaseLoader::waitForLoaderThreadCompletion):
+        * platform/audio/HRTFDatabaseLoader.h:
+        * platform/audio/ReverbConvolver.cpp:
+        (WebCore::ReverbConvolver::ReverbConvolver):
+        (WebCore::ReverbConvolver::~ReverbConvolver):
+        * platform/audio/ReverbConvolver.h:
+        * platform/audio/gstreamer/AudioFileReaderGStreamer.cpp:
+        (WebCore::createBusFromAudioFile):
+        (WebCore::createBusFromInMemoryAudioFile):
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (ResourceHandleStreamingClient::ResourceHandleStreamingClient):
+        (ResourceHandleStreamingClient::~ResourceHandleStreamingClient):
+        * platform/network/cf/LoaderRunLoopCF.cpp:
+        (WebCore::loaderRunLoop):
+        * platform/network/curl/CurlDownload.cpp:
+        (WebCore::CurlDownloadManager::startThreadIfNeeded):
+        (WebCore::CurlDownloadManager::stopThread):
+        * platform/network/curl/CurlDownload.h:
+        * platform/network/curl/SocketStreamHandleImpl.h:
+        * platform/network/curl/SocketStreamHandleImplCurl.cpp:
+        (WebCore::SocketStreamHandleImpl::startThread):
+        (WebCore::SocketStreamHandleImpl::stopThread):
+        * workers/WorkerThread.cpp:
+        (WebCore::WorkerThread::WorkerThread):
+        (WebCore::WorkerThread::start):
+        (WebCore::WorkerThread::workerThread):
+        * workers/WorkerThread.h:
+        (WebCore::WorkerThread::threadID):
+
 2017-04-10  Antti Koivisto  <antti@apple.com>
 
         Cache small media resources in disk cache

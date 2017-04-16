@@ -66,12 +66,6 @@ SharedBuffer::SharedBuffer()
 {
 }
 
-SharedBuffer::SharedBuffer(unsigned size)
-    : m_size(size)
-    , m_buffer(adoptRef(*new DataBuffer))
-{
-}
-
 SharedBuffer::SharedBuffer(const char* data, unsigned size)
     : m_buffer(adoptRef(*new DataBuffer))
 {
@@ -231,8 +225,10 @@ void SharedBuffer::append(const char* data, unsigned length)
 #endif
 }
 
-void SharedBuffer::append(const Vector<char>& data)
+void SharedBuffer::append(Vector<char>&& data)
 {
+    // This takes its argument as a rvalue reference because we intend to have a future
+    // version take ownership of the vector rather than copying.
     append(data.data(), data.size());
 }
 
@@ -414,13 +410,6 @@ inline const char* SharedBuffer::platformData() const
     ASSERT_NOT_REACHED();
 
     return nullptr;
-}
-
-inline unsigned SharedBuffer::platformDataSize() const
-{
-    ASSERT_NOT_REACHED();
-    
-    return 0;
 }
 
 inline bool SharedBuffer::maybeAppendPlatformData(SharedBuffer&)

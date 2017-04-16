@@ -52,7 +52,6 @@ namespace WebCore {
 class SharedBuffer : public RefCounted<SharedBuffer> {
 public:
     static Ref<SharedBuffer> create() { return adoptRef(*new SharedBuffer); }
-    static Ref<SharedBuffer> create(unsigned size) { return adoptRef(*new SharedBuffer(size)); }
     static Ref<SharedBuffer> create(const char* c, unsigned i) { return adoptRef(*new SharedBuffer(c, i)); }
     static Ref<SharedBuffer> create(const unsigned char* data, unsigned size) { return adoptRef(*new SharedBuffer(data, size)); }
 
@@ -69,8 +68,8 @@ public:
 #endif
 #if USE(CF)
     WEBCORE_EXPORT RetainPtr<CFDataRef> createCFData();
-    WEBCORE_EXPORT CFDataRef existingCFData();
     WEBCORE_EXPORT static Ref<SharedBuffer> wrapCFData(CFDataRef);
+    WEBCORE_EXPORT void append(CFDataRef);
 #endif
 
 #if USE(SOUP)
@@ -88,21 +87,13 @@ public:
 
     WEBCORE_EXPORT unsigned size() const;
 
-
     bool isEmpty() const { return !size(); }
 
     WEBCORE_EXPORT void append(SharedBuffer&);
     WEBCORE_EXPORT void append(const char*, unsigned);
-    WEBCORE_EXPORT void append(const Vector<char>&);
+    WEBCORE_EXPORT void append(Vector<char>&&);
 
     WEBCORE_EXPORT void clear();
-    const char* platformData() const;
-    unsigned platformDataSize() const;
-
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    WEBCORE_EXPORT static Ref<SharedBuffer> wrapCFDataArray(CFArrayRef);
-    WEBCORE_EXPORT void append(CFDataRef);
-#endif
 
     WEBCORE_EXPORT Ref<SharedBuffer> copy() const;
     
@@ -131,7 +122,6 @@ public:
 
 private:
     WEBCORE_EXPORT SharedBuffer();
-    explicit SharedBuffer(unsigned);
     WEBCORE_EXPORT SharedBuffer(const char*, unsigned);
     WEBCORE_EXPORT SharedBuffer(const unsigned char*, unsigned);
     explicit SharedBuffer(MappedFileData&&);
@@ -159,7 +149,6 @@ private:
     mutable Ref<DataBuffer> m_buffer;
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    explicit SharedBuffer(CFArrayRef);
     mutable Vector<RetainPtr<CFDataRef>> m_dataArray;
     unsigned copySomeDataFromDataArray(const char*& someData, unsigned position) const;
     const char *singleDataArrayBuffer() const;
@@ -168,9 +157,13 @@ private:
     mutable Vector<char*> m_segments;
 #endif
 
+    unsigned platformDataSize() const;
+    const char* platformData() const;
+
 #if USE(CF)
     explicit SharedBuffer(CFDataRef);
     RetainPtr<CFDataRef> m_cfData;
+    CFDataRef existingCFData();
 #endif
 
 #if USE(SOUP)

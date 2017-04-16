@@ -424,8 +424,6 @@ http/tests/security/storage-blocking-loosened-private-browsing-plugin.html [ Ski
 http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html [ Skip ]
 plugins/private-browsing-mode-2.html [ Skip ]
 plugins/private-browsing-mode.html [ Skip ]
-storage/domstorage/localstorage/private-browsing-affects-storage.html [ Skip ]
-storage/domstorage/sessionstorage/private-browsing-affects-storage.html [ Skip ]
 storage/websql/private-browsing-noread-nowrite.html [ Skip ]
 
 # There is no network load scheduling or prioritization with NetworkProcess.
@@ -650,3 +648,5 @@ webkit.org/b/170410 fast/images/animated-gif-webkit-transform.html [ Pass Failur
 [ ElCapitan ] http/tests/cache/disk-cache/disk-cache-media-small.html [ Failure ]
 
 compositing/tiling/non-visible-window-tile-coverage.html [ Pass ]
+
+webkit.org/b/170702 [ Sierra ] http/tests/inspector/network/resource-request-headers.html [ Pass Failure ]
