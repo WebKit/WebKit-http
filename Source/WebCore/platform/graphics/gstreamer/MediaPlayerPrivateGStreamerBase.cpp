@@ -977,7 +977,7 @@ void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
     GST_INFO("Setting size to %dx%d", size.width(), size.height());
     m_size = size;
 
-#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
+#if USE(WESTEROS_SINK) || USE(FUSION_SINK) || USE(HOLE_PUNCH_GSTREAMER)
     updateVideoRectangle();
 #endif
 }
@@ -989,12 +989,12 @@ void MediaPlayerPrivateGStreamerBase::setPosition(const IntPoint& position)
 
     m_position = position;
 
-#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
+#if USE(WESTEROS_SINK) || USE(FUSION_SINK) || USE(HOLE_PUNCH_GSTREAMER)
     updateVideoRectangle();
 #endif
 }
 
-#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
+#if USE(WESTEROS_SINK) || USE(FUSION_SINK) || USE(HOLE_PUNCH_GSTREAMER)
 void MediaPlayerPrivateGStreamerBase::updateVideoRectangle()
 {
     if (!m_pipeline)
