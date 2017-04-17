@@ -1,3 +1,48 @@
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTestwebrtc/audio-replace-track.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=170837
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/audio-replace-track.html: Updating the test to be less flaky.
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        RTCPeerConnection addTrack does not require a stream parameter
+        https://bugs.webkit.org/show_bug.cgi?id=170894
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/video-addTrack-expected.txt: Added.
+        * webrtc/video-addTrack.html: Added.
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Object/prototype/toLocaleString/primitive_this_value.js
+        https://bugs.webkit.org/show_bug.cgi?id=170882
+
+        Reviewed by Saam Barati.
+
+        * js/dom/object-prototype-toLocaleString-expected.txt:
+        * js/dom/script-tests/object-prototype-toLocaleString.js:
+        Test the case of toLocaleString where toString does not exist.
+
+2017-04-16  Chris Dumez  <cdumez@apple.com>
+
+        CMD+R / CMD+Q is considered as user interaction and beforeunload alert is shown
+        https://bugs.webkit.org/show_bug.cgi?id=169995
+        <rdar://problem/23798897>
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * fast/events/beforeunload-alert-handled-keydown-expected.txt: Added.
+        * fast/events/beforeunload-alert-handled-keydown.html: Added.
+        * fast/events/beforeunload-alert-unhandled-keydown-expected.txt: Added.
+        * fast/events/beforeunload-alert-unhandled-keydown.html: Added.
+
 2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
 
         test262: test262/test/built-ins/Object/getOwnPropertyNames/15.2.3.4-4-44.js

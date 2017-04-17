@@ -51,10 +51,11 @@ public:
 
     static AVCaptureDeviceManager& singleton();
 
-    Vector<CaptureDevice> getSourcesInfo() final;
-
     void deviceConnected();
     void deviceDisconnected(AVCaptureDevice*);
+
+    Vector<CaptureDevice> getAudioSourcesInfo() final;
+    Vector<CaptureDevice> getVideoSourcesInfo() final;
 
 protected:
     static bool isAvailable();
@@ -64,6 +65,7 @@ protected:
 
     void refreshCaptureDevices() final;
     void registerForDeviceNotifications();
+    void refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType);
 
     RetainPtr<WebCoreAVCaptureDeviceManagerObserver> m_objcObserver;
     Vector<CaptureDevice> m_devices;

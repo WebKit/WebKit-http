@@ -1,3 +1,50 @@
+2017-04-17  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Correct poll when killing ServerProcess
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._kill): A polled process equaling 'None' means the process is running.
+
+2017-04-17  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Enable getUserMedia API test
+        https://bugs.webkit.org/show_bug.cgi?id=170901
+        <rdar://problem/31656594>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add test.
+
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp:
+        (TestWebKitAPI::decidePolicyForUserMediaPermissionRequestCallBack):
+        (TestWebKitAPI::TEST): Enable capture with mock devices.
+        * TestWebKitAPI/Tests/WebKit2/getUserMedia.html: Update to mediaDevices.getUserMedia
+
+2017-04-17  Xan Lopez  <xan@igalia.com>
+
+        [GTK] Update the Fedora dependencies for WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=170590
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * gtk/install-dependencies: add a bunch of modules necessary to
+        get a proper set of GStreamer codecs for WebRTC.
+
+2017-04-16  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Switch IDLAttributes.txt over to a more structured format so that more information can be added for each attribute
+        https://bugs.webkit.org/show_bug.cgi?id=170843
+
+        Reviewed by Chris Dumez.
+
+        * DumpRenderTree/DerivedSources.make:
+        * WebKitTestRunner/DerivedSources.make:
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.generate_from_idl):
+        Pass IDLAttributes.json, as it is now mandatory to have one.
+
 2017-04-14  Mark Lam  <mark.lam@apple.com>
 
         Update architectures in xcconfig files.
