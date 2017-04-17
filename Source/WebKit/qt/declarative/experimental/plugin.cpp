@@ -19,6 +19,10 @@
 
 #include "config.h"
 
+#if OS(WINDOWS)
+#include <windows.h>
+#endif
+
 #include "private/qquicknetworkreply_p.h"
 #include "private/qquicknetworkrequest_p.h"
 #include "private/qquickwebpage_p.h"
