@@ -40,6 +40,11 @@ SharedMemory::Handle::Handle()
 
 SharedMemory::Handle::~Handle()
 {
+    clear();
+}
+
+void SharedMemory::Handle::clear()
+{
     if (!m_handle)
         return;
 
