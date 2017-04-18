@@ -288,7 +288,8 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
     const gchar* contextType = nullptr;
     gst_message_parse_context_type(message, &contextType);
     GST_TRACE("context type: %s", contextType);
-    if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id"))
+    if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")
+        && m_appendState != AppendPipeline::AppendState::KeyNegotiation)
         setAppendState(AppendPipeline::AppendState::KeyNegotiation);
 
     // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
@@ -349,7 +350,8 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
     const GstStructure* structure = gst_message_get_structure(message);
     GST_TRACE("%s message from %s", gst_structure_get_name(structure), GST_MESSAGE_SRC_NAME(message));
     if (m_playerPrivate && gst_structure_has_name(structure, "drm-key-needed")) {
-        setAppendState(AppendPipeline::AppendState::KeyNegotiation);
+        if (m_appendState != AppendPipeline::AppendState::KeyNegotiation)
+            setAppendState(AppendPipeline::AppendState::KeyNegotiation);
 
         GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
         GRefPtr<GstEvent> event;
