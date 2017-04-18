@@ -196,6 +196,7 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
 #endif
     , linkPolicy(QWebPage::DontDelegateLinks)
     , m_viewportSize(QSize(0, 0))
+    , m_devicePixelRatio(qreal(0))
     , useFixedLayout(false)
     , window(0)
     , inspectorFrontend(0)
@@ -2044,6 +2045,16 @@ void QWebPagePrivate::_q_updateScreen(QScreen* screen)
 {
     if (screen)
         setDevicePixelRatio(screen->devicePixelRatio());
+}
+
+void QWebPage::setDevicePixelRatio(qreal ratio)
+{
+    d->setDevicePixelRatio(ratio);
+}
+
+qreal QWebPage::devicePixelRatio() const
+{
+    return d->devicePixelRatio();
 }
 
 static int getintenv(const char* variable)

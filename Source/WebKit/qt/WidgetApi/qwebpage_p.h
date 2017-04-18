@@ -194,6 +194,7 @@ public:
     QWebPage::LinkDelegationPolicy linkPolicy;
 
     QSize m_viewportSize;
+    qreal m_devicePixelRatio;
     QSize fixedLayoutSize;
 
     QWebHitTestResult hitTestResult;

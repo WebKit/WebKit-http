@@ -1382,6 +1382,11 @@ void QWebPageAdapter::setDevicePixelRatio(float devicePixelRatio)
     page->setDeviceScaleFactor(devicePixelRatio);
 }
 
+float QWebPageAdapter::devicePixelRatio()
+{
+    return page->deviceScaleFactor();
+}
+
 bool QWebPageAdapter::isPlayingAudio() const
 {
     return page->mediaState() & MediaProducer::IsPlayingAudio;
