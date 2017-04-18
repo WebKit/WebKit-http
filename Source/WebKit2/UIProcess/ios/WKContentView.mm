@@ -360,6 +360,7 @@ private:
 
     [_fixedClippingView setCenter:clippingBounds.location()]; // Not really the center since we set an anchor point.
     [_fixedClippingView setBounds:clippingBounds];
+    [_fixedClippingView layer].masksToBounds = _page->clipToSafeArea();
 }
 
 - (void)_didExitStableState
@@ -384,7 +385,7 @@ private:
 - (void)didUpdateVisibleRect:(CGRect)visibleContentRect
     unobscuredRect:(CGRect)unobscuredContentRect
     unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
-    obscuredInset:(CGSize)obscuredInset
+    obscuredInsets:(UIEdgeInsets)obscuredInsets
     inputViewBounds:(CGRect)inputViewBounds
     scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale
     inStableState:(BOOL)isStableState
@@ -413,7 +414,7 @@ private:
         unobscuredRectInScrollViewCoordinates,
         unobscuredContentRectRespectingInputViewBounds,
         fixedPositionRectForLayout,
-        WebCore::FloatSize(obscuredInset),
+        WebCore::FloatBoxExtent(obscuredInsets.top, obscuredInsets.right, obscuredInsets.bottom, obscuredInsets.left),
         zoomScale,
         isStableState,
         _sizeChangedSinceLastVisibleContentRectUpdate,

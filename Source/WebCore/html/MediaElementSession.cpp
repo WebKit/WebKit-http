@@ -151,10 +151,10 @@ void MediaElementSession::removeBehaviorRestriction(BehaviorRestrictions restric
 SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted(const HTMLMediaElement& element) const
 {
     if (element.document().isMediaDocument() && !element.document().ownerElement())
-        return SuccessOr<MediaPlaybackDenialReason>();
+        return { };
 
     if (pageExplicitlyAllowsElementToAutoplayInline(element))
-        return SuccessOr<MediaPlaybackDenialReason>();
+        return { };
 
     if (requiresFullscreenForVideoPlayback(element) && !fullscreenPermitted(element)) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of fullscreen restriction");
@@ -162,7 +162,12 @@ SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted(cons
     }
 
     if (m_restrictions & OverrideUserGestureRequirementForMainContent && updateIsMainContent())
-        return SuccessOr<MediaPlaybackDenialReason>();
+        return { };
+
+#if ENABLE(MEDIA_STREAM)
+    if (element.document().isCapturing() && element.hasMediaStreamSrcObject())
+        return { };
+#endif
 
     if (m_restrictions & RequireUserGestureForVideoRateChange && element.isVideo() && !ScriptController::processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of video rate change restriction");
@@ -179,7 +184,7 @@ SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted(cons
         return MediaPlaybackDenialReason::UserGestureRequired;
     }
 
-    return SuccessOr<MediaPlaybackDenialReason>();
+    return { };
 }
 
 bool MediaElementSession::autoplayPermitted() const

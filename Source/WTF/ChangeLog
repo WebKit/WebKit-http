@@ -1,3 +1,48 @@
+2017-04-17  Alex Christensen  <achristensen@webkit.org>
+
+        Allow Variants of RetainPtrs
+        https://bugs.webkit.org/show_bug.cgi?id=170923
+
+        Reviewed by Tim Horton and Sam Weinig.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::operator&): Deleted.
+        Operator& was causing a compile error when making Variant<RetainPtr<T>, ...>
+        and because it is strange and only used once, let's just remove it.
+        * wtf/Variant.h:
+        (WTF::get):
+        (WTF::get_if):
+        Use std::addressof instead of operator& which could be overloaded to return any type with any meaning.
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Alex Christensen.
+
+        Replacing READABLE_STREAM_API, READABLE_BYTE_STREAM_API and WRITABLE_STREAM_API compilation flag by:
+        - A STREAMS_API compilation flag.
+        - A ReadableByteStreamAPI and WritableStreamAPI runtime flags, turned off except for RWT and DRT.
+
+        * wtf/FeatureDefines.h:
+
+2017-04-17  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Move isNullFunctionPointer down into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=170892
+
+        Reviewed by Sam Weinig.
+
+        Test: TestWebKitAPI/Tests/WTF/darwin/WeakLinking.cpp
+
+        * WTF.xcodeproj/project.pbxproj: Added reference to new file.
+        * wtf/darwin: Added.
+        * wtf/darwin/WeakLinking.h: Added.
+        (WTF::isNullFunctionPointer): Copied from ResourceLoadStatisticsClassifierCocoa.cpp in
+          WebKit2 and changed into a function template that works with any function pointer.
+
 2017-04-17  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r215366.

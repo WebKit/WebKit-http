@@ -121,6 +121,7 @@
 #include <WebCore/FocusDirection.h>
 #include <WebCore/JSDOMBinding.h>
 #include <WebCore/JSDOMExceptionHandling.h>
+#include <WebCore/LengthBox.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/PublicSuffix.h>
 #include <WebCore/RenderEmbeddedObject.h>
@@ -5455,6 +5456,8 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 #if ENABLE(POINTER_LOCK)
     requestPointerUnlock();
 #endif
+
+    m_clipToSafeArea = true;
 }
 
 void WebPageProxy::resetStateAfterProcessExited()
@@ -6878,6 +6881,13 @@ void WebPageProxy::stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t
     ASSERT(iterator != m_urlSchemeHandlersByIdentifier.end());
 
     iterator->value->stopTask(*this, resourceIdentifier);
+}
+
+void WebPageProxy::setClipToSafeArea(bool clipToSafeArea)
+{
+    m_clipToSafeArea = clipToSafeArea;
+
+    m_pageClient.didChangeClipToSafeArea(clipToSafeArea);
 }
 
 } // namespace WebKit

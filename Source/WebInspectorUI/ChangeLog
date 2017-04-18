@@ -1,3 +1,130 @@
+2017-04-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network columns don't get saved when Web Inspector is closed
+        https://bugs.webkit.org/show_bug.cgi?id=170373
+        <rdar://problem/31386336>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.setColumnVisible):
+        (WebInspector.DataGrid.prototype._contextMenuInHeader):
+        The context menu was often passing `undefined` as the visible value
+        which would cause the setting to not be saved appropriately. Ensure
+        we always get an explicit boolean.
+
+2017-04-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Use `text-align: start` for DataGrid headers
+        https://bugs.webkit.org/show_bug.cgi?id=170871
+
+        Reviewed by Matt Baker.
+
+        `text-align: start` didn't work for th elements.
+        It was fixed in <webkit.org/b/141417>.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid th):
+        (body[dir=ltr] .data-grid th): Deleted.
+        (body[dir=rtl] .data-grid th): Deleted.
+
+2017-04-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Doesn't show size of compressed content correctly
+        https://bugs.webkit.org/show_bug.cgi?id=155112
+        <rdar://problem/25006728>
+
+        Reviewed by Alex Christensen and Timothy Hatcher.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.resourceRequestWasServedFromMemoryCache):
+        Set an exact size.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.prototype.get requestHeadersTransferSize):
+        (WebInspector.Resource.prototype.get requestBodyTransferSize):
+        (WebInspector.Resource.prototype.get responseHeadersTransferSize):
+        (WebInspector.Resource.prototype.get responseBodyTransferSize):
+        (WebInspector.Resource.prototype.get cachedResponseBodySize):
+        (WebInspector.Resource.prototype.get size):
+        (WebInspector.Resource.prototype.get networkEncodedSize):
+        (WebInspector.Resource.prototype.get networkDecodedSize):
+        (WebInspector.Resource.prototype.get networkTotalTransferSize):
+        (WebInspector.Resource.prototype.get estimatedNetworkEncodedSize):
+        (WebInspector.Resource.prototype.get estimatedTotalTransferSize):
+        (WebInspector.Resource.prototype.get compressed):
+        (WebInspector.Resource.prototype.updateForResponse):
+        (WebInspector.Resource.prototype.updateWithMetrics):
+        (WebInspector.Resource.prototype.setCachedResponseBodySize):
+        (WebInspector.Resource.prototype.increaseSize):
+        (WebInspector.Resource.prototype.increaseTransferSize):
+        (WebInspector.Resource.prototype.get encodedSize): Deleted.
+        (WebInspector.Resource.prototype.get transferSize): Deleted.
+        Be more explicit with size getters.
+
+        (WebInspector.Resource.prototype.updateWithMetrics):
+        If we receive the size metrics, update the specific metric values.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshCompressed):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshDecodedSize):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshTransferSize):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.get data):
+        Show exact values if we have them, otherwise fall back to the calculated
+        values during loading.
+
+2017-04-17  Jon Davis  <jond@apple.com>
+
+        Web Inspector: new icon for Disable Caches button in Network Tab
+        https://bugs.webkit.org/show_bug.cgi?id=170196
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/IgnoreCaches.svg: Added.
+        Added new art for the Disable Caches button. 
+
+        * UserInterface/Images/gtk/IgnoreCaches.svg: Added.
+        Used GTK's StepOver.svg for fallback art for GTK.
+        
+        * UserInterface/Images/NavigationItemClear.svg:
+        Improved artwork for Clear Console button icon to match the weight and 
+        style of the Disable Caches button icon.
+        
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        
+2017-04-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Enabled state of "All Requests" XHR breakpoint not restored correctly
+        https://bugs.webkit.org/show_bug.cgi?id=170916
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WebInspector.DOMDebuggerManager):
+        Set breakpoint with backend agent, if enabled.
+
+2017-04-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Show pause reason for "All Requests" XHR breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=170895
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Add generic pause reason text: "Requesting: <url>".
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WebInspector.DOMDebuggerManager.prototype.xhrBreakpointForURL):
+        Relocated helper method from the sidebar.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        Add an XHR breakpoint tree element when pause data contains a breakpoint
+        URL, otherwise just add a generic text row.
+
 2017-04-17  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: XHR breakpoints restored from settings do not appear in the sidebar

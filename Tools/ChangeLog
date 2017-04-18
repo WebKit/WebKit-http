@@ -1,3 +1,85 @@
+2017-04-17  Alex Christensen  <achristensen@webkit.org>
+
+        Allow Variants of RetainPtrs
+        https://bugs.webkit.org/show_bug.cgi?id=170923
+
+        Reviewed by Tim Horton and Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/Variant.cpp:
+        (TestWebKitAPI::TEST):
+        Add tests for RetainPtr and for another class with overloaded operator& to verify such classes can
+        work in Variants.
+
+2017-04-17  Brady Eidson  <beidson@apple.com>
+
+        Make WKHTTPCookieStore public.
+        <rdar://problem/31024691> and https://bugs.webkit.org/show_bug.cgi?id=170920
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Alex Christensen.
+
+        Replacing READABLE_STREAM_API, READABLE_BYTE_STREAM_API and WRITABLE_STREAM_API compilation flag by:
+        - A STREAMS_API compilation flag.
+        - A ReadableByteStreamAPI and WritableStreamAPI runtime flags, turned off except for RWT and DRT.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setFetchAPIEnabled):
+        (WTR::TestRunner::setWritableStreamAPIEnabled):
+        (WTR::TestRunner::setReadableByteStreamAPIEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-04-17  Tim Horton  <timothy_horton@apple.com>
+
+        Provide a viewport parameter to disable clipping to the safe area
+        https://bugs.webkit.org/show_bug.cgi?id=170766
+        <rdar://problem/31564634>
+
+        Reviewed by Beth Dakin.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setObscuredInsets):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setObscuredInsets):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setObscuredInsets):
+        Add a UIScriptController mechanism to install obscured insets
+        on the web view.
+
+2017-04-17  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Move isNullFunctionPointer down into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=170892
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/TestWTF.xcconfig:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/darwin/WeakLinking.cpp: Added.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-iOS-v2.tbd: Added.
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-iOS.tbd: Added.
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-macOS-v2.tbd: Added.
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-macOS.tbd: Added.
+
 2017-04-17  Jonathan Bedard  <jbedard@apple.com>
 
         webkitpy: Correct poll when killing ServerProcess

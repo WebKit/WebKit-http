@@ -1,3 +1,229 @@
+2017-04-17  Timothy Horton  <timothy_horton@apple.com>
+
+        Plumb all four obscured insets to WebCore, instead of just top/left
+        https://bugs.webkit.org/show_bug.cgi?id=170913
+
+        Reviewed by Wenson Hsieh.
+
+        * Shared/VisibleContentRectUpdateInfo.cpp:
+        (WebKit::VisibleContentRectUpdateInfo::encode):
+        (WebKit::VisibleContentRectUpdateInfo::decode):
+        (WebKit::operator<<):
+        * Shared/VisibleContentRectUpdateInfo.h:
+        (WebKit::VisibleContentRectUpdateInfo::VisibleContentRectUpdateInfo):
+        (WebKit::VisibleContentRectUpdateInfo::obscuredInsets):
+        (WebKit::operator==):
+        (WebKit::VisibleContentRectUpdateInfo::obscuredInset): Deleted.
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<FloatRectInsets>::encode):
+        (IPC::ArgumentCoder<FloatRectInsets>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _restorePageScrollPosition:scrollOrigin:previousObscuredInset:scale:]):
+        (-[WKWebView _updateVisibleContentRects]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::restorePageState):
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInsets:inputViewBounds:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]):
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInset:inputViewBounds:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]): Deleted.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::restorePageState):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::restorePageState):
+        (WebKit::WebPage::updateVisibleContentRects):
+        Adopt FloatBoxExtent for obscuredInsets (and adjust pluralization).
+
+2017-04-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Doesn't show size of compressed content correctly
+        https://bugs.webkit.org/show_bug.cgi?id=155112
+        <rdar://problem/25006728>
+
+        Reviewed by Alex Christensen and Timothy Hatcher.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::sendResultForCacheEntry):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didFinishCollectingMetrics:]):
+        Include size information in network load metrics.
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        com.apple.WebKit.Networking.Development crashed in com.apple.WebKit: WebKit::NetworkRTCProvider::resolvedName
+        https://bugs.webkit.org/show_bug.cgi?id=170889
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/webrtc/NetworkRTCProvider.cpp:
+        (WebKit::NetworkRTCProvider::Resolver::~Resolver): Unschedule the host resolution in addition to cancelling it.
+        Providing a test would need to stop the resolver between the time the resolver is created and gets
+        data in the network process. Or we would need to change Resolver to be instantiated/tested on its own.
+        * NetworkProcess/webrtc/NetworkRTCProvider.h:
+
+2017-04-17  Brady Eidson  <beidson@apple.com>
+
+        Make WKHTTPCookieStore public.
+        <rdar://problem/31024691> and https://bugs.webkit.org/show_bug.cgi?id=170920
+
+        Reviewed by Geoffrey Garen.
+
+        * UIProcess/API/Cocoa/WKHTTPCookieStore.h:
+        * UIProcess/API/Cocoa/WKHTTPCookieStore.mm:
+        (-[WKHTTPCookieStore getAllCookies:]):
+        (-[WKHTTPCookieStore allCookies:]): Deleted.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore httpCookieStore]):
+        (-[WKWebsiteDataStore _httpCookieStore]): Deleted.
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-04-17  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Fix typo in UIDelegate::mediaCaptureStateDidChange
+        https://bugs.webkit.org/show_bug.cgi?id=170911
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::UIClient::mediaCaptureStateDidChange): Fix typo.
+
+2017-04-17  Keith Rollin  <krollin@apple.com>
+
+        Move and update WebLoaderStrategy logging statement
+        https://bugs.webkit.org/show_bug.cgi?id=170140
+
+        Reviewed by Alex Christensen.
+
+        WebLoaderStrategy::scheduleLoad has a logging statement that says, in
+        part: "Resource has been queued for scheduling with the
+        NetworkProcess". This statement is emitted after the
+        ScheduleResourceLoad message has been successfully sent to the
+        NetworkProcess. The logging statement was added at this location to
+        indicate that the resource-load had been successfully handed off; it
+        pairs a similar logging statement that is emitted if the sending of
+        the ScheduleResourceLoad message fails.
+
+        I think it would be better to move this logging statement before the
+        ScheduleResourceLoad message is sent to the NetworkProcess (and change
+        its wording to "Resource is being scheduled with the NetworkProcess").
+        The reason for this change is to help make sure that the sequence of
+        logging statements is more deterministic. In the current form, the
+        message "Resource has been queued for scheduling with the
+        NetworkProcess" normally appears before any NetworkProcess logging
+        statements that indicate that the resource-loading is continuing
+        there, but in rare occasions the logging statements can be reversed.
+        This change in the ordering of the statements has caused a problem in
+        a script I've written that examines the resource-loading process and
+        looks for errors. By ensuring that the WebLoaderStrategy statement
+        always appears before the NetworkResourceLoader statement, the flow
+        makes better sense and the script can be more robust.
+
+        In making this change, we are probably not giving up any assurance
+        that the ScheduleResourceLoad message has been sent to the
+        NetworkResourceLoader. If the message is successfully sent, we'll see
+        logging in the NetworkProcess. If the message has not been sent, we'll
+        see WebLoaderStrategy logging an error.
+
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::scheduleLoad):
+
+2017-04-17  Anders Carlsson  <andersca@apple.com>
+
+        Stop using deprecated APIs, part 1
+        https://bugs.webkit.org/show_bug.cgi?id=170915
+        rdar://problem/31589635
+
+        Reviewed by Tim Horton.
+
+        Stop using the PKPaymentRequestPaymentMethodUpdate initializer that takes a status, it's been deprecated
+        and we always passed PKPaymentAuthorizationStatusSuccess anyway.
+
+        * Shared/Cocoa/WebCoreArgumentCodersCocoa.mm:
+        (IPC::ArgumentCoder<WebCore::PaymentMethodUpdate>::encode):
+        (IPC::ArgumentCoder<WebCore::PaymentMethodUpdate>::decode):
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::WebPaymentCoordinatorProxy::platformCompletePaymentMethodSelection):
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Alex Christensen.
+
+        Replacing READABLE_STREAM_API, READABLE_BYTE_STREAM_API and WRITABLE_STREAM_API compilation flag by:
+        - A STREAMS_API compilation flag.
+        - A ReadableByteStreamAPI and WritableStreamAPI runtime flags, turned off except for RWT and DRT.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+
+2017-04-17  Tim Horton  <timothy_horton@apple.com>
+
+        Provide a viewport parameter to disable clipping to the safe area
+        https://bugs.webkit.org/show_bug.cgi?id=170766
+        <rdar://problem/31564634>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::resetState):
+        (WebKit::WebPageProxy::setClipToSafeArea):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::clipToSafeArea):
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::didChangeClipToSafeArea):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didChangeClipToSafeArea):
+        * UIProcess/mac/PageClientImpl.h:
+        Forward clip-to-safe-area changes from ChromeClient to WKWebView.
+        Update visible content rects when it changes, which will
+        result in a call to updateFixedClippingView, as below.
+        Keep track of the current state in the UI process.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _contentMayDrawInObscuredInsets]):
+        Expose the current state of the clip-to-safe-area bit as SPI.
+
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView updateFixedClippingView:]):
+        Disable fixed clipping when clip-to-safe-area is disabled.
+        
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::viewportConfigurationChanged):
+        Push the viewport's clip-to-safe-area bit onto the main frame's FrameView.
+
+2017-04-17  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Move isNullFunctionPointer down into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=170892
+
+        Reviewed by Sam Weinig.
+
+        * Platform/classifier/cocoa/ResourceLoadStatisticsClassifierCocoa.cpp:
+        (WebKit::ResourceLoadStatisticsClassifierCocoa::canUseCorePrediction): Changed to use
+          WTF::isNullFunctionPointer.
+        (WebKit::isNullFunctionPointer): Deleted.
+
 2017-04-17  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [WK2] Respect a new internal setting for defaulting to character selection granularity

@@ -296,7 +296,7 @@ public:
 
     virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition, uint64_t transactionID) = 0;
     virtual void couldNotRestorePageState() = 0;
-    virtual void restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale) = 0;
+    virtual void restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatBoxExtent& obscuredInsetsOnSave, double scale) = 0;
     virtual void restorePageCenterAndScale(std::optional<WebCore::FloatPoint> center, double scale) = 0;
 
     virtual void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) = 0;
@@ -386,6 +386,8 @@ public:
     virtual void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) = 0;
     virtual void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) = 0;
 #endif
+
+    virtual void didChangeClipToSafeArea(bool clipToSafeArea) = 0;
 };
 
 } // namespace WebKit
