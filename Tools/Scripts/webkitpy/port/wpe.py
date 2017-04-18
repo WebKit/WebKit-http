@@ -41,6 +41,9 @@ class WPEPort(Port):
             self._jhbuild_wrapper = [self.path_from_webkit_base('Tools', 'jhbuild', 'jhbuild-wrapper'), '--wpe', 'run']
             self.set_option_default('wrapper', ' '.join(self._jhbuild_wrapper))
 
+    def default_timeout_ms(self):
+        return 6000
+
     def _built_executables_path(self, *path):
         return self._build_path(*(('bin',) + path))
 
