@@ -206,6 +206,10 @@ list(APPEND WebKit2_SOURCES
     WebProcess/qt/WebProcessQt.cpp
 )
 
+qt5_add_resources(WebKit2_SOURCES
+    WebKit2.qrc
+)
+
 if (APPLE)
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
         "${WEBKIT2_DIR}/Platform/IPC/mac"

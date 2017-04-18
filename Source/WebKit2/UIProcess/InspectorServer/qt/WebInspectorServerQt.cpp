@@ -36,7 +36,7 @@ namespace WebKit {
 
 static String remoteInspectorPagePath()
 {
-    static NeverDestroyed<WTF::String> pagePath(ASCIILiteral("/webkit/inspector/inspector.html?page="));
+    static NeverDestroyed<WTF::String> pagePath(ASCIILiteral("/webkit/inspector/UserInterface/Main.html?page="));
     return pagePath;
 }
 
