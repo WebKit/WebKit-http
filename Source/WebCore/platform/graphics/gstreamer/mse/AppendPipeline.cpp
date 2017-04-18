@@ -368,7 +368,7 @@ void AppendPipeline::handleAppsrcNeedDataReceived()
         return;
     }
 
-    ASSERT(m_appendState == AppendState::Ongoing || m_appendState == AppendState::Sampling);
+    ASSERT(m_appendState == AppendState::KeyNegotiation || m_appendState == AppendState::Ongoing || m_appendState == AppendState::Sampling);
     ASSERT(!m_appsrcNeedDataReceived);
 
     GST_TRACE("received need-data from appsrc");
@@ -436,6 +436,7 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
         GST_TRACE("%s --> %s", dumpAppendState(oldAppendState), dumpAppendState(newAppendState));
 
     bool ok = false;
+    bool mustCheckEndOfAppend = false;
 
     switch (oldAppendState) {
     case AppendState::NotStarted:
@@ -466,6 +467,9 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
     case AppendState::KeyNegotiation:
         switch (newAppendState) {
         case AppendState::Ongoing:
+            ok = true;
+            mustCheckEndOfAppend = true;
+            break;
         case AppendState::Invalid:
             ok = true;
             break;
@@ -566,6 +570,9 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
         GST_ERROR("Invalid append state transition %s --> %s", dumpAppendState(oldAppendState), dumpAppendState(newAppendState));
 
     ASSERT(ok);
+
+    if (mustCheckEndOfAppend)
+        checkEndOfAppend();
 
     if (nextAppendState != AppendState::Invalid)
         setAppendState(nextAppendState);
