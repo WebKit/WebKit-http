@@ -101,6 +101,10 @@ enum RunLoopSourcePriority {
     CompositingThreadUpdateTimer = -70,
 
     ReleaseUnusedResourcesTimer = -70,
+
+    AsyncIONetwork = -70,
+    DiskCacheRead = -70,
+    DiskCacheWrite = -60
 };
 
 #endif
