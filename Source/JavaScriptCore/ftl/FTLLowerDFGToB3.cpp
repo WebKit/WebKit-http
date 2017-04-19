@@ -1065,6 +1065,9 @@ private:
         case RecordRegExpCachedResult:
             compileRecordRegExpCachedResult();
             break;
+        case ResolveScopeForHoistingFuncDeclInEval:
+            compileResolveScopeForHoistingFuncDeclInEval();
+            break;
         case ResolveScope:
             compileResolveScope();
             break;
@@ -10043,6 +10046,12 @@ private:
         }
     }
 
+    void compileResolveScopeForHoistingFuncDeclInEval()
+    {
+        UniquedStringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+        setJSValue(vmCall(pointerType(), m_out.operation(operationResolveScopeForHoistingFuncDeclInEval), m_callFrame, lowCell(m_node->child1()), m_out.constIntPtr(uid)));
+    }
+
     void compileResolveScope()
     {
         UniquedStringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
@@ -11800,7 +11809,7 @@ private:
         
         LBasicBlock lastNext = m_out.appendTo(slowPath, continuation);
         ValueFromBlock slowResult = m_out.anchor(
-            m_out.call(Int32, m_out.operation(operationToInt32SensibleSlow), doubleValue));
+            m_out.call(Int32, m_out.operation(operationToInt32), doubleValue));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);

@@ -119,10 +119,8 @@ list(APPEND ANGLE_SOURCES
     src/libANGLE/renderer/d3d/ShaderExecutableD3D.cpp
     src/libANGLE/renderer/d3d/SurfaceD3D.cpp
     src/libANGLE/renderer/d3d/TextureD3D.cpp
-    src/libANGLE/renderer/d3d/VaryingPacking.cpp
     src/libANGLE/renderer/d3d/VertexBuffer.cpp
     src/libANGLE/renderer/d3d/VertexDataManager.cpp
-    src/third_party/systeminfo/SystemInfo.cpp
 )
 
 list(APPEND ANGLE_COMPILE_DEFINITIONS

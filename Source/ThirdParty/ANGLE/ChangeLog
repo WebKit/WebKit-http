@@ -1,3 +1,42 @@
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Add the actual content to the files, now that
+        SVN knows they can have tabs.
+
+        * src/third_party/murmurhash/MurmurHash3.cpp:
+        * src/third_party/murmurhash/MurmurHash3.h:
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        WinCairo needs these files I recently removed
+        from our copy of ANGLE.
+
+        * src/third_party/murmurhash/LICENSE: Added.
+        * src/third_party/murmurhash/MurmurHash3.cpp: Added.
+        * src/third_party/murmurhash/MurmurHash3.h: Added.
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Still trying to fix Windows.
+
+        * PlatformWin.cmake:
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Attempt to fix the Windows build.
+
+        * PlatformWin.cmake:
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=170941
+        <rdar://problem/31633999>
+
+        Reviewed by Alex Christensen.
+
+        Huge list of changed files omitted.
+
 2017-04-12  Dan Bernstein  <mitz@apple.com>
 
         [Mac] Future-proof .xcconfig files

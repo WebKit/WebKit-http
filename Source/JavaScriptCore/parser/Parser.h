@@ -647,6 +647,7 @@ public:
                 if (!isParameter) {
                     auto addResult = m_declaredVariables.add(function);
                     addResult.iterator->value.setIsVar();
+                    addResult.iterator->value.setIsSloppyModeHoistingCandidate();
                     sloppyModeHoistedFunctions.add(function);
                 }
             }
@@ -887,35 +888,35 @@ public:
     JSTextPosition positionBeforeLastNewline() const { return m_lexer->positionBeforeLastNewline(); }
     JSTokenLocation locationBeforeLastToken() const { return m_lexer->lastTokenLocation(); }
 
-    struct CallOrApplyDepth {
-        CallOrApplyDepth(Parser* parser)
+    struct CallOrApplyDepthScope {
+        CallOrApplyDepthScope(Parser* parser)
             : m_parser(parser)
-            , m_parent(parser->m_callOrApplyDepth)
+            , m_parent(parser->m_callOrApplyDepthScope)
             , m_depth(m_parent ? m_parent->m_depth + 1 : 0)
-            , m_childDepth(m_depth)
+            , m_depthOfInnermostChild(m_depth)
         {
-            parser->m_callOrApplyDepth = this;
+            parser->m_callOrApplyDepthScope = this;
         }
 
-        size_t maxChildDepth() const
+        size_t distanceToInnermostChild() const
         {
-            ASSERT(m_childDepth >= m_depth);
-            return m_childDepth - m_depth;
+            ASSERT(m_depthOfInnermostChild >= m_depth);
+            return m_depthOfInnermostChild - m_depth;
         }
 
-        ~CallOrApplyDepth()
+        ~CallOrApplyDepthScope()
         {
             if (m_parent)
-                m_parent->m_childDepth = std::max(m_childDepth, m_parent->m_childDepth);
-            m_parser->m_callOrApplyDepth = m_parent;
+                m_parent->m_depthOfInnermostChild = std::max(m_depthOfInnermostChild, m_parent->m_depthOfInnermostChild);
+            m_parser->m_callOrApplyDepthScope = m_parent;
         }
 
     private:
 
         Parser* m_parser;
-        CallOrApplyDepth* m_parent;
+        CallOrApplyDepthScope* m_parent;
         size_t m_depth;
-        size_t m_childDepth;
+        size_t m_depthOfInnermostChild;
     };
 
 private:
@@ -1234,7 +1235,7 @@ private:
 
     std::pair<DeclarationResultMask, ScopeRef> declareFunction(const Identifier* ident)
     {
-        if (m_statementDepth == 1 || (!strictMode() && !currentScope()->isFunction())) {
+        if ((m_statementDepth == 1) || (!strictMode() && !currentScope()->isFunction() && !closestParentOrdinaryFunctionNonLexicalScope()->isEvalContext())) {
             // Functions declared at the top-most scope (both in sloppy and strict mode) are declared as vars
             // for backwards compatibility. This allows us to declare functions with the same name more than once.
             // In sloppy mode, we always declare functions as vars.
@@ -1245,7 +1246,7 @@ private:
         }
 
         if (!strictMode()) {
-            ASSERT(currentScope()->isFunction());
+            ASSERT(currentScope()->isFunction() || closestParentOrdinaryFunctionNonLexicalScope()->isEvalContext());
 
             // Functions declared inside a function inside a nested block scope in sloppy mode are subject to this
             // crazy rule defined inside Annex B.3.3 in the ES6 spec. It basically states that we will create
@@ -1811,7 +1812,7 @@ private:
     bool m_immediateParentAllowsFunctionDeclarationInStatement;
     RefPtr<ModuleScopeData> m_moduleScopeData;
     DebuggerParseData* m_debuggerParseData;
-    CallOrApplyDepth* m_callOrApplyDepth { nullptr };
+    CallOrApplyDepthScope* m_callOrApplyDepthScope { nullptr };
 
     struct DepthManager {
         DepthManager(int* depth)

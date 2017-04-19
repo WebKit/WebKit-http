@@ -1,3 +1,565 @@
+2017-04-19  Dean Jackson  <dino@apple.com>
+
+        Non-muxable GPUs shouldn't allow offline rendering
+        https://bugs.webkit.org/show_bug.cgi?id=170984
+        <rdar://problem/31614406>
+
+        Reviewed by Myles Maxfield.
+
+        Setting the kCGLPFAAllowOfflineRenderers flag doesn't do any
+        harm on devices that only have one GPU. It's also what we
+        want on devices that can mux between GPUs. However, we were
+        also setting it unconditionally on devices with multiple
+        GPUs that have issues muxing.
+
+        * platform/graphics/mac/GraphicsContext3DMac.mm:
+        (WebCore::setPixelFormat): Add a test for hasMuxableGPU.
+
+2017-04-18  Youenn Fablet  <youenn@apple.com>
+
+        RTCOfferOptions iceRestart should be supported
+        https://bugs.webkit.org/show_bug.cgi?id=170966
+
+        Reviewed by Alex Christensen.
+
+        No ability to test iceRestart as of now.
+        Passing iceRestart value to libwebrtc.
+        Passing also voiceActivityDetection value to libwebrtc.
+        Updating mock to use the new overloaded CreateOffer method.
+
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::doCreateOffer):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::doCreateOffer):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::doCreateOffer):
+        * testing/MockLibWebRTCPeerConnection.cpp:
+        (WebCore::MockLibWebRTCPeerConnection::CreateOffer):
+        * testing/MockLibWebRTCPeerConnection.h:
+
+2017-04-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support DataTransfer::files() when performing a DHTML data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=170880
+        <rdar://problem/31314689>
+
+        Reviewed by Tim Horton.
+
+        Adds support for fetching files from the DataTransfer when performing a data interaction operation handled by
+        JavaScript. There are two changes we make here to achieve this:
+
+        First, we teach the Pasteboard on iOS to know what file paths hold the item provider contents used in the
+        current data interaction operation. On iOS, Pasteboard::readFilenames is currently hard-coded to return an empty
+        vector. To fix this, we add logic to the iOS Pasteboard to remember what the paths of all files that were
+        successfully loaded from item providers as the data interaction is taking place. This ensures that at the
+        WebCore layer, the implementation of Pasteboard::readFilenames on Mac and iOS is similar -- they both call out
+        to the client layer in order to read file paths off of their respective pasteboards. Once in the client layer
+        (WebKit1 or WebKit2) we then call into PlatformPasteboard::filenamesForDataInteraction, which then calls into
+        WebItemProviderPasteboard if applicable.
+
+        The second tweak is to propagate information about whether the document is preventing default data interaction
+        behavior to the client layer. This prevents us from having to save pasteboard content when performing data
+        interaction in cases where file information is not needed (i.e. the default behavior is being performed, and
+        the target is not a file input). This also avoids compatibility issues with insertion animations when performing
+        data interaction in editable areas, due to the extra time spent loading item provider data into a temporary
+        file.
+
+        Unit tests in <https://bugs.webkit.org/show_bug.cgi?id=170903>.
+
+        * page/DragController.cpp:
+        (WebCore::DragController::DragController):
+        (WebCore::DragController::performDragOperation):
+        (WebCore::DragController::dragEnteredOrUpdated):
+        (WebCore::DragController::tryDocumentDrag):
+
+        Refactor DragController::tryDocumentDrag to return a DragHandlingMethod. This method currently returns either
+        true or false; this patch changes it to return a DragHandlingMethod, which is either None (the equivalent of
+        returning false before the patch), Default (indicating that the drop destination is allowing default handling),
+        or NonDefault, which indicates that the drop destination has explicitly prevented default.
+
+        * page/DragController.h:
+        (WebCore::DragController::documentIsHandlingNonDefaultDrag):
+
+        Used by WebPage when sending an IPC response after handling dragentered or dragupdated.
+
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+        * platform/ios/AbstractPasteboard.h:
+        * platform/ios/PasteboardIOS.mm:
+        (WebCore::Pasteboard::readFilenames):
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::filenamesForDataInteraction):
+        * platform/ios/WebItemProviderPasteboard.h:
+        * platform/ios/WebItemProviderPasteboard.mm:
+
+        WebItemProviderPasteboard now remembers the file URLs of successfully loaded item provider content when a data
+        interaction is being performed. The new filenamesForDataInteraction property returns the array of data
+        interaction file URLs which have been propagated to the web process along with sandbox extensions. This state
+        is cleaned up when list of item providers change (i.e. when the data interaction operation is finished, or if
+        the web content process crashes, etc.)
+
+        (-[WebItemProviderPasteboard init]):
+        (-[WebItemProviderPasteboard setItemProviders:]):
+        (-[WebItemProviderPasteboard filenamesForDataInteraction]):
+        (-[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:]):
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Cairo build fix.
+        https://bugs.webkit.org/show_bug.cgi?id=170941
+
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+
+2017-04-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline bindings tests after r215486.
+
+        Unreviewed test gardening.
+
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        (WebCore::jsTestObjOnfooGetter):
+        (WebCore::jsTestObjOnwebkitfooGetter):
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Attempted build fix. Add/remove some files from ANGLE.
+
+        * CMakeLists.txt:
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=170941
+        <rdar://problem/31633999>
+
+        Reviewed by Alex Christensen.
+
+        * platform/graphics/ANGLEWebKitBridge.cpp:
+        (WebCore::getSymbolInfo):
+        (WebCore::ANGLEWebKitBridge::ANGLEWebKitBridge):
+        (WebCore::ANGLEWebKitBridge::cleanupCompilers):
+        (WebCore::ANGLEWebKitBridge::compileShaderSource):
+        * platform/graphics/mac/GraphicsContext3DMac.mm:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::checkVaryingsPacking):
+
+2017-04-18  John Wilander  <wilander@apple.com>
+
+        Make WebCore::topPrivatelyControlledDomain() return "localhost" for localhost
+        https://bugs.webkit.org/show_bug.cgi?id=170798
+        <rdar://problem/31595108>
+
+        Reviewed by Alex Christensen.
+
+        API test augmented.
+
+        * platform/mac/PublicSuffixMac.mm:
+        (WebCore::topPrivatelyControlledDomain):
+            Now returns the lowercase top privately controlled
+            domain including "localhost" for the host localhost.
+
+2017-04-18  Brent Fulgham  <bfulgham@apple.com>
+
+        JSEventListener::m_isolatedWorld should be a Ref
+        https://bugs.webkit.org/show_bug.cgi?id=170910
+        <rdar://problem/30470332>
+
+        Reviewed by Alex Christensen.
+
+        Since m_isolatedWorld should never be nullptr, change the implementation of m_isolatedWorld
+        from a RefPtr to a Ref, and adjust the various call sites to support this change.
+
+        This should help us catch any changes that permit the isolatedWorld to be set to nullptr.
+
+        No new tests since there should be no change in behavior.
+
+        * bindings/js/JSEventListener.cpp:
+        (WebCore::JSEventListener::JSEventListener):
+        (WebCore::JSEventListener::initializeJSFunction):
+        (WebCore::JSEventListener::handleEvent):
+        * bindings/js/JSEventListener.h:
+        (WebCore::JSEventListener::cast):
+        (WebCore::JSEventListener::isolatedWorld):
+        (WebCore::JSEventListener::jsFunction):
+
+2017-04-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct handling of isolatedWorld in event handling
+        https://bugs.webkit.org/show_bug.cgi?id=65589
+        <rdar://problem/24097804>
+
+        Reviewed by Geoffrey Garen.
+
+        This patch was inspired by Adam's original patch as well as the
+        following Blink change:
+        https://src.chromium.org/viewvc/blink?revision=152377&view=revision
+
+        Thread isolatedWorld state through event handling logic.
+
+        Tests: fast/dom/event-attrs-isolated-world.html
+               http/tests/security/isolatedWorld/onclick-attribute.html
+
+        * bindings/js/JSEventListener.cpp:
+        (WebCore::JSEventListener::initializeJSFunction):
+        (WebCore::JSEventListener::world):
+        (WebCore::eventHandlerAttribute):
+        (WebCore::setEventHandlerAttribute):
+        (WebCore::windowEventHandlerAttribute):
+        (WebCore::setWindowEventHandlerAttribute):
+        (WebCore::documentEventHandlerAttribute):
+        (WebCore::setDocumentEventHandlerAttribute):
+        * bindings/js/JSEventListener.h:
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateImplementation):
+        * dom/Document.cpp:
+        (WebCore::Document::setWindowAttributeEventListener):
+        (WebCore::Document::getWindowAttributeEventListener):
+        * dom/Document.h:
+        * dom/Element.cpp:
+        (WebCore::Element::setAttributeEventListener):
+        * dom/EventTarget.cpp:
+        (WebCore::EventTarget::setAttributeEventListener):
+        (WebCore::EventTarget::attributeEventListener):
+        * dom/EventTarget.h:
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplacementFragment::ReplacementFragment):
+        * html/HTMLBodyElement.cpp:
+        (WebCore::HTMLBodyElement::parseAttribute):
+        * html/HTMLFrameSetElement.cpp:
+        (WebCore::HTMLFrameSetElement::parseAttribute):
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::parseAttribute):
+
+2017-04-18  Jeremy Jones  <jeremyj@apple.com>
+
+        Deadlock in CoreAudioCaptureSource
+        https://bugs.webkit.org/show_bug.cgi?id=170771
+        rdar://problem/31578919
+
+        Reviewed by Eric Carlson.
+
+        Fixes a regression introduced by r215201.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSource::startProducingData):
+        (WebCore::CoreAudioCaptureSource::stopProducingData):
+
+2017-04-18  Anders Carlsson  <andersca@apple.com>
+
+        Stop using deprecated APIs, part 2
+        https://bugs.webkit.org/show_bug.cgi?id=170965
+        rdar://problem/31589635
+
+        Reviewed by Tim Horton.
+
+        * Modules/applepay/ApplePaySession.cpp:
+        (WebCore::convertAndValidate):
+        No need to convert the status anymore.
+
+        (WebCore::ApplePaySession::completeShippingContactSelection):
+        Create an ApplePayError given the status.
+
+        * Modules/applepay/ApplePayShippingContactUpdate.h:
+        Remove the status member variable.
+
+        * Modules/applepay/PaymentRequest.h:
+        Remove the status member variable.
+
+2017-04-18  Tim Horton  <timothy_horton@apple.com>
+
+        Safari crash when clicking phone number data detector popover button
+        https://bugs.webkit.org/show_bug.cgi?id=170936
+        <rdar://problem/31416570>
+
+        Reviewed by Wenson Hsieh.
+
+        * platform/spi/mac/DataDetectorsSPI.h:
+        Soft-link the phone number key from the correct framework.
+
+2017-04-17  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Make annotated types first class allowing them to be used in sequences and unions
+        https://bugs.webkit.org/show_bug.cgi?id=170926
+
+        Reviewed by Chris Dumez.
+
+        - Adds IDL types for WebIDL annotated types:
+            [Clamp] T -> IDLClampAdaptor<T>
+            [EnforceRange] T -> IDLEnforceRangeAdaptor<T>
+            [TreatNullAs=EmptyString] T -> IDLTreatNullAsEmptyAdaptor<T>
+        - Adds additional adaptors for existing specializations
+            [AtomicString] T -> IDLAtomicStringAdaptor<T>
+            [RequiresExistingAtomicString] T -> IDLRequiresExistingAtomicStringAdaptor<T>
+        - Removes the need for IntegerConversionConfiguration and StringConversionConfiguration
+          overloads of convert().
+        - Allows the use of annotated types as subtypes, such as in sequences and unions.
+
+        * bindings/IDLTypes.h:
+        Add new types:
+            - IDLClampAdaptor
+            - IDLEnforceRangeAdaptor
+            - IDLTreatNullAsEmptyAdaptor
+            - IDLAtomicStringAdaptor
+            - IDLRequiresExistingAtomicStringAdaptor
+        Add new predicates for matching strings and strings/enumerations.
+
+        * bindings/js/JSDOMConvertNullable.h:
+        Remove now unnecessary overloads of convert that took IntegerConversionConfiguration
+        and StringConversionConfiguration.
+
+        * bindings/js/JSDOMConvertNumbers.cpp:
+        * bindings/js/JSDOMConvertNumbers.h:
+        Replace individually named conversion functions with explicit template specializations
+        based on type.
+        (WebCore::Converter<IDLByte>::convert):
+        (WebCore::Converter<IDLOctet>::convert):
+        (WebCore::Converter<IDLShort>::convert):
+        (WebCore::Converter<IDLUnsignedShort>::convert):
+        (WebCore::Converter<IDLLong>::convert):
+        (WebCore::Converter<IDLUnsignedLong>::convert):
+        (WebCore::Converter<IDLLongLong>::convert):
+        (WebCore::Converter<IDLUnsignedLongLong>::convert):
+        Simplify convert functions for normal integer converters to only handle
+        the normal case. 
+
+        (WebCore::Converter<IDLClampAdaptor<T>>::convert):
+        (WebCore::JSConverter<IDLClampAdaptor<T>>::convert):
+        (WebCore::Converter<IDLEnforceRangeAdaptor<T>>::convert):
+        (WebCore::JSConverter<IDLEnforceRangeAdaptor<T>>::convert):
+        Add converters for the new annotated types that call into the new
+        template specialized conversion functions.
+
+        * bindings/js/JSDOMConvertStrings.h:
+        (WebCore::Converter<IDLDOMString>::convert):
+        (WebCore::Converter<IDLByteString>::convert):
+        (WebCore::Converter<IDLUSVString>::convert):
+        Remove no longer needed StringConversionConfiguration parameter.
+
+        (WebCore::Converter<IDLTreatNullAsEmptyAdaptor<T>>::convert):
+        (WebCore::JSConverter<IDLTreatNullAsEmptyAdaptor<T>>::convert):
+        (WebCore::Converter<IDLAtomicStringAdaptor<T>>::convert):
+        (WebCore::JSConverter<IDLAtomicStringAdaptor<T>>::convert):
+        (WebCore::Converter<IDLRequiresExistingAtomicStringAdaptor<T>>::convert):
+        (WebCore::JSConverter<IDLRequiresExistingAtomicStringAdaptor<T>>::convert):
+        Add converters for new annotated types. Statically assert that the atomic string
+        adaptors only work for DOMString at present.
+
+        * bindings/js/JSDOMConvertUnion.h:
+        Update union code to fix a long standing FIXME, treating enumerations as strings
+        for the purposes of the union algorithm, and using the new predicate that works
+        with the slightly more complicated IDLString type (e.g. it can now either be a String
+        or an AtomicString).
+
+        * bindings/js/JSCSSStyleDeclarationCustom.cpp:
+        * bindings/js/JSCryptoAlgorithmDictionary.cpp:
+        * bindings/js/JSDocumentCustom.cpp:
+        * bindings/js/JSEventListener.cpp:
+        * bindings/js/JSHTMLCanvasElementCustom.cpp:
+        * bindings/js/JSMockContentFilterSettingsCustom.cpp:
+        * bindings/js/JSNodeFilterCustom.cpp:
+        * bindings/js/JSSubtleCryptoCustom.cpp:
+        Remove explicit passing of Normal for the conversion configuration
+        and use new adaptors where appropriate.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (IsAnnotatedType):
+        (GetAnnotatedIDLType):
+        (GetIDLType):
+        (JSValueToNative):
+        (UnsafeToNative):
+        (GetIntegerConversionConfiguration): Deleted.
+        (GetStringConversionConfiguration): Deleted.
+        Replace passing conversion configuration and specializing for atomic string
+        with annotated types.
+
+        * bindings/scripts/IDLParser.pm:
+        (parseUnionMemberType):
+        Fix parser error where we weren't parsing extended attributes for a union correctly.
+
+        * bindings/scripts/test/JS/JSMapLike.cpp:
+        * bindings/scripts/test/JS/JSReadOnlyMapLike.cpp:
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.cpp:
+        * bindings/scripts/test/JS/JSTestCEReactions.cpp:
+        * bindings/scripts/test/JS/JSTestCEReactionsStringifier.cpp:
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.cpp:
+        * bindings/scripts/test/JS/JSTestDOMJIT.cpp:
+        * bindings/scripts/test/JS/JSTestEventConstructor.cpp:
+        * bindings/scripts/test/JS/JSTestEventTarget.cpp:
+        * bindings/scripts/test/JS/JSTestGlobalObject.cpp:
+        * bindings/scripts/test/JS/JSTestInterface.cpp:
+        * bindings/scripts/test/JS/JSTestNamedConstructor.cpp:
+        * bindings/scripts/test/JS/JSTestNode.cpp:
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        * bindings/scripts/test/JS/JSTestOverloadedConstructors.cpp:
+        * bindings/scripts/test/JS/JSTestOverloadedConstructorsWithSequence.cpp:
+        * bindings/scripts/test/JS/JSTestOverrideBuiltins.cpp:
+        * bindings/scripts/test/JS/JSTestSerialization.cpp:
+        * bindings/scripts/test/JS/JSTestSerializationInherit.cpp:
+        * bindings/scripts/test/JS/JSTestSerializationInheritFinal.cpp:
+        * bindings/scripts/test/JS/JSTestStandaloneDictionary.cpp:
+        * bindings/scripts/test/JS/JSTestTypedefs.cpp:
+        Update tests for changes to integer and string conversion.
+
+        * domjit/DOMJITIDLConvert.h:
+        * domjit/DOMJITIDLType.h:
+        * domjit/DOMJITIDLTypeFilter.h:
+        Add specializations for AtomicString related adaptors.
+
+        * testing/TypeConversions.h:
+        * testing/TypeConversions.idl:
+        - Re-arrange integer attributes to be in size order, and add [Clamp] variants. 
+        - Replace function taking a dictionary + attributes to inspect it
+          with a dictionary attribute. This has been supported for a while
+          and makes the test much clearer (this includes the enum used for
+          inspecting the union in the dictionary).
+        - Add additional test unions that exercise annotated types as subtypes.
+        - Add additional dictionary items that exercise annotated types as subtypes.
+
+2017-04-18  Antti Koivisto  <antti@apple.com>
+
+        Enable optimized layer flushes on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=170938
+        <rdar://problem/31677395>
+
+        Reviewed by Simon Fraser.
+
+        Test: compositing/ios/overflow-scroll-touch-tiles.html
+
+        * platform/graphics/GraphicsLayer.h:
+        (WebCore::GraphicsLayer::setApproximatePosition):
+
+            Make virtual.
+
+        (WebCore::GraphicsLayer::flushCompositingState):
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::syncPosition):
+
+            Rename PositionChanged enum value to more descriptive NeedsComputeVisibleAndCoverageRect.
+
+        (WebCore::GraphicsLayerCA::setApproximatePosition):
+        (WebCore::GraphicsLayerCA::syncBoundsOrigin):
+
+            Like syncPosition make these invalidate the geometry without scheduling a flush. This is needed
+            so when flush happens we don't just optimize it away. Tile coverage depends on position and bounds.
+
+        (WebCore::GraphicsLayerCA::flushCompositingState):
+
+            Remove FlushScope argument.
+            Disable optimization on WK1 due to some UIKit interactions.
+
+        * platform/graphics/ca/GraphicsLayerCA.h:
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.cpp:
+        (WebCore::GraphicsLayerTextureMapper::flushCompositingState):
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.h:
+
+2017-04-18  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the iOS Debug build
+
+        * platform/LengthBox.h:
+
+2017-04-18  Andreas Kling  <akling@apple.com>
+
+        Break Document::m_associatedFormControls reference cycle.
+        <https://webkit.org/b/170946>
+
+        Reviewed by Antti Koivisto.
+
+        There was a race between didAssociateFormControls() and didAssociateFormControlsTimerFired()
+        where detaching Document from its frame between the two would lead to an unbreakable reference
+        cycle between Document and its form elements.
+
+        Solve this by clearing the set of associated form elements in removedLastRef(), where we clear
+        all the other strong smart pointers to elements.
+
+        * dom/Document.cpp:
+        (WebCore::Document::removedLastRef):
+
+2017-04-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Add support for percentage gaps
+        https://bugs.webkit.org/show_bug.cgi?id=170764
+
+        Reviewed by Sergio Villar Senin.
+
+        Part of the code to support percentage gaps was already imported
+        from Blink in r213149 (bug #168657). However parsing was not enabled yet,
+        so some pieces were missing.
+
+        This patch accepts percentages in the parsing of grid-column-gap and
+        grid-row-gap properties, and the grid-gap shorthand.
+        On top of that it gets rid of GridTrackSizingAlgorithm::sizingOperation()
+        method as it's not needed. And instead it passes the specific operation
+        to each call to RenderGrid::guttersSize(), otherwise we would be getting
+        wrong results.
+
+        Test: fast/css-grid-layout/grid-gutters-as-percentage.html
+
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::CSSPropertyParser::parseSingleValue): Add support for
+        percentage values.
+        (WebCore::CSSPropertyParser::parseShorthand): Ditto.
+        * rendering/GridTrackSizingAlgorithm.cpp:
+        (WebCore::IndefiniteSizeStrategy::recomputeUsedFlexFractionIfNeeded):
+        Pass the specific sizing operation.
+        * rendering/GridTrackSizingAlgorithm.h: Remove sizingOperation().
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::computeTrackBasedLogicalHeight): Pass the specific
+        sizing operation.
+        (WebCore::RenderGrid::computeTrackSizesForDefiniteSize): Ditto.
+        (WebCore::RenderGrid::computeTrackSizesForIndefiniteSize): Ditto.
+        (WebCore::RenderGrid::populateGridPositionsForDirection): Ditto.
+
+2017-04-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Add fallback fonts to video captions stylesheet.
+        https://bugs.webkit.org/show_bug.cgi?id=170495
+
+        Reviewed by Eric Carlson.
+
+        The kCTFontCascadeListAttribute key is used to obtain the cascade list for a font reference.
+
+        I have not added a test, since CaptionUserPreferences::testingMode() returns true when running tests,
+        preventing this code path from being executed.
+
+        * page/CaptionUserPreferencesMediaAF.cpp:
+        (WebCore::CaptionUserPreferencesMediaAF::captionsDefaultFontCSS):
+        * platform/spi/win/CoreTextSPIWin.h:
+
+2017-04-18  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK+] Crash in WebCore::ImageFrame::ImageFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=170332
+
+        Reviewed by Carlos Garcia Campos.
+
+        When decoding a PNG image, don't reset the number of frames to 1 when there's a decoding error. Doing
+        so causes a crash if the number of frames we reported before is bigger than 1.
+
+        Test: fast/images/bad-png-missing-fdat.html
+
+        * platform/image-decoders/png/PNGImageDecoder.cpp:
+        (WebCore::PNGImageDecoder::fallbackNotAnimated):
+
+2017-04-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Define priorities also for async network IO tasks
+        https://bugs.webkit.org/show_bug.cgi?id=170905
+
+        Reviewed by Žan Doberšek.
+
+        * platform/network/soup/ResourceHandleSoup.cpp:
+        (WebCore::redirectSkipCallback):
+        (WebCore::sendRequestCallback):
+        (WebCore::continueAfterDidReceiveResponse):
+        (WebCore::readCallback):
+        * platform/network/soup/SocketStreamHandleImplSoup.cpp:
+        (WebCore::SocketStreamHandleImpl::connected):
+        (WebCore::SocketStreamHandleImpl::readBytes):
+
 2017-04-17  Zan Dobersek  <zdobersek@igalia.com>
 
         Unreviewed build fix for !ENABLE(MEDIA_STREAM) configurations.

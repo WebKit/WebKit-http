@@ -1,3 +1,154 @@
+2017-04-18  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Check both origins and cookieHostNames for domain matches in data removal
+        https://bugs.webkit.org/show_bug.cgi?id=170763
+        <rdar://problem/31573091>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html: Added.
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=170941
+        <rdar://problem/31633999>
+
+        Reviewed by Alex Christensen.
+
+        * fast/canvas/webgl/fragment-shader-assertion-expected.txt:
+
+2017-04-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct handling of isolatedWorld in event handling
+        https://bugs.webkit.org/show_bug.cgi?id=65589
+        <rdar://problem/24097804>
+
+        Reviewed by Geoffrey Garen.
+
+        This following test cases are from the following Blink change:
+        https://src.chromium.org/viewvc/blink?revision=152377&view=revision
+
+        * fast/dom/event-attrs-isolated-world-expected.txt: Added.
+        * fast/dom/event-attrs-isolated-world.html: Added.
+        * http/tests/security/isolatedWorld/onclick-attribute-expected.txt: Added.
+        * http/tests/security/isolatedWorld/onclick-attribute.html: Added.
+
+2017-04-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Cannot select text on nytimes.com when the selection granularity is WKSelectionGranularityCharacter
+        https://bugs.webkit.org/show_bug.cgi?id=170968
+        <rdar://problem/31692560>
+
+        Reviewed by Dan Bernstein.
+
+        Adds a new layout test checking that text within a node with a click handler can be selected when using
+        character selection granularity.
+
+        * editing/selection/character-granularity-select-text-with-click-handler-expected.txt: Added.
+        * editing/selection/character-granularity-select-text-with-click-handler.html: Added.
+
+2017-04-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [mac-wk1 Debug] LayoutTest http/tests/inspector/network/resource-sizes-network.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=170953
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        Mark a flakey test in WebKit1.
+
+2017-04-17  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Make annotated types first class allowing them to be used in sequences and unions
+        https://bugs.webkit.org/show_bug.cgi?id=170926
+
+        Reviewed by Chris Dumez.
+
+        * js/dom/webidl-type-mapping-expected.txt:
+        * js/dom/webidl-type-mapping.html:
+        Update test to account for testDictionary now being an attribute,
+        and test that the annotated type members behave correctly.
+
+2017-04-18  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6]. Implement Annex B.3.3 function hoisting rules for eval
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+
+        Reviewed by Saam Barati.
+
+        * inspector/runtime/evaluate-CommandLineAPI-expected.txt:
+        * inspector/runtime/evaluate-CommandLineAPI.html:
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+
+2017-04-18  Antti Koivisto  <antti@apple.com>
+
+        Enable optimized layer flushes on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=170938
+        <rdar://problem/31677395>
+
+        Reviewed by Simon Fraser.
+
+        Add test verifying that tiles get created for touch overflow scrolling.
+
+        * compositing/ios/overflow-scroll-touch-tiles-expected.txt: Added.
+        * compositing/ios/overflow-scroll-touch-tiles.html: Added.
+
+2017-04-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for "selectors4" tests on mac-wk1.
+        https://trac.webkit.org/changeset/215457/webkit
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Add support for percentage gaps
+        https://bugs.webkit.org/show_bug.cgi?id=170764
+
+        Reviewed by Sergio Villar Senin.
+
+        Import tests from Blink.
+
+        * fast/css-grid-layout/grid-gutters-as-percentage-expected.txt: Added.
+        * fast/css-grid-layout/grid-gutters-as-percentage.html: Added.
+        * fast/css-grid-layout/grid-gutters-get-set-expected.txt:
+        * fast/css-grid-layout/grid-gutters-get-set.html:
+
+2017-04-18  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK+] Crash in WebCore::ImageFrame::ImageFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=170332
+
+        Reviewed by Carlos Garcia Campos.
+
+        Added a test to ensure that the browser doesn't crash when loading a PNG image which
+        reports a wrong number of frames.
+
+        * fast/images/bad-png-missing-fdat-expected.txt: Added.
+        * fast/images/bad-png-missing-fdat.html: Added.
+        * fast/images/resources/bad-png-missing-fdAT.png: Added.
+
+2017-04-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [selectors4] Import W3C Test Suite
+        https://bugs.webkit.org/show_bug.cgi?id=170898
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations: Mark a few tests as failure linking to the related bugs.
+        * platform/mac-wk1/TestExpectations: Marking some tests that have issues on WK1.
+
+2017-04-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Add several test expectations.
+
+        * platform/gtk/TestExpectations:
+
 2017-04-17  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Doesn't show size of compressed content correctly
@@ -55,7 +206,8 @@
 2017-04-17  Youenn Fablet  <youenn@apple.com>
 
         LayoutTest webrtc/video-mute.html is a flaky failure
-        https://bugs.webkit.org/show_bug.cgi?id=170704
+        https://bugs.webkit.or
+        g/show_bug.cgi?id=170704
 
         Reviewed by Eric Carlson.
 

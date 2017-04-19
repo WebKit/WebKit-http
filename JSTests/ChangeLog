@@ -1,3 +1,147 @@
+2017-04-18  Mark Lam  <mark.lam@apple.com>
+
+        r211670 broke double to int conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=170961
+        <rdar://problem/31687696>
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/double-to-int32.js: Added.
+        * stress/to-int32-sensible2.js: Added.
+
+2017-04-18  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6]. Implement Annex B.3.3 function hoisting rules for eval
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+
+        Reviewed by Saam Barati.
+
+        * stress/eval-func-decl-block-scoping-reassign.js: Added.
+        (assert):
+        (throw.new.Error.f):
+        (throw.new.Error):
+        * stress/eval-func-decl-block-with-remove.js: Added.
+        (assert):
+        (foo.boo):
+        (foo):
+        * stress/eval-func-decl-block-with-var-and-remove.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (joo):
+        (koo):
+        * stress/eval-func-decl-block-with-var-sinthesize.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (hoo):
+        (joo):
+        (koo):
+        * stress/eval-func-decl-in-block-scope-and-bind-to-top-eval-scope.js: Added.
+        * stress/eval-func-decl-in-eval-within-block-with-let.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (goo):
+        * stress/eval-func-decl-in-eval-within-with-scope.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (boo.let.val2):
+        (boo.let.val3):
+        * stress/eval-func-decl-in-frozen-global.js: Added.
+        (assert):
+        (assertThrow):
+        (throw.new.Error):
+        (Object.freeze):
+        * stress/eval-func-decl-in-global-of-eval.js: Added.
+        (assert):
+        (assertThrow):
+        (bar):
+        (baz):
+        (foobar):
+        * stress/eval-func-decl-in-global.js: Added.
+        (assert):
+        (assertThrow):
+        * stress/eval-func-decl-in-if.js: Added.
+        (assert):
+        * stress/eval-func-decl-within-eval-with-reassign-to-var.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (foobar):
+        (hoo):
+        (joo):
+        (koo):
+        (loo):
+        * stress/eval-func-decl-within-eval-without-reassign-to-let.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (goo):
+        * stress/variable-under-tdz-eval-tricky.js:
+        (assert):
+        * test262.yaml:
+
+2017-04-18  Filip Pizlo  <fpizlo@apple.com>
+
+        wasm/function-tests/memory-multiagent times out sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=170958
+
+        Reviewed by Keith Miller.
+        
+        Add the ability to skip tests easily. Skip the test.
+
+        * wasm.yaml:
+        * wasm/function-tests/memory-multiagent.js:
+
+2017-04-18  Saam Barati  <sbarati@apple.com>
+
+        Follow up to debug build stack overflow in test after r215453
+
+        Rubber stamped by Mark Lam.
+
+        * stress/call-apply-exponential-bytecode-size.js: Decrease the call
+        size to prevent stack overflow errors on debug builds.
+
+2017-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Convert ValueAdd(Int32, String) => MakeRope(ToString(Int32), String)
+        https://bugs.webkit.org/show_bug.cgi?id=170943
+
+        Reviewed by Geoffrey Garen.
+
+        * microbenchmarks/number-to-string-with-add-empty.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * microbenchmarks/number-to-string-with-add-in-loop.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * microbenchmarks/number-to-string-with-add.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * stress/number-to-string-with-add.js: Added.
+        (shouldBe):
+        (toStringRight):
+        (toStringLeftEmpty):
+        (toStringRightEmpty):
+
+2017-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Drop unknown use of CheckCell's child2 to work ObjectAllocationSinking for Array iterator object
+        https://bugs.webkit.org/show_bug.cgi?id=170940
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/for-of-array.js: Added.
+        (fn):
+
 2017-04-17  Saam Barati  <sbarati@apple.com>
 
         BytecodeGenerator ".call" and ".apply" is exponential in nesting depth

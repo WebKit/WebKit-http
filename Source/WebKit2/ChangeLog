@@ -1,3 +1,223 @@
+2017-04-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Dragging a few items over MiniBrowser has 0 in the red indicator.
+        https://bugs.webkit.org/show_bug.cgi?id=170874
+
+        Reviewed by Tim Horton.
+
+        When WebKit does not accept the drag items, the drag count badge should not be updated.
+        Also, if WebKit changes the drag count badge, it should be restored to its original
+        value when the drag exits.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::draggingEntered):
+        (WebKit::WebViewImpl::draggingUpdated):
+        (WebKit::WebViewImpl::draggingExited):
+
+2017-04-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add infrastructure and unit tests for file uploads using data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=170903
+        <rdar://problem/31314689>
+
+        Reviewed by Tim Horton.
+
+        See Tools/ChangeLog for more details. Makes a small adjustment to _simulateDataInteractionUpdated: to return a
+        BOOL indicating whether or not to allow the operation to proceed. This is necessary for testing scenarios where
+        multiple files are being "data interacted" onto an element. See <https://bugs.webkit.org/show_bug.cgi?id=170880>
+        for more details about the change this patch is testing.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _simulateDataInteractionUpdated:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/ios/WKContentViewInteraction.h:
+
+2017-04-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support DataTransfer::files() when performing a DHTML data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=170880
+        <rdar://problem/31314689>
+
+        Reviewed by Tim Horton.
+
+        See the WebCore ChangeLog for more details.
+
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::getFilenamesForDataInteraction):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didPerformDragControllerAction):
+        (WebKit::WebPageProxy::resetCurrentDragInformation):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::documentIsHandlingNonDefaultDrag):
+        * UIProcess/WebPageProxy.messages.in:
+
+        Adds an IPC argument to DidPerformDragControllerAction specifying whether the page prevented the default behavior.
+
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPasteboardProxy.messages.in:
+
+        Adds IPC plumbing for the new filenamesForDataInteraction Pasteboard codepath.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::getFilenamesForDataInteraction):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::performDragControllerAction):
+
+2017-04-18  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Check both origins and cookieHostNames for domain matches in data removal
+        https://bugs.webkit.org/show_bug.cgi?id=170763
+        <rdar://problem/31573091>
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores):
+            Move semantics for topPrivatelyControlledDomains vector.
+        (WebKit::WebProcessProxy::deleteWebsiteDataForTopPrivatelyOwnedDomainsInAllPersistentDataStores): Deleted.
+            Renamed 'PrivatelyControlled' instead of 'PrivatelyOwned.'
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::removeDataRecords):
+            Move semantics for prevalentResourceDomains vector.
+        * UIProcess/WebsiteData/WebsiteDataRecord.cpp:
+        (WebKit::hostIsInDomain):
+            Static convenience function.
+        (WebKit::WebsiteDataRecord::matchesTopPrivatelyControlledDomain):
+            Checks for matching cookieHostNames if types contains WebsiteDataType::Cookies.
+            Also checks origins.
+        * UIProcess/WebsiteData/WebsiteDataRecord.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchDataForTopPrivatelyControlledDomains):
+            Now makes use of the new function
+            WebKit::WebsiteDataRecord::validForTopPrivatelyControlledDomain().
+        (WebKit::WebsiteDataStore::removeDataForTopPrivatelyControlledDomains):
+            Move semantics for topPrivatelyControlledDomains vector.
+        (WebKit::WebsiteDataStore::fetchDataForTopPrivatelyOwnedDomains): Deleted.
+            Renamed 'PrivatelyControlled' instead of 'PrivatelyOwned.'
+        (WebKit::WebsiteDataStore::removeDataForTopPrivatelyOwnedDomains): Deleted.
+            Renamed 'PrivatelyControlled' instead of 'PrivatelyOwned.'
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
+2017-04-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS][WK2] Prevent ephemeral files from being backed up
+        https://bugs.webkit.org/show_bug.cgi?id=170963
+        <rdar://problem/30470332>
+
+        Reviewed by Brady Eidson.
+
+        Tell the OS to skip temporary data files when performing backups.
+
+        * UIProcess/Cocoa/WebResourceLoadStatisticsStoreCocoa.mm: Added.
+        (WebKit::WebResourceLoadStatisticsStore::platformExcludeFromBackup): Added.
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::writeEncoderToDisk):
+        (WebKit::WebResourceLoadStatisticsStore::platformExcludeFromBackup): Add stub for
+        non-iOS platforms.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * WebKit2.xcodeproj/project.pbxproj: Add new file.
+
+2017-04-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Cannot select text on nytimes.com when the selection granularity is WKSelectionGranularityCharacter
+        https://bugs.webkit.org/show_bug.cgi?id=170968
+        <rdar://problem/31692560>
+
+        Reviewed by Dan Bernstein.
+
+        Makes a small adjustment to textInteractionGesture:shouldBeginAtPoint:. When determining whether to allow the
+        text interaction assistant to recognize at a given point, instead of depending on whether or not the hit node is
+        the same as the assisted node, only enforce this restriction when editing an assisted node. Otherwise, default
+        to allowing the selection gesture.
+
+        Note that character granularity selection was working on most pages before, due to the fact that
+        nodeAtPositionIsAssistedNode was true in many cases when there is no assisted node at all. This is because, in
+        WebPage.mm, we compute the hit-tested node responding to click events to be null, and then set
+        nodeAtPositionIsAssistedNode to be equal to hitNode == m_assistedNode, which ends up being true because both of
+        these values are null.
+
+        This allowed text selection to work in the simple case when selection granularity character is used, but not
+        when the node containing the selected point actually does respond to click events, since the comparison returns
+        false.
+
+        New layout test: LayoutTests/editing/selection/character-granularity-select-text-with-click-handler.html.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView textInteractionGesture:shouldBeginAtPoint:]):
+
+2017-04-18  Keith Rollin  <krollin@apple.com>
+
+        Add additional information when logging URL disposition in WebLoaderStrategy::scheduleLoad
+        https://bugs.webkit.org/show_bug.cgi?id=170813
+
+        Reviewed by Alex Christensen.
+
+        There are a few logging statements in WebLoaderStrategy::scheduleLoad
+        that report, for example, "URL will be loaded as data". These
+        statements also log the address of the frame doing the loading and the
+        identifier of the resource. For consistency with other logging and to
+        make scripted analysis of the logs more robust, also include the
+        pageID and frameID in the logging.
+
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::scheduleLoad):
+
+2017-04-18  Anders Carlsson  <andersca@apple.com>
+
+        Stop using deprecated APIs, part 2
+        https://bugs.webkit.org/show_bug.cgi?id=170965
+
+        Reviewed by Tim Horton.
+
+        * Shared/Cocoa/WebCoreArgumentCodersCocoa.mm:
+        (IPC::ArgumentCoder<WebCore::ShippingContactUpdate>::encode):
+        (IPC::ArgumentCoder<WebCore::ShippingContactUpdate>::decode):
+        Remove the status member variable.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::status):
+        New function to be used by older OSes. This will recreate a PKPaymentAuthorizationStatus given a ShippingContactUpdate.
+
+        (WebKit::WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection):
+        Stop using the deprecated API.
+
+2017-04-18  Timothy Horton  <timothy_horton@apple.com>
+
+        Force scroll view insets to be respected regardless of rubber-banding state
+        https://bugs.webkit.org/show_bug.cgi?id=170937
+        <rdar://problem/31412788>
+
+        Reviewed by Simon Fraser.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+
+2017-04-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Define priorities also for async network IO tasks
+        https://bugs.webkit.org/show_bug.cgi?id=170905
+
+        Reviewed by Žan Doberšek.
+
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::inputStreamReadReadyCallback):
+        (WebKit::NetworkCache::IOChannel::read):
+        (WebKit::NetworkCache::outputStreamWriteReadyCallback):
+        (WebKit::NetworkCache::IOChannel::write):
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::skipInputStreamForRedirection):
+        (WebKit::NetworkDataTaskSoup::read):
+        (WebKit::NetworkDataTaskSoup::requestNextPart):
+        (WebKit::NetworkDataTaskSoup::writeDownload):
+        (WebKit::NetworkDataTaskSoup::didFinishDownload):
+        * UIProcess/API/gtk/WebKitURISchemeRequest.cpp:
+        (webkitURISchemeRequestReadCallback):
+        (webkit_uri_scheme_request_finish):
+
 2017-04-17  Timothy Horton  <timothy_horton@apple.com>
 
         Plumb all four obscured insets to WebCore, instead of just top/left
