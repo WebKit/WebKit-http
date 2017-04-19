@@ -94,20 +94,20 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
         // handle_pointer_event
         [](void* data, struct wpe_input_pointer_event* event)
         {
-            auto& view = *reinterpret_cast<View*>(data);
-            view.page().handleMouseEvent(WebKit::NativeWebMouseEvent(event));
+            auto& page = reinterpret_cast<View*>(data)->page();
+            page.handleMouseEvent(WebKit::NativeWebMouseEvent(event, page.deviceScaleFactor()));
         },
         // handle_axis_event
         [](void* data, struct wpe_input_axis_event* event)
         {
-            auto& view = *reinterpret_cast<View*>(data);
-            view.page().handleWheelEvent(WebKit::NativeWebWheelEvent(event));
+            auto& page = reinterpret_cast<View*>(data)->page();
+            page.handleWheelEvent(WebKit::NativeWebWheelEvent(event, page.deviceScaleFactor()));
         },
         // handle_touch_event
         [](void* data, struct wpe_input_touch_event* event)
         {
-            auto& view = *reinterpret_cast<View*>(data);
-            view.page().handleTouchEvent(WebKit::NativeWebTouchEvent(event));
+            auto& page = reinterpret_cast<View*>(data)->page();
+            page.handleTouchEvent(WebKit::NativeWebTouchEvent(event, page.deviceScaleFactor()));
         },
     };
     wpe_view_backend_set_input_client(m_backend, &s_inputClient, this);

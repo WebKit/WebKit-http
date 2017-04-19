@@ -38,9 +38,9 @@ namespace WebKit {
 class WebEventFactory {
 public:
     static WebKeyboardEvent createWebKeyboardEvent(struct wpe_input_keyboard_event*);
-    static WebMouseEvent createWebMouseEvent(struct wpe_input_pointer_event*);
-    static WebWheelEvent createWebWheelEvent(struct wpe_input_axis_event*);
-    static WebTouchEvent createWebTouchEvent(struct wpe_input_touch_event*);
+    static WebMouseEvent createWebMouseEvent(struct wpe_input_pointer_event*, float deviceScaleFactor);
+    static WebWheelEvent createWebWheelEvent(struct wpe_input_axis_event*, float deviceScaleFactor);
+    static WebTouchEvent createWebTouchEvent(struct wpe_input_touch_event*, float deviceScaleFactor);
 };
 
 } // namespace WebKit

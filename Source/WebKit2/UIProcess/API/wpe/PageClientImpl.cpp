@@ -201,7 +201,7 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& touchEvent, b
         return;
     }
 
-    m_view.page().handleMouseEvent(NativeWebMouseEvent(&pointerEvent));
+    m_view.page().handleMouseEvent(NativeWebMouseEvent(&pointerEvent, m_view.page().deviceScaleFactor()));
 }
 
 void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&)

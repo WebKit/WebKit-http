@@ -52,7 +52,7 @@ public:
     NativeWebWheelEvent(const NativeWebWheelEvent&);
     NativeWebWheelEvent(GdkEvent*);
 #elif PLATFORM(WPE)
-    NativeWebWheelEvent(struct wpe_input_axis_event*);
+    NativeWebWheelEvent(struct wpe_input_axis_event*, float deviceScaleFactor);
 #endif
 
 #if USE(APPKIT)

@@ -84,7 +84,7 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(struct wpe_input_keyboa
         modifiersForEvent(event), event->time);
 }
 
-WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_event* event)
+WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_event* event, float deviceScaleFactor)
 {
     WebEvent::Type type = WebEvent::NoType;
     switch (event->type) {
@@ -117,11 +117,12 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_even
 
     // FIXME: Proper button support. Modifiers. deltaX/Y/Z. Click count.
     WebCore::IntPoint position(event->x, event->y);
+    position.scale(1 / deviceScaleFactor);
     return WebMouseEvent(type, button, position, position,
         0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(0), event->time);
 }
 
-WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* event)
+WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* event, float deviceScaleFactor)
 {
     // FIXME: We shouldn't hard-code this.
     enum Axis {
@@ -147,6 +148,7 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* 
     delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
 
     WebCore::IntPoint position(event->x, event->y);
+    position.scale(1 / deviceScaleFactor);
     return WebWheelEvent(WebEvent::Wheel, position, position,
         delta, wheelTicks, WebWheelEvent::ScrollByPixelWheelEvent, static_cast<WebEvent::Modifiers>(0), event->time);
 }
@@ -171,7 +173,7 @@ static WebKit::WebPlatformTouchPoint::TouchPointState stateForTouchPoint(int mai
     return WebKit::WebPlatformTouchPoint::TouchStationary;
 }
 
-WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event* event)
+WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event* event, float deviceScaleFactor)
 {
     WebEvent::Type type = WebEvent::NoType;
     switch (event->type) {
@@ -196,8 +198,11 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event*
         if (point.type == wpe_input_touch_event_type_null)
             continue;
 
-        touchPoints.uncheckedAppend(WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event->id, &point),
-            WebCore::IntPoint(point.x, point.y), WebCore::IntPoint(point.x, point.y)));
+        WebCore::IntPoint pointCoordinates;
+        pointCoordinates.scale(1 / deviceScaleFactor);
+        touchPoints.uncheckedAppend(
+            WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event->id, &point),
+                pointCoordinates, pointCoordinates));
     }
 
     return WebTouchEvent(type, WTFMove(touchPoints), WebEvent::Modifiers(0), event->time);
