@@ -101,6 +101,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/wpe/CompositingManagerProxy.cpp
     UIProcess/API/wpe/DrawingAreaProxyWPE.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
+    UIProcess/API/wpe/ScrollGestureController.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/API/wpe/WPEViewClient.cpp
 

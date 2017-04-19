@@ -127,25 +127,29 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* 
     // FIXME: We shouldn't hard-code this.
     enum Axis {
         Vertical,
-        Horizontal
+        Horizontal,
+        Smooth
     };
 
     WebCore::FloatSize wheelTicks;
+    WebCore::FloatSize delta;
     switch (event->axis) {
     case Vertical:
-        wheelTicks = WebCore::FloatSize(0, 1);
+        wheelTicks = WebCore::FloatSize(0, event->value / std::abs(event->value));
+        delta = wheelTicks;
+        delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
         break;
     case Horizontal:
-        wheelTicks = WebCore::FloatSize(1, 0);
+        wheelTicks = WebCore::FloatSize(event->value / std::abs(event->value), 0);
+        delta = wheelTicks;
+        delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
         break;
+    case Smooth:
+        wheelTicks = WebCore::FloatSize(0, event->value / deviceScaleFactor);
+        delta = wheelTicks;
     default:
         ASSERT_NOT_REACHED();
     };
-
-    wheelTicks.scale(event->value / std::abs(event->value));
-
-    WebCore::FloatSize delta = wheelTicks;
-    delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
 
     WebCore::IntPoint position(event->x, event->y);
     position.scale(1 / deviceScaleFactor);

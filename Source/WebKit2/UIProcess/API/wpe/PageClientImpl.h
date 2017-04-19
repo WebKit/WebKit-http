@@ -34,9 +34,12 @@ class View;
 
 namespace WebKit {
 
+class ScrollGestureController;
+
 class PageClientImpl final : public PageClient {
 public:
     PageClientImpl(WKWPE::View&);
+    virtual ~PageClientImpl();
 
 private:
     // PageClient
@@ -118,6 +121,8 @@ private:
     void didChangeClipToSafeArea(bool) override { }
 
     WKWPE::View& m_view;
+
+    std::unique_ptr<ScrollGestureController> m_scrollGestureController;
 };
 
 } // namespace WebKit
