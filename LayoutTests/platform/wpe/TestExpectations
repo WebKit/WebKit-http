@@ -161,10 +161,21 @@ Bug(WPE) webgl/1.0.3/conformance/glsl/bugs/temp-expressions-should-not-crash.htm
 Bug(WPE) webgl/1.0.3/conformance/textures/texture-upload-size.html [ Timeout ]
 #  One of these tests is DDoS-ing Mesa AMD drivers.
 Bug(WPE) webgl/1.0.3/conformance/glsl/bugs [ Skip ]
-
 # Pixel test result oddities
 Bug(WPE) webgl/webgl-border.html [ ImageOnlyFailure ]
 Bug(WPE) webgl/webgl-box-shadow.html [ ImageOnlyFailure ]
+# Unknown
+Bug(WPE) webgl/1.0.2/conformance/extensions/oes-texture-float-with-image.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-image-rgb565.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-image-rgba4444.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-image-rgba5551.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-image.html [ Failure ]
+Bug(WPE) webgl/1.0.2/conformance/textures/tex-image-with-format-and-type.html [ Failure ]
+Bug(WPE) webgl/many-contexts-access-after-loss.html [ Failure ]
+Bug(WPE) webgl/many-contexts.html [ Failure ]
+Bug(WPE) webgl/max-active-contexts-console-warning.html [ Failure ]
+Bug(WPE) webgl/max-active-contexts-gc.html [ Failure ]
+Bug(WPE) webgl/max-active-contexts-oldest-context-lost.html [ Failure ]
 
 # WebGL2
 Bug(WPE) webgl/webgl-vertex-array-object-defined.html [ Failure ]
