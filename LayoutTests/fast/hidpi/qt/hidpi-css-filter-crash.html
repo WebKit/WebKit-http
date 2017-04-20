@@ -1,0 +1,16 @@
+<script>
+    window.onload = function() {
+        if (window.testRunner) {
+            testRunner.waitUntilDone();
+            testRunner.setBackingScaleFactor(2, finishTest);
+        }
+    }
+
+    function finishTest() {
+        setTimeout(function() { testRunner.notifyDone(); }, 0);
+    }
+</script>
+<style>
+    html { filter: invert(); }
+</style>
+<p>This test passes if there is no crash and pixel result is not corrupted</p>
