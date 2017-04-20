@@ -596,8 +596,8 @@ void tst_QWebPage::userStyleSheet()
     TestNetworkManager* networkManager = new TestNetworkManager(m_page);
     m_page->setNetworkAccessManager(networkManager);
 
-    m_page->settings()->setUserStyleSheetUrl(QUrl("data:text/css;charset=utf-8;base64,"
-            + QByteArray("p { background-image: url('http://does.not/exist.png');}").toBase64()));
+    m_page->settings()->setUserStyleSheetUrl(QUrl(QString::fromLatin1("data:text/css;charset=utf-8;base64,"
+            + QByteArray("p { background-image: url('http://does.not/exist.png');}").toBase64())));
     m_view->setHtml("<p>hello world</p>");
     QVERIFY(::waitForSignal(m_view, SIGNAL(loadFinished(bool))));
 

@@ -126,7 +126,7 @@ void tst_QWebHistory::count()
 void tst_QWebHistory::back()
 {
     for (int i = histsize;i > 1;i--) {
-        QCOMPARE(page->mainFrame()->toPlainText(), QString("page") + QString::number(i));
+        QCOMPARE(page->mainFrame()->toPlainText(), QStringLiteral("page%1").arg(i));
         hist->back();
         loadFinishedBarrier->ensureSignalEmitted();
     }
@@ -147,13 +147,13 @@ void tst_QWebHistory::forward()
     }
 
     for (int i = 1;i < histsize;i++) {
-        QCOMPARE(page->mainFrame()->toPlainText(), QString("page") + QString::number(i));
+        QCOMPARE(page->mainFrame()->toPlainText(), QStringLiteral("page%1").arg(i));
         hist->forward();
         loadFinishedBarrier->ensureSignalEmitted();
     }
     //try one more time (too many). crash test
     hist->forward();
-    QCOMPARE(page->mainFrame()->toPlainText(), QString("page") + QString::number(histsize));
+    QCOMPARE(page->mainFrame()->toPlainText(), QStringLiteral("page%1").arg(histsize));
 }
 
 /**
@@ -162,7 +162,7 @@ void tst_QWebHistory::forward()
 void tst_QWebHistory::itemAt()
 {
     for (int i = 1;i < histsize;i++) {
-        QCOMPARE(hist->itemAt(i - 1).title(), QString("page") + QString::number(i));
+        QCOMPARE(hist->itemAt(i - 1).title(), QStringLiteral("page%1").arg(i));
         QVERIFY(hist->itemAt(i - 1).isValid());
     }
     //check out of range values
@@ -197,7 +197,7 @@ void tst_QWebHistory::items()
 
     //check order
     for (int i = 1;i <= histsize;i++) {
-        QCOMPARE(items.at(i - 1).title(), QString("page") + QString::number(i));
+        QCOMPARE(items.at(i - 1).title(), QStringLiteral("page%1").arg(i));
     }
 }
 
@@ -226,7 +226,7 @@ void tst_QWebHistory::serialize_1()
     //check order of historyItems
     QList<QWebHistoryItem> items = hist->items();
     for (int i = 1;i <= histsize;i++) {
-        QCOMPARE(items.at(i - 1).title(), QString("page") + QString::number(i));
+        QCOMPARE(items.at(i - 1).title(), QStringLiteral("page%1").arg(i));
     }
 }
 
@@ -241,7 +241,7 @@ void tst_QWebHistory::serialize_2()
     QDataStream load(&tmp, QIODevice::ReadOnly); //from here data will be loaded
 
     // Force a "same document" navigation.
-    frame->load(frame->url().toString() + QLatin1String("#dummyAnchor"));
+    frame->load(QUrl(frame->url().toString() + QLatin1String("#dummyAnchor")));
 
     int initialCurrentIndex = hist->currentItemIndex();
 
