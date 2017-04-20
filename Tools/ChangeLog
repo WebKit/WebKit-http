@@ -1,3 +1,131 @@
+2017-04-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove WebKitTestRunner code for enabling features that are already enabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=171033
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setShadowDOMEnabled): Deleted.
+        (WTR::TestRunner::setCustomElementsEnabled): Deleted.
+        (WTR::TestRunner::setFetchAPIEnabled): Deleted.
+        (WTR::TestRunner::setDownloadAttributeEnabled): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-04-19  Youenn Fablet  <youenn@apple.com>
+
+        [Mac] Allow customizing H264 encoder
+        https://bugs.webkit.org/show_bug.cgi?id=170829
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-04-19  Brady Eidson  <beidson@apple.com>
+
+        Add asynchronous equivalent of -[<WKUIDelegate> webView:createWebViewWithConfiguration:...].
+        <rdar://problem/30699851> and https://bugs.webkit.org/show_bug.cgi?id=171018
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/OpenAndCloseWindow.mm:
+        (TEST):
+        (-[OpenAndCloseWindowUIDelegateAsync webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (-[OpenAndCloseWindowUIDelegateAsync _webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:completionHandler:]):
+
+2017-04-19  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r213168): An extra Web Content process is spun up on launch and is never closed.
+        <rdar://problem/30774839> and https://bugs.webkit.org/show_bug.cgi?id=171002
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/InitialWarmedProcessUsed.mm: Added.
+
+2017-04-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Run tests with ResourceLoadStatistics enabled
+        https://bugs.webkit.org/show_bug.cgi?id=170952
+
+        Reviewed by Andy Estes.
+
+        Excercise the load statistics code during tests.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2017-04-19  Bill Ming  <mbbill@gmail.com>
+
+        close_fds should be set to False on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=170838
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive._should_close_fds):
+
+2017-04-19  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using strcpy() in WebKit::EnvironmentUtilities::stripValuesEndingWithString()
+        <https://webkit.org/b/170994>
+        <rdar://problem/29889932>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        (EnvironmentUtilitiesTest.cpp): Add to TestWebKitAPILibrary
+        target.
+        * TestWebKitAPI/Tests/WebKit2/EnvironmentUtilitiesTest.cpp: Add.
+        (TestWebKitAPI::strip): Helper method to set/get environment
+        variable for testing.
+        (TestWebKitAPI::WebKit2_StripValuesEndingWithString_Test): Add
+        tests.
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: add script which can import GCC torture tests
+        https://bugs.webkit.org/show_bug.cgi?id=170740
+
+        Reviewed by Saam Barati.
+
+        Add a script which can import the GCC torture tests and create a
+        yaml file to run them as part of jsc's WebAssembly regression
+        tests.
+
+        This patch doesn't commit the tests themselves because they're
+        licensed differently.
+
+        * Scripts/run-jsc-stress-tests: learn how to run
+        Emscripten-generated .js+.wasm files, and do a bit of cleanup on
+        the options because WebAssembly is enabled by default.
+        * Scripts/update-wasm-gcc-torture.py: Added.
+        (parse_args):
+        (update_lkgr):
+        (untar_torture):
+        (list_js_files):
+        (waterfall_known_failures):
+        (create_yaml):
+        (main):
+
+2017-04-19  Youenn Fablet  <youenn@apple.com>
+
+        Import web-platform-tests/tools
+        https://bugs.webkit.org/show_bug.cgi?id=170718
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py:
+        (main):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer.ports_to_forward):
+        (WebPlatformTestServer._prepare_config):
+        (WebPlatformTestServer._install_modules): Deleted.
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.write_html_files_for_templated_js_tests):
+
 2017-04-18  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [WK2] Add infrastructure and unit tests for file uploads using data interaction

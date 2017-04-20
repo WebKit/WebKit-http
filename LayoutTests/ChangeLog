@@ -1,3 +1,124 @@
+2017-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170907
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/reflection-embedded.html.
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2017-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders-cl.htm as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=171031
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove two tests after r215515.
+        https://bugs.webkit.org/show_bug.cgi?id=171014
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tests after r215515.
+        https://bugs.webkit.org/show_bug.cgi?id=171014
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2017-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Parsing large XML strings fails
+        https://bugs.webkit.org/show_bug.cgi?id=170999
+        <rdar://problem/17336267>
+
+        Reviewed by Brady Eidson.
+
+        * fast/dom/xml-large-expected.txt: Added.
+        * fast/dom/xml-large.html: Added.
+
+2017-04-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: <hr> should use a different role description than interactive separators
+        https://bugs.webkit.org/show_bug.cgi?id=170317
+        <rdar://problem/31363024>
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/mac/hr-element-expected.txt:
+        * accessibility/mac/hr-element.html:
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        Unreviewed, rolling out r215520.
+
+        Broke Debian 8
+
+        Reverted changeset:
+
+        "[INTL] Implement Intl.DateTimeFormat.prototype.formatToParts"
+        https://bugs.webkit.org/show_bug.cgi?id=169458
+        http://trac.webkit.org/changeset/215520
+
+2017-04-19  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.DateTimeFormat.prototype.formatToParts
+        https://bugs.webkit.org/show_bug.cgi?id=169458
+
+        Reviewed by JF Bastien.
+
+        Add tests for formatToParts
+
+        * js/intl-datetimeformat-expected.txt:
+        * js/script-tests/intl-datetimeformat.js:
+
+2017-04-19  Youenn Fablet  <youenn@apple.com>
+
+        Import web-platform-tests/tools
+        https://bugs.webkit.org/show_bug.cgi?id=170718
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached-expected.txt.
+        * tests-options.json:
+
+2017-04-19  Antti Koivisto  <antti@apple.com>
+
+        Avoid repaints for invisible animations on tumblr.com/search/aww
+        https://bugs.webkit.org/show_bug.cgi?id=170986
+        <rdar://problem/28644580>
+
+        Reviewed by Andreas Kling.
+
+        * fast/repaint/mutate-non-visible-expected.txt: Added.
+        * fast/repaint/mutate-non-visible.html: Added.
+
 2017-04-18  John Wilander  <wilander@apple.com>
 
         Resource Load Statistics: Check both origins and cookieHostNames for domain matches in data removal

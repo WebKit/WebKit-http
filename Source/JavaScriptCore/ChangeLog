@@ -1,3 +1,212 @@
+2017-04-19  Youenn Fablet  <youenn@apple.com>
+
+        [Mac] Allow customizing H264 encoder
+        https://bugs.webkit.org/show_bug.cgi?id=170829
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-19  Michael Saboff  <msaboff@apple.com>
+
+        Tune GC related JSC options for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=171019
+
+        Reviewed by Mark Lam.
+
+        Always set these GC options on iOS.
+
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: fast memory cleanups
+        https://bugs.webkit.org/show_bug.cgi?id=170909
+
+        Reviewed by Saam Barati.
+
+        * b3/B3LowerToAir.cpp: correct comment, and make wasm-independent
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3Procedure.h:
+        * b3/B3Validate.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::effects):
+        * b3/B3WasmBoundsCheckValue.cpp: have the creator pass in a
+        maximum, so we don't have to know so much about wasm here
+        (JSC::B3::WasmBoundsCheckValue::WasmBoundsCheckValue):
+        (JSC::B3::WasmBoundsCheckValue::cloneImpl):
+        (JSC::B3::WasmBoundsCheckValue::dumpMeta):
+        * b3/B3WasmBoundsCheckValue.h:
+        (JSC::B3::WasmBoundsCheckValue::boundsType):
+        (JSC::B3::WasmBoundsCheckValue::bounds):
+        * b3/air/AirCode.h:
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::WasmBoundsCheckCustom::generate):
+        * b3/testb3.cpp:
+        (JSC::B3::testWasmBoundsCheck):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::emitCheckAndPreparePointer):
+        (JSC::Wasm::createJSToWasmWrapper): remove dead code
+        * wasm/WasmMemory.cpp: don't GC if no memory could possibly be free'd
+        (JSC::Wasm::Memory::initializePreallocations): verbose-only code,
+        and copy-pasta bug
+
+2017-04-19  Mark Lam  <mark.lam@apple.com>
+
+        B3StackmapSpecial should handle when stackmap values are not recoverable from a Def'ed arg.
+        https://bugs.webkit.org/show_bug.cgi?id=170973
+        <rdar://problem/30318657>
+
+        Reviewed by Filip Pizlo.
+
+        In the event of an arithmetic overflow on a binary sub instruction (where the
+        result register is same as one of the operand registers), the CheckSub FTL
+        operation will try to recover the original value in the clobbered result register.
+
+        This recover is done by adding the other operand value to the result register.
+        However, this recovery method only works if the width of the original value in
+        the result register is less or equal to the width of the expected result.  If the
+        width of the original operand value (e.g. a JSInt32) is wider than the result
+        (e.g. a machine Int32), then the sub operation would have zero extended the
+        result and cleared the upper 32-bits of the result register.  Recovery by adding
+        back the other operand will not restore the JSValue tag in the upper word.
+
+        This poses a problem if the stackmap value for the operand relies on that same
+        clobbered register.
+
+        The fix is to detect this potential scenario (i.e. width of the Def's arg < width
+        of a stackmap value).  If this condition is detected, we'll declare the stackmap
+        value to be LateColdUse to ensure that the register allocator gives it a
+        different register if needed so that it's not dependent on the clobbered register.
+
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::forEachArg):
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::forEachArg):
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::forEachArgImpl):
+        * b3/B3StackmapSpecial.h:
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        Unreviewed, rolling out r215520.
+
+        Broke Debian 8
+
+        Reverted changeset:
+
+        "[INTL] Implement Intl.DateTimeFormat.prototype.formatToParts"
+        https://bugs.webkit.org/show_bug.cgi?id=169458
+        http://trac.webkit.org/changeset/215520
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: limit slow memories
+        https://bugs.webkit.org/show_bug.cgi?id=170825
+
+        Reviewed by Saam Barati.
+
+        We limits the number of fast memories, partly because ASLR. The
+        code then falls back to slow memories. It first tries to virtually
+        allocated any declared maximum (and in there, physically the
+        initial), and if that fails it tries to physically allocate the
+        initial without any extra.
+
+        This can still be used to cause a bunch of virtual
+        allocation. This patch imposes soft limit on slow memories as
+        well. The total virtual maximum for slow memories is set at the
+        same (theoretical) value as that for fast memories.
+
+        Anything exceeding that limit causes allocation/grow to fail.
+
+        * wasm/WasmMemory.cpp:
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        Cannot compile JavaScriptCore/runtime/VMTraps.cpp on FreeBSD because std::pair has a non-trivial copy constructor
+        https://bugs.webkit.org/show_bug.cgi?id=170875
+
+        Reviewed by Mark Lam.
+
+        WTF::ExpectedDetail::ConstexprBase doesn't have a user-defined
+        copy constructor, and its implicitly-defined copy constructor is
+        deleted because the default std::pair implementation on FreeBSD
+        has a non-trivial copy constructor. /usr/include/c++/v1/__config
+        says _LIBCPP_TRIVIAL_PAIR_COPY_CTOR is disabled in order to keep
+        ABI compatibility:
+        https://svnweb.freebsd.org/changeset/base/261801.
+
+        That's a huge bummer, and I'm not a fan of broken stdlibs, but in
+        this case it's pretty nice to have a custom named type anyways and
+        costs nothing.
+
+        * runtime/VMTraps.cpp:
+        (JSC::findActiveVMAndStackBounds):
+        (JSC::handleSigusr1):
+        (JSC::handleSigtrap):
+
+2017-04-19  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.DateTimeFormat.prototype.formatToParts
+        https://bugs.webkit.org/show_bug.cgi?id=169458
+
+        Reviewed by JF Bastien.
+
+        Use udat_formatForFields to iterate through the parts of a formatted date string.
+
+        * icu/unicode/udat.h: Update to 55.1.
+        * icu/unicode/ufieldpositer.h: Added from 55.1.
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::partTypeString): Convert UDateFormatField to string.
+        (JSC::IntlDateTimeFormat::formatToParts): Return parts of formatted date string.
+        * runtime/IntlDateTimeFormat.h:
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototypeFuncFormatToParts): Add prototype function formatToParts.
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: don't expose any WebAssembly JS object if JIT is off
+        https://bugs.webkit.org/show_bug.cgi?id=170782
+
+        Reviewed by Saam Barati.
+
+        It's unexpected that we expose the global WebAssembly object if no
+        JIT is present because it can't be used to compile or
+        instantiate. Other APIs such as Memory should also be Inaccessible
+        in those circumstances.
+
+        Also ensure that we don't pre-allocate fast memories if
+        WebAssembly won't be used, and don't mark our intention to use a
+        fast TLS slot for WebAssembly.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2017-04-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        r211670 broke double to int conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=170961
+
+        Reviewed by Mark Lam.
+
+        In this patch, we take a template parameter way.
+        While it reduces duplicate code, it effectively produces
+        optimized code for operationToInt32SensibleSlow,
+        and fixes kraken pbkdf2 regression on Linux.
+
+        And this patch also fixes undefined behavior by changing
+        int32_t to uint32_t. If exp is 31, missingOne is 1 << 31,
+        INT32_MIN. Thus missingOne - 1 will cause int32_t overflow,
+        and it is an undefined behavior.
+
+        * runtime/MathCommon.cpp:
+        (JSC::operationToInt32SensibleSlow):
+        * runtime/MathCommon.h:
+        (JSC::toInt32Internal):
+        (JSC::toInt32):
+
 2017-04-18  Mark Lam  <mark.lam@apple.com>
 
         r211670 broke double to int conversion.

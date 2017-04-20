@@ -60,7 +60,7 @@ public:
     explicit WebPaymentCoordinatorProxy(WebPageProxy&);
     ~WebPaymentCoordinatorProxy();
 
-    void didCancelPayment();
+    void didCancelPaymentSession();
     void validateMerchant(const WebCore::URL&);
     void didAuthorizePayment(const WebCore::Payment&);
     void didSelectShippingMethod(const WebCore::PaymentRequest::ShippingMethod&);
@@ -85,6 +85,7 @@ private:
     void completePaymentMethodSelection(const std::optional<WebCore::PaymentMethodUpdate>&);
     void completePaymentSession(const std::optional<WebCore::PaymentAuthorizationResult>&);
     void abortPaymentSession();
+    void cancelPaymentSession();
 
     bool canBegin() const;
     bool canCancel() const;

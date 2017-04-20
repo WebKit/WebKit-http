@@ -1,3 +1,52 @@
+2017-04-19  Youenn Fablet  <youenn@apple.com>
+
+        [Win] Activate streams API by default
+        https://bugs.webkit.org/show_bug.cgi?id=171000
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/FeatureDefines.h:
+
+2017-04-19  David Kilzer  <ddkilzer@apple.com>
+
+        Vector.h: error: 'auto' not allowed in lambda parameter
+        <https://webkit.org/b/171010>
+        <rdar://problem/31716076>
+
+        Reviewed by Saam Barati.
+
+        * wtf/Vector.h:
+        (WTF::removeRepeatedElements): Replace 'auto' with a specific
+        type, 'T', based on a Vector<> template type.
+
+2017-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215518.
+
+        This change appears to have broken the Windows build.
+
+        Reverted changeset:
+
+        "Move notFound into its own file"
+        https://bugs.webkit.org/show_bug.cgi?id=170972
+        http://trac.webkit.org/changeset/215518
+
+2017-04-19  Sam Weinig  <sam@webkit.org>
+
+        Move notFound into its own file
+        https://bugs.webkit.org/show_bug.cgi?id=170972
+
+        Reviewed by Zalan Bujtas.
+
+        It is odd to require including <wtf/Vector.h> just to use WTF::notFound.
+        This is not causing any current problems, but does in few changes I have
+        queued up.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/NotFound.h: Added.
+        * wtf/Vector.h:
+        * wtf/text/StringCommon.h:
+
 2017-04-18  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GLIB] Define priorities also for async network IO tasks

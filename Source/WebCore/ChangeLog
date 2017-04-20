@@ -1,3 +1,254 @@
+2017-04-19  Youenn Fablet  <youenn@apple.com>
+
+        [Mac] Allow customizing H264 encoder
+        https://bugs.webkit.org/show_bug.cgi?id=170829
+
+        Reviewed by Alex Christensen.
+
+        Using WebKitAdditions CreateCompressionSession if available.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/mediastream/libwebrtc/H264VideoToolBoxEncoder.h: Added.
+        * platform/mediastream/libwebrtc/H264VideoToolBoxEncoder.mm: Added.
+        (WebCore::H264VideoToolboxEncoder::CreateCompressionSession):
+        * platform/mediastream/libwebrtc/VideoToolBoxEncoderFactory.cpp:
+        (WebCore::VideoToolboxVideoEncoderFactory::CreateSupportedVideoEncoder):
+
+2017-04-19  Eric Carlson  <eric.carlson@apple.com>
+
+        Another deadlock in CoreAudioCaptureSource
+        https://bugs.webkit.org/show_bug.cgi?id=171001
+
+        Fix another regression introduced by r215201, plus make changes suggested
+        in the review of 170771.
+
+        Reviewed by Youenn Fablet.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSource::configureSpeakerProc): Assert if the lock is no held.
+        (WebCore::CoreAudioCaptureSource::provideSpeakerData): Don't reset the buffer.
+        (WebCore::CoreAudioCaptureSource::processMicrophoneSamples): Take the state lock. Don't
+        reset the buffer. No more microphone callbacks.
+        (WebCore::CoreAudioCaptureSource::stopProducingData): Return early if the io unit isn't
+        running. Drop the lock before calling setMuted to avoid another deadlock.
+        (WebCore::CoreAudioCaptureSource::addMicrophoneDataConsumer): Deleted.
+        (WebCore::CoreAudioCaptureSource::removeMicrophoneDataConsumer): Deleted.
+        * platform/mediastream/mac/CoreAudioCaptureSource.h:
+
+2017-04-19  Anders Carlsson  <andersca@apple.com>
+
+        Stop using deprecated APIs, part 3
+        https://bugs.webkit.org/show_bug.cgi?id=171003
+        rdar://problem/31589635
+        rdar://problem/31589635
+
+        Reviewed by Tim Horton.
+
+        * Modules/applepay/ApplePaySession.cpp:
+        (WebCore::convertAndValidate):
+        The status member variable has been removed from ApplePayShippingMethodUpdate.
+
+        (WebCore::ApplePaySession::completeShippingMethodSelection):
+        If status is not STATUS_SUCCESS, cancel the payment session.
+
+        (WebCore::ApplePaySession::canSuspendForDocumentSuspension):
+        (WebCore::ApplePaySession::canBegin):
+        (WebCore::ApplePaySession::canAbort):
+        (WebCore::ApplePaySession::canCancel):
+        (WebCore::ApplePaySession::canCompleteShippingMethodSelection):
+        (WebCore::ApplePaySession::canCompleteShippingContactSelection):
+        (WebCore::ApplePaySession::canCompletePaymentMethodSelection):
+        (WebCore::ApplePaySession::canCompletePayment):
+        (WebCore::ApplePaySession::isFinalState):
+        Add State::CancelRequested.
+
+        * Modules/applepay/ApplePayShippingMethodUpdate.h:
+        * Modules/applepay/ApplePayShippingMethodUpdate.idl:
+        Remove status.
+
+        * Modules/applepay/PaymentCoordinator.cpp:
+        (WebCore::PaymentCoordinator::cancelPaymentSession):
+        Call through to the client.
+
+        * Modules/applepay/PaymentCoordinator.h:
+        * Modules/applepay/PaymentCoordinatorClient.h:
+        Add cancelPaymentSession().
+
+        * Modules/applepay/PaymentRequest.h:
+        Remove status.
+
+        * loader/EmptyClients.cpp:
+        Add new client member function.
+
+2017-04-19  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Limit capture to one tab at a time
+        https://bugs.webkit.org/show_bug.cgi?id=171009
+
+        Reviewed by Jon Lee.
+
+        No new tests yet, filed bug 171011.
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::stopTrack): Drive-by fix: renamed from stopProducingData
+        because stopProducingData is a method in RealtimeMediaSource that does something different.
+        (WebCore::MediaStreamTrack::stop): Call stopTrack.
+        (WebCore::MediaStreamTrack::stopProducingData): Deleted.
+        * Modules/mediastream/MediaStreamTrack.h:
+        * Modules/mediastream/MediaStreamTrack.idl:
+
+        * Modules/mediastream/RTCRtpSender.cpp:
+        (WebCore::RTCRtpSender::replaceTrack): Update for rename.
+
+        * platform/mediastream/MediaStreamPrivate.cpp:
+        (WebCore::MediaStreamPrivate::muted): Drive-by fix: a track that has ended but 
+        which is not muted will never produce data.
+
+2017-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Parsing large XML strings fails
+        https://bugs.webkit.org/show_bug.cgi?id=170999
+        <rdar://problem/17336267>
+
+        Reviewed by Brady Eidson.
+
+        Test: fast/dom/xml-large.html
+
+        * xml/parser/XMLDocumentParserLibxml2.cpp:
+        (WebCore::XMLParserContext::createStringParser):
+        (WebCore::XMLParserContext::createMemoryParser):
+        Allow huge XML strings. They work fine in Chrome and Firefox.
+
+2017-04-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: <hr> should use a different role description than interactive separators
+        https://bugs.webkit.org/show_bug.cgi?id=170317
+        <rdar://problem/31363024>
+
+        Reviewed by Joanmarie Diggs.
+
+        Users are confused with WebKit's accessibility description of separators. 
+        We should call these what they are, horizontal rules.
+
+        Updated test: accessibility/mac/hr-element-expected.txt
+
+        * English.lproj/Localizable.strings:
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::orientation):
+        * platform/cocoa/LocalizedStringsCocoa.mm:
+        (WebCore::AXHorizontalRuleDescriptionText):
+
+2017-04-19  Anders Carlsson  <andersca@apple.com>
+
+        Rename cancelPayment to cancelPaymentSession
+        https://bugs.webkit.org/show_bug.cgi?id=171007
+
+        Reviewed by Tim Horton.
+
+        * Modules/applepay/ApplePaySession.cpp:
+        (WebCore::ApplePaySession::didCancelPaymentSession):
+        (WebCore::ApplePaySession::didCancelPayment): Deleted.
+        * Modules/applepay/ApplePaySession.h:
+        * Modules/applepay/PaymentCoordinator.cpp:
+        (WebCore::PaymentCoordinator::didCancelPaymentSession):
+        (WebCore::PaymentCoordinator::didCancelPayment): Deleted.
+        * Modules/applepay/PaymentCoordinator.h:
+
+2017-04-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ASAN Crash running LayoutTests/inspector/worker tests
+        https://bugs.webkit.org/show_bug.cgi?id=170967
+        <rdar://problem/31256437>
+
+        Reviewed by Alex Christensen.
+
+        * workers/WorkerMessagingProxy.h:
+        * workers/WorkerMessagingProxy.cpp:
+        (WebCore::WorkerMessagingProxy::WorkerMessagingProxy):
+        (WebCore::WorkerMessagingProxy::workerGlobalScopeDestroyedInternal):
+        Make the MessagingProxy thread safe ref counted. Since it used to
+        delete itself, turn this into a ref (implicit on construction)
+        and deref (replacing delete this).
+
+        (WebCore::WorkerMessagingProxy::postMessageToPageInspector):
+        When dispatching have the lambda implicitly ref/deref with the
+        lambda to keep the proxy alive while a lambda is queued.
+
+2017-04-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS, macOS] Guard against passing nullptr to vImagePremultiplyData
+        https://bugs.webkit.org/show_bug.cgi?id=170912
+        <rdar://problem/30565800>
+
+        Reviewed by Brady Eidson.
+
+        * platform/graphics/cg/ImageBufferDataCG.cpp:
+        (WebCore::affineWarpBufferData): Assert if we passed nullptr buffers.
+        (WebCore::transferData): Ditto.
+        (WebCore::ImageBufferData::getData): Check for nullptr data member and avoid passing to vImage routines.
+        (WebCore::ImageBufferData::putData): Ditto.
+
+2017-04-19  Dave Hyatt  <hyatt@apple.com>
+
+        Remove bogus assert for :not.
+        https://bugs.webkit.org/show_bug.cgi?id=170995
+        <rdar://problem/29693115>
+
+        Reviewed by Zalan Bujtas.
+
+        * css/parser/CSSSelectorParser.cpp:
+
+2017-04-19  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Allow non-PNG resources
+        https://bugs.webkit.org/show_bug.cgi?id=170992
+        <rdar://problem/31706590>
+
+        Reviewed by Dean Jackson.
+
+        Instead of passing in a name and a platform to MediaControlsHost::base64StringForIconAndPlatform(),
+        we now pass in a name and a type to MediaControlsHost::base64StringForIconNameAndType(). We've removed
+        the need to provide a platform by copying the resources directly under "Resources/modern-media-controls"
+        insted of "Resources/modern-media-controls/platform-name-here", and now we provide a type so that it
+        may be passed down to -[NSBundle pathForResource:ofType:inDirectory:].
+
+        * Modules/mediacontrols/MediaControlsHost.cpp:
+        (WebCore::MediaControlsHost::base64StringForIconNameAndType):
+        (WebCore::MediaControlsHost::base64StringForIconAndPlatform): Deleted.
+        * Modules/mediacontrols/MediaControlsHost.h:
+        * Modules/mediacontrols/MediaControlsHost.idl:
+        * Modules/modern-media-controls/controls/icon-service.js:
+        (const.iconService.new.IconService.prototype.imageForIconNameAndLayoutTraits):
+        * WebCore.xcodeproj/project.pbxproj:
+        * rendering/RenderTheme.h:
+        (WebCore::RenderTheme::mediaControlsBase64StringForIconNameAndType):
+        (WebCore::RenderTheme::mediaControlsBase64StringForIconAndPlatform): Deleted.
+        * rendering/RenderThemeIOS.h:
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::RenderThemeIOS::mediaControlsBase64StringForIconNameAndType):
+        (WebCore::RenderThemeIOS::mediaControlsBase64StringForIconAndPlatform): Deleted.
+        * rendering/RenderThemeMac.h:
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::mediaControlsBase64StringForIconNameAndType):
+        (WebCore::RenderThemeMac::mediaControlsBase64StringForIconAndPlatform): Deleted.
+
+2017-04-19  Antti Koivisto  <antti@apple.com>
+
+        Avoid repaints for invisible animations on tumblr.com/search/aww
+        https://bugs.webkit.org/show_bug.cgi?id=170986
+        <rdar://problem/28644580>
+
+        Reviewed by Andreas Kling.
+
+        Test: fast/repaint/mutate-non-visible.html
+
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::requiresPainting):
+        (WebCore::RenderStyle::changeRequiresRepaint):
+
+            If an element is invisible it does not require repaint even if something else changes.
+
 2017-04-19  Dean Jackson  <dino@apple.com>
 
         Non-muxable GPUs shouldn't allow offline rendering

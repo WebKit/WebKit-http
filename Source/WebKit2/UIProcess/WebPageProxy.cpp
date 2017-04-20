@@ -74,6 +74,7 @@
 #include "TextChecker.h"
 #include "TextCheckerState.h"
 #include "UserMediaPermissionRequestProxy.h"
+#include "UserMediaProcessManager.h"
 #include "WKContextPrivate.h"
 #include "WebAutomationSession.h"
 #include "WebBackForwardList.h"
@@ -3866,24 +3867,31 @@ void WebPageProxy::didUpdateHistoryTitle(const String& title, const String& url,
 
 // UIClient
 
-void WebPageProxy::createNewPage(uint64_t frameID, const SecurityOriginData& securityOriginData, const ResourceRequest& request, const WindowFeatures& windowFeatures, const NavigationActionData& navigationActionData, uint64_t& newPageID, WebPageCreationParameters& newPageParameters)
+void WebPageProxy::createNewPage(uint64_t frameID, const SecurityOriginData& securityOriginData, const ResourceRequest& request, const WindowFeatures& windowFeatures, const NavigationActionData& navigationActionData, RefPtr<Messages::WebPageProxy::CreateNewPage::DelayedReply> reply)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
     auto mainFrameURL = m_mainFrame->url();
 
-    RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, frame, securityOriginData, request, windowFeatures, navigationActionData);
-    if (!newPage) {
-        newPageID = 0;
+    auto completionHandler = [this, protectedThis = RefPtr<WebPageProxy>(this), mainFrameURL, request, reply = WTFMove(reply)](RefPtr<WebPageProxy> newPage) {
+        if (!newPage) {
+            reply->send(0, { });
+            return;
+        }
+
+        reply->send(newPage->pageID(), newPage->creationParameters());
+
+        WebsiteDataStore::cloneSessionData(*this, *newPage);
+        newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = hostsAreEqual(URL(ParsedURLString, mainFrameURL), request.url());
+
+    };
+
+    if (m_uiClient->createNewPageAsync(this, frame, securityOriginData, request, windowFeatures, navigationActionData, completionHandler))
         return;
-    }
 
-    newPageID = newPage->pageID();
-    newPageParameters = newPage->creationParameters();
-
-    WebsiteDataStore::cloneSessionData(*this, *newPage);
-    newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = hostsAreEqual(URL(ParsedURLString, mainFrameURL), request.url());
+    RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, frame, securityOriginData, request, windowFeatures, navigationActionData);
+    completionHandler(WTFMove(newPage));
 }
     
 void WebPageProxy::showPage()
@@ -4192,6 +4200,11 @@ void WebPageProxy::setMuted(WebCore::MediaProducer::MutedStateFlags state)
 
     if (!isValid())
         return;
+
+#if ENABLE(MEDIA_STREAM)
+    if (!(state & WebCore::MediaProducer::CaptureDevicesAreMuted))
+        UserMediaProcessManager::singleton().willEnableMediaStreamInPage(*this);
+#endif
 
     m_process->send(Messages::WebPage::SetMuted(state), m_pageID);
 

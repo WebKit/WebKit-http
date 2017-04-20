@@ -142,6 +142,11 @@ void WebPaymentCoordinator::abortPaymentSession()
     m_webPage.send(Messages::WebPaymentCoordinatorProxy::AbortPaymentSession());
 }
 
+void WebPaymentCoordinator::cancelPaymentSession()
+{
+    m_webPage.send(Messages::WebPaymentCoordinatorProxy::CancelPaymentSession());
+}
+
 void WebPaymentCoordinator::paymentCoordinatorDestroyed()
 {
     delete this;
@@ -172,9 +177,9 @@ void WebPaymentCoordinator::didSelectPaymentMethod(const WebCore::PaymentMethod&
     paymentCoordinator().didSelectPaymentMethod(paymentMethod);
 }
 
-void WebPaymentCoordinator::didCancelPayment()
+void WebPaymentCoordinator::didCancelPaymentSession()
 {
-    paymentCoordinator().didCancelPayment();
+    paymentCoordinator().didCancelPaymentSession();
 }
 
 void WebPaymentCoordinator::canMakePaymentsWithActiveCardReply(uint64_t requestID, bool canMakePayments)
