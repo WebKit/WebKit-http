@@ -73,6 +73,11 @@ build_pass|!debug_and_release {
         }
         exists($$QMAKE_MAC_SDK_PATH): CMAKE_CONFIG += CMAKE_OSX_SYSROOT=$$QMAKE_MAC_SDK_PATH
         !isEmpty(QMAKE_MACOSX_DEPLOYMENT_TARGET): CMAKE_CONFIG += CMAKE_OSX_DEPLOYMENT_TARGET=$$QMAKE_MACOSX_DEPLOYMENT_TARGET
+
+        # Hack: install frameworks in debug_and_release in separate prefixes
+        debug_and_release:build_all:CONFIG(debug, debug|release) {
+            CMAKE_CONFIG += CMAKE_INSTALL_PREFIX=\"$$[QT_INSTALL_PREFIX]/debug\"
+        }
     }
 
     equals(QMAKE_HOST.os, Windows) {
