@@ -574,7 +574,12 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
             ASSERT_NOT_REACHED();
             break;
         }
-
+#if PLATFORM(BROADCOM)
+        // this code path needs a proper review in case it can be generalized to all platforms.
+        bool buffering = !isTimeBuffered(currentMediaTime());
+#else
+        bool buffering = m_buffering;
+#endif
         // Sync states where needed.
         if (state == GST_STATE_PAUSED) {
             if (!m_volumeAndMuteInitialized) {
@@ -583,14 +588,14 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
                 m_volumeAndMuteInitialized = true;
             }
 
-            if (!seeking() && !m_buffering && !m_paused && m_playbackRate) {
+            if (!seeking() && !buffering && !m_paused && m_playbackRate) {
                 GST_DEBUG("[Buffering] Restarting playback.");
                 changePipelineState(GST_STATE_PLAYING);
             }
         } else if (state == GST_STATE_PLAYING) {
             m_paused = false;
 
-            if ((m_buffering && !isLiveStream()) || !m_playbackRate) {
+            if ((buffering && !isLiveStream()) || !m_playbackRate) {
                 GST_DEBUG("[Buffering] Pausing stream for buffering.");
                 changePipelineState(GST_STATE_PAUSED);
             }
