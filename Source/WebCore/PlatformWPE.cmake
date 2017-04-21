@@ -233,35 +233,53 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/CryptoAlgorithm.cpp
         crypto/CryptoAlgorithmRegistry.cpp
         crypto/CryptoKey.cpp
-        crypto/CryptoKeyPair.cpp
         crypto/SubtleCrypto.cpp
+        crypto/WebKitSubtleCrypto.cpp
 
         crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
+        crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
+        crypto/algorithms/CryptoAlgorithmAES_CTR.cpp
+        crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
         crypto/algorithms/CryptoAlgorithmAES_KW.cpp
+        crypto/algorithms/CryptoAlgorithmECDH.cpp
+        crypto/algorithms/CryptoAlgorithmECDSA.cpp
+        crypto/algorithms/CryptoAlgorithmHKDF.cpp
         crypto/algorithms/CryptoAlgorithmHMAC.cpp
+        crypto/algorithms/CryptoAlgorithmPBKDF2.cpp
         crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
-        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
         crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
         crypto/algorithms/CryptoAlgorithmSHA1.cpp
         crypto/algorithms/CryptoAlgorithmSHA224.cpp
         crypto/algorithms/CryptoAlgorithmSHA256.cpp
         crypto/algorithms/CryptoAlgorithmSHA384.cpp
         crypto/algorithms/CryptoAlgorithmSHA512.cpp
 
-        crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
-        crypto/gnutls/CryptoKeyRSAGnuTLS.cpp
-        crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_CBCGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_CFBGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_CTRGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_GCMGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_KWGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmECDHGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmECDSAGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmHKDFGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmHMACGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmPBKDF2GCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRSAES_PKCS1_v1_5GCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRSASSA_PKCS1_v1_5GCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRSA_OAEPGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRegistryGCrypt.cpp
+        crypto/gcrypt/CryptoKeyECGCrypt.cpp
+        crypto/gcrypt/CryptoKeyRSAGCrypt.cpp
+        crypto/gcrypt/SerializedCryptoKeyWrapGCrypt.cpp
 
         crypto/keys/CryptoKeyAES.cpp
         crypto/keys/CryptoKeyDataOctetSequence.cpp
         crypto/keys/CryptoKeyDataRSAComponents.cpp
+        crypto/keys/CryptoKeyEC.cpp
         crypto/keys/CryptoKeyHMAC.cpp
+        crypto/keys/CryptoKeyRSA.cpp
+        crypto/keys/CryptoKeyRaw.cpp
         crypto/keys/CryptoKeySerializationRaw.cpp
     )
 endif ()
