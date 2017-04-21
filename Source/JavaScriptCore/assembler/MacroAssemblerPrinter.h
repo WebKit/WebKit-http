@@ -25,12 +25,14 @@
 
 #pragma once
 
-#if ENABLE(MASM_PROBE)
-
 #include "MacroAssembler.h"
 
 namespace JSC {
 
+#if ENABLE(ASSEMBLER)
+
+#if ENABLE(MASM_PROBE)
+    
 // What is MacroAssembler::print()?
 // ===============================
 // The MacroAsssembler::print() makes it easy to add print logging
@@ -167,7 +169,7 @@ public:
     {
         auto argsList = std::make_unique<PrintArgsList>();
         appendPrintArg(argsList.get(), args...);
-        masm->probe(printCallback, argsList.release(), 0);
+        masm->probe(printCallback, argsList.release());
     }
     
 private:
@@ -296,6 +298,13 @@ void printRegister(MacroAssembler::CPUState&, MacroAssembler::RegisterID);
 void printRegister(MacroAssembler::CPUState&, MacroAssembler::FPRegisterID);
 void printMemory(MacroAssembler::CPUState&, const Memory&);
 
-} // namespace JSC
+#else // ENABLE(MASM_PROBE)
+
+template<typename... Arguments>
+void MacroAssembler::print(Arguments...) { }
 
 #endif // ENABLE(MASM_PROBE)
+
+#endif // ENABLE(ASSEMBLER)
+
+} // namespace JSC

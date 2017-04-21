@@ -117,6 +117,15 @@ public:
     
     struct BaseIndex;
     
+    static RegisterID withSwappedRegister(RegisterID original, RegisterID left, RegisterID right)
+    {
+        if (original == left)
+            return right;
+        if (original == right)
+            return left;
+        return original;
+    }
+    
     // Address:
     //
     // Describes a simple base-offset address.
@@ -130,6 +139,11 @@ public:
         Address withOffset(int32_t additionalOffset)
         {
             return Address(base, offset + additionalOffset);
+        }
+        
+        Address withSwappedRegister(RegisterID left, RegisterID right)
+        {
+            return Address(AbstractMacroAssembler::withSwappedRegister(base, left, right), offset);
         }
         
         BaseIndex indexedBy(RegisterID index, Scale) const;
@@ -200,6 +214,11 @@ public:
         BaseIndex withOffset(int32_t additionalOffset)
         {
             return BaseIndex(base, index, scale, offset + additionalOffset);
+        }
+
+        BaseIndex withSwappedRegister(RegisterID left, RegisterID right)
+        {
+            return BaseIndex(AbstractMacroAssembler::withSwappedRegister(base, left, right), AbstractMacroAssembler::withSwappedRegister(index, left, right), scale, offset);
         }
     };
 
@@ -702,7 +721,8 @@ public:
         
         void append(Jump jump)
         {
-            m_jumps.append(jump);
+            if (jump.isSet())
+                m_jumps.append(jump);
         }
         
         void append(const JumpList& other)
@@ -902,7 +922,7 @@ public:
     // Note: probe() should be implemented by the target specific MacroAssembler.
     // This prototype is only provided here to document the interface.
 
-    void probe(ProbeFunction, void* arg1, void* arg2);
+    void probe(ProbeFunction, void* arg);
 
 #endif // ENABLE(MASM_PROBE)
 

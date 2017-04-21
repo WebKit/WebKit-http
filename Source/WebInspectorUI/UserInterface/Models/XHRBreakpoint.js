@@ -25,16 +25,18 @@
 
 WebInspector.XHRBreakpoint = class XHRBreakpoint extends WebInspector.Object
 {
-    constructor(url, disabled)
+    constructor(type, url, disabled)
     {
         super();
 
-        this._url = url;
+        this._type = type || WebInspector.XHRBreakpoint.Type.Text;
+        this._url = url || "";
         this._disabled = disabled || false;
     }
 
     // Public
 
+    get type() { return this._type; }
     get url() { return this._url; }
 
     get disabled()
@@ -54,7 +56,7 @@ WebInspector.XHRBreakpoint = class XHRBreakpoint extends WebInspector.Object
 
     get serializableInfo()
     {
-        let info = {url: this._url};
+        let info = {type: this._type, url: this._url};
         if (this._disabled)
             info.disabled = true;
 
@@ -72,4 +74,9 @@ WebInspector.XHRBreakpoint.URLCookieKey = "xhr-breakpoint-url";
 WebInspector.XHRBreakpoint.Event = {
     DisabledStateDidChange: "xhr-breakpoint-disabled-state-did-change",
     ResolvedStateDidChange: "xhr-breakpoint-resolved-state-did-change",
+};
+
+WebInspector.XHRBreakpoint.Type = {
+    Text: "text",
+    RegularExpression: "regex",
 };

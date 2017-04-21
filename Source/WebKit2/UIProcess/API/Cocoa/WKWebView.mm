@@ -36,6 +36,8 @@
 #import "FindClient.h"
 #import "FullscreenClient.h"
 #import "IconLoadingDelegate.h"
+#import "InteractionInformationAtPosition.h"
+#import "InteractionInformationRequest.h"
 #import "LegacySessionStateCoding.h"
 #import "Logging.h"
 #import "NavigationState.h"
@@ -83,6 +85,7 @@
 #import "WebURLSchemeHandlerCocoa.h"
 #import "WebViewImpl.h"
 #import "_WKDiagnosticLoggingDelegate.h"
+#import "_WKDraggableElementInfoInternal.h"
 #import "_WKFindDelegate.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKFullscreenDelegate.h"
@@ -3726,6 +3729,13 @@ WEBCORE_COMMAND(yankAndSelect)
     _page->terminateProcess();
 }
 
+#if PLATFORM(MAC)
+- (void)_setShouldSuppressFirstResponderChanges:(BOOL)shouldSuppress
+{
+    _impl->setShouldSuppressFirstResponderChanges(shouldSuppress);
+}
+#endif
+
 #if PLATFORM(IOS)
 static WebCore::FloatSize activeMaximumUnobscuredSize(WKWebView *webView, const CGRect& bounds)
 {
@@ -5088,6 +5098,18 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 }
 
 #if PLATFORM(IOS)
+- (_WKDraggableElementInfo *)draggableElementAtPosition:(CGPoint)position
+{
+    [_contentView ensurePositionInformationIsUpToDate:WebKit::InteractionInformationRequest(WebCore::roundedIntPoint(position))];
+    return [_WKDraggableElementInfo infoWithInteractionInformationAtPosition:[_contentView currentPositionInformation]];
+}
+
+- (void)requestDraggableElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKDraggableElementInfo *))block
+{
+    [_contentView doAfterPositionInformationUpdate:[capturedBlock = makeBlockPtr(block)] (WebKit::InteractionInformationAtPosition information) {
+        capturedBlock([_WKDraggableElementInfo infoWithInteractionInformationAtPosition:information]);
+    } forRequest:WebKit::InteractionInformationRequest(WebCore::roundedIntPoint(position))];
+}
 
 - (CGRect)_contentVisibleRect
 {

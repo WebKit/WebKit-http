@@ -1,3 +1,161 @@
+2017-04-21  Timothy Horton  <timothy_horton@apple.com>
+
+        Expose obscured insets to web content (as "safe area insets")
+        https://bugs.webkit.org/show_bug.cgi?id=171013
+        <rdar://problem/31564652>
+
+        Reviewed by Wenson Hsieh and Dave Hyatt.
+
+        * TestExpectations:
+        * fast/css/variables/constants/invalid-constant-name-fallback-expected.html: Added.
+        * fast/css/variables/constants/invalid-constant-name-fallback.html: Added.
+        * fast/css/variables/constants/ios/safe-area-inset-set-expected.html: Added.
+        * fast/css/variables/constants/ios/safe-area-inset-set.html: Added.
+        * fast/css/variables/constants/safe-area-inset-cannot-override-expected.html: Added.
+        * fast/css/variables/constants/safe-area-inset-cannot-override.html: Added.
+        * fast/css/variables/constants/safe-area-inset-zero-expected.html: Added.
+        * fast/css/variables/constants/safe-area-inset-zero.html: Added.
+        * platform/ios-wk2/TestExpectations:
+
+2017-04-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215597.
+        https://bugs.webkit.org/show_bug.cgi?id=171102
+
+        Made all tests crash under GuardMalloc (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Expose obscured insets to web content (as "safe area
+        insets")"
+        https://bugs.webkit.org/show_bug.cgi?id=171013
+        http://trac.webkit.org/changeset/215597
+
+2017-04-20  Timothy Horton  <timothy_horton@apple.com>
+
+        Expose obscured insets to web content (as "safe area insets")
+        https://bugs.webkit.org/show_bug.cgi?id=171013
+        <rdar://problem/31564652>
+
+        Reviewed by Wenson Hsieh and Dave Hyatt.
+
+        * TestExpectations:
+        * fast/css/variables/constants/invalid-constant-name-fallback-expected.html: Added.
+        * fast/css/variables/constants/invalid-constant-name-fallback.html: Added.
+        * fast/css/variables/constants/ios/safe-area-inset-set-expected.html: Added.
+        * fast/css/variables/constants/ios/safe-area-inset-set.html: Added.
+        * fast/css/variables/constants/safe-area-inset-cannot-override-expected.html: Added.
+        * fast/css/variables/constants/safe-area-inset-cannot-override.html: Added.
+        * fast/css/variables/constants/safe-area-inset-zero-expected.html: Added.
+        * fast/css/variables/constants/safe-area-inset-zero.html: Added.
+        * platform/ios-wk2/TestExpectations:
+
+2017-04-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169109
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/ecdsa.worker.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170921
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-04-20  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add regular expression support to XHR breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=170099
+        <rdar://problem/31558082>
+
+        Reviewed by Joseph Pecoraro.
+
+        Update tests and expectations for new XHR breakpoint type.
+
+        * inspector/dom-debugger/xhr-breakpoints-expected.txt:
+        * inspector/dom-debugger/xhr-breakpoints.html:
+
+2017-04-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Inline anchor elements cannot be dragged when starting the drag from a block descendant
+        https://bugs.webkit.org/show_bug.cgi?id=171062
+        <rdar://problem/31697835>
+
+        Reviewed by Tim Horton.
+
+        Adds a new test on WK1 Mac to verify that link dragging succeeds when the link's anchor element is inline and
+        the drag is started from a block element under the link.
+
+        * fast/events/drag-and-drop-link-containing-block-expected.txt: Added.
+        * fast/events/drag-and-drop-link-containing-block.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+        Skip the test on iOS and Mac WK2.
+
+2017-04-20  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: Modern Media Controls Timeline slider should be operable
+        https://bugs.webkit.org/show_bug.cgi?id=170250
+
+        Reviewed by Antoine Quint.
+
+        * media/modern-media-controls/scrubber/scrubber-has-correct-ax-label-expected.txt: Added.
+        * media/modern-media-controls/scrubber/scrubber-has-correct-ax-label.html: Added.
+
+2017-04-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Optimize SharedArrayBuffer in the DFG+FTL
+        https://bugs.webkit.org/show_bug.cgi?id=164108
+
+        Reviewed by Saam Barati.
+        
+        Add a test of futex performance.
+
+        * workers/sab/cascade_lock-worker.js: Added.
+        (onmessage):
+        * workers/sab/cascade_lock.html: Added.
+        * workers/sab/worker-resources.js:
+        (cascadeLockSlow):
+        (cascadeLock):
+        (cascadeUnlock):
+
+2017-04-20  Jon Lee  <jonlee@apple.com>
+
+        Update pip placard to "picture in picture"
+        https://bugs.webkit.org/show_bug.cgi?id=171036
+        rdar://problem/30201536
+
+        Reviewed by Antoine Quint.
+
+        * media/modern-media-controls/pip-placard/pip-placard-expected.txt: Updated expected results.
+        * media/modern-media-controls/pip-placard/pip-placard.html:
+
+2017-04-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark two crypto/subtle/ecdsa LayoutTests as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171059
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-04-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark memory/memory-pressure-simulation.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170629
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
 2017-04-20  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [GTK] Update layout tests expectations after r215556

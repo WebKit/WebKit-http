@@ -67,6 +67,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 #endif
 
 @class WKBrowsingContextHandle;
+@class _WKDraggableElementInfo;
 @class _WKFrameHandle;
 @class _WKHitTestResult;
 @class _WKIconLoadingDelegate;
@@ -215,6 +216,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 @property (nonatomic, setter=_setWindowOcclusionDetectionEnabled:) BOOL _windowOcclusionDetectionEnabled;
 
+- (void)_setShouldSuppressFirstResponderChanges:(BOOL)shouldSuppress;
+
 // Clients that want to maintain default behavior can return nil. To disable the immediate action entirely, return NSNull. And to
 // do something custom, return an object that conforms to the NSImmediateActionAnimationController protocol.
 - (id)_immediateActionAnimationControllerForHitTestResult:(_WKHitTestResult *)hitTestResult withType:(_WKImmediateActionType)type userData:(id<NSSecureCoding>)userData;
@@ -335,6 +338,9 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_simulateWillBeginDataInteractionWithSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (NSArray *)_simulatedItemsForSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion WK_API_AVAILABLE(ios(WK_IOS_TBA));
+
+- (_WKDraggableElementInfo *)draggableElementAtPosition:(CGPoint)position;
+- (void)requestDraggableElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKDraggableElementInfo *))block;
 
 #endif // TARGET_OS_IPHONE
 
