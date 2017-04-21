@@ -121,8 +121,8 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
-    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations() && m_client)
-        m_client->updateViewport();
+    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations())
+        updateViewport();
 }
 
 void CoordinatedGraphicsScene::updateViewport()
@@ -165,8 +165,7 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
-    if (m_client)
-        m_client->updateViewport();
+    updateViewport();
 }
 #endif
 
