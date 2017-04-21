@@ -115,8 +115,7 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
 
 bool cookiesEnabled(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/)
 {
-    QNetworkCookieJar* jar = session.context() ? session.context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
-    return !!jar;
+    return true;
 }
 
 bool getRawCookies(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/, Vector<Cookie>& rawCookies)
