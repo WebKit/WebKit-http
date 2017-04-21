@@ -48,7 +48,7 @@ public:
 private:
     SharedCookieJarQt(const String&);
     ~SharedCookieJarQt();
-    void ensureDatabaseTable();
+    bool ensureDatabaseTable();
 
     SQLiteDatabase m_database;
 };

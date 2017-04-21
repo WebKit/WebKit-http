@@ -189,10 +189,17 @@ bool SharedCookieJarQt::deleteCookie(const QNetworkCookie& cookie)
         return false;
 
     SQLiteStatement sqlQuery(m_database, ASCIILiteral("DELETE FROM cookies WHERE cookieId=?"));
-    sqlQuery.prepare();
-    sqlQuery.bindText(1, cookie.domain().append(QLatin1String(cookie.name())));
-    sqlQuery.step();
+    if (sqlQuery.prepare() != SQLITE_OK) {
+        qWarning("Failed to prepare delete statement - cannot write to cookie database");
+        return false;
+    }
 
+    sqlQuery.bindText(1, cookie.domain().append(QLatin1String(cookie.name())));
+    int result = sqlQuery.step();
+    if (result != SQLITE_DONE) {
+        qWarning("Failed to delete cookie from database - %i", result);
+        return false;
+    }
     return true;
 }
 
@@ -205,14 +212,19 @@ void SharedCookieJarQt::deleteCookiesForHostname(const String& hostname)
     QList<QNetworkCookie>::Iterator it = cookies.begin();
     QList<QNetworkCookie>::Iterator end = cookies.end();
     SQLiteStatement sqlQuery(m_database, ASCIILiteral("DELETE FROM cookies WHERE cookieId=?"));
-    sqlQuery.prepare();
+    if (sqlQuery.prepare() != SQLITE_OK) {
+        qWarning("Failed to prepare delete statement - cannot write to cookie database");
+        return;
+    }
 
     SQLiteTransaction transaction(m_database);
     transaction.begin();
     while (it != end) {
         if (it->domain() == QString(hostname)) {
             sqlQuery.bindText(1, it->domain().append(QLatin1String(it->name())));
-            sqlQuery.step();
+            int result = sqlQuery.step();
+            if (result != SQLITE_DONE)
+                qWarning("Failed to remove cookie from database - %i", result);
             sqlQuery.reset();
             it = cookies.erase(it);
         } else
@@ -228,7 +240,8 @@ void SharedCookieJarQt::deleteAllCookies()
     if (!m_database.isOpen())
         return;
 
-    m_database.executeCommand(ASCIILiteral("DELETE FROM cookies"));
+    if (!m_database.executeCommand(ASCIILiteral("DELETE FROM cookies")))
+        qWarning("Failed to clear cookies database");
     setAllCookies(QList<QNetworkCookie>());
 }
 
@@ -239,8 +252,13 @@ SharedCookieJarQt::SharedCookieJarQt(const String& cookieStorageDirectory)
         return;
     }
 
-    ensureDatabaseTable();
-    loadCookies();
+    m_database.setSynchronous(SQLiteDatabase::SyncOff);
+    m_database.executeCommand(ASCIILiteral("PRAGMA secure_delete = 1;"));
+
+    if (ensureDatabaseTable())
+        loadCookies();
+    else
+        m_database.close();
 }
 
 SharedCookieJarQt::~SharedCookieJarQt()
@@ -268,7 +286,9 @@ bool SharedCookieJarQt::setCookiesFromUrl(const QList<QNetworkCookie>& cookieLis
         sqlQuery.bindText(1, cookie.domain().append(QLatin1String(cookie.name())));
         QByteArray rawCookie = cookie.toRawForm();
         sqlQuery.bindBlob(2, rawCookie.constData(), rawCookie.size());
-        sqlQuery.step();
+        int result = sqlQuery.step();
+        if (result != SQLITE_DONE)
+            qWarning("Failed to insert cookie into database - %i", result);
         sqlQuery.reset();
     }
     transaction.commit();
@@ -276,10 +296,13 @@ bool SharedCookieJarQt::setCookiesFromUrl(const QList<QNetworkCookie>& cookieLis
     return true;
 }
 
-void SharedCookieJarQt::ensureDatabaseTable()
+bool SharedCookieJarQt::ensureDatabaseTable()
 {
-    m_database.setSynchronous(SQLiteDatabase::SyncOff);
-    m_database.executeCommand(ASCIILiteral("CREATE TABLE IF NOT EXISTS cookies (cookieId VARCHAR PRIMARY KEY, cookie BLOB);"));
+    if (!m_database.executeCommand(ASCIILiteral("CREATE TABLE IF NOT EXISTS cookies (cookieId VARCHAR PRIMARY KEY, cookie BLOB);"))) {
+        qWarning("Failed to create cookie table");
+        return false;
+    }
+    return true;
 }
 
 void SharedCookieJarQt::loadCookies()
@@ -289,7 +312,8 @@ void SharedCookieJarQt::loadCookies()
 
     QList<QNetworkCookie> cookies;
     SQLiteStatement sqlQuery(m_database, ASCIILiteral("SELECT cookie FROM cookies"));
-    sqlQuery.prepare();
+    if (sqlQuery.prepare() != SQLITE_OK)
+        return;
 
     int result = sqlQuery.step();
     while (result == SQLITE_ROW) {
