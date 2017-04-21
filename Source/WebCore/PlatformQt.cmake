@@ -161,7 +161,7 @@ if (COMPILER_IS_GCC_OR_CLANG)
     set_source_files_properties(
         platform/graphics/qt/ImageBufferDataQt.cpp
     PROPERTIES
-        COMPILE_FLAGS -frtti
+        COMPILE_FLAGS "-frtti -UQT_NO_DYNAMIC_CAST"
     )
 endif ()
 

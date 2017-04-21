@@ -61,6 +61,11 @@ add_definitions(-DQT_USE_QSTRINGBUILDER)
 add_definitions(-DQT_NO_CAST_TO_ASCII -DQT_ASCII_CAST_WARNINGS)
 add_definitions(-DQT_DEPRECATED_WARNINGS -DQT_DISABLE_DEPRECATED_BEFORE=0x050000)
 
+# We use -fno-rtti with GCC and Clang, see OptionsCommon.cmake
+if (COMPILER_IS_GCC_OR_CLANG)
+    add_definitions(-DQT_NO_DYNAMIC_CAST)
+endif ()
+
 if (WIN32)
     if (${CMAKE_BUILD_TYPE} MATCHES "Debug")
         set(CMAKE_DEBUG_POSTFIX d)
@@ -449,7 +454,7 @@ set(CMAKE_AUTOMOC ON)
 if (COMPILER_IS_GCC_OR_CLANG AND UNIX)
     if (NOT APPLE)
         set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-rtti")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
         set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
     endif ()
 
