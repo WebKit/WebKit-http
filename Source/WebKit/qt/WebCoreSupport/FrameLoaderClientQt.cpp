@@ -565,9 +565,8 @@ void FrameLoaderClientQt::finishedLoading(DocumentLoader*)
 {
     if (!m_pluginView)
         return;
-    if (m_pluginView->isPluginView())
-        m_pluginView->didFinishLoading();
-    m_pluginView = 0;
+    m_pluginView->didFinishLoading();
+    m_pluginView = nullptr;
     m_hasSentResponseToPlugin = false;
 }
 
@@ -803,8 +802,7 @@ void FrameLoaderClientQt::setMainDocumentError(WebCore::DocumentLoader* loader, 
 {
     if (!m_pluginView)
         return;
-    if (m_pluginView->isPluginView())
-        m_pluginView->didFail(error);
+    m_pluginView->didFail(error);
     m_pluginView = 0;
     m_hasSentResponseToPlugin = false;
 }
@@ -820,7 +818,7 @@ void FrameLoaderClientQt::committedLoad(WebCore::DocumentLoader* loader, const c
         loader->cancelMainResourceLoad(pluginWillHandleLoadError(loader->response()));
 
     // We re-check here as the plugin can have been created.
-    if (m_pluginView && m_pluginView->isPluginView()) {
+    if (m_pluginView) {
         if (!m_hasSentResponseToPlugin) {
             m_pluginView->didReceiveResponse(loader->response());
             // The function didReceiveResponse sets up a new stream to the plug-in.
@@ -1496,9 +1494,12 @@ RefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, HTML
 
 void FrameLoaderClientQt::redirectDataToPlugin(Widget* pluginWidget)
 {
+    if (!pluginWidget || !pluginWidget->isPluginView()) {
+        m_pluginView = nullptr;
+        return;
+    }
     m_pluginView = toPluginView(pluginWidget);
-    if (pluginWidget)
-        m_hasSentResponseToPlugin = false;
+    m_hasSentResponseToPlugin = false;
 }
 
 PassRefPtr<Widget> FrameLoaderClientQt::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues)
