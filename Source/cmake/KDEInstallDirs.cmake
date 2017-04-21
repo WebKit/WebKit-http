@@ -445,6 +445,10 @@ if(KDE_INSTALL_USE_QT_SYS_PATHS)
     set(CMAKECONFIG_INSTALL_PREFIX "${LIB_INSTALL_DIR}/cmake")
     set(KDE_INSTALL_CMAKEPACKAGEDIR "${LIB_INSTALL_DIR}/cmake")
 
+    query_qmake(qt_include_dir QT_INSTALL_HEADERS)
+    file(RELATIVE_PATH INCLUDE_INSTALL_DIR ${qt_install_prefix} ${qt_include_dir})
+    set(KDE_INSTALL_INCLUDEDIR ${INCLUDE_INSTALL_DIR})
+
     # Qt-specific vars
     query_qmake(qt_plugins_dir QT_INSTALL_PLUGINS)
 
