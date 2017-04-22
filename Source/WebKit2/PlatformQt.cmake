@@ -5,9 +5,6 @@ set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebDatabaseProcess)
 
 #set(WebKit2_USE_PREFIX_HEADER ON)
 
-# FIXME: It should be in WebKitFS actually
-set(FORWARDING_HEADERS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders")
-
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${FORWARDING_HEADERS_DIR}"
 

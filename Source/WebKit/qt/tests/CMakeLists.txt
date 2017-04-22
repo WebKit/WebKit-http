@@ -2,7 +2,7 @@ remove_definitions(-DQT_ASCII_CAST_WARNINGS)
 
 include_directories(
     "${CMAKE_SOURCE_DIR}/Source"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
+    "${FORWARDING_HEADERS_DIR}"
     "${WEBKIT_DIR}/qt/Api"
     "${WEBKIT_DIR}/qt/WidgetApi"
 )

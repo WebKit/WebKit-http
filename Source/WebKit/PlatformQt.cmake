@@ -338,7 +338,7 @@ ecm_generate_headers(
     RELATIVE
         qt/Api
     OUTPUT_DIR
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit"
+        "${FORWARDING_HEADERS_DIR}/QtWebKit"
     REQUIRED_HEADERS
         QtWebKit_HEADERS
 )
@@ -349,7 +349,7 @@ set(WebKit_PUBLIC_HEADERS
     ${QtWebKit_FORWARDING_HEADERS}
 )
 
-generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit/qtwebkitversion.h"
+generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/qtwebkitversion.h"
     WebKit_PUBLIC_HEADERS
     "#ifndef QT_QTWEBKIT_VERSION_H
 #define QT_QTWEBKIT_VERSION_H
@@ -360,11 +360,11 @@ generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit/qtwebkitversi
 #endif
 ")
 
-generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit/QtWebKitVersion"
+generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/QtWebKitVersion"
     WebKit_PUBLIC_HEADERS
     "#include \"qtwebkitversion.h\"")
 
-generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit/QtWebKitDepends"
+generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/QtWebKitDepends"
     WebKit_PUBLIC_HEADERS
     "#ifdef __cplusplus /* create empty PCH in C mode */
 #include <QtCore/QtCore>
@@ -589,7 +589,7 @@ ecm_generate_headers(
     RELATIVE
         qt/WidgetApi
     OUTPUT_DIR
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets"
+        "${FORWARDING_HEADERS_DIR}/QtWebKitWidgets"
     REQUIRED_HEADERS
         QtWebKitWidgets_HEADERS
 )
@@ -599,7 +599,7 @@ set(WebKitWidgets_PUBLIC_HEADERS
     ${QtWebKitWidgets_FORWARDING_HEADERS}
 )
 
-generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets/qtwebkitwidgetsversion.h"
+generate_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/qtwebkitwidgetsversion.h"
     WebKitWidgets_PUBLIC_HEADERS
     "#ifndef QT_QTWEBKITWIDGETS_VERSION_H
 #define QT_QTWEBKITWIDGETS_VERSION_H
@@ -610,11 +610,11 @@ generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets/qtwebk
 #endif
 ")
 
-generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets/QtWebKitWidgetsVersion"
+generate_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/QtWebKitWidgetsVersion"
     WebKitWidgets_PUBLIC_HEADERS
     "#include \"qtwebkitwidgetsversion.h\"")
 
-generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets/QtWebKitWidgetsDepends"
+generate_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/QtWebKitWidgetsDepends"
     WebKitWidgets_PUBLIC_HEADERS
     "#ifdef __cplusplus /* create empty PCH in C mode */
 #include <QtCore/QtCore>

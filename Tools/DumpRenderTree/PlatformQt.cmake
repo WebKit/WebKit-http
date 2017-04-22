@@ -1,6 +1,6 @@
 list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets"
+    "${FORWARDING_HEADERS_DIR}/QtWebKit"
+    "${FORWARDING_HEADERS_DIR}/QtWebKitWidgets"
     "${WEBCORE_DIR}/Modules/notifications"
     "${WEBCORE_DIR}/platform/qt"
     "${WEBKIT_DIR}/qt/WebCoreSupport"
