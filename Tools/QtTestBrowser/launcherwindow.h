@@ -195,6 +195,8 @@ private:
     bool isGraphicsBased() const;
 
 private:
+    void closeEvent(QCloseEvent*) final;
+
     static QVector<int> m_zoomLevels;
     int m_currentZoom;
 

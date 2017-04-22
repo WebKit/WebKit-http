@@ -592,6 +592,16 @@ bool LauncherWindow::isGraphicsBased() const
     return bool(qobject_cast<QGraphicsView*>(m_view));
 }
 
+void LauncherWindow::closeEvent(QCloseEvent* e)
+{
+    e->ignore();
+    auto c = connect(page(), &QWebPage::windowCloseRequested, this, [e]() {
+        e->accept();
+    });
+    page()->triggerAction(QWebPage::RequestClose);
+    disconnect(c);
+}
+
 void LauncherWindow::sendTouchEvent()
 {
     if (m_touchPoints.isEmpty())

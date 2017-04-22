@@ -193,6 +193,8 @@ public:
         ToggleMediaMute,
         ToggleVideoFullscreen,
 
+        RequestClose,
+
         WebActionCount
     };
 

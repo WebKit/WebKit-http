@@ -1208,6 +1208,7 @@ QWebInspector* QWebPagePrivate::getOrCreateInspector()
     \value ToggleMediaPlayPause Toggles the play/pause state of the hovered audio or video element. (Added in Qt 5.2)
     \value ToggleMediaMute Mutes or unmutes the hovered audio or video element. (Added in Qt 5.2)
     \value ToggleVideoFullscreen Switches the hovered video element into or out of fullscreen mode. (Added in Qt 5.2)
+    \value RequestClose Request to close the web page. If defined, the window.onbeforeunload handler is run, and the user can confirm or reject to close the page. If the close request is confirmed, windowCloseRequested is emitted. (Added in ?)
 
     \omitvalue WebActionCount
 
@@ -1833,6 +1834,12 @@ void QWebPage::triggerAction(WebAction action, bool)
         QListIterator<QWebFrame*> it(childFrames);
         while (it.hasNext())
             it.next()->d->cancelLoad();
+        break;
+    }
+    case RequestClose: {
+        bool success = d->tryClosePage();
+        if (success)
+            emit windowCloseRequested();
         break;
     }
     default:

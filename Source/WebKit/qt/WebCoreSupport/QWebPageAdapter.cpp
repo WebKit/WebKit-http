@@ -490,6 +490,11 @@ void QWebPageAdapter::adjustPointForClicking(QMouseEvent* ev)
 #endif
 }
 
+bool QWebPageAdapter::tryClosePage()
+{
+    return mainFrameAdapter().frame->loader().shouldClose();
+}
+
 void QWebPageAdapter::mouseMoveEvent(QMouseEvent* ev)
 {
     WebCore::Frame* frame = mainFrameAdapter().frame;

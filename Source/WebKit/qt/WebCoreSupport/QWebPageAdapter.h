@@ -315,6 +315,7 @@ public:
 
     void adjustPointForClicking(QMouseEvent*);
 
+    bool tryClosePage();
     void mouseMoveEvent(QMouseEvent*);
     void mousePressEvent(QMouseEvent*);
     void mouseDoubleClickEvent(QMouseEvent*);
