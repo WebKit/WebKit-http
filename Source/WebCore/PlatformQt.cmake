@@ -399,36 +399,6 @@ if (WIN32)
     )
 endif ()
 
-if (MSVC)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${CMAKE_BINARY_DIR}/../include/private"
-        "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/KHR"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/ForwardingHeaders"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/API"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/assembler"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/builtins"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/bytecode"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/bytecompiler"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/dfg"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/disassembler"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/heap"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/debugger"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/interpreter"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/jit"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/llint"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/parser"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/profiler"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/runtime"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/yarr"
-        "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WTF"
-        "${WEBCORE_DIR}/ForwardingHeaders"
-        "${WEBCORE_DIR}/platform/win"
-    )
-endif ()
-
 if (APPLE)
     list(APPEND WebCore_SOURCES
         platform/VNodeTracker.cpp
