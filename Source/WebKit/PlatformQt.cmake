@@ -337,6 +337,12 @@ ecm_generate_headers(
         QWebSettings
     COMMON_HEADER
         QtWebKit
+    COMMON_HEADER_EXTRAS
+        <QtWebKit/QtWebKitDepends>
+        \"qwebkitglobal.h\"
+        \"qtwebkitversion.h\"
+    COMMON_HEADER_GUARD_NAME
+        QT_QTWEBKIT_MODULE_H
     RELATIVE
         qt/Api
     OUTPUT_DIR
@@ -588,6 +594,11 @@ ecm_generate_headers(
         QWebView
     COMMON_HEADER
         QtWebKitWidgets
+    COMMON_HEADER_EXTRAS
+        <QtWebKitWidgets/QtWebKitWidgetsDepends>
+        \"qtwebkitwidgetsversion.h\"
+    COMMON_HEADER_GUARD_NAME
+        QT_QTWEBKITWIDGETS_MODULE_H
     RELATIVE
         qt/WidgetApi
     OUTPUT_DIR

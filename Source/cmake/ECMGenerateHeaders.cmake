@@ -13,6 +13,8 @@
 #       [PREFIX <prefix>]
 #       [REQUIRED_HEADERS <variable>]
 #       [COMMON_HEADER <HeaderName>]
+#       [COMMON_HEADER_EXTRAS <HeaderName> [<HeaderName> [...]]
+#       [COMMON_HEADER_GUARD_NAME <guard_name>]
 #       [RELATIVE <relative_path>])
 #
 # For each CamelCase header name passed to HEADER_NAMES, a file of that name
@@ -125,8 +127,8 @@ include(CMakeParseArguments)
 
 function(ECM_GENERATE_HEADERS camelcase_forwarding_headers_var)
     set(options)
-    set(oneValueArgs ORIGINAL OUTPUT_DIR PREFIX REQUIRED_HEADERS COMMON_HEADER RELATIVE)
-    set(multiValueArgs HEADER_NAMES)
+    set(oneValueArgs ORIGINAL OUTPUT_DIR PREFIX REQUIRED_HEADERS COMMON_HEADER COMMON_HEADER_GUARD_NAME RELATIVE)
+    set(multiValueArgs HEADER_NAMES COMMON_HEADER_EXTRAS)
     cmake_parse_arguments(EGH "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if (EGH_UNPARSED_ARGUMENTS)
@@ -207,10 +209,20 @@ function(ECM_GENERATE_HEADERS camelcase_forwarding_headers_var)
         #combine required headers into 1 big convenience header
         set(COMMON_HEADER ${EGH_OUTPUT_DIR}/${EGH_PREFIX}${EGH_COMMON_HEADER})
         file(WRITE ${COMMON_HEADER} "// convenience header\n")
+        if(EGH_COMMON_HEADER_GUARD_NAME)
+            file(APPEND ${COMMON_HEADER} "#ifndef ${EGH_COMMON_HEADER_GUARD_NAME}\n")
+            file(APPEND ${COMMON_HEADER} "#define ${EGH_COMMON_HEADER_GUARD_NAME}\n")
+        endif()
+        foreach(_extraheader ${EGH_COMMON_HEADER_EXTRAS})
+            file(APPEND ${COMMON_HEADER} "#include ${_extraheader}\n")
+        endforeach()
         foreach(_header ${_REQUIRED_HEADERS})
             get_filename_component(_base ${_header} NAME)
             file(APPEND ${COMMON_HEADER} "#include \"${_base}\"\n")
         endforeach()
+        if(EGH_COMMON_HEADER_GUARD_NAME)
+            file(APPEND ${COMMON_HEADER} "#endif\n")
+        endif()
         list(APPEND ${camelcase_forwarding_headers_var} "${COMMON_HEADER}")
     endif()
 
