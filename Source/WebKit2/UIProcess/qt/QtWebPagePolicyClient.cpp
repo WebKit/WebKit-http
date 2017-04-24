@@ -35,13 +35,11 @@ namespace WebKit {
 QtWebPagePolicyClient::QtWebPagePolicyClient(WKPageRef pageRef, QQuickWebView* webView)
     : m_webView(webView)
 {
-    // QTFIXME: Use V1
-    WKPagePolicyClientV0 policyClient;
+    WKPagePolicyClientV1 policyClient;
     memset(&policyClient, 0, sizeof(WKPagePolicyClientV0));
-    policyClient.base.version = 0;
-    policyClient.base.clientInfo = this;
-    policyClient.decidePolicyForNavigationAction_deprecatedForUseWithV0 = decidePolicyForNavigationAction;
-    policyClient.decidePolicyForResponse_deprecatedForUseWithV0 = decidePolicyForResponse;
+    policyClient.base = { 1, this };
+    policyClient.decidePolicyForNavigationAction = decidePolicyForNavigationAction;
+    policyClient.decidePolicyForResponse = decidePolicyForResponse;
     WKPageSetPagePolicyClient(pageRef, &policyClient.base);
 }
 
@@ -122,7 +120,7 @@ static QQuickWebView::NavigationType toQuickWebViewNavigationType(WKFrameNavigat
     return QQuickWebView::OtherNavigation;
 }
 
-void QtWebPagePolicyClient::decidePolicyForNavigationAction(WKPageRef page, WKFrameRef frame, WKFrameNavigationType navigationType, WKEventModifiers modifiers, WKEventMouseButton mouseButton, WKURLRequestRef request, WKFramePolicyListenerRef listener, WKTypeRef, const void* clientInfo)
+void QtWebPagePolicyClient::decidePolicyForNavigationAction(WKPageRef page, WKFrameRef frame, WKFrameNavigationType navigationType, WKEventModifiers modifiers, WKEventMouseButton mouseButton, WKFrameRef originatingFrame, WKURLRequestRef request, WKFramePolicyListenerRef listener, WKTypeRef, const void* clientInfo)
 {
     WKRetainPtr<WKURLRef> frameURL(AdoptWK, WKFrameCopyURL(frame));
     WKRetainPtr<WKURLRef> requestURL(AdoptWK, WKURLRequestCopyURL(request));
@@ -131,11 +129,10 @@ void QtWebPagePolicyClient::decidePolicyForNavigationAction(WKPageRef page, WKFr
     toQtWebPagePolicyClient(clientInfo)->decidePolicyForNavigationAction(qUrl, toQtMouseButton(mouseButton), toQtKeyboardModifiers(modifiers), toQuickWebViewNavigationType(navigationType), isMainFrame, listener);
 }
 
-void QtWebPagePolicyClient::decidePolicyForResponse(WKPageRef page, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef, WKFramePolicyListenerRef listener, WKTypeRef, const void*)
+void QtWebPagePolicyClient::decidePolicyForResponse(WKPageRef page, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef, bool canShowMIMEType, WKFramePolicyListenerRef listener, WKTypeRef, const void*)
 {
     String type = toImpl(response)->resourceResponse().mimeType();
     type.convertToASCIILowercase(); // QTFIXME: See also FrameLoaderClientQt
-    bool canShowMIMEType = toImpl(frame)->canShowMIMEType(type);
 
     if (WKPageGetMainFrame(page) == frame) {
         if (canShowMIMEType) {
